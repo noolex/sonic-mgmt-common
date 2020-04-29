@@ -290,6 +290,11 @@ module sonic-ospfv2 {
             "OSPFv2 stub default cost.";
         }
 
+        leaf shortcut {
+          type sonic-ospf-cmn:ospf-config-type;
+          description
+            "OSPFv2 area shortcut configuration.";
+        }
 
         leaf import-list {
           type leafref {
@@ -617,30 +622,47 @@ module sonic-ospfv2 {
     } //OSPFV2_ROUTER_DISTRIBUTE_ROUTE
 
 
+    container OSPFV2_ROUTER_PASSIVE_INTERFACE {
+      description
+        "OSPFv2 passive interface configuration table.";
+
+      list OSPFV2_ROUTER_PASSIVE_INTERFACE_LIST {
+
+        key "vrf_name name";
+
+        leaf vrf_name {
+          type leafref {
+            path "../../../OSPFV2_ROUTER/OSPFV2_ROUTER_LIST/vrf_name";
+          }
+        }
+
+        leaf name {
+          type string;
+          description
+            "The name of the passive interface .";
+         }
+
+        leaf address {
+          type ietf-inet:ipv4-address-no-zone;
+          description
+              "Interface IP address";
+        }
+      } //OSPFV2_ROUTER_PASSIVE_INTERFACE_LIST
+    }//OSPFV2_ROUTER_PASSIVE_INTERFACE
+
+
     container OSPFV2_INTERFACE {
        description
          "OSPFv2 Interface Table.";
 
        list OSPFV2_INTERFACE_LIST {
 
-         key "name";
+         key "name address";
 
          leaf name {
            type sonic-ospf-cmn:ospf-interface;
            description
              "OPSF interface";
-         }
-
-         leaf vrf_name {
-           type union {
-             type string {
-               pattern "default";
-             }
-             type leafref {
-               path "/sonic-vrf:sonic-vrf/sonic-vrf:VRF/sonic-vrf:VRF_LIST/sonic-vrf:vrf_name";
-             }
-           }
-           default "default";
          }
 
          leaf area-id {
@@ -674,6 +696,7 @@ module sonic-ospfv2 {
              "The local system's priority to become the designated router";
          }
 
+         /*
          leaf passive {
            type boolean;
            description
@@ -687,6 +710,7 @@ module sonic-ospfv2 {
            description
              "The Interface address";
          }
+         */
 
          leaf mtu-ignore {
            type boolean;

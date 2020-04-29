@@ -32,6 +32,29 @@ module openconfig-ospfv2-ext {
   }
 
 
+  identity OSPF_CONFIG_TYPE {
+    description
+      "OSPF Configuration types";
+  }
+
+  identity ENABLE {
+    base "OSPF_CONFIG_TYPE";
+    description
+      "Configuration has been enabled";
+  }
+
+  identity DISABLE {
+    base "OSPF_CONFIG_TYPE";
+    description
+      "Configuration has been disabled";
+  }
+
+  identity DEFAULT {
+    base "OSPF_CONFIG_TYPE";
+    description
+      "Configuration has been set to default";
+  }
+
   identity OSPF_METRIC_TYPE {
     description
       "OSPF Metric Types";
@@ -665,6 +688,14 @@ module openconfig-ospfv2-ext {
       description
          "OSPF autentication type";
     } 
+
+    leaf shortcut {
+      type identityref {
+        base "OSPF_CONFIG_TYPE";
+      }
+      description
+         "OSPF area shortcut configuration.";
+    }
   }  
 
   grouping ospfv2-area-stub-config-ext {
@@ -1408,6 +1439,61 @@ module openconfig-ospfv2-ext {
     }
   }
 
+  grouping ospfv2-passive-interface-config-ext {
+    description
+      "Configuration parameters relating to a network within
+      the OSPF area";
+
+    leaf name {
+      type oc-if:base-interface-ref;
+      description
+        "The name of the passive interface .";
+    }
+
+    leaf address {
+      type inet:ipv4-address-no-zone;
+      description
+          "Interface IP address";
+    }
+  }
+
+  grouping ospfv2-passive-interfaces-ext {
+    description
+      "Configuration parameters relating to a passive interfaces";
+
+    container passive-interfaces {
+      description
+        "Configuration and state parameters relating passive interfaces";
+
+      list passive-interface {
+        key "name";
+
+        description
+          "Configuration and state parameters relating passive interfaces";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+          description
+            "Reference to the passive interface";
+        }
+
+        container config {
+          description
+            "Configuration parameters relating to the OSPF passive interface";
+          uses ospfv2-passive-interface-config-ext;
+        }
+
+        container state {
+          config false;
+          description
+            "State parameters relating to the OSPF passive interface";
+          uses ospfv2-passive-interface-config-ext;
+        }
+      }
+    }
+  }
 
   grouping ospfv2-lsdb-router-lsa-state-ext {
     description
@@ -1550,15 +1636,6 @@ module openconfig-ospfv2-ext {
     description
       "Configuration parameters for an OSPF interface";
 
-    leaf vrf {
-      type leafref {
-        path "/oc-netinst:network-instances/oc-netinst:network-instance" +
-             "/oc-netinst:config/oc-netinst:name";
-      }
-      description 
-        "Virtual Routing Domain name";
-    }
-
     leaf area-id {
       type oc-ospf-types:ospf-area-identifier;
       description
@@ -1567,12 +1644,6 @@ module openconfig-ospfv2-ext {
     }
 
     leaf address {
-      type inet:ipv4-address-no-zone;
-      description
-        "The Interface address";
-    }
-
-    leaf passive-interface-address {
       type inet:ipv4-address-no-zone;
       description
         "The Interface address";
@@ -1601,7 +1672,6 @@ module openconfig-ospfv2-ext {
     uses ospfv2-message-authentication-config-ext;
   }
 
-
   grouping interface-phys-ospfv2-config-ext {
     description
       "Enclosing container for the OSPFv2 configurations";
@@ -1610,20 +1680,35 @@ module openconfig-ospfv2-ext {
       description
         "Enclosing container for the OSPFv2 configurations";
 
-      container config {
-        uses oc-ospfv2:ospfv2-area-interface-config;
-        uses ospfv2-area-interface-config-ext;
-        uses oc-ospfv2:ospfv2-area-interface-timers-config;
-        uses ospfv2-area-interface-timers-config-ext;
-      }
+        list if-addresses {
+          key "address";
 
-      container state {
-        config false;
-        uses oc-ospfv2:ospfv2-area-interface-config;
-        uses ospfv2-area-interface-config-ext;
-        uses oc-ospfv2:ospfv2-area-interface-timers-config;
-        uses ospfv2-area-interface-timers-config-ext;
-      }
+          description
+            "Configuration and state parameters relating OSPFv2 interfaces";
+
+          leaf address {
+            type leafref {
+              path "../config/address";
+            }
+            description
+              "Reference to the passive interface";
+          }
+
+          container config {
+            uses oc-ospfv2:ospfv2-area-interface-config;
+            uses ospfv2-area-interface-config-ext;
+            uses oc-ospfv2:ospfv2-area-interface-timers-config;
+            uses ospfv2-area-interface-timers-config-ext;
+          }
+
+          container state {
+            config false;
+            uses oc-ospfv2:ospfv2-area-interface-config;
+            uses ospfv2-area-interface-config-ext;
+            uses oc-ospfv2:ospfv2-area-interface-timers-config;
+            uses ospfv2-area-interface-timers-config-ext;
+         }
+       }
     }
   }
 
@@ -1635,6 +1720,12 @@ module openconfig-ospfv2-ext {
       type uint32;
       description
         "Interface index";
+    }
+
+    leaf vrf {
+      type string ;
+      description
+        "Virtual Routing Domain name";
     }
 
     leaf bandwidth {
@@ -2143,6 +2234,20 @@ module openconfig-ospfv2-ext {
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:timers/oc-netinst:lsa-generation" +
+          "/oc-netinst:config/oc-netinst:initial-delay" {
+    deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+          "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+          "/oc-netinst:global/oc-netinst:timers/oc-netinst:lsa-generation" +
+          "/oc-netinst:config/oc-netinst:maximum-delay" {
+    deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+          "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+          "/oc-netinst:global/oc-netinst:timers/oc-netinst:lsa-generation" +
           "/oc-netinst:state/oc-netinst:initial-delay" {
     deviate not-supported;
   }
@@ -2247,6 +2352,7 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global" {
     uses ospfv2-policy-route-distibution-ext;
+    uses ospfv2-passive-interfaces-ext;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
@@ -2457,28 +2563,28 @@ module openconfig-ospfv2-ext {
   }
 
   deviation "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface" +
-            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config" +
-            "/oc-ospfv2-ext:metric" {
+            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
+            "/oc-ospfv2-ext:config/oc-ospfv2-ext:metric" {
     deviate replace {
       type ospf-cost-metric;
     }
   }
 
   deviation "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface" +
-            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config" +
-            "/oc-ospfv2-ext:authentication-type" {
+            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
+            "/oc-ospfv2-ext:config/oc-ospfv2-ext:passive" {
     deviate not-supported;
   }
 
   deviation "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface" +
-            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config" +
-            "/oc-ospfv2-ext:multi-area-adjacency-primary" {
+            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
+            "/oc-ospfv2-ext:config/oc-ospfv2-ext:authentication-type" {
     deviate not-supported;
   }
 
   deviation "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface" +
-            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config" +
-            "/oc-ospfv2-ext:hide-network" {
+            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
+            "/oc-ospfv2-ext:config/oc-ospfv2-ext:hide-network" {
     deviate not-supported;
   }
 
