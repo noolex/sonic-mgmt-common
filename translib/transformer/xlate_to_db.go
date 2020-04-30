@@ -808,7 +808,12 @@ func dbMapDefaultFieldValFill(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri str
 									if retData != nil {
 										xfmrLogInfoAll("Transformer function : %v Xpath: %v retData: %v", childNode.xfmrField, childXpath, retData)
 										for f, v := range retData {
-											dataToDBMapAdd(tblName, dbKey, result, f, v)
+											// Fill default value only if value is not available in result Map
+											// else we overwrite the value filled in resultMap with default value
+											_, ok := result[tblName][dbKey].Field[f]
+											if !ok {
+												dataToDBMapAdd(tblName, dbKey, result, f, v)
+											}
 										}
 									}
 
@@ -819,9 +824,14 @@ func dbMapDefaultFieldValFill(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri str
 							} else {
 								var xfmrErr error
 								if _, ok := xDbSpecMap[tblName+"/"+childNode.fieldName]; ok {
-									err := mapFillDataUtil(d, ygRoot, oper, uri, requestUri, childXpath, tblName, dbKey, result, subOpDataMap, childName, childNode.defVal, txCache, &xfmrErr)
-									if err != nil {
-										return err
+									// Fill default value only if value is not available in result Map
+									// else we overwrite the value filled in resultMap with default value
+									_, ok = result[tblName][dbKey].Field[childNode.fieldName]
+									if !ok {
+										err := mapFillDataUtil(d, ygRoot, oper, uri, requestUri, childXpath, tblName, dbKey, result, subOpDataMap, childName, childNode.defVal, txCache, &xfmrErr)
+										if err != nil {
+											return err
+										}
 									}
 								}
 							}
