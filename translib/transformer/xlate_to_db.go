@@ -603,11 +603,15 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				if (spec.hasChildSubTree == true) {
 					xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
 					result, err = allChildTblGetToDelete(d, ygRoot, oper, requestUri, resultMap, subOpDataMap, txCache, &cascadeDelTbl)
-				} else {
+				}
+				chResult := make(map[string]map[string]db.Value)
 				for _, child := range spec.childTable {
-					result[child] = make(map[string]db.Value)
+					chResult[child] = make(map[string]db.Value)
 				}
-				}
+				log.Infof("Before Merge result: %v  result with  child tables: %v", result, chResult)
+                                mapCopy(result, chResult)
+                                log.Infof("Merged result tables with child tables: %v", result)
+
 			} else {
 				if (spec.hasChildSubTree == true) {
 					xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
