@@ -711,7 +711,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 					tblRw.SetList(field, exstLst)
 				}
 			} else { //when existing list is empty(either empty string val in field or no field at all n entry)
-				log.Infof("Existing list is empty for field %v $$$$$$", field)
+				log.Infof("Existing list is empty for field %v", field)
 				if opcode == UPDATE {
 					if len(valueLst) > 0 {
 						exstLst = valueLst
