@@ -529,25 +529,31 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					if specYangType == YANG_LEAF {
 						_, ok := xYangSpecMap[xpath]
 						if ok && len(xYangSpecMap[xpath].defVal) > 0 {
-							err = mapFillDataUtil(d, ygRoot, oper, luri, requestUri, xpath, tableName, keyName, result, subOpDataMap, spec.fieldName, xYangSpecMap[xpath].defVal, txCache, &xfmrErr)
-							if xfmrErr != nil {
-								return xfmrErr
-							}
-							if err != nil {
-								return err
-							}
-							if len(subOpDataMap) > 0 && subOpDataMap[UPDATE] != nil {
-								subOperMap := subOpDataMap[UPDATE]
-								mapCopy((*subOperMap)[db.ConfigDB], result)
-							} else {
-								var redisMap = new(RedisDbMap)
-								var dbresult = make(RedisDbMap)
-								for i := db.ApplDB; i < db.MaxDB; i++ {
-									dbresult[i] = make(map[string]map[string]db.Value)
+							// Do not fill def value if leaf does not map to any redis field
+							dbSpecXpath := tableName + "/" + xYangSpecMap[xpath].fieldName
+							_, mapped := xDbSpecMap[dbSpecXpath]
+							if mapped || len(xYangSpecMap[xpath].xfmrField) > 0 {
+
+								err = mapFillDataUtil(d, ygRoot, oper, luri, requestUri, xpath, tableName, keyName, result, subOpDataMap, spec.fieldName, xYangSpecMap[xpath].defVal, txCache, &xfmrErr)
+								if xfmrErr != nil {
+									return xfmrErr
 								}
-								redisMap = &dbresult
-								(*redisMap)[db.ConfigDB] = result
-								subOpDataMap[UPDATE]     = redisMap
+								if err != nil {
+									return err
+								}
+								if len(subOpDataMap) > 0 && subOpDataMap[UPDATE] != nil {
+									subOperMap := subOpDataMap[UPDATE]
+									mapCopy((*subOperMap)[db.ConfigDB], result)
+								} else {
+									var redisMap = new(RedisDbMap)
+									var dbresult = make(RedisDbMap)
+									for i := db.ApplDB; i < db.MaxDB; i++ {
+										dbresult[i] = make(map[string]map[string]db.Value)
+									}
+									redisMap = &dbresult
+									(*redisMap)[db.ConfigDB] = result
+									subOpDataMap[UPDATE]     = redisMap
+								}
 							}
 							result = make(map[string]map[string]db.Value)
 						} else {
