@@ -2,7 +2,6 @@ package transformer
 
 import (
     "strconv"
-    "time"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "errors"
     "strings"
@@ -15,8 +14,6 @@ import (
 
 const (
     PLATFORM_JSON = "/usr/share/sonic/hwsku/platform.json"
-    //PLATFORM_JSON = "/projects/csg_sonic/pk409742/repos/3.x/sonic-buildimage/device/accton/x86_64-accton_as7816_64x-r0/Accton-AS7816-64X/platform-dpb.json"
-    DPB_OP_TIMEOUT = 60
 )
 
 
@@ -117,7 +114,6 @@ func getPorts (port_i string, mode string) ([]portProp, error) {
     if entry, ok := platConfigStr[port_i]; ok {
         // Default mode. DELETE/"no breakout" case
         if len(mode) == 0 {
-            //mode =  strings.Split(entry["default_brkout_mode"],"[")[0]
             mode =  entry["default_brkout_mode"]
             if len(mode) == 0 {
                 err = errors.New("Invalid default breakout mode")
@@ -158,122 +154,44 @@ func parsePlatformJsonFile () (error) {
 }
 
 
-func shutdownPorts (d *db.DB, ports_i []portProp) (error) {
-    var dbErr error
+func removePorts (ports_i []portProp) (map[db.DBNum]map[string]map[string]db.Value) {
+    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    delMap := make(map[string]map[string]db.Value)
+    entryMap := make(map[string]db.Value)
 
-    m := make(map[string]string)
-    value := db.Value{Field: m}
-    value.Set("admin_status", "down")
-    for _,  port := range ports_i {
-        err := d.SetEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{port.name}}, value)
-        if nil != err {
-            dbErr := err
-            log.Error("DPB: port shutdown failed for ", port.name, " Error ", dbErr)
-        } else {
-            log.Info("DPB: port shutdown success for ", port.name)
-        }
-    }
-    time.Sleep(1 * time.Second)
-    return dbErr;
-}
-
-
-func isPortRemoveCompleted( ports_i []portProp) (error) {
-    var dbErr error
-    var portsDeleted bool
-    if len(portOidMap) < 1 {
-        portOidMap = make(map[string]string)
-        /* Get the port - oid mapping from counters db */
-        d, err := db.NewDB(getDBOptions(db.CountersDB))
-        if err != nil {
-             log.Infof("DPB unable to connect to Counters DB, error %v", err)
-             return err
-        }
-        OidInfMap,_  := getOidToIntfNameMap(d)
-        for oid, port := range OidInfMap {
-            portOidMap[port] = oid
-        }
-        log.Info("PORT OID Map:", portOidMap)
-        defer d.DeleteDB()
-    }
-    d, err := db.NewDB(getDBOptions(db.AsicDB))
-    if err != nil {
-         log.Infof("DPB unable to connect to ASIC DB, error %v", err)
-         return err
-    }
-
-    for wait:=0;wait<DPB_OP_TIMEOUT;wait++ {
-        portsDeleted = true
-        for _, port := range ports_i {
-            if oid, ok := portOidMap[port.name]; ok {
-                _, dbErr := d.GetEntry(&db.TableSpec{Name:"ASIC_DB"},
-                    db.Key{Comp: []string{"ASIC_STATE:SAI_OBJECT_TYPE_PORT:" + oid}})
-                if nil == dbErr {
-                    log.Info("DPB: ", port.name, "remove in progress. retry ", wait+1)
-                    portsDeleted = false
-                }
-            } else {
-                log.Error("DPB: OID not found for ", port.name)
-                portsDeleted = false
-                return  errors.New("Port name to OID mapping failed")
-            }
-        }
-        if !portsDeleted {
-            time.Sleep(1 * time.Second)
-        } else {
-            break
-        }
-    }
-
-    defer d.DeleteDB()
-    if portsDeleted {
-     dbErr = nil
-    } else {
-        dbErr = errors.New("Port remove timed out")
-    }
-
-    return dbErr
-}
-
-func removePorts (d *db.DB, ports_i []portProp) (error) {
-    var dbErr error
     // Delete in reverse order, so that master port gets deleted last.
     for i := len(ports_i)-1; i >= 0; i-- {
-        err := d.DeleteEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{ports_i[i].name}})
-        if nil != err {
-            dbErr := err
-            log.Error("DPB: port remove failed for ", ports_i[i].name, " Error ", dbErr)
-        } else {
-            log.Info("DPB: port remove success for ", ports_i[i].name)
-        }
-        time.Sleep(1 * time.Second)
+        // Field value map is null to indicate entire entry delete.
+        entryMap[ports_i[i].name] = db.Value{}
     }
-
-    return dbErr;
+    delMap["PORT"] = entryMap
+    log.Info("DPB: DELETE Map", delMap)
+    subOpMap[db.ConfigDB] = delMap
+    return subOpMap;
 }
 
-func addPorts (d *db.DB, ports []portProp) (error) {
-    var dbErr error
-    m := make(map[string]string)
-    value := db.Value{Field: m}
-    value.Set("admin_status", "down")
-    value.Set("mtu", "9100")
+func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) {
+    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    addMap := make(map[string]map[string]db.Value)
+    entryMap := make(map[string]db.Value)
 
     for i := 0; i < len(ports); i++ {
+        m := make(map[string]string)
+        value := db.Value{Field: m}
+        value.Set("admin_status", "down")
+        value.Set("mtu", "9100")
         value.Set("index",ports[i].index)
         value.Set("lanes", ports[i].lanes)
         value.Set("alias", ports[i].alias)
         value.Set("speed", ports[i].speed)
         value.Set("valid_speeds", ports[i].valid_speeds)
-        err := d.SetEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{ports[i].name}}, value)
-        if nil != err {
-            dbErr = err
-            log.Error("DPB: port add failed for ", ports[i], " Error ", dbErr)
-        } else {
-            log.Info("DPB: port add success for ", ports[i])
-        }
+        entryMap[ports[i].name] = value
     }
-    return dbErr;
+
+    addMap["PORT"] = entryMap
+    log.Info("DPB: CREATE Map", addMap)
+    subOpMap[db.ConfigDB] = addMap
+    return subOpMap;
 }
 
 

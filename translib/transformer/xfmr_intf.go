@@ -2394,6 +2394,50 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
     return nil, err
 }
 
+/* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
+func isValidSpeed(d *db.DB, ifName string, speed_i string) bool {
+    var isValid bool = false
+    var speed int32
+
+    speed_int,_ := strconv.Atoi(speed_i)
+    speed = int32(speed_int)
+    portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
+    if(err != nil) {
+        log.Info("Could not retrieve PORT|",ifName)
+    } else {
+        speeds := portEntry.Field["valid_speeds"];
+        for _, vspeed := range speeds {
+            if  vspeed == speed {
+                isValid = true
+            }
+        }
+    }
+    return isValid
+}
+
+
+/* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
+func getDefaultSpeed(d *db.DB, ifName string) int32 {
+
+    var defaultSpeed int32
+    defaultSpeed = 0
+    portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
+    if(err != nil) {
+        log.Info("Could not retrieve PORT|",ifName)
+    } else {
+        speeds := portEntry.Field["valid_speeds"];
+        for _, speed := range speeds {
+            log.Info("Speed check ", defaultSpeed, " vs ", speed)
+            if  speed > defaultSpeed {
+                log.Info("Updating  ", defaultSpeed, " with ", speed)
+                defaultSpeed = speed
+            }
+        }
+    }
+    return defaultSpeed
+}
+
+
 /* Handle port-speed, auto-neg and aggregate-id config */
 var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
@@ -2517,17 +2561,21 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     }
     /* Handle PortSpeed config */
     if intfObj.Ethernet.Config.PortSpeed != 0 {
-        if intfType != IntfTypeMgmt {
-            return nil, errors.New("PortSpeed config not supported for given interface type")
-        }
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
-        intTbl := IntfTypeTblMap[IntfTypeMgmt]
+        intTbl := IntfTypeTblMap[intfType]
 
         portSpeed := intfObj.Ethernet.Config.PortSpeed
         val, ok := intfOCToSpeedMap[portSpeed]
         if ok {
-            res_map[PORT_SPEED] = val
+            if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+                val = strconv.FormatInt(int64(getDefaultSpeed(inParams.d, ifName)), 10)
+            }
+            if isValidSpeed(inParams.d, ifName, val) {
+                res_map[PORT_SPEED] = val
+            } else {
+                err = errors.New("Invalid/Unsupported speed.")
+            }
         } else {
             err = errors.New("Invalid/Unsupported speed.")
         }
