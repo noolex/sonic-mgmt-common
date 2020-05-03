@@ -26,6 +26,10 @@ module sonic-port-qos-map {
         prefix dtm;
     }
 
+    import sonic-dot1p-tc-map {
+        prefix dot1ptm;
+    }
+
 	import sonic-scheduler {
 		prefix sch;
 	}
@@ -85,6 +89,12 @@ module sonic-port-qos-map {
                 leaf dscp_to_tc_map {
                     type leafref {
                         path "/dtm:sonic-dscp-tc-map/dtm:DSCP_TO_TC_MAP/dtm:DSCP_TO_TC_MAP_LIST/dtm:name";
+                    }
+                }
+
+                leaf dot1p_to_tc_map {
+                    type leafref {
+                        path "/dot1ptm:sonic-dot1p-tc-map/dot1ptm:DOT1P_TO_TC_MAP/dot1ptm:DOT1P_TO_TC_MAP_LIST/dot1ptm:name";
                     }
                 }
 
