@@ -33,6 +33,12 @@ func init () {
     XlateFuncBind("DbToYang_qos_get_one_intf_all_pg_counters_xfmr", DbToYang_qos_get_one_intf_all_pg_counters_xfmr)
     XlateFuncBind("DbToYang_threshold_breach_counter_field_xfmr", DbToYang_threshold_breach_counter_field_xfmr)
     XlateFuncBind("rpc_clear_qos", rpc_clear_qos)
+
+    // WRED 
+    XlateFuncBind("YangToDb_wred_profile_name_empty_fld_xfmr", YangToDb_wred_profile_name_empty_fld_xfmr)
+    XlateFuncBind("YangToDb_wred_profile_name_fld_xfmr", YangToDb_wred_profile_name_fld_xfmr)
+    XlateFuncBind("DbToYang_wred_profile_name_fld_xfmr", DbToYang_wred_profile_name_fld_xfmr)
+
 }
 
 func getQosRoot (s *ygot.GoStruct) *ocbinds.OpenconfigQos_Qos {
@@ -1444,3 +1450,31 @@ var DbToYang_qos_intf_intfref_intf_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
     return res_map, nil
 }
 
+var YangToDb_wred_profile_name_empty_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+
+    log.Info("YangToDb_wred_profile_name_empty_fld_xfmr: ", inParams.key)
+    return res_map, nil
+}
+
+var YangToDb_wred_profile_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+
+    log.Info("YangToDb_wred_profile_name_fld_xfmr: ", inParams.key)
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_wred_profile_name_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+    var err error
+    log.Info("DbToYang_wred_profile_name_fld_xfmr: ", inParams.key)
+    /*name attribute corresponds to key in redis table*/
+    key := inParams.key
+    log.Info("DbToYang_wred_profile_name_fld_xfmr: ", key)
+    setTblKey := strings.Split(key, "|")
+    setName := setTblKey[0]
+
+    res_map["name"] = setName
+    return res_map, err
+}

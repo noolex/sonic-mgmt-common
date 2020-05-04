@@ -171,8 +171,24 @@ module openconfig-qos-annot {
         sonic-ext:table-name "WRED_PROFILE";
       }
     }
+    
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:name {
+      deviate add {
+        sonic-ext:field-transformer "wred_profile_name_empty_fld_xfmr";
+      }
+    }
 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:name {
+      deviate add {
+        sonic-ext:field-transformer "wred_profile_name_fld_xfmr";
+      }
+    }
 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:name {
+      deviate add {
+        sonic-ext:field-transformer "wred_profile_name_fld_xfmr";
+      }
+    }
 }
 
 

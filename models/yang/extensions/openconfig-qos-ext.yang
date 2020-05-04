@@ -411,6 +411,70 @@ module openconfig-qos-ext {
         }
     }
 
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow_min_threshold {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow_max_threshold {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow_drop_rate {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/wred_yellow_enable {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red_min_threshold {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red_max_threshold {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red_drop_rate {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/wred_red_enable {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow_min_threshold {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow_max_threshold {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow_drop_rate {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/wred_yellow_enable {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red_min_threshold {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red_max_threshold {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red_drop_rate {
+      deviate not-supported;
+  }
+
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/wred_red_enable {
+      deviate not-supported;
+  }
+
   deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input/oc-qos:queues {
     deviate not-supported;
   }

@@ -63,6 +63,7 @@ sonic-ip-show.yang
 sonic-ip-show-annot.yang
 openconfig-qos.yang
 openconfig-qos-ext.yang
+openconfig-qos-maps-ext.yang
 openconfig-qos-annot.yang
 sonic-qos-clear.yang
 sonic-qos-clear-annot.yang
