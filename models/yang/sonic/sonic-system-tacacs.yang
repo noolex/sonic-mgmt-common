@@ -69,6 +69,12 @@ module sonic-system-tacacs {
                         }
                     }
                 }
+
+                leaf vrf {
+                    type string;
+                    description
+                        "Internal management vrf name for SONiC";
+                }
             }
         }
 
