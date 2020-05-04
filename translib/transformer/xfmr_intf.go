@@ -428,11 +428,14 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     log.Info("Entering YangToDb_intf_tbl_key_xfmr")
     var err error
 
+    log.Info("YangToDb_intf_tbl_key_xfmr: inParams.uri ", inParams.uri)
+
     pathInfo := NewPathInfo(inParams.uri)
+    log.Info("YangToDb_intf_tbl_key_xfmr: pathInfo ", pathInfo)
+
     ifName := pathInfo.Var("name")
 
     log.Info("Intf name: ", ifName)
-    log.Info("Exiting YangToDb_intf_tbl_key_xfmr")
     intfType, _, ierr := getIntfTypeByName(ifName)
     if ierr != nil {
         log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
@@ -444,6 +447,8 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     if err != nil {
         return "", tlerr.InvalidArgsError{Format: err.Error()}
     }
+
+    log.Info("YangToDb_intf_tbl_key_xfmr: ifName ", ifName)
     return ifName, err
 }
 
@@ -551,6 +556,10 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     } else if strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/openconfig-interfaces-ext:nat-zone/state")||
         strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/nat-zone/state") {
         tblList = append(tblList, intTbl.appDb.intfTN)
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/ospfv2") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/ospfv2/if-addresses/config") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2") {
+        tblList = append(tblList, intTbl.cfgDb.intfTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/config") ||
@@ -968,7 +977,10 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]strin
             (*inParams.dbDataMap)[db.ConfigDB]["SUBINTF_TBL"]["0"].Field["NULL"] = "NULL"
             tblList = append(tblList, "SUBINTF_TBL")
         }
+
+        log.Info("intf_subintfs_table_xfmr - Subinterface get operation ")
     }
+
     return tblList, nil
 }
 
@@ -976,25 +988,34 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     var subintf_key string
     var err error
 
+    log.Info("YangToDb_intf_subintfs_xfmr - inParams.uri ", inParams.uri)
+
     pathInfo := NewPathInfo(inParams.uri)
     idx := pathInfo.Var("index")
-    if idx != "0" {
+
+    if idx != "0"  {
         errStr := "Invalid sub-interface index: " + idx
         log.Error(errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return idx, err
-    }
+    } 
     if (inParams.oper == GET) {
         subintf_key = "0"
     }
+   
+    log.Info("YangToDb_intf_subintfs_xfmr - return subintf_key ", subintf_key)
     return subintf_key, err
 }
 
 var DbToYang_intf_subintfs_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
     log.Info("Entering DbToYang_intf_subintfs_xfmr")
+
     rmap := make(map[string]interface{})
     var err error
     rmap["index"] = 0
+
+    log.Info("DbToYang_intf_subintfs_xfmr rmap ", rmap) 
     return rmap, err
 }
 
@@ -2991,11 +3012,11 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
     subIntfObj := intfObj.Subinterfaces.Subinterface[0]
 
-		var gwIPListStr string
-	sagIPMap := make(map[string]db.Value)
-		vlanIntfMap := make(map[string]db.Value)
-		vlanIntfMap[ifName] = db.Value{Field:make(map[string]string)}
-	vlanEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+    var gwIPListStr string
+    sagIPMap := make(map[string]db.Value)
+    vlanIntfMap := make(map[string]db.Value)
+    vlanIntfMap[ifName] = db.Value{Field:make(map[string]string)}
+    vlanEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
 
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.SagIpv4 != nil {
 		sagIpv4Obj := subIntfObj.Ipv4.SagIpv4
@@ -3352,4 +3373,5 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     }
     return res_map, nil
 }
+
 
