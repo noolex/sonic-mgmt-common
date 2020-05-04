@@ -14,5 +14,10 @@ module sonic-port-annot {
         }
     }
 
+    deviation /prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname {
+        deviate add {
+            sonic-ext:cascade-delete "enable";
+        }
+    }
 }
 
