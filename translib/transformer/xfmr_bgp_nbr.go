@@ -283,15 +283,12 @@ var YangToDb_bgp_nbr_asn_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     neigh_key := db.Key{Comp: []string{vrf, pNbrAddr}}
 
     entryValue, err := configDbAdd.GetEntry(nbrCfgTblTs, neigh_key)
-    if err != nil {
-        log.Info("YangToDb_bgp_nbr_peer_type_fld_xfmr: entry not found for key ", neigh_key)
-        return res_map, err
-    }
-    neigh_field := entryValue.Field;
-
-    if value, ok := neigh_field["peer_type"] ; ok {
-        err = errors.New("Can't specify  ASN as BGP neighbor as peer type is set to " + value);
-        return res_map, err
+    if err == nil {
+        neigh_field := entryValue.Field;
+        if value, ok := neigh_field["peer_type"] ; ok {
+            err = errors.New("Can't specify  ASN as BGP neighbor as peer type is set to " + value);
+            return res_map, err
+        }
     }
 
     asn_no, _ := inParams.param.(*uint32)
@@ -299,7 +296,7 @@ var YangToDb_bgp_nbr_asn_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     log.Info("YangToDb_bgp_nbr_peer_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " asn : ", *asn_no)
 
     res_map["asn"] = strconv.FormatUint(uint64(*asn_no), 10)
-    return res_map, err
+    return res_map, nil
 }
 
 var DbToYang_bgp_nbr_asn_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -358,14 +355,12 @@ var YangToDb_bgp_nbr_peer_type_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPa
     
     entryValue, err := configDbAdd.GetEntry(nbrCfgTblTs, neigh_key) 
     if err != nil {
-        log.Info("YangToDb_bgp_nbr_peer_type_fld_xfmr: entry not found for key ", neigh_key)
-        return res_map, err
-    }
-    /* Either ASN or peer_type can be configured , not both */
-    neigh_field := entryValue.Field;
-    if value, ok := neigh_field["asn"] ; ok {
-        err = errors.New("Can't specify  peer type as BGP neighbor as ASN is set to " + value);
-        return res_map, err
+        /* Either ASN or peer_type can be configured , not both */
+        neigh_field := entryValue.Field;
+        if value, ok := neigh_field["asn"] ; ok {
+            err = errors.New("Can't specify  peer type as BGP neighbor as ASN is set to " + value);
+            return res_map, err
+        }
     }
     
     if (peer_type == ocbinds.OpenconfigBgp_PeerType_INTERNAL) {
