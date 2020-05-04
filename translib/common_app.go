@@ -313,6 +313,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	fmt.Println(result)
 	log.Info("transformer.XlateToDb() returned", result)
 
+
 	if err != nil {
 		log.Error(err)
 		return keys, err
@@ -676,11 +677,14 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 	for field, value := range tblRw.Field {
 		if strings.HasSuffix(field, "@") {
 			exstLst := existingEntry.GetList(field)
+			log.Infof("Existing DB value for field %v - %v", field, exstLst)
 			var valueLst []string
-			if value != "" { //zero len string as leaf-list value is treated as delete all items in leaf-list
+			if value != "" { //zero len string as leaf-list value is treated as delete entire leaf-list
 				valueLst = strings.Split(value, ",")
 			}
+			log.Infof("Incoming value for field %v - %v", field, valueLst)
 			if len(exstLst) != 0 {
+				log.Infof("Existing list is not empty for field %v", field)
 				for _, item := range valueLst {
 					if !contains(exstLst, item) {
 						if opcode == UPDATE {
@@ -693,7 +697,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 
 					}
 				}
-				log.Infof("For field %v value after merge %v", field, exstLst)
+				log.Infof("For field %v value after merging incoming with existing %v", field, exstLst)
 				if opcode == DELETE {
 					if len(valueLst) > 0 {
 						mergeTblRw.SetList(field, exstLst)
@@ -703,13 +707,27 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 							delete(tblRw.Field, field)
 						}
 					}
+				} else if opcode == UPDATE {
+					tblRw.SetList(field, exstLst)
 				}
-			} else if opcode == UPDATE {
-                                exstLst = valueLst
+			} else { //when existing list is empty(either empty string val in field or no field at all n entry)
+				log.Infof("Existing list is empty for field %v", field)
+				if opcode == UPDATE {
+					if len(valueLst) > 0 {
+						exstLst = valueLst
+						tblRw.SetList(field, exstLst)
+					} else {
+						tblRw.Field[field] = ""
+					}
+				} else if opcode == DELETE {
+					_, fldExistsOk := existingEntry.Field[field]
+					if (fldExistsOk && (len(valueLst) == 0)) {
+						tblRw.Field[field] = ""
+					} else {
+						delete(tblRw.Field, field)
+					}
+				}
                         }
-			if opcode == UPDATE {
-				tblRw.SetList(field, exstLst)
-			}
 		}
 	}
 	/* delete specific item from leaf-list */
