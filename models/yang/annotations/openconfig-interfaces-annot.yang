@@ -45,6 +45,12 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:config/oc-intf:mtu {
+        deviate add {
+            sonic-ext:field-transformer "intf_mtu_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:config/oc-intf:type {
         deviate add {
             sonic-ext:field-transformer "intf_type_xfmr";
