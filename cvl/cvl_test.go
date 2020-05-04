@@ -3389,6 +3389,17 @@ func TestGetDepDataForDelete(t *testing.T) {
 				"MIRROR_ACTION": "sess1",
 			},
 		},
+		"INTERFACE" : map[string]interface{} {
+			"Ethernet7": map[string] interface{} {
+				"vrf-name": "Vrf1",
+			},
+			"Ethernet7|10.2.1.1/16": map[string] interface{} {
+				"NULL": "NULL",
+			},
+			"Ethernet7|10.2.1.2/16": map[string] interface{} {
+				"NULL": "NULL",
+			},
+		},
 	}
 
 	loadConfigDB(rclient, depDataMap)
@@ -3397,7 +3408,7 @@ func TestGetDepDataForDelete(t *testing.T) {
 
 	depEntries := cvSess.GetDepDataForDelete("PORT|Ethernet7")
 
-        if (len(depEntries) != 5) { //5 entries to be deleted
+        if (len(depEntries) != 8) { //8 entries to be deleted
                 t.Errorf("GetDepDataForDelete() failed")
         }
 
