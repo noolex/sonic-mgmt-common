@@ -1030,3 +1030,131 @@ func xfmrLogInfoAll(format string, args ...interface{}) {
 		log.Infof(fNmLnoStr + format, args...)
 	}
 }
+
+func formXfmrDbInputRequest(oper int, d db.DBNum, tableName string, key string, field string, value string) XfmrDbParams {
+	var inParams XfmrDbParams
+	inParams.oper       = oper
+	inParams.dbNum      = d
+	inParams.tableName  = tableName
+	inParams.key        = key
+	inParams.fieldName  = field
+	inParams.value      = value
+	return inParams
+}
+
+func hasKeyValueXfmr(tblName string) bool {
+	if specTblInfo, ok := xDbSpecMap[tblName]; ok {
+		for _, lname := range specTblInfo.listName {
+			listXpath := tblName + "/" + lname
+			if specListInfo, ok := xDbSpecMap[listXpath]; ok {
+				for _, key := range specListInfo.keyList {
+					keyXpath := tblName + "/" + key
+					if specKeyInfo, ok := xDbSpecMap[keyXpath]; ok {
+						if specKeyInfo.xfmrValue != nil {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey string, inKeyValList []string) (string, []string, error) {
+	var err error
+	var keyValList []string
+
+	if specTblInfo, ok := xDbSpecMap[tblName]; ok {
+		for _, lname := range specTblInfo.listName {
+			listXpath := tblName + "/" + lname
+			keyMap    := make(map[string]interface{})
+
+			if specListInfo, ok := xDbSpecMap[listXpath]; ok && len(specListInfo.keyList) > 0 {
+				if len(dbKey) > 0 {
+					sonicKeyDataAdd(dbNum, specListInfo.keyList, tblName, dbKey, keyMap)
+				} else {
+					if len(specListInfo.keyList) != len(inKeyValList) {
+						continue
+					}
+					for id, kname := range(specListInfo.keyList) {
+						keyMap[kname] = inKeyValList[id]
+					}
+				}
+
+				if len(keyMap) == len(specListInfo.keyList) {
+					for _, kname := range specListInfo.keyList {
+						keyXpath  := tblName + "/" + kname
+						curKeyVal := fmt.Sprintf("%v", keyMap[kname])
+						if kInfo, ok := xDbSpecMap[keyXpath]; ok && xDbSpecMap[keyXpath].xfmrValue != nil {
+							inParams := formXfmrDbInputRequest(oper, dbNum, tblName, dbKey, kname, curKeyVal)
+							curKeyVal, err = valueXfmrHandler(inParams, *kInfo.xfmrValue)
+							if err != nil {
+								log.Errorf("Failed in value-xfmr: keypath(\"%v\") value (\"%v\"):err(%v).",
+								keyXpath, curKeyVal, err)
+								return "", keyValList, err
+							}
+						}
+						keyValList = append(keyValList, curKeyVal)
+					}
+				}
+			}
+		}
+	}
+
+	dbOpts := getDBOptions(dbNum)
+	retKey := strings.Join(keyValList, dbOpts.KeySeparator)
+	return retKey, keyValList, nil
+}
+
+func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.Value) error {
+	for oper, dbDataMap := range resultMap {
+		if oper != DELETE {
+			for dbNum, tblData := range dbDataMap {
+				for tblName, data := range tblData {
+					if specTblInfo, ok := xDbSpecMap[tblName]; ok && specTblInfo.hasXfmrFn == true {
+						skipKeySet := make(map[string]bool)
+						for dbKey, fldData := range data {
+							if _, ok := skipKeySet[dbKey]; !ok {
+								for fld, val := range fldData.Field {
+									fldName := fld
+									if strings.HasSuffix(fld, "@") {
+										fldName = strings.Split(fld, "@")[0]
+									}
+									/* check & invoke value-xfmr */
+									fldXpath := tblName + "/" + fldName
+									if fInfo, ok := xDbSpecMap[fldXpath]; ok && fInfo.xfmrValue != nil {
+										inParams := formXfmrDbInputRequest(oper, dbNum, tblName, dbKey, fld, val)
+										retVal, err := valueXfmrHandler(inParams, *fInfo.xfmrValue)
+										if err != nil {
+											log.Errorf("Failed in value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").",
+											fldXpath, val, err)
+											return err
+										}
+										resultMap[oper][dbNum][tblName][dbKey].Field[fld] = retVal
+									}
+								}
+
+								/* split tblkey and invoke value-xfmr if present */
+								if hasKeyValueXfmr(tblName) == true {
+									var el []string
+									retKey, _, err := dbKeyValueXfmrHandler(oper, dbNum, tblName, dbKey, el)
+									if err != nil {
+										return err
+									}
+									/* cache processed keys */
+									skipKeySet[retKey] = true
+									if dbKey != retKey {
+										resultMap[oper][dbNum][tblName][retKey] = resultMap[oper][dbNum][tblName][dbKey]
+										delete(resultMap[oper][dbNum][tblName], dbKey)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
