@@ -15,6 +15,10 @@ module sonic-system-radius {
     description
         "SONiC RADIUS";
 
+    revision 2020-05-02 {
+        description "Allowed domain name as well for server configuration.";
+    }
+
     revision 2020-03-30 {
         description "NAS-IP|IPV4-Address attribute.";
     }
@@ -106,9 +110,18 @@ module sonic-system-radius {
                 max-elements 8;
 
                 leaf ipaddress {
-                    type inet:ip-address;
+                    type union {
+                        type string {
+                            length "1..253";
+                            pattern
+                                '((([a-zA-Z0-9_]([a-zA-Z0-9\-_]){0,61})?[a-zA-Z0-9]\.)*' +
+                                  '([a-zA-Z0-9_]([a-zA-Z0-9\-_]){0,61})?[a-zA-Z0-9]\.?)'   +
+                                '|\.';
+                        }                        
+                        type inet:ip-address;
+                    }
                     description
-                            "RADIUS server's IP address (IPv4 or IPv6)";
+                        "RADIUS server's Domain name or IP address (IPv4 or IPv6)";
                 }
 
                 leaf auth_port {

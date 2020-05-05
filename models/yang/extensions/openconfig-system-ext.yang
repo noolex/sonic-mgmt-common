@@ -19,6 +19,11 @@ module openconfig-system-ext {
     description
         "Model for managing TACACS+ configurations .";
 
+    revision 2020-05-02 {
+        description
+            "Added DNS source IP support and allowed domain name as well for Radius/TACACS+ server configuration.";
+    }
+
     revision 2020-03-30 {
         description
             "Added NAS-IP|IPV6-Address attribute for RADIUS.";
@@ -131,6 +136,41 @@ module openconfig-system-ext {
                     uses ssh-vrf-config;
                 }
             }
+        }
+    }
+
+    grouping dns-source-ip-config {
+        leaf source-address {
+            type inet:ip-address;
+            description
+                "Source IP address for packets to the DNS server";
+        }
+    }
+
+    augment "/oc-sys:system/oc-sys:dns/oc-sys:config" {
+        uses dns-source-ip-config;
+    }
+
+    augment "/oc-sys:system/oc-sys:dns/oc-sys:state" {
+        uses dns-source-ip-config;
+    }
+
+    typedef server-address {
+        type inet:host;
+        description
+            "The host type represents either an unzoned IP address or a DNS
+            domain name.";
+    }
+
+    deviation "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address" {
+        deviate replace {
+            type server-address;
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address" {
+        deviate replace {
+            type server-address;
         }
     }
 
