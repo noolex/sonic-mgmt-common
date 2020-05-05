@@ -203,6 +203,9 @@ func CVL_LOG(level CVLLogLevel, fmtStr string, args ...interface{}) {
 
 //package init function 
 func init() {
+    // Added this to avoid display of error log starting with "ERROR: logging before flag.Parse:"
+    flag.CommandLine.Parse([]string{"-logtostderr",})
+
 	if (os.Getenv("CVL_SCHEMA_PATH") != "") {
 		CVL_SCHEMA = os.Getenv("CVL_SCHEMA_PATH") + "/"
 	}
