@@ -71,7 +71,12 @@ module sonic-system-tacacs {
                 }
 
                 leaf vrf {
-                    type string;
+                    type string {
+                        pattern "mgmt" {
+                            error-message 'Error: Management VRF name must be "mgmt"';
+                        }
+
+                    }
                     description
                         "Internal management vrf name for SONiC";
                 }
