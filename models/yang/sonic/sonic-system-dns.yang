@@ -1,0 +1,45 @@
+module sonic-system-dns {
+    namespace "http://github.com/Azure/sonic-system-dns";
+    prefix ssys;
+
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    revision 2020-05-02 {
+        description "Initial revision.";
+    }
+
+    container sonic-system-dns {
+
+        container DNS_SERVER {
+            list DNS_SERVER_LIST {
+                key "ipaddress";
+
+                leaf ipaddress {
+                    type inet:ip-address;
+                }
+            }
+        }
+
+        container DNS {
+            list DNS_LIST {
+
+                key "type";
+
+                leaf type {
+                    type enumeration {
+                        enum global;
+                    }
+                }
+
+                leaf src_ip {
+                    type inet:ip-address;
+                }
+
+            }
+        }
+    }
+}
+
+
