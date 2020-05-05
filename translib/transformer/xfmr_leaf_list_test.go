@@ -20,11 +20,12 @@ package transformer_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"testing"
 	"time"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
+
+
 
 func Test_LeafList_oneToone_mapping_OCYang(t *testing.T) {
 	fmt.Println("\n\n+++++++++++++ Performing Leaf-list one to one mapping ++++++++++++")
@@ -32,16 +33,13 @@ func Test_LeafList_oneToone_mapping_OCYang(t *testing.T) {
 	var prereq_snmp_vacm_view_map map[string]interface{}
 	var expected_snmp_vacm_view_map map[string]interface{}
 	var url, url_body_json string
-	preRequisite , err := ioutil.ReadFile("testdata/snmp_vacm_view_db.json")
-	if err != nil {
-		fmt.Printf("read file err: %v",  err)
-	}
-	prereq_snmp_vacm_view_map = loadConfig("", preRequisite)
-	expected_snmp_vacm_view_map = prereq_snmp_vacm_view_map
+	expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+		                                                                            "exclude@": "1.2.3.4.*,1.4.6.*"}}}
 	unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
 	url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]"
+    url_body_json = "{\"ietf-snmp:exclude\":[\"1.2.3.4.*\",\"1.4.6.*\"]}"
 	//automatically covers field-name case
-	t.Run("1:1 mapping create", processSetRequestFromFile(url, "testdata/snmp_vacm_view_body.json", "POST", false, nil))
+	t.Run("1:1 mapping create", processSetRequest(url, url_body_json, "POST", false, nil))
 	time.Sleep(1 * time.Second)
 	t.Run("Verify 1:1 mapping create.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
 	unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
@@ -49,10 +47,10 @@ func Test_LeafList_oneToone_mapping_OCYang(t *testing.T) {
 
 	/** update/merge, 1:1, field-name **/
 	prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
-		                                                                                      "exclude@": "1.2.3.4.*,1.4.6.*",
+		                                                                                      "exclude@": "1.2.3.4.*",
 												      "include@": "1.2.3.4.*,1.4.6.*"}}}
 	expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
-		                                                                            "exclude@": "1.2.3.4.*,1.4.6.*",
+		                                                                            "exclude@": "1.2.3.4.*",
 											    "include@": "1.2.3.4.*,1.4.6.*,1.2.3.5.*,1.3.6.*"}}}
 	loadConfigDB(rclient, prereq_snmp_vacm_view_map)
 	url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
@@ -63,20 +61,38 @@ func Test_LeafList_oneToone_mapping_OCYang(t *testing.T) {
 	unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
 	/******************************************/
 
-	/** delete/merge, 1:1, field-name **/
+	/** Update leaf-list with empty-string , on an empty-string leaf-list in DB  **/
         prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
                                                                                                      "exclude@": "1.2.3.4.*,1.4.6.*",
-                                                                                                     "include@": "1.2.3.4.*,1.4.6.*,1.2.3.5.*,1.3.6.*"}}}
+                                                                                                     "include@": ""}}}
         expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
                                                                                             "exclude@": "1.2.3.4.*,1.4.6.*",
-                                                                                            "include@": "1.2.3.4.*,1.2.3.5.*,1.3.6.*"}}}
+                                                                                            "include@": ""}}}
         loadConfigDB(rclient, prereq_snmp_vacm_view_map)
-        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.4.6.*]"
-	t.Run("Delete 1:1 delete/merge.", processDeleteRequest(url, false, nil))
-        time.Sleep(1 * time.Second)
-	t.Run("Verify Delete 1:1 delete/merge.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+	url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
+	url_body_json = "{\"ietf-snmp:include\":[\"\"]}"
+	t.Run("Update leaf-list with empty-string , on an empty-string leaf-list in DB.", processSetRequest(url, url_body_json, "PATCH", false, nil))
+	time.Sleep(1 * time.Second)
+	t.Run("Verify Update leaf-list with empty-string , on an empty-string leaf-list in DB", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
         unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
         /*********************/
+
+	/** Update leaf-list with no element, on an empty-string leaf-list in DB  **/
+        prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                                     "exclude@": "1.2.3.4.*,1.4.6.*",
+                                                                                                     "include@": ""}}}
+        expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                            "exclude@": "1.2.3.4.*,1.4.6.*",
+                                                                                            "include@": ""}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
+        url_body_json = "{\"ietf-snmp:include\":[]}" //empty slice
+        t.Run("Update leaf-list with no element, on an empty-string leaf-list in DB.", processSetRequest(url, url_body_json, "PATCH", false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Update leaf-list with no element, on an empty-string leaf-list in DB", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        /*********************/
+
 
 	fmt.Println("+++++++++++++ Done!!! Performing Leaf-list one to one mapping OC Yang Cases ++++++++++++")
 
@@ -153,9 +169,39 @@ func Test_LeafList_Delete_OCYang(t *testing.T) {
 	url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
 	t.Run("Delete leaf-list when it doesn't exist in DB.", processDeleteRequest(url, false, nil))
 	time.Sleep(1 * time.Second)
-	t.Run("Delete leaf-list when it doesn't exist in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+	t.Run("Verify Delete leaf-list when it doesn't exist in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
 	unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
 	/*********************/
+
+	/** delete an item from leaf-list when leaf-list in DB is an empty string. Also auto covers merge, 1:1, field-name **/
+        prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                                     "include@": "",
+                                                                                                     "exclude@": "1.2.3.4.*"}}}
+        expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                                     "include@": "",
+                                                                                                     "exclude@": "1.2.3.4.*"}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.2.3.4.*]"
+        t.Run("Delete an item when leaf-list is empty-string in DB.", processDeleteRequest(url, false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete an item when leaf-list is empty-string in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        /*********************/
+
+	/** delete an entire leaf-list when leaf-list is empty-string in DB **/
+        prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                                     "include@": "",
+                                                                                                     "exclude@": "1.2.3.4.*"}}}
+        expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                                     "exclude@": "1.2.3.4.*"}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
+        t.Run("Delete an ntire leaf-list when leaf-list is empty-string in DB.", processDeleteRequest(url, false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete an ntire leaf-list when leaf-list is empty-string in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        /*********************/
+
 
 	fmt.Println("+++++++++++++ Done!!! Performing Leaf-list Deletion OC Yang Cases ++++++++++++")
 }
@@ -286,13 +332,24 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
 
 	/** SubtreeXfmr getting called on leaf-list Update(create on uri ending with leaf-list not allowed in restconf)**/
 	prereq_cfg_exist_map := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan5":map[string]interface{}{
-                                                                                      "vlanid": "5"}}}
+                                                                                      "vlanid": "5"}},
+                                                   "PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
+							                        "alias": "fortyGigE0/32",
+									"lanes": "9,10,11,12"}}}
         prereq_cfg_not_exist_map := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet32":map[string]interface{}{
                                                                                       "NULL": "NULL"}}}
         expected_map_vlan := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan5":map[string]interface{}{
 		                                                                      "vlanid": "5",
                                                                                       "members@": "Ethernet32"}}}
         expected_map_vlanmember := map[string]interface{}{"VLAN_MEMBER":map[string]interface{}{"Vlan5|Ethernet32":map[string]interface{}{					                                                             "tagging_mode": "tagged"}}}
+        expected_map_port := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
+							                        "alias": "fortyGigE0/32",
+									"lanes": "9,10,11,12"}}}
+
+
+	prepareDb()
+        time.Sleep(6 * time.Second)
+	t.Run("Verify SubtreeXfmr leaf-list update/create - PORT table.", verifyDbResult(rclient, "PORT|Ethernet32", expected_map_port, false))
 
 	loadConfigDB(rclient, prereq_cfg_exist_map)
 	unloadConfigDB(rclient, prereq_cfg_not_exist_map)
@@ -316,7 +373,10 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
                                             "VLAN_MEMBER":map[string]interface{}{"Vlan5|Ethernet32":map[string]interface{}{
                                                                                                      "tagging_mode": "tagged"},
                                                                                   "Vlan10|Ethernet32":map[string]interface{}{
-                                                                                                     "tagging_mode": "tagged"}}}
+                                                                                                     "tagging_mode": "tagged"}},
+                                            "PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
+							                        "alias": "fortyGigE0/32",
+									"lanes": "9,10,11,12"}}}
         expected_map_vlan5 := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan5":map[string]interface{}{
 		                                                                      "vlanid": "5",
                                                                                       "members@": "Ethernet32"}}}
@@ -325,10 +385,12 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
 	expected_map_vlan10 := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan10":map[string]interface{}{
 		                                                                   "vlanid": "10"}}}
 
+	prepareDb()
+        time.Sleep(6 * time.Second)
 	loadConfigDB(rclient, prereq_map)
 	url = "/openconfig-interfaces:interfaces/interface[name=Ethernet32]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans=10]"
 	t.Run("SubtreeXfmr leaf-list delete an item.", processDeleteRequest(url, false, nil))
-	time.Sleep(1 * time.Second)
+        time.Sleep(2 * time.Second)
 	t.Run("Verify SubtreeXfmr leaf-list delete an item - VLAN|Vlan5", verifyDbResult(rclient, "VLAN|Vlan5", expected_map_vlan5, false))
 	t.Run("Verify SubtreeXfmr leaf-list delete an item - VLAN_MEMBER|Vlan5|Ethernet32", verifyDbResult(rclient, "VLAN_MEMBER|Vlan5|Ethernet32", expected_map_vlanmember5, false))
 	t.Run("Verify SubtreeXfmr leaf-list delete an item - VLAN|Vlan10", verifyDbResult(rclient, "VLAN|Vlan10", expected_map_vlan10, false))
@@ -347,8 +409,8 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
         url_body_json = "{  \"openconfig-vlan:trunk-vlans\": [10]}"
 	exp_err := tlerr.NotSupported("REPLACE of Vlan members is currently not supported.")
         t.Run("SubtreeXfmr leaf-list replace.", processSetRequest(url, url_body_json, "PUT", true, exp_err))
-	t.Run("Verify SubtreeXfmr leaf-list delete an item - VLAN|Vlan5", verifyDbResult(rclient, "VLAN|Vlan5", expected_map_vlan5, false))
-	t.Run("Verify SubtreeXfmr leaf-list delete an item - VLAN_MEMBER|Vlan5|Ethernet32", verifyDbResult(rclient, "VLAN_MEMBER|Vlan5|Ethernet32", expected_map_vlanmember5, false))
+	t.Run("Verify SubtreeXfmr leaf-list replace an item - VLAN|Vlan5", verifyDbResult(rclient, "VLAN|Vlan5", expected_map_vlan5, false))
+	t.Run("Verify SubtreeXfmr leaf-list replace an item - VLAN_MEMBER|Vlan5|Ethernet32", verifyDbResult(rclient, "VLAN_MEMBER|Vlan5|Ethernet32", expected_map_vlanmember5, false))
         time.Sleep(1 * time.Second)
         unloadConfigDB(rclient, prereq_map)
 	fmt.Println("\n\n+++++++++++++ Done Performing Leaf-list Subtree Xfmr OC Yang Cases ++++++++++++")
@@ -491,6 +553,8 @@ func Test_LeafList_CRU_SonicYang(t *testing.T) {
         fmt.Println("\n\n+++++++++++++ Performing Leaf-list CRU Sonic Yang Cases ++++++++++++")
         var prereq_map map[string]interface{}
         var expected_map map[string]interface{}
+        var prereq_snmp_vacm_view_map map[string]interface{}
+        var expected_snmp_vacm_view_map map[string]interface{}
         var url, url_body_json string
 
         /** sonic yang leaf-list create**/
@@ -521,8 +585,43 @@ func Test_LeafList_CRU_SonicYang(t *testing.T) {
         url = "/sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL1_ACL_IPV4]/ports"
         url_body_json = "{\"sonic-acl:ports\":[\"Ethernet0\",\"Ethernet124\",\"Ethernet8\"]}"
         t.Run("leaf-list update/merge.", processSetRequest(url, url_body_json, "PATCH", false, nil))
+        time.Sleep(1 * time.Second)
         t.Run("Verify leaf-list update/merge.", verifyDbResult(rclient, "ACL_TABLE|MyACL1_ACL_IPV4", expected_map, false))
         unloadConfigDB(rclient, prereq_map)
+	/*********************/
+
+	/** Update leaf-list with empty-string , on an empty-string leaf-list in DB **/
+	prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                                     "exclude@": "1.2.3.4.*,1.4.6.*",
+                                                                                                     "include@": ""}}}
+        expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                            "exclude@": "1.2.3.4.*,1.4.6.*",
+                                                                                            "include@": ""}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+	url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include"
+        url_body_json = "{\"sonic-snmp:include\": [\"\"]}"
+        t.Run("Update leaf-list with empty-string , on an empty-string leaf-list in DB.", processSetRequest(url, url_body_json, "PATCH", false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Update leaf-list with empty-string , on an empty-string leaf-list in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_map)
+	/*************************/
+
+	/** Update leaf-list with no element , on an empty-string leaf-list in DB **/
+	prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                                     "exclude@": "1.2.3.4.*,1.4.6.*",
+                                                                                                     "include@": ""}}}
+        expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                            "exclude@": "1.2.3.4.*,1.4.6.*",
+                                                                                            "include@": ""}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include"
+        url_body_json = "{\"sonic-snmp:include\": [\"\"]}"
+        t.Run("Update leaf-list with no element, on an empty-string leaf-list in DB.", processSetRequest(url, url_body_json, "PATCH", false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("verify Update leaf-list with no element , on an empty-string leaf-list in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_map)
+        /*************************/
+
 
         fmt.Println("\n\n+++++++++++++ Done Performing Leaf-list CRU Sonic Yang Cases ++++++++++++")
 }
@@ -607,6 +706,41 @@ func Test_LeafList_Delete_SonicYang(t *testing.T) {
         time.Sleep(1 * time.Second)
         t.Run("Delete leaf-list not there in DB.", verifyDbResult(rclient, "ACL_TABLE|MyACL1_ACL_IPV4", expected_map, false))
         unloadConfigDB(rclient, prereq_map)
+	/*************************
+
+	/** delete an item from leaf-list when leaf-list is empty string in DB. **/
+        prereq_map = map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{
+                                                                                          "ports@": "",
+                                                                                          "stage": "INGRESS",
+                                                                                          "type": "L3"}}}
+        expected_map = map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{
+                                                                                          "ports@": "",
+                                                                                          "stage": "INGRESS",
+                                                                                          "type": "L3"}}}
+        loadConfigDB(rclient, prereq_map)
+        url = "/sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL1_ACL_IPV4]/ports[ports=Ethernet8]"
+        t.Run("Delete an item when leaf-list is empty string in DB.", processDeleteRequest(url, false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete an when leaf-list is empty string in DB.", verifyDbResult(rclient, "ACL_TABLE|MyACL1_ACL_IPV4", expected_map, false))
+        unloadConfigDB(rclient, prereq_map)
+        /*********************/
+
+	/** Delete entire leaf-list which is an empty-string leaf-list in DB **/
+        prereq_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                                     "exclude@": "1.2.3.4.*,1.4.6.*",
+                                                                                                     "include@": ""}}}
+        expected_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
+                                                                                            "exclude@": "1.2.3.4.*,1.4.6.*"}}}
+        loadConfigDB(rclient, prereq_map)
+        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include"
+        t.Run("Delete an entire leaf-list which is empty string in DB.", processDeleteRequest(url, false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete an entire leaf-list which is empty string in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_map, false))
+        unloadConfigDB(rclient, prereq_map)
+        /*************************/
+
+
+
 
         fmt.Println("+++++++++++++ Done!!! Performing Leaf-list Deletion Sonic Yang Cases ++++++++++++")
 }

@@ -52,6 +52,15 @@ type XfmrParams struct {
         pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
 }
 
+type XfmrDbParams struct {
+	oper           int
+	dbNum          db.DBNum
+	tableName      string
+	key            string
+	fieldName      string
+	value          string
+}
+
 /**
  * KeyXfmrYangToDb type is defined to use for conversion of Yang key to DB Key 
  * Transformer function definition.
@@ -123,6 +132,14 @@ type PostXfmrFunc func (inParams XfmrParams) (map[string]map[string]db.Value, er
  * Return: List of table names, error
  **/
 type TableXfmrFunc func (inParams XfmrParams) ([]string, error)
+
+/**
+ * ValueXfmrFunc type is defined to use for conversion of DB field value from one forma to another
+ * Transformer function definition.
+ * Param: XfmrDbParams structure having Database info, operation, db-number, table, key, field, value
+ * Return: value string, error
+ **/
+type ValueXfmrFunc func (inParams XfmrDbParams)  (string, error)
 
 
 /**
