@@ -24,6 +24,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "reflect"
     "strings"
     log "github.com/golang/glog"
@@ -544,8 +545,8 @@ func removeTaggedVlanAndUpdateVlanMembTbl(d *db.DB, trunkVlan *string, ifName *s
     var err error
     memberPortEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_MEMBER_TN}, db.Key{Comp: []string{*trunkVlan, *ifName}})
     if err != nil || !memberPortEntry.IsPopulated() {
-        errStr := "Trunk Vlan: " + *trunkVlan + " not configured for Interface: " + *ifName
-        return errors.New(errStr)
+        errStr := "Tagged Vlan configuration: " + *trunkVlan + " doesn't exist for Interface: " + *ifName
+        return tlerr.InvalidArgsError{Format:errStr}
     }
     tagMode, ok := memberPortEntry.Field["tagging_mode"]
     if !ok {
@@ -1722,7 +1723,13 @@ var DbToYang_sw_vlans_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (err
     }
     pathInfo := NewPathInfo(inParams.uri)
 
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    log.Infof("DbToYang_sw_vlans__xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
+
     log.Infof("Ethernet-Switched Vlan Get observed for Interface: %s", ifName)
     intfType, _, err := getIntfTypeByName(ifName)
     if intfType != IntfTypeEthernet && intfType != IntfTypePortChannel || err != nil {
@@ -1745,9 +1752,9 @@ var DbToYang_sw_vlans_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (err
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
 
-        intfObj := intfsObj.Interface[ifName]
+        intfObj := intfsObj.Interface[uriIfName]
         if (intfObj == nil) {
-            intfObj, _ = intfsObj.NewInterface(ifName)
+            intfObj, _ = intfsObj.NewInterface(uriIfName)
             ygot.BuildEmptyTree(intfObj)
         }
 
