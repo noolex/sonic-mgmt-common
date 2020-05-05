@@ -3285,10 +3285,10 @@ module openconfig-network-instance-annot {
     deviate add {
       sonic-ext:db-name "CONFIG_DB";
       sonic-ext:table-name "OSPFV2_ROUTER_AREA";
-      sonic-ext:key-transformer "ospfv2_router_area_tbl_key_xfmr";
+      sonic-ext:subtree-transformer "ospfv2_router_area_tbl_subtree_xfmr";
     }
   }
-
+/*
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area" +
             "/oc-netinst:config/oc-netinst:identifier" {
@@ -3296,7 +3296,7 @@ module openconfig-network-instance-annot {
       sonic-ext:field-transformer  "ospfv2_router_area_area_id_fld_xfmr";
     }
   }
-
+*/
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area" +
             "/oc-netinst:config/oc-ospfv2-ext:authentication-type" {
@@ -3488,6 +3488,18 @@ module openconfig-network-instance-annot {
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-netinst:state" {
     deviate add {
       sonic-ext:subtree-transformer "ospfv2_areas_area_state_xfmr";
+    }
+  }
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-netinst:interfaces" {
+    deviate add {
+      sonic-ext:subtree-transformer "ospfv2_neighbors_state_xfmr";
+    }
+  }
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-ospfv2-ext:route-tables" {
+    deviate add {
+      sonic-ext:subtree-transformer "ospfv2_route_table_xfmr";
     }
   }
 }

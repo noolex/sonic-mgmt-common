@@ -284,21 +284,33 @@ module openconfig-ospfv2-ext {
       "OSPF router route";
   }
 
-  identity OSPF_ROUTE_SUB_TYPE {
+  identity EXTERNAL_ROUTE {
+    base "OSPF_ROUTE_TYPE";
     description
-      "OSPF Route type";
+      "OSPF external route";
+  }
+
+  identity OSPF_ROUTE_PATH_TYPE {
+    description
+      "OSPF Route Path type";
   }
 
   identity IA_ROUTE {
-    base "OSPF_ROUTE_SUB_TYPE";
+    base "OSPF_ROUTE_PATH_TYPE";
     description
       "OSPF inter area route";
   }
 
-  identity EXTERNAL_ROUTE {
-    base "OSPF_ROUTE_SUB_TYPE";
+  identity EXTERNAL_ROUTE_TYPE_1 {
+    base "OSPF_ROUTE_PATH_TYPE";
     description
-      "OSPF external router route";
+      "OSPF external route type-1";
+  }
+
+  identity EXTERNAL_ROUTE_TYPE_2 {
+    base "OSPF_ROUTE_PATH_TYPE";
+    description
+      "OSPF external route type 2";
   }
 
   typedef ospf-cost-metric {
@@ -1529,7 +1541,7 @@ module openconfig-ospfv2-ext {
 
   grouping ospfv2-route-state-ext {
     description
-      "Operational state parameters relating OSPFV2 routes";
+      "Operational state parameters relating to an OSPFV2 route";
 
     leaf prefix {
       type inet:ipv4-prefix;
@@ -1542,27 +1554,28 @@ module openconfig-ospfv2-ext {
          base "OSPF_ROUTE_TYPE";
       }
       description
-        "OSPF Route type - Network, Router";
+        "OSPF Route type - Network, Router, external";
     }
 
     leaf sub-type {
       type identityref {
-         base "OSPF_ROUTE_SUB_TYPE";
+         base "OSPF_ROUTE_PATH_TYPE";
       }
       description
-        "OSPF Route subtype - Inter Area, External";
+        "OSPF Route subtype - Inter Area, External Type 1 or 2";
     }
 
-    leaf area-id {
-      type yang:dotted-quad;
-      description
-        "Route area id";
-    }
 
     leaf cost {
       type ospf-cost-metric;
       description
         "The metric/cost for the route";
+    }
+
+    leaf type2-cost {
+      type ospf-cost-metric;
+      description
+        "The metric/cost for the external route Type 2";
     }
 
     leaf inter-area {
@@ -1571,12 +1584,16 @@ module openconfig-ospfv2-ext {
         "Inter area route";
     }
 
-    leaf next-hop-router-type {
-      type identityref {
-        base "OSPF_ROUTER_TYPE";
-      }
+    leaf router-type-abr {
+      type boolean;
       description
-        "Route nexthop type(ABR, ASBR)";
+        "Router type is ABR";
+    } 
+
+    leaf router-type-asbr {
+      type boolean;
+      description
+        "Router type is ASBR";
     } 
 
     list next-hops {
@@ -1595,6 +1612,12 @@ module openconfig-ospfv2-ext {
         type string;
         description
           "Outgoing interface name";
+      }
+
+      leaf area-id {
+        type yang:dotted-quad;
+        description
+          "Route area id";
       }
     }
   }
@@ -1620,7 +1643,7 @@ module openconfig-ospfv2-ext {
             "OSPF Route table type";
         }
 
-        list routes {
+        list route {
           description
             "List of OSPFv2 routes";
 
@@ -1740,6 +1763,12 @@ module openconfig-ospfv2-ext {
         "Interface combined operational state";
     }
 
+    leaf if-flags {
+      type string;
+      description
+        "Interface Flag indicating support for multicast, status etc";
+    }
+
     leaf broadcast-address {
       type inet:ipv4-address-no-zone;
       description
@@ -1765,11 +1794,9 @@ module openconfig-ospfv2-ext {
     }
 
     leaf adjacency-state {
-      type identityref {
-        base "oc-ospf-types:OSPF_NEIGHBOR_STATE";
-      }
+      type string;
       description
-        "The state of the adjacency with the neighbor.";
+        "The state of the adjacency with the neighbor, or it can also indicate state like DR/BDR.";
     }
 
     leaf designated-router {
@@ -1778,10 +1805,16 @@ module openconfig-ospfv2-ext {
         "Designated router";
     }
 
-    leaf backup-designated-router {
+    leaf backup-designated-router-id {
       type yang:dotted-quad;
       description
-        "Designated router";
+        "Backup Designated router Id";
+    }
+
+    leaf backup-designated-router-address {
+      type inet:ipv4-address-no-zone;
+      description
+        "Backup Designated router address";
     }
 
     leaf designated-router-other {
@@ -1819,6 +1852,41 @@ module openconfig-ospfv2-ext {
       description
         "BFD State";
     }
+
+    leaf ospf-enable {
+      type boolean;
+      description
+        "Ospf Enable State";
+    }
+
+    leaf address-len {
+      type uint8;
+      description
+        "Prefix length of the ip address configured on the interface";
+    }
+
+    leaf ospf-interface-type {
+      type string;
+      description
+        "Type of OSPF interface like point-to-point, broadcast etc";
+    }
+
+    leaf cost {
+      type uint32;
+      description
+        "Metric for this interface";
+    }
+
+    leaf transmit-delay {
+      type uint32;
+      description
+        "transmit delay for this interface in seconds";
+    }
+    leaf network-lsa-sequence-number {
+      type uint32;
+      description
+        "Saved Network-LSA sequence number";
+    }
   }
 
   grouping ospfv2-area-interface-message-stats-state-ext {
@@ -1831,7 +1899,7 @@ module openconfig-ospfv2-ext {
 
       config false;
 
-      leaf hello-recieve {
+      leaf hello-receive {
         type uint32;
         description
           "Hello receive count";
@@ -1917,14 +1985,14 @@ module openconfig-ospfv2-ext {
     leaf wait-time {
       type uint32;
       description
-        "Interface index";
+        "Wait time interval in seconds";
     }
 
     leaf hello-due {
-      type oc-types:timeticks64;
+      type uint32;
       units seconds;
       description
-        "Hello due";
+        "Hello due time";
     }
   }
 
@@ -2089,7 +2157,7 @@ module openconfig-ospfv2-ext {
       config false;
 
       list neighbor {
-        key "neighbor-id";
+        key "neighbor-id neighbor-address";
  
         description
           "A neighbor with which an OSPFv2 adjacency has been
@@ -2546,6 +2614,7 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:interfaces" +
           "/oc-netinst:interface/oc-netinst:timers/oc-netinst:state" {
     uses ospfv2-area-interface-timers-config-ext;
+    uses ospfv2-area-interface-timers-state-ext;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
