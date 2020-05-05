@@ -1,0 +1,63 @@
+module openconfig-udld-types {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/udld/types";
+
+  prefix "oc-udld-types";
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
+
+  description
+    "This module defines types related to the
+    udld protocol model.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-13" {
+    description
+      "Initial public revision";
+    reference "0.1.0";
+  }
+  // identity statements
+
+  identity UDLD_PORT_STATUS {
+    description
+      "base identity for different port states ";
+  }
+
+  identity UNDETERMINED {
+    base UDLD_PORT_STATUS;
+    description
+      "UDLD has not received enough information from the peer to determine the state";
+  }
+
+  identity SHUTDOWN {
+    base UDLD_PORT_STATUS;
+    description
+      "UDLD has determined the link to be uni-directional and has shutdown the interface";
+  }
+
+  identity UNI_DIRECTIONAL {
+    base UDLD_PORT_STATUS;
+    description
+      "UDLD has determined the link to be uni-directional";
+  }
+
+  identity BI_DIRECTIONAL {
+    base UDLD_PORT_STATUS;
+    description
+      "UDLD is able to exchange the PDUs and has determined the link to be bi-directional";
+  }
+}
+
