@@ -685,12 +685,14 @@ func Test_Container_Table_Order_Check_Create(t *testing.T) {
         // Setup - Prerequisite
         unloadConfigDB(rclient, cleanuptbl)
 
-        post_payload := "{\"sonic-acl:ACL_TABLE\":{\"ACL_TABLE_LIST\":[{\"aclname\":\"MyACL1_ACL_IPV4\",\"policy_desc\":\"Description for MyACL1\"}]},\"sonic-acl:ACL_RULE\":{\"ACL_RULE_LIST\":[{\"aclname\":\"MyACL1_ACL_IPV4\",\"rulename\":\"RULE_1\",\"PRIORITY\": 65534,\"RULE_DESCRIPTION\":\"Description for MyACL1\",\"PACKET_ACTION\":\"FORWARD\",\"IP_TYPE\":\"IPV4\",\"IP_PROTOCOL\":6,\"SRC_IP\":\"10.1.1.1/32\",\"DST_IP\":\"20.2.2.2/32\"}]}}"
-        post_expected_1 := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{"policy_desc":"Description for MyACL1"}}}
-		post_expected_2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"10.1.1.1/32","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
+        post_payload := "{\"sonic-acl:ACL_TABLE\":{\"ACL_TABLE_LIST\":[{\"aclname\":\"MyACL1_ACL_IPV4\",\"policy_desc\":\"Description for MyACL1\", \"type\":\"L3\" } ] },\"sonic-acl:ACL_RULE\": { \"ACL_RULE_LIST\": [ { \"aclname\": \"MyACL1_ACL_IPV4\", \"rulename\": \"RULE_1\", \"PRIORITY\": 65534,  \"DESCRIPTION\": \"Description for MyACL1\", \"PACKET_ACTION\": \"FORWARD\", \"IP_TYPE\": \"IPV4\", \"IP_PROTOCOL\": 6, \"SRC_IP\": \"10.1.1.1/32\", \"DST_IP\": \"20.2.2.2/32\" }]}}"
+
+	/*"{\"sonic-acl:ACL_TABLE\":{\"ACL_TABLE_LIST\":[{\"aclname\":\"MyACL1_ACL_IPV4\",\"policy_desc\":\"Description for MyACL1\"}]},\"sonic-acl:ACL_RULE\":{\"ACL_RULE_LIST\":[{\"aclname\":\"MyACL1_ACL_IPV4\",\"rulename\":\"RULE_1\",\"PRIORITY\": 65534,\"RULE_DESCRIPTION\":\"Description for MyACL1\",\"PACKET_ACTION\":\"FORWARD\",\"IP_TYPE\":\"IPV4\",\"IP_PROTOCOL\":6,\"SRC_IP\":\"10.1.1.1/32\",\"DST_IP\":\"20.2.2.2/32\"}]}}"*/
+	post_expected_1 := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{"type":"L3","policy_desc":"Description for MyACL1"}}}
+		post_expected_2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"10.1.1.1/32","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
 
 
-        t.Run("CREATE on Container Subtree transformer mapping", processSetRequest(url, post_payload, "POST", false))
+        t.Run("CREATE on Container for table order check", processSetRequest(url, post_payload, "POST", false))
         time.Sleep(1 * time.Second)
         t.Run("Verify create on container for Table Order check", verifyDbResult(rclient, "ACL_TABLE|MyACL1_ACL_IPV4", post_expected_1, false))
 	t.Run("Verify create on container for Table Order check", verifyDbResult(rclient, "ACL_RULE|MyACL1_ACL_IPV4|RULE_1", post_expected_2, false))
@@ -705,7 +707,7 @@ func Test_Container_Table_Order_Check_Replace(t *testing.T) {
         prereq := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{"policy_desc":"Description for MyACL1"}},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"10.1.1.1/32","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
 	url := "/sonic-acl:sonic-acl"
 
-        fmt.Println("++++++++++++++  REPLACE Test_Container_Nested_Subtree_Xfmr_SubopMap  +++++++++++++")
+        fmt.Println("++++++++++++++  REPLACE Test_Container_Table_order_check +++++++++++++")
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
@@ -715,7 +717,7 @@ func Test_Container_Table_Order_Check_Replace(t *testing.T) {
 	put_expected_2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"SRC_IP":"10.1.1.1/32","DST_IP":"20.5.5.5/16","IP_TYPE":"IPV4","IP_PROTOCOL":"6"}}}
 
 
-        t.Run("REPLACE on Container Subtree transformer mapping", processSetRequest(url, put_payload, "PUT", false))
+        t.Run("REPLACE on Container Table order check", processSetRequest(url, put_payload, "PUT", false))
         time.Sleep(1 * time.Second)
 	t.Run("Verify replace on container for Table Order check", verifyDbResult(rclient, "ACL_TABLE|MyACL1_ACL_IPV4", put_expected_1, false))
 	t.Run("Verify replace on container for Table Order check", verifyDbResult(rclient, "ACL_RULE|MyACL1_ACL_IPV4|RULE_1", put_expected_2, false))
@@ -951,27 +953,53 @@ func Test_Container_Default_Value_Fill_NoMappingToRedis_Create(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl)
 }
 
-func Test_Container_Default_Value_Fill_NoMappingToRedis_Replace(t *testing.T) {
+func Test_Container_Default_Value_Fill_NoMappingToRedis_Replace1(t *testing.T) {
 
 	cleanuptbl := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":""}}
         prereq := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{"mtu":"3500", "admin_status":"down","description":"desc-1"}}}
         url := "/openconfig-interfaces:interfaces/interface[name=Ethernet32]/config"
 
-        fmt.Println("++++++++++++++  REPLACE Test_Container_Default_Value_Fill_NoMappingToRedis  +++++++++++++")
+        fmt.Println("++++++++++++++  REPLACE Test_Container_Default_Value_Fill_NoMappingToRedis 1 +++++++++++++")
 
         // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
         loadConfigDB(rclient, prereq)
 
-        put_payload := "{\"openconfig-interfaces:config\":{\"name\":\"Ethernet32\",\"mtu\":3700,\"loopback-mode\":true,\"description\":\"desc-2\",\"openconfig-vlan:tpid\":\"TPID_0X8100\",\"enabled\":false }}"
-        put_expected := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{"mtu":"3700","admin_status":"up","description":"desc-2"}}}
+	put_payload := "{\"openconfig-interfaces:config\":{\"name\":\"Ethernet32\",\"mtu\":3700,\"loopback-mode\":true,\"description\":\"desc-2\",\"openconfig-vlan:tpid\":\"TPID_0X8100\", \"enabled\":false}}"
+        put_expected := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{"mtu":"3700","admin_status":"down","description":"desc-2"}}}
 
-        t.Run("REPLACE on Container with Default_Value_Fill_NoMappingToRedis", processSetRequest(url, put_payload, "PUT", false))
+        t.Run("REPLACE on Container with Default_Value_Fill_NoMappingToRedis 1", processSetRequest(url, put_payload, "PUT", false))
         time.Sleep(1 * time.Second)
-        t.Run("Verify replace on container with Default_Value_Fill_NoMappingToRedis", verifyDbResult(rclient, "PORT|Ethernet32", put_expected, false))
+        t.Run("Verify replace on container with Default_Value_Fill_NoMappingToRedis 1", verifyDbResult(rclient, "PORT|Ethernet32", put_expected, false))
 
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 }
+
+func Test_Container_Default_Value_Fill_NoMappingToRedis_Replace2(t *testing.T) {
+
+        cleanuptbl := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":""}}
+        prereq := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{"mtu":"3500", "admin_status":"down","description":"desc-1"}}}
+        url := "/openconfig-interfaces:interfaces/interface[name=Ethernet32]/config"
+
+        fmt.Println("++++++++++++++  REPLACE Test_Container_Default_Value_Fill_NoMappingToRedis 2 +++++++++++++")
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
+        loadConfigDB(rclient, prereq)
+
+        put_payload := "{\"openconfig-interfaces:config\":{\"name\":\"Ethernet32\",\"mtu\":3700,\"loopback-mode\":true,\"description\":\"desc-2\",\"openconfig-vlan:tpid\":\"TPID_0X8100\"}}"
+        put_expected := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{"mtu":"3700","admin_status":"up","description":"desc-2"}}}
+
+        t.Run("REPLACE on Container with Default_Value_Fill_NoMappingToRedis 2", processSetRequest(url, put_payload, "PUT", false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify replace on container with Default_Value_Fill_NoMappingToRedis 2", verifyDbResult(rclient, "PORT|Ethernet32", put_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+
 
 func Test_Container_Default_Value_Fill_NoMappingToRedis_Update(t *testing.T) {
 
@@ -1048,7 +1076,7 @@ func Test_Default_Value_Fill_Get_NoMappingToRedis(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        get_expected := "{\"openconfig-interfaces:config\":{\"description\":\"desc-1\",\"enabled\":false,\"mtu\":9100,\"name\":\"Ethernet32\"}}"
+        get_expected := "{\"openconfig-interfaces:config\":{\"description\":\"desc-1\",\"enabled\":false,\"mtu\":9100,\"name\":\"Ethernet32\",\"type\":\"iana-if-type:ethernetCsmacd\"}}"
 
         t.Run("GET on Container with Default Value Fill and NoMappingToRedis", processGetRequest(url, get_expected, false))
 
@@ -1058,13 +1086,21 @@ func Test_Default_Value_Fill_Get_NoMappingToRedis(t *testing.T) {
 
 func Test_Ygot_Merge_Xfmr_Infra_Get(t *testing.T) {
 
-        url := "/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config"
+	cleanuptbl := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":""}}
+        prereq := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{"mtu":"9100", "admin_status":"up"}}}
+        url := "/openconfig-interfaces:interfaces/interface[name=Ethernet32]/config"
 
         fmt.Println("++++++++++++++  Get Test_Ygot_Merge_Xfmr_Infra  +++++++++++++")
 
-        get_expected := "{\"openconfig-interfaces:config\":{\"enabled\":true,\"mtu\":9100,\"name\":\"Ethernet0\"}}"
+	// Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        get_expected := "{\"openconfig-interfaces:config\":{\"enabled\":true,\"mtu\":9100,\"name\":\"Ethernet32\",\"type\":\"iana-if-type:ethernetCsmacd\"}}"
 
         t.Run("GET on Ygot Merge Xfmr Infra", processGetRequest(url, get_expected, false))
+
+	// Teardown
+        unloadConfigDB(rclient, cleanuptbl)
 
 }
 
