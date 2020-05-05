@@ -126,9 +126,56 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 }
 
 func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-	err := errors.New("Not supported")
-	notifInfo := notificationInfo{dbno: db.ConfigDB}
-	return nil, &notifInfo, err
+    var err error
+    var subscDt transformer.XfmrTranslateSubscribeInfo
+    var notifInfo notificationInfo
+    var notifOpts notificationOpts
+    txCache := new(sync.Map)
+    err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+
+    subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
+    if subscDt.PType == transformer.OnChange {
+        notifOpts.pType = OnChange
+    } else {
+        notifOpts.pType = Sample
+    }
+    notifOpts.mInterval = subscDt.MinInterval
+    if err != nil {
+        log.Infof("returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
+        return &notifOpts, nil, err
+    }
+    if subscDt.DbDataMap == nil {
+        log.Infof("DB data is nil so returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
+        return &notifOpts, nil, err
+    } else {
+        for dbNo, dbDt := range(subscDt.DbDataMap) {
+            if (len(dbDt) == 0) { //ideally all tables for a given uri should be from same DB
+                continue
+            }
+            log.Infof("Adding to notifInfo, Db Data - %v for DB No - %v", dbDt, dbNo)
+            notifInfo.dbno = dbNo
+            // in future there will be, multi-table in a DB, support from translib, for now its just single table
+            for tblNm, tblDt := range(dbDt) {
+                notifInfo.table = db.TableSpec{Name:tblNm}
+                if (len(tblDt) == 1) {
+                    for tblKy, _ := range(tblDt) {
+                        notifInfo.key = asKey(tblKy)
+                    }
+                } else {
+                    if (len(tblDt) >  1) {
+                        log.Errorf("More than one DB key found for subscription path - %v", path)
+                    } else {
+                        log.Errorf("No DB key found for subscription path - %v", path)
+                    }
+                    return &notifOpts, nil, err
+                }
+
+            }
+        }
+    }
+    notifInfo.needCache = subscDt.NeedCache
+    log.Infof("For path - %v, returning: notifOpts - %v, notifInfo - %v, error - nil", path, notifOpts, notifInfo)
+    return &notifOpts, &notifInfo, nil
 }
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {

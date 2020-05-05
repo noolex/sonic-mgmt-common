@@ -43,6 +43,32 @@ type XfmrParams struct {
         pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
 }
 
+type SubscProcType int
+const (
+    TRANSLATE_SUBSCRIBE SubscProcType = iota
+    PROCESS_SUBSCRIBE
+)
+
+type notificationOpts struct {
+	mInterval int
+	pType     NotificationType
+}
+
+type XfmrSubscInParams struct {
+    uri string
+    dbs [db.MaxDB]*db.DB
+    dbDataMap RedisDbMap
+    subscProc SubscProcType
+}
+
+type XfmrSubscOutParams struct {
+    dbDataMap RedisDbMap
+    needCache bool
+    onChange bool
+    nOpts *notificationOpts  //these can be set regardless of error 
+    //uri string  //set in case of processSubscribe 
+}
+
 /**
  * KeyXfmrYangToDb type is defined to use for conversion of Yang key to DB Key 
  * Transformer function definition.
@@ -87,6 +113,13 @@ type SubTreeXfmrYangToDb func (inParams XfmrParams) (map[string]map[string]db.Va
  * Return :  error
  **/
 type SubTreeXfmrDbToYang func (inParams XfmrParams) (error)
+/**
+ * SubTreeXfmrSubscribe type is defined to use for handling subscribe(translateSubscribe & processSubscribe) subtree
+ * Transformer function definition.
+ * Param : XfmrSubscInParams structure having uri, database pointers,  subcribe process(translate/processSusbscribe), DB data in multidimensional map 
+ * Return :  XfmrSubscOutParams structure (db data in multiD map, needCache, pType, onChange, minInterval), error
+ **/
+type SubTreeXfmrSubscribe func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error)
 /**
  * ValidateCallpoint is used to validate a YANG node during data translation back to YANG as a response to GET
  * Param : XfmrParams structure having Database pointers, current db, operation, DB data in multidimensional map, output param YgotRoot, uri
@@ -141,6 +174,9 @@ func (SubTreeXfmrYangToDb) xfmrInterfaceValiidate () {
 }
 func (SubTreeXfmrDbToYang) xfmrInterfaceValiidate () {
     xfmrLogInfo("xfmrInterfaceValiidate for SubTreeXfmrDbToYang")
+}
+func (SubTreeXfmrSubscribe) xfmrInterfaceValiidate () {
+    xfmrLogInfo("xfmrInterfaceValiidate for SubTreeXfmrSubscribe")
 }
 func (TableXfmrFunc) xfmrInterfaceValiidate () {
     xfmrLogInfo("xfmrInterfaceValiidate for TableXfmrFunc")
