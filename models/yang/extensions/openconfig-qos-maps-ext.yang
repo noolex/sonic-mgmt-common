@@ -18,9 +18,32 @@ module openconfig-qos-maps-ext {
       description
         "Initial version";
     }
+
+    identity PACKET_COLOR {
+        description
+            "Base identity to describe packet colors.";
+    }
+
+    identity GREEN {
+        base PACKET_COLOR;
+        description
+            "Packet color GREEN.";
+    }
     
-    grouping dscp-forwarding-group-map-entry-config {
-	    description "DSCP to Forwarding group map entry config";
+    identity YELLOW {
+        base PACKET_COLOR;
+        description
+            "Packet color YELLOW.";
+    }
+    
+    identity RED {
+        base PACKET_COLOR;
+        description
+            "Packet color RED.";
+    }
+    
+    grouping dscp-map-entry-config {
+	    description "DSCP map entry config";
 		leaf dscp {
             type uint8 {
                 range 0..63;
@@ -38,16 +61,25 @@ module openconfig-qos-maps-ext {
 				path "../../../../../../oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:name";
 			}
 			description
-				"Name of DSCP to forwarding group map.";
+				"Name of forwarding group map.";
 		}
+
+        leaf color {
+            type identityref {
+                base PACKET_COLOR;
+            }
+            default GREEN;
+            description
+                "Sets the color of packet.";
+        }
 	}
 	
-	grouping dscp-forwarding-group-map-entries-top {
+	grouping dscp-map-entries-top {
 		description
-			"Configuration data for DSCP to Forwarding Group map entries";
+			"Configuration data for DSCP map entries";
 
-		container qos-dscp-forwarding-group-map-entries {
-		    list qos-dscp-forwarding-group-map-entry {
+		container qos-dscp-map-entries {
+		    list qos-dscp-map-entry {
 			    key "dscp";
 				
 				leaf dscp {
@@ -57,64 +89,64 @@ module openconfig-qos-maps-ext {
 				}
 				
 				container config {
-				    uses dscp-forwarding-group-map-entry-config;
+				    uses dscp-map-entry-config;
 				}
 				
 				container state {
                     config false;
-				    uses dscp-forwarding-group-map-entry-config;
+				    uses dscp-map-entry-config;
 				}
 			}
 		}
 	}
  
-    grouping dscp-forwarding-group-map-config {
+    grouping dscp-map-config {
 		description
-			"Configuration data for DSCP to Forwarding Group map";
+			"Configuration data for DSCP map";
 
 		leaf name {
 			type string;
 			description
-				"Name of the DSCP to forwarding group map";
+				"Name of the DSCP map";
 		}
 
 	}
-	grouping qos-dscp-forwarding-group-maps-top {   
+	grouping qos-dscp-maps-top {   
 		description
-			" Top-level grouping for DSCP to forwarding group maps data";
+			" Top-level grouping for DSCP maps data";
 
-		container dscp-forwarding-group-maps {
+		container dscp-maps {
 			description
-				"Enclosing container for list of dscp to forwarding group maps";
+				"Enclosing container for list of dscp maps";
 
-			list dscp-forwarding-group-map {
+			list dscp-map {
 				key "name";
                 leaf name {
                   type leafref {
                     path "../config/name";
                   }
                   description
-                    "Reference to the name of the dscp to forwading group map.";
+                    "Reference to the name of the dscp map.";
                 }
 				
                 container config {
                     description
-                        "Configuration parameters relating to dscp to forwading group.";
-					uses dscp-forwarding-group-map-config;
+                        "Configuration parameters relating to dscp map.";
+					uses dscp-map-config;
 				}
 
 				container state {
  					config false;
                     description
-                        "Operational parameters relating to dscp to forwading group.";
-					uses dscp-forwarding-group-map-config;
+                        "Operational parameters relating to dscp map.";
+					uses dscp-map-config;
 				}
-                uses dscp-forwarding-group-map-entries-top;
+                uses dscp-map-entries-top;
 			}
 		}
 	}
 
-    grouping dot1p-forwarding-group-map-entry-config {
+    grouping dot1p-map-entry-config {
 	    description "DOT1P to Forwarding group map entry config";
 		leaf dot1p {
             type uint8 {
@@ -137,14 +169,23 @@ module openconfig-qos-maps-ext {
 			description
 				"Name of forwarding group.";
 		}
+
+        leaf color {
+            type identityref {
+                base PACKET_COLOR;
+            }
+            default GREEN;
+            description
+                "Sets the color of packet.";
+        }
 	}
 	
-	grouping dot1p-forwarding-group-map-entries-top {
+	grouping dot1p-map-entries-top {
 		description
 			"Configuration data for DOT1P to Forwarding Group map entries";
 
-		container qos-dot1p-forwarding-group-map-entries {
-		    list qos-dot1p-forwarding-group-map-entry {
+		container qos-dot1p-map-entries {
+		    list qos-dot1p-map-entry {
 			    key "dot1p";
 				
 				leaf dot1p {
@@ -154,18 +195,18 @@ module openconfig-qos-maps-ext {
 				}
 				
 				container config {
-				    uses dot1p-forwarding-group-map-entry-config;
+				    uses dot1p-map-entry-config;
 				}
 				
 				container state {
                     config false;
-				    uses dot1p-forwarding-group-map-entry-config;
+				    uses dot1p-map-entry-config;
 				}
 			}
 		}
 	}
  
-    grouping dot1p-forwarding-group-map-config {
+    grouping dot1p-map-config {
 		description
 			"Configuration data for DOT1P to Forwarding Group map";
 
@@ -176,15 +217,15 @@ module openconfig-qos-maps-ext {
 		}
 
 	}
-	grouping qos-dot1p-forwarding-group-maps-top {   
+	grouping qos-dot1p-maps-top {   
 		description
 			" Top-level grouping for DOT1P to forwarding group maps data";
 
-		container dot1p-forwarding-group-maps {
+		container dot1p-maps {
 			description
 				"Enclosing container for list of dot1p to forwarding group maps";
 
-			list dot1p-forwarding-group-map {
+			list dot1p-map {
 				key "name";
                 leaf name {
                   type leafref {
@@ -197,16 +238,16 @@ module openconfig-qos-maps-ext {
                 container config {
                     description
                         "Configuration parameters relating to dot1p to forwading group map.";
-					uses dot1p-forwarding-group-map-config;
+					uses dot1p-map-config;
 				}
 
 				container state {
  					config false;
                     description
                         "Operational parameters relating to dot1p to forwading group map";
-					uses dot1p-forwarding-group-map-config;
+					uses dot1p-map-config;
 				}
-                uses dot1p-forwarding-group-map-entries-top;
+                uses dot1p-map-entries-top;
 			}
 		}
 	}
@@ -507,7 +548,7 @@ module openconfig-qos-maps-ext {
 			type leafref {
 				// current loc:
 				// /qos/interfaces/interface/interface-maps/config/dscp-to-forwarding-group
-				path "../../../../../dscp-forwarding-group-maps/dscp-forwarding-group-map/config/name";
+				path "../../../../../dscp-maps/dscp-map/config/name";
 			}
 		}
 
@@ -515,7 +556,7 @@ module openconfig-qos-maps-ext {
 			type leafref {
 				// current loc:
 				// /qos/interfaces/interface/interface-maps/config/dot1p-to-forwarding-group
-				path "../../../../../dot1p-forwarding-group-maps/dot1p-forwarding-group-map/config/name";
+				path "../../../../../dot1p-maps/dot1p-map/config/name";
 			}
 		}
 
@@ -575,14 +616,42 @@ module openconfig-qos-maps-ext {
     }
 
 	augment /oc-qos:qos {
-		uses qos-dscp-forwarding-group-maps-top;
-		uses qos-dot1p-forwarding-group-maps-top;
+		uses qos-dscp-maps-top;
+		uses qos-dot1p-maps-top;
 		uses qos-forwarding-group-queue-maps-top;
 		uses qos-forwarding-group-priority-group-maps-top;
 		uses qos-pfc-priority-queue-maps-top;
 	}
 
     deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:output-queue {
+        deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:state/oc-qos:output-queue {
+        deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:fabric-priority {
+        deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:state/oc-qos:fabric-priority {
+        deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:dscp-maps/oc-qos-maps-ext:dscp-map/oc-qos-maps-ext:qos-dscp-map-entries/oc-qos-maps-ext:qos-dscp-map-entry/config/color {
+        deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:dscp-maps/oc-qos-maps-ext:dscp-map/oc-qos-maps-ext:qos-dscp-map-entries/oc-qos-maps-ext:qos-dscp-map-entry/state/color {
+        deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:dot1p-maps/oc-qos-maps-ext:dot1p-map/oc-qos-maps-ext:qos-dot1p-map-entries/oc-qos-maps-ext:qos-dot1p-map-entry/config/color {
+        deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:dot1p-maps/oc-qos-maps-ext:dot1p-map/oc-qos-maps-ext:qos-dot1p-map-entries/oc-qos-maps-ext:qos-dot1p-map-entry/state/color {
         deviate not-supported;
     }
 }
