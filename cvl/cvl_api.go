@@ -789,10 +789,10 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 		//check if ref field is a key
 		numKeys := len(modelInfo.tableInfo[refTbl.tableName].keys)
 		sep  := modelInfo.tableInfo[refTbl.tableName].redisKeyDelim
-		refTblName := getYangListToRedisTbl(refTbl.tableName)
+		refRedisTblName := getYangListToRedisTbl(refTbl.tableName)
 		idx := 0
 
-		if (refTblName == "") {
+		if (refRedisTblName == "") {
 			continue
 		}
 
@@ -803,14 +803,14 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 
 			//field is a key component, write into pipeline
 			if (numKeys == 1) { //Only key
-				mCmd[refTblName] = pipe.Keys(fmt.Sprintf("%s%s%s",
-				refTblName, sep, key))
+				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s%s%s",
+				refRedisTblName, sep, key))
 			} else if (idx == (numKeys - 1)) { //Last key
-				mCmd[refTblName] = pipe.Keys(fmt.Sprintf("%s%s*%s%s",
-				refTblName, sep, sep, key))
+				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s%s*%s%s",
+				refRedisTblName, sep, sep, key))
 			} else { //Middle key
-				mCmd[refTblName] = pipe.Keys(fmt.Sprintf("%s*%s%s%s*",
-				refTblName, sep, key, sep))
+				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s*%s%s%s*",
+				refRedisTblName, sep, key, sep))
 			}
 			break
 		}
@@ -821,7 +821,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			// ex: (h['members'] == 'Ethernet4' or h['members@'] == 'Ethernet4' or
 			//(string.find(h['members@'], 'Ethernet4,') != nil)
 			//',' to include leaf-list case
-			mFilterScripts[refTblName] = filterScript{
+			mFilterScripts[refTbl.tableName] = filterScript{
 				script: fmt.Sprintf("return (h['%s'] ~= nil and h['%s'] == '%s') or " +
 				"(h['%s@'] ~= nil and ((h['%s@'] == '%s') or " +
 				"(string.find(h['%s@']..',', '%s,') ~= nil)))",
