@@ -106,11 +106,33 @@ func fillLacpState(TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLa
     return nil
 }
 
-func _fillLacpMemberHelper(ports_map map[string]interface{}, ifKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
+func _getSelectedStatus(inParams XfmrParams, lag string, member string, selected *bool) error {
+    var memberKey string = lag+":"+member
+    lagTblTs := &db.TableSpec{Name: "LAG_MEMBER_TABLE"}
+    appDb := inParams.dbs[db.ApplDB]
+    dbEntry, err := appDb.GetEntry(lagTblTs, db.Key{Comp: []string{memberKey}})
+
+    if err != nil {
+        errStr := "Failed to Get PortChannel Member details"
+        log.Info(errStr)
+        return errors.New(errStr)
+    }
+
+    *selected = false  // Default
+    if val, ok := dbEntry.Field["status"]; ok {
+        if val == "enabled" {
+            *selected = true
+        }
+    }
+    return nil
+}
+
+func _fillLacpMemberHelper(inParams XfmrParams, lag string, ports_map map[string]interface{}, ifKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
     member_map := ports_map[ifKey].(map[string]interface{})
     if port_runner, ok := member_map["runner"].(map[string]interface{}); ok {
 
-        selected := port_runner["selected"].(bool)
+        var selected bool = false
+        _getSelectedStatus(inParams, lag, ifKey, &selected)
         lacpMemberObj.State.Selected = &selected
 
         actor := port_runner["actor_lacpdu_info"].(map[string]interface{})
@@ -143,14 +165,14 @@ func _fillLacpMemberHelper(ports_map map[string]interface{}, ifKey string, lacpM
     return tlerr.InvalidArgsError{Format:errStr}
 }
 
-func fillLacpMember(TeamdJson map[string]interface{}, ifMemKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
+func fillLacpMember(inParams XfmrParams, lag string, TeamdJson map[string]interface{}, ifMemKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
 
     var err error
 
     if ports_map,ok := TeamdJson["ports"].(map[string]interface{}); ok {
         for ifKey := range ports_map {
             if ifKey == ifMemKey {
-                err = _fillLacpMemberHelper(ports_map, ifKey, lacpMemberObj)
+                err = _fillLacpMemberHelper(inParams, lag, ports_map, ifKey, lacpMemberObj)
             }
         }
     }
@@ -159,7 +181,7 @@ func fillLacpMember(TeamdJson map[string]interface{}, ifMemKey string, lacpMembe
     return err
 }
 
-func fillLacpMembers(TeamdJson map[string]interface{}, members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
+func fillLacpMembers(inParams XfmrParams, lag string, TeamdJson map[string]interface{}, members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
     var lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member
     var err error
 
@@ -177,14 +199,14 @@ func fillLacpMembers(TeamdJson map[string]interface{}, members *ocbinds.Openconf
                 }
                 ygot.BuildEmptyTree(lacpMemberObj)
             }
-            err = _fillLacpMemberHelper(ports_map, ifKey, lacpMemberObj)
+            err = _fillLacpMemberHelper(inParams, lag, ports_map, ifKey, lacpMemberObj)
         }
     }
 
     return err
 }
 
-func populateLacpData(ifKey string, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State,
+func populateLacpData(inParams XfmrParams, ifKey string, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State,
                                     members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
     TeamdJson, err := getLacpData(ifKey)
     if err != nil {
@@ -198,7 +220,7 @@ func populateLacpData(ifKey string, state *ocbinds.OpenconfigLacp_Lacp_Interface
         return e
     }
 
-    er := fillLacpMembers(TeamdJson, members)
+    er := fillLacpMembers(inParams, ifKey, TeamdJson, members)
     if er != nil {
         log.Error("Failure in filling LACP members data ")
         return er
@@ -207,7 +229,7 @@ func populateLacpData(ifKey string, state *ocbinds.OpenconfigLacp_Lacp_Interface
     return nil
 }
 
-func populateLacpMembers(ifKey string, members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
+func populateLacpMembers(inParams XfmrParams, ifKey string, members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
 
     TeamdJson, err := getLacpData(ifKey)
     if err != nil {
@@ -215,7 +237,7 @@ func populateLacpMembers(ifKey string, members *ocbinds.OpenconfigLacp_Lacp_Inte
         return err
     }
 
-    e := fillLacpMembers(TeamdJson, members)
+    e := fillLacpMembers(inParams, ifKey, TeamdJson, members)
     if e != nil {
         log.Errorf("Failure in filling LACP members data %s\n", e)
         return e
@@ -224,7 +246,7 @@ func populateLacpMembers(ifKey string, members *ocbinds.OpenconfigLacp_Lacp_Inte
     return nil
 }
 
-func populateLacpMember(ifPoKey string, ifMemKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
+func populateLacpMember(inParams XfmrParams, ifPoKey string, ifMemKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
 
     TeamdJson, err := getLacpData(ifPoKey)
     if err != nil {
@@ -232,7 +254,7 @@ func populateLacpMember(ifPoKey string, ifMemKey string, lacpMemberObj *ocbinds.
         return err
     }
 
-    e := fillLacpMember(TeamdJson, ifMemKey, lacpMemberObj)
+    e := fillLacpMember(inParams, ifPoKey, TeamdJson, ifMemKey, lacpMemberObj)
     if e != nil {
         log.Errorf("Failure in filling LACP member data %s\n", e)
         return e
@@ -276,7 +298,7 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
                 return errors.New(errStr)
             }
             ygot.BuildEmptyTree(member)
-            return populateLacpMember(ifKey, ifMemKey, member)
+            return populateLacpMember(inParams, ifKey, ifMemKey, member)
         }
     } else if isSubtreeRequest(targetUriPath, "/openconfig-lacp:lacp/interfaces/interface/members") {
         if lacpintfObj, ok = lacpIntfsObj.Interfaces.Interface[ifKey]; !ok {
@@ -287,7 +309,7 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
 
         members = lacpintfObj.Members
         if members != nil && ifKey != "" {
-            return populateLacpMembers(ifKey, members)
+            return populateLacpMembers(inParams, ifKey, members)
         }
     } else if isSubtreeRequest(targetUriPath, "/openconfig-lacp:lacp/interfaces/interface") {
 
@@ -299,7 +321,7 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
             }
              ygot.BuildEmptyTree(lacpintfObj)
 
-             return populateLacpData(ifKey, lacpintfObj.State, lacpintfObj.Members)
+             return populateLacpData(inParams, ifKey, lacpintfObj.State, lacpintfObj.Members)
         }
     } else if isSubtreeRequest(targetUriPath, "/openconfig-lacp:lacp/interfaces") {
 
@@ -323,7 +345,7 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
            }
            ygot.BuildEmptyTree(lacpintfObj)
 
-           populateLacpData(ifKey, lacpintfObj.State, lacpintfObj.Members)
+           populateLacpData(inParams, ifKey, lacpintfObj.State, lacpintfObj.Members)
         }
     } else {
         log.Info("Unsupported Path");
@@ -332,4 +354,5 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
     return nil
 
 }
+
 
