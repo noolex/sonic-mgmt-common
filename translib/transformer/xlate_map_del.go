@@ -50,16 +50,16 @@ func tblKeyDataGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, reques
 	return tblList, err
 }
 
-func subTreeXfmrDelDataGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, txCache interface{}, cdb db.DBNum, spec *yangXpathInfo, chldSpec *yangXpathInfo, subTreeResMap *map[string]map[string]db.Value, pCascadeDelTbl *[]string)  error {
+func subTreeXfmrDelDataGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subOpDataMap map[int]*RedisDbMap, txCache interface{}, cdb db.DBNum, spec *yangXpathInfo, chldSpec *yangXpathInfo, subTreeResMap *map[string]map[string]db.Value, pCascadeDelTbl *[]string)  error {
 	var dbs [db.MaxDB]*db.DB
 	dbs[cdb]   = d
 
 	xfmrLogInfoAll("Handle subtree for  (\"%v\")", uri)
 	if (len(chldSpec.xfmrFunc) > 0) {
-		if ((len(spec.xfmrFunc) == 0) || ((len(spec.xfmrFunc) > 0) && 
+		if ((len(spec.xfmrFunc) == 0) || ((len(spec.xfmrFunc) > 0) &&
 		(spec.xfmrFunc != chldSpec.xfmrFunc))) {
 			inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, uri, requestUri, oper, "",
-			                                 dbDataMap, nil, nil, txCache)
+			                                 dbDataMap, subOpDataMap, nil, txCache)
 			retMap, err := xfmrHandler(inParams, chldSpec.xfmrFunc)
 			if err != nil {
 				xfmrLogInfoAll("Error returned by %v: %v", chldSpec.xfmrFunc, err)
@@ -74,7 +74,7 @@ func subTreeXfmrDelDataGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string
                             }
                         }
 		}
-	} 
+	}
 	return nil
 }
 
@@ -121,12 +121,12 @@ func yangListDelData(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requ
 						chldXpath    := xpath+"/"+yangChldName
 						chldUri      := curUri+"/"+yangChldName
 						chldSpec, ok := xYangSpecMap[chldXpath]
-						if (ok && (chldSpec.dbIndex == db.ConfigDB) && chldSpec.hasChildSubTree && 
+						if (ok && (chldSpec.dbIndex == db.ConfigDB) && chldSpec.hasChildSubTree &&
 						(chldSpec.yangEntry != nil)) {
 							chldYangType := chldSpec.yangDataType
 							if ((chldYangType == YANG_CONTAINER || chldYangType == YANG_LIST) &&
 							    (len(chldSpec.xfmrFunc) > 0)) {
-								err = subTreeXfmrDelDataGet(d, ygRoot, oper, chldUri, requestUri, dbDataMap,
+								err = subTreeXfmrDelDataGet(d, ygRoot, oper, chldUri, requestUri, dbDataMap, subOpDataMap,
 								txCache, cdb, spec, chldSpec, subTreeResMap, pCascadeDelTbl)
 								if err != nil {
 									return err
@@ -134,7 +134,7 @@ func yangListDelData(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requ
 							}
 							if chldSpec.hasChildSubTree == true {
 								if chldYangType == YANG_CONTAINER {
-									err = yangContainerDelData(d, ygRoot, oper, chldUri, requestUri, chldXpath, 
+									err = yangContainerDelData(d, ygRoot, oper, chldUri, requestUri, chldXpath,
 									dbDataMap, resultMap, subTreeResMap, subOpDataMap, txCache, pCascadeDelTbl)
 									if err != nil {
 										return err
@@ -172,12 +172,12 @@ func yangContainerDelData(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string,
 		if (ok && (chldSpec.dbIndex == db.ConfigDB) && (chldSpec.yangEntry != nil)) {
 			chldYangType := chldSpec.yangDataType
 			if ((chldYangType == YANG_CONTAINER || chldYangType == YANG_LIST) && (len(chldSpec.xfmrFunc) > 0)) {
-				err = subTreeXfmrDelDataGet(d, ygRoot, oper, chldUri, requestUri, dbDataMap,
+				err = subTreeXfmrDelDataGet(d, ygRoot, oper, chldUri, requestUri, dbDataMap, subOpDataMap,
 				txCache, cdb, spec, chldSpec, subTreeResMap, pCascadeDelTbl)
 				if err != nil {
 					return err
 				}
-			} 
+			}
 			if xYangSpecMap[chldXpath].hasChildSubTree == true {
 				if chldYangType == YANG_CONTAINER {
 					err = yangContainerDelData(d, ygRoot, oper, chldUri, requestUri, chldXpath, dbDataMap, resultMap, subTreeResMap, subOpDataMap, txCache, pCascadeDelTbl)
