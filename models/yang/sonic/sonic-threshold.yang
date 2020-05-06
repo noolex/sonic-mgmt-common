@@ -22,7 +22,7 @@ module sonic-threshold {
 	The feature tracks ingress and egress buffer threshold breaches and notify
 	network congestion event in real-time.";
 
-    revision 2020-04-21 {
+    revision 2020-04-27 {
         description
             "Initial revision.";
 
@@ -75,11 +75,7 @@ module sonic-threshold {
 		 }
 
 		 leaf buffer_index_per_port {
-			type uint8 {
-		           range "0..7" {
-				error-message "buffer index per port must be in range 0-7.";
-			   }
-			}
+			type uint8;
 
 			description
 			   "Priority group/queue index value.";
@@ -96,7 +92,36 @@ module sonic-threshold {
 			   "Threshold value for a specific buffer of an interface.";
 	         }
 		}
+
+		list BUFFER_POOL_LIST {
+			key "bufferpoolprefix pool_name";
+
+			leaf bufferpoolprefix {
+				type enumeration {
+					enum BUFFER_POOL;
+				}
+			}
+
+			leaf pool_name {
+				type string;
+
+			description
+				"Configure buffer pool name.";
+			}
+
+			leaf threshold {
+				type uint8 {
+					range "1..100" {
+						error-message "threshold value must be in range 1-100.";
+					}
+				}
+
+			description
+				"Buffer pool threshold value.";
+			}
+		}
 	}
+
 	container THRESHOLD_BREACH_TABLE {
 	    sonic-ext:db-name "COUNTERS_DB";
             sonic-ext:key-delim ":";
@@ -117,24 +142,17 @@ module sonic-threshold {
                 }
 
 		leaf eventid {
-			type uint8 {
-                           range "0..7" {
-                                error-message "Invalid breach-report index it must be in range 0-7.";
-                           }
-                        }
+			type uint64;
 
                         description
                            "Breach report event id.";
 		}
 
 		leaf buffer {
-                      type enumeration {
-                                enum priority-group;
-                                enum queue;
-                        }
+			type string;
 
-                        description
-                           "Buffer - priority-group or queue";
+			description
+	                   "Threshold buffer.";
                 }
 
 		leaf type {
@@ -143,10 +161,12 @@ module sonic-threshold {
                            enum headroom;
                            enum unicast;
                            enum multicast;
+                           enum ingress;
+                           enum egress;
                         }
 
                         description
-                           "Priority group/queue threshold buffer types.";
+                           "Threshold buffer types.";
                  }
 
 		 leaf port {
@@ -164,11 +184,7 @@ module sonic-threshold {
 		 }
 
 		 leaf index {
-			type uint8 {
-		           range "0..7" {
-				error-message "buffer index per port must be in range 0-7.";
-			   }
-			}
+			type uint8;
 
 			description
 			   "Priority group/queue index value.";
@@ -183,27 +199,6 @@ module sonic-threshold {
 
 			description
 			   "Counter value in % at breach.";
-		}
-
-		leaf SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES {
-			type int64;
-
-			description
-			    "SAI queue stat counter value in bytes at breach.";
-		}
-
-		leaf SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES {
-			type int64;
-
-			description
-			    "SAI ingress priority-group stat shared watermark in bytes at breach.";
-		}
-
-		leaf SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES {
-			type int64;
-
-			description
-			    "SAI ingress priority-greoup stat xoff watermark counter value in bytes at breach.";
 		}
 
 		leaf time-stamp {
