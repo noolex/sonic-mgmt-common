@@ -725,12 +725,21 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 cdb := db.ConfigDB
 	 var dbs [db.MaxDB]*db.DB
 	 var err error
+	 var isUriForListInstance bool
 
+	 isUriForListInstance = false
 	 pfxPath, _ = XfmrRemoveXPATHPredicates(path)
 	 xpathInfo, ok := xYangSpecMap[pfxPath]
 	 if !ok {
 		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", pfxPath)
 		 return pfxPath, keyStr, tableName, err
+	 }
+	 // for SUBSCRIBE reuestUri = path
+	 requestUriYangType := yangTypeGet(xpathInfo.yangEntry)
+	 if requestUriYangType == YANG_LIST {
+		 if strings.HasSuffix(path, "]") { //uri is for list instance
+			 isUriForListInstance = true
+		 }
 	 }
 	 cdb = xpathInfo.dbIndex
 	 dbOpts := getDBOptions(cdb)
@@ -824,6 +833,9 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			 return pfxPath, keyStr, tableName, err
 
 		 }
+	 }
+	 if ((oper == SUBSCRIBE) && (strings.TrimSpace(keyStr) == "") && (requestUriYangType == YANG_LIST) && (!isUriForListInstance)) {
+		 keyStr="*"
 	 }
 	 return pfxPath, keyStr, tableName, err
  }
