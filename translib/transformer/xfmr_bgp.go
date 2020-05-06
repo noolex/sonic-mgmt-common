@@ -423,6 +423,8 @@ var DbToYang_bgp_gbl_afi_safi_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrP
     log.Info("DbToYang_bgp_gbl_afi_safi_field_xfmr: ", entry_key)
 
     mpathKey := strings.Split(entry_key, "|")
+    if len(mpathKey) < 2 {return rmap, nil}
+
 	afi := ""
 
 	switch mpathKey[1] {
@@ -470,6 +472,7 @@ var DbToYang_bgp_dyn_neigh_listen_field_xfmr FieldXfmrDbtoYang = func(inParams X
     log.Info("DbToYang_bgp_dyn_neigh_listen_key_xfmr: ", entry_key)
 
     dynKey := strings.Split(entry_key, "|")
+    if len(dynKey) < 2 {return rmap, nil}
 
     rmap["prefix"] = dynKey[1]
 
@@ -484,6 +487,7 @@ var DbToYang_bgp_gbl_afi_safi_addr_field_xfmr FieldXfmrDbtoYang = func(inParams 
     log.Info("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr: ", entry_key)
 
     dynKey := strings.Split(entry_key, "|")
+    if len(dynKey) < 3 {return rmap, nil}
 
     rmap["prefix"] = dynKey[2]
 
@@ -590,6 +594,7 @@ var DbToYang_bgp_dyn_neigh_listen_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
     log.Info("DbToYang_bgp_dyn_neigh_listen_key_xfmr: ", entry_key)
 
     dynKey := strings.Split(entry_key, "|")
+    if len(dynKey) < 2 {return rmap, nil}
 
     rmap["prefix"] = dynKey[1]
 
@@ -678,6 +683,8 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: ", entry_key)
 
     mpathKey := strings.Split(entry_key, "|")
+    if len(mpathKey) < 2 {return rmap, nil}
+
 	afi := ""
 
 	switch mpathKey[1] {
@@ -788,6 +795,7 @@ var DbToYang_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrDbToYang = func(inParams Xfmr
     log.Info("DbToYang_bgp_gbl_afi_safi_addr_key_xfmr: ", entry_key)
 
     mpathKey := strings.Split(entry_key, "|")
+    if len(mpathKey) < 3 {return rmap, nil}
 
     rmap["prefix"] = mpathKey[2]
 
