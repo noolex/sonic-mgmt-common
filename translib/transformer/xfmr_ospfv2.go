@@ -29,10 +29,10 @@ func init () {
     XlateFuncBind("YangToDb_ospfv2_router_enable_fld_xfmr", YangToDb_ospfv2_router_enable_fld_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_enable_fld_xfmr", DbToYang_ospfv2_router_enable_fld_xfmr)
 
-    XlateFuncBind("YangToDb_ospfv2_router_area_tbl_subtree_xfmr", YangToDb_ospfv2_router_area_tbl_subtree_xfmr)
-    XlateFuncBind("DbToYang_ospfv2_router_area_tbl_subtree_xfmr", DbToYang_ospfv2_router_area_tbl_subtree_xfmr)
-    //XlateFuncBind("YangToDb_ospfv2_router_area_area_id_fld_xfmr", YangToDb_ospfv2_router_area_area_id_fld_xfmr)
-    //XlateFuncBind("DbToYang_ospfv2_router_area_area_id_fld_xfmr", DbToYang_ospfv2_router_area_area_id_fld_xfmr)
+    XlateFuncBind("YangToDb_ospfv2_router_area_tbl_key_xfmr", YangToDb_ospfv2_router_area_tbl_key_xfmr)
+    XlateFuncBind("DbToYang_ospfv2_router_area_tbl_key_xfmr", DbToYang_ospfv2_router_area_tbl_key_xfmr)
+    XlateFuncBind("YangToDb_ospfv2_router_area_area_id_fld_xfmr", YangToDb_ospfv2_router_area_area_id_fld_xfmr)
+    XlateFuncBind("DbToYang_ospfv2_router_area_area_id_fld_xfmr", DbToYang_ospfv2_router_area_area_id_fld_xfmr)
 
     XlateFuncBind("YangToDb_ospfv2_router_area_policy_tbl_key_xfmr", YangToDb_ospfv2_router_area_policy_tbl_key_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_area_policy_tbl_key_xfmr", DbToYang_ospfv2_router_area_policy_tbl_key_xfmr)
@@ -234,21 +234,16 @@ func getAreaDotted(areaString string) string {
         return areaDotted
      }
 
-     if (true == strings.ContainsAny(areaString,"|")) {
-        var substr []string
-        substr = strings.Split(areaString, "|")
-        areaString = substr[1]
-     }
      log.Info("getAreaDotted: ", areaString) 
      return areaString
 }
 
 
-var YangToDb_ospfv2_router_area_tbl_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+var YangToDb_ospfv2_router_area_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
     var ospfv2VrfName string
-    areaMap := make(map[string]map[string]db.Value)
-    log.Info("YangToDb_ospfv2_router_area_tbl_subtree_xfmr: ", inParams.uri)
+
+    log.Info("YangToDb_ospfv2_router_area_tbl_key_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
     ospfv2VrfName    =  pathInfo.Var("name")
@@ -259,28 +254,28 @@ var YangToDb_ospfv2_router_area_tbl_subtree_xfmr SubTreeXfmrYangToDb = func(inPa
     if len(pathInfo.Vars) <  4 {
         err = errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))
-        return areaMap, err
+        return ospfv2VrfName, err
     }
 
     if len(ospfv2VrfName) == 0 {
         err = errors.New("vrf name is missing");
         log.Info("VRF Name is Missing")
-        return areaMap, err
+        return "", err
     }
     if strings.Contains(ospfv2Identifier,"OSPF") == false {
         err = errors.New("OSPF ID is missing");
         log.Info("OSPF ID is missing")
-        return areaMap, err
+        return "", err
     }
     if len(ospfv2InstanceNumber) == 0 {
         err = errors.New("OSPF intance number/name is missing");
         log.Info("Protocol Name is Missing")
-        return areaMap, err
+        return "", err
     }
     if len(ospfv2AreaId) == 0 {
         err = errors.New("OSPF area Id is missing")
         log.Info("OSPF area Id is Missing")
-        return areaMap, nil
+        return "", nil
     }
 
     ospfv2AreaId = getAreaDotted(ospfv2AreaId)
@@ -292,61 +287,26 @@ var YangToDb_ospfv2_router_area_tbl_subtree_xfmr SubTreeXfmrYangToDb = func(inPa
 
     pAreaTableKey = ospfv2VrfName + "|" + ospfv2AreaId
 
-    log.Info("YangToDb_ospfv2_router_area_tbl_subtree_xfmr: pAreaTableKey - ", pAreaTableKey)
-    areaInfo := make(map[string]db.Value)
-    areaInfo[pAreaTableKey] = db.Value{Field:make(map[string]string)}
-    areaMap["OSPFV2_ROUTER_AREA"] = areaInfo
-    //TODO: Handle delete case "if inParams.oper == DELETE"
-    return areaMap, nil
+    log.Info("YangToDb_ospfv2_router_area_tbl_key_xfmr: pAreaTableKey - ", pAreaTableKey)
+    return pAreaTableKey, nil
 }
 
 
 
-var DbToYang_ospfv2_router_area_tbl_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-    var areaNameStr string
-    var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
-    var ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas
-    var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
-    var err error
-    oper_err := errors.New("Operational error")
-    cmn_log := "GET: DbToYang_ospfv2_router_area_tbl_subtree_xfmr"
-
+var DbToYang_ospfv2_router_area_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
     entry_key := inParams.key
-    log.Info("DbToYang_ospfv2_router_area_tbl_subtree: entry key - ", entry_key)
-    if len(inParams.key) != 0 {
-        log.Errorf ("%s failed !! Error: inParams.key should not contain any data", cmn_log);
-        return  oper_err
-    }
-    ospfv2_obj, _, err = getOspfv2Root (inParams)
-    if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
-        return  oper_err
-    }
-    var keys []db.Key
-    areaTable, _err := inParams.dbs[db.ConfigDB].GetTable(&db.TableSpec{Name:"OSPFV2_ROUTER_AREA"})
-    if _err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
-        return  oper_err
-    }
-    keys, err = areaTable.GetKeys() 
-    log.Infof("Found %d Area table keys", len(keys))
-    for _, key := range keys {
-        log.Infof("Found key %s", key)
-        areaNameStr = fmt.Sprintf("%v", key.Get(1))
-        ospfv2Areas_obj = ospfv2_obj.Areas
-        ospfv2Area_obj, err = ospfv2_find_area_by_key(ospfv2Areas_obj, areaNameStr)
-        if nil == ospfv2Area_obj {
-            log.Infof("Area object missing, add new area=%s", areaNameStr)
-            ospfv2Area_obj, err = ospfv2_create_new_area(ospfv2Areas_obj, areaNameStr)
-            if (err != nil) {
-                log.Info("Failed to create a new area")
-                return  err
-            }
-        }
+    log.Info("DbToYang_ospfv2_router_area_tbl_key: entry key - ", entry_key)
+
+    areaTableKeys := strings.Split(entry_key, "|")
+
+    if len(areaTableKeys) >= 2 {
+       //res_map["name"] = areaTableKeys[0]
+       res_map["identifier"] = areaTableKeys[1]
     }
 
-    log.Info("DbToYang_ospfv2_router_area_tbl_subtree_xfmr")
-    return nil
+    log.Info("DbToYang_ospfv2_router_area_tbl_key: res_map - ", res_map)
+    return res_map, nil
 }
 
 var YangToDb_ospfv2_router_area_area_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -366,7 +326,7 @@ var DbToYang_ospfv2_router_area_area_id_fld_xfmr FieldXfmrDbtoYang = func(inPara
     areaTableKeys := strings.Split(entry_key, "|")
 
     if len(areaTableKeys) >= 2 {
-        res_map["identifier#2"] = areaTableKeys[1]
+        res_map["identifier"] = areaTableKeys[1]
     }
 
     log.Info("DbToYang_ospfv2_router_area_area_id_fld_xfmr: res_map - ", res_map)
@@ -538,8 +498,8 @@ var DbToYang_ospfv2_router_area_network_tbl_key_xfmr KeyXfmrDbToYang = func(inPa
     netowrkTableKeys := strings.Split(entry_key, "|")
 
     if len(netowrkTableKeys) >= 3 {
-       res_map["name"] = netowrkTableKeys[0]
-       res_map["identifier#2"] = netowrkTableKeys[1]
+       //res_map["name"] = netowrkTableKeys[0]
+       //res_map["identifier#2"] = netowrkTableKeys[1]
        res_map["address-prefix"] = netowrkTableKeys[2]
     }
 
@@ -1475,10 +1435,8 @@ func ospfv2_init_new_area(ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_Netw
 func ospfv2_find_area_by_key(ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas, 
 areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area, error) {
     var err error
+    var ospfv2AreaKey1 *string
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
-    var ospfv2AreaKey1 ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union
-    //var ospfv2AreaKey2 ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union
-    //var areaptr *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String
     log.Infof("Entered ospfv2_find_area_by_key %s", areaNameStr)
     if ((nil == ospfv2Areas_obj) || (nil == ospfv2Areas_obj.Area)) {
         return nil, err
@@ -1486,9 +1444,7 @@ areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_Network
     for _, ospfv2Area_obj = range ospfv2Areas_obj.Area {
         ospfv2AreaKey1 = ospfv2Area_obj.Identifier  
         log.Info("Key are ", ospfv2AreaKey1, areaNameStr)
-        newAreaStr := 
-            ospfv2AreaKey1.(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String)
-        if(newAreaStr.String == areaNameStr) {
+        if(*ospfv2AreaKey1 == areaNameStr) {
             log.Info("Match found")
             return ospfv2Area_obj, nil
         }
@@ -1501,14 +1457,12 @@ areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_Network
     var ok   bool
     oper_err := errors.New("Operational error")
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
-    var ospfv2AreaKeyStr ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String
     log.Infof("Entered ospfv2_create_new_area %s", areaNameStr)
     if (nil == ospfv2Areas_obj) {
         return nil, oper_err
     }    
-    ospfv2AreaKeyStr.String = areaNameStr
-    if  ospfv2Area_obj, ok = ospfv2Areas_obj.Area[&ospfv2AreaKeyStr]; !ok {
-        ospfv2Area_obj, err = ospfv2Areas_obj.NewArea(&ospfv2AreaKeyStr)
+    if  ospfv2Area_obj, ok = ospfv2Areas_obj.Area[areaNameStr]; !ok {
+        ospfv2Area_obj, err = ospfv2Areas_obj.NewArea(areaNameStr)
         if (err != nil) {
             log.Info("Failed to create a new area")
             return  nil, err
@@ -1516,7 +1470,7 @@ areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_Network
         ygot.BuildEmptyTree(ospfv2Area_obj)
     }
         
-    ospfv2Area_obj.Config.Identifier = &ospfv2AreaKeyStr
+    ospfv2Area_obj.Config.Identifier = &areaNameStr
     return ospfv2Area_obj, err
 } 
 func ospfv2_fill_area_state (output_state map[string]interface{}, 
