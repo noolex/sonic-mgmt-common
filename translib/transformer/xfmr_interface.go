@@ -26,6 +26,7 @@ import (
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
 
+/* input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer */
 type XfmrParams struct {
 	d *db.DB
 	dbs [db.MaxDB]*db.DB
@@ -43,6 +44,7 @@ type XfmrParams struct {
         pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
 }
 
+/* input parameters for value-transformer */
 type XfmrDbParams struct {
 	oper           int
 	dbNum          db.DBNum

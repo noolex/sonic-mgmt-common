@@ -35,7 +35,7 @@ import (
 var ocbSch, _ = ocbinds.Schema()
 
 func valueXfmrHandler(inParams XfmrDbParams, xfmrValueFuncNm string) (string, error) {
-    xfmrLogInfoAll("Received inParams %v Field transformer name %v", inParams, xfmrValueFuncNm)
+    xfmrLogInfoAll("Received inParams %v Value transformer name %v", inParams, xfmrValueFuncNm)
 
     ret, err := XlateFuncCall(xfmrValueFuncNm, inParams)
     if err != nil {
