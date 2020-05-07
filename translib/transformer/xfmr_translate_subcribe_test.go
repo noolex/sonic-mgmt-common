@@ -104,18 +104,6 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	/********************/
 
-	/*dummy subtree on change enable*/
-	/*path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/aggregation/state"
-	xfmrTrSubInfo.DbDataMap = make(RedisDbMap)
-	xfmrTrSubInfo.DbDataMap[0] = map[string]map[string]db.Value{"LAG": map[string]db.Value{"LAG_1":{}}}
-	xfmrTrSubInfo.MinInterval = 15 
-	xfmrTrSubInfo.NeedCache = true
-	xfmrTrSubInfo.PType = Sample
-	xfmrTrSubInfo.OnChange = false
-	t.Run("Subtree caseonchange is enabled ", translateSubscribeRequest(path, xfmrTrSubInfo, false, nil))
-	time.Sleep(1 * time.Second)*/
-	/********************/
-
     fmt.Println("+++++++++++++ Done!!! Performing  Translate Subscribe OC yang ++++++++++++")
 
 }

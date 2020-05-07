@@ -254,7 +254,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 
    if ok && (parentXpathData.subscribeMinIntvl == XFMR_INVALID ||
       parentXpathData.subscribeOnChg == XFMR_INVALID) {
-       log.Errorf("Cascade-delete flag is set to invalid for(%v) \r\n", xpathPrefix)
+       log.Errorf("Susbscribe MinInterval/OnChange flag is set to invalid for(%v) \r\n", xpathPrefix)
        return
    }
 
@@ -354,8 +354,11 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 	}
 
 	if xpathData.subscribeOnChg == XFMR_INVALID {
-		//xpathData.subscribeOnChg = XFMR_DISABLE
 		xpathData.subscribeOnChg = XFMR_ENABLE
+	}
+	if ((xpathData.subscribePref != nil) && (*xpathData.subscribePref == "onchange") && (xpathData.subscribeOnChg == XFMR_DISABLE)) {
+		log.Infof("subscribe OnChange is disabled so setting subscribe preference to default/sample from onchange for xpath - %v", xpath)
+		xpathData.subscribePref = nil
 	}
 	if xpathData.cascadeDel == XFMR_INVALID {
 		/* set to  default value */

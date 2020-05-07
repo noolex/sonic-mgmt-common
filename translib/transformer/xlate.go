@@ -604,9 +604,6 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
        subscribe_result.MinInterval = 0
        subscribe_result.OnChange = false
        subscribe_result.NeedCache = true
-       /*for i := db.ApplDB; i < db.MaxDB; i++ {
-           subscribe_result.DbDataMap[i] = make(map[string]map[string]db.Value)
-       }*/
 
        for {
            xpath, predc_err := XfmrRemoveXPATHPredicates(path)
