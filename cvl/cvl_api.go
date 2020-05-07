@@ -780,6 +780,9 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 		return []CVLDepDataForDelete{}
 	}
 
+	redisKeySep := modelInfo.tableInfo[tableName].redisKeyDelim
+	redisMultiKeys := strings.Split(key, redisKeySep)
+
 	mCmd := map[string]*redis.StringSliceCmd{}
 	mFilterScripts := map[string]filterScript{}
 	pipe := redisClient.Pipeline()
@@ -796,9 +799,37 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			continue
 		}
 
+		// Find the targetnode from leaf-refs on refTbl.field
+		var refTblTargetNodeName string
+		for _, refTblLeafRef := range modelInfo.tableInfo[refRedisTblName].leafRef[refTbl.field] {
+			if (refTblLeafRef.path != "non-leafref") && (len(refTblLeafRef.yangListNames) > 0) {
+				var isTargetNodeFound bool
+				for k, _ := range refTblLeafRef.yangListNames {
+					if refTblLeafRef.yangListNames[k] == tableName {
+						refTblTargetNodeName = refTblLeafRef.targetNodeName
+						isTargetNodeFound = true
+						break
+					}
+				}
+				if isTargetNodeFound {
+					break
+				}
+			}
+		}
+
 		for ; idx < numKeys; idx++ {
 			if (modelInfo.tableInfo[refTbl.tableName].keys[idx] != refTbl.field) {
 				continue
+			}
+
+			if len(redisMultiKeys) > 1 {
+				rediskeyTblKeyPatterns := strings.Split(modelInfo.tableInfo[tableName].redisKeyPattern, redisKeySep)
+				for z := 1; z < len(rediskeyTblKeyPatterns); z++ { // Skipping 0th position, as it is a tableName
+					if rediskeyTblKeyPatterns[z] == fmt.Sprintf("{%s}", refTblTargetNodeName) {
+						key = redisMultiKeys[z - 1]
+						break
+					}
+				}
 			}
 
 			//field is a key component, write into pipeline
