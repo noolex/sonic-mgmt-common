@@ -1065,6 +1065,9 @@ func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey strin
 	var err error
 	var keyValList []string
 
+	xfmrLogInfoAll("dbKeyValueXfmrHandler: oper(%v), db(%v), tbl(%v), dbKey(%v), inKeyl(%v)",
+	oper, dbNum, tblName, dbKey, inKeyValList)
+
 	if specTblInfo, ok := xDbSpecMap[tblName]; ok {
 		for _, lname := range specTblInfo.listName {
 			listXpath := tblName + "/" + lname
@@ -1104,12 +1107,14 @@ func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey strin
 
 	dbOpts := getDBOptions(dbNum)
 	retKey := strings.Join(keyValList, dbOpts.KeySeparator)
+	xfmrLogInfoAll("dbKeyValueXfmrHandler: tbl(%v), dbKey(%v), inKeyl(%v), retKey(%v), keyValList(%v)",
+	tblName, dbKey, inKeyValList, retKey, keyValList)
 	return retKey, keyValList, nil
 }
 
 func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.Value) error {
+	xfmrLogInfoAll("Received  resultMap(%v)", resultMap)
 	for oper, dbDataMap := range resultMap {
-		if oper != DELETE {
 			for dbNum, tblData := range dbDataMap {
 				for tblName, data := range tblData {
 					if specTblInfo, ok := xDbSpecMap[tblName]; ok && specTblInfo.hasXfmrFn == true {
@@ -1154,7 +1159,7 @@ func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.V
 					}
 				}
 			}
-		}
 	}
+	xfmrLogInfoAll("Transformed resultMap(%v)", resultMap)
 	return nil
 }

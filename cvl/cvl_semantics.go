@@ -1058,6 +1058,9 @@ func (c *CVL) validateMustExp(node *xmlquery.Node,
 				for (ctxNode !=nil) && (ctxNode.Data != nodeName) {
 					ctxNode = ctxNode.NextSibling //must expression at leaf level
 				}
+				if ctxNode != nil && op == OP_UPDATE {
+					addAttrNode(ctxNode, "db", "")
+				}
 			}
 
 			//Check leafref for each leaf-list node
@@ -1502,8 +1505,8 @@ func (c *CVL) validateSemantics(node *xmlquery.Node,
 	yangListName, key string,
 	cfgData *CVLEditConfigData) (r CVLErrorInfo) {
 
-	//Mark the list entries from DB if not OP_CREATE operation
-	if (node != nil) && (cfgData.VOp != OP_CREATE) {
+	//Mark the list entries from DB if OP_DELETE operation
+	if (node != nil) && (cfgData.VOp == OP_DELETE) {
 		addAttrNode(node, "db", "")
 	}
 
