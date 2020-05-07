@@ -1311,13 +1311,18 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
 
     var swVlanConfig swVlanMemberPort_t
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    log.Infof("DbToYang_sw_vlans__xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
 
     deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
     intfObj := deviceObj.Interfaces
 
     log.Info("Switched vlans request for ", ifName)
-    intf := intfObj.Interface[ifName]
+    intf := intfObj.Interface[uriIfName]
 
     intfType, _, err := getIntfTypeByName(ifName)
     if err != nil {

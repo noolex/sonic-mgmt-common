@@ -13,7 +13,7 @@ module sonic-port-annot {
             sonic-ext:db-name "APPL_DB";
         }
     }
-    /*deviation /prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname {
+    deviation /prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname {
         deviate add {
             sonic-ext:value-transformer "alias_value_xfmr";
         }
@@ -22,7 +22,7 @@ module sonic-port-annot {
         deviate add {
             sonic-ext:value-transformer "alias_value_xfmr";
         }
-    }*/
+    }
 
     deviation /prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname {
         deviate add {

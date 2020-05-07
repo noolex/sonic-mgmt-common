@@ -208,7 +208,7 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     var err error
 
     ifName := inParams.value
-    log.Infof("alias_value_xfmr:- Operation Type - %s Interface name - %s", inParams.oper, ifName)
+    log.Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
 
     if !utils.IsAliasModeEnabled() {
         log.Info("Alias mode is not enabled!")
@@ -1321,7 +1321,12 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     var overlapIP string
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    log.Infof("YangToDb_intf_ip_addr_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
 	intfType, _, ierr := getIntfTypeByName(ifName)
 
     if IntfTypeVxlan == intfType {
@@ -1361,7 +1366,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         }
     }
 
-    if _, ok := intfsObj.Interface[ifName]; !ok {
+    if _, ok := intfsObj.Interface[uriIfName]; !ok {
         errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
         log.Info("YangToDb_intf_subintf_ip_xfmr : " + errStr)
         return subIntfmap, errors.New(errStr)
@@ -1369,7 +1374,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
 
     intTbl := IntfTypeTblMap[intfType]
     tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
-    intfObj := intfsObj.Interface[ifName]
+    intfObj := intfsObj.Interface[uriIfName]
 
     if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
         // Handling the scenario for Interface instance delete at interfaces/interface[name] level or subinterfaces container level
@@ -2516,7 +2521,12 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, err := getYangPathFromUri(inParams.uri)
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    log.Infof("YangToDb_intf_eth_port_config_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
 
     intfType, _, err := getIntfTypeByName(ifName)
     if err != nil {
@@ -2529,7 +2539,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     }
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
-    intfObj := intfsObj.Interface[ifName]
+    intfObj := intfsObj.Interface[uriIfName]
     // Need to differentiate between config container delete and any attribute other than aggregate-id delete
     if intfObj.Ethernet == nil  || intfObj.Ethernet.Config == nil || (intfObj.Ethernet.Config != nil &&
        targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
@@ -2793,7 +2803,12 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     }
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    log.Infof("YangToDb_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
 
     if ifName == "" {
         errStr := "Interface KEY not present"
@@ -2801,13 +2816,13 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
         return subIntfmap, errors.New(errStr)
     }
 
-    if _, ok := intfsObj.Interface[ifName]; !ok {
+    if _, ok := intfsObj.Interface[uriIfName]; !ok {
         errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
         log.Info("YangToDb_unnumbered_intf_xfmr : " + errStr)
         return subIntfmap, errors.New(errStr)
     }
 
-    intfObj := intfsObj.Interface[ifName]
+    intfObj := intfsObj.Interface[uriIfName]
     intfType, _, ierr := getIntfTypeByName(ifName)
     if intfType == IntfTypeUnset || ierr != nil {
         errStr := "Invalid interface type IntfTypeUnset"
@@ -2972,7 +2987,12 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
     }
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    log.Infof("YangToDb_intf_sag_ip_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
 
 	log.Info("YangToDb_intf_sag_ip_xfmr Ifname: " + ifName)
     if ifName == "" {
@@ -2981,13 +3001,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
         return subIntfmap, errors.New(errStr)
     }
 
-    if _, ok := intfsObj.Interface[ifName]; !ok {
+    if _, ok := intfsObj.Interface[uriIfName]; !ok {
         errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
         log.Info("YangToDb_intf_sag_ip_xfmr: " + errStr)
         return subIntfmap, errors.New(errStr)
     }
 
-    intfObj := intfsObj.Interface[ifName]
+    intfObj := intfsObj.Interface[uriIfName]
 
     if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
 	    if inParams.oper == DELETE {
