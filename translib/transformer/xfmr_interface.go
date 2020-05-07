@@ -26,15 +26,6 @@ import (
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
 
-type XfmrDbParams struct {
-    oper           int
-    dbNum          db.DBNum
-    tableName      string
-    key            string
-    fieldName      string
-    value          string
-}
-
 type XfmrParams struct {
 	d *db.DB
 	dbs [db.MaxDB]*db.DB
