@@ -1605,12 +1605,19 @@ var YangToDb_bgp_nbr_community_type_fld_xfmr FieldXfmrYangToDb = func(inParams X
         inParams.subOpDataMap[UPDATE] = &subOpMap
         return res_map, nil
     }
-
+    /* In case of POST operation and field has some default value in the YANG, infra is internally filling the enum 
+     * in string format (in this case) and hence setting the field value accordingly. */
+    curYgotNodeData, _:= yangNodeForUriGet(inParams.uri, inParams.ygRoot)
+    if curYgotNodeData == nil && (inParams.oper == CREATE || inParams.oper == REPLACE) {
+        community_type_str, _ := inParams.param.(*string)
+        if *community_type_str == "BOTH" {
+            res_map["send_community"] = "both"
+            return res_map, nil
+        }
+    }
     community_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_BgpExtCommunityType)
-    community_type2, _ := inParams.param.(*uint16)
-    community_type3, _ := inParams.param.(*string)
     log.Info("YangToDb_bgp_nbr_community_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, 
-             " community_type: ", community_type, "uint16 ", community_type2, "string ", community_type3)
+             " community_type: ", community_type)
 
     if (community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_STANDARD) {
         res_map["send_community"] = "standard"
