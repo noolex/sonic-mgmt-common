@@ -16,6 +16,12 @@ Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}  
 Description: SONiC Management Infrastructure
 
+Package: sonic-mgmt-common-codegen
+Priority: extra  
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}  
+Description: SONiC Management Infrastructure generated code
+
 Package: sonic-host-service
 Priority: extra
 Architecture: amd64

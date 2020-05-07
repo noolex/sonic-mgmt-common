@@ -3,6 +3,7 @@
 *.debhelper.log
 *.substvars
 sonic-mgmt-common/
+sonic-mgmt-common-codegen/
 sonic-host-service/
 tmp/
 files
