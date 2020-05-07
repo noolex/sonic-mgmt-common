@@ -25,10 +25,10 @@ import (
 	"io/ioutil"
 	"fmt"
 	"testing"
-    "sync"
+	"sync"
 	"reflect"
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
-    "github.com/Azure/sonic-mgmt-common/translib/transformer"
+	"github.com/Azure/sonic-mgmt-common/translib/transformer"
 	. "github.com/Azure/sonic-mgmt-common/translib"
 )
 

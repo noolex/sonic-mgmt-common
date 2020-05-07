@@ -43,17 +43,20 @@ type XfmrParams struct {
         pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
 }
 
+/*subcription process type identifying the type of subscription request made from translib*/
 type SubscProcType int
 const (
     TRANSLATE_SUBSCRIBE SubscProcType = iota
     PROCESS_SUBSCRIBE
 )
 
+/*susbcription sampling interval and subscription preference type*/
 type notificationOpts struct {
 	mInterval int
 	pType     NotificationType
 }
 
+/*Input to subscribe subtree callbacks - request uri, DBs info access-pointers, DB info for request uri and subscription process type from translib */
 type XfmrSubscInParams struct {
     uri string
     dbs [db.MaxDB]*db.DB
@@ -61,12 +64,12 @@ type XfmrSubscInParams struct {
     subscProc SubscProcType
 }
 
+/*Output from subscribe subtree callback - DB data for request uri, Need cache, OnChange, subscription preference and interval*/
 type XfmrSubscOutParams struct {
     dbDataMap RedisDbMap
     needCache bool
     onChange bool
     nOpts *notificationOpts  //these can be set regardless of error 
-    //uri string  //set in case of processSubscribe 
 }
 
 /**

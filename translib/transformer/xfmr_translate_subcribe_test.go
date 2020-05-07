@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"testing"
 	"time"
-    "github.com/Azure/sonic-mgmt-common/translib/db"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    . "github.com/Azure/sonic-mgmt-common/translib/transformer"
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	. "github.com/Azure/sonic-mgmt-common/translib/transformer"
 )
 
 func Test_TranslateSubscribe_OCYang(t *testing.T) {
