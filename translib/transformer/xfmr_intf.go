@@ -428,11 +428,14 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     log.Info("Entering YangToDb_intf_tbl_key_xfmr")
     var err error
 
+    log.Info("YangToDb_intf_tbl_key_xfmr: inParams.uri ", inParams.uri)
+
     pathInfo := NewPathInfo(inParams.uri)
+    log.Info("YangToDb_intf_tbl_key_xfmr: pathInfo ", pathInfo)
+
     ifName := pathInfo.Var("name")
 
     log.Info("Intf name: ", ifName)
-    log.Info("Exiting YangToDb_intf_tbl_key_xfmr")
     intfType, _, ierr := getIntfTypeByName(ifName)
     if ierr != nil {
         log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
@@ -444,6 +447,8 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     if err != nil {
         return "", tlerr.InvalidArgsError{Format: err.Error()}
     }
+
+    log.Info("YangToDb_intf_tbl_key_xfmr: ifName ", ifName)
     return ifName, err
 }
 
@@ -551,6 +556,10 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     } else if strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/openconfig-interfaces-ext:nat-zone/state")||
         strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/nat-zone/state") {
         tblList = append(tblList, intTbl.appDb.intfTN)
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/ospfv2") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/ospfv2/if-addresses/config") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2") {
+        tblList = append(tblList, intTbl.cfgDb.intfTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/config") ||
@@ -968,7 +977,10 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]strin
             (*inParams.dbDataMap)[db.ConfigDB]["SUBINTF_TBL"]["0"].Field["NULL"] = "NULL"
             tblList = append(tblList, "SUBINTF_TBL")
         }
+
+        log.Info("intf_subintfs_table_xfmr - Subinterface get operation ")
     }
+
     return tblList, nil
 }
 
@@ -976,25 +988,34 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     var subintf_key string
     var err error
 
+    log.Info("YangToDb_intf_subintfs_xfmr - inParams.uri ", inParams.uri)
+
     pathInfo := NewPathInfo(inParams.uri)
     idx := pathInfo.Var("index")
-    if idx != "0" {
+
+    if idx != "0"  {
         errStr := "Invalid sub-interface index: " + idx
         log.Error(errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return idx, err
-    }
+    } 
     if (inParams.oper == GET) {
         subintf_key = "0"
     }
+   
+    log.Info("YangToDb_intf_subintfs_xfmr - return subintf_key ", subintf_key)
     return subintf_key, err
 }
 
 var DbToYang_intf_subintfs_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
     log.Info("Entering DbToYang_intf_subintfs_xfmr")
+
     rmap := make(map[string]interface{})
     var err error
     rmap["index"] = 0
+
+    log.Info("DbToYang_intf_subintfs_xfmr rmap ", rmap) 
     return rmap, err
 }
 
@@ -2394,6 +2415,50 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
     return nil, err
 }
 
+/* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
+func isValidSpeed(d *db.DB, ifName string, speed_i string) bool {
+    var isValid bool = false
+    var speed int32
+
+    speed_int,_ := strconv.Atoi(speed_i)
+    speed = int32(speed_int)
+    portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
+    if(err != nil) {
+        log.Info("Could not retrieve PORT|",ifName)
+    } else {
+        speeds := portEntry.Field["valid_speeds"];
+        for _, vspeed := range speeds {
+            if  vspeed == speed {
+                isValid = true
+            }
+        }
+    }
+    return isValid
+}
+
+
+/* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
+func getDefaultSpeed(d *db.DB, ifName string) int32 {
+
+    var defaultSpeed int32
+    defaultSpeed = 0
+    portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
+    if(err != nil) {
+        log.Info("Could not retrieve PORT|",ifName)
+    } else {
+        speeds := portEntry.Field["valid_speeds"];
+        for _, speed := range speeds {
+            log.Info("Speed check ", defaultSpeed, " vs ", speed)
+            if  speed > defaultSpeed {
+                log.Info("Updating  ", defaultSpeed, " with ", speed)
+                defaultSpeed = speed
+            }
+        }
+    }
+    return defaultSpeed
+}
+
+
 /* Handle port-speed, auto-neg and aggregate-id config */
 var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
@@ -2517,17 +2582,21 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     }
     /* Handle PortSpeed config */
     if intfObj.Ethernet.Config.PortSpeed != 0 {
-        if intfType != IntfTypeMgmt {
-            return nil, errors.New("PortSpeed config not supported for given interface type")
-        }
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
-        intTbl := IntfTypeTblMap[IntfTypeMgmt]
+        intTbl := IntfTypeTblMap[intfType]
 
         portSpeed := intfObj.Ethernet.Config.PortSpeed
         val, ok := intfOCToSpeedMap[portSpeed]
         if ok {
-            res_map[PORT_SPEED] = val
+            if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+                val = strconv.FormatInt(int64(getDefaultSpeed(inParams.d, ifName)), 10)
+            }
+            if isValidSpeed(inParams.d, ifName, val) {
+                res_map[PORT_SPEED] = val
+            } else {
+                err = errors.New("Invalid/Unsupported speed.")
+            }
         } else {
             err = errors.New("Invalid/Unsupported speed.")
         }
@@ -2943,11 +3012,11 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
     subIntfObj := intfObj.Subinterfaces.Subinterface[0]
 
-		var gwIPListStr string
-	sagIPMap := make(map[string]db.Value)
-		vlanIntfMap := make(map[string]db.Value)
-		vlanIntfMap[ifName] = db.Value{Field:make(map[string]string)}
-	vlanEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+    var gwIPListStr string
+    sagIPMap := make(map[string]db.Value)
+    vlanIntfMap := make(map[string]db.Value)
+    vlanIntfMap[ifName] = db.Value{Field:make(map[string]string)}
+    vlanEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
 
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.SagIpv4 != nil {
 		sagIpv4Obj := subIntfObj.Ipv4.SagIpv4
@@ -3304,4 +3373,5 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     }
     return res_map, nil
 }
+
 

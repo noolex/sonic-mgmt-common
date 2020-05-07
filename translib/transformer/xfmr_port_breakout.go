@@ -95,6 +95,7 @@ var DbToYang_port_breakout_config_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
     return err;
 
 }
+
 /* Breakout action, shutdown, remove dependent configs , remove ports, add ports */
 func breakout_action (ifName string, from_mode string, to_mode string, inParams XfmrParams) error {
         var err error
@@ -113,26 +114,16 @@ func breakout_action (ifName string, from_mode string, to_mode string, inParams 
                     if isEqual {
                          log.Info("No change in port breakout mode")
                          return nil
-                    } else {
-                        //1. shutdown ports.
-                        err = shutdownPorts(inParams.d, curr_ports)
                     }
-                }
-                if err == nil {
-                    //2. Clean-up dependent configurations. TODO, pending on API
-                } 
-                if err == nil {
-                    //3. Remove ports
-                    err = removePorts(inParams.d, curr_ports)
-                } 
-
-                if err == nil {
-                     isPortRemoveCompleted(curr_ports)
-                }
-                if err == nil {
-                    log.Info("PORTS DELETED: ", curr_ports)
-                    //4. Add ports
-                    err = addPorts(inParams.d, ports)
+                    //2. Remove ports
+                    delMap := removePorts(curr_ports)
+                    inParams.subOpDataMap[DELETE] = &delMap
+                    log.Info("PORTS TO BE DELETED: ", curr_ports)
+                    //3. Add ports
+                    addMap := addPorts(ports)
+                    inParams.subOpDataMap[UPDATE] = &addMap
+                    log.Info("PORTS TO BE ADDED: ", ports)
+                    *inParams.pCascadeDelTbl = append(*inParams.pCascadeDelTbl, "PORT")
                 }
             }
         }
@@ -255,11 +246,10 @@ var rpc_breakout_dependencies RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
     cvSess, _ := cvl.ValidationSessOpen()
     depConfigs := cvSess.GetDepDataForDelete(fmt.Sprintf("PORT|%v", key["ifname"]))
     for i, dep := range depConfigs {
-        for key, depc := range dep.Entry {
-            exec.Output.DepKeys = append(exec.Output.DepKeys , key)
-            log.Info("Dep-",i," : ", dep.RefKey, "/", key, "entry: ", depc)
-        }
-
+            for key, depc := range dep.Entry {
+                exec.Output.DepKeys = append(exec.Output.DepKeys , key)
+                log.Info("Dep-",i," : ", dep.RefKey, "/", key, "entry: ", depc)
+            }
     }
 
     result, err := json.Marshal(&exec)

@@ -35,7 +35,7 @@ GOYANG_BIN = $(abspath $(BUILD_DIR)/bin/goyang)
 
 export TOPDIR GO GOPATH RMDIR
 
-all: models translib
+all: models cvl translib
 
 $(GO_MOD):
 	$(GO) mod init github.com/Azure/sonic-mgmt-common
@@ -45,16 +45,33 @@ $(GO_DEPS): $(GO_MOD) $(GO_PATCHES)
 	patches/apply.sh vendor
 	touch  $@
 
+go-deps: $(GO_DEPS)
+
+go-deps-clean:
+	$(RMDIR) vendor
+
 .PHONY: cvl
 cvl: $(GO_DEPS)
 	$(MAKE) -C ./cvl
+
+cvl-all: $(GO_DEPS)
+	$(MAKE) -C ./cvl all
+
+cvl-clean:
+	$(MAKE) -C ./cvl clean
 
 cvl-test:
 	$(MAKE) -C ./cvl gotest
 
 .PHONY: translib
-translib: cvl
+translib: $(GO_DEPS)
 	$(MAKE) -C ./translib
+
+translib-all: $(GO_DEPS)
+	$(MAKE) -C ./translib all
+
+translib-clean:
+	$(MAKE) -C ./translib clean
 
 .PHONY: models
 models:
@@ -104,13 +121,10 @@ endif
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	mv $* $(DEST)/
 
-clean: models-clean
-	$(MAKE) -C translib clean
-	$(MAKE) -C cvl clean
-	$(RMDIR) debian/.debhelper
+clean: models-clean translib-clean cvl-clean
+	git check-ignore debian/* | xargs -r $(RMDIR)
 	$(RMDIR) $(BUILD_DIR)
 
-cleanall: clean
+cleanall: clean go-deps-clean
 	$(MAKE) -C cvl cleanall
-	$(RMDIR) vendor
 

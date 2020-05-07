@@ -34,10 +34,24 @@ var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     var err error
     var  valLst [2]string
     var data  []byte
+    var mapData map[string]interface{}
+
+    err = json.Unmarshal(body, &mapData)
+
+    input, _ := mapData["sonic-fdb:input"]
+    mapData = input.(map[string]interface{})
 
     valLst[0]= "ALL"
     valLst[1] = "ALL"
 
+    if value, ok := mapData["VLAN"].(string) ; ok {
+        valLst[0]= "VLAN"
+        valLst[1] = value
+    }
+    if value, ok := mapData["PORT"].(string) ; ok {
+        valLst[0]= "PORT"
+        valLst[1] = value
+    }
     data, err = json.Marshal(valLst)
 
     if err != nil {
