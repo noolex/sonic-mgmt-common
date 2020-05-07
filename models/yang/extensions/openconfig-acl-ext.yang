@@ -72,6 +72,24 @@ module openconfig-acl-ext {
         uses transport-fields-ext-config;
     }
 
+    grouping acl-config-ext {
+        description
+            "Global configuration data for ACLs";
+
+        leaf counter-capability {
+            description
+                "System reported indication of how ACL counters are reported by the target";
+
+            type identityref {
+                base oc-acl:ACL_COUNTER_CAPABILITY;
+            }
+        }
+    }
+
+    augment /oc-acl:acl/oc-acl:config {
+        uses acl-config-ext;
+    }
+
     typedef ip-protocol-type-ext {
         type union {
             type uint8;
