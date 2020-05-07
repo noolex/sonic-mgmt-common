@@ -3277,6 +3277,14 @@ module openconfig-network-instance-annot {
     }
   }
 
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+             "/oc-ospfv2-ext:passive-interfaces/oc-ospfv2-ext:passive-interface" +
+             "/oc-ospfv2-ext:config/oc-ospfv2-ext:address" {
+    deviate add {
+      sonic-ext:field-transformer  "ospfv2_router_passive_interface_address_fld_xfmr";
+    }
+  }
 
   /*-------- OSPFV2_ROUTER_AREA --------*/
 

@@ -63,6 +63,8 @@ func init () {
     XlateFuncBind("DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr", DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr)
     XlateFuncBind("YangToDb_ospfv2_router_passive_interface_name_fld_xfmr", YangToDb_ospfv2_router_passive_interface_name_fld_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_passive_interface_name_fld_xfmr", DbToYang_ospfv2_router_passive_interface_name_fld_xfmr)
+    XlateFuncBind("YangToDb_ospfv2_router_passive_interface_address_fld_xfmr", YangToDb_ospfv2_router_passive_interface_address_fld_xfmr)
+    XlateFuncBind("DbToYang_ospfv2_router_passive_interface_address_fld_xfmr", DbToYang_ospfv2_router_passive_interface_address_fld_xfmr)
 
     XlateFuncBind("YangToDb_ospfv2_interface_tbl_key_xfmr", YangToDb_ospfv2_interface_tbl_key_xfmr)
     XlateFuncBind("DbToYang_ospfv2_interface_tbl_key_xfmr", DbToYang_ospfv2_interface_tbl_key_xfmr)
@@ -498,8 +500,6 @@ var DbToYang_ospfv2_router_area_network_tbl_key_xfmr KeyXfmrDbToYang = func(inPa
     netowrkTableKeys := strings.Split(entry_key, "|")
 
     if len(netowrkTableKeys) >= 3 {
-       //res_map["name"] = netowrkTableKeys[0]
-       //res_map["identifier#2"] = netowrkTableKeys[1]
        res_map["address-prefix"] = netowrkTableKeys[2]
     }
 
@@ -885,8 +885,9 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
     ospfv2Identifier      := pathInfo.Var("identifier")
     ospfv2InstanceNumber  := pathInfo.Var("name#2")
     passiveIfName  := pathInfo.Var("name#3")
+    passiveIfAddress := pathInfo.Var("address")
 
-    if len(pathInfo.Vars) <  4 {
+    if len(pathInfo.Vars) < 5 {
         err = errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))
         return ospfv2VrfName, err
@@ -911,21 +912,33 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
     }
 
     if len(passiveIfName) == 0 {
-        err = errors.New("OSPF Route Distriburion protocol name is missing")
+        err = errors.New("OSPF passive interface name is missing")
+        log.Info("OSPF Route Distriburion protocol name Missing")
+        return "", nil
+    }
+
+    if len(passiveIfAddress) == 0 {
+        err = errors.New("OSPF passive interface address is missing")
         log.Info("OSPF Route Distriburion protocol name Missing")
         return "", nil
     }
 
     log.Info("URI VRF ", ospfv2VrfName)
     log.Info("URI route distribution passiveIfName ", passiveIfName)
+    log.Info("URI route distribution passiveIfAddress ", passiveIfAddress)
 
     tempkey1 := strings.Split(passiveIfName, ":")
     if len(tempkey1) > 1 {
         passiveIfName = tempkey1[1]
     }
 
+    tempkey1 = strings.Split(passiveIfAddress, ":")
+    if len(tempkey1) > 1 {
+        passiveIfAddress = tempkey1[1]
+    }
+
     var passiveIfTableKey string
-    passiveIfTableKey = ospfv2VrfName + "|" + passiveIfName 
+    passiveIfTableKey = ospfv2VrfName + "|" + passiveIfName  + "|" + passiveIfAddress
 
     log.Info("YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr: passiveIfTableKey - ", passiveIfTableKey)
     return passiveIfTableKey, nil
@@ -938,9 +951,9 @@ var DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrDbToYang = func
 
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
-    if len(passiveIfTableKeys) >= 2 {
-        res_map["name"] = passiveIfTableKeys[0]
-        res_map["name#2"] = passiveIfTableKeys[1]
+    if len(passiveIfTableKeys) >= 3 {
+        res_map["name"] = passiveIfTableKeys[1]
+        res_map["address"] = passiveIfTableKeys[2]
     }
 
     log.Info("DbToYang_ospfv2_router_passive_interface_tbl_key: res_map - ", res_map)
@@ -963,11 +976,34 @@ var DbToYang_ospfv2_router_passive_interface_name_fld_xfmr FieldXfmrDbtoYang = f
     entry_key := inParams.key
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
-    if len(passiveIfTableKeys) >= 2 {
-        res_map["name#2"] = passiveIfTableKeys[1]
+    if len(passiveIfTableKeys) >= 3 {
+        res_map["name"] = passiveIfTableKeys[1]
     }
     return res_map, err
 }
+
+var YangToDb_ospfv2_router_passive_interface_address_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_ospfv2_router_passive_interface_address_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    var err error
+    res_map := make(map[string]interface{})
+
+    entry_key := inParams.key
+    passiveIfTableKeys := strings.Split(entry_key, "|")
+
+    if len(passiveIfTableKeys) >= 3 {
+        res_map["address"] = passiveIfTableKeys[2]
+    }
+    return res_map, err
+}
+
 
 var YangToDb_ospfv2_interface_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
