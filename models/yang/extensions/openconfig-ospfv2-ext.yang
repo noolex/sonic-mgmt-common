@@ -186,6 +186,12 @@ module openconfig-ospfv2-ext {
       "STANDARD ABR Type";
   }
 
+  identity SHORTCUT {
+    base "OSPF_ABR_TYPE";
+    description
+      "SHORTCUT ABR Type";
+  }
+
   identity OSPF_LOG_TYPE {
     description
       "OSPF Metric Types";
@@ -379,14 +385,12 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "OSPF RFC1538 comaptible";
-      default false;
     }
 
     leaf passive-interface-default {
       type boolean;
       description
         "OSPF configuration for default passive interface";
-      default false;
     }
   }
 
@@ -488,7 +492,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "OSPF Max-metric is administrative configuration";
-      default false;
     }
   
     leaf on-startup {
@@ -595,7 +598,7 @@ module openconfig-ospfv2-ext {
         type identityref {
           base "OSPF_AUTHENTICATION_TYPE";
         }
-        default AUTH_NONE;
+       
         description
            "OSPF autentication type";
       }  
@@ -696,7 +699,6 @@ module openconfig-ospfv2-ext {
       type identityref {
         base "OSPF_AUTHENTICATION_TYPE";
       }
-      default AUTH_NONE;
       description
          "OSPF autentication type";
     } 
@@ -1004,7 +1006,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "Advertise or no-adverise configuration for prefix";
-      default true;
     }
 
     leaf metric {
@@ -1017,7 +1018,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "Substitute Address prefix for the OSPF address";
-      default false;
     }
 
     leaf substitue-prefix {
@@ -1318,7 +1318,6 @@ module openconfig-ospfv2-ext {
       }
       description
         "Access-list name for filter prefixes";
-      default EXPORT;
     }
 
     leaf description {
@@ -1333,7 +1332,6 @@ module openconfig-ospfv2-ext {
       type uint32;
       description
         "OSPFv2 instance id for route distribution";
-      default 0;
     }
 
     leaf always {
@@ -1341,7 +1339,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
          "Always distribute default route";
-      default false;
     }
 
     leaf metric {
@@ -1349,7 +1346,6 @@ module openconfig-ospfv2-ext {
       type ospf-cost-metric;
       description
         "OSPFv2 metric for route distribution";
-      default 0;
     }
 
     leaf metric-type {
@@ -1359,7 +1355,6 @@ module openconfig-ospfv2-ext {
       }
       description
         "OSPF metrics type for route distribution";
-      default TYPE_1;
     }
 
     leaf route-map {
@@ -1981,7 +1976,6 @@ module openconfig-ospfv2-ext {
       description
         "Set number of seconds for InfTransDelay value. LSAs' age
          should be incremented by this value while transmitting";
-      default 1;
     }
   }
 
