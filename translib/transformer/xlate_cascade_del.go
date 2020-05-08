@@ -135,15 +135,8 @@ func handleCascadeDelete(d *db.DB, dbDataMap map[int]map[db.DBNum]map[string]map
                                                 }
 
                                                 dbDataMap[DELETE][db.ConfigDB][depEntkeyList[0]][depEntkeyList[1]] = val
-                                            } else {
-                                                var data db.Value
-                                                data.Field[depEntAttr] = ""
-                                                dbDataMap[DELETE][db.ConfigDB][depEntkeyList[0]][depEntkeyList[1]] = data
                                             }
                                         }
-                                    } else {
-                                        var data db.Value
-                                        dbDataMap[DELETE][db.ConfigDB][depEntkeyList[0]][depEntkeyList[1]] = data
                                     }
                                 }
                             }

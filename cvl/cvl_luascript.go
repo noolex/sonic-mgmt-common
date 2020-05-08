@@ -60,7 +60,8 @@ func loadLuaScript(luaScripts map[string]*redis.Script) {
 		while(entries[idx] ~= nil)
 		do
 			local val = redis.call("HGET", entries[idx], fieldName)
-			if (val == fieldValue) 
+            local valArrFld = redis.call("HGET", entries[idx], fieldName.."@")
+            if ((val == fieldValue) or (valArrFld == fieldValue))
 			then
 				-- Return the key
 				return entries[idx]
