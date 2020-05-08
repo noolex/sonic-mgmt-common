@@ -38,8 +38,25 @@ func init () {
     XlateFuncBind("YangToDb_server_name_xfmr", YangToDb_server_name_xfmr)
     XlateFuncBind("YangToDb_auth_method_xfmr", YangToDb_auth_method_xfmr)
     XlateFuncBind("DbToYang_auth_method_xfmr", DbToYang_auth_method_xfmr)
-	XlateFuncBind("YangToDb_ssh_server_vrf_name", YangToDb_ssh_server_vrf_name)
-	XlateFuncBind("DbToYang_ssh_server_vrf_name", DbToYang_ssh_server_vrf_name)
+    XlateFuncBind("YangToDb_ssh_server_vrf_name", YangToDb_ssh_server_vrf_name)
+    XlateFuncBind("DbToYang_ssh_server_vrf_name", DbToYang_ssh_server_vrf_name)
+}
+
+// authMethodFind takes a slice and looks for an element in it. If found it will
+// return True, otherwise False
+func authMethodFind(val string) (bool) {
+    methods := [3]string{
+       "local",
+       "tacacs+",
+       "radius",
+    }
+
+    for _, item := range methods {
+        if item == val {
+            return true
+        }
+    }
+    return false
 }
 
 var YangToDb_auth_method_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -49,11 +66,17 @@ var YangToDb_auth_method_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map
     }
 
     var db_auth_method string
+    res_map :=  make(map[string]string)
 
     auth_method, _ := inParams.param.([]ocbinds.OpenconfigSystem_System_Aaa_Authentication_Config_AuthenticationMethod_Union)
     for _, method := range auth_method {
         v := (method).(*ocbinds.OpenconfigSystem_System_Aaa_Authentication_Config_AuthenticationMethod_Union_String)
         log.Info("YangToDb_auth_method_xfmr: method - ", v.String)
+
+        if !authMethodFind(v.String) {
+            err := errors.New("Invalid login method")
+            return res_map, err
+        }
 
         if (len(db_auth_method) == 0) {
             db_auth_method = v.String
@@ -63,7 +86,6 @@ var YangToDb_auth_method_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map
     }
 
     log.Info( "YangToDb_auth_method_xfmr: auth-method: ", db_auth_method)
-    res_map :=  make(map[string]string)
     res_map["login"] = db_auth_method 
     return res_map, nil
 }
