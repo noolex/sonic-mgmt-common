@@ -457,20 +457,20 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     log.Info("YangToDb_intf_tbl_key_xfmr: pathInfo ", pathInfo)
 
     ifName := pathInfo.Var("name")
-
-    log.Info("Intf name: ", ifName)
-    intfType, _, ierr := getIntfTypeByName(ifName)
-    if ierr != nil {
-        log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
-        return "", tlerr.New (ierr.Error())
+    if ifName != "" {
+        log.Info("Intf name: ", ifName)
+        intfType, _, ierr := getIntfTypeByName(ifName)
+        if ierr != nil {
+            log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
+            return "", tlerr.New (ierr.Error())
+        }
+        requestUriPath, err := getYangPathFromUri(inParams.requestUri)
+        log.Info("inParams.requestUri: ", requestUriPath)
+        err = performIfNameKeyXfmrOp(&inParams, &requestUriPath, &ifName, intfType)
+        if err != nil {
+            return "", tlerr.InvalidArgsError{Format: err.Error()}
+        }
     }
-    requestUriPath, err := getYangPathFromUri(inParams.requestUri)
-    log.Info("inParams.requestUri: ", requestUriPath)
-    err = performIfNameKeyXfmrOp(&inParams, &requestUriPath, &ifName, intfType)
-    if err != nil {
-        return "", tlerr.InvalidArgsError{Format: err.Error()}
-    }
-
     log.Info("YangToDb_intf_tbl_key_xfmr: ifName ", ifName)
     return ifName, err
 }
@@ -2548,7 +2548,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
             // Delete all the Vlans for Interface and member port removal from port-channel
             lagId, err := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
             if lagId != nil {
-                log.Infof("Interface: %s is part of port-channel: %s", ifName, *lagId)
+                log.Infof("%s is member of %s", ifName, *lagId)
             }
             if err != nil {
                 errStr := "Retrieveing PortChannel associated with Interface: " + ifName + " failed!"
@@ -2584,6 +2584,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
         switch inParams.oper {
             case CREATE:
+            case REPLACE:
+                fallthrough
             case UPDATE:
                 log.Info("Add member port")
                 lagId := intfObj.Ethernet.Config.AggregateId
@@ -2601,10 +2603,11 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 if err != nil {
                     return nil, err
                 }
-                /* Check if given iface already part of a PortChannel */
-                err = validateIntfAssociatedWithPortChannel(inParams.d, &ifName)
-                if err != nil {
-                    return nil, err
+                /* Check if given iface already part of another PortChannel */
+                intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
+                if intf_lagId != nil && *intf_lagId != lagStr {
+                    errStr := ifName + " already member of "+ *intf_lagId
+                    return nil, tlerr.InvalidArgsError{Format: errStr}
                 }
                 /* Restrict configuring member-port if iface configured as member-port of any vlan */
                 err = validateIntfAssociatedWithVlan(inParams.d, &ifName)
@@ -2620,7 +2623,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
             case DELETE:
                 lagId, err := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
                 if lagId != nil {
-                    log.Infof("Interface: %s is part of port-channel: %s", ifName, *lagId)
+                    log.Infof("%s is member of %s", ifName, *lagId)
                 }
                 if lagId == nil || err != nil {
                     errStr := "Retrieveing PortChannel associated with Interface: " + ifName + " failed!"
