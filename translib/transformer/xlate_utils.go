@@ -1061,29 +1061,19 @@ func hasKeyValueXfmr(tblName string) bool {
 	return false
 }
 
-func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey string, inKeyValList []string) (string, []string, error) {
+func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey string) (string, error) {
 	var err error
 	var keyValList []string
 
-	xfmrLogInfoAll("dbKeyValueXfmrHandler: oper(%v), db(%v), tbl(%v), dbKey(%v), inKeyl(%v)",
-	oper, dbNum, tblName, dbKey, inKeyValList)
-
+    xfmrLogInfoAll("dbKeyValueXfmrHandler: oper(%v), db(%v), tbl(%v), dbKey(%v)",
+    oper, dbNum, tblName, dbKey)
 	if specTblInfo, ok := xDbSpecMap[tblName]; ok {
 		for _, lname := range specTblInfo.listName {
 			listXpath := tblName + "/" + lname
 			keyMap    := make(map[string]interface{})
 
 			if specListInfo, ok := xDbSpecMap[listXpath]; ok && len(specListInfo.keyList) > 0 {
-				if len(dbKey) > 0 {
-					sonicKeyDataAdd(dbNum, specListInfo.keyList, tblName, dbKey, keyMap)
-				} else {
-					if len(specListInfo.keyList) != len(inKeyValList) {
-						continue
-					}
-					for id, kname := range(specListInfo.keyList) {
-						keyMap[kname] = inKeyValList[id]
-					}
-				}
+				sonicKeyDataAdd(dbNum, specListInfo.keyList, tblName, dbKey, keyMap)
 
 				if len(keyMap) == len(specListInfo.keyList) {
 					for _, kname := range specListInfo.keyList {
@@ -1095,7 +1085,7 @@ func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey strin
 							if err != nil {
 								log.Errorf("Failed in value-xfmr: keypath(\"%v\") value (\"%v\"):err(%v).",
 								keyXpath, curKeyVal, err)
-								return "", keyValList, err
+								return "", err
 							}
 						}
 						keyValList = append(keyValList, curKeyVal)
@@ -1107,9 +1097,10 @@ func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey strin
 
 	dbOpts := getDBOptions(dbNum)
 	retKey := strings.Join(keyValList, dbOpts.KeySeparator)
-	xfmrLogInfoAll("dbKeyValueXfmrHandler: tbl(%v), dbKey(%v), inKeyl(%v), retKey(%v), keyValList(%v)",
-	tblName, dbKey, inKeyValList, retKey, keyValList)
-	return retKey, keyValList, nil
+    xfmrLogInfoAll("dbKeyValueXfmrHandler: tbl(%v), dbKey(%v), retKey(%v), keyValList(%v)",
+    tblName, dbKey, retKey, keyValList)
+
+	return retKey, nil
 }
 
 func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.Value) error {
@@ -1142,8 +1133,7 @@ func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.V
 
 								/* split tblkey and invoke value-xfmr if present */
 								if hasKeyValueXfmr(tblName) == true {
-									var el []string
-									retKey, _, err := dbKeyValueXfmrHandler(oper, dbNum, tblName, dbKey, el)
+									retKey, err := dbKeyValueXfmrHandler(oper, dbNum, tblName, dbKey)
 									if err != nil {
 										return err
 									}
