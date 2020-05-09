@@ -627,7 +627,9 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
     var err error
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+
+    ifName := *utils.GetInterfaceNameFromAlias(&uriIfName)
 
 	if strings.HasPrefix(ifName, VXLAN) == true {
 		res_map["NULL"] = "NULL"
