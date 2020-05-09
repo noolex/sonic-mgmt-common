@@ -363,6 +363,8 @@ func yangToDbMapBuild(entries map[string]*yang.Entry) {
 }
 
 func dbSpecXpathGet(inPath string) (string, error){
+	/* This api currently handles only cointainer inside a list for sonic-yang.
+	   Should be enhanced to support nested list in future. */
 	var err error
 	specPath   := ""
 

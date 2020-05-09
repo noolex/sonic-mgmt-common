@@ -135,14 +135,6 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 	if spec.Key.Len() > 0 {
 		// get an entry with a specific key
 		if spec.Ts.Name != XFMR_NONE_STRING { // Do not traverse for NONE table
-			if tblSpecInfo, ok := xDbSpecMap[spec.Ts.Name]; ok && tblSpecInfo.hasXfmrFn == true {
-				/* key from uri should be converted into redis-db key, to read data */
-				_, spec.Key.Comp, err = dbKeyValueXfmrHandler(CREATE, spec.DbNum, spec.Ts.Name, "", spec.Key.Comp)
-				if err != nil {
-					return err
-				}
-			}
-
 			data, err := dbs[spec.DbNum].GetEntry(&spec.Ts, spec.Key)
 			if err != nil {
 				log.Warningf("Failed to get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
@@ -197,6 +189,15 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 	if isSonicYang(uri) {
 		/* Extract the xpath and key from input xpath */
 		xpath, keyStr, tableName := sonicXpathKeyExtract(uri)
+		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && tblSpecInfo.hasXfmrFn == true {
+			/* key from uri should be converted into redis-db key, to read data */
+			keyStr, err = dbKeyValueXfmrHandler(CREATE, tblSpecInfo.dbIndex, tableName, keyStr)
+			if err != nil {
+				log.Errorf("Value-xfmr for table(%v) & key(%v) failed.", tableName, keyStr)
+				return &retdbFormat, err
+			}
+		}
+
 		retdbFormat = fillSonicKeySpec(xpath, tableName, keyStr)
 	} else {
 		/* Extract the xpath and key from input xpath */
@@ -208,6 +209,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 }
 
 func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]KeySpec){
+	var err error
 	if xYangSpecMap == nil {
 		return *retdbFormat
 	}
@@ -224,6 +226,13 @@ func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]K
 				dbFormat.IgnoreParentKey = false
 			}
 			if keyStr != "" {
+				if tblSpecInfo, ok := xDbSpecMap[dbFormat.Ts.Name]; ok && tblSpecInfo.hasXfmrFn == true {
+					/* key from uri should be converted into redis-db key, to read data */
+					keyStr, err = dbKeyValueXfmrHandler(CREATE, dbFormat.DbNum, dbFormat.Ts.Name, keyStr)
+					if err != nil {
+						log.Errorf("Value-xfmr for table(%v) & key(%v) failed.", dbFormat.Ts.Name, keyStr)
+					}
+				}
 				dbFormat.Key.Comp = append(dbFormat.Key.Comp, keyStr)
 			}
 			for _, child := range xpathInfo.childTable {
