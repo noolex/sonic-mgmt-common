@@ -163,6 +163,12 @@ module openconfig-ospfv2-ext {
       "OSPF router is an Internal Router";
   }
 
+  identity ABRASBR {
+    base "OSPF_ROUTER_TYPE";
+    description
+      "OSPF router is an ABR and ASBR";
+  }
+
   identity OSPF_ABR_TYPE {
     description
       "OSPF ABR type";
@@ -1587,16 +1593,12 @@ module openconfig-ospfv2-ext {
         "Inter area route";
     }
 
-    leaf router-type-abr {
-      type boolean;
+    leaf router-type {
+      type identityref {
+         base "OSPF_ROUTER_TYPE";
+      }
       description
-        "Router type is ABR";
-    } 
-
-    leaf router-type-asbr {
-      type boolean;
-      description
-        "Router type is ASBR";
+        "OSPF Router Type (ABR, ASBR etc)";
     } 
 
     list next-hops {
@@ -2106,17 +2108,24 @@ module openconfig-ospfv2-ext {
         "OSPFv2 neighborship options";
     }
 
-    leaf database-summary-queue-length {
+    leaf retransmit-summary-queue-length {
       type uint32;
       description
         "The number of LSAs that are currently in the queue to be
         retransmitted to the neighbor";
     }
 
+    leaf database-summary-queue-length {
+      type uint32;
+      description
+        "The number of DB summary LSAs that are currently in the queue to be
+        retransmitted to the neighbor";
+    }
+
     leaf link-state-request-queue-length {
       type uint32;
       description
-        "The number of LSAs that are currently in the queue to be
+        "The number of LSA requests that are currently in the queue to be
         retransmitted to the neighbor";
     }
 
