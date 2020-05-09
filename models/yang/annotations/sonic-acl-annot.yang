@@ -1,0 +1,14 @@
+module sonic-acl-annot {
+    namespace "http://github.com/Azure/sonic-acl-annot";
+    prefix sacl-annot;
+    yang-version 1.1;
+
+    import sonic-acl { prefix sacl; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sacl:clear-acl-counters {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_clear_acl_counters";
+        }
+    }
+}
