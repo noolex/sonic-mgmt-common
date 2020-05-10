@@ -40,6 +40,8 @@ func init () {
     XlateFuncBind("DbToYang_auth_method_xfmr", DbToYang_auth_method_xfmr)
 	XlateFuncBind("YangToDb_ssh_server_vrf_name", YangToDb_ssh_server_vrf_name)
 	XlateFuncBind("DbToYang_ssh_server_vrf_name", DbToYang_ssh_server_vrf_name)
+	XlateFuncBind("YangToDb_syslog_server_ip_fld_xfmr", YangToDb_syslog_server_ip_fld_xfmr)
+	XlateFuncBind("DbToYang_syslog_server_ip_fld_xfmr", DbToYang_syslog_server_ip_fld_xfmr)
 }
 
 var YangToDb_auth_method_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -156,6 +158,19 @@ func DbToYang_ssh_server_vrf_name(inParams XfmrParams) (map[string]interface{}, 
 	result := make(map[string]interface{})
     if len((*inParams.dbDataMap)[inParams.curDb]) > 0{
 	    result["vrf-name"] = inParams.key
+    }
+	return result, nil
+}
+
+func YangToDb_syslog_server_ip_fld_xfmr(inParams XfmrParams) (map[string]string, error) {
+	return make(map[string]string), nil
+}
+
+func DbToYang_syslog_server_ip_fld_xfmr(inParams XfmrParams) (map[string]interface{}, error) {
+	log.V(1).Infof("DbToYang_syslog_server_ip_fld_xfmr: key=\"%s\"", inParams.key)
+	result := make(map[string]interface{})
+    if len((*inParams.dbDataMap)[inParams.curDb]) > 0{
+	    result["host"] = inParams.key
     }
 	return result, nil
 }

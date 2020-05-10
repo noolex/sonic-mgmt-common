@@ -1,3 +1,16 @@
-usr/sbin/schema
-usr/sbin/cvl_cfg.json
-usr/models/yang
+# Yang models
+models/yang/*.yang                  usr/models/yang
+models/yang/common/*.yang           usr/models/yang
+models/yang/extensions/*.yang       usr/models/yang
+models/yang/sonic/*.yang            usr/models/yang
+models/yang/sonic/common/*.yang     usr/models/yang
+models/yang/annotations/*.yang      usr/models/yang
+config/transformer/models_list      usr/models/yang
+config/transformer/sonic_table_info.json    usr/models/yang
+build/yang/api_ignore               usr/models/yang
+models/yang/version.xml             usr/models/yang
+
+# CVL files
+build/cvl/schema        usr/sbin
+cvl/conf/cvl_cfg.json   usr/sbin
+

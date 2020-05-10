@@ -418,6 +418,7 @@ func getSysEepromFromFile (eeprom *ocbinds.OpenconfigPlatform_Components_Compone
             eeprom.SerialNo = &jsoneeprom.Serial_Number
         }
         if jsoneeprom.Base_MAC_Address != "" {
+            eeprom.BaseMacAddr = &jsoneeprom.Base_MAC_Address
         }
         if jsoneeprom.Manufacture_Date != "" {
             mfg_date := jsoneeprom.Manufacture_Date[6:10] + "-" +
@@ -524,6 +525,11 @@ func getSysEepromFromFile (eeprom *ocbinds.OpenconfigPlatform_Components_Compone
                 versionString := getSoftwareVersion()
                 eeprom.SoftwareVersion = &versionString
             }
+        case "/openconfig-platform:components/component/state/base-mac-addr":
+            if jsoneeprom.Base_MAC_Address != "" {
+                eeprom.BaseMacAddr = &jsoneeprom.Base_MAC_Address
+            }
+
         }
     }
     return nil

@@ -1478,7 +1478,7 @@ module openconfig-ospfv2-ext {
         "Configuration and state parameters relating passive interfaces";
 
       list passive-interface {
-        key "name";
+        key "name address";
 
         description
           "Configuration and state parameters relating passive interfaces";
@@ -1489,6 +1489,14 @@ module openconfig-ospfv2-ext {
           }
           description
             "Reference to the passive interface";
+        }
+
+        leaf address {
+          type leafref {
+            path "../config/address";
+          }
+          description
+            "Reference to the passive interface Ip address";
         }
 
         container config {
@@ -1672,6 +1680,12 @@ module openconfig-ospfv2-ext {
         "The Interface address";
     }
 
+    leaf dead-interval-minimal {
+      type boolean;
+      description
+         "OSPF interface dead-interval type minimal configuration.";
+    }
+
     leaf hello-multiplier {
       type uint32 {
         range 1..10;
@@ -1743,12 +1757,6 @@ module openconfig-ospfv2-ext {
       type uint32;
       description
         "Interface index";
-    }
-
-    leaf vrf {
-      type string ;
-      description
-        "Virtual Routing Domain name";
     }
 
     leaf bandwidth {

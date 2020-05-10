@@ -362,4 +362,26 @@ module openconfig-system-annot {
             sonic-ext:field-transformer "ssh_server_vrf_name";
       }
     }
+
+/******************************************************/
+
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server {
+      deviate add {
+        sonic-ext:table-name "SYSLOG_SERVER";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:config/oc-sys:host {
+      deviate add {
+          sonic-ext:field-name "ipaddress";
+          sonic-ext:field-transformer "syslog_server_ip_fld_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:state/oc-sys:host {
+      deviate add {
+          sonic-ext:field-name "ipaddress";
+          sonic-ext:field-transformer "syslog_server_ip_fld_xfmr";
+      }
+    }
 }
