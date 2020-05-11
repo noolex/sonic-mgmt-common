@@ -876,7 +876,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 				 }
 				 chompFld := pathelem.Element
 
-				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX], "/")
+				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX-1], "/")
 				 xfmrLogInfoAll("path after removing the field portion %v", lpath)
 
 			 }
