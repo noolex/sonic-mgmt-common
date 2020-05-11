@@ -1447,7 +1447,12 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 
 		//Find in request hash-field, case - T2*|K2:{H1: K1}
 		val, exists := cfgDataItem.Data[leafRef.field]
-		if (exists == true) && (val == keyVal) {
+		if exists == false {
+			// Leaf-lists field names are suffixed by "@".
+			val, exists = cfgDataItem.Data[leafRef.field+"@"]
+		}
+		// For delete cases, val sent is empty.
+		if (exists == true) && ((val == keyVal) || (val == "")) {
 			return true
 		}
 	}

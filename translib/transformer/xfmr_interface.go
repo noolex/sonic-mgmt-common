@@ -26,6 +26,7 @@ import (
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
 
+/* input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer */
 type XfmrParams struct {
 	d *db.DB
 	dbs [db.MaxDB]*db.DB
@@ -70,6 +71,16 @@ type XfmrSubscOutParams struct {
     needCache bool
     onChange bool
     nOpts *notificationOpts  //these can be set regardless of error 
+}
+
+/* input parameters for value-transformer */
+type XfmrDbParams struct {
+	oper           int
+	dbNum          db.DBNum
+	tableName      string
+	key            string
+	fieldName      string
+	value          string
 }
 
 /**
@@ -150,6 +161,14 @@ type PostXfmrFunc func (inParams XfmrParams) (map[string]map[string]db.Value, er
  * Return: List of table names, error
  **/
 type TableXfmrFunc func (inParams XfmrParams) ([]string, error)
+
+/**
+ * ValueXfmrFunc type is defined to use for conversion of DB field value from one forma to another
+ * Transformer function definition.
+ * Param: XfmrDbParams structure having Database info, operation, db-number, table, key, field, value
+ * Return: value string, error
+ **/
+type ValueXfmrFunc func (inParams XfmrDbParams)  (string, error)
 
 
 /**

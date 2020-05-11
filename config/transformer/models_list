@@ -7,6 +7,7 @@ openconfig-interfaces.yang
 openconfig-if-ip.yang
 openconfig-if-ethernet.yang
 openconfig-if-ethernet-ext.yang
+openconfig-if-ethernet-ext2.yang
 openconfig-interfaces-annot.yang
 openconfig-ztp.yang
 openconfig-ztp-annot.yang
@@ -72,5 +73,6 @@ openconfig-relay-agent-annot.yang
 openconfig-relay-agent-ext.yang
 sonic-storm-control.yang
 openconfig-platform.yang
+openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang

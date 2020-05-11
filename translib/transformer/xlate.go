@@ -110,6 +110,37 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 }
 
 func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key) error {
+	var dataMap = make(RedisDbMap)
+
+	for i := db.ApplDB; i < db.MaxDB; i++ {
+		dataMap[i] = make(map[string]map[string]db.Value)
+	}
+
+	err := traverseDbHelper(dbs, spec, &dataMap, parentKey)
+	if err != nil {
+		log.Errorf("Failed to get data from traverseDbHelper")
+		return err
+	}
+	/* db data processing */
+	curMap := make(map[int]map[db.DBNum]map[string]map[string]db.Value)
+	curMap[GET] = dataMap
+	err = dbDataXfmrHandler(curMap)
+	if err != nil {
+		log.Errorf("Failed in dbdata-xfmr")
+		return err
+	}
+
+	for oper, dbData := range curMap {
+		if oper == GET {
+			for dbNum, tblData := range dbData {
+				mapCopy((*result)[dbNum], tblData)
+			}
+		}
+	}
+	return nil
+}
+
+func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key) error {
 	var err error
 	var dbOpts db.Options
 
@@ -121,7 +152,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 		if spec.Ts.Name != XFMR_NONE_STRING { // Do not traverse for NONE table
 			data, err := dbs[spec.DbNum].GetEntry(&spec.Ts, spec.Key)
 			if err != nil {
-				log.Warningf("Failed to get data for tbl(%v), key(%v) in TraverseDb", spec.Ts.Name, spec.Key)
+				log.Warningf("Failed to get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
 			}
 
@@ -133,7 +164,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 		}
 		if len(spec.Child) > 0 {
 			for _, ch := range spec.Child {
-				err = TraverseDb(dbs, ch, result, &spec.Key)
+				err = traverseDbHelper(dbs, ch, result, &spec.Key)
 			}
 		}
 	} else {
@@ -141,7 +172,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 		if spec.Ts.Name != XFMR_NONE_STRING { //Do not traverse for NONE table
 			keys, err := dbs[spec.DbNum].GetKeys(&spec.Ts)
 			if err != nil {
-				log.Warningf("Failed to get keys for tbl(%v) in TraverseDb", spec.Ts.Name)
+				log.Warningf("Failed to get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
 				return err
 			}
 			xfmrLogInfoAll("keys for table %v in Db %v are %v", spec.Ts.Name, spec.DbNum, keys)
@@ -153,11 +184,11 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 					}
 				}
 				spec.Key = keys[i]
-				err = TraverseDb(dbs, spec, result, parentKey)
+				err = traverseDbHelper(dbs, spec, result, parentKey)
 			}
 		} else if len(spec.Child) > 0 {
                         for _, ch := range spec.Child {
-                                err = TraverseDb(dbs, ch, result, &spec.Key)
+                                err = traverseDbHelper(dbs, ch, result, &spec.Key)
                         }
                 }
 	}
@@ -173,6 +204,15 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 	if isSonicYang(uri) {
 		/* Extract the xpath and key from input xpath */
 		xpath, keyStr, tableName := sonicXpathKeyExtract(uri)
+		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && tblSpecInfo.hasXfmrFn == true {
+			/* key from uri should be converted into redis-db key, to read data */
+			keyStr, err = dbKeyValueXfmrHandler(CREATE, tblSpecInfo.dbIndex, tableName, keyStr)
+			if err != nil {
+				log.Errorf("Value-xfmr for table(%v) & key(%v) failed.", tableName, keyStr)
+				return &retdbFormat, err
+			}
+		}
+
 		retdbFormat = fillSonicKeySpec(xpath, tableName, keyStr)
 	} else {
 		/* Extract the xpath and key from input xpath */
@@ -184,6 +224,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 }
 
 func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]KeySpec){
+	var err error
 	if xYangSpecMap == nil {
 		return *retdbFormat
 	}
@@ -200,6 +241,13 @@ func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]K
 				dbFormat.IgnoreParentKey = false
 			}
 			if keyStr != "" {
+				if tblSpecInfo, ok := xDbSpecMap[dbFormat.Ts.Name]; ok && tblSpecInfo.hasXfmrFn == true {
+					/* key from uri should be converted into redis-db key, to read data */
+					keyStr, err = dbKeyValueXfmrHandler(CREATE, dbFormat.DbNum, dbFormat.Ts.Name, keyStr)
+					if err != nil {
+						log.Errorf("Value-xfmr for table(%v) & key(%v) failed.", dbFormat.Ts.Name, keyStr)
+					}
+				}
 				dbFormat.Key.Comp = append(dbFormat.Key.Comp, keyStr)
 			}
 			for _, child := range xpathInfo.childTable {

@@ -1478,7 +1478,7 @@ module openconfig-ospfv2-ext {
         "Configuration and state parameters relating passive interfaces";
 
       list passive-interface {
-        key "name";
+        key "name address";
 
         description
           "Configuration and state parameters relating passive interfaces";
@@ -1489,6 +1489,14 @@ module openconfig-ospfv2-ext {
           }
           description
             "Reference to the passive interface";
+        }
+
+        leaf address {
+          type leafref {
+            path "../config/address";
+          }
+          description
+            "Reference to the passive interface Ip address";
         }
 
         container config {
@@ -1672,6 +1680,12 @@ module openconfig-ospfv2-ext {
         "The Interface address";
     }
 
+    leaf dead-interval-minimal {
+      type boolean;
+      description
+         "OSPF interface dead-interval type minimal configuration.";
+    }
+
     leaf hello-multiplier {
       type uint32 {
         range 1..10;
@@ -1743,12 +1757,6 @@ module openconfig-ospfv2-ext {
       type uint32;
       description
         "Interface index";
-    }
-
-    leaf vrf {
-      type string ;
-      description
-        "Virtual Routing Domain name";
     }
 
     leaf bandwidth {
@@ -2470,6 +2478,14 @@ module openconfig-ospfv2-ext {
             "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:router-lsa" +
             "/oc-netinst:state" {
     uses ospfv2-lsdb-router-lsa-state-ext;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+          "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+          "/oc-netinst:areas/oc-netinst:area/oc-netinst:config/oc-netinst:identifier" {
+    deviate replace {
+      type yang:dotted-quad;
+    }
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +

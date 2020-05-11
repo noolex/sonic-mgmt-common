@@ -628,7 +628,7 @@ module sonic-ospfv2 {
 
       list OSPFV2_ROUTER_PASSIVE_INTERFACE_LIST {
 
-        key "vrf_name name";
+        key "vrf_name name address";
 
         leaf vrf_name {
           type leafref {
@@ -757,6 +757,12 @@ module sonic-ospfv2 {
              "The number of seconds that the local system should let
              elapse before declaring a silent router down";
            default 40;
+         }
+
+         leaf dead-interval-minimal {
+           type boolean;
+           description
+              "OSPF interface dead-interval type minimal configuration.";
          }
 
          leaf hello-interval {

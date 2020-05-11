@@ -63,7 +63,13 @@ module openconfig-platform {
     (presence or absence of a component) and state (physical
     attributes or status).";
 
-  oc-ext:openconfig-version "0.12.2";
+  oc-ext:openconfig-version "0.12.3";
+
+  revision "2020-05-06" {
+    description
+      "Added new per-component state data: base-mac-addr";
+    reference "0.12.3";
+  }
 
   revision "2019-04-16" {
     description
@@ -424,6 +430,13 @@ module openconfig-platform {
         corresponding subcomponent reference from the parent
         component.";
     }
+
+    leaf base-mac-addr {
+      type oc-yang:mac-address;
+      description
+        "Base MAC address of the Ethernet interface.";
+    }
+
   }
 
   grouping platform-component-temp-alarm-state {

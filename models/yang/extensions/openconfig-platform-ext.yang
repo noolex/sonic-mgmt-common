@@ -127,4 +127,42 @@ module openconfig-platform-ext {
     augment /oc-pf:components/oc-pf:component/oc-pf:subcomponents/oc-pf:subcomponent/oc-pf:state {
         uses platform-extra-sensor-reading;
     }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:state {
+        leaf service-tag {
+            type string;
+            description "System service tag";
+        }
+
+        leaf base-mac-address {
+            type string;
+            description "Base MAC address";
+        }
+
+        leaf mac-addresses {
+            type int32;
+            description "Number of MAC addresses";
+        }
+
+        leaf onie-version {
+            type string;
+            description "ONIE version";
+        }
+
+        leaf manufacture-country {
+            type string;
+            description "Manufacture country";
+        }
+
+        leaf vendor-name {
+            type string;
+            description "Vendor name";
+        }
+
+        leaf diag-version {
+            type string;
+            description "Diag version";
+        }
+
+    }
 }

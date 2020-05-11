@@ -33,6 +33,10 @@ module sonic-extensions {
       "Add extensionis for redis DB mappings for table, table-keys, table-fields and corresponding transformer methods.";
   }
 
+  revision "2020-05-06" {
+    description
+      "Add extension for redis DB mappings for field values in redis table and corresponding transformer method.";
+  }
 
   // extension statements
   extension table-name {
@@ -120,6 +124,11 @@ module sonic-extensions {
   extension subscribe-min-interval {
     argument "subscribe-min-interval";
     description "Subscription sampling interval";
+  }
+
+  extension value-transformer {
+    argument "value-transformer-name";
+    description "Db table field/key value transformer name. This can be applied to transform yang value to some different format.";
   }
 
 }
