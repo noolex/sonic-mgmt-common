@@ -108,32 +108,8 @@ module ietf-ptp-annot {
 	deviation /ptp:ptp/ptp:instance-list/ptp:port-ds-list {
 		deviate add {
 			sonic-ext:table-name "PTP_PORT";
-			sonic-ext:key-transformer "ptp_port_entry_key_xfmr";
+			sonic-ext:subtree-transformer "ptp_port_ds_xfmr";
 			sonic-ext:db-name "STATE_DB";
-		}
-	}
-
-	deviation /ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:port-number {
-		deviate add {
-			sonic-ext:field-name "NONE";
-		}
-	}
-
-	deviation /ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:port-state {
-		deviate add {
-			sonic-ext:field-transformer "ptp_port_state_xfmr";
-		}
-	}
-
-	deviation /ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:delay-mechanism {
-		deviate add {
-			sonic-ext:field-transformer "ptp_delay_mech_xfmr";
-		}
-	}
-
-	deviation /ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp-ext:unicast-table {
-		deviate add {
-			sonic-ext:field-transformer "ptp_unicast_table_xfmr";
 		}
 	}
 

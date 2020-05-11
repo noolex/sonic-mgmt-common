@@ -20,10 +20,9 @@
 GO?=go
 SRC_FILES=$(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/tests/')
 TEST_FILES=$(wildcard *_test.go)
-TOP_DIR := $(abspath ..)
+TOP_DIR := ..
 GOFLAGS:=
 BUILD_DIR:=$(TOP_DIR)/build/cvl
-GO_DOWNLOAD_PATH:=$(BUILD_GOPATH)
 CVL_PKG=$(TOP_DIR)/build/pkg/linux_amd64/cvl.a
 
 CVL_TEST_DIR = $(TOP_DIR)/build/tests/cvl
@@ -40,7 +39,14 @@ ifdef DEBUG
 	GOFLAGS += -gcflags="all=-N -l"
 endif
 
-all: deps schema $(CVL_PKG) $(CVL_TEST_BIN)
+DEFAULT_TARGETS = deps schema
+ifeq ($(NO_TEST_BINS),)
+DEFAULT_TARGETS += $(CVL_TEST_BIN) test-schema
+endif
+
+default: $(DEFAULT_TARGETS)
+
+all: $(DEFAULT_TARGETS) $(CVL_PKG)
 
 deps: 
 	$(shell mkdir -p $(BUILD_DIR))
@@ -48,14 +54,15 @@ deps:
 	$(shell mkdir -p $(CVL_TEST_SCHEMA_DIR))
 	$(shell mkdir -p $(CVL_TEST_SCHEMA_DIR)/platform/quanta_ix8)
 
-$(CVL_PKG):schema test-schema
+$(CVL_PKG): $(SRC_FILES)
 	@echo "Building $@"
 	$(GO) build -mod=vendor $(GOFLAGS) -o $(CVL_PKG) ../cvl
 
-$(CVL_TEST_BIN): $(TEST_FILES) $(SRC_FILES) schema test-schema
+$(CVL_TEST_BIN): $(TEST_FILES) $(SRC_FILES)
 	cp -r testdata/*.json $(@D)/testdata
 	$(GO) test -mod=vendor -cover -coverpkg=../cvl,../cvl/internal/util,../cvl/internal/yparser -c ../cvl -o $@
 
+.PHONY: schema
 schema:deps
 	make -C schema
 

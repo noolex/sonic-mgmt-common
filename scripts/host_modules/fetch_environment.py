@@ -16,7 +16,6 @@ class FETCH_ENVIRONMENT(host_service.HostModule):
         try:
             rc = 0
             output = subprocess.check_output(cmd)
-            print('Output -> ', output)
 
         except subprocess.CalledProcessError as err:
             print ("Exception when calling get_sonic_error -> %s\n" %(err))
