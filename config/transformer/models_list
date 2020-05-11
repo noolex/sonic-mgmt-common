@@ -73,5 +73,6 @@ openconfig-relay-agent-annot.yang
 openconfig-relay-agent-ext.yang
 sonic-storm-control.yang
 openconfig-platform.yang
+openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
