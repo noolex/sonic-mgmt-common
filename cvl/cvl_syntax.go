@@ -101,7 +101,7 @@ func(c *CVL) addChildNode(tableName string, parent *yparser.YParserNode, name st
 	return c.yp.AddChildNode(modelInfo.tableInfo[tableName].module, parent, name)
 }
 
-func (c *CVL) addChildLeaf(config bool, tableName string, parent *yparser.YParserNode, name string, value string) {
+func (c *CVL) addChildLeaf(config bool, tableName string, parent *yparser.YParserNode, name string, value string, multileaf *[]*yparser.YParserLeafValue) {
 
 	/* If there is no value then assign default space string. */
 	if len(value) == 0 {
@@ -109,11 +109,12 @@ func (c *CVL) addChildLeaf(config bool, tableName string, parent *yparser.YParse
         }
 
 	//Batch leaf creation
-	c.batchLeaf = append(c.batchLeaf, &yparser.YParserLeafValue{Name: name, Value: value})
+	*multileaf = append(*multileaf, &yparser.YParserLeafValue{Name: name, Value: value})
 }
 
 func (c *CVL) generateTableFieldsData(config bool, tableName string, jsonNode *jsonquery.Node,
-parent *yparser.YParserNode) CVLRetCode {
+parent *yparser.YParserNode, multileaf *[]*yparser.YParserLeafValue) CVLErrorInfo {
+	var cvlErrObj CVLErrorInfo
 
 	//Traverse fields
 	for jsonFieldNode := jsonNode.FirstChild; jsonFieldNode!= nil;
@@ -124,16 +125,22 @@ parent *yparser.YParserNode) CVLRetCode {
 		jsonFieldNode.FirstChild.Type == jsonquery.TextNode) {
 
 			if (len(modelInfo.tableInfo[tableName].mapLeaf) == 2) {//mapping should have two leaf always
+				batchInnerListLeaf := make([]*yparser.YParserLeafValue, 0)
 				//Values should be stored inside another list as map table
 				listNode := c.addChildNode(tableName, parent, tableName) //Add the list to the top node
 				c.addChildLeaf(config, tableName,
 				listNode, modelInfo.tableInfo[tableName].mapLeaf[0],
-				jsonFieldNode.Data)
+				jsonFieldNode.Data, &batchInnerListLeaf)
 
 				c.addChildLeaf(config, tableName,
 				listNode, modelInfo.tableInfo[tableName].mapLeaf[1],
-				jsonFieldNode.FirstChild.Data)
+				jsonFieldNode.FirstChild.Data, &batchInnerListLeaf)
 
+				if errObj := c.yp.AddMultiLeafNodes(modelInfo.tableInfo[tableName].module, listNode, batchInnerListLeaf); errObj.ErrCode != yparser.YP_SUCCESS {
+					cvlErrObj = createCVLErrObj(errObj)
+					CVL_LOG(ERROR, "Failed to create innner list leaf nodes, data = %v", batchInnerListLeaf)
+					return cvlErrObj
+				}
 			} else {
 				//check if it is hash-ref, then need to add only key from "TABLE|k1"
 				hashRefMatch := reHashRef.FindStringSubmatch(jsonFieldNode.FirstChild.Data)
@@ -142,11 +149,11 @@ parent *yparser.YParserNode) CVLRetCode {
 
 					c.addChildLeaf(config, tableName,
 					parent, jsonFieldNode.Data,
-					hashRefMatch[2]) //take hashref key value
+					hashRefMatch[2], multileaf) //take hashref key value
 				} else {
 					c.addChildLeaf(config, tableName,
 					parent, jsonFieldNode.Data,
-					jsonFieldNode.FirstChild.Data)
+					jsonFieldNode.FirstChild.Data, multileaf)
 				}
 			}
 
@@ -159,12 +166,13 @@ parent *yparser.YParserNode) CVLRetCode {
 			arrayNode = arrayNode.NextSibling {
 				c.addChildLeaf(config, tableName,
 				parent, jsonFieldNode.Data,
-				arrayNode.FirstChild.Data)
+				arrayNode.FirstChild.Data, multileaf)
 			}
 		}
 	}
 
-	return CVL_SUCCESS
+	cvlErrObj.ErrCode = CVL_SUCCESS
+	return cvlErrObj
 }
 
 func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*yparser.YParserNode, CVLErrorInfo) {
@@ -230,11 +238,13 @@ func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*yparser.
 			for idx = 0; idx < keyCompCount; idx++ {
 				c.addChildLeaf(config, tableName,
 				listNode, keyValuePair[idx].key,
-				keyValuePair[idx].values[keyIndices[idx]])
+				keyValuePair[idx].values[keyIndices[idx]], &c.batchLeaf)
 			}
 
 			//Get all fields under the key field and add them as children of the list
-			c.generateTableFieldsData(config, tableName, jsonNode, listNode)
+			if fldDataErrObj := c.generateTableFieldsData(config, tableName, jsonNode, listNode, &c.batchLeaf); fldDataErrObj.ErrCode != CVL_SUCCESS {
+				return nil, fldDataErrObj
+			}
 
 			//Check which key elements left after current key element
 			var next int = keyCompCount - 1
