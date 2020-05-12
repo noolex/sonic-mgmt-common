@@ -171,7 +171,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
     fieldNameList := []string { "area-id", "authentication-type", "authentication-key", "authentication-key",
                                 "authentication-key-id", "authentication-md5-key", "bfd-enable", "dead-interval",
                                 "hello-interval", "hello-multiplier", "metric", "mtu-ignore", "network-type",
-                                "priority", "retransmission-interval", "transmit-delay" }
+                                "dead-interval-minimal", "priority", "retransmission-interval", "transmit-delay" }
 
     addDeletePresent :=false
 
@@ -286,8 +286,25 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                  if (ospfCfgObj.BfdEnable != nil) {
                      fieldName := "bfd-enable"
 
-                     dbVlaueStr := "true"
-                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db bgd field to ", dbVlaueStr)
+                     var dbVlaueBool bool = *(ospfCfgObj.BfdEnable)
+                     dbVlaueStr := "false"
+                     if (dbVlaueBool) {
+                         dbVlaueStr = "true"
+                     }
+                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db bfd field to ", dbVlaueStr)
+
+                     ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
+                     ospfIntfDbValue.Field[fieldName] = dbVlaueStr
+                 }
+                 if (ospfCfgObj.DeadIntervalMinimal != nil) {
+                     fieldName := "dead-interval-minimal"
+
+                     var dbVlaueBool bool = *(ospfCfgObj.DeadIntervalMinimal)
+                     dbVlaueStr := "false"
+                     if (dbVlaueBool) {
+                         dbVlaueStr = "true"
+                     }
+                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db minimal field to ", dbVlaueStr)
 
                      ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
                      ospfIntfDbValue.Field[fieldName] = dbVlaueStr
@@ -335,7 +352,11 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                  if (ospfCfgObj.MtuIgnore != nil) {
                      fieldName := "mtu-ignore"
 
-                     dbVlaueStr := "true"
+                     var dbVlaueBool bool = *(ospfCfgObj.MtuIgnore)
+                     dbVlaueStr := "false"
+                     if (dbVlaueBool) {
+                         dbVlaueStr = "true"
+                     }
                      log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db mtu ignore field to ", dbVlaueStr)
 
                      ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
@@ -550,7 +571,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
     fieldNameList := []string { "area-id", "authentication-type", "authentication-key", "authentication-key",
                                 "authentication-key-id", "authentication-md5-key", "bfd-enable", "dead-interval",
                                 "hello-interval", "hello-multiplier", "metric", "mtu-ignore", "network-type",
-                                "priority", "retransmission-interval", "transmit-delay" }
+                                "dead-interval-minimal", "priority", "retransmission-interval", "transmit-delay" }
 
     for _, intfTblKey := range intfTblKeys {
         keyIfName := intfTblKey.Get(0)
@@ -630,6 +651,14 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
                 ospfCfgObj.MtuIgnore = &enabled
             }
 
+            if (fieldName == "dead-interval-minimal") {
+                enabled := false
+                if fieldValue == "true" {
+                   enabled = true
+                }
+                ospfCfgObj.DeadIntervalMinimal = &enabled
+            }
+
             if len(fieldValue) == 0 {
                 continue
             }
@@ -676,6 +705,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
                 }
                 ospfCfgObj.Authentication.AuthenticationMd5Key = &fieldValue
             }
+
             if (fieldName == "dead-interval") {
                 if intVal, err3 := strconv.Atoi(fieldValue); err3 == nil {
                     fieldValueInt := uint32(intVal)

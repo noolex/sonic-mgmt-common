@@ -19,19 +19,115 @@
 package transformer
 
 import (
-    "encoding/json"
+    "bufio"
     "errors"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/openconfig/ygot/ygot"
     "os"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "io/ioutil"
-    "bufio"
+    "strconv"
     "strings"
     "syscall"
-    "strconv"
     log "github.com/golang/glog"
 )
+
+const (
+/** EEPROM type code
+ * https://opencomputeproject.github.io/onie/design-spec/hw_requirements.html
+ */
+   BASE_MAC_KEY     = "0x24"
+   CRC32_KEY        = "0xfe"
+   DEV_VER_KEY      = "0x26"
+   DIAG_VER_KEY     = "0x2e"
+   LABEL_REV_KEY    = "0x27"
+   MFT_CNT_KEY      = "0x2c"
+   MFT_DATE_KEY     = "0x25"
+   MFT_NAME_KEY     = "0x2b"
+   NUM_MAC_KEY      = "0x2a"
+   ONIE_VER_KEY     = "0x29"
+   PART_NUM_KEY     = "0x22"
+   PLAT_NAME_KEY    = "0x28"
+   PROD_NAME_KEY    = "0x21"
+   SERIAL_NUM_KEY   = "0x23"
+   SERV_TAG_KEY     = "0x2f"
+   VEND_EXT_KEY     = "0xfd"
+   VEND_NAME_KEY    = "0x2d"
+   /** END OF EEPROM type code **/
+
+   EEPROM_TBL       = "EEPROM_INFO"
+
+   /** Supported oc-platform component state URIs **/
+   COMP_STATE_DESCR           = "/openconfig-platform:components/component/state/description"
+   COMP_STATE_EMPTY           = "/openconfig-platform:components/component/state/empty"
+   COMP_STATE_HW_VER          = "/openconfig-platform:components/component/state/hardware-version"
+   COMP_STATE_ID              = "/openconfig-platform:components/component/state/id"
+   COMP_STATE_LOCATION        = "/openconfig-platform:components/component/state/location"
+   COMP_STATE_MFG_DATE        = "/openconfig-platform:components/component/state/mfg-date"
+   COMP_STATE_MFG_NAME        = "/openconfig-platform:components/component/state/mfg-name"
+   COMP_STATE_NAME            = "/openconfig-platform:components/component/state/name"
+   COMP_STATE_OPER_STATUS     = "/openconfig-platform:components/component/state/oper-status"
+   COMP_STATE_PART_NO         = "/openconfig-platform:components/component/state/part-no"
+   COMP_STATE_REMOVABLE       = "/openconfig-platform:components/component/state/removable"
+   COMP_STATE_SERIAL_NO       = "/openconfig-platform:components/component/state/serial-no"
+   COMP_STATE_SW_VER          = "/openconfig-platform:components/component/state/software-version"
+
+   /** Supported Software component URIs **/
+   SW_ASIC_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/asic-version"
+   SW_BUILD_COMMIT            = "/openconfig-platform:components/component/openconfig-platform-ext:software/build-commit"
+   SW_BUILD_DATE              = "/openconfig-platform:components/component/openconfig-platform-ext:software/build-date"
+   SW_BUILT_BY                = "/openconfig-platform:components/component/openconfig-platform-ext:software/built-by"
+   SW_COMP                    = "/openconfig-platform:components/component/openconfig-platform-ext:software"
+   SW_DIST_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/distribution-version"
+   SW_DOCKER_VER              = "/openconfig-platform:components/component/openconfig-platform-ext:software/docker-version"
+   SW_HWSKU_VER               = "/openconfig-platform:components/component/openconfig-platform-ext:software/hwsku-version"
+   SW_HW_VER                  = "/openconfig-platform:components/component/openconfig-platform-ext:software/hardware-version"
+   SW_KERN_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/kernel-version"
+   SW_MFG_NAME                = "/openconfig-platform:components/component/openconfig-platform-ext:software/mfg-name"
+   SW_PLAT_NAME               = "/openconfig-platform:components/component/openconfig-platform-ext:software/platform-name"
+   SW_PROD_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/product-version"
+   SW_SERIAL_NUM              = "/openconfig-platform:components/component/openconfig-platform-ext:software/serial-number"
+   SW_SW_VER                  = "/openconfig-platform:components/component/openconfig-platform-ext:software/software-version"
+   SW_UP_TIME                 = "/openconfig-platform:components/component/openconfig-platform-ext:software/up-time"
+
+   /** Supported System EEprom URIs **/
+   SYS_EEPROM_BASE_MAC        = "/openconfig-platform:components/component/state/openconfig-platform-ext:base-mac-address"
+   SYS_EEPROM_DIAG_VER        = "/openconfig-platform:components/component/state/openconfig-platform-ext:diag-version"
+   SYS_EEPROM_MAC_ADDRS       = "/openconfig-platform:components/component/state/openconfig-platform-ext:mac-addresses"
+   SYS_EEPROM_MFG_CNT         = "/openconfig-platform:components/component/state/openconfig-platform-ext:manufacture-country"
+   SYS_EEPROM_ONIE_VER        = "/openconfig-platform:components/component/state/openconfig-platform-ext:onie-version"
+   SYS_EEPROM_SERV_TAG        = "/openconfig-platform:components/component/state/openconfig-platform-ext:service-tag"
+   SYS_EEPROM_VENDOR_NAME     = "/openconfig-platform:components/component/state/openconfig-platform-ext:vendor-name"
+)
+
+/**
+Structure Eeprom read from stateDb
+*/
+
+type Eeprom  struct {
+    Product_Name        string
+    Part_Number         string
+    Serial_Number       string
+    Base_MAC_Address    string
+    Manufacture_Date    string
+    Device_Version      string
+    Label_Revision      string
+    Platform_Name       string
+    ONIE_Version        string
+    MAC_Addresses       int32
+    Manufacturer        string
+    Manufacture_Country string
+    Vendor_Name         string
+    Diag_Version        string
+    Service_Tag         string
+    Vendor_Extension    string
+    Magic_Number        int32
+    Card_Type           string
+    Hardware_Version    string
+    Software_Version    string
+    Model_Name          string
+
+}
 
 func init () {
     XlateFuncBind("DbToYang_pfm_components_xfmr", DbToYang_pfm_components_xfmr)
@@ -50,75 +146,9 @@ var DbToYang_pfm_components_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     if strings.Contains(inParams.requestUri, "/openconfig-platform:components") {
 	log.Info("inParams.Uri:",inParams.requestUri)
 	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-        return getSysEepromJson(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri)
+        return getSysComponents(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.StateDB])
     }
     return errors.New("Component not supported")
-}
-
-
-/**
-Map of openconfig attributes
-*/
-
-var ocAttr = map[string]string{
-    "SOFTWARE-COMPONENT"        :"/openconfig-platform:components/component/openconfig-platform-ext:software",
-    "SOFTWARE-VERSION"          :"/openconfig-platform:components/component/openconfig-platform-ext:software/software-version",
-    "PRODUCT-VERSION"           :"/openconfig-platform:components/component/openconfig-platform-ext:software/product-version",
-    "DISTRIBUTION-VERSION"      :"/openconfig-platform:components/component/openconfig-platform-ext:software/distribution-version",
-    "KERNEL-VERSION"            :"/openconfig-platform:components/component/openconfig-platform-ext:software/kernel-version",
-    "BUILD-COMMIT"              :"/openconfig-platform:components/component/openconfig-platform-ext:software/build-commit",
-    "BUILD-DATE"                :"/openconfig-platform:components/component/openconfig-platform-ext:software/build-date",
-    "BUILT-BY"                  :"/openconfig-platform:components/component/openconfig-platform-ext:software/built-by",
-    "PLATFORM-NAME"             :"/openconfig-platform:components/component/openconfig-platform-ext:software/platform-name",
-    "HWSKU-VERSION"             :"/openconfig-platform:components/component/openconfig-platform-ext:software/hwsku-version",
-    "ASIC-VERSION"              :"/openconfig-platform:components/component/openconfig-platform-ext:software/asic-version",
-    "HARDWARE-VERSION"          :"/openconfig-platform:components/component/openconfig-platform-ext:software/hardware-version",
-    "SERIAL-NUMBER"             :"/openconfig-platform:components/component/openconfig-platform-ext:software/serial-number",
-    "UP-TIME"                   :"/openconfig-platform:components/component/openconfig-platform-ext:software/up-time",
-    "MFG-NAME"                  :"/openconfig-platform:components/component/openconfig-platform-ext:software/mfg-name",
-    "DOCKER-VERSION"            :"/openconfig-platform:components/component/openconfig-platform-ext:software/docker-version",
-    "COMPONENT-NAME"            :"/openconfig-platform:components/component/state/name",
-    "LOCATION"                  :"/openconfig-platform:components/component/state/location",
-    "EMPTY"                     :"/openconfig-platform:components/component/state/empty",
-    "REMOVABLE"                 :"/openconfig-platform:components/component/state/removable",
-    "OPER-STATUS"               :"/openconfig-platform:components/component/state/oper-status",
-    "STATE-ID"                  :"/openconfig-platform:components/component/state/id",
-    "PART-NO"                   :"/openconfig-platform:components/component/state/part-no",
-    "SERIAL-NO"                 :"/openconfig-platform:components/component/state/serial-no",
-    "MFG-DATE"                  :"/openconfig-platform:components/component/state/mfg-date",
-    "STATE-HARDWARE-VERSION"    :"/openconfig-platform:components/component/state/hardware-version",
-    "DESCRIPTION"               :"/openconfig-platform:components/component/state/description",
-    "STATE-MFG-NAME"            :"/openconfig-platform:components/component/state/mfg-name",
-    "STATE-SOFTWARE-VERSION"    :"/openconfig-platform:components/component/state/software-version",
-
-}
-
-/**
-Structures to read syseeprom from json file
-*/
-
-type JSONEeprom  struct {
-    Product_Name        string `json:"Product Name"`
-    Part_Number         string `json:"Part Number"`
-    Serial_Number       string `json:"Serial Number"`
-    Base_MAC_Address    string `json:"Base MAC Address"`
-    Manufacture_Date    string `json:"Manufacture Date"`
-    Device_Version      string `json:"Device Version"`
-    Label_Revision      string `json:"Label Revision"`
-    Platform_Name       string `json:"Platform Name"`
-    ONIE_Version        string `json:"ONIE Version"`
-    MAC_Addresses       int    `json:"MAC Addresses"`
-    Manufacturer        string `json:"Manufacturer"`
-    Manufacture_Country  string `json:"Manufacture Country"`
-    Vendor_Name         string `json:"Vendor Name"`
-    Diag_Version        string `json:"Diag Version"`
-    Service_Tag         string `json:"Service Tag"`
-    Vendor_Extension    string `json:"Vendor Extension"`
-    Magic_Number        int    `json:"Magic Number"`
-    Card_Type           string `json:"Card Type"`
-    Hardware_Version    string `json:"Hardware Version"`
-    Software_Version    string `json:"Software Version"`
-    Model_Name          string `json:"Model Name"`
 }
 
 func getSoftwareVersion() string {
@@ -144,53 +174,47 @@ func getSoftwareVersion() string {
     return versionString
 }
 
-func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_Component_Software, targetUriPath string, allAttr bool) (error) {
+func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_Component_Software, targetUriPath string, allAttr bool, d *db.DB) (error) {
 
     versionScanner := bufio.NewScanner(strings.NewReader(""))
     scanner := bufio.NewScanner(strings.NewReader(""))
-    var jsoneeprom JSONEeprom
+    var eepromInfo Eeprom
     var err error
 
-    if allAttr == true || targetUriPath == ocAttr["SOFTWARE-COMPONENT"] || targetUriPath == ocAttr["DISTRIBUTION-VERSION"] || targetUriPath == ocAttr["KERNEL-VERSION"] ||
-       targetUriPath == ocAttr["BUILD-COMMIT"] || targetUriPath == ocAttr["ASIC-VERSION"] || targetUriPath == ocAttr["BUILD-DATE"] ||
-       targetUriPath == ocAttr["BUILT-BY"] || targetUriPath == ocAttr["SOFTWARE-VERSION"]{
+    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
+       targetUriPath == SW_BUILD_COMMIT || targetUriPath == SW_ASIC_VER || targetUriPath == SW_BUILD_DATE ||
+       targetUriPath == SW_BUILT_BY || targetUriPath == SW_SW_VER{
         swVersionFile, err := os.Open("/etc/sonic/sonic_version.yml")
         if err != nil {
             log.Infof("sonic_version.yml open failed")
             errStr := "Information not available or Not supported"
-            terr := tlerr.NotFoundError{Format: errStr}
-            return terr
+            return tlerr.NotFoundError{Format: errStr}
         }
         defer swVersionFile.Close()
         versionScanner = bufio.NewScanner(swVersionFile)
         versionScanner.Split(bufio.ScanLines)
     }
 
-    if allAttr == true || targetUriPath == ocAttr["SOFTWARE-COMPONENT"] || targetUriPath == ocAttr["HWSKU-VERSION"] || targetUriPath == ocAttr["HARDWARE-VERSION"] ||
-       targetUriPath == ocAttr["PLATFORM-NAME"] || targetUriPath == ocAttr["SERIAL-NUMBER"] || targetUriPath == ocAttr["MFG-NAME"] {
-        jsonFile, err := os.Open("/mnt/platform/syseeprom")
+    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_HWSKU_VER || targetUriPath == SW_HW_VER ||
+       targetUriPath == SW_PLAT_NAME || targetUriPath == COMP_STATE_SERIAL_NO || targetUriPath == SW_MFG_NAME {
+        eepromInfo, err = getSysEepromFromDb(d)
         if err != nil {
-            log.Infof("syseeprom.json open failed")
-            errStr := "Information not available or Not supported"
-            terr := tlerr.NotFoundError{Format: errStr}
-            return terr
+            return err
         }
-        defer jsonFile.Close()
-        byteValue, _ := ioutil.ReadAll(jsonFile)
-        json.Unmarshal(byteValue, &jsoneeprom)
     }
 
-    if allAttr == true || targetUriPath == ocAttr["SOFTWARE-COMPONENT"] || targetUriPath == ocAttr["DOCKER-VERSION"] {
+    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_DOCKER_VER {
         var query_result HostResult
         query_result = HostQuery("docker_version.action", "")
         if query_result.Err != nil {
             log.Infof("Error in Calling dbus fetch_environment %v", query_result.Err)
+            return query_result.Err
         }
         env_op := query_result.Body[1].(string)
         scanner = bufio.NewScanner(strings.NewReader(env_op))
     }
 
-    if allAttr == true || targetUriPath == ocAttr["SOFTWARE-COMPONENT"] {
+    if allAttr == true || targetUriPath == SW_COMP {
 	for versionScanner.Scan() {
 	    if strings.Contains(versionScanner.Text(), "build_version:") {
 		res1 := strings.Split(versionScanner.Text(), ": ")
@@ -230,21 +254,21 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
 
 	}
 
-	if jsoneeprom.Platform_Name != "" {
-	    swComp.PlatformName = &jsoneeprom.Platform_Name
+	if eepromInfo.Platform_Name != "" {
+	    swComp.PlatformName = &eepromInfo.Platform_Name
 	}
-	if jsoneeprom.Product_Name != "" && jsoneeprom.Vendor_Name != ""{
-	    HwskuVer := jsoneeprom.Product_Name + "-" + jsoneeprom.Vendor_Name
+	if eepromInfo.Product_Name != "" && eepromInfo.Vendor_Name != ""{
+	    HwskuVer := eepromInfo.Product_Name + "-" + eepromInfo.Vendor_Name
 	    swComp.HwskuVersion = &HwskuVer
 	}
-	if jsoneeprom.Label_Revision != "" {
-	    swComp.HardwareVersion = &jsoneeprom.Label_Revision
+	if eepromInfo.Label_Revision != "" {
+	    swComp.HardwareVersion = &eepromInfo.Label_Revision
 	}
-	if jsoneeprom.Serial_Number != "" {
-	    swComp.SerialNumber = &jsoneeprom.Serial_Number
+	if eepromInfo.Serial_Number != "" {
+	    swComp.SerialNumber = &eepromInfo.Serial_Number
 	}
-	if jsoneeprom.Vendor_Name != "" {
-	    swComp.MfgName = &jsoneeprom.Vendor_Name
+	if eepromInfo.Vendor_Name != "" {
+	    swComp.MfgName = &eepromInfo.Vendor_Name
 	}
 
 	info := syscall.Sysinfo_t{}
@@ -271,7 +295,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
 	}
     } else {
         switch targetUriPath {
-        case ocAttr["SOFTWARE-VERSION"]:
+        case SW_SW_VER:
             for versionScanner.Scan() {
                 if strings.Contains(versionScanner.Text(), "build_version:") {
                     res1 := strings.Split(versionScanner.Text(), ": ")
@@ -279,7 +303,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     break
                 }
             }
-        case ocAttr["DISTRIBUTION-VERSION"]:
+        case SW_DIST_VER:
             for versionScanner.Scan() {
                 if strings.Contains(versionScanner.Text(), "debian_version:") {
                     res1 := strings.Split(versionScanner.Text(), ": ")
@@ -287,7 +311,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     break
                 }
             }
-        case ocAttr["KERNEL-VERSION"]:
+        case SW_KERN_VER:
             for versionScanner.Scan() {
                 if strings.Contains(versionScanner.Text(), "kernel_version:") {
                     res1 := strings.Split(versionScanner.Text(), ": ")
@@ -295,7 +319,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     break
                 }
             }
-        case ocAttr["ASIC-VERSION"]:
+        case SW_ASIC_VER:
             for versionScanner.Scan() {
                 if strings.Contains(versionScanner.Text(), "asic_type:") {
                     res1 := strings.Split(versionScanner.Text(), ": ")
@@ -303,7 +327,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     break
                 }
             }
-        case ocAttr["BUILD-COMMIT"]:
+        case SW_BUILD_COMMIT:
             for versionScanner.Scan() {
                 if strings.Contains(versionScanner.Text(), "commit_id:") {
                     res1 := strings.Split(versionScanner.Text(), ": ")
@@ -311,7 +335,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     break
                 }
             }
-        case ocAttr["BUILD-DATE"]:
+        case SW_BUILD_DATE:
             for versionScanner.Scan() {
                 if strings.Contains(versionScanner.Text(), "build_date:") {
                     res1 := strings.Split(versionScanner.Text(), ": ")
@@ -319,7 +343,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     break
                 }
             }
-        case ocAttr["BUILT-BY"]:
+        case SW_BUILT_BY:
             for versionScanner.Scan() {
                 if strings.Contains(versionScanner.Text(), "built_by:") {
                     res1 := strings.Split(versionScanner.Text(), ": ")
@@ -327,28 +351,28 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     break
                 }
             }
-        case ocAttr["PLATFORM-NAME"]:
-            if jsoneeprom.Platform_Name != "" {
-                swComp.PlatformName = &jsoneeprom.Platform_Name
+        case SW_PLAT_NAME:
+            if eepromInfo.Platform_Name != "" {
+                swComp.PlatformName = &eepromInfo.Platform_Name
             }
-        case ocAttr["HWSKU-VERSION"]:
-            if jsoneeprom.Product_Name != "" && jsoneeprom.Vendor_Name != ""{
-                HwskuVer := jsoneeprom.Product_Name + "-" + jsoneeprom.Vendor_Name
+        case SW_HWSKU_VER:
+            if eepromInfo.Product_Name != "" && eepromInfo.Vendor_Name != ""{
+                HwskuVer := eepromInfo.Product_Name + "-" + eepromInfo.Vendor_Name
                 swComp.HwskuVersion = &HwskuVer
             }
-        case ocAttr["HARDWARE-VERSION"]:
-            if jsoneeprom.Label_Revision != "" {
-                swComp.HardwareVersion = &jsoneeprom.Label_Revision
+        case SW_HW_VER:
+            if eepromInfo.Label_Revision != "" {
+                swComp.HardwareVersion = &eepromInfo.Label_Revision
             }
-        case ocAttr["SERIAL-NUMBER"]:
-            if jsoneeprom.Serial_Number != "" {
-                swComp.SerialNumber = &jsoneeprom.Serial_Number
+        case COMP_STATE_SERIAL_NO:
+            if eepromInfo.Serial_Number != "" {
+                swComp.SerialNumber = &eepromInfo.Serial_Number
             }
-        case ocAttr["MFG-NAME"]:
-            if jsoneeprom.Vendor_Name != "" {
-                swComp.MfgName = &jsoneeprom.Vendor_Name
+        case SW_MFG_NAME:
+            if eepromInfo.Vendor_Name != "" {
+                swComp.MfgName = &eepromInfo.Vendor_Name
             }
-        case ocAttr["UP-TIME"]:
+        case SW_UP_TIME:
             info := syscall.Sysinfo_t{}
             err = syscall.Sysinfo(&info)
 
@@ -360,7 +384,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
             minutes := ((uptimeSec - (days * 60 * 60 * 24))  -  (hours * 60 * 60)) / 60
             uptime := strconv.FormatInt(days,10) +" days "+strconv.FormatInt(hours,10)+ " hours "+strconv.FormatInt(minutes,10)+" minutes"
             swComp.UpTime = &uptime
-        case ocAttr["DOCKER-VERSION"]:
+        case SW_DOCKER_VER:
             for scanner.Scan() {
                 var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_DockerVersion
                 s := strings.Fields(scanner.Text())
@@ -378,24 +402,101 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
     return nil
 }
 
-func getSysEepromFromFile (eeprom *ocbinds.OpenconfigPlatform_Components_Component_State,
-				 all bool, targetUriPath string) (error) {
+func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
+    var eepromInfo Eeprom
+    var err error
+    var typeCode string
+    var entryVal string
 
-    log.Infof("getSysEepromFromFile Enter")
-    jsonFile, err := os.Open("/mnt/platform/syseeprom")
+    eepromTbl, err := d.GetTable(&db.TableSpec{Name: EEPROM_TBL})
     if err != nil {
-        log.Infof("syseeprom.json open failed")
-        errStr := "Information not available or Not supported"
-        terr := tlerr.NotFoundError{Format: errStr}
-        return terr
+        log.Info("Can't get table: ", EEPROM_TBL)
+        return eepromInfo, err
     }
 
-    defer jsonFile.Close()
+    keys, err := eepromTbl.GetKeys()
+    if err != nil {
+        log.Info("Can't get keys from table")
+        return eepromInfo, err
+    }
 
-    byteValue, _ := ioutil.ReadAll(jsonFile)
-    var jsoneeprom JSONEeprom
+    for _, key := range keys {
+        typeCode = key.Get(0)
+        eepromEntry, err := eepromTbl.GetEntry(db.Key{Comp: []string{typeCode}})
+        if err != nil {
+            log.Info("Can't get entry with key: ", typeCode)
+            return eepromInfo, err
+        }
 
-    json.Unmarshal(byteValue, &jsoneeprom)
+        entryVal = eepromEntry.Get("Value")
+        switch typeCode {
+        case PROD_NAME_KEY:
+            eepromInfo.Product_Name = entryVal
+            break
+        case PART_NUM_KEY:
+            eepromInfo.Part_Number = entryVal
+            break
+        case SERIAL_NUM_KEY:
+            eepromInfo.Serial_Number = entryVal
+            break
+        case BASE_MAC_KEY:
+            eepromInfo.Base_MAC_Address = entryVal
+            break
+        case MFT_DATE_KEY:
+            eepromInfo.Manufacture_Date = entryVal
+            break
+        case DEV_VER_KEY:
+            eepromInfo.Device_Version = entryVal
+            break
+        case LABEL_REV_KEY:
+            eepromInfo.Label_Revision = entryVal
+            break
+        case PLAT_NAME_KEY:
+            eepromInfo.Platform_Name = entryVal
+            break
+        case ONIE_VER_KEY:
+            eepromInfo.ONIE_Version = entryVal
+            break
+        case NUM_MAC_KEY:
+            tmp,  _ := strconv.Atoi(entryVal)
+            eepromInfo.MAC_Addresses = int32(tmp)
+            break
+        case MFT_NAME_KEY:
+            eepromInfo.Manufacturer = entryVal
+            break
+        case MFT_CNT_KEY:
+            eepromInfo.Manufacture_Country = entryVal
+            break
+        case VEND_NAME_KEY:
+            eepromInfo.Vendor_Name = entryVal
+            break
+        case DIAG_VER_KEY:
+            eepromInfo.Diag_Version = entryVal
+            break
+        case SERV_TAG_KEY:
+            eepromInfo.Service_Tag = entryVal
+            break
+        case VEND_EXT_KEY:
+            eepromInfo.Vendor_Extension = entryVal
+            break
+        case CRC32_KEY:
+        default:
+            break
+        }
+    }
+
+    return eepromInfo, err
+}
+
+func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_State,
+				 all bool, targetUriPath string, d *db.DB) (error) {
+
+    log.Infof("fillSysEepromInfo Enter")
+    eepromInfo, err := getSysEepromFromDb(d)
+    if err != nil {
+        return err
+    }
+
     empty := false
     removable := false
     name := "System Eeprom"
@@ -408,122 +509,159 @@ func getSysEepromFromFile (eeprom *ocbinds.OpenconfigPlatform_Components_Compone
         eeprom.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
         eeprom.Location = &location
 
-        if jsoneeprom.Product_Name != "" {
-            eeprom.Id = &jsoneeprom.Product_Name
+        if eepromInfo.Product_Name != "" {
+            eeprom.Id = &eepromInfo.Product_Name
         }
-        if jsoneeprom.Part_Number != "" {
-            eeprom.PartNo = &jsoneeprom.Part_Number
+        if eepromInfo.Part_Number != "" {
+            eeprom.PartNo = &eepromInfo.Part_Number
         }
-        if jsoneeprom.Serial_Number != "" {
-            eeprom.SerialNo = &jsoneeprom.Serial_Number
+        if eepromInfo.Serial_Number != "" {
+            eeprom.SerialNo = &eepromInfo.Serial_Number
         }
-        if jsoneeprom.Base_MAC_Address != "" {
+        if eepromInfo.Base_MAC_Address != "" {
+            eeprom.BaseMacAddress = &eepromInfo.Base_MAC_Address
         }
-        if jsoneeprom.Manufacture_Date != "" {
-            mfg_date := jsoneeprom.Manufacture_Date[6:10] + "-" +
-                jsoneeprom.Manufacture_Date[0:2] + "-" + jsoneeprom.Manufacture_Date[3:5]
+        if eepromInfo.Manufacture_Date != "" {
+            mfg_date := eepromInfo.Manufacture_Date[6:10] + "-" +
+                eepromInfo.Manufacture_Date[0:2] + "-" + eepromInfo.Manufacture_Date[3:5]
             eeprom.MfgDate = &mfg_date
         }
-        if jsoneeprom.Label_Revision != "" {
-            eeprom.HardwareVersion = &jsoneeprom.Label_Revision
+        if eepromInfo.Label_Revision != "" {
+            eeprom.HardwareVersion = &eepromInfo.Label_Revision
         }
-        if jsoneeprom.Platform_Name != "" {
-            eeprom.Description = &jsoneeprom.Platform_Name
+        if eepromInfo.Platform_Name != "" {
+            eeprom.Description = &eepromInfo.Platform_Name
         }
-        if jsoneeprom.ONIE_Version != "" {
+        if eepromInfo.ONIE_Version != "" {
+            eeprom.OnieVersion = &eepromInfo.ONIE_Version
         }
-        if jsoneeprom.MAC_Addresses != 0 {
+        if eepromInfo.MAC_Addresses != 0 {
+            eeprom.MacAddresses = &eepromInfo.MAC_Addresses
         }
-        if jsoneeprom.Manufacturer != "" {
-            eeprom.MfgName = &jsoneeprom.Manufacturer
+        if eepromInfo.Manufacturer != "" {
+            eeprom.MfgName = &eepromInfo.Manufacturer
         }
-        if jsoneeprom.Manufacture_Country != "" {
+        if eepromInfo.Manufacture_Country != "" {
+            eeprom.ManufactureCountry = &eepromInfo.Manufacture_Country
         }
-        if jsoneeprom.Vendor_Name != "" {
-            if eeprom.MfgName == nil {
-                eeprom.MfgName = &jsoneeprom.Vendor_Name
-            }
+        if eepromInfo.Vendor_Name != "" {
+            eeprom.VendorName = &eepromInfo.Vendor_Name
         }
-        if jsoneeprom.Diag_Version != "" {
+        if eepromInfo.Diag_Version != "" {
+            eeprom.DiagVersion = &eepromInfo.Diag_Version
         }
-        if jsoneeprom.Service_Tag != "" {
+        if eepromInfo.Service_Tag != "" {
             if eeprom.SerialNo == nil {
-                eeprom.SerialNo = &jsoneeprom.Service_Tag
+                eeprom.SerialNo = &eepromInfo.Service_Tag
             }
+            eeprom.ServiceTag = &eepromInfo.Service_Tag
         }
-        if jsoneeprom.Hardware_Version != "" {
-            eeprom.HardwareVersion = &jsoneeprom.Hardware_Version
+        if eepromInfo.Hardware_Version != "" {
+            eeprom.HardwareVersion = &eepromInfo.Hardware_Version
         }
-        if jsoneeprom.Software_Version != "" {
-            eeprom.SoftwareVersion = &jsoneeprom.Software_Version
+        if eepromInfo.Software_Version != "" {
+            eeprom.SoftwareVersion = &eepromInfo.Software_Version
         } else {
             versionString := getSoftwareVersion()
             eeprom.SoftwareVersion = &versionString
         }
     } else {
         switch targetUriPath {
-        case ocAttr["COMPONENT-NAME"]:
+        case COMP_STATE_NAME:
             eeprom.Name = &name
-        case ocAttr["LOCATION"]:
+        case COMP_STATE_LOCATION:
             eeprom.Location = &location
-        case ocAttr["EMPTY"]:
+        case COMP_STATE_EMPTY:
             eeprom.Empty = &empty
-        case ocAttr["REMOVABLE"]:
+        case COMP_STATE_REMOVABLE:
             eeprom.Removable = &removable
-        case ocAttr["OPER-STATUS"]:
+        case COMP_STATE_OPER_STATUS:
             eeprom.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
-        case ocAttr["STATE-ID"]:
-            if jsoneeprom.Product_Name != "" {
-                eeprom.Id = &jsoneeprom.Product_Name
+        case COMP_STATE_ID:
+            if eepromInfo.Product_Name != "" {
+                eeprom.Id = &eepromInfo.Product_Name
             }
-        case ocAttr["PART-NO"]:
-            if jsoneeprom.Part_Number != "" {
-                eeprom.PartNo = &jsoneeprom.Part_Number
+        case COMP_STATE_PART_NO:
+            if eepromInfo.Part_Number != "" {
+                eeprom.PartNo = &eepromInfo.Part_Number
             }
-        case ocAttr["SERAIL-NO"]:
-            if jsoneeprom.Serial_Number != "" {
-                eeprom.SerialNo = &jsoneeprom.Serial_Number
+        case COMP_STATE_SERIAL_NO:
+            if eepromInfo.Serial_Number != "" {
+                eeprom.SerialNo = &eepromInfo.Serial_Number
             }
-            if jsoneeprom.Service_Tag != "" {
+            if eepromInfo.Service_Tag != "" {
                 if eeprom.SerialNo == nil || *eeprom.SerialNo == "" {
-                    eeprom.SerialNo = &jsoneeprom.Service_Tag
+                    eeprom.SerialNo = &eepromInfo.Service_Tag
                 }
             }
-        case ocAttr["MFG-DATE"]:
-            if jsoneeprom.Manufacture_Date != "" {
-                mfg_date := jsoneeprom.Manufacture_Date[6:10] + "-" +
-                    jsoneeprom.Manufacture_Date[0:2] + "-" + jsoneeprom.Manufacture_Date[3:5]
+        case COMP_STATE_MFG_DATE:
+            if eepromInfo.Manufacture_Date != "" {
+                mfg_date := eepromInfo.Manufacture_Date[6:10] + "-" +
+                    eepromInfo.Manufacture_Date[0:2] + "-" + eepromInfo.Manufacture_Date[3:5]
                 eeprom.MfgDate = &mfg_date
             }
-        case ocAttr["STATE-HARDWARE-VERSION"]:
-            if jsoneeprom.Label_Revision != "" {
-                eeprom.HardwareVersion = &jsoneeprom.Label_Revision
+        case COMP_STATE_HW_VER:
+            if eepromInfo.Label_Revision != "" {
+                eeprom.HardwareVersion = &eepromInfo.Label_Revision
             }
-            if jsoneeprom.Hardware_Version != "" {
+            if eepromInfo.Hardware_Version != "" {
                 if eeprom.HardwareVersion == nil || *eeprom.HardwareVersion == "" {
-                    eeprom.HardwareVersion = &jsoneeprom.Hardware_Version
+                    eeprom.HardwareVersion = &eepromInfo.Hardware_Version
                 }
             }
-        case ocAttr["DESCRIPTION"]:
-            if jsoneeprom.Platform_Name != "" {
-                eeprom.Description = &jsoneeprom.Platform_Name
+        case COMP_STATE_DESCR:
+            if eepromInfo.Platform_Name != "" {
+                eeprom.Description = &eepromInfo.Platform_Name
             }
-        case ocAttr["STATE-MFG-NAME"]:
-            if jsoneeprom.Manufacturer != "" {
-                eeprom.MfgName = &jsoneeprom.Manufacturer
+        case COMP_STATE_MFG_NAME:
+            if eepromInfo.Manufacturer != "" {
+                eeprom.MfgName = &eepromInfo.Manufacturer
             }
-            if jsoneeprom.Vendor_Name != "" {
+            if eepromInfo.Vendor_Name != "" {
                 if eeprom.MfgName == nil || *eeprom.MfgName == "" {
-                    eeprom.MfgName = &jsoneeprom.Vendor_Name
+                    eeprom.MfgName = &eepromInfo.Vendor_Name
                 }
             }
-        case ocAttr["STATE-SOFTWARE-VERSION"]:
-            if jsoneeprom.Software_Version != "" {
-                eeprom.SoftwareVersion = &jsoneeprom.Software_Version
+        case COMP_STATE_SW_VER:
+            if eepromInfo.Software_Version != "" {
+                eeprom.SoftwareVersion = &eepromInfo.Software_Version
             } else {
                 versionString := getSoftwareVersion()
                 eeprom.SoftwareVersion = &versionString
             }
+        case SYS_EEPROM_MFG_CNT:
+            if eepromInfo.Manufacture_Country != "" {
+                eeprom.ManufactureCountry = &eepromInfo.Manufacture_Country
+            }
+        case SYS_EEPROM_BASE_MAC:
+            if eepromInfo.Base_MAC_Address != "" {
+                eeprom.BaseMacAddress = &eepromInfo.Base_MAC_Address
+            }
+        case SYS_EEPROM_ONIE_VER:
+            if eepromInfo.ONIE_Version != "" {
+                eeprom.OnieVersion = &eepromInfo.ONIE_Version
+            }
+        case SYS_EEPROM_MAC_ADDRS:
+            if eepromInfo.MAC_Addresses != 0 {
+                eeprom.MacAddresses = &eepromInfo.MAC_Addresses
+            }
+        case SYS_EEPROM_VENDOR_NAME:
+            if eepromInfo.Vendor_Name != "" {
+                eeprom.VendorName = &eepromInfo.Vendor_Name
+            }
+        case SYS_EEPROM_DIAG_VER:
+            if eepromInfo.Diag_Version != "" {
+                eeprom.DiagVersion = &eepromInfo.Diag_Version
+            }
+        case SYS_EEPROM_SERV_TAG:
+            if eepromInfo.Service_Tag != "" {
+                if eeprom.SerialNo == nil {
+                    eeprom.SerialNo = &eepromInfo.Service_Tag
+                }
+                eeprom.ServiceTag = &eepromInfo.Service_Tag
+            }
+        default:
+            break
         }
     }
     return nil
@@ -572,9 +710,9 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
     return  err
 }
 
-func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string) (error) {
+func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    log.Infof("Preparing json for system eeprom");
+    log.Infof("Preparing dB for system eeprom");
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -590,7 +728,7 @@ func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUri
         }
         eeprom_comp,_ := pf_cpts.NewComponent("System Eeprom")
         ygot.BuildEmptyTree(eeprom_comp)
-        err = getSysEepromFromFile(eeprom_comp.State, true, targetUriPath)
+        err = fillSysEepromInfo(eeprom_comp.State, true, targetUriPath, d)
         if err != nil {
             return err
         }
@@ -599,7 +737,7 @@ func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUri
 
         swversion_comp,_ := pf_cpts.NewComponent("Software")
         ygot.BuildEmptyTree(swversion_comp)
-        err = getSoftwareVersionComponent(swversion_comp.Software, targetUriPath, true)
+        err = getSoftwareVersionComponent(swversion_comp.Software, targetUriPath, true, d)
         if err != nil {
             return err
         }
@@ -611,7 +749,7 @@ func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUri
         if compName == "" {
             pf_comp,_ := pf_cpts.NewComponent("System Eeprom")
             ygot.BuildEmptyTree(pf_comp)
-            err = getSysEepromFromFile(pf_comp.State, true, targetUriPath)
+            err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
             if err != nil {
                 return err
             }
@@ -620,7 +758,7 @@ func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUri
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = getSysEepromFromFile(pf_comp.State, true, targetUriPath)
+                    err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
                     if err != nil {
                         return err
                     }
@@ -642,7 +780,7 @@ func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUri
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = getSoftwareVersionComponent(pf_comp.Software, targetUriPath, true)
+                    err = getSoftwareVersionComponent(pf_comp.Software, targetUriPath, true, d)
                     if err != nil {
                         return err
                     }
@@ -659,7 +797,7 @@ func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUri
             pf_comp := pf_cpts.Component[compName]
             if pf_comp != nil {
                 ygot.BuildEmptyTree(pf_comp)
-                err = getSysEepromFromFile(pf_comp.State, true, targetUriPath)
+                err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
                 if err != nil {
                     return err
                 }
@@ -688,7 +826,7 @@ func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUri
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = getSysEepromFromFile(pf_comp.State, false, targetUriPath)
+                    err = fillSysEepromInfo(pf_comp.State, false, targetUriPath, d)
                     if err != nil {
                         return err
                     }
@@ -699,7 +837,7 @@ func getSysEepromJson (pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUri
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = getSoftwareVersionComponent(pf_comp.Software, targetUriPath, false)
+                    err = getSoftwareVersionComponent(pf_comp.Software, targetUriPath, false, d)
                     if err != nil {
                         return err
                     }

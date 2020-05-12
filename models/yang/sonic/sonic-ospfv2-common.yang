@@ -131,7 +131,7 @@ module sonic-ospfv2-common {
         description 
           "OSPF policy protocol static";
       }
-      enum CONNECTED {
+      enum DIRECTLY_CONNECTED {
         description 
           "OSPF policy protocol connected";
       }
@@ -159,6 +159,10 @@ module sonic-ospfv2-common {
       enum STANDARD {
         description
           "OSPF ABR type Standard";
+      }
+      enum SHORTCUT {
+        description
+          "OSPF ABR type Shortcut";
       }
     }
   }

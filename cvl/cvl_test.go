@@ -288,6 +288,7 @@ func clearDb() {
 		"VXLAN_TUNNEL",
 		"VXLAN_TUNNEL_MAP",
 		"WRED_PROFILE",
+		"DSCP_TO_TC_MAP",
 	}
 
 	for _, tbl := range tblList {
@@ -715,7 +716,7 @@ func TestValidateEditConfig_Create_Syntax_CableLength(t *testing.T) {
 			map[string]string{
 			  "Ethernet8": "5m",
 			  "Ethernet12": "5m",
-			  "Ethernet16": "5m",
+			  "PortChannel16": "5m",
 			},
 		},
 	 }
@@ -2527,6 +2528,28 @@ func TestValidateEditConfig_Delete_Single_Field_Positive(t *testing.T) {
 	unloadConfigDB(rclient, depDataMap)
 }
 
+func TestValidateEditConfig_Create_Dscp_To_Tc_Map(t *testing.T) {
+	cfgData := []cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData {
+			cvl.VALIDATE_ALL,
+			cvl.OP_CREATE,
+			"DSCP_TO_TC_MAP|AZURE",
+			map[string]string {
+				"1": "7",
+				"2": "8",
+				"3": "9",
+			},
+		},
+	}
+
+	cvSess, _ := cvl.ValidationSessOpen()
+	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
+	cvl.ValidationSessClose(cvSess)
+	if err != cvl.CVL_SUCCESS {
+		t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
+	}
+}
+
 func TestValidateConfig_Repeated_Keys_Positive(t *testing.T) {
 	jsonData := `{
 		"WRED_PROFILE": {
@@ -3377,6 +3400,11 @@ func TestGetDepDataForDelete(t *testing.T) {
 				"NULL": "NULL",
 			},
 		},
+		"CFG_L2MC_MROUTER_TABLE" : map[string]interface{} {
+			"Vlan21|Ethernet7": map[string] interface{} {
+				"NULL": "NULL",
+			},
+		},
 		"MIRROR_SESSION": map[string]interface{}{
 			"sess1": map[string]interface{}{
 				"src_ip": "10.1.0.32",
@@ -3408,7 +3436,7 @@ func TestGetDepDataForDelete(t *testing.T) {
 
 	depEntries := cvSess.GetDepDataForDelete("PORT|Ethernet7")
 
-        if (len(depEntries) != 8) { //8 entries to be deleted
+        if (len(depEntries) != 9) { //9 entries to be deleted
                 t.Errorf("GetDepDataForDelete() failed")
         }
 
