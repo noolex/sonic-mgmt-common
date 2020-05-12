@@ -19,6 +19,10 @@ module sonic-bgp-global {
         prefix srmap;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -52,6 +56,7 @@ module sonic-bgp-global {
                             path "/svrf:sonic-vrf/svrf:VRF/svrf:VRF_LIST/svrf:vrf_name";
                         }
                     }
+                    sonic-ext:custom-validation ValidateL3vniConfiguration;
                 }
 
                 leaf router_id {

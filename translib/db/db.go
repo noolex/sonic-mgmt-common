@@ -862,6 +862,10 @@ func (d *DB) Publish(channel string, message interface{}) error {
 	return e
 }
 
+func (d *DB) RunScript(script *redis.Script, keys []string, args ...interface{}) *redis.Cmd {
+    return script.Run(d.client, keys, args...)
+}
+
 // DeleteEntry deletes an entry(row) in the table.
 func (d *DB) DeleteEntry(ts *TableSpec, key Key) error {
 
