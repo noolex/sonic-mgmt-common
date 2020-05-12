@@ -1654,9 +1654,73 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
                 numstr := fmt.Sprintf("0x%08x", numint64)
                 ospfv2AreaInfo_obj.OpaqueAreaLsaChecksum = &numstr
             }
-            
+            ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_UNSET
+            if (areaNameStr != "0.0.0.0") {
+                ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_DEFAULT
+            }
+            if _shortcut,ok := area_info["shortcuttingMode"].(string); ok {
+                if _shortcut == "Enabled" {
+                    ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_ENABLE
+                }
+                if _shortcut == "Disabled" {
+                    ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_DISABLE
+                }
+                if _shortcut == "Default" {
+                    ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_DEFAULT
+                }
+            }
+            if value,ok := area_info["virtualAdjacenciesPassingCounter"]; ok {
+                _virtualAdjacenciesPassingCounter := uint32(value.(float64))
+                ospfv2AreaInfo_obj.VirtualLinkAdjacencyCount = &_virtualAdjacenciesPassingCounter
+            }
+            if _stubEnable, ok := area_info["stubEnable"].(bool); ok {
+                if _stubEnable ==  true {
+                    ospfv2_fill_area_stub_state(ospfv2Area_obj, area_info)    
+                }
+            }
         }
     }    
+    return err
+}
+
+func ospfv2_fill_area_stub_state(ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area,
+        area_info map[string]interface{}) error {
+    var err error
+    var ospfv2Zero bool = false
+    var ospfv2One bool = true
+    oper_err := errors.New("Operational error")
+    cmn_log := "GET: Stub  State for area "
+    var stubState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Stub_State
+
+    if (nil == ospfv2Area_obj.Stub) {
+        log.Info("Stub information not present in area")
+        return oper_err
+    }
+    stubState = ospfv2Area_obj.Stub.State
+    if nil == stubState {
+        log.Infof("state under area stub is  missing, add stub state for area ")
+        stubState = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Stub_State)
+        if stubState == nil {
+            log.Errorf("%s failed !! Error: Failed to create Stub State Tree under area", cmn_log)
+            return  oper_err
+        }
+        ygot.BuildEmptyTree (stubState)
+        ospfv2Area_obj.Stub.State = stubState
+    }
+    if _stubEnable, ok := area_info["stubEnable"].(bool); ok {
+        if _stubEnable ==  false {
+            stubState.Enable = &ospfv2Zero
+        } else {
+            stubState.Enable = &ospfv2One
+        }
+    }
+    if _stubNoSummary, ok := area_info["stubNoSummary"].(bool); ok {
+        if _stubNoSummary ==  false {
+            stubState.NoSummary = &ospfv2Zero
+        } else {
+            stubState.NoSummary = &ospfv2One
+        }
+    }
     return err
 }
 
@@ -1972,8 +2036,11 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
         ospfv2InterfaceState_obj.BroadcastAddress = &_localIfUsed
     }
     
-    ospfv2AreaId.String = area_id
-    ospfv2InterfaceState_obj.AreaId = &ospfv2AreaId
+    if _areaStr, ok := intf_info["area"].(string); ok {
+        ospfv2AreaId.String = _areaStr
+        ospfv2InterfaceState_obj.AreaId = &ospfv2AreaId
+    }
+
     if _routerId, ok := intf_info["routerId"].(string); ok {
         ospfv2InterfaceState_obj.RouterId = &_routerId
     }
@@ -2014,6 +2081,13 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
             ospfv2InterfaceState_obj.MemberOfOspfAllRouters = &ospfv2Zero
         } else {
             ospfv2InterfaceState_obj.MemberOfOspfAllRouters = &ospfv2One
+        }
+    }
+    if _mtuMismatchDetect,ok := intf_info["mtuMismatchDetect"].(bool); ok {
+        if _mtuMismatchDetect ==  false { 
+            ospfv2InterfaceState_obj.MtuIgnore = &ospfv2Zero
+        } else {
+            ospfv2InterfaceState_obj.MtuIgnore = &ospfv2One
         }
     }
     if _mcastMemberOspfDesignatedRouters,ok := intf_info["mcastMemberOspfDesignatedRouters"].(bool); ok {
