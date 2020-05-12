@@ -359,6 +359,7 @@ func yangToDbMapBuild(entries map[string]*yang.Entry) {
 	mapPrint(xYangSpecMap, "/tmp/fullSpec.txt")
 	dbMapPrint("/tmp/dbSpecMap.txt")
 	xDbSpecTblSeqnMapPrint("/tmp/dbSpecTblSeqnMap.txt")
+	sonicLeafRefDataPrint("/tmp/sonicLeafRef.log")
 	sonicLeafRefMap = nil
 }
 
@@ -945,6 +946,26 @@ func xDbSpecTblSeqnMapPrint(fname string) {
 			fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
 			return
 
+}
+
+func sonicLeafRefDataPrint(fname string) {
+	fp, err := os.Create(fname)
+	if err != nil {
+		return
+	}
+	defer fp.Close()
+	fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
+	if xDbSpecTblSeqnMap == nil {
+		return
+	}
+	for lref, data := range sonicLeafRefMap {
+		fmt.Fprintf (fp, "leafref: %v\r\n", lref)
+		for i, d := range data {
+			fmt.Fprintf (fp, " (%v) %v\r\n", i, d)
+		}
+	fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
+	}
+	return
 }
 
 func updateSchemaOrderedMap(module string, entry *yang.Entry) {
