@@ -110,16 +110,7 @@ module sonic-system-radius {
                 max-elements 8;
 
                 leaf ipaddress {
-                    type union {
-                        type string {
-                            length "1..253";
-                            pattern
-                                '((([a-zA-Z0-9_]([a-zA-Z0-9\-_]){0,61})?[a-zA-Z0-9]\.)*' +
-                                  '([a-zA-Z0-9_]([a-zA-Z0-9\-_]){0,61})?[a-zA-Z0-9]\.?)'   +
-                                '|\.';
-                        }                        
-                        type inet:ip-address;
-                    }
+                    type inet:host;
                     description
                         "RADIUS server's Domain name or IP address (IPv4 or IPv6)";
                 }

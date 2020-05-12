@@ -8,6 +8,7 @@ module openconfig-system-ext {
 
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
+    import openconfig-interfaces { prefix "oc-if"; }
 
     // meta
     organization "OpenConfig working group";
@@ -139,20 +140,22 @@ module openconfig-system-ext {
         }
     }
 
-    grouping dns-source-ip-config {
-        leaf source-address {
-            type inet:ip-address;
+    grouping dns-source-config {
+        leaf source-intf {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
             description
-                "Source IP address for packets to the DNS server";
+                "Source interface to pick the source IP address for the packets to DNS name server";
         }
     }
 
     augment "/oc-sys:system/oc-sys:dns/oc-sys:config" {
-        uses dns-source-ip-config;
+        uses dns-source-config;
     }
 
     augment "/oc-sys:system/oc-sys:dns/oc-sys:state" {
-        uses dns-source-ip-config;
+        uses dns-source-config;
     }
 
     typedef server-address {
@@ -193,5 +196,4 @@ module openconfig-system-ext {
     }
     deviation /oc-sys:system/oc-sys:ssh-server/oc-sys:state {
        deviate not-supported;
-    }
-}
+    }}
