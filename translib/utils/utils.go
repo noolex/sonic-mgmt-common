@@ -37,8 +37,9 @@ var ifNameAliasMap *sync.Map
 var aliasIfNameMap *sync.Map
 
 func init() {
-    retrieveAliasModeFromEnv()
+    portNotifSubscribe();
     populateAliasDS()
+    devMetaNotifSubscribe();
 }
 
 func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
@@ -98,7 +99,7 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
 }
 
 func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
-    log.Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
+    log.V(3).Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
            " event: ", event)
     switch event {
     case db.SEventHSet, db.SEventHDel:
@@ -107,6 +108,28 @@ func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) err
     return nil
 }
 
+func dbNotifSubscribe(ts db.TableSpec, key db.Key, handler db.HFunc) error {
+
+    var skeys []*db.SKey = make([]*db.SKey, 1)
+    skeys[0] = & (db.SKey { 
+        Ts: &ts,
+        Key: &key,
+        SEMap: map[db.SEvent]bool {
+            db.SEventHSet:  true,
+            db.SEventHDel:  true,
+            db.SEventDel:   true,
+        },
+    })
+
+    _,e := db.SubscribeDB(db.Options {
+        DBNo              : db.ConfigDB,
+        InitIndicator     : "CONFIG_DB_INITIALIZED",
+        TableNameSeparator: "|",
+        KeySeparator      : "|",
+    }, skeys, handler)
+
+    return e
+}
 
 func portNotifSubscribe() {
     var akey db.Key
@@ -116,33 +139,61 @@ func portNotifSubscribe() {
     ca[0] = "*"
     akey = db.Key { Comp: ca}
 
-    var skeys []*db.SKey = make([]*db.SKey, 1)
-    skeys[0] = & (db.SKey { Ts: &tsa, Key: &akey,
-
-    SEMap: map[db.SEvent]bool {
-        db.SEventHSet:  true,
-        db.SEventHDel:  true,
-        db.SEventDel:   true,
-    }})
-
-    _,e := db.SubscribeDB(db.Options {
-        DBNo              : db.ConfigDB,
-        InitIndicator     : "CONFIG_DB_INITIALIZED",
-        TableNameSeparator: "|",
-        KeySeparator      : "|",
-    }, skeys, portNotifHandler)
-
+    e := dbNotifSubscribe(tsa, akey, portNotifHandler)
     if e != nil {
-        log.Info("Subscribe() returns error e: ", e)
+        log.Info("dbNotifSubscribe() returns error : ", e)
     }
 
     log.Info("PORT table subscribe done....");
 }
 
+func devMetaNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
+    log.V(3).Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
+           " event: ", event)
+    switch event {
+    case db.SEventHSet, db.SEventHDel:
+        updateAliasFromDB(key, d)
+    }
+
+    return nil
+}
+
+func updateAliasFromDB(key *db.Key, d *db.DB) {
+    key0 := key.Get(0)
+    entry, err := d.GetEntry(&db.TableSpec{Name:"DEVICE_METADATA"}, *key)
+    if err != nil {
+        log.Errorf("Retrieval of entry for %s failed from port table", key0)
+        return
+    }
+    aliasVal, ok := entry.Field["aliasMode"]
+    if !ok {
+        // don't return error, keep populating data structures
+        aliasMode = false
+        log.Infof("aliasMode not present, disabling alias mode")
+        return
+    }
+    aliasMode = (aliasVal == "true")
+    log.Infof("aliasMode set to %v", aliasMode);
+}
+
+func devMetaNotifSubscribe() {
+    var akey db.Key
+    tsa := db.TableSpec { Name: "DEVICE_METADATA" }
+
+    ca := make([]string, 1, 1)
+    ca[0] = "*"
+    akey = db.Key { Comp: ca}
+
+    e := dbNotifSubscribe(tsa, akey, devMetaNotifHandler)
+    if e != nil {
+        log.Info("dbNotifSubscribe() returns error : ", e)
+    }
+
+    log.Info("DEVICE_METADATA table subscribe done....");
+}
+
 func populateAliasDS() error {
     var err error
-
-    portNotifSubscribe()
 
     ifNameAliasMap = new(sync.Map)
     aliasIfNameMap = new(sync.Map)
@@ -165,6 +216,9 @@ func populateAliasDS() error {
     for _, portKey := range portKeys {
         updateCacheForPort(&portKey, d)
     }
+
+    updateAliasFromDB(&db.Key{Comp: []string{"localhost"}}, d)
+
     return err
 }
 
