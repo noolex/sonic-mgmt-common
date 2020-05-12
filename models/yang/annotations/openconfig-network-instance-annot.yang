@@ -3293,6 +3293,7 @@ module openconfig-network-instance-annot {
     deviate add {
       sonic-ext:db-name "CONFIG_DB";
       sonic-ext:table-name "OSPFV2_ROUTER_AREA";
+      sonic-ext:table-transformer "ospfv2_router_area_tbl_xfmr";
       sonic-ext:key-transformer "ospfv2_router_area_tbl_key_xfmr";
     }
   }
