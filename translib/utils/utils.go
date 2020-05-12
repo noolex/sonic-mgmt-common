@@ -37,7 +37,7 @@ var ifNameAliasMap *sync.Map
 var aliasIfNameMap *sync.Map
 
 func init() {
-    retrieveAliasModeFromEnv()
+    retrieveAliasMode()
     populateAliasDS()
 }
 
@@ -186,6 +186,31 @@ func retrieveAliasModeFromEnv() {
     }
     log.Info("Alias Mode = ", aliasMode)
 }
+
+func retrieveAliasMode() {
+    var Key string = "localhost"
+    TblTs := &db.TableSpec{Name: "DEVICE_METADATA"}
+
+    cfgDb, err := db.NewDB(getDBOptions(db.ConfigDB, false))
+    if err != nil {
+        log.Error("Instantiation of Config DB failed!")
+    }
+
+    dbEntry, err := cfgDb.GetEntry(TblTs, db.Key{Comp: []string{Key}})
+
+    if err != nil {
+        errStr := "Failed to Get DEVICE METADATA details"
+        log.Info(errStr)
+    }
+    aliasMode = false
+    if val, ok := dbEntry.Field["aliasMode"].(bool); ok {
+        if val == true {
+            aliasMode = val
+        }
+    }
+    log.Info("Alias Mode = ", aliasMode)
+}
+
 
 func IsAliasModeEnabled() bool {
     return  aliasMode
