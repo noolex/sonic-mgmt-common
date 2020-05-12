@@ -121,7 +121,13 @@ func yangListDelData(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requ
 						chldXpath    := xpath+"/"+yangChldName
 						chldUri      := curUri+"/"+yangChldName
 						chldSpec, ok := xYangSpecMap[chldXpath]
+<<<<<<< HEAD
 						if (ok && (chldSpec.dbIndex == db.ConfigDB) && chldSpec.hasChildSubTree &&
+||||||| merged common ancestors
+						if (ok && (chldSpec.dbIndex == db.ConfigDB) && chldSpec.hasChildSubTree && 
+=======
+                                                if (ok && (chldSpec.dbIndex == db.ConfigDB) && spec.hasChildSubTree &&
+>>>>>>> broadcom_sonic_3.x_share
 						(chldSpec.yangEntry != nil)) {
 							chldYangType := chldSpec.yangDataType
 							if ((chldYangType == YANG_CONTAINER || chldYangType == YANG_LIST) &&
