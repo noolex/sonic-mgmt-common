@@ -486,7 +486,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 				existingEntry, _ := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
 				switch opcode {
 				case CREATE:
-					if existingEntry.IsPopulated() {
+					if existingEntry.IsPopulated() && !app.deleteMapContains(tblNm, tblKey) {
 						log.Info("Entry already exists hence return.")
 						return tlerr.AlreadyExists("Entry %s already exists", tblKey)
 					} else {
@@ -759,4 +759,15 @@ func areEqual(a, b interface{}) bool {
 
         return reflect.DeepEqual(a, b)
 }
+
+// This function checks whether an entry exists in the db map
+func (app *CommonApp) deleteMapContains(tblNm string, tblKey string) bool {
+        if dbMap, ok := app.cmnAppTableMap[DELETE][db.ConfigDB]; ok {
+                if _, ok := dbMap[tblNm][tblKey] ; ok {
+                        return true
+                }
+         }
+        return false
+}
+
 

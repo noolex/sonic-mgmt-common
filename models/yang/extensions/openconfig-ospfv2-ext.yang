@@ -163,6 +163,12 @@ module openconfig-ospfv2-ext {
       "OSPF router is an Internal Router";
   }
 
+  identity ABRASBR {
+    base "OSPF_ROUTER_TYPE";
+    description
+      "OSPF router is an ABR and ASBR";
+  }
+
   identity OSPF_ABR_TYPE {
     description
       "OSPF ABR type";
@@ -184,6 +190,12 @@ module openconfig-ospfv2-ext {
     base "OSPF_ABR_TYPE";
     description
       "STANDARD ABR Type";
+  }
+
+  identity SHORTCUT {
+    base "OSPF_ABR_TYPE";
+    description
+      "SHORTCUT ABR Type";
   }
 
   identity OSPF_LOG_TYPE {
@@ -379,14 +391,12 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "OSPF RFC1538 comaptible";
-      default false;
     }
 
     leaf passive-interface-default {
       type boolean;
       description
         "OSPF configuration for default passive interface";
-      default false;
     }
   }
 
@@ -488,7 +498,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "OSPF Max-metric is administrative configuration";
-      default false;
     }
   
     leaf on-startup {
@@ -595,7 +604,7 @@ module openconfig-ospfv2-ext {
         type identityref {
           base "OSPF_AUTHENTICATION_TYPE";
         }
-        default AUTH_NONE;
+       
         description
            "OSPF autentication type";
       }  
@@ -696,7 +705,6 @@ module openconfig-ospfv2-ext {
       type identityref {
         base "OSPF_AUTHENTICATION_TYPE";
       }
-      default AUTH_NONE;
       description
          "OSPF autentication type";
     } 
@@ -1004,7 +1012,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "Advertise or no-adverise configuration for prefix";
-      default true;
     }
 
     leaf metric {
@@ -1017,7 +1024,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "Substitute Address prefix for the OSPF address";
-      default false;
     }
 
     leaf substitue-prefix {
@@ -1318,7 +1324,6 @@ module openconfig-ospfv2-ext {
       }
       description
         "Access-list name for filter prefixes";
-      default EXPORT;
     }
 
     leaf description {
@@ -1333,7 +1338,6 @@ module openconfig-ospfv2-ext {
       type uint32;
       description
         "OSPFv2 instance id for route distribution";
-      default 0;
     }
 
     leaf always {
@@ -1341,7 +1345,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
          "Always distribute default route";
-      default false;
     }
 
     leaf metric {
@@ -1349,7 +1352,6 @@ module openconfig-ospfv2-ext {
       type ospf-cost-metric;
       description
         "OSPFv2 metric for route distribution";
-      default 0;
     }
 
     leaf metric-type {
@@ -1359,7 +1361,6 @@ module openconfig-ospfv2-ext {
       }
       description
         "OSPF metrics type for route distribution";
-      default TYPE_1;
     }
 
     leaf route-map {
@@ -1478,7 +1479,7 @@ module openconfig-ospfv2-ext {
         "Configuration and state parameters relating passive interfaces";
 
       list passive-interface {
-        key "name";
+        key "name address";
 
         description
           "Configuration and state parameters relating passive interfaces";
@@ -1489,6 +1490,14 @@ module openconfig-ospfv2-ext {
           }
           description
             "Reference to the passive interface";
+        }
+
+        leaf address {
+          type leafref {
+            path "../config/address";
+          }
+          description
+            "Reference to the passive interface Ip address";
         }
 
         container config {
@@ -1584,16 +1593,12 @@ module openconfig-ospfv2-ext {
         "Inter area route";
     }
 
-    leaf router-type-abr {
-      type boolean;
+    leaf router-type {
+      type identityref {
+         base "OSPF_ROUTER_TYPE";
+      }
       description
-        "Router type is ABR";
-    } 
-
-    leaf router-type-asbr {
-      type boolean;
-      description
-        "Router type is ASBR";
+        "OSPF Router Type (ABR, ASBR etc)";
     } 
 
     list next-hops {
@@ -1672,6 +1677,12 @@ module openconfig-ospfv2-ext {
         "The Interface address";
     }
 
+    leaf dead-interval-minimal {
+      type boolean;
+      description
+         "OSPF interface dead-interval type minimal configuration.";
+    }
+
     leaf hello-multiplier {
       type uint32 {
         range 1..10;
@@ -1743,12 +1754,6 @@ module openconfig-ospfv2-ext {
       type uint32;
       description
         "Interface index";
-    }
-
-    leaf vrf {
-      type string ;
-      description
-        "Virtual Routing Domain name";
     }
 
     leaf bandwidth {
@@ -1973,7 +1978,6 @@ module openconfig-ospfv2-ext {
       description
         "Set number of seconds for InfTransDelay value. LSAs' age
          should be incremented by this value while transmitting";
-      default 1;
     }
   }
 
@@ -2104,17 +2108,24 @@ module openconfig-ospfv2-ext {
         "OSPFv2 neighborship options";
     }
 
-    leaf database-summary-queue-length {
+    leaf retransmit-summary-queue-length {
       type uint32;
       description
         "The number of LSAs that are currently in the queue to be
         retransmitted to the neighbor";
     }
 
+    leaf database-summary-queue-length {
+      type uint32;
+      description
+        "The number of DB summary LSAs that are currently in the queue to be
+        retransmitted to the neighbor";
+    }
+
     leaf link-state-request-queue-length {
       type uint32;
       description
-        "The number of LSAs that are currently in the queue to be
+        "The number of LSA requests that are currently in the queue to be
         retransmitted to the neighbor";
     }
 

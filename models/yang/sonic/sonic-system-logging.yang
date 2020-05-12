@@ -1,0 +1,66 @@
+module sonic-system-logging {
+    namespace "http://github.com/Azure/sonic-system-logging";
+    prefix ssys;
+
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC LOGGING";
+
+    revision 2020-04-27 {
+        description
+            "Initial revision.";
+    }
+
+    container sonic-system-logging {
+        description
+          "Container for the logging";
+
+        container SYSLOG_SERVER {
+           description
+             "Enclosing container for the list of remote log servers";
+
+            list SYSLOG_SERVER_LIST {
+                key "ipaddress";
+                description
+                  "List of remote log servers";
+
+                max-elements 8;
+
+                leaf ipaddress {
+                    type inet:ip-address;
+                    description
+                            "Remote syslog server's IP address (IPv4 or IPv6)";
+                }
+
+                leaf remote-port {
+                    default 514;
+                    type inet:port-number;
+                }
+                leaf vrf-name {
+                    type string {
+                        pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
+                            error-message "Invalid VRF name for SSH server";
+                            error-app-tag vrf-name-ssh-invalid;
+                        }
+                    }
+                }
+                leaf source-address {
+                  type inet:ip-address;
+                  description
+                    "Source IP address for packets to the log server";
+                }
+
+            }
+        }
+    }
+}
+

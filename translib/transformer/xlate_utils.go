@@ -717,6 +717,7 @@ func replacePrefixWithModuleName(xpath string) (string) {
 
 /* Extract key vars, create db key and xpath */
 func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, string, string, error) {
+	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)
 	 keyStr    := ""
 	 tableName := ""
 	 pfxPath := ""
@@ -825,10 +826,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 
 		 }
 	 }
+	 xfmrLogInfoAll("Return uri(%v), xpath(%v), key(%v), tableName(%v)", path, pfxPath, keyStr, tableName)
 	 return pfxPath, keyStr, tableName, err
  }
 
  func sonicXpathKeyExtract(path string) (string, string, string) {
+	 xfmrLogInfoAll("In uri(%v)", path)
 	 xpath, keyStr, tableName, fldNm := "", "", "", ""
 	 var err error
 	 lpath := path
@@ -866,8 +869,14 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			    eg. /sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL2_ACL_IPV4]/ports[ports=Ethernet12]
 			 */
 			 if fldNm != "" {
-				 chompFld := strings.Split(path, "/")
-				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX], "/")
+				 pathelem, perr := ygot.StringToStringSlicePath(path)
+				 if perr != nil {
+					 log.Errorf("Failed to get parts for uri %v.", path)
+					 return xpath, keyStr, tableName
+				 }
+				 chompFld := pathelem.Element
+
+				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX-1], "/")
 				 xfmrLogInfoAll("path after removing the field portion %v", lpath)
 
 			 }
@@ -880,6 +889,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			 }
 		 }
 	 }
+	 xfmrLogInfoAll("Return uri(%v), xpath(%v), key(%v), tableName(%v)", path, xpath, keyStr, tableName)
 	 return xpath, keyStr, tableName
  }
 

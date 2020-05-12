@@ -404,7 +404,7 @@ module sonic-flow-based-services {
                                 }
                             }
                         }
-/*
+
                         leaf SET_TC {
                             type uint8 {
                                 range "0..7" {
@@ -413,17 +413,15 @@ module sonic-flow-based-services {
                                 }
                             }
                         }
-*/
+
                         leaf SET_POLICER_CIR {
-                            type uint32 {
-                                range "1..4294967295";
-                            }
+                            type uint64;
+                            units bps;
                         }
 
                         leaf SET_POLICER_CBS {
-                            type uint32 {
-                                range "1..4294967295";
-                            }
+                            type uint64;
+                            units bytes;
                             must "(current()/../SET_POLICER_CIR) and (current()/../SET_POLICER_CIR > 0)" {
                                 error-app-tag cir-not-configured;
                                 error-message "CBS can't be configured without CIR.";
@@ -435,9 +433,8 @@ module sonic-flow-based-services {
                         }
 
                         leaf SET_POLICER_PIR {
-                            type uint32 {
-                                range "1..4294967295";
-                            }
+                            type uint64;
+                            units bps;
                             must "(current()/../SET_POLICER_CIR) and (current()/../SET_POLICER_CIR > 0)" {
                                 error-app-tag cir-not-configured;
                                 error-message "PIR can't be configured without CIR.";
@@ -449,9 +446,8 @@ module sonic-flow-based-services {
                         }
 
                         leaf SET_POLICER_PBS {
-                            type uint32 {
-                                range "1..4294967295";
-                            }
+                            type uint64;
+                            units bytes;
                             must "(current()/../SET_POLICER_PIR) and (current()/../SET_POLICER_PIR > 0)" {
                                 error-app-tag pir-not-configured;
                                 error-message "PBS can't be configured without PIR.";
