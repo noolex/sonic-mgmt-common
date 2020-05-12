@@ -28,7 +28,6 @@ type portProp struct {
 }
 
 var platConfigStr map[string]map[string]string
-var portOidMap  map[string]string
 
 /* Functions */
 
@@ -154,7 +153,6 @@ func parsePlatformJsonFile () (error) {
     return err
 }
 
-
 func removePorts (ports_i []portProp) (map[db.DBNum]map[string]map[string]db.Value) {
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     delMap := make(map[string]map[string]db.Value)
@@ -187,6 +185,16 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
         value.Set("speed", ports[i].speed)
         value.Set("valid_speeds", ports[i].valid_speeds)
         entryMap[ports[i].name] = value
+/*
+        entry, ok := platConfigStr[ports[i].name]
+        if ok {
+            brkoutMap := make(map[string]db.Value)
+            fv := make(map[string]string)
+            fvpairs := db.Value{Field: fv}
+            fvpairs.Set("lanes", entry["lanes"])
+            brkoutMap[ports[i].name] = fvpairs
+            addMap["BREAKOUT_CFG"] = brkoutMap
+        } */
     }
 
     addMap["PORT"] = entryMap
