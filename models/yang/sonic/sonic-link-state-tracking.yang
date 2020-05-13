@@ -85,8 +85,8 @@ module sonic-link-state-tracking {
                         type leafref {
                             path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
                         }
-                        type string {
-                            pattern "all-mclag";
+                        type enumeration {
+                            enum all-mclag;
                         }
                     }
                 }

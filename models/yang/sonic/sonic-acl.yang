@@ -50,6 +50,33 @@ module sonic-acl {
             "Initial revision.";
     }
 
+    typedef acl-stage {
+        description "ACL Binding stages";
+        type enumeration {
+            enum INGRESS;
+            enum EGRESS;
+        }
+    }
+
+    typedef acl-bind-points {
+        description "Ports/Locations on which ACL can be applied";
+        type union {
+            type leafref {
+                path "/sprt:sonic-port/sprt:PORT/sprt:PORT_LIST/sprt:ifname";
+            }
+            type leafref {
+                path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+            }
+            type leafref {
+                path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+            }
+            type enumeration {
+                enum Switch;
+                enum CtrlPlane;
+            }
+        }
+    }
+
     container sonic-acl {
 
         container ACL_TABLE {
@@ -74,10 +101,7 @@ module sonic-acl {
                 }
 
                 leaf stage {
-                    type enumeration {
-                        enum INGRESS;
-                        enum EGRESS;
-                    }
+                    type acl-stage;
                 }
 
                 leaf type {
@@ -92,20 +116,7 @@ module sonic-acl {
                 }
 
                 leaf-list ports {
-                    type union {
-                        type leafref {
-                            path "/sprt:sonic-port/sprt:PORT/sprt:PORT_LIST/sprt:ifname";
-                        }
-                        type leafref {
-                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
-                        }
-                        type leafref {
-                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
-                        }
-                        type string {
-                            pattern "Switch";
-                        }
-                    }
+                    type acl-bind-points;
                 }
 
                 must "((/cmn:operation/cmn:operation = 'DELETE') and (count(ports) = 0)) or ((/cmn:operation/cmn:operation != 'DELETE'))" {
@@ -139,7 +150,11 @@ module sonic-acl {
                 }
 
                 leaf DESCRIPTION {
-                    type string;
+                    type string {
+                        length 1..255 {
+                            error-app-tag rule-desc-invalid-length;
+                        }
+                    }
                 }
 
                 leaf PACKET_ACTION {
@@ -186,6 +201,9 @@ module sonic-acl {
                     when "(/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'TAM') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3V6')";
                     type uint8;
                 }
+
+
+
 
                 leaf ETHER_TYPE {
                     must "(((/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3') and (current() = '0x800')) or " +
@@ -321,9 +339,39 @@ module sonic-acl {
                 }
             }
         }
+
+        container ACL_BINDING_TABLE {
+            sonic-ext:db-name "STATE_DB";
+            sonic-ext:key-delim "|";
+            config false;
+            list ACL_BINDING_TABLE_LIST {
+                key "intfname stage";
+                leaf intfname {
+                    type acl-bind-points;
+                }
+
+                leaf stage {
+                    type acl-stage;
+                }
+
+                leaf L2 {
+                    type string;
+                }
+                leaf L3 {
+                    type string;
+                }
+                leaf L3V6 {
+                    type string;
+                }
+            }
+        }
     }
 
     rpc clear-acl-counters {
+        description "Clear ACL counters by ACL name and interface. ACL Type is mandatory. If ACL name is specified," +
+            "it will clear aggregate or per interface counters ACL counters depending on the counter mode set. " +
+            "Interface name is optional and can be specified only when counter mode is set to per-interface";
+
         input {
             leaf aclname {
                 type string {
@@ -341,20 +389,7 @@ module sonic-acl {
             }
 
             leaf ifname {
-                type union {
-                    type leafref {
-                        path "/sprt:sonic-port/sprt:PORT/sprt:PORT_LIST/sprt:ifname";
-                    }
-                    type leafref {
-                        path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
-                    }
-                    type leafref {
-                        path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
-                    }
-                    type string {
-                        pattern "Switch";
-                    }
-                }
+                type acl-bind-points;
             }
         }
 
