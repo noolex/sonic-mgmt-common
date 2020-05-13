@@ -203,9 +203,9 @@ func retrieveAliasMode() {
         log.Info(errStr)
     }
     aliasMode = false
-    if val, ok := dbEntry.Field["aliasMode"].(bool); ok {
-        if val == true {
-            aliasMode = val
+    if val, ok := dbEntry.Field["aliasMode"]; ok {
+        if val == "true" {
+            aliasMode = true
         }
     }
     log.Info("Alias Mode = ", aliasMode)

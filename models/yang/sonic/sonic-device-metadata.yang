@@ -103,6 +103,7 @@ module sonic-device-metadata {
 
                 leaf aliasMode {
                     type boolean;
+                    default false;
                 }
 			}
 		}
