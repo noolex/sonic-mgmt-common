@@ -222,25 +222,6 @@ func populateAliasDS() error {
     return err
 }
 
-func retrieveAliasModeFromEnv() {
-    alsMode, ok := os.LookupEnv("SONIC_CLI_IFACE_MODE")
-    if !ok {
-        aliasMode = false
-        return
-    }
-    log.Info("Alias Mode (String) = ", alsMode)
-
-    switch alsMode {
-    case "default":
-        aliasMode = false
-    case "alias":
-        aliasMode = true
-    default:
-        log.Errorf("Not supported Interface mode %s received!", alsMode)
-    }
-    log.Info("Alias Mode = ", aliasMode)
-}
-
 func IsAliasModeEnabled() bool {
     return  aliasMode
 }

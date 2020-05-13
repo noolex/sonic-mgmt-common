@@ -100,6 +100,11 @@ module sonic-device-metadata {
 						enum LeafRouter;
 					}
 				}
+
+                leaf aliasMode {
+                    type boolean;
+                    default false;
+                }
 			}
 		}
 	}
