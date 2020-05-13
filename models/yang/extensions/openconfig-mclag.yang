@@ -90,6 +90,17 @@ module openconfig-mclag {
 
   }
 
+  grouping gateway-mac-config {
+    description
+      "MCLAG Domain config";
+    leaf gateway-mac {
+        type oc-yang:mac-address;
+      description
+        "Gateway Mac for MCLAG";
+    }
+}
+
+
   grouping mclag-domain-state {
     description
       "MCLAG Domain state";
@@ -170,6 +181,37 @@ module openconfig-mclag {
       }
     }
   }
+
+
+  grouping mclag-gateway-mac-config {
+    description
+      "MCLAG Gateway mac top level container";
+
+    container mclag-gateway-macs {
+      list mclag-gateway-mac {
+        key "gateway-mac";
+        max-elements 1;
+        description 
+          "Gateway Mac for MCLAG";
+        leaf gateway-mac {
+            type leafref {
+              path "../config/gateway-mac";
+            }
+        }
+        container config {
+          description
+            "MCLAG gw-mac config";
+          uses gateway-mac-config;
+        }
+        container state {
+          description
+            "MCLAG gw-mac config";
+          uses gateway-mac-config;
+        }
+      }
+    }
+  }
+
 
   grouping mclag-interface-config {
     description
@@ -388,6 +430,7 @@ module openconfig-mclag {
       uses mclag-domain-top;
       uses mclag-interfaces-top;
       uses mclag-unique-ip-top;
+      uses mclag-gateway-mac-config;
     }
   }
 

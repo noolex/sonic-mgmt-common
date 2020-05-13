@@ -37,8 +37,8 @@ import (
 func init() {
 	XlateFuncBind("YangToDb_ptp_entry_key_xfmr", YangToDb_ptp_entry_key_xfmr)
 	XlateFuncBind("DbToYang_ptp_entry_key_xfmr", DbToYang_ptp_entry_key_xfmr)
-	XlateFuncBind("YangToDb_ptp_port_entry_key_xfmr", YangToDb_ptp_port_entry_key_xfmr)
-	XlateFuncBind("DbToYang_ptp_port_entry_key_xfmr", DbToYang_ptp_port_entry_key_xfmr)
+    XlateFuncBind("YangToDb_ptp_port_ds_xfmr", YangToDb_ptp_port_ds_xfmr)
+    XlateFuncBind("DbToYang_ptp_port_ds_xfmr", DbToYang_ptp_port_ds_xfmr)
 	XlateFuncBind("YangToDb_ptp_global_key_xfmr", YangToDb_ptp_global_key_xfmr)
 	XlateFuncBind("DbToYang_ptp_global_key_xfmr", DbToYang_ptp_global_key_xfmr)
 
@@ -48,10 +48,6 @@ func init() {
 	XlateFuncBind("DbToYang_ptp_clock_identity_xfmr", DbToYang_ptp_clock_identity_xfmr)
 	XlateFuncBind("YangToDb_ptp_boolean_xfmr", YangToDb_ptp_boolean_xfmr)
 	XlateFuncBind("DbToYang_ptp_boolean_xfmr", DbToYang_ptp_boolean_xfmr)
-	XlateFuncBind("YangToDb_ptp_delay_mech_xfmr", YangToDb_ptp_delay_mech_xfmr)
-	XlateFuncBind("DbToYang_ptp_delay_mech_xfmr", DbToYang_ptp_delay_mech_xfmr)
-	XlateFuncBind("YangToDb_ptp_port_state_xfmr", YangToDb_ptp_port_state_xfmr)
-	XlateFuncBind("DbToYang_ptp_port_state_xfmr", DbToYang_ptp_port_state_xfmr)
 	XlateFuncBind("YangToDb_ptp_inst_number_xfmr:", YangToDb_ptp_inst_number_xfmr);
 	XlateFuncBind("DbToYang_ptp_inst_number_xfmr:", DbToYang_ptp_inst_number_xfmr);
 
@@ -65,13 +61,11 @@ func init() {
 	XlateFuncBind("DbToYang_ptp_domain_profile_xfmr", DbToYang_ptp_domain_profile_xfmr )
 	XlateFuncBind("YangToDb_ptp_unicast_multicast_xfmr", YangToDb_ptp_unicast_multicast_xfmr )
 	XlateFuncBind("DbToYang_ptp_unicast_multicast_xfmr", DbToYang_ptp_unicast_multicast_xfmr )
-	XlateFuncBind("YangToDb_ptp_unicast_table_xfmr", YangToDb_ptp_unicast_table_xfmr )
-	XlateFuncBind("DbToYang_ptp_unicast_table_xfmr", DbToYang_ptp_unicast_table_xfmr )
 	XlateFuncBind("YangToDb_ptp_udp6_scope_xfmr", YangToDb_ptp_udp6_scope_xfmr )
 	XlateFuncBind("DbToYang_ptp_udp6_scope_xfmr", DbToYang_ptp_udp6_scope_xfmr )
 }
 
-/* E_IETFPtp_DelayMechanismEnumeration */
+/* PTP_DELAY_MECH_MAP map enumeration */
 var PTP_DELAY_MECH_MAP = map[string]string{
 	strconv.FormatInt(int64(ocbinds.IETFPtp_DelayMechanismEnumeration_e2e), 10): "E2E",
 	strconv.FormatInt(int64(ocbinds.IETFPtp_DelayMechanismEnumeration_p2p), 10): "P2P",
@@ -117,9 +111,6 @@ func ParseIdentity(s string) (ptp_id ptp_id_bin, err error) {
 	return ptp_id, err
 }
 
-////////////////////////////////////////////
-// Bi-directoonal overloaded methods
-////////////////////////////////////////////
 var YangToDb_ptp_entry_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
 	var entry_key string
 	var err error
@@ -149,92 +140,6 @@ var DbToYang_ptp_entry_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map
 	var err error
 	log.Info("DbToYang_ptp_entry_key_xfmr root, uri: ", inParams.ygRoot, inParams.uri)
 	// rmap["instance-number"] = 0
-	return rmap, err
-}
-
-var YangToDb_ptp_port_entry_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-	var entry_key string
-	var underlying_interface string
-	var err error
-	log.Info("YangToDb_ptp_port_entry_key_xfmr root, uri: ", inParams.ygRoot, inParams.uri)
-	pathInfo := NewPathInfo(inParams.uri)
-
-	log.Info("YangToDb_ptp_port_entry_key_xfmr len(pathInfo.Vars): ", len(pathInfo.Vars))
-	log.Info("YangToDb_ptp_port_entry_key_xfmr pathInfo.Vars: ", pathInfo.Vars)
-	if len(pathInfo.Vars) < 2 {
-		err = errors.New("Invalid xpath, key attributes not found")
-		return entry_key, err
-	}
-
-	instance_id, _  := strconv.ParseUint(pathInfo.Var("instance-number"), 10, 64)
-	port_number_str  := pathInfo.Var("port-number")
-	port_number, _  := strconv.ParseUint(port_number_str, 10, 64)
-	ptpObj := getPtpRoot(inParams.ygRoot)
-	pDsList := ptpObj.InstanceList[uint32(instance_id)].PortDsList
-	log.Info("YangToDb_ptp_port_entry_key_xfmr len(pDsList) : ", len(pDsList))
-
-	if (0 != len(pDsList) && nil != pDsList[uint16(port_number)].UnderlyingInterface &&
-		"" != *pDsList[uint16(port_number)].UnderlyingInterface) {
-		underlying_interface = *pDsList[uint16(port_number)].UnderlyingInterface
-		log.Info("YangToDb_ptp_port_entry_key_xfmr underlying-interface: ", underlying_interface)
-		// if (underlying_interface == "") {
-			// underlying_interface = "Ethernet" + port_number_str
-			// log.Info("YangToDb_ptp_port_entry_key_xfmr : underlying-interface is required on create")
-			// return entry_key, errors.New("underlying-interface is required on create")
-		// }
-		if (port_number < 1000) {
-			if (port_number_str != strings.Replace(underlying_interface, "Ethernet", "", 1)) {
-				log.Info("YangToDb_ptp_port_entry_key_xfmr : underlying-interface port-number mismatch")
-				return entry_key, errors.New("underlying-interface port-number mismatch")
-			}
-		} else {
-			if (strconv.FormatInt(int64(port_number-1000), 10) != strings.Replace(underlying_interface, "Vlan", "", 1)) {
-				log.Info("YangToDb_ptp_port_entry_key_xfmr : underlying-interface port-number mismatch")
-				return entry_key, errors.New("underlying-interface port-number mismatch")
-			}
-		}
-	} else {
-		if (port_number < 1000) {
-			underlying_interface = "Ethernet" + port_number_str
-		} else {
-			underlying_interface = "Vlan" + strconv.FormatInt(int64(port_number-1000), 10)
-		}
-	}
-
-	log.Info("YangToDb_ptp_port_entry_key_xfmr pathInfo.Var:port-number: ", pathInfo.Var("port-number"))
-	entry_key = "GLOBAL|" + underlying_interface
-
-
-	log.Info("YangToDb_ptp_port_entry_key_xfmr - entry_key : ", entry_key)
-
-	return entry_key, err
-}
-
-var DbToYang_ptp_port_entry_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	rmap := make(map[string]interface{})
-	var err error
-	var port_num string
-	var is_vlan bool
-
-	log.Info("DbToYang_ptp_port_entry_key_xfmr root, uri: ", inParams.ygRoot, inParams.uri)
-	entry_key := inParams.key
-	log.Info("DbToYang_ptp_port_entry_key_xfmr: ", entry_key)
-
-	portName := entry_key
-	if (strings.Contains(portName, "Ethernet")) {
-		port_num = strings.Replace(portName, "GLOBAL|Ethernet", "", 1)
-		is_vlan = false
-	} else {
-		port_num = strings.Replace(portName, "GLOBAL|Vlan", "", 1)
-		is_vlan = true
-	}
-	// rmap["instance-number"] = 0
-	port_num_int, _ := strconv.ParseInt(port_num, 10, 16)
-	if (is_vlan) {
-		port_num_int += 1000
-	}
-	rmap["port-number"] = port_num_int
-	log.Info("DbToYang_ptp_port_entry_key_xfmr port-number: ", port_num)
 	return rmap, err
 }
 
@@ -441,135 +346,6 @@ var DbToYang_ptp_boolean_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map
 	return result, err
 }
 
-var YangToDb_ptp_delay_mech_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-	res_map := make(map[string]string)
-	var err error
-	var outval string
-	if inParams.param == nil {
-		log.Info("YangToDb_ptp_delay_mech_xfmr Error: ")
-	    return res_map, err
-	}
-	log.Info("YangToDb_ptp_delay_mech_xfmr : ", *inParams.ygRoot, " Xpath: ", inParams.uri)
-	log.Info("YangToDb_ptp_delay_mech_xfmr inParams.key: ", inParams.key)
-
-	inval, _ := inParams.param.(ocbinds.E_IETFPtp_DelayMechanismEnumeration)
-	_, field := filepath.Split(inParams.uri)
-
-	log.Info("YangToDb_ptp_delay_mech_xfmr outval: ", outval, " field: ", field)
-	res_map[field] = findInMap(PTP_DELAY_MECH_MAP, strconv.FormatInt(int64(inval), 10))
-
-	return res_map, err
-}
-
-var DbToYang_ptp_delay_mech_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	var err error
-	result := make(map[string]interface{})
-	var inval string
-	var outval string
-	data := (*inParams.dbDataMap)[inParams.curDb]
-	log.Info("DbToYang_ptp_delay_mech_xfmr ygRoot: ", *inParams.ygRoot, " Xpath: ", inParams.uri, " data: ", data)
-
-	_, field := filepath.Split(inParams.uri)
-
-	if strings.Contains(inParams.uri, "port-ds-list") {
-		inval = data["PTP_PORT"][inParams.key].Field[field]
-	} else if strings.Contains(inParams.uri, "transparent-clock-default-ds") {
-		inval = data["PTP_TC_CLOCK"][inParams.key].Field[field]
-	}
-
-	switch inval {
-	case "1":
-		outval = "e2e"
-	case "2":
-		outval = "p2p"
-	default:
-		outval = ""
-	}
-	log.Info("DbToYang_ptp_delay_mech_xfmr result: ", outval, " inval: ", inval)
-	if outval != "" {
-		result[field] = outval
-	}
-
-	return result, err
-}
-
-var YangToDb_ptp_port_state_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-	res_map := make(map[string]string)
-	var err error
-	var outval string
-	if inParams.param == nil {
-		log.Info("YangToDb_ptp_port_state_xfmr Error: ")
-	    return res_map, err
-	}
-	log.Info("YangToDb_ptp_port_state_xfmr : ", *inParams.ygRoot, " Xpath: ", inParams.uri)
-	log.Info("YangToDb_ptp_port_state_xfmr inParams.key: ", inParams.key)
-
-	inval, _ := inParams.param.(ocbinds.E_IETFPtp_PortStateEnumeration)
-	_, field := filepath.Split(inParams.uri)
-
-	switch inval {
-	case ocbinds.IETFPtp_PortStateEnumeration_initializing:
-		outval = "1"
-	case ocbinds.IETFPtp_PortStateEnumeration_faulty:
-		outval = "2"
-	case ocbinds.IETFPtp_PortStateEnumeration_disabled:
-		outval = "3"
-	case ocbinds.IETFPtp_PortStateEnumeration_listening:
-		outval = "4"
-	case ocbinds.IETFPtp_PortStateEnumeration_pre_master:
-		outval = "5"
-	case ocbinds.IETFPtp_PortStateEnumeration_master:
-		outval = "6"
-	case ocbinds.IETFPtp_PortStateEnumeration_passive:
-		outval = "7"
-	case ocbinds.IETFPtp_PortStateEnumeration_uncalibrated:
-		outval = "8"
-	case ocbinds.IETFPtp_PortStateEnumeration_slave:
-		outval = "9"
-	}
-
-	log.Info("YangToDb_ptp_port_state_xfmr outval: ", outval, " field: ", field)
-	res_map[field] = outval
-	return res_map, err
-}
-
-var DbToYang_ptp_port_state_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	var err error
-	var inval string
-	var outval string
-	result := make(map[string]interface{})
-
-	data := (*inParams.dbDataMap)[inParams.curDb]
-	log.Info("DbToYang_ptp_port_state_xfmr :", data, inParams.ygRoot)
-
-	inval = data["PTP_PORT"][inParams.key].Field["port-state"]
-	switch inval {
-	case "1":
-		outval = "initializing"
-	case "2":
-		outval = "faulty"
-	case "3":
-		outval = "disabled"
-	case "4":
-		outval = "listening"
-	case "5":
-		outval = "pre-master"
-	case "6":
-		outval = "master"
-	case "7":
-		outval = "passive"
-	case "8":
-		outval = "uncalibrated"
-	case "9":
-		outval = "slave"
-	default:
-		goto done
-	}
-	result["port-state"] = outval
-done:
-	return result, err
-}
-
 var YangToDb_ptp_inst_number_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map :=  make(map[string]string)
     res_map["NULL"] = "NULL"
@@ -607,11 +383,11 @@ var YangToDb_ptp_network_transport_xfmr FieldXfmrYangToDb = func(inParams XfmrPa
 	domain_profile := ""
 
 	ts := db.TableSpec { Name: "PTP_CLOCK" }
-	ca := make([]string, 1, 1)
+	ca := make([]string, 1)
 
 	ca[0] = "GLOBAL"
 	akey := db.Key { Comp: ca}
-	entry, err := inParams.d.GetEntry(&ts, akey)
+	entry, _ := inParams.d.GetEntry(&ts, akey)
 	if entry.Has("domain-profile") {
 		domain_profile = entry.Get("domain-profile")
 	}
@@ -665,11 +441,11 @@ var YangToDb_ptp_domain_number_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
 	domain_profile := ""
 
 	ts := db.TableSpec { Name: "PTP_CLOCK" }
-	ca := make([]string, 1, 1)
+	ca := make([]string, 1)
 
 	ca[0] = "GLOBAL"
 	akey := db.Key { Comp: ca}
-	entry, err := inParams.d.GetEntry(&ts, akey)
+	entry, _ := inParams.d.GetEntry(&ts, akey)
 	if entry.Has("domain-profile") {
 		domain_profile = entry.Get("domain-profile")
 	}
@@ -732,11 +508,11 @@ var YangToDb_ptp_clock_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (
 	unicast_multicast := ""
 
 	ts := db.TableSpec { Name: "PTP_CLOCK" }
-	ca := make([]string, 1, 1)
+	ca := make([]string, 1)
 
 	ca[0] = "GLOBAL"
 	akey := db.Key { Comp: ca}
-	entry, err := inParams.d.GetEntry(&ts, akey)
+	entry, _ := inParams.d.GetEntry(&ts, akey)
 	if entry.Has("domain-profile") {
 		domain_profile = entry.Get("domain-profile")
 	}
@@ -824,11 +600,11 @@ var YangToDb_ptp_domain_profile_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 	clock_type := ""
 
 	ts := db.TableSpec { Name: "PTP_CLOCK" }
-	ca := make([]string, 1, 1)
+	ca := make([]string, 1)
 
 	ca[0] = "GLOBAL"
 	akey := db.Key { Comp: ca}
-	entry, err := inParams.d.GetEntry(&ts, akey)
+	entry, _ := inParams.d.GetEntry(&ts, akey)
 	if entry.Has("domain-number") {
 		domain_number, _ = strconv.ParseUint(entry.Get("domain-number"), 10, 64)
 	}
@@ -914,11 +690,11 @@ var YangToDb_ptp_unicast_multicast_xfmr FieldXfmrYangToDb = func(inParams XfmrPa
 	clock_type := ""
 
 	ts := db.TableSpec { Name: "PTP_CLOCK" }
-	ca := make([]string, 1, 1)
+	ca := make([]string, 1)
 
 	ca[0] = "GLOBAL"
 	akey := db.Key { Comp: ca}
-	entry, err := inParams.d.GetEntry(&ts, akey)
+	entry, _ := inParams.d.GetEntry(&ts, akey)
 	if entry.Has("domain-profile") {
 		domain_profile = entry.Get("domain-profile")
 	}
@@ -981,81 +757,6 @@ var DbToYang_ptp_unicast_multicast_xfmr FieldXfmrDbtoYang = func(inParams XfmrPa
 	return result, err
 }
 
-var YangToDb_ptp_unicast_table_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map :=  make(map[string]string)
-	var outval string
-	var err error
-	if inParams.param == nil {
-		log.Info("YangToDb_ptp_unicast_table_xfmr Error: ")
-		return res_map, err
-	}
-	log.Info("YangToDb_ptp_unicast_table_xfmr : ", *inParams.ygRoot, " Xpath: ", inParams.uri)
-	log.Info("YangToDb_ptp_unicast_table_xfmr inParams.key: ", inParams.key)
-	pathInfo := NewPathInfo(inParams.uri)
-	instance_id, _  := strconv.ParseUint(pathInfo.Var("instance-number"), 10, 64)
-	port_number, _  := strconv.ParseUint(pathInfo.Var("port-number"), 10, 64)
-	log.Info("YangToDb_ptp_unicast_table_xfmr instance_number : ", instance_id, " port_number: ", port_number)
-
-	ptpObj := getPtpRoot(inParams.ygRoot)
-	outval = *ptpObj.InstanceList[uint32(instance_id)].PortDsList[uint16(port_number)].UnicastTable
-	log.Info("YangToDb_ptp_unicast_table_xfmr outval: ", outval)
-	_, field := filepath.Split(inParams.uri)
-	unicast_multicast := ""
-
-	ts := db.TableSpec { Name: "PTP_CLOCK" }
-	ca := make([]string, 1, 1)
-
-	ca[0] = "GLOBAL"
-	akey := db.Key { Comp: ca}
-	entry, err := inParams.d.GetEntry(&ts, akey)
-	if entry.Has("unicast-multicast") {
-		unicast_multicast = entry.Get("unicast-multicast")
-	}
-
-    if unicast_multicast == "multicast" {
-		return res_map, tlerr.InvalidArgsError{Format:"master-table is not needed in with multicast transport"}
-	}
-
-	if (outval != "") {
-		addresses := strings.Split(outval, ",")
-		var prev_tmp E_Ptp_AddressTypeEnumeration 
-		var tmp E_Ptp_AddressTypeEnumeration 
-		var first bool
-		first = true
-		for _,address := range addresses {
-			tmp = check_address(address)
-			if (PTP_ADDRESSTYPE_UNKNOWN == tmp) {
-				return res_map, tlerr.InvalidArgsError{Format:"Invalid value passed for unicast-table"}
-			}
-			if (!first && tmp != prev_tmp) {
-				return res_map, tlerr.InvalidArgsError{Format:"Mismatched addresses passed in unicast-table"}
-			}
-			prev_tmp = tmp
-			first = false
-		}
-	}
-
-	log.Info("YangToDb_ptp_unicast_table_xfmr outval: ", outval, " field: ", field)
-	res_map[field] = outval
-    return res_map, nil
-}
-
-var DbToYang_ptp_unicast_table_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	var err error
-
-	result := make(map[string]interface{})
-	data := (*inParams.dbDataMap)[inParams.curDb]
-	log.Info("DbToYang_ptp_unicast_table_xfmr ygRoot: ", *inParams.ygRoot, " Xpath: ", inParams.uri, " data: ", data)
-	log.Info("DbToYang_ptp_unicast_table_xfmr inParams.key: ", inParams.key)
-
-	_, field := filepath.Split(inParams.uri)
-	log.Info("DbToYang_ptp_unicast_table_xfmr field: ", field)
-	value := data["PTP_PORT"][inParams.key].Field[field]
-	result[field] = value
-	log.Info("DbToYang_ptp_unicast_table_xfmr value: ", value)
-	return result, err
-}
-
 var YangToDb_ptp_udp6_scope_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map :=  make(map[string]string)
 	var inval uint8
@@ -1103,4 +804,292 @@ var DbToYang_ptp_udp6_scope_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (
 	result[field] = uint8(value)
 	log.Info("DbToYang_ptp_udp6_scope_xfmr value: ", value)
 	return result, err
+}
+
+var YangToDb_ptp_port_ds_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
+    var err error
+    res_map := make(map[string]map[string]db.Value)
+	port_ds_map := make(map[string]db.Value)
+    log.Info("TableXfmrFunc - inParams DPB: ", inParams);
+    log.Warningf("DPB  %v", inParams)
+    log.Info(" DPB URI: ", inParams.uri);
+    log.Info(" DPB REQ URI: ", inParams.requestUri);
+    log.Info(" DPB OPER: ", inParams.oper);
+    log.Info(" DPB KEY: ", inParams.key);
+    log.Info(" DPB PARAM: ", inParams.param);
+
+    ptpObj := getPtpRoot(inParams.ygRoot)
+    if ptpObj == nil {
+        log.Info("YangToDb_ptp_port_ds_xfmr : Empty component.")
+        return res_map, errors.New("Interface is not specified")
+    }
+
+	pathInfo := NewPathInfo(inParams.uri)
+	log.Info("len(pathInfo.Vars): ", len(pathInfo.Vars))
+	log.Info("pathInfo.Vars: ", pathInfo.Vars)
+	if len(pathInfo.Vars) < 2 {
+		err = errors.New("Invalid xpath, key attributes not found")
+		return res_map, err
+	}
+	instance_id, _  := strconv.ParseUint(pathInfo.Var("instance-number"), 10, 64)
+	port_number_str  := pathInfo.Var("port-number")
+    log.Info(" port_number_str: ", port_number_str);
+	port_number, _  := strconv.ParseUint(port_number_str, 10, 64)
+    log.Info(" port_number: ", port_number);
+	pDsList := ptpObj.InstanceList[uint32(instance_id)].PortDsList
+	var underlying_interface string
+    log.Info(" len(pDsList): ", len(pDsList));
+	if inParams.oper == DELETE {
+		keys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{ Name:"PTP_PORT" }, db.Key {[]string{"GLOBAL", "*"}})
+		if tblErr == nil {
+			matched := false
+			for _, key := range keys {
+				entry, err2 := inParams.d.GetEntry(&db.TableSpec{Name:"PTP_PORT"}, key)
+				if err2 == nil {
+					if entry.Has("port-number") {
+						var port_number_db string
+						if entry.Get("port-number") != "" {
+							port_number_db = entry.Get("port-number")
+						}
+						log.Info("port-number : ", port_number_db)
+
+						if port_number_db == port_number_str {
+							log.Info("port-number matches input")
+							tblName := key.Comp[0] + "|" + key.Comp[1]
+							
+							port_ds_map[tblName] = db.Value{Field: make(map[string]string)}
+							port_ds_map[tblName].Field["port-number"] = port_number_str
+							matched = true
+						}
+					}
+				}
+			}
+			if !matched {
+				return res_map, tlerr.InvalidArgsError{Format:"Input key does not match any entry "}
+			}
+		}
+	} else {
+		if len(pDsList) == 0 || pDsList[uint16(port_number)].UnderlyingInterface == nil ||
+			*pDsList[uint16(port_number)].UnderlyingInterface == "" {
+			keys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{ Name:"PTP_PORT" }, db.Key {[]string{"GLOBAL", "*"}})
+			if tblErr == nil {
+				matched := false
+				for _, key := range keys {
+					entry, err2 := inParams.d.GetEntry(&db.TableSpec{Name:"PTP_PORT"}, key)
+					if err2 == nil {
+						if entry.Has("port-number") {
+							var port_number_db string
+							if entry.Get("port-number") != "" {
+								port_number_db = entry.Get("port-number")
+							}
+							log.Info("port-number : ", port_number_db)
+
+							if port_number_db == port_number_str {
+								underlying_interface = key.Comp[1]
+								matched = true
+								break
+							}
+						}
+					}
+				}
+				if !matched {
+					return res_map, tlerr.InvalidArgsError{Format:"underlying-interface is needed"}
+				}
+			}
+
+		} else {
+			underlying_interface = *pDsList[uint16(port_number)].UnderlyingInterface
+		}
+		tblName := "GLOBAL|" + underlying_interface
+
+		port_ds_map[tblName] = db.Value{Field: make(map[string]string)}
+//		port_ds_map[tblName].Field["underlying-interface"] = underlying_interface
+		port_ds_map[tblName].Field["port-number"] = port_number_str
+		if pDsList[uint16(port_number)].UnicastTable != nil {
+			outval := *pDsList[uint16(port_number)].UnicastTable
+
+			unicast_multicast := ""
+
+			entry, _ := inParams.d.GetEntry(&db.TableSpec{ Name:"PTP_CLOCK" }, db.Key {[]string{"GLOBAL"}})
+			if entry.Has("unicast-multicast") {
+				unicast_multicast = entry.Get("unicast-multicast")
+			}
+
+			if unicast_multicast == "multicast" {
+				return res_map, tlerr.InvalidArgsError{Format:"master-table is not needed in with multicast transport"}
+			}
+
+			if (outval != "") {
+				addresses := strings.Split(outval, ",")
+				var prev_tmp E_Ptp_AddressTypeEnumeration 
+				var tmp E_Ptp_AddressTypeEnumeration 
+				var first bool
+				first = true
+				for _,address := range addresses {
+					tmp = check_address(address)
+					if (PTP_ADDRESSTYPE_UNKNOWN == tmp) {
+						return res_map, tlerr.InvalidArgsError{Format:"Invalid value passed for unicast-table"}
+					}
+					if (!first && tmp != prev_tmp) {
+						return res_map, tlerr.InvalidArgsError{Format:"Mismatched addresses passed in unicast-table"}
+					}
+					prev_tmp = tmp
+					first = false
+				}
+			}
+			port_ds_map[tblName].Field["unicast-table"] = outval
+		}
+	}
+	res_map["PTP_PORT"] = port_ds_map
+    log.Info("map ==>", res_map)
+    return res_map, err
+}
+
+var DbToYang_ptp_port_ds_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    log.Info("TableXfmrFunc - Uri DPB-1: ", inParams.uri);
+    pathInfo := NewPathInfo(inParams.uri)
+
+    targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    log.Info("TARGET URI PATH DPBO:", targetUriPath)
+    log.Info("DPB PATH:", pathInfo.Path)
+    log.Warningf("DPB  %v", inParams)
+    ptpObj := getPtpRoot(inParams.ygRoot)
+    if ptpObj == nil {
+        log.Info("DbToYang_ptp_port_ds_xfmr : Empty component.")
+        return errors.New("Interface is not specified")
+    }
+	instance_id, _  := strconv.ParseUint(pathInfo.Var("instance-number"), 10, 64)
+	port_number_str  := pathInfo.Var("port-number")
+    log.Info(" port_number_str: ", port_number_str);
+	port_number, _  := strconv.ParseUint(port_number_str, 10, 64)
+    log.Info(" port_number: ", port_number);
+
+	pDsList := ptpObj.InstanceList[uint32(instance_id)].PortDsList
+    log.Info(" len(pDsList): ", len(pDsList));
+
+	keys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{ Name:"PTP_PORT" }, db.Key {[]string{"GLOBAL", "*"}})
+	if tblErr == nil {
+		for _, key := range keys {
+			entry, err2 := inParams.d.GetEntry(&db.TableSpec{Name:"PTP_PORT"}, key)
+			if err2 == nil {
+				if entry.Has("port-number") {
+					var port_number_db string
+					if entry.Get("port-number") != "" {
+						port_number_db = entry.Get("port-number")
+					}
+					log.Info("port-number : ", port_number_db)
+
+					if port_number_db == port_number_str || port_number_str  == "" {
+						port_number, _  = strconv.ParseUint(port_number_db, 10, 64)
+						log.Info("port-number matches input")
+						log.Info("port-number : ", uint16(port_number))
+						log.Info("pDsList[uint16(port_number)] : ", pDsList[uint16(port_number)])
+						
+						if pDsList[uint16(port_number)] == nil {
+							
+							ptpObj.InstanceList[uint32(instance_id)].NewPortDsList(uint16(port_number))
+							pDsList = ptpObj.InstanceList[uint32(instance_id)].PortDsList
+						}
+						pDsList[uint16(port_number)].UnderlyingInterface = &key.Comp[1]
+						temp := uint16(port_number)
+						pDsList[uint16(port_number)].PortNumber = &temp
+
+						if entry.Has("port-state") {
+							port_state_db, _  := strconv.ParseUint(entry.Get("port-state"), 10, 64)
+							log.Info("port-state : ", port_state_db)
+							if port_state_db == 1 {
+								port_state_db = 2
+							} else if port_state_db == 2 {
+								port_state_db = 3
+							} else if port_state_db == 3 {
+								port_state_db = 4
+							} else if port_state_db == 4 {
+								port_state_db = 5
+							} else if port_state_db == 5 {
+								port_state_db = 6
+							} else if port_state_db == 6 {
+								port_state_db = 7
+							} else if port_state_db == 7 {
+								port_state_db = 8
+							} else if port_state_db == 8 {
+								port_state_db = 9
+							} else if port_state_db == 9 {
+								port_state_db = 10
+							}
+							pDsList[uint16(port_number)].PortState = ocbinds.E_IETFPtp_PortStateEnumeration(port_state_db)
+						}
+
+						if entry.Has("log-min-delay-req-interval") {
+							lmdri_db, _  := strconv.ParseInt(entry.Get("log-min-delay-req-interval"), 10, 64)
+							log.Info("log-min-delay-req-interval: ", lmdri_db)
+							temp := int8(lmdri_db)
+							pDsList[uint16(port_number)].LogMinDelayReqInterval = &temp
+						}
+
+						if entry.Has("peer-mean-path-delay") {
+							pmpd_db, _  := strconv.ParseInt(entry.Get("peer-mean-path-delay"), 10, 64)
+							log.Info("peer-mean-path-delay: ", pmpd_db)
+							pDsList[uint16(port_number)].PeerMeanPathDelay = &pmpd_db
+						}
+
+						if entry.Has("log-announce-interval") {
+							lai_db, _  := strconv.ParseInt(entry.Get("log-announce-interval"), 10, 64)
+							log.Info("log-announce-interval: ", lai_db)
+							temp := int8(lai_db)
+							pDsList[uint16(port_number)].LogAnnounceInterval = &temp
+						}
+
+						if entry.Has("announce-receipt-timeout") {
+							art_db, _  := strconv.ParseUint(entry.Get("announce-receipt-timeout"), 10, 64)
+							log.Info("announce-receipt-timeout: ", art_db)
+							temp := uint8(art_db)
+							pDsList[uint16(port_number)].AnnounceReceiptTimeout = &temp
+						}
+
+						if entry.Has("log-sync-interval") {
+							lsi_db, _  := strconv.ParseInt(entry.Get("log-sync-interval"), 10, 64)
+							log.Info("log-sync-interval: ", lsi_db)
+							temp := int8(lsi_db)
+							pDsList[uint16(port_number)].LogSyncInterval = &temp
+						}
+
+						if entry.Has("delay-mechanism") {
+							delay_mech_db, _  := strconv.ParseUint(entry.Get("delay-mechanism"), 10, 64)
+							log.Info("delay-mechanism : ", delay_mech_db)
+							if delay_mech_db == 1 {
+								delay_mech_db = 2
+							} else if delay_mech_db == 2 {
+								delay_mech_db = 3
+							} else {
+								delay_mech_db = 0
+							}
+
+							pDsList[uint16(port_number)].DelayMechanism = ocbinds.E_IETFPtp_DelayMechanismEnumeration(delay_mech_db)
+						}
+
+						if entry.Has("log-min-pdelay-req-interval") {
+							lmpdri_db, _  := strconv.ParseInt(entry.Get("log-min-pdelay-req-interval"), 10, 64)
+							log.Info("log-min-pdelay-req-interval: ", lmpdri_db)
+							temp := int8(lmpdri_db)
+							pDsList[uint16(port_number)].LogMinPdelayReqInterval = &temp
+						}
+
+						if entry.Has("version-number") {
+							version_num_db, _  := strconv.ParseUint(entry.Get("version-number"), 10, 64)
+							log.Info("version-number: ", version_num_db)
+							temp := uint8(version_num_db)
+							pDsList[uint16(port_number)].VersionNumber = &temp
+						}
+
+						if entry.Has("unicast-table") {
+							unicast_table_db := entry.Get("unicast-table")
+							log.Info("unicast-table: ", unicast_table_db)
+							pDsList[uint16(port_number)].UnicastTable = &unicast_table_db
+						}
+					}
+				}
+			}
+		}
+	}
+    return err;
 }

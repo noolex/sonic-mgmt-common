@@ -28,6 +28,7 @@ import (
 	"reflect"
 	"os"
 	"bufio"
+	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	)
 
 //Custom validation code for sonic-acl.yang//
@@ -326,8 +327,7 @@ func (t *CustomValidation) ValidatePtp(
 // Path: generic
 // Purpose: To make sure the value of a leaf is not changed after its set during create
 // Returns -  CVL Error object 
-func (t *CustomValidation) ValidateLeafConstant(
-	vc *CustValidationCtxt) CVLErrorInfo {
+func (t *CustomValidation) ValidateLeafConstant(vc *CustValidationCtxt) CVLErrorInfo {
 
 	log.Infof("ValidateLeafConstant operation %d on %s:%s:%s  ", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
 
@@ -355,4 +355,60 @@ func (t *CustomValidation) ValidateLeafConstant(
 
 	log.Infof("ValidateLeafConstant update doesnt change the value. allow");
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+// Path: generic
+// Purpose: To make sure the value of a counter doesnt change when there are ACLs applied
+// Returns -  CVL Error object
+func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLErrorInfo {
+	log.Infof("ValidateZeroACLCounters operation %d on %s:%s:%s  ", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
+
+	if (vc.CurCfg.VOp == OP_CREATE) || (vc.CurCfg.VOp == OP_DELETE) {
+	    log.Info("ValidateZeroACLCounters create or delete not allowed")
+		return CVLErrorInfo{ErrCode: CVL_FAILURE}
+	}
+
+    counterDBClient := util.NewDbClient("COUNTERS_DB")
+	defer func() {
+		if (counterDBClient != nil) {
+			counterDBClient.Close()
+		}
+	}()
+
+    if (counterDBClient == nil) {
+		return CVLErrorInfo {
+			 ErrCode: CVL_INTERNAL_UNKNOWN,
+			 ConstraintErrMsg: fmt.Sprintf("Failed to connect to COUNTERS_DB"),
+			 CVLErrDetails: "Config Validation Error",
+			 ErrAppTag:  "retry-request",
+		}
+    }
+
+	val, err := vc.RClient.HGet(vc.CurCfg.Key, vc.YNodeName).Result()
+	if err != nil && err != redis.Nil {
+		log.Info("ValidateZeroACLCounters error getting old value:", err);
+		return CVLErrorInfo{ErrCode: CVL_ERROR}
+	}
+	
+	if val == vc.YNodeVal {
+	    log.Info("ValidateZeroACLCounters Value %v doesnt change. Allow", val);
+	    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+    tableKeys, err := counterDBClient.Keys("ACL_COUNTERS:*").Result()
+    if nil != err {
+		return CVLErrorInfo {
+			 ErrCode: CVL_INTERNAL_UNKNOWN,
+			 ConstraintErrMsg: fmt.Sprintf("Error getting ACL_COUNTER entries"),
+			 CVLErrDetails: "Config Validation Error",
+			 ErrAppTag:  "retry-request",
+		}
+    }
+    if len(tableKeys) > 0 {
+        log.Errorf("ValidateZeroACLCounters %v ACL Counters present. Update not allowed", len(tableKeys))
+        return CVLErrorInfo{ErrCode: CVL_ERROR, Keys:[]string{vc.CurCfg.Key}, Value: vc.YNodeVal, 
+            Field: vc.YNodeName, Msg: "Counter mode update not allowed", ErrAppTag: "counters-in-use"}
+    }
+
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

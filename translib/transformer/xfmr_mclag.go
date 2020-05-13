@@ -121,6 +121,28 @@ var DbToYang_mclag_domain_system_mac_fld_xfmr FieldXfmrDbtoYang = func(inParams 
 	return result, err
 }
 
+var YangToDb_mclag_gw_mac_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	var err error
+	log.Info("YangToDb_mclag_gw_mac_fld_xfmr: ", inParams.key)
+
+	return res_map, err
+}
+
+var DbToYang_mclag_gw_mac_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	log.Info("DbToYang_mclag_gw_mac_fld_xfmr: ", inParams.key)
+
+	cdb := inParams.dbs[db.ConfigDB]
+	mclagGwEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "MCLAG_GW_MAC_TABLE"}, db.Key{Comp: []string{inParams.key}})
+	gwmac := mclagGwEntry.Get("gw_mac")
+	
+	result["gateway-mac"] = &gwmac
+
+	return result, err
+}
+
 var YangToDb_mclag_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 	var err error
 	res_map := make(map[string]map[string]db.Value)

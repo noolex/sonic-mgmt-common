@@ -196,4 +196,34 @@ module openconfig-system-ext {
     }
     deviation /oc-sys:system/oc-sys:ssh-server/oc-sys:state {
        deviate not-supported;
-    }}
+    }
+	
+	//syslog parameters
+    augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:config" {
+        leaf vrf-name {
+            type string {
+                pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
+                    error-message "Invalid VRF name for remote syslog server";
+                    error-app-tag vrf-name-syslog-invalid;
+                }
+            }
+            description
+                "VRF name";
+        }
+	}
+    augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:state" {
+        leaf vrf-name {
+            type string {
+                pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
+                    error-message "Invalid VRF name for remote syslog server";
+                    error-app-tag vrf-name-syslog-invalid;
+                }
+            }
+            description
+                "VRF name";
+        }
+	}
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:selectors {
+       deviate not-supported;
+    }
+}

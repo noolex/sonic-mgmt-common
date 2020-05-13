@@ -52,32 +52,32 @@ type Cpu struct {
 }
 
 type Proc struct {
-    Cmd        string     `json:"cmd"`
-    Start      uint64     `json:"start"`
-    User       uint64     `json:"user"`
-    System     uint64     `json:"system"`
-    Mem        uint64     `json:"mem"`
-    Cputil   float32    `json:"cputil"`
-    Memutil   float32    `json:"memutil"`
+    Cmd        string
+    Start      uint64
+    User       uint64
+    System     uint64
+    Mem        uint64
+    Cputil     float32
+    Memutil    float32
 }
 
 type CpuState struct {
-    user uint8
-    system uint8
-    idle   uint8
+    user    uint8
+    system  uint8
+    idle    uint8
 }
 
 type ProcessState struct {
-    Args [] string
-    CpuUsageSystem uint64
-    CpuUsageUser   uint64
-    CpuUtilization uint8
-    MemoryUsage    uint64
-    MemoryUtilization uint8
-    Name              string
-    Pid               uint64
-    StartTime         uint64
-    Uptime            uint64
+    Args                []string
+    CpuUsageSystem      uint64
+    CpuUsageUser        uint64
+    CpuUtilization      uint8
+    MemoryUsage         uint64
+    MemoryUtilization   uint8
+    Name                string
+    Pid                 uint64
+    StartTime           uint64
+    Uptime              uint64
 }
 
 func getAppRootObject(inParams XfmrParams) (*ocbinds.OpenconfigSystem_System) {

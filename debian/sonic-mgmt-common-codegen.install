@@ -1,0 +1,7 @@
+translib/ocbinds/ocbinds.go             sonic/src/sonic-mgmt-common/translib/ocbinds
+models/yang/allyangs.tree               sonic/src/sonic-mgmt-common/models/yang
+models/yang/allyangs_tree.html          sonic/src/sonic-mgmt-common/models/yang
+models/yang/yang_tree.md                sonic/src/sonic-mgmt-common/models/yang
+models/yang/sonic/allyangs.tree         sonic/src/sonic-mgmt-common/models/yang/sonic
+models/yang/sonic/allyangs_tree.html    sonic/src/sonic-mgmt-common/models/yang/sonic
+models/yang/sonic/yang_tree.md          sonic/src/sonic-mgmt-common/models/yang/sonic

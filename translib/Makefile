@@ -15,7 +15,7 @@ export GO
 
 TRANSLIB_PKG = $(BUILD_DIR)/pkg/linux_amd64/translib.a
 
-TRANSLIB_MAIN_SRCS = $(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/test/')
+TRANSLIB_MAIN_SRCS = $(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/test\|transformer/')
 TRANSLIB_TEST_SRCS = $(shell find . -maxdepth 1 -name '*_test.go')
 TRANSL_DB_ALL_SRCS = $(shell find db/ -name '*.go' | grep -v '/test/')
 
@@ -30,7 +30,14 @@ TRANSFORMER_SRCS = $(shell find transformer/ -name '*.go' | grep -v '/test/')
 YANG_FILES = $(shell find $(TOPDIR)/models/yang -name '*.yang')
 YGOT_BINDS = ocbinds/ocbinds.go
 
-all: $(TRANSLIB_PKG) $(TRANSLIB_TEST_BIN) $(TRANSL_DB_TEST_BIN) $(TRANSFORMER_TEST_BIN)
+DEFAULT_TARGETS = $(YGOT_BINDS)
+ifeq ($(NO_TEST_BINS),)
+DEFAULT_TARGETS += $(TRANSLIB_TEST_BIN) $(TRANSL_DB_TEST_BIN) $(TRANSFORMER_TEST_BIN)
+endif
+
+default: $(DEFAULT_TARGETS)
+
+all: $(DEFAULT_TARGETS) $(TRANSLIB_PKG)
 
 $(TRANSLIB_PKG): $(TRANSLIB_MAIN_SRCS) $(YGOT_BINDS)
 	$(GO) build -mod=vendor -gcflags="all=-N -l" -v -o $(TRANSLIB_PKG) ../translib
@@ -41,7 +48,7 @@ $(TRANSLIB_TEST_BIN): $(TRANSLIB_MAIN_SRCS) $(TRANSLIB_TEST_SRCS) $(YGOT_BINDS)
 $(TRANSL_DB_TEST_BIN) : $(TRANSL_DB_ALL_SRCS)
 	$(GO) test -mod=vendor -cover -c ../translib/db -o $@
 
-$(TRANSFORMER_TEST_BIN): $(TRANSFORMER_TEST_FILES) $(TRANSFORMER_SRCS) $(TRANSLIB_MAIN_SRCS)
+$(TRANSFORMER_TEST_BIN): $(TRANSFORMER_TEST_FILES) $(TRANSFORMER_SRCS) $(TRANSLIB_MAIN_SRCS) $(YGOT_BINDS)
 	mkdir -p $(@D)/testdata && cp -r transformer/testdata/*.json $(@D)/testdata
 	$(GO) test -mod=vendor -c -vet=off -cover -coverpkg=../translib/transformer ../translib/transformer -o $@
 
