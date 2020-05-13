@@ -21,7 +21,6 @@
 package utils
 
 import (
-    "os"
     "sync"
     "github.com/Azure/sonic-mgmt-common/translib/db"
 
