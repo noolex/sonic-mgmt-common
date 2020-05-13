@@ -104,8 +104,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Neighbors_Neighbor
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
-
     intfNameRcvd := pathInfo.Var("name")
+
     ipAddrRcvd := pathInfo.Var("ip")
 
     if intfObj, ok = intfsObj.Interface[intfNameRcvd]; !ok {
@@ -124,6 +124,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             return err
         }
     }
+    log.Info("Interface name received = ", intfNameRcvd)
     ygot.BuildEmptyTree(subIntfObj)
 
     for key, entry := range data["NEIGH_TABLE"] {
