@@ -783,8 +783,8 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 	redisKeySep := modelInfo.tableInfo[tableName].redisKeyDelim
 	redisMultiKeys := strings.Split(key, redisKeySep)
 
-	mCmd := map[string]*redis.StringSliceCmd{}
-	mFilterScripts := map[string]filterScript{}
+	mCmd := map[string][]*redis.StringSliceCmd{}
+	mFilterScripts := map[string][]filterScript{}
 	pipe := redisClient.Pipeline()
 
 	for _, refTbl := range modelInfo.tableInfo[tableName].refFromTables {
@@ -817,6 +817,11 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			}
 		}
 
+		if _, exists := mCmd[refTbl.tableName]; exists == false {
+			mCmd[refTbl.tableName] = make([]*redis.StringSliceCmd, 0)
+		}
+		mCmdArr := mCmd[refTbl.tableName]
+
 		for ; idx < numKeys; idx++ {
 			if (modelInfo.tableInfo[refTbl.tableName].keys[idx] != refTbl.field) {
 				continue
@@ -834,17 +839,18 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 
 			//field is a key component, write into pipeline
 			if (numKeys == 1) { //Only key
-				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s%s%s",
-				refRedisTblName, sep, key))
+				mCmdArr = append(mCmdArr, pipe.Keys(fmt.Sprintf("%s%s%s",
+				refRedisTblName, sep, key)))
 			} else if (idx == (numKeys - 1)) { //Last key
-				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s%s*%s%s",
-				refRedisTblName, sep, sep, key))
+				mCmdArr = append(mCmdArr, pipe.Keys(fmt.Sprintf("%s%s*%s%s",
+				refRedisTblName, sep, sep, key)))
 			} else { //Middle key
-				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s*%s%s%s*",
-				refRedisTblName, sep, key, sep))
+				mCmdArr = append(mCmdArr, pipe.Keys(fmt.Sprintf("%s*%s%s%s*",
+				refRedisTblName, sep, key, sep)))
 			}
 			break
 		}
+		mCmd[refTbl.tableName] = mCmdArr
 
 		if (idx == numKeys) {
 			//field is hash-set field, not a key, match with hash-set field
@@ -852,7 +858,11 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			// ex: (h['members'] == 'Ethernet4' or h['members@'] == 'Ethernet4' or
 			//(string.find(h['members@'], 'Ethernet4,') != nil)
 			//',' to include leaf-list case
-			mFilterScripts[refTbl.tableName] = filterScript{
+			if _, exists := mFilterScripts[refTbl.tableName]; exists == false {
+				mFilterScripts[refTbl.tableName] = make([]filterScript, 0)
+			}
+			fltScrs := mFilterScripts[refTbl.tableName]
+			fltScrs = append(fltScrs, filterScript {
 				script: fmt.Sprintf("return (h['%s'] ~= nil and h['%s'] == '%s') or " +
 				"(h['%s@'] ~= nil and ((h['%s@'] == '%s') or " +
 				"(string.find(h['%s@']..',', '%s,') ~= nil)))",
@@ -861,7 +871,8 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 				refTbl.field, key),
 				field: refTbl.field,
 				value: key,
-			}
+			} )
+			mFilterScripts[refTbl.tableName] = fltScrs
 		}
 	}
 
@@ -874,47 +885,52 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 	depEntries := []CVLDepDataForDelete{}
 
 	//Add dependent keys which should be modified
-	for tableName, mFilterScript := range mFilterScripts {
-		refEntries, err := luaScripts["filter_entries"].Run(redisClient, []string{},
-		tableName + "|*", strings.Join(modelInfo.tableInfo[tableName].keys, "|"),
-		mFilterScript.script, mFilterScript.field).Result()
+	for tableName, mFilterScriptArr := range mFilterScripts {
+		for _, mFilterScript := range mFilterScriptArr {
+			refEntries, err := luaScripts["filter_entries"].Run(redisClient, []string{},
+			tableName + "|*", strings.Join(modelInfo.tableInfo[tableName].keys, "|"),
+			mFilterScript.script, mFilterScript.field).Result()
 
-		if (err != nil) {
-			CVL_LOG(ERROR, "Lua script error (%v)", err)
-		}
-		if (refEntries == nil) {
-			//No reference field found
-			continue
-		}
+			if (err != nil) {
+				CVL_LOG(ERROR, "Lua script error (%v)", err)
+			}
+			if (refEntries == nil) {
+				//No reference field found
+				continue
+			}
 
-		refEntriesJson := string(refEntries.(string))
+			refEntriesJson := string(refEntries.(string))
 
-		if (refEntriesJson != "") {
-			//Add all keys whose fields to be deleted 
-			depEntries = append(depEntries, getDepDeleteField(redisKey,
-			mFilterScript.field, mFilterScript.value, refEntriesJson)...)
+			if (refEntriesJson != "") {
+				//Add all keys whose fields to be deleted 
+				depEntries = append(depEntries, getDepDeleteField(redisKey,
+				mFilterScript.field, mFilterScript.value, refEntriesJson)...)
+			}
 		}
 	}
 
 	keysArr := []string{}
-	for tblName, keys := range mCmd {
-		res, err := keys.Result()
-		if (err != nil) {
-			CVL_LOG(ERROR, "Failed to fetch dependent key details for table %s", tblName)
-			continue
-		}
+	for tblName, mCmdArr := range mCmd {
+		for idx, _ := range mCmdArr {
+			keys := mCmdArr[idx]
+			res, err := keys.Result()
+			if (err != nil) {
+				CVL_LOG(ERROR, "Failed to fetch dependent key details for table %s", tblName)
+				continue
+			}
 
-		//Add keys found
-		for _, k := range res {
-			entryMap := make(map[string]map[string]string)
-			entryMap[k] = make(map[string]string)
-			depEntries = append(depEntries, CVLDepDataForDelete{
-				RefKey: redisKey,
-				Entry: entryMap,
-			})
-		}
+			//Add keys found
+			for _, k := range res {
+				entryMap := make(map[string]map[string]string)
+				entryMap[k] = make(map[string]string)
+				depEntries = append(depEntries, CVLDepDataForDelete{
+					RefKey: redisKey,
+					Entry: entryMap,
+				})
+			}
 
-		keysArr  = append(keysArr, res...)
+			keysArr  = append(keysArr, res...)
+		}
 	}
 
 	TRACE_LOG(INFO_TRACE, "GetDepDataForDelete() : input key %s, " +
