@@ -164,5 +164,14 @@ module openconfig-platform-ext {
             description "Diag version";
         }
 
+        leaf fans {
+            type uint32;
+            description "Number of fans";
+        }
+
+        leaf status-led {
+            type string;
+            description "LED status color";
+        }
     }
 }
