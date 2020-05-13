@@ -1,6 +1,6 @@
 module sonic-static-route {
     namespace "http://github.com/Azure/sonic-static-route";
-    prefix srmap;
+    prefix ssrt;
     yang-version 1.1;
 
     import ietf-inet-types {
@@ -8,22 +8,6 @@ module sonic-static-route {
     }
     import sonic-vrf {
         prefix svrf;
-    }
-
-    import sonic-port {
-        prefix prt;
-    }
-
-    import sonic-portchannel {
-        prefix spc;
-    }
-
-    import sonic-vlan {
-        prefix svlan;
-    }
-
-    import sonic-loopback-interface {
-        prefix sloif;
     }
 
     organization
@@ -35,16 +19,10 @@ module sonic-static-route {
     description
         "SONIC Static Route YANG";
 
-    revision 2019-09-15 {
+    revision 2020-03-13 {
         description
             "Initial revision.";
     }
-
-   typedef blackhole-conf {
-        type boolean;
-        default false;
-    }
-
 
     container sonic-static-route {
         container STATIC_ROUTE {
@@ -76,42 +54,54 @@ module sonic-static-route {
 
                 leaf nexthop {
                     type string;
-                    //default "0.0.0.0";
                     description
-                         "List of next hops. Each entry corresponds to the respective entry in list of interface,
-                          list of distance and blackhol  i.e first entry in lists of next-hop,interface,distance
-                          and blackhole is a set. If not specified by the user value of 0.0.0.0 will be set to make the set";
+                         "List of gateway IP for all next-hops of specific route.
+                          Each entry of comma separated list string of this and below leaves
+                          corresponds to the respective entry in list of gateway IP, interface,
+                          distance, next-hop VRF and blackhole flag. i.e first entry in lists
+                          of gateway,interface, distance, nexthop-vrf and blackhole is a set.
+                          If gateway IP not specified by the user value of 0.0.0.0 will be set
+                          to make the set";
                 }
                 leaf ifname {
                     type string;
                     description
-                        "Interface name. If this interface is not in the current VRF, the nexthop-vrf field should match the vrf of this interface for routes to be configured.";
+                        "List of interface name for all next-hops of specific route.
+                         If interface is not in the current VRF, the nexthop-vrf field should match
+                         the vrf of this interface for routes to be configured.
+                         If interface not specified by the user empty string will be set to make
+                         the set";
                 }
-
-
                 leaf distance {
                     //default 0;
                     type string {
-                         pattern "[0-9,]+";
+                         pattern "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5]),)*"
+                            + "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])";
                     }
                     description
-                        "A metric which is utilised to specify the preference of
+                        "List of metric value of all next-hops for specific route.
+                         A metric which is utilised to specify the preference of
                          the next-hop entry when it is injected into the RIB. The
                          lower the metric, the more preferable the prefix is. 
                          If  this value is not specified the metric is inherited from
                          the default metric utilised for static routes within the
                          network instance that the static routes are being
                          instantiated. The value will be set to 0 if no value is specified 
-                         to make the set of next-hop, interface and distance";
+                         to make the set";
                 }
                 leaf nexthop-vrf {
                     type string;
+                    description
+                        "List of next-hop VRF name for all next-hops of specific route. If nexthop-vrf
+                         not specified by the user empty string will be set to make the set";
                 }
                 leaf blackhole {
-                    type string;
+                    type string {
+                        pattern "((true|false),)*(true|false)";
+                    }
                     description
-                        "If true Specified next-hop is a blackhole route i.e discard matched packets.";
-
+                        "List of blackhole flag for all next-hops of specific route. If true Specified
+                         next-hop is a blackhole route i.e discard matched packets.";
                 }
             }
         }
