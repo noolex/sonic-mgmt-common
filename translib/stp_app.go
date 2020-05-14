@@ -1407,8 +1407,10 @@ func (app *StpApp) convertOCStpInterfacesToInternal() {
 				if stpIntfConf.Config.BpduGuard != nil {
 					if *stpIntfConf.Config.BpduGuard == true {
 						(&dbVal).Set("bpdu_guard", "true")
+						(&dbVal).Set("bpdu_guard_do_disable", "false")
 					} else {
 						(&dbVal).Set("bpdu_guard", "false")
+						(&dbVal).Set("bpdu_guard_do_disable", "false")
 					}
 				}
 
@@ -1424,9 +1426,11 @@ func (app *StpApp) convertOCStpInterfacesToInternal() {
 
 				if stpIntfConf.Config.BpduGuardPortShutdown != nil {
 					if *stpIntfConf.Config.BpduGuardPortShutdown == true {
+						(&dbVal).Set("bpdu_guard", "true")
 						(&dbVal).Set("bpdu_guard_do_disable", "true")
 					} else {
 						(&dbVal).Set("bpdu_guard_do_disable", "false")
+						(&dbVal).Set("bpdu_guard", "false")
 					}
 				}
 
