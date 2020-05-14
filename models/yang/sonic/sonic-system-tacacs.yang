@@ -6,7 +6,11 @@ module sonic-system-tacacs {
         prefix inet;
     }
 
-    revision 2020-02-17 {
+	revision 2020-05-02 {    
+		description "Allowed domain name as well for server configuration.";     
+	}
+
+	revision 2020-02-17 {
         description "Allow special characters in passkey.";
     }
 
@@ -30,7 +34,9 @@ module sonic-system-tacacs {
                 key "ipaddress";
 
                 leaf ipaddress {
-                    type inet:ip-address;
+                    type inet:host;
+                    description
+                    "TACACS+ server's Domain name or IP address (IPv4 or IPv6)";
                 }
 
                 leaf priority {

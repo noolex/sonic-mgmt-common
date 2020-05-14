@@ -28,6 +28,7 @@ import (
     "fmt"
     "os/exec"
     "bufio"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init () {
@@ -56,7 +57,19 @@ var YangToDb_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     log.Info("YangToDb_neigh_tbl_key_xfmr - inParams: ", inParams)
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("name")
+
+    if len(intfName) <= 0 {
+        errStr := "YangToDb_neigh_tbl_key_xfmr - Interface name is missing"
+        log.Error(errStr)
+        err := tlerr.InvalidArgsError{Format: errStr}
+        return "", err
+    }
+
     ipAddr := pathInfo.Var("ip")
+    if len(ipAddr) <= 0 {
+        log.Info("YangToDb_neigh_tbl_key_xfmr - IP Address not found, returning empty key")
+        return "", err
+    }
 
     neightbl_key = intfName + ":" +  ipAddr
     log.Info("YangToDb_neigh_tbl_key_xfmr - key returned: ", neightbl_key)
@@ -91,8 +104,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Neighbors_Neighbor
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
-
     intfNameRcvd := pathInfo.Var("name")
+
     ipAddrRcvd := pathInfo.Var("ip")
 
     if intfObj, ok = intfsObj.Interface[intfNameRcvd]; !ok {
@@ -111,6 +124,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             return err
         }
     }
+    log.Info("Interface name received = ", intfNameRcvd)
     ygot.BuildEmptyTree(subIntfObj)
 
     for key, entry := range data["NEIGH_TABLE"] {

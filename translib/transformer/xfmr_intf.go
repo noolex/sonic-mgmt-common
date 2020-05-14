@@ -1200,6 +1200,9 @@ func validateIntfExists(d *db.DB, intfTs string, ifName string) error {
     if len(ifName) == 0 {
         return errors.New("Length of Interface name is zero")
     }
+    nativeName := utils.GetInterfaceNameFromAlias(&ifName)
+    ifName = *nativeName
+    log.Infof("Converted Interface name = ", ifName)
     entry, err := d.GetEntry(&db.TableSpec{Name:intfTs}, db.Key{Comp: []string{ifName}})
     if err != nil || !entry.IsPopulated() {
         errStr := "Invalid Interface:" + ifName
