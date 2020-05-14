@@ -1,0 +1,16 @@
+module sonic-qos-clear-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/sqosclear-annot";
+    prefix "sqosclear-annot";
+
+    import sonic-qos-clear { prefix sqosclear; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sqosclear:clear-qos {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_clear_qos";
+        }
+    }
+}
