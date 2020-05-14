@@ -181,6 +181,23 @@ func isMgmtVrf(inParams XfmrParams) (bool, error) {
         }
 }
 
+func validateMgmtVrfExists(d *db.DB) error {
+        var err error
+        if log.V(3) {
+            log.Infof("IsMgmtVrfExists")
+        }
+
+        mvrfKeys, _ := d.GetKeys(&db.TableSpec{Name: "MGMT_VRF_CONFIG"})
+
+        if len(mvrfKeys) <= 0 {
+            errStr := "Management VRF does not exist"
+            log.Info("validateMgmtVrfExists: ", errStr);
+            err = tlerr.InvalidArgsError{Format: errStr}
+        }
+
+        return err
+}
+
 func isIntfBindToOtherVrf(intf_tbl_name string, intf_name string, nwInst_name string, inParams XfmrParams) (bool, string) {
         intfTable := &db.TableSpec{Name: intf_tbl_name}
         intfEntry, err := inParams.d.GetEntry(intfTable, db.Key{Comp: []string{intf_name}})
@@ -447,11 +464,23 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
         log.Info("YangToDb_network_instance_table_key_xfmr: ")
 
         pathInfo := NewPathInfo(inParams.uri)
+        keyName := pathInfo.Var("name")
 
         /* Get key for the respective table based on the network instance key "name" */
         vrfTbl_key = getVrfTblKeyByName(pathInfo.Var("name"))
 
         log.Info("YangToDb_network_instance_table_key_xfmr: ", vrfTbl_key)
+
+        /* Validate:
+         * - if management VRF is used by TACACS+ server, deletion is not allowed
+           -
+         */
+        if (keyName == "mgmt" && inParams.oper == DELETE) {
+            err = ValidateTacplusServerNotUseMgmtVRF(inParams.d)
+            if err != nil {
+                return vrfTbl_key, err
+            }
+        }
 
         /*
          * For SSH to work with a VRF, the VRF name needs to be installed in the
@@ -465,7 +494,6 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
              (inParams.oper == REPLACE) ||
              (inParams.oper == UPDATE) ||
              (inParams.oper == DELETE)) {
-                keyName := pathInfo.Var("name")
 
                 if keyName == "mgmt" {
                         subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)

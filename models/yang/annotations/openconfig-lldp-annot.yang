@@ -1,0 +1,113 @@
+module openconfig-lldp-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/lldp-annot";
+    prefix "oc-lldp-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-lldp { prefix oc-lldp; }
+    import openconfig-lldp-ext { prefix oc-lldp-ext; }
+
+    // meta
+    organization
+       "SONiC";
+
+    contact
+       "SONiC";
+
+    description
+       "SONIC LLDP";
+
+    revision 2020-04-16 {
+       description
+          "Initial revision.";
+    }
+
+	deviation /oc-lldp:lldp/oc-lldp:config {
+		deviate add {
+			sonic-ext:table-name "LLDP";
+			sonic-ext:key-transformer "lldp_global_key_xfmr";
+		}
+    }
+	
+	deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:hello-timer {
+		deviate add {
+			sonic-ext:field-name "hello_time";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:system-name {
+		deviate add {
+			sonic-ext:field-name "system_name";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:system-description {
+		deviate add {
+			sonic-ext:field-name "system_description";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:suppress-tlv-advertisement {
+		deviate add {
+			sonic-ext:field-transformer "suppress_tlv_adv_xfmr";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:state {
+		deviate add {
+			sonic-ext:table-name "LLDP";
+			sonic-ext:key-transformer "lldp_global_key_xfmr";
+		}
+    }
+
+	deviation /oc-lldp:lldp/oc-lldp:state/oc-lldp:hello-timer {
+		deviate add {
+			sonic-ext:field-name "hello_time";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:state/oc-lldp:system-name {
+		deviate add {
+			sonic-ext:field-name "system_name";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:state/oc-lldp:system-description {
+		deviate add {
+			sonic-ext:field-name "system_description";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:state/oc-lldp:suppress-tlv-advertisement {
+		deviate add {
+			sonic-ext:field-transformer "suppress_tlv_adv_xfmr";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface {
+		deviate add {
+			sonic-ext:db-name "APPL_DB";
+			sonic-ext:table-name "LLDP_PORT_TABLE";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:config {
+		deviate add {
+			sonic-ext:subtree-transformer "lldp_intf_xfmr";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:state {
+		deviate add {
+			sonic-ext:subtree-transformer "lldp_intf_xfmr";
+		}
+	}
+
+	deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:neighbors {
+		deviate add {
+			sonic-ext:subtree-transformer "lldp_intf_xfmr";
+		}
+	}
+}

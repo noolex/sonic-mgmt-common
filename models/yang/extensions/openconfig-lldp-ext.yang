@@ -9,19 +9,11 @@ module openconfig-lldp-ext {
 
   import openconfig-lldp { prefix oc-lldp; }
 
-  deviation /oc-lldp:lldp/oc-lldp:config {
+  deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:chassis-id{
       deviate not-supported;
   }
 
-  deviation /oc-lldp:lldp/oc-lldp:state {
-      deviate not-supported;
-  }
-
-  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:config/oc-lldp:enabled {
-      deviate not-supported;
-  }
-
-  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:state {
+  deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:chassis-id-type{
       deviate not-supported;
   }
 
@@ -37,12 +29,61 @@ module openconfig-lldp-ext {
       deviate not-supported;
   }
 
-  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:neighbors/oc-lldp:neighbor/oc-lldp:state/oc-lldp:ttl {
+  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:neighbors/oc-lldp:neighbor/oc-lldp:state/oc-lldp:management-address-type {
       deviate not-supported;
   }
 
-  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:neighbors/oc-lldp:neighbor/oc-lldp:state/oc-lldp:management-address-type {
-      deviate not-supported;
+  typedef lldp-ext-mode-type {
+	  type enumeration {
+		enum receive {
+			description "Configure LLDP in Receive only mode";
+		}
+		enum transmit {
+			description "Configure LLDP in Transmit only mode";
+		}
+	  }
+  }
+
+  grouping lldp-mode-config {
+	  leaf mode {
+		type lldp-ext-mode-type;
+		description
+			"RX/TX mode for LLDP frames";
+	  }
+  }
+
+  grouping lldp-ext-config {
+	  leaf multiplier {
+		type uint8 {
+			range "1..10";
+		}
+		description
+			"This multiplier value is used to determine the timeout
+			interval (i.e. hello-timer x multiplier value) after
+			which LLDP neighbor entry is deleted.";
+	  }
+	  
+	  uses lldp-mode-config;
+  }
+
+  grouping lldp-interface-ext-config {
+	  uses lldp-mode-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:config {
+	  uses lldp-ext-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:state {
+	  uses lldp-ext-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:config {
+	  uses lldp-interface-ext-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:state {
+	  uses lldp-interface-ext-config;
   }
 }
 
