@@ -780,6 +780,9 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 		return []CVLDepDataForDelete{}
 	}
 
+	redisKeySep := modelInfo.tableInfo[tableName].redisKeyDelim
+	redisMultiKeys := strings.Split(key, redisKeySep)
+
 	mCmd := map[string]*redis.StringSliceCmd{}
 	mFilterScripts := map[string]filterScript{}
 	pipe := redisClient.Pipeline()
@@ -789,11 +792,29 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 		//check if ref field is a key
 		numKeys := len(modelInfo.tableInfo[refTbl.tableName].keys)
 		sep  := modelInfo.tableInfo[refTbl.tableName].redisKeyDelim
-		refTblName := getYangListToRedisTbl(refTbl.tableName)
+		refRedisTblName := getYangListToRedisTbl(refTbl.tableName)
 		idx := 0
 
-		if (refTblName == "") {
+		if (refRedisTblName == "") {
 			continue
+		}
+
+		// Find the targetnode from leaf-refs on refTbl.field
+		var refTblTargetNodeName string
+		for _, refTblLeafRef := range modelInfo.tableInfo[refRedisTblName].leafRef[refTbl.field] {
+			if (refTblLeafRef.path != "non-leafref") && (len(refTblLeafRef.yangListNames) > 0) {
+				var isTargetNodeFound bool
+				for k, _ := range refTblLeafRef.yangListNames {
+					if refTblLeafRef.yangListNames[k] == tableName {
+						refTblTargetNodeName = refTblLeafRef.targetNodeName
+						isTargetNodeFound = true
+						break
+					}
+				}
+				if isTargetNodeFound {
+					break
+				}
+			}
 		}
 
 		for ; idx < numKeys; idx++ {
@@ -801,16 +822,26 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 				continue
 			}
 
+			if len(redisMultiKeys) > 1 {
+				rediskeyTblKeyPatterns := strings.Split(modelInfo.tableInfo[tableName].redisKeyPattern, redisKeySep)
+				for z := 1; z < len(rediskeyTblKeyPatterns); z++ { // Skipping 0th position, as it is a tableName
+					if rediskeyTblKeyPatterns[z] == fmt.Sprintf("{%s}", refTblTargetNodeName) {
+						key = redisMultiKeys[z - 1]
+						break
+					}
+				}
+			}
+
 			//field is a key component, write into pipeline
 			if (numKeys == 1) { //Only key
-				mCmd[refTblName] = pipe.Keys(fmt.Sprintf("%s%s%s",
-				refTblName, sep, key))
+				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s%s%s",
+				refRedisTblName, sep, key))
 			} else if (idx == (numKeys - 1)) { //Last key
-				mCmd[refTblName] = pipe.Keys(fmt.Sprintf("%s%s*%s%s",
-				refTblName, sep, sep, key))
+				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s%s*%s%s",
+				refRedisTblName, sep, sep, key))
 			} else { //Middle key
-				mCmd[refTblName] = pipe.Keys(fmt.Sprintf("%s*%s%s%s*",
-				refTblName, sep, key, sep))
+				mCmd[refTbl.tableName] = pipe.Keys(fmt.Sprintf("%s*%s%s%s*",
+				refRedisTblName, sep, key, sep))
 			}
 			break
 		}
@@ -821,7 +852,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			// ex: (h['members'] == 'Ethernet4' or h['members@'] == 'Ethernet4' or
 			//(string.find(h['members@'], 'Ethernet4,') != nil)
 			//',' to include leaf-list case
-			mFilterScripts[refTblName] = filterScript{
+			mFilterScripts[refTbl.tableName] = filterScript{
 				script: fmt.Sprintf("return (h['%s'] ~= nil and h['%s'] == '%s') or " +
 				"(h['%s@'] ~= nil and ((h['%s@'] == '%s') or " +
 				"(string.find(h['%s@']..',', '%s,') ~= nil)))",

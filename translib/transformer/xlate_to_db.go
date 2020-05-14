@@ -34,6 +34,35 @@ import (
 
 var ocbSch, _ = ocbinds.Schema()
 
+func valueXfmrHandler(inParams XfmrDbParams, xfmrValueFuncNm string) (string, error) {
+    xfmrLogInfoAll("Received inParams %v Value transformer name %v", inParams, xfmrValueFuncNm)
+
+    ret, err := XlateFuncCall(xfmrValueFuncNm, inParams)
+    if err != nil {
+		return "", err
+    }
+
+	if ((ret != nil) && (len(ret)>0)) {
+		if len(ret) == YTDB_FLD_XFMR_RET_ARGS {
+			// value xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[YTDB_FLD_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[YTDB_FLD_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrValueFuncNm, err)
+					return "", err
+				}
+			}
+		}
+
+		if ret[YTDB_FLD_XFMR_RET_VAL_INDX].Interface() != nil {
+			retVal := ret[YTDB_FLD_XFMR_RET_VAL_INDX].Interface().(string)
+			return retVal, nil
+		}
+	}
+
+	return "", err
+}
+
 func leafXfmrHandler(inParams XfmrParams, xfmrFieldFuncNm string) (map[string]string, error) {
     xfmrLogInfoAll("Received inParams %v Field transformer name %v", inParams, xfmrFieldFuncNm)
     ret, err := XlateFuncCall(yangToDbXfmrFunc(xfmrFieldFuncNm), inParams)
@@ -529,25 +558,31 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					if specYangType == YANG_LEAF {
 						_, ok := xYangSpecMap[xpath]
 						if ok && len(xYangSpecMap[xpath].defVal) > 0 {
-							err = mapFillDataUtil(d, ygRoot, oper, luri, requestUri, xpath, tableName, keyName, result, subOpDataMap, spec.fieldName, xYangSpecMap[xpath].defVal, txCache, &xfmrErr)
-							if xfmrErr != nil {
-								return xfmrErr
-							}
-							if err != nil {
-								return err
-							}
-							if len(subOpDataMap) > 0 && subOpDataMap[UPDATE] != nil {
-								subOperMap := subOpDataMap[UPDATE]
-								mapCopy((*subOperMap)[db.ConfigDB], result)
-							} else {
-								var redisMap = new(RedisDbMap)
-								var dbresult = make(RedisDbMap)
-								for i := db.ApplDB; i < db.MaxDB; i++ {
-									dbresult[i] = make(map[string]map[string]db.Value)
+							// Do not fill def value if leaf does not map to any redis field
+							dbSpecXpath := tableName + "/" + xYangSpecMap[xpath].fieldName
+							_, mapped := xDbSpecMap[dbSpecXpath]
+							if mapped || len(xYangSpecMap[xpath].xfmrField) > 0 {
+
+								err = mapFillDataUtil(d, ygRoot, oper, luri, requestUri, xpath, tableName, keyName, result, subOpDataMap, spec.fieldName, xYangSpecMap[xpath].defVal, txCache, &xfmrErr)
+								if xfmrErr != nil {
+									return xfmrErr
 								}
-								redisMap = &dbresult
-								(*redisMap)[db.ConfigDB] = result
-								subOpDataMap[UPDATE]     = redisMap
+								if err != nil {
+									return err
+								}
+								if len(subOpDataMap) > 0 && subOpDataMap[UPDATE] != nil {
+									subOperMap := subOpDataMap[UPDATE]
+									mapCopy((*subOperMap)[db.ConfigDB], result)
+								} else {
+									var redisMap = new(RedisDbMap)
+									var dbresult = make(RedisDbMap)
+									for i := db.ApplDB; i < db.MaxDB; i++ {
+										dbresult[i] = make(map[string]map[string]db.Value)
+									}
+									redisMap = &dbresult
+									(*redisMap)[db.ConfigDB] = result
+									subOpDataMap[UPDATE]     = redisMap
+								}
 							}
 							result = make(map[string]map[string]db.Value)
 						} else {
@@ -597,11 +632,15 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				if (spec.hasChildSubTree == true) {
 					xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
 					result, err = allChildTblGetToDelete(d, ygRoot, oper, requestUri, resultMap, subOpDataMap, txCache, &cascadeDelTbl)
-				} else {
+				}
+				chResult := make(map[string]map[string]db.Value)
 				for _, child := range spec.childTable {
-					result[child] = make(map[string]db.Value)
+					chResult[child] = make(map[string]db.Value)
 				}
-				}
+				log.Infof("Before Merge result: %v  result with  child tables: %v", result, chResult)
+                                mapCopy(result, chResult)
+                                log.Infof("Merged result tables with child tables: %v", result)
+
 			} else {
 				if (spec.hasChildSubTree == true) {
 					xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
@@ -659,11 +698,17 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		}
 	}
 
-        cdErr := handleCascadeDelete(d, resultMap, cascadeDelTbl)
-        if cdErr != nil {
-            xfmrLogInfo("Cascade Delete Failed for cascadeDelTbl (%v), Error: (%v)", cascadeDelTbl, cdErr)
-            return cdErr
-        }
+	err = dbDataXfmrHandler(resultMap)
+	if err != nil {
+		log.Errorf("Failed in dbdata-xfmr for %v", resultMap)
+		return err
+	}
+
+	cdErr := handleCascadeDelete(d, resultMap, cascadeDelTbl)
+	if cdErr != nil {
+		xfmrLogInfo("Cascade Delete Failed for cascadeDelTbl (%v), Error: (%v)", cascadeDelTbl, cdErr)
+		return cdErr
+	}
 
     printDbData(resultMap, "/tmp/yangToDbDataDel.txt")
 	xfmrLogInfo("Delete req: uri(\"%v\") resultMap(\"%v\").", uri, resultMap)
@@ -808,7 +853,12 @@ func dbMapDefaultFieldValFill(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri str
 									if retData != nil {
 										xfmrLogInfoAll("Transformer function : %v Xpath: %v retData: %v", childNode.xfmrField, childXpath, retData)
 										for f, v := range retData {
-											dataToDBMapAdd(tblName, dbKey, result, f, v)
+											// Fill default value only if value is not available in result Map
+											// else we overwrite the value filled in resultMap with default value
+											_, ok := result[tblName][dbKey].Field[f]
+											if !ok {
+												dataToDBMapAdd(tblName, dbKey, result, f, v)
+											}
 										}
 									}
 
@@ -819,9 +869,14 @@ func dbMapDefaultFieldValFill(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri str
 							} else {
 								var xfmrErr error
 								if _, ok := xDbSpecMap[tblName+"/"+childNode.fieldName]; ok {
-									err := mapFillDataUtil(d, ygRoot, oper, uri, requestUri, childXpath, tblName, dbKey, result, subOpDataMap, childName, childNode.defVal, txCache, &xfmrErr)
-									if err != nil {
-										return err
+									// Fill default value only if value is not available in result Map
+									// else we overwrite the value filled in resultMap with default value
+									_, ok = result[tblName][dbKey].Field[childNode.fieldName]
+									if !ok {
+										err := mapFillDataUtil(d, ygRoot, oper, uri, requestUri, childXpath, tblName, dbKey, result, subOpDataMap, childName, childNode.defVal, txCache, &xfmrErr)
+										if err != nil {
+											return err
+										}
 									}
 								}
 							}
@@ -947,14 +1002,20 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
                                          }
                                   }
                         }
-                        cdErr := handleCascadeDelete(d, resultMap, cascadeDelTbl)
-                        if cdErr != nil {
-                            xfmrLogInfo("Cascade Delete Failed for cascadeDelTbl (%v), Error (%v).", cascadeDelTbl, cdErr)
-                            return cdErr
-                        }
-
-
 		}
+
+		err = dbDataXfmrHandler(resultMap)
+		if err != nil {
+			log.Errorf("Failed in dbdata-xfmr for %v", resultMap)
+			return err
+		}
+
+		cdErr := handleCascadeDelete(d, resultMap, cascadeDelTbl)
+		if cdErr != nil {
+			xfmrLogInfo("Cascade Delete Failed for cascadeDelTbl (%v), Error (%v).", cascadeDelTbl, cdErr)
+			return cdErr
+		}
+
 		printDbData(resultMap, "/tmp/yangToDbDataCreate.txt")
 	} else {
 		log.Errorf("DBMapCreate req failed for oper (\"%v\") uri(\"%v\") error (\"%v\").", oper, uri, err)

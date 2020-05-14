@@ -26,6 +26,7 @@ import (
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
 
+/* input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer */
 type XfmrParams struct {
 	d *db.DB
 	dbs [db.MaxDB]*db.DB
@@ -41,6 +42,45 @@ type XfmrParams struct {
 	txCache *sync.Map
 	skipOrdTblChk *bool
         pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
+}
+
+/*subcription process type identifying the type of subscription request made from translib*/
+type SubscProcType int
+const (
+    TRANSLATE_SUBSCRIBE SubscProcType = iota
+    PROCESS_SUBSCRIBE
+)
+
+/*susbcription sampling interval and subscription preference type*/
+type notificationOpts struct {
+	mInterval int
+	pType     NotificationType
+}
+
+/*Input to subscribe subtree callbacks - request uri, DBs info access-pointers, DB info for request uri and subscription process type from translib */
+type XfmrSubscInParams struct {
+    uri string
+    dbs [db.MaxDB]*db.DB
+    dbDataMap RedisDbMap
+    subscProc SubscProcType
+}
+
+/*Output from subscribe subtree callback - DB data for request uri, Need cache, OnChange, subscription preference and interval*/
+type XfmrSubscOutParams struct {
+    dbDataMap RedisDbMap
+    needCache bool
+    onChange bool
+    nOpts *notificationOpts  //these can be set regardless of error 
+}
+
+/* input parameters for value-transformer */
+type XfmrDbParams struct {
+	oper           int
+	dbNum          db.DBNum
+	tableName      string
+	key            string
+	fieldName      string
+	value          string
 }
 
 /**
@@ -88,6 +128,13 @@ type SubTreeXfmrYangToDb func (inParams XfmrParams) (map[string]map[string]db.Va
  **/
 type SubTreeXfmrDbToYang func (inParams XfmrParams) (error)
 /**
+ * SubTreeXfmrSubscribe type is defined to use for handling subscribe(translateSubscribe & processSubscribe) subtree
+ * Transformer function definition.
+ * Param : XfmrSubscInParams structure having uri, database pointers,  subcribe process(translate/processSusbscribe), DB data in multidimensional map 
+ * Return :  XfmrSubscOutParams structure (db data in multiD map, needCache, pType, onChange, minInterval), error
+ **/
+type SubTreeXfmrSubscribe func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error)
+/**
  * ValidateCallpoint is used to validate a YANG node during data translation back to YANG as a response to GET
  * Param : XfmrParams structure having Database pointers, current db, operation, DB data in multidimensional map, output param YgotRoot, uri
  * Return :  bool
@@ -115,6 +162,14 @@ type PostXfmrFunc func (inParams XfmrParams) (map[string]map[string]db.Value, er
  **/
 type TableXfmrFunc func (inParams XfmrParams) ([]string, error)
 
+/**
+ * ValueXfmrFunc type is defined to use for conversion of DB field value from one forma to another
+ * Transformer function definition.
+ * Param: XfmrDbParams structure having Database info, operation, db-number, table, key, field, value
+ * Return: value string, error
+ **/
+type ValueXfmrFunc func (inParams XfmrDbParams)  (string, error)
+
 
 /**
  * Xfmr validation interface for validating the callback registration of app modules 
@@ -141,6 +196,9 @@ func (SubTreeXfmrYangToDb) xfmrInterfaceValiidate () {
 }
 func (SubTreeXfmrDbToYang) xfmrInterfaceValiidate () {
     xfmrLogInfo("xfmrInterfaceValiidate for SubTreeXfmrDbToYang")
+}
+func (SubTreeXfmrSubscribe) xfmrInterfaceValiidate () {
+    xfmrLogInfo("xfmrInterfaceValiidate for SubTreeXfmrSubscribe")
 }
 func (TableXfmrFunc) xfmrInterfaceValiidate () {
     xfmrLogInfo("xfmrInterfaceValiidate for TableXfmrFunc")
