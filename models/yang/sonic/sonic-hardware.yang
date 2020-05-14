@@ -23,6 +23,7 @@ module sonic-hardware {
 
     container sonic-hardware {
         container HARDWARE {
+            description "Table to control ASIC parameters of different features like ACL.";
             list HARDWARE_LIST {
                 key "HARDWARE_SUB_TABLE";
                 max-elements 1;
