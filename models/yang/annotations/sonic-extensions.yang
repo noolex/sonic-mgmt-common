@@ -18,6 +18,11 @@ module sonic-extensions {
     "This module provides extensions to the YANG language to allow
     Sonic specific functionality and meta-data to be defined.";
 
+  revision "2020-05-06" {
+    description
+      "Add extensions for subscription support.";
+  }
+
   revision "2019-08-30" {
     description
       "Add extensions for redis DB mappings to identify the Redis DB name.";
@@ -104,6 +109,21 @@ module sonic-extensions {
   extension rpc-callback {
     argument "callback";
     description "RPC callback to be invoked for action";
+  }
+
+  extension subscribe-preference {
+    argument "subscribe-preference";
+    description "Subscription preference sample/onchange";
+  }
+
+  extension subscribe-on-change {
+    argument "subscribe-on-change";
+    description "Onchange subscription is enable/disable";
+  }
+
+  extension subscribe-min-interval {
+    argument "subscribe-min-interval";
+    description "Subscription sampling interval";
   }
 
   extension value-transformer {
