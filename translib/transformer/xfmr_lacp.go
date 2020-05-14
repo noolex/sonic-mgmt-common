@@ -24,6 +24,7 @@ import (
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "os/exec"
 
     log "github.com/golang/glog"
@@ -191,8 +192,11 @@ func fillLacpMembers(inParams XfmrParams, lag string, TeamdJson map[string]inter
 
     if ports_map,ok := TeamdJson["ports"].(map[string]interface{}); ok {
         for ifKey := range ports_map {
-            if lacpMemberObj, ok = members.Member[ifKey]; !ok {
-                lacpMemberObj, err = members.NewMember(ifKey)
+            var ifName *string
+            ifName = utils.GetAliasNameFromIfName(&ifKey)
+
+            if lacpMemberObj, ok = members.Member[*ifName]; !ok {
+                lacpMemberObj, err = members.NewMember(*ifName)
                 if err != nil {
                     log.Error("Creation of portchannel member subtree failed")
                     return err
@@ -292,13 +296,16 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
 
         members = lacpintfObj.Members
         if members != nil && ifMemKey != "" {
+            var ifName *string
+            ifName = utils.GetInterfaceNameFromAlias(&ifMemKey)
+
             if member, ok = members.Member[ifMemKey]; !ok {
                 errStr := "PortChannel Member Instance doesn't exist"
                 log.Info(errStr)
                 return errors.New(errStr)
             }
             ygot.BuildEmptyTree(member)
-            return populateLacpMember(inParams, ifKey, ifMemKey, member)
+            return populateLacpMember(inParams, ifKey, *ifName, member)
         }
     } else if isSubtreeRequest(targetUriPath, "/openconfig-lacp:lacp/interfaces/interface/members") {
         if lacpintfObj, ok = lacpIntfsObj.Interfaces.Interface[ifKey]; !ok {
