@@ -77,3 +77,6 @@ openconfig-platform.yang
 openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
+openconfig-lldp.yang
+openconfig-lldp-ext.yang
+openconfig-lldp-annot.yang
