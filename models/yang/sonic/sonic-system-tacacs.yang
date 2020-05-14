@@ -75,6 +75,16 @@ module sonic-system-tacacs {
                         }
                     }
                 }
+
+                leaf vrf {
+                    type string {
+                        pattern "mgmt|default" {
+                            error-message "Error: Invalid VRF name";
+                        }
+                    }
+                    description
+                        "Internal management vrf name for SONiC";
+                }
             }
         }
 
