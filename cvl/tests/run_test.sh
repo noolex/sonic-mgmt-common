@@ -2,10 +2,10 @@
 
 profiling=""
 testcase=""
-coverpkgs="-coverpkg=cvl,cvl/internal/util,cvl/internal/yparser"
+coverpkgs="-coverpkg=github.com/Azure/sonic-mgmt-common/cvl,github.com/Azure/sonic-mgmt-common/cvl/internal/util,github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
 
 if [ "${BUILD}:" != ":" ] ; then
-	go test -v -c -gcflags="all=-N -l" 
+	go test -mod=vendor -v -c -gcflags="all=-N -l" 
 fi
 
 if [ "${TESTCASE}:" != ":" ] ; then
@@ -18,12 +18,12 @@ fi
 
 #Run test and display report
 if [ "${NOREPORT}:" != ":" ] ; then
-	go test  -v -cover ${coverpkgs} ${testcase}
+	go test -mod=vendor -v -cover ${coverpkgs} ${testcase}
 elif [ "${COVERAGE}:" != ":" ] ; then
-	go test  -v -cover -coverprofile coverage.out ${coverpkgs} ${testcase}
+	go test -mod=vendor -v -cover -coverprofile coverage.out ${coverpkgs} ${testcase}
 	go tool cover -html=coverage.out
 else
-	go test  -v -cover -json ${profiling} ${testcase} | tparse -smallscreen -all
+	go test -mod=vendor -v -cover -json ${profiling} ${testcase} | tparse -smallscreen -all
 fi
 
 #With profiling 

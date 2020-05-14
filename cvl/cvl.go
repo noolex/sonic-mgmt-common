@@ -31,7 +31,6 @@ import (
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"sync"
-	"flag"
 	"io/ioutil"
 	"path/filepath"
 	custv "github.com/Azure/sonic-mgmt-common/cvl/custom_validation"
@@ -225,12 +224,6 @@ func init() {
 	cvlCfgMap := ReadConfFile()
 
 	if (cvlCfgMap != nil) {
-		flag.Set("v", cvlCfgMap["VERBOSITY"])
-		if (strings.Compare(cvlCfgMap["LOGTOSTDERR"], "true") == 0) {
-			flag.Set("logtostderr", "true")
-			flag.Set("stderrthreshold", cvlCfgMap["STDERRTHRESHOLD"])
-		}
-
 		CVL_LOG(INFO ,"Current Values of CVL Configuration File %v", cvlCfgMap)
 	}
 

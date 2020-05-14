@@ -72,6 +72,23 @@ module sonic-ospfv2-common {
       "A common type that can be utilised to express an OSPF distance";
   }
 
+  typedef ospf-config-type {
+    type enumeration {
+      enum ENABLE {
+        description
+          "Configuration has been enabled";
+      }
+      enum DISABLE {
+        description
+          "Configuration has been disabled";
+      }
+      enum DEFAULT {
+        description
+          "Configuration has been set to default";
+      }
+    }
+  }
+
   typedef ospf-metric-type {
     type enumeration {
       enum TYPE_1 {
@@ -114,7 +131,7 @@ module sonic-ospfv2-common {
         description 
           "OSPF policy protocol static";
       }
-      enum CONNECTED {
+      enum DIRECTLY_CONNECTED {
         description 
           "OSPF policy protocol connected";
       }
@@ -142,6 +159,10 @@ module sonic-ospfv2-common {
       enum STANDARD {
         description
           "OSPF ABR type Standard";
+      }
+      enum SHORTCUT {
+        description
+          "OSPF ABR type Shortcut";
       }
     }
   }

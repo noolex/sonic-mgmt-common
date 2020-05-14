@@ -31,6 +31,10 @@ module sonic-bgp-common {
         prefix srmap;
     }
 
+    import sonic-common {
+        prefix cmn;
+    }
+
     organization
         "SONiC";
 
@@ -370,7 +374,7 @@ module sonic-bgp-common {
             type leafref {
                 path "/srmap:sonic-route-map/srmap:ROUTE_MAP_SET/srmap:ROUTE_MAP_SET_LIST/srmap:name";
             }
-            must "(count(current()) = 1)" {
+            must "(/cmn:operation/cmn:operation = 'DELETE') or (count(current()) = 1)" {
                 error-app-tag "max-allowed-route-map-reached";
                 error-message "Only one route-map can be associated";
             }
@@ -380,7 +384,7 @@ module sonic-bgp-common {
             type leafref {
                 path "/srmap:sonic-route-map/srmap:ROUTE_MAP_SET/srmap:ROUTE_MAP_SET_LIST/srmap:name";
             }
-            must "(count(current()) = 1)" {
+            must "(/cmn:operation/cmn:operation = 'DELETE') or (count(current()) = 1)" {
                 error-app-tag "max-allowed-route-map-reached";
                 error-message "Only one route-map can be associated";
             }

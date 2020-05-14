@@ -1,0 +1,48 @@
+module openconfig-if-ethernet-ext2 {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/interfaces/ethernet-ext2";
+
+  prefix "oc-eth-ext2";
+
+  // import some basic types
+  import openconfig-if-ethernet { prefix oc-eth; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
+
+  description
+    "This module adds extensions to the base ethernet configuration
+    and operational state model to support additional use cases.";
+
+  oc-ext:openconfig-version "0.1.1";
+
+  revision "2020-05-04" {
+    description
+      "Add OpenConfig module metadata extensions.";
+    reference "0.1.1";
+  }
+
+  // OpenConfig specific extensions for module metadata.
+  oc-ext:regexp-posix;
+  oc-ext:catalog-organization "openconfig";
+  oc-ext:origin "openconfig";
+
+ identity SPEED_200GB {
+    base oc-eth:ETHERNET_SPEED;
+    description "200 Gbps Ethernet";
+  }
+
+  identity SPEED_400GB {
+    base oc-eth:ETHERNET_SPEED;
+    description "400 Gbps Ethernet";
+  }
+
+}
