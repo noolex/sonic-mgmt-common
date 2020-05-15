@@ -21,7 +21,11 @@ module sonic-system-aaa {
                     type string;
                 }
                 leaf failthrough {
-                    type string;
+                    type string {
+                        pattern "True|False" {
+                            error-message "Error: Invalid failthrough setting";
+                        }
+                    }
                 }
             }
         }
