@@ -360,7 +360,9 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
     mapData = input.(map[string]interface{})
     input = mapData["interface-param"]
     input_str := fmt.Sprintf("%v", input)
-    input_str = strings.ToUpper(string(input_str))
+    //input_str = strings.ToUpper(string(input_str))
+    sonicName := utils.GetInterfaceNameFromAlias(&input_str)
+    input_str = *sonicName
 
     portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
     ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
@@ -369,7 +371,7 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
         return json.Marshal(&result)
     }
 
-    if input_str == "ALL" {
+    if input_str == "all" {
         log.Info("rpc_clear_counters : Clear Counters for all interfaces")
         for  intf, oid := range ifCountInfo.Field {
             verr, cerr := resetCounters(dbs[db.CountersDB], oid)
@@ -379,7 +381,7 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
                 log.Info("Counters reset for " + intf)
             }
         }
-    } else if input_str == "ETHERNET" || input_str == "PORTCHANNEL" {
+    } else if input_str == "Ethernet" || input_str == "PortChannel" {
         log.Info("rpc_clear_counters : Reset counters for given interface type")
         for  intf, oid := range ifCountInfo.Field {
             if strings.HasPrefix(strings.ToUpper(intf), input_str) {
@@ -394,9 +396,9 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
     } else {
         log.Info("rpc_clear_counters: Clear counters for given interface name")
         id := getIdFromIntfName(&input_str)
-        if strings.HasPrefix(input_str, "ETHERNET") {
+        if strings.HasPrefix(input_str, "Ethernet") {
             input_str = "Ethernet" + id
-        } else if strings.HasPrefix(input_str, "PORTCHANNEL") {
+        } else if strings.HasPrefix(input_str, "PortChannel") {
             input_str = "PortChannel" + id
         } else {
             log.Info("Invalid Interface")
