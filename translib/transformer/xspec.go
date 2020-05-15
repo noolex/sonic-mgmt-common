@@ -25,7 +25,7 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/cvl"
     "github.com/Azure/sonic-mgmt-common/translib/db"
-
+    "strconv"
     "github.com/openconfig/goyang/pkg/yang"
 )
 
@@ -52,6 +52,10 @@ type yangXpathInfo  struct {
     isKey          bool
     defVal         string
     hasChildSubTree bool
+    hasNonTerminalNode bool
+    subscribePref      *string
+    subscribeOnChg     int
+    subscribeMinIntvl  int
     cascadeDel     int
 }
 
@@ -136,6 +140,20 @@ func updateDbTableData (xpath string, xpathData *yangXpathInfo, tableName string
 	}
 }
 
+func childContainerListPresenceFlagSet(xpath string) {
+		parXpath := parentXpathGet(xpath)
+	for {
+		if parXpath == "" {
+			break
+		}
+		if parXpathData, ok := xYangSpecMap[parXpath]; ok {
+			parXpathData.hasNonTerminalNode = true
+		}
+		parXpath = parentXpathGet(parXpath)
+	}
+	return
+}
+
 func childSubTreePresenceFlagSet(xpath string) {
 		parXpath := parentXpathGet(xpath)
 	for {
@@ -169,6 +187,11 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		}
 		curXpathData.yangDataType = strings.ToLower(yang.EntryKindToName[entry.Kind])
 		curXpathData.yangEntry    = entry
+		if xYangSpecMap[xpathPrefix].subscribePref != nil {
+			curXpathData.subscribePref = xYangSpecMap[xpathPrefix].subscribePref
+		}
+		curXpathData.subscribeOnChg    = xYangSpecMap[xpathPrefix].subscribeOnChg
+		curXpathData.subscribeMinIntvl = xYangSpecMap[xpathPrefix].subscribeMinIntvl
 		curXpathData.cascadeDel   = xYangSpecMap[xpathPrefix].cascadeDel
 		xpath = xpathPrefix
 	} else {
@@ -196,7 +219,9 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 	if !ok {
 		xpathData = new(yangXpathInfo)
 		xYangSpecMap[xpath] = xpathData
-		xpathData.dbIndex   = db.ConfigDB // default value
+		xpathData.dbIndex = db.ConfigDB // default value
+		xpathData.subscribeOnChg    = XFMR_INVALID
+		xpathData.subscribeMinIntvl = XFMR_INVALID
 		xpathData.cascadeDel = XFMR_INVALID
 	} else {
 		xpathData = xYangSpecMap[xpath]
@@ -233,6 +258,29 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		xpathData.xfmrFunc = parentXpathData.xfmrFunc
 	}
 
+   if ok && (parentXpathData.subscribeMinIntvl == XFMR_INVALID ||
+      parentXpathData.subscribeOnChg == XFMR_INVALID) {
+       log.Errorf("Susbscribe MinInterval/OnChange flag is set to invalid for(%v) \r\n", xpathPrefix)
+       return
+   }
+
+   if ok {
+	   if xpathData.subscribeOnChg == XFMR_INVALID {
+		   xpathData.subscribeOnChg = parentXpathData.subscribeOnChg
+	   }
+
+	   if xpathData.subscribeMinIntvl == XFMR_INVALID {
+		   xpathData.subscribeMinIntvl = parentXpathData.subscribeMinIntvl
+	   }
+
+	   if xpathData.subscribePref == nil && parentXpathData.subscribePref != nil {
+		   xpathData.subscribePref = parentXpathData.subscribePref
+	   }
+
+	   if xpathData.subscribePref != nil && *xpathData.subscribePref == "NONE" {
+		   xpathData.subscribePref = nil
+	   }
+   }
 	if ok {
 		if parentXpathData.cascadeDel == XFMR_INVALID {
 			/* should not hit this case */
@@ -307,6 +355,17 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 	}
 	xpathData.yangEntry = entry
 
+	if xpathData.subscribeMinIntvl == XFMR_INVALID {
+		xpathData.subscribeMinIntvl = 0
+	}
+
+	if xpathData.subscribeOnChg == XFMR_INVALID {
+		xpathData.subscribeOnChg = XFMR_ENABLE
+	}
+	if ((xpathData.subscribePref != nil) && (*xpathData.subscribePref == "onchange") && (xpathData.subscribeOnChg == XFMR_DISABLE)) {
+		log.Infof("subscribe OnChange is disabled so setting subscribe preference to default/sample from onchange for xpath - %v", xpath)
+		xpathData.subscribePref = nil
+	}
 	if xpathData.cascadeDel == XFMR_INVALID {
 		/* set to  default value */
 		xpathData.cascadeDel = XFMR_DISABLE
@@ -315,6 +374,11 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 	if updateChoiceCaseXpath == true {
 		copyYangXpathSpecData(xYangSpecMap[curXpathFull], xYangSpecMap[xpath])
 	}
+
+	if xpathData.yangDataType == YANG_CONTAINER || xpathData.yangDataType == YANG_LIST {
+		childContainerListPresenceFlagSet(xpath)
+	}
+
 	}
 
 	/* get current obj's children */
@@ -589,6 +653,8 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 	xpathData := new(yangXpathInfo)
 
 	xpathData.dbIndex = db.ConfigDB // default value
+	xpathData.subscribeOnChg    = XFMR_INVALID
+	xpathData.subscribeMinIntvl = XFMR_INVALID
 	xpathData.cascadeDel = XFMR_INVALID
 	/* fill table with yang extension data. */
 	if entry != nil && len(entry.Exts) > 0 {
@@ -632,6 +698,28 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				xpathData.keyXpath  = nil
 			case "db-name" :
 				xpathData.dbIndex = dbNameToIndex(ext.NName())
+			case "subscribe-preference" :
+				if xpathData.subscribePref == nil {
+					xpathData.subscribePref = new(string)
+				}
+				*xpathData.subscribePref = ext.NName()
+			case "subscribe-on-change" :
+				if ext.NName() == "enable" || ext.NName() == "ENABLE" {
+					xpathData.subscribeOnChg = XFMR_ENABLE
+				} else {
+					xpathData.subscribeOnChg = XFMR_DISABLE
+				}
+			case "subscribe-min-interval" :
+				if ext.NName() == "NONE" {
+					xpathData.subscribeMinIntvl = 0
+				} else {
+					minIntvl, err := strconv.Atoi(ext.NName())
+					if err != nil {
+						log.Errorf("Invalid subscribe min interval time(%v).\r\n", ext.NName())
+						return
+					}
+					xpathData.subscribeMinIntvl = minIntvl
+				}
 			case "cascade-delete" :
 				if ext.NName() == "ENABLE" ||  ext.NName() == "enable" {
 					xpathData.cascadeDel = XFMR_ENABLE
@@ -801,6 +889,13 @@ func mapPrint(inMap map[string]*yangXpathInfo, fileName string) {
         fmt.Fprintf(fp, "%v:\r\n", k)
         fmt.Fprintf(fp, "    yangDataType: %v\r\n", d.yangDataType)
 		fmt.Fprintf(fp, "    cascadeDel  : %v\r\n", d.cascadeDel)
+        fmt.Fprintf(fp, "    hasChildSubTree : %v\r\n", d.hasChildSubTree)
+        fmt.Fprintf(fp, "    hasNonTerminalNode : %v\r\n", d.hasNonTerminalNode)
+	 fmt.Fprintf(fp, "    subscribeOnChg     : %v\r\n", d.subscribeOnChg)
+	 fmt.Fprintf(fp, "    subscribeMinIntvl  : %v\r\n", d.subscribeMinIntvl)
+	 if d.subscribePref != nil {
+		fmt.Fprintf(fp, "    subscribePref      : %v\r\n", *d.subscribePref)
+	 }
         fmt.Fprintf(fp, "    hasChildSubTree: %v\r\n", d.hasChildSubTree)
         fmt.Fprintf(fp, "    tableName: ")
         if d.tableName != nil {

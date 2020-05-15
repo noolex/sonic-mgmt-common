@@ -59,8 +59,8 @@ var YangToDb_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     intfName := pathInfo.Var("name")
 
     if len(intfName) <= 0 {
-        errStr := "YangToDb_neigh_tbl_key_xfmr - Interface name is missing"
-        log.Error(errStr)
+        errStr := "Interface name is missing"
+        log.Error("YangToDb_neigh_tbl_key_xfmr - ", errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return "", err
     }

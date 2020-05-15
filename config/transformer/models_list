@@ -2,6 +2,7 @@
 openconfig-acl.yang
 openconfig-acl-annot.yang
 openconfig-platform.yang
+openconfig-platform-psu.yang
 openconfig-platform-annot.yang
 openconfig-interfaces.yang
 openconfig-if-ip.yang
@@ -76,3 +77,6 @@ openconfig-platform.yang
 openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
+openconfig-lldp.yang
+openconfig-lldp-ext.yang
+openconfig-lldp-annot.yang
