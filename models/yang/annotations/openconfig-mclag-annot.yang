@@ -41,6 +41,14 @@ module openconfig-mclag-annot {
         }
     }
 
+    deviation /oc-mclag:mclag/oc-mclag:mclag-gateway-macs/oc-mclag:mclag-gateway-mac {
+        deviate add {
+            sonic-ext:table-name "MCLAG_GW_MAC";
+        }
+    }
+
+
+
     deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:config/oc-mclag:domain-id {
         deviate add {
             sonic-ext:field-name "domain_id";
@@ -160,4 +168,12 @@ module openconfig-mclag-annot {
             sonic-ext:field-name "unique_ip";
         }
     }
+
+    deviation /oc-mclag:mclag/oc-mclag:mclag-gateway-macs/oc-mclag:mclag-gateway-mac/oc-mclag:config/oc-mclag:gateway-mac {
+        deviate add {
+            sonic-ext:field-name "gw_mac";
+            sonic-ext:field-transformer "mclag_gw_mac_fld_xfmr";
+        }
+    }
+
 }

@@ -4,7 +4,6 @@ package transformer
 import (
     "errors"
     "strconv"
-    "math"
     "strings"
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
@@ -78,7 +77,7 @@ func init () {
     XlateFuncBind("DbToYang_ospfv2_areas_area_state_xfmr", DbToYang_ospfv2_areas_area_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_neighbors_state_xfmr", DbToYang_ospfv2_neighbors_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_route_table_xfmr", DbToYang_ospfv2_route_table_xfmr)
-    //XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
+    XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
 }
 
 func getOspfv2Root (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, string, error) {
@@ -1150,6 +1149,7 @@ func ospfv2_fill_only_global_state (output_state map[string]interface{},
     var err error
     var ospfv2Gbl_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global
     var ospfv2GblState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_State
+    var numint64 int64
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Global State"
 
@@ -1187,10 +1187,11 @@ func ospfv2_fill_only_global_state (output_state map[string]interface{},
         ospfv2GblState_obj.LastSpfExecutionTime = &_spfLastExecutedMsecs
     }
 
-    if value,ok := output_state["spfLastDurationMsecs"] ; ok {
-        _spfLastDurationMsecs   := uint32(value.(float64))
-        ospfv2GblState_obj.LastSpfDuration = &_spfLastDurationMsecs
+    if value,ok := output_state["spfLastDurationUsecs"] ; ok {
+        _spfLastDurationUsecs   := uint32(value.(float64))
+        ospfv2GblState_obj.LastSpfDuration = &_spfLastDurationUsecs
     }
+
     if value,ok := output_state["writeMultiplier"] ; ok {
         _write_multiplier := uint8(value.(float64))
         ospfv2GblState_obj.WriteMultiplier = &_write_multiplier
@@ -1204,18 +1205,33 @@ func ospfv2_fill_only_global_state (output_state map[string]interface{},
         ospfv2GblState_obj.OpaqueLsaCount = &_lsaAsopaqueCounter
     }
     if value,ok := output_state["lsaExternalChecksum"]; ok {
-        _lsaExternalChecksum := math.Float64bits(value.(float64))
-        s16 := strconv.FormatUint(_lsaExternalChecksum, 16)
-        ospfv2GblState_obj.ExternalLsaChecksum = &s16
+        numint64 = int64(value.(float64))
+        numstr := fmt.Sprintf("0x%08x", numint64)
+        ospfv2GblState_obj.ExternalLsaChecksum = &numstr
     }
     if value,ok := output_state["lsaAsOpaqueChecksum"]; ok {
-        _lsaAsOpaqueChecksum := math.Float64bits(value.(float64))
-        s16 := strconv.FormatUint(_lsaAsOpaqueChecksum, 16)
-        ospfv2GblState_obj.OpaqueLsaChecksum = &s16
+        numint64 = int64(value.(float64))
+        numstr := fmt.Sprintf("0x%08x", numint64)
+        ospfv2GblState_obj.OpaqueLsaChecksum = &numstr
     }
     if value,ok := output_state["attachedAreaCounter"] ; ok {
         _attachedAreaCounter  := uint32(value.(float64))
         ospfv2GblState_obj.AreaCount = &_attachedAreaCounter
+    }
+    ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_UNSET
+    if _abrtype,ok := output_state["abrType"].(string); ok {
+        if _abrtype == "Alternative Cisco" {
+            ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_CISCO
+        }
+        if _abrtype == "Alternative IBM" {
+            ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_IBM
+        }
+        if _abrtype == "Alternative Shortcut" {
+            ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_SHORTCUT
+        }
+        if _abrtype == "Standard (RFC2328)" {
+            ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_STANDARD
+        }
     }
     
     return err
@@ -1384,18 +1400,15 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
                 ospfv2Route.InterArea = &ospfv2One
             }
         }
-        if _abr, ok := route_info["routerTypeAbr"].(bool); ok {
-            if _abr ==  false {
-                ospfv2Route.RouterTypeAbr = &ospfv2Zero
-            } else {
-                ospfv2Route.RouterTypeAbr = &ospfv2One
+        if _routertype, ok := route_info["routerType"].(string); ok {
+            if _routertype == "abr" {
+                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ABR
             }
-        }
-        if _asbr, ok := route_info["routerTypeAsbr"].(bool); ok {
-            if _asbr ==  false {
-                ospfv2Route.RouterTypeAsbr = &ospfv2Zero
-            } else {
-                ospfv2Route.RouterTypeAsbr = &ospfv2One
+            if _routertype == "asbr" {
+                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ASBR
+            }
+            if _routertype == "abr asbr" {
+                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ABRASBR
             }
         }
         switch(route_info["routeType"]) {
@@ -1515,6 +1528,7 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
     var ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
     var ospfv2AreaInfo_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_State
+    var numint64 int64
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Areas-Area State"
     var areaNameStr string
@@ -1559,7 +1573,9 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
                 if _authtype == "authenticationNone" {
                     ospfv2AreaInfo_obj.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_AUTH_NONE
                 }
-                //TBD: To add other authentication later
+                if _authtype == "authenticationMessageDigest" {
+                    ospfv2AreaInfo_obj.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_MD5HMAC
+                }
             }
             
             if value,ok := area_info["areaIfTotalCounter"] ; ok {
@@ -1589,54 +1605,54 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
                 ospfv2AreaInfo_obj.RouterLsaCount = &_lsaRouterNumber
             }
             if value,ok := area_info["lsaRouterChecksum"]; ok {
-                _lsaRouterChecksum  := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaRouterChecksum, 16)
-                ospfv2AreaInfo_obj.RouterLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.RouterLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaNetworkNumber"]; ok {
                 _lsaNetworkNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.NetworkLsaCount = &_lsaNetworkNumber
             }
             if value,ok := area_info["lsaNetworkChecksum"]; ok {
-                _lsaNetworkChecksum   := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaNetworkChecksum, 16)
-                ospfv2AreaInfo_obj.NetworkLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.NetworkLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaSummaryNumber"]; ok {
                 _lsaSummaryNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.SummaryLsaCount = &_lsaSummaryNumber
             }
             if value,ok := area_info["lsaSummaryChecksum"]; ok {
-                _lsaSummaryChecksum  := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaSummaryChecksum, 16)
-                ospfv2AreaInfo_obj.SummaryLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.SummaryLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaAsbrNumber"]; ok {
                 _lsaAsbrNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.AsbrSummaryLsaCount = &_lsaAsbrNumber
             }
             if value,ok := area_info["lsaAsbrChecksum"]; ok {
-                _lsaAsbrChecksum   := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaAsbrChecksum, 16)
-                ospfv2AreaInfo_obj.AsbrSummaryLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.AsbrSummaryLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaNssaNumber"]; ok {
                 _lsaNssaNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.NssaLsaCount = &_lsaNssaNumber
             }
             if value,ok := area_info["lsaNssaChecksum"]; ok {
-                _lsaNssaChecksum  := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaNssaChecksum, 16)
-                ospfv2AreaInfo_obj.NssaLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.NssaLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaOpaqueLinkNumber"]; ok {
                 _lsaOpaqueAreaNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.OpaqueAreaLsaCount = &_lsaOpaqueAreaNumber
             }
             if value,ok := area_info["lsaOpaqueAreaChecksum"]; ok {
-                _lsaOpaqueAreaChecksum := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaOpaqueAreaChecksum, 16)
-                ospfv2AreaInfo_obj.OpaqueAreaLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.OpaqueAreaLsaChecksum = &numstr
             }
             
         }
@@ -1744,10 +1760,14 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                         }
                     } 
                     ygot.BuildEmptyTree(ospfv2Neighbor_obj)
-                    ospfv2Neighbor_obj.InterfaceAddress = &_ifaceAddress
+                    //ospfv2Neighbor_obj.InterfaceAddress = &_ifaceAddress
                     ospfv2NeighborAreaKey.String = area_id
                     ospfv2Neighbor_obj.AreaId = &ospfv2NeighborAreaKey
                     ospfv2Neighbor_obj.InterfaceName = &intf_name
+                }
+
+                if _ipAddress, ok := nbr_info["ifaceLocalAddress"].(string); ok {
+                    ospfv2Neighbor_obj.InterfaceAddress = &_ipAddress
                 }
                 
                 if value,ok := nbr_info["nbrPriority"] ; ok {
@@ -1794,6 +1814,11 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                 if value,ok := nbr_info["databaseSummaryListCounter"] ; ok {
                     _databaseSummaryListCounter  := uint32(value.(float64))
                     ospfv2Neighbor_obj.DatabaseSummaryQueueLength = &_databaseSummaryListCounter
+                }
+
+                if value,ok := nbr_info["linkStateRetransmissionListCounter"] ; ok {
+                    _linkStateRetransmissionListCounter  := uint32(value.(float64))
+                    ospfv2Neighbor_obj.RetransmitSummaryQueueLength = &_linkStateRetransmissionListCounter
                 }
 
                 if value,ok := nbr_info["linkStateRequestListCounter"] ; ok {
