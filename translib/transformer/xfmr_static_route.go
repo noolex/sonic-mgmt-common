@@ -542,7 +542,7 @@ func getRouteData(inParams XfmrParams, scope uriScopeType) (*cacheVrfInfo, error
     cacheData := &cacheVrfInfo{}
     proto := pathInfo.Var("name#2")
     protoId := pathInfo.Var("identifier")
-    prefix := pathInfo.Var("prefix")
+    ipPrefix := pathInfo.Var("prefix")
 
     if len(vrf) == 0 {
         log.Info("VRF name is missing")
@@ -553,7 +553,11 @@ func getRouteData(inParams XfmrParams, scope uriScopeType) (*cacheVrfInfo, error
         return nil, tlerr.InvalidArgs("Invalid protocol name %v or identifier %v", proto, protoId)
     }
 
-    srouteObjMap, err := getYgotNexthopObj(inParams.ygRoot, vrf, prefix)
+    searchPrefix := ipPrefix
+    if inParams.oper == REPLACE && scope == STATIC_ROUTES {
+        searchPrefix = ""
+    }
+    srouteObjMap, err := getYgotNexthopObj(inParams.ygRoot, vrf, searchPrefix)
     if err != nil {
         log.Info("Failed to get ygot static route tree")
         return nil, err
