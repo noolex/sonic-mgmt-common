@@ -10,6 +10,7 @@ module openconfig-interfaces-annot {
     import openconfig-interfaces-ext { prefix oc-intf-ext; }
     import openconfig-extensions { prefix oc-ext; }
     import openconfig-if-ethernet {prefix oc-eth; }
+    import openconfig-if-ethernet-ext {prefix oc-eth-ext; }
     import openconfig-ospfv2-ext { prefix "oc-ospfv2-ext"; }
     import openconfig-vlan {prefix oc-vlan; }
     import openconfig-if-ip {prefix oc-ip; }
@@ -319,4 +320,28 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list" {
+        deviate add {
+            sonic-ext:table-name "PORT_STORM_CONTROL";
+            sonic-ext:key-transformer "storm_type_key_xfmr";
+        }
+    }
+
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:config/oc-eth-ext:storm-type" {
+        deviate add {
+            sonic-ext:field-name "storm_type";
+            sonic-ext:field-transformer "storm_value_xfmr";
+        }
+    }
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:state/oc-eth-ext:storm-type" {
+        deviate add {
+            sonic-ext:field-transformer "storm_value_xfmr";
+        }
+    }
+
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:config/oc-eth-ext:ifname" {
+        deviate add {
+            sonic-ext:field-transformer "storm_value_xfmr";
+        }
+    }
 }
