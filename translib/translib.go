@@ -346,21 +346,6 @@ func Replace(req SetRequest) (SetResponse, error) {
         requestUriPath, err := getYangPathFromUri(requestPathInfo.Path)
 	log.Info("requestUriPath : ", requestUriPath)
 
-        switch requestUriPath {
-            case "/openconfig-relay-agent:relay-agent":fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcp":fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcp/interfaces": fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcp/interfaces/interface": fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcpv6":fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces": fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces/interface":
-            {
-                log.Info("replace on this container not allowed")
-                resp.ErrSrc = AppErr
-                return resp, tlerr.New("REPLACE operation not supported on this container")
-            }
-        }
-
 	app, appInfo, err := getAppModule(path, req.ClientVersion)
 
 	if err != nil {
@@ -440,14 +425,7 @@ func Delete(req SetRequest) (SetResponse, error) {
     ifName := requestPathInfo.Var("name")
 
     switch requestUriPath {
-        case "/openconfig-interfaces:interfaces": fallthrough
-        case "/openconfig-relay-agent:relay-agent":fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcp":fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcp/interfaces": fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcp/interfaces/interface": fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcpv6":fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces": fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces/interface":
+        case "/openconfig-interfaces:interfaces": 
         {
             log.Info("delete on this container not allowed")
             resp.ErrSrc = AppErr
