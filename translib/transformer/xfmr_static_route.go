@@ -44,6 +44,15 @@ func isZeroIp(ipAddr *net.IP) bool {
     return true
 }
 
+func isPrefixIpv4(prefix string) bool {
+    ip := net.ParseIP(strings.Split(prefix, "/")[0])
+    if ip == nil {
+        return false
+    }
+    ipv4 := ip.To4()
+    return ipv4 != nil
+}
+
 func getNexthopIndex(blackhole bool, ip string, intf string, vrf string) string {
     var nhIndex string
     if blackhole {
@@ -413,7 +422,30 @@ func nexthopFromStrList(srcVrf string, strList []string, isIpv4 bool) (*ipNextho
     return newNexthop(srcVrf, blackhole, gwIp, strList[2], uint32(distance), strList[4])
 }
 
-func getNexthopListFromDB(d *db.DB, srcVrf string, ipPrefix string, ipv4 bool) (ipNexthopSet, bool, error) {
+func getAllPrefixFromDB(d *db.DB, vrf string) []string {
+    var prefixList []string
+    var keys []db.Key
+    var err error
+    tblSpec := db.TableSpec{Name: STATIC_ROUTE_TABLE}
+    if vrf == DEFAULT_VRF {
+        keys, err = d.GetKeys(&tblSpec)
+    } else {
+        keys, err = d.GetKeysPattern(&tblSpec, db.Key{Comp: []string{vrf, "*"}})
+    }
+    if err != nil {
+        return prefixList
+    }
+    for _, k := range keys {
+        if len(k.Comp) > 1 && k.Comp[0] != vrf {
+            continue
+        }
+        prefixList = append(prefixList, k.Comp[len(k.Comp) - 1])
+    }
+    return prefixList
+}
+
+func getNexthopListFromDB(d *db.DB, srcVrf string, ipPrefix string) (ipNexthopSet, bool, error) {
+    ipv4 := isPrefixIpv4(ipPrefix)
     tblSpec := db.TableSpec{Name: STATIC_ROUTE_TABLE}
     nhList := ipNexthopSet{ipv4, make(map[string]ipNexthop)}
     var vrfInKey bool = true
@@ -504,7 +536,7 @@ type cacheRouteInfo struct {
 
 type cacheVrfInfo map[string]map[string]*cacheRouteInfo
 
-func getRouteData(inParams XfmrParams) (*cacheVrfInfo, error) {
+func getRouteData(inParams XfmrParams, scope uriScopeType) (*cacheVrfInfo, error) {
     pathInfo := NewPathInfo(inParams.uri)
     vrf := pathInfo.Var("name")
     cacheData := &cacheVrfInfo{}
@@ -526,9 +558,17 @@ func getRouteData(inParams XfmrParams) (*cacheVrfInfo, error) {
         log.Info("Failed to get ygot static route tree")
         return nil, err
     }
+    if inParams.oper == REPLACE && scope == STATIC_ROUTES {
+        dbPrefix := getAllPrefixFromDB(inParams.d, vrf)
+        for _, pfx := range dbPrefix {
+            if _, ok := srouteObjMap[pfx]; !ok {
+                srouteObjMap[pfx] = nil
+            }
+        }
+    }
     (*cacheData)[vrf] = make(map[string]*cacheRouteInfo)
     for prefix, nhs := range srouteObjMap {
-        nhList, vrfInKey, err := getNexthopListFromDB(inParams.d, vrf, prefix, nhs.isIpv4)
+        nhList, vrfInKey, err := getNexthopListFromDB(inParams.d, vrf, prefix)
         if err != nil {
             log.Infof("Faile to get nexthops of %s from DB: %v", prefix, err)
             return nil, err
@@ -546,26 +586,31 @@ func (data *cacheVrfInfo)isDataValid(scope uriScopeType, oper int, vrf string) b
         log.Infof("VRF %s not in cached data", vrf)
         return false
     }
-    if scope == STATIC_ROUTES && oper == REPLACE {
-        log.Infof("Replace on static-routes scope was not supported: VRF %s", vrf)
-        return false
-    }
     if oper == CREATE {
+        // check if route or nexthop already created
         for pfx, route := range vrfRoute {
-            if route.dbNh != nil {
+            if route.dbNh != nil && len(route.dbNh.nhList.nhList) > 0 {
+                if scope != STATIC_ROUTES_NEXTHOP {
+                    log.Infof("route prefix %s was already in DB", pfx)
+                    return false
+                }
                 for key, _ := range route.ygotNhList.nhList {
                     if _, ok := route.dbNh.nhList.nhList[key]; ok {
-                        log.Infof("prefix %s nexthop %s was already in DB", pfx, key)
+                        log.Infof("route prefix %s nexthop %s was already in DB", pfx, key)
                         return false
                     }
                 }
             }
         }
-    } else if oper == DELETE {
+    } else if oper == DELETE || (oper == REPLACE && scope != STATIC_ROUTES) {
+        // check if route or nexthop in DB
         for pfx, route := range vrfRoute {
             if route.dbNh == nil || len(route.dbNh.nhList.nhList) == 0 {
                 log.Infof("prefix %s not found in DB", pfx)
                 return false
+            }
+            if scope == STATIC_ROUTES_STATIC {
+                continue
             }
             for key, _ := range route.ygotNhList.nhList {
                 if _, ok := route.dbNh.nhList.nhList[key]; !ok {
@@ -632,7 +677,7 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
     vrf := pathInfo.Var("name")
     ipPrefix := pathInfo.Var("prefix")
 
-    cacheData, err := getRouteData(inParams)
+    cacheData, err := getRouteData(inParams, uriScope)
     if err != nil {
         log.Info("Failed to get ygot and DB data")
         return resMap, err
@@ -680,14 +725,28 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
         }
     } else if !pathInfo.HasVar("index") {
         log.Infof("Handling static route configuration for VRF %s prefix %s", vrf, ipPrefix)
-        var subDataMap = make(RedisDbMap)
-        subDataMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        var updSubDataMap = make(RedisDbMap)
+        var delSubDataMap = make(RedisDbMap)
+        updSubDataMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        delSubDataMap[db.ConfigDB] = make(map[string]map[string]db.Value)
         for prefix, routeInfo := range (*cacheData)[vrf] {
-            if routeInfo.dbNh == nil || len(routeInfo.dbNh.nhList.nhList) == 0 {
-                if err = addRouteUpdToMap(inParams, vrf, prefix, routeInfo.ygotNhList, resMap); err != nil {
+            if routeInfo.ygotNhList == nil {
+                // delete route
+                log.Infof("Put to be replaced route prefix %s in delete list", prefix)
+                if err = addRouteDelToMap(inParams, vrf, prefix, delSubDataMap[db.ConfigDB]); err != nil {
+                    log.Infof("Failed to add route delete to map: VRF %s prefix %s", vrf, prefix)
                     return resMap, nil
+                }
+            } else {
+                if routeInfo.dbNh == nil || len(routeInfo.dbNh.nhList.nhList) == 0 {
+                    // add new route
+                    log.Infof("Put new route prefix %s in update list", prefix)
+                    if err = addRouteUpdToMap(inParams, vrf, prefix, routeInfo.ygotNhList, resMap); err != nil {
+                        log.Infof("Failed to add route add to map: VRF %s prefix %s", vrf, prefix)
+                        return resMap, nil
+                    }
                 } else {
-                    //udpate nexthop
+                    // udpate nexthop
                     if inParams.oper != REPLACE {
                         for k, v := range routeInfo.dbNh.nhList.nhList {
                             if _, ok := routeInfo.ygotNhList.nhList[k]; !ok {
@@ -695,7 +754,8 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
                             }
                         }
                     }
-                    if err = addRouteUpdToMap(inParams, vrf, prefix, routeInfo.ygotNhList, subDataMap[db.ConfigDB]); err != nil {
+                    log.Infof("Put to be updated route prefix %s in update list", prefix)
+                    if err = addRouteUpdToMap(inParams, vrf, prefix, routeInfo.ygotNhList, updSubDataMap[db.ConfigDB]); err != nil {
                         log.Infof("Failed to add route update to map: VRF %s prefix %s", vrf, prefix)
                         return resMap, err
                     }
@@ -703,8 +763,11 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
             }
         }
 
-        if len(subDataMap[db.ConfigDB]) > 0 {
-            inParams.subOpDataMap[REPLACE] = &subDataMap
+        if len(updSubDataMap[db.ConfigDB]) > 0 {
+            inParams.subOpDataMap[REPLACE] = &updSubDataMap
+        }
+        if len(delSubDataMap[db.ConfigDB]) > 0 {
+            inParams.subOpDataMap[DELETE] = &delSubDataMap
         }
     }
 
