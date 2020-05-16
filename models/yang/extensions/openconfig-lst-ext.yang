@@ -219,16 +219,6 @@ module openconfig-lst-ext {
         track this interface as downstream";
     }
 
-    leaf type {
-      type leafref {
-        path "../../../../../lst-groups/lst-group[name=current()/../group-name]" +
-          "/config/type";
-      }
-
-      description
-        "Reference to the link state tracking group type used to 
-        track this interface as downstream";
-    }
   }
 
   grouping interface-downstream-lst-group-state {
@@ -236,10 +226,10 @@ module openconfig-lst-ext {
       "Operational state data per-interface downstream link state tracking group";
       
     leaf disabled {
+      type boolean;
+
       description
         "Indicates if the interface is disabled by link state tracking";
-
-      type boolean;
     }
   }
 
