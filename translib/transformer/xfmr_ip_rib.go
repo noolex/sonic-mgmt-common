@@ -305,7 +305,7 @@ var DbToYang_ipv4_route_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
    		for prfxKey, prfxVal := range outputJson {
 			if outError, ok := outputJson["warning"] ; ok {
 				log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", cmd, outError)
-				return errors.New("Opertational error")
+				return errors.New("Operational error")
 			}
 
    			err = fill_ipv4_entry(prfxVal.([]interface{}), prfxKey, aftsObjIpv4)
@@ -351,7 +351,7 @@ var DbToYang_ipv6_route_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
    		for prfxKey, prfxVal := range outputJson {
 			if outError, ok := outputJson["warning"] ; ok {
 				log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", cmd, outError)
-				return errors.New("Opertational error")
+				return errors.New("Operational error")
 			}
 
    			err = fill_ipv6_entry(prfxVal.([]interface{}), prfxKey, aftsObjIpv6)
