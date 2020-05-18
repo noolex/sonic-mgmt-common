@@ -74,6 +74,7 @@ module openconfig-mclag {
       type uint32 {
           range 1..60;
       }
+      default 1;
 
       description
         "Keepalive interval for ICCP MCLAG session";
@@ -83,6 +84,7 @@ module openconfig-mclag {
       type uint32 {
           range 1..3600;
       }
+      default 30;
 
       description
         "Session Timeout for ICCP MCLAG session";
@@ -188,6 +190,8 @@ module openconfig-mclag {
       "MCLAG Gateway mac top level container";
 
     container mclag-gateway-macs {
+      description
+        "MCLAG Gateway MAC entries varaibles enclosing container";
       list mclag-gateway-mac {
         key "gateway-mac";
         max-elements 1;
@@ -197,6 +201,8 @@ module openconfig-mclag {
             type leafref {
               path "../config/gateway-mac";
             }
+            description
+              "Reference to the gateway-mac list  key";
         }
         container config {
           description
@@ -239,18 +245,36 @@ module openconfig-mclag {
     container  local {
       description
          "Operational state for local interfaces";
-      leaf traffic_disable {
+      leaf traffic-disable {
         type boolean;
+        default false;
         description
           "MCLAG local interface traffic disable value to indicate whether Tx/Rx traffic
           is disabled or enabled on this MCLAG interface";
       }
       
-      leaf port_isolate {
+      leaf port-isolate {
         type boolean;
+        default false;
         description
           "MCLAG local interface port isolation state to indicate whether BUM
           traffic incoming on ISL is blocked on MCLAG Interface";
+      }
+
+      leaf oper-status {
+          type enumeration {
+              enum OPER_UP {
+                  description
+                      "Local Interface operational status up";
+              }
+              enum OPER_DOWN {
+                  description
+                      "Local Interface operational status down";
+              }
+          }
+          default OPER_DOWN;
+          description
+              "MCLAG Local Interface Operational status";
       }
     }
   }
@@ -273,6 +297,7 @@ module openconfig-mclag {
               "Remote Interface operational status down";
           }
        }
+       default OPER_DOWN;
        description
          "MCLAG Remote Interface Operational status";
       }
@@ -438,11 +463,4 @@ module openconfig-mclag {
   uses mclag-top;
 
   // augment statements
-
-
-  // port-isolate is not supported now
-  deviation /oc-mclag:mclag/oc-mclag:interfaces/oc-mclag:interface/oc-mclag:state/oc-mclag:local/oc-mclag:port_isolate {
-      deviate not-supported;
-  }
-
 }
