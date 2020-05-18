@@ -20,6 +20,7 @@ package transformer
 
 import (
     "fmt"
+    "errors"
     "strings"
     "reflect"
     "regexp"
@@ -29,6 +30,8 @@ import (
     "github.com/openconfig/goyang/pkg/yang"
     "github.com/openconfig/gnmi/proto/gnmi"
     "github.com/openconfig/ygot/ygot"
+    "github.com/openconfig/ygot/ytypes"
+    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     log "github.com/golang/glog"
     "sync"
 )
@@ -1174,4 +1177,27 @@ func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.V
 	}
 	xfmrLogInfoAll("Transformed resultMap(%v)", resultMap)
 	return nil
+}
+
+func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error) {
+	if len(uri) == 0 {
+		errMsg := errors.New("Error: URI is empty")
+		log.Error(errMsg)
+		return nil, errMsg
+	}
+
+	path, err := ygot.StringToPath(uri, ygot.StructuredPath, ygot.StringSlicePath)
+	if err != nil {
+		return nil, err
+	}
+
+	deviceObj := (*ygRoot).(*ocbinds.Device)
+	ygNode, _, errYg := ytypes.GetOrCreateNode(ocbSch.RootSchema(), deviceObj, path)
+
+	if errYg != nil {
+		log.Error("Error in creating the target object: ", errYg)
+		return nil, errYg
+	}
+
+	return &ygNode, nil
 }

@@ -57,6 +57,7 @@ type yangXpathInfo  struct {
     subscribeOnChg     int
     subscribeMinIntvl  int
     cascadeDel     int
+    nameWithMod    *string
 }
 
 type dbInfo  struct {
@@ -280,8 +281,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 	   if xpathData.subscribePref != nil && *xpathData.subscribePref == "NONE" {
 		   xpathData.subscribePref = nil
 	   }
-   }
-	if ok {
+
 		if parentXpathData.cascadeDel == XFMR_INVALID {
 			/* should not hit this case */
 			log.Errorf("Cascade-delete flag is set to invalid for(%v) \r\n", xpathPrefix)
@@ -290,6 +290,19 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 
 		if xpathData.cascadeDel == XFMR_INVALID && xpathData.dbIndex == db.ConfigDB{
 			xpathData.cascadeDel = parentXpathData.cascadeDel
+		}
+
+		if entry.Prefix != nil && entry.Prefix.Parent != nil   &&
+		   entry.Prefix.Parent.Statement().Keyword == "module" &&
+		   parentXpathData.yangEntry.Prefix != nil && parentXpathData.yangEntry.Prefix.Parent != nil {
+
+			if (len(parentXpathData.yangEntry.Prefix.Parent.NName()) > 0) &&
+			   (len(parentXpathData.yangEntry.Prefix.Parent.Statement().Keyword) > 0) &&
+			   (parentXpathData.yangEntry.Prefix.Parent.NName() != entry.Prefix.Parent.NName()) {
+					xpathData.nameWithMod = new(string)
+					*xpathData.nameWithMod = entry.Prefix.Parent.NName() + ":" + entry.Name
+			}
+
 		}
 	}
 
@@ -888,6 +901,9 @@ func mapPrint(inMap map[string]*yangXpathInfo, fileName string) {
         fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
         fmt.Fprintf(fp, "%v:\r\n", k)
         fmt.Fprintf(fp, "    yangDataType: %v\r\n", d.yangDataType)
+        if d.nameWithMod != nil {
+            fmt.Fprintf(fp, "    nameWithMod : %v\r\n", *d.nameWithMod)
+        }
 		fmt.Fprintf(fp, "    cascadeDel  : %v\r\n", d.cascadeDel)
         fmt.Fprintf(fp, "    hasChildSubTree : %v\r\n", d.hasChildSubTree)
         fmt.Fprintf(fp, "    hasNonTerminalNode : %v\r\n", d.hasNonTerminalNode)
