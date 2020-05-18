@@ -125,7 +125,14 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 		} else if "PORT" == keys[0] {
 			intfName := keys[1]
 			poMembersKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + intfName).Result()
-
+                        // Check if requested key is already deleted in request cache
+                        for _, poMemKey := range poMembersKeys {
+                            for _, req := range vc.ReqData {
+                                if req.Key == poMemKey && req.VOp == OP_DELETE {
+                                    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+                                }
+                            }
+                        }
 			_, hasMtu := vc.CurCfg.Data["mtu"]
 			if hasMtu && len(poMembersKeys) > 0 {
 				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "MTU not allowed when portchannel members are configured")
