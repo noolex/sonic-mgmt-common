@@ -315,13 +315,20 @@ func sonicDbToYangTerminalNodeFill(tblName string, field string, value string, r
 	return
 }
 
-func sonicDbToYangListFill(uri string, xpath string, dbIdx db.DBNum, table string, key string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value) []typeMapOfInterface {
+func sonicDbToYangListFill(inParamsForGet xlateFromDbParams) []typeMapOfInterface {
 	var mapSlice []typeMapOfInterface
+	dbDataMap := inParamsForGet.dbDataMap
+	table := inParamsForGet.tbl
+	dbIdx := inParamsForGet.curDb
+	xpath := inParamsForGet.xpath
 	dbTblData := (*dbDataMap)[dbIdx][table]
 
 	for keyStr, _ := range dbTblData {
 		curMap := make(map[string]interface{})
-		sonicDbToYangDataFill(uri, xpath, dbIdx, table, keyStr, dbDataMap, curMap)
+		inParamsForGet.tblKey = keyStr
+		inParamsForGet.resultMap = curMap
+		sonicDbToYangDataFill(inParamsForGet)
+		curMap = inParamsForGet.resultMap
 		dbSpecData, ok := xDbSpecMap[table]
 		if ok && dbSpecData.keyName == nil {
 			yangKeys := yangKeyFromEntryGet(xDbSpecMap[xpath].dbEntry)
@@ -334,7 +341,14 @@ func sonicDbToYangListFill(uri string, xpath string, dbIdx db.DBNum, table strin
 	return mapSlice
 }
 
-func sonicDbToYangDataFill(uri string, xpath string, dbIdx db.DBNum, table string, key string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, resultMap map[string]interface{}) {
+func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
+	xpath := inParamsForGet.xpath
+	uri := inParamsForGet.uri
+	table := inParamsForGet.tbl
+	key := inParamsForGet.tblKey
+	resultMap := inParamsForGet.resultMap
+	dbDataMap := inParamsForGet.dbDataMap
+	dbIdx := inParamsForGet.curDb
 	yangNode, ok := xDbSpecMap[xpath]
 
 	if ok  && yangNode.dbEntry != nil {
@@ -353,18 +367,24 @@ func sonicDbToYangDataFill(uri string, xpath string, dbIdx db.DBNum, table strin
 						fldName = fldName + "@"
 					}
 					sonicDbToYangTerminalNodeFill(table, fldName, (*dbDataMap)[dbIdx][table][key].Field[fldName], resultMap)
+					inParamsForGet.resultMap = resultMap
+					inParamsForGet.dbDataMap = dbDataMap
 				} else if chldYangType == YANG_CONTAINER {
 					curMap := make(map[string]interface{})
 					curUri := xpath + "/" + yangChldName
 					// container can have a static key, so extract key for current container
 					_, curKey, curTable := sonicXpathKeyExtract(curUri)
 					// use table-name as xpath from now on
-					sonicDbToYangDataFill(curUri, curTable, xDbSpecMap[curTable].dbIndex, curTable, curKey, dbDataMap, curMap)
+					linParamsForGet := formXlateFromDbParams(inParamsForGet.d, inParamsForGet.dbs, xDbSpecMap[curTable].dbIndex, inParamsForGet.ygRoot, curUri, inParamsForGet.requestUri, curTable, inParamsForGet.oper, curTable, curKey, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
+					sonicDbToYangDataFill(linParamsForGet)
+					curMap = linParamsForGet.resultMap
 					if len(curMap) > 0 {
 						resultMap[yangChldName] = curMap
 					} else {
 						xfmrLogInfoAll("Empty container for xpath(%v)", curUri)
 					}
+					inParamsForGet.dbDataMap = linParamsForGet.dbDataMap
+					inParamsForGet.resultMap = resultMap
 				} else if chldYangType == YANG_LIST {
 					pathList := strings.Split(uri, "/")
 					// Skip the list entries if the uri has specific list query
@@ -373,7 +393,9 @@ func sonicDbToYangDataFill(uri string, xpath string, dbIdx db.DBNum, table strin
 					} else {
 						var mapSlice []typeMapOfInterface
 						curUri := xpath + "/" + yangChldName
-						mapSlice = sonicDbToYangListFill(curUri, curUri, dbIdx, table, key, dbDataMap)
+						inParamsForGet.uri = curUri
+						inParamsForGet.xpath = curUri
+						mapSlice = sonicDbToYangListFill(inParamsForGet)
 						if len(key) > 0 && len(mapSlice) == 1 {// Single instance query. Don't return array of maps
 							for k, val := range mapSlice[0] {
 								resultMap[k] = val
@@ -387,7 +409,10 @@ func sonicDbToYangDataFill(uri string, xpath string, dbIdx db.DBNum, table strin
 					}
 				} else if chldYangType == YANG_CHOICE || chldYangType == YANG_CASE {
 					curUri := table + "/" + yangChldName
-					sonicDbToYangDataFill(curUri, curUri, xDbSpecMap[table].dbIndex, table, key, dbDataMap, resultMap)
+					inParamsForGet.uri = curUri
+					inParamsForGet.xpath = curUri
+					inParamsForGet.curDb = xDbSpecMap[table].dbIndex
+					sonicDbToYangDataFill(inParamsForGet)
 				} else {
 					xfmrLogInfoAll("Not handled case %v", chldXpath)
 				}
@@ -400,9 +425,15 @@ func sonicDbToYangDataFill(uri string, xpath string, dbIdx db.DBNum, table strin
 }
 
 /* Traverse db map and create json for cvl yang */
-func directDbToYangJsonCreate(uri string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, resultMap map[string]interface{}) (string, error, bool) {
+func directDbToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, error, bool) {
 	var err error
+	uri := inParamsForGet.uri
+	dbDataMap := inParamsForGet.dbDataMap
+	resultMap := inParamsForGet.resultMap
 	xpath, key, table := sonicXpathKeyExtract(uri)
+	inParamsForGet.xpath = xpath
+	inParamsForGet.tbl = table
+	inParamsForGet.tblKey = key
 
 	if len(xpath) > 0 {
 		var dbNode *dbInfo
@@ -416,6 +447,7 @@ func directDbToYangJsonCreate(uri string, dbDataMap *map[db.DBNum]map[string]map
 				if ok && (xDbSpecMap[dbSpecField].fieldType == YANG_LEAF || xDbSpecMap[dbSpecField].fieldType == YANG_LEAF_LIST) {
 					dbNode = xDbSpecMap[dbSpecField]
 					xpath = dbSpecField
+					inParamsForGet.xpath = xpath
 				} else {
 					dbNode = xDbSpecMap[table]
 				}
@@ -430,6 +462,7 @@ func directDbToYangJsonCreate(uri string, dbDataMap *map[db.DBNum]map[string]map
 			if len(table) > 0 {
 				cdb = xDbSpecMap[table].dbIndex
 			}
+			inParamsForGet.curDb = cdb
 
 			if yangType == YANG_LEAF || yangType == YANG_LEAF_LIST {
 				fldName := xDbSpecMap[xpath].dbEntry.Name
@@ -440,10 +473,12 @@ func directDbToYangJsonCreate(uri string, dbDataMap *map[db.DBNum]map[string]map
 			} else if yangType == YANG_CONTAINER {
 				if len(table) > 0 {
 					xpath = table
+					inParamsForGet.xpath = xpath
 				}
-				sonicDbToYangDataFill(uri, xpath, cdb, table, key, dbDataMap, resultMap)
+				sonicDbToYangDataFill(inParamsForGet)
+				resultMap = inParamsForGet.resultMap
 			} else if yangType == YANG_LIST {
-				mapSlice := sonicDbToYangListFill(uri, xpath, cdb, table, key, dbDataMap)
+				mapSlice := sonicDbToYangListFill(inParamsForGet)
 				if len(key) > 0 && len(mapSlice) == 1 {// Single instance query. Don't return array of maps
                                                 for k, val := range mapSlice[0] {
                                                         resultMap[k] = val
@@ -972,9 +1007,10 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, error, bo
         dbDataMap := inParamsForGet.dbDataMap
         txCache := inParamsForGet.txCache
 	cdb := inParamsForGet.curDb
+	inParamsForGet.resultMap = resultMap
 
 	if isSonicYang(uri) {
-		return directDbToYangJsonCreate(uri, dbDataMap, resultMap)
+		return directDbToYangJsonCreate(inParamsForGet)
 	} else {
 		reqXpath, keyName, tableName, _ := xpathKeyExtract(d, ygRoot, GET, uri, requestUri, nil, txCache)
 		inParamsForGet.xpath = reqXpath
