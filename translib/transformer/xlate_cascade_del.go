@@ -101,7 +101,7 @@ func handleCascadeDelete(d *db.DB, dbDataMap map[int]map[db.DBNum]map[string]map
                                                 if _, ok := dbDataMap[operIdx][dbIndx]; !ok {
                                                     dbDataMap[operIdx][dbIndx] = make(map[string]map[string]db.Value)
                                                 }
-                                                mapMerge(dbDataMap[operIdx][dbIndx], dbMap)
+                                                mapMerge(dbDataMap[operIdx][dbIndx], dbMap, operIdx)
                                             }
                                         }
                                     } else {

@@ -90,7 +90,7 @@ func mapCopy(destnMap map[string]map[string]db.Value, srcMap map[string]map[stri
 }
 var mapMergeMutex = &sync.Mutex{}
 /* Merge redis-db source to destn map */
-func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[string]db.Value) {
+func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[string]db.Value, oper int) {
 	mapMergeMutex.Lock()
    for table, tableData := range srcMap {
         _, ok := destnMap[table]
@@ -101,6 +101,15 @@ func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[str
             _, ok = destnMap[table][rule]
             if !ok {
                  destnMap[table][rule] = db.Value{Field: make(map[string]string)}
+            } else {
+                if (oper == DELETE) {
+                    if ((len(destnMap[table][rule].Field) == 0) && (len(ruleData.Field) > 0)) {
+                        continue;
+                    }
+                    if ((len(destnMap[table][rule].Field) > 0) && (len(ruleData.Field) == 0)) {
+                        destnMap[table][rule] = db.Value{Field: make(map[string]string)};
+                    }
+                }
             }
             for field, value := range ruleData.Field {
                 dval := destnMap[table][rule]
