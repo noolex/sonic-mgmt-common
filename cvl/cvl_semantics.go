@@ -435,27 +435,14 @@ func (c *CVL) deleteDestLeafList(dest *xmlquery.Node)  {
 	}
 }
 
-//Delete node from list if must expression is not there under it 
-func (c *CVL) deleteLeafNodeWithoutMust(yangListName string,
-	topNode *xmlquery.Node, cfgData map[string]string) {
-
-	for nodeName, _ := range cfgData {
-		for node := topNode.FirstChild; node != nil; {
-			if (node.Data != nodeName) {
-				node = node.NextSibling
-				continue
-			}
-
-			_, exists := modelInfo.tableInfo[yangListName].mustExpr[nodeName]
-			if (exists == false) {
-				//No must expression exists for this, node to be deleted
-				tmpNode := node.NextSibling
-				c.detachNode(node)
-				node = nil
-				node = tmpNode
-				continue
-			}
-
+// deleteLeafNodes removes specified child nodes from an xml node topNode
+func (c *CVL) deleteLeafNodes(topNode *xmlquery.Node, cfgData map[string]string) {
+	for node := topNode.FirstChild; node != nil; {
+		if _, found := cfgData[getNodeName(node)]; found {
+			tmpNode := node.NextSibling
+			c.detachNode(node)
+			node = tmpNode
+		} else {
 			node = node.NextSibling
 		}
 	}
@@ -1072,8 +1059,11 @@ func (c *CVL) validateMustExp(node *xmlquery.Node,
 
 				leafRefSuccess := false*/
 
-				if (ctxNode != nil) &&
-				(xmlquery.Eval(c.yv.root, ctxNode, mustExp.exprTree) == false) {
+			if (ctxNode != nil) {
+				CVL_LOG(INFO_DEBUG, "Eval must \"%s\"; ctxNode=%s",
+					mustExp.expr, ctxNode.Data)
+
+				if (!xmlquery.Eval(c.yv.root, ctxNode, mustExp.exprTree)) {
 					keys := []string{}
 					if (len(ctxNode.Parent.Attr) > 0) {
 						keys =  strings.Split(ctxNode.Parent.Attr[0].Value,
@@ -1092,12 +1082,12 @@ func (c *CVL) validateMustExp(node *xmlquery.Node,
 						ErrAppTag: mustExp.errCode,
 					}
 				}
-				//}
-			} //for each must exp
-		} //all must exp under one node
+			}
+		} //for each must exp
+	} //all must exp under one node
 
-		return CVLErrorInfo{ErrCode:CVL_SUCCESS}
-	}
+	return CVLErrorInfo{ErrCode:CVL_SUCCESS}
+}
 
 //Currently supports when expression with current table only
 func (c *CVL) validateWhenExp(node *xmlquery.Node,
@@ -1548,8 +1538,10 @@ func (c *CVL) validateSemantics(node *xmlquery.Node,
 	//Validate must expression
 	if (cfgData.VOp == OP_DELETE) {
 		if (len(cfgData.Data) > 0) {
-			//Delete leaf node if it does not have 'must' expression
-			c.deleteLeafNodeWithoutMust(yangListName, node, cfgData.Data)
+			// Delete leaf nodes from tree. This ensures validateMustExp will
+			// skip all must expressions defined for deleted nodes; and other
+			// must expressions get correct context.
+			c.deleteLeafNodes(node, cfgData.Data)
 		}
 	}
 
