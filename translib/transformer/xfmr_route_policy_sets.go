@@ -7,6 +7,7 @@ import (
     "strconv"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     log "github.com/golang/glog"
     "reflect"
     "fmt"
@@ -641,6 +642,9 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
         log.Info("YangToDb_community_member_fld_xfmr: new_type: ", new_type, " prev_type ", prev_type)
         if ((len(prev_type) > 0) && (prev_type != new_type)){
             log.Error("YangToDb_community_member_fld_xfmr: Type Difference Error, previous", prev_type, " newType: ", new_type)
+            if inParams.oper == DELETE {
+                return res_map, tlerr.InvalidArgs("Can't find community-list") 
+            }
             err = errors.New("Type difference, Quit Operation");
             return res_map, err
         } else {
@@ -849,6 +853,9 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
         log.Info("YangToDb_ext_community_member_fld_xfmr: new_type: ", new_type, " prev_type ", prev_type)
         if ((len(prev_type) > 0) && (prev_type != new_type)){
             log.Error("YangToDb_ext_community_member_fld_xfmr: Type Difference Error, previous", prev_type, " newType: ", new_type)
+            if inParams.oper == DELETE {
+                return res_map, tlerr.InvalidArgs("Can't find extcommunity-list") 
+            }
             err = errors.New("Type difference, Quit Operation");
             return res_map, err
         } else {
