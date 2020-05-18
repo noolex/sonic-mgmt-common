@@ -222,6 +222,7 @@ module openconfig-interfaces-annot {
         deviate add {
             sonic-ext:db-name "APPL_DB";
             sonic-ext:table-name "NEIGH_TABLE";
+            sonic-ext:key-transformer "neigh_tbl_key_xfmr";
             sonic-ext:subtree-transformer "neigh_tbl_get_all_ipv4_xfmr";
         }
     }
@@ -257,6 +258,7 @@ module openconfig-interfaces-annot {
         deviate add {
             sonic-ext:db-name "APPL_DB";
             sonic-ext:table-name "NEIGH_TABLE";
+            sonic-ext:key-transformer "neigh_tbl_key_xfmr";
             sonic-ext:subtree-transformer "neigh_tbl_get_all_ipv6_xfmr";
         }
     }
@@ -319,26 +321,9 @@ module openconfig-interfaces-annot {
         }    
     }
 
-    //deviation  "/oc-intf:interfaces/oc-intf:interface/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config"  {
-    deviation  "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config"  {
+    deviation  "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ospfv2-ext:ospfv2" {
         deviate add {
-            sonic-ext:db-name "CONFIG_DB";
-            sonic-ext:table-name "OSPFV2_INTERFACE";
-            sonic-ext:key-transformer "ospfv2_interface_tbl_key_xfmr";
-        }
-    }
-
-    //deviation "/oc-intf:interfaces/oc-intf:interface/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config/oc-ospfv2-ext:id" {
-    deviation "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config/oc-ospfv2-ext:id" {
-        deviate add {
-            sonic-ext:field-name "name";
-            sonic-ext:field-transformer  "ospfv2_interface_name_fld_xfmr";
-        }
-    }
-
-    deviation "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:config/oc-ospfv2-ext:vrf" {
-        deviate add {
-             sonic-ext:field-name "vrf_name";
+            sonic-ext:subtree-transformer "ospfv2_interface_subtree_xfmr";
         }
     }
 

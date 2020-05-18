@@ -247,6 +247,8 @@ var DbToYang_bgp_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (m
     log.Info("DbToYang_bgp_nbr_tbl_key: ", entry_key)
 
     nbrKey := strings.Split(entry_key, "|")
+    if len(nbrKey) < 2 {return rmap, nil}
+
     nbrName:= nbrKey[1]
 
     rmap["neighbor-address"] = nbrName
@@ -283,23 +285,20 @@ var YangToDb_bgp_nbr_asn_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     neigh_key := db.Key{Comp: []string{vrf, pNbrAddr}}
 
     entryValue, err := configDbAdd.GetEntry(nbrCfgTblTs, neigh_key)
-    if err != nil {
-        log.Info("YangToDb_bgp_nbr_peer_type_fld_xfmr: entry not found for key ", neigh_key)
-        return res_map, err
-    }
-    neigh_field := entryValue.Field;
-
-    if value, ok := neigh_field["peer_type"] ; ok {
-        err = errors.New("Can't specify  ASN as BGP neighbor as peer type is set to " + value);
-        return res_map, err
+    if err == nil {
+        neigh_field := entryValue.Field;
+        if value, ok := neigh_field["peer_type"] ; ok {
+            err = errors.New("Can't specify  ASN as BGP neighbor as peer type is set to " + value);
+            return res_map, err
+        }
     }
 
     asn_no, _ := inParams.param.(*uint32)
 
-    log.Info("YangToDb_bgp_nbr_peer_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " asn : ", *asn_no)
+    log.Info("YangToDb_bgp_nbr_asn_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " asn : ", *asn_no)
 
     res_map["asn"] = strconv.FormatUint(uint64(*asn_no), 10)
-    return res_map, err
+    return res_map, nil
 }
 
 var DbToYang_bgp_nbr_asn_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -357,15 +356,13 @@ var YangToDb_bgp_nbr_peer_type_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPa
     neigh_key := db.Key{Comp: []string{vrf, pNbrAddr}}
     
     entryValue, err := configDbAdd.GetEntry(nbrCfgTblTs, neigh_key) 
-    if err != nil {
-        log.Info("YangToDb_bgp_nbr_peer_type_fld_xfmr: entry not found for key ", neigh_key)
-        return res_map, err
-    }
-    /* Either ASN or peer_type can be configured , not both */
-    neigh_field := entryValue.Field;
-    if value, ok := neigh_field["asn"] ; ok {
-        err = errors.New("Can't specify  peer type as BGP neighbor as ASN is set to " + value);
-        return res_map, err
+    if err == nil {
+        /* Either ASN or peer_type can be configured , not both */
+        neigh_field := entryValue.Field
+        if value, ok := neigh_field["asn"] ; ok {
+            err = errors.New("Can't specify  peer type as BGP neighbor as ASN is set to " + value);
+            return res_map, err
+        }
     }
     
     if (peer_type == ocbinds.OpenconfigBgp_PeerType_INTERNAL) {
@@ -477,6 +474,8 @@ var DbToYang_bgp_nbr_address_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
 
     entry_key := inParams.key
     nbrAddrKey := strings.Split(entry_key, "|")
+    if len(nbrAddrKey) < 2 {return result, nil}
+
     nbrAddr:= nbrAddrKey[1]
 
     result["neighbor-address"] = nbrAddr
@@ -499,6 +498,7 @@ var DbToYang_bgp_nbr_afi_safi_name_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
 
     entry_key := inParams.key
     nbrAfKey := strings.Split(entry_key, "|")
+    if len(nbrAfKey) < 3 {return result, nil}
 
     switch nbrAfKey[2] {
         case "ipv4_unicast":
@@ -685,6 +685,7 @@ var DbToYang_bgp_af_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams)
     log.Info("DbToYang_bgp_af_nbr_tbl_key: ", entry_key)
 
     nbrAfKey := strings.Split(entry_key, "|")
+    if len(nbrAfKey) < 3 {return rmap, nil}
 
     switch nbrAfKey[2] {
         case "ipv4_unicast":
@@ -797,6 +798,7 @@ var DbToYang_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
     log.Info("DbToYang_bgp_af_nbr_proto_tbl_key_xfmr: ", entry_key)
 
     nbrAfKey := strings.Split(entry_key, "|")
+    if len(nbrAfKey) < 3 {return rmap, nil}
 
     switch nbrAfKey[2] {
         case "ipv4_unicast":
@@ -1610,9 +1612,19 @@ var YangToDb_bgp_nbr_community_type_fld_xfmr FieldXfmrYangToDb = func(inParams X
         inParams.subOpDataMap[UPDATE] = &subOpMap
         return res_map, nil
     }
-
+    /* In case of POST operation and field has some default value in the YANG, infra is internally filling the enum 
+     * in string format (in this case) and hence setting the field value accordingly. */
+    curYgotNodeData, _:= yangNodeForUriGet(inParams.uri, inParams.ygRoot)
+    if curYgotNodeData == nil && (inParams.oper == CREATE || inParams.oper == REPLACE) {
+        community_type_str, _ := inParams.param.(*string)
+        if *community_type_str == "BOTH" {
+            res_map["send_community"] = "both"
+            return res_map, nil
+        }
+    }
     community_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_BgpExtCommunityType)
-    log.Info("YangToDb_bgp_nbr_community_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " community_type: ", community_type)
+    log.Info("YangToDb_bgp_nbr_community_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, 
+             " community_type: ", community_type)
 
     if (community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_STANDARD) {
         res_map["send_community"] = "standard"
@@ -1757,6 +1769,9 @@ var YangToDb_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams
     if !ok {
         log.Infof("%s Neighbor object missing, add new", nbrAddr)
         return res_map, err
+    }
+    if (inParams.oper == DELETE) && nbr_obj.AuthPassword == nil {
+        return res_map, nil
     }
     entry_key := niName + "|" + nbrAddr
     if nbr_obj.AuthPassword.Config != nil && nbr_obj.AuthPassword.Config.Password != nil && (inParams.oper != DELETE){

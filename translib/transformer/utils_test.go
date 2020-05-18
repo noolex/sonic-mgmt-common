@@ -25,10 +25,14 @@ import (
 	"io/ioutil"
 	"fmt"
 	"testing"
+	"sync"
 	"reflect"
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/transformer"
 	. "github.com/Azure/sonic-mgmt-common/translib"
 )
+
+
 
 func checkErr(t *testing.T, err error, expErr error) {
 	if err.Error() != expErr.Error() {
@@ -163,6 +167,47 @@ func processDeleteRequest(url string, errorCase bool, expErr ...error) func(*tes
 		}
 	}
 }
+
+func translateSubscribeRequest(path string, expectedTrSubInfo transformer.XfmrTranslateSubscribeInfo, errorCase bool, expErr ...error) func(*testing.T) {
+        return func(t *testing.T) {
+        isGetCase := true
+        dbs, err := getAllDbs(isGetCase)
+        txCache := new(sync.Map)
+
+        result, err := transformer.XlateTranslateSubscribe(path ,dbs, txCache)
+
+		if err != nil {
+			if errorCase == false {
+				t.Errorf("Unexpected error processing '%s'; err=%v", path, err)
+			} else if expErr != nil {
+                                checkErr(t, err, expErr[0])
+				return
+                        }
+
+		} else if ((err == nil) && errorCase) {
+			t.Errorf("Expecting error but not received while processing '%s'; err=%v", path, err)
+		}
+		if result.PType != expectedTrSubInfo.PType {
+			t.Errorf("PType mismatch : received %v, expected %v, for url - %v", result.PType, expectedTrSubInfo.PType, path)
+		}
+		if result.NeedCache != expectedTrSubInfo.NeedCache {
+			t.Errorf("NeedCache mismatch : received %v, expected %v, for url - %v", result.NeedCache, expectedTrSubInfo.NeedCache, path)
+		}
+		if result.MinInterval != expectedTrSubInfo.MinInterval {
+			t.Errorf("MinInterval mismatch : received %v, expected %v, for url - %v", result.MinInterval, expectedTrSubInfo.MinInterval, path)
+		}
+		if ((result.DbDataMap == nil) && (expectedTrSubInfo.DbDataMap != nil)) {
+			t.Errorf("DB Info mismatch : \nreceived nil, \nexpected %v, \nfor url - %v", expectedTrSubInfo.DbDataMap, path)
+		}
+        if ((result.DbDataMap != nil) && (expectedTrSubInfo.DbDataMap != nil)) {
+		    if reflect.DeepEqual(result.DbDataMap, expectedTrSubInfo.DbDataMap) != true {
+                            t.Errorf("DB Info mismatch : \nreceived - %v, \nexpected - %v, \n for url - %v", result.DbDataMap, expectedTrSubInfo.DbDataMap, path)
+                    }
+        }
+	}
+
+}
+
 
 func getConfigDb() *db.DB {
 	configDb, _ := db.NewDB(db.Options{

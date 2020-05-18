@@ -126,9 +126,56 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 }
 
 func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-	err := errors.New("Not supported")
-	notifInfo := notificationInfo{dbno: db.ConfigDB}
-	return nil, &notifInfo, err
+    var err error
+    var subscDt transformer.XfmrTranslateSubscribeInfo
+    var notifInfo notificationInfo
+    var notifOpts notificationOpts
+    txCache := new(sync.Map)
+    err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+
+    subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
+    if subscDt.PType == transformer.OnChange {
+        notifOpts.pType = OnChange
+    } else {
+        notifOpts.pType = Sample
+    }
+    notifOpts.mInterval = subscDt.MinInterval
+    if err != nil {
+        log.Infof("returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
+        return &notifOpts, nil, err
+    }
+    if subscDt.DbDataMap == nil {
+        log.Infof("DB data is nil so returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
+        return &notifOpts, nil, err
+    } else {
+        for dbNo, dbDt := range(subscDt.DbDataMap) {
+            if (len(dbDt) == 0) { //ideally all tables for a given uri should be from same DB
+                continue
+            }
+            log.Infof("Adding to notifInfo, Db Data - %v for DB No - %v", dbDt, dbNo)
+            notifInfo.dbno = dbNo
+            // in future there will be, multi-table in a DB, support from translib, for now its just single table
+            for tblNm, tblDt := range(dbDt) {
+                notifInfo.table = db.TableSpec{Name:tblNm}
+                if (len(tblDt) == 1) {
+                    for tblKy, _ := range(tblDt) {
+                        notifInfo.key = asKey(tblKy)
+                    }
+                } else {
+                    if (len(tblDt) >  1) {
+                        log.Errorf("More than one DB key found for subscription path - %v", path)
+                    } else {
+                        log.Errorf("No DB key found for subscription path - %v", path)
+                    }
+                    return &notifOpts, nil, err
+                }
+
+            }
+        }
+    }
+    notifInfo.needCache = subscDt.NeedCache
+    log.Infof("For path - %v, returning: notifOpts - %v, notifInfo - %v, error - nil", path, notifOpts, notifInfo)
+    return &notifOpts, &notifInfo, nil
 }
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
@@ -313,6 +360,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	fmt.Println(result)
 	log.Info("transformer.XlateToDb() returned", result)
 
+
 	if err != nil {
 		log.Error(err)
 		return keys, err
@@ -485,7 +533,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 				existingEntry, _ := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
 				switch opcode {
 				case CREATE:
-					if existingEntry.IsPopulated() {
+					if existingEntry.IsPopulated() && !app.deleteMapContains(tblNm, tblKey) {
 						log.Info("Entry already exists hence return.")
 						return tlerr.AlreadyExists("Entry %s already exists", tblKey)
 					} else {
@@ -676,11 +724,14 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 	for field, value := range tblRw.Field {
 		if strings.HasSuffix(field, "@") {
 			exstLst := existingEntry.GetList(field)
+			log.Infof("Existing DB value for field %v - %v", field, exstLst)
 			var valueLst []string
-			if value != "" { //zero len string as leaf-list value is treated as delete all items in leaf-list
+			if value != "" { //zero len string as leaf-list value is treated as delete entire leaf-list
 				valueLst = strings.Split(value, ",")
 			}
+			log.Infof("Incoming value for field %v - %v", field, valueLst)
 			if len(exstLst) != 0 {
+				log.Infof("Existing list is not empty for field %v", field)
 				for _, item := range valueLst {
 					if !contains(exstLst, item) {
 						if opcode == UPDATE {
@@ -693,7 +744,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 
 					}
 				}
-				log.Infof("For field %v value after merge %v", field, exstLst)
+				log.Infof("For field %v value after merging incoming with existing %v", field, exstLst)
 				if opcode == DELETE {
 					if len(valueLst) > 0 {
 						mergeTblRw.SetList(field, exstLst)
@@ -703,13 +754,27 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 							delete(tblRw.Field, field)
 						}
 					}
+				} else if opcode == UPDATE {
+					tblRw.SetList(field, exstLst)
 				}
-			} else if opcode == UPDATE {
-                                exstLst = valueLst
+			} else { //when existing list is empty(either empty string val in field or no field at all n entry)
+				log.Infof("Existing list is empty for field %v", field)
+				if opcode == UPDATE {
+					if len(valueLst) > 0 {
+						exstLst = valueLst
+						tblRw.SetList(field, exstLst)
+					} else {
+						tblRw.Field[field] = ""
+					}
+				} else if opcode == DELETE {
+					_, fldExistsOk := existingEntry.Field[field]
+					if (fldExistsOk && (len(valueLst) == 0)) {
+						tblRw.Field[field] = ""
+					} else {
+						delete(tblRw.Field, field)
+					}
+				}
                         }
-			if opcode == UPDATE {
-				tblRw.SetList(field, exstLst)
-			}
 		}
 	}
 	/* delete specific item from leaf-list */
@@ -741,4 +806,15 @@ func areEqual(a, b interface{}) bool {
 
         return reflect.DeepEqual(a, b)
 }
+
+// This function checks whether an entry exists in the db map
+func (app *CommonApp) deleteMapContains(tblNm string, tblKey string) bool {
+        if dbMap, ok := app.cmnAppTableMap[DELETE][db.ConfigDB]; ok {
+                if _, ok := dbMap[tblNm][tblKey] ; ok {
+                        return true
+                }
+         }
+        return false
+}
+
 

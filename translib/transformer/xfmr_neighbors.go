@@ -28,6 +28,7 @@ import (
     "fmt"
     "os/exec"
     "bufio"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init () {
@@ -56,7 +57,19 @@ var YangToDb_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     log.Info("YangToDb_neigh_tbl_key_xfmr - inParams: ", inParams)
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("name")
+
+    if len(intfName) <= 0 {
+        errStr := "Interface name is missing"
+        log.Error("YangToDb_neigh_tbl_key_xfmr - ", errStr)
+        err := tlerr.InvalidArgsError{Format: errStr}
+        return "", err
+    }
+
     ipAddr := pathInfo.Var("ip")
+    if len(ipAddr) <= 0 {
+        log.Info("YangToDb_neigh_tbl_key_xfmr - IP Address not found, returning empty key")
+        return "", err
+    }
 
     neightbl_key = intfName + ":" +  ipAddr
     log.Info("YangToDb_neigh_tbl_key_xfmr - key returned: ", neightbl_key)
@@ -81,7 +94,6 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var ok bool
 
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_neigh_tbl_get_all_ipv4_xfmr - data:", data)
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
     log.Info("DbToYang_neigh_tbl_get_all_ipv4_xfmr - targetUriPath: ", targetUriPath)
