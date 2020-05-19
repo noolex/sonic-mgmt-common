@@ -1175,3 +1175,25 @@ func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.V
 	xfmrLogInfoAll("Transformed resultMap(%v)", resultMap)
 	return nil
 }
+
+func formXlateFromDbParams(d *db.DB, dbs [db.MaxDB]*db.DB, cdb db.DBNum, ygRoot *ygot.GoStruct, uri string, requestUri string, xpath string, oper int, tbl string, tblKey string, dbDataMap *RedisDbMap, txCache interface{}, resultMap map[string]interface{}, validate bool) xlateFromDbParams {
+	var inParamsForGet xlateFromDbParams
+	inParamsForGet.d = d
+	inParamsForGet.dbs = dbs
+	inParamsForGet.curDb = cdb
+	inParamsForGet.ygRoot = ygRoot
+	inParamsForGet.uri = uri
+	inParamsForGet.requestUri = requestUri
+	inParamsForGet.xpath = xpath
+	inParamsForGet.oper = oper
+	inParamsForGet.tbl = tbl
+	inParamsForGet.tblKey = tblKey
+	inParamsForGet.dbDataMap = dbDataMap
+	inParamsForGet.txCache = txCache
+	inParamsForGet.resultMap = resultMap
+	inParamsForGet.validate = validate
+
+	return inParamsForGet
+}
+
+
