@@ -76,7 +76,7 @@ var YangToDb_bgp_evpn_vni_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
         log.Info("VRF Name is Missing")
         return vrfName, err
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         err = errors.New("BGP ID is missing");
         log.Info("BGP ID is missing")
         return bgpId, err
@@ -114,9 +114,7 @@ var YangToDb_bgp_evpn_vni_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     log.Info("URI VNI NUMBER ", vniNumber)
     log.Info("URI AFI SAFI ", afName)
 
-    var vniTableKey string
-
-    vniTableKey = vrfName + "|" + afName + "|" + vniNumber
+    vniTableKey := vrfName + "|" + afName + "|" + vniNumber
 
     log.Info("YangToDb_bgp_evpn_vni_key_xfmr: vniTableKey:", vniTableKey)
     return vniTableKey, nil
@@ -191,7 +189,7 @@ var YangToDb_bgp_evpn_rt_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
         log.Info("VRF Name is Missing")
         return vrfName, err
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         err = errors.New("BGP ID is missing");
         log.Info("BGP ID is missing")
         return bgpId, err
@@ -229,9 +227,7 @@ var YangToDb_bgp_evpn_rt_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     log.Info("URI Route Target ", routeTarget)
     log.Info("URI AFI SAFI ", afName)
 
-    var routeTargetKey string
-
-    routeTargetKey = vrfName + "|" + afName + "|" + routeTarget
+    routeTargetKey := vrfName + "|" + afName + "|" + routeTarget
 
     log.Info("YangToDb_bgp_evpn_rt_key_xfmr: routeTargetKey:", routeTargetKey)
     return routeTargetKey, nil
@@ -322,7 +318,7 @@ var YangToDb_bgp_evpn_vni_rt_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
         log.Info("VRF Name is Missing")
         return vrfName, err
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         err = errors.New("BGP ID is missing");
         log.Info("BGP ID is missing")
         return bgpId, err
@@ -367,9 +363,7 @@ var YangToDb_bgp_evpn_vni_rt_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
     log.Info("URI AFI SAFI ", afName)
     log.Info("URI Route-target ", routeTarget)
 
-    var vniRouteTargetKey string
-
-    vniRouteTargetKey = vrfName + "|" + afName + "|" + vniNumber + "|" + routeTarget
+    vniRouteTargetKey := vrfName + "|" + afName + "|" + vniNumber + "|" + routeTarget
 
     log.Info("YangToDb_bgp_evpn_vni_rt_key_xfmr: vniRouteTargetKey:", vniRouteTargetKey)
     return vniRouteTargetKey, nil
@@ -534,9 +528,7 @@ func fill_vni_state_info (vni_key *_xfmr_bgp_vni_state_key, vniDataValue interfa
         for i, v := range importlist {
             s[i] = fmt.Sprint(v)
         }
-        for _,importrt := range s {
-            vniState.ImportRts = append(vniState.ImportRts, importrt)
-        }
+        vniState.ImportRts = append(vniState.ImportRts, s...)
     }
 
     if exportlist, ok := vniDataJson["exportRts"].([]interface{}) ; ok {
@@ -544,9 +536,7 @@ func fill_vni_state_info (vni_key *_xfmr_bgp_vni_state_key, vniDataValue interfa
         for i, v := range exportlist {
             s[i] = fmt.Sprint(v)
         }
-        for _,exportrt := range s {
-            vniState.ExportRts = append(vniState.ExportRts, exportrt)
-        }
+        vniState.ExportRts = append(vniState.ExportRts, s...)
     }
 
     return err
@@ -588,9 +578,17 @@ func validate_vni_get (inParams XfmrParams, dbg_log string) (*ocbinds.Openconfig
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    if err != nil {
+        log.Errorf ("%s failed !! Error:%s", dbg_log , err);
+        return nil, vni_key, err
+    }
     vni_key.vniNumber = pathInfo.Var("vni-number")
     vni_key.afiSafiNameStr = pathInfo.Var("afi-safi-name")
     vni_key.afiSafiNameEnum, vni_key.afiSafiNameDbStr, ok = get_afi_safi_name_enum_dbstr_for_ocstr (vni_key.afiSafiNameStr)
+    if !ok {
+        log.Errorf("%s failed !! Error: BGP AfiSafi unset", dbg_log)
+        return nil, vni_key, oper_err
+    }
     log.Infof("%s : path:%s; template:%s targetUriPath:%s niName:%s vniNumber:%s",
               dbg_log, pathInfo.Path, pathInfo.Template, targetUriPath, vni_key.niName, vni_key.vniNumber)
 
@@ -691,9 +689,9 @@ func hdl_get_bgp_evpn_local_rib (ribAfiSafi_obj *ocbinds.OpenconfigNetworkInstan
     }
 
     rds, _ := bgpRibOutputJson["output"].(map[string]interface{})
-    for rd, _ := range rds {
+    for rd := range rds {
         rd_data, ok := rds[rd].(map[string]interface{}) ; if !ok {continue}
-        for prefix, _ := range rd_data {
+        for prefix := range rd_data {
             prefix_data, ok := rd_data[prefix].(map[string]interface{}) ; if !ok {continue}
             patharrayarray, ok := prefix_data["paths"].([]interface{}) ; if !ok {
                 log.Info("patharray not parsed")
@@ -706,7 +704,7 @@ func hdl_get_bgp_evpn_local_rib (ribAfiSafi_obj *ocbinds.OpenconfigNetworkInstan
                     }
                     if value, ok := path_data["pathId"] ; ok {
                       pathId := uint32(value.(float64))
-                      if ok := fill_evpn_spec_pfx_path_loc_rib_data (evpnLocRibRoutes_obj,rd, prefix, pathId, path_data) ; !ok {continue}
+                      fill_evpn_spec_pfx_path_loc_rib_data (evpnLocRibRoutes_obj,rd, prefix, pathId, path_data)
                     }
                 }
             }
@@ -872,13 +870,13 @@ func hdl_get_all_bgp_nbrs_evpn_adj_rib (bgpRib_obj *ocbinds.OpenconfigNetworkIns
     }
 
     //Parse and fill
-    for rd, _ := range bgpRibOutputJson {
+    for rd := range bgpRibOutputJson {
         rd_data, ok := bgpRibOutputJson[rd].(map[string]interface{}) ; if !ok {continue}
-        for prefix, _ := range rd_data {
+        for prefix := range rd_data {
             prefix_data, ok := rd_data[prefix].(map[string]interface{}) ; if !ok {continue}
             patharrayarray, ok := prefix_data["paths"].([]interface{}) ; if !ok {continue}       
             neighbors, ok := prefix_data["advertisedTo"].(map[string]interface{}) ; if ok {
-                for nbrAddr, _ := range neighbors {
+                for nbrAddr := range neighbors {
                     for _, patharray := range patharrayarray {
                         for _, path := range patharray.([]interface{}) {
                             path_data, ok := path.(map[string]interface{}) ; if !ok {
