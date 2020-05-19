@@ -2208,6 +2208,12 @@ module openconfig-ospfv2-ext {
       "Configuration parameters relating to a virtual-link within
       the OSPF area";
 
+    leaf enable {
+      type boolean;
+      description
+        "Enable/Disable virtual link";
+    }
+
     uses oc-ospfv2:ospfv2-area-interface-timers-config;
     uses ospfv2-area-interface-timers-config-ext;
     uses ospfv2-message-authentication-config-ext;

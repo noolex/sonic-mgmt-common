@@ -418,6 +418,12 @@ module sonic-ospfv2 {
             "The router ID of the remote OSPFv2 ABR router.";
         }
 
+        leaf enable {
+          type boolean;
+          description
+            "Enable/Disable virtual link";
+        }
+
         leaf authentication-type {
           type sonic-ospf-cmn:ospf-authentication-type;
           default AUTH_NONE;
