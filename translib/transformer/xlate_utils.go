@@ -1196,4 +1196,27 @@ func formXlateFromDbParams(d *db.DB, dbs [db.MaxDB]*db.DB, cdb db.DBNum, ygRoot 
 	return inParamsForGet
 }
 
+func formXlateToDbParam(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, xpathPrefix string, keyName string, jsonData interface{}, resultMap map[int]RedisDbMap, result map[string]map[string]db.Value, txCache interface{}, tblXpathMap map[string]map[string]bool, subOpDataMap map[int]*RedisDbMap, pCascadeDelTbl *[]string, xfmrErr *error, name string, value interface{}, tableName string) xlateToParams {
+        var inParamsForSet xlateToParams
+        inParamsForSet.d = d
+        inParamsForSet.ygRoot = ygRoot
+        inParamsForSet.oper = oper
+        inParamsForSet.uri = uri
+        inParamsForSet.requestUri = requestUri
+        inParamsForSet.xpath = xpathPrefix
+        inParamsForSet.keyName = keyName
+        inParamsForSet.jsonData = jsonData
+        inParamsForSet.resultMap = resultMap
+        inParamsForSet.result = result
+        inParamsForSet.txCache = txCache.(*sync.Map)
+        inParamsForSet.tblXpathMap = tblXpathMap
+        inParamsForSet.subOpDataMap = subOpDataMap
+        inParamsForSet.pCascadeDelTbl = pCascadeDelTbl
+        inParamsForSet.xfmrErr = xfmrErr
+        inParamsForSet.name = name
+        inParamsForSet.value = value
+        inParamsForSet.tableName = tableName
+
+        return inParamsForSet
+}
 

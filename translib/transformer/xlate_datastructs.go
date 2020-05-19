@@ -65,3 +65,25 @@ type xlateFromDbParams struct {
 	resultMap map[string]interface{}
 	validate bool
 }
+
+type xlateToParams struct {
+        d *db.DB
+        ygRoot *ygot.GoStruct
+        oper int
+        uri string
+        requestUri string
+        xpath string
+        keyName string
+        jsonData interface{}
+        resultMap map[int]RedisDbMap
+        result map[string]map[string]db.Value
+        txCache interface{}
+        tblXpathMap map[string]map[string]bool
+        subOpDataMap map[int]*RedisDbMap
+        pCascadeDelTbl *[]string
+        xfmrErr *error
+        name string
+        value interface{}
+        tableName string
+}
+
