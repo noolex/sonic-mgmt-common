@@ -35,68 +35,6 @@ type typeMapOfInterface map[string]interface{}
 
 var mapCopyMutex = &sync.Mutex{}
 
-func xfmrHandlerFunc(inParams XfmrParams) (error) {
-    xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
-    xfmrLogInfoAll("Subtree transformer function(\"%v\") invoked for yang path(\"%v\").", xYangSpecMap[xpath].xfmrFunc, xpath)
-    _, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrFunc), inParams)
-    if err != nil {
-        xfmrLogInfoAll("Failed to retrieve data for xpath(\"%v\") err(%v).", inParams.uri, err)
-        return err
-    }
-
-    return err
-}
-
-func leafXfmrHandlerFunc(inParams XfmrParams) (map[string]interface{}, error) {
-    xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
-    ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrField), inParams)
-    if err != nil {
-        return nil, err
-    }
-    if ret != nil {
-        fldValMap := ret[0].Interface().(map[string]interface{})
-        return fldValMap, nil
-    } else {
-        return nil, nil
-    }
-}
-
-func validateHandlerFunc(inParams XfmrParams) (bool) {
-    xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
-    ret, err := XlateFuncCall(xYangSpecMap[xpath].validateFunc, inParams)
-    if err != nil {
-        return false
-    }
-    return ret[0].Interface().(bool)
-}
-
-func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams) ([]string, error) {
-	xfmrLogInfoAll("Received inParams %v, table transformer function name %v", inParams, xfmrTblFunc)
-	var retTblLst []string
-	ret, err := XlateFuncCall(xfmrTblFunc, inParams)
-	if err != nil {
-		return retTblLst, err
-        }
-	if ((ret != nil) && (len(ret)>0)) {
-		if len(ret) == TBL_XFMR_RET_ARGS {
-			// table xfmr returns err as second value in return data list from <xfmr_func>.Call()
-			 if ret[TBL_XFMR_RET_ERR_INDX].Interface() != nil {
-				 err = ret[TBL_XFMR_RET_ERR_INDX].Interface().(error)
-				 if err != nil {
-					 log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrTblFunc, err)
-					 return retTblLst, err
-				 }
-			 }
-		}
-
-		if ret[TBL_XFMR_RET_VAL_INDX].Interface() != nil {
-			retTblLst = ret[TBL_XFMR_RET_VAL_INDX].Interface().([]string)
-		}
-	}
-	return retTblLst, err
-}
-
-
 func DbValToInt(dbFldVal string, base int, size int, isUint bool) (interface{}, error) {
 	var res interface{}
 	var err error
