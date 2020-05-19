@@ -688,7 +688,8 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
     if IntfTypeVxlan == intfType {
         return res_map, nil
     }
-    if inParams.oper == DELETE {
+    // This should not happen for parent level delete
+    if inParams.oper == DELETE && inParams.uri != "/openconfig-interfaces:interfaces/interface" {
         log.Infof("Updating the Interface: %s with default MTU", ifName)
         if intfType == IntfTypeLoopback {
             log.Infof("MTU not supported for Loopback Interface Type: %d", intfType)
