@@ -24,6 +24,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "encoding/json"
     "fmt"
     "os/exec"
@@ -587,7 +588,9 @@ var rpc_clear_neighbors RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
     if input, ok := mapData["ifname"]; ok {
         input_str := fmt.Sprintf("%v", input)
-        intf = input_str
+        sonicIfName := utils.GetInterfaceNameFromAlias(&input_str)
+        log.Info("Converted Interface name = ", *sonicIfName)
+        intf = *sonicIfName
     }
 
     if input, ok := mapData["ip"]; ok {
