@@ -783,6 +783,8 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 	redisKeySep := modelInfo.tableInfo[tableName].redisKeyDelim
 	redisMultiKeys := strings.Split(key, redisKeySep)
 
+	// There can be multiple leaf in Reference table with leaf-ref to same target field
+	// Hence using array of filterScript and redis.StringSliceCmd
 	mCmd := map[string][]*redis.StringSliceCmd{}
 	mFilterScripts := map[string][]filterScript{}
 	pipe := redisClient.Pipeline()
@@ -791,7 +793,6 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 
 		//check if ref field is a key
 		numKeys := len(modelInfo.tableInfo[refTbl.tableName].keys)
-		sep  := modelInfo.tableInfo[refTbl.tableName].redisKeyDelim
 		refRedisTblName := getYangListToRedisTbl(refTbl.tableName)
 		idx := 0
 
@@ -801,7 +802,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 
 		// Find the targetnode from leaf-refs on refTbl.field
 		var refTblTargetNodeName string
-		for _, refTblLeafRef := range modelInfo.tableInfo[refRedisTblName].leafRef[refTbl.field] {
+		for _, refTblLeafRef := range modelInfo.tableInfo[refTbl.tableName].leafRef[refTbl.field] {
 			if (refTblLeafRef.path != "non-leafref") && (len(refTblLeafRef.yangListNames) > 0) {
 				var isTargetNodeFound bool
 				for k, _ := range refTblLeafRef.yangListNames {
@@ -817,6 +818,17 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			}
 		}
 
+		// Determine the correct value of key in case of composite key
+		if len(redisMultiKeys) > 1 {
+			rediskeyTblKeyPatterns := strings.Split(modelInfo.tableInfo[tableName].redisKeyPattern, redisKeySep)
+			for z := 1; z < len(rediskeyTblKeyPatterns); z++ { // Skipping 0th position, as it is a tableName
+				if rediskeyTblKeyPatterns[z] == fmt.Sprintf("{%s}", refTblTargetNodeName) {
+					key = redisMultiKeys[z - 1]
+					break
+				}
+			}
+		}
+
 		if _, exists := mCmd[refTbl.tableName]; exists == false {
 			mCmd[refTbl.tableName] = make([]*redis.StringSliceCmd, 0)
 		}
@@ -827,27 +839,10 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 				continue
 			}
 
-			if len(redisMultiKeys) > 1 {
-				rediskeyTblKeyPatterns := strings.Split(modelInfo.tableInfo[tableName].redisKeyPattern, redisKeySep)
-				for z := 1; z < len(rediskeyTblKeyPatterns); z++ { // Skipping 0th position, as it is a tableName
-					if rediskeyTblKeyPatterns[z] == fmt.Sprintf("{%s}", refTblTargetNodeName) {
-						key = redisMultiKeys[z - 1]
-						break
-					}
-				}
-			}
+			expr := CreateFindKeyExpression(refTbl.tableName, map[string]string{refTbl.field: key})
+			CVL_LOG(INFO_DEBUG, "GetDepDataForDelete()->CreateFindKeyExpression: %s\n", expr)
 
-			//field is a key component, write into pipeline
-			if (numKeys == 1) { //Only key
-				mCmdArr = append(mCmdArr, pipe.Keys(fmt.Sprintf("%s%s%s",
-				refRedisTblName, sep, key)))
-			} else if (idx == (numKeys - 1)) { //Last key
-				mCmdArr = append(mCmdArr, pipe.Keys(fmt.Sprintf("%s%s*%s%s",
-				refRedisTblName, sep, sep, key)))
-			} else { //Middle key
-				mCmdArr = append(mCmdArr, pipe.Keys(fmt.Sprintf("%s*%s%s%s*",
-				refRedisTblName, sep, key, sep)))
-			}
+			mCmdArr = append(mCmdArr, pipe.Keys(expr))
 			break
 		}
 		mCmd[refTbl.tableName] = mCmdArr
@@ -973,4 +968,28 @@ func ClearValidationTimeStats() {
 	cfgValidationStats.Time = 0
 
 	statsMutex.Unlock()
+}
+
+// Create expression for searching DB entries based on given key fields and values.
+// Expressions created will be like CFG_L2MC_STATIC_MEMBER_TABLE|*|*|Ethernet0
+func CreateFindKeyExpression(tableName string, keyFldValPair map[string]string) string {
+	var expr string
+
+	refRedisTblName := getYangListToRedisTbl(tableName)
+	tempSlice := []string{refRedisTblName}
+	sep := modelInfo.tableInfo[tableName].redisKeyDelim
+
+	tblKeyPatterns := strings.Split(modelInfo.tableInfo[tableName].redisKeyPattern, sep)
+	for z := 1; z < len(tblKeyPatterns); z++ {
+		fldFromPattern := tblKeyPatterns[z][1:len(tblKeyPatterns[z])-1] //remove "{" and "}"
+		if val, exists := keyFldValPair[fldFromPattern]; exists {
+			tempSlice = append(tempSlice, val)
+		} else {
+			tempSlice = append(tempSlice, "*")
+		}
+	}
+
+	expr = strings.Join(tempSlice, sep)
+
+	return expr
 }
