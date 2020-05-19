@@ -1770,6 +1770,9 @@ var YangToDb_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams
         log.Infof("%s Neighbor object missing, add new", nbrAddr)
         return res_map, err
     }
+    if (inParams.oper == DELETE) && nbr_obj.AuthPassword == nil {
+        return res_map, nil
+    }
     entry_key := niName + "|" + nbrAddr
     if nbr_obj.AuthPassword.Config != nil && nbr_obj.AuthPassword.Config.Password != nil && (inParams.oper != DELETE){
         auth_password := nbr_obj.AuthPassword.Config.Password

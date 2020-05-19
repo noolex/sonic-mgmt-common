@@ -2416,20 +2416,20 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
 }
 
 /* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
-func isValidSpeed(d *db.DB, ifName string, speed_i string) bool {
+func isValidSpeed(d *db.DB, ifName string, speed string) bool {
     var isValid bool = false
-    var speed int32
 
-    speed_int,_ := strconv.Atoi(speed_i)
-    speed = int32(speed_int)
     portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
     if(err != nil) {
         log.Info("Could not retrieve PORT|",ifName)
+        isValid = true
     } else {
-        speeds := portEntry.Field["valid_speeds"];
+        speeds := strings.Split(portEntry.Field["valid_speeds"], ",");
+        log.Info("Valid speeds for ",ifName, " is ", speeds, " SET ", speed)
         for _, vspeed := range speeds {
-            if  vspeed == speed {
+            if  speed == strings.TrimSpace(vspeed) {
                 isValid = true
+                log.Info(vspeed, " is valid.")
             }
         }
     }
@@ -2438,20 +2438,21 @@ func isValidSpeed(d *db.DB, ifName string, speed_i string) bool {
 
 
 /* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
-func getDefaultSpeed(d *db.DB, ifName string) int32 {
+func getDefaultSpeed(d *db.DB, ifName string) int {
 
-    var defaultSpeed int32
+    var defaultSpeed int
     defaultSpeed = 0
     portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
     if(err != nil) {
         log.Info("Could not retrieve PORT|",ifName)
     } else {
-        speeds := portEntry.Field["valid_speeds"];
+        speeds := strings.Split(portEntry.Field["valid_speeds"], ",");
         for _, speed := range speeds {
             log.Info("Speed check ", defaultSpeed, " vs ", speed)
-            if  speed > defaultSpeed {
+            speed_i,_ := strconv.Atoi(speed)
+            if  speed_i > defaultSpeed {
                 log.Info("Updating  ", defaultSpeed, " with ", speed)
-                defaultSpeed = speed
+                defaultSpeed = speed_i
             }
         }
     }
@@ -2592,16 +2593,22 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         portSpeed := intfObj.Ethernet.Config.PortSpeed
         val, ok := intfOCToSpeedMap[portSpeed]
         if ok {
-            if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
-                val = strconv.FormatInt(int64(getDefaultSpeed(inParams.d, ifName)), 10)
-            }
             if isValidSpeed(inParams.d, ifName, val) {
                 res_map[PORT_SPEED] = val
             } else {
-                err = errors.New("Invalid/Unsupported speed.")
+                err = tlerr.InvalidArgs("Unsupported speed %s", val)
             }
+        } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+                defSpeed := getDefaultSpeed(inParams.d, ifName)
+                log.Info(" defSpeed  ", defSpeed)
+                if defSpeed != 0 {
+                    val = strconv.FormatInt(int64(defSpeed), 10)
+                    res_map[PORT_SPEED] = val
+                } else {
+                    err = tlerr.NotSupported("Default speed not available")
+                }
         } else {
-            err = errors.New("Invalid/Unsupported speed.")
+            err = tlerr.InvalidArgs("Invalid speed %s", val)
         }
 
         if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {

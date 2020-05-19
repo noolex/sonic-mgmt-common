@@ -316,6 +316,9 @@ var YangToDb_bgp_pgrp_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
         log.Infof("%s Peer group object missing, add new", pgrp)
         return res_map, err
     }
+    if (inParams.oper == DELETE) && pgrp_obj.AuthPassword == nil {
+        return res_map, nil
+    }
     entry_key := niName + "|" + pgrp 
     if pgrp_obj.AuthPassword.Config != nil && pgrp_obj.AuthPassword.Config.Password != nil && (inParams.oper != DELETE){
         auth_password := pgrp_obj.AuthPassword.Config.Password

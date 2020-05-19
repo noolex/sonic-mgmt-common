@@ -244,3 +244,30 @@ to visited to fill the data or not.
 func isSubtreeRequest(targetUriPath string, nodePath string) bool {
 	return strings.HasPrefix(targetUriPath, nodePath)
 }
+
+/* Unique elements */
+func uniqueElements(elems []string) []string {
+    temp := make(map[string]bool)
+    for _, elem := range(elems) {
+        temp[elem] = true
+    }
+
+    i := 0
+    ret := make([]string, len(temp))
+    for key, _ := range(temp) {
+        ret[i] = key
+        i++
+    }
+
+    return ret
+}
+
+func indexOf(elems []string, match string) (int, bool) {
+    for idx, val := range(elems) {
+        if val == match {
+            return idx, true
+        }
+    }
+    
+    return -1, false
+}

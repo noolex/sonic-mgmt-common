@@ -31,6 +31,12 @@ module openconfig-ospfv2-ext {
       "Add OSPFv2 yang extensions for FRR config and show";
   }
 
+  identity VIRTUALLINK_NETWORK {
+    base "oc-ospf-types:OSPF_NETWORK_TYPE"; 
+    description
+      "type of ospf network";
+  }
+
 
   identity OSPF_CONFIG_TYPE {
     description
@@ -695,6 +701,24 @@ module openconfig-ospfv2-ext {
       description 
         "Checksum of opaque LSA for this ospf enabled router";
     }
+
+    leaf stub-advertisement {
+      type boolean;
+      description
+        "stub advertisement flag";
+    }
+
+    leaf pre-shutdown-enabled-secs {
+      type uint32 ;
+      description 
+        "pre shutdown in seconds";
+    }
+
+    leaf post-start-enabled-secs {
+      type uint32 ;
+      description 
+        "post start in seconds";
+    }
   }
 
   grouping ospfv2-area-config-ext {
@@ -994,6 +1018,18 @@ module openconfig-ospfv2-ext {
       type yang:hex-string;
       description
         "Opaque area LSA checksum";
+    }
+
+    leaf origin-stub-max-dist-router-lsa {
+      type boolean;
+      description
+        "max metric router LSA";
+    }
+
+    leaf indefinite-active-admin {
+      type boolean;
+      description
+        "Indefinite active admin";
     }
   }
 
@@ -1888,12 +1924,175 @@ module openconfig-ospfv2-ext {
         "transmit delay for this interface in seconds";
     }
     leaf network-lsa-sequence-number {
-      type uint32;
+      type yang:hex-string;
       description
-        "Saved Network-LSA sequence number";
+        "Saved Network-LSA sequence number in hex";
     }
   }
 
+  grouping ospfv2-area-virtual-link-state-ext {
+    description
+      "State parameters for an OSPF Virtual Link interface";
+
+    leaf name {
+      type string;
+      description
+        "Name of the virtual link";
+    }
+ 
+    leaf area-id {
+      type oc-ospf-types:ospf-area-identifier;
+      description
+        "The area which the vlink belongs to.";
+    }
+
+    leaf network-type { 
+      type identityref { 
+        base "oc-ospf-types:OSPF_NETWORK_TYPE"; 
+      } 
+      description 
+        "The type of network that OSPFv2 should use for the specified 
+        interface."; 
+    }
+
+    leaf mtu-ignore {
+      type boolean;
+      description
+         "OSPF interface MTU ignore configuration.";
+    }
+
+    leaf index {
+      type uint32;
+      description
+        "Interface index";
+    }
+
+    leaf bandwidth {
+      type uint32;
+      description
+        "Interface bandwidth in Megabits";
+    }
+
+    leaf operational-state {
+      type string;
+      description
+        "Interface combined operational state(e.g. up/down)";
+    }
+
+    leaf state {
+      type string;
+      description
+        "This states the functional state like DR, point to point etc";
+    }
+
+    leaf if-flags {
+      type string;
+      description
+        "Interface Flag indicating support for multicast, status etc";
+    }
+
+    leaf address {
+      type inet:ipv4-address-no-zone;
+      description
+        "local address of the vlink";
+    }
+
+    leaf broadcast-address {
+      type inet:ipv4-address-no-zone;
+      description
+        "Broadcast address address";
+    }
+
+    leaf mtu {
+      type uint32;
+      description
+        "Interface MTU";
+    }
+
+    leaf router-id {
+      type yang:dotted-quad;
+      description
+        "Current router Id";
+    }
+
+    leaf adjacency-state {
+      type string;
+      description
+        "The state of the adjacency with the neighbor, or it can also indicate state like DR/BDR.";
+    }
+
+    leaf backup-designated-router-address {
+      type inet:ipv4-address-no-zone;
+      description
+        "Backup Designated router address";
+    }
+
+    leaf designated-router-other {
+      type yang:dotted-quad;
+      description
+        "DR Other router";
+    }
+
+    leaf  member-of-ospf-all-routers {
+      type boolean;
+      description
+        "Member of OSPF All router multicast group";
+    }
+
+    leaf member-of-ospf-designated-routers {
+      type boolean;
+      description
+        "Member of OSPF Designated router multicast group";
+    }
+
+    leaf neighbor-count {
+      type uint32;
+      description
+        "Neighbor count";
+    }
+
+    leaf adjacency-count {
+      type uint32;
+      description
+        "Adjacency count";
+    }
+
+    leaf bfd-state {
+      type boolean;
+      description
+        "BFD State";
+    }
+
+    leaf ospf-enable {
+      type boolean;
+      description
+        "Ospf Enable State";
+    }
+
+    leaf address-len {
+      type uint8;
+      description
+        "Prefix length of the ip address configured on the interface";
+    }
+
+    leaf ospf-interface-type {
+      type string;
+      description
+        "Type of OSPF interface like point-to-point, broadcast etc";
+    }
+
+    leaf cost {
+      type uint32;
+      description
+        "Metric for this interface";
+    }
+
+    leaf network-lsa-sequence-number {
+      type yang:hex-string;
+      description
+        "Saved Network-LSA sequence number in hex";
+    }
+  }
   grouping ospfv2-area-interface-message-stats-state-ext {
     description
       "State parameters for an OSPF interface message stats";
@@ -2151,6 +2350,30 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
         "Thread Link State Update Retransmission.";
+    }
+
+    leaf bfd-state {
+      type boolean;
+      description
+        "BFD is enabled or disabled";
+    }
+
+    leaf bfd-status {
+      type string;
+      description
+        "BFD is up/down/unknown etc";
+    }
+
+    leaf bfd-peer-type {
+      type string;
+      description
+        "BFD peer is single-hop or multihop etc";
+    }
+
+    leaf bfd-peer-last-update-time {
+      type string;
+      description
+        "BFD peer last update time";
     }
   }
 
@@ -2466,6 +2689,9 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:virtual-links" +
           "/oc-netinst:virtual-link/oc-netinst:state" {
     uses ospfv2-area-virtual-link-config-ext;
+    uses ospfv2-area-virtual-link-state-ext;
+    uses ospfv2-area-interface-message-stats-state-ext; 
+    uses ospfv2-area-interface-timers-state-ext;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
