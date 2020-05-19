@@ -335,7 +335,7 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
                                                                                       "vlanid": "5"}},
                                                    "PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
 							                        "alias": "fortyGigE0/32",
-									"lanes": "9,10,11,12"}}}
+									"lanes": "13,14,15,16"}}}
         prereq_cfg_not_exist_map := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet32":map[string]interface{}{
                                                                                       "NULL": "NULL"}}}
         expected_map_vlan := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan5":map[string]interface{}{
@@ -344,7 +344,7 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
         expected_map_vlanmember := map[string]interface{}{"VLAN_MEMBER":map[string]interface{}{"Vlan5|Ethernet32":map[string]interface{}{					                                                             "tagging_mode": "tagged"}}}
         expected_map_port := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
 							                        "alias": "fortyGigE0/32",
-									"lanes": "9,10,11,12"}}}
+									"lanes": "13,14,15,16"}}}
 
 
 	prepareDb()
@@ -376,7 +376,7 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
                                                                                                      "tagging_mode": "tagged"}},
                                             "PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
 							                        "alias": "fortyGigE0/32",
-									"lanes": "9,10,11,12"}}}
+									"lanes": "13,14,15,16"}}}
         expected_map_vlan5 := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan5":map[string]interface{}{
 		                                                                      "vlanid": "5",
                                                                                       "members@": "Ethernet32"}}}
