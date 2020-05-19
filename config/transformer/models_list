@@ -79,3 +79,4 @@ openconfig-platform-annot.yang
 openconfig-lldp.yang
 openconfig-lldp-ext.yang
 openconfig-lldp-annot.yang
+openconfig-kdump.yang

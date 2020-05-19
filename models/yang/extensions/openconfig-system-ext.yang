@@ -8,6 +8,7 @@ module openconfig-system-ext {
 
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
+    import openconfig-kdump { prefix oc-kdump; }
 
     // meta
     organization "OpenConfig working group";
@@ -30,6 +31,10 @@ module openconfig-system-ext {
     }
 
     // augment statements
+
+    augment /oc-sys:system {
+        uses oc-kdump:kdump-top;
+    }
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
         leaf failthrough {
