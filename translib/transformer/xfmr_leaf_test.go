@@ -771,50 +771,49 @@ func Test_Leaf_OC_Yang_Choice_Case_Get(t *testing.T) {
 
 func Test_Leaf_Sonic_Yang_Choice_Case_Update(t *testing.T) {
 
-        cleanuptbl1 := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"acl1":""}}
-        cleanuptbl2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":""}}
-        prereq := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"acl1":map[string]interface{}{"ports@":"Ethernet0","stage":"INGRESS","type":"MIRROR","policy_desc":"descr"}}}
-        url := "/sonic-acl:sonic-acl/ACL_RULE/ACL_RULE_LIST[aclname=acl1][rulename=rule1]/SRC_IP"
+        cleanuptbl := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":""},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":""}}
+
+        prereq := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{"policy_desc":"Description for MyACL1","type":"L3"}},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"10.1.1.1/32","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
+
+        url := "/sonic-acl:sonic-acl/ACL_RULE/ACL_RULE_LIST[aclname=MyACL1_ACL_IPV4][rulename=RULE_1]/SRC_IP"
 
         fmt.Println("++++++++++++++  UPDATE Test_Leaf_Sonic_Yang_Choice_Case  +++++++++++++")
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        patch_payload := "{ \"sonic-acl:SRC_IP\": \"1.1.1.1/1\", \"sonic-acl:DST_IP\": \"2.2.2.2/2\"}"
-        patch_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":map[string]interface{}{"DST_IP":"2.2.2.2/2","SRC_IP":"1.1.1.1/1"}}}
+        patch_payload := "{ \"sonic-acl:SRC_IP\": \"1.1.1.1/1\"}"
+        patch_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"1.1.1.1/1","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
 
         t.Run("UPDATE on Leaf Sonic Yang Choice Case", processSetRequest(url, patch_payload, "PATCH", false))
         time.Sleep(1 * time.Second)
-        t.Run("Verify update on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|acl1|rule1", patch_expected, false))
+        t.Run("Verify update on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|MyACL1_ACL_IPV4|RULE_1", patch_expected, false))
 
-        unloadConfigDB(rclient, cleanuptbl1)
-        unloadConfigDB(rclient, cleanuptbl2)
+        unloadConfigDB(rclient, cleanuptbl)
 }
 
 func Test_Leaf_Sonic_Yang_Choice_Case_Replace(t *testing.T) {
 
-        cleanuptbl1 := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"acl1":""}}
-        cleanuptbl2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":""}}
-        prereq1 := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"acl1":map[string]interface{}{"ports@":"Ethernet0","stage":"INGRESS","type":"MIRROR","policy_desc":"descr"}}}
-        prereq2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":map[string]interface{}{"DST_IP":"2.2.2.2/2","SRC_IP":"1.1.1.1/1"}}}
-        url := "/sonic-acl:sonic-acl/ACL_RULE/ACL_RULE_LIST[aclname=acl1][rulename=rule1]/SRC_IP"
+        cleanuptbl := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":""},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":""}}
 
-        fmt.Println("++++++++++++++  Replace Test_Leaf_Sonic_Yang_Choice_Case  +++++++++++++")
+        prereq := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{"policy_desc":"Description for MyACL1","type":"L3"}},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"10.1.1.1/32","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
+
+        url := "/sonic-acl:sonic-acl/ACL_RULE/ACL_RULE_LIST[aclname=MyACL1_ACL_IPV4][rulename=RULE_1]/SRC_IP"
+
+        fmt.Println("++++++++++++++  REPLACE Test_Leaf_Sonic_Yang_Choice_Case  +++++++++++++")
 
         // Setup - Prerequisite
-        loadConfigDB(rclient, prereq1)
-        loadConfigDB(rclient, prereq2)
+        loadConfigDB(rclient, prereq)
 
-        put_payload := "{ \"sonic-acl:SRC_IP\": \"3.3.3.3/3\"}"
-        put_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":map[string]interface{}{"SRC_IP":"3.3.3.3/3"}}}
+        put_payload := "{ \"sonic-acl:SRC_IP\": \"1.1.1.1/1\"}"
+        //put_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"SRC_IP":"1.1.1.1/1"}}}
+        put_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"1.1.1.1/1","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
 
-        t.Run("Replace on Leaf Sonic Yang Choice Case", processSetRequest(url, put_payload, "PUT", false))
+        t.Run("REPLACE on Leaf Sonic Yang Choice Case", processSetRequest(url, put_payload, "PATCH", false))
         time.Sleep(1 * time.Second)
-        t.Run("Verify replace on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|acl1|rule1", put_expected, false))
+        t.Run("Verify replace on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|MyACL1_ACL_IPV4|RULE_1", put_expected, false))
 
-        unloadConfigDB(rclient, cleanuptbl1)
-        unloadConfigDB(rclient, cleanuptbl2)
+        unloadConfigDB(rclient, cleanuptbl)
 }
 
 func Test_Leaf_Sonic_Yang_Choice_Case_Delete(t *testing.T) {
