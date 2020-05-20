@@ -174,4 +174,22 @@ module openconfig-platform-ext {
             description "LED status color";
         }
     }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:fan/oc-pf:state {
+        leaf direction {
+            type string;
+            description "Fan direction";
+        }
+
+        leaf speed-tolerance {
+            type uint32;
+            description "Percentage of variance from target speed which is considered tolerable";
+        }
+
+        leaf target-speed {
+            type uint32;
+            units rpm;
+            description "Target speed of fans";
+        }
+    }
 }
