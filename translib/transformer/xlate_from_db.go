@@ -316,6 +316,7 @@ func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
 					linParamsForGet := formXlateFromDbParams(inParamsForGet.d, inParamsForGet.dbs, xDbSpecMap[curTable].dbIndex, inParamsForGet.ygRoot, curUri, inParamsForGet.requestUri, curTable, inParamsForGet.oper, curTable, curKey, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
 					sonicDbToYangDataFill(linParamsForGet)
 					curMap = linParamsForGet.resultMap
+					dbDataMap = linParamsForGet.dbDataMap
 					if len(curMap) > 0 {
 						resultMap[yangChldName] = curMap
 					} else {
@@ -334,6 +335,7 @@ func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
 						inParamsForGet.uri = curUri
 						inParamsForGet.xpath = curUri
 						mapSlice = sonicDbToYangListFill(inParamsForGet)
+						dbDataMap = inParamsForGet.dbDataMap
 						if len(key) > 0 && len(mapSlice) == 1 {// Single instance query. Don't return array of maps
 							for k, val := range mapSlice[0] {
 								resultMap[k] = val
@@ -344,6 +346,7 @@ func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
 						} else {
 							xfmrLogInfoAll("Empty list for xpath(%v)", curUri)
 						}
+						inParamsForGet.resultMap = resultMap
 					}
 				} else if chldYangType == YANG_CHOICE || chldYangType == YANG_CASE {
 					curUri := table + "/" + yangChldName
@@ -351,6 +354,8 @@ func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
 					inParamsForGet.xpath = curUri
 					inParamsForGet.curDb = xDbSpecMap[table].dbIndex
 					sonicDbToYangDataFill(inParamsForGet)
+					dbDataMap = inParamsForGet.dbDataMap
+					resultMap = inParamsForGet.resultMap
 				} else {
 					xfmrLogInfoAll("Not handled case %v", chldXpath)
 				}
@@ -824,8 +829,6 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					inParamsForGet.resultMap = resultMap
 				} else if chldYangType == YANG_CONTAINER {
 					_, tblKey, chtbl, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, nil, txCache)
-					inParamsForGet.tblKey = tblKey
-					inParamsForGet.tbl = chtbl
 					inParamsForGet.ygRoot = ygRoot
 					if _, ok := (*dbDataMap)[cdb][chtbl]; !ok && len(chtbl) > 0 {
 						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, "", cdb, dbs)
@@ -871,9 +874,10 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 						}
 					}
 					cmap2 := make(map[string]interface{})
-					inParamsForGet.resultMap = cmap2
-					err  = yangDataFill(inParamsForGet)
-					cmap2 = inParamsForGet.resultMap
+					linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, chldXpath, inParamsForGet.oper, chtbl, tblKey, dbDataMap, inParamsForGet.txCache, cmap2, inParamsForGet.validate)
+					err  = yangDataFill(linParamsForGet)
+					cmap2 = linParamsForGet.resultMap
+					dbDataMap = linParamsForGet.dbDataMap
 					if err != nil && len(cmap2) == 0 {
 						xfmrLogInfoAll("Empty container.(\"%v\").\r\n", chldUri)
 					} else {
@@ -882,6 +886,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 						}
 						inParamsForGet.resultMap = resultMap
 					}
+					inParamsForGet.dbDataMap = dbDataMap
 				} else if chldYangType ==  YANG_LIST {
 					_, tblKey, _, _ = xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, nil, txCache)
 					inParamsForGet.ygRoot = ygRoot
@@ -915,14 +920,17 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 							inParamsForGet.dbDataMap = dbDataMap
 						}
 					}
-					inParamsForGet.tbl = lTblName
-					inParamsForGet.tblKey = tblKey
+					linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, chldXpath, inParamsForGet.oper, lTblName, tblKey, dbDataMap, inParamsForGet.txCache, resultMap, inParamsForGet.validate)
+					yangListDataFill(linParamsForGet, false)
+					resultMap = linParamsForGet.resultMap
+					dbDataMap = linParamsForGet.dbDataMap
+					inParamsForGet.dbDataMap = dbDataMap
 					inParamsForGet.resultMap = resultMap
-					yangListDataFill(inParamsForGet, false)
 
 				} else if chldYangType == "choice" || chldYangType == "case" {
-					inParamsForGet.resultMap = resultMap
 					yangDataFill(inParamsForGet)
+					resultMap = inParamsForGet.resultMap
+					dbDataMap = inParamsForGet.dbDataMap
 				} else {
 					return err
 				}
