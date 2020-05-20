@@ -375,6 +375,17 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath: ",  targetUriPath)
 
+
+    var scheds []string
+    if sp_name != "" {
+        scheds = get_schedulers_by_sp_name(sp_name)
+        if len(scheds) == 0 {
+            err = tlerr.InternalError{Format:"Instance Not found"}
+            log.Info("Scheduler policy not found.")
+            return res_map, err
+        }
+    }
+
     if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler") == false {
         log.Info("YangToDb: scheduler sequence unspecified, using delete_by_sp_name")
         return qos_scheduler_delete_by_sp_name(inParams, sp_name)
@@ -384,6 +395,19 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
     if seq == "" {
         log.Info("YangToDb: scheduler sequence unspecified, using delete_by_sp_name")
         return qos_scheduler_delete_by_sp_name(inParams, sp_name)
+    } else  {
+        found := false
+        for _, sched := range scheds {
+            if sched == sp_name + "@" + seq {
+                found = true
+                break
+            }
+        }
+        if !found {
+            err = tlerr.InternalError{Format:"Instance Not found"}
+            log.Info("Scheduler not found.")
+            return res_map, err
+        }
     }
 
     /* update "scheduler" table */
