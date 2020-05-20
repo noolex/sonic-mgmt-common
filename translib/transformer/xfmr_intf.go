@@ -3033,6 +3033,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
 		if sagIpv4Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
+
+			if !validIPv4(sagIpv4Obj.Config.StaticAnycastGateway[0]) {
+                            errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+                            err = tlerr.InvalidArgsError{Format: errStr}
+                            return subIntfmap, err
+                        }
+
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3074,6 +3081,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
 		if sagIpv6Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv6Obj.Config.StaticAnycastGateway)
+
+			if !validIPv6(sagIpv6Obj.Config.StaticAnycastGateway[0]) {
+                            errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+                            err = tlerr.InvalidArgsError{Format: errStr}
+                            return subIntfmap, err
+                        }
+
 			sagIPv6Key := ifName + "|IPv6"
 
 			sagIPv6Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv6Key}})
