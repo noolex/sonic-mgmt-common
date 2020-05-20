@@ -162,7 +162,7 @@ func SubscribeDB(opt Options, skeys []*SKey, handler HFunc) (*DB, error) {
 
 		// Send the Close|Err notification.
 		var sEvent = SEventClose
-		if d.sCIP == false {
+		if !d.sCIP {
 			sEvent = SEventErr
 		}
 		glog.Info("SubscribeDB: SEventClose|Err: ", sEvent)

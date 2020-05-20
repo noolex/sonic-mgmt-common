@@ -165,15 +165,15 @@ module sonic-ospfv2 {
 
         leaf lsa-min-interval-timer {
           type uint32 {
-            range "0..50000";
+            range "0..5000";
           }
           description
-            "SA minimum interval timer";
+            "LSA minimum interval timer";
         }
 
         leaf lsa-min-arrival-timer {
           type uint32 {
-            range "0..50000";
+            range "0..600000";
           }
           description
             "LSA minimum arrival timer";
@@ -416,6 +416,12 @@ module sonic-ospfv2 {
           type ietf-yang:dotted-quad;
           description
             "The router ID of the remote OSPFv2 ABR router.";
+        }
+
+        leaf enable {
+          type boolean;
+          description
+            "Enable/Disable virtual link";
         }
 
         leaf authentication-type {

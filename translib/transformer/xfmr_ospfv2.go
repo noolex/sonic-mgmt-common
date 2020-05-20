@@ -2002,6 +2002,7 @@ func ospfv2_fill_interface_vlink_state(intf_info map[string]interface{},
     var ospfv2Vlink_obj  *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink
     var ospfv2VlinkState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State
     var ospfv2AreaId ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_AreaId_Union_String
+    var interfaceName string = intf_name
     log.Infof("%s", cmn_log)
     if (nil == ospfv2Area_obj.VirtualLinks) {
         log.Info("Virtual Links information not present in area")
@@ -2012,14 +2013,13 @@ func ospfv2_fill_interface_vlink_state(intf_info map[string]interface{},
     if _vlinkPeer, ok = intf_info["vlinkPeer"].(string); ok {
         ospfv2Vlink_obj, _  = ospfv2Vlinks_obj.VirtualLink[_vlinkPeer]
         if nil == ospfv2Vlink_obj {
-            log.Infof("Vlink interface missing for %s, peer %s, add new vlink", area_id, _vlinkPeer)
+            log.Infof("Vlink interface missing for %s, peer %s, add new vlink", *area_id, _vlinkPeer)
             ospfv2Vlink_obj, err = ospfv2Vlinks_obj.NewVirtualLink(_vlinkPeer)
             if (err != nil) {
                 log.Info("Failed to create a new vlink under vlink tree")
                 return  oper_err
             }
             ygot.BuildEmptyTree (ospfv2Vlink_obj)
-            ospfv2Vlink_obj.RemoteRouterId = &_vlinkPeer
         }
     }
     ospfv2VlinkState_obj = ospfv2Vlink_obj.State
@@ -2028,7 +2028,8 @@ func ospfv2_fill_interface_vlink_state(intf_info map[string]interface{},
         return  oper_err
     }
 
-    ospfv2VlinkState_obj.Name = &intf_name
+    log.Infof("vlink intf_name %s ptr %x", intf_name, &intf_name)
+    ospfv2VlinkState_obj.Name = &interfaceName
     if _intf_state,ok := intf_info["ifUp"].(bool); ok {
         if _intf_state ==  false { 
             ospfv2VlinkState_obj.OperationalState = &ospfv2IntfState
@@ -2283,6 +2284,14 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
             ospfv2InterfaceState_obj.OspfEnable = &ospfv2Zero
         } else {
             ospfv2InterfaceState_obj.OspfEnable = &ospfv2One
+        }
+    }
+
+    if _passiveEnabled,ok := intf_info["timerPassiveIface"].(bool); ok {
+        if _passiveEnabled ==  false { 
+            ospfv2InterfaceState_obj.Passive = &ospfv2Zero
+        } else {
+            ospfv2InterfaceState_obj.Passive = &ospfv2One
         }
     }
 
