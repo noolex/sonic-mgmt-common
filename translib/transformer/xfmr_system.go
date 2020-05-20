@@ -30,7 +30,6 @@ func init () {
     XlateFuncBind("YangToDb_sys_aaa_auth_xfmr", YangToDb_sys_aaa_auth_xfmr)
     XlateFuncBind("YangToDb_sys_config_key_xfmr", YangToDb_sys_config_key_xfmr)
     XlateFuncBind("DbToYang_sys_config_key_xfmr", DbToYang_sys_config_key_xfmr)
-<<<<<<< HEAD
 
     XlateFuncBind("YangToDb_global_dns_key_xfmr", YangToDb_global_dns_key_xfmr)
     XlateFuncBind("DbToYang_global_dns_key_xfmr", DbToYang_global_dns_key_xfmr)
@@ -38,10 +37,6 @@ func init () {
     XlateFuncBind("DbToYang_server_dns_key_xfmr", DbToYang_server_dns_key_xfmr)
     XlateFuncBind("YangToDb_server_dns_field_xfmr", YangToDb_server_dns_field_xfmr)
     XlateFuncBind("DbToYang_server_dns_field_xfmr", DbToYang_server_dns_field_xfmr)
-||||||| merged common ancestors
-
-=======
->>>>>>> origin/broadcom_sonic_3.x_share
 }
 
 type SysMem struct {
@@ -480,7 +475,6 @@ var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
 	}
 	return nil,nil
 }
-<<<<<<< HEAD
 
 var YangToDb_global_dns_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     if log.V(3) {
@@ -557,7 +551,3 @@ var DbToYang_server_dns_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (ma
 }
 
 
-||||||| merged common ancestors
-
-=======
->>>>>>> origin/broadcom_sonic_3.x_share
