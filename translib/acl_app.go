@@ -881,12 +881,12 @@ func (app *AclApp) convertInternalToOCAclRuleProperties(ruleData db.Value, aclTy
                 entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
             }
         } else if ACL_RULE_ICMP_TYPE == ruleKey {
-            data, _ := strconv.ParseInt(ruleData.Get(ruleKey), 10, 8)
+            data, _ := strconv.ParseUint(ruleData.Get(ruleKey), 10, 8)
             dataInt := uint8(data)
             entrySet.Transport.Config.IcmpType = &dataInt
             entrySet.Transport.State.IcmpType = &dataInt
         } else if ACL_RULE_ICMP_CODE == ruleKey {
-            data, _ := strconv.ParseInt(ruleData.Get(ruleKey), 10, 8)
+            data, _ := strconv.ParseUint(ruleData.Get(ruleKey), 10, 8)
             dataInt := uint8(data)
             entrySet.Transport.Config.IcmpCode = &dataInt
             entrySet.Transport.State.IcmpCode = &dataInt
