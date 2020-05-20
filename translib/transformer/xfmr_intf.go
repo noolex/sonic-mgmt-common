@@ -681,7 +681,7 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
             log.Infof("MTU not supported for Loopback Interface Type: %d", intfType)
             return res_map, nil
         }
-        /* Note: For the mtu delete request, res_map with delete operation (current MTU value) and
+        /* Note: For the mtu delete request, res_map with delete operation and
            subOp map with update operation (default MTU value) is filled. This is because, transformer default
            updates the result DS for delete oper with table and key. This needs to be fixed by transformer
            for deletion of an attribute */
