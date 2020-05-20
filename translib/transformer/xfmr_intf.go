@@ -650,23 +650,10 @@ func updateDefaultMtu(inParams *XfmrParams, ifName *string, ifType E_InterfaceTy
     intfMap := make(map[string]map[string]db.Value)
 
     intTbl := IntfTypeTblMap[ifType]
-    ifEntry, err := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.portTN}, db.Key{Comp: []string{*ifName}})
-    if !ifEntry.IsPopulated() || err != nil {
-        log.Errorf("Port: %s entry fetch from App-Db failed!", *ifName)
-        return err
-    }
-    mtuVal, ok := ifEntry.Field["mtu"]
-    if !ok {
-        errStr := "MTU entry not present in the App-DB for Interface: " + *ifName
-        log.Error(errStr)
-        return errors.New(errStr)
-    }
-    // Update it with default MTU value
-    resMap["mtu"] = mtuVal
+    resMap["mtu"] = DEFAULT_MTU
 
-    ifEntry.Field["mtu"] = DEFAULT_MTU
     intfMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
-    intfMap[intTbl.cfgDb.portTN][*ifName] = ifEntry
+    intfMap[intTbl.cfgDb.portTN][*ifName] = db.Value{Field:resMap}
 
     subOpMap[db.ConfigDB] = intfMap
     inParams.subOpDataMap[UPDATE] = &subOpMap
