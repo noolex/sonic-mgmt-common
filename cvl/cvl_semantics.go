@@ -1425,10 +1425,7 @@ func (c *CVL) findUsedAsLeafRef(tableName, field string) []tblFieldPair {
 //was using T1|K1 and getting deleted
 //in same session also.
 func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
-	leafRef *tblFieldPair, keyVal string) bool {
-
-	entryTableName := leafRef.tableName + modelInfo.tableInfo[leafRef.tableName].redisKeyDelim
-	entryKeyVal := modelInfo.tableInfo[leafRef.tableName].redisKeyDelim + keyVal
+	leafRef *tblFieldPair, depDataKey, keyVal string) bool {
 
 	for _, cfgDataItem := range cfgData {
 		if (cfgDataItem.VType != VALIDATE_NONE) ||
@@ -1440,8 +1437,7 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 		//getting deleted, break immediately
 
 		//Find in request key, case - T2*|K1
-		if (strings.HasPrefix(cfgDataItem.Key, entryTableName)) &&
-		(strings.Contains(cfgDataItem.Key, entryKeyVal)) {
+		if cfgDataItem.Key == depDataKey && len(cfgDataItem.Data) == 0 {
 			return true
 		}
 
@@ -1463,44 +1459,66 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 //Check delete constraint for leafref if key/field is deleted
 func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 			tableName, keyVal, field string) CVLRetCode {
-	var leafRefs []tblFieldPair
-	if (field != "") {
-		//Leaf or field is getting deleted
-		leafRefs = c.findUsedAsLeafRef(tableName, field)
-		TRACE_LOG(TRACE_SEMANTIC,
-		"(Table %s, field %s) getting used by leafRefs %v",
-		tableName, field, leafRefs)
-	} else {
-		//Entire entry is getting deleted
-		leafRefs = c.findUsedAsLeafRef(tableName, modelInfo.tableInfo[tableName].keys[0])
-		TRACE_LOG(TRACE_SEMANTIC,
-		"(Table %s, key %s) getting used by leafRefs %v",
-		tableName, keyVal, leafRefs)
+
+	// Creating a map of leaf-ref referred tableName and associated fields array
+	refTableFieldsMap := map[string][]string{}
+	for _, leafRef := range modelInfo.tableInfo[tableName].refFromTables {
+		// If field is getting deleted, then collect only those leaf-refs that
+		// refers that field
+		if (field != "") && ((field != leafRef.field) || (field != leafRef.field + "@")) {
+			continue
+		}
+
+		if _, ok := refTableFieldsMap[leafRef.tableName]; ok == false {
+			refTableFieldsMap[leafRef.tableName] = make([]string, 0)
+		}
+		refFieldsArr := refTableFieldsMap[leafRef.tableName]
+		refFieldsArr = append(refFieldsArr, leafRef.field)
+		refTableFieldsMap[leafRef.tableName] = refFieldsArr
+	}
+
+	if len(refTableFieldsMap) == 0 {
+		return CVL_SUCCESS
 	}
 
 	//The entry getting deleted might have been referred from multiple tables
 	//Return failure if at-least one table is using this entry
-	for _, leafRef := range leafRefs {
-		TRACE_LOG((TRACE_DELETE | TRACE_SEMANTIC), "Checking delete constraint for leafRef %s/%s", leafRef.tableName, leafRef.field)
-		//Check in dependent data first, if the referred entry is already deleted
 
-		if c.checkDeleteInRequestCache(cfgData, &leafRef, keyVal) == true {
-			continue //check next leafref
-		}
+	// Retrieve all dependent DB entries referring the given entry tableName and keyVal
+	redisKeyForDepData := tableName + "|" + keyVal
+	depDataArr := c.GetDepDataForDelete(redisKeyForDepData)
 
-		//Else, check if any referred entry is present in DB
-		var nokey []string
-		refKeyVal, err := luaScripts["find_key"].Run(redisClient, nokey, leafRef.tableName,
-		modelInfo.tableInfo[leafRef.tableName].redisKeyDelim,
-		strings.Join(modelInfo.tableInfo[leafRef.tableName].keys, "|"),
-		leafRef.field, keyVal).Result()
-		if (err == nil &&  refKeyVal != "") {
-			CVL_LOG(ERROR, "Delete will violate the constraint as entry %s is referred in %s", tableName, refKeyVal)
+	// Iterate through dependent DB entries and check if it already present in delete request cache
+	for _, depData := range depDataArr {
+		if len(depData.Entry) > 0 && depData.RefKey == redisKeyForDepData {
+			TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> DepData: %v", depData.Entry)
+			for depEntkey, _ := range depData.Entry {
+				depEntkeyList := strings.SplitN(depEntkey, "|", 2)
+				refTblName := depEntkeyList[0]
 
-			return CVL_SEMANTIC_ERROR
+				var isEntryInRequestCache bool
+				leafRefFieldsArr := refTableFieldsMap[refTblName]
+				TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> leafRefFieldsArr: %v", leafRefFieldsArr)
+				// Verify each dependent data with help of its associated leaf-ref
+				for _, leafRefField := range leafRefFieldsArr {
+					TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> Checking delete constraint for leafRef %s/%s", refTblName, leafRefField)
+					tempLeafRef := tblFieldPair{refTblName, leafRefField}
+					if (true == c.checkDeleteInRequestCache(cfgData, &tempLeafRef, depEntkey, keyVal)) {
+						isEntryInRequestCache = true
+						break
+					}
+				}
+
+				if isEntryInRequestCache == true {
+					// Entry already in delete request cache, proceed for next dep data
+					continue
+				} else {
+					CVL_LOG(ERROR, "Delete will violate the constraint as entry %s is referred in %v", redisKeyForDepData, depEntkey)
+					return CVL_SEMANTIC_ERROR
+				}
+			}
 		}
 	}
-
 
 	return CVL_SUCCESS
 }
