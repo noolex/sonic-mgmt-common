@@ -72,6 +72,24 @@ module openconfig-acl-ext {
         uses transport-fields-ext-config;
     }
 
+    grouping acl-config-ext {
+        description
+            "Global configuration data for ACLs";
+
+        leaf counter-capability {
+            description
+                "System reported indication of how ACL counters are reported by the target";
+
+            type identityref {
+                base oc-acl:ACL_COUNTER_CAPABILITY;
+            }
+        }
+    }
+
+    augment /oc-acl:acl/oc-acl:config {
+        uses acl-config-ext;
+    }
+
     typedef ip-protocol-type-ext {
         type union {
             type uint8;
@@ -134,4 +152,347 @@ module openconfig-acl-ext {
 	deviation /oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:actions/oc-acl:state/oc-acl:log-action {
 		deviate not-supported;
 	}
+    deviation /oc-acl:acl/oc-acl:interfaces/oc-acl:interface/oc-acl:interface-ref/oc-acl:config/oc-acl:subinterface  {
+        deviate not-supported;
+    }
+    deviation /oc-acl:acl/oc-acl:interfaces/oc-acl:interface/oc-acl:interface-ref/oc-acl:state/oc-acl:subinterface {
+        deviate not-supported;
+    }
+
+    grouping global-acl-entries-config {
+        description
+            "Configuration data global ACLs";
+    }
+
+    grouping global-acl-entries-state {
+        description
+            "Operational state data for global ACL entries";
+
+        leaf sequence-id {
+            type leafref {
+                path "/oc-acl:acl/oc-acl:acl-sets/" +
+                    "oc-acl:acl-set[oc-acl:name=current()/../../../../set-name]" +
+                    "[oc-acl:type=current()/../../../../type]/" +
+                    "oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:sequence-id";
+            }
+
+            description
+                "Reference to an entry in the ACL set applied globally";
+        }
+
+        uses oc-acl:acl-counters-state;
+    }
+
+    grouping global-acl-entries-top {
+        description
+            "Top-level grouping for global ACL entries";
+
+        container acl-entries {
+            config false;
+            description
+                "Enclosing container for list of references to ACLs";
+
+            list acl-entry {
+                key "sequence-id";
+                description
+                    "List of ACL entries assigned globally";
+
+                leaf sequence-id {
+                    type leafref {
+                        path "../state/sequence-id";
+                    }
+                    description
+                        "Reference to global acl entry key";
+                }
+
+                // no config container since the enclosing container is
+                // read-only
+
+                container state {
+                    config false;
+
+                    description
+                        "Operational state data for global ACL entries";
+
+                    uses global-acl-entries-config;
+                    uses global-acl-entries-state;
+                }
+            }
+        }
+    }
+
+    grouping global-ingress-acl-config {
+        description
+            "Configuration data for global ingress ACLs";
+
+        leaf set-name {
+            type leafref {
+                path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:config/oc-acl:name";
+            }
+            description
+                "Reference to the ACL set name applied on ingress";
+        }
+
+        leaf type {
+            type leafref {
+                path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set[oc-acl:name=current()/../set-name]" +
+                    "/oc-acl:config/oc-acl:type";
+            }
+            description
+                "Reference to the ACL set type applied on ingress";
+        }
+    }
+
+    grouping global-ingress-acl-state {
+        description
+            "Operational state data for global ingress ACL";
+    }
+
+    grouping global-ingress-acl-top {
+        description
+            "Top-level grouping for global ingress ACL data";
+
+        container ingress-acl-sets {
+            description
+                "Enclosing container the list of ingress ACLs globally";
+
+            list ingress-acl-set {
+                key "set-name type";
+                description
+                    "List of ingress ACLs";
+
+                leaf set-name {
+                    type leafref {
+                        path "../config/set-name";
+                    }
+                    description
+                        "Reference to set name list key";
+                }
+
+                leaf type {
+                    type leafref {
+                        path "../config/type";
+                    }
+                    description
+                        "Reference to type list key";
+                }
+
+                container config {
+                    description
+                        "Configuration data ";
+
+                    uses global-ingress-acl-config;
+                }
+
+                container state {
+                    config false;
+
+                    description
+                        "Operational state data for global ingress ACLs";
+
+                    uses global-ingress-acl-config;
+                    uses global-ingress-acl-state;
+                }
+
+                uses global-acl-entries-top;
+            }
+        }
+    }
+
+    grouping global-egress-acl-config {
+        description
+            "Configuration data for global egress ACLs";
+
+        leaf set-name {
+            type leafref {
+                path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:config/oc-acl:name";
+            }
+            description
+                "Reference to the ACL set name applied on egress";
+        }
+
+        leaf type {
+            type leafref {
+                path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set[oc-acl:name=current()/../set-name]" +
+                    "/oc-acl:config/oc-acl:type";
+            }
+            description
+                "Reference to the ACL set type applied on egress";
+        }
+    }
+
+    grouping global-egress-acl-state {
+        description
+            "Operational state data for global egress ACL";
+    }
+
+    grouping global-egress-acl-top {
+        description
+            "Top-level grouping for global egress ACL data";
+
+        container egress-acl-sets {
+            description
+                "Enclosing container the list of egress ACLs globally";
+
+            list egress-acl-set {
+                key "set-name type";
+                description
+                    "List of egress ACLs";
+
+                leaf set-name {
+                    type leafref {
+                        path "../config/set-name";
+                    }
+                    description
+                        "Reference to set name list key";
+                }
+
+                leaf type {
+                    type leafref {
+                        path "../config/type";
+                    }
+                    description
+                        "Reference to type list key";
+                }
+
+                container config {
+                    description
+                        "Configuration data ";
+
+                    uses global-egress-acl-config;
+                }
+
+                container state {
+                    config false;
+
+                    description
+                        "Operational state data for global egress ACLs";
+
+                    uses global-egress-acl-config;
+                    uses global-egress-acl-state;
+                }
+
+                uses global-acl-entries-top;
+            }
+        }
+    }
+
+    grouping global-acl-top {
+        description
+            "Top-level grouping for Global ACL data";
+
+        container config {
+            description
+                "Configuration for ACL per-interface data";
+        }
+
+        container state {
+            config false;
+
+            description
+                "Operational state for ACL per-interface data";
+        }
+
+        uses global-ingress-acl-top;
+        uses global-egress-acl-top;
+    }
+
+    grouping ctrl-plane-ingress-acl-config {
+        description
+            "Configuration data for control plane ingress ACLs";
+
+        leaf set-name {
+            type leafref {
+                path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:config/oc-acl:name";
+            }
+            description
+                "Reference to the ACL set name applied on ingress";
+        }
+
+        leaf type {
+            type leafref {
+                path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set[oc-acl:name=current()/../set-name]" +
+                    "/oc-acl:config/oc-acl:type";
+            }
+            must '(current() = oc-acl:ACL_IPV4) or (current() = oc-acl:ACL_IPV6)';
+            description
+                "Reference to the ACL set type applied on ingress";
+        }
+    }
+
+    grouping ctrl-plane-ingress-acl-top {
+        description
+            "Top-level grouping for control plane ingress ACL data";
+
+        container ingress-acl-sets {
+            description
+                "Enclosing container the list of ingress control plane ACLs";
+
+            list ingress-acl-set {
+                key "set-name type";
+                description
+                    "List of ingress ACLs";
+
+                leaf set-name {
+                    type leafref {
+                        path "../config/set-name";
+                    }
+                    description
+                        "Reference to set name list key";
+                }
+
+                leaf type {
+                    type leafref {
+                        path "../config/type";
+                    }
+                    description
+                        "Reference to type list key";
+                }
+
+                container config {
+                    description
+                        "Configuration data ";
+
+                    uses ctrl-plane-ingress-acl-config;
+                }
+
+                container state {
+                    config false;
+
+                    description
+                        "Operational state data";
+
+                    uses ctrl-plane-ingress-acl-config;
+                }
+            }
+        }
+    }
+
+    grouping ctrl-plane-acl-top {
+        description
+            "Top-level grouping for Control Plane ACL data";
+
+        container config {
+            description
+                "Configuration for ACL per-interface data";
+        }
+
+        container state {
+            config false;
+
+            description
+                "Operational state for ACL per-interface data";
+        }
+
+        uses ctrl-plane-ingress-acl-top;
+    }
+
+    augment /oc-acl:acl {
+        container global {
+            uses global-acl-top;
+        }
+        container control-plane {
+            uses ctrl-plane-acl-top;
+        }
+    }
 }

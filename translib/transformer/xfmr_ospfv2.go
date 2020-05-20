@@ -4,7 +4,6 @@ package transformer
 import (
     "errors"
     "strconv"
-    "math"
     "strings"
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
@@ -29,10 +28,10 @@ func init () {
     XlateFuncBind("YangToDb_ospfv2_router_enable_fld_xfmr", YangToDb_ospfv2_router_enable_fld_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_enable_fld_xfmr", DbToYang_ospfv2_router_enable_fld_xfmr)
 
-    XlateFuncBind("YangToDb_ospfv2_router_area_tbl_subtree_xfmr", YangToDb_ospfv2_router_area_tbl_subtree_xfmr)
-    XlateFuncBind("DbToYang_ospfv2_router_area_tbl_subtree_xfmr", DbToYang_ospfv2_router_area_tbl_subtree_xfmr)
-    //XlateFuncBind("YangToDb_ospfv2_router_area_area_id_fld_xfmr", YangToDb_ospfv2_router_area_area_id_fld_xfmr)
-    //XlateFuncBind("DbToYang_ospfv2_router_area_area_id_fld_xfmr", DbToYang_ospfv2_router_area_area_id_fld_xfmr)
+    XlateFuncBind("YangToDb_ospfv2_router_area_tbl_key_xfmr", YangToDb_ospfv2_router_area_tbl_key_xfmr)
+    XlateFuncBind("DbToYang_ospfv2_router_area_tbl_key_xfmr", DbToYang_ospfv2_router_area_tbl_key_xfmr)
+    XlateFuncBind("YangToDb_ospfv2_router_area_area_id_fld_xfmr", YangToDb_ospfv2_router_area_area_id_fld_xfmr)
+    XlateFuncBind("DbToYang_ospfv2_router_area_area_id_fld_xfmr", DbToYang_ospfv2_router_area_area_id_fld_xfmr)
 
     XlateFuncBind("YangToDb_ospfv2_router_area_policy_tbl_key_xfmr", YangToDb_ospfv2_router_area_policy_tbl_key_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_area_policy_tbl_key_xfmr", DbToYang_ospfv2_router_area_policy_tbl_key_xfmr)
@@ -63,6 +62,8 @@ func init () {
     XlateFuncBind("DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr", DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr)
     XlateFuncBind("YangToDb_ospfv2_router_passive_interface_name_fld_xfmr", YangToDb_ospfv2_router_passive_interface_name_fld_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_passive_interface_name_fld_xfmr", DbToYang_ospfv2_router_passive_interface_name_fld_xfmr)
+    XlateFuncBind("YangToDb_ospfv2_router_passive_interface_address_fld_xfmr", YangToDb_ospfv2_router_passive_interface_address_fld_xfmr)
+    XlateFuncBind("DbToYang_ospfv2_router_passive_interface_address_fld_xfmr", DbToYang_ospfv2_router_passive_interface_address_fld_xfmr)
 
     XlateFuncBind("YangToDb_ospfv2_interface_tbl_key_xfmr", YangToDb_ospfv2_interface_tbl_key_xfmr)
     XlateFuncBind("DbToYang_ospfv2_interface_tbl_key_xfmr", DbToYang_ospfv2_interface_tbl_key_xfmr)
@@ -76,7 +77,7 @@ func init () {
     XlateFuncBind("DbToYang_ospfv2_areas_area_state_xfmr", DbToYang_ospfv2_areas_area_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_neighbors_state_xfmr", DbToYang_ospfv2_neighbors_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_route_table_xfmr", DbToYang_ospfv2_route_table_xfmr)
-    //XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
+    XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
 }
 
 func getOspfv2Root (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, string, error) {
@@ -234,21 +235,16 @@ func getAreaDotted(areaString string) string {
         return areaDotted
      }
 
-     if (true == strings.ContainsAny(areaString,"|")) {
-        var substr []string
-        substr = strings.Split(areaString, "|")
-        areaString = substr[1]
-     }
      log.Info("getAreaDotted: ", areaString) 
      return areaString
 }
 
 
-var YangToDb_ospfv2_router_area_tbl_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+var YangToDb_ospfv2_router_area_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
     var ospfv2VrfName string
-    areaMap := make(map[string]map[string]db.Value)
-    log.Info("YangToDb_ospfv2_router_area_tbl_subtree_xfmr: ", inParams.uri)
+
+    log.Info("YangToDb_ospfv2_router_area_tbl_key_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
     ospfv2VrfName    =  pathInfo.Var("name")
@@ -259,28 +255,28 @@ var YangToDb_ospfv2_router_area_tbl_subtree_xfmr SubTreeXfmrYangToDb = func(inPa
     if len(pathInfo.Vars) <  4 {
         err = errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))
-        return areaMap, err
+        return ospfv2VrfName, err
     }
 
     if len(ospfv2VrfName) == 0 {
         err = errors.New("vrf name is missing");
         log.Info("VRF Name is Missing")
-        return areaMap, err
+        return "", err
     }
     if strings.Contains(ospfv2Identifier,"OSPF") == false {
         err = errors.New("OSPF ID is missing");
         log.Info("OSPF ID is missing")
-        return areaMap, err
+        return "", err
     }
     if len(ospfv2InstanceNumber) == 0 {
         err = errors.New("OSPF intance number/name is missing");
         log.Info("Protocol Name is Missing")
-        return areaMap, err
+        return "", err
     }
     if len(ospfv2AreaId) == 0 {
         err = errors.New("OSPF area Id is missing")
         log.Info("OSPF area Id is Missing")
-        return areaMap, nil
+        return "", nil
     }
 
     ospfv2AreaId = getAreaDotted(ospfv2AreaId)
@@ -292,61 +288,26 @@ var YangToDb_ospfv2_router_area_tbl_subtree_xfmr SubTreeXfmrYangToDb = func(inPa
 
     pAreaTableKey = ospfv2VrfName + "|" + ospfv2AreaId
 
-    log.Info("YangToDb_ospfv2_router_area_tbl_subtree_xfmr: pAreaTableKey - ", pAreaTableKey)
-    areaInfo := make(map[string]db.Value)
-    areaInfo[pAreaTableKey] = db.Value{Field:make(map[string]string)}
-    areaMap["OSPFV2_ROUTER_AREA"] = areaInfo
-    //TODO: Handle delete case "if inParams.oper == DELETE"
-    return areaMap, nil
+    log.Info("YangToDb_ospfv2_router_area_tbl_key_xfmr: pAreaTableKey - ", pAreaTableKey)
+    return pAreaTableKey, nil
 }
 
 
 
-var DbToYang_ospfv2_router_area_tbl_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-    var areaNameStr string
-    var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
-    var ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas
-    var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
-    var err error
-    oper_err := errors.New("Operational error")
-    cmn_log := "GET: DbToYang_ospfv2_router_area_tbl_subtree_xfmr"
-
+var DbToYang_ospfv2_router_area_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
     entry_key := inParams.key
-    log.Info("DbToYang_ospfv2_router_area_tbl_subtree: entry key - ", entry_key)
-    if len(inParams.key) != 0 {
-        log.Errorf ("%s failed !! Error: inParams.key should not contain any data", cmn_log);
-        return  oper_err
-    }
-    ospfv2_obj, _, err = getOspfv2Root (inParams)
-    if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
-        return  oper_err
-    }
-    var keys []db.Key
-    areaTable, _err := inParams.dbs[db.ConfigDB].GetTable(&db.TableSpec{Name:"OSPFV2_ROUTER_AREA"})
-    if _err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
-        return  oper_err
-    }
-    keys, err = areaTable.GetKeys() 
-    log.Infof("Found %d Area table keys", len(keys))
-    for _, key := range keys {
-        log.Infof("Found key %s", key)
-        areaNameStr = fmt.Sprintf("%v", key.Get(1))
-        ospfv2Areas_obj = ospfv2_obj.Areas
-        ospfv2Area_obj, err = ospfv2_find_area_by_key(ospfv2Areas_obj, areaNameStr)
-        if nil == ospfv2Area_obj {
-            log.Infof("Area object missing, add new area=%s", areaNameStr)
-            ospfv2Area_obj, err = ospfv2_create_new_area(ospfv2Areas_obj, areaNameStr)
-            if (err != nil) {
-                log.Info("Failed to create a new area")
-                return  err
-            }
-        }
+    log.Info("DbToYang_ospfv2_router_area_tbl_key: entry key - ", entry_key)
+
+    areaTableKeys := strings.Split(entry_key, "|")
+
+    if len(areaTableKeys) >= 2 {
+       //res_map["name"] = areaTableKeys[0]
+       res_map["identifier"] = areaTableKeys[1]
     }
 
-    log.Info("DbToYang_ospfv2_router_area_tbl_subtree_xfmr")
-    return nil
+    log.Info("DbToYang_ospfv2_router_area_tbl_key: res_map - ", res_map)
+    return res_map, nil
 }
 
 var YangToDb_ospfv2_router_area_area_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -366,7 +327,7 @@ var DbToYang_ospfv2_router_area_area_id_fld_xfmr FieldXfmrDbtoYang = func(inPara
     areaTableKeys := strings.Split(entry_key, "|")
 
     if len(areaTableKeys) >= 2 {
-        res_map["identifier#2"] = areaTableKeys[1]
+        res_map["identifier"] = areaTableKeys[1]
     }
 
     log.Info("DbToYang_ospfv2_router_area_area_id_fld_xfmr: res_map - ", res_map)
@@ -538,8 +499,6 @@ var DbToYang_ospfv2_router_area_network_tbl_key_xfmr KeyXfmrDbToYang = func(inPa
     netowrkTableKeys := strings.Split(entry_key, "|")
 
     if len(netowrkTableKeys) >= 3 {
-       res_map["name"] = netowrkTableKeys[0]
-       res_map["identifier#2"] = netowrkTableKeys[1]
        res_map["address-prefix"] = netowrkTableKeys[2]
     }
 
@@ -645,8 +604,8 @@ var DbToYang_ospfv2_router_area_virtual_link_tbl_key_xfmr KeyXfmrDbToYang = func
     virtualLinkTableKey := strings.Split(entry_key, "|")
 
     if len(virtualLinkTableKey) >= 3 {
-        res_map["name"] = virtualLinkTableKey[0]
-        res_map["identifier#2"] = virtualLinkTableKey[1]
+        //res_map["name"] = virtualLinkTableKey[0]
+        //res_map["identifier#2"] = virtualLinkTableKey[1]
         res_map["remote-router-id"] = virtualLinkTableKey[2]
     }
 
@@ -925,8 +884,9 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
     ospfv2Identifier      := pathInfo.Var("identifier")
     ospfv2InstanceNumber  := pathInfo.Var("name#2")
     passiveIfName  := pathInfo.Var("name#3")
+    passiveIfAddress := pathInfo.Var("address")
 
-    if len(pathInfo.Vars) <  4 {
+    if len(pathInfo.Vars) < 5 {
         err = errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))
         return ospfv2VrfName, err
@@ -951,21 +911,33 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
     }
 
     if len(passiveIfName) == 0 {
-        err = errors.New("OSPF Route Distriburion protocol name is missing")
+        err = errors.New("OSPF passive interface name is missing")
+        log.Info("OSPF Route Distriburion protocol name Missing")
+        return "", nil
+    }
+
+    if len(passiveIfAddress) == 0 {
+        err = errors.New("OSPF passive interface address is missing")
         log.Info("OSPF Route Distriburion protocol name Missing")
         return "", nil
     }
 
     log.Info("URI VRF ", ospfv2VrfName)
     log.Info("URI route distribution passiveIfName ", passiveIfName)
+    log.Info("URI route distribution passiveIfAddress ", passiveIfAddress)
 
     tempkey1 := strings.Split(passiveIfName, ":")
     if len(tempkey1) > 1 {
         passiveIfName = tempkey1[1]
     }
 
+    tempkey1 = strings.Split(passiveIfAddress, ":")
+    if len(tempkey1) > 1 {
+        passiveIfAddress = tempkey1[1]
+    }
+
     var passiveIfTableKey string
-    passiveIfTableKey = ospfv2VrfName + "|" + passiveIfName 
+    passiveIfTableKey = ospfv2VrfName + "|" + passiveIfName  + "|" + passiveIfAddress
 
     log.Info("YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr: passiveIfTableKey - ", passiveIfTableKey)
     return passiveIfTableKey, nil
@@ -978,9 +950,9 @@ var DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrDbToYang = func
 
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
-    if len(passiveIfTableKeys) >= 2 {
-        res_map["name"] = passiveIfTableKeys[0]
-        res_map["name#2"] = passiveIfTableKeys[1]
+    if len(passiveIfTableKeys) >= 3 {
+        res_map["name"] = passiveIfTableKeys[1]
+        res_map["address"] = passiveIfTableKeys[2]
     }
 
     log.Info("DbToYang_ospfv2_router_passive_interface_tbl_key: res_map - ", res_map)
@@ -1003,11 +975,34 @@ var DbToYang_ospfv2_router_passive_interface_name_fld_xfmr FieldXfmrDbtoYang = f
     entry_key := inParams.key
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
-    if len(passiveIfTableKeys) >= 2 {
-        res_map["name#2"] = passiveIfTableKeys[1]
+    if len(passiveIfTableKeys) >= 3 {
+        res_map["name"] = passiveIfTableKeys[1]
     }
     return res_map, err
 }
+
+var YangToDb_ospfv2_router_passive_interface_address_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_ospfv2_router_passive_interface_address_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    var err error
+    res_map := make(map[string]interface{})
+
+    entry_key := inParams.key
+    passiveIfTableKeys := strings.Split(entry_key, "|")
+
+    if len(passiveIfTableKeys) >= 3 {
+        res_map["address"] = passiveIfTableKeys[2]
+    }
+    return res_map, err
+}
+
 
 var YangToDb_ospfv2_interface_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
@@ -1154,6 +1149,9 @@ func ospfv2_fill_only_global_state (output_state map[string]interface{},
     var err error
     var ospfv2Gbl_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global
     var ospfv2GblState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_State
+    var numint64 int64
+    var ospfv2Zero bool = false
+    var ospfv2One bool = true
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Global State"
 
@@ -1191,10 +1189,11 @@ func ospfv2_fill_only_global_state (output_state map[string]interface{},
         ospfv2GblState_obj.LastSpfExecutionTime = &_spfLastExecutedMsecs
     }
 
-    if value,ok := output_state["spfLastDurationMsecs"] ; ok {
-        _spfLastDurationMsecs   := uint32(value.(float64))
-        ospfv2GblState_obj.LastSpfDuration = &_spfLastDurationMsecs
+    if value,ok := output_state["spfLastDurationUsecs"] ; ok {
+        _spfLastDurationUsecs   := uint32(value.(float64))
+        ospfv2GblState_obj.LastSpfDuration = &_spfLastDurationUsecs
     }
+
     if value,ok := output_state["writeMultiplier"] ; ok {
         _write_multiplier := uint8(value.(float64))
         ospfv2GblState_obj.WriteMultiplier = &_write_multiplier
@@ -1208,20 +1207,51 @@ func ospfv2_fill_only_global_state (output_state map[string]interface{},
         ospfv2GblState_obj.OpaqueLsaCount = &_lsaAsopaqueCounter
     }
     if value,ok := output_state["lsaExternalChecksum"]; ok {
-        _lsaExternalChecksum := math.Float64bits(value.(float64))
-        s16 := strconv.FormatUint(_lsaExternalChecksum, 16)
-        ospfv2GblState_obj.ExternalLsaChecksum = &s16
+        numint64 = int64(value.(float64))
+        numstr := fmt.Sprintf("0x%08x", numint64)
+        ospfv2GblState_obj.ExternalLsaChecksum = &numstr
     }
     if value,ok := output_state["lsaAsOpaqueChecksum"]; ok {
-        _lsaAsOpaqueChecksum := math.Float64bits(value.(float64))
-        s16 := strconv.FormatUint(_lsaAsOpaqueChecksum, 16)
-        ospfv2GblState_obj.OpaqueLsaChecksum = &s16
+        numint64 = int64(value.(float64))
+        numstr := fmt.Sprintf("0x%08x", numint64)
+        ospfv2GblState_obj.OpaqueLsaChecksum = &numstr
     }
     if value,ok := output_state["attachedAreaCounter"] ; ok {
         _attachedAreaCounter  := uint32(value.(float64))
         ospfv2GblState_obj.AreaCount = &_attachedAreaCounter
     }
+    ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_UNSET
+    if _abrtype,ok := output_state["abrType"].(string); ok {
+        if _abrtype == "Alternative Cisco" {
+            ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_CISCO
+        }
+        if _abrtype == "Alternative IBM" {
+            ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_IBM
+        }
+        if _abrtype == "Alternative Shortcut" {
+            ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_SHORTCUT
+        }
+        if _abrtype == "Standard (RFC2328)" {
+            ospfv2GblState_obj.AbrType = ocbinds.OpenconfigOspfv2Ext_OSPF_ABR_TYPE_STANDARD
+        }
+    }
+
+    if _stubAdvertisement, ok := output_state["stubAdvertisement"].(bool); ok {
+        if _stubAdvertisement ==  false {
+            ospfv2GblState_obj.StubAdvertisement = &ospfv2Zero
+        } else {
+            ospfv2GblState_obj.StubAdvertisement = &ospfv2One
+        }
+    }
     
+    if value,ok := output_state["preShutdownEnabledSecs"] ; ok {
+        _preShutdownEnabledSecs := uint32(value.(float64))
+        ospfv2GblState_obj.PreShutdownEnabledSecs = &_preShutdownEnabledSecs
+    }
+    if value,ok := output_state["postStartEnabledSecs"] ; ok {
+        _postStartEnabledSecs := uint32(value.(float64))
+        ospfv2GblState_obj.PostStartEnabledSecs = &_postStartEnabledSecs
+    }
     return err
 }
 
@@ -1388,18 +1418,15 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
                 ospfv2Route.InterArea = &ospfv2One
             }
         }
-        if _abr, ok := route_info["routerTypeAbr"].(bool); ok {
-            if _abr ==  false {
-                ospfv2Route.RouterTypeAbr = &ospfv2Zero
-            } else {
-                ospfv2Route.RouterTypeAbr = &ospfv2One
+        if _routertype, ok := route_info["routerType"].(string); ok {
+            if _routertype == "abr" {
+                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ABR
             }
-        }
-        if _asbr, ok := route_info["routerTypeAsbr"].(bool); ok {
-            if _asbr ==  false {
-                ospfv2Route.RouterTypeAsbr = &ospfv2Zero
-            } else {
-                ospfv2Route.RouterTypeAsbr = &ospfv2One
+            if _routertype == "asbr" {
+                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ASBR
+            }
+            if _routertype == "abr asbr" {
+                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ABRASBR
             }
         }
         switch(route_info["routeType"]) {
@@ -1475,10 +1502,8 @@ func ospfv2_init_new_area(ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_Netw
 func ospfv2_find_area_by_key(ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas, 
 areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area, error) {
     var err error
+    var ospfv2AreaKey1 *string
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
-    var ospfv2AreaKey1 ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union
-    //var ospfv2AreaKey2 ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union
-    //var areaptr *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String
     log.Infof("Entered ospfv2_find_area_by_key %s", areaNameStr)
     if ((nil == ospfv2Areas_obj) || (nil == ospfv2Areas_obj.Area)) {
         return nil, err
@@ -1486,9 +1511,7 @@ areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_Network
     for _, ospfv2Area_obj = range ospfv2Areas_obj.Area {
         ospfv2AreaKey1 = ospfv2Area_obj.Identifier  
         log.Info("Key are ", ospfv2AreaKey1, areaNameStr)
-        newAreaStr := 
-            ospfv2AreaKey1.(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String)
-        if(newAreaStr.String == areaNameStr) {
+        if(*ospfv2AreaKey1 == areaNameStr) {
             log.Info("Match found")
             return ospfv2Area_obj, nil
         }
@@ -1501,14 +1524,12 @@ areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_Network
     var ok   bool
     oper_err := errors.New("Operational error")
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
-    var ospfv2AreaKeyStr ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String
     log.Infof("Entered ospfv2_create_new_area %s", areaNameStr)
     if (nil == ospfv2Areas_obj) {
         return nil, oper_err
     }    
-    ospfv2AreaKeyStr.String = areaNameStr
-    if  ospfv2Area_obj, ok = ospfv2Areas_obj.Area[&ospfv2AreaKeyStr]; !ok {
-        ospfv2Area_obj, err = ospfv2Areas_obj.NewArea(&ospfv2AreaKeyStr)
+    if  ospfv2Area_obj, ok = ospfv2Areas_obj.Area[areaNameStr]; !ok {
+        ospfv2Area_obj, err = ospfv2Areas_obj.NewArea(areaNameStr)
         if (err != nil) {
             log.Info("Failed to create a new area")
             return  nil, err
@@ -1516,7 +1537,7 @@ areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_Network
         ygot.BuildEmptyTree(ospfv2Area_obj)
     }
         
-    ospfv2Area_obj.Config.Identifier = &ospfv2AreaKeyStr
+    ospfv2Area_obj.Config.Identifier = &areaNameStr
     return ospfv2Area_obj, err
 } 
 func ospfv2_fill_area_state (output_state map[string]interface{}, 
@@ -1525,6 +1546,9 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
     var ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
     var ospfv2AreaInfo_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_State
+    var ospfv2Zero bool = false
+    var ospfv2One bool = true
+    var numint64 int64
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Areas-Area State"
     var areaNameStr string
@@ -1569,7 +1593,9 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
                 if _authtype == "authenticationNone" {
                     ospfv2AreaInfo_obj.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_AUTH_NONE
                 }
-                //TBD: To add other authentication later
+                if _authtype == "authenticationMessageDigest" {
+                    ospfv2AreaInfo_obj.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_MD5HMAC
+                }
             }
             
             if value,ok := area_info["areaIfTotalCounter"] ; ok {
@@ -1599,58 +1625,137 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
                 ospfv2AreaInfo_obj.RouterLsaCount = &_lsaRouterNumber
             }
             if value,ok := area_info["lsaRouterChecksum"]; ok {
-                _lsaRouterChecksum  := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaRouterChecksum, 16)
-                ospfv2AreaInfo_obj.RouterLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.RouterLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaNetworkNumber"]; ok {
                 _lsaNetworkNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.NetworkLsaCount = &_lsaNetworkNumber
             }
             if value,ok := area_info["lsaNetworkChecksum"]; ok {
-                _lsaNetworkChecksum   := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaNetworkChecksum, 16)
-                ospfv2AreaInfo_obj.NetworkLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.NetworkLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaSummaryNumber"]; ok {
                 _lsaSummaryNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.SummaryLsaCount = &_lsaSummaryNumber
             }
             if value,ok := area_info["lsaSummaryChecksum"]; ok {
-                _lsaSummaryChecksum  := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaSummaryChecksum, 16)
-                ospfv2AreaInfo_obj.SummaryLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.SummaryLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaAsbrNumber"]; ok {
                 _lsaAsbrNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.AsbrSummaryLsaCount = &_lsaAsbrNumber
             }
             if value,ok := area_info["lsaAsbrChecksum"]; ok {
-                _lsaAsbrChecksum   := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaAsbrChecksum, 16)
-                ospfv2AreaInfo_obj.AsbrSummaryLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.AsbrSummaryLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaNssaNumber"]; ok {
                 _lsaNssaNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.NssaLsaCount = &_lsaNssaNumber
             }
             if value,ok := area_info["lsaNssaChecksum"]; ok {
-                _lsaNssaChecksum  := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaNssaChecksum, 16)
-                ospfv2AreaInfo_obj.NssaLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.NssaLsaChecksum = &numstr
             }
             if value,ok := area_info["lsaOpaqueLinkNumber"]; ok {
                 _lsaOpaqueAreaNumber := uint32(value.(float64))
                 ospfv2AreaInfo_obj.OpaqueAreaLsaCount = &_lsaOpaqueAreaNumber
             }
             if value,ok := area_info["lsaOpaqueAreaChecksum"]; ok {
-                _lsaOpaqueAreaChecksum := math.Float64bits(value.(float64))
-                s16 := strconv.FormatUint(_lsaOpaqueAreaChecksum, 16)
-                ospfv2AreaInfo_obj.OpaqueAreaLsaChecksum = &s16
+                numint64 = int64(value.(float64))
+                numstr := fmt.Sprintf("0x%08x", numint64)
+                ospfv2AreaInfo_obj.OpaqueAreaLsaChecksum = &numstr
             }
-            
+            ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_UNSET
+            if (areaNameStr != "0.0.0.0") {
+                ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_DEFAULT
+            }
+            if _shortcut,ok := area_info["shortcuttingMode"].(string); ok {
+                if _shortcut == "Enabled" {
+                    ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_ENABLE
+                }
+                if _shortcut == "Disabled" {
+                    ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_DISABLE
+                }
+                if _shortcut == "Default" {
+                    ospfv2AreaInfo_obj.Shortcut = ocbinds.OpenconfigOspfv2Ext_OSPF_CONFIG_TYPE_DEFAULT
+                }
+            }
+            if value,ok := area_info["virtualAdjacenciesPassingCounter"]; ok {
+                _virtualAdjacenciesPassingCounter := uint32(value.(float64))
+                ospfv2AreaInfo_obj.VirtualLinkAdjacencyCount = &_virtualAdjacenciesPassingCounter
+            }
+            if _stubEnable, ok := area_info["stubEnable"].(bool); ok {
+                if _stubEnable ==  true {
+                    ospfv2_fill_area_stub_state(ospfv2Area_obj, area_info)    
+                }
+            }
+            if _originStubMaxDistRouterLsa,ok := area_info["originStubMaxDistRouterLsa"].(bool); ok {
+                if _originStubMaxDistRouterLsa ==  false {
+                    ospfv2AreaInfo_obj.OriginStubMaxDistRouterLsa = &ospfv2Zero
+                } else {
+                    ospfv2AreaInfo_obj.OriginStubMaxDistRouterLsa = &ospfv2One
+                }
+            }
+
+            if _indefiniteActiveAdmin,ok := area_info["indefiniteActiveAdmin"].(bool); ok {
+                if _indefiniteActiveAdmin ==  false {
+                    ospfv2AreaInfo_obj.IndefiniteActiveAdmin = &ospfv2Zero
+                } else {
+                    ospfv2AreaInfo_obj.IndefiniteActiveAdmin = &ospfv2One
+                }
+            }
         }
     }    
+    return err
+}
+
+func ospfv2_fill_area_stub_state(ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area,
+        area_info map[string]interface{}) error {
+    var err error
+    var ospfv2Zero bool = false
+    var ospfv2One bool = true
+    oper_err := errors.New("Operational error")
+    cmn_log := "GET: Stub  State for area "
+    var stubState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Stub_State
+
+    if (nil == ospfv2Area_obj.Stub) {
+        log.Info("Stub information not present in area")
+        return oper_err
+    }
+    stubState = ospfv2Area_obj.Stub.State
+    if nil == stubState {
+        log.Infof("state under area stub is  missing, add stub state for area ")
+        stubState = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Stub_State)
+        if stubState == nil {
+            log.Errorf("%s failed !! Error: Failed to create Stub State Tree under area", cmn_log)
+            return  oper_err
+        }
+        ygot.BuildEmptyTree (stubState)
+        ospfv2Area_obj.Stub.State = stubState
+    }
+    if _stubEnable, ok := area_info["stubEnable"].(bool); ok {
+        if _stubEnable ==  false {
+            stubState.Enable = &ospfv2Zero
+        } else {
+            stubState.Enable = &ospfv2One
+        }
+    }
+    if _stubNoSummary, ok := area_info["stubNoSummary"].(bool); ok {
+        if _stubNoSummary ==  false {
+            stubState.NoSummary = &ospfv2Zero
+        } else {
+            stubState.NoSummary = &ospfv2One
+        }
+    }
     return err
 }
 
@@ -1754,19 +1859,42 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                         }
                     } 
                     ygot.BuildEmptyTree(ospfv2Neighbor_obj)
-                    ospfv2Neighbor_obj.InterfaceAddress = &_ifaceAddress
+                    //ospfv2Neighbor_obj.InterfaceAddress = &_ifaceAddress
                     ospfv2NeighborAreaKey.String = area_id
                     ospfv2Neighbor_obj.AreaId = &ospfv2NeighborAreaKey
                     ospfv2Neighbor_obj.InterfaceName = &intf_name
+                }
+
+                if _ipAddress, ok := nbr_info["ifaceLocalAddress"].(string); ok {
+                    ospfv2Neighbor_obj.InterfaceAddress = &_ipAddress
                 }
                 
                 if value,ok := nbr_info["nbrPriority"] ; ok {
                     _nbrPriority  := uint8(value.(float64))
                     ospfv2Neighbor_obj.Priority = &_nbrPriority
                 }
+                
+                ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT 
                 if _nbr_state,ok := nbr_info["nbrState"].(string); ok {
-                    if _nbr_state == "Full" { 
-                        ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_FULL 
+                    switch (_nbr_state) {
+                        case  "Full" :
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_FULL 
+                        case "2-Way" :
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_TWO_WAY 
+                        case "ExStart" :
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXSTART
+                        case "Down" :
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_DOWN
+                        case "Attempt" : 
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_ATTEMPT
+                        case "Init" :
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
+                        case "Exchange" :
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXCHANGE
+                        case "Loading" :
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_LOADING
+                        default:
+                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
                     }
                 }
                 if value,ok := nbr_info["stateChangeCounter"] ; ok {
@@ -1806,6 +1934,11 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                     ospfv2Neighbor_obj.DatabaseSummaryQueueLength = &_databaseSummaryListCounter
                 }
 
+                if value,ok := nbr_info["linkStateRetransmissionListCounter"] ; ok {
+                    _linkStateRetransmissionListCounter  := uint32(value.(float64))
+                    ospfv2Neighbor_obj.RetransmitSummaryQueueLength = &_linkStateRetransmissionListCounter
+                }
+
                 if value,ok := nbr_info["linkStateRequestListCounter"] ; ok {
                     _linkStateRequestListCounter  := uint32(value.(float64))
                     ospfv2Neighbor_obj.LinkStateRequestQueueLength = &_linkStateRequestListCounter
@@ -1834,13 +1967,221 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                         ospfv2Neighbor_obj.ThreadLsUpdateRetransmission = &ospfv2Zero; 
                     }
                 }
+                if _bfdmap,ok := nbr_info["peerBfdInfo"] ; ok {
+                    ospfv2Neighbor_obj.BfdState = &ospfv2One
+                    bfdmap := _bfdmap.(map[string]interface{})
+                    if _status, ok := bfdmap["status"].(string); ok {
+                          ospfv2Neighbor_obj.BfdStatus = &_status
+                    }
+                    if _BfdPeerType, ok := bfdmap["type"].(string); ok {
+                          ospfv2Neighbor_obj.BfdPeerType = &_BfdPeerType
+                    }
+                    if _lastUpdate, ok := bfdmap["lastUpdate"].(string); ok {
+                          ospfv2Neighbor_obj.BfdPeerLastUpdateTime = &_lastUpdate
+                    }
+                }    
             }
         }
     }    
     return err
 }
+func ospfv2_fill_interface_vlink_state(intf_info map[string]interface{}, 
+                ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area,
+                intf_name string, vrfName interface{}) error {
+    var err error
+    var ok bool
+    var _vlinkPeer string
+    var ospfv2Zero bool = false
+    var numint64 int64
+    var ospfv2One bool = true
+    var ospfv2IntfState string = "Down"
+    var area_id = ospfv2Area_obj.Identifier
+    oper_err := errors.New("Operational error")
+    cmn_log := "GET: VLINK State for area "
+    var ospfv2Vlinks_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks
+    var ospfv2Vlink_obj  *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink
+    var ospfv2VlinkState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State
+    var ospfv2AreaId ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_AreaId_Union_String
+    var interfaceName string = intf_name
+    log.Infof("%s", cmn_log)
+    if (nil == ospfv2Area_obj.VirtualLinks) {
+        log.Info("Virtual Links information not present in area")
+        return oper_err
+    }
+    ospfv2Vlinks_obj = ospfv2Area_obj.VirtualLinks
+
+    if _vlinkPeer, ok = intf_info["vlinkPeer"].(string); ok {
+        ospfv2Vlink_obj, _  = ospfv2Vlinks_obj.VirtualLink[_vlinkPeer]
+        if nil == ospfv2Vlink_obj {
+            log.Infof("Vlink interface missing for %s, peer %s, add new vlink", *area_id, _vlinkPeer)
+            ospfv2Vlink_obj, err = ospfv2Vlinks_obj.NewVirtualLink(_vlinkPeer)
+            if (err != nil) {
+                log.Info("Failed to create a new vlink under vlink tree")
+                return  oper_err
+            }
+            ygot.BuildEmptyTree (ospfv2Vlink_obj)
+        }
+    }
+    ospfv2VlinkState_obj = ospfv2Vlink_obj.State
+    if nil == ospfv2VlinkState_obj {
+        log.Infof("Vlink interface State missing for %s, peer %s, returning", area_id, _vlinkPeer)
+        return  oper_err
+    }
+
+    log.Infof("vlink intf_name %s ptr %x", intf_name, &intf_name)
+    ospfv2VlinkState_obj.Name = &interfaceName
+    if _intf_state,ok := intf_info["ifUp"].(bool); ok {
+        if _intf_state ==  false { 
+            ospfv2VlinkState_obj.OperationalState = &ospfv2IntfState
+        } else {
+            ospfv2IntfState = "Up"
+            ospfv2VlinkState_obj.OperationalState = &ospfv2IntfState
+        }
+    }
+
+    if value,ok := intf_info["ifIndex"] ; ok {
+        _ifIndex  := uint32(value.(float64))
+        ospfv2VlinkState_obj.Index = &_ifIndex
+    }
+
+    if value,ok := intf_info["mtuBytes"] ; ok {
+        _mtuBytes  := uint32(value.(float64))
+        ospfv2VlinkState_obj.Mtu = &_mtuBytes
+    }
+
+    if value,ok := intf_info["bandwidthMbit"] ; ok {
+        _bandwidthMbit  := uint32(value.(float64))
+        ospfv2VlinkState_obj.Bandwidth = &_bandwidthMbit
+    }
+
+    if _ifFlags, ok := intf_info["ifFlags"].(string); ok {
+        ospfv2VlinkState_obj.IfFlags = &_ifFlags
+    }
+
+    if _ospfEnabled,ok := intf_info["ospfEnabled"].(bool); ok {
+        if _ospfEnabled ==  false { 
+            ospfv2VlinkState_obj.OspfEnable = &ospfv2Zero
+        } else {
+            ospfv2VlinkState_obj.OspfEnable = &ospfv2One
+        }
+    }
+
+    if _ipAddress, ok := intf_info["ipAddress"].(string); ok {
+        ospfv2VlinkState_obj.Address = &_ipAddress
+    }
+
+    if value,ok := intf_info["ipAddressPrefixlen"] ; ok {
+        _ipAddressPrefixlen  := uint8(value.(float64))
+        ospfv2VlinkState_obj.AddressLen = &_ipAddressPrefixlen
+    }
+
+    if _ospfIfType, ok := intf_info["ospfIfType"].(string); ok {
+        ospfv2VlinkState_obj.OspfInterfaceType = &_ospfIfType
+    }
+
+    if _localIfUsed, ok := intf_info["localIfUsed"].(string); ok {
+        ospfv2VlinkState_obj.BroadcastAddress = &_localIfUsed
+    }
+    
+    if _areaStr, ok := intf_info["area"].(string); ok {
+        ospfv2AreaId.String = _areaStr
+        ospfv2VlinkState_obj.AreaId = &ospfv2AreaId
+    }
+
+    if _routerId, ok := intf_info["routerId"].(string); ok {
+        ospfv2VlinkState_obj.RouterId = &_routerId
+    }
+
+    if _networkType, ok := intf_info["networkType"].(string); ok {
+        if _networkType == "BROADCAST" {
+            ospfv2VlinkState_obj.NetworkType = ocbinds.OpenconfigOspfTypes_OSPF_NETWORK_TYPE_BROADCAST_NETWORK
+        }
+        if _networkType == "VIRTUALLINK" {
+            ospfv2VlinkState_obj.NetworkType = ocbinds.OpenconfigOspfTypes_OSPF_NETWORK_TYPE_VIRTUALLINK_NETWORK
+        }
+    }
+    if value,ok := intf_info["cost"] ; ok {
+        _cost  := uint32(value.(float64))
+        ospfv2VlinkState_obj.Cost = &_cost
+    }
+    if value,ok := intf_info["transmitDelaySecs"] ; ok {
+        _transmitDelaySecs  := uint32(value.(float64))
+        ospfv2VlinkState_obj.TransmitDelay = &_transmitDelaySecs
+    }
+
+    if _AdjacencyState, ok := intf_info["state"].(string); ok {
+        ospfv2VlinkState_obj.State = &_AdjacencyState
+    }
+    if value,ok := intf_info["priority"] ; ok {
+        _priority  := uint8(value.(float64))
+        ospfv2VlinkState_obj.Priority = &_priority
+    }
+    if _bdrId, ok := intf_info["bdrId"].(string); ok {
+        ospfv2VlinkState_obj.BackupDesignatedRouter = &_bdrId
+    }
+    if _bdrAddress, ok := intf_info["bdrAddress"].(string); ok {
+        ospfv2VlinkState_obj.BackupDesignatedRouterAddress = &_bdrAddress
+    }
+    if value,ok := intf_info["networkLsaSequence"] ; ok {
+        numint64 = int64(value.(float64))
+        numstr := fmt.Sprintf("0x%08x", numint64)
+        ospfv2VlinkState_obj.NetworkLsaSequenceNumber = &numstr
+    }
+    if _mcastMemberOspfAllRouters,ok := intf_info["mcastMemberOspfAllRouters"].(bool); ok {
+        if _mcastMemberOspfAllRouters ==  false { 
+            ospfv2VlinkState_obj.MemberOfOspfAllRouters = &ospfv2Zero
+        } else {
+            ospfv2VlinkState_obj.MemberOfOspfAllRouters = &ospfv2One
+        }
+    }
+    if _mtuMismatchDetect,ok := intf_info["mtuMismatchDetect"].(bool); ok {
+        if _mtuMismatchDetect ==  false { 
+            ospfv2VlinkState_obj.MtuIgnore = &ospfv2Zero
+        } else {
+            ospfv2VlinkState_obj.MtuIgnore = &ospfv2One
+        }
+    }
+    if _mcastMemberOspfDesignatedRouters,ok := intf_info["mcastMemberOspfDesignatedRouters"].(bool); ok {
+        if _mcastMemberOspfDesignatedRouters ==  false {
+            ospfv2VlinkState_obj.MemberOfOspfDesignatedRouters = &ospfv2Zero
+        } else {
+            ospfv2VlinkState_obj.MemberOfOspfDesignatedRouters = &ospfv2One
+        }
+    }
+    if value,ok := intf_info["nbrCount"] ; ok {
+        _nbrCount  := uint32(value.(float64))
+        ospfv2VlinkState_obj.NeighborCount = &_nbrCount
+    }
+    if value,ok := intf_info["nbrAdjacentCount"] ; ok {
+        _nbrAdjacentCount  := uint32(value.(float64))
+        ospfv2VlinkState_obj.AdjacencyCount = &_nbrAdjacentCount
+    }    
+    if value,ok := intf_info["timerMsecs"] ; ok {
+        _timerMsecs  := uint32(value.(float64))
+        ospfv2VlinkState_obj.HelloInterval = &_timerMsecs
+    } 
+    if value,ok := intf_info["timerDeadSecs"] ; ok {
+        _timerDeadSecs  := uint32(value.(float64))
+        ospfv2VlinkState_obj.DeadInterval = &_timerDeadSecs
+    } 
+    if value,ok := intf_info["timerWaitSecs"] ; ok {
+        _timerWaitSecs  := uint32(value.(float64))
+        ospfv2VlinkState_obj.WaitTime = &_timerWaitSecs
+    } 
+    if value,ok := intf_info["timerRetransmitSecs"] ; ok {
+        _timerRetransmitSecs  := uint32(value.(float64))
+        ospfv2VlinkState_obj.RetransmissionInterval = &_timerRetransmitSecs
+    } 
+    if value,ok := intf_info["timerHelloInMsecs"] ; ok {
+        _timerHelloInMsecs  := uint32(value.(float64))
+        ospfv2VlinkState_obj.HelloDue = &_timerHelloInMsecs
+    } 
+    
+    return err
+}
 func ospfv2_fill_interface_state (intf_info map[string]interface{}, 
-        ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, area_id string, intf_name string, vrfName interface{}) error {
+        ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, area_id string, intf_name string, vrfName interface{},
+        output_interfaces_traffic map[string]interface{}) error {
     var err error
     var ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
@@ -1849,6 +2190,7 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
     var ospfv2InterfaceState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_State
     var ospfv2Zero bool = false
     var ospfv2One bool = true
+    var numint64 int64
     var ospfv2IntfState string = "Down"
     var areaNameStr string
     var ospfv2AreaId ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_State_AreaId_Union_String
@@ -1869,6 +2211,11 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
             log.Info("Failed to create a new area")
             return  oper_err
         }
+    }
+    if (strings.Contains(intf_name, "VLINK")) {
+        ospfv2_fill_interface_vlink_state(intf_info, ospfv2Area_obj, intf_name, vrfName)
+        ospfv2_fill_interface_vlink_state_traffic(intf_info, output_interfaces_traffic, ospfv2Area_obj, intf_name)
+        return err
     }
     ospfv2Interfaces_obj = ospfv2Area_obj.Interfaces
     if ospfv2Interfaces_obj == nil {
@@ -1940,6 +2287,14 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
         }
     }
 
+    if _passiveEnabled,ok := intf_info["timerPassiveIface"].(bool); ok {
+        if _passiveEnabled ==  false { 
+            ospfv2InterfaceState_obj.Passive = &ospfv2Zero
+        } else {
+            ospfv2InterfaceState_obj.Passive = &ospfv2One
+        }
+    }
+
     if _ipAddress, ok := intf_info["ipAddress"].(string); ok {
         ospfv2InterfaceState_obj.Address = &_ipAddress
     }
@@ -1957,15 +2312,28 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
         ospfv2InterfaceState_obj.BroadcastAddress = &_localIfUsed
     }
     
-    ospfv2AreaId.String = area_id
-    ospfv2InterfaceState_obj.AreaId = &ospfv2AreaId
+    if _areaStr, ok := intf_info["area"].(string); ok {
+        ospfv2AreaId.String = _areaStr
+        ospfv2InterfaceState_obj.AreaId = &ospfv2AreaId
+    }
+
     if _routerId, ok := intf_info["routerId"].(string); ok {
         ospfv2InterfaceState_obj.RouterId = &_routerId
     }
 
+    ospfv2InterfaceState_obj.NetworkType = ocbinds.OpenconfigOspfTypes_OSPF_NETWORK_TYPE_BROADCAST_NETWORK
     if _networkType, ok := intf_info["networkType"].(string); ok {
-        if _networkType == "Broadcast" {
+        if _networkType == "BROADCAST" {
             ospfv2InterfaceState_obj.NetworkType = ocbinds.OpenconfigOspfTypes_OSPF_NETWORK_TYPE_BROADCAST_NETWORK
+        }
+        if _networkType == "POINTOPOINT" {
+            ospfv2InterfaceState_obj.NetworkType = ocbinds.OpenconfigOspfTypes_OSPF_NETWORK_TYPE_POINT_TO_POINT_NETWORK
+        }
+        if _networkType == "NBMA" {
+            ospfv2InterfaceState_obj.NetworkType = ocbinds.OpenconfigOspfTypes_OSPF_NETWORK_TYPE_NON_BROADCAST_NETWORK
+        }
+        if _networkType == "VIRTUALLINK" {
+            ospfv2InterfaceState_obj.NetworkType = ocbinds.OpenconfigOspfTypes_OSPF_NETWORK_TYPE_VIRTUALLINK_NETWORK
         }
     }
     if value,ok := intf_info["cost"] ; ok {
@@ -1991,14 +2359,22 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
         ospfv2InterfaceState_obj.BackupDesignatedRouterAddress = &_bdrAddress
     }
     if value,ok := intf_info["networkLsaSequence"] ; ok {
-        _networkLsaSequence  := uint32(value.(float64))
-        ospfv2InterfaceState_obj.NetworkLsaSequenceNumber = &_networkLsaSequence
+        numint64 = int64(value.(float64))
+        numstr := fmt.Sprintf("0x%08x", numint64)
+        ospfv2InterfaceState_obj.NetworkLsaSequenceNumber = &numstr
     }
     if _mcastMemberOspfAllRouters,ok := intf_info["mcastMemberOspfAllRouters"].(bool); ok {
         if _mcastMemberOspfAllRouters ==  false { 
             ospfv2InterfaceState_obj.MemberOfOspfAllRouters = &ospfv2Zero
         } else {
             ospfv2InterfaceState_obj.MemberOfOspfAllRouters = &ospfv2One
+        }
+    }
+    if _mtuMismatchDetect,ok := intf_info["mtuMismatchDetect"].(bool); ok {
+        if _mtuMismatchDetect ==  false { 
+            ospfv2InterfaceState_obj.MtuIgnore = &ospfv2Zero
+        } else {
+            ospfv2InterfaceState_obj.MtuIgnore = &ospfv2One
         }
     }
     if _mcastMemberOspfDesignatedRouters,ok := intf_info["mcastMemberOspfDesignatedRouters"].(bool); ok {
@@ -2015,6 +2391,9 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
     if value,ok := intf_info["nbrAdjacentCount"] ; ok {
         _nbrAdjacentCount  := uint32(value.(float64))
         ospfv2InterfaceState_obj.AdjacencyCount = &_nbrAdjacentCount
+    }    
+    if _,ok := intf_info["peerBfdInfo"] ; ok {
+        ospfv2InterfaceState_obj.BfdState = &ospfv2One
     }    
     return err
 }
@@ -2093,6 +2472,103 @@ func ospfv2_fill_interface_message_stats (output_state map[string]interface{},
     return err
 }
 
+func ospfv2_fill_interface_vlink_state_traffic (intf_info map[string]interface{}, output_state map[string]interface{}, 
+        ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area, intf_name string) error {
+    var err error
+    var ok bool
+    var _vlinkPeer string
+    var area_id = ospfv2Area_obj.Identifier
+    oper_err := errors.New("Operational error")
+    cmn_log := "GET: VLINK State Traffic for area "
+    var ospfv2Vlinks_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks
+    var ospfv2Vlink_obj  *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink
+    var ospfv2VlinkState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State
+    var ospfv2VlinkStats_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_MessageStatistics
+    log.Infof("%s", cmn_log)
+    if (nil == ospfv2Area_obj.VirtualLinks) {
+        log.Info("Virtual Links information not present in area")
+        return oper_err
+    }
+    ospfv2Vlinks_obj = ospfv2Area_obj.VirtualLinks
+
+    if _vlinkPeer, ok = intf_info["vlinkPeer"].(string); ok {
+        ospfv2Vlink_obj, _  = ospfv2Vlinks_obj.VirtualLink[_vlinkPeer]
+        if nil == ospfv2Vlink_obj {
+            log.Infof("Vlink interface missing for %s, peer %s, add new vlink", area_id, _vlinkPeer)
+            ospfv2Vlink_obj, err = ospfv2Vlinks_obj.NewVirtualLink(_vlinkPeer)
+            if (err != nil) {
+                log.Info("Failed to create a new vlink under vlink tree")
+                return  oper_err
+            }
+            ygot.BuildEmptyTree (ospfv2Vlink_obj)
+            ospfv2Vlink_obj.RemoteRouterId = &_vlinkPeer
+        }
+    }
+    ospfv2VlinkState_obj = ospfv2Vlink_obj.State
+    if nil == ospfv2VlinkState_obj {
+        log.Infof("Vlink interface State missing for %s, peer %s, returning", area_id, _vlinkPeer)
+        return  oper_err
+    }
+    ospfv2VlinkState_obj.Name = &intf_name
+    
+    ospfv2VlinkStats_obj = ospfv2VlinkState_obj.MessageStatistics
+    if nil == ospfv2VlinkStats_obj {
+        log.Infof("Statistics under Vlink State missing for %s, peer %s, returning", area_id, _vlinkPeer)
+        return  oper_err
+    }
+    for _,value := range output_state {
+        interfaces_info := value.(map[string]interface{})
+        for key, value := range interfaces_info {
+            if(key != intf_name) {
+                log.Infof("skipping interface %s as stats needed for interface %s ", key, intf_name)
+                continue
+            }
+            intf_info := value.(map[string]interface{})
+            if value,ok := intf_info["helloIn"] ; ok {
+                _helloIn  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.HelloReceive = &_helloIn
+            }
+            if value,ok := intf_info["helloOut"] ; ok {
+                _helloOut  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.HelloTransmit = &_helloOut
+            }
+            if value,ok := intf_info["dbDescIn"] ; ok {
+                _dbDescIn  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.DbDescriptionReceive = &_dbDescIn
+            }
+            if value,ok := intf_info["dbDescOut"] ; ok {
+                _dbDescOut  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.DbDescriptionTransmit = &_dbDescOut
+            }
+            if value,ok := intf_info["lsReqIn"] ; ok {
+                _lsReqIn  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.LsRequestReceive = &_lsReqIn
+            }
+            if value,ok := intf_info["lsReqOut"] ; ok {
+                _lsReqOut  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.LsRequestTransmit = &_lsReqOut
+            }
+            if value,ok := intf_info["lsUpdIn"] ; ok {
+                _lsUpdIn  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.LsUpdateReceive = &_lsUpdIn
+            }
+            if value,ok := intf_info["lsUpdOut"] ; ok {
+                _lsUpdOut  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.LsUpdateTransmit = &_lsUpdOut
+            }
+            if value,ok := intf_info["lsAckIn"] ; ok {
+                _lsAckIn  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.LsAcknowledgeReceive = &_lsAckIn
+            }
+            if value,ok := intf_info["lsAckOut"] ; ok {
+                _lsAckOut  := uint32(value.(float64))
+                ospfv2VlinkStats_obj.LsAcknowledgeTransmit = &_lsAckOut
+            }
+        } 
+    }
+    
+    return err
+}
 func ospfv2_fill_interface_timers_state (intf_info map[string]interface{}, 
         ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, area_id string, intf_name string, vrfName interface{}) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface, error) {
     var err error
@@ -2105,7 +2581,7 @@ func ospfv2_fill_interface_timers_state (intf_info map[string]interface{},
     var areaNameStr string
 
     oper_err := errors.New("Operational error")
-    cmn_log := "GET: xfmr for OSPF-Interface State"
+    cmn_log := "GET: xfmr for OSPF-Interface Timers State"
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
@@ -2121,6 +2597,10 @@ func ospfv2_fill_interface_timers_state (intf_info map[string]interface{},
             log.Info("Failed to create a new area")
             return  nil, oper_err
         }
+    }
+    if (strings.Contains(intf_name, "VLINK")) {
+        ospfv2_fill_interface_vlink_state(intf_info, ospfv2Area_obj, intf_name, vrfName)
+        return nil, err
     }
     ospfv2Interfaces_obj = ospfv2Area_obj.Interfaces
     if ospfv2Interfaces_obj == nil {
@@ -2437,13 +2917,13 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
     log.Info(targetUriPath)
     vtysh_cmd = "show ip ospf vrf " + vrfName + " neighbor detail json"
-    output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    output_nbrs_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
       log.Errorf("Failed to fetch ospf neighbor detail:, err=%s", cmd_err)
       return  cmd_err
     }
     
-    log.Info(output_state)
+    log.Info(output_nbrs_state)
     log.Info(vrfName)
     vtysh_cmd = "show ip ospf vrf " + vrfName + " interface json"
     output_interfaces, cmd_err := exec_vtysh_cmd (vtysh_cmd)
@@ -2475,11 +2955,14 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
                     continue
                 }
             }
-            for _,value := range output_state {
-                neighbors_info := value.(map[string]interface{})
-                err = ospfv2_fill_neighbors_state (neighbors_info, ospfv2_obj, area_id, intf_name, vrfName)
+            /* Assume no neighbors on vlink interface */       
+            if (strings.Contains(intf_name, "VLINK") == false) {
+                for _,value := range output_nbrs_state {
+                    neighbors_info := value.(map[string]interface{})
+                    err = ospfv2_fill_neighbors_state (neighbors_info, ospfv2_obj, area_id, intf_name, vrfName)
+                }
             }
-            ospfv2_fill_interface_state(intf_info, ospfv2_obj, area_id, intf_name, vrfName)
+            ospfv2_fill_interface_state(intf_info, ospfv2_obj, area_id, intf_name, vrfName, output_interfaces_traffic)
             ospfv2Interface_obj, err =  ospfv2_fill_interface_timers_state(intf_info, ospfv2_obj, area_id, intf_name, vrfName)
             if (nil != ospfv2Interface_obj) {
                 ospfv2_fill_interface_message_stats(output_interfaces_traffic, ospfv2Interface_obj, intf_name)

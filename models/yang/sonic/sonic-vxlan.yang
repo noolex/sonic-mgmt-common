@@ -43,7 +43,7 @@ module sonic-vxlan {
 
             list VXLAN_TUNNEL_LIST { 
                 key "name";
-                max-elements 1;
+                max-elements 3;
 
                 leaf name {
                     must "(starts-with(../name, 'vtep'))"
@@ -56,11 +56,29 @@ module sonic-vxlan {
 
                 leaf src_ip {
                     must "(/cmn:operation/cmn:operation != 'DELETE')  or " + "count(../../../VXLAN_TUNNEL_MAP/VXLAN_TUNNEL_MAP_LIST) = 0"
-                        {
-							error-message "Error: Please delete all VLAN VNI mappings.";
-                            error-app-tag vlan-vni-map-present;
-						}
+                    {
+                        error-message "Error: Please delete all VLAN VNI mappings.";
+                        error-app-tag vlan-vni-map-present;
+                    }
                     type inet:ipv4-address;
+                }
+                leaf qos-mode {
+                    type enumeration {
+                        enum uniform;
+                        enum pipe;
+                    }
+                    default pipe;
+                }
+                leaf dscp {
+                    //when "../qos-mode = 'pipe'";
+                    type uint8 {
+                        range "0..63" {
+                            error-message "dscp value out of range";
+                        }
+                    }
+                    default 0;
+                    description
+                        "dscp value for pipe qos mode";
                 }
             }
         }

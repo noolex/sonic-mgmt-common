@@ -1,0 +1,56 @@
+module sonic-hardware {
+    namespace "http://github.com/Azure/sonic-hardware";
+    prefix shw;
+    yang-version 1.1;
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC Hardware";
+
+    revision 2020-05-01 {
+        description
+            "Initial revision.";
+    }
+
+    container sonic-hardware {
+        container HARDWARE {
+            description "Table to control ASIC parameters of different features like ACL.";
+            list HARDWARE_LIST {
+                key "HARDWARE_SUB_TABLE";
+                max-elements 1;
+
+                leaf HARDWARE_SUB_TABLE {
+                    type enumeration {
+                        enum ACCESS_LIST;
+                    }
+                }
+
+                leaf COUNTER_MODE {
+                    when "current()/../HARDWARE_SUB_TABLE = 'ACCESS_LIST'";
+                    type enumeration {
+                        enum per-rule;
+                        enum per-interface-rule;
+                    }
+                    sonic-ext:custom-validation ValidateZeroACLCounters;
+                }
+
+                leaf LOOKUP_MODE {
+                    when "current()/../HARDWARE_SUB_TABLE = 'ACCESS_LIST'";
+                    type enumeration {
+                        enum legacy;
+                        enum optimized;
+                    }
+                }
+            }
+        }
+    }
+}

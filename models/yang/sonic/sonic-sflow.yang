@@ -105,7 +105,6 @@ module sonic-sflow {
                     }
 
                     leaf agent_id {
-                        sonic-ext:custom-validation ValidateSflowAgentId;
                         type union {
                             type leafref {
                                 path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";

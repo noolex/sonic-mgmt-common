@@ -8,6 +8,8 @@ module openconfig-system-ext {
 
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
+    import openconfig-interfaces { prefix "oc-if"; }
+    import openconfig-kdump { prefix oc-kdump; }
 
     // meta
     organization "OpenConfig working group";
@@ -18,6 +20,11 @@ module openconfig-system-ext {
 
     description
         "Model for managing TACACS+ configurations .";
+
+    revision 2020-05-02 {
+        description
+            "Added DNS source IP support and allowed domain name as well for Radius/TACACS+ server configuration.";
+    }
 
     revision 2020-03-30 {
         description
@@ -30,6 +37,10 @@ module openconfig-system-ext {
     }
 
     // augment statements
+
+    augment /oc-sys:system {
+        uses oc-kdump:kdump-top;
+    }
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
         leaf failthrough {
@@ -134,6 +145,43 @@ module openconfig-system-ext {
         }
     }
 
+    grouping dns-source-config {
+        leaf source-intf {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+                "Source interface to pick the source IP address for the packets to DNS name server";
+        }
+    }
+
+    augment "/oc-sys:system/oc-sys:dns/oc-sys:config" {
+        uses dns-source-config;
+    }
+
+    augment "/oc-sys:system/oc-sys:dns/oc-sys:state" {
+        uses dns-source-config;
+    }
+
+    typedef server-address {
+        type inet:host;
+        description
+            "The host type represents either an unzoned IP address or a DNS
+            domain name.";
+    }
+
+    deviation "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address" {
+        deviate replace {
+            type server-address;
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address" {
+        deviate replace {
+            type server-address;
+        }
+    }
+
     deviation /oc-sys:system/oc-sys:config/oc-sys:domain-name {
        deviate not-supported;
     }
@@ -152,6 +200,35 @@ module openconfig-system-ext {
        deviate not-supported;
     }
     deviation /oc-sys:system/oc-sys:ssh-server/oc-sys:state {
+       deviate not-supported;
+    }
+	
+	//syslog parameters
+    augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:config" {
+        leaf vrf-name {
+            type string {
+                pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
+                    error-message "Invalid VRF name for remote syslog server";
+                    error-app-tag vrf-name-syslog-invalid;
+                }
+            }
+            description
+                "VRF name";
+        }
+	}
+    augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:state" {
+        leaf vrf-name {
+            type string {
+                pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
+                    error-message "Invalid VRF name for remote syslog server";
+                    error-app-tag vrf-name-syslog-invalid;
+                }
+            }
+            description
+                "VRF name";
+        }
+	}
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:selectors {
        deviate not-supported;
     }
 }
