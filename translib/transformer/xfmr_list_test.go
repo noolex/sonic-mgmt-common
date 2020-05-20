@@ -22,7 +22,7 @@ import (
         "fmt"
         "testing"
 )
-/*
+
 func Test_List_Custom_DB_Update_Get(t *testing.T) {
 
         cleanuptbl1 := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":""}}
@@ -44,7 +44,7 @@ func Test_List_Custom_DB_Update_Get(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl1)
         unloadConfigDB(rclient, cleanuptbl2)
 }
-*/
+
 func Test_List_Ygot_Merge_Xfmr_Infra_Subtree_Xfmr_Get(t *testing.T) {
 
         url := "/openconfig-interfaces:interfaces/interface[name=Ethernet0]"
