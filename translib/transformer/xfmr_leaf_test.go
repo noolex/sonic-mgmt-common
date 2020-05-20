@@ -806,10 +806,11 @@ func Test_Leaf_Sonic_Yang_Choice_Case_Replace(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         put_payload := "{ \"sonic-acl:SRC_IP\": \"1.1.1.1/1\"}"
-        //put_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"SRC_IP":"1.1.1.1/1"}}}
+        //put_actual := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"SRC_IP":"1.1.1.1/1"}}}
         put_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"1.1.1.1/1","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
 
-        t.Run("REPLACE on Leaf Sonic Yang Choice Case", processSetRequest(url, put_payload, "PATCH", false))
+	/* Update on leaf not handled for SONIC Yet TODO */
+        t.Run("REPLACE on Leaf Sonic Yang Choice Case", processSetRequest(url, put_payload, "PUT", false))
         time.Sleep(1 * time.Second)
         t.Run("Verify replace on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|MyACL1_ACL_IPV4|RULE_1", put_expected, false))
 
