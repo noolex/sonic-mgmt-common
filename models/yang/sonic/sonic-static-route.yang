@@ -10,6 +10,10 @@ module sonic-static-route {
         prefix svrf;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -53,6 +57,7 @@ module sonic-static-route {
                 }
 
                 leaf nexthop {
+                    sonic-ext:custom-validation ValidateNexthopGateway;
                     type string;
                     description
                          "List of gateway IP for all next-hops of specific route.
@@ -64,6 +69,7 @@ module sonic-static-route {
                           to make the set";
                 }
                 leaf ifname {
+                    sonic-ext:custom-validation ValidateNexthopInterface;
                     type string;
                     description
                         "List of interface name for all next-hops of specific route.
@@ -90,6 +96,7 @@ module sonic-static-route {
                          to make the set";
                 }
                 leaf nexthop-vrf {
+                    sonic-ext:custom-validation ValidateNexthopVrf;
                     type string;
                     description
                         "List of next-hop VRF name for all next-hops of specific route. If nexthop-vrf

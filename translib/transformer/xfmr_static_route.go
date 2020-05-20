@@ -678,6 +678,11 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
     resMap := make(map[string]map[string]db.Value)
 
     pathInfo := NewPathInfo(inParams.uri)
+    if inParams.oper != DELETE && pathInfo.HasVar("index") {
+        // bypass calling from leaf node
+        return resMap, nil
+    }
+
     vrf := pathInfo.Var("name")
     ipPrefix := pathInfo.Var("prefix")
 
@@ -727,7 +732,7 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
                 }
             }
         }
-    } else if !pathInfo.HasVar("index") {
+    } else {
         log.Infof("Handling static route configuration for VRF %s prefix %s", vrf, ipPrefix)
         var updSubDataMap = make(RedisDbMap)
         var delSubDataMap = make(RedisDbMap)
