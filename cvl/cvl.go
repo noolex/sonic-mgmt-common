@@ -589,14 +589,13 @@ func buildRefTableInfo() {
 			for j :=0; j < len(tblInfo.refFromTables); j++ {
 				if (sortedTableList[i] == tblInfo.refFromTables[j].tableName) {
 					fieldName =  tblInfo.refFromTables[j].field
-					break
+					newRefFromTables = append(newRefFromTables, tblFieldPair{sortedTableList[i], fieldName})
 				}
 			}
-			newRefFromTables = append(newRefFromTables, tblFieldPair{sortedTableList[i], fieldName})
 		}
 		//Update sorted refFromTables
 		tblInfo.refFromTables = newRefFromTables
-		modelInfo.tableInfo[tblName] = tblInfo 
+		modelInfo.tableInfo[tblName] = tblInfo
 	}
 
 }
