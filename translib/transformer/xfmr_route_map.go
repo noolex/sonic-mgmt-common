@@ -413,6 +413,13 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
     log.Info("YangToDb_route_map_bgp_action_set_community: ", inParams.ygRoot, inParams.uri, inParams.requestUri)
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
     if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
+        if inParams.oper == DELETE {
+            /* If parent level delete has triggered 
+             * this child sub tree transfomer return success*/
+            res_map["ROUTE_MAP"] = stmtmap
+            res_map["ROUTE_MAP_SET"] = stmtmap
+            return res_map, nil
+        }
         log.Info("YangToDb_route_map_bgp_action_set_community : Routing policy definitions list is empty.")
         return res_map, errors.New("Routing policy definitions list is empty")
     }
@@ -666,6 +673,14 @@ var YangToDb_route_map_bgp_action_set_ext_community SubTreeXfmrYangToDb = func(i
     log.Info("YangToDb_route_map_bgp_action_set_ext_community: ", inParams.ygRoot, inParams.uri)
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
     if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
+        if inParams.oper == DELETE {
+            /* If parent level delete has triggered 
+             * this child sub tree transfomer return success*/
+            res_map["ROUTE_MAP"] = stmtmap
+            res_map["ROUTE_MAP_SET"] = stmtmap
+            return res_map, nil
+        }
+
         log.Info("YangToDb_route_map_bgp_action_set_community : Routing policy definitions list is empty.")
         return res_map, errors.New("Routing policy definitions list is empty")
     }
@@ -757,6 +772,7 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
                  subOpMap[db.ConfigDB]["ROUTE_MAP"] = make(map[string]db.Value)
              }
              subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = db.Value{Field: make(map[string]string)}
+             subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_ext_community_inline@"] = final_std_community
 
              inParams.subOpDataMap[DELETE] = &subOpMap
              return res_map, nil
