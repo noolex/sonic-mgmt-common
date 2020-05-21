@@ -217,6 +217,55 @@ module openconfig-system-annot {
       }
     }
 
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:source-intf {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:timeout {
+      deviate add {
+          sonic-ext:field-name "timeout";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:auth-type {
+      deviate add {
+          sonic-ext:field-name "auth_type";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:secret-key {
+      deviate add {
+          sonic-ext:field-name "passkey";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:source-address {
+      deviate add {
+          sonic-ext:field-name "src_ip";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:nas-ip-address {
+      deviate add {
+          sonic-ext:field-name "nas_ip";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retransmit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:source-intf {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+
+
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys:name {
       deviate add {
           sonic-ext:field-transformer "global_sg_name_xfmr";
