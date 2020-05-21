@@ -413,13 +413,6 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
     log.Info("YangToDb_route_map_bgp_action_set_community: ", inParams.ygRoot, inParams.uri, inParams.requestUri)
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
     if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
-        if inParams.oper == DELETE {
-            /* If parent level delete has triggered 
-             * this child sub tree transfomer return success*/
-            res_map["ROUTE_MAP"] = stmtmap
-            res_map["ROUTE_MAP_SET"] = stmtmap
-            return res_map, nil
-        }
         log.Info("YangToDb_route_map_bgp_action_set_community : Routing policy definitions list is empty.")
         return res_map, errors.New("Routing policy definitions list is empty")
     }
@@ -507,10 +500,7 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
                 final_std_community = final_std_community + "," + std_community
             }
         }
-        if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD {
-            log.Info("YangToDb_route_map_bgp_action_set_ext_community : ADD")
-            stmtmap[entry_key].Field["set_community_inline@"] = final_std_community
-        } else {
+         if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_REMOVE {
              subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
              if _, ok := subOpMap[db.ConfigDB]; !ok {
@@ -520,20 +510,12 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
                  subOpMap[db.ConfigDB]["ROUTE_MAP"] = make(map[string]db.Value)
              }
              subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = db.Value{Field: make(map[string]string)}
+             subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
 
-             if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_REMOVE {
-                 log.Info("YangToDb_route_map_bgp_action_set_ext_community : REMOVE")
-                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
-                 inParams.subOpDataMap[DELETE] = &subOpMap
-             } else {
-                 log.Info("YangToDb_route_map_bgp_action_set_ext_community : REPLACE")
-                 rtMapInst, _ := inParams.d.GetEntry(&db.TableSpec{Name:"ROUTE_MAP"}, db.Key{Comp: []string{entry_key}})
-                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = rtMapInst
-                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
-                 inParams.subOpDataMap[REPLACE] = &subOpMap
-             }
+             inParams.subOpDataMap[DELETE] = &subOpMap
              return res_map, nil
-        }
+         }
+         stmtmap[entry_key].Field["set_community_inline@"] = final_std_community
     } else if rtStmtActionCommObj.Config != nil && rtStmtActionCommObj.Config.Method == ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE {
         if rtStmtActionCommObj.Reference == nil {
             return res_map, errors.New("Routing policy invalid action parameters")
@@ -684,14 +666,6 @@ var YangToDb_route_map_bgp_action_set_ext_community SubTreeXfmrYangToDb = func(i
     log.Info("YangToDb_route_map_bgp_action_set_ext_community: ", inParams.ygRoot, inParams.uri)
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
     if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
-        if inParams.oper == DELETE {
-            /* If parent level delete has triggered 
-             * this child sub tree transfomer return success*/
-            res_map["ROUTE_MAP"] = stmtmap
-            res_map["ROUTE_MAP_SET"] = stmtmap
-            return res_map, nil
-        }
-
         log.Info("YangToDb_route_map_bgp_action_set_community : Routing policy definitions list is empty.")
         return res_map, errors.New("Routing policy definitions list is empty")
     }
@@ -773,9 +747,7 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
                 final_std_community = final_std_community + "," + std_community
             }
           }
-          if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD {
-              stmtmap[entry_key].Field["set_ext_community_inline@"] = final_std_community
-          } else {
+          if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_REMOVE {
              subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
              if _, ok := subOpMap[db.ConfigDB]; !ok {
@@ -786,19 +758,10 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
              }
              subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = db.Value{Field: make(map[string]string)}
 
-             if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_REMOVE {
-                 log.Info("YangToDb_route_map_bgp_action_set_community : REMOVE")
-                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_ext_community_inline@"] = final_std_community
-                 inParams.subOpDataMap[DELETE] = &subOpMap
-             } else {
-                 log.Info("YangToDb_route_map_bgp_action_set_community : REPLACE")
-                 rtMapInst, _ := inParams.d.GetEntry(&db.TableSpec{Name:"ROUTE_MAP"}, db.Key{Comp: []string{entry_key}})
-                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = rtMapInst
-                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
-                 inParams.subOpDataMap[REPLACE] = &subOpMap
-             }
+             inParams.subOpDataMap[DELETE] = &subOpMap
              return res_map, nil
          }
+         stmtmap[entry_key].Field["set_ext_community_inline@"] = final_std_community
     } else if rtStmtActionCommObj.Config != nil && rtStmtActionCommObj.Config.Method == ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE {
         if rtStmtActionCommObj.Reference == nil {
             return res_map, errors.New("Routing policy invalid action parameters")
