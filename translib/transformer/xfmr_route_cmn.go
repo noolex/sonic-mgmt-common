@@ -156,7 +156,7 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
 var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     log.Info("In rpc_show_ip_route")
     var cmd string
-    var af_str, vrf_name, prefix, summary, static, connected, bgp string
+    var af_str, vrf_name, options string
     var err error
     var mapData map[string]interface{}
     err = json.Unmarshal(body, &mapData)
@@ -194,27 +194,23 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
     }
     if value, ok := mapData["prefix"].(string) ; ok {
         if value != "" {
-            prefix = value + " "
+            options = value + " "
         }
-    }
-    if value, ok := mapData["summary"].(bool) ; ok {
+    } else if value, ok := mapData["summary"].(bool) ; ok {
         if value {
-            summary = "summary "
+            options = "summary "
         }
-    }
-    if value, ok := mapData["static"].(bool) ; ok {
+    } else if value, ok := mapData["static"].(bool) ; ok {
         if value {
-            static = "static "
+            options = "static "
         }
-    }
-    if value, ok := mapData["connected"].(bool) ; ok {
+    } else if value, ok := mapData["connected"].(bool) ; ok {
         if value {
-            connected = "connected "
+            options = "connected "
         }
-    }
-    if value, ok := mapData["bgp"].(bool) ; ok {
+    } else if value, ok := mapData["bgp"].(bool) ; ok {
         if value {
-            bgp = "bgp "
+            options = "bgp "
         }
     }
 
@@ -229,24 +225,8 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
         cmd = cmd + vrf_name
     }
 
-    if prefix != "" {
-        cmd = cmd + prefix
-    }
-
-    if summary != "" {
-        cmd = cmd + summary
-    }
-
-    if static != "" {
-        cmd = cmd + static
-    }
-
-    if connected != "" {
-        cmd = cmd + connected
-    }
-
-    if bgp != "" {
-        cmd = cmd + bgp
+    if options != "" {
+        cmd = cmd + options
     }
 
     cmd = cmd + "json"
