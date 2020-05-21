@@ -65,7 +65,7 @@ module sonic-scheduler {
                         are added to the secondary bucket.";
                 }
 
-                leaf bc {
+                leaf cbs {
                   type uint32;
                   units bytes;
                   description
@@ -74,7 +74,7 @@ module sonic-scheduler {
                         bucket.";
                 }
 
-                leaf be {
+                leaf pbs {
                   type uint32;
                   units bytes;
                   description

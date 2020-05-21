@@ -1185,7 +1185,8 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	var tblKeyStr string
 
 	if reqP.opcode == DELETE && (pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance" ||
-		pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances") {
+		pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances" ||
+        pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/vxlan-vni-instances") {
 		dbKeys, err := inParams.d.GetKeys(&db.TableSpec{Name: tblName})
 		if err != nil {
 			return res_map, err

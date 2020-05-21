@@ -76,22 +76,6 @@ func init() {
 	cleanupMap	= make(map[*db.DB]*subscribeInfo)
 }
 
-func runSubscribe(q *queue.PriorityQueue) error {
-	var err error
-
-	for i := 0; i < 10; i++ {
-		time.Sleep(2 * time.Second)
-		q.Put(&SubscribeResponse{
-				Path:"/testPath",
-				Payload:[]byte("test payload"),
-				Timestamp:    time.Now().UnixNano(),
-		})
-
-	}
-
-	return err
-}
-
 func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subscribeInfo) error {
 	var sKeyList []*db.SKey
 
@@ -277,19 +261,15 @@ func sendNotification(sInfo *subscribeInfo, nInfo *notificationInfo, isTerminate
 
 func stophandler(stop chan struct{}) {
 	for {
-		select {
-		case <-stop:
-			log.Info("stop channel signalled")
-		    sMutex.Lock()
-			defer sMutex.Unlock()
+		stopSig := <-stop
+		log.Info("stop channel signalled", stopSig)
+        sMutex.Lock()
+	    defer sMutex.Unlock()
 
-			cleanup (stop)
+		cleanup (stop)
 
-			return
-		}
+		return
 	}
-
-	return
 }
 
 func cleanup(stop chan struct{}) {
@@ -309,6 +289,7 @@ func cleanup(stop chan struct{}) {
 	//printAllMaps()
 }
 
+/*
 //Debugging functions
 func printnMap() {
 	log.Info("Printing the contents of nMap")
@@ -338,4 +319,4 @@ func printAllMaps() {
 	printnMap()
 	printsMap()
 	printStopMap()
-}
+}*/
