@@ -28,7 +28,6 @@ type portProp struct {
 }
 
 var platConfigStr map[string]map[string]string
-var portOidMap  map[string]string
 
 /* Functions */
 
@@ -74,7 +73,8 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     }
 
     lane_speed_map := map[string][]int{"1x100G":{4, 100000}, "1x40G":{4, 40000},"1x400G":{8, 400000},
-                        "2x50G":{2, 50000}, "4x25G":{1, 25000}, "4x10G":{1, 10000}}
+                        "2x50G":{2, 50000}, "4x25G":{1, 25000}, "4x10G":{1, 10000}, "2x200G":{4, 200000},
+                        "2x100G":{4, 100000}, "4x100G":{2, 100000}, "4x50G":{2, 50000}}
     indeces := strings.Split(entry["index"], ",")
     lanes := strings.Split(entry["lanes"], ",")
     lane_speed, ok := lane_speed_map[mode]
@@ -90,7 +90,7 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
         dpb_lanes = dpb_lanes + "," + lanes[i]
     }
     base_port,_ := strconv.Atoi(strings.TrimLeft(port_i, "Ethernet"))
-    port_config.name = "Ethernet"+strconv.Itoa(base_port+subport)
+    port_config.name = "Ethernet"+strconv.Itoa(base_port+(lane_speed[0]*subport))
     port_config.alias = strings.Split(entry["alias_at_lanes"], ",")[subport]
     port_config.index = dpb_index
     port_config.lanes = dpb_lanes
@@ -153,7 +153,6 @@ func parsePlatformJsonFile () (error) {
     return err
 }
 
-
 func removePorts (ports_i []portProp) (map[db.DBNum]map[string]map[string]db.Value) {
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     delMap := make(map[string]map[string]db.Value)
@@ -186,6 +185,16 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
         value.Set("speed", ports[i].speed)
         value.Set("valid_speeds", ports[i].valid_speeds)
         entryMap[ports[i].name] = value
+/*
+        entry, ok := platConfigStr[ports[i].name]
+        if ok {
+            brkoutMap := make(map[string]db.Value)
+            fv := make(map[string]string)
+            fvpairs := db.Value{Field: fv}
+            fvpairs.Set("lanes", entry["lanes"])
+            brkoutMap[ports[i].name] = fvpairs
+            addMap["BREAKOUT_CFG"] = brkoutMap
+        } */
     }
 
     addMap["PORT"] = entryMap

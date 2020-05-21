@@ -145,10 +145,6 @@ module sonic-ptp {
 				}
 				leaf clock-class {
 					type uint8;
-					config false;
-					description
-						"The clockClass denotes the traceability of the time
-						or frequency distributed by the clock.";
 				}
 				leaf clock-accuracy {
 					type uint8;
@@ -239,7 +235,7 @@ module sonic-ptp {
 		}
 		container PTP_PORT {
 			list PTP_PORT_LIST {
-				key "instance-number port-number";
+				key "instance-number underlying-interface";
 				sonic-ext:custom-validation ValidatePtp;
 
 				leaf instance-number {
@@ -248,19 +244,22 @@ module sonic-ptp {
 					}
 				}
 				leaf port-number {
-                    type union {
-                        type leafref {
-                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
-                        }
-                        type leafref {
-                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
-                        }
-                        type leafref {
-                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
-                        }
-                    }
-                    description
-                        "Reference to Ethernet interface, PortChannel or Vlan";
+					type uint16;
+					description
+						"Port number.
+						The data sets (i.e., information model) of IEEE Std
+						1588-2008 specify a member portDS.portIdentity, which
+						uses a typed struct with members clockIdentity and
+						portNumber.
+
+						In this YANG data model, portIdentity is not modeled
+						in the port-ds-list.  However, its members are provided
+						as follows:
+						portIdentity.portNumber is provided as this
+						port-number leaf in port-ds-list, and
+						portIdentity.clockIdentity is provided as the
+						clock-identity leaf in default-ds of the instance
+						(i.e., ../../default-ds/clock-identity).";
 				}
 				leaf peer-mean-path-delay {
 					type int64;
@@ -309,8 +308,17 @@ module sonic-ptp {
 						"Current state associated with the port.";
 				}
 				leaf underlying-interface {
-					sonic-ext:custom-validation ValidatePtpUnderlyingInterface;
-					type string;
+					type union {
+						type leafref {
+							path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+						}
+						type leafref {
+							path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+						}
+						type leafref {
+							path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+						}
+					}
 					description
 						"Reference to the configured underlying interface that
 						is used by this PTP port (see RFC 8343).";

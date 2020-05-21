@@ -65,6 +65,12 @@ module openconfig-qos-ext {
             description
                 "Name of the WRED profile";
         }
+
+        leaf scheduler-policy {
+            type string;
+            description
+                "Name of the Scheduer policy";
+        }
     }
 
     grouping qos-interface-priority-group-config {
@@ -235,11 +241,18 @@ module openconfig-qos-ext {
     augment /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config {
         leaf weight {
             type uint8 {
-                range "0..255";
+                range "1..100";
             }
         }
     }
 
+    augment /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:state {
+        leaf weight {
+            type uint8 {
+                range "1..100";
+            }
+        }
+    }
 
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:classifiers {
         deviate not-supported;
@@ -254,6 +267,38 @@ module openconfig-qos-ext {
     }
 
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:one-rate-two-color {
+      deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:two-rate-three-color/oc-qos:config/oc-qos:cir-pct {
+      deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:two-rate-three-color/oc-qos:config/oc-qos:cir-pct-remaining {
+      deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:two-rate-three-color/oc-qos:config/oc-qos:pir-pct {
+      deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:two-rate-three-color/oc-qos:config/oc-qos:pir-pct-remaining {
+      deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:two-rate-three-color/oc-qos:state/oc-qos:cir-pct {
+      deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:two-rate-three-color/oc-qos:state/oc-qos:cir-pct-remaining {
+      deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:two-rate-three-color/oc-qos:state/oc-qos:pir-pct {
+      deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:two-rate-three-color/oc-qos:state/oc-qos:pir-pct-remaining {
       deviate not-supported;
     }
 
@@ -357,22 +402,22 @@ module openconfig-qos-ext {
                 "WRED enabled/disabled for red packets";
         }
 
-        leaf green_drop_rate {
+        leaf green_drop_probability {
             type uint64;
             description
-                "Drop rate for green packets";
+                "Drop probability for green packets";
         }
 
-        leaf yellow_drop_rate {
+        leaf yellow_drop_probability {
             type uint64;
             description
-                "Drop rate for yellow packets";
+                "Drop probability for yellow packets";
         }
 
-        leaf red_drop_rate {
+        leaf red_drop_probability {
             type uint64;
             description
-                "Drop rate for red packets";
+                "Drop probability for red packets";
         }
     }
 
@@ -419,7 +464,7 @@ module openconfig-qos-ext {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow_drop_rate {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow_drop_probability {
       deviate not-supported;
   }
 
@@ -435,7 +480,7 @@ module openconfig-qos-ext {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red_drop_rate {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red_drop_probability {
       deviate not-supported;
   }
 
@@ -451,7 +496,7 @@ module openconfig-qos-ext {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow_drop_rate {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow_drop_probability {
       deviate not-supported;
   }
 
@@ -467,7 +512,7 @@ module openconfig-qos-ext {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red_drop_rate {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red_drop_probability {
       deviate not-supported;
   }
 

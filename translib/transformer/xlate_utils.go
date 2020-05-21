@@ -90,7 +90,7 @@ func mapCopy(destnMap map[string]map[string]db.Value, srcMap map[string]map[stri
 }
 var mapMergeMutex = &sync.Mutex{}
 /* Merge redis-db source to destn map */
-func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[string]db.Value) {
+func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[string]db.Value, oper int) {
 	mapMergeMutex.Lock()
    for table, tableData := range srcMap {
         _, ok := destnMap[table]
@@ -101,6 +101,15 @@ func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[str
             _, ok = destnMap[table][rule]
             if !ok {
                  destnMap[table][rule] = db.Value{Field: make(map[string]string)}
+            } else {
+                if (oper == DELETE) {
+                    if ((len(destnMap[table][rule].Field) == 0) && (len(ruleData.Field) > 0)) {
+                        continue;
+                    }
+                    if ((len(destnMap[table][rule].Field) > 0) && (len(ruleData.Field) == 0)) {
+                        destnMap[table][rule] = db.Value{Field: make(map[string]string)};
+                    }
+                }
             }
             for field, value := range ruleData.Field {
                 dval := destnMap[table][rule]
@@ -717,6 +726,7 @@ func replacePrefixWithModuleName(xpath string) (string) {
 
 /* Extract key vars, create db key and xpath */
 func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, string, string, error) {
+	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)
 	 keyStr    := ""
 	 tableName := ""
 	 pfxPath := ""
@@ -725,12 +735,21 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 cdb := db.ConfigDB
 	 var dbs [db.MaxDB]*db.DB
 	 var err error
+	 var isUriForListInstance bool
 
+	 isUriForListInstance = false
 	 pfxPath, _ = XfmrRemoveXPATHPredicates(path)
 	 xpathInfo, ok := xYangSpecMap[pfxPath]
 	 if !ok {
 		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", pfxPath)
 		 return pfxPath, keyStr, tableName, err
+	 }
+	 // for SUBSCRIBE reuestUri = path
+	 requestUriYangType := yangTypeGet(xpathInfo.yangEntry)
+	 if requestUriYangType == YANG_LIST {
+		 if strings.HasSuffix(path, "]") { //uri is for list instance
+			 isUriForListInstance = true
+		 }
 	 }
 	 cdb = xpathInfo.dbIndex
 	 dbOpts := getDBOptions(cdb)
@@ -825,10 +844,15 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 
 		 }
 	 }
+	 if ((oper == SUBSCRIBE) && (strings.TrimSpace(keyStr) == "") && (requestUriYangType == YANG_LIST) && (!isUriForListInstance)) {
+		 keyStr="*"
+	 }
+	 xfmrLogInfoAll("Return uri(%v), xpath(%v), key(%v), tableName(%v)", path, pfxPath, keyStr, tableName)
 	 return pfxPath, keyStr, tableName, err
  }
 
  func sonicXpathKeyExtract(path string) (string, string, string) {
+	 xfmrLogInfoAll("In uri(%v)", path)
 	 xpath, keyStr, tableName, fldNm := "", "", "", ""
 	 var err error
 	 lpath := path
@@ -866,8 +890,14 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			    eg. /sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL2_ACL_IPV4]/ports[ports=Ethernet12]
 			 */
 			 if fldNm != "" {
-				 chompFld := strings.Split(path, "/")
-				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX], "/")
+				 pathelem, perr := ygot.StringToStringSlicePath(path)
+				 if perr != nil {
+					 log.Errorf("Failed to get parts for uri %v.", path)
+					 return xpath, keyStr, tableName
+				 }
+				 chompFld := pathelem.Element
+
+				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX-1], "/")
 				 xfmrLogInfoAll("path after removing the field portion %v", lpath)
 
 			 }
@@ -880,6 +910,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			 }
 		 }
 	 }
+	 xfmrLogInfoAll("Return uri(%v), xpath(%v), key(%v), tableName(%v)", path, xpath, keyStr, tableName)
 	 return xpath, keyStr, tableName
  }
 
@@ -1029,4 +1060,127 @@ func xfmrLogInfoAll(format string, args ...interface{}) {
 		fNmLnoStr := getFileNmLineNumStr()
 		log.Infof(fNmLnoStr + format, args...)
 	}
+}
+
+func formXfmrDbInputRequest(oper int, d db.DBNum, tableName string, key string, field string, value string) XfmrDbParams {
+	var inParams XfmrDbParams
+	inParams.oper       = oper
+	inParams.dbNum      = d
+	inParams.tableName  = tableName
+	inParams.key        = key
+	inParams.fieldName  = field
+	inParams.value      = value
+	return inParams
+}
+
+func hasKeyValueXfmr(tblName string) bool {
+	if specTblInfo, ok := xDbSpecMap[tblName]; ok {
+		for _, lname := range specTblInfo.listName {
+			listXpath := tblName + "/" + lname
+			if specListInfo, ok := xDbSpecMap[listXpath]; ok {
+				for _, key := range specListInfo.keyList {
+					keyXpath := tblName + "/" + key
+					if specKeyInfo, ok := xDbSpecMap[keyXpath]; ok {
+						if specKeyInfo.xfmrValue != nil {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey string) (string, error) {
+	var err error
+	var keyValList []string
+
+    xfmrLogInfoAll("dbKeyValueXfmrHandler: oper(%v), db(%v), tbl(%v), dbKey(%v)",
+    oper, dbNum, tblName, dbKey)
+	if specTblInfo, ok := xDbSpecMap[tblName]; ok {
+		for _, lname := range specTblInfo.listName {
+			listXpath := tblName + "/" + lname
+			keyMap    := make(map[string]interface{})
+
+			if specListInfo, ok := xDbSpecMap[listXpath]; ok && len(specListInfo.keyList) > 0 {
+				sonicKeyDataAdd(dbNum, specListInfo.keyList, tblName, dbKey, keyMap)
+
+				if len(keyMap) == len(specListInfo.keyList) {
+					for _, kname := range specListInfo.keyList {
+						keyXpath  := tblName + "/" + kname
+						curKeyVal := fmt.Sprintf("%v", keyMap[kname])
+						if kInfo, ok := xDbSpecMap[keyXpath]; ok && xDbSpecMap[keyXpath].xfmrValue != nil {
+							inParams := formXfmrDbInputRequest(oper, dbNum, tblName, dbKey, kname, curKeyVal)
+							curKeyVal, err = valueXfmrHandler(inParams, *kInfo.xfmrValue)
+							if err != nil {
+								log.Errorf("Failed in value-xfmr: keypath(\"%v\") value (\"%v\"):err(%v).",
+								keyXpath, curKeyVal, err)
+								return "", err
+							}
+						}
+						keyValList = append(keyValList, curKeyVal)
+					}
+				}
+			}
+		}
+	}
+
+	dbOpts := getDBOptions(dbNum)
+	retKey := strings.Join(keyValList, dbOpts.KeySeparator)
+    xfmrLogInfoAll("dbKeyValueXfmrHandler: tbl(%v), dbKey(%v), retKey(%v), keyValList(%v)",
+    tblName, dbKey, retKey, keyValList)
+
+	return retKey, nil
+}
+
+func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.Value) error {
+	xfmrLogInfoAll("Received  resultMap(%v)", resultMap)
+	for oper, dbDataMap := range resultMap {
+			for dbNum, tblData := range dbDataMap {
+				for tblName, data := range tblData {
+					if specTblInfo, ok := xDbSpecMap[tblName]; ok && specTblInfo.hasXfmrFn == true {
+						skipKeySet := make(map[string]bool)
+						for dbKey, fldData := range data {
+							if _, ok := skipKeySet[dbKey]; !ok {
+								for fld, val := range fldData.Field {
+									fldName := fld
+									if strings.HasSuffix(fld, "@") {
+										fldName = strings.Split(fld, "@")[0]
+									}
+									/* check & invoke value-xfmr */
+									fldXpath := tblName + "/" + fldName
+									if fInfo, ok := xDbSpecMap[fldXpath]; ok && fInfo.xfmrValue != nil {
+										inParams := formXfmrDbInputRequest(oper, dbNum, tblName, dbKey, fld, val)
+										retVal, err := valueXfmrHandler(inParams, *fInfo.xfmrValue)
+										if err != nil {
+											log.Errorf("Failed in value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").",
+											fldXpath, val, err)
+											return err
+										}
+										resultMap[oper][dbNum][tblName][dbKey].Field[fld] = retVal
+									}
+								}
+
+								/* split tblkey and invoke value-xfmr if present */
+								if hasKeyValueXfmr(tblName) == true {
+									retKey, err := dbKeyValueXfmrHandler(oper, dbNum, tblName, dbKey)
+									if err != nil {
+										return err
+									}
+									/* cache processed keys */
+									skipKeySet[retKey] = true
+									if dbKey != retKey {
+										resultMap[oper][dbNum][tblName][retKey] = resultMap[oper][dbNum][tblName][dbKey]
+										delete(resultMap[oper][dbNum][tblName], dbKey)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+	}
+	xfmrLogInfoAll("Transformed resultMap(%v)", resultMap)
+	return nil
 }

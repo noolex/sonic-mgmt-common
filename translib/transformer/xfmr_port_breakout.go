@@ -22,6 +22,8 @@ var ocSpeedMap = map[ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED] string {
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_40GB: "40G",
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_50GB: "50G",
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_100GB: "100G",
+    ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_200GB: "200G",
+    ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_400GB: "400G",
 }
 
 /* Transformer specific functions */
@@ -95,6 +97,24 @@ var DbToYang_port_breakout_config_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
     return err;
 
 }
+func updateDpbPorts(ifName string, delPorts []portProp, addPorts[]portProp) map[string]db.Value {
+
+    portsMap := make(map[string]db.Value)
+    for _, port := range delPorts {
+        fv := make(map[string]string)
+        fvpairs := db.Value{Field: fv}
+        fvpairs.Set("master", ifName)
+        portsMap[port.name] = fvpairs
+    }
+    for _, port := range addPorts {
+        fv := make(map[string]string)
+        fvpairs := db.Value{Field: fv}
+        fvpairs.Set("master", ifName)
+        portsMap[port.name] = fvpairs
+    }
+    log.Info("BREAKOUT_PORTS = ", portsMap)
+    return portsMap
+}
 
 /* Breakout action, shutdown, remove dependent configs , remove ports, add ports */
 func breakout_action (ifName string, from_mode string, to_mode string, inParams XfmrParams) error {
@@ -121,6 +141,7 @@ func breakout_action (ifName string, from_mode string, to_mode string, inParams 
                     log.Info("PORTS TO BE DELETED: ", curr_ports)
                     //3. Add ports
                     addMap := addPorts(ports)
+                    addMap[db.ConfigDB]["BREAKOUT_PORTS"] = updateDpbPorts(ifName, curr_ports, ports)
                     inParams.subOpDataMap[UPDATE] = &addMap
                     log.Info("PORTS TO BE ADDED: ", ports)
                     *inParams.pCascadeDelTbl = append(*inParams.pCascadeDelTbl, "PORT")

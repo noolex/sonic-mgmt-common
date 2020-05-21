@@ -493,6 +493,31 @@ module openconfig-vxlan {
       description
         "The source address of the NVE interface.";        
     }
+    leaf qos-mode {
+        description
+          "Uniform QoS mode copies payload DSCP to outer header DSCP 
+           on encapsulation and copies outer header DSCP to payload 
+           DSCP on termination.
+           Pipe QoS mode uses the user configured dscp value in 
+           outer header on encapsulation and doesn't modify payload 
+           DSCP on termination";
+        type enumeration {
+            enum uniform;
+            enum pipe;
+        }
+        default pipe;
+    }
+    leaf dscp {
+        description
+            "DSCP value for Pipe QoS mode";
+        when "../qos-mode = 'pipe'";
+        type uint8 {
+            range "0..63" {
+                error-message "DSCP value out of range";
+            }
+        }
+        default 0;
+    }
   }
 
   grouping vxlan-interface-state {
