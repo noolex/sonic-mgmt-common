@@ -216,6 +216,7 @@ module openconfig-interfaces-annot {
         deviate add {
             sonic-ext:db-name "APPL_DB";
             sonic-ext:table-name "NEIGH_TABLE";
+            sonic-ext:key-transformer "neigh_tbl_key_xfmr";
             sonic-ext:subtree-transformer "neigh_tbl_get_all_ipv4_xfmr";
         }
     }
@@ -251,6 +252,7 @@ module openconfig-interfaces-annot {
         deviate add {
             sonic-ext:db-name "APPL_DB";
             sonic-ext:table-name "NEIGH_TABLE";
+            sonic-ext:key-transformer "neigh_tbl_key_xfmr";
             sonic-ext:subtree-transformer "neigh_tbl_get_all_ipv6_xfmr";
         }
     }

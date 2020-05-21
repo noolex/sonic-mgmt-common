@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2019 Dell, Inc.
+// Copyright 2020 Dell, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,11 +20,13 @@ package transformer
 
 import (
     "bufio"
+    "encoding/binary"
     "errors"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/openconfig/ygot/ygot"
+    "math"
     "os"
     "strconv"
     "strings"
@@ -56,6 +58,12 @@ const (
    /** END OF EEPROM type code **/
 
    EEPROM_TBL       = "EEPROM_INFO"
+   PSU_TBL          = "PSU_INFO"
+
+   /** Valid System Components **/
+   PSU1             = "PSU 1"
+   PSU2             = "PSU 2"
+   SYSEEPROM        = "System Eeprom"
 
    /** Supported oc-platform component state URIs **/
    COMP_STATE_DESCR           = "/openconfig-platform:components/component/state/description"
@@ -98,6 +106,14 @@ const (
    SYS_EEPROM_ONIE_VER        = "/openconfig-platform:components/component/state/openconfig-platform-ext:onie-version"
    SYS_EEPROM_SERV_TAG        = "/openconfig-platform:components/component/state/openconfig-platform-ext:service-tag"
    SYS_EEPROM_VENDOR_NAME     = "/openconfig-platform:components/component/state/openconfig-platform-ext:vendor-name"
+
+   /** Supported PSU URIs **/
+
+   PSU_OUTPUT_CURRENT         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-current"
+   PSU_OUTPUT_POWER           = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-power"
+   PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
+   PSU_LED_STATUS             = "/openconfig-platform:components/component/state/openconfig-platform-ext:status-led"
+   PSU_FANS                   = "/openconfig-platform:components/component/state/openconfig-platform-ext:fans"
 )
 
 /**
@@ -105,37 +121,71 @@ Structure Eeprom read from stateDb
 */
 
 type Eeprom  struct {
-    Product_Name        string
-    Part_Number         string
-    Serial_Number       string
     Base_MAC_Address    string
-    Manufacture_Date    string
-    Device_Version      string
-    Label_Revision      string
-    Platform_Name       string
-    ONIE_Version        string
-    MAC_Addresses       int32
-    Manufacturer        string
-    Manufacture_Country string
-    Vendor_Name         string
-    Diag_Version        string
-    Service_Tag         string
-    Vendor_Extension    string
-    Magic_Number        int32
     Card_Type           string
+    Device_Version      string
+    Diag_Version        string
     Hardware_Version    string
-    Software_Version    string
+    Label_Revision      string
+    MAC_Addresses       int32
+    Magic_Number        int32
+    Manufacture_Country string
+    Manufacture_Date    string
+    Manufacturer        string
     Model_Name          string
+    ONIE_Version        string
+    Part_Number         string
+    Platform_Name       string
+    Product_Name        string
+    Serial_Number       string
+    Service_Tag         string
+    Software_Version    string
+    Vendor_Extension    string
+    Vendor_Name         string
+}
 
+type PSU struct {
+    Capacity            string
+    Enabled             bool
+    Fans                string
+    Input_Current       string
+    Input_Voltage       string
+    Manufacturer        string
+    Model_Name          string
+    Output_Current      string
+    Output_Power        string
+    Output_Voltage      string
+    Presence            bool
+    Serial_Number       string
+    Status              bool
+    Status_Led          string
 }
 
 func init () {
     XlateFuncBind("DbToYang_pfm_components_xfmr", DbToYang_pfm_components_xfmr)
+    XlateFuncBind("DbToYang_pfm_components_psu_xfmr", DbToYang_pfm_components_psu_xfmr)
 }
 
 func getPfmRootObject (s *ygot.GoStruct) (*ocbinds.OpenconfigPlatform_Components) {
     deviceObj := (*s).(*ocbinds.Device)
     return deviceObj.Components
+}
+
+var DbToYang_pfm_components_psu_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Infof("Received GET for PlatformApp Template: %s ,path: %s, vars: %v",
+    pathInfo.Template, pathInfo.Path, pathInfo.Vars)
+
+    if strings.Contains(inParams.requestUri, "/openconfig-platform:components") ||
+        strings.Contains(inParams.requestUri, "/openconfig-platform:components/component/power-supply") {
+
+        log.Info("inParams.Uri:",inParams.requestUri)
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+        err := getSysPsu(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.StateDB])
+        return err
+    }
+
+    return errors.New("Component not supported")
 }
 
 var DbToYang_pfm_components_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
@@ -144,8 +194,8 @@ var DbToYang_pfm_components_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     pathInfo.Template, pathInfo.Path, pathInfo.Vars)
 
     if strings.Contains(inParams.requestUri, "/openconfig-platform:components") {
-	log.Info("inParams.Uri:",inParams.requestUri)
-	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+        log.Info("inParams.Uri:",inParams.requestUri)
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
         return getSysComponents(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.StateDB])
     }
     return errors.New("Component not supported")
@@ -215,84 +265,90 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
     }
 
     if allAttr == true || targetUriPath == SW_COMP {
-	for versionScanner.Scan() {
-	    if strings.Contains(versionScanner.Text(), "build_version:") {
-		res1 := strings.Split(versionScanner.Text(), ": ")
-		swComp.SoftwareVersion = &res1[1]
-		continue
-	    }
-	    if strings.Contains(versionScanner.Text(), "debian_version:") {
+        for versionScanner.Scan() {
+            if strings.Contains(versionScanner.Text(), "build_version:") {
+                res1 := strings.Split(versionScanner.Text(), ": ")
+                swComp.SoftwareVersion = &res1[1]
+                continue
+            }
+            if strings.Contains(versionScanner.Text(), "debian_version:") {
             res1 := strings.Split(versionScanner.Text(), ": ")
             swComp.DistributionVersion = &res1[1]
             continue
             }
-	    if strings.Contains(versionScanner.Text(), "kernel_version:") {
-		res1 := strings.Split(versionScanner.Text(), ": ")
-		swComp.KernelVersion = &res1[1]
-		continue
-	    }
-	    if strings.Contains(versionScanner.Text(), "asic_type:") {
-		res1 := strings.Split(versionScanner.Text(), ": ")
-		swComp.AsicVersion = &res1[1]
-		continue
-	    }
-	    if strings.Contains(versionScanner.Text(), "commit_id:") {
-		res1 := strings.Split(versionScanner.Text(), ": ")
-		swComp.BuildCommit = &res1[1]
-		continue
-	    }
-	    if strings.Contains(versionScanner.Text(), "build_date:") {
-		res1 := strings.Split(versionScanner.Text(), ": ")
-		swComp.BuildDate = &res1[1]
-		continue
-	    }
-	    if strings.Contains(versionScanner.Text(), "built_by:") {
-		res1 := strings.Split(versionScanner.Text(), ": ")
-		swComp.BuiltBy = &res1[1]
-		continue
-	    }
+            if strings.Contains(versionScanner.Text(), "kernel_version:") {
+                res1 := strings.Split(versionScanner.Text(), ": ")
+                swComp.KernelVersion = &res1[1]
+                continue
+            }
+            if strings.Contains(versionScanner.Text(), "asic_type:") {
+                res1 := strings.Split(versionScanner.Text(), ": ")
+                swComp.AsicVersion = &res1[1]
+                continue
+            }
+            if strings.Contains(versionScanner.Text(), "commit_id:") {
+                res1 := strings.Split(versionScanner.Text(), ": ")
+                swComp.BuildCommit = &res1[1]
+                continue
+            }
+            if strings.Contains(versionScanner.Text(), "build_date:") {
+                res1 := strings.Split(versionScanner.Text(), ": ")
+                swComp.BuildDate = &res1[1]
+                continue
+            }
+            if strings.Contains(versionScanner.Text(), "built_by:") {
+                res1 := strings.Split(versionScanner.Text(), ": ")
+                swComp.BuiltBy = &res1[1]
+                continue
+            }
 
-	}
+        }
 
-	if eepromInfo.Platform_Name != "" {
-	    swComp.PlatformName = &eepromInfo.Platform_Name
-	}
-	if eepromInfo.Product_Name != "" && eepromInfo.Vendor_Name != ""{
-	    HwskuVer := eepromInfo.Product_Name + "-" + eepromInfo.Vendor_Name
-	    swComp.HwskuVersion = &HwskuVer
-	}
-	if eepromInfo.Label_Revision != "" {
-	    swComp.HardwareVersion = &eepromInfo.Label_Revision
-	}
-	if eepromInfo.Serial_Number != "" {
-	    swComp.SerialNumber = &eepromInfo.Serial_Number
-	}
-	if eepromInfo.Vendor_Name != "" {
-	    swComp.MfgName = &eepromInfo.Vendor_Name
-	}
+        if eepromInfo.Platform_Name != "" {
+            swComp.PlatformName = &eepromInfo.Platform_Name
+        }
+        if eepromInfo.Product_Name != "" && eepromInfo.Vendor_Name != ""{
+            HwskuVer := eepromInfo.Product_Name + "-" + eepromInfo.Vendor_Name
+            swComp.HwskuVersion = &HwskuVer
+        }
+        if eepromInfo.Label_Revision != "" {
+            swComp.HardwareVersion = &eepromInfo.Label_Revision
+        }
+        if eepromInfo.Serial_Number != "" {
+            swComp.SerialNumber = &eepromInfo.Serial_Number
+        }
+        if eepromInfo.Vendor_Name != "" {
+            swComp.MfgName = &eepromInfo.Vendor_Name
+        }
 
-	info := syscall.Sysinfo_t{}
-	err = syscall.Sysinfo(&info)
+        info := syscall.Sysinfo_t{}
+        err = syscall.Sysinfo(&info)
 
-	if err != nil {
-	}
-	uptimeSec := info.Uptime
-	days := uptimeSec / (60 * 60 * 24)
-	hours := (uptimeSec - (days * 60 * 60 * 24)) / (60 * 60)
-	minutes := ((uptimeSec - (days * 60 * 60 * 24))  -  (hours * 60 * 60)) / 60
-	uptime := strconv.FormatInt(days,10) +" days "+strconv.FormatInt(hours,10)+ " hours "+strconv.FormatInt(minutes,10)+" minutes"
-	swComp.UpTime = &uptime
+        if err != nil {
+        }
+        uptimeSec := info.Uptime
+        days := uptimeSec / (60 * 60 * 24)
+        hours := (uptimeSec - (days * 60 * 60 * 24)) / (60 * 60)
+        minutes := ((uptimeSec - (days * 60 * 60 * 24))  -  (hours * 60 * 60)) / 60
+        uptime := strconv.FormatInt(days,10) +" days "+strconv.FormatInt(hours,10)+ " hours "+strconv.FormatInt(minutes,10)+" minutes"
+        swComp.UpTime = &uptime
 
-	for scanner.Scan() {
-	    var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_DockerVersion
-	    s := strings.Fields(scanner.Text())
-	    pf_docker_ver,_ = swComp.NewDockerVersion(scanner.Text())
-	    ygot.BuildEmptyTree(pf_docker_ver)
-	    pf_docker_ver.DockerName = &s[0]
-	    pf_docker_ver.DockerTagId = &s[1]
-	    pf_docker_ver.DockerImageId = &s[2]
-	    pf_docker_ver.DockerSize = &s[3]
-	}
+        for scanner.Scan() {
+            var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_DockerVersion
+            s := strings.Fields(scanner.Text())
+            pf_docker_ver, _ = swComp.NewDockerVersion(scanner.Text())
+            if pf_docker_ver == nil {
+                /* If DockerVersion list with key already exist,
+                 * then reuse it
+                 */
+                pf_docker_ver = swComp.DockerVersion[scanner.Text()]
+            }
+            ygot.BuildEmptyTree(pf_docker_ver)
+            pf_docker_ver.DockerName = &s[0]
+            pf_docker_ver.DockerTagId = &s[1]
+            pf_docker_ver.DockerImageId = &s[2]
+            pf_docker_ver.DockerSize = &s[3]
+        }
     } else {
         switch targetUriPath {
         case SW_SW_VER:
@@ -389,6 +445,12 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                 var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_DockerVersion
                 s := strings.Fields(scanner.Text())
                 pf_docker_ver,_ = swComp.NewDockerVersion(scanner.Text())
+                if pf_docker_ver == nil {
+                    /* If DockerVersion list with key already exist,
+                     * then reuse it
+                     */
+                    pf_docker_ver = swComp.DockerVersion[scanner.Text()]
+                }
                 ygot.BuildEmptyTree(pf_docker_ver)
                 pf_docker_ver.DockerName = &s[0]
                 pf_docker_ver.DockerTagId = &s[1]
@@ -489,7 +551,7 @@ func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
 }
 
 func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_State,
-				 all bool, targetUriPath string, d *db.DB) (error) {
+                                 all bool, targetUriPath string, d *db.DB) (error) {
 
     log.Infof("fillSysEepromInfo Enter")
     eepromInfo, err := getSysEepromFromDb(d)
@@ -717,44 +779,55 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
     var err error
     log.Info("targetUriPath:", targetUriPath)
     switch targetUriPath {
-    case "/openconfig-platform:components":
-        sensor_comp,_  := pf_cpts.NewComponent("Sensor")
-        ygot.BuildEmptyTree(sensor_comp)
-        sensor_comp.State.Type,_ = sensor_comp.State.To_OpenconfigPlatform_Components_Component_State_Type_Union(
-                            ocbinds.OpenconfigPlatformTypes_OPENCONFIG_HARDWARE_COMPONENT_SENSOR)
-        err = getPlatformEnvironment(sensor_comp)
-        if err != nil {
-            return err
-        }
-        eeprom_comp,_ := pf_cpts.NewComponent("System Eeprom")
-        ygot.BuildEmptyTree(eeprom_comp)
-        err = fillSysEepromInfo(eeprom_comp.State, true, targetUriPath, d)
-        if err != nil {
-            return err
-        }
-        eeprom_comp.State.Type,_ = eeprom_comp.State.To_OpenconfigPlatform_Components_Component_State_Type_Union(
-                                ocbinds.OpenconfigPlatformTypes_OPENCONFIG_HARDWARE_COMPONENT_CHASSIS)
-
-        swversion_comp,_ := pf_cpts.NewComponent("Software")
-        ygot.BuildEmptyTree(swversion_comp)
-        err = getSoftwareVersionComponent(swversion_comp.Software, targetUriPath, true, d)
-        if err != nil {
-            return err
-        }
-
-        return err
     case "/openconfig-platform:components/component":
         compName := NewPathInfo(uri).Var("name")
+        matchStr := strings.ToLower(compName)
         log.Infof("compName: %v", compName)
         if compName == "" {
+            sensor_comp,_  := pf_cpts.NewComponent("Sensor")
+            ygot.BuildEmptyTree(sensor_comp)
+            sensor_comp.State.Type,_ = sensor_comp.State.To_OpenconfigPlatform_Components_Component_State_Type_Union(
+                                ocbinds.OpenconfigPlatformTypes_OPENCONFIG_HARDWARE_COMPONENT_SENSOR)
+            err = getPlatformEnvironment(sensor_comp)
+            if err != nil {
+                return err
+            }
+
             pf_comp,_ := pf_cpts.NewComponent("System Eeprom")
             ygot.BuildEmptyTree(pf_comp)
             err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
             if err != nil {
                 return err
             }
+
+            swversion_comp,_ := pf_cpts.NewComponent("Software")
+            ygot.BuildEmptyTree(swversion_comp)
+            err = getSoftwareVersionComponent(swversion_comp.Software, targetUriPath, true, d)
+            if err != nil {
+                return err
+            }
+
+            pf_comp, _ = pf_cpts.NewComponent(PSU1)
+            ygot.BuildEmptyTree(pf_comp)
+            err = fillSysPsuInfo(pf_comp, PSU1, true, true, targetUriPath, d)
+            if err != nil {
+                return err
+            }
+            err = fillSysPsuInfo(pf_comp, PSU1, true, false, targetUriPath, d)
+            if err != nil {
+                return err
+            }
+
+            pf_comp, _ = pf_cpts.NewComponent(PSU2)
+            ygot.BuildEmptyTree(pf_comp)
+            err = fillSysPsuInfo(pf_comp, PSU2, true, true, targetUriPath, d)
+            if err != nil {
+                return err
+            }
+            err = fillSysPsuInfo(pf_comp, PSU2, true, false, targetUriPath, d)
+            return err
         } else {
-            if strings.ToLower(compName) == "system eeprom" {
+            if matchStr == "system eeprom" {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
@@ -765,7 +838,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 } else {
                     err = errors.New("Invalid input component name")
                 }
-            } else if strings.ToLower(compName) == "sensor" {
+            } else if matchStr == "sensor" {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
@@ -776,7 +849,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 } else {
                     err = errors.New("Invalid input component name")
                 }
-            } else if strings.ToLower(compName) == "software" {
+            } else if matchStr == "software" {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
@@ -787,13 +860,27 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 } else {
                     err = errors.New("Invalid input component name")
                 }
+            } else if validPsuName(compName) {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name")
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
+                fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else {
                 err = errors.New("Invalid component name")
             }
         }
     case "/openconfig-platform:components/component/state":
         compName := NewPathInfo(uri).Var("name")
-        if compName != "" && strings.ToLower(compName) == "system eeprom" {
+        if compName == "" {
+            err = errors.New("Invalid component name ")
+            break
+        }
+
+        matchStr := strings.ToLower(compName)
+        if matchStr == "system eeprom" {
             pf_comp := pf_cpts.Component[compName]
             if pf_comp != nil {
                 ygot.BuildEmptyTree(pf_comp)
@@ -804,7 +891,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             } else {
                 err = errors.New("Invalid input component name")
             }
-        } else if compName != "" && strings.ToLower(compName) == "sensor" {
+        } else if matchStr == "sensor" {
             pf_comp := pf_cpts.Component[compName]
             if pf_comp != nil {
                 ygot.BuildEmptyTree(pf_comp)
@@ -815,6 +902,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             } else {
                 err = errors.New("Invalid input component name")
             }
+        } else if validPsuName(compName) {
+          pf_comp := pf_cpts.Component[compName]
+          if pf_comp  == nil {
+              log.Info("Invalid Component Name")
+              return errors.New("Invalid component name")
+          }
+          ygot.BuildEmptyTree(pf_comp)
+          fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
         } else {
             err = errors.New("Invalid component name ")
         }
@@ -822,7 +917,13 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
     default:
         if strings.Contains(targetUriPath, "/openconfig-platform:components/component") {
             compName := NewPathInfo(uri).Var("name")
-            if strings.ToLower(compName) == "system eeprom" {
+            if compName == "" {
+                err = errors.New("Invalid component name ")
+                break
+            }
+
+            matchStr := strings.ToLower(compName)
+            if matchStr == "system eeprom" {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
@@ -833,7 +934,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 } else {
                     err = errors.New("Invalid input component name")
                 }
-            } else if strings.ToLower(compName) == "software" {
+            } else if matchStr == "software" {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
@@ -843,6 +944,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     }
                 } else {
                     err = errors.New("Invalid input component name")
+                }
+            } else if validPsuName(compName) {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp != nil {
+                    ygot.BuildEmptyTree(pf_comp)
+                    ygot.BuildEmptyTree(pf_comp.State)
+                    err = fillSysPsuInfo(pf_comp, compName, false, false, targetUriPath, d)
+                } else {
+                    err = errors.New("Unable to locate component")
                 }
             } else {
                 err = errors.New("Invalid input component name")
@@ -854,3 +964,193 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
     return err
 }
 
+func float32StrTo4Bytes(s string) ([]byte, error) {
+    var data []byte
+    float64val, err := strconv.ParseFloat(s, 32)
+    if err != nil {
+        log.Info("Error converting string to float32")
+        return data, err
+    }
+    data = make([]byte, 4)
+    /* Using Big Endian (network-order) to pack and unpack data
+     * IMPORTANT: REST server will do a b64 encode before sending the output
+     */
+    binary.BigEndian.PutUint32(data, math.Float32bits(float32(float64val)))
+    return data, err
+}
+
+func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
+    var psuInfo PSU
+    var err error
+
+    psuEntry, err := d.GetEntry(&db.TableSpec{Name: PSU_TBL}, db.Key{Comp: []string{name}})
+    if err != nil {
+        log.Info("Cant get entry: ", name)
+    }
+
+    psuInfo.Enabled = false
+    if psuEntry.Get("status") == "true" {
+        psuInfo.Enabled = true
+    }
+
+    psuInfo.Output_Current = psuEntry.Get("output_current")
+    psuInfo.Output_Voltage = psuEntry.Get("output_voltage")
+    psuInfo.Output_Power = psuEntry.Get("output_power")
+
+    psuInfo.Presence = false
+    if psuEntry.Get("presence") == "true" {
+        psuInfo.Presence = true
+    }
+
+    psuInfo.Status = false
+    if psuEntry.Get("status") == "true" {
+        psuInfo.Status = true
+    }
+
+    psuInfo.Model_Name = psuEntry.Get("model")
+    psuInfo.Manufacturer = psuEntry.Get("mfr_id")
+    psuInfo.Serial_Number = psuEntry.Get("serial")
+    psuInfo.Fans = psuEntry.Get("num_fans")
+    psuInfo.Status_Led = psuEntry.Get("status_led")
+    return psuInfo, err
+}
+
+func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
+                        name string, all bool, getPowerStats bool, targetUriPath string, d *db.DB) (error) {
+    var err error
+    psuInfo, err := getSysPsuFromDb(name, d)
+    if err != nil {
+        log.Info("Error Getting PSU info from dB")
+        return err
+    }
+
+    empty := !psuInfo.Presence
+    psuState := psuCom.PowerSupply.State
+    psuEepromState := psuCom.State
+    if all {
+        if getPowerStats {
+            if psuInfo.Output_Current != "" {
+                psuState.OutputCurrent, err = float32StrTo4Bytes(psuInfo.Output_Current)
+            }
+            if psuInfo.Output_Voltage != "" {
+                psuState.OutputVoltage, err = float32StrTo4Bytes(psuInfo.Output_Voltage)
+            }
+            if psuInfo.Output_Power != "" {
+                psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+            }
+
+            if err != nil {
+                log.Info("float data error")
+                return err
+            }
+            return err
+        }
+
+        psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+        if psuInfo.Status {
+            psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        }
+
+        if psuInfo.Model_Name != "" {
+            psuEepromState.Description = &psuInfo.Model_Name
+        }
+        if psuInfo.Manufacturer != "" {
+            psuEepromState.MfgName = &psuInfo.Manufacturer
+        }
+        if psuInfo.Serial_Number != "" {
+            psuEepromState.SerialNo = &psuInfo.Serial_Number
+        }
+        if psuInfo.Fans != "" {
+            tmp, _ := strconv.ParseUint(psuInfo.Fans, 10, 32)
+            fans := uint32(tmp)
+            psuEepromState.Fans = &fans
+        }
+        if psuInfo.Status_Led != "" {
+            psuEepromState.StatusLed = &psuInfo.Status_Led
+        }
+
+        return err
+    }
+
+    switch targetUriPath {
+    case PSU_OUTPUT_CURRENT:
+        if psuInfo.Output_Current != "" {
+            psuState.OutputCurrent, err = float32StrTo4Bytes(psuInfo.Output_Current)
+        }
+    case PSU_OUTPUT_VOLTAGE:
+        if psuInfo.Output_Voltage != ""{
+            psuState.OutputVoltage, err = float32StrTo4Bytes(psuInfo.Output_Voltage)
+        }
+    case PSU_OUTPUT_POWER:
+        if psuInfo.Output_Power != "" {
+            psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+        }
+    case PSU_LED_STATUS:
+        if psuInfo.Status_Led != "" {
+            psuEepromState.StatusLed = &psuInfo.Status_Led
+        }
+    case PSU_FANS:
+        if psuInfo.Fans != "" {
+            tmp, _ := strconv.ParseUint(psuInfo.Fans, 10, 32)
+            fans := uint32(tmp)
+            psuEepromState.Fans = &fans
+        }
+    case COMP_STATE_EMPTY:
+        psuEepromState.Empty = &empty
+    case COMP_STATE_OPER_STATUS:
+        psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+        if psuInfo.Status {
+            psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        }
+    case COMP_STATE_SERIAL_NO:
+        if psuInfo.Serial_Number != "" {
+            psuEepromState.SerialNo = &psuInfo.Serial_Number
+        }
+    case COMP_STATE_DESCR:
+        if psuInfo.Model_Name != "" {
+            psuEepromState.Description = &psuInfo.Model_Name
+        }
+    case COMP_STATE_MFG_NAME:
+        if psuInfo.Manufacturer != "" {
+            psuEepromState.MfgName = &psuInfo.Manufacturer
+        }
+    }
+
+    return err
+}
+
+func validPsuName(name string) bool {
+    return name != "" && (name == PSU1 || name == PSU2)
+}
+
+func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
+
+    log.Info("Preparing dB for PSU info");
+
+    var err error
+    log.Info("targetUriPath:", targetUriPath)
+    psuName := NewPathInfo(uri).Var("name")
+
+    if validPsuName(psuName) {
+        psuCom := pf_cpts.Component[psuName]
+        if psuCom  == nil {
+            log.Info("Invalid Component Name")
+            return errors.New("Invalid component name")
+        }
+        ygot.BuildEmptyTree(psuCom)
+        ygot.BuildEmptyTree(psuCom.PowerSupply)
+        ygot.BuildEmptyTree(psuCom.PowerSupply.State)
+        switch targetUriPath {
+        case "/openconfig-platform:components/component":
+            fillSysPsuInfo(psuCom, psuName, true, true, targetUriPath, d)
+        case "/openconfig-platform:components/component/power-supply":
+            fillSysPsuInfo(psuCom, psuName, true, true, targetUriPath, d)
+        case "/openconfig-platform:components/component/power-supply/state":
+            fillSysPsuInfo(psuCom, psuName, true, true, targetUriPath, d)
+        default:
+            fillSysPsuInfo(psuCom, psuName, false, true, targetUriPath, d)
+            break
+        }
+    }
+    return err
+}

@@ -9,6 +9,7 @@ module openconfig-system-ext {
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
     import openconfig-kdump { prefix oc-kdump; }
+    import openconfig-interfaces { prefix "oc-if"; }
 
     // meta
     organization "OpenConfig working group";
@@ -19,6 +20,11 @@ module openconfig-system-ext {
 
     description
         "Model for managing TACACS+ configurations .";
+
+    revision 2020-05-02 {
+        description
+            "Added DNS source IP support and allowed domain name as well for Radius/TACACS+ server configuration.";
+    }
 
     revision 2020-03-30 {
         description
@@ -136,6 +142,43 @@ module openconfig-system-ext {
                     uses ssh-vrf-config;
                 }
             }
+        }
+    }
+
+    grouping dns-source-config {
+        leaf source-intf {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+                "Source interface to pick the source IP address for the packets to DNS name server";
+        }
+    }
+
+    augment "/oc-sys:system/oc-sys:dns/oc-sys:config" {
+        uses dns-source-config;
+    }
+
+    augment "/oc-sys:system/oc-sys:dns/oc-sys:state" {
+        uses dns-source-config;
+    }
+
+    typedef server-address {
+        type inet:host;
+        description
+            "The host type represents either an unzoned IP address or a DNS
+            domain name.";
+    }
+
+    deviation "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address" {
+        deviate replace {
+            type server-address;
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address" {
+        deviate replace {
+            type server-address;
         }
     }
 

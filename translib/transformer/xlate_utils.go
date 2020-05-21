@@ -90,7 +90,7 @@ func mapCopy(destnMap map[string]map[string]db.Value, srcMap map[string]map[stri
 }
 var mapMergeMutex = &sync.Mutex{}
 /* Merge redis-db source to destn map */
-func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[string]db.Value) {
+func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[string]db.Value, oper int) {
 	mapMergeMutex.Lock()
    for table, tableData := range srcMap {
         _, ok := destnMap[table]
@@ -101,6 +101,15 @@ func mapMerge(destnMap map[string]map[string]db.Value, srcMap map[string]map[str
             _, ok = destnMap[table][rule]
             if !ok {
                  destnMap[table][rule] = db.Value{Field: make(map[string]string)}
+            } else {
+                if (oper == DELETE) {
+                    if ((len(destnMap[table][rule].Field) == 0) && (len(ruleData.Field) > 0)) {
+                        continue;
+                    }
+                    if ((len(destnMap[table][rule].Field) > 0) && (len(ruleData.Field) == 0)) {
+                        destnMap[table][rule] = db.Value{Field: make(map[string]string)};
+                    }
+                }
             }
             for field, value := range ruleData.Field {
                 dval := destnMap[table][rule]
@@ -726,12 +735,21 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 cdb := db.ConfigDB
 	 var dbs [db.MaxDB]*db.DB
 	 var err error
+	 var isUriForListInstance bool
 
+	 isUriForListInstance = false
 	 pfxPath, _ = XfmrRemoveXPATHPredicates(path)
 	 xpathInfo, ok := xYangSpecMap[pfxPath]
 	 if !ok {
 		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", pfxPath)
 		 return pfxPath, keyStr, tableName, err
+	 }
+	 // for SUBSCRIBE reuestUri = path
+	 requestUriYangType := yangTypeGet(xpathInfo.yangEntry)
+	 if requestUriYangType == YANG_LIST {
+		 if strings.HasSuffix(path, "]") { //uri is for list instance
+			 isUriForListInstance = true
+		 }
 	 }
 	 cdb = xpathInfo.dbIndex
 	 dbOpts := getDBOptions(cdb)
@@ -825,6 +843,9 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			 return pfxPath, keyStr, tableName, err
 
 		 }
+	 }
+	 if ((oper == SUBSCRIBE) && (strings.TrimSpace(keyStr) == "") && (requestUriYangType == YANG_LIST) && (!isUriForListInstance)) {
+		 keyStr="*"
 	 }
 	 xfmrLogInfoAll("Return uri(%v), xpath(%v), key(%v), tableName(%v)", path, pfxPath, keyStr, tableName)
 	 return pfxPath, keyStr, tableName, err
