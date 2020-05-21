@@ -18,7 +18,9 @@ var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (in
 
     log.Info("network_instance_protocols_protocol_table_name_xfmr")
     if (inParams.oper == GET) {
-        if(inParams.dbDataMap != nil) {
+        pathInfo := NewPathInfo(inParams.uri)
+        niName := pathInfo.Var("name")
+        if (((niName == "default") || (strings.HasPrefix(niName, "Vrf"))) && (inParams.dbDataMap != nil)) {
             (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
             (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"] = db.Value{Field: make(map[string]string)}
             (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"].Field["NULL"] = "NULL"
