@@ -26,6 +26,10 @@ import (
 func xfmrHandlerFunc(inParams XfmrParams) (error) {
 	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
 	xfmrLogInfoAll("Subtree transformer function(\"%v\") invoked for yang path(\"%v\").", xYangSpecMap[xpath].xfmrFunc, xpath)
+	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+	if yerr != nil {
+		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	}
 	_, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrFunc), inParams)
 	if err != nil {
 		xfmrLogInfoAll("Failed to retrieve data for xpath(\"%v\") err(%v).", inParams.uri, err)
@@ -37,6 +41,10 @@ func xfmrHandlerFunc(inParams XfmrParams) (error) {
 
 func leafXfmrHandlerFunc(inParams XfmrParams) (map[string]interface{}, error) {
 	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
+	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+	if yerr != nil {
+		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	}
 	ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrField), inParams)
 	if err != nil {
 		return nil, err
@@ -51,6 +59,10 @@ func leafXfmrHandlerFunc(inParams XfmrParams) (map[string]interface{}, error) {
 
 func validateHandlerFunc(inParams XfmrParams) (bool) {
 	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
+	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+	if yerr != nil {
+		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	}
 	ret, err := XlateFuncCall(xYangSpecMap[xpath].validateFunc, inParams)
 	if err != nil {
 		return false
@@ -61,6 +73,10 @@ func validateHandlerFunc(inParams XfmrParams) (bool) {
 func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams) ([]string, error) {
 	xfmrLogInfoAll("Received inParams %v, table transformer function name %v", inParams, xfmrTblFunc)
 	var retTblLst []string
+	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+	if yerr != nil {
+		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	}
 	ret, err := XlateFuncCall(xfmrTblFunc, inParams)
 	if err != nil {
 		return retTblLst, err
@@ -115,6 +131,10 @@ func valueXfmrHandler(inParams XfmrDbParams, xfmrValueFuncNm string) (string, er
 
 func leafXfmrHandler(inParams XfmrParams, xfmrFieldFuncNm string) (map[string]string, error) {
 	xfmrLogInfoAll("Received inParams %v Field transformer name %v", inParams, xfmrFieldFuncNm)
+	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+	if yerr != nil {
+		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	}
 	ret, err := XlateFuncCall(yangToDbXfmrFunc(xfmrFieldFuncNm), inParams)
 	if err != nil {
 		return nil, err
@@ -145,6 +165,10 @@ func leafXfmrHandler(inParams XfmrParams, xfmrFieldFuncNm string) (map[string]st
 
 func xfmrHandler(inParams XfmrParams, xfmrFuncNm string) (map[string]map[string]db.Value, error) {
 	xfmrLogInfoAll("Received inParams %v Subtree function name %v", inParams, xfmrFuncNm)
+	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+	if yerr != nil {
+		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	}
 	ret, err := XlateFuncCall(yangToDbXfmrFunc(xfmrFuncNm), inParams)
 	if err != nil {
 		return nil, err
@@ -171,6 +195,10 @@ func xfmrHandler(inParams XfmrParams, xfmrFuncNm string) (map[string]map[string]
 
 func keyXfmrHandler(inParams XfmrParams, xfmrFuncNm string) (string, error) {
 	xfmrLogInfoAll("Received inParams %v key transformer function name %v", inParams, xfmrFuncNm)
+	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+	if yerr != nil {
+		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	}
 	ret, err := XlateFuncCall(yangToDbXfmrFunc(xfmrFuncNm), inParams)
 	retVal := ""
 	if err != nil {
@@ -200,6 +228,10 @@ func keyXfmrHandler(inParams XfmrParams, xfmrFuncNm string) (string, error) {
 func postXfmrHandlerFunc(xfmrPost string, inParams XfmrParams) (map[string]map[string]db.Value, error) {
 	retData := make(map[string]map[string]db.Value)
 	xfmrLogInfoAll("Received inParams %v, post transformer function name %v", inParams, xfmrPost)
+	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+	if yerr != nil {
+		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	}
 	ret, err := XlateFuncCall(xfmrPost, inParams)
 	if err != nil {
 		return nil, err

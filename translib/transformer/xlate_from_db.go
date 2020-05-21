@@ -783,13 +783,18 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 	resultMap := inParamsForGet.resultMap
 	xpath := inParamsForGet.xpath
 	tblKey := inParamsForGet.tblKey
+	var chldUri string
 
 	yangNode, ok := xYangSpecMap[xpath]
 
 	if ok  && yangNode.yangEntry != nil {
 		for yangChldName := range yangNode.yangEntry.Dir {
 			chldXpath := xpath+"/"+yangChldName
-			chldUri   := uri+"/"+yangChldName
+			if xYangSpecMap[chldXpath] != nil && xYangSpecMap[chldXpath].nameWithMod != nil {
+				chldUri   = uri+"/"+ *(xYangSpecMap[chldXpath].nameWithMod)
+			} else {
+				chldUri   = uri+"/"+yangChldName
+			}
 			inParamsForGet.xpath = chldXpath
 			inParamsForGet.uri = chldUri
 			if xYangSpecMap[chldXpath] != nil && xYangSpecMap[chldXpath].yangEntry != nil {
