@@ -427,4 +427,16 @@ module openconfig-system-annot {
             sonic-ext:field-transformer "server_dns_field_xfmr";
         }
     }
+
+    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_kdump_status_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:config {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_kdump_config_xfmr";
+            }
+    }
 }
