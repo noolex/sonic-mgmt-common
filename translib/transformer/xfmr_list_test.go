@@ -37,7 +37,9 @@ func Test_List_Custom_DB_Update_Get(t *testing.T) {
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
 
-        get_expected := "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"state\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}}}]}"
+//        get_expected := "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"state\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}}}]}"
+
+	 get_expected := "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"config\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}},\"openconfig-if-ip:ipv6\":{\"config\":{\"enabled\":false},\"state\":{\"enabled\":false}}}]}"
 
         t.Run("GET on List Custom DB Update", processGetRequest(url, get_expected, false))
 

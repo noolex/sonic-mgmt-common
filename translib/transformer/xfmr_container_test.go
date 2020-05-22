@@ -652,13 +652,14 @@ func Test_Container_Nested_Subtree_Xfmr_Delete(t *testing.T) {
 
 func Test_Container_Nested_Subtree_Xfmr_Get(t *testing.T) {
 
-        cleanuptbl := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":"", "Ethernet4|1.2.3.4/16":""}}
+        cleanuptbl := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":"", "Ethernet4|*":""}}
         prereq := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":map[string]interface{}{"NULL":"NULL"}, "Ethernet4|1.2.3.4/16":map[string]interface{}{"NULL":"NULL"}}}
 	url := "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv4"
 
         fmt.Println("++++++++++++++  GET Test_Container_Subtree_Xfmr  +++++++++++++")
 
         // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
         loadConfigDB(rclient, prereq)
 
         get_expected := "{\"openconfig-if-ip:ipv4\":{\"addresses\":{\"address\":[{\"config\":{\"ip\":\"1.2.3.4\",\"prefix-length\":16},\"ip\":\"1.2.3.4\",\"state\":{\"ip\":\"1.2.3.4\",\"prefix-length\":16}}]}}}"
