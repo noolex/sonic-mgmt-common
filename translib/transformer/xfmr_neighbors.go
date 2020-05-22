@@ -356,7 +356,7 @@ func getNonDefaultVrfInterfaces(d *db.DB)(map[string]string) {
 }
 
 
-func clear_all(fam_switch string, d *db.DB)  string {
+func clear_default_vrf(fam_switch string, d *db.DB)  string {
     var err error
     var cmd *exec.Cmd
 
@@ -410,7 +410,7 @@ func clear_all(fam_switch string, d *db.DB)  string {
 }
 
 
-func clear_all_vrf(fam_switch string, vrf string) string {
+func clear_vrf(fam_switch string, vrf string) string {
     var err error
     var status string
     var count int
@@ -421,9 +421,13 @@ func clear_all_vrf(fam_switch string, vrf string) string {
     }
 
     for count = 1;  count <= 3; count++ {
-        log.Info("Executing: ip ", fam_switch, " -s ", "-s ", "neigh ", "flush ", "all ", "vrf ", vrf)
-        _, err = exec.Command("ip", fam_switch, "-s", "-s", "neigh", "flush", "all", "vrf", vrf).Output()
-
+        if (vrf == "all") {
+            log.Info("Executing: ip ", fam_switch, " -s ", "-s ", "neigh ", "flush ", "all")
+            _, err = exec.Command("ip", fam_switch, "-s", "-s", "neigh", "flush", "all").Output()
+        } else {
+            log.Info("Executing: ip ", fam_switch, " -s ", "-s ", "neigh ", "flush ", "all ", "vrf ", vrf)
+             _, err = exec.Command("ip", fam_switch, "-s", "-s", "neigh", "flush", "all", "vrf", vrf).Output()
+        }
         if err != nil {
             log.Info(err)
             if (strings.Contains(err.Error(), "255")) {
@@ -449,7 +453,7 @@ func clear_ip(ip string, fam_switch string, vrf string, d *db.DB) string {
     vrfList := getNonDefaultVrfInterfaces(d)
 
     //get interfaces first associated with this ip
-    if (len(vrf) > 0) {
+    if (len(vrf) > 0 && vrf != "all") {
         cmd = exec.Command("ip", fam_switch, "neigh", "show", ip, "vrf", vrf)
     } else {
         cmd = exec.Command("ip", fam_switch, "neigh", "show", ip)
@@ -474,18 +478,16 @@ func clear_ip(ip string, fam_switch string, vrf string, d *db.DB) string {
         list := strings.Fields(line)
         intf := list[2]
 
-        if (vrfList[intf] != "" && len(vrf) <= 0) {
-            continue
-        }
-
-        log.Info("Executing: ip ", fam_switch, " neigh ", "del ", ip, " dev ", intf)
-        _, e := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
-        if e != nil {
-            log.Info(e)
-            if (strings.Contains(e.Error(), "255")) {
-                return "Unable to clear all entries, please try again"
-            } else {
-                return "%Error: Internal error"
+        if (vrfList[intf] == vrf || vrf == "all") {
+            log.Info("Executing: ip ", fam_switch, " neigh ", "del ", ip, " dev ", intf)
+            _, e := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
+            if e != nil {
+                log.Info(e)
+                if (strings.Contains(e.Error(), "255")) {
+                    return "Unable to clear all entries, please try again"
+                } else {
+                    return "%Error: Internal error"
+                }
             }
         }
         isValidIp = true
@@ -604,9 +606,9 @@ var rpc_clear_neighbors RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     } else if len(ip) > 0 {
         status = clear_ip(ip, fam_switch, vrf, dbs[db.ConfigDB])
     } else if len(vrf) > 0 {
-        status = clear_all_vrf(fam_switch, vrf)
+        status = clear_vrf(fam_switch, vrf)
     } else {
-        status = clear_all(fam_switch, dbs[db.ConfigDB])
+        status = clear_default_vrf(fam_switch, dbs[db.ConfigDB])
     }
 
     result.Output.Status = status
