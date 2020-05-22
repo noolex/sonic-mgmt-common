@@ -593,18 +593,19 @@ var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inPa
         rtStmtObj,_ = rtPolDefObj.Statements.NewStatement(rtStmtName)
     }
     ygot.BuildEmptyTree(rtStmtObj)
-
-    if rtStmtObj.Actions == nil || rtStmtObj.Actions.BgpActions == nil || rtStmtObj.Actions.BgpActions.SetCommunity == nil {
-        return errors.New("Routing policy invalid action parameters")
+    if rtStmtObj.Actions == nil {
+        var actions ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions
+        rtStmtObj.Actions = &actions
     }
-
+    ygot.BuildEmptyTree(rtStmtObj.Actions)
     rtStmtActionCommObj := rtStmtObj.Actions.BgpActions.SetCommunity
     if rtStmtActionCommObj == nil {
-        return errors.New("Routing policy invalid action parameters")
+        var set_comm ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity
+        rtStmtObj.Actions.BgpActions.SetCommunity =&set_comm
+        rtStmtActionCommObj = rtStmtObj.Actions.BgpActions.SetCommunity
     }
-
-    entry_key := rtPolicyName + "|" + rtStmtName
     ygot.BuildEmptyTree(rtStmtActionCommObj)
+    entry_key := rtPolicyName + "|" + rtStmtName
     pTbl := data["ROUTE_MAP"]
     if _, ok := pTbl[entry_key]; !ok {
         log.Info("DbToYang_intf_enabled_xfmr Interface not found : ")
@@ -659,10 +660,10 @@ var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inPa
        rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
        rtStmtActionCommObj.Inline.State.Communities = StateCommunities
     } else {
-       rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE
        communityRef, ok := rtMapInst.Field["set_community_ref"]
        log.Info("DbToYang_route_map_bgp_action_set_community reference: ", communityRef)
        if ok {
+           rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE
            rtStmtActionCommObj.Reference.Config.CommunitySetRef = &communityRef
            rtStmtActionCommObj.Reference.State.CommunitySetRef = &communityRef
        } else {
@@ -834,11 +835,11 @@ var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (
 
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
     if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
-        log.Info("YangToDb_route_map_bgp_action_set_community : Routing policy definitions list is empty.")
+        log.Info("YangToDb_route_map_bgp_action_set_ext_community : Routing policy definitions list is empty.")
         return errors.New("Routing policy definitions list is empty")
     }
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_route_map_bgp_action_set_community: ", data, inParams.ygRoot)
+    log.Info("DbToYang_route_map_bgp_action_set_ext_community: ", data, inParams.ygRoot)
 
     pathInfo := NewPathInfo(inParams.uri)
     rtPolicyName := pathInfo.Var("name")
@@ -862,17 +863,20 @@ var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (
     }
     ygot.BuildEmptyTree(rtStmtObj)
 
-    if rtStmtObj.Actions == nil || rtStmtObj.Actions.BgpActions == nil || rtStmtObj.Actions.BgpActions.SetExtCommunity == nil {
-        return errors.New("Routing policy invalid action parameters")
+    if rtStmtObj.Actions == nil {
+        var actions ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions
+        rtStmtObj.Actions = &actions
     }
-
+    ygot.BuildEmptyTree(rtStmtObj.Actions)
     rtStmtActionCommObj := rtStmtObj.Actions.BgpActions.SetExtCommunity
     if rtStmtActionCommObj == nil {
-        return errors.New("Routing policy invalid action parameters")
+        var set_comm ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity
+        rtStmtObj.Actions.BgpActions.SetExtCommunity =&set_comm
+        rtStmtActionCommObj = rtStmtObj.Actions.BgpActions.SetExtCommunity
     }
+    ygot.BuildEmptyTree(rtStmtActionCommObj)
 
     entry_key := rtPolicyName + "|" + rtStmtName
-    ygot.BuildEmptyTree(rtStmtActionCommObj)
     pTbl := data["ROUTE_MAP"]
     if _, ok := pTbl[entry_key]; !ok {
         log.Info("DbToYang_intf_enabled_xfmr Interface not found : ")
@@ -917,10 +921,10 @@ var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (
        rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
        rtStmtActionCommObj.Inline.State.Communities = StateCommunities
     } else {
-       rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE
        communityRef, ok := rtMapInst.Field["set_ext_community_ref"]
        log.Info("DbToYang_route_map_bgp_action_set_ext_community reference value: ", communityRef)
        if ok {
+           rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE
            rtStmtActionCommObj.Reference.Config.ExtCommunitySetRef = &communityRef
            rtStmtActionCommObj.Reference.State.ExtCommunitySetRef = &communityRef
        } else {
