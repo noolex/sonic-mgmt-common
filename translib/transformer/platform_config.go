@@ -3,7 +3,7 @@ package transformer
 import (
     "strconv"
     "github.com/Azure/sonic-mgmt-common/translib/db"
-    "errors"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "strings"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
@@ -69,7 +69,7 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
 
     if len(port_config.valid_speeds) < 1 {
         log.Error("Invalid or unsupported breakout mode")
-        return port_config, errors.New("Invalid or unsupported breakout mode")
+        return port_config, tlerr.InvalidArgs("Invalid or unsupported breakout mode %s", mode)
     }
 
     lane_speed_map := map[string][]int{"1x100G":{4, 100000}, "1x40G":{4, 40000},"1x400G":{8, 400000},
@@ -80,7 +80,7 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     lane_speed, ok := lane_speed_map[mode]
     if !ok {
         log.Error("Invalid or unsupported breakout mode", mode)
-        return port_config, errors.New("Invalid or unsupported breakout mode")
+        return port_config, tlerr.InvalidArgs("Invalid or unsupported breakout mode %s", mode)
     }
     start_lane := subport*lane_speed[0]
     end_lane := start_lane + lane_speed[0]
@@ -110,13 +110,13 @@ func getPorts (port_i string, mode string) ([]portProp, error) {
     var ports []portProp
 
     // This error will get updated in success case.
-    err = errors.New("Invalid breakout mode")
+    err = tlerr.InvalidArgs("Invalid or unsupported breakout mode %s", mode)
     if entry, ok := platConfigStr[port_i]; ok {
         // Default mode. DELETE/"no breakout" case
         if len(mode) == 0 {
             mode =  entry["default_brkout_mode"]
             if len(mode) == 0 {
-                err = errors.New("Invalid default breakout mode")
+                err = tlerr.InvalidArgs("Invalid default breakout mode")
                 return ports, err
             }
             if strings.Contains(mode, "[") {
@@ -132,7 +132,7 @@ func getPorts (port_i string, mode string) ([]portProp, error) {
 
     } else {
             log.Info("Invalid interface/master port - ", mode)
-            err = errors.New("Invalid interface/master port.")
+            err = tlerr.NotSupported("Breakout not supported on %s", port_i)
     }
 
     return ports, err
@@ -185,7 +185,7 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
         value.Set("speed", ports[i].speed)
         value.Set("valid_speeds", ports[i].valid_speeds)
         entryMap[ports[i].name] = value
-/*
+
         entry, ok := platConfigStr[ports[i].name]
         if ok {
             brkoutMap := make(map[string]db.Value)
@@ -194,7 +194,7 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
             fvpairs.Set("lanes", entry["lanes"])
             brkoutMap[ports[i].name] = fvpairs
             addMap["BREAKOUT_CFG"] = brkoutMap
-        } */
+        }
     }
 
     addMap["PORT"] = entryMap

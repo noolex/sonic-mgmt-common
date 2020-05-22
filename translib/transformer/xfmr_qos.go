@@ -462,7 +462,7 @@ func populatePriorityGroupCounters (inParams XfmrParams, targetUriPath string, o
 }
 
 /* Validate whether intf exists in DB */
-func validateQosIntf(dbs [db.MaxDB]*db.DB, intfName string) error {
+func validateQosIntf(confd *db.DB, dbs [db.MaxDB]*db.DB, intfName string) error {
 
     log.Info(" validateQosIntf - intfName ", intfName);
     if intfName  == "" {
@@ -472,7 +472,13 @@ func validateQosIntf(dbs [db.MaxDB]*db.DB, intfName string) error {
     if intfName  == "CPU" {
         return nil
     }
-    d := dbs[db.ConfigDB]
+    var d *db.DB
+
+    if (confd != nil) {
+        d = confd
+    } else {
+        d = dbs[db.ConfigDB]
+    }
     if (d != nil) {
         entry, err := d.GetEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{intfName}})
         if err != nil || !entry.IsPopulated() {
@@ -480,8 +486,6 @@ func validateQosIntf(dbs [db.MaxDB]*db.DB, intfName string) error {
             log.Error(errStr)
             return tlerr.InvalidArgsError{Format:errStr}
         }
-    } else {
-        log.Info(" validateQosIntf - d is nil ");
     }
     return nil
 }
@@ -507,7 +511,6 @@ func validateQosIntfQueue(dbs [db.MaxDB]*db.DB, intfName string, queueName strin
             return tlerr.InvalidArgsError{Format:errStr}
         }
     }
-
     return nil
 }
 
@@ -530,7 +533,6 @@ func validateQosIntfPg(dbs [db.MaxDB]*db.DB, intfName string, pgName string) err
             return tlerr.InvalidArgsError{Format:errStr}
         }
     }
-
     return nil
 }
 
@@ -544,10 +546,43 @@ func validateQosQueue(dbs [db.MaxDB]*db.DB, queueName string) error {
             log.Error(errStr)
             return tlerr.InvalidArgsError{Format:errStr}
         }
+    } 
+
+    return nil
+}
+
+func validateQosConfigQueue(inParams XfmrParams, queueName string) error {
+    var errStr string
+    log.Info(" validateQosConfigQueue - queueName ", queueName);
+    d := inParams.d
+    if (inParams.curDb == db.CountersDB) {
+        d = inParams.d
+    } else {
+        d = inParams.dbs[db.CountersDB]
+    }
+    if (d == nil) {
+        return nil
+    }
+    oid, err := getIntfQCountersTblKey(d, queueName)
+    if err != nil {
+        errStr = "Invalid Queue:" + queueName
+        log.Error(errStr)
+        return tlerr.InvalidArgsError{Format:errStr}
+    }
+
+    queueTypeMap, _ := doGetAllQueueTypeMap(d);
+
+    qType := getQType(queueTypeMap, oid)
+
+    if (qType == "MC") {
+        errStr = "Invalid Queue:" + queueName
+        log.Error(errStr)
+        return tlerr.InvalidArgsError{Format:errStr}
     }
 
     return nil
 }
+
 
 func validateQosPg(dbs [db.MaxDB]*db.DB, pgName string) error {
 
@@ -560,7 +595,6 @@ func validateQosPg(dbs [db.MaxDB]*db.DB, pgName string) error {
             return tlerr.InvalidArgsError{Format:errStr}
         }
     }
-
     return nil
 }
 
@@ -677,7 +711,7 @@ var DbToYang_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("interface-id")
 
-    err = validateQosIntf(inParams.dbs, intfName)
+    err = validateQosIntf(nil, inParams.dbs, intfName)
     if err != nil {
         return err
     }
@@ -898,7 +932,7 @@ var DbToYang_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("interface-id")
 
-    err = validateQosIntf(inParams.dbs, intfName)
+    err = validateQosIntf(nil, inParams.dbs, intfName)
     if err != nil {
         return err
     }
@@ -1088,7 +1122,7 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
         }
 
         if ifname != "" {
-            err = validateQosIntf(dbs, ifname)
+            err = validateQosIntf(nil, dbs, ifname)
             if err != nil {
                 log.Info("Invalid interface ", ifname)
                 result.Output.Status = fmt.Sprintf("Error: Invalid interface %s", ifname)
@@ -1222,7 +1256,7 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             watermarks = true
         }
         if ifname != "" {
-            err = validateQosIntf(dbs, ifname)
+            err = validateQosIntf(nil, dbs, ifname)
             if err != nil {
                 log.Info("Invalid interface ", ifname)
                 result.Output.Status = fmt.Sprintf("Error: Invalid interface %s", ifname)
@@ -1343,7 +1377,7 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         key = ifName
         log.Info("TableXfmrFunc - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
 
-        err = validateQosIntf(inParams.dbs, ifName)
+        err = validateQosIntf(nil, inParams.dbs, ifName)
         if err != nil {
             return tblList, err
         }
@@ -1393,7 +1427,7 @@ var YangToDb_qos_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     pathInfo := NewPathInfo(inParams.uri)
     ifName = pathInfo.Var("interface-id")
     log.Info("Intf name: ", ifName)
-    err = validateQosIntf(inParams.dbs, ifName)
+    err = validateQosIntf(inParams.d, inParams.dbs, ifName)
     if err != nil {
         return ifName, err
     }

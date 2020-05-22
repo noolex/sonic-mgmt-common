@@ -44,6 +44,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_name_xfmr", DbToYang_intf_name_xfmr)
     XlateFuncBind("YangToDb_intf_enabled_xfmr", YangToDb_intf_enabled_xfmr)
     XlateFuncBind("DbToYang_intf_enabled_xfmr", DbToYang_intf_enabled_xfmr)
+    XlateFuncBind("YangToDb_intf_mtu_xfmr", YangToDb_intf_mtu_xfmr)
     XlateFuncBind("YangToDb_intf_type_xfmr", YangToDb_intf_type_xfmr)
     XlateFuncBind("DbToYang_intf_type_xfmr", DbToYang_intf_type_xfmr)
     XlateFuncBind("DbToYang_intf_admin_status_xfmr", DbToYang_intf_admin_status_xfmr)
@@ -89,6 +90,7 @@ const (
     PORTCHANNEL_MEMBER_TN  = "PORTCHANNEL_MEMBER"
     LOOPBACK_INTERFACE_TN  = "LOOPBACK_INTERFACE"
     UNNUMBERED         = "unnumbered"
+    DEFAULT_MTU        = "9100"
 )
 
 const (
@@ -640,6 +642,61 @@ var YangToDb_intf_name_empty_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     res_map := make(map[string]string)
     var err error
     return res_map, err
+}
+
+func updateDefaultMtu(inParams *XfmrParams, ifName *string, ifType E_InterfaceType, resMap map[string]string) error {
+    var err error
+    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    intfMap := make(map[string]map[string]db.Value)
+
+    intTbl := IntfTypeTblMap[ifType]
+    resMap["mtu"] = DEFAULT_MTU
+
+    intfMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+    intfMap[intTbl.cfgDb.portTN][*ifName] = db.Value{Field:resMap}
+
+    subOpMap[db.ConfigDB] = intfMap
+    inParams.subOpDataMap[UPDATE] = &subOpMap
+    return err
+}
+
+var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var ifName string
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        return res_map, nil
+    } else {
+        for infK, _ := range intfsObj.Interface {
+            ifName = infK
+        }
+    }
+    intfType, _, _ := getIntfTypeByName(ifName)
+    if IntfTypeVxlan == intfType {
+        return res_map, nil
+    }
+    if inParams.oper == DELETE {
+        log.Infof("Updating the Interface: %s with default MTU", ifName)
+        if intfType == IntfTypeLoopback {
+            log.Infof("MTU not supported for Loopback Interface Type: %d", intfType)
+            return res_map, nil
+        }
+        /* Note: For the mtu delete request, res_map with delete operation and
+           subOp map with update operation (default MTU value) is filled. This is because, transformer default
+           updates the result DS for delete oper with table and key. This needs to be fixed by transformer
+           for deletion of an attribute */
+        err := updateDefaultMtu(&inParams, &ifName, intfType, res_map)
+        if err != nil {
+            log.Errorf("Updating Default MTU for Interface: %s failed", ifName)
+            return res_map, err
+        }
+        return res_map, nil
+    }
+    // Handles all the operations other than Delete
+    intfTypeVal, _ := inParams.param.(*uint16)
+    intTypeValStr := strconv.FormatUint(uint64(*intfTypeVal), 10)
+    res_map["mtu"] = intTypeValStr
+    return res_map, nil
 }
 
 var YangToDb_intf_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -3033,6 +3090,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
 		if sagIpv4Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
+
+			if !validIPv4(sagIpv4Obj.Config.StaticAnycastGateway[0]) {
+                            errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+                            err = tlerr.InvalidArgsError{Format: errStr}
+                            return subIntfmap, err
+                        }
+
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3074,6 +3138,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
 		if sagIpv6Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv6Obj.Config.StaticAnycastGateway)
+
+			if !validIPv6(sagIpv6Obj.Config.StaticAnycastGateway[0]) {
+                            errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+                            err = tlerr.InvalidArgsError{Format: errStr}
+                            return subIntfmap, err
+                        }
+
 			sagIPv6Key := ifName + "|IPv6"
 
 			sagIPv6Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv6Key}})
@@ -3135,14 +3206,14 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 	ipv6_req := false
 	var sagIPKey string
 
-	if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/sag-ipv4/config") || 
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/sag-ipv4/config") || 
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config")) {
+	if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/sag-ipv4") || 
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/sag-ipv4") || 
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4")) {
 		ipv4_req = true
 		sagIPKey = ifName + "|IPv4"
-	} else if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/sag-ipv6/config") || 
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/sag-ipv6/config") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:sag-ipv6/config")) {
+	} else if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/sag-ipv6") || 
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/sag-ipv6") ||
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:sag-ipv6")) {
 		ipv6_req = true
 		sagIPKey = ifName + "|IPv6"
 	}
@@ -3185,35 +3256,18 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 		}
 
 		subIntf = intfObj.Subinterfaces.Subinterface[0]
+		ygot.BuildEmptyTree(subIntf)
 
 		if ipv4_req {
-			var sagIpv4 *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_SagIpv4
-			var sagIpv4Config *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_SagIpv4_Config			
-			if sagIpv4 = subIntf.Ipv4.SagIpv4 ; sagIpv4 == nil {
-				var _sagIpv4 ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_SagIpv4
-				subIntf.Ipv4.SagIpv4 = &_sagIpv4
-				sagIpv4 = subIntf.Ipv4.SagIpv4
-			}
-			if sagIpv4Config = sagIpv4.Config ; sagIpv4Config == nil {
-				var _sagIpv4Config ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_SagIpv4_Config
-				subIntf.Ipv4.SagIpv4.Config = &_sagIpv4Config
-				sagIpv4Config = subIntf.Ipv4.SagIpv4.Config
-			}
-			sagIpv4Config.StaticAnycastGateway = sagGwIPMap
+			ygot.BuildEmptyTree(subIntf.Ipv4)
+			ygot.BuildEmptyTree(subIntf.Ipv4.SagIpv4)
+			subIntf.Ipv4.SagIpv4.Config.StaticAnycastGateway = sagGwIPMap
+			subIntf.Ipv4.SagIpv4.State.StaticAnycastGateway = sagGwIPMap
 		} else if ipv6_req {
-			var sagIpv6 *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_SagIpv6
-			var sagIpv6Config *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_SagIpv6_Config			
-			if sagIpv6 = subIntf.Ipv6.SagIpv6 ; sagIpv6 == nil {
-				var _sagIpv6 ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_SagIpv6
-				subIntf.Ipv6.SagIpv6 = &_sagIpv6
-				sagIpv6 = subIntf.Ipv6.SagIpv6
-			}
-			if sagIpv6Config = sagIpv6.Config ; sagIpv6Config == nil {
-				var _sagIpv6Config ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_SagIpv6_Config
-				subIntf.Ipv6.SagIpv6.Config = &_sagIpv6Config
-				sagIpv6Config = subIntf.Ipv6.SagIpv6.Config
-			}
-			sagIpv6Config.StaticAnycastGateway = sagGwIPMap
+			ygot.BuildEmptyTree(subIntf.Ipv6)
+			ygot.BuildEmptyTree(subIntf.Ipv6.SagIpv6)
+			subIntf.Ipv6.SagIpv6.Config.StaticAnycastGateway = sagGwIPMap
+			subIntf.Ipv6.SagIpv6.State.StaticAnycastGateway = sagGwIPMap
 		}
 	}
 

@@ -19,8 +19,8 @@ type ReferingPolicyEntry struct {
 
 type ClassifierEntry struct {
     DESCRIPTION string
-        MATCH_TYPE string  
-        ACL_NAME   string  
+        MATCH_TYPE string
+        ACL_NAME   string
         ETHER_TYPE string
         SRC_MAC    string
         DST_MAC    string
@@ -38,7 +38,7 @@ type ClassifierEntry struct {
         L4_DST_PORT int
         L4_DST_PORT_RANGE string
         TCP_FLAGS  string
-        REF_POLICY_LIST []  ReferingPolicyEntry
+        REF_POLICY_LIST []ReferingPolicyEntry
 }
 
 type IpNextHopEntry struct {
@@ -61,12 +61,12 @@ type ReferringClassConfigEntry struct {
     SET_POLICER_CBS     uint64
     SET_POLICER_PIR     uint64
     SET_POLICER_PBS     uint64
-    SET_MIRROR_SESSION  string 
+    SET_MIRROR_SESSION  string
     SET_INTERFACE      string
     SET_IP_NEXTHOP     string
     SET_IPV6_NEXTHOP     string
-    IP_NEXTHOP_LIST    [] IpNextHopEntry 
-    IPV6_NEXTHOP_LIST    [] IpNextHopEntry 
+    IP_NEXTHOP_LIST    [] IpNextHopEntry
+    IPV6_NEXTHOP_LIST    [] IpNextHopEntry
     DEFAULT_PKT_ACTION  string
 }
 
@@ -78,8 +78,8 @@ type PolicyBindPortEntry struct {
 //POLICY_NAME key
 type PolicyEntry struct {
     DESCRIPTION string
-    TYPE string  
-    REF_CLASS_LIST [] ReferringClassConfigEntry 
+    TYPE string
+    REF_CLASS_LIST [] ReferringClassConfigEntry
     APPLIED_PORT_LIST [] PolicyBindPortEntry
 }
 
@@ -98,9 +98,9 @@ type ReferringClassOperEntry struct {
    EXCEED_BYTE_COUNT uint64
    VIOLATED_PACKET_COUNT uint64
    VIOLATED_BYTE_COUNT uint64
-   CONFORMED_PACKET_ACTION string 
-   EXCEED_PACKET_ACTION string 
-   VIOLATED_PACKET_ACTION string 
+   CONFORMED_PACKET_ACTION string
+   EXCEED_PACKET_ACTION string
+   VIOLATED_PACKET_ACTION string
 
    //POLICER_TABLE in APP DB
    POLICER_CIR uint64
@@ -122,15 +122,15 @@ type ReferringClassEntry struct {
 
 
 type ServicePolicyEntry struct {
-    POLICY_NAME string  
+    POLICY_NAME string
     DESCRIPTION string
-    TYPE string  
+    TYPE string
     POLICY_BIND_DIR string;
-    REF_CLASS_LIST [] ReferringClassEntry 
-} 
+    REF_CLASS_LIST []ReferringClassEntry
+}
 
 type ServicePolicyPort struct {
-    MATCHING_SERVICE_POLICY_LIST [] ServicePolicyEntry;
+    MATCHING_SERVICE_POLICY_LIST []ServicePolicyEntry;
 }
 
 
@@ -162,10 +162,10 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
             classEntry.DSCP,_              = strconv.Atoi(classifierTblVal.Field["DSCP"])
             classEntry.L4_SRC_PORT,_       = strconv.Atoi(classifierTblVal.Field["L4_SRC_PORT"])
             classEntry.L4_DST_PORT,_       = strconv.Atoi(classifierTblVal.Field["L4_DST_PORT"])
-            classEntry.L4_SRC_PORT_RANGE   = classifierTblVal.Field["L4_SRC_PORT_RANGE"] 
+            classEntry.L4_SRC_PORT_RANGE   = classifierTblVal.Field["L4_SRC_PORT_RANGE"]
             classEntry.L4_DST_PORT_RANGE   = classifierTblVal.Field["L4_DST_PORT_RANGE"]
             classEntry.TCP_FLAGS    = classifierTblVal.Field["TCP_FLAGS"]
-        }                           
+        }
 
         var POLICY_SECTION_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
         policySectionTblclassKeyStr := "*" + "|" + class_name
@@ -184,7 +184,7 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
                     log.Errorf("Failed to  find related policy:%v err%v", classReferingPolicyKeys[i], err)
                         return errors.New("classifier not found")
                 }
-            priority, _ := strconv.Atoi(policySectionTblVal.Field["PRIORITY"]) 
+            priority, _ := strconv.Atoi(policySectionTblVal.Field["PRIORITY"])
                 referringPolicy.PRIORITY    = priority
                 referringPolicy.POLICY_NAME = classReferingPolicyKeys[i].Comp[0]
                 classEntry.REF_POLICY_LIST = append(classEntry.REF_POLICY_LIST, referringPolicy)
@@ -210,17 +210,17 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 	configDbPtr := dbs[db.ConfigDB]
     var CLASSIFIER_TABLE_TS  *db.TableSpec = &db.TableSpec { Name: "CLASSIFIER_TABLE" }
 
-    
+
     var  showOutput struct {
         Output struct {
             MATCHING_CLASSIFIER_TABLE_LIST  map[string] ClassifierEntry
         } `json:"sonic-flow-based-services:output"`
     }
 
-     arg_class_name, arg_class_name_found := mapData["CLASSIFIER_NAME"].(string)
-     arg_match_type, arg_match_type_found := mapData["MATCH_TYPE"].(string)
+    arg_class_name, arg_class_name_found := mapData["CLASSIFIER_NAME"].(string)
+    arg_match_type, arg_match_type_found := mapData["MATCH_TYPE"].(string)
     if  arg_class_name_found && arg_class_name != "" {
-        class_name = arg_class_name 
+        class_name = arg_class_name
 
         //get classifier db output
 	    classifierTblVal, err := configDbPtr.GetEntry(CLASSIFIER_TABLE_TS, db.Key{Comp: []string{class_name}})
@@ -241,19 +241,21 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         result,err = json.Marshal(&showOutput)
         return result, err
         //get associated policies
-    } else if  arg_match_type_found && arg_match_type != "" {
-        match_type = arg_match_type
+    } else {
+        if arg_match_type_found {
+            match_type = arg_match_type
+        }
 
         showOutput.Output.MATCHING_CLASSIFIER_TABLE_LIST = make(map[string] ClassifierEntry)
         classifierTbl, err := configDbPtr.GetTable(CLASSIFIER_TABLE_TS)
 
 		classKeys, _ := classifierTbl.GetKeys()
-        var match_found bool = false    
+        var match_found bool = false
         xfmrLogInfo("In rpc_show_classifier, match_type:%v RPC classifierTbl:%v, classkeys:%v ", match_type, classifierTbl, classKeys)
 	    for index, _ := range classKeys {
             class_name = classKeys[index].Comp[0]
 			classifierTblVal, err := classifierTbl.GetEntry(classKeys[index])
-            if classifierTblVal.Field["MATCH_TYPE"] != match_type {
+            if match_type != "" && classifierTblVal.Field["MATCH_TYPE"] != match_type {
                 xfmrLogInfo("In rpc_show_classifier, not matching index:%v class_name:%v match_type:%v ", index, class_name, classifierTblVal.Field["MATCH_TYPE"])
                 continue;
             }
@@ -268,8 +270,8 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         }
 
         if match_found {
-        result,err = json.Marshal(&showOutput)
-        return result, err
+            result,err = json.Marshal(&showOutput)
+            return result, err
         }
     }
 
@@ -298,9 +300,9 @@ func is_nhop_chosen_one(dbs[db.MaxDB] *db.DB, pbfKey string, nhopToMatch string)
 }
 
 
-func fill_policy_section_table_info(policy_name string, class_name string, policySectionTblVal db.Value, dbs[db.MaxDB]*db.DB, fill_selected_nh bool, pbfKey string, policySectionInfo *ReferringClassConfigEntry) { 
+func fill_policy_section_table_info(policy_name string, class_name string, policySectionTblVal db.Value, dbs[db.MaxDB]*db.DB, fill_selected_nh bool, pbfKey string, policySectionInfo *ReferringClassConfigEntry) {
     policySectionInfo.POLICY_NAME   = policy_name
-    policySectionInfo.CLASS_NAME    = class_name 
+    policySectionInfo.CLASS_NAME    = class_name
 
     policySectionInfo.PRIORITY, _   = strconv.Atoi(policySectionTblVal.Field["PRIORITY"])
     policySectionInfo.SET_DSCP, _   = strconv.Atoi(policySectionTblVal.Field["SET_DSCP"])
@@ -317,8 +319,8 @@ func fill_policy_section_table_info(policy_name string, class_name string, polic
     if (len(policySectionTblVal.Get("SET_IP_NEXTHOP@")) > 0) {
         ipNhops := policySectionTblVal.GetList("SET_IP_NEXTHOP")
         for i, _ := range ipNhops {
-            var ipNhopEntry IpNextHopEntry 
-            nhopSplits := strings.Split(ipNhops[i],"|") 
+            var ipNhopEntry IpNextHopEntry
+            nhopSplits := strings.Split(ipNhops[i],"|")
             ipNhopEntry.NEXTHOP  = nhopSplits[0]
             ipNhopEntry.VRF      = nhopSplits[1]
             ipNhopEntry.PRIORITY,_ = strconv.Atoi(nhopSplits[2])
@@ -336,8 +338,8 @@ func fill_policy_section_table_info(policy_name string, class_name string, polic
     if (len(policySectionTblVal.Get("SET_IPV6_NEXTHOP@")) > 0)  {
         ipNhops := policySectionTblVal.GetList("SET_IPV6_NEXTHOP")
         for i, _ := range ipNhops {
-            var ipNhopEntry IpNextHopEntry 
-            nhopSplits := strings.Split(ipNhops[i],"|") 
+            var ipNhopEntry IpNextHopEntry
+            nhopSplits := strings.Split(ipNhops[i],"|")
             ipNhopEntry.NEXTHOP  = nhopSplits[0]
             ipNhopEntry.VRF      = nhopSplits[1]
             ipNhopEntry.PRIORITY,_ = strconv.Atoi(nhopSplits[2])
@@ -366,14 +368,14 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
     policerCountersTblVal, err  := countersDbPtr.GetEntry(POLICER_COUNTERS_TABLES_TS, policyCountersTblKey)
     xfmrLogInfo("policerCountersTblVal:%v", policerCountersTblVal)
     if err == nil {
-            policyClassStateInfo.CONFORMED_PACKET_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["GreenPackets"], 10, 64)  
-            policyClassStateInfo.CONFORMED_BYTE_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["GreenBytes"], 10, 64) 
+        policyClassStateInfo.CONFORMED_PACKET_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["GreenPackets"], 10, 64)
+        policyClassStateInfo.CONFORMED_BYTE_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["GreenBytes"], 10, 64)
 
-            policyClassStateInfo.EXCEED_PACKET_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["YellowPackets"], 10, 64) 
-            policyClassStateInfo.EXCEED_BYTE_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["YellowBytes"], 10, 64) 
+        policyClassStateInfo.EXCEED_PACKET_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["YellowPackets"], 10, 64)
+        policyClassStateInfo.EXCEED_BYTE_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["YellowBytes"], 10, 64)
 
-            policyClassStateInfo.VIOLATED_PACKET_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["RedPackets"], 10, 64) 
-            policyClassStateInfo.VIOLATED_BYTE_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["RedBytes"], 10, 64) 
+        policyClassStateInfo.VIOLATED_PACKET_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["RedPackets"], 10, 64)
+        policyClassStateInfo.VIOLATED_BYTE_COUNT, _ = strconv.ParseUint(policerCountersTblVal.Field["RedBytes"], 10, 64)
 
     }
 
@@ -381,35 +383,35 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
     fbsCountersTblVal, err := countersDbPtr.GetEntry(FBS_COUNTERS_TABLES_TS, policyCountersTblKey)
     log.Infof("fbsCountersTblVal:%v", fbsCountersTblVal)
     if err == nil {
-            policyClassStateInfo.FBS_PACKET_COUNT, _ = strconv.ParseUint(fbsCountersTblVal.Field["Packets"], 10, 64) 
-            policyClassStateInfo.FBS_BYTE_COUNT, _ = strconv.ParseUint(fbsCountersTblVal.Field["Bytes"], 10, 64) 
+        policyClassStateInfo.FBS_PACKET_COUNT, _ = strconv.ParseUint(fbsCountersTblVal.Field["Packets"], 10, 64)
+        policyClassStateInfo.FBS_BYTE_COUNT, _ = strconv.ParseUint(fbsCountersTblVal.Field["Bytes"], 10, 64)
     }
 
 	appDbPtr := dbs[db.ApplDB]
     var POLICER_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICER_TABLE"}
     policerTblVal, err := appDbPtr.GetEntry(POLICER_TABLES_TS, policyCountersTblKey)
     xfmrLogInfo("policerTblVal:%v", policerTblVal)
-     if err == nil {
-            policyClassStateInfo.POLICER_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64) 
-            policyClassStateInfo.POLICER_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64) 
-            policyClassStateInfo.POLICER_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64) 
-            policyClassStateInfo.POLICER_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64) 
+    if err == nil {
+        policyClassStateInfo.POLICER_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
+        policyClassStateInfo.POLICER_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
+        policyClassStateInfo.POLICER_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
+        policyClassStateInfo.POLICER_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
 
-            policyClassStateInfo.POLICER_METER_TYPE = policerTblVal.Field["METER_TYPE"] 
-            policyClassStateInfo.POLICER_MODE = policerTblVal.Field["MODE"] 
-            policyClassStateInfo.POLICER_COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"] 
+        policyClassStateInfo.POLICER_METER_TYPE = policerTblVal.Field["METER_TYPE"]
+        policyClassStateInfo.POLICER_MODE = policerTblVal.Field["MODE"]
+        policyClassStateInfo.POLICER_COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"]
 
-            policyClassStateInfo.CONFORMED_PACKET_ACTION = policerTblVal.Field["GREEN_PACKET_ACTION"]
-            policyClassStateInfo.EXCEED_PACKET_ACTION = policerTblVal.Field["YELLOW_PACKET_ACTION"]
-            policyClassStateInfo.VIOLATED_PACKET_ACTION = policerTblVal.Field["RED_PACKET_ACTION"]
-      }
+        policyClassStateInfo.CONFORMED_PACKET_ACTION = policerTblVal.Field["GREEN_PACKET_ACTION"]
+        policyClassStateInfo.EXCEED_PACKET_ACTION = policerTblVal.Field["YELLOW_PACKET_ACTION"]
+        policyClassStateInfo.VIOLATED_PACKET_ACTION = policerTblVal.Field["RED_PACKET_ACTION"]
+    }
 
     stateDbPtr := dbs[db.StateDB]
     var POLICY_SECTION_BIND_STATUS_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTION_BINDING_STATUS"}
     policyBindStatusTblVal, err := stateDbPtr.GetEntry(POLICY_SECTION_BIND_STATUS_TABLES_TS, policyCountersTblKey)
     xfmrLogInfo("policyBindStatusTblVal:%v", policyBindStatusTblVal)
     if err == nil {
-        policyClassStateInfo.POLICY_BIND_STATUS = policerTblVal.Field["STATUS"] 
+        policyClassStateInfo.POLICY_BIND_STATUS = policerTblVal.Field["STATUS"]
     } else {
         policyClassStateInfo.POLICY_BIND_STATUS =  "InActive"
     }
@@ -486,10 +488,10 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs[db.MaxDB
             xfmrLogInfo("In rpc_show_policy, policy_name:%v key:%v policyBindTblVal:%v ", policy_name, policyBindKeys[index], policyBindTblVal)
 
             for field, value := range policyBindTblVal.Field {
-              field_splits := strings.Split(field,"_") 
+              field_splits := strings.Split(field,"_")
               policy_bind_dir := field_splits[0]
-              if value == policy_name { 
-                appliedPort.POLICY_BIND_PORT = policyBindKeys[index].Comp[0] 
+              if value == policy_name {
+                appliedPort.POLICY_BIND_PORT = policyBindKeys[index].Comp[0]
                 appliedPort.POLICY_BIND_DIR =  policy_bind_dir
                 break;
               }
@@ -527,9 +529,9 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 
     arg_policy_name, arg_policy_name_found := mapData["POLICY_NAME"].(string)
     arg_type, arg_type_found := mapData["TYPE"].(string)
-    var match_found bool = false    
+    var match_found bool = false
     if  arg_policy_name_found && arg_policy_name != "" {
-        policy_name = arg_policy_name 
+        policy_name = arg_policy_name
         //get policy db output
         policyTblVal, err := configDbPtr.GetEntry(POLICY_TABLE_TS, db.Key{Comp: []string{policy_name}})
         xfmrLogInfo("In rpc_show_policy, policy_name:%v, RPC policyTblVal:%v", policy_name, policyTblVal)
@@ -545,7 +547,7 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
             log.Errorf("Failed to fetch policy:%v details err%v", policy_name, err)
             return nil,  errors.New("policy fetch error")
         }
-        
+
         showOutput.Output.MATCHING_POLICY_TABLE_LIST[policy_name]  = policyEntry
         match_type = policyTblVal.Field["MATCH_TYPE"]
         match_found = true
@@ -577,7 +579,6 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
         }
     }
 
-    
     if match_found {
         result,err = json.Marshal(&showOutput)
             return result, err
@@ -604,9 +605,9 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 
     var  showOutput struct {
         Output struct {
-            MATCHING_SERVICE_PORT_LIST  map[string] ServicePolicyPort  
+            MATCHING_SERVICE_PORT_LIST  map[string] ServicePolicyPort
         }  `json:"sonic-flow-based-services:output"`
-    } 
+    }
 
     var POLICY_BIND_TABLE_TS  *db.TableSpec = &db.TableSpec { Name: "POLICY_BINDING_TABLE" }
     arg_match_type, arg_match_type_found := mapData["MATCH_TYPE"].(string)
@@ -676,20 +677,20 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
         }
         policyBindTblVal, _ := policyBindTbl.GetEntry(policyBindKeys[index])
         xfmrLogInfo("In rpc_show_service_policy,  key:%v policyBindTblVal:%v ", policyBindKeys[index], policyBindTblVal)
-    
+
             for field, value := range policyBindTblVal.Field {
                 var servicePolicyEntry ServicePolicyEntry;
-                field_splits := strings.Split(field,"_") 
-    
+                field_splits := strings.Split(field,"_")
+
                 //filter by policy type - if first level filter is interface_name
                 xfmrLogInfo("In rpc_show_service_policy,  field:%v value:%v", field, value)
                 if (strings.HasPrefix(arg_match_type, "interface "))  {
                     if ( (len(policy_type) != 0) && (field_splits[1] != policy_type) )  {
-                        xfmrLogInfo("continue policy_type:%v arg_policy_type:%v not matching", field_splits[1], policy_type) 
+                        xfmrLogInfo("continue policy_type:%v arg_policy_type:%v not matching", field_splits[1], policy_type)
                         continue;
                     }
                 }
-    
+
                 //filter by policy_name if first level filter is policy
                 if (strings.HasPrefix(arg_match_type, "policy "))  {
                     if (len(policy_name) != 0) {
@@ -698,27 +699,27 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
                             xfmrLogInfo(" interface name ", interface_name)
                             if (len(arg2_interface_name) != 0) {
                                 if (interface_name != arg2_interface_name) {
-                                    //xfmrLogInfo("continue interface name:%v arg_interface_name:%v not matching",    interface_name, arg2_interface_name) 
+                                    //xfmrLogInfo("continue interface name:%v arg_interface_name:%v not matching",    interface_name, arg2_interface_name)
                                     continue; //not matching second level filter interface name
                                 } else {
                                     interface_match_done = true
                                 }
                             }
                         } else {
-                            log.Info("continue policy name not matching") 
-                            //xfmrLogInfo("continue policy_name:%v arg_policy_name:%v not matching", policy_name, value) 
+                            log.Info("continue policy name not matching")
+                            //xfmrLogInfo("continue policy_name:%v arg_policy_name:%v not matching", policy_name, value)
                             continue; //not matching first level filter policy name
                         }
                     }
                }
               match_found = true
               show_output = true
-              servicePolicyEntry.TYPE = field_splits[1] 
+              servicePolicyEntry.TYPE = field_splits[1]
               servicePolicyEntry.POLICY_NAME =  value
               servicePolicyEntry.POLICY_BIND_DIR =  field_splits[0]
-    
+
               xfmrLogInfo("In rpc_show_service_policy,  interface_name:%v policy_name:%v policy_type:%v  policy_bind_dir:%v ", interface_name, value, field_splits[1], field_splits[0])
-    
+
               var POLICY_SECTION_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
               policySectionTblclassKeyStr := value + "|" + "*"
                              referingClassKeys, _ := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{policySectionTblclassKeyStr}})
@@ -747,7 +748,7 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
             log.Info("In rpc_show_service_policy,  showOuptut:%v", showOutput)
             return result, err
     }
-    
+
     return nil, err
 }
 
@@ -822,7 +823,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
     var  showOutput struct {
         Output struct {
             STATUS int32
-            STATUS_DETAIL string 
+            STATUS_DETAIL string
         } `json:"sonic-flow-based-services:output"`
     }
 
@@ -839,9 +840,9 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
         }
         policyBindTblVal, _ := policyBindTbl.GetEntry(policyBindKeys[index])
         xfmrLogInfo("In rpc_show_service_policy,  key:%v policyBindTblVal:%v ", policyBindKeys[index], policyBindTblVal)
-    
+
         for field, value := range policyBindTblVal.Field {
-  
+
             //filter by policy type - if first level filter is interface_name
             xfmrLogInfo("In rpc_show_service_policy,  field:%v value:%v", field, value)
             if (strings.HasPrefix(arg_match_type, "interface "))  {
@@ -849,7 +850,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
                     continue;
                 }
             }
-    
+
             //filter by policy_name if first level filter is policy
             if (strings.HasPrefix(arg_match_type, "policy "))  {
                 if (len(policy_name) != 0) {
@@ -868,12 +869,12 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
                 }
            }
           match_found = true
-          field_splits := strings.Split(field,"_") 
-          matching_policy_type     := field_splits[1] 
+          field_splits := strings.Split(field,"_")
+          matching_policy_type     := field_splits[1]
           matching_policy_bind_dir :=  field_splits[0]
-    
+
           xfmrLogInfo("In rpc_show_service_policy,  policy_name:%v policy_type:%v  policy_bind_dir:%v ", value, field_splits[1], field_splits[0])
-    
+
           var POLICY_SECTION_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
           policySectionTblclassKeyStr := value + "|" + "*"
           referingClassKeys, _ := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{policySectionTblclassKeyStr}})
