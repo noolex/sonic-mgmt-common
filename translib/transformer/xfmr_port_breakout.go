@@ -4,7 +4,7 @@ import (
     "strconv"
     "github.com/Azure/sonic-mgmt-common/cvl"
     "github.com/Azure/sonic-mgmt-common/translib/db"
-    "errors"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "strings"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
@@ -64,14 +64,14 @@ var DbToYang_port_breakout_config_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
     platObj := getDpbRoot(inParams.ygRoot)
     if platObj == nil || len(platObj) < 1 {
         log.Info("DbToYang_port_breakout_config_xfmr: Empty component.")
-        return errors.New("Interface is not specified")
+        return tlerr.NotSupported("Dynamic port breakout is not supported")
     }
     ifName := pathInfo.Var("name")
     entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:"BREAKOUT_CFG"}, db.Key{Comp: []string{ifName}})
     
     if dbErr != nil {
             log.Info("Failed to read DB entry, BREAKOUT_CFG|", ifName)
-            return errors.New("No port breakout configured")
+            return tlerr.NotFound("No port breakout configurations")
     }
     splitted_mode := strings.Split(entry.Get("brkout_mode"), "x")
     log.Info(" Splitted breakout mode: ", splitted_mode)
@@ -81,7 +81,7 @@ var DbToYang_port_breakout_config_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
     }
     dpb_channels := uint8(channels)
     if _, ok := platObj[ifName]; !ok {
-        return errors.New("Request not supported")
+        return tlerr.NotSupported("Breakout not supported on %s", ifName)
     }
     platObj[ifName].Port.BreakoutMode.Config.NumChannels = &dpb_channels
 
@@ -97,13 +97,31 @@ var DbToYang_port_breakout_config_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
     return err;
 
 }
+func updateDpbPorts(ifName string, delPorts []portProp, addPorts[]portProp) map[string]db.Value {
+
+    portsMap := make(map[string]db.Value)
+    for _, port := range delPorts {
+        fv := make(map[string]string)
+        fvpairs := db.Value{Field: fv}
+        fvpairs.Set("master", ifName)
+        portsMap[port.name] = fvpairs
+    }
+    for _, port := range addPorts {
+        fv := make(map[string]string)
+        fvpairs := db.Value{Field: fv}
+        fvpairs.Set("master", ifName)
+        portsMap[port.name] = fvpairs
+    }
+    log.Info("BREAKOUT_PORTS = ", portsMap)
+    return portsMap
+}
 
 /* Breakout action, shutdown, remove dependent configs , remove ports, add ports */
 func breakout_action (ifName string, from_mode string, to_mode string, inParams XfmrParams) error {
         var err error
         if to_mode == from_mode {
             log.Info("DPB no config change")
-            err = errors.New("No change in port breakout mode")
+            err = tlerr.InvalidArgs("No change in port breakout mode")
         } else {
 
             curr_ports, err1 := getPorts(ifName, from_mode)
@@ -123,6 +141,7 @@ func breakout_action (ifName string, from_mode string, to_mode string, inParams 
                     log.Info("PORTS TO BE DELETED: ", curr_ports)
                     //3. Add ports
                     addMap := addPorts(ports)
+                    addMap[db.ConfigDB]["BREAKOUT_PORTS"] = updateDpbPorts(ifName, curr_ports, ports)
                     inParams.subOpDataMap[UPDATE] = &addMap
                     log.Info("PORTS TO BE ADDED: ", ports)
                     *inParams.pCascadeDelTbl = append(*inParams.pCascadeDelTbl, "PORT")
@@ -150,7 +169,7 @@ var YangToDb_port_breakout_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     platObj := getDpbRoot(inParams.ygRoot)
     if platObj == nil || len(platObj) < 1 {
         log.Info("YangToDb_port_breakout_config_xfmr: Empty component.")
-        return dpbMap, errors.New("Interface is not specified")
+        return dpbMap, tlerr.NotSupported("Dynamic port breakout is not supported")
     }
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("name")
@@ -159,9 +178,8 @@ var YangToDb_port_breakout_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     log.Warning("DPB  Platform Object : ", platObj[ifName])
 
     if ifName == "" {
-        errStr := "Interface KEY not present"
-        log.Info("YangToDb_port_breakout_config_xfmr : " + errStr)
-        return dpbMap, errors.New(errStr)
+        log.Info("YangToDb_port_breakout_config_xfmr : ifName is empty")
+        return dpbMap, tlerr.InvalidArgs("Invalid interface")
     }
 
     tblName := "BREAKOUT_CFG"
@@ -196,7 +214,7 @@ var YangToDb_port_breakout_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
             err = breakout_action(ifName, dpb_entry.Get("brkout_mode"), "", inParams)
         }   else    {
             log.Info("DPB no config change")
-            err = errors.New("No change in port breakout mode")
+            err = tlerr.InvalidArgs("No change in port breakout mode")
         }
 
     } else {
@@ -235,7 +253,6 @@ var rpc_breakout_dependencies RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
        log.Infof("UnMarshall Error %v\n", err)
        return nil, err
     }
-
 
     key := input["sonic-port-breakout:input"].(map[string]interface{})
     log.Info("KEY : ", key)

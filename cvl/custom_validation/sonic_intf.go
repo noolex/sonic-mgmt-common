@@ -125,7 +125,14 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 		} else if "PORT" == keys[0] {
 			intfName := keys[1]
 			poMembersKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + intfName).Result()
-
+                        // Check if requested key is already deleted in request cache
+                        for _, poMemKey := range poMembersKeys {
+                            for _, req := range vc.ReqData {
+                                if req.Key == poMemKey && req.VOp == OP_DELETE {
+                                    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+                                }
+                            }
+                        }
 			_, hasMtu := vc.CurCfg.Data["mtu"]
 			if hasMtu && len(poMembersKeys) > 0 {
 				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "MTU not allowed when portchannel members are configured")
@@ -140,5 +147,34 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 		}
 	}
 
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+//Custom validation for PortChannel deletion
+func (t *CustomValidation) ValidatePortChannelDeletion(vc *CustValidationCtxt) CVLErrorInfo {
+	if vc.CurCfg.VOp != OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+	keys := strings.Split(vc.CurCfg.Key, "|")
+	if len(keys) > 0 {
+		if "PORTCHANNEL" == keys[0] {
+			poName := keys[1]
+			poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
+			if err != nil {
+				return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+			}
+
+			if len(poMembersKeys) > 0 {
+				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Portchannel deletion not allowed when portchannel members are configured")
+				return CVLErrorInfo{
+					ErrCode:          CVL_SEMANTIC_ERROR,
+					TableName:        "PORTCHANNEL",
+					Keys:             strings.Split(vc.CurCfg.Key, "|"),
+					ConstraintErrMsg: fmt.Sprintf("Portchannel deletion not allowed when members are configured"),
+					ErrAppTag:        "members-exist",
+				}
+			}
+               }
+        }
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

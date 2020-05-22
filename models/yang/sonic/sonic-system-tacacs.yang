@@ -23,6 +23,7 @@ module sonic-system-tacacs {
             enum pap;
             enum chap;
             enum mschap;
+            enum login;
         }
     }
 
@@ -74,6 +75,16 @@ module sonic-system-tacacs {
                             error-message 'TACACS shared secret (Valid chars are ASCII printable except SPACE, "#", and ",")';
                         }
                     }
+                }
+
+                leaf vrf {
+                    type string {
+                        pattern "mgmt|default" {
+                            error-message "Error: Invalid VRF name";
+                        }
+                    }
+                    description
+                        "Internal management vrf name for SONiC";
                 }
             }
         }

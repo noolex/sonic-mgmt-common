@@ -4,6 +4,8 @@ openconfig-acl-annot.yang
 openconfig-platform.yang
 openconfig-platform-psu.yang
 openconfig-platform-annot.yang
+openconfig-platform-fan.yang
+openconfig-platform-fan-ext.yang
 openconfig-interfaces.yang
 openconfig-if-ip.yang
 openconfig-if-ethernet.yang
@@ -77,3 +79,7 @@ openconfig-platform.yang
 openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
+openconfig-lldp.yang
+openconfig-lldp-ext.yang
+openconfig-lldp-annot.yang
+openconfig-kdump.yang

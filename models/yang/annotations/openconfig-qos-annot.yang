@@ -8,6 +8,7 @@ module openconfig-qos-annot {
     import sonic-extensions { prefix sonic-ext; }
     import openconfig-qos { prefix oc-qos; }
     import openconfig-qos-ext {prefix oc-qos-ext; }
+    import openconfig-qos-maps-ext {prefix oc-qos-maps-ext; }
 
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface {
       deviate add {
@@ -142,27 +143,20 @@ module openconfig-qos-annot {
 
     deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:wred/oc-qos:config/oc-qos-ext:wred-profile {
       deviate add {
-        sonic-ext:field-name "wred_profile";
+        sonic-ext:field-transformer "qos_queue_wred_profile_fld_xfmr";
       }
     }
 
 
     deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:wred/oc-qos:state/oc-qos-ext:wred-profile {
       deviate add {
-        sonic-ext:field-name "wred_profile";
+        sonic-ext:field-transformer "qos_queue_wred_profile_fld_xfmr";
       }
     }
 
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy {
       deviate add {
         sonic-ext:subtree-transformer "qos_scheduler_xfmr";
-      }
-    }
-
-    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config/oc-qos:priority {
-      deviate add {
-        sonic-ext:field-name "type";
-        sonic-ext:field-transformer "qos_scheduler_priority_xfmr";
       }
     }
 
@@ -190,6 +184,24 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos-maps-ext:dscp-maps/oc-qos-maps-ext:dscp-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_dscp_fwd_group_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps {
+      deviate add {
+		sonic-ext:table-name "PORT_QOS_MAP";
+	  }
+	}
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:dscp-to-forwarding-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_dscp_to_tc_map_fld_xfmr";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group {
       deviate add {
           sonic-ext:key-transformer "qos_fwdgrp_tbl_key_xfmr";
@@ -206,6 +218,18 @@ module openconfig-qos-annot {
     deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:state/oc-qos:name {
       deviate add {
           sonic-ext:field-transformer "qos_fwdgrp_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-queue-maps/oc-qos-maps-ext:forwarding-group-queue-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_fwd_group_queue_xfmr";
+        }
+    }
+	
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-queue {
+      deviate add {
+        sonic-ext:field-name "tc_to_queue_map";
       }
     }
 }
