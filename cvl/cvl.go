@@ -279,6 +279,19 @@ func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
 	return ""
 }
 
+// isLeafListNode checks if the xml node represents a leaf-list field
+func isLeafListNode(node *xmlquery.Node) bool {
+	return len(node.Attr) != 0 && node.Attr[0].Name.Local == "leaf-list"
+}
+
+// getNodeName returns database field name for the xml node.
+func getNodeName(node *xmlquery.Node) string {
+	if isLeafListNode(node) {
+		return node.Data + "@"
+	}
+	return node.Data
+}
+
 // Load all YIN schema files, apply deviation files 
 func loadSchemaFiles() CVLRetCode {
 
