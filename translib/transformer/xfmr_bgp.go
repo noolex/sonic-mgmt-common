@@ -863,7 +863,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
         } `json:"sonic-bgp-clear:output"`
     }
 
-    log.Info("In rpc_clear_bgp", mapData)
+    log.Info("In rpc_clear_bgp ", mapData)
 
     input, _ := mapData["sonic-bgp-clear:input"]
     mapData = input.(map[string]interface{})
@@ -934,7 +934,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     if value, ok := mapData["peer-group"].(string) ; ok {
         if value != "" {
-            peer_group = "peer_group " + value + " "
+            peer_group = "peer-group " + value + " "
         }
     }
 
@@ -956,7 +956,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
         }
     }
 
-    log.Info("In rpc_clear_bgp", clear_all, vrf_name, af_str, all, neigh_address, intf, asn, prefix, peer_group, in, out, soft)
+    log.Info("In rpc_clear_bgp ", clear_all, vrf_name, af_str, all, neigh_address, intf, asn, prefix, peer_group, in, out, soft)
 
     if is_evpn == false {
         cmdbase = "clear ip bgp "
