@@ -1244,12 +1244,11 @@ func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error)
 		return nil, err
 	}
 
-        for idx, p := range path.Elem {
-                pathSlice := strings.Split(p.Name, ":")
-                if idx == 0 && len(pathSlice) > 0 && strings.HasPrefix(pathSlice[0], "openconfig-") == true {
-                        log.Info("URI path - setting isOpenconfig flag ==> ", pathSlice[0])
-                }
-                p.Name = pathSlice[len(pathSlice)-1]
+        for _, p := range path.Elem {
+		if strings.Contains(p.Name, ":") {
+	                pathSlice := strings.Split(p.Name, ":")
+			p.Name = pathSlice[len(pathSlice)-1]
+		}
         }
 
 	deviceObj := (*ygRoot).(*ocbinds.Device)
