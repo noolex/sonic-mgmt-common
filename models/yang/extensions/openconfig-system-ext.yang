@@ -44,7 +44,7 @@ module openconfig-system-ext {
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
         leaf failthrough {
-            type boolean;
+            type string;
             description "Indicating whether authentication failthrough should be enabled/disabled";
         }
     }
