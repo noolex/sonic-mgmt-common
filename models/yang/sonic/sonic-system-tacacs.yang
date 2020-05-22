@@ -44,6 +44,7 @@ module sonic-system-tacacs {
             enum pap;
             enum chap;
             enum mschap;
+            enum login;
         }
     }
 

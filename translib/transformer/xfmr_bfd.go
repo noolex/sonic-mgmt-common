@@ -236,7 +236,7 @@ func get_bfd_peers (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdState, inParams XfmrPa
         log.Info(session_data)
         log.Info(counter_data)
         if value, ok := session_data["multihop"].(bool) ; ok {
-            if value == false {
+            if !value {
                 if ok := fill_bfd_shop_data (bfd_obj, session_data, counter_data, nil) ; !ok {return err}
             }else {
                 if ok := fill_bfd_mhop_data (bfd_obj, session_data, counter_data, nil) ; !ok {return err}
@@ -804,7 +804,7 @@ var rpc_clear_bfd RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     log.Info("In rpc_clear_bfd", mapData)
 
-    input, _ := mapData["sonic-bfd-clear:input"]
+    input := mapData["sonic-bfd-clear:input"]
     mapData = input.(map[string]interface{})
 
     log.Info("In rpc_clear_bfd", mapData)

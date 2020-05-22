@@ -19,6 +19,10 @@ module sonic-acl {
 		prefix prt;
 	}
 
+    import sonic-portchannel {
+        prefix po;
+    }
+
 	import sonic-mirror-session {
 		prefix sms;
 	}
@@ -77,9 +81,14 @@ module sonic-acl {
 				}
 
 				leaf-list ports {
-					type leafref {
-						path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
-					}
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/po:sonic-portchannel/po:PORTCHANNEL/po:PORTCHANNEL_LIST/po:name";
+                        }
+                    }
 				}
 			}
 		}
