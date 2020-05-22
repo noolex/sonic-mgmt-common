@@ -1,0 +1,190 @@
+module openconfig-pim-ext {
+
+    yang-version "1";
+
+    // namespace
+    namespace "http://openconfig.net/yang/pim/extension";
+
+    prefix "oc-pim-ext";
+
+    // import some basic types/interfaces
+    import openconfig-network-instance { prefix oc-netinst; }
+    import openconfig-routing-policy {prefix oc-rpol; }
+
+    description
+        "This module describes a YANG model for PIM protocol configuration extensions.";
+
+    revision "2020-05-18" {
+        description
+            "PIM extensions.";
+    }
+
+    grouping pim-ext-global-config {
+        leaf join-prune-interval {
+            type uint16 {
+                range 60..600;
+            }
+            description
+                "Interval at which the router sends the PIM join/prune messages
+                toward the upstream RPF neighbor.";
+        }
+
+        leaf keep-alive-timer {
+            type uint16 {
+                range 31..60000;
+            }
+            description
+                "Time after which router invalidates the multicast route entry.";
+        }
+
+        leaf ecmp-enabled {
+            type boolean;
+            description
+                "When set to TRUE, PIM ECMP will be enabled.";
+        }
+
+        leaf ecmp-rebalance-enabled {
+            type boolean;
+            description
+                "When set to TRUE, PIM ECMP rebalance will be enabled.";
+        }
+    }
+
+    grouping pim-ext-interface-config {
+         leaf bfd-enabled {
+            type boolean;
+            description
+                "When set to TRUE, it turns on BFD support for PIM on this interface.";
+        }
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
+        container config {
+            uses pim-ext-global-config; 
+        }
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state {
+        uses pim-ext-global-config; 
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config {
+        uses pim-ext-interface-config;
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state {
+        uses pim-ext-interface-config;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:ssm/oc-netinst:config/oc-netinst:ssm-ranges {
+        deviate replace {
+            type leafref {
+                path "/oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:name";
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:ssm/oc-netinst:state/oc-netinst:ssm-ranges {
+        deviate replace {
+            type leafref {
+                path "/oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:name";
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:rendezvous-points {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state/oc-netinst:counters/oc-netinst:bootstrap-messages {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:sources-joined {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:enabled {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:bsr-border {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:bsr-border {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:border-router {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:border-router {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:dr-priority {
+        deviate replace {
+            type uint32 {
+                range 1..4294967295;
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:dr-priority {
+        deviate replace {
+            type uint32 {
+                range 1..4294967295;
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:dr-priority {
+        deviate replace {
+            type uint32 {
+                range 1..4294967295;
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:hello-interval {
+        deviate replace {
+            type uint8 {
+                range "1..180";
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:hello-interval {
+        deviate replace {
+            type uint8 {
+                range "1..180";
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:join-prune-interval {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:join-prune-interval {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:dead-timer {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:dead-timer {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:counters/oc-netinst:bootstrap-messages {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:interface-ref {
+        deviate not-supported;
+    }
+}

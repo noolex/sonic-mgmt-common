@@ -40,9 +40,9 @@ module sonic-pim {
     container sonic-pim {
         container PIM_GLOBALS {
             list PIM_GLOBALS_LIST {
-                key "vrf_name address-family";
+                key "vrf-name address-family";
 
-                leaf vrf_name {
+                leaf vrf-name {
                     type leafref {
                         path "/svrf:sonic-vrf/svrf:VRF/svrf:VRF_LIST/svrf:vrf_name";
                     }
@@ -59,29 +59,34 @@ module sonic-pim {
                     }
                 }
 
-                leaf join_prune_interval {
+                leaf join-prune-interval {
                     description "Join prune interval in seconds";
                     type uint16 {
                         range "60..600";
                     }
                 }
 
-                leaf keep_alive_timer {
+                leaf keep-alive-timer {
                     description "Keep alive timer in seconds";
                     type uint16 {
                         range "31..60000";
                     }
                 }
 
-                leaf ssm_range {
+                leaf ssm-ranges {
                     description "Configure Source-Specific-Multicast group range using Prefix-list";
                     type leafref {
                         path "/srpolsets:sonic-routing-policy-sets/srpolsets:PREFIX_SET/srpolsets:PREFIX_SET_LIST/srpolsets:name";
                     }
                 }
 
-                leaf enable_ecmp {
+                leaf ecmp-enabled {
                     description "Enable PIM ECMP";
+                    type boolean;
+                }
+
+                leaf ecmp-rebalance-enabled {
+                    description "Enable PIM ECMP rebalance";
                     type boolean;
                 }
             }
@@ -89,9 +94,9 @@ module sonic-pim {
 
         container PIM_INTERFACE {
             list PIM_INTERFACE_LIST {
-                key "vrf_name address-family interface";
+                key "vrf-name address-family interface";
 
-                leaf vrf_name {
+                leaf vrf-name {
                     type leafref {
                         path "/svrf:sonic-vrf/svrf:VRF/svrf:VRF_LIST/svrf:vrf_name";
                     }
@@ -130,20 +135,20 @@ module sonic-pim {
                     }
                 }
 
-                leaf dr_priority {
+                leaf dr-priority {
                     type uint32 {
                         range "1..4294967295";
                     }
                 }
 
-                leaf hello {
+                leaf hello-interval {
                     description "Hello interval in seconds";
-                    type uint16 {
+                    type uint8 {
                         range "1..180";
                     }
                 }
 
-                leaf enable_bfd {
+                leaf bfd-enabled {
                     description "Enable BFD support on this interface";
                     type boolean;
                 }
