@@ -26,7 +26,204 @@ func init () {
 }
 
 
+func get_map_entry_by_map_name(d *db.DB, map_name string) (db.Value, error) {
+
+    ts := &db.TableSpec{Name: "DSCP_TO_TC_MAP"}
+    keys, _ := d.GetKeys(ts);
+
+    log.Info("keys: ", keys)
+
+    entry, err := d.GetEntry(ts, db.Key{Comp: []string{map_name}})
+    if err != nil {
+        log.Info("not able to find the map entry in DB ", map_name)
+        return entry, err
+    }
+
+    return entry , nil
+}
+
+
+
+func qos_map_delete_all_map(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    var err error
+    res_map := make(map[string]map[string]db.Value)
+
+    log.Info("qos_map_delete_all_map: ", inParams.ygRoot, inParams.uri)
+    log.Info("inParams: ", inParams)
+
+    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    log.Info("targetUriPath: ",  targetUriPath)
+
+    ts := &db.TableSpec{Name: "DSCP_TO_TC_MAP"}
+    keys, _ := inParams.d.GetKeys(ts);
+
+    log.Info("keys: ", keys)
+
+    /* update "map" table */
+    rtTblMap := make(map[string]db.Value)
+
+    for _, key := range keys {
+        // validation: skip in-used map 
+
+        map_name := key.Comp[0]
+        if isMapInUse(inParams.d, map_name) {
+             continue
+        }
+
+        rtTblMap[map_name] = db.Value{Field: make(map[string]string)}
+    }
+
+    log.Info("qos_map_delete_all_map ")
+    res_map["DSCP_TO_TC_MAP"] = rtTblMap
+
+    return res_map, err
+}
+
+func getIntfsByMapName(d *db.DB, map_name string) ([]string) {
+    var s []string
+
+    log.Info("map_name ", map_name)
+
+
+    // PORT_QOS_MAP
+    tbl_list := []string{"PORT_QOS_MAP"}
+
+    for  _, tbl_name := range tbl_list {
+
+        dbSpec := &db.TableSpec{Name: tbl_name}
+
+        keys, _ := d.GetKeys(dbSpec)
+        for _, key := range keys {
+            log.Info("key: ", key)
+            qCfg, _ := d.GetEntry(dbSpec, key)
+            log.Info("qCfg: ", qCfg)
+            mapref , ok := qCfg.Field["DSCP_TO_TC_MAP"] 
+            if !ok {
+                continue
+            }
+            log.Info("mapref: ", mapref)
+
+            mapref = DbLeafrefToString(mapref, "DSCP_TO_TC_MAP")
+
+            if mapref == map_name {
+                intf_name := key.Get(0)
+
+                log.Info("intf_name added to the referenece list: ", intf_name)
+
+                s = append(s, intf_name)  
+            }
+        }
+    }
+
+    return s
+}
+
+func isMapInUse(d *db.DB, map_name string)(bool) {
+    // read intfs refering to the map
+    intfs := getIntfsByMapName(d, map_name)
+    if  len(intfs) == 0 {
+        log.Info("No active user of the map: ", map_name)
+        return false
+    }
+    
+    log.Info("map is in use: ", map_name)
+    return true
+}
+
+func qos_map_delete_by_map_name(inParams XfmrParams, map_name string) (map[string]map[string]db.Value, error) {
+    var err error
+    res_map := make(map[string]map[string]db.Value)
+
+    log.Info("qos_map_delete_by_map_name: ", inParams.ygRoot, inParams.uri)
+    log.Info("inParams: ", inParams)
+    log.Info("map_name: ", map_name)
+
+    if map_name == "" {
+        return qos_map_delete_all_map(inParams)
+    }
+
+    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    log.Info("targetUriPath: ",  targetUriPath)
+
+    // validation
+    if isMapInUse(inParams.d, map_name) {
+        err = tlerr.InternalError{Format:"Disallow to delete an active map"}
+        log.Info("Disallow to delete an active map: ", map_name)
+        return res_map, err
+    }
+
+    /* update "map" table */
+    rtTblMap := make(map[string]db.Value)
+    rtTblMap[map_name] = db.Value{Field: make(map[string]string)}
+
+    log.Info("qos_map_delete_by_map_name - : ", map_name)
+    res_map["DSCP_TO_TC_MAP"] = rtTblMap
+
+    return res_map, err
+}
+
+
+func qos_map_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    var err error
+    res_map := make(map[string]map[string]db.Value)
+
+    log.Info("qos_map_delete_xfmr: ", inParams.ygRoot, inParams.uri)
+    log.Info("inParams: ", inParams)
+
+    pathInfo := NewPathInfo(inParams.uri)
+    map_name := pathInfo.Var("name")
+    log.Info("YangToDb: map name: ", map_name)
+
+    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    log.Info("targetUriPath: ",  targetUriPath)
+
+
+    var map_entry db.Value
+
+    if map_name != "" {
+        map_entry, err = get_map_entry_by_map_name(inParams.d, map_name)
+        if err != nil {
+            err = tlerr.InternalError{Format:"Instance Not found"}
+            log.Info("map name not found.")
+            return res_map, err
+        }
+    }
+
+    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map") == false {
+        log.Info("YangToDb: map name unspecified, using delete_by_map_name")
+        return qos_map_delete_by_map_name(inParams, map_name)
+    }
+
+    dscp := pathInfo.Var("dscp")
+    if dscp == "" {
+        log.Info("YangToDb: map name unspecified, using delete_by_map_name")
+        return qos_map_delete_by_map_name(inParams, map_name)
+    } else  {
+        _, exist := map_entry.Field[dscp]
+        if !exist { 
+            err = tlerr.InternalError{Format:"DSCP value Not found"}
+            log.Info("DSCP value not found.")
+            return res_map, err
+        }
+    }
+
+    /* update "map" table field only */
+    rtTblMap := make(map[string]db.Value)
+    rtTblMap[map_name] = db.Value{Field: make(map[string]string)}
+    rtTblMap[map_name].Field[dscp] = ""
+
+    res_map["DSCP_TO_TC_MAP"] = rtTblMap
+
+    return res_map, err
+
+}
+
+
 var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+
+    if inParams.oper == DELETE {
+        return qos_map_delete_xfmr(inParams)
+    }
 
     var err error
     res_map := make(map[string]map[string]db.Value)
@@ -161,20 +358,43 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
 
     mapObj.Config.Name = &name
 
-    for k, v := range mapCfg.Field {
+
+    dscp := pathInfo.Var("dscp")
+    var tmp_cfg ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_Config
+    var tmp_sta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_State
+    for k, fwdGrp := range mapCfg.Field {
+        if dscp != "" && k!= dscp {
+            continue
+        }
+
         tmp, _ := strconv.ParseUint(k, 10, 8)
         dscp_val := uint8(tmp)
 
-        entryObj, _ := mapObj.DscpMapEntries.NewDscpMapEntry(dscp_val)
-        ygot.BuildEmptyTree(entryObj)
-        ygot.BuildEmptyTree(entryObj.Config)
+        entryObj, ok := mapObj.DscpMapEntries.DscpMapEntry[dscp_val]
+        if !ok {
+            entryObj, _ = mapObj.DscpMapEntries.NewDscpMapEntry(dscp_val)
+            ygot.BuildEmptyTree(entryObj)
+            ygot.BuildEmptyTree(entryObj.Config)
+            ygot.BuildEmptyTree(entryObj.State)
+        }
 
         entryObj.Dscp = &dscp_val
 
+        if entryObj.Config == nil {
+            entryObj.Config = &tmp_cfg
+        }
         entryObj.Config.Dscp = &dscp_val
-    
-        fwdGrp := v
         entryObj.Config.FwdGroup = &fwdGrp
+
+
+        if entryObj.State == nil {
+            entryObj.State = &tmp_sta
+        }
+        entryObj.State.Dscp = &dscp_val
+        entryObj.State.FwdGroup = &fwdGrp
+
+
+        log.Info("Added entry: ", entryObj)
     }
 
     log.Info("Done fetching dscp-map : ", name)
