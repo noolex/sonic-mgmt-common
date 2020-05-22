@@ -74,6 +74,9 @@ module sonic-qos-clear {
                            type leafref {
                                path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                            }
+                           type string {
+                               pattern "CPU";
+                           }
                        }
                        description
                            "Interface name: Parameter for clearing all queues/pgs counters on
@@ -154,7 +157,11 @@ module sonic-qos-clear {
                             type leafref {
                                 path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                             }
+                            type string {
+                                pattern "CPU";
+                            }
                         }
+
                         description
                             "Interface name: Parameter for deleting all interface queues/pg
                             buffer watermarks on the given inteface name Valid inputs are:

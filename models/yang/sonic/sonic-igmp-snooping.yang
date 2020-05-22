@@ -192,7 +192,7 @@ module sonic-igmp-snooping {
 				}
 	
 				leaf query-interval {
-          must "current() > ../query-max-response-time" {
+          must "not(../query-max-response-time) or current() > ../query-max-response-time" {
               error-message "Invalid IGMP Snooping query interval value.";
           }
 				
@@ -214,9 +214,6 @@ module sonic-igmp-snooping {
 				}
 				
 				leaf query-max-response-time {
-          must "current() < ../query-interval" {
-              error-message "Invalid IGMP Snooping query interval value.";
-          }				
 					type uint16 {
 						range "1..25"{
 							error-message "Invalid IGMP Snooping Query Max Response Time.";
