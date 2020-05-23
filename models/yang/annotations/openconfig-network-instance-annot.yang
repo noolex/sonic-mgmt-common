@@ -3520,5 +3520,17 @@ module openconfig-network-instance-annot {
       sonic-ext:subtree-transformer "ospfv2_route_table_xfmr";
     }
   }
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+			"/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-ospfv2-ext:stub/oc-ospfv2-ext:state" {
+    deviate add {
+      sonic-ext:subtree-transformer "ospfv2_stub_state_xfmr";
+    }
+  }
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-netinst:virtual-links/oc-netinst:virtual-link/oc-netinst:state" {
+    deviate add {
+      sonic-ext:subtree-transformer "ospfv2_vlink_state_xfmr";
+    }
+  }
 }
 
