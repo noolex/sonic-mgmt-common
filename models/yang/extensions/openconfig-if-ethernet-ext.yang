@@ -3,7 +3,7 @@ module openconfig-if-ethernet-ext {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/interfaces/ethernet-ext";
+  namespace "http://openconfig.net/yang/interfaces/ethernet/extention";
 
   prefix "oc-eth-ext";
 
@@ -104,6 +104,77 @@ module openconfig-if-ethernet-ext {
     }
   }
 
+  grouping storm-control-config {
+      description
+          "Configurable items at the storm-control level";
+      leaf ifname {
+          type leafref {
+              path "/oc-if:interfaces/oc-if:interface/oc-if:config/oc-if:name";
+          }
+          description
+              "name of interface on which storm-control is enabled";
+      }
+      leaf storm-type {
+          description
+              "Type of storm-control enabled on ethernet interface";
+          type enumeration{
+              enum BROADCAST {
+                  description "Broadcast storm-control on interface";
+              }
+              enum UNKNOWN_UNICAST {
+                  description "Unknown unicast storm-control on interface";
+              }
+              enum UNKNOWN_MULTICAST {
+                  description "Unknown multicast storm-control on interface";
+              }
+          }
+      }
+      leaf kbps {
+          description
+              "kbps value for storm-control on ethernet interface";
+          type uint32 {
+              range "0..100000000" {
+                  error-message "kbps value out of range";
+              }
+          }
+      }
+  }
+
+  grouping storm-control-state {
+      description
+          "Operational state parameters for storm-control on interface";
+  }
+
+  grouping storm-control-top{
+      description
+          "Grouping for storm-control on ethernet interface";
+
+      container storm-control {
+          description
+              "Storm control per ethernet interface";
+          list storm-control-list {
+              key "storm-type";
+              description
+                  "List of storm-control enabled on ethernet interface";
+              leaf storm-type {
+                  type leafref {
+                      path "../config/storm-type";
+                  }
+                  description
+                      "Type of storm-control enabled on ethernet interface";
+              }
+              container config {
+                  uses storm-control-config;
+              }
+              container state {
+                  config false;
+                  uses storm-control-config;
+                  uses storm-control-state;
+              }
+          }
+      }
+  }
+
   // augment statements
 
   augment "/oc-if:interfaces/oc-if:interface/oc-eth:ethernet/" +
@@ -114,4 +185,9 @@ module openconfig-if-ethernet-ext {
       uses ethernet-in-frames-size-dist;
   }
 
+  augment "/oc-if:interfaces/oc-if:interface/oc-eth:ethernet" {
+          description
+              "Storm control support on ethernet interface";
+          uses storm-control-top;
+  }
 }
