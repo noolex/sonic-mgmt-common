@@ -13,7 +13,8 @@ func getNexthopAttrList(vc *CustValidationCtxt) (string, []string, error) {
         return "", nil, fmt.Errorf("Invalid key format: %s", vc.CurCfg.Key)
     }
     prefix := keys[len(keys) - 1]
-    if len(vc.YNodeVal) == 0 {
+    cfgAttrVal, ok := vc.CurCfg.Data[vc.YNodeName]
+    if vc.CurCfg.VOp == OP_DELETE || !ok || len(cfgAttrVal) == 0 {
         return prefix, []string{}, nil
     }
     if vc.SessCache.Data == nil {
@@ -23,26 +24,38 @@ func getNexthopAttrList(vc *CustValidationCtxt) (string, []string, error) {
     if !ok {
         return "", nil, fmt.Errorf("Invalid data type in session cache")
     }
-    vals := strings.Split(vc.YNodeVal, ",")
-    num, ok := nhNumMap[prefix]
+    vals := strings.Split(cfgAttrVal, ",")
+    cfgNhNum, ok := nhNumMap[prefix]
     if !ok {
+        // verify attr alignment and get list item number
+        cfgNhNum = 0
+        for _, fv := range vc.CurCfg.Data {
+            if cfgNhNum == 0 {
+                cfgNhNum = len(strings.Split(fv, ","))
+            } else if cfgNhNum != len(strings.Split(fv, ",")) {
+                return "", nil, fmt.Errorf("NH config attributes not aligned")
+            }
+        }
+        // verify all DB fields will be updated if NH to be added/deleted
         attrs, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
 	    if err != nil && err != redis.Nil {
             return "", nil, fmt.Errorf("Failed to read NH attribute from DB, key: %s", vc.CurCfg.Key)
         }
-	    if err == redis.Nil || len(attrs) == 0 {
-            nhNumMap[prefix] = len(vals)
-        } else {
-            for _, fldVal := range attrs {
-                nhNumMap[prefix] = len(strings.Split(fldVal, ","))
-                break
+	    if err != redis.Nil && len(attrs) != 0 {
+            for dfn, dfv := range attrs {
+                itemNum := len(strings.Split(dfv, ","))
+                _, found := vc.CurCfg.Data[dfn]
+                if itemNum != cfgNhNum && !found {
+                    // list in DB has different number of items but not to be updated
+                    return "", nil, fmt.Errorf("DB filed %s not aligned and not to be updated", dfn)
+                }
             }
         }
-        num = nhNumMap[prefix]
+        nhNumMap[prefix] = cfgNhNum
     }
-    if num != len(vals) {
+    if cfgNhNum != len(vals) {
         return "", nil, fmt.Errorf("Given attr number %d is not aligned to existing NH number %d",
-                                   len(vals), num)
+                                   len(vals), cfgNhNum)
     }
 
     return prefix, vals, nil
