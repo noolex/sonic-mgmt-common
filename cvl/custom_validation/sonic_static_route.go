@@ -36,21 +36,6 @@ func getNexthopAttrList(vc *CustValidationCtxt) (string, []string, error) {
                 return "", nil, fmt.Errorf("NH config attributes not aligned")
             }
         }
-        // verify all DB fields will be updated if NH to be added/deleted
-        attrs, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
-	    if err != nil && err != redis.Nil {
-            return "", nil, fmt.Errorf("Failed to read NH attribute from DB, key: %s", vc.CurCfg.Key)
-        }
-	    if err != redis.Nil && len(attrs) != 0 {
-            for dfn, dfv := range attrs {
-                itemNum := len(strings.Split(dfv, ","))
-                _, found := vc.CurCfg.Data[dfn]
-                if itemNum != cfgNhNum && !found {
-                    // list in DB has different number of items but not to be updated
-                    return "", nil, fmt.Errorf("DB filed %s not aligned and not to be updated", dfn)
-                }
-            }
-        }
         nhNumMap[prefix] = cfgNhNum
     }
     if cfgNhNum != len(vals) {
