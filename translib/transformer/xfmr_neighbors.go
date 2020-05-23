@@ -601,6 +601,12 @@ var rpc_clear_neighbors RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         vrf = input_str
     }
 
+    if input, ok := mapData["all_vrfs"].(bool); ok {
+        if input == true {
+           vrf = "all"
+        }
+    }
+
     if len(intf) > 0 {
         status = clear_intf(intf, fam_switch)
     } else if len(ip) > 0 {
