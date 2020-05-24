@@ -1,0 +1,113 @@
+module sonic-system-ntp {
+    namespace "http://github.com/Azure/sonic-system-ntp";
+    prefix system-ntp;
+    yang-version 1.1;
+
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    import sonic-port {
+        prefix prt;
+    }
+
+    import sonic-portchannel {
+        prefix spc;
+    }
+
+    import sonic-vlan {
+        prefix svlan;
+    }
+
+    import sonic-loopback-interface {
+        prefix lointf;
+    }
+
+    import sonic-vrf {
+        prefix svrf;
+    }
+
+    import sonic-mgmt-port {
+        prefix smt;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC NTP SOURCE.";
+
+    revision 2020-04-25 {
+        description
+            "Initial revision.";
+    }
+
+    container sonic-system-ntp {
+
+        container NTP {
+
+            list NTP_LIST {
+                
+                key "global_key";
+
+                leaf global_key {
+                    type enumeration {
+                        enum global;
+                    }
+                    description
+                        "NTP global key";
+                }
+
+                leaf source {
+                    type union {
+                        type inet:ip-address;
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                        type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST/lointf:loIfName";
+                        }
+                        type leafref {
+                            path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                    }
+                }
+
+                leaf vrf {
+                    type union {
+                        type string {
+                            pattern "mgmt";
+                        }
+
+                        type leafref {
+                                path "/svrf:sonic-vrf/svrf:VRF/svrf:VRF_LIST/svrf:vrf_name";
+                        }
+                    }
+
+                    description
+                        "The VRF instance NTP is running in.";
+                }
+            }
+        }
+
+        container NTP_SERVER {
+            
+            list NTP_SERVER_LIST {
+                key "server_address";
+
+                leaf server_address {
+                    type inet:host;
+                }
+            }
+        }
+    }
+}
