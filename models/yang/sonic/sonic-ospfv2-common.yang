@@ -23,15 +23,17 @@ module sonic-ospfv2-common {
       prefix "sonic-lbk";
   }
 
-  /*
   import sonic-routing-policy-sets {
-      prefix "sonic-pol";
+      prefix "sonic-rpolicy";
   }
 
   import sonic-route-map {
       prefix "sonic-rmap";
   }
-  */
+
+  import sonic-acl {
+      prefix sonic-acl;
+  }
 
   organization
       "SONiC";
@@ -218,6 +220,12 @@ module sonic-ospfv2-common {
     }
   }
 
+  typedef ospf-import-export-policy {
+    type leafref {
+      path "/sonic-acl:sonic-acl/sonic-acl:ACL_TABLE" +
+           "/sonic-acl:ACL_TABLE_LIST/sonic-acl:aclname";
+      }
+  }
 
   typedef ospf-interface {
     type union {
