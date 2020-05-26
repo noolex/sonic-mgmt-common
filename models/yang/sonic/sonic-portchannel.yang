@@ -62,6 +62,7 @@ module sonic-portchannel {
                 
                 leaf static {
                     type boolean;
+                    default false;
                 }
 
                 leaf min_links {
@@ -75,6 +76,15 @@ module sonic-portchannel {
 
                 leaf fallback {
                     type boolean;
+                }
+
+                leaf fast_rate {
+                    type boolean;
+                    must "../static = 'false'"
+                    {
+                        error-message "Fast Rate interval configuration is not applicable for Static LAGs";
+                        error-app-tag fast-rate-config;
+                    }
                 }
             }
         }

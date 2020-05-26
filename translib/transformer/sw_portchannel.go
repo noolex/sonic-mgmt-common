@@ -35,6 +35,8 @@ func init () {
     XlateFuncBind("DbToYang_lag_min_links_xfmr", DbToYang_lag_min_links_xfmr)
     XlateFuncBind("YangToDb_lag_fallback_xfmr", YangToDb_lag_fallback_xfmr)
     XlateFuncBind("DbToYang_lag_fallback_xfmr", DbToYang_lag_fallback_xfmr)
+    XlateFuncBind("YangToDb_lag_fast_rate_xfmr", YangToDb_lag_fast_rate_xfmr)
+    XlateFuncBind("DbToYang_lag_fast_rate_xfmr", DbToYang_lag_fast_rate_xfmr)
     XlateFuncBind("DbToYang_intf_lag_state_xfmr", DbToYang_intf_lag_state_xfmr)
     XlateFuncBind("YangToDb_lag_type_xfmr", YangToDb_lag_type_xfmr)
     XlateFuncBind("DbToYang_lag_type_xfmr", DbToYang_lag_type_xfmr)
@@ -135,6 +137,26 @@ func get_fallback(d *db.DB, lagName *string, fallback *string) error {
     }
     return nil
 }
+
+
+func get_fast_rate(d *db.DB, lagName *string, fast_rate *string) error {
+    intTbl := IntfTypeTblMap[IntfTypePortChannel]
+    curr, err := d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.portTN}, db.Key{Comp: []string{*lagName}})
+    if err != nil {
+        errStr := "Failed to Get PortChannel details"
+        log.Info(errStr)
+        return errors.New(errStr)
+    }
+    if val, ok := curr.Field["fast_rate"]; ok {
+        *fast_rate = val
+        log.Infof("Fast Rate option read from DB: %s\n", *fast_rate)
+    } else {
+        *fast_rate = "false"
+        log.Infof("Default Fast Rate option: %s\n", *fast_rate)
+    }
+    return nil
+}
+
 
 
 /* Validate physical interface configured as member of PortChannel */
@@ -286,6 +308,63 @@ func can_configure_fallback(inParams XfmrParams) error {
     return nil
 }
 
+func can_configure_fast_rate(inParams XfmrParams) error {
+
+    pathInfo := NewPathInfo(inParams.uri)
+    ifKey := pathInfo.Var("name")
+
+    var static string = "false"
+    // Read LAG Type from DB
+    var mode string
+    e := get_lag_type(inParams.d, &ifKey, &mode)
+    if e == nil && mode == "true" {
+        static = "true"
+    }
+
+
+    if static == "true" {
+        errStr := "Fast Rate interval configuration is not applicable for Static LAG"
+        return tlerr.InvalidArgsError{Format:errStr}
+    }
+
+    // LACP LAG: Check for fast_rate interval re-configuration
+    var fast_rate string
+    e = get_fast_rate(inParams.d, &ifKey, &fast_rate)
+    if e == nil && fast_rate == "false" {
+        errStr := "Fast Rate option cannot be configured for an already existing PortChannel: " + ifKey
+        return tlerr.InvalidArgsError{Format:errStr}
+    }
+
+
+    return nil
+}
+
+/* Handle fast_rate config */
+var YangToDb_lag_fast_rate_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    if log.V(3) {
+        log.Info("Entering YangToDb_lag_fast_rate_xfmr")
+    }
+    res_map := make(map[string]string)
+    var err error
+
+    if inParams.param == nil {
+        if log.V(3) {
+            log.Info("YangToDb_lag_fast_rate_xfmr Error: No Params")
+        }
+        return res_map, err
+    }
+
+    err = can_configure_fast_rate(inParams)
+    if err != nil {
+        return res_map, err
+    }
+
+    fast_rate, _ := inParams.param.(*bool)
+    res_map["fast_rate"] = strconv.FormatBool(*fast_rate)
+    return res_map, nil
+}
+
+
 /* Handle fallback config */
 var YangToDb_lag_fallback_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     if log.V(3) {
@@ -338,6 +417,29 @@ var DbToYang_lag_fallback_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     return result, err
 }
 
+var DbToYang_lag_fast_rate_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    if log.V(3) {
+        log.Info("Entering DbToYang_lag_fast_rate_xfmr")
+    }
+    var err error
+    result := make(map[string]interface{})
+
+    err = validatePortChannel(inParams.d, inParams.key)
+    if err != nil {
+        log.Infof("DbToYang_lag_fast_rate_xfmr Error: %v ", err)
+        return result, err
+    }
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+
+    fast_rate, ok := data[PORTCHANNEL_TABLE][inParams.key].Field["fast_rate"]
+    if ok {
+        result["fast_rate"], _ = strconv.ParseBool(fast_rate)
+    }
+    return result, err
+}
+
+
 func getLagStateAttr(attr *string, ifName *string, lagInfoMap  map[string]db.Value,
                           oc_val *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Aggregation_State) (error) {
     lagEntries, ok := lagInfoMap[*ifName]
@@ -362,6 +464,9 @@ func getLagStateAttr(attr *string, ifName *string, lagInfoMap  map[string]db.Val
     case "fallback":
         fallbackVal, _:= strconv.ParseBool(lagEntries.Field["fallback"])
         oc_val.Fallback = &fallbackVal
+   case "fast_rate":
+        fast_rate_val, _:= strconv.ParseBool(lagEntries.Field["fast_rate"])
+        oc_val.FastRate = &fast_rate_val
     case "member":
         lagMembers := strings.Split(lagEntries.Field["member@"], ",")
         oc_val.Member = lagMembers
@@ -382,6 +487,8 @@ func getLagState(ifName *string, lagInfoMap  map[string]db.Value,
     oc_val.MinLinks = &minlinks
     fallbackVal, _:= strconv.ParseBool(lagEntries.Field["fallback"])
     oc_val.Fallback = &fallbackVal
+    fastRateVal, _:= strconv.ParseBool(lagEntries.Field["fast_rate"])
+    oc_val.FastRate = &fastRateVal
 
     oc_val.LagType = ocbinds.OpenconfigIfAggregate_AggregationType_LACP
     lag_type,ok := lagEntries.Field["static"]
@@ -443,16 +550,26 @@ func fillLagInfoForIntf(d *db.DB, ifName *string, lagInfoMap map[string]db.Value
     var fallbackVal string
     if val, ok := curr.Field["fallback"]; ok {
         fallbackVal = val
-        if err != nil {
-            errStr := "Conversion of string to bool failed"
-            return errors.New(errStr)
-        }
     } else {
         log.Info("Fallback set to False, default value")
         fallbackVal = "false"
     }
     lagInfoMap[*ifName].Field["fallback"] = fallbackVal
 
+   /* Get fast rate value */
+    var fastRateVal string
+    if val, ok := curr.Field["fast_rate"]; ok {
+        fastRateVal = val
+    } else {
+        if log.V(3) {
+            log.Info("fast_rate set to false (default value)")
+        }
+        fastRateVal = "false"
+    }
+
+    lagInfoMap[*ifName].Field["fast_rate"] = fastRateVal
+
+    /*Get Static Value*/
     if v, k := curr.Field["static"]; k {
         lagInfoMap[*ifName].Field["static"] = v
     } else {
@@ -528,6 +645,13 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fallback":
         log.Info("Get is for fallback")
         attr := "fallback"
+        err = getLagStateAttr(&attr, &ifName, lagInfoMap, ocAggregationStateVal)
+        if err != nil {
+            return err
+        }
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fast_rate":
+        log.Info("Get is for fast rate")
+        attr := "fast_rate"
         err = getLagStateAttr(&attr, &ifName, lagInfoMap, ocAggregationStateVal)
         if err != nil {
             return err
