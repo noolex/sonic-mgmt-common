@@ -30,7 +30,13 @@ func init () {
     XlateFuncBind("YangToDb_sys_aaa_auth_xfmr", YangToDb_sys_aaa_auth_xfmr)
     XlateFuncBind("YangToDb_sys_config_key_xfmr", YangToDb_sys_config_key_xfmr)
     XlateFuncBind("DbToYang_sys_config_key_xfmr", DbToYang_sys_config_key_xfmr)
+<<<<<<< HEAD
 
+||||||| merged common ancestors
+<<<<<<<<< Temporary merge branch 1
+
+=======
+>>>>>>> origin/broadcom_sonic_3.x_share
     XlateFuncBind("YangToDb_global_dns_key_xfmr", YangToDb_global_dns_key_xfmr)
     XlateFuncBind("DbToYang_global_dns_key_xfmr", DbToYang_global_dns_key_xfmr)
     XlateFuncBind("YangToDb_server_dns_key_xfmr", YangToDb_server_dns_key_xfmr)
@@ -550,4 +556,13 @@ var DbToYang_server_dns_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (ma
     return rmap, nil
 }
 
+<<<<<<< HEAD
 
+||||||| merged common ancestors
+
+||||||||| merged common ancestors
+
+=========
+>>>>>>>>> Temporary merge branch 2
+=======
+>>>>>>> origin/broadcom_sonic_3.x_share
