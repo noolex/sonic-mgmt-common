@@ -141,7 +141,7 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 
     dscp := pathInfo.Var("dscp")
     if dscp == "" {
-	return res_map, err
+        return res_map, err
     }
 
     log.Info("dscp: ", dscp)
@@ -206,6 +206,11 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         mapObj.Config = &mapObjCfg
     }
 
+    var mapObjSta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_State
+    if mapObj.State == nil {
+        mapObj.State = &mapObjSta
+    }
+
     // Classifier
     dbSpec := &db.TableSpec{Name: "DSCP_TO_TC_MAP"}
 
@@ -222,11 +227,14 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     log.Info("current entry: ", mapCfg)
 
     mapObj.Config.Name = &name
+    mapObj.State.Name = &name
 
 
     dscp := pathInfo.Var("dscp")
+    log.Info("pathInfo.Var: ", pathInfo.Var)
     var tmp_cfg ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_Config
     var tmp_sta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_State
+    entry_added :=  0
     for k, v := range mapCfg.Field {
         if dscp != "" && k!= dscp {
             continue
@@ -234,7 +242,7 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
 
         tmp, _ := strconv.ParseUint(k, 10, 8)
         dscp_val := uint8(tmp)
-	fwdGrp := v
+        fwdGrp := v
 
         entryObj, ok := mapObj.DscpMapEntries.DscpMapEntry[dscp_val]
         if !ok {
@@ -259,11 +267,18 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         entryObj.State.Dscp = &dscp_val
         entryObj.State.FwdGroup = &fwdGrp
 
+        entry_added = entry_added + 1
 
         log.Info("Added entry: ", entryObj)
     }
 
     log.Info("Done fetching dscp-map : ", name)
+
+    if dscp != "" && entry_added == 0 {
+        err = tlerr.NotFoundError{Format:"Instance Not found"}
+        log.Info("Instance not found.")
+        return err
+    }
 
     return nil
 }

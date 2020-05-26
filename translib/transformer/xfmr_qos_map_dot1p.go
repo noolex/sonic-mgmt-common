@@ -199,6 +199,11 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
         mapObj.Config = &mapObjCfg
     }
 
+    var mapObjSta ocbinds.OpenconfigQos_Qos_Dot1pMaps_Dot1pMap_State
+    if mapObj.State == nil {
+        mapObj.State = &mapObjSta
+    }
+
     // Classifier
     dbSpec := &db.TableSpec{Name: "DOT1P_TO_TC_MAP"}
 
@@ -215,11 +220,13 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     log.Info("current entry: ", mapCfg)
 
     mapObj.Config.Name = &name
+    mapObj.State.Name = &name
 
 
     dot1p := pathInfo.Var("dot1p")
     var tmp_cfg ocbinds.OpenconfigQos_Qos_Dot1PMaps_Dot1PMap_Dot1PMapEntries_Dot1PMapEntry_Config
     var tmp_sta ocbinds.OpenconfigQos_Qos_Dot1PMaps_Dot1PMap_Dot1PMapEntries_Dot1PMapEntry_State
+    entry_added :=  0
     for k, v := range mapCfg.Field {
         if dot1p != "" && k!= dot1p {
             continue
@@ -252,11 +259,18 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
         entryObj.State.Dot1P = &dot1p_val
         entryObj.State.FwdGroup = &fwdGrp
 
+        entry_added = entry_added + 1
 
         log.Info("Added entry: ", entryObj)
     }
 
     log.Info("Done fetching dot1p-map : ", name)
+
+    if dot1p != "" && entry_added == 0 {
+        err = tlerr.NotFoundError{Format:"Instance Not found"}
+        log.Info("Instance not found.")
+        return err
+    }
 
     return nil
 }
