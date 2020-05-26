@@ -84,7 +84,7 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
         var err error
         var errStr string
 
-        log.Infof("bingbing got cmd %v flags %v", command, flags)
+        log.Infof("ProcessGetNtpServer  %v flags %v", command, flags)
 
         requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
 
@@ -92,7 +92,7 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
 
         keyName := pathInfo.Var("address")
 
-        log.Info("DbToYang_ntp_server_state_subtree_xfmr: request ", requestUriPath,
+        log.Info("ProcessGetNtpServer: request ", requestUriPath,
                  ", key: ", keyName)
 
         /* If keyName is present, check if it is configured as NTP server */
