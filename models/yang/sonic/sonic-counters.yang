@@ -1,0 +1,96 @@
+module sonic-counters {
+    namespace "http://github.com/Azure/sonic-counters";
+    prefix scnts;
+
+    import sonic-common {
+        prefix scommon;
+    }
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC COUNTERS";
+
+    revision 2020-05-19 {
+        description
+            "Initial revision.";
+    }
+
+    rpc interface_counters {
+        description "RPC to get interface counters.";
+        input {
+            leaf prefix-match {
+                description
+                    "Interface name prefix (Ethernet/Portchannel) or interface name.";
+                type string;
+            }
+        }
+        output {
+            leaf status {
+                type int32;
+                description
+                    "The status of the operation execution request.";
+            }
+            leaf status-detail {
+                type string;
+                description
+                    "The detailed status of the operation execution request.";
+            }
+
+            container interfaces {
+                list interface {
+                    key "name";
+
+                    leaf name {
+                        type string;
+                    }
+                    container state {
+                        leaf oper-status {
+                            type string;
+                        }
+                        container counters {
+                            leaf in-octets {
+                                type uint64;
+                            }
+                            leaf in-pkts {
+                                type uint64;
+                            }
+                            leaf in-discards {
+                                type uint64;
+                            }
+                            leaf in-errors {
+                                type uint64;
+                            }
+                            leaf in-oversize-frames {
+                                type uint64;
+                            }
+                            leaf out-octets {
+                                type uint64;
+                            }
+                            leaf out-pkts {
+                                type uint64;
+                            }
+                            leaf out-discards {
+                                type uint64;
+                            }
+                            leaf out-errors {
+                                type uint64;
+                            }
+                            leaf out-oversize-frames {
+                                type uint64;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
