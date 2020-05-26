@@ -355,6 +355,30 @@ func getNonDefaultVrfInterfaces(d *db.DB)(map[string]string) {
     return nonDefaultVrfIntfs
 }
 
+func isValidVrf(d *db.DB, vrfName string)(bool) {
+
+    vrfObj, err := d.GetTable(&db.TableSpec{Name:"VRF"})
+    if err != nil {
+        return false
+    }
+
+    keys, err := vrfObj.GetKeys()
+    for _, key := range keys {
+        log.Info("isValidVrf - key: ", key.Get(0), " vrfname: ", vrfName)
+        if (key.Get(0) == vrfName) {
+            return true
+        }
+    }
+
+    /*check mgmt vrf*/
+    if vrfName == "mgmt" {
+        entry, _ := d.GetEntry(&db.TableSpec{Name: "MGMT_VRF_CONFIG"}, db.Key{Comp: []string{"vrf_global"}})
+        if _, ok := entry.Field["mgmtVrfEnabled"]; ok {
+            return true
+        }
+     }
+     return false
+}
 
 func clear_default_vrf(fam_switch string, d *db.DB)  string {
     var err error
@@ -368,13 +392,13 @@ func clear_default_vrf(fam_switch string, d *db.DB)  string {
     out, err := cmd.StdoutPipe()
     if err != nil {
         log.Info("Can't get stdout pipe: ", err)
-        return "%Error: Internal error"
+        return "% Error: Internal error"
     }
 
     err = cmd.Start()
     if err != nil {
         log.Info("cmd.Start() failed with: ", err)
-        return "%Error: Internal error"
+        return "% Error: Internal error"
     }
 
     in := bufio.NewScanner(out)
@@ -397,11 +421,7 @@ func clear_default_vrf(fam_switch string, d *db.DB)  string {
             _, e := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
             if e != nil {
                log.Info("Eror: ", e)
-                if (strings.Contains(e.Error(), "255")) {
-                    return "Unable to clear all entries, please try again"
-                } else {
-                    return "%Error: Internal error"
-                }
+               return "% Error: Internal error"
             }
         }
     }
@@ -414,11 +434,13 @@ func clear_vrf(fam_switch string, vrf string) string {
     var err error
     var status string
     var count int
+    status = "% Error: Internal error"
 
     if (len(vrf) <= 0) {
-        log.Info("Missing VRF name, returning")
-        return "%Error: Internal error"
+        log.Error("Missing VRF name, returning")
+        return status
     }
+
 
     for count = 1;  count <= 3; count++ {
         if (vrf == "all") {
@@ -429,12 +451,10 @@ func clear_vrf(fam_switch string, vrf string) string {
              _, err = exec.Command("ip", fam_switch, "-s", "-s", "neigh", "flush", "all", "vrf", vrf).Output()
         }
         if err != nil {
-            log.Info(err)
+            log.Error("clear_vrf - ", err)
             if (strings.Contains(err.Error(), "255")) {
-                 status =  "Unable to clear all entries, please try again"
-                 continue
+                continue
             } else {
-                status = "%Error: Internal error"
                 break
             }
         }
@@ -462,14 +482,14 @@ func clear_ip(ip string, fam_switch string, vrf string, d *db.DB) string {
 
     out, err := cmd.StdoutPipe()
     if err != nil {
-        log.Info("Can't get stdout pipe: ", err)
-        return "%Error: Internal error"
+        log.Error("Can't get stdout pipe: ", err)
+        return "% Error: Internal error"
     }
 
     err = cmd.Start()
     if err != nil {
-        log.Info("cmd.Start() failed with: ", err)
-        return "%Error: Internal error"
+        log.Error("cmd.Start() failed with: ", err)
+        return "% Error: Internal error"
     }
 
     in := bufio.NewScanner(out)
@@ -480,14 +500,10 @@ func clear_ip(ip string, fam_switch string, vrf string, d *db.DB) string {
 
         if (vrfList[intf] == vrf || vrf == "all") {
             log.Info("Executing: ip ", fam_switch, " neigh ", "del ", ip, " dev ", intf)
-            _, e := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
-            if e != nil {
-                log.Info(e)
-                if (strings.Contains(e.Error(), "255")) {
-                    return "Unable to clear all entries, please try again"
-                } else {
-                    return "%Error: Internal error"
-                }
+            _, err := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
+            if err != nil {
+                log.Error("clear_ip - ", err)
+                return "% Error: Internal error"
             }
         }
         isValidIp = true
@@ -508,14 +524,14 @@ func clear_intf(intf string, fam_switch string) string {
 
     out, err := cmd.StdoutPipe()
     if err != nil {
-        log.Info("Can't get stdout pipe: ", err)
-        return "%Error: Internal error"
+        log.Error("Can't get stdout pipe: ", err)
+        return "% Error: Internal error"
     }
 
     err = cmd.Start()
     if err != nil {
-        log.Info("cmd.Start() failed with: ", err)
-        return "%Error: Internal error"
+        log.Error("cmd.Start() failed with: ", err)
+        return "% Error: Internal error"
     }
 
     in := bufio.NewScanner(out)
@@ -523,21 +539,17 @@ func clear_intf(intf string, fam_switch string) string {
         line := in.Text()
 
         if strings.Contains(line, "Cannot find device") {
-            log.Info("Error: ", line)
+            log.Error("Error: ", line)
             return line
         }
 
         list := strings.Fields(line)
         ip := list[0]
         log.Info("Executing: ip ", fam_switch, " neigh ", "del ", ip, " dev ", intf)
-        _, e := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
-        if e != nil {
-            log.Info(e)
-            if (strings.Contains(e.Error(), "255")) {
-                return "Unable to clear all entries, please try again"
-            } else {
-                return "%Error: Internal error"
-            }
+        _, err := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
+        if err != nil {
+            log.Error("clear_intf - ", err)
+            return "% Error: Internal error"
         }
         isValidIntf = true
     }
@@ -604,6 +616,14 @@ var rpc_clear_neighbors RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     if input, ok := mapData["all_vrfs"].(bool); ok {
         if input == true {
            vrf = "all"
+        }
+    }
+
+    if (len (vrf) > 0 && vrf != "all") {
+        if (!isValidVrf(dbs[db.ConfigDB], vrf)) {
+            result.Output.Status = "% Error: VRF " +  vrf + " not found"
+            log.Error(result.Output.Status)
+            return json.Marshal(&result)
         }
     }
 
