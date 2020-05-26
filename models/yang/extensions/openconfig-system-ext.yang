@@ -8,22 +8,8 @@ module openconfig-system-ext {
 
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
-<<<<<<< HEAD
     import openconfig-interfaces { prefix "oc-if"; }
-||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
-    import openconfig-interfaces { prefix "oc-if"; }
-||||||||| merged common ancestors
-=========
-=======
->>>>>>> origin/broadcom_sonic_3.x_share
     import openconfig-kdump { prefix oc-kdump; }
-<<<<<<< HEAD
-||||||| merged common ancestors
->>>>>>>>> Temporary merge branch 2
-=======
-    import openconfig-interfaces { prefix "oc-if"; }
->>>>>>> origin/broadcom_sonic_3.x_share
 
     // meta
     organization "OpenConfig working group";
