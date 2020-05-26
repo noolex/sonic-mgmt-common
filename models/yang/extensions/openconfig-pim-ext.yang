@@ -8,6 +8,7 @@ module openconfig-pim-ext {
     prefix "oc-pim-ext";
 
     // import some basic types/interfaces
+    import openconfig-inet-types { prefix oc-inet; }
     import openconfig-network-instance { prefix oc-netinst; }
     import openconfig-routing-policy {prefix oc-rpol; }
 
@@ -58,6 +59,36 @@ module openconfig-pim-ext {
         }
     }
 
+    grouping pim-ext-interface-state {
+        leaf nbrs-count {
+            type uint16;
+            description
+                "Number of PIM neighbors on this interface.";
+        }
+
+        leaf local-address {
+            type oc-inet:ipv4-address;
+            description
+               "Local IPv4 address of this interface.";
+        }
+
+        leaf dr-address {
+            type oc-inet:ipv4-address;
+            description
+               "IPv4 address of designated router on this interface.";
+        }
+    }
+
+    grouping pim-ext-neighbor-state {
+        leaf dr-priority {
+            type uint32 {
+                range 1..4294967295;
+            }
+            description
+                "Designated router priority value.";
+        }
+    }
+
     augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
         container config {
             uses pim-ext-global-config; 
@@ -74,6 +105,11 @@ module openconfig-pim-ext {
 
     augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state {
         uses pim-ext-interface-config;
+        uses pim-ext-interface-state;
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state {
+        uses pim-ext-neighbor-state;
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:ssm/oc-netinst:config/oc-netinst:ssm-ranges {
