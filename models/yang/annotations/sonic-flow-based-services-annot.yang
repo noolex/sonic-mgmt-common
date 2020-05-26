@@ -8,28 +8,27 @@ module sonic-flow-based-services-annot {
     import sonic-extensions { prefix sonic-ext; }
     import sonic-flow-based-services { prefix sfbs; }
 
-    deviation /sfbs:show_classifier {
+    deviation /sfbs:show-classifier {
         deviate add {
-	    sonic-ext:rpc-callback "rpc_show_classifier";
+	        sonic-ext:rpc-callback "rpc_show_classifier";
         }
     }
 
-    deviation /sfbs:show_policy {
+    deviation /sfbs:show-policy {
         deviate add {
-	    sonic-ext:rpc-callback "rpc_show_policy";
+	        sonic-ext:rpc-callback "rpc_show_policy";
         }
     }
 
-    deviation /sfbs:show_service_policy {
+    deviation /sfbs:show-service-policy {
         deviate add {
             sonic-ext:rpc-callback "rpc_show_service_policy";
         }
     }
 
-    deviation /sfbs:clear_service_policy {
+    deviation /sfbs:clear-service-policy-counters {
         deviate add {
-	    sonic-ext:rpc-callback "rpc_clear_service_policy";
+	        sonic-ext:rpc-callback "rpc_clear_service_policy";
         }
     }
 }
-
