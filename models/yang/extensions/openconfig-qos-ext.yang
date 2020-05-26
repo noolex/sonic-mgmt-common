@@ -8,18 +8,27 @@ module openconfig-qos-ext {
     prefix "oc-qos-ext";
 
     import openconfig-qos { prefix oc-qos; }
-    import openconfig-qos-types { prefix oc-qos-types; }
     import openconfig-yang-types { prefix oc-yang; }
+    import openconfig-extensions { prefix oc-ext; }
+
+    organization "Dell";
+
+    contact
+      "Dell";
 
     description
       "This module defines YANG model for network quality-of-service extension.";
 
+    oc-ext:openconfig-version "0.1.0";
+
     revision "2020-04-01" {
       description
         "Initial version";
+      reference "0.1.0";
     }
 
     grouping qos-queue-state-ext {
+	    description "Queue state and counters";
         leaf traffic-type {
             type string;
             description
@@ -47,11 +56,15 @@ module openconfig-qos-ext {
     }
 
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues/oc-qos:queue/oc-qos:state {
+        description
+            "Queue extesnions for state and counters";
         uses qos-queue-state-ext;
     }
 
 
     augment /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:wred/oc-qos:config {
+        description
+            "Queue config extensions";
         leaf wred-profile {
             type string;
             description
@@ -60,6 +73,8 @@ module openconfig-qos-ext {
     }
 
     augment /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:wred/oc-qos:state {
+        description
+            "Queue config association";
         leaf wred-profile {
             type string;
             description
@@ -163,6 +178,8 @@ module openconfig-qos-ext {
     }
         
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input {
+        description 
+            "Priority groups at interface input";
         uses qos-interface-priority-group-top;
     }
     
@@ -233,24 +250,34 @@ module openconfig-qos-ext {
     }
 
     augment /oc-qos:qos {
+        description 
+            "Qos extensions containers";
         uses qos-threshold-breach-top;
         uses qos-wred-profile-top;
     }
 
 
     augment /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config {
+        description 
+            "Scheduler policy configs";
         leaf weight {
             type uint8 {
                 range "1..100";
             }
+            description 
+                "DWRR weight";
         }
     }
 
     augment /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:state {
+        description 
+            "Scheduler policy configs state";
         leaf weight {
             type uint8 {
                 range "1..100";
             }
+            description 
+                "DWRR weight";
         }
     }
 
@@ -327,110 +354,151 @@ module openconfig-qos-ext {
         description
           "Configuration parameters relating to a WRED profile";
 
-        leaf name{
+        leaf name {
             type string;
             description
                 "Name of the WRED profile.";
         }
 
-        leaf green_min_threshold {
+        leaf green-min-threshold {
             type uint64;
             description
                 "Mininum threshold set for green packets.";
         }
 
-        leaf yellow_min_threshold {
+        leaf yellow-min-threshold {
             type uint64;
             description
                 "Mininum threshold set for yellow packets.";
         }
 
-        leaf red_min_threshold {
+        leaf red-min-threshold {
             type uint64;
             description
                 "Mininum threshold set for red packets.";
         }
 
-        leaf green_max_threshold {
+        leaf green-max-threshold {
             type uint64;
             description
                 "Maximum threshold set for green packets.";
         }
 
-        leaf yellow_max_threshold {
+        leaf yellow-max-threshold {
             type uint64;
             description
                 "Maximum threshold set for yellow packets.";
         }
 
-        leaf red_max_threshold {
+        leaf red-max-threshold {
             type uint64;
             description
                 "Maximum threshold set for red packets.";
         }
 
         leaf ecn {
+
             type enumeration {
-                enum ecn_none;
-                enum ecn_green;
-                enum ecn_yellow;
-                enum ecn_red;
-                enum ecn_green_yellow;
-                enum ecn_green_red;
-                enum ecn_yellow_red; 
-                enum ecn_all;
+
+                enum ECN_NONE {
+                    description
+                        "No ECN for all packets.";
+                }
+
+                enum ECN_GREEN {
+                    description
+                        "ECN for green colored packets.";
+                }
+
+                enum ECN_YELLOW {
+                    description
+                        "ECN for yellow colored packets.";
+                }
+
+                enum ECN_RED {
+                    description
+                        "ECN for red colored packets.";
+                }
+
+                enum ECN_GREEN_YELLOW {
+                    description
+                        "ECN for green and yellow colored packets.";
+                }
+
+                enum ECN_GREEN_RED {
+                    description
+                        "ECN for green and red colored packets.";
+                }
+
+                enum ECN_YELLOW_RED  {
+                    description
+                        "ECN for yellow and red colored packets.";
+                }
+
+                enum ECN_ALL {
+                    description
+                        "ECN for all packets.";
+                }
             }
             description
                 "ECN setting for colored packets";
         }
 
-        leaf wred_green_enable {
+        leaf wred-green-enable {
             type boolean;
             description
                 "WRED enabled/disabled for green packets";
         }
 
-        leaf wred_yellow_enable {
+        leaf wred-yellow-enable {
             type boolean;
             description
                 "WRED enabled/disabled for yellow packets";
         }
 
-        leaf wred_red_enable {
+        leaf wred-red-enable {
             type boolean;
             description
                 "WRED enabled/disabled for red packets";
         }
 
-        leaf green_drop_probability {
+        leaf green-drop-probability {
             type uint64;
             description
                 "Drop probability for green packets";
         }
 
-        leaf yellow_drop_probability {
+        leaf yellow-drop-probability {
             type uint64;
             description
                 "Drop probability for yellow packets";
         }
 
-        leaf red_drop_probability {
+        leaf red-drop-probability {
             type uint64;
             description
                 "Drop probability for red packets";
         }
     }
 
+    grouping qos-wred-profile-state {
+        description
+          "Operationalparameters relating to a WRED profile";
+    }
 
     grouping qos-wred-profile-top {
         description
           "Top-level grouping for QoS WRED profile";
 
         container wred-profiles {
+            description
+                "Containers for WRED profiles";
 
             list wred-profile {
                 key "name";
                
+                description
+                    "List of WRED profiles";
                 leaf name {
                   type leafref {
                     path "../config/name";
@@ -450,73 +518,74 @@ module openconfig-qos-ext {
                   description
                     "Operational state parameters relating to a WRED profile.";
                   uses qos-wred-profile-config;
+                  uses qos-wred-profile-state;
                 }
 
             }
         }
     }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow_min_threshold {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow-min-threshold {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow_max_threshold {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow-max-threshold {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow_drop_probability {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/yellow-drop-probability {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/wred_yellow_enable {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/wred-yellow-enable {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red_min_threshold {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red-min-threshold {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red_max_threshold {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red-max-threshold {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red_drop_probability {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/red-drop-probability {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/config/wred_red_enable {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/config/wred-red-enable {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow_min_threshold {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow-min-threshold {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow_max_threshold {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow-max-threshold {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow_drop_probability {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/yellow-drop-probability {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/wred_yellow_enable {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/wred-yellow-enable {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red_min_threshold {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red-min-threshold {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red_max_threshold {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red-max-threshold {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red_drop_probability {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/red-drop-probability {
       deviate not-supported;
   }
 
-  deviation /oc-qos:qos/wred-profiles/wred-profile/state/wred_red_enable {
+  deviation /oc-qos:qos/wred-profiles/wred-profile/state/wred-red-enable {
       deviate not-supported;
   }
 
