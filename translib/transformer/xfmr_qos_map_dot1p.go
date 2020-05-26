@@ -135,6 +135,9 @@ var YangToDb_qos_dot1p_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     }
 
     dot1p := pathInfo.Var("dot1p")
+    if dot1p == "" {
+	return res_map, err
+    }
     log.Info("dot1p: ", dot1p)
 
     tmp, _ := strconv.ParseUint(dot1p, 10, 8)
@@ -217,13 +220,14 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     dot1p := pathInfo.Var("dot1p")
     var tmp_cfg ocbinds.OpenconfigQos_Qos_Dot1PMaps_Dot1PMap_Dot1PMapEntries_Dot1PMapEntry_Config
     var tmp_sta ocbinds.OpenconfigQos_Qos_Dot1PMaps_Dot1PMap_Dot1PMapEntries_Dot1PMapEntry_State
-    for k, fwdGrp := range mapCfg.Field {
+    for k, v := range mapCfg.Field {
         if dot1p != "" && k!= dot1p {
             continue
         }
 
         tmp, _ := strconv.ParseUint(k, 10, 8)
         dot1p_val := uint8(tmp)
+	fwdGrp := v
 
         entryObj, ok := mapObj.Dot1PMapEntries.Dot1PMapEntry[dot1p_val]
         if !ok {

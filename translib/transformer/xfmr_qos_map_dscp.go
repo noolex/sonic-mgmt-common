@@ -15,9 +15,6 @@ func init () {
     XlateFuncBind("DbToYang_qos_fwdgrp_tbl_key_xfmr", DbToYang_qos_fwdgrp_tbl_key_xfmr)
     XlateFuncBind("DbToYang_qos_fwdgrp_fld_xfmr", DbToYang_qos_fwdgrp_fld_xfmr)
 
-    XlateFuncBind("YangToDb_qos_fwd_group_queue_xfmr", YangToDb_qos_fwd_group_queue_xfmr)
-    XlateFuncBind("DbToYang_qos_fwd_group_queue_xfmr", DbToYang_qos_fwd_group_queue_xfmr)
-
     XlateFuncBind("YangToDb_qos_dscp_fwd_group_xfmr", YangToDb_qos_dscp_fwd_group_xfmr)
     XlateFuncBind("DbToYang_qos_dscp_fwd_group_xfmr", DbToYang_qos_dscp_fwd_group_xfmr)
     XlateFuncBind("YangToDb_qos_dscp_to_tc_map_fld_xfmr", YangToDb_qos_dscp_to_tc_map_fld_xfmr)
@@ -143,10 +140,15 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     }
 
     dscp := pathInfo.Var("dscp")
+    if dscp == "" {
+	return res_map, err
+    }
+
     log.Info("dscp: ", dscp)
 
     tmp, _ := strconv.ParseUint(dscp, 10, 8)
     dscp_val := uint8(tmp)
+    log.Info("dscp_val: ", dscp_val)
 
     entry, ok := mapObj.DscpMapEntries.DscpMapEntry[dscp_val]
     if !ok  {
@@ -225,13 +227,14 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     dscp := pathInfo.Var("dscp")
     var tmp_cfg ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_Config
     var tmp_sta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_State
-    for k, fwdGrp := range mapCfg.Field {
+    for k, v := range mapCfg.Field {
         if dscp != "" && k!= dscp {
             continue
         }
 
         tmp, _ := strconv.ParseUint(k, 10, 8)
         dscp_val := uint8(tmp)
+	fwdGrp := v
 
         entryObj, ok := mapObj.DscpMapEntries.DscpMapEntry[dscp_val]
         if !ok {
@@ -368,34 +371,6 @@ var DbToYang_qos_fwdgrp_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (
     res_map["name"] = inParams.key
     return res_map, nil
 }
-
-var YangToDb_qos_fwd_group_queue_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-
-    var err error
-    res_map := make(map[string]map[string]db.Value)
-
-    log.Info("YangToDb_qos_fwd_group_queue_xfmr: ", inParams.ygRoot, inParams.uri)
-    log.Info("inParams: ", inParams)
-
-    pathInfo := NewPathInfo(inParams.uri)
-    name := pathInfo.Var("name")
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
-
-    log.Info("YangToDb: name: ", name)
-    log.Info("targetUriPath:",  targetUriPath)
-
-    /* parse the inParams */
-    // TODO
-
-    return res_map, err
-}
-
-var DbToYang_qos_fwd_group_queue_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-    // TODO
-
-    return nil
-}
-
 
 
 var DbToYang_qos_dscp_to_tc_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
