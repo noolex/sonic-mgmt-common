@@ -423,6 +423,7 @@ func yangToDbMapBuild(entries map[string]*yang.Entry) {
 	mapPrint(xYangSpecMap, "/tmp/fullSpec.txt")
 	dbMapPrint("/tmp/dbSpecMap.txt")
 	xDbSpecTblSeqnMapPrint("/tmp/dbSpecTblSeqnMap.txt")
+	sonicLeafRefDataPrint("/tmp/sonicLeafRef.log")
 	sonicLeafRefMap = nil
 }
 
@@ -434,13 +435,13 @@ func dbSpecXpathGet(inPath string) (string, error){
 
 	xpath, err := XfmrRemoveXPATHPredicates(inPath)
 	if err != nil {
-		log.Errorf("xpath conversion failed for(%v) \r\n", inPath)
+		log.Warningf("xpath conversion failed for(%v) \r\n", inPath)
 		return specPath, err
 	}
 
 	pathList   := strings.Split(xpath, "/")
 	if len(pathList) < 3 {
-		log.Errorf("Leaf-ref path not valid(%v) \r\n", inPath)
+		log.Warningf("Leaf-ref path not valid(%v) \r\n", inPath)
 		return specPath, err
 	}
 
@@ -448,6 +449,23 @@ func dbSpecXpathGet(inPath string) (string, error){
 	fieldName := pathList[len(pathList)-1]
 	specPath = tableName+"/"+fieldName
 	return specPath, err
+}
+
+/* Convert a relative path to an absolute path */
+func relativeToActualPathGet(relPath string, entry *yang.Entry) string {
+        actDbSpecPath := ""
+        xpath, err := XfmrRemoveXPATHPredicates(relPath)
+        if err != nil {
+                return actDbSpecPath
+        }
+
+        pathList := strings.Split(xpath[1:], "/")
+        if len(pathList) > 3 && (pathList[len(pathList)-3] != "..") {
+                tableName := pathList[len(pathList)-3]
+                fieldName := pathList[len(pathList)-1]
+                actDbSpecPath = tableName+"/"+fieldName
+        }
+        return actDbSpecPath
 }
 
 /* Fill the map with db details */
@@ -501,20 +519,34 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 				}
 			} else if entryType == YANG_LEAF || entryType == YANG_LEAF_LIST {
 				if entry.Type.Kind == yang.Yleafref {
-					lrefpath, err := dbSpecXpathGet(entry.Type.Path)
-					if err != nil {
-						log.Errorf("Failed to add leaf-ref for(%v) \r\n", entry.Type.Path)
-						return
+                                        var lerr error
+                                        lrefpath := entry.Type.Path
+                                        if (strings.Contains(lrefpath, "..")) {
+                                                lrefpath = relativeToActualPathGet(lrefpath, entry)
+                                        } else {
+                                                lrefpath, lerr = dbSpecXpathGet(lrefpath)
+                                                if lerr != nil {
+                                                        log.Errorf("Failed to add leaf-ref for(%v) \r\n", entry.Type.Path)
+                                                        return
+                                                }
+
 					}
 					xDbSpecMap[dbXpath].leafRefPath = append(xDbSpecMap[dbXpath].leafRefPath, lrefpath)
 					sonicLeafRefMap[lrefpath] = append(sonicLeafRefMap[lrefpath], dbXpath)
 				} else if entry.Type.Kind == yang.Yunion && len(entry.Type.Type) > 0 {
 					for _, ltype := range entry.Type.Type {
 						if ltype.Kind == yang.Yleafref {
-							lrefpath, err := dbSpecXpathGet(ltype.Path)
-							if err != nil {
-								log.Errorf("Failed to add leaf-ref for(%v) \r\n", ltype.Path)
-								return
+                                                        var lerr error
+                                                        lrefpath := ltype.Path
+                                                        if (strings.Contains(lrefpath, "..")) {
+                                                                lrefpath = relativeToActualPathGet(lrefpath, entry)
+                                                        } else {
+                                                                lrefpath, lerr = dbSpecXpathGet(lrefpath)
+                                                                if lerr != nil {
+                                                                        log.Errorf("Failed to add leaf-ref for(%v) \r\n", ltype.Path)
+                                                                        return
+                                                                }
+
 							}
 							xDbSpecMap[dbXpath].leafRefPath = append(xDbSpecMap[dbXpath].leafRefPath, lrefpath)
 							sonicLeafRefMap[lrefpath] = append(sonicLeafRefMap[lrefpath], dbXpath)
@@ -1009,6 +1041,26 @@ func xDbSpecTblSeqnMapPrint(fname string) {
 			fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
 			return
 
+}
+
+func sonicLeafRefDataPrint(fname string) {
+	fp, err := os.Create(fname)
+	if err != nil {
+		return
+	}
+	defer fp.Close()
+	fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
+	if xDbSpecTblSeqnMap == nil {
+		return
+	}
+	for lref, data := range sonicLeafRefMap {
+		fmt.Fprintf (fp, "leafref: %v\r\n", lref)
+		for i, d := range data {
+			fmt.Fprintf (fp, " (%v) %v\r\n", i, d)
+		}
+	fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
+	}
+	return
 }
 
 func updateSchemaOrderedMap(module string, entry *yang.Entry) {
