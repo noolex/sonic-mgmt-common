@@ -435,27 +435,14 @@ func (c *CVL) deleteDestLeafList(dest *xmlquery.Node)  {
 	}
 }
 
-//Delete node from list if must expression is not there under it 
-func (c *CVL) deleteLeafNodeWithoutMust(yangListName string,
-	topNode *xmlquery.Node, cfgData map[string]string) {
-
-	for nodeName, _ := range cfgData {
-		for node := topNode.FirstChild; node != nil; {
-			if (node.Data != nodeName) {
-				node = node.NextSibling
-				continue
-			}
-
-			_, exists := modelInfo.tableInfo[yangListName].mustExpr[nodeName]
-			if (exists == false) {
-				//No must expression exists for this, node to be deleted
-				tmpNode := node.NextSibling
-				c.detachNode(node)
-				node = nil
-				node = tmpNode
-				continue
-			}
-
+// deleteLeafNodes removes specified child nodes from an xml node topNode
+func (c *CVL) deleteLeafNodes(topNode *xmlquery.Node, cfgData map[string]string) {
+	for node := topNode.FirstChild; node != nil; {
+		if _, found := cfgData[getNodeName(node)]; found {
+			tmpNode := node.NextSibling
+			c.detachNode(node)
+			node = tmpNode
+		} else {
 			node = node.NextSibling
 		}
 	}
@@ -1072,8 +1059,11 @@ func (c *CVL) validateMustExp(node *xmlquery.Node,
 
 				leafRefSuccess := false*/
 
-				if (ctxNode != nil) &&
-				(xmlquery.Eval(c.yv.root, ctxNode, mustExp.exprTree) == false) {
+			if (ctxNode != nil) {
+				CVL_LOG(INFO_DEBUG, "Eval must \"%s\"; ctxNode=%s",
+					mustExp.expr, ctxNode.Data)
+
+				if (!xmlquery.Eval(c.yv.root, ctxNode, mustExp.exprTree)) {
 					keys := []string{}
 					if (len(ctxNode.Parent.Attr) > 0) {
 						keys =  strings.Split(ctxNode.Parent.Attr[0].Value,
@@ -1092,12 +1082,12 @@ func (c *CVL) validateMustExp(node *xmlquery.Node,
 						ErrAppTag: mustExp.errCode,
 					}
 				}
-				//}
-			} //for each must exp
-		} //all must exp under one node
+			}
+		} //for each must exp
+	} //all must exp under one node
 
-		return CVLErrorInfo{ErrCode:CVL_SUCCESS}
-	}
+	return CVLErrorInfo{ErrCode:CVL_SUCCESS}
+}
 
 //Currently supports when expression with current table only
 func (c *CVL) validateWhenExp(node *xmlquery.Node,
@@ -1425,14 +1415,12 @@ func (c *CVL) findUsedAsLeafRef(tableName, field string) []tblFieldPair {
 //was using T1|K1 and getting deleted
 //in same session also.
 func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
-	leafRef *tblFieldPair, keyVal string) bool {
-
-	entryTableName := leafRef.tableName + modelInfo.tableInfo[leafRef.tableName].redisKeyDelim
-	entryKeyVal := modelInfo.tableInfo[leafRef.tableName].redisKeyDelim + keyVal
+	leafRef *tblFieldPair, depDataKey, keyVal string) bool {
 
 	for _, cfgDataItem := range cfgData {
-		if (cfgDataItem.VType != VALIDATE_NONE) ||
-		(cfgDataItem.VOp != OP_DELETE) {
+		// All cfgDataItems which have VType as VALIDATE_NONE should be
+		// checked in cache
+		if (cfgDataItem.VType != VALIDATE_NONE) {
 			continue
 		}
 
@@ -1440,14 +1428,19 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 		//getting deleted, break immediately
 
 		//Find in request key, case - T2*|K1
-		if (strings.HasPrefix(cfgDataItem.Key, entryTableName)) &&
-		(strings.Contains(cfgDataItem.Key, entryKeyVal)) {
+		if cfgDataItem.Key == depDataKey &&
+			(cfgDataItem.VOp != OP_DELETE || (cfgDataItem.VOp == OP_DELETE && len(cfgDataItem.Data) == 0)) {
 			return true
 		}
 
 		//Find in request hash-field, case - T2*|K2:{H1: K1}
 		val, exists := cfgDataItem.Data[leafRef.field]
-		if (exists == true) && (val == keyVal) {
+		if exists == false {
+			// Leaf-lists field names are suffixed by "@".
+			val, exists = cfgDataItem.Data[leafRef.field+"@"]
+		}
+		// For delete cases, val sent is empty.
+		if (exists == true) && ((val == keyVal) || (val == "")) {
 			return true
 		}
 	}
@@ -1458,44 +1451,66 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 //Check delete constraint for leafref if key/field is deleted
 func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 			tableName, keyVal, field string) CVLRetCode {
-	var leafRefs []tblFieldPair
-	if (field != "") {
-		//Leaf or field is getting deleted
-		leafRefs = c.findUsedAsLeafRef(tableName, field)
-		TRACE_LOG(TRACE_SEMANTIC,
-		"(Table %s, field %s) getting used by leafRefs %v",
-		tableName, field, leafRefs)
-	} else {
-		//Entire entry is getting deleted
-		leafRefs = c.findUsedAsLeafRef(tableName, modelInfo.tableInfo[tableName].keys[0])
-		TRACE_LOG(TRACE_SEMANTIC,
-		"(Table %s, key %s) getting used by leafRefs %v",
-		tableName, keyVal, leafRefs)
+
+	// Creating a map of leaf-ref referred tableName and associated fields array
+	refTableFieldsMap := map[string][]string{}
+	for _, leafRef := range modelInfo.tableInfo[tableName].refFromTables {
+		// If field is getting deleted, then collect only those leaf-refs that
+		// refers that field
+		if (field != "") && ((field != leafRef.field) || (field != leafRef.field + "@")) {
+			continue
+		}
+
+		if _, ok := refTableFieldsMap[leafRef.tableName]; ok == false {
+			refTableFieldsMap[leafRef.tableName] = make([]string, 0)
+		}
+		refFieldsArr := refTableFieldsMap[leafRef.tableName]
+		refFieldsArr = append(refFieldsArr, leafRef.field)
+		refTableFieldsMap[leafRef.tableName] = refFieldsArr
+	}
+
+	if len(refTableFieldsMap) == 0 {
+		return CVL_SUCCESS
 	}
 
 	//The entry getting deleted might have been referred from multiple tables
 	//Return failure if at-least one table is using this entry
-	for _, leafRef := range leafRefs {
-		TRACE_LOG((TRACE_DELETE | TRACE_SEMANTIC), "Checking delete constraint for leafRef %s/%s", leafRef.tableName, leafRef.field)
-		//Check in dependent data first, if the referred entry is already deleted
 
-		if c.checkDeleteInRequestCache(cfgData, &leafRef, keyVal) == true {
-			continue //check next leafref
-		}
+	// Retrieve all dependent DB entries referring the given entry tableName and keyVal
+	redisKeyForDepData := tableName + "|" + keyVal
+	depDataArr := c.GetDepDataForDelete(redisKeyForDepData)
 
-		//Else, check if any referred entry is present in DB
-		var nokey []string
-		refKeyVal, err := luaScripts["find_key"].Run(redisClient, nokey, leafRef.tableName,
-		modelInfo.tableInfo[leafRef.tableName].redisKeyDelim,
-		strings.Join(modelInfo.tableInfo[leafRef.tableName].keys, "|"),
-		leafRef.field, keyVal).Result()
-		if (err == nil &&  refKeyVal != "") {
-			CVL_LOG(ERROR, "Delete will violate the constraint as entry %s is referred in %s", tableName, refKeyVal)
+	// Iterate through dependent DB entries and check if it already present in delete request cache
+	for _, depData := range depDataArr {
+		if len(depData.Entry) > 0 && depData.RefKey == redisKeyForDepData {
+			TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> DepData: %v", depData.Entry)
+			for depEntkey, _ := range depData.Entry {
+				depEntkeyList := strings.SplitN(depEntkey, "|", 2)
+				refTblName := depEntkeyList[0]
 
-			return CVL_SEMANTIC_ERROR
+				var isEntryInRequestCache bool
+				leafRefFieldsArr := refTableFieldsMap[refTblName]
+				TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> leafRefFieldsArr: %v", leafRefFieldsArr)
+				// Verify each dependent data with help of its associated leaf-ref
+				for _, leafRefField := range leafRefFieldsArr {
+					TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> Checking delete constraint for leafRef %s/%s", refTblName, leafRefField)
+					tempLeafRef := tblFieldPair{refTblName, leafRefField}
+					if (true == c.checkDeleteInRequestCache(cfgData, &tempLeafRef, depEntkey, keyVal)) {
+						isEntryInRequestCache = true
+						break
+					}
+				}
+
+				if isEntryInRequestCache == true {
+					// Entry already in delete request cache, proceed for next dep data
+					continue
+				} else {
+					CVL_LOG(ERROR, "Delete will violate the constraint as entry %s is referred in %v", redisKeyForDepData, depEntkey)
+					return CVL_SEMANTIC_ERROR
+				}
+			}
 		}
 	}
-
 
 	return CVL_SUCCESS
 }
@@ -1525,8 +1540,10 @@ func (c *CVL) validateSemantics(node *xmlquery.Node,
 	//Validate must expression
 	if (cfgData.VOp == OP_DELETE) {
 		if (len(cfgData.Data) > 0) {
-			//Delete leaf node if it does not have 'must' expression
-			c.deleteLeafNodeWithoutMust(yangListName, node, cfgData.Data)
+			// Delete leaf nodes from tree. This ensures validateMustExp will
+			// skip all must expressions defined for deleted nodes; and other
+			// must expressions get correct context.
+			c.deleteLeafNodes(node, cfgData.Data)
 		}
 	}
 

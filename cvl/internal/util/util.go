@@ -51,7 +51,6 @@ import (
         "os/signal"
         "syscall"
 	"strings"
-	"flag"
 	"strconv"
 	"github.com/go-redis/redis/v7"
 	log "github.com/golang/glog"
@@ -375,14 +374,9 @@ func ConfigFileSyncHandler() {
 
 			CVL_LEVEL_LOG(INFO ,"Received SIGUSR2. Changed configuration values are %v", cvlCfgMap)
 
-
-			flag.Set("v", cvlCfgMap["VERBOSITY"])
 			if (strings.Compare(cvlCfgMap["LOGTOSTDERR"], "true") == 0) {
 				SetTrace(true)
-				flag.Set("logtostderr", "true")
-				flag.Set("stderrthreshold", cvlCfgMap["STDERRTHRESHOLD"])
 			}
-
 		}
 	}()
 

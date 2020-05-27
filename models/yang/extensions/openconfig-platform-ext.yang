@@ -36,7 +36,142 @@ module openconfig-platform-ext {
         }
     }
 
+    augment /oc-pf:components/oc-pf:component {
+        description
+            "Add container for software-component information";
+        container software {
+            config false;
+            leaf software-version {
+                type string;
+                description "Software Version";
+            }
+            leaf product-version {
+                type string;
+                description "Product Version";
+            }
+            leaf distribution-version {
+                type string;
+                description "Debian Version";
+            }
+            leaf kernel-version {
+                type string;
+                description "Kernel Version";
+            }
+            leaf build-commit {
+                type string;
+                description "Build Commit ID";
+            }
+            leaf build-date {
+                type string;
+                description "Date of Build commit";
+            }
+            leaf built-by {
+                type string;
+                description "Built by";
+            }
+            leaf platform-name {
+                type string;
+                description "Platform Name";
+            }
+            leaf hwsku-version {
+                type string;
+                description "Hardware SKU version";
+            }
+            leaf asic-version {
+                type string;
+                description "asic version";
+            }
+            leaf hardware-version {
+                type string;
+                description "Hardware Version";
+            }
+            leaf serial-number {
+                type string;
+                description "Serial Number of Software";
+            }
+            leaf up-time {
+                type string;
+                description "System up-time";
+            }
+            leaf mfg-name {
+                type string;
+                description "Manufacturing Name";
+            }
+            list docker-version {
+                description "list of docker and their versions";
+                key "docker-name";
+                leaf docker-name {
+                    type string;
+                    description
+                        "name of the docker";
+                }
+                leaf docker-tag-id{
+                    type string;
+                    description
+                        "version of the docker-image";
+                }
+                leaf docker-image-id {
+                    type string;
+                    description
+                        "Image ID of the docker";
+                }
+                leaf docker-size{
+                    type string;
+                    description
+                        "Size of the docker-image";
+                }
+            }
+        }
+    }
+
     augment /oc-pf:components/oc-pf:component/oc-pf:subcomponents/oc-pf:subcomponent/oc-pf:state {
         uses platform-extra-sensor-reading;
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:state {
+        leaf service-tag {
+            type string;
+            description "System service tag";
+        }
+
+        leaf base-mac-address {
+            type string;
+            description "Base MAC address";
+        }
+
+        leaf mac-addresses {
+            type int32;
+            description "Number of MAC addresses";
+        }
+
+        leaf onie-version {
+            type string;
+            description "ONIE version";
+        }
+
+        leaf manufacture-country {
+            type string;
+            description "Manufacture country";
+        }
+
+        leaf vendor-name {
+            type string;
+            description "Vendor name";
+        }
+
+        leaf diag-version {
+            type string;
+            description "Diag version";
+        }
+
+        leaf fans {
+            type uint32;
+            description "Number of fans";
+        }
+
+        leaf status-led {
+            type string;
+            description "LED status color";
+        }
     }
 }

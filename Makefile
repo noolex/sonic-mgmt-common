@@ -22,18 +22,15 @@ BUILD_DIR := build
 
 GOPATH ?= /tmp/go
 GO     ?= /usr/local/go/bin/go
-RMDIR  ?= rm -rf
 
 INSTALL := /usr/bin/install
-
-MAIN_TARGET = sonic-mgmt-common_1.0.0_amd64.deb
 
 GO_MOD     = go.mod
 GO_DEPS    = vendor/.done
 GO_PATCHES = $(shell find patches -type f)
 GOYANG_BIN = $(abspath $(BUILD_DIR)/bin/goyang)
 
-export TOPDIR GO GOPATH RMDIR
+export TOPDIR GO GOPATH 
 
 all: models cvl translib
 
@@ -48,7 +45,7 @@ $(GO_DEPS): $(GO_MOD) $(GO_PATCHES)
 go-deps: $(GO_DEPS)
 
 go-deps-clean:
-	$(RMDIR) vendor
+	$(RM) -r vendor
 
 .PHONY: cvl
 cvl: $(GO_DEPS)
@@ -87,24 +84,8 @@ $(GOYANG_BIN): $(GO_DEPS)
 		$(GO) build -o $@ *.go
 
 install:
-	$(INSTALL) -d $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/models/yang/sonic/*.yang $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/models/yang/sonic/common/*.yang $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/models/yang/*.yang $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/config/transformer/models_list $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/config/transformer/sonic_table_info.json $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/models/yang/common/*.yang $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/models/yang/annotations/*.yang $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/models/yang/extensions/*.yang $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/models/yang/version.xml $(DESTDIR)/usr/models/yang/
-	$(INSTALL) -D $(TOPDIR)/build/yang/api_ignore $(DESTDIR)/usr/models/yang/
-	
-	# Copy all CVL schema files
-	$(INSTALL) -d $(DESTDIR)/usr/sbin/schema/
-	cp -aT build/cvl/schema $(DESTDIR)/usr/sbin/schema
-	cp -rf $(TOPDIR)/cvl/conf/cvl_cfg.json $(DESTDIR)/usr/sbin/cvl_cfg.json
-	
 	# Scripts for host service
+	# TODO move to debian install file
 	$(INSTALL) -d $(DESTDIR)/usr/lib/sonic_host_service/host_modules
 	$(INSTALL) -D $(TOPDIR)/scripts/sonic_host_server.py $(DESTDIR)/usr/lib/sonic_host_service
 	$(INSTALL) -D $(TOPDIR)/scripts/host_modules/*.py $(DESTDIR)/usr/lib/sonic_host_service/host_modules
@@ -118,12 +99,10 @@ endif
 	$(INSTALL) -d $(DESTDIR)/etc/sonic/
 	$(INSTALL) -D $(TOPDIR)/config/cfg_mgmt.json $(DESTDIR)/etc/sonic/
 
-$(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
-	mv $* $(DEST)/
-
 clean: models-clean translib-clean cvl-clean
-	git check-ignore debian/* | xargs -r $(RMDIR)
-	$(RMDIR) $(BUILD_DIR)
+	git check-ignore debian/* | xargs -r $(RM) -r
+	$(RM) -r debian/.debhelper
+	$(RM) -r $(BUILD_DIR)
 
 cleanall: clean go-deps-clean
 	$(MAKE) -C cvl cleanall

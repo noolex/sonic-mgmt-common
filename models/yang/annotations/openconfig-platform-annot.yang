@@ -5,16 +5,29 @@ module openconfig-platform-annot {
     prefix "oc-platform-annot";
 
     import openconfig-platform { prefix oc-platform; }
+    import openconfig-platform-ext { prefix oc-platform-ext; }
     import openconfig-interfaces { prefix oc-if; }
     import openconfig-if-ethernet { prefix oc-eth; }
     import openconfig-extensions { prefix oc-ext; }
     import openconfig-platform-port { prefix oc-port; }
     import sonic-extensions { prefix sonic-ext; }
 
-    deviation /oc-platform:components {
-        deviate add {
-            sonic-ext:subtree-transformer "pfm_components_xfmr";
-        }
+    deviation /oc-platform:components/oc-platform:component {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_xfmr";
+      }
+    }
+
+    deviation /oc-platform:components/oc-platform:component/oc-platform-ext:software {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_xfmr";
+      }
+    }
+
+    deviation /oc-platform:components/oc-platform:component/oc-platform:power-supply {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_psu_xfmr";
+      }
     }
 
     deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode {
@@ -24,8 +37,8 @@ module openconfig-platform-annot {
 
     deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:config {
       deviate add {
-            sonic-ext:table-name "BREAKOUT_CFG";
-			sonic-ext:subtree-transformer "port_breakout_config_xfmr";
+        sonic-ext:table-name "BREAKOUT_CFG";
+        sonic-ext:subtree-transformer "port_breakout_config_xfmr";
       }
     }
 
@@ -41,8 +54,8 @@ module openconfig-platform-annot {
 
     deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:state {
       deviate add {
-            sonic-ext:table-name "BREAKOUT_CFG";
-            sonic-ext:subtree-transformer "port_breakout_state_xfmr";
+        sonic-ext:table-name "BREAKOUT_CFG";
+        sonic-ext:subtree-transformer "port_breakout_state_xfmr";
       }
     }
 

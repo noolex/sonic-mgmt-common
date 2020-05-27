@@ -9,11 +9,40 @@ module openconfig-qos-annot {
     import openconfig-qos { prefix oc-qos; }
     import openconfig-qos-ext {prefix oc-qos-ext; }
 
-    deviation /oc-qos:qos/oc-qos:interfaces {
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface {
       deviate add {
-        sonic-ext:subtree-transformer "qos_get_all_intf_all_counters_xfmr";
-        sonic-ext:db-name "COUNTERS_DB";
+          sonic-ext:key-transformer "qos_intf_tbl_key_xfmr";
+          sonic-ext:table-transformer "qos_intf_table_xfmr"; 
       }
+    }
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:interface-id {
+        deviate add {
+            sonic-ext:field-transformer "qos_intf_intf_id_fld_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:config/oc-qos:interface-id {
+        deviate add {
+            sonic-ext:field-transformer "qos_intf_intf_id_fld_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:state/oc-qos:interface-id {
+        deviate add {
+            sonic-ext:field-transformer "qos_intf_intf_id_fld_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:interface-ref/oc-qos:config/oc-qos:interface {
+        deviate add {
+            sonic-ext:field-transformer "qos_intf_intfref_intf_fld_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:interface-ref/oc-qos:state/oc-qos:interface {
+        deviate add {
+            sonic-ext:field-transformer "qos_intf_intfref_intf_fld_xfmr";
+        }
     }
 
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues {
@@ -23,13 +52,12 @@ module openconfig-qos-annot {
       }
     }
 
-    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:scheduler-policy/oc-qos:config {
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:scheduler-policy {
       deviate add {
         sonic-ext:subtree-transformer "qos_intf_sched_policy_xfmr";
         sonic-ext:db-name "CONFIG_DB";
       }
     }
-
 
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input/oc-qos-ext:priority-groups {
       deviate add {
@@ -100,6 +128,18 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:config/oc-qos:name {
+      deviate add {
+        sonic-ext:field-transformer "qos_queue_key_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:state/oc-qos:name {
+      deviate add {
+        sonic-ext:field-transformer "qos_queue_key_xfmr";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:wred/oc-qos:config/oc-qos-ext:wred-profile {
       deviate add {
         sonic-ext:field-name "wred_profile";
@@ -113,10 +153,8 @@ module openconfig-qos-annot {
       }
     }
 
-
-    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler {
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy {
       deviate add {
-        sonic-ext:table-name "SCHEDULER";
         sonic-ext:subtree-transformer "qos_scheduler_xfmr";
       }
     }
@@ -133,7 +171,43 @@ module openconfig-qos-annot {
         sonic-ext:table-name "WRED_PROFILE";
       }
     }
+    
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:name {
+      deviate add {
+        sonic-ext:field-transformer "wred_profile_name_empty_fld_xfmr";
+      }
+    }
 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:name {
+      deviate add {
+        sonic-ext:field-transformer "wred_profile_name_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:name {
+      deviate add {
+        sonic-ext:field-transformer "wred_profile_name_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group {
+      deviate add {
+          sonic-ext:key-transformer "qos_fwdgrp_tbl_key_xfmr";
+          sonic-ext:table-transformer "qos_fwdgrp_table_xfmr"; 
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:name {
+      deviate add {
+          sonic-ext:field-transformer "qos_fwdgrp_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:state/oc-qos:name {
+      deviate add {
+          sonic-ext:field-transformer "qos_fwdgrp_fld_xfmr";
+      }
+    }
 }
 
 

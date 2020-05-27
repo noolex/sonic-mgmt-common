@@ -300,6 +300,7 @@ module openconfig-system-annot {
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys-ext:vrf {
       deviate add {
+        sonic-ext:field-transformer "server_vrf_name_xfmr";
       }
     }
 
@@ -361,5 +362,105 @@ module openconfig-system-annot {
       deviate add {
             sonic-ext:field-transformer "ssh_server_vrf_name";
       }
+    }
+
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server {
+      deviate add {
+        sonic-ext:table-name "SYSLOG_SERVER";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:config/oc-sys:host {
+      deviate add {
+          sonic-ext:field-name "ipaddress";
+          sonic-ext:field-transformer "syslog_server_ip_fld_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:state/oc-sys:host {
+      deviate add {
+          sonic-ext:field-name "ipaddress";
+          sonic-ext:field-transformer "syslog_server_ip_fld_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_kdump_status_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:kdump-records {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_kdump_records_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:config {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_kdump_config_xfmr";
+            }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:config" {
+      deviate add {
+        sonic-ext:table-name "DNS";
+        sonic-ext:key-transformer "global_dns_key_xfmr";
+      }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:config/oc-sys-ext:source-intf" {
+        deviate add {
+            sonic-ext:field-name "src_intf";
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:state/oc-sys-ext:source-intf" {
+        deviate add {
+            sonic-ext:field-name "src_intf";
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers" {
+        deviate add {
+            sonic-ext:table-name "NONE";
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server" {
+        deviate add {
+            sonic-ext:table-name "DNS_SERVER";
+            sonic-ext:key-transformer "server_dns_key_xfmr";
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address" {
+        deviate add {
+            sonic-ext:field-transformer "server_dns_field_xfmr";
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address" {
+        deviate add {
+            sonic-ext:field-transformer "server_dns_field_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_systemd_coredump_status_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:core-file-records {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_systemd_coredump_records_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:config {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_systemd_coredump_config_xfmr";
+            }
     }
 }

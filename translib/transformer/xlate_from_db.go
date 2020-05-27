@@ -490,6 +490,15 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 	dbFormat.Ts.Name = tblName
 	dbFormat.DbNum = cdb
 	if tblKey != "" {
+		if tblSpecInfo, ok := xDbSpecMap[tblName]; ok && tblSpecInfo.hasXfmrFn == true {
+			/* key from uri should be converted into redis-db key, to read data */
+			tblKey, err = dbKeyValueXfmrHandler(CREATE, cdb, tblName, tblKey)
+			if err != nil {
+				log.Errorf("Value-xfmr for table(%v) & key(%v) failed.", tblName, tblKey)
+				return nil, err
+			}
+		}
+
 		dbFormat.Key.Comp = append(dbFormat.Key.Comp, tblKey)
 	}
 	err = TraverseDb(dbs, dbFormat, &dbresult, nil)

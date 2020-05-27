@@ -39,6 +39,8 @@ var DbToYang_bgp_pgrp_name_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
 
     entry_key := inParams.key
     peer_group_Key := strings.Split(entry_key, "|")
+    if len(peer_group_Key) < 2 {return result, nil}
+
     peer_group_name:= peer_group_Key[1]
     result["peer-group-name"] = peer_group_name
 
@@ -161,6 +163,8 @@ var DbToYang_bgp_pgrp_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (
     log.Info("DbToYang_bgp_pgrp_tbl_key: ", entry_key)
 
     pgrpKey := strings.Split(entry_key, "|")
+    if len(pgrpKey) < 2 {return rmap, nil}
+
     pgrpName:= pgrpKey[1]
 
     rmap["peer-group-name"] = pgrpName
@@ -311,6 +315,9 @@ var YangToDb_bgp_pgrp_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
     if !ok {
         log.Infof("%s Peer group object missing, add new", pgrp)
         return res_map, err
+    }
+    if (inParams.oper == DELETE) && pgrp_obj.AuthPassword == nil {
+        return res_map, nil
     }
     entry_key := niName + "|" + pgrp 
     if pgrp_obj.AuthPassword.Config != nil && pgrp_obj.AuthPassword.Config.Password != nil && (inParams.oper != DELETE){

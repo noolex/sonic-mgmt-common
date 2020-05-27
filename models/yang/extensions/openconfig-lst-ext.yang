@@ -1,0 +1,379 @@
+module openconfig-lst-ext {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/lst-ext";
+
+  prefix "oc-lst-ext";
+
+  // imports
+  import openconfig-interfaces { prefix oc-if; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
+
+  description
+    "This module defines the configuration and operational state of 
+    link state tracking (LST) ie groups, upstream and downstream 
+    interfaces. The tracking group defines the tracking parameters 
+    ie type, timeout etc. Upstream interfaces are tracked for state 
+    updates and when the upstream ports are link down, downstream 
+    ports are also shutdown. After the downstream interfaces come 
+    online, downstream interfaces are brought online after the 
+    timeout period";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-10" {
+    description
+      "Initial version";
+
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+  identity GROUP_TYPE {
+    description
+      "Base identity for types of Link state tracking group type";
+  }
+
+  identity GROUP_L3 {
+    base GROUP_TYPE;
+    description
+      "Groups which track the link state of a layer 3 interface";
+  }
+
+  // typedef statements
+
+  // grouping statements
+  grouping lst-group-config {
+    description
+      "Link state tracking group config";
+
+    leaf name {
+      type string;
+      description
+        "Name of the link state tracking group";
+    }
+
+    leaf type {
+      type identityref {
+        base GROUP_TYPE;
+      }
+      description
+        "The type determines how the upstreams are tracked. Eg L3 
+		groups track link status of L3 interfaces.";
+    }
+
+    leaf description {
+      type string;
+      description
+        "Description, or comment, for the link state tracking group";
+    }
+
+	leaf timeout {
+	  type uint16 {
+        range "1..999";
+	  }
+	  units seconds;
+	  description
+	    "This configuration indicates the time to wait to bring up 
+		the downstream ports when the first upstream port comes 
+		online.";
+	}
+
+	leaf all-mclags-downstream {
+      type boolean;
+	  description
+	    "Indicates that this group tracks all MCLAGs as downstream interfaces";
+	}
+  }
+
+  grouping lst-group-state {
+    description
+      "Link state tracking group operational state";
+  }
+  
+  grouping lst-group-top {
+    description
+      "Top level grouping for Link state tracking data and structure";
+      
+    container lst-groups {
+      description
+        "Link state tracking groups variables enclosing container";
+        
+      list lst-group {
+        key "name";
+        
+        description
+          "List of all link state tracking groups";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+          description
+            "Reference to the name list key";
+        }
+        container config {
+          description
+            "Link state tracking group configuration";
+          uses lst-group-config;
+        }
+
+        container state {
+          config false;
+          description
+            "Link state tracking group operational state";
+          uses lst-group-config;
+          uses lst-group-state;
+        }
+      }
+    }
+  }
+
+  grouping interface-upstream-lst-group-config {
+    description
+      "Configuration data for per-interface upstream link state tracking group";
+
+    leaf group-name {
+      type leafref {
+        path "../../../../../../lst-groups/lst-group/config/name";
+      }
+      description
+        "Reference to the link state tracking group name used to 
+        track this interface as upstream";
+    }
+  }
+
+  grouping interface-upstream-lst-group-state {
+    description
+      "Operational state data per-interface upstream link state tracking group";
+  }
+
+  grouping interface-upstream-lst-top {
+    description
+      "Top-level grouping for per-interface upstream group data";
+      
+    container upstream-groups {
+      description
+      "Enclosing container the list of groups that are tracking this
+      interface as upstream";
+      
+      list upstream-group {
+        key "group-name";
+
+        description
+          "List of upstream tracking groups";
+
+        leaf group-name {
+          type leafref {
+            path "../config/group-name";
+          }
+
+          description
+            "Reference to group name list key";
+        }
+        
+        container config {
+          description
+            "Configuration data";
+
+          uses interface-upstream-lst-group-config;
+        }
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state data for interface upstream group";
+
+          uses interface-upstream-lst-group-config;
+          uses interface-upstream-lst-group-state;
+        }        
+      }
+    }
+  }
+
+  grouping interface-downstream-lst-group-config {
+    description
+      "Configuration data for per-interface downstream link state tracking group";
+
+    leaf group-name {
+      type leafref {
+        path "../../../../../lst-groups/lst-group/config/name";
+      }
+      description
+        "Reference to the link state tracking group name used to 
+        track this interface as downstream";
+    }
+
+  }
+
+  grouping interface-downstream-lst-group-state {
+    description
+      "Operational state data per-interface downstream link state tracking group";
+      
+    leaf disabled {
+      type boolean;
+
+      description
+        "Indicates if the interface is disabled by link state tracking";
+    }
+  }
+
+  grouping interface-downstream-lst-top {
+    description
+      "Top-level grouping for per-interface downstream group data";
+      
+    container downstream-group {
+      description
+      "Enclosing container for the downstream interface data";
+      
+      container config {
+        description
+          "Configuration data";
+
+        uses interface-downstream-lst-group-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for interface used as downstream";
+
+        uses interface-downstream-lst-group-config;
+        uses interface-downstream-lst-group-state;
+      }
+    }      
+  }
+
+  grouping lst-interfaces-config {
+    description
+      "Configuration data for interface references";
+
+    leaf id {
+      type oc-if:interface-id;
+      description
+        "User-defined identifier for the interface -- a common
+        convention could be '<if name>.<subif index>'";
+    }
+  }
+
+  grouping lst-interfaces-state {
+    description
+      "Operational state data for interface references";
+  }
+
+  grouping lst-interfaces-top {
+    description
+      "Top-level grouping for interface-specific link state 
+      tracking data";
+
+    container interfaces {
+      description
+        "Enclosing container for the list of interfaces on which
+        Link state tracking groups are set";
+
+      list interface {
+        key "id";
+        description
+          "List of interfaces on which Link state tracking groups 
+          are set";
+
+        leaf id {
+          type leafref {
+            path "../config/id";
+          }
+          description
+            "Reference to the interface id list key";
+        }
+
+        container config {
+          description
+            "Configuration for per-interface group data";
+
+          uses lst-interfaces-config;
+        }
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state for Link state tracking per-interface data";
+
+          uses lst-interfaces-config;
+          uses lst-interfaces-state;
+        }
+
+        uses oc-if:interface-ref;
+        uses interface-upstream-lst-top;
+        uses interface-downstream-lst-top;
+      }
+    }  
+  }
+  
+  grouping lst-config {
+    description
+      "Global configuration data for link state tracking";
+  }
+
+  grouping lst-state {
+    description
+      "Global operational state data for link state tracking";
+  }
+
+  grouping lst-top {
+    description
+      "Top level grouping for Link state tracking data";
+      
+    container lst {
+      description
+        "Top level enclosing container for link state tracking model 
+        config and operational state data";
+
+      container config {
+        description
+          "Global config data for link state tracking";
+        
+        uses lst-config;
+      }
+      
+      container state {
+        config false;
+
+        description
+          "Global operational state data for link state tracking";
+          
+        uses lst-config;
+        uses lst-state;
+      }
+
+      uses lst-group-top;
+      uses lst-interfaces-top;
+    }
+  }
+
+  // data definition statements
+  uses lst-top;
+
+  // augment statements
+
+  // rpc statements
+
+  // notification statements
+}

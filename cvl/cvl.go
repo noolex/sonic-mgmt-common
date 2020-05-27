@@ -31,7 +31,6 @@ import (
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"sync"
-	"flag"
 	"io/ioutil"
 	"path/filepath"
 	custv "github.com/Azure/sonic-mgmt-common/cvl/custom_validation"
@@ -203,9 +202,6 @@ func CVL_LOG(level CVLLogLevel, fmtStr string, args ...interface{}) {
 
 //package init function 
 func init() {
-    // Added this to avoid display of error log starting with "ERROR: logging before flag.Parse:"
-    flag.CommandLine.Parse([]string{"-logtostderr",})
-
 	if (os.Getenv("CVL_SCHEMA_PATH") != "") {
 		CVL_SCHEMA = os.Getenv("CVL_SCHEMA_PATH") + "/"
 	}
@@ -228,12 +224,6 @@ func init() {
 	cvlCfgMap := ReadConfFile()
 
 	if (cvlCfgMap != nil) {
-		flag.Set("v", cvlCfgMap["VERBOSITY"])
-		if (strings.Compare(cvlCfgMap["LOGTOSTDERR"], "true") == 0) {
-			flag.Set("logtostderr", "true")
-			flag.Set("stderrthreshold", cvlCfgMap["STDERRTHRESHOLD"])
-		}
-
 		CVL_LOG(INFO ,"Current Values of CVL Configuration File %v", cvlCfgMap)
 	}
 
@@ -287,6 +277,19 @@ func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
 	}
 
 	return ""
+}
+
+// isLeafListNode checks if the xml node represents a leaf-list field
+func isLeafListNode(node *xmlquery.Node) bool {
+	return len(node.Attr) != 0 && node.Attr[0].Name.Local == "leaf-list"
+}
+
+// getNodeName returns database field name for the xml node.
+func getNodeName(node *xmlquery.Node) string {
+	if isLeafListNode(node) {
+		return node.Data + "@"
+	}
+	return node.Data
 }
 
 // Load all YIN schema files, apply deviation files 
@@ -599,14 +602,13 @@ func buildRefTableInfo() {
 			for j :=0; j < len(tblInfo.refFromTables); j++ {
 				if (sortedTableList[i] == tblInfo.refFromTables[j].tableName) {
 					fieldName =  tblInfo.refFromTables[j].field
-					break
+					newRefFromTables = append(newRefFromTables, tblFieldPair{sortedTableList[i], fieldName})
 				}
 			}
-			newRefFromTables = append(newRefFromTables, tblFieldPair{sortedTableList[i], fieldName})
 		}
 		//Update sorted refFromTables
 		tblInfo.refFromTables = newRefFromTables
-		modelInfo.tableInfo[tblName] = tblInfo 
+		modelInfo.tableInfo[tblName] = tblInfo
 	}
 
 }

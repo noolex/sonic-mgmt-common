@@ -5,12 +5,10 @@
 #
 #######################################################################
 
-TOPDIR    ?= $(abspath ..)
+TOPDIR    ?= ..
 BUILD_DIR ?= $(TOPDIR)/build
 
 GO     ?= go
-RMDIR  ?= rm -rf
-
 export GO
 
 TRANSLIB_PKG = $(BUILD_DIR)/pkg/linux_amd64/translib.a
@@ -48,15 +46,16 @@ $(TRANSLIB_TEST_BIN): $(TRANSLIB_MAIN_SRCS) $(TRANSLIB_TEST_SRCS) $(YGOT_BINDS)
 $(TRANSL_DB_TEST_BIN) : $(TRANSL_DB_ALL_SRCS)
 	$(GO) test -mod=vendor -cover -c ../translib/db -o $@
 
-$(TRANSFORMER_TEST_BIN): $(TRANSFORMER_TEST_FILES) $(TRANSFORMER_SRCS) $(TRANSLIB_MAIN_SRCS)
+$(TRANSFORMER_TEST_BIN): $(TRANSFORMER_TEST_FILES) $(TRANSFORMER_SRCS) $(TRANSLIB_MAIN_SRCS) $(YGOT_BINDS)
 	mkdir -p $(@D)/testdata && cp -r transformer/testdata/*.json $(@D)/testdata
 	$(GO) test -mod=vendor -c -vet=off -cover -coverpkg=../translib/transformer ../translib/transformer -o $@
 
 $(YGOT_BINDS): $(YANG_FILES)
+	$(RM) $@
 	cd ocbinds && $(GO) generate
 
 clean:
-	rm -f $(YGOT_BINDS)
-	rm -f $(TRANSLIB_PKG)
-	$(RMDIR) $(TRANSLIB_TEST_DIR)
+	$(RM) $(YGOT_BINDS)
+	$(RM) $(TRANSLIB_PKG)
+	$(RM) -r $(TRANSLIB_TEST_DIR)
 

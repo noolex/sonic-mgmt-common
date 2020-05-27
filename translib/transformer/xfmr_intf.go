@@ -68,6 +68,10 @@ func init () {
     XlateFuncBind("DbToYang_unnumbered_intf_xfmr", DbToYang_unnumbered_intf_xfmr)
     XlateFuncBind("YangToDb_intf_sag_ip_xfmr", YangToDb_intf_sag_ip_xfmr)
     XlateFuncBind("DbToYang_intf_sag_ip_xfmr", DbToYang_intf_sag_ip_xfmr)
+    XlateFuncBind("YangToDb_storm_value_xfmr", YangToDb_storm_value_xfmr)
+    XlateFuncBind("DbToYang_storm_value_xfmr", DbToYang_storm_value_xfmr)
+    XlateFuncBind("YangToDb_storm_type_key_xfmr", YangToDb_storm_type_key_xfmr)
+    XlateFuncBind("DbToYang_storm_type_key_xfmr", DbToYang_storm_type_key_xfmr)
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
@@ -434,20 +438,20 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     log.Info("YangToDb_intf_tbl_key_xfmr: pathInfo ", pathInfo)
 
     ifName := pathInfo.Var("name")
-
-    log.Info("Intf name: ", ifName)
-    intfType, _, ierr := getIntfTypeByName(ifName)
-    if ierr != nil {
-        log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
-        return "", tlerr.New (ierr.Error())
+    if ifName != "" {
+        log.Info("Intf name: ", ifName)
+        intfType, _, ierr := getIntfTypeByName(ifName)
+        if ierr != nil {
+            log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
+            return "", tlerr.New (ierr.Error())
+        }
+        requestUriPath, err := getYangPathFromUri(inParams.requestUri)
+        log.Info("inParams.requestUri: ", requestUriPath)
+        err = performIfNameKeyXfmrOp(&inParams, &requestUriPath, &ifName, intfType)
+        if err != nil {
+            return "", tlerr.InvalidArgsError{Format: err.Error()}
+        }
     }
-    requestUriPath, err := getYangPathFromUri(inParams.requestUri)
-    log.Info("inParams.requestUri: ", requestUriPath)
-    err = performIfNameKeyXfmrOp(&inParams, &requestUriPath, &ifName, intfType)
-    if err != nil {
-        return "", tlerr.InvalidArgsError{Format: err.Error()}
-    }
-
     log.Info("YangToDb_intf_tbl_key_xfmr: ifName ", ifName)
     return ifName, err
 }
@@ -2416,20 +2420,20 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
 }
 
 /* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
-func isValidSpeed(d *db.DB, ifName string, speed_i string) bool {
+func isValidSpeed(d *db.DB, ifName string, speed string) bool {
     var isValid bool = false
-    var speed int32
 
-    speed_int,_ := strconv.Atoi(speed_i)
-    speed = int32(speed_int)
     portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
     if(err != nil) {
         log.Info("Could not retrieve PORT|",ifName)
+        isValid = true
     } else {
-        speeds := portEntry.Field["valid_speeds"];
+        speeds := strings.Split(portEntry.Field["valid_speeds"], ",");
+        log.Info("Valid speeds for ",ifName, " is ", speeds, " SET ", speed)
         for _, vspeed := range speeds {
-            if  vspeed == speed {
+            if  speed == strings.TrimSpace(vspeed) {
                 isValid = true
+                log.Info(vspeed, " is valid.")
             }
         }
     }
@@ -2438,20 +2442,21 @@ func isValidSpeed(d *db.DB, ifName string, speed_i string) bool {
 
 
 /* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
-func getDefaultSpeed(d *db.DB, ifName string) int32 {
+func getDefaultSpeed(d *db.DB, ifName string) int {
 
-    var defaultSpeed int32
+    var defaultSpeed int
     defaultSpeed = 0
     portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
     if(err != nil) {
         log.Info("Could not retrieve PORT|",ifName)
     } else {
-        speeds := portEntry.Field["valid_speeds"];
+        speeds := strings.Split(portEntry.Field["valid_speeds"], ",");
         for _, speed := range speeds {
             log.Info("Speed check ", defaultSpeed, " vs ", speed)
-            if  speed > defaultSpeed {
+            speed_i,_ := strconv.Atoi(speed)
+            if  speed_i > defaultSpeed {
                 log.Info("Updating  ", defaultSpeed, " with ", speed)
-                defaultSpeed = speed
+                defaultSpeed = speed_i
             }
         }
     }
@@ -2489,7 +2494,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
             // Delete all the Vlans for Interface and member port removal from port-channel
             lagId, err := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
             if lagId != nil {
-                log.Infof("Interface: %s is part of port-channel: %s", ifName, *lagId)
+                log.Infof("%s is member of %s", ifName, *lagId)
             }
             if err != nil {
                 errStr := "Retrieveing PortChannel associated with Interface: " + ifName + " failed!"
@@ -2525,6 +2530,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
         switch inParams.oper {
             case CREATE:
+            case REPLACE:
+                fallthrough
             case UPDATE:
                 log.Info("Add member port")
                 lagId := intfObj.Ethernet.Config.AggregateId
@@ -2542,10 +2549,11 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 if err != nil {
                     return nil, err
                 }
-                /* Check if given iface already part of a PortChannel */
-                err = validateIntfAssociatedWithPortChannel(inParams.d, &ifName)
-                if err != nil {
-                    return nil, err
+                /* Check if given iface already part of another PortChannel */
+                intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
+                if intf_lagId != nil && *intf_lagId != lagStr {
+                    errStr := ifName + " already member of "+ *intf_lagId
+                    return nil, tlerr.InvalidArgsError{Format: errStr}
                 }
                 /* Restrict configuring member-port if iface configured as member-port of any vlan */
                 err = validateIntfAssociatedWithVlan(inParams.d, &ifName)
@@ -2561,7 +2569,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
             case DELETE:
                 lagId, err := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
                 if lagId != nil {
-                    log.Infof("Interface: %s is part of port-channel: %s", ifName, *lagId)
+                    log.Infof("%s is member of %s", ifName, *lagId)
                 }
                 if lagId == nil || err != nil {
                     errStr := "Retrieveing PortChannel associated with Interface: " + ifName + " failed!"
@@ -2589,16 +2597,22 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         portSpeed := intfObj.Ethernet.Config.PortSpeed
         val, ok := intfOCToSpeedMap[portSpeed]
         if ok {
-            if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
-                val = strconv.FormatInt(int64(getDefaultSpeed(inParams.d, ifName)), 10)
-            }
             if isValidSpeed(inParams.d, ifName, val) {
                 res_map[PORT_SPEED] = val
             } else {
-                err = errors.New("Invalid/Unsupported speed.")
+                err = tlerr.InvalidArgs("Unsupported speed %s", val)
             }
+        } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+                defSpeed := getDefaultSpeed(inParams.d, ifName)
+                log.Info(" defSpeed  ", defSpeed)
+                if defSpeed != 0 {
+                    val = strconv.FormatInt(int64(defSpeed), 10)
+                    res_map[PORT_SPEED] = val
+                } else {
+                    err = tlerr.NotSupported("Default speed not available")
+                }
         } else {
-            err = errors.New("Invalid/Unsupported speed.")
+            err = tlerr.InvalidArgs("Invalid speed %s", val)
         }
 
         if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
@@ -3023,6 +3037,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
 		if sagIpv4Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
+
+			if !validIPv4(sagIpv4Obj.Config.StaticAnycastGateway[0]) {
+                            errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+                            err = tlerr.InvalidArgsError{Format: errStr}
+                            return subIntfmap, err
+                        }
+
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3064,6 +3085,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
 		if sagIpv6Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv6Obj.Config.StaticAnycastGateway)
+
+			if !validIPv6(sagIpv6Obj.Config.StaticAnycastGateway[0]) {
+                            errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+                            err = tlerr.InvalidArgsError{Format: errStr}
+                            return subIntfmap, err
+                        }
+
 			sagIPv6Key := ifName + "|IPv6"
 
 			sagIPv6Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv6Key}})
@@ -3125,14 +3153,14 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 	ipv6_req := false
 	var sagIPKey string
 
-	if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/sag-ipv4/config") || 
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/sag-ipv4/config") || 
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config")) {
+	if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/sag-ipv4") || 
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/sag-ipv4") || 
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4")) {
 		ipv4_req = true
 		sagIPKey = ifName + "|IPv4"
-	} else if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/sag-ipv6/config") || 
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/sag-ipv6/config") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:sag-ipv6/config")) {
+	} else if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/sag-ipv6") || 
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/sag-ipv6") ||
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:sag-ipv6")) {
 		ipv6_req = true
 		sagIPKey = ifName + "|IPv6"
 	}
@@ -3175,35 +3203,18 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 		}
 
 		subIntf = intfObj.Subinterfaces.Subinterface[0]
+		ygot.BuildEmptyTree(subIntf)
 
 		if ipv4_req {
-			var sagIpv4 *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_SagIpv4
-			var sagIpv4Config *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_SagIpv4_Config			
-			if sagIpv4 = subIntf.Ipv4.SagIpv4 ; sagIpv4 == nil {
-				var _sagIpv4 ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_SagIpv4
-				subIntf.Ipv4.SagIpv4 = &_sagIpv4
-				sagIpv4 = subIntf.Ipv4.SagIpv4
-			}
-			if sagIpv4Config = sagIpv4.Config ; sagIpv4Config == nil {
-				var _sagIpv4Config ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_SagIpv4_Config
-				subIntf.Ipv4.SagIpv4.Config = &_sagIpv4Config
-				sagIpv4Config = subIntf.Ipv4.SagIpv4.Config
-			}
-			sagIpv4Config.StaticAnycastGateway = sagGwIPMap
+			ygot.BuildEmptyTree(subIntf.Ipv4)
+			ygot.BuildEmptyTree(subIntf.Ipv4.SagIpv4)
+			subIntf.Ipv4.SagIpv4.Config.StaticAnycastGateway = sagGwIPMap
+			subIntf.Ipv4.SagIpv4.State.StaticAnycastGateway = sagGwIPMap
 		} else if ipv6_req {
-			var sagIpv6 *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_SagIpv6
-			var sagIpv6Config *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_SagIpv6_Config			
-			if sagIpv6 = subIntf.Ipv6.SagIpv6 ; sagIpv6 == nil {
-				var _sagIpv6 ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_SagIpv6
-				subIntf.Ipv6.SagIpv6 = &_sagIpv6
-				sagIpv6 = subIntf.Ipv6.SagIpv6
-			}
-			if sagIpv6Config = sagIpv6.Config ; sagIpv6Config == nil {
-				var _sagIpv6Config ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_SagIpv6_Config
-				subIntf.Ipv6.SagIpv6.Config = &_sagIpv6Config
-				sagIpv6Config = subIntf.Ipv6.SagIpv6.Config
-			}
-			sagIpv6Config.StaticAnycastGateway = sagGwIPMap
+			ygot.BuildEmptyTree(subIntf.Ipv6)
+			ygot.BuildEmptyTree(subIntf.Ipv6.SagIpv6)
+			subIntf.Ipv6.SagIpv6.Config.StaticAnycastGateway = sagGwIPMap
+			subIntf.Ipv6.SagIpv6.State.StaticAnycastGateway = sagGwIPMap
 		}
 	}
 
@@ -3374,4 +3385,78 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     return res_map, nil
 }
 
+func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
+    var stormKey string
+    log.Info("DbToYang_storm_type_key_xfmr: key=\"%s\"", inParams.key)
+    result := make(map[string]interface{})
+    stormKey = inParams.key
+    log.Info(stormKey)
+
+    stormVals := strings.Split(stormKey,"|")
+    if (stormVals[1] == "broadcast") {
+        result["storm-type"] = "BROADCAST"
+    } else if (stormVals[1] == "unknown-unicast") {
+        result["storm-type"] = "UNKNOWN_UNICAST"
+    } else if (stormVals[1] == "unknown-multicast") {
+        result["storm-type"] = "UNKNOWN_MULTICAST"
+    }
+    result["ifname"] = stormVals[0]
+
+    log.Info(result)
+
+    return result, nil
+}
+
+var YangToDb_storm_type_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+    var stormKey string
+    log.Info("Entering YangToDb_storm_type_key_xfmr")
+    pathInfo := NewPathInfo(inParams.requestUri)
+    log.Info(pathInfo)
+    pathInfo = NewPathInfo(inParams.uri)
+    log.Info(pathInfo)
+    intfName := pathInfo.Var("name")
+    stormType := pathInfo.Var("storm-type")
+    log.Info(intfName)
+    log.Info(stormType)
+
+    if (stormType == "BROADCAST") {
+        stormKey = intfName+"|"+"broadcast"
+    } else if (stormType == "UNKNOWN_UNICAST") {
+        stormKey = intfName+"|"+"unknown-unicast"
+    } else if (stormType == "UNKNOWN_MULTICAST") {
+        stormKey = intfName+"|"+"unknown-multicast"
+    }
+
+    log.Info(stormKey)
+    return stormKey, nil
+}
+
+func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
+    log.Info("DbToYang_storm_value_xfmr: key=\"%s\"", inParams.key)
+    var stormKey string
+    result := make(map[string]interface{})
+    stormKey = inParams.key
+    log.Info(stormKey)
+
+    stormVals := strings.Split(stormKey,"|")
+    if (stormVals[1] == "broadcast") {
+        result["storm-type"] = "BROADCAST"
+    } else if (stormVals[1] == "unknown-unicast") {
+        result["storm-type"] = "UNKNOWN_UNICAST"
+    } else if (stormVals[1] == "unknown-multicast") {
+        result["storm-type"] = "UNKNOWN_MULTICAST"
+    }
+    result["ifname"] = stormVals[0]
+
+    log.Info(result)
+    return result, nil
+}
+
+var YangToDb_storm_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+
+    log.Info("Entering YangToDb_storm_value_xfmr")
+
+    return res_map, nil
+}
 
