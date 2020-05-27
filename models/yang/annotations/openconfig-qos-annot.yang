@@ -79,43 +79,43 @@ module openconfig-qos-annot {
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:breach-value {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:breach-value {
       deviate add {
         sonic-ext:field-name "breach_value";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:counter {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:counter {
       deviate add {
         sonic-ext:field-transformer "threshold_breach_counter_field_xfmr";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:buffer {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:buffer {
       deviate add {
         sonic-ext:field-name "buffer";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:type {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:type {
       deviate add {
         sonic-ext:field-name "type";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:port {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:port {
       deviate add {
         sonic-ext:field-name "port";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:index {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:index {
       deviate add {
         sonic-ext:field-name "index";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:time-stamp {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:time-stamp {
       deviate add {
         sonic-ext:field-name "time-stamp";
       }
@@ -183,7 +183,19 @@ module openconfig-qos-annot {
         sonic-ext:field-transformer "wred_profile_name_fld_xfmr";
       }
     }
-    
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:ecn {
+      deviate add {
+        sonic-ext:field-transformer "wred_ecn_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:ecn {
+      deviate add {
+        sonic-ext:field-transformer "wred_ecn_fld_xfmr";
+      }
+    }
+   
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-min-threshold {
       deviate add {
         sonic-ext:field-name "green_min_threshold";

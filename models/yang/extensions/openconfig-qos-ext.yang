@@ -27,7 +27,7 @@ module openconfig-qos-ext {
       reference "0.1.0";
     }
 
-    grouping qos-queue-state-ext {
+    grouping qos-ext-queue-state-ext {
 	    description "Queue state and counters";
         leaf traffic-type {
             type string;
@@ -58,7 +58,7 @@ module openconfig-qos-ext {
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues/oc-qos:queue/oc-qos:state {
         description
             "Queue extesnions for state and counters";
-        uses qos-queue-state-ext;
+        uses qos-ext-queue-state-ext;
     }
 
 
@@ -88,7 +88,7 @@ module openconfig-qos-ext {
         }
     }
 
-    grouping qos-interface-priority-group-config {
+    grouping qos-ext-interface-priority-group-config {
         description
             "Configuration data for the priority group associated with the 
             interface";
@@ -100,7 +100,7 @@ module openconfig-qos-ext {
         }
     }
 
-    grouping qos-interface-priority-group-state {
+    grouping qos-ext-interface-priority-group-state {
         description
             "Operational state data for the priority group associated with the
             interface";
@@ -130,7 +130,7 @@ module openconfig-qos-ext {
         }
     }
     
-    grouping qos-interface-priority-group-top {
+    grouping qos-ext-interface-priority-group-top {
         description
         "Top-level grouping for the priority group associated with the
         interface";
@@ -161,7 +161,7 @@ module openconfig-qos-ext {
                     "Configuration data for the priority group associated with the
                     interface";
 
-                  uses qos-interface-priority-group-config;
+                  uses qos-ext-interface-priority-group-config;
                 }
 
                 container state {
@@ -170,8 +170,8 @@ module openconfig-qos-ext {
                     "Operational state data for the priority group associated with the
                     interface";
 
-                  uses qos-interface-priority-group-config;
-                  uses qos-interface-priority-group-state;
+                  uses qos-ext-interface-priority-group-config;
+                  uses qos-ext-interface-priority-group-state;
                 }
             }
         }
@@ -180,10 +180,10 @@ module openconfig-qos-ext {
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input {
         description 
             "Priority groups at interface input";
-        uses qos-interface-priority-group-top;
+        uses qos-ext-interface-priority-group-top;
     }
     
-    grouping qos-threshold-breach-top {
+    grouping qos-ext-threshold-breach-top {
         description 
             "Top-level grouping for QoS threshold breach information";
 
@@ -193,57 +193,72 @@ module openconfig-qos-ext {
 
             list breach {
                 key "id";
+                config false;
+
+                leaf id {
+                  type leafref {
+                    path "../state/id";
+                  }
+                  description
+                    "Reference to the id of the breach event.";
+                }
 
                 description
                     "List of threshold breaches";
 
-                leaf id {
-                    type string;
+                container state {
+                    config false;
                     description
-                        "Index uniquely identifying a breach entry";
-                }
+                        "Operational data for breach event";
 
-                leaf buffer {
-                    type string;
-                    description
-                        "Queue buffer breach or Priority Group buffer breach";
-                }
+                    leaf id {
+                        type string;
+                        description
+                            "Index uniquely identifying a breach entry";
+                    }
 
-                leaf type {
-                    type string;
-                    description
-                        "For Queue breach, the type of queue: unicast or multicast;
-                         for Priority Group breach, the shared buffer or headroom buffer";
-                } 
+                    leaf buffer {
+                        type string;
+                        description
+                            "Queue buffer breach or Priority Group buffer breach";
+                    }
 
-                leaf port {
-                    type string;
-                    description
-                        "The name of the port whose buffer is breached";
-                }
+                    leaf type {
+                        type string;
+                        description
+                            "For Queue breach, the type of queue: unicast or multicast;
+                        for Priority Group breach, the shared buffer or headroom buffer";
+                    } 
 
-                leaf index {
-                    type uint32;
-                    description
-                        "Queue index or Priority Group index within a port";
-                }
+                    leaf port {
+                        type string;
+                        description
+                            "The name of the port whose buffer is breached";
+                    }
 
-                leaf breach-value {
-                    type uint32;
-                    description
-                        "Counter value in term of percentage at breach";
-                }
+                    leaf index {
+                        type uint32;
+                        description
+                            "Queue index or Priority Group index within a port";
+                    }
 
-                leaf counter {
-                    type oc-yang:counter64;
-                    description
-                        "Counter value at breach";
-                }
+                    leaf breach-value {
+                        type uint32;
+                        description
+                            "Counter value in term of percentage at breach";
+                    }
 
-                leaf time-stamp {
-                    type string;
-                    description
-                        "Time-stamp (%y-%m-%d - %H:%M:%S) when the threshold breach occurred";
+                    leaf counter {
+                        type oc-yang:counter64;
+                        description
+                            "Counter value at breach";
+                    }
+
+                    leaf time-stamp {
+                        type string;
+                        description
+                            "Time-stamp (%y-%m-%d - %H:%M:%S) when the threshold breach occurred";
+                    }
                 }
             }
         }
@@ -252,8 +267,8 @@ module openconfig-qos-ext {
     augment /oc-qos:qos {
         description 
             "Qos extensions containers";
-        uses qos-threshold-breach-top;
-        uses qos-wred-profile-top;
+        uses qos-ext-threshold-breach-top;
+        uses qos-ext-wred-profile-top;
     }
 
 
@@ -354,7 +369,7 @@ module openconfig-qos-ext {
     }
 
 
-    grouping qos-wred-profile-config {
+    grouping qos-ext-wred-profile-config {
         description
           "Configuration parameters relating to a WRED profile";
 
@@ -485,12 +500,12 @@ module openconfig-qos-ext {
         }
     }
 
-    grouping qos-wred-profile-state {
+    grouping qos-ext-wred-profile-state {
         description
           "Operationalparameters relating to a WRED profile";
     }
 
-    grouping qos-wred-profile-top {
+    grouping qos-ext-wred-profile-top {
         description
           "Top-level grouping for QoS WRED profile";
 
@@ -514,15 +529,15 @@ module openconfig-qos-ext {
                 container config {
                   description
                     "Configuration parameters relating to a WRED profile.";
-                  uses qos-wred-profile-config;
+                  uses qos-ext-wred-profile-config;
                 }
 
                 container state {
                   config false;
                   description
                     "Operational state parameters relating to a WRED profile.";
-                  uses qos-wred-profile-config;
-                  uses qos-wred-profile-state;
+                  uses qos-ext-wred-profile-config;
+                  uses qos-ext-wred-profile-state;
                 }
 
             }
