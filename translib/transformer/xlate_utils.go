@@ -1189,3 +1189,48 @@ func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.V
 	xfmrLogInfoAll("Transformed resultMap(%v)", resultMap)
 	return nil
 }
+
+func formXlateFromDbParams(d *db.DB, dbs [db.MaxDB]*db.DB, cdb db.DBNum, ygRoot *ygot.GoStruct, uri string, requestUri string, xpath string, oper int, tbl string, tblKey string, dbDataMap *RedisDbMap, txCache interface{}, resultMap map[string]interface{}, validate bool) xlateFromDbParams {
+	var inParamsForGet xlateFromDbParams
+	inParamsForGet.d = d
+	inParamsForGet.dbs = dbs
+	inParamsForGet.curDb = cdb
+	inParamsForGet.ygRoot = ygRoot
+	inParamsForGet.uri = uri
+	inParamsForGet.requestUri = requestUri
+	inParamsForGet.xpath = xpath
+	inParamsForGet.oper = oper
+	inParamsForGet.tbl = tbl
+	inParamsForGet.tblKey = tblKey
+	inParamsForGet.dbDataMap = dbDataMap
+	inParamsForGet.txCache = txCache
+	inParamsForGet.resultMap = resultMap
+	inParamsForGet.validate = validate
+
+	return inParamsForGet
+}
+
+func formXlateToDbParam(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, xpathPrefix string, keyName string, jsonData interface{}, resultMap map[int]RedisDbMap, result map[string]map[string]db.Value, txCache interface{}, tblXpathMap map[string]map[string]bool, subOpDataMap map[int]*RedisDbMap, pCascadeDelTbl *[]string, xfmrErr *error, name string, value interface{}, tableName string) xlateToParams {
+        var inParamsForSet xlateToParams
+        inParamsForSet.d = d
+        inParamsForSet.ygRoot = ygRoot
+        inParamsForSet.oper = oper
+        inParamsForSet.uri = uri
+        inParamsForSet.requestUri = requestUri
+        inParamsForSet.xpath = xpathPrefix
+        inParamsForSet.keyName = keyName
+        inParamsForSet.jsonData = jsonData
+        inParamsForSet.resultMap = resultMap
+        inParamsForSet.result = result
+        inParamsForSet.txCache = txCache.(*sync.Map)
+        inParamsForSet.tblXpathMap = tblXpathMap
+        inParamsForSet.subOpDataMap = subOpDataMap
+        inParamsForSet.pCascadeDelTbl = pCascadeDelTbl
+        inParamsForSet.xfmrErr = xfmrErr
+        inParamsForSet.name = name
+        inParamsForSet.value = value
+        inParamsForSet.tableName = tableName
+
+        return inParamsForSet
+}
+
