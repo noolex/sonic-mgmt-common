@@ -706,7 +706,7 @@ func replaceDhcpObjectAttributes (relayAgentObj *ocbinds.OpenconfigRelayAgent_Re
 	//link-select
 	if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_enable) {
 	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "enable"
-	} else {
+	} else if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_disable) {
 	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "disable"
 	}
      
@@ -783,6 +783,8 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) {
    var tblList string   
    var fieldStr [] string
    var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
+   var helperAddress string
+   var index uint8
 
    targetUriPath := inParams.requestUri
 
@@ -814,6 +816,16 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) {
    if  strings.Contains(targetUriPath, "dhcpv6") && strings.Contains(targetUriPath, "helper-address"){
       if (relayAgentObj.Dhcpv6 != nil  && relayAgentObj.Dhcpv6.Interfaces != nil && relayAgentObj.Dhcpv6.Interfaces.Interface != nil) {
           //We have a specific address to delete - delete only that address
+	  intf := relayAgentObj.Dhcpv6.Interfaces.Interface[ifName]
+	  helperAddress = ""
+   	  for index = 0; (index < uint8(len(intf.Config.HelperAddress))  && index < 4 && intf.Config.HelperAddress[index] != ""); index++ {
+	     if (index == 0) {
+		helperAddress = intf.Config.HelperAddress[index]
+	     } else {
+		helperAddress = helperAddress + "," + intf.Config.HelperAddress[index]
+	     }
+	  }
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_servers@"] = helperAddress
       } else {
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_servers@"] = ""
       }
@@ -824,6 +836,15 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) {
    } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "helper-address"){
       if (relayAgentObj.Dhcp != nil  && relayAgentObj.Dhcp.Interfaces != nil && relayAgentObj.Dhcp.Interfaces.Interface != nil) {
           //We have a specific address to delete - delete only that address
+	  intf := relayAgentObj.Dhcp.Interfaces.Interface[ifName]
+   	  for index = 0; (index < uint8(len(intf.Config.HelperAddress))  && index < 4 && intf.Config.HelperAddress[index] != ""); index++ {
+	     if (index ==0) {
+		helperAddress = intf.Config.HelperAddress[index]
+	     } else {
+		helperAddress = helperAddress + "," + intf.Config.HelperAddress[index]
+	     }
+	  }
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_servers@"] = helperAddress
       } else {
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_servers@"] = ""
       }

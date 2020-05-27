@@ -4,10 +4,14 @@ import (
     "errors"
     "strings"
     "strconv"
+    "reflect"
+    gnmipb "github.com/openconfig/gnmi/proto/gnmi"
+    "github.com/openconfig/goyang/pkg/yang"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/openconfig/ygot/ytypes"
     "encoding/json"
     log "github.com/golang/glog"
 )
@@ -31,6 +35,18 @@ var FDB_ENTRY_TYPE_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_State_EntryType_DYNAMIC), 10): SONIC_ENTRY_TYPE_DYNAMIC,
 }
 
+type reqProcessor_fdb struct {
+	uri        *string
+	uriPath    *gnmipb.Path
+	opcode     int
+	rootObj    *ocbinds.Device
+	targetObj  interface{}
+	db         *db.DB
+	dbs        [db.MaxDB]*db.DB
+	intfConfigObj   *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Interface 
+	intfStateObj    *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Interface 
+	targetNode *yang.Entry
+}
 var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     var err error
     var  valLst [2]string
@@ -107,9 +123,37 @@ func getFdbMacTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds
 }
 
 var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    retMap := make(map[string]map[string]db.Value)
+    path, err := getUriPath(inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+    macAddr := pathInfo.Var("mac-address")
+    vlan := pathInfo.Var("vlan")
 
-    return retMap, nil
+    reqP := &reqProcessor_fdb{&inParams.uri, path, inParams.oper, (*inParams.ygRoot).(*ocbinds.Device), inParams.param, inParams.d, inParams.dbs, nil, nil, nil}
+    log.Info("YangToDb_fdb_mac_table_xfmr =>", inParams)
+
+    key := "Vlan" + vlan + "|" + macAddr
+    var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
+    var fdbTblMap map[string]db.Value = make(map[string]db.Value)
+    dbV := db.Value{Field: make(map[string]string)}
+    if (inParams.oper == DELETE) {
+        fdbTblMap[key] = dbV
+        res_map["FDB"] = fdbTblMap
+        return res_map, nil
+    }
+
+    if targetNodeList, errTmp := ytypes.GetNode(ocbinds.SchemaTree["Device"], reqP.rootObj, path); errTmp != nil || len(targetNodeList) == 0 {
+        return nil, err
+    } else {
+        v := reflect.ValueOf(targetNodeList[0].Data).Elem()
+        var port = v.Field(0).Elem()
+        var portname string = port.String()
+        dbV.Field["port"] = portname
+        fdbTblMap[key] = dbV
+        res_map["FDB"] = fdbTblMap
+
+	return res_map, nil
+    }	
+    return nil, err
 }
 
 func getOidToIntfNameMap (d *db.DB) (map[string]string, error) {

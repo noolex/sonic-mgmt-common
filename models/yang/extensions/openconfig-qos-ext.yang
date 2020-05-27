@@ -258,6 +258,10 @@ module openconfig-qos-ext {
         deviate not-supported;
     }
 
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input/oc-qos:classifiers {
+        deviate not-supported;
+    }
+
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config/oc-qos:type{
       deviate not-supported;
     }
@@ -523,43 +527,17 @@ module openconfig-qos-ext {
   deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input/oc-qos:queues {
     deviate not-supported;
   }
+
   deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input/oc-qos:scheduler-policy {
     deviate not-supported;
   }
+
   deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input/oc-qos:virtual-output-queues {
     deviate not-supported;
   }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:ipv4/oc-qos:config/oc-qos:hop-limit {
+
+  deviation /oc-qos:qos/oc-qos:classifiers {
     deviate not-supported;
   }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:ipv4/oc-qos:state/oc-qos:hop-limit {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:ipv6/oc-qos:config/oc-qos:source-flow-label {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:ipv6/oc-qos:config/oc-qos:destination-flow-label {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:ipv6/oc-qos:config/oc-qos:hop-limit {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:ipv6/oc-qos:state/oc-qos:source-flow-label {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:ipv6/oc-qos:state/oc-qos:destination-flow-label {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:ipv6/oc-qos:state/oc-qos:hop-limit {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:conditions/oc-qos:mpls {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:actions/oc-qos:remark/oc-qos:config/oc-qos:set-mpls-tc {
-    deviate not-supported;
-  }
-  deviation /oc-qos:qos/oc-qos:classifiers/oc-qos:classifier/oc-qos:terms/oc-qos:term/oc-qos:actions/oc-qos:remark/oc-qos:state/oc-qos:set-mpls-tc {
-    deviate not-supported;
-  }
+
 }

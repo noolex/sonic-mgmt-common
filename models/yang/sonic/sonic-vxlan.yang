@@ -43,7 +43,7 @@ module sonic-vxlan {
 
             list VXLAN_TUNNEL_LIST { 
                 key "name";
-                max-elements 3;
+                max-elements 1;
 
                 leaf name {
                     must "(starts-with(../name, 'vtep'))"

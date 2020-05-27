@@ -72,7 +72,7 @@ func getLacpData(ifKey string) (map[string]interface{}, error) {
     return TeamdJson, nil
 }
 
-func fillLacpState(TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State) error {
+func fillLacpState(inParams XfmrParams, ifKey string, TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State) error {
     var runner_map map[string]interface{}
     var status bool
     if runner_map, status = TeamdJson["runner"].(map[string]interface{}); !status {
@@ -85,9 +85,10 @@ func fillLacpState(TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLa
     sys_prio := uint16(prio)
     state.SystemPriority = &sys_prio
 
-    fast_rate := runner_map["fast_rate"].(bool)
+    var fast_rate bool = false
+    _get_fast_rate_config(inParams, ifKey, &fast_rate)
     if fast_rate {
-    state.Interval = ocbinds.OpenconfigLacp_LacpPeriodType_FAST
+        state.Interval = ocbinds.OpenconfigLacp_LacpPeriodType_FAST
     } else {
         state.Interval = ocbinds.OpenconfigLacp_LacpPeriodType_SLOW
     }
@@ -123,6 +124,26 @@ func _getSelectedStatus(inParams XfmrParams, lag string, member string, selected
     if val, ok := dbEntry.Field["status"]; ok {
         if val == "enabled" {
             *selected = true
+        }
+    }
+    return nil
+}
+
+func _get_fast_rate_config(inParams XfmrParams, lag_name string, fast_rate *bool) error {
+    poTblTs := &db.TableSpec{Name: "PORTCHANNEL"}
+    cfgDb := inParams.dbs[db.ConfigDB]
+    dbEntry, err := cfgDb.GetEntry(poTblTs, db.Key{Comp: []string{lag_name}})
+
+    if err != nil {
+        errStr := "Failed to Get PortChannel Config details from DB"
+        log.Info(errStr)
+        return errors.New(errStr)
+    }
+
+    *fast_rate = false  // Default
+    if val, ok := dbEntry.Field["fast_rate"]; ok {
+        if val == "true" {
+            *fast_rate = true
         }
     }
     return nil
@@ -218,7 +239,7 @@ func populateLacpData(inParams XfmrParams, ifKey string, state *ocbinds.Openconf
         return err
     }
 
-    e := fillLacpState(TeamdJson, state)
+    e := fillLacpState(inParams, ifKey, TeamdJson, state)
     if e != nil {
         log.Error("Failure in filling LACP state data ")
         return e

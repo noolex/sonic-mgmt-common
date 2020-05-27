@@ -48,9 +48,9 @@ module sonic-fdb {
 
     container sonic-fdb {
 
-        container FDB_TABLE {
+        container FDB {
 
-            list FDB_TABLE_LIST {
+            list FDB_LIST {
                 key "vlan mac-address";
 
                 leaf vlan {

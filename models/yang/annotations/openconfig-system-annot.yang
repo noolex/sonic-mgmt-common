@@ -217,6 +217,55 @@ module openconfig-system-annot {
       }
     }
 
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:source-interface {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:timeout {
+      deviate add {
+          sonic-ext:field-name "timeout";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:auth-type {
+      deviate add {
+          sonic-ext:field-name "auth_type";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:secret-key {
+      deviate add {
+          sonic-ext:field-name "passkey";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:source-address {
+      deviate add {
+          sonic-ext:field-name "src_ip";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:nas-ip-address {
+      deviate add {
+          sonic-ext:field-name "nas_ip";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retransmit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:source-interface {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+
+
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys:name {
       deviate add {
           sonic-ext:field-transformer "global_sg_name_xfmr";
@@ -384,6 +433,18 @@ module openconfig-system-annot {
       }
     }
 
+    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_kdump_status_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:config {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_kdump_config_xfmr";
+            }
+    }
+
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:config" {
       deviate add {
         sonic-ext:table-name "DNS";
@@ -391,13 +452,13 @@ module openconfig-system-annot {
       }
     }
 
-    deviation "/oc-sys:system/oc-sys:dns/oc-sys:config/oc-sys-ext:source-intf" {
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:config/oc-sys-ext:source-interface" {
         deviate add {
             sonic-ext:field-name "src_intf";
         }
     }
 
-    deviation "/oc-sys:system/oc-sys:dns/oc-sys:state/oc-sys-ext:source-intf" {
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:state/oc-sys-ext:source-interface" {
         deviate add {
             sonic-ext:field-name "src_intf";
         }
@@ -426,17 +487,5 @@ module openconfig-system-annot {
         deviate add {
             sonic-ext:field-transformer "server_dns_field_xfmr";
         }
-    }
-
-    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:state {
-        deviate add {
-            sonic-ext:subtree-transformer "oc_kdump_status_xfmr";
-            }
-    }
-
-    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:config {
-        deviate add {
-            sonic-ext:subtree-transformer "oc_kdump_config_xfmr";
-            }
     }
 }

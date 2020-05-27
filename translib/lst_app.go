@@ -59,7 +59,7 @@ type LstApp struct {
     intfUpstreamCfgTblMap map[string][]string // Contains Interface->Upstreams map
     intfDownstreamCfgTblMap map[string]string // Contains Interface->Downstream map
     deleteGroups []string // Groups to be deleted
-    
+
     intfTrackCfgTblCache map[string]db.Value // Contains the data retrived from the DB
 }
 
@@ -73,7 +73,7 @@ func init() {
     if err != nil {
         log.Fatal("Register LST app module with App interface failed with error=", err)
     } else {
-        log.Info("Init done!!!") 
+        log.Info("Register done.")
     }
 
     err = addModel(&ModelData{Name: "openconfig-lst-ext",
@@ -136,7 +136,7 @@ func (app *LstApp) translateReplace(d *db.DB) ([]db.WatchKeys, error) {
 func (app *LstApp) translateDelete(d *db.DB) ([]db.WatchKeys, error) {
     var err error
     var keys []db.WatchKeys
-    
+
 
     return keys, err
 }
@@ -149,7 +149,7 @@ func (app *LstApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 
 func (app *LstApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
     notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
-    
+
     return nil, nil, notSupported
 }
 
@@ -271,7 +271,7 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
                 }
 
                 if grpPtr.Config.Description != nil {
-                    data.Set(INTF_TRACK_FIELD_DESCRIPTION, *grpPtr.Config.Description) 
+                    data.Set(INTF_TRACK_FIELD_DESCRIPTION, *grpPtr.Config.Description)
                 }
 
                 if grpPtr.Config.Timeout != nil {
@@ -288,7 +288,7 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
     // Next process Interfaces
     if nil != root.Interfaces && len(root.Interfaces.Interface) > 0 {
         for id, intfPtr := range(root.Interfaces.Interface) {
-            if nil == intfPtr.InterfaceRef || nil == intfPtr.InterfaceRef.Config || 
+            if nil == intfPtr.InterfaceRef || nil == intfPtr.InterfaceRef.Config ||
                 nil == intfPtr.InterfaceRef.Config.Interface {
                 goto SkipIntfCheck
             }
@@ -316,7 +316,7 @@ SkipIntfCheck:
                 }
             }
 
-            if nil != intfPtr.DownstreamGroup && nil != intfPtr.DownstreamGroup.Config && 
+            if nil != intfPtr.DownstreamGroup && nil != intfPtr.DownstreamGroup.Config &&
                 nil != intfPtr.DownstreamGroup.Config.GroupName {
                 if !isInterfaceNameValid(id, true) {
                     return tlerr.InvalidArgs("Interface %s is invalid for downstream", id)
@@ -327,7 +327,7 @@ SkipIntfCheck:
 
         // TODO Check with State DB if any port is common in configured upstream and operational downstream
     }
-    
+
     log.Infof("Group data:%v", app.intfTrackCfgTblMap)
     log.Infof("Upstream data:%v", app.intfUpstreamCfgTblMap)
     log.Infof("Downstream data:%v", app.intfDownstreamCfgTblMap)
@@ -423,7 +423,7 @@ func (app *LstApp) processCRUCommonGroups(d *db.DB, opcode int) error {
                 grpDbData, err := app.getGroupDatafromDB(d, name)
                 if nil != err {
                     return err
-                }                                           
+                }
                 if isSubtreeRequest(app.pathInfo.Template, "/openconfig-lst-ext:lst/lst-groups/lst-group{}/config/") {
                     log.Info("Specific field replace")
                     // Request is only for these specific fields
@@ -448,7 +448,7 @@ func (app *LstApp) processCRUCommonGroups(d *db.DB, opcode int) error {
                     if len(upstr) > 0 {
                         grpReqData.SetList(INTF_TRACK_FIELD_UPSTREAM, upstr)
                     }
-    
+
                     dbDwnstr := grpDbData.GetList(INTF_TRACK_FIELD_DOWNSTREAM)
                     dwstr := grpReqData.GetList(INTF_TRACK_FIELD_DOWNSTREAM)
                     if len(dwstr) == 0 && contains(dbDwnstr, INTF_TRACK_VALUE_ALL_MCLAG) {
@@ -457,7 +457,7 @@ func (app *LstApp) processCRUCommonGroups(d *db.DB, opcode int) error {
                     }
                     // Everything as came with request.
                     app.intfTrackCfgTblMap[name] = grpReqData
-                } 
+                }
             }
         } else {
             return tlerr.New("Unknown/Unhandled URI")
@@ -493,7 +493,7 @@ func (app *LstApp) processUpstreamInterfaces(d *db.DB, opcode int) error {
                 log.Infof("Group %s is scheduled for delete", group)
                 return tlerr.InvalidArgs("Group %s will be deleted in the request. Cant be used as upstream group for %s", group, intf)
             }
-            
+
             grpData, found := app.intfTrackCfgTblMap[group]
             if !found {
                 var err error
@@ -514,7 +514,7 @@ func (app *LstApp) processUpstreamInterfaces(d *db.DB, opcode int) error {
             app.intfTrackCfgTblMap[group] = grpData
         }
     }
-    
+
     return nil
 }
 
@@ -591,7 +591,7 @@ func (app *LstApp) processCRUCommonRoot(d *db.DB, opcode int) error {
 func (app *LstApp) removeGroupInterface(d *db.DB, group string, field string, intf string) error {
     log.Infof("Grp:%s Intf:%s Field:%s", group, intf, field)
 
-    var groups []string 
+    var groups []string
     if group == "" {
         keys, err := d.GetKeys(app.intfTrackCfgTs)
         if err != nil {
@@ -604,7 +604,7 @@ func (app *LstApp) removeGroupInterface(d *db.DB, group string, field string, in
         groups = append(groups, group)
     }
     log.Infof("Applicable Groups:%v", groups)
-    
+
     for _, group := range(groups) {
         grpData, found := app.intfTrackCfgTblMap[group]
         if !found {
@@ -664,11 +664,11 @@ func (app *LstApp) processDeleteGroupData(d *db.DB) error {
         if isNotFoundError(err) {
             return nil
         }
-        
+
         return err
     }
-    
-    mod := true 
+
+    mod := true
     switch app.pathInfo.Template {
         case "/openconfig-lst-ext:lst/lst-groups/lst-group{}/config/description":
             grpData.Remove(INTF_TRACK_FIELD_DESCRIPTION)
@@ -685,9 +685,9 @@ func (app *LstApp) processDeleteGroupData(d *db.DB) error {
         default:
             return tlerr.NotSupported("")
     }
-    
+
     if mod {
-        app.intfTrackCfgTblMap[grpname] = grpData        
+        app.intfTrackCfgTblMap[grpname] = grpData
     }
 
     return nil
@@ -708,7 +708,7 @@ func (app *LstApp) processDeleteInterfaceData(d *db.DB) error {
         if !isInterfaceNameValid(intf, true) {
             return tlerr.InvalidArgs("%s intf name invalid", intf)
         }
-        err := app.removeGroupInterface(d, "", INTF_TRACK_FIELD_DOWNSTREAM, app.pathInfo.Var("id")) 
+        err := app.removeGroupInterface(d, "", INTF_TRACK_FIELD_DOWNSTREAM, app.pathInfo.Var("id"))
         if nil != err {
             return err
         }
@@ -717,10 +717,10 @@ func (app *LstApp) processDeleteInterfaceData(d *db.DB) error {
         if nil != err {
             return err
         }
-        err = app.removeGroupInterface(d, "", INTF_TRACK_FIELD_DOWNSTREAM, intf) 
+        err = app.removeGroupInterface(d, "", INTF_TRACK_FIELD_DOWNSTREAM, intf)
         if nil != err {
             return err
-        }        
+        }
     }
 
     return nil
@@ -732,14 +732,14 @@ func (app *LstApp) deleteGroupsByName(d *db.DB, name string) error {
         if err != nil {
             return err
         }
-    
+
         for _, k := range(keys) {
             app.deleteGroups = append(app.deleteGroups, k.Comp[0])
         }
-    } else {        
+    } else {
         app.deleteGroups = append(app.deleteGroups, name)
     }
-    
+
     return nil
 }
 
@@ -785,14 +785,14 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
     if *app.ygotTarget == root {
         ygot.BuildEmptyTree(root)
     }
-    
+
     if nil != root.LstGroups {
         if nil == root.LstGroups.LstGroup || len(root.LstGroups.LstGroup) == 0 {
             keys, err := dbs[db.ConfigDB].GetKeys(app.intfTrackCfgTs)
             if err != nil {
                 return err
             }
-        
+
             for _, k := range(keys) {
                 ptr, err := root.LstGroups.NewLstGroup(k.Comp[0])
                 if err != nil {
@@ -802,10 +802,13 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
             }
         }
         for _, grpPtr := range(root.LstGroups.LstGroup) {
-            app.processLstGroupsGet(dbs, grpPtr)
+            err := app.processLstGroupsGet(dbs, grpPtr)
+            if nil != err {
+                return err
+            }
         }
     }
-    
+
     if nil != root.Interfaces {
         keys, err := dbs[db.ConfigDB].GetKeys(app.intfTrackCfgTs)
         if err != nil {
@@ -849,13 +852,13 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
 
                 ygot.BuildEmptyTree(intfPtr)
                 if _, found := app.intfUpstreamCfgTblMap[intf]; !found {
-                    log.Infof("Intf:%s is not upstream", intf) 
+                    log.Infof("Intf:%s is not upstream", intf)
                     intfPtr.UpstreamGroups = nil
-                } 
+                }
                 if _, found := app.intfDownstreamCfgTblMap[intf]; !found {
                     log.Infof("Intf:%s is not downstream", intf)
                     intfPtr.DownstreamGroup = nil
-                } 
+                }
             }
         }
 
@@ -925,11 +928,11 @@ func (app *LstApp) processLstInterfaceGet(dbs [db.MaxDB]*db.DB, intfPtr *ocbinds
         }
         if !downFound {
             log.Infof("No downstream groups for %s", *intfPtr.Id)
-            intfPtr.DownstreamGroup = nil   
+            intfPtr.DownstreamGroup = nil
         }
     }
 
-    if nil != intfPtr.Config { 
+    if nil != intfPtr.Config {
         intfPtr.Config.Id = intfPtr.Id
     }
     if nil != intfPtr.State {
@@ -956,13 +959,13 @@ func (app *LstApp) processLstInterfaceGet(dbs [db.MaxDB]*db.DB, intfPtr *ocbinds
             return err
         }
     }
-    
+
     return nil
 }
 
 func (app *LstApp) processLstInterfaceUpstreamGet(dbs [db.MaxDB]*db.DB, intf string,
     upIntfPtr *ocbinds.OpenconfigLstExt_Lst_Interfaces_Interface_UpstreamGroups) error {
-    
+
     if nil == upIntfPtr.UpstreamGroup || len(upIntfPtr.UpstreamGroup) > 0 {
         upGrps, found := app.intfUpstreamCfgTblMap[intf]
         if !found {
@@ -974,14 +977,14 @@ func (app *LstApp) processLstInterfaceUpstreamGet(dbs [db.MaxDB]*db.DB, intf str
             if nil != err {
                 return err
             }
-            
+
             ygot.BuildEmptyTree(upGrpPtr)
         }
     }
 
     for grpName, grpPtr := range(upIntfPtr.UpstreamGroup) {
         if !contains(app.intfUpstreamCfgTblMap[intf], grpName) {
-            return tlerr.NotFound("Intf %s is not configured as upstream of %s", intf, grpName) 
+            return tlerr.NotFound("Intf %s is not configured as upstream of %s", intf, grpName)
         }
         ygot.BuildEmptyTree(grpPtr.Config)
         ygot.BuildEmptyTree(grpPtr.State)
@@ -1012,7 +1015,7 @@ func (app *LstApp) processLstInterfaceDownstreamGet(dbs [db.MaxDB]*db.DB, intf s
 
     portIdx,_ := indexOf(dsPorts, intf)
     status := dsStatus[portIdx]
-    
+
     disabled := status == "Disabled"
     downIntfPtr.State.Disabled = &disabled
 
