@@ -100,8 +100,17 @@ class KDUMP(host_service.HostModule):
         return rc, result
 
     @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='s')
+    def records(self):
+        cmd = '/usr/bin/sonic-kdump-config --kdump-records-json'
+        (rc, output, output_err) = self._run_command(cmd)
+        if rc == 0:
+            return "".join(output)
+        else:
+            print("KDUMP Host module: kdump status command returned error")       
+            return "{}"
+
+    @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='s')
     def status(self):
-        print("KDUMP Host module: Calling kdump status")       
         cmd = '/usr/bin/sonic-kdump-config --status-json'
         (rc, output, output_err) = self._run_command(cmd)
         if rc == 0:
@@ -112,7 +121,6 @@ class KDUMP(host_service.HostModule):
 
     @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='s')
     def getconfig(self):
-        print("KDUMP Host module: Calling kdump config")
         cmd = '/usr/bin/sonic-kdump-config --config-json'
         (rc, output, output_err) = self._run_command(cmd)
         if rc == 0:

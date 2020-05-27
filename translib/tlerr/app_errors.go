@@ -28,6 +28,7 @@ type errordata struct {
 	Format string        // message format string
 	Args   []interface{} // message format arguments
 	Path   string        // error path (optional)
+	AppTag string		 // application specific error tag (optional)
 }
 
 // InvalidArgsError indicates bad request error.
@@ -58,6 +59,12 @@ func (e InvalidArgsError) Error() string {
 func InvalidArgs(msg string, args ...interface{}) InvalidArgsError {
 	return InvalidArgsError{Format: msg, Args: args}
 }
+
+// InvalidArgsErr creates an InvalidArgsError instance with given messae, app erorr tag and path
+func InvalidArgsErr(appTag, path, msg string, args ...interface{}) InvalidArgsError {
+	return InvalidArgsError{Format: msg, Args: args, AppTag: appTag, Path: path}
+}
+
 func (e NotFoundError) Error() string {
 	return p.Sprintf(e.Format, e.Args...)
 }
@@ -65,6 +72,11 @@ func (e NotFoundError) Error() string {
 // NotFound creates a NotFoundError
 func NotFound(msg string, args ...interface{}) NotFoundError {
 	return NotFoundError{Format: msg, Args: args}
+}
+
+// NotFoundErr creates a NotFoundError instance with given message, app error tag and path.
+func NotFoundErr(appTag, path, msg string, args ...interface{}) NotFoundError {
+	return NotFoundError{Format: msg, Args: args, AppTag: appTag, Path: path}
 }
 
 func (e AlreadyExistsError) Error() string {
@@ -76,6 +88,11 @@ func AlreadyExists(msg string, args ...interface{}) AlreadyExistsError {
 	return AlreadyExistsError{Format: msg, Args: args}
 }
 
+// AlreadyExistsErr creates an AlreadyExistsError instance with given message, app error tag and path.
+func AlreadyExistsErr(appTag, path, msg string, args ...interface{}) AlreadyExistsError {
+	 return AlreadyExistsError{Format: msg, Args: args, AppTag: appTag, Path: path}
+}
+
 func (e NotSupportedError) Error() string {
 	return p.Sprintf(e.Format, e.Args...)
 }
@@ -85,6 +102,11 @@ func NotSupported(msg string, args ...interface{}) NotSupportedError {
 	return NotSupportedError{Format: msg, Args: args}
 }
 
+// NotSupportedErr creates a NotSupportedError instance with given message, app error tag and path.
+func NotSupportedErr(appTag, path, msg string, args ...interface{}) NotSupportedError {
+	return NotSupportedError{Format: msg, Args: args, AppTag: appTag, Path: path}
+}
+
 func (e InternalError) Error() string {
 	return p.Sprintf(e.Format, e.Args...)
 }
@@ -92,6 +114,11 @@ func (e InternalError) Error() string {
 // New creates an InternalError
 func New(msg string, args ...interface{}) InternalError {
 	return InternalError{Format: msg, Args: args}
+}
+
+// NewError creates an InternalError instance with given message, app error tag and path.
+func NewError(appTag, path, msg string, args ...interface{}) InternalError {
+	return InternalError{Format: msg, Args: args, AppTag: appTag, Path: path}
 }
 
 func (e AuthorizationError) Error() string {

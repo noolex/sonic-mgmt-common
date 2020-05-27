@@ -2001,6 +2001,12 @@ module openconfig-ospfv2-ext {
         "local address of the vlink";
     }
 
+    leaf peer-address {
+      type inet:ipv4-address-no-zone;
+      description
+        "Address used to reach the peer";
+    }
+
     leaf broadcast-address {
       type inet:ipv4-address-no-zone;
       description
@@ -2596,6 +2602,78 @@ module openconfig-ospfv2-ext {
     deviate not-supported;
   }
 
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+            "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+            "/oc-netinst:global/oc-netinst:timers/oc-netinst:max-metric/oc-netinst:state" {
+    deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+            "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+            "/oc-netinst:global/oc-netinst:inter-area-propagation-policies" +
+            "/oc-ospfv2-ext:inter-area-policy/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+			"/oc-netinst:inter-area-propagation-policies/oc-ospfv2-ext:inter-area-policy" +
+			"/oc-ospfv2-ext:ranges/oc-ospfv2-ext:range/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" + 
+			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+			"/oc-netinst:inter-area-propagation-policies/oc-ospfv2-ext:inter-area-policy" +
+			"/oc-ospfv2-ext:export-list/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+            "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+			"/oc-netinst:global/oc-netinst:inter-area-propagation-policies" +
+			"/oc-ospfv2-ext:inter-area-policy/oc-ospfv2-ext:import-list/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+			"/oc-netinst:inter-area-propagation-policies/oc-ospfv2-ext:inter-area-policy" +
+			"/oc-ospfv2-ext:filter-list-in/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+			"/oc-netinst:inter-area-propagation-policies/oc-ospfv2-ext:inter-area-policy" +
+			"/oc-ospfv2-ext:filter-list-out/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+			"/oc-ospfv2-ext:route-distribution-policies/oc-ospfv2-ext:distribute-list/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+			"/oc-ospfv2-ext:route-distribution-policies/oc-ospfv2-ext:distance/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+			"/oc-ospfv2-ext:passive-interfaces/oc-ospfv2-ext:passive-interface/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas" +
+			"/oc-netinst:area/oc-ospfv2-ext:networks/oc-ospfv2-ext:network/oc-ospfv2-ext:state" {
+	deviate not-supported;
+  }
+
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:config" {
@@ -2702,6 +2780,7 @@ module openconfig-ospfv2-ext {
     uses ospfv2-area-virtual-link-state-ext;
     uses ospfv2-area-interface-message-stats-state-ext; 
     uses ospfv2-area-interface-timers-state-ext;
+    uses ospfv2-area-interface-neighbors-ext;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +

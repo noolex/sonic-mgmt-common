@@ -93,7 +93,7 @@ func (t *CustomValidation) ValidateDpbStatus(
 
     entry, err1 := rclient.HGetAll(key).Result()
     log.Info("[DPB-CVL] STATE_DB DPB key ", key, " Entry: ", entry, " ", err1)
-    if (err1 == nil && len(entry) > 0 && len(entry["status"]) > 0) {
+    if ((err1 == nil) && (len(entry) > 0) && (len(entry["status"]) > 0) && (entry["status"] == "InProgress")) {
         util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "STATE_DB DPB table has entry. DPB in-progress")
         return CVLErrorInfo{
                 ErrCode: CVL_SEMANTIC_ERROR,
