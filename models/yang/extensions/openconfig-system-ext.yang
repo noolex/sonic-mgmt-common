@@ -9,12 +9,8 @@ module openconfig-system-ext {
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
     import openconfig-interfaces { prefix "oc-if"; }
-<<<<<<< HEAD
     import openconfig-kdump { prefix oc-kdump; }
-||||||| merged common ancestors
-=======
     import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
->>>>>>> github/broadcom_sonic_3.x_share
 
     // meta
     organization "OpenConfig working group";
