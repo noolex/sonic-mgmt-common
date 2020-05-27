@@ -199,7 +199,7 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
         mapObj.Config = &mapObjCfg
     }
 
-    var mapObjSta ocbinds.OpenconfigQos_Qos_Dot1pMaps_Dot1pMap_State
+    var mapObjSta ocbinds.OpenconfigQos_Qos_Dot1PMaps_Dot1PMap_State
     if mapObj.State == nil {
         mapObj.State = &mapObjSta
     }
