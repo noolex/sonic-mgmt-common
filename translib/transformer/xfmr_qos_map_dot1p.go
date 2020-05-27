@@ -163,27 +163,13 @@ var YangToDb_qos_dot1p_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     return res_map, err
 }
 
-var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
 
-    pathInfo := NewPathInfo(inParams.uri)
+func fill_dot1p_map_info_by_name(inParams XfmrParams, dot1PMaps * ocbinds.OpenconfigQos_Qos_Dot1PMaps, name string) error {
 
-    name := pathInfo.Var("name")
 
-    log.Info("inParams: ", inParams)
-
-    qosObj := getQosRoot(inParams.ygRoot)
-
-    if qosObj == nil {
-        ygot.BuildEmptyTree(qosObj)
-    }
-
-    if qosObj.Dot1PMaps == nil {
-        ygot.BuildEmptyTree(qosObj.Dot1PMaps)
-    }
-
-    mapObj, ok := qosObj.Dot1PMaps.Dot1PMap[name]
+    mapObj, ok := dot1PMaps.Dot1PMap[name]
     if !ok {
-        mapObj, _ = qosObj.Dot1PMaps.NewDot1PMap(name)
+        mapObj, _ = dot1PMaps.NewDot1PMap(name)
         ygot.BuildEmptyTree(mapObj)
         mapObj.Name = &name
 
@@ -204,7 +190,6 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
         mapObj.State = &mapObjSta
     }
 
-    // Classifier
     dbSpec := &db.TableSpec{Name: "DOT1P_TO_TC_MAP"}
 
     key :=db.Key{Comp: []string{name}}
@@ -223,6 +208,7 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     mapObj.State.Name = &name
 
 
+    pathInfo := NewPathInfo(inParams.uri)
     dot1p := pathInfo.Var("dot1p")
     var tmp_cfg ocbinds.OpenconfigQos_Qos_Dot1PMaps_Dot1PMap_Dot1PMapEntries_Dot1PMapEntry_Config
     var tmp_sta ocbinds.OpenconfigQos_Qos_Dot1PMaps_Dot1PMap_Dot1PMapEntries_Dot1PMapEntry_State
@@ -274,6 +260,56 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
 
     return nil
 }
+
+var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+    var err error
+
+    pathInfo := NewPathInfo(inParams.uri)
+
+    name := pathInfo.Var("name")
+
+    log.Info("inParams: ", inParams)
+
+    qosObj := getQosRoot(inParams.ygRoot)
+
+    if qosObj == nil {
+        ygot.BuildEmptyTree(qosObj)
+    }
+
+    if qosObj.Dot1PMaps == nil {
+        ygot.BuildEmptyTree(qosObj.Dot1PMaps)
+    }
+
+    dbSpec := &db.TableSpec{Name: "DOT1P_TO_TC_MAP"}
+
+    map_added := 0
+    keys, _ := inParams.d.GetKeys(dbSpec)
+    for _, key := range keys {
+        log.Info("key: ", key)
+
+        map_name := key.Comp[0]
+        if name != ""  && name != map_name{
+            continue
+        } 
+
+        map_added = map_added + 1 
+
+        err = fill_dot1p_map_info_by_name(inParams, qosObj.Dot1PMaps, map_name)
+
+        if err != nil {
+           return err
+        }
+    }
+
+    if name != "" && map_added == 0 {
+        err = tlerr.NotFoundError{Format:"Instance Not found"}
+        log.Info("Instance not found.")
+        return err
+    }
+
+    return err
+}
+
 
 
 
