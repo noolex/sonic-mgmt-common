@@ -80,7 +80,7 @@ module sonic-port-qos-map {
                     }
                 }
 
-                leaf pfc-enable {
+                leaf pfc_enable {
                     type string {
                         pattern "[0-9](,[0-9])?";
                     }

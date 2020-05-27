@@ -62,6 +62,13 @@ module sonic-neighbor {
                 }
             }
 
+            leaf all_vrfs {
+                type  boolean;
+                default false;
+                description
+                    "Flag to clear ARP/NDP entries from all VRFs";
+            }
+
             choice option {
                 leaf ip {
                     type inet:ip-prefix;
@@ -86,11 +93,11 @@ module sonic-neighbor {
                         }
                     }
                     description
-                        "Interface name: Parameter for deleting all ARP  entries
-                        related to the given inteface name Valid inputs are:
+                        "Interface name: Parameter for deleting ARP  entries
+                        related to the given inteface name. Valid inputs are:
                         Ethernet<port-number>/Vlan<Vlan ID>/PortChannel<port-channel ID>/eth<interface ID>.
                         For example: Ethernet0, Vlan100, PortChannel10, eth0.
-                        Note: If both 'ip' and 'ifname' are not provided, all dynamic enties will be cleared from the ARP/NDP table.";
+                        Note: In absence of 'ip', 'ifname' and 'vrf' name, the ARP/NDP table of the default VRF will be flushed.";
                 }
             }
         }
@@ -99,7 +106,7 @@ module sonic-neighbor {
             leaf response {
                 type string;
                 description
-                    "Success / Failure in clearing up the entire ARP/NDP table";
+                    "Success / Failure in clearing up the  ARP/NDP entries";
             }
         }
     }
@@ -124,7 +131,6 @@ module sonic-neighbor {
 						}
 					}
 					default 180;
-					
 					description "ARP timeout value";
 				}
 
@@ -135,7 +141,6 @@ module sonic-neighbor {
 						}
 					}
 					default 180;
-					
 					description "ND cache expiry value";
 				}
 			}
