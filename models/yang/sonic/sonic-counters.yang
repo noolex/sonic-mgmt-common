@@ -26,13 +26,6 @@ module sonic-counters {
 
     rpc interface_counters {
         description "RPC to get interface counters.";
-        input {
-            leaf prefix-match {
-                description
-                    "Interface name prefix (Ethernet/Portchannel) or interface name.";
-                type string;
-            }
-        }
         output {
             leaf status {
                 type int32;
