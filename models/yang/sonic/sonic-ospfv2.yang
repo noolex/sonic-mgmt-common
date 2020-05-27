@@ -27,6 +27,10 @@ module sonic-ospfv2 {
       prefix "sonic-rpolicy";
   }
 
+  import sonic-acl {
+      prefix sonic-acl;
+  }
+
   organization
     "SONiC";
 
@@ -105,7 +109,9 @@ module sonic-ospfv2 {
         }
 
         leaf default-metric {
-          type uint32;
+          type uint32 {
+            range "0..16777214";
+          }
           description
             "Default metric value for routes";
         }
@@ -253,10 +259,14 @@ module sonic-ospfv2 {
           type leafref {
             path "../../../OSPFV2_ROUTER/OSPFV2_ROUTER_LIST/vrf_name";
           }
+          description
+            "OSPF router VRF name";
         }
 
         leaf area-id {
           type sonic-ospf-cmn:ospf-area-identifier;
+          description
+             "Network Address Area Id";
         }
 
         leaf description {
@@ -285,7 +295,9 @@ module sonic-ospfv2 {
         }
 
         leaf stub-default-cost {
-          type uint32;
+          type uint32 {
+            range "0..16777215";
+          }
           description
             "OSPFv2 stub default cost.";
         }
@@ -297,21 +309,23 @@ module sonic-ospfv2 {
         }
 
         leaf import-list {
+          //must "/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()]/type = 'L3'";
           type leafref {
-            path "/sonic-rmap:sonic-route-map/sonic-rmap:ROUTE_MAP_SET" +
-                 "/sonic-rmap:ROUTE_MAP_SET_LIST/sonic-rmap:name";
+            path "/sonic-acl:sonic-acl/sonic-acl:ACL_TABLE" +
+                 "/sonic-acl:ACL_TABLE_LIST/sonic-acl:aclname";
           }
           description
-            "OSPFv2 Area policy import route map name.";
+            "OSPFv2 Area policy import IPv4 access list name.";
         }
 
         leaf export-list {
+          //must "/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()]/type = 'L3'";
           type leafref {
-            path "/sonic-rmap:sonic-route-map/sonic-rmap:ROUTE_MAP_SET" +
-                 "/sonic-rmap:ROUTE_MAP_SET_LIST/sonic-rmap:name";
+            path "/sonic-acl:sonic-acl/sonic-acl:ACL_TABLE" +
+                 "/sonic-acl:ACL_TABLE_LIST/sonic-acl:aclname";
           }
           description
-            "OSPFv2 Area policy export route map name.";
+            "OSPFv2 Area policy export IPv4 access list name.";
         }
 
         leaf filter-list-in {
@@ -352,30 +366,29 @@ module sonic-ospfv2 {
           type leafref {
             path "../../../OSPFV2_ROUTER/OSPFV2_ROUTER_LIST/vrf_name";
           }
+          description
+            "OSPF router VRF name";
         }
 
         leaf area-id {
           type sonic-ospf-cmn:ospf-area-identifier;
-          /*
-          type leafref {
-            path "../../../OSPFV2_ROUTER_AREA/OSPFV2_ROUTER_AREA_LIST[vrf_name=current()/../vrf_name]/area-id";
-          }
-          */
+          description
+             "Network Address Area Id";
         }
 
         leaf prefix {
-           type ietf-inet:ipv4-prefix;
-           description
-             "Network address prefix of the OSPF interface
-              Interface with IPv4 address matching the network
-              prefix is considered to be part of current area";
+          type ietf-inet:ipv4-prefix;
+          description
+            "Network address prefix of the OSPF interface
+             Interface with IPv4 address matching the network
+             prefix is considered to be part of current area";
         }
 
         leaf description {
           type string;
-           description
-             "String description for the configured prefix";
-           default "Network address";
+          description
+            "String description for the configured prefix";
+             default "Network address";
         }
 
       } //OSPFV2_ROUTER_AREA_NETWORK_LIST
@@ -394,15 +407,14 @@ module sonic-ospfv2 {
           type leafref {
             path "../../../OSPFV2_ROUTER/OSPFV2_ROUTER_LIST/vrf_name";
           }
+          description
+            "OSPF router VRF name";
         }
 
         leaf area-id {
           type sonic-ospf-cmn:ospf-area-identifier;
-          /*
-          type leafref {
-            path "../../../OSPFV2_ROUTER_AREA/OSPFV2_ROUTER_AREA_LIST[vrf_name=current()/../vrf_name]/area-id";
-          }
-          */
+          description
+             "Virtual link transit Area Id";
         }
 
         leaf description {
@@ -451,7 +463,9 @@ module sonic-ospfv2 {
         }
 
         leaf dead-interval {
-          type uint32;
+          type uint32 {
+            range "1..65535";
+          }
           units seconds;
           description
             "The number of seconds that the local system should let
@@ -460,7 +474,9 @@ module sonic-ospfv2 {
         }
 
         leaf hello-interval {
-          type uint32;
+          type uint32{
+            range "1..65535";
+          }
           units seconds;
           description
             "The number of seconds the local system waits between the
@@ -469,7 +485,9 @@ module sonic-ospfv2 {
         }
 
         leaf retransmission-interval {
-          type uint32;
+          type uint32 {
+            range "1..65535";
+          }
           units seconds;
           description
             "The number of seconds that the local system waits before
@@ -503,15 +521,14 @@ module sonic-ospfv2 {
           type leafref {
             path "../../../OSPFV2_ROUTER/OSPFV2_ROUTER_LIST/vrf_name";
           }
+          description
+            "OSPF router VRF name";
         }
 
         leaf area-id {
           type sonic-ospf-cmn:ospf-area-identifier;
-          /*
-          type leafref {
-            path "../../../OSPFV2_ROUTER_AREA/OSPFV2_ROUTER_AREA_LIST[vrf_name=current()/../vrf_name]/area-id";
-          }
-          */
+          description
+             "Policy address range Area Id";
         }
 
         leaf prefix {
@@ -569,6 +586,8 @@ module sonic-ospfv2 {
           type leafref {
             path "../../../OSPFV2_ROUTER/OSPFV2_ROUTER_LIST/vrf_name";
           }
+          description
+            "OSPF router VRF name";
         }
 
         leaf protocol {
@@ -624,6 +643,16 @@ module sonic-ospfv2 {
           description
             "Route map for default route originate or distribution";
         }
+
+        leaf access-list {
+          //must "/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()]/type = 'L3'";
+          type leafref {
+            path "/sonic-acl:sonic-acl/sonic-acl:ACL_TABLE" +
+                 "/sonic-acl:ACL_TABLE_LIST/sonic-acl:aclname";
+          }
+          description
+            "IPv4 Access List for distribution list";
+        }
       } //OSPFV2_ROUTER_DISTRIBUTE_ROUTE_LIST
     } //OSPFV2_ROUTER_DISTRIBUTE_ROUTE
 
@@ -640,10 +669,12 @@ module sonic-ospfv2 {
           type leafref {
             path "../../../OSPFV2_ROUTER/OSPFV2_ROUTER_LIST/vrf_name";
           }
+          description
+            "OSPF router VRF name";
         }
 
         leaf name {
-          type string;
+          type sonic-ospf-cmn:ospf-interface;
           description
             "The name of the passive interface .";
          }
@@ -668,7 +699,7 @@ module sonic-ospfv2 {
          leaf name {
            type sonic-ospf-cmn:ospf-interface;
            description
-             "OPSF interface";
+             "OSPF interface";
          }
 
          leaf area-id {
@@ -691,7 +722,10 @@ module sonic-ospfv2 {
          }
 
          leaf metric {
-           type sonic-ospf-cmn:ospf-metric;
+           //type sonic-ospf-cmn:ospf-metric;
+           type uint32 {
+             range "1..65535";
+           }
            description
              "The metric for the interface";
          }
@@ -701,22 +735,6 @@ module sonic-ospfv2 {
            description
              "The local system's priority to become the designated router";
          }
-
-         /*
-         leaf passive {
-           type boolean;
-           description
-             "When this leaf is set to true, the interface should be
-             advertised within the OSPF area but OSPF adjacencies should
-             not be established over the interface";
-         }
-
-         leaf passive-interface-address {
-           type ietf-inet:ipv4-address-no-zone;
-           description
-             "The Interface address";
-         }
-         */
 
          leaf mtu-ignore {
            type boolean;
@@ -757,7 +775,9 @@ module sonic-ospfv2 {
          }
 
          leaf dead-interval {
-           type uint32;
+           type uint32 {
+             range "1..65535";
+           }
            units seconds;
            description
              "The number of seconds that the local system should let
@@ -772,7 +792,9 @@ module sonic-ospfv2 {
          }
 
          leaf hello-interval {
-           type uint32;
+           type uint32 {
+             range "1..65535";
+           }
            units seconds;
            description
              "The number of seconds the local system waits between the
@@ -789,7 +811,9 @@ module sonic-ospfv2 {
          }
 
          leaf retransmission-interval {
-           type uint32;
+           type uint32 {
+             range "1..65535";
+           }
            units seconds;
            description
              "The number of seconds that the local system waits before
