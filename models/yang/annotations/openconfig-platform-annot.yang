@@ -18,15 +18,15 @@ module openconfig-platform-annot {
       }
     }
 
-    deviation /oc-platform:components/oc-platform:component/oc-platform-ext:software {
-      deviate add {
-        sonic-ext:subtree-transformer "pfm_components_xfmr";
-      }
-    }
-
     deviation /oc-platform:components/oc-platform:component/oc-platform:power-supply {
       deviate add {
         sonic-ext:subtree-transformer "pfm_components_psu_xfmr";
+      }
+    }
+
+    deviation /oc-platform:components/oc-platform:component/oc-platform:fan {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_fan_xfmr";
       }
     }
 

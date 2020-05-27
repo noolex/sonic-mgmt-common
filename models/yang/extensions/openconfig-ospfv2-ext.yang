@@ -555,14 +555,18 @@ module openconfig-ospfv2-ext {
       parameters for OSPFv2";
 
     leaf minimum-interval{
-      type uint32;
+      type uint32 {
+        range "0..5000";
+      }
       units msec;
       description
         "LSA minimum interval timer";
     }
 
     leaf minimum-arrival {
-      type uint32;
+      type uint32 {
+        range "0..600000";
+      }
       units msec;
       description
         "LSA minimum arrival timer";
@@ -2203,6 +2207,12 @@ module openconfig-ospfv2-ext {
     description
       "Configuration parameters relating to a virtual-link within
       the OSPF area";
+
+    leaf enable {
+      type boolean;
+      description
+        "Enable/Disable virtual link";
+    }
 
     uses oc-ospfv2:ospfv2-area-interface-timers-config;
     uses ospfv2-area-interface-timers-config-ext;

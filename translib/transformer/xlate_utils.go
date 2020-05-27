@@ -760,8 +760,13 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 if len(xpathInfo.delim) > 0 {
 		 keySeparator = xpathInfo.delim
 	 }
-
-	 for _, k := range strings.Split(path, "/") {
+	 gp, err := ygot.StringToStringSlicePath(path)
+	 if err != nil {
+		 log.Errorf("Failed to get parts for uri %v.", path)
+		 return pfxPath, keyStr, tableName, err
+	 }
+	 log.Infof("path elements are : %v", gp.Element)
+	 for _, k := range gp.Element {
 		 curPathWithKey += k
 		 yangXpath, _ := XfmrRemoveXPATHPredicates(curPathWithKey)
 		 xpathInfo, ok := xYangSpecMap[yangXpath]

@@ -326,7 +326,7 @@ func  WriteToFile(message string) {
 func TestMain(m *testing.M) {
 
 	redisAlreadyRunning := false
-	pidOfRedis, err := exec.Command("/bin/pidof", "redis-server").Output()
+	pidOfRedis, err := exec.Command("pidof", "redis-server").Output()
 	if err == nil &&  string(pidOfRedis) != "\n" {
 		redisAlreadyRunning = true
 	}
@@ -3345,8 +3345,8 @@ func TestGetDepTables(t *testing.T) {
 
 	result, _ := cvSess.GetDepTables("sonic-acl", "ACL_RULE")
 
-	expectedResult := []string{"ACL_RULE", "ACL_TABLE", "MIRROR_SESSION", "PORT"}
-	expectedResult1 := []string{"ACL_RULE", "MIRROR_SESSION", "ACL_TABLE", "PORT"} //2nd possible result
+	expectedResult := []string{"ACL_RULE", "ACL_TABLE", "MIRROR_SESSION", "PORT", "PORTCHANNEL"}
+	expectedResult1 := []string{"ACL_RULE", "MIRROR_SESSION", "ACL_TABLE", "PORT", "PORTCHANNEL"} //2nd possible result
 
 	if len(expectedResult) != len(result) {
 		t.Errorf("Validation failed, returned value = %v", result)
@@ -3419,7 +3419,7 @@ func TestGetDepDataForDelete(t *testing.T) {
 		},
 		"INTERFACE" : map[string]interface{} {
 			"Ethernet7": map[string] interface{} {
-				"vrf-name": "Vrf1",
+				"vrf_name": "Vrf1",
 			},
 			"Ethernet7|10.2.1.1/16": map[string] interface{} {
 				"NULL": "NULL",

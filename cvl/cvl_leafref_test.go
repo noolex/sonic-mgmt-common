@@ -20,6 +20,7 @@
 package cvl_test
 
 import (
+	"fmt"
 	"testing"
 	"github.com/Azure/sonic-mgmt-common/cvl"
 )
@@ -401,3 +402,89 @@ func TestValidateEditConfig_Create_Leafref_With_Other_DataType_In_Union_Non_Exis
 
 	unloadConfigDB(rclient, depDataMap)
 }
+
+func TestValidateEditConfig_Delete_Leafref(t *testing.T) {
+	depDataMap := map[string]interface{}{
+		"PORTCHANNEL": map[string]interface{}{
+			"PortChannel1": map[string]interface{}{
+				"NULL": "NULL",
+			},
+			"PortChannel2": map[string]interface{}{
+				"NULL": "NULL",
+			},
+		},
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
+				"type":	  "L3",
+				"stage":  "INGRESS",
+				"ports@": "PortChannel1",
+			},
+		},
+	}
+
+	loadConfigDB(rclient, depDataMap)
+	defer unloadConfigDB(rclient, depDataMap)
+
+	t.Run("positive", deletePO(2, true))
+	t.Run("negative", deletePO(1, false))
+	t.Run("with_dep", deleteACLAndPO("TestACL1", "", 1, false, true))
+	t.Run("with_dep_field", deleteACLAndPO("TestACL1", "ports@", 1, false, true))
+	//t.Run("with_dep_bulk", deleteACLAndPO("TestACL1", 1, true, true))
+}
+
+func deletePO(poId int, expSuccess bool) func(*testing.T) {
+	return func (t *testing.T) {
+		session, _ := cvl.ValidationSessOpen()
+		defer cvl.ValidationSessClose(session)
+		validateDeletePO(t, session, nil, poId, expSuccess)
+	}
+}
+
+func deleteACLAndPO(aclName, field string, poId int, bulk, expSuccess bool) func(*testing.T) {
+	return func (t *testing.T) {
+		session, _ := cvl.ValidationSessOpen()
+		defer cvl.ValidationSessClose(session)
+		var cfgData []cvl.CVLEditConfigData
+
+		cfgData = append(cfgData, cvl.CVLEditConfigData{
+			cvl.VALIDATE_ALL,
+			cvl.OP_DELETE,
+			fmt.Sprintf("ACL_TABLE|%s", aclName),
+			map[string]string{ },
+		})
+
+		if len(field) != 0 {
+			cfgData[0].Data[field] = ""
+		}
+
+		if !bulk {
+			errInfo, status := session.ValidateEditConfig(cfgData)
+			if status != cvl.CVL_SUCCESS {
+				t.Errorf("ACL \"%s\" delete validation failed; %v", aclName, errInfo)
+				return
+			}
+
+			cfgData[0].VType = cvl.VALIDATE_NONE
+		}
+
+		validateDeletePO(t, session, cfgData, poId, expSuccess)
+	}
+}
+
+func validateDeletePO(t *testing.T, session *cvl.CVL, cfgData []cvl.CVLEditConfigData, poId int, expSuccess bool) {
+	cfgData = append(cfgData, cvl.CVLEditConfigData{
+		cvl.VALIDATE_ALL,
+		cvl.OP_DELETE,
+		fmt.Sprintf("PORTCHANNEL|PortChannel%d", poId),
+		map[string]string{ },
+	})
+
+	errInfo, status := session.ValidateEditConfig(cfgData)
+	if expSuccess && status != cvl.CVL_SUCCESS {
+		t.Errorf("po%d delete validation failed; %v", poId, errInfo)
+	}
+	if !expSuccess && status == cvl.CVL_SUCCESS {
+		t.Errorf("po%d delete validation should have failed", poId)
+	}
+}
+

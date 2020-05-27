@@ -45,6 +45,12 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:config/oc-intf:mtu {
+        deviate add {
+            sonic-ext:field-transformer "intf_mtu_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:config/oc-intf:type {
         deviate add {
             sonic-ext:field-transformer "intf_type_xfmr";
@@ -72,6 +78,12 @@ module openconfig-interfaces-annot {
     deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-intf-ext:fallback {
         deviate add { 
             sonic-ext:field-transformer "lag_fallback_xfmr";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-intf-ext:fast_rate {
+        deviate add {
+            sonic-ext:field-transformer "lag_fast_rate_xfmr";
         }
     }
 
@@ -285,13 +297,13 @@ module openconfig-interfaces-annot {
         }
     }
 
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:sag-ipv4/oc-intf-ext:config {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:sag-ipv4 {
       deviate add {
 		sonic-ext:subtree-transformer "intf_sag_ip_xfmr";
 	  }
     }
 
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-intf-ext:sag-ipv6/oc-intf-ext:config {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-intf-ext:sag-ipv6 {
       deviate add {
 		sonic-ext:subtree-transformer "intf_sag_ip_xfmr";
       }

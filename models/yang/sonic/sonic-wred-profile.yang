@@ -75,15 +75,15 @@ module sonic-wred-profile {
                     type boolean;
                 }
 
-                leaf yellow_drop_rate {
+                leaf yellow_drop_probability {
                     type uint64;
                 }
 
-                leaf green_drop_rate {
+                leaf green_drop_probability {
                     type uint64;
                 }
 
-                leaf red_drop_rate {
+                leaf red_drop_probability {
                     type uint64;
                 }
 

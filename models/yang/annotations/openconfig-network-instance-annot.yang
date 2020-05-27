@@ -151,12 +151,6 @@ module openconfig-network-instance-annot {
         }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:policy-forwarding {
-        deviate add {
-            sonic-ext:table-name "NONE";
-        }
-    }
-
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol {
         deviate add {
             sonic-ext:table-transformer "network_instance_protocols_ptotocol_table_name_xfmr";
@@ -166,7 +160,7 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp {
         deviate add {
-            sonic-ext:table-name "BGP_GLOBALS";
+            sonic-ext:table-transformer "bgp_gbl_tbl_xfmr";
         }
     }
 
@@ -3068,16 +3062,19 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:global-sag/oc-netinst-ext:state/oc-netinst-ext:anycast-mac {
       deviate add {
+        sonic-ext:field-name "gwmac";
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:global-sag/oc-netinst-ext:state/oc-netinst-ext:ipv4-enable {
       deviate add {
+        sonic-ext:field-transformer "sag_ipv4_enable_xfmr";
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:global-sag/oc-netinst-ext:state/oc-netinst-ext:ipv6-enable {
       deviate add {
+        sonic-ext:field-transformer "sag_ipv6_enable_xfmr";
       }
     }	
 
