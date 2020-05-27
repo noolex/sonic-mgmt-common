@@ -342,14 +342,14 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
 		                                                                      "vlanid": "5",
                                                                                       "members@": "Ethernet32"}}}
         expected_map_vlanmember := map[string]interface{}{"VLAN_MEMBER":map[string]interface{}{"Vlan5|Ethernet32":map[string]interface{}{					                                                             "tagging_mode": "tagged"}}}
-        expected_map_port := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
-							                        "alias": "fortyGigE0/32",
-									"lanes": "13,14,15,16"}}}
+//        expected_map_port := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
+//							                        "alias": "fortyGigE0/32",
+//									"lanes": "13,14,15,16"}}}
 
 
 	prepareDb()
         time.Sleep(6 * time.Second)
-	t.Run("Verify SubtreeXfmr leaf-list update/create - PORT table.", verifyDbResult(rclient, "PORT|Ethernet32", expected_map_port, false))
+	//t.Run("Verify SubtreeXfmr leaf-list update/create - PORT table.", verifyDbResult(rclient, "PORT|Ethernet32", expected_map_port, false))
 
 	loadConfigDB(rclient, prereq_cfg_exist_map)
 	unloadConfigDB(rclient, prereq_cfg_not_exist_map)
