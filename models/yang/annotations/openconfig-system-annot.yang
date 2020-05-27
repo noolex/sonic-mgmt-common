@@ -217,7 +217,7 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:source-intf {
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:source-interface {
       deviate add {
           sonic-ext:field-name "src_intf";
       }
@@ -259,7 +259,7 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:source-intf {
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:source-interface {
       deviate add {
           sonic-ext:field-name "src_intf";
       }
@@ -440,13 +440,13 @@ module openconfig-system-annot {
       }
     }
 
-    deviation "/oc-sys:system/oc-sys:dns/oc-sys:config/oc-sys-ext:source-intf" {
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:config/oc-sys-ext:source-interface" {
         deviate add {
             sonic-ext:field-name "src_intf";
         }
     }
 
-    deviation "/oc-sys:system/oc-sys:dns/oc-sys:state/oc-sys-ext:source-intf" {
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:state/oc-sys-ext:source-interface" {
         deviate add {
             sonic-ext:field-name "src_intf";
         }

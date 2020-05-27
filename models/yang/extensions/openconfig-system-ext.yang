@@ -91,7 +91,7 @@ module openconfig-system-ext {
                 "Number of times the system may resend a request to the
                 RADIUS server when it is unresponsive";
         }
-        leaf source-intf {
+        leaf source-interface {
             type leafref {
                 path "/oc-if:interfaces/oc-if:interface/oc-if:name";
             }
@@ -161,7 +161,7 @@ module openconfig-system-ext {
     }
 
     grouping dns-source-config {
-        leaf source-intf {
+        leaf source-interface {
             type leafref {
                 path "/oc-if:interfaces/oc-if:interface/oc-if:name";
             }
