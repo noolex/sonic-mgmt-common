@@ -101,10 +101,15 @@ module sonic-device-metadata {
 					}
 				}
 
-                leaf aliasMode {
-                    type boolean;
-                    default false;
-                }
+				leaf intf_naming_mode {
+					type string {
+						pattern "native|alias" {
+							error-message "Invalid interface naming mode";
+						}
+					}
+					default "native";
+				}
+   
 			}
 		}
 	}

@@ -164,14 +164,14 @@ func updateAliasFromDB(key *db.Key, d *db.DB) {
         log.Errorf("Retrieval of entry for %s failed from port table", key0)
         return
     }
-    aliasVal, ok := entry.Field["aliasMode"]
+    aliasVal, ok := entry.Field["intf_naming_mode"]
     if !ok {
         // don't return error, keep populating data structures
         aliasMode = false
-        log.Infof("aliasMode not present, disabling alias mode")
+        log.Infof("intf_naming_mode not present, disabling alias mode")
         return
     }
-    aliasMode = (aliasVal == "true")
+    aliasMode = (aliasVal == "alias")
     log.Infof("aliasMode set to %v", aliasMode);
 }
 
