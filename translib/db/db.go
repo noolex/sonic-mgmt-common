@@ -669,16 +669,12 @@ func (d *DB) doWrite(ts *TableSpec, op _txOp, key Key, val interface{}) error {
 
 	switch d.txState {
 	case txStateNone:
-		if glog.V(2) {
-			glog.Info("doWrite: No Transaction.")
-		}
-		break
+		glog.Info("doWrite: No Transaction.")
 	case txStateWatch:
 		if glog.V(2) {
 			glog.Info("doWrite: Change to txStateSet, txState: ", d.txState)
 		}
 		d.txState = txStateSet
-		break
 	case txStateSet:
 		if glog.V(5) {
 			glog.Info("doWrite: Remain in txStateSet, txState: ", d.txState)
@@ -715,7 +711,7 @@ func (d *DB) doWrite(ts *TableSpec, op _txOp, key Key, val interface{}) error {
 
 		case txOpHDel:
 			fields := make([]string, 0, len(val.(Value).Field))
-			for k, _ := range val.(Value).Field {
+			for k := range val.(Value).Field {
 				fields = append(fields, k)
 			}
 
@@ -740,7 +736,7 @@ func (d *DB) doWrite(ts *TableSpec, op _txOp, key Key, val interface{}) error {
 
 	// Transaction case.
 
-	glog.Info("doWrite: op: ", op, "  ", key, " : ", value)
+	glog.Info("doWrite: op: ", op, "  ", d.key2redis(ts, key), " : ", value)
 
 	switch op {
 	case txOpHMSet, txOpHDel:
@@ -786,7 +782,7 @@ func (d *DB) setEntry(ts *TableSpec, key Key, value Value, isCreate bool) error 
 	}
 
 	if len(value.Field) == 0 {
-		if ts.NoDelete == true {
+		if ts.NoDelete {
 			glog.Info("setEntry: NoDelete flag is true, skipping deletion of the entry.")
 		} else {
 			glog.Info("setEntry: Mapping to DeleteEntry()")
@@ -795,14 +791,14 @@ func (d *DB) setEntry(ts *TableSpec, key Key, value Value, isCreate bool) error 
 		goto setEntryExit
 	}
 
-	if isCreate == false {
+	if !isCreate {
 		// Prepare the HDel list
 		// Note: This is for compatibililty with PySWSSDK semantics.
 		//       The CVL library will likely fail the SetEntry when
 		//       the item exists.
 		valueCurrent, e = d.GetEntry(ts, key)
 		if e == nil {
-			for k, _ := range valueCurrent.Field {
+			for k := range valueCurrent.Field {
 				_, present := value.Field[k]
 				if !present {
 					valueComplement.Field[k] = string("")
@@ -811,7 +807,7 @@ func (d *DB) setEntry(ts *TableSpec, key Key, value Value, isCreate bool) error 
 		}
 	}
 
-	if isCreate == false && e == nil {
+	if !isCreate && e == nil {
 		if glog.V(3) {
 			glog.Info("setEntry: DoCVL for UPDATE")
 		}
@@ -897,7 +893,7 @@ func (d *DB) ModEntry(ts *TableSpec, key Key, value Value) error {
 	}
 
 	if len(value.Field) == 0 {
-		if ts.NoDelete == true {
+		if ts.NoDelete {
 			glog.Info("ModEntry: NoDelete flag is true, skipping deletion of the entry.")
 		} else {
 			glog.Info("ModEntry: Mapping to DeleteEntry()")
@@ -1045,7 +1041,7 @@ func (t *Table) GetKeys() ([]Key, error) {
 		glog.Info("Table.GetKeys: Begin: t: ", t)
 	}
 	keys := make([]Key, 0, len(t.entry))
-	for k, _ := range t.entry {
+	for k := range t.entry {
 		keys = append(keys, t.db.redis2key(t.ts, k))
 	}
 
@@ -1180,7 +1176,7 @@ func (w WatchKeys) String() string {
 	return fmt.Sprintf("{ Ts: %v, Key: %v }", w.Ts, w.Key)
 }
 
-// Convenience function to make TableSpecs from strings.
+// Tables2TableSpecs - Convenience function to make TableSpecs from strings.
 // This only works on Tables having key components without TableSeparator
 // as part of the key.
 func Tables2TableSpecs(tables []string) []*TableSpec {
@@ -1380,7 +1376,7 @@ func (d *DB) CommitTx() error {
 			args = make([]interface{}, 0, len(d.txCmds[i].value.Field)+2)
 			args = append(args, "HDEL", redisKey)
 
-			for k, _ := range d.txCmds[i].value.Field {
+			for k := range d.txCmds[i].value.Field {
 				args = append(args, k)
 			}
 
@@ -1412,7 +1408,7 @@ func (d *DB) CommitTx() error {
 	}
 
 	// Flag the Tables as updated.
-	for ts, _ := range tsmap {
+	for ts := range tsmap {
 		_, e = d.client.Do("SET", d.ts2redisUpdated(&ts), "1").Result()
 		if e != nil {
 			glog.Warning("CommitTx: Do: SET ",

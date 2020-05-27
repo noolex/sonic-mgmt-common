@@ -85,7 +85,7 @@ module sonic-system-ntp {
                 leaf vrf {
                     type union {
                         type string {
-                            pattern "mgmt";
+                            pattern "mgmt|default";
                         }
 
                         type leafref {

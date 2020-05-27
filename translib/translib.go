@@ -175,7 +175,7 @@ func init() {
 	log.Flush()
 }
 
-//Creates entries in the redis DB pertaining to the path and payload
+//Create - Creates entries in the redis DB pertaining to the path and payload
 func Create(req SetRequest) (SetResponse, error) {
 	var keys []db.WatchKeys
 	var resp SetResponse
@@ -249,7 +249,7 @@ func Create(req SetRequest) (SetResponse, error) {
 	return resp, err
 }
 
-//Updates entries in the redis DB pertaining to the path and payload
+//Update - Updates entries in the redis DB pertaining to the path and payload
 func Update(req SetRequest) (SetResponse, error) {
 	var keys []db.WatchKeys
 	var resp SetResponse
@@ -324,7 +324,7 @@ func Update(req SetRequest) (SetResponse, error) {
 	return resp, err
 }
 
-//Replaces entries in the redis DB pertaining to the path and payload
+//Replace - Replaces entries in the redis DB pertaining to the path and payload
 func Replace(req SetRequest) (SetResponse, error) {
 	var err error
 	var keys []db.WatchKeys
@@ -340,26 +340,6 @@ func Replace(req SetRequest) (SetResponse, error) {
 
 	log.Info("Replace request received with path =", path)
 	log.Info("Replace request received with payload =", string(payload))
-
-
-        requestPathInfo := NewPathInfo(path)
-        requestUriPath, err := getYangPathFromUri(requestPathInfo.Path)
-	log.Info("requestUriPath : ", requestUriPath)
-
-        switch requestUriPath {
-            case "/openconfig-relay-agent:relay-agent":fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcp":fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcp/interfaces": fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcp/interfaces/interface": fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcpv6":fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces": fallthrough
-            case "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces/interface":
-            {
-                log.Info("replace on this container not allowed")
-                resp.ErrSrc = AppErr
-                return resp, tlerr.New("REPLACE operation not supported on this container")
-            }
-        }
 
 	app, appInfo, err := getAppModule(path, req.ClientVersion)
 
@@ -419,7 +399,7 @@ func Replace(req SetRequest) (SetResponse, error) {
 	return resp, err
 }
 
-//Deletes entries in the redis DB pertaining to the path
+//Delete - Deletes entries in the redis DB pertaining to the path
 func Delete(req SetRequest) (SetResponse, error) {
 	var err error
 	var keys []db.WatchKeys
@@ -435,19 +415,12 @@ func Delete(req SetRequest) (SetResponse, error) {
 	log.Info("Delete request received with path =", path)
 
 	requestPathInfo := NewPathInfo(path)
-    requestUriPath, err := getYangPathFromUri(requestPathInfo.Path)
+    requestUriPath, _ := getYangPathFromUri(requestPathInfo.Path)
 	log.Info("requestUriPath : ", requestUriPath)
     ifName := requestPathInfo.Var("name")
 
     switch requestUriPath {
-        case "/openconfig-interfaces:interfaces": fallthrough
-        case "/openconfig-relay-agent:relay-agent":fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcp":fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcp/interfaces": fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcp/interfaces/interface": fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcpv6":fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces": fallthrough
-        case "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces/interface":
+        case "/openconfig-interfaces:interfaces": 
         {
             log.Info("delete on this container not allowed")
             resp.ErrSrc = AppErr
@@ -517,7 +490,7 @@ func Delete(req SetRequest) (SetResponse, error) {
 	return resp, err
 }
 
-//Gets data from the redis DB and converts it to northbound format
+//Get - Gets data from the redis DB and converts it to northbound format
 func Get(req GetRequest) (GetResponse, error) {
 	var payload []byte
 	var resp GetResponse
@@ -661,7 +634,7 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
         return resp, err
     }
 
-	for i, _ := range req.DeleteRequest {
+	for i := range req.DeleteRequest {
 		path := req.DeleteRequest[i].Path
 
 		log.Info("Delete request received with path =", path)
@@ -710,7 +683,7 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 		}
 	}
 
-    for i, _ := range req.ReplaceRequest {
+    for i := range req.ReplaceRequest {
         path := req.ReplaceRequest[i].Path
 		payload := req.ReplaceRequest[i].Payload
 
@@ -763,7 +736,7 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
         }
     }
 
-	for i, _ := range req.UpdateRequest {
+	for i := range req.UpdateRequest {
 		path := req.UpdateRequest[i].Path
 		payload := req.UpdateRequest[i].Payload
 
@@ -813,7 +786,7 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 		}
 	}
 
-	for i, _ := range req.CreateRequest {
+	for i := range req.CreateRequest {
 		path := req.CreateRequest[i].Path
 		payload := req.CreateRequest[i].Payload
 
@@ -868,7 +841,7 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 	return resp, err
 }
 
-//Subscribes to the paths requested and sends notifications when the data changes in DB
+//Subscribe - Subscribes to the paths requested and sends notifications when the data changes in DB
 func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	var err error
 	var sErr error
@@ -881,7 +854,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 	resp := make([]*IsSubscribeResponse, len(paths))
 
-	for i, _ := range resp {
+	for i := range resp {
 		resp[i] = &IsSubscribeResponse{Path: paths[i],
 			IsOnChangeSupported: false,
 			MinInterval:         minSubsInterval,
@@ -977,13 +950,13 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	return resp, sErr
 }
 
-//Check if subscribe is supported on the given paths
+//IsSubscribeSupported - Check if subscribe is supported on the given paths
 func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 	paths := req.Paths
 	resp := make([]*IsSubscribeResponse, len(paths))
 
-	for i, _ := range resp {
+	for i := range resp {
 		resp[i] = &IsSubscribeResponse{Path: paths[i],
 			IsOnChangeSupported: false,
 			MinInterval:         minSubsInterval,
@@ -1043,7 +1016,7 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 	return resp, err
 }
 
-//Gets all the models supported by Translib
+//GetModels - Gets all the models supported by Translib
 func GetModels() ([]ModelData, error) {
 	var err error
 
@@ -1155,7 +1128,7 @@ func closeAllDbs(dbs []*db.DB) {
 	}
 }
 
-// Implement Compare method for priority queue for SubscribeResponse struct
+// Compare - Implement Compare method for priority queue for SubscribeResponse struct
 func (val SubscribeResponse) Compare(other queue.Item) int {
 	o := other.(*SubscribeResponse)
 	if val.Timestamp > o.Timestamp {
@@ -1172,10 +1145,8 @@ func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
 	switch dbNo {
 	case db.ApplDB, db.CountersDB, db.AsicDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-		break
 	case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB, db.UserDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
-		break
 	}
 
 	return opt

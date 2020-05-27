@@ -325,7 +325,7 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         if (dbEntry.IsPopulated()) {
                 vrfName := (&dbEntry).Get("vrf")
 
-                if (vrfName == "") {
+                if ( (vrfName == "") || (vrfName == "default") ) {
                         log.Info("DbToYang_ntp_server_subtree_xfmr, NTP vrf not configured")
                         err = ProcessGetNtpServer(inParams, "ntpq", "-p")
                 } else if (vrfName == "mgmt") {

@@ -1,0 +1,35 @@
+module sonic-flow-based-services-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/sfbs-annot";
+    prefix "sfbs-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-flow-based-services { prefix sfbs; }
+
+    deviation /sfbs:show_classifier {
+        deviate add {
+	    sonic-ext:rpc-callback "rpc_show_classifier";
+        }
+    }
+
+    deviation /sfbs:show_policy {
+        deviate add {
+	    sonic-ext:rpc-callback "rpc_show_policy";
+        }
+    }
+
+    deviation /sfbs:show_service_policy {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_service_policy";
+        }
+    }
+
+    deviation /sfbs:clear_service_policy {
+        deviate add {
+	    sonic-ext:rpc-callback "rpc_clear_service_policy";
+        }
+    }
+}
+
