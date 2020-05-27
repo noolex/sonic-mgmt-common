@@ -171,7 +171,7 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 }
 
 
-func fill_dscp_map_info_by_key(inParams XfmrParams, dscpMaps * ocbinds.OpenconfigQos_Qos_DscpMaps, name string) error {
+func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.OpenconfigQos_Qos_DscpMaps, name string) error {
 
     mapObj, ok := dscpMaps.DscpMap[name]
     if !ok {
@@ -269,14 +269,13 @@ func fill_dscp_map_info_by_key(inParams XfmrParams, dscpMaps * ocbinds.Openconfi
 
 
 var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+    var err error
 
     pathInfo := NewPathInfo(inParams.uri)
 
     name := pathInfo.Var("name")
 
     log.Info("inParams: ", inParams)
-
-    var err error
 
     qosObj := getQosRoot(inParams.ygRoot)
 
@@ -288,7 +287,6 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         ygot.BuildEmptyTree(qosObj.DscpMaps)
     }
 
-    // Classifier
     dbSpec := &db.TableSpec{Name: "DSCP_TO_TC_MAP"}
 
     map_added := 0
@@ -303,7 +301,7 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
 
         map_added = map_added + 1 
 
-        err = fill_dscp_map_info_by_key(inParams, qosObj.DscpMaps, map_name)
+        err = fill_dscp_map_info_by_name(inParams, qosObj.DscpMaps, map_name)
 
         if err != nil {
            return err
