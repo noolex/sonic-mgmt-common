@@ -24,6 +24,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "encoding/json"
     "fmt"
     "os/exec"
@@ -103,8 +104,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Neighbors_Neighbor
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
-
     intfNameRcvd := pathInfo.Var("name")
+
     ipAddrRcvd := pathInfo.Var("ip")
 
     if intfObj, ok = intfsObj.Interface[intfNameRcvd]; !ok {
@@ -123,6 +124,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             return err
         }
     }
+    log.Info("Interface name received = ", intfNameRcvd)
     ygot.BuildEmptyTree(subIntfObj)
 
     for key, entry := range data["NEIGH_TABLE"] {
@@ -600,7 +602,9 @@ var rpc_clear_neighbors RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
     if input, ok := mapData["ifname"]; ok {
         input_str := fmt.Sprintf("%v", input)
-        intf = input_str
+        sonicIfName := utils.GetInterfaceNameFromAlias(&input_str)
+        log.Info("Converted Interface name = ", *sonicIfName)
+        intf = *sonicIfName
     }
 
     if input, ok := mapData["ip"]; ok {

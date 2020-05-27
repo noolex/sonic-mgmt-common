@@ -10,6 +10,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "github.com/openconfig/ygot/ytypes"
     "encoding/json"
     log "github.com/golang/glog"
@@ -334,12 +335,14 @@ func fdbMacTableGetEntry(inParams XfmrParams, vlan string,  macAddress string, o
                 intfName := new(string)
                 *intfName = findInMap(oidInfMap, intfOid)
                 if *intfName != "" {
+                    /* If Alias mode is enabled, get alias name from native name */
+                    cvtdName := utils.GetAliasNameFromIfName(intfName)
                     ygot.BuildEmptyTree(mcEntry.Interface)
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef)
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef.Config)
-                    mcEntry.Interface.InterfaceRef.Config.Interface = intfName
+                    mcEntry.Interface.InterfaceRef.Config.Interface = cvtdName
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef.State)
-                    mcEntry.Interface.InterfaceRef.State.Interface = intfName
+                    mcEntry.Interface.InterfaceRef.State.Interface = cvtdName
                 }
             }
         }
