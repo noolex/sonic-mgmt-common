@@ -239,6 +239,7 @@ func fill_pgrp_state_info (pgrp_key *_xfmr_bgp_pgrp_state_key, frrPgrpDataValue 
                 member.State = &member_state
             }
             ygot.BuildEmptyTree(pgrp_obj)
+            member.State.Neighbor = &pgMem
             temp, ok := peerGroupMembers[pgMem].(map[string]interface{})
             if  ok {
                 if value, ok := temp["peerStatus"].(string); ok {
