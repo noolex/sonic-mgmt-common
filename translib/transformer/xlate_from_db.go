@@ -648,7 +648,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 	tbl := inParamsForGet.tbl
 	dbKey := inParamsForGet.tblKey
 
-	curKeyMap, curUri, _ := dbKeyToYangDataConvert(uri, requestUri, xpath, dbKey, dbs[cdb].Opts.KeySeparator, txCache)
+	curKeyMap, curUri, _ := dbKeyToYangDataConvert(uri, requestUri, xpath, tbl, dbDataMap, dbKey, dbs[cdb].Opts.KeySeparator, txCache)
 	parentXpath := parentXpathGet(xpath)
 	_, ok := xYangSpecMap[xpath]
 	if ok && len(xYangSpecMap[xpath].xfmrFunc) > 0 {

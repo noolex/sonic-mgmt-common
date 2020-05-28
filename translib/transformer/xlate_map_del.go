@@ -114,7 +114,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 			tblData, ok := (*dbDataMap)[cdb][tbl]
 			if ok {
 				for dbKey, _ := range tblData {
-					_, curUri, kerr := dbKeyToYangDataConvert(xlateParams.uri, xlateParams.requestUri, xlateParams.xpath, dbKey, separator, xlateParams.txCache)
+					_, curUri, kerr := dbKeyToYangDataConvert(xlateParams.uri, xlateParams.requestUri, xlateParams.xpath, tbl, dbDataMap, dbKey, separator, xlateParams.txCache)
 					if kerr != nil {
 						continue
 					}
