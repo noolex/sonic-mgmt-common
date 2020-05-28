@@ -1,6 +1,6 @@
 module openconfig-ospfv2-ext {
 
-  yang-version "1";
+  yang-version "1.1";
 
   // namespace
   namespace "http://openconfig.net/yang/ospfv2/extension";
@@ -17,6 +17,7 @@ module openconfig-ospfv2-ext {
   import openconfig-routing-policy { prefix "oc-rpol"; }
   import openconfig-if-ip { prefix oc-ip; }
   import openconfig-policy-types { prefix "oc-pol-types"; }
+  import openconfig-acl { prefix oc-acl; }
 
   // import ospfv2 module
   import openconfig-ospfv2 { prefix "oc-ospfv2"; }
@@ -1114,17 +1115,17 @@ module openconfig-ospfv2-ext {
   }
 
 
-  grouping ospfv2-policy-area-route-map-config-ext {
+  grouping ospfv2-policy-area-access-list-config-ext {
     description
       "Configuration parameters relating route map within the OSPF area";
 
     leaf name {
       type leafref {
-              path "/oc-rpol:routing-policy/oc-rpol:policy-definitions" +
-                   "/oc-rpol:policy-definition/oc-rpol:name";
-      }
+        path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set" +
+             "/oc-acl:config/oc-acl:name";
+        }
       description
-        "Route map name for export prefixes";
+        "IPv4 Access list name for prefixes filtering";
     }
   }
 
@@ -1152,14 +1153,14 @@ module openconfig-ospfv2-ext {
       container config {
         description
           "Configuration parameters relating to the OSPF area export list";
-        uses ospfv2-policy-area-route-map-config-ext;
+        uses ospfv2-policy-area-access-list-config-ext;
       }
 
       container state {
         config false;
         description
           "State parameters relating to the OSPF area export list";
-        uses ospfv2-policy-area-route-map-config-ext;
+        uses ospfv2-policy-area-access-list-config-ext;
       }
     }
   }
@@ -1174,14 +1175,14 @@ module openconfig-ospfv2-ext {
       container config {
         description
           "Configuration parameters relating to the OSPF area import list";
-        uses ospfv2-policy-area-route-map-config-ext;
+        uses ospfv2-policy-area-access-list-config-ext;
       }
 
       container state {
         config false;
         description
           "State parameters relating to the OSPF area import list";
-        uses ospfv2-policy-area-route-map-config-ext;
+        uses ospfv2-policy-area-access-list-config-ext;
       }
     }
   }
@@ -1411,6 +1412,16 @@ module openconfig-ospfv2-ext {
       }
       description
         "Route map name for route distribution";
+    }
+
+    leaf access-list {
+      when "../direction = 'EXPORT'";
+      type leafref {
+          path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set" +
+               "/oc-acl:config/oc-acl:name";
+      }
+      description
+        "IPv4 Access list name for route distribution list";
     }
   }
 

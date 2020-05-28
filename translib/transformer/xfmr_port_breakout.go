@@ -141,8 +141,13 @@ func breakout_action (ifName string, from_mode string, to_mode string, inParams 
                     log.Info("PORTS TO BE DELETED: ", curr_ports)
                     //3. Add ports
                     addMap := addPorts(ports)
-                    addMap[db.ConfigDB]["BREAKOUT_PORTS"] = updateDpbPorts(ifName, curr_ports, ports)
-                    inParams.subOpDataMap[UPDATE] = &addMap
+                    inParams.subOpDataMap[CREATE] = &addMap
+                    //4. Update the lane set and port map
+                    portMap := make(map[db.DBNum]map[string]map[string]db.Value)
+                    portMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+                    portMap[db.ConfigDB]["BREAKOUT_PORTS"] = updateDpbPorts(ifName, curr_ports, ports)
+                    portMap[db.ConfigDB]["BREAKOUT_CFG"] = getLaneSet(ifName)
+                    inParams.subOpDataMap[UPDATE] = &portMap
                     log.Info("PORTS TO BE ADDED: ", ports)
                     *inParams.pCascadeDelTbl = append(*inParams.pCascadeDelTbl, "PORT")
                 }
