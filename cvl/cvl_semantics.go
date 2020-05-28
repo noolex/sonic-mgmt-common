@@ -1418,8 +1418,9 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 	leafRef *tblFieldPair, depDataKey, keyVal string) bool {
 
 	for _, cfgDataItem := range cfgData {
-		if (cfgDataItem.VType != VALIDATE_NONE) ||
-		(cfgDataItem.VOp != OP_DELETE) {
+		// All cfgDataItems which have VType as VALIDATE_NONE should be
+		// checked in cache
+		if (cfgDataItem.VType != VALIDATE_NONE) {
 			continue
 		}
 
@@ -1427,7 +1428,8 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 		//getting deleted, break immediately
 
 		//Find in request key, case - T2*|K1
-		if cfgDataItem.Key == depDataKey && len(cfgDataItem.Data) == 0 {
+		if cfgDataItem.Key == depDataKey &&
+			(cfgDataItem.VOp != OP_DELETE || (cfgDataItem.VOp == OP_DELETE && len(cfgDataItem.Data) == 0)) {
 			return true
 		}
 

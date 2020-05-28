@@ -18,5 +18,4 @@ module sonic-interface-annot {
             sonic-ext:db-name "APPL_DB";
         }
     }
-
 }

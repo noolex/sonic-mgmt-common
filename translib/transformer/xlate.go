@@ -41,28 +41,6 @@ const (
     MAXOPER
 )
 
-type KeySpec struct {
-	DbNum db.DBNum
-	Ts    db.TableSpec
-	Key   db.Key
-	Child []KeySpec
-	IgnoreParentKey bool
-}
-
-type NotificationType int
-const (
-    Sample NotificationType = iota
-    OnChange
-)
-
-type XfmrTranslateSubscribeInfo struct {
-    DbDataMap RedisDbMap
-    MinInterval int
-    NeedCache bool
-    PType NotificationType
-    OnChange bool
-}
-
 var XlateFuncs = make(map[string]reflect.Value)
 
 var (
@@ -323,7 +301,7 @@ func fillSonicKeySpec(xpath string , tableName string, keyStr string) ( []KeySpe
 	return retdbFormat
 }
 
-func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interface{}, jsonPayload []byte, txCache interface{}, skipOrdTbl *bool) (map[int]map[db.DBNum]map[string]map[string]db.Value, error) {
+func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interface{}, jsonPayload []byte, txCache interface{}, skipOrdTbl *bool) (map[int]RedisDbMap, error) {
 
 	var err error
 	requestUri := path
@@ -348,7 +326,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 	}
 
 	// Map contains table.key.fields
-	var result = make(map[int]map[db.DBNum]map[string]map[string]db.Value)
+	var result = make(map[int]RedisDbMap)
 	switch opcode {
 	case CREATE:
 		xfmrLogInfo("CREATE case")
@@ -416,10 +394,14 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	var result []byte
 	var dbData = make(RedisDbMap)
 	var cdb db.DBNum = db.ConfigDB
+	var inParamsForGet xlateFromDbParams
+	var xpath string
 
 	dbData = data
+	requestUri := uri
 	if isSonicYang(uri) {
-		xpath, keyStr, tableName := sonicXpathKeyExtract(uri)
+		lxpath, keyStr, tableName := sonicXpathKeyExtract(uri)
+		xpath = lxpath
 		if (tableName != "") {
 			dbInfo, ok := xDbSpecMap[tableName]
 			if !ok {
@@ -449,12 +431,14 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 			}
 		}
 	} else {
-	        xpath, _ := XfmrRemoveXPATHPredicates(uri)
+	        lxpath, _ := XfmrRemoveXPATHPredicates(uri)
+		xpath = lxpath
 		if _, ok := xYangSpecMap[xpath]; ok {
 			cdb = xYangSpecMap[xpath].dbIndex
 		}
 	}
-	payload, err, isEmptyPayload := dbDataToYangJsonCreate(uri, ygRoot, dbs, &dbData, cdb, txCache)
+	inParamsForGet = formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, xpath, GET, "", "", &dbData, txCache, nil, false)
+	payload, err, isEmptyPayload := dbDataToYangJsonCreate(inParamsForGet)
 	xfmrLogInfo("Payload generated : " + payload)
 
 	if err != nil {
@@ -590,16 +574,20 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
 func CallRpcMethod(path string, body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 	var err error
 	var ret []byte
+	var data []reflect.Value
 
 	// TODO - check module name
 	rpcName := strings.Split(path, ":")
 	if dbXpathData, ok := xDbSpecMap[rpcName[1]]; ok {
 		xfmrLogInfo("RPC callback invoked (%v) \r\n", rpcName)
-		data, err := XlateFuncCall(dbXpathData.rpcFunc, body, dbs)
+		data, err = XlateFuncCall(dbXpathData.rpcFunc, body, dbs)
 		if err != nil {
 			return nil, err
 		}
 		ret = data[0].Interface().([]byte)
+		if !data[1].IsNil() {
+            err = data[1].Interface().(error)
+        }
 	} else {
 		log.Error("No tsupported RPC", path)
 		err = tlerr.NotSupported("Not supported RPC")

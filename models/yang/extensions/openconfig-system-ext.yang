@@ -10,6 +10,7 @@ module openconfig-system-ext {
     import openconfig-inet-types { prefix inet; }
     import openconfig-interfaces { prefix "oc-if"; }
     import openconfig-kdump { prefix oc-kdump; }
+    import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
 
     // meta
     organization "OpenConfig working group";
@@ -47,6 +48,10 @@ module openconfig-system-ext {
         uses oc-kdump:kdump-top;
     }
 
+    augment /oc-sys:system {
+        uses oc-systemd-coredump:systemd-coredump-top;
+    }
+
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
         leaf failthrough {
             type string;
@@ -69,7 +74,7 @@ module openconfig-system-ext {
         }
     }
 
-    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config" {
+    grouping aaa-server-groups-config {
         leaf  source-address {
             type inet:ip-address;
             description "The global source ip";
@@ -91,11 +96,26 @@ module openconfig-system-ext {
             description "The global authentication timeout";
         }
         leaf retransmit-attempts {
-          type uint8;
-          description
-              "Number of times the system may resend a request to the
-              RADIUS server when it is unresponsive";
+            type uint8;
+            description
+                "Number of times the system may resend a request to the
+                RADIUS server when it is unresponsive";
         }
+        leaf source-interface {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+                "Source interface to pick the source IP address for the packets to TACACS+/Radius servers";
+        }
+    }
+    
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config" {
+        uses aaa-server-groups-config;
+    }
+ 
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state" {
+        uses aaa-server-groups-config;
     }
 
     grouping ssh-vrf-config {
@@ -151,7 +171,7 @@ module openconfig-system-ext {
     }
 
     grouping dns-source-config {
-        leaf source-intf {
+        leaf source-interface {
             type leafref {
                 path "/oc-if:interfaces/oc-if:interface/oc-if:name";
             }

@@ -1,0 +1,710 @@
+submodule openconfig-fbs-policies-ext {
+  belongs-to openconfig-fbs-ext {
+    prefix oc-fbs-ext;
+  }
+
+  // import some basic types
+  import openconfig-inet-types { prefix "oc-inet"; }
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-qos { prefix oc-qos; }
+  import openconfig-network-instance { prefix oc-netinst; }
+  import openconfig-interfaces { prefix oc-if; }
+
+  include openconfig-fbs-classifiers-ext;
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC
+    https://github.com/Azure/SONiC";
+
+  description
+    "This model defines the configuration and operational data
+    for flow based services classifiers.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-15" {
+    description
+      "Initial revision";
+
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+  identity POLICY_TYPE {
+    description
+      "Base identity for policy types";
+  }
+
+  identity POLICY_QOS {
+    base POLICY_TYPE;
+    description
+      "Policy with QoS actions";
+  }
+
+  identity POLICY_FORWARDING {
+    base POLICY_TYPE;
+    description
+      "Policy with forwarding actions.";
+  }
+
+  identity POLICY_MONITORING {
+    base POLICY_TYPE;
+    description
+      "Policy with monitoring actions like SPAN.";
+  }
+
+  // typedef statements
+
+  // grouping statements
+  grouping qos-action-config {
+    description
+      "Configuration common for all QoS actions";
+  }
+
+  grouping qos-action-state {
+    description
+      "Operational state common for all QoS actions";
+  }
+
+  grouping section-qos-actions {
+    description
+      "Grouping for all QoS actions";
+
+    container qos {
+      when "../../config/type = 'POLICY_QOS'";
+
+      description
+        "Container for QoS actions";
+
+      container config {
+        description
+          "QoS action configuration";
+
+        uses qos-action-config;
+      }
+
+      container state {
+        description
+          "QoS action operational state";
+
+        uses qos-action-config;
+        uses qos-action-state;
+      }
+
+      container remark {
+        description
+          "Remark actions to be associated with packets that match the
+          classifier match conditions.";
+
+        uses qos-remark-actions;
+      }
+
+      container policer {
+        description
+          "Policer or rate limiting action to be associated with
+          packets that match the classifier match conditions.";
+
+        container config {
+          description
+            "Configuration for policer action";
+
+          uses qos-policer-config-params;
+          uses qos-police-action-config;
+        }
+
+        container state {
+          description
+            "Operational state for policer action";
+
+          uses qos-policer-config-params;
+          uses qos-police-action-config;
+        }
+      }
+
+      container queuing {
+        description
+          "Set the queue for the matching traffic";
+
+        container config {
+          description
+            "Configuration for queueing action";
+
+          uses queuing-action-config;
+        }
+
+        container state {
+          description
+            "Operational state for queueing action";
+
+          uses queuing-action-config;
+        }
+      }
+    }
+  }
+
+  grouping queuing-action-config {
+    description
+      "Grouping for queuing action for traffic";
+
+    leaf queue-name {
+      type leafref {
+        path "/oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:config/oc-qos:name";
+      }
+
+      description
+        "Name of the Queue the traffic should be queued to";
+    }
+  }
+
+  grouping qos-remark-actions {
+    description
+      "Grouping specifying actions related to re-marking
+      packets";
+
+    container config {
+      description
+        "Configuration parameters relating to remarking packets.";
+      uses qos-remark-actions-config;
+    }
+
+    container state {
+      config false;
+      description
+        "Operational state parameters relating to remarking packets.";
+      uses qos-remark-actions-config;
+    }
+  }
+
+  grouping qos-remark-actions-config {
+    description
+      "Configuration data for QoS re-marking actions";
+
+    leaf set-dscp {
+      type uint8;
+      description
+        "Sets the 6-bit DSCP (differentiated services code point)
+        value in the IP packet header.";
+      reference
+        "RFC 2474 - Definition of the Differentiated Services Field
+        (DS Field) in the IPv4 and IPv6 Headers";
+    }
+
+    leaf set-dot1p {
+      type uint8;
+      description
+        "Sets the 3-bit class-of-service value in the
+        Ethernet packet header for 802.1Q VLAN-tagged packets,
+        also known as PCP (priority code point).";
+      reference
+        "IEEE 802.1Q-2014 - IEEE Standard for Local and metropolitan
+        area networks--Bridges and Bridged Networks";
+    }
+  }
+
+  grouping qos-police-action-config {
+    description
+      "Grouping for Policer configuration";
+  }
+
+  grouping qos-policer-config-params {
+    description
+      "Configuration data for 2 rate, 3 color policer";
+
+    leaf cir {
+      type uint64;
+      units bps;
+      description
+        "Committed information rate for the dual-rate token
+        bucket policer.  This value represents the rate at which
+        tokens are added to the primary bucket.";
+    }
+
+    leaf pir {
+      type uint64;
+      units bps;
+      description
+        "Peak information rate for the dual-rate token bucket
+        policer.  This value represents the rate at which tokens
+        are added to the secondary bucket.";
+    }
+
+    leaf bc {
+      type uint32;
+      units bytes;
+      description
+        "Committed burst size for the dual-rate token bucket
+        policer.  This value represents the depth of the token
+        bucket.";
+    }
+
+    leaf be {
+      type uint32;
+      units bytes;
+      description
+        "Excess burst size for the dual-rate token bucket policer.
+        This value represents the depth of the secondary bucket.";
+    }
+  }
+
+  grouping section-forwarding-actions {
+    description
+      "Grouping for all forwarding actions. A section contain either
+      a layer 2 forwarding or layer 3 forwarding action.";
+
+    container forwarding {
+      when "../../config/type = 'POLICY_FORWARDING'";
+
+      description
+        "Container for forwarding actions";
+
+      container config {
+        description
+          "Configuration for all forwarding actions";
+
+        uses forwarding-config;
+      }
+
+      container state {
+        description
+          "Operational state for all forwarding actions";
+
+        uses forwarding-config;
+      }
+
+      uses layer2-forwarding-actions;
+      uses layer3-forwarding-actions;
+    }
+  }
+
+  grouping forwarding-config {
+    description
+      "Configuration common to all forwarding entries";
+
+    leaf discard {
+      type boolean;
+      default false;
+
+      description
+        "Indicates that traffic should be dropped if none of the
+        configured next-hops or egress interfaces are reachable. If
+        set to false or not configured, the traffic will go through
+        normal forwarding path.";
+    }
+  }
+
+  grouping layer3-forwarding-actions {
+    description
+      "Grouping for all egress next-hops configuration";
+
+    container next-hops {
+      description
+        "Container for all next-hop related configuration.";
+
+      list next-hop {
+        key "ip-address network-instance";
+
+        description
+          "List of next-hops configured for forwarding";
+
+        leaf ip-address {
+          type leafref {
+            path "../config/ip-address";
+          }
+
+          description
+            "Reference to the Next-hop IP address used as key";
+        }
+
+        leaf network-instance {
+          type leafref {
+            path "../config/network-instance";
+          }
+
+          description
+            "Reference to the network instance used as key";
+        }
+
+        container config {
+          description
+            "Configuration of Next hop used for layer3 forwarding";
+
+          uses layer3-fwd-next-hop-config;
+        }
+
+        container state {
+          description
+            "Operational state of the next hop used for layer3 forwarding";
+
+          uses layer3-fwd-next-hop-config;
+        }
+      }
+    }
+  }
+
+  grouping layer3-fwd-next-hop-config {
+    description
+      "Grouping for Layer 3 egress ie next-hop related configuration";
+
+    leaf ip-address {
+      type oc-inet:ip-address;
+
+      description
+        "When an IP next-hop is specified in the next-hop field,
+        packets matching the match criteria for the forwarding rule
+        should be forwarded to the next-hop IP address, bypassing any
+        lookup on the local system.";
+    }
+
+    leaf network-instance {
+      type leafref {
+        path "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:config/oc-netinst:name";
+      }
+
+      description
+        "When this leaf is set, packets matching the match criteria
+        for the forwarding rule should be looked up in the
+        network-instance that is referenced rather than the
+        network-instance with which the interface is associated.
+        Such configuration allows policy-routing into multiple
+        sub-topologies from a single ingress access interface, or
+        different send and receive contexts for a particular
+        interface (sometimes referred to as half-duplex VRF).";
+    }
+
+    leaf priority {
+      type uint16;
+
+      description
+        "This leaf indicates the priority of the next-hop to be
+        selected for forwarding. A Next-hop with highest value of
+        priority will be selected for forwarding from all the
+        next-hops which are reachable.";
+    }
+  }
+
+  grouping layer2-forwarding-actions {
+    description
+      "Grouping for all Layer 2 egress interfaces";
+
+    container egress-interfaces {
+      description
+        "Container for all egress interfaces";
+
+      list egress-interface {
+        key "intf-name";
+
+        description
+          "List of all interfaces that are configured as
+          egress";
+
+        leaf intf-name {
+          type leafref {
+            path "../config/intf-name";
+          }
+
+          description
+            "Reference to the interface name key";
+        }
+
+        container config {
+          description
+            "Egress interface related configuration";
+
+          uses egress-interface-config;
+        }
+
+        container state {
+          description
+            "Egress interface related configuration";
+
+          uses egress-interface-config;
+        }
+      }
+    }
+  }
+
+  grouping egress-interface-config {
+    description
+      "Grouping for all egress interface related configuration";
+
+    leaf intf-name {
+      type leafref {
+        path "/oc-if:interfaces/oc-if:interface/oc-if:config/oc-if:name";
+      }
+
+      description
+        "Name of the egress interface. The Interface must be a layer 2
+        interface and must be online to be selected for forwarding.";
+    }
+
+    leaf priority {
+      type uint16;
+
+      description
+        "This leaf indicates the priority of the egress interface
+        to be selected for forwarding. An egress interface with
+        highest value of priority will be selected for forwarding
+        from all the egress interfaces which are online.";
+    }
+  }
+
+  grouping section-monitoring-actions {
+    description
+      "Grouping for all monitoring actions";
+
+    container monitoring {
+      when "../../config/type = 'POLICY_MONITORING'";
+
+      description
+        "Container for monitoring actions";
+
+      container config {
+        description
+          "Monitoring action config data";
+
+        uses monitoring-action-config;
+      }
+
+      container state {
+        description
+          "Monitoring action operational state data";
+
+        uses monitoring-action-config;
+      }
+
+      uses monitoring-span-action;
+      // Additional mointoring actions like Sflow can be added here
+    }
+  }
+
+  grouping monitoring-action-config {
+    description
+      "Grouping for monitoring config";
+  }
+
+  grouping monitoring-span-action {
+    description
+      "Grouping for all SPAN related actions";
+
+    container mirror-sessions {
+      description
+        "Container for all mirroring sessions";
+
+      list mirror-session {
+        key "session-name";
+
+        description
+          "List of all mirror sessions to be used as action. The number
+          of sessions supported per flow is dependent on the implementation
+           and the platform. /fbs/state/flow-max-sessions can be used to get
+          this information.";
+
+        leaf session-name {
+          type leafref {
+            path "../config/session-name";
+          }
+
+          description
+            "Reference to mirror session name config";
+        }
+
+        container config {
+          description
+            "Mirror session action configuration";
+
+          uses mirror-session-config;
+        }
+
+        container state {
+          description
+            "Mirror session action operational state";
+
+          uses mirror-session-config;
+        }
+      }
+    }
+  }
+
+  grouping mirror-session-config {
+    description
+      "Grouping for mirror session name";
+
+    leaf session-name {
+      type string; // Change to leafref
+
+      description
+        "Name of mirror session containing the SPAN parameters.
+        The name can be of span session type ie SPAN/ERSPAN etc";
+    }
+  }
+
+  grouping section-actions {
+    description
+      "Grouping for actions supported by the section. The actions
+      supported is dependent on the type of the policy";
+
+    uses section-qos-actions;
+    uses section-monitoring-actions;
+    uses section-forwarding-actions;
+  }
+
+  grouping section-config {
+    description
+      "Grouping for section configuration";
+
+    leaf name {
+      type leafref {
+        path "../../../../../classifiers/classifier/config/name";
+      }
+
+      description
+        "Reference to the classifier which contains the match
+        criteria for flow classification.";
+    }
+
+    leaf priority {
+      type uint16;
+
+      description
+        "Indicates the priority of this flow in the policy. Higher the
+         numerical value, higher the priority. The range is dependent on
+         implementation of the vendor.";
+    }
+  }
+
+  grouping section-state {
+    description
+      "Grouping for section operational state";
+  }
+
+  grouping policy-sections-top {
+    description
+      "Grouping for policy sections";
+
+    list sections {
+      key "class";
+
+      description
+        "List of sections. Each section consists of the
+        reference to a classifier used to identify the
+        traffic flow and its actions.";
+
+      leaf class {
+        type leafref {
+          path "../config/name";
+        }
+
+        description
+          "Class name reference to be used as key";
+      }
+
+      container config {
+        description
+          "Policy section configuration data";
+
+        uses section-config;
+      }
+
+      container state {
+        description
+          "Policy section configuration data";
+
+        uses section-config;
+        uses section-state;
+      }
+
+      uses section-actions;
+    }
+  }
+
+  grouping fbs-policy-config {
+    description
+      "Policy configuration";
+
+      leaf name {
+        type string;
+
+        description
+          "Name of the policy";
+      }
+
+      leaf type {
+        type identityref {
+          base POLICY_TYPE;
+        }
+
+        description
+          "Type of the policy. This decides what actions the policy
+           supports.";
+      }
+  }
+
+  grouping fbs-policy-state {
+    description
+      "Policy operational state";
+  }
+
+  grouping fbs-policies-top {
+    description
+      "Policies top container";
+
+    container policies {
+      description
+        "Container enclosing all policies configuration";
+
+      list policy {
+        key "policy-name";
+
+        description
+          "List of Policy. Each policy contains information about
+          the classifier reference used for flow identification and
+          its corresponding action";
+
+        leaf policy-name {
+          type leafref {
+            path ../config/name;
+          }
+
+          description
+            "Policy name key reference";
+        }
+
+        container config {
+          description
+            "Policy config";
+
+          uses fbs-policy-config;
+        }
+
+        container state {
+          config false;
+
+          description
+            "Policy operational state";
+
+          uses fbs-policy-config;
+          uses fbs-policy-state;
+        }
+
+        uses policy-sections-top;
+      }
+    }
+  }
+
+  // data definition statements
+
+  // augment statements
+
+  // rpc statements
+
+  // notification statements
+
+}
+

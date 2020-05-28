@@ -49,7 +49,29 @@ module sonic-flow-based-services {
             "Initial revision.";
     }
 
-    grouping classifierAttributes {
+    typedef classifier-match-type {
+        type enumeration {
+            enum FIELDS;
+            enum ACL;
+        }
+    }
+
+    typedef policy-types {
+        type enumeration {
+            enum QOS;
+            enum MONITORING;
+            enum FORWARDING;
+        }
+    }
+
+    typedef policy-binding-stages {
+        type enumeration {
+            enum INGRESS;
+            enum EGRESS;
+        }
+    }
+
+    grouping classifier-attributes {
         leaf DESCRIPTION {
             type string {
                 length 1..255 {
@@ -59,85 +81,84 @@ module sonic-flow-based-services {
         }
 
         leaf MATCH_TYPE {
+            type classifier-match-type;
             mandatory true;
             sonic-ext:custom-validation ValidateLeafConstant;
-            type enumeration {
-                enum FIELDS;
-                enum ACL;
-            }
         }
+
         leaf ACL_NAME {
-            sonic-ext:custom-validation ValidateLeafConstant;
-            when "current()/../MATCH_TYPE = 'ACL'";
             type leafref {
                 path "/sacl:sonic-acl/sacl:ACL_TABLE/sacl:ACL_TABLE_LIST/sacl:aclname";
             }
+            when "current()/../MATCH_TYPE = 'ACL'";
+            sonic-ext:custom-validation ValidateLeafConstant;
         }
 
         leaf ETHER_TYPE {
-            when "current()/../MATCH_TYPE = 'FIELDS'";
             type string {
                 pattern "0[xX][6-9a-fA-F][0-9a-fA-F]{2,3}|0[xX][1-9a-fA-F][0-9a-fA-F]{3,4}" {
                     error-message "Invalid Ether Type";
                     error-app-tag ether-type-invalid;
                 }
             }
+            when "current()/../MATCH_TYPE = 'FIELDS'";
         }
 
         leaf SRC_MAC {
-            when "current()/../MATCH_TYPE = 'FIELDS'";
             type string {
                 pattern "[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}|[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}/[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}";
             }
+            when "current()/../MATCH_TYPE = 'FIELDS'";
         }
 
         leaf DST_MAC {
-            when "current()/../MATCH_TYPE = 'FIELDS'";
             type string {
                 pattern "[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}|[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}/[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}";
             }
+            when "current()/../MATCH_TYPE = 'FIELDS'";
         }
 
         leaf VLAN {
-            when "current()/../MATCH_TYPE = 'FIELDS'";
             type uint16 {
                 range "1..4094" {
                     error-app-tag vlanid-invalid;
                     error-message "Vlan ID out of range";
                 }
             }
+            when "current()/../MATCH_TYPE = 'FIELDS'";
         }
 
         leaf PCP {
-            when "current()/../MATCH_TYPE = 'FIELDS'";
             type uint8 {
                 range "0..7" {
                     error-app-tag invalid-pcp-value;
                     error-message "Invalid PCP Value.";
                 }
             }
+            when "current()/../MATCH_TYPE = 'FIELDS'";
         }
 
         leaf DEI {
-            when "current()/../MATCH_TYPE = 'FIELDS'";
             type uint8 {
                 range "0..1" {
                     error-app-tag invalid-dei-value;
                     error-message "Invalid DEI Value.";
                 }
             }
+            when "current()/../MATCH_TYPE = 'FIELDS'";
         }
 
         leaf IP_PROTOCOL {
+            type uint8;
             when "current()/../MATCH_TYPE = 'FIELDS'";
             must "((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x800') or ((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x86dd')) or (not(current()/../ETHER_TYPE)))" {
                 error-app-tag ethertype-not-ipv4-ipv6;
                 error-message "IP Protocol can be configured only when Ethertype is IPv4 or IPv6";
             }
-            type uint8;
         }
 
         leaf SRC_IP {
+            type inet:ipv4-prefix;
             when "current()/../MATCH_TYPE = 'FIELDS'";
             must "(not(current()/../SRC_IPV6)) and (not(current()/../DST_IPV6))" {
                 error-message "Configuring IPv4 and IPv6 header fields in the same classifier is not allowed.";
@@ -146,10 +167,10 @@ module sonic-flow-based-services {
                 error-app-tag src-ip-ethertype-not-ipv4;
                 error-message "Source IP address can be configured only when ethertype is IPv4";
             }
-            type inet:ipv4-prefix;
         }
 
         leaf DST_IP {
+            type inet:ipv4-prefix;
             when "current()/../MATCH_TYPE = 'FIELDS'";
             must "(not(current()/../SRC_IPV6)) and (not(current()/../DST_IPV6))" {
                 error-message "Configuring IPv4 and IPv6 header fields in the same classifier is not allowed.";
@@ -158,10 +179,10 @@ module sonic-flow-based-services {
                 error-app-tag dst-ip-ethertype-not-ipv4;
                 error-message "Destination IP address can be configured only when ethertype is IPv4";
             }
-            type inet:ipv4-prefix;
         }
 
         leaf SRC_IPV6 {
+            type inet:ipv6-prefix;
             when "current()/../MATCH_TYPE = 'FIELDS'";
             must "(not(current()/../SRC_IP)) and (not(current()/../DST_IP))" {
                 error-message "Configuring IPv4 and IPv6 header fields in the same classifier is not allowed.";
@@ -170,10 +191,10 @@ module sonic-flow-based-services {
                 error-app-tag src-ip-ethertype-not-ipv6;
                 error-message "Source IPv6 address can be configured only when ethertype is IPv6";
             }
-            type inet:ipv6-prefix;
         }
 
         leaf DST_IPV6 {
+            type inet:ipv6-prefix;
             when "current()/../MATCH_TYPE = 'FIELDS'";
             must "(not(current()/../SRC_IP)) and (not(current()/../DST_IP))" {
                 error-message "Configuring IPv4 and IPv6 header fields in the same classifier is not allowed.";
@@ -182,20 +203,19 @@ module sonic-flow-based-services {
                 error-app-tag dst-ip-ethertype-not-ipv6;
                 error-message "Destination IPv6 address can be configured only when ethertype is IPv6";
             }
-            type inet:ipv6-prefix;
         }
 
         leaf DSCP {
-            when "current()/../MATCH_TYPE = 'FIELDS'";
-            must "((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x800') or ((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x86dd')) or (not(current()/../ETHER_TYPE)))" {
-                error-app-tag ethertype-not-ipv4-ipv6;
-                error-message "IP Protocol can be configured only when Ethertype is IPv4 or IPv6";
-            }
             type uint8 {
                 range "0..63" {
                     error-app-tag invalid-dscp-value;
                     error-message "Invalid DSCP Value.";
                 }
+            }
+            when "current()/../MATCH_TYPE = 'FIELDS'";
+            must "((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x800') or ((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x86dd')) or (not(current()/../ETHER_TYPE)))" {
+                error-app-tag ethertype-not-ipv4-ipv6;
+                error-message "IP Protocol can be configured only when Ethertype is IPv4 or IPv6";
             }
         }
 
@@ -203,6 +223,7 @@ module sonic-flow-based-services {
             when "current()/MATCH_TYPE = 'FIELDS'";
             case l4_src_port {
                 leaf L4_SRC_PORT {
+                    type uint16;
                     must "((current()/../IP_PROTOCOL = 6) or (current()/../IP_PROTOCOL = 17))" {
                         error-app-tag ip-protocol-not-tcp-or-udp;
                         error-message "Layer 4 source port can be configured only when IP protocol is TCP or UDP";
@@ -211,11 +232,13 @@ module sonic-flow-based-services {
                         error-app-tag ethertype-not-ipv4-ipv6;
                         error-message "TCP/UDP ports can be configured only when Ethertype is IPv4 or IPv6";
                     }
-                    type uint16;
                 }
             }
             case l4_src_port_range {
                 leaf L4_SRC_PORT_RANGE {
+                    type string {
+                        pattern "([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])(-)([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])";
+                    }
                     must "((current()/../IP_PROTOCOL = 6) or (current()/../IP_PROTOCOL = 17))" {
                         error-app-tag ip-protocol-not-tcp-or-udp;
                         error-message "Layer 4 source port can be configured only when IP protocol is TCP or UDP";
@@ -223,9 +246,6 @@ module sonic-flow-based-services {
                     must "((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x800') or ((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x86dd')) or (not(current()/../ETHER_TYPE)))" {
                         error-app-tag ethertype-not-ipv4-ipv6;
                         error-message "TCP/UDP ports can be configured only when Ethertype is IPv4 or IPv6";
-                    }
-                    type string {
-                        pattern "([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])(-)([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])";
                     }
                 }
             }
@@ -235,6 +255,7 @@ module sonic-flow-based-services {
             when "current()/MATCH_TYPE = 'FIELDS'";
             case l4_dst_port {
                 leaf L4_DST_PORT {
+                    type uint16;
                     must "((current()/../IP_PROTOCOL = 6) or (current()/../IP_PROTOCOL = 17))" {
                         error-app-tag ip-protocol-not-tcp-or-udp;
                         error-message "Layer 4 source port can be configured only when IP protocol is TCP or UDP";
@@ -243,11 +264,13 @@ module sonic-flow-based-services {
                         error-app-tag ethertype-not-ipv4-ipv6;
                         error-message "TCP/UDP ports can be configured only when Ethertype is IPv4 or IPv6";
                     }
-                    type uint16;
                 }
             }
             case l4_dst_port_range {
                 leaf L4_DST_PORT_RANGE {
+                    type string {
+                        pattern "([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])(-)([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])";
+                    }
                     must "((current()/../IP_PROTOCOL = 6) or (current()/../IP_PROTOCOL = 17))" {
                         error-app-tag ip-protocol-not-tcp-or-udp;
                         error-message "Layer 4 source port can be configured only when IP protocol is TCP or UDP";
@@ -255,9 +278,6 @@ module sonic-flow-based-services {
                     must "((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x800') or ((translate(current()/../ETHER_TYPE, 'ABCDEFX', 'abcdefx') = '0x86dd')) or (not(current()/../ETHER_TYPE)))" {
                         error-app-tag ethertype-not-ipv4-ipv6;
                         error-message "TCP/UDP ports can be configured only when Ethertype is IPv4 or IPv6";
-                    }
-                    type string {
-                        pattern "([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])(-)([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])";
                     }
                 }
             }
@@ -275,29 +295,27 @@ module sonic-flow-based-services {
             }
         }
         /*
-           leaf ICMP_TYPE {
-           when "current()/../MATCH_TYPE = 'FIELDS'";
-           must "((current()/../IP_PROTOCOL = 1) or (current()/../IP_PROTOCOL = 58))" {
-           error-app-tag ip-protocol-not-icmp-or-icmpv6;
-           error-message "ICMP type can be configured only when IP protocol is ICMP or ICMPv6";
-           }
-           type uint8;
-           }
+        leaf ICMP_TYPE {
+            when "current()/../MATCH_TYPE = 'FIELDS'";
+            type uint8;
+            must "((current()/../IP_PROTOCOL = 1) or (current()/../IP_PROTOCOL = 58))" {
+                error-app-tag ip-protocol-not-icmp-or-icmpv6;
+                error-message "ICMP type can be configured only when IP protocol is ICMP or ICMPv6";
+            }
+        }
 
-           leaf ICMP_CODE {
-           when "current()/../MATCH_TYPE = 'FIELDS'";
-           must "((current()/../IP_PROTOCOL = 1) or (current()/../IP_PROTOCOL = 58))" {
-           error-app-tag ip-protocol-not-icmp-or-icmpv6;
-           error-message "ICMP code can be configured only when IP protocol is ICMP or ICMPv6";
-           }
-           type uint8;
-           }
-         */
-
+        leaf ICMP_CODE {
+            when "current()/../MATCH_TYPE = 'FIELDS'";
+            must "((current()/../IP_PROTOCOL = 1) or (current()/../IP_PROTOCOL = 58))" {
+                error-app-tag ip-protocol-not-icmp-or-icmpv6;
+                error-message "ICMP code can be configured only when IP protocol is ICMP or ICMPv6";
+            }
+            type uint8;
+        }
+        */
     }
 
-
-    grouping policySectionAttributes {
+    grouping policy-section-attributes {
         leaf DESCRIPTION {
             type string {
                 length 1..255 {
@@ -307,97 +325,108 @@ module sonic-flow-based-services {
         }
 
         leaf PRIORITY {
-            mandatory true;
-            sonic-ext:custom-validation ValidateLeafConstant;
             type uint16 {
-                range "0..1023" {
+                range "0..4095" {
                     error-app-tag invalid-priority;
                 }
+            }
+            mandatory true;
+            sonic-ext:custom-validation ValidateLeafConstant;
+        }
+    }
+
+    grouping policy-section-qos-actions {
+        leaf SET_DSCP {
+            type uint8 {
+                range "0..63" {
+                    error-app-tag invalid-dscp-value;
+                    error-message "Invalid DSCP value.";
+                }
+            }
+        }
+
+        leaf SET_PCP {
+            type uint8 {
+                range "0..7" {
+                    error-app-tag invalid-pcp-value;
+                    error-message "Invalid PCP value.";
+                }
+            }
+        }
+        leaf SET_TC {
+            type uint8 {
+                range "0..7" {
+                    error-app-tag invalid-traffic-class-value;
+                    error-message "Invalid Traffic Class value.";
+                }
+            }
+        }
+
+        leaf SET_POLICER_CIR {
+            type uint64;
+            units bps;
+        }
+
+        leaf SET_POLICER_CBS {
+            type uint64;
+            units bytes;
+            must "(current()/../SET_POLICER_CIR) and (current()/../SET_POLICER_CIR > 0)" {
+                error-app-tag cir-not-configured;
+                error-message "CBS can't be configured without CIR.";
+            }
+            must "current()*8 >= current()/../SET_POLICER_CIR" {
+                error-app-tag cbs-less-than-cir;
+                error-message "CBS must be greater than or equal to CIR";
+            }
+        }
+
+        leaf SET_POLICER_PIR {
+            type uint64;
+            units bps;
+            must "(current()/../SET_POLICER_CIR) and (current()/../SET_POLICER_CIR > 0)" {
+                error-app-tag cir-not-configured;
+                error-message "PIR can't be configured without CIR.";
+            }
+            must "current() >= current()/../SET_POLICER_CIR" {
+                error-app-tag pir-less-than-cir;
+                error-message "PIR must be greater than or equal to CIR";
+            }
+        }
+
+        leaf SET_POLICER_PBS {
+            type uint64;
+            units bytes;
+            must "(current()/../SET_POLICER_PIR) and (current()/../SET_POLICER_PIR > 0)" {
+                error-app-tag pir-not-configured;
+                error-message "PBS can't be configured without PIR.";
+            }
+            must "current()*8 >= current()/../SET_POLICER_PIR" {
+                error-app-tag pbs-less-than-pir;
+                error-message "PBS must be greater than or equal to PIR";
+            }
+            must "(not(current()/../SET_POLICER_CBS)) or (current() >= current()/../SET_POLICER_CBS)" {
+                error-app-tag pbs-less-than-cbs;
+                error-message "PBS must be greater than or equal to CBS";
             }
         }
     }
 
-    grouping policySectionActions {
+    grouping policy-section-mirror-actions {
+        leaf SET_MIRROR_SESSION {
+            type leafref {
+                path "/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:MIRROR_SESSION_LIST/sms:name";
+            }
+        }
+    }
+
+    grouping policy-section-actions {
         choice flow_actions {
             /*======================================================================================================
               QoS Actions
               ======================================================================================================*/
             case qos_actions {
                 when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/POLICY_NAME]/TYPE = 'QOS'";
-                leaf SET_DSCP {
-                    type uint8 {
-                        range "0..63" {
-                            error-app-tag invalid-dscp-value;
-                            error-message "Invalid DSCP value.";
-                        }
-                    }
-                }
-
-                leaf SET_PCP {
-                    type uint8 {
-                        range "0..7" {
-                            error-app-tag invalid-pcp-value;
-                            error-message "Invalid PCP value.";
-                        }
-                    }
-                }
-                /*
-                   leaf SET_TC {
-                   type uint8 {
-                   range "0..7" {
-                   error-app-tag invalid-traffic-class-value;
-                   error-message "Invalid Traffic Class value.";
-                   }
-                   }
-                   }
-                 */
-                leaf SET_POLICER_CIR {
-                    type uint64;
-                    units bps;
-                }
-
-                leaf SET_POLICER_CBS {
-                    type uint64;
-                    units bytes;
-                    must "(current()/../SET_POLICER_CIR) and (current()/../SET_POLICER_CIR > 0)" {
-                        error-app-tag cir-not-configured;
-                        error-message "CBS can't be configured without CIR.";
-                    }
-                    must "current()*8 >= current()/../SET_POLICER_CIR" {
-                        error-app-tag cbs-less-than-cir;
-                        error-message "CBS must be greater than or equal to CIR";
-                    }
-                }
-
-                leaf SET_POLICER_PIR {
-                    type uint64;
-                    units bps;
-                    must "(current()/../SET_POLICER_CIR) and (current()/../SET_POLICER_CIR > 0)" {
-                        error-app-tag cir-not-configured;
-                        error-message "PIR can't be configured without CIR.";
-                    }
-                    must "current() >= current()/../SET_POLICER_CIR" {
-                        error-app-tag pir-less-than-cir;
-                        error-message "PIR must be greater than or equal to CIR";
-                    }
-                }
-
-                leaf SET_POLICER_PBS {
-                    type uint64;
-                    units bytes;
-                    must "(current()/../SET_POLICER_PIR) and (current()/../SET_POLICER_PIR > 0)" {
-                        error-app-tag pir-not-configured;
-                        error-message "PBS can't be configured without PIR.";
-                    }
-                    must "current()*8 >= current()/../SET_POLICER_PIR" {
-                        error-app-tag pbs-less-than-pir;
-                        error-message "PBS must be greater than or equal to PIR";
-                    }
-                    must "(not(current()/../SET_POLICER_CBS)) or (current() >= current()/../SET_POLICER_CBS)" {
-                        error-app-tag pbs-less-than-cbs;
-                        error-message "PBS must be greater than or equal to CBS";
-                    }
-                }
+                uses policy-section-qos-actions;
             }
 
             /*======================================================================================================
@@ -405,11 +434,7 @@ module sonic-flow-based-services {
               ======================================================================================================*/
             case monitoring_actions {
                 when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/POLICY_NAME]/TYPE = 'MONITORING'";
-                leaf SET_MIRROR_SESSION {
-                    type leafref {
-                        path "/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:MIRROR_SESSION_LIST/sms:name";
-                    }
-                }
+                uses policy-section-mirror-actions;
             }
 
             /*======================================================================================================
@@ -464,7 +489,7 @@ module sonic-flow-based-services {
         }
     }
 
-    grouping policyAttributes {
+    grouping policy-attributes {
         leaf DESCRIPTION {
             type string {
                 length 1..255 {
@@ -474,33 +499,11 @@ module sonic-flow-based-services {
         }
 
         leaf TYPE {
+            type policy-types;
             mandatory true;
             sonic-ext:custom-validation ValidateLeafConstant;
-            type enumeration {
-                enum QOS;
-                enum MONITORING;
-                enum FORWARDING;
-            }
         }
     }
-
-    grouping pbrNexthopAttributes {
-        leaf IP_NEXHOP {
-            type string;
-        }
-        leaf VRF {
-            type string;
-        }
-        leaf PRIORITY {
-            type uint32;
-        }
-        leaf SELECTED {
-            type boolean;
-            description
-                "field describing whether this nexthop is selected or not";
-        }
-    }
-
 
     container sonic-flow-based-services {
         container POLICY_TABLE {
@@ -526,11 +529,7 @@ module sonic-flow-based-services {
                 leaf TYPE {
                     mandatory true;
                     sonic-ext:custom-validation ValidateLeafConstant;
-                    type enumeration {
-                        enum QOS;
-                        enum MONITORING;
-                        enum FORWARDING;
-                    }
+                    type policy-types;
                 }
             }
         }
@@ -552,7 +551,7 @@ module sonic-flow-based-services {
                     }
                 }
 
-                uses classifierAttributes;
+                uses classifier-attributes;
             }
         }
 
@@ -573,8 +572,8 @@ module sonic-flow-based-services {
                     }
                 }
 
-                uses policySectionAttributes;
-                uses policySectionActions;
+                uses policy-section-attributes;
+                uses policy-section-actions;
             }
         }
 
@@ -643,215 +642,282 @@ module sonic-flow-based-services {
         }
     }
 
+
+    // RPCs related
+
+    // Groupings needed for RPCs
+    grouping pbf-egress-intf-config-attributes {
+        leaf INTERFACE_NAME {
+            type string;
+        }
+
+        leaf PRIORITY {
+            type uint16;
+        }
+    }
+
+    grouping pbf-nexthop-config-attributes {
+        leaf IP_ADDRESS {
+            type string;
+        }
+
+        leaf VRF {
+            type string;
+        }
+
+        leaf PRIORITY {
+            type uint16;
+        }
+    }
+
+    // RPCs
     rpc show_classifier {
+        description
+            "RPC to retrieve the classifier data. The name and match-type are optional. If no name is specified then all
+            classifiers with the matching match-type will be retrieved. If no match-type is provided then all
+            classifiers will be retrieved.";
+
         input {
             leaf CLASSIFIER_NAME {
                 type string;
                 description
-                    "specific classifier name or matching";
+                    "Classifier Name to be retrieved. (Optional)";
             }
-            leaf  MATCH_TYPE {
-                type string;
+            leaf MATCH_TYPE {
+                type classifier-match-type;
                 description
-                    "match type ACL or FIELDS ";
+                    "Retrieve the classifier using match-type.";
             }
-
         }
         output {
-            container MATCHING_CLASSIFIER_TABLE {
-                list MATCHING_CLASSIFIER_TABLE_LIST {
-                    key "CLASSIFIER_NAME";
-                    max-elements 256;
+            list CLASSIFIER_LIST {
+                key "CLASSIFIER_NAME";
 
-                    leaf CLASSIFIER_NAME {
+                leaf CLASSIFIER_NAME {
+                    type string;
+                    description
+                        "Classifier name";
+                }
+
+                uses classifier-attributes;
+
+                list REFERENCES {
+                    leaf POLICY_NAME {
                         type string;
                         description
-                            "Matching classifier name";
+                            "Policy name referring this classifier";
                     }
-                    uses classifierAttributes;
-
-                    list REF_POLICY_LIST {
-                        leaf POLICY_NAME {
-                            type string;
-                            description
-                                "Policy name referring this classifier";
-                        }
-                        uses policySectionAttributes;
-                    }
+                    uses policy-section-attributes;
                 }
             }
         }
     }
 
     rpc show_policy {
+        description
+            "RPC to retrieve the policy data. The name and type are optional. If no name is specified then all
+            policies with the matching type will be retrieved. If no type is provided then all policies will
+            be retrieved.";
+
         input {
             leaf POLICY_NAME {
                 type string;
                 description
-                    "specific classifier name or matching";
+                    "Name of the policy to retrieved. (Optional)";
             }
-            leaf  TYPE {
-                type string;
+            leaf TYPE {
+                type policy-types;
                 description
-                    "match type QOS, MONITORING or FORWARDING ";
+                    "Type of the policy to retrieved. (Optional)";
             }
         }
         output {
+            list POLICY_LIST {
+                key "POLICY_NAME";
 
-            container MATCHING_POLICY_TABLE {
+                leaf POLICY_NAME {
+                    type string;
+                }
 
-                list MATCHING_POLICY_TABLE_LIST {
-                    key "POLICY_NAME";
-                    max-elements 256;
+                uses policy-attributes;
 
+                list FLOWS {
+                    leaf CLASS_NAME {
+                        type string;
+                        description
+                            "Classifier using this policy";
+                    }
+
+                    uses policy-section-attributes;
+                    uses policy-section-qos-actions;
+                    uses policy-section-mirror-actions;
+
+                    list SET_INTERFACE {
+                        uses pbf-egress-intf-config-attributes;
+                    }
+
+                    list SET_IP_NEXT_HOP {
+                        uses pbf-nexthop-config-attributes;
+                    }
+
+                    list SET_IPV6_NEXT_HOP {
+                        uses pbf-nexthop-config-attributes;
+                    }
+
+                    leaf DEFAULT_PACKET_ACTION {
+                        type enumeration {
+                            enum DROP;
+                        }
+                    }
+                }
+
+                list APPLIED_INTERFACES {
+                    leaf INTERFACE_NAME {
+                        type string;
+                        description
+                            "Interface name on which the policy is applied.";
+                    }
+
+                    leaf STAGE {
+                        type policy-binding-stages;
+                        description
+                            "Policy binding direction ingress/egress";
+                    }
+                }
+            }
+        }
+    }
+
+    rpc show_service_policy {
+        description
+            "Reprieves the Operational state of the policy application on interface like match counters,
+            policer counters for QoS policies, selected next-hop for forwarding policies etc. Policy name or
+            Interface name is mandatory. The following list shows the different combination supported
+
+            Policy Name only:: Operational data for all applications of the policy
+            Intf Name only:: Operational data for all policies applied for the interface.
+            Type only:: Not supported.
+            Policy Name + Intf Name:: Operational data for specific application of the policy to interface.
+            Policy Name + Type:: Same as specifying just policy name but with added validation for type match.
+            Intf Name + Type:: Operational data for specified policy type on the interface.
+            Policy Name + Intf Name + Type:: Same as Policy Name + Intf Name but added validation for type match.";
+
+        input {
+            leaf POLICY_NAME {
+                type string;
+                description
+                    "Name of the policy to retrieved.";
+            }
+            leaf INTERFACE_NAME {
+                type string;
+                description
+                    "Interface name on which the policy is applied.";
+            }
+            leaf TYPE {
+                type policy-types;
+                description
+                    "Type of the policy to retrieved. (Optional)";
+            }
+        }
+        output {
+            list INTERFACES {
+                key "INTERFACE_NAME";
+
+                leaf INTERFACE_NAME {
+                    type string;
+                }
+
+                list APPLIED_POLICIES {
                     leaf POLICY_NAME {
                         type string;
-                    } 
-                    uses policyAttributes;
+                    }
 
+                    leaf STAGE {
+                        type policy-binding-stages;
+                        description
+                            "Policy binding direction ingress/egress";
+                    }
 
-                    list REF_CLASS_LIST {
+                    uses policy-attributes;
+
+                    list FLOWS {
                         leaf CLASS_NAME {
                             type string;
                             description
                                 "Classifier using this policy";
                         }
-                        leaf POLICY_NAME {
-                            type string;
-                            description
-                                "Policy name referring this classifier";
-                        }
-                        uses policySectionAttributes;
-                        uses policySectionActions;
-                        list IP_NEXHOP_LIST {
-                            uses pbrNexthopAttributes;   
-                        }
-                        list IPV6_NEXHOP_LIST {
-                            uses pbrNexthopAttributes;   
-                        }
-                    }
-                    list APPLIED_PORT_LIST {
-                        leaf POLICY_BIND_PORT {
-                            type string;
-                            description
-                                "policy binding port/LAG/VLAN/switch";
-                        }
-                        leaf POLICY_BIND_DIR {
-                            type string;
-                            description
-                                "policy binding direction ingress/egress";
-                        }
-                    }
-                }
-            }
 
-        }
-    }
+                        uses policy-section-attributes;
+                        uses policy-section-qos-actions;
+                        uses policy-section-mirror-actions;
 
-    rpc show_service_policy {
-        input {
-            leaf MATCH_TYPE {
-                type string;
-                description
-                    "match type can be keyword 'interface' followed by interfaceid(Ethernetid/Vlanid/Switch) or 'policy' keyword followed by policy name";
-            }
-            leaf  MATCH_SUB_TYPE {
-                type string;
-                description
-                    "match second level keyword 'type' keyword followed by (qos/monitoring/forwarding) or interface keyword (Ethernet id/Vlan id/Switch) ";
-            }
-        }
-        output {
-            container MATCHING_SERVICE_POLICY_TABLE {
-
-                list MATCHING_SERVICE_PORT_LIST {
-                    key "INTERFACE_NAME";
-
-                    leaf INTERFACE_NAME {
-                        type string;
-                    }
-                    list MATCHING_SERVICE_POLICY_LIST {
-                        key "POLICY_NAME";
-
-                        leaf POLICY_NAME {
-                            type string;
+                        list SET_INTERFACE {
+                            uses pbf-egress-intf-config-attributes;
                         }
 
-                        uses policyAttributes;
-
-                        leaf POLICY_BIND_DIR {
-                            type string;
-                            description
-                                "policy binding direction ingress/egress";
+                        list SET_IP_NEXT_HOP {
+                            uses pbf-nexthop-config-attributes;
                         }
 
-                        list REF_CLASS_LIST {
-                            container CONFIG {
-                                leaf CLASS_NAME {
-                                    type string;
-                                    description
-                                        "Classifier using this policy";
+                        list SET_IPV6_NEXT_HOP {
+                            uses pbf-nexthop-config-attributes;
+                        }
+
+                        leaf DEFAULT_PACKET_ACTION {
+                            type enumeration {
+                                enum DROP;
+                            }
+                        }
+
+                        container STATE {
+                            leaf STATUS {
+                                type enumeration {
+                                    enum Active;
+                                    enum Inactive;
                                 }
-                                leaf POLICY_NAME {
-                                    type string;
-                                    description
-                                        "Policy name referring this classifier";
-                                }
-                                uses policySectionAttributes;
-                                uses policySectionActions;
-                                list IP_NEXHOP_LIST {
-                                    uses pbrNexthopAttributes;   
-
-                                }
-                                list IPV6_NEXHOP_LIST {
-                                    uses pbrNexthopAttributes;   
-                                }
+                                description
+                                    "Policy bind status Active/Inactive";
                             }
 
-                            container STATE {
-                                leaf POLICY_BIND_STATUS {
-                                    type string; 
-                                    description
-                                        "policy bind status Active/Inactive";
-                                }
+                            leaf MATCHED_PACKETS {
+                                type uint64;
+                                description
+                                    "Number of packets that matched the flow classification criteria";
+                            }
 
-                                leaf FBS_PACKET_COUNT {
-                                    type uint64;
-                                    description
-                                        "matching packet count for the flow from fbs counters";
-                                }
+                            leaf MATCHED_BYTES {
+                                type uint64;
+                                description
+                                    "Number of bytes that matched the flow classification criteria";
+                            }
 
-                                leaf FBS_BYTE_COUNT {
-                                    type uint64;
-                                    description
-                                        "matching packet count for the flow from fbs counters";
-                                }
-                                leaf CONFORMED_PACKET_COUNT {
+                            container POLICER {
+                                leaf CONFORMED_PACKETS {
                                     type uint64;
                                     description
                                         "matching green packet count for policier counters";
                                 }
-                                leaf CONFORMED_BYTE_COUNT {
+                                leaf CONFORMED_BYTES {
                                     type uint64;
                                     description
                                         "matching green packet count for policier counters";
                                 }
-                                leaf EXCEED_PACKET_COUNT {
+                                leaf EXCEED_PACKETS {
                                     type uint64;
                                     description
                                         "matching yellow packet count for policier counters";
                                 }
-                                leaf EXCEED_BYTE_COUNT {
+                                leaf EXCEED_BYTES {
                                     type uint64;
                                     description
                                         "matching yellow packet count for policier counters";
                                 }
-                                leaf VIOLATED_PACKET_COUNT {
+                                leaf VIOLATED_PACKETS {
                                     type uint64;
                                     description
                                         "matching red packet count for policier counters";
                                 }
-                                leaf VIOLATED_BYTE_COUNT {
+                                leaf VIOLATED_BYTES {
                                     type uint64;
                                     description
                                         "matching red packet count for policier counters";
@@ -861,78 +927,106 @@ module sonic-flow-based-services {
                                     description
                                         "green packet action";
                                 }
-
                                 leaf EXCEED_PACKET_ACTION {
                                     type string;
                                     description
                                         "yellow packet action";
                                 }
-
                                 leaf VIOLATED_PACKET_ACTION {
                                     type string;
                                     description
                                         "red packet action";
                                 }
-
-                                leaf POLICER_CIR {
+                                leaf OPERATIONAL_CIR {
+                                    type uint64;
+                                }
+                                leaf OPERATIONAL_CBS {
+                                    type uint64;
+                                }
+                                leaf OPERATIONAL_PIR {
+                                    type uint64;
+                                }
+                                leaf OPERATIONAL_PBS {
                                     type uint64;
                                 }
 
-                                leaf POLICER_CBS {
-                                    type uint64;
+                                leaf UNITS {
+                                    type enumeration {
+                                        enum BYTES;
+                                    }
                                 }
 
-                                leaf POLICER_PIR {
-                                    type uint64;
+                                leaf COLOR_SOURCE {
+                                    type enumeration {
+                                        enum COLOR-BLIND;
+                                    }
                                 }
 
-                                leaf POLICER_PBS {
-                                    type uint64;
+                                leaf STATUS {
+                                    type enumeration {
+                                        enum Active;
+                                        enum Inactive;
+                                    }
+                                }
+                            }
+
+                            container FORWARDING_SELECTED {
+                                leaf PACKET_ACTION {
+                                    type enumeration {
+                                        enum DROP;
+                                    }
+                                }
+                                leaf INTERFACE_NAME {
+                                    type string;
                                 }
 
-                                leaf POLICER_METER_TYPE {
+                                leaf IP_ADDRESS {
                                     type string;
                                 }
-                                leaf POLICER_TYPE {
+
+                                leaf VRF {
                                     type string;
                                 }
-                                leaf POLICER_MODE {
-                                    type string;
-                                }
-                                leaf POLICER_COLOR_SOURCE {
-                                    type string;
+
+                                leaf PRIORITY {
+                                    type uint16;
                                 }
                             }
                         }
                     }
                 }
-            }    
+            }
         }
     }
 
     rpc clear_service_policy {
+        description
+            "Clear the countes associated with the policy like Match counters and Policer counters etc.
+            Policy name or Interface name is mandatory. The following list shows the different combination supported
+
+            Policy Name only:: Clear counters for all applications of this policy
+            Intf Name only:: Clear counters for all policies applied for the interface.
+            Type only:: Not supported.
+            Policy Name + Intf Name:: Clear counters for specific application of the policy to interface.
+            Policy Name + Type:: Same as specifying just policy name but with added validation for type match.
+            Intf Name + Type:: Clear counters for specified policy type on the interface.
+            Policy Name + Intf Name + Type:: Same as Policy Name + Intf Name but added validation for type match.";
+
         input {
-            leaf MATCH_TYPE {
+            leaf POLICY_NAME {
                 type string;
                 description
-                    "match type can be keyword 'interface' followed by interfaceid(Ethernetid/Vlanid/Switch) or 'policy' keyword followed by policy name";
+                    "Name of the policy to retrieved.";
             }
-            leaf  MATCH_SUB_TYPE {
+            leaf INTERFACE_NAME {
                 type string;
                 description
-                    "match second level keyword 'type' keyword followed by (qos/monitoring/forwarding) or interface keyword (Ethernet id/Vlan id/Switch) ";
+                    "Interface name on which the policy is applied.";
             }
-        }
-        output {
-            leaf STATUS {
-                type int32;
+            leaf TYPE {
+                type policy-types;
                 description
-                    "The status of the clear request";
-            }
-            leaf STATUS_DETAIL {
-                type string;
-                description
-                    "The detailed status of the clear request";
+                    "Type of the policy to retrieved. (Optional)";
             }
         }
     }

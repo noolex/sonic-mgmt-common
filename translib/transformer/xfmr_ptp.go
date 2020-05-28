@@ -65,7 +65,6 @@ func init() {
 	XlateFuncBind("DbToYang_ptp_udp6_scope_xfmr", DbToYang_ptp_udp6_scope_xfmr )
 }
 
-/* PTP_DELAY_MECH_MAP map enumeration */
 var PTP_DELAY_MECH_MAP = map[string]string{
 	strconv.FormatInt(int64(ocbinds.IETFPtp_DelayMechanismEnumeration_e2e), 10): "E2E",
 	strconv.FormatInt(int64(ocbinds.IETFPtp_DelayMechanismEnumeration_p2p), 10): "P2P",
@@ -810,13 +809,12 @@ var YangToDb_ptp_port_ds_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
     var err error
     res_map := make(map[string]map[string]db.Value)
 	port_ds_map := make(map[string]db.Value)
-    log.Info("TableXfmrFunc - inParams DPB: ", inParams);
-    log.Warningf("DPB  %v", inParams)
-    log.Info(" DPB URI: ", inParams.uri);
-    log.Info(" DPB REQ URI: ", inParams.requestUri);
-    log.Info(" DPB OPER: ", inParams.oper);
-    log.Info(" DPB KEY: ", inParams.key);
-    log.Info(" DPB PARAM: ", inParams.param);
+    log.Info("YangToDb_ptp_port_ds_xfmr inParams: ", inParams);
+    log.Info("YangToDb_ptp_port_ds_xfmr URI: ", inParams.uri);
+    log.Info("YangToDb_ptp_port_ds_xfmr REQ URI: ", inParams.requestUri);
+    log.Info("YangToDb_ptp_port_ds_xfmr OPER: ", inParams.oper);
+    log.Info("YangToDb_ptp_port_ds_xfmr KEY: ", inParams.key);
+    log.Info("YangToDb_ptp_port_ds_xfmr PARAM: ", inParams.param);
 
     ptpObj := getPtpRoot(inParams.ygRoot)
     if ptpObj == nil {
@@ -858,7 +856,7 @@ var YangToDb_ptp_port_ds_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 							tblName := key.Comp[0] + "|" + key.Comp[1]
 							
 							port_ds_map[tblName] = db.Value{Field: make(map[string]string)}
-							port_ds_map[tblName].Field["port-number"] = port_number_str
+							// port_ds_map[tblName].Field["port-number"] = port_number_str
 							matched = true
 						}
 					}
@@ -946,13 +944,12 @@ var YangToDb_ptp_port_ds_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 }
 
 var DbToYang_ptp_port_ds_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
-    log.Info("TableXfmrFunc - Uri DPB-1: ", inParams.uri);
+    log.Info("DbToYang_ptp_port_ds_xfmr uri: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
-    log.Info("TARGET URI PATH DPBO:", targetUriPath)
-    log.Info("DPB PATH:", pathInfo.Path)
-    log.Warningf("DPB  %v", inParams)
+    log.Info("DbToYang_ptp_port_ds_xfmr targetUriPath:", targetUriPath)
+    log.Info("DbToYang_ptp_port_ds_xfmr pathInfo.Path:", pathInfo.Path)
     ptpObj := getPtpRoot(inParams.ygRoot)
     if ptpObj == nil {
         log.Info("DbToYang_ptp_port_ds_xfmr : Empty component.")
