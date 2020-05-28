@@ -1,0 +1,485 @@
+submodule openconfig-fbs-interfaces-ext {
+  belongs-to openconfig-fbs-ext {
+    prefix oc-fbs-ext;
+  }
+
+  // import some basic types
+  import openconfig-interfaces { prefix oc-if; }
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-yang-types { prefix oc-yang; }
+  import openconfig-inet-types { prefix "oc-inet"; }
+
+  include openconfig-fbs-policies-ext;
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC
+    https://github.com/Azure/SONiC";
+
+  description
+    "This model defines the configuration and operational data
+    for flow based services interfaces";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-15" {
+    description
+      "Initial revision";
+
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  // typedef statements
+
+  // grouping statements
+  grouping fbs-interface-qos-top {
+    description
+      "Grouping for QoS policy applied per interface";
+
+    container qos {
+      description
+        "Container for QoS policy configuration and state per interface";
+
+      container config {
+        description
+          "Configuration for QoS policy application on interface";
+
+        uses fbs-interface-qos-config;
+      }
+
+      container state {
+        description
+          "Operation state data for QoS policy application on interface";
+
+        uses fbs-interface-qos-config;
+      }
+
+      uses fbs-interface-qos-sections-state;
+    }
+  }
+
+  grouping fbs-interface-qos-config {
+    description
+      "Grouping for QoS policy configuration";
+
+    leaf policy-name {
+      type leafref {
+        path "../../../../../policies/policy/config/name";
+      }
+
+      must "../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_QOS'";
+
+      description
+        "Name of the QoS policy applied on the interface";
+    }
+  }
+
+  grouping fbs-interface-qos-sections-state {
+    description
+      "Grouping for QoS Policy operation state";
+
+    container sections {
+      description
+        "Container for Operational state of QoS Policy sections";
+
+      list section {
+        key "class-name";
+
+        description
+          "Operational state for QoS policy sections";
+
+        leaf class-name {
+          type leafref {
+            path "../state/class-name";
+          }
+
+          description
+            "Reference to the Classifier name used as section key";
+        }
+
+        container state {
+          description
+            "Operational state of a QoS policy section";
+
+          uses fbs-section-state-common;
+          uses fbs-qos-section-state;
+          uses qos-policer-config-params;
+        }
+      }
+    }
+  }
+
+  grouping fbs-section-state-common {
+    description
+      "Grouping for common operational state data for all policy
+      sections";
+
+    leaf class-name {
+      type string;
+
+      description
+        "Name of the classifier used for policy section.";
+    }
+
+    leaf active {
+      type boolean;
+
+      description
+        "Indicates that the section is active ie the configured
+        actions will be taken if the traffic matches the criteria
+        used in the classifier";
+    }
+
+    leaf matched-packets {
+      type oc-yang:counter64;
+
+      description
+        "Count of the number of packets matching the current
+        classifier entry. This counter is specific to policy
+        application to interface.";
+    }
+
+    leaf matched-octets {
+      type oc-yang:counter64;
+
+      description
+        "Count of the number of bytes matching the current
+        classifier.  This counter is specific to policy
+        application to interface.";
+    }
+  }
+
+  grouping fbs-qos-section-state {
+    description
+      "Grouping for QoS counters like policers";
+
+    leaf conforming-pkts {
+      type oc-yang:counter64;
+      description
+        "The number of packets that were considered conforming by
+        the policer.";
+    }
+
+    leaf conforming-octets {
+      type oc-yang:counter64;
+      description
+        "The number of octets in packets that were considered
+        conforming by the policer.";
+    }
+
+    leaf exceeding-pkts {
+      type oc-yang:counter64;
+      description
+        "The number of packets that were considered exceeding by
+        the policer.";
+    }
+
+    leaf exceeding-octets {
+      type oc-yang:counter64;
+      description
+        "The number of octets in packets that were considered
+        exceeding by the policer.";
+    }
+
+    leaf violating-pkts {
+      type oc-yang:counter64;
+      description
+        "The number of packets that were considered violating by
+        the policer.";
+    }
+
+    leaf violating-octets {
+      type oc-yang:counter64;
+      description
+        "The number of octets in packets that were considered
+        violating by the policer.";
+    }
+  }
+
+  grouping fbs-interface-monitoring-top {
+    description
+      "Grouping for monitoring policy applied per interface";
+
+    container monitoring {
+      description
+        "Container for monitoring policy configuration and state per interface";
+
+      container config {
+        description
+          "Configuration for monitoring policy application on interface";
+
+        uses fbs-interface-monitoring-config;
+      }
+
+      container state {
+        description
+          "Operation state data for monitoring policy application on interface";
+
+        uses fbs-interface-monitoring-config;
+      }
+
+      uses fbs-interface-monitoring-sections-state;
+    }
+  }
+
+  grouping fbs-interface-monitoring-config {
+    description
+      "Grouping for monitoring policy configuration";
+
+    leaf policy-name {
+      type leafref {
+        path "../../../../../policies/policy/config/name";
+      }
+
+      must "../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_MONITORING'";
+
+      description
+        "Name of the monitoring policy applied on the interface";
+    }
+  }
+
+  grouping fbs-interface-monitoring-sections-state {
+    description
+      "Grouping for monitoring Policy operation state";
+
+    container sections {
+      description
+        "Container for Operational state of monitoring Policy sections";
+
+      list section {
+        key "class-name";
+
+        description
+          "Operational state for monitoring policy sections";
+
+        leaf class-name {
+          type leafref {
+            path "../state/class-name";
+          }
+
+          description
+            "Reference to the Classifier name used as section key";
+        }
+
+        container state {
+          description
+            "Operational state of a monitoring policy section";
+
+          uses fbs-section-state-common;
+        }
+      }
+    }
+  }
+
+  grouping fbs-interface-forwarding-top {
+    description
+      "Grouping for forwarding policy applied per interface";
+
+    container forwarding {
+      description
+        "Container for forwarding policy configuration and state per interface";
+
+      container config {
+        description
+          "Configuration for forwarding policy application on interface";
+
+        uses fbs-interface-forwarding-config;
+      }
+
+      container state {
+        description
+          "Operation state data for forwarding policy application on interface";
+
+        uses fbs-interface-forwarding-config;
+      }
+
+      uses fbs-interface-forwarding-sections-state;
+    }
+  }
+
+  grouping fbs-interface-forwarding-config {
+    description
+      "Grouping for forwarding policy configuration";
+
+    leaf policy-name {
+      type leafref {
+        path "../../../../../policies/policy/config/name";
+      }
+
+      must "../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_FORWARDING'";
+
+      description
+        "Name of the forwarding policy applied on the interface";
+    }
+  }
+
+  grouping fbs-interface-forwarding-sections-state {
+    description
+      "Grouping for forwarding Policy operation state";
+
+    container sections {
+      description
+        "Container for Operational state of forwarding Policy sections";
+
+      list section {
+        key "class-name";
+
+        description
+          "Operational state for forwarding policy sections";
+
+        leaf class-name {
+          type leafref {
+            path "../state/class-name";
+          }
+
+          description
+            "Reference to the Classifier name used as section key";
+        }
+
+        container state {
+          description
+            "Operational state of a forwarding policy section";
+
+          uses fbs-section-state-common;
+	      uses fbs-forwarding-section-common-state;
+        }
+
+        uses fbs-forwarding-section-l2-state;
+        uses fbs-forwarding-section-l3-state;
+      }
+    }
+  }
+
+  grouping fbs-forwarding-section-common-state {
+    description
+      "Grouping for common forwarding operational state";
+
+    leaf discard {
+      type boolean;
+
+      description
+        "Indicates that traffic is dropped as none of the
+        configured next-hops or egress interfaces are reachable.";
+    }
+  }
+
+  grouping fbs-forwarding-section-l3-state {
+    description
+      "Grouping for layer 3 forwarding operational state";
+
+    container next-hop {
+      description
+        "Container for selected next-hop operational state.";
+
+      container state {
+        description
+          "Container for operation state of the selected next-hop";
+
+        uses layer3-fwd-next-hop-config;
+      }
+    }
+  }
+
+  grouping fbs-forwarding-section-l2-state {
+    description
+      "Grouping for layer 2 forwarding operational state";
+
+    container egress-interface {
+      description
+        "Container for selected egress interface operational state.";
+
+      container state {
+        description
+          "Container for operation state of the selected egress interface";
+
+        uses egress-interface-config;
+      }
+    }
+  }
+
+  grouping fbs-interfaces-config {
+    description
+      "Configuration data for interface references";
+
+    leaf id {
+      type oc-if:interface-id;
+      description
+        "User-defined identifier for the interface -- a common
+        convention could be '<if name>.<subif index>'";
+    }
+  }
+
+  grouping fbs-interfaces-state {
+    description
+      "Operational state data for interface references";
+  }
+
+  grouping fbs-interfaces-top {
+    description
+      "Top-level grouping for interface-specific policies
+      data";
+
+    container interfaces {
+      description
+        "Enclosing container for the list of interfaces on which
+        Link state tracking groups are set";
+
+      list interface {
+        key "id";
+        description
+          "List of interfaces on which flow based services
+          policies are set";
+
+        leaf id {
+          type leafref {
+            path "../config/id";
+          }
+          description
+            "Reference to the interface id list key";
+        }
+
+        container config {
+          description
+            "Configuration for per-interface group data";
+
+          uses fbs-interfaces-config;
+        }
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state for flow based services polices
+            per-interface data";
+
+          uses fbs-interfaces-config;
+          uses fbs-interfaces-state;
+        }
+
+        uses oc-if:interface-ref;
+        uses fbs-interface-qos-top;
+        uses fbs-interface-monitoring-top;
+        uses fbs-interface-forwarding-top;
+      }
+    }
+  }
+
+  // data definition statements
+
+  // augment statements
+
+  // rpc statements
+
+  // notification statements
+
+}
+

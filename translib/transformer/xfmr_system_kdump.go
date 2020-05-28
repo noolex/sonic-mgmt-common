@@ -12,6 +12,7 @@ import (
 
 func init () {
     XlateFuncBind("DbToYang_oc_kdump_status_xfmr", DbToYang_oc_kdump_status_xfmr)
+    XlateFuncBind("DbToYang_oc_kdump_records_xfmr", DbToYang_oc_kdump_records_xfmr)
     XlateFuncBind("DbToYang_oc_kdump_config_xfmr", DbToYang_oc_kdump_config_xfmr)
     XlateFuncBind("YangToDb_oc_kdump_config_xfmr", YangToDb_oc_kdump_config_xfmr)
 
@@ -35,6 +36,9 @@ const (
 
 type kdumpStatusCache struct {
     kdumpStatusMap map[string]string
+}
+
+type kdumpRecordsCache struct {
     kdumpRecordMap map[string]map[string]string
 }
 
@@ -44,7 +48,10 @@ type kdumpStatusCache struct {
 
 func kdumpCacheInit(statusCache *kdumpStatusCache) {
     statusCache.kdumpStatusMap = make(map[string]string)
-    statusCache.kdumpRecordMap = make(map[string]map[string]string)
+}
+
+func kdumpRecordsCacheInit(recordsCache *kdumpRecordsCache) {
+    recordsCache.kdumpRecordMap = make(map[string]map[string]string)
 }
 
 /* Get ygot root object */
@@ -62,7 +69,7 @@ func kdumpAction(action string, options [2]string) (string, error) {
 	// result.Body is of type []interface{}, since any data may be returned by
 	// the host server. The application is responsible for performing
 	// type assertions to get the correct data.
-        if (action == "status" || action == "getconfig") {
+        if (action == "status" || action == "getconfig" || action == "records") {
 	    result = HostQuery("KDUMP." + action)
         } else {
 	    result = HostQuery("KDUMP." + action, options)
@@ -70,7 +77,7 @@ func kdumpAction(action string, options [2]string) (string, error) {
 	if result.Err != nil {
 		return output, result.Err
 	}
-	if (action == "status" || action == "getconfig") {
+	if (action == "status" || action == "getconfig" || action == "records") {
 		// KDUMP.status returns an exit code and the stdout of the command
 		// We only care about the stdout (which is at [1] in the slice)
 		output, _ = result.Body[0].(string)
@@ -103,18 +110,18 @@ func getKdumpStatusFromHost(statusCache * kdumpStatusCache, hostData map[string]
 
 /* Function to populate kdump records data structure with info from host service */
 
-func getKdumpRecord(recordId string, dataMap map[string]interface{}, statusCache *kdumpStatusCache) {
-    statusCache.kdumpRecordMap[recordId] = make(map[string]string)
+func getKdumpRecord(recordId string, dataMap map[string]interface{}, recordsCache *kdumpRecordsCache) {
+    recordsCache.kdumpRecordMap[recordId] = make(map[string]string)
     for attr,val := range dataMap {
 	switch attr {
 	    case KDUMP_RECORDS_KEY:
-    		statusCache.kdumpRecordMap[recordId][KDUMP_RECORDS_KEY] = recordId
+    		recordsCache.kdumpRecordMap[recordId][KDUMP_RECORDS_KEY] = recordId
             case KDUMP_RECORDS_CRASH_LOG_FILENAME:
-    		statusCache.kdumpRecordMap[recordId][KDUMP_RECORDS_CRASH_LOG_FILENAME] = fmt.Sprintf("%v",val)
+    		recordsCache.kdumpRecordMap[recordId][KDUMP_RECORDS_CRASH_LOG_FILENAME] = fmt.Sprintf("%v",val)
             case KDUMP_RECORDS_CRASH_LOG:
-    		statusCache.kdumpRecordMap[recordId][KDUMP_RECORDS_CRASH_LOG] = fmt.Sprintf("%v",val)
+    		recordsCache.kdumpRecordMap[recordId][KDUMP_RECORDS_CRASH_LOG] = fmt.Sprintf("%v",val)
             case KDUMP_RECORDS_VMCORE:
-    		statusCache.kdumpRecordMap[recordId][KDUMP_RECORDS_VMCORE] = fmt.Sprintf("%v",val)
+    		recordsCache.kdumpRecordMap[recordId][KDUMP_RECORDS_VMCORE] = fmt.Sprintf("%v",val)
             case KDUMP_RECORDS_LIST:
 	    default:
     		log.Info("Invalid attr:",attr)
@@ -160,22 +167,22 @@ func populateKdumpStatusYgotTree(statusObj *ocbinds.OpenconfigSystem_System_Kdum
 
 /* Populate kdump records ygot tree */
 
-func populateKdumpRecordYgotTree(recordId string, recordObj *ocbinds.OpenconfigSystem_System_Kdump_State_KdumpRecord, statusCache *kdumpStatusCache) {
-    if value,present := statusCache.kdumpRecordMap[recordId][KDUMP_RECORDS_KEY]; present {
+func populateKdumpRecordYgotTree(recordId string, recordStateObj *ocbinds.OpenconfigSystem_System_Kdump_KdumpRecords_KdumpRecord_State, recordsCache *kdumpRecordsCache) {
+    if value,present := recordsCache.kdumpRecordMap[recordId][KDUMP_RECORDS_KEY]; present {
         rkey := value
-        recordObj.Id = &rkey
+        recordStateObj.Id = &rkey
     }
-    if value,present := statusCache.kdumpRecordMap[recordId][KDUMP_RECORDS_CRASH_LOG_FILENAME]; present {
+    if value,present := recordsCache.kdumpRecordMap[recordId][KDUMP_RECORDS_CRASH_LOG_FILENAME]; present {
         logFile := value
-        recordObj.VmcoreDiagnosticMessageFile = &logFile
+        recordStateObj.VmcoreDiagnosticMessageFile = &logFile
     }
-    if value,present := statusCache.kdumpRecordMap[recordId][KDUMP_RECORDS_CRASH_LOG]; present {
+    if value,present := recordsCache.kdumpRecordMap[recordId][KDUMP_RECORDS_CRASH_LOG]; present {
         log := value
-        recordObj.VmcoreDiagnosticMessage = &log
+        recordStateObj.VmcoreDiagnosticMessage = &log
     }
-    if value,present := statusCache.kdumpRecordMap[recordId][KDUMP_RECORDS_VMCORE]; present {
+    if value,present := recordsCache.kdumpRecordMap[recordId][KDUMP_RECORDS_VMCORE]; present {
         vmc := value
-        recordObj.Vmcore = &vmc
+        recordStateObj.Vmcore = &vmc
     }
 }
 
@@ -201,16 +208,42 @@ func getKdumpStatusInfofromDb( statusObj *ocbinds.OpenconfigSystem_System_Kdump_
 
     getKdumpStatusFromHost(statusCache,hostData)
     populateKdumpStatusYgotTree(statusObj, statusCache)
+    return nil;
+}
+
+/* Wrapper to kdump records related function calls */
+
+func getKdumpRecordsInfofromDb( recordsObj *ocbinds.OpenconfigSystem_System_Kdump_KdumpRecords, recordsCache *kdumpRecordsCache ) (error) {
+
+    log.Info("Entered kdump records info from db")
+    act:= "records"
+    var args [2]string
+    mess, err:= kdumpAction(act, args)
+    if err != nil {
+        log.Error("Error from sonic host service:",err)
+        return err
+    }
+
+    var hostData map[string] interface{}
+    err = json.Unmarshal([]byte (mess),&hostData)
+    if err != nil {
+        log.Error("kdump json unmarshal error:",err)
+        return err
+    }
+
     if kdumpRecordsList, present := hostData[KDUMP_RECORDS_LIST]; present {
-	    for record, dataMap := range kdumpRecordsList.(map[string]interface{}) {
-                kdumpRecordList, err :=statusObj.NewKdumpRecord(record)
-	        if err != nil {
+            for record, dataMap := range kdumpRecordsList.(map[string]interface{}) {
+                kdumpRecordList, err := recordsObj.NewKdumpRecord(record)
+                if err != nil {
                     log.Error("Creation of kdumprecords subtree failed!")
                     return err
                 }
                 ygot.BuildEmptyTree(kdumpRecordList)
-                getKdumpRecord(record, dataMap.(map[string]interface{}), statusCache)
-                populateKdumpRecordYgotTree(record, kdumpRecordList, statusCache)
+                if kdumpRecordList.State == nil {
+                    ygot.BuildEmptyTree(kdumpRecordList.State)
+                }
+                getKdumpRecord(record, dataMap.(map[string]interface{}), recordsCache)
+                populateKdumpRecordYgotTree(record, kdumpRecordList.State, recordsCache)
             }
         }
     return nil;
@@ -228,6 +261,18 @@ func getKdumpStatus(kdumpObj *ocbinds.OpenconfigSystem_System_Kdump) (error) {
     var statusCache kdumpStatusCache
     kdumpCacheInit(&statusCache)
     err :=  getKdumpStatusInfofromDb(statusObj, &statusCache)
+    return err
+}
+
+func getKdumpRecords(kdumpObj *ocbinds.OpenconfigSystem_System_Kdump) (error) {
+
+    if kdumpObj.KdumpRecords == nil {
+	ygot.BuildEmptyTree(kdumpObj)
+    }
+    recordsObj := kdumpObj.KdumpRecords
+    var recordsCache kdumpRecordsCache
+    kdumpRecordsCacheInit(&recordsCache)
+    err :=  getKdumpRecordsInfofromDb(recordsObj, &recordsCache)
     return err
 }
 
@@ -250,6 +295,25 @@ var DbToYang_oc_kdump_status_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
 	return err
     } else {
 	return nil
+    }
+}
+
+var DbToYang_oc_kdump_records_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+
+    kdumpObj := getKdumpRoot(inParams.ygRoot)
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    if err != nil {
+        log.Error("Failed to retrieve TARGET URI PATH")
+        return err
+    }
+    log.Info("TARGET URI PATH KDUMP:", targetUriPath)
+    if targetUriPath == "/openconfig-system:system/openconfig-system-ext:kdump/kdump-records" {
+        log.Info("TARGET URI PATH KDUMP:", targetUriPath)
+        log.Info("TableXfmrFunc - Uri KDUMP: ", inParams.uri);
+        return  getKdumpRecords(kdumpObj)
+    } else {
+        return nil
     }
 }
 

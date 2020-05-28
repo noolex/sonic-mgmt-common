@@ -308,9 +308,9 @@ SkipIntfCheck:
                 if !isInterfaceNameValid(id, false) {
                     return tlerr.InvalidArgs("Interface %s is invalid for upstream", id)
                 }
-                for upstr, _ := range(intfPtr.UpstreamGroups.UpstreamGroup) {
+                for upstr := range(intfPtr.UpstreamGroups.UpstreamGroup) {
                     // Check group is part of request
-                    upstreams, _ := app.intfUpstreamCfgTblMap[id]
+                    upstreams := app.intfUpstreamCfgTblMap[id]
                     upstreams = append(upstreams, upstr)
                     app.intfUpstreamCfgTblMap[id] = upstreams
                 }
@@ -360,7 +360,7 @@ func (app *LstApp) processCRUCommonGroups(d *db.DB, opcode int) error {
     if opcode == CREATE {
         if app.pathInfo.Template != "/openconfig-lst-ext:lst/lst-groups/lst-group{}" {
             // Check if Group is already created
-            for name, _ := range(app.intfTrackCfgTblMap) {
+            for name := range(app.intfTrackCfgTblMap) {
                 _, err := app.getGroupDatafromDB(d, name)
                 if nil == err {
                     return tlerr.AlreadyExists("%s group already exists", name)
@@ -412,7 +412,7 @@ func (app *LstApp) processCRUCommonGroups(d *db.DB, opcode int) error {
             for _, k := range(keys) {
                 app.deleteGroups = append(app.deleteGroups, k.Comp[0])
             }
-            for name, _ := range(app.intfTrackCfgTblMap) {
+            for name := range(app.intfTrackCfgTblMap) {
                 if contains(app.deleteGroups, name) {
                     app.deleteGroups = removeElement(app.deleteGroups, name)
                 }
@@ -1008,7 +1008,7 @@ func (app *LstApp) processLstInterfaceDownstreamGet(dbs [db.MaxDB]*db.DB, intf s
     downIntfPtr.Config.GroupName = &grpName
     downIntfPtr.State.GroupName = &grpName
 
-    grpStateData, _ := app.intfTrackCfgTblMap[grpName]
+    grpStateData := app.intfTrackCfgTblMap[grpName]
 
     dsPorts := grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM)
     dsStatus := grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM_STATUS)
