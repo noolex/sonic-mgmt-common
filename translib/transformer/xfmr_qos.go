@@ -17,7 +17,6 @@ import (
 var qCounterTblAttr [] string = []string {"transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets", "watermark"}
 var pgCounterTblAttr [] string = []string {"headroom-watermark", "headroom-persistent-watermark", "shared-watermark", "shared-persistent-watermark"}
 
-/* ocbinds.E_OpenconfigRoutingPolicy_MatchSetOptionsType */
 var ECN_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_NONE), 10): "ecn_none",
     strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_GREEN), 10): "ecn_green",
@@ -1545,9 +1544,14 @@ var DbToYang_wred_ecn_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
 	var err error
 	result := make(map[string]interface{})
 	data := (*inParams.dbDataMap)[inParams.curDb]
-	log.Info("DbToYang_wred_ecn_fld_xfmr", data, inParams.ygRoot)
-	oc_ecn := findInMap(ECN_MAP, data["WRED_PROFILE"][inParams.key].Field["ecn"])
-	n, err := strconv.ParseInt(oc_ecn, 10, 64)
-	result["ecn"] = ocbinds.E_OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn(n).ΛMap()["E_OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn"][n].Name
+	log.Info("DbToYang_wred_ecn_fld_xfmr ", data, inParams.key)
+
+    opt, ok := data["WRED_PROFILE"][inParams.key].Field["ecn"]
+    if ok {
+        oc_ecn := findInMap(ECN_MAP, opt)
+        n, _ := strconv.ParseInt(oc_ecn, 10, 64)
+        result["ecn"] = ocbinds.E_OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn(n).ΛMap()["E_OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn"][n].Name
+    }
+    log.Info("DbToYang_wred_ecn_fld_xfmr ", result)
 	return result, err
 }
