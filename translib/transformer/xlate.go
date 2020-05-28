@@ -301,7 +301,7 @@ func fillSonicKeySpec(xpath string , tableName string, keyStr string) ( []KeySpe
 	return retdbFormat
 }
 
-func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interface{}, jsonPayload []byte, txCache interface{}, skipOrdTbl *bool) (map[int]RedisDbMap, error) {
+func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interface{}, jsonPayload []byte, txCache interface{}, skipOrdTbl *bool) (map[int]RedisDbMap, map[string]map[string]db.Value, error) {
 
 	var err error
 	requestUri := path
@@ -322,29 +322,30 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		errStr := "Error: failed to unmarshal json."
 		log.Error(errStr)
 		err = tlerr.InternalError{Format: errStr}
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Map contains table.key.fields
 	var result = make(map[int]RedisDbMap)
+	var yangDefValMap = make(map[string]map[string]db.Value)
 	switch opcode {
 	case CREATE:
 		xfmrLogInfo("CREATE case")
-		err = dbMapCreate(d, yg, opcode, path, requestUri, jsonData, result, txCache)
+		err = dbMapCreate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for create request.")
 		}
 
 	case UPDATE:
 		xfmrLogInfo("UPDATE case")
-		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, txCache)
+		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for update request.")
 		}
 
 	case REPLACE:
 		xfmrLogInfo("REPLACE case")
-		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, txCache)
+		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for replace request.")
 		}
@@ -356,7 +357,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 			log.Errorf("Error: Data translation from yang to db failed for delete request.")
 		}
 	}
-	return result, err
+	return result, yangDefValMap, err
 }
 
 func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, txCache interface{}) ([]byte, error, bool) {

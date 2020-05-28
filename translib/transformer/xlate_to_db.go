@@ -588,7 +588,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	    }
         }
 
-    printDbData(resultMap, "/tmp/yangToDbDataDel.txt")
+    printDbData(resultMap, nil, "/tmp/yangToDbDataDel.txt")
 	xfmrLogInfo("Delete req: uri(\"%v\") resultMap(\"%v\").", uri, resultMap)
 	return err
 }
@@ -667,12 +667,12 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 }
 
 /* Get the data from incoming update/replace request, create map and fill with dbValue(ie. field:value to write into redis-db */
-func dbMapUpdate(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, jsonData interface{}, result map[int]map[db.DBNum]map[string]map[string]db.Value, txCache interface{}) error {
+func dbMapUpdate(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, jsonData interface{}, result map[int]map[db.DBNum]map[string]map[string]db.Value, yangDefValMap map[string]map[string]db.Value, txCache interface{}) error {
     xfmrLogInfo("Update/replace req: path(\"%v\").", path)
     var err error
-    err = dbMapCreate(d, ygRoot, oper, path, requestUri, jsonData, result, txCache)
+    err = dbMapCreate(d, ygRoot, oper, path, requestUri, jsonData, result, yangDefValMap, txCache)
     xfmrLogInfo("Update/replace req: path(\"%v\") result(\"%v\").", path, result)
-    printDbData(result, "/tmp/yangToDbDataUpRe.txt")
+    printDbData(result, nil, "/tmp/yangToDbDataUpRe.txt")
     return err
 }
 
@@ -737,7 +737,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 											// else we overwrite the value filled in resultMap with default value
 											_, ok := xlateParams.result[tblName][dbKey].Field[f]
 											if !ok {
-												dataToDBMapAdd(tblName, dbKey, xlateParams.result, f, v)
+												dataToDBMapAdd(tblName, dbKey, xlateParams.yangDefValMap, f, v)
 											}
 										}
 									}
@@ -753,7 +753,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 									// else we overwrite the value filled in resultMap with default value
 									_, ok = xlateParams.result[tblName][dbKey].Field[childNode.fieldName]
 									if !ok {
-										curXlateParams := formXlateToDbParam(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, childXpath, dbKey, xlateParams.jsonData, xlateParams.resultMap, xlateParams.result, xlateParams.txCache, xlateParams.tblXpathMap, xlateParams.subOpDataMap, xlateParams.pCascadeDelTbl, &xfmrErr, childName, childNode.defVal, tblName)
+										curXlateParams := formXlateToDbParam(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, childXpath, dbKey, xlateParams.jsonData, xlateParams.resultMap, xlateParams.yangDefValMap, xlateParams.txCache, xlateParams.tblXpathMap, xlateParams.subOpDataMap, xlateParams.pCascadeDelTbl, &xfmrErr, childName, childNode.defVal, tblName)
 										err := mapFillDataUtil(curXlateParams)
 										if err != nil {
 											return err
@@ -792,14 +792,13 @@ func dbMapDefaultValFill(xlateParams xlateToParams) error {
 }
 
 /* Get the data from incoming create request, create map and fill with dbValue(ie. field:value to write into redis-db */
-func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, jsonData interface{}, resultMap map[int]RedisDbMap, txCache interface{}) error {
-	var err error
-	tblXpathMap := make(map[string]map[string]bool)
-	var result = make(map[string]map[string]db.Value)
+func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, jsonData interface{}, resultMap map[int]RedisDbMap, yangDefValMap map[string]map[string]db.Value, txCache interface{}) error {
+	var err, xfmrErr error
+    var cascadeDelTbl []string
+	var result        = make(map[string]map[string]db.Value)
+	tblXpathMap  := make(map[string]map[string]bool)
 	subOpDataMap := make(map[int]*RedisDbMap)
-        var cascadeDelTbl []string
-	root := xpathRootNameGet(uri)
-	var xfmrErr error
+	root         := xpathRootNameGet(uri)
 
 	xlateToData := formXlateToDbParam(d, ygRoot, oper, root, uri, "", "", jsonData, resultMap, result, txCache, tblXpathMap, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
 
@@ -820,10 +819,10 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		if !isSonicYang(uri) {
 			xpath, _ := XfmrRemoveXPATHPredicates(uri)
 			yangNode, ok := xYangSpecMap[xpath]
-			if ok && yangNode.yangDataType != YANG_LEAF && yangNode.yangDataType != YANG_LEAF_LIST &&
-			   (oper == CREATE || oper == REPLACE) {
+			if ok && yangNode.yangDataType != YANG_LEAF && yangNode.yangDataType != YANG_LEAF_LIST {
 				xfmrLogInfo("Fill default value for %v, oper(%v)\r\n", uri, oper)
 				curXlateToParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpath, "", jsonData, resultMap, result, txCache, tblXpathMap, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
+				curXlateToParams.yangDefValMap = yangDefValMap
 				err = dbMapDefaultValFill(curXlateToParams)
 				if err != nil {
 					return err
@@ -905,7 +904,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		    }
                 }
 
-		printDbData(resultMap, "/tmp/yangToDbDataCreate.txt")
+		printDbData(resultMap, yangDefValMap, "/tmp/yangToDbDataCreate.txt")
 	} else {
 		log.Errorf("DBMapCreate req failed for oper (\"%v\") uri(\"%v\") error (\"%v\").", oper, uri, err)
 	}
@@ -1128,14 +1127,14 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 }
 
 /* Debug function to print the map data into file */
-func printDbData(resMap map[int]map[db.DBNum]map[string]map[string]db.Value, fileName string) {
+func printDbData(resMap map[int]map[db.DBNum]map[string]map[string]db.Value, yangDefValMap map[string]map[string]db.Value, fileName string) {
 	fp, err := os.Create(fileName)
 	if err != nil {
 		return
 	}
 	defer fp.Close()
 	for oper, dbRes := range resMap {
-		fmt.Fprintf(fp, "-----------------------------------------------------------------\r\n")
+		fmt.Fprintf(fp, "-------------------------- REQ DATA -----------------------------\r\n")
 		fmt.Fprintf(fp, "Oper Type : %v\r\n", oper)
 		for d, dbMap := range dbRes {
 			fmt.Fprintf(fp, "DB num : %v\r\n", d)
@@ -1147,6 +1146,17 @@ func printDbData(resMap map[int]map[db.DBNum]map[string]map[string]db.Value, fil
 						fmt.Fprintf(fp, "    %v :%v\r\n", k, d)
 					}
 				}
+			}
+		}
+	}
+	fmt.Fprintf(fp, "-----------------------------------------------------------------\r\n")
+	fmt.Fprintf(fp, "-------------------------- YANG DEFAULT DATA --------------------\r\n")
+	for k, v := range yangDefValMap {
+		fmt.Fprintf(fp, "table name : %v\r\n", k)
+		for ik, iv := range v {
+			fmt.Fprintf(fp, "  key : %v\r\n", ik)
+			for k, d := range iv.Field {
+				fmt.Fprintf(fp, "    %v :%v\r\n", k, d)
 			}
 		}
 	}
