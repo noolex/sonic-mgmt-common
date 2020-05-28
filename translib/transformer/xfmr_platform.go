@@ -59,6 +59,7 @@ const (
 
    EEPROM_TBL       = "EEPROM_INFO"
    PSU_TBL          = "PSU_INFO"
+   FAN_TBL          = "FAN_INFO"
 
    /** Valid System Components **/
    PSU1             = "PSU 1"
@@ -79,6 +80,8 @@ const (
    COMP_STATE_REMOVABLE       = "/openconfig-platform:components/component/state/removable"
    COMP_STATE_SERIAL_NO       = "/openconfig-platform:components/component/state/serial-no"
    COMP_STATE_SW_VER          = "/openconfig-platform:components/component/state/software-version"
+   COMP_LED_STATUS             = "/openconfig-platform:components/component/state/openconfig-platform-ext:status-led"
+   COMP_FANS                   = "/openconfig-platform:components/component/state/openconfig-platform-ext:fans"
 
    /** Supported Software component URIs **/
    SW_ASIC_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/asic-version"
@@ -112,8 +115,11 @@ const (
    PSU_OUTPUT_CURRENT         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-current"
    PSU_OUTPUT_POWER           = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-power"
    PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
-   PSU_LED_STATUS             = "/openconfig-platform:components/component/state/openconfig-platform-ext:status-led"
-   PSU_FANS                   = "/openconfig-platform:components/component/state/openconfig-platform-ext:fans"
+
+   /** Supported Fan URIs **/
+   FAN_SPEED                  = "/openconfig-platform:components/component/fan/state/openconfig-platform-fan:speed"
+   FAN_TARGET_SPEED           = "/openconfig-platform:components/component/fan/state/openconfig-platform-ext:target-speed"
+   FAN_DIRECTION              = "/openconfig-platform:components/component/fan/state/openconfig-platform-ext:direction"
 )
 
 /**
@@ -161,9 +167,27 @@ type PSU struct {
     Status_Led          string
 }
 
+type Fan struct {
+    Direction           string
+    Model_Name          string
+    Name                string
+    Presence            bool
+    Serial_Number       string
+    Speed               string
+    Speed_Tolerance     string
+    Status              bool
+    Status_Led          string
+    Target_Speed        string
+}
+
+var FAN_LST = []string {"FAN 1", "FAN 2", "FAN 3", "FAN 4", "FAN 5", "FAN 6", "FAN 7",
+                     "FAN 8", "FAN 9", "FAN 10", "PSU 1 FAN 1", "PSU 2 FAN 1"}
+var PSU_LST = []string {"PSU 1", "PSU 2"}
+
 func init () {
     XlateFuncBind("DbToYang_pfm_components_xfmr", DbToYang_pfm_components_xfmr)
     XlateFuncBind("DbToYang_pfm_components_psu_xfmr", DbToYang_pfm_components_psu_xfmr)
+    XlateFuncBind("DbToYang_pfm_components_fan_xfmr", DbToYang_pfm_components_fan_xfmr)
 }
 
 func getPfmRootObject (s *ygot.GoStruct) (*ocbinds.OpenconfigPlatform_Components) {
@@ -182,6 +206,23 @@ var DbToYang_pfm_components_psu_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
         log.Info("inParams.Uri:",inParams.requestUri)
         targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
         err := getSysPsu(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.StateDB])
+        return err
+    }
+
+    return errors.New("Component not supported")
+}
+
+var DbToYang_pfm_components_fan_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Infof("Received GET for PlatformApp Template: %s ,path: %s, vars: %v",
+    pathInfo.Template, pathInfo.Path, pathInfo.Vars)
+
+    if strings.Contains(inParams.requestUri, "/openconfig-platform:components") ||
+        strings.Contains(inParams.requestUri, "/openconfig-platform:components/component/fan") {
+
+        log.Info("inParams.Uri:",inParams.requestUri)
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+        err := getSysFans(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.StateDB])
         return err
     }
 
@@ -747,7 +788,13 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
         }
 
         SubCatFound := false
-        pf_scomp,_ := pf_comp.Subcomponents.NewSubcomponent(scanner.Text())
+        pf_scomp, perr := pf_comp.Subcomponents.NewSubcomponent(scanner.Text())
+        if pf_scomp == nil {
+            pf_scomp = pf_comp.Subcomponents.Subcomponent[scanner.Text()]
+            if pf_scomp == nil {
+                return perr
+            }
+        }
         ygot.BuildEmptyTree(pf_scomp)
 
         scanner.Scan()
@@ -755,13 +802,25 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
             s := strings.Split(scanner.Text(), ":")
             if !SubCatFound || s[1] == "" {
                 log.Infof("scomp: %s",scanner.Text())
-                pf_sensor_cat,_ = pf_scomp.State.NewSensorCategory(scanner.Text())
+                pf_sensor_cat, perr = pf_scomp.State.NewSensorCategory(scanner.Text())
+                if pf_sensor_cat == nil {
+                    pf_sensor_cat = pf_scomp.State.SensorCategory[scanner.Text()]
+                    if pf_sensor_cat == nil {
+                        return perr
+                    }
+                }
                 ygot.BuildEmptyTree(pf_sensor_cat)
                 SubCatFound = true
             } else {
                 val := s[1]
                 name := s[0]
                 pf_sensor,_ := pf_sensor_cat.NewSensor(name)
+                if pf_sensor == nil {
+                    pf_sensor = pf_sensor_cat.Sensor[name]
+                    if pf_sensor == nil {
+                        return errors.New("Can't find component")
+                    }
+                }
                 ygot.BuildEmptyTree(pf_sensor)
                 pf_sensor.State = &val
             }
@@ -807,24 +866,32 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 return err
             }
 
-            pf_comp, _ = pf_cpts.NewComponent(PSU1)
-            ygot.BuildEmptyTree(pf_comp)
-            err = fillSysPsuInfo(pf_comp, PSU1, true, true, targetUriPath, d)
-            if err != nil {
-                return err
-            }
-            err = fillSysPsuInfo(pf_comp, PSU1, true, false, targetUriPath, d)
-            if err != nil {
-                return err
+            for _, psu := range PSU_LST {
+                pf_comp, _ = pf_cpts.NewComponent(psu)
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysPsuInfo(pf_comp, psu, true, true, targetUriPath, d)
+                if err != nil {
+                    return err
+                }
+                err = fillSysPsuInfo(pf_comp, psu, true, false, targetUriPath, d)
+                if err != nil {
+                    return err
+                }
             }
 
-            pf_comp, _ = pf_cpts.NewComponent(PSU2)
-            ygot.BuildEmptyTree(pf_comp)
-            err = fillSysPsuInfo(pf_comp, PSU2, true, true, targetUriPath, d)
-            if err != nil {
-                return err
+
+            for _, fan := range FAN_LST {
+                pf_comp, _ = pf_cpts.NewComponent(fan)
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysFanInfo(pf_comp, fan, true, true, targetUriPath, d)
+                if err != nil {
+                    return err
+                }
+                err = fillSysFanInfo(pf_comp, fan, true, false, targetUriPath, d)
+                if err != nil {
+                    return err
+                }
             }
-            err = fillSysPsuInfo(pf_comp, PSU2, true, false, targetUriPath, d)
             return err
         } else {
             if matchStr == "system eeprom" {
@@ -860,7 +927,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 } else {
                     err = errors.New("Invalid input component name")
                 }
-            } else if validPsuName(compName) {
+            } else if validPsuName(&compName) {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
                     log.Info("Invalid Component Name")
@@ -868,6 +935,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 ygot.BuildEmptyTree(pf_comp)
                 fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
+            } else if validFanName(&compName) {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name")
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
+                fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else {
                 err = errors.New("Invalid component name")
             }
@@ -902,7 +977,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             } else {
                 err = errors.New("Invalid input component name")
             }
-        } else if validPsuName(compName) {
+        } else if validPsuName(&compName) {
           pf_comp := pf_cpts.Component[compName]
           if pf_comp  == nil {
               log.Info("Invalid Component Name")
@@ -910,6 +985,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
           }
           ygot.BuildEmptyTree(pf_comp)
           fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
+        } else if validFanName(&compName) {
+          pf_comp := pf_cpts.Component[compName]
+          if pf_comp  == nil {
+              log.Info("Invalid Component Name")
+              return errors.New("Invalid component name")
+          }
+          ygot.BuildEmptyTree(pf_comp)
+          fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
         } else {
             err = errors.New("Invalid component name ")
         }
@@ -945,7 +1028,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 } else {
                     err = errors.New("Invalid input component name")
                 }
-            } else if validPsuName(compName) {
+            } else if validPsuName(&compName) {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
@@ -954,6 +1037,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 } else {
                     err = errors.New("Unable to locate component")
                 }
+            } else if validFanName(&compName) {
+              pf_comp := pf_cpts.Component[compName]
+              if pf_comp  == nil {
+                  log.Info("Invalid Component Name")
+                  return errors.New("Invalid component name")
+              }
+              ygot.BuildEmptyTree(pf_comp)
+              fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else {
                 err = errors.New("Invalid input component name")
             }
@@ -1085,11 +1176,11 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
         if psuInfo.Output_Power != "" {
             psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
         }
-    case PSU_LED_STATUS:
+    case COMP_LED_STATUS:
         if psuInfo.Status_Led != "" {
             psuEepromState.StatusLed = &psuInfo.Status_Led
         }
-    case PSU_FANS:
+    case COMP_FANS:
         if psuInfo.Fans != "" {
             tmp, _ := strconv.ParseUint(psuInfo.Fans, 10, 32)
             fans := uint32(tmp)
@@ -1119,8 +1210,17 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     return err
 }
 
-func validPsuName(name string) bool {
-    return name != "" && (name == PSU1 || name == PSU2)
+func validPsuName(name *string) bool {
+    if name == nil || *name == "" {
+        return false
+    }
+    tmp := strings.ToUpper(*name)
+    for _ , psu := range PSU_LST {
+        if tmp == psu {
+            return true
+        }
+    }
+    return false
 }
 
 func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
@@ -1131,7 +1231,7 @@ func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath str
     log.Info("targetUriPath:", targetUriPath)
     psuName := NewPathInfo(uri).Var("name")
 
-    if validPsuName(psuName) {
+    if validPsuName(&psuName) {
         psuCom := pf_cpts.Component[psuName]
         if psuCom  == nil {
             log.Info("Invalid Component Name")
@@ -1142,13 +1242,196 @@ func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath str
         ygot.BuildEmptyTree(psuCom.PowerSupply.State)
         switch targetUriPath {
         case "/openconfig-platform:components/component":
-            fillSysPsuInfo(psuCom, psuName, true, true, targetUriPath, d)
+            fallthrough
         case "/openconfig-platform:components/component/power-supply":
-            fillSysPsuInfo(psuCom, psuName, true, true, targetUriPath, d)
+            fallthrough
         case "/openconfig-platform:components/component/power-supply/state":
             fillSysPsuInfo(psuCom, psuName, true, true, targetUriPath, d)
         default:
             fillSysPsuInfo(psuCom, psuName, false, true, targetUriPath, d)
+            break
+        }
+    }
+    return err
+}
+
+func validFanName(name *string) (bool) {
+    if name == nil || *name == "" {
+        return false
+    }
+    tmp := strings.ToUpper(*name)
+    for _ , fan := range FAN_LST {
+        if tmp == fan {
+            return true
+        }
+    }
+    return false
+}
+
+func getSysFanFromDb(name string, d *db.DB) (Fan, error) {
+    var fanInfo Fan
+    var err error
+
+    fanEntry, err := d.GetEntry(&db.TableSpec{Name: FAN_TBL}, db.Key{Comp: []string{name}})
+
+    if err != nil {
+        log.Info("Cant get entry: ", name)
+    }
+
+
+    fanInfo.Direction = fanEntry.Get("direction")
+    fanInfo.Name = fanEntry.Get("name")
+    fanInfo.Speed = fanEntry.Get("speed")
+    fanInfo.Speed_Tolerance = fanEntry.Get("speed_tolerance")
+    fanInfo.Target_Speed = fanEntry.Get("target_speed")
+
+    fanInfo.Presence = false
+    if fanEntry.Get("presence") == "true" {
+        fanInfo.Presence = true
+    }
+
+    fanInfo.Status = false
+    if fanEntry.Get("status") == "true" {
+        fanInfo.Status = true
+    }
+
+    fanInfo.Model_Name = fanEntry.Get("model")
+    fanInfo.Serial_Number = fanEntry.Get("serial")
+    fanInfo.Status_Led = fanEntry.Get("status_led")
+
+    return fanInfo, err
+}
+
+func fillSysFanInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
+                        name string, all bool, getPowerStats bool, targetUriPath string, d *db.DB) (error) {
+    var err error
+    var tmp uint64
+
+    fanInfo, err := getSysFanFromDb(name, d)
+    if err != nil {
+        log.Info("Error Getting fan info from dB")
+        return err
+    }
+
+    empty := !fanInfo.Presence
+    fanState := psuCom.Fan.State
+    fanEepromState := psuCom.State
+    if all {
+        if getPowerStats {
+            if fanInfo.Target_Speed != "" {
+                tmp, _ = strconv.ParseUint(fanInfo.Target_Speed, 10, 32)
+                targetSpeed := uint32(tmp)
+                fanState.TargetSpeed = &targetSpeed
+            }
+            if fanInfo.Speed != "" {
+                tmp, _ = strconv.ParseUint(fanInfo.Speed, 10, 32)
+                speed := uint32(tmp)
+                fanState.Speed = &speed
+            }
+            if fanInfo.Speed_Tolerance != "" {
+                tmp, _ = strconv.ParseUint(fanInfo.Speed_Tolerance, 10, 32)
+                speedTolerance := uint32(tmp)
+                fanState.SpeedTolerance = &speedTolerance
+            }
+            if fanInfo.Direction != "" {
+                fanState.Direction = &fanInfo.Direction
+            }
+
+            return err
+        }
+
+        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+        if fanInfo.Status {
+            fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        }
+
+        if fanInfo.Model_Name != "" {
+            fanEepromState.Description = &fanInfo.Model_Name
+        }
+        if fanInfo.Name != "" {
+            fanEepromState.Name = &fanInfo.Name
+        }
+        if fanInfo.Serial_Number != "" {
+            fanEepromState.SerialNo = &fanInfo.Serial_Number
+        }
+        if fanInfo.Status_Led != "" {
+            fanEepromState.StatusLed = &fanInfo.Status_Led
+        }
+
+        return err
+    }
+
+    switch targetUriPath {
+    case FAN_SPEED:
+        if fanInfo.Speed != "" {
+            tmp, _ = strconv.ParseUint(fanInfo.Speed, 10, 32)
+            speed := uint32(tmp)
+            fanState.Speed = &speed
+        }
+    case FAN_TARGET_SPEED:
+        if fanInfo.Target_Speed != "" {
+            tmp, _ = strconv.ParseUint(fanInfo.Target_Speed, 10, 32)
+            targetSpeed := uint32(tmp)
+            fanState.TargetSpeed = &targetSpeed
+        }
+    case FAN_DIRECTION:
+        if fanInfo.Direction != "" {
+            fanState.Direction = &fanInfo.Direction
+        }
+    case COMP_LED_STATUS:
+        if fanInfo.Status_Led != "" {
+            fanEepromState.StatusLed = &fanInfo.Status_Led
+        }
+    case COMP_STATE_EMPTY:
+        fanEepromState.Empty = &empty
+    case COMP_STATE_OPER_STATUS:
+        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+        if fanInfo.Status {
+            fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        }
+    case COMP_STATE_SERIAL_NO:
+        if fanInfo.Serial_Number != "" {
+            fanEepromState.SerialNo = &fanInfo.Serial_Number
+        }
+    case COMP_STATE_DESCR:
+        if fanInfo.Model_Name != "" {
+            fanEepromState.Description = &fanInfo.Model_Name
+        }
+    case COMP_STATE_NAME:
+        if fanInfo.Name != "" {
+            fanEepromState.Name = &fanInfo.Name
+        }
+    }
+
+    return err
+}
+
+func getSysFans(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
+
+    log.Info("Preparing dB for Fan info");
+
+    var err error
+    log.Info("targetUriPath:", targetUriPath)
+    fanName := NewPathInfo(uri).Var("name")
+
+    if validFanName(&fanName) {
+        fanCom := pf_cpts.Component[fanName]
+        if fanCom  == nil {
+            log.Info("Invalid Component Name")
+            return errors.New("Invalid component name")
+        }
+        ygot.BuildEmptyTree(fanCom)
+        ygot.BuildEmptyTree(fanCom.Fan)
+        ygot.BuildEmptyTree(fanCom.Fan.State)
+        switch targetUriPath {
+        case "/openconfig-platform:components/component":
+            fallthrough
+        case "/openconfig-platform:components/component/fan":
+            fallthrough
+        case "/openconfig-platform:components/component/fan/state":
+            fillSysFanInfo(fanCom, fanName, true, true, targetUriPath, d)
+        default:
+            fillSysFanInfo(fanCom, fanName, false, true, targetUriPath, d)
             break
         }
     }

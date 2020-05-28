@@ -1,6 +1,7 @@
 module sonic-port-qos-map {
     namespace "http://github.com/Azure/sonic-port-qos-map";
     prefix pqm;
+    yang-version 1.1;
 
     import sonic-extension {
         prefix sonic-ext;
@@ -57,8 +58,13 @@ module sonic-port-qos-map {
                 // Total list instance = number(key1) * number(key2) * number(key3)
 
                 leaf ifname {
-                    type leafref {
-                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type string {
+                           pattern "CPU";
+                        }
                     }
                 }
 

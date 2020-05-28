@@ -121,7 +121,7 @@ func yangListDelData(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requ
 						chldXpath    := xpath+"/"+yangChldName
 						chldUri      := curUri+"/"+yangChldName
 						chldSpec, ok := xYangSpecMap[chldXpath]
-						if (ok && (chldSpec.dbIndex == db.ConfigDB) && spec.hasChildSubTree &&
+						if (ok && (chldSpec.dbIndex == db.ConfigDB) && chldSpec.hasChildSubTree &&
 						(chldSpec.yangEntry != nil)) {
 							chldYangType := chldSpec.yangDataType
 							if ((chldYangType == YANG_CONTAINER || chldYangType == YANG_LIST) &&
