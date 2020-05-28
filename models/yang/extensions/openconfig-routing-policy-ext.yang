@@ -47,10 +47,14 @@ module openconfig-routing-policy-ext {
                 description "Deny action.";
             }
         }
+        description
+            "Routing policy action type permit or deny";
     }
 
     grouping routing-policy-ext-asn-list-val {
-         leaf asn_list{
+        description
+            "Configuration data for ASN numbers";
+         leaf asn-list{
            type string;
            description
                 "Comma separated list of asn numbers";
@@ -59,6 +63,8 @@ module openconfig-routing-policy-ext {
     }
 
     grouping routing-policy-ext-action {
+        description
+            "Configuration data for action type";
         leaf action {
             type routing-policy-ext-action-type;
             description
@@ -117,11 +123,17 @@ module openconfig-routing-policy-ext {
             "Configuration data for source VRF match definitions.";
 
         container match-src-network-instance {
+            description
+                "Source network instance match configuration";
             container config {
+                description
+                    "Configuration parameters relating to source network instance";
                 uses routing-policy-ext-match-network-instance;
             }
             container state {
                 config false;
+                description
+                    "Operational state parameters relating to source network instance";
                 uses routing-policy-ext-match-network-instance;
             }
         }
@@ -141,7 +153,7 @@ module openconfig-routing-policy-ext {
 
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions {
       description
-          "Policy definition extensions for BGP AS-PATH prepend configs";
+          "Policy definition extensions for conditions";
         uses routing-policy-ext-match-src-network-instance-config;
     }
 

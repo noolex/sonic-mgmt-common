@@ -219,6 +219,7 @@ func fill_pgrp_state_info (pgrp_key *_xfmr_bgp_pgrp_state_key, frrPgrpDataValue 
                               pgrp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup) error {
     var err error
     var pMember ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_MembersState
+    var member_state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_MembersState_Member_State
     pgrp_obj.MembersState = &pMember
 
     frrPgrpDataJson := frrPgrpDataValue.(map[string]interface{})
@@ -234,15 +235,19 @@ func fill_pgrp_state_info (pgrp_key *_xfmr_bgp_pgrp_state_key, frrPgrpDataValue 
             if !ok {
                 member, _ = pMember.NewMember(pgMem)
             }
+            if member.State == nil {
+                member.State = &member_state
+            }
+            ygot.BuildEmptyTree(pgrp_obj)
             temp, ok := peerGroupMembers[pgMem].(map[string]interface{})
             if  ok {
                 if value, ok := temp["peerStatus"].(string); ok {
-                    member.State = &value
-                    log.Info("peer group member status ", member.State)
+                    member.State.State = &value
+                    log.Info("peer group member status ", member.State.State)
                 }
                 if value, ok := temp["isDynamic"].(bool); ok {
-                    member.Dynamic = &value
-                    log.Info("peer group member Dynamic ", member.Dynamic)
+                    member.State.Dynamic = &value
+                    log.Info("peer group member Dynamic ", member.State.Dynamic)
                 }
             }
         }

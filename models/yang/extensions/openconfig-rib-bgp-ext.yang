@@ -3,7 +3,7 @@ module openconfig-rib-bgp-ext {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/rib/bgp-ext";
+  namespace "http://openconfig.net/yang/rib-bgp/extension";
 
   prefix "oc-bgprib-ext";
 

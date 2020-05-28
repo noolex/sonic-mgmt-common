@@ -699,6 +699,8 @@ module openconfig-bgp-ext {
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to route importing from network instance";
               uses bgp-ext-import-network-instance;
           }
       }
@@ -1215,9 +1217,9 @@ module openconfig-bgp-ext {
     description
         "Operational data for PATH attributes";
       container attr-sets {
+          config false;
           description
               "Various PATH attributes for a given prefix.";
-          config false;
           leaf weight {
               type uint32;
               description
@@ -1239,10 +1241,14 @@ module openconfig-bgp-ext {
           description
               "This enables BGP to accept as-path update with local AS.";
           container config {
+              description
+                  "Configuration parameters relating to accept as-path update with local AS";
               uses bgp-ext-neighbor-group-afi-safi-allow-own-as-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to accept as-path update with local AS";
               uses bgp-ext-neighbor-group-afi-safi-allow-own-as-config; 
           }
       }
@@ -1251,10 +1257,14 @@ module openconfig-bgp-ext {
           description
               "BGP attribute is propagated unchanged to the neighbor.";
           container config {
+              description
+                  "Configuration parameters relating to propagate BGP attribute unchanged to the neighbor";
               uses bgp-ext-attribute-unchanged-config;
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to propagate BGP attribute unchanged to the neighbor";
               uses bgp-ext-attribute-unchanged-config;
           }
       }
@@ -1263,10 +1273,14 @@ module openconfig-bgp-ext {
           description
               "Apply AS-path filter list.";
           container config {
+              description
+                  "Configuration parameters relating to AS-Path filter list";
               uses bgp-ext-filter-list-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to AS-Path filter list";
               uses bgp-ext-filter-list-config; 
           }
       }
@@ -1275,10 +1289,14 @@ module openconfig-bgp-ext {
           description
               "Disable the next hop calculation for the neighbor group";
           container config {
+              description
+                  "Configuration parameters relating to disable the next hop calculation for the neighbor group";
               uses bgp-ext-next-hop-self-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to disable the next hop calculation for the neighbor group";
               uses bgp-ext-next-hop-self-config; 
           }
       }
@@ -1287,10 +1305,14 @@ module openconfig-bgp-ext {
           description
               "Apply prefix filter list.";
           container config {
+              description
+                  "Configuration parameters relating to prefix filter list";
               uses bgp-ext-prefix-list-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to prefix filter list";
               uses bgp-ext-prefix-list-config; 
           }
       }
@@ -1299,10 +1321,14 @@ module openconfig-bgp-ext {
           description
               "Remove private ASNs in outbound updates";
           container config {
+              description
+                  "Configuration parameters relating to remove private ASNs in outbound updates";
               uses bgp-ext-remove-private-as-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to remove private ASNs in outbound updates";
               uses bgp-ext-remove-private-as-config; 
           }
       }
@@ -1311,10 +1337,14 @@ module openconfig-bgp-ext {
           description
               "Advertise prefix-list outbound route filtering capability to this neighbor.";
           container config {
+              description
+                  "Configuration parameters relating to advertise prefix-list outbound route filtering capability to this neighbor";
               uses bgp-ext-capability-orf-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to advertise prefix-list outbound route filtering capability to this neighbor";
               uses bgp-ext-capability-orf-config; 
           }
       }
@@ -1352,28 +1382,41 @@ module openconfig-bgp-ext {
         config false;
         description
             "Describes the members of the peer groups";
-        list member {
-            key "neighbor";
-            leaf neighbor {
-                type leafref {
-                    path "/oc-netinst:network-instances/oc-netinst:network-instance/" +
-                        "oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/" +
-                        "oc-netinst:neighbor/oc-netinst:config/oc-netinst:neighbor-address";
-                }
+		list member {
+			key "neighbor";
+			description
+				"Neighbors in a peer group";
+			leaf neighbor {
+				type leafref {
+					path "../state/neighbor";
+				}
+				description
+					"Reference to the neighbor key";
+			}
+			container state {
                 description
-                    "Indicates neighbor address or interface.";
-            }
-            leaf dynamic {
-                type boolean;
-                description
-                    "Indicates neighbor is dynamic or not.";
-            }
-            leaf state {
-                type string;
-                description
-                    "Indicates neighbor current state.";
-           }
-        }
+                    "Operation state parameters relating to members of the peer group";
+				leaf neighbor {
+					type leafref {
+						path "/oc-netinst:network-instances/oc-netinst:network-instance/" +
+							"oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/" +
+							"oc-netinst:neighbor/oc-netinst:config/oc-netinst:neighbor-address";
+					}
+					description
+						"Indicates neighbor address or interface.";
+				}
+				leaf dynamic {
+					type boolean;
+					description
+						"Indicates neighbor is dynamic or not.";
+				}
+				leaf state {
+					type string;
+					description
+						"Indicates neighbor current state.";
+				}
+			}
+		}
      }
   }
   
@@ -2022,6 +2065,8 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
           // }
           type string;
       }
+      description
+          "BGP neighbor can be either IP or interface name";
   }
   
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:config/oc-netinst:neighbor-address {
@@ -2264,6 +2309,8 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
   }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:config {
+      description
+          "BGP neighbor ipv6 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
   
