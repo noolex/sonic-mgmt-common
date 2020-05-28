@@ -184,11 +184,10 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey s
 	if len(xYangSpecMap[xpath].xfmrKey) > 0 {
 		var dbs [db.MaxDB]*db.DB
 		inParams := formXfmrInputRequest(nil, dbs, db.MaxDB, nil, uri, requestUri, GET, dbKey, nil, nil, nil, txCache)
-		ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrKey), inParams)
+		rmap, err := keyXfmrHandlerFunc(inParams, xYangSpecMap[xpath].xfmrKey)
 		if err != nil {
 			return nil, "", err
 		}
-		rmap := ret[0].Interface().(map[string]interface{})
 		if uriWithKeyCreate {
 			for k, v := range rmap {
 				uriWithKey += fmt.Sprintf("[%v=%v]", k, v)
@@ -204,8 +203,10 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey s
 
 	rmap := make(map[string]interface{})
 	if len(keyNameList) > 1 {
-		xfmrLogInfoAll("No key transformer found for multi element yang key mapping to a single redis key string.")
-	        return rmap, uriWithKey, nil
+		log.Errorf("No key transformer found for multi element yang key mapping to a single redis key string, for uri %v", uri)
+                errStr := fmt.Sprintf("Error processing key for list %v", uri)
+                err = fmt.Errorf("%v", errStr)
+                return rmap, uriWithKey, err
 	}
 	keyXpath := xpath + "/" + keyNameList[0]
 	xyangSpecInfo, ok := xYangSpecMap[keyXpath]

@@ -578,7 +578,7 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 			ygRoot = inParamsForGet.ygRoot
 			if err != nil {
 				log.Infof("Error(%v) returned for %v", err, uri)
-			} else if len(instMap) > 0 {
+			} else if ((instMap != nil)  && (len(instMap) > 0)) {
 				mapSlice = append(mapSlice, instMap)
 			}
 
@@ -614,7 +614,7 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 				ygRoot = inParamsForGet.ygRoot
 				if err != nil {
 					log.Infof("Error(%v) returned for %v", err, uri)
-				} else if len(instMap) > 0 {
+				} else if ((instMap != nil)  && (len(instMap) > 0)) {
 					mapSlice = append(mapSlice, instMap)
 				}
 			}
@@ -665,7 +665,11 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 	tbl := inParamsForGet.tbl
 	dbKey := inParamsForGet.tblKey
 
-	curKeyMap, curUri, _ := dbKeyToYangDataConvert(uri, requestUri, xpath, dbKey, dbs[cdb].Opts.KeySeparator, txCache)
+	curKeyMap, curUri, err := dbKeyToYangDataConvert(uri, requestUri, xpath, dbKey, dbs[cdb].Opts.KeySeparator, txCache)
+        if ((err != nil) || (curKeyMap == nil) || (len(curKeyMap) == 0)) {
+                xfmrLogInfoAll("Skip filling list instance for uri %v since no yang  key found corresponding to db-key %v", uri, dbKey)
+               return curMap, err
+        }
 	parentXpath := parentXpathGet(xpath)
 	_, ok := xYangSpecMap[xpath]
 	if ok && len(xYangSpecMap[xpath].xfmrFunc) > 0 {
