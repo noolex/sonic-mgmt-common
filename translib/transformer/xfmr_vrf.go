@@ -813,6 +813,22 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         }
 
         intTbl := IntfTypeTblMap[intf_type]
+
+        /* For non-delete op,  make sure the interface is already created */
+        if (inParams.oper != DELETE){
+
+                port_tbl_name, _ := getPortTableNameByDBId(intTbl, inParams.curDb)
+
+                _, err := inParams.d.GetMapAll(&db.TableSpec{Name:port_tbl_name+"|"+intfId})
+                if err != nil {
+                        errStr = "Interface " + intfId + " is not configured"
+                        log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr,
+                                 "tbl ", port_tbl_name)
+                        err = tlerr.InvalidArgsError{Format: errStr}
+                        return res_map, err
+                }
+        }
+
         intf_tbl_name, _ :=  getIntfTableNameByDBId(intTbl, inParams.curDb)
 
         /* Check if interface already has VRF association */
