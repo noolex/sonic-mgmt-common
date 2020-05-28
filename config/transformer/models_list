@@ -19,6 +19,8 @@ openconfig-bgp-ext.yang
 openconfig-bgp-evpn-ext.yang
 openconfig-network-instance-annot.yang
 openconfig-ospfv2-ext.yang
+openconfig-udld-ext.yang
+openconfig-udld-ext-annot.yang
 ietf-ptp.yang
 ietf-ptp-annot.yang
 ietf-ptp-ext.yang
