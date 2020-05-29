@@ -94,8 +94,11 @@ module sonic-static-route {
                 leaf distance {
                     //default 0;
                     type string {
-                         pattern "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5]),)*"
-                            + "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])";
+                        pattern "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5]),)*"
+                            + "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])" {
+                            error-message "Invalid nexthop distance list";
+                            error-app-tag distance-list-invalid;
+                        }
                     }
                     description
                         "List of metric value of all next-hops for specific route.
@@ -110,14 +113,22 @@ module sonic-static-route {
                 }
                 leaf nexthop-vrf {
                     sonic-ext:custom-validation ValidateNexthopVrf;
-                    type string;
+                    type string {
+                        pattern "((default|Vrf[a-zA-Z0-9_-]+|),)*(default|Vrf[a-zA-Z0-9_-]+|)" {
+                            error-message "Invalid nexthop VRF name list";
+                            error-app-tag vrf-name-list-invalid;
+                        }
+                    }
                     description
                         "List of next-hop VRF name for all next-hops of specific route. If nexthop-vrf
                          not specified by the user empty string will be set to make the set";
                 }
                 leaf blackhole {
                     type string {
-                        pattern "((true|false),)*(true|false)";
+                        pattern "((true|false),)*(true|false)" {
+                            error-message "Invalid nexthop blackhole flag list";
+                            error-app-tag blackhole-flag-list-invalid;
+                        }
                     }
                     description
                         "List of blackhole flag for all next-hops of specific route. If true Specified
