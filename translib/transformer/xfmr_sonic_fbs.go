@@ -534,7 +534,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 			log.Infof("Key:%v Selected:%v", pbfKey, selected)
 			if selected == "DROP" {
 				fwdEntry.PACKET_ACTION = &selected
-			} else {
+			} else if selected != "FORWARD" {
 				parts := strings.Split(selected, "|")
 				if len(parts) == 3 {
 					fwdEntry.IP_ADDRESS = &parts[0]
