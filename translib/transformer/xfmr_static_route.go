@@ -205,6 +205,7 @@ func (nhs *ipNexthopSet)toAttrMap() db.Value {
     return retVal
 }
 
+// set nexthop set based on NH attributes of DB data
 func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value) error {
     var fieldValues [len(tableFieldNames)][]string
     var nhNum int
@@ -302,6 +303,7 @@ func getYgotStaticRoutesObj(s *ygot.GoStruct, vrf string) (
     return protoInstObj.StaticRoutes, nil
 }
 
+// compose nexthop set based on data of ygot structure
 func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]*ipNexthopSet, error) {
     staticRoutes, err := getYgotStaticRoutesObj(s, vrf)
     if err != nil {
@@ -529,17 +531,18 @@ type dbNexthopInfo struct {
     nhList *ipNexthopSet
 }
 
-type cacheRouteInfo struct {
+type routeNexthopInfo struct {
     ygotNhList *ipNexthopSet
     dbNh *dbNexthopInfo
 }
 
-type cacheVrfInfo map[string]map[string]*cacheRouteInfo
+// Store nexthop list read from ygot data and config DB for route of VRF
+type vrfRouteInfo map[string]map[string]*routeNexthopInfo
 
-func getRouteData(inParams XfmrParams, scope uriScopeType) (*cacheVrfInfo, error) {
+func getRouteData(inParams XfmrParams, scope uriScopeType) (*vrfRouteInfo, error) {
     pathInfo := NewPathInfo(inParams.uri)
     vrf := pathInfo.Var("name")
-    cacheData := &cacheVrfInfo{}
+    routeData := &vrfRouteInfo{}
     proto := pathInfo.Var("name#2")
     protoId := pathInfo.Var("identifier")
     ipPrefix := pathInfo.Var("prefix")
@@ -570,7 +573,7 @@ func getRouteData(inParams XfmrParams, scope uriScopeType) (*cacheVrfInfo, error
             }
         }
     }
-    (*cacheData)[vrf] = make(map[string]*cacheRouteInfo)
+    (*routeData)[vrf] = make(map[string]*routeNexthopInfo)
     for prefix, nhs := range srouteObjMap {
         nhList, vrfInKey, err := getNexthopListFromDB(inParams.d, vrf, prefix)
         if err != nil {
@@ -578,16 +581,16 @@ func getRouteData(inParams XfmrParams, scope uriScopeType) (*cacheVrfInfo, error
             return nil, err
         }
         dbNh := &dbNexthopInfo{vrfInKey, &nhList}
-        (*cacheData)[vrf][prefix] = &cacheRouteInfo{nhs, dbNh}
+        (*routeData)[vrf][prefix] = &routeNexthopInfo{nhs, dbNh}
     }
 
-    return cacheData, nil
+    return routeData, nil
 }
 
-func (data *cacheVrfInfo)isDataValid(scope uriScopeType, oper int, vrf string) bool {
+func (data *vrfRouteInfo)isDataValid(scope uriScopeType, oper int, vrf string) bool {
     vrfRoute, ok := (*data)[vrf]
     if !ok {
-        log.Infof("VRF %s not in cached data", vrf)
+        log.Infof("VRF %s not in route data", vrf)
         return false
     }
     if oper == CREATE {
@@ -686,12 +689,12 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
     vrf := pathInfo.Var("name")
     ipPrefix := pathInfo.Var("prefix")
 
-    cacheData, err := getRouteData(inParams, uriScope)
+    routeData, err := getRouteData(inParams, uriScope)
     if err != nil {
         log.Info("Failed to get ygot and DB data")
         return resMap, err
     }
-    if !cacheData.isDataValid(uriScope, inParams.oper, vrf) {
+    if !routeData.isDataValid(uriScope, inParams.oper, vrf) {
         log.Info("Data read from ygot root and DB is not valid")
         return resMap, tlerr.InvalidArgs("Invalid data from input or DB")
     }
@@ -705,10 +708,10 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
         } else {
             nhIndex := pathInfo.Var("index")
             log.Infof("Handling static route nexthop delete for VRF %s prefix %s index %s", vrf, ipPrefix, nhIndex)
-            route := (*cacheData)[vrf][ipPrefix]
+            route := (*routeData)[vrf][ipPrefix]
             nh, ok := route.ygotNhList.nhList[nhIndex]
             if !ok {
-                return resMap, tlerr.InvalidArgs("NH %s not found in ygot cache", nhIndex)
+                return resMap, tlerr.InvalidArgs("NH %s not found in ygot data", nhIndex)
             }
             changed, err := route.dbNh.nhList.updateNH(nh, DELETE)
             if err != nil {
@@ -738,7 +741,7 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
         var delSubDataMap = make(RedisDbMap)
         updSubDataMap[db.ConfigDB] = make(map[string]map[string]db.Value)
         delSubDataMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-        for prefix, routeInfo := range (*cacheData)[vrf] {
+        for prefix, routeInfo := range (*routeData)[vrf] {
             if routeInfo.ygotNhList == nil {
                 // delete route
                 log.Infof("Put to be replaced route prefix %s in delete list", prefix)
