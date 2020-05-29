@@ -73,6 +73,7 @@ type dbInfo  struct {
     keyList      []string
     xfmrValue    *string
 	hasXfmrFn    bool
+    cascadeDel   int
 }
 
 type sonicTblSeqnInfo struct {
@@ -489,6 +490,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 			xDbSpecMap[dbXpath].dbEntry   = entry
 			xDbSpecMap[dbXpath].fieldType = entryType
 			xDbSpecMap[dbXpath].module = moduleNm
+			xDbSpecMap[dbXpath].cascadeDel = XFMR_INVALID
 			if entryType == "container" {
 				xDbSpecMap[dbXpath].dbIndex = db.ConfigDB
 				if entry.Exts != nil && len(entry.Exts) > 0 {
@@ -560,6 +562,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 		xDbSpecMap[moduleXpath].dbEntry   = entry
 		xDbSpecMap[moduleXpath].fieldType = entryType
 		xDbSpecMap[moduleXpath].module = moduleNm
+		xDbSpecMap[moduleXpath].cascadeDel = XFMR_INVALID
                 for {
 			sncTblInfo := new(sonicTblSeqnInfo)
 			if sncTblInfo == nil {
@@ -878,6 +881,12 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 						}
 					}
 				}
+			case "cascade-delete" :
+				if ext.NName() == "ENABLE" ||  ext.NName() == "enable" {
+					dbXpathData.cascadeDel = XFMR_ENABLE
+				} else {
+					dbXpathData.cascadeDel = XFMR_DISABLE
+				}
 			default :
 			}
 		}
@@ -987,6 +996,7 @@ func dbMapPrint( fname string) {
         fmt.Fprintf(fp, "     module   :%v \r\n", v.module)
         fmt.Fprintf(fp, "     listName :%v \r\n", v.listName)
         fmt.Fprintf(fp, "     keyList  :%v \r\n", v.keyList)
+        fmt.Fprintf(fp, "     cascadeDel :%v \r\n", v.cascadeDel)
         if v.xfmrValue != nil {
 			fmt.Fprintf(fp, "     xfmrValue:%v \r\n", *v.xfmrValue)
 		}
