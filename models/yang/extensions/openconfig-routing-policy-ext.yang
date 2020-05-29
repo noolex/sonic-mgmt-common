@@ -11,21 +11,31 @@ module openconfig-routing-policy-ext {
     import openconfig-routing-policy { prefix oc-rpol; }
     import openconfig-bgp-policy { prefix oc-bgp-pol; }
     import openconfig-inet-types { prefix oc-inet; }
-    import openconfig-policy-types { prefix oc-pol-types; }
     import openconfig-network-instance { prefix oc-netinst; }
+    import openconfig-extensions { prefix oc-ext; }
+
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
 
     description
         "This module describes a YANG model for routing policy
         configuration extensions.";
 
+    oc-ext:openconfig-version "0.1.1";
+
     revision "2020-05-13" {
         description
             "Replaced the type of match tag and set med to uint32.";
+        reference "0.1.1";
     }
 
     revision "2019-11-11" {
         description
             "Add OpenConfig unsupported attributes.";
+        reference "0.1.0";
     }
 
     typedef routing-policy-ext-action-type {
@@ -37,10 +47,14 @@ module openconfig-routing-policy-ext {
                 description "Deny action.";
             }
         }
+        description
+            "Routing policy action type permit or deny";
     }
 
-    grouping asn_list_val {
-         leaf asn_list{
+    grouping routing-policy-ext-asn-list-val {
+        description
+            "Configuration data for ASN numbers";
+         leaf asn-list{
            type string;
            description
                 "Comma separated list of asn numbers";
@@ -49,6 +63,8 @@ module openconfig-routing-policy-ext {
     }
 
     grouping routing-policy-ext-action {
+        description
+            "Configuration data for action type";
         leaf action {
             type routing-policy-ext-action-type;
             description
@@ -107,21 +123,37 @@ module openconfig-routing-policy-ext {
             "Configuration data for source VRF match definitions.";
 
         container match-src-network-instance {
+            description
+                "Source network instance match configuration";
             container config {
+                description
+                    "Configuration parameters relating to source network instance";
                 uses routing-policy-ext-match-network-instance;
             }
             container state {
                 config false;
+                description
+                    "Operational state parameters relating to source network instance";
                 uses routing-policy-ext-match-network-instance;
             }
         }
     }
 
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:set-as-path-prepend/oc-bgp-pol:config {
-        uses asn_list_val;
+      description
+          "Policy definition extensions for BGP AS-PATH prepend configs";
+        uses routing-policy-ext-asn-list-val;
    }
  
+    augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:set-as-path-prepend/oc-bgp-pol:state {
+      description
+          "Policy definition extensions for BGP AS-PATH prepend configs";
+        uses routing-policy-ext-asn-list-val;
+   }
+
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions {
+      description
+          "Policy definition extensions for conditions";
         uses routing-policy-ext-match-src-network-instance-config;
     }
 
@@ -157,10 +189,14 @@ module openconfig-routing-policy-ext {
     }
     
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-neighbor-set/oc-rpol:config {
+      description
+          "Policy definition extensions for neighbor match configs";
         uses routing-policy-ext-neighbor-set-config;
     }
     
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-neighbor-set/oc-rpol:state {
+      description
+          "Policy definition extensions for neighbor match configs";
         uses routing-policy-ext-neighbor-set-config;
     }
    
@@ -185,10 +221,14 @@ module openconfig-routing-policy-ext {
     }
  
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:config {
+      description
+          "Policy definition extensions for tag match configs";
         uses routing-policy-ext-tag-set-config;
     }
     
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:state{
+      description
+          "Policy definition extensions for tag match configs";
         uses routing-policy-ext-tag-set-config;
     }
  
@@ -226,10 +266,14 @@ module openconfig-routing-policy-ext {
     }
 
     augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:config {
+      description
+          "IP prefix set extensions";
         uses routing-policy-ext-action;
     }
 
     augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:state {
+      description
+          "IP prefix set extensions";
         uses routing-policy-ext-action;
     }
 }
