@@ -72,7 +72,7 @@ module sonic-static-route {
                             Route to prefix 10.10.0.0/16 with two NHs
                                 ip route 10.10.0.0/16 1.1.1.2 40
                                 ip route 10.10.0.0/16 Ethernet12 nexthop-vrf Vrf_red
-                            woule be expressed as:
+                            would be expressed as:
                                 prefix:         10.10.0.0/16
                                 ifname:         ,Ethernet12
                                 distance:       40,0
