@@ -180,7 +180,7 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
     var err error
-    log.Info("translateAction:path =", app.pathInfo.Path, app.body)
+    log.Info("translateAction:path =", app.pathInfo.Path, string(app.body))
     return err
 }
 
