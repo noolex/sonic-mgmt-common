@@ -20,6 +20,7 @@ func init () {
     XlateFuncBind("YangToDb_fdb_mac_table_xfmr", YangToDb_fdb_mac_table_xfmr)
     XlateFuncBind("DbToYang_fdb_mac_table_xfmr", DbToYang_fdb_mac_table_xfmr)
     XlateFuncBind("rpc_clear_fdb", rpc_clear_fdb)
+    XlateFuncBind("DbToYang_fdb_mac_table_count_xfmr", DbToYang_fdb_mac_table_count_xfmr)
 }
 
 const (
@@ -81,6 +82,46 @@ var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 }
 
 
+func getFdbRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb {
+    var fdbObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb
+
+    deviceObj := (*s).(*ocbinds.Device)
+    niObj := deviceObj.NetworkInstances
+
+    if instance == "" {
+        instance = "default"
+    }
+    if niObj != nil {
+        if niObj.NetworkInstance != nil && len(niObj.NetworkInstance) > 0 {
+            if _, ok := niObj.NetworkInstance[instance]; ok {
+                niInst := niObj.NetworkInstance[instance]
+                if niInst.Fdb != nil {
+                    fdbObj = niInst.Fdb
+                }
+            }
+        }
+    }
+
+    if fdbObj == nil && build == true {
+        if niObj.NetworkInstance == nil || len(niObj.NetworkInstance) < 1 {
+            ygot.BuildEmptyTree(niObj)
+        }
+        var niInst *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance
+        if _, ok := niObj.NetworkInstance[instance]; !ok {
+            niInst, _  = niObj.NewNetworkInstance(instance)
+        } else {
+            niInst = niObj.NetworkInstance[instance]
+        }
+        ygot.BuildEmptyTree(niInst)
+        if niInst.Fdb == nil {
+            ygot.BuildEmptyTree(niInst.Fdb)
+        }
+        fdbObj = niInst.Fdb
+    }
+
+    return fdbObj
+}
+
 func getFdbMacTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable {
     var fdbMacTableObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable
 
@@ -116,7 +157,6 @@ func getFdbMacTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds
             ygot.BuildEmptyTree(niInst.Fdb)
         }
         fdbMacTableObj = niInst.Fdb.MacTable
-
     }
 
     return fdbMacTableObj
@@ -395,3 +435,42 @@ var DbToYang_fdb_mac_table_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams)
 
     return err
 }
+
+
+var DbToYang_fdb_mac_table_count_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    var staticCount,dynamicCount uint32 = 0,0
+    pathInfo := NewPathInfo(inParams.uri)
+    instance := pathInfo.Var("name")
+
+    fdbTbl := getFdbRoot(inParams.ygRoot, instance, true)
+    if fdbTbl == nil {
+        log.Info("DbToYang_fdb_mac_table_count_xfmr - getFdbRoot returned nil, for URI: ", inParams.uri)
+        return errors.New("Not able to get FDB root.");
+    }
+    ygot.BuildEmptyTree(fdbTbl)
+
+    oidToVlan, _, fdbMap, _ := getASICStateMaps(inParams.dbs[db.AsicDB])
+    for vlanOid, vlanEntry := range fdbMap {
+        if _, ok  := oidToVlan[vlanOid]; !ok {
+            continue
+        }
+        for mac, _ := range vlanEntry {
+            entry := fdbMap[vlanOid][mac]
+            if entry.Has("SAI_FDB_ENTRY_ATTR_TYPE") {
+                fdbEntryType := entry.Get("SAI_FDB_ENTRY_ATTR_TYPE")
+                if fdbEntryType == SONIC_ENTRY_TYPE_STATIC {
+                    staticCount++
+                } else {
+                    dynamicCount++
+                }
+            }
+        }
+    }
+    countTbl := fdbTbl.State
+    countTbl.StaticCount = &staticCount
+    countTbl.DynamicCount = &dynamicCount
+
+    return err
+}
+
