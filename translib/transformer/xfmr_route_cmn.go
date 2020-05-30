@@ -173,7 +173,7 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
 
     log.Info("In rpc_show_route, RPC data:", mapData)
 
-    input, _ := mapData["sonic-ip-show:input"]
+    input := mapData["sonic-ip-show:input"]
     mapData = input.(map[string]interface{})
 
     log.Info("In rpc_show_route, RPC Input data:", mapData)
@@ -232,6 +232,11 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
     cmd = cmd + "json"
 
     bgpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Info("Failed to execute FRR command")
+        return nil,  errors.New("RPC show ip route, failed to execute FRR command")
+    }
+
     result.Output.Status = bgpOutput
-    return json.Marshal(&result)
+    return json.Marshal(&result), nil
 }

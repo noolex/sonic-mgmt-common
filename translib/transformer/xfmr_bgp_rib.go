@@ -233,14 +233,14 @@ func hdl_get_bgp_ipv4_local_rib (ribAfiSafi_obj *ocbinds.OpenconfigNetworkInstan
     routes, ok := bgpRibOutputJson["routes"].(map[string]interface{})
     if !ok {return err}
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         paths, ok := prefixData["paths"].([]interface {}) ; if !ok {continue}
         for _, _pathData := range paths {
             pathData := _pathData.(map[string]interface {})
             if value, ok := pathData["pathId"] ; ok {
                 pathId := uint32(value.(float64))
-                if ok := fill_ipv4_spec_pfx_path_loc_rib_data (ipv4LocRibRoutes_obj, rib_key, prefix, pathId, pathData) ; !ok {continue}
+                if ok = fill_ipv4_spec_pfx_path_loc_rib_data (ipv4LocRibRoutes_obj, rib_key, prefix, pathId, pathData) ; !ok {continue}
             }
         }
     }
@@ -412,14 +412,14 @@ func hdl_get_bgp_ipv6_local_rib (ribAfiSafi_obj *ocbinds.OpenconfigNetworkInstan
     routes, ok := bgpRibOutputJson["routes"].(map[string]interface{})
     if !ok {return err}
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         paths, ok := prefixData["paths"].([]interface {}) ; if !ok {continue}
         for _, _pathData := range paths {
             pathData := _pathData.(map[string]interface {})
             if value, ok := pathData["pathId"] ; ok {
                 pathId := uint32(value.(float64))
-                if ok := fill_ipv6_spec_pfx_path_loc_rib_data (ipv6LocRibRoutes_obj, rib_key, prefix, pathId, pathData) ; !ok {continue}
+                if ok = fill_ipv6_spec_pfx_path_loc_rib_data (ipv6LocRibRoutes_obj, rib_key, prefix, pathId, pathData) ; !ok {continue}
             }
         }
     }
@@ -797,8 +797,7 @@ func hdl_get_bgp_ipv4_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
 
     _prefix, ok := bgpRibOutputJson["prefix"]
 
-    var prefix string
-    prefix = _prefix.(string)
+    var prefix string = _prefix.(string)
 
     log.Info("Received Local-RIB Prefix -     ", prefix)
     if (!ok || prefix != rib_key.prefix) {
@@ -838,7 +837,7 @@ func hdl_get_bgp_ipv4_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
         pathData := _pathData.(map[string]interface {})
         if value, ok := pathData["pathId"] ; ok {
             pathId := uint32(value.(float64))
-            if ok := fill_ipv4_spec_pfx_path_loc_rib_prefix_data (ipv4LocRibPaths_obj, prefix, pathId, pathData) ; !ok {continue}
+            if ok = fill_ipv4_spec_pfx_path_loc_rib_prefix_data (ipv4LocRibPaths_obj, prefix, pathId, pathData) ; !ok {continue}
         }
     }
 
@@ -873,8 +872,7 @@ func hdl_get_bgp_ipv6_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
 
     _prefix, ok := bgpRibOutputJson["prefix"]
 
-    var prefix string
-    prefix = _prefix.(string)
+    var prefix string = _prefix.(string)
 
     log.Info("Received Local-RIB Prefix -     ", prefix)
     if (!ok || prefix != rib_key.prefix) {
@@ -914,7 +912,7 @@ func hdl_get_bgp_ipv6_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
         pathData := _pathData.(map[string]interface {})
         if value, ok := pathData["pathId"] ; ok {
             pathId := uint32(value.(float64))
-            if ok := fill_ipv6_spec_pfx_path_loc_rib_prefix_data (ipv6LocRibPaths_obj, prefix, pathId, pathData) ; !ok {continue}
+            if ok = fill_ipv6_spec_pfx_path_loc_rib_prefix_data (ipv6LocRibPaths_obj, prefix, pathId, pathData) ; !ok {continue}
         }
     }
 
@@ -1106,7 +1104,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_pre (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIns
         ipv4InPreRoutes_obj = ipv4NbrAdjRibInPre_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         value, ok := prefixData["pathId"] ; if !ok {continue}
         pathId := uint32(value.(float64))
@@ -1124,7 +1122,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_pre (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIns
             ipv4InPreRoute_obj, err = ipv4InPreRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv4InPreRoute_obj)
-        if ok := fill_ipv4_spec_pfx_nbr_in_pre_rib_data (ipv4InPreRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        if ok = fill_ipv4_spec_pfx_nbr_in_pre_rib_data (ipv4InPreRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
     }
 
     return err
@@ -1261,7 +1259,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_pre (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIns
         ipv6InPreRoutes_obj = ipv6NbrAdjRibInPre_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         value, ok := prefixData["pathId"] ; if !ok {continue}
         pathId := uint32(value.(float64))
@@ -1279,7 +1277,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_pre (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIns
             ipv6InPreRoute_obj, err = ipv6InPreRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv6InPreRoute_obj)
-        if ok := fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        if ok = fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
     }
     return err
 }
@@ -1422,7 +1420,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIn
         ipv4InPostRoutes_obj = ipv4NbrAdjRibInPost_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
 
         paths, ok := prefixData["paths"].([]interface {})
@@ -1449,7 +1447,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIn
                 ipv4InPostRoute_obj, err = ipv4InPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
             }
             ygot.BuildEmptyTree(ipv4InPostRoute_obj)
-            if ok := fill_ipv4_spec_pfx_nbr_in_post_rib_data (ipv4InPostRoute_obj, prefix, pathId, pathData) ; !ok {continue}
+            if ok = fill_ipv4_spec_pfx_nbr_in_post_rib_data (ipv4InPostRoute_obj, prefix, pathId, pathData) ; !ok {continue}
         }
     }
 
@@ -1599,7 +1597,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIn
         ipv6InPostRoutes_obj = ipv6NbrAdjRibInPost_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
 
         paths, ok := prefixData["paths"].([]interface {})
@@ -1626,7 +1624,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIn
                 ipv6InPostRoute_obj, err = ipv6InPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
             }
             ygot.BuildEmptyTree(ipv6InPostRoute_obj)
-            if ok := fill_ipv6_spec_pfx_nbr_in_post_rib_data (ipv6InPostRoute_obj, prefix, pathId, pathData) ; !ok {continue}
+            if ok = fill_ipv6_spec_pfx_nbr_in_post_rib_data (ipv6InPostRoute_obj, prefix, pathId, pathData) ; !ok {continue}
         }
     }
     return err
@@ -1749,7 +1747,7 @@ func fill_bgp_ipv4_nbr_adj_rib_out_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkI
         ipv4OutPostRoutes_obj = ipv4NbrAdjRibOutPost_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         value, ok := prefixData["pathId"] ; if !ok {continue}
         pathId := uint32(value.(float64))
@@ -1767,7 +1765,7 @@ func fill_bgp_ipv4_nbr_adj_rib_out_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkI
             ipv4OutPostRoute_obj, err = ipv4OutPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv4OutPostRoute_obj)
-        if ok := fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        if ok = fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
     }
 
     return err
@@ -1890,7 +1888,7 @@ func fill_bgp_ipv6_nbr_adj_rib_out_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkI
         ipv6OutPostRoutes_obj = ipv6NbrAdjRibOutPost_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         value, ok := prefixData["pathId"] ; if !ok {continue}
         pathId := uint32(value.(float64))
@@ -1908,7 +1906,7 @@ func fill_bgp_ipv6_nbr_adj_rib_out_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkI
             ipv6OutPostRoute_obj, err = ipv6OutPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv6OutPostRoute_obj)
-        if ok := fill_ipv6_spec_pfx_nbr_out_post_rib_data (ipv6OutPostRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        if ok = fill_ipv6_spec_pfx_nbr_out_post_rib_data (ipv6OutPostRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
     }
 
     return err
@@ -2193,7 +2191,7 @@ func hdl_get_all_bgp_nbrs_adj_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance
         }
     }
 
-    for nbrAddr, _ := range bgpRibOutputJson {
+    for nbrAddr := range bgpRibOutputJson {
         nbrData, ok := bgpRibOutputJson[nbrAddr].([]interface{}) ; if !ok {continue}
 
         rib_key.nbrAddr = nbrAddr
@@ -2310,13 +2308,13 @@ var DbToYang_bgp_routes_get_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     }
 
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
     rib_key.afiSafiName = pathInfo.Var("afi-safi-name")
     rib_key.prefix = pathInfo.Var("prefix")
     rib_key.origin = pathInfo.Var("origin")
     rib_key.pathIdKey = pathInfo.Var("path-id")
-    _pathId, err := strconv.Atoi(pathInfo.Var("path-id"))
+    _pathId, _ := strconv.Atoi(pathInfo.Var("path-id"))
     rib_key.pathId = uint32(_pathId)
     rib_key.nbrAddr = pathInfo.Var("neighbor-address")
 
@@ -2626,6 +2624,11 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     cmd = strings.TrimSuffix(cmd, " ")
 
     bgpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        dbg_err_str := "FRR execution failed ==> " + err_str
+        log.Info("In rpc_show_bgp, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
     result.Output.Status = bgpOutput
-    return json.Marshal(&result)
+    return json.Marshal(&result), nil
 }
