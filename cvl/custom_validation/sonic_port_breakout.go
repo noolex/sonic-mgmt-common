@@ -4,12 +4,11 @@ import (
     //"net"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
     "strings"
-    "fmt"
     log "github.com/golang/glog"
 
  )
 
-//Purpose: Check correct for correct agent_id
+//ValidateDpbConfigs Purpose: Check correct for correct agent_id
 //vc : Custom Validation Context
 //Returns -  CVL Error object
 func (t *CustomValidation) ValidateDpbConfigs(
@@ -42,7 +41,7 @@ func (t *CustomValidation) ValidateDpbConfigs(
                     found = true
                }
        }
-       if found == false {
+       if !found {
             errStr := "Interface not found"
             return CVLErrorInfo{
                        ErrCode: CVL_SEMANTIC_ERROR,
@@ -57,7 +56,7 @@ func (t *CustomValidation) ValidateDpbConfigs(
 }
 
 
-//Purpose: Check if DPB is in progress
+//ValidateDpbStatus Purpose: Check if DPB is in progress
 //vc : Custom Validation Context
 //Returns -  CVL Error object
 func (t *CustomValidation) ValidateDpbStatus(
@@ -80,7 +79,7 @@ func (t *CustomValidation) ValidateDpbStatus(
             ErrCode: CVL_SEMANTIC_ERROR,
             TableName: "PORT",
             Keys: strings.Split(vc.CurCfg.Key, "|"),
-            ConstraintErrMsg: fmt.Sprintf("Port does not exist"),
+            ConstraintErrMsg: "Port does not exist",
             CVLErrDetails: "Config Validation Error",
             ErrAppTag:  "invalid-port",
         }
@@ -99,7 +98,7 @@ func (t *CustomValidation) ValidateDpbStatus(
             ErrCode: CVL_SEMANTIC_ERROR,
             TableName: "BREAKOUT_PORTS",
             Keys: strings.Split(vc.CurCfg.Key, "|"),
-            ConstraintErrMsg: fmt.Sprintf("Failed to connect to STATE_DB"),
+            ConstraintErrMsg: "Failed to connect to STATE_DB",
             CVLErrDetails: "Config Validation Error",
             ErrAppTag:  "capability-unsupported",
         }
@@ -113,7 +112,7 @@ func (t *CustomValidation) ValidateDpbStatus(
                 ErrCode: CVL_SEMANTIC_ERROR,
                 TableName: "BREAKOUT_CFG",
                 Keys: strings.Split(vc.CurCfg.Key, ":"),
-                ConstraintErrMsg: fmt.Sprintf("Port breakout is in progress. Try later."),
+                ConstraintErrMsg: "Port breakout is in progress. Try later.",
                 CVLErrDetails: "Config Validation Error",
                 ErrAppTag:  "operation-inprogress",
         }
