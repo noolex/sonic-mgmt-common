@@ -1,0 +1,16 @@
+module sonic-system-infra-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/sonic-infra-annot";
+    prefix "sonic-infra-annot";
+
+    import sonic-system-infra { prefix sonic-sinfra; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sonic-sinfra:reboot-ops{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_reboot_cb";
+        }
+    }
+}

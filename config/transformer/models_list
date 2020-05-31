@@ -83,3 +83,6 @@ openconfig-lldp.yang
 openconfig-lldp-ext.yang
 openconfig-lldp-annot.yang
 openconfig-kdump.yang
+openconfig-infra.yang
+sonic-system-infra-annot.yang
+
