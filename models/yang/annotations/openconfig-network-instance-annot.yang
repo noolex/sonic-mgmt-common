@@ -13,6 +13,7 @@ module openconfig-network-instance-annot {
     import openconfig-bgp-evpn-ext { prefix oc-bgp-evpn-ext; }
     import openconfig-bfd { prefix oc-bfd; }
     import openconfig-ospfv2-ext { prefix "oc-ospfv2-ext"; }
+    import openconfig-pim-ext { prefix "oc-pim-ext"; }
 	
     import ietf-yang-types { prefix yang; }
     import openconfig-vxlan {prefix oc-vxlan; }
@@ -3514,5 +3515,68 @@ module openconfig-network-instance-annot {
       sonic-ext:subtree-transformer "ospfv2_route_table_xfmr";
     }
   }
-}
 
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
+      deviate add {
+          sonic-ext:db-name "CONFIG_DB";
+          sonic-ext:table-name "PIM_GLOBALS";
+          sonic-ext:key-transformer "pim_gbl_tbl_key_xfmr";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-pim-ext:config/oc-pim-ext:join-prune-interval {
+      deviate add {
+          sonic-ext:field-name "join-prune-interval";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-pim-ext:config/oc-pim-ext:keep-alive-timer {
+      deviate add {
+          sonic-ext:field-name "keep-alive-timer";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-pim-ext:config/oc-pim-ext:ecmp-enabled {
+      deviate add {
+          sonic-ext:field-name "ecmp-enabled";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-pim-ext:config/oc-pim-ext:ecmp-rebalance-enabled {
+      deviate add {
+          sonic-ext:field-name "ecmp-rebalance-enabled";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface {
+      deviate add {
+          sonic-ext:db-name "CONFIG_DB";
+          sonic-ext:table-name "PIM_INTERFACE";
+          sonic-ext:key-transformer "pim_intf_tbl_key_xfmr";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:mode {
+      deviate add {
+          sonic-ext:field-transformer "pim_intf_mode_fld_xfmr";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:dr-priority {
+      deviate add {
+          sonic-ext:field-name "dr-priority";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:hello-interval {
+      deviate add {
+          sonic-ext:field-name "hello-interval";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-pim-ext:bfd-enabled {
+      deviate add {
+          sonic-ext:field-name "bfd-enabled";
+      }
+  }
+}
