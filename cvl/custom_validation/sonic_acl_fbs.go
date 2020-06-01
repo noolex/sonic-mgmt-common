@@ -29,7 +29,8 @@ import (
 
 //Custom validation code for sonic-acl.yang//
 /////////////////////////////////////////////
-//Path : /sonic-acl/ACL_RULE/ACL_RULE_LIST
+
+//MAX_ACL_RULE_INSTANCES Path : /sonic-acl/ACL_RULE/ACL_RULE_LIST
 //Purpose: Allow maximum 65536 ACL rules 
 //vc : Custom Validation Context
 //Returns -  CVL Error object
@@ -68,7 +69,7 @@ func (t *CustomValidation) ValidateMaxAclRule(
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//Path : /sonic-acl/ACL_RULE/ACL_RULE_LIST/IP_TYPE
+//ValidateAclRuleIPAddress Path : /sonic-acl/ACL_RULE/ACL_RULE_LIST/IP_TYPE
 //Purpose: Check correct for IP address provided
 //         based on type IP_TYPE
 //vc : Custom Validation Context
@@ -90,7 +91,7 @@ func (t *CustomValidation) ValidateAclRuleIPAddress(
 		_, srcIpV4exists := vc.CurCfg.Data["SRC_IP"]
 		_, dstIpV4exists := vc.CurCfg.Data["DST_IP"]
 
-		if (srcIpV4exists == false) || (dstIpV4exists == false) {
+		if !srcIpV4exists || !dstIpV4exists {
 			return CVLErrorInfo{
 				ErrCode: CVL_SEMANTIC_ERROR,
 				TableName: "ACL_RULE",
@@ -105,7 +106,7 @@ func (t *CustomValidation) ValidateAclRuleIPAddress(
 		_, srcIpV6exists := vc.CurCfg.Data["SRC_IPV6"]
 		_, dstIpV6exists := vc.CurCfg.Data["DST_IPV6"]
 
-		if (srcIpV6exists == false) || (dstIpV6exists == false) {
+		if !srcIpV6exists || !dstIpV6exists {
 			return CVLErrorInfo{
 				ErrCode: CVL_SEMANTIC_ERROR,
 				TableName: "ACL_RULE",
@@ -118,7 +119,7 @@ func (t *CustomValidation) ValidateAclRuleIPAddress(
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-// Path: generic
+// ValidateLeafConstant Path: generic
 // Purpose: To make sure the value of a leaf is not changed after its set during create
 // Returns -  CVL Error object 
 func (t *CustomValidation) ValidateLeafConstant(vc *CustValidationCtxt) CVLErrorInfo {
@@ -151,7 +152,7 @@ func (t *CustomValidation) ValidateLeafConstant(vc *CustValidationCtxt) CVLError
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-// Path: generic
+// ValidateZeroACLCounters Path: generic
 // Purpose: To make sure the value of a counter doesnt change when there are ACLs applied
 // Returns -  CVL Error object
 func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLErrorInfo {
@@ -172,7 +173,7 @@ func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLEr
     if (counterDBClient == nil) {
 		return CVLErrorInfo {
 			 ErrCode: CVL_INTERNAL_UNKNOWN,
-			 ConstraintErrMsg: fmt.Sprintf("Failed to connect to COUNTERS_DB"),
+			 ConstraintErrMsg: "Failed to connect to COUNTERS_DB",
 			 CVLErrDetails: "Config Validation Error",
 			 ErrAppTag:  "retry-request",
 		}
@@ -193,7 +194,7 @@ func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLEr
     if nil != err {
 		return CVLErrorInfo {
 			 ErrCode: CVL_INTERNAL_UNKNOWN,
-			 ConstraintErrMsg: fmt.Sprintf("Error getting ACL_COUNTER entries"),
+			 ConstraintErrMsg: "Error getting ACL_COUNTER entries",
 			 CVLErrDetails: "Config Validation Error",
 			 ErrAppTag:  "retry-request",
 		}
