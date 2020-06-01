@@ -458,10 +458,13 @@ func extractFieldFromDb(tableName string, keyStr string, fieldName string, data 
 
 	if tableName != "" && keyStr != "" && fieldName != "" {
 		if data[tableName][keyStr].Field != nil {
-			dbData[tableName] = make(map[string]db.Value)
-			dbVal.Field = make(map[string]string)
-			dbVal.Field[fieldName] = data[tableName][keyStr].Field[fieldName]
-			dbData[tableName][keyStr] = dbVal
+			fldVal, fldValExists := data[tableName][keyStr].Field[fieldName]
+			if fldValExists {
+				dbData[tableName] = make(map[string]db.Value)
+				dbVal.Field = make(map[string]string)
+				dbVal.Field[fieldName] = fldVal
+				dbData[tableName][keyStr] = dbVal
+			}
 		}
 	}
 	return dbData
