@@ -530,6 +530,14 @@ module sonic-bgp-common {
             type string;
         }
 
+        leaf-list import-rts {
+            type string;
+        }
+
+        leaf-list export-rts {
+            type string;
+        }
+
     }
 
     grouping sonic-bgp-af-evpn-global {
