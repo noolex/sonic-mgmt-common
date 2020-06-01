@@ -1,0 +1,54 @@
+module sonic-static-arp {
+    namespace "http://github.com/Azure/sonic-static-arp";
+    prefix sarp;
+
+    import ietf-yang-types {
+        prefix yang;
+    }
+
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    import sonic-ospfv2-common { 
+        prefix "sonic-ospf-cmn"; 
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC STATIC ARP";
+
+    revision 2020-05-02 {
+        description
+	        "Initial revision.";
+    }
+    container sonic-static-arp {
+        container NEIGH {
+            list NEIGH_LIST {
+                key "staticintf staticip";
+
+                leaf staticintf{
+                    type sonic-ospf-cmn:ospf-interface;
+                }
+
+                leaf staticip {
+                    description "IPv4 address";
+                    type inet:ip-address;
+                }
+
+                leaf neigh {
+                    description "MAC address";
+                    type yang:mac-address;
+                }
+                leaf family{
+                    type string;
+                } 
+            }
+        }
+    }
+}

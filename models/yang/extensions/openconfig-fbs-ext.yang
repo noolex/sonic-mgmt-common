@@ -1,0 +1,158 @@
+module openconfig-fbs-ext {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/fbs-ext";
+
+  prefix "oc-fbs-ext";
+
+  // imports
+  import openconfig-extensions { prefix oc-ext; }
+
+  // includes
+  include openconfig-fbs-classifiers-ext;
+  include openconfig-fbs-policies-ext;
+  include openconfig-fbs-interfaces-ext;
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC
+    https://github.com/Azure/SONiC";
+
+  description
+    "This module defines the configuration and operational state of  
+    Flow based services (FBS) ie classifiers, policies and interface 
+    application. The classifiers define the match criteria which is
+	used to identity a flow. Policies are used to set actions to 
+	specific flows. The configured policies can be applied to 
+	interfaces to apply the policies for traffic going through
+	the traffic at ingress or egress.
+	
+	This module defines
+	- fbs
+	|
+	|--- classifiers
+	|    |--- classifier
+	|         |--- [match criteria ie ACL or packet header fields]
+	|
+	|--- policies
+	|    |--- policy
+	|         |--- [actions specific to policy type]
+	|
+	|--- interfaces
+	|    |--- interface
+	|         |--- ingress-policies
+	|         |    |--- qos-policy
+	|         |    |--- forwarding-policy
+	|         |    |--- monitoring-policy
+	|         |
+	|         |--- egress-policies
+	|         |    |--- qos-policy
+	|         |    |--- monitoring-policy
+	|
+	|--- global
+	|    |--- ingress-policies
+	|    |    |--- qos-policy
+	|    |    |--- forwarding-policy
+	|    |    |--- monitoring-policy
+	|    |
+	|    |--- egress-policies
+	|    |    |--- qos-policy
+	|    |    |--- monitoring-policy
+
+	A classifier can be of different match types like header fields or 
+	ACL. Using header fields, the traffic can be classified using Layer2
+	to L4 header. ACL match uses ACL configured by openconfig-acl model.
+	
+	A policy can be of different types like QoS, Forwarding and 
+	monitoring. The types can be extended to support different 
+	features. The policy also contains the action to be take for 
+	specific flows identfied by the classifier. The actions supported
+	by the policy are specific to policy types like QoS policy can
+	be configured to use QoS actions only like remarking.
+	
+	A policy can be applied to a given interface either in ingress or 
+	egress direction. An interface can have only 1 policy of a given
+	type at a given stage ie this model doesnt allow to configure 
+	2 QoS policies for a given interface at a given stage like 
+	ingress.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-15" {
+    description
+      "Initial version";
+
+    reference "0.1.0";
+  }
+
+  // OpenConfig specific extensions for module metadata.
+  oc-ext:regexp-posix;
+  oc-ext:catalog-organization "SONiC";
+  oc-ext:origin "SONiC";
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  // typedef statements
+
+  // grouping statements
+  grouping fbs-config {
+    description
+      "Global configuration data for Flow based services";
+  }
+
+  grouping fbs-state {
+    description
+      "Global operational state data for Flow based services";
+  }
+  
+  grouping fbs-top {
+    description
+      "Top level grouping for Flow based services data";
+    
+    container fbs {
+      description
+        "Top level enclosing container for flow based services model 
+        config and operational state data";
+
+      container config {
+        description
+          "Global config data for flow based services";
+
+        uses fbs-config;
+      }   
+    
+      container state {
+        config false;
+
+        description
+          "Global operational state data for link state tracking";
+    
+        uses fbs-config;
+        uses fbs-state;
+      }   
+
+      uses fbs-classifiers-top;
+	  uses fbs-policies-top;
+      uses fbs-interfaces-top;
+    }
+  }
+  
+
+  // data definition statements
+  uses fbs-top;
+
+  // augment statements
+
+  // rpc statements
+
+  // notification statements
+}
+

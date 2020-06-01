@@ -665,7 +665,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 	tbl := inParamsForGet.tbl
 	dbKey := inParamsForGet.tblKey
 
-	curKeyMap, curUri, err := dbKeyToYangDataConvert(uri, requestUri, xpath, dbKey, dbs[cdb].Opts.KeySeparator, txCache)
+	curKeyMap, curUri, err := dbKeyToYangDataConvert(uri, requestUri, xpath, tbl, dbDataMap, dbKey, dbs[cdb].Opts.KeySeparator, txCache)
         if ((err != nil) || (curKeyMap == nil) || (len(curKeyMap) == 0)) {
                 xfmrLogInfoAll("Skip filling list instance for uri %v since no yang  key found corresponding to db-key %v", uri, dbKey)
                return curMap, err

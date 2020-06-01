@@ -577,16 +577,20 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
 func CallRpcMethod(path string, body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 	var err error
 	var ret []byte
+	var data []reflect.Value
 
 	// TODO - check module name
 	rpcName := strings.Split(path, ":")
 	if dbXpathData, ok := xDbSpecMap[rpcName[1]]; ok {
 		xfmrLogInfo("RPC callback invoked (%v) \r\n", rpcName)
-		data, err := XlateFuncCall(dbXpathData.rpcFunc, body, dbs)
+		data, err = XlateFuncCall(dbXpathData.rpcFunc, body, dbs)
 		if err != nil {
 			return nil, err
 		}
 		ret = data[0].Interface().([]byte)
+		if !data[1].IsNil() {
+            err = data[1].Interface().(error)
+        }
 	} else {
 		log.Error("No tsupported RPC", path)
 		err = tlerr.NotSupported("Not supported RPC")

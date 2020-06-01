@@ -10,6 +10,7 @@ module openconfig-system-ext {
     import openconfig-inet-types { prefix inet; }
     import openconfig-interfaces { prefix "oc-if"; }
     import openconfig-kdump { prefix oc-kdump; }
+    import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
 
     // meta
     organization "OpenConfig working group";
@@ -40,6 +41,10 @@ module openconfig-system-ext {
 
     augment /oc-sys:system {
         uses oc-kdump:kdump-top;
+    }
+
+    augment /oc-sys:system {
+        uses oc-systemd-coredump:systemd-coredump-top;
     }
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
