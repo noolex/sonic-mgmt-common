@@ -618,21 +618,22 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan") {
 	     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/config") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/config") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses") ||
-	        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/config") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/config") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses") {
-		tblList = append(tblList, intTbl.cfgDb.intfTN)
+                 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/config") ||
+                 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/config") ||
+                 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/config") {
+                     tblList = append(tblList, intTbl.cfgDb.intfTN)
              } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/state") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/state") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/state") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/state") {
-                tblList = append(tblList, intTbl.appDb.intfTN)
+		 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/state") ||
+		 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/state") ||
+		 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/state") {
+                     tblList = append(tblList, intTbl.appDb.intfTN)
+             } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses") ||
+                 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses") ||
+                 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses") ||
+                 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses") {
+                     tblList = append(tblList, intTbl.cfgDb.intfTN)
              } else {
-		tblList = append(tblList, intTbl.cfgDb.intfTN)
+                 tblList = append(tblList, intTbl.cfgDb.intfTN)
              }
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
@@ -1089,6 +1090,11 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]strin
         return tblList, errors.New("Invalid interface type IntfTypeUnset");
     }
 
+    if intfType == IntfTypeVlan {
+        log.Info("intf_subintfs_table_xfmr - IntfTypeVlan")
+        return tblList, nil
+    }
+
     if (inParams.oper == GET || inParams.oper == DELETE) {
         if(inParams.dbDataMap != nil) {
             (*inParams.dbDataMap)[db.ConfigDB]["SUBINTF_TBL"] = make(map[string]db.Value)
@@ -1262,13 +1268,13 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
     return subIntfmap, err
 }
 
-func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan) (map[string]map[string]db.Value, error) {
+func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVlanIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan) (map[string]map[string]db.Value, error) {
     var err error
     subIntfmap := make(map[string]map[string]db.Value)
     intfIpMap := make(map[string]db.Value)
 
     // Handles the case when the delete request at subinterfaces/subinterface[index = 0]
-    if subIntf == nil || (subIntf.Ipv4 == nil && subIntf.Ipv6 == nil) {
+    if routedVlanIntf == nil || (routedVlanIntf.Ipv4 == nil && routedVlanIntf.Ipv6 == nil) {
 	    ipMap, _ := getIntfIpByName(d, tblName, ifName, true, true, "")
 	    if ipMap != nil && len(ipMap) > 0 {
             for k, v := range ipMap {
@@ -1278,9 +1284,9 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf 
     }
 
     // This handles the delete for a specific IPv4 address or a group of IPv4 addresses
-    if subIntf != nil && subIntf.Ipv4 != nil {
-        if subIntf.Ipv4.Addresses != nil {
-            if len(subIntf.Ipv4.Addresses.Address) < 1 {
+    if routedVlanIntf != nil && routedVlanIntf.Ipv4 != nil {
+        if routedVlanIntf.Ipv4.Addresses != nil {
+            if len(routedVlanIntf.Ipv4.Addresses.Address) < 1 {
                 ipMap, _:= getIntfIpByName(d, tblName, ifName, true, false, "")
                 if ipMap != nil && len(ipMap) > 0 {
                     for k, v := range ipMap {
@@ -1288,7 +1294,7 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf 
                     }
                 }
             } else {
-                for ip, _ := range subIntf.Ipv4.Addresses.Address {
+                for ip, _ := range routedVlanIntf.Ipv4.Addresses.Address {
                     ipMap, _ := getIntfIpByName(d, tblName, ifName, true, false, ip)
 
                     if ipMap != nil && len(ipMap) > 0 {
@@ -1310,9 +1316,9 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf 
     }
 
     // This handles the delete for a specific IPv6 address or a group of IPv6 addresses
-    if subIntf != nil && subIntf.Ipv6 != nil {
-        if subIntf.Ipv6.Addresses != nil {
-            if len(subIntf.Ipv6.Addresses.Address) < 1 {
+    if routedVlanIntf != nil && routedVlanIntf.Ipv6 != nil {
+        if routedVlanIntf.Ipv6.Addresses != nil {
+            if len(routedVlanIntf.Ipv6.Addresses.Address) < 1 {
                 ipMap, _ := getIntfIpByName(d, tblName, ifName, false, true, "")
                 if ipMap != nil && len(ipMap) > 0 {
                     for k, v := range ipMap {
@@ -1320,7 +1326,7 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf 
                     }
                 }
             } else {
-                for ip, _ := range subIntf.Ipv6.Addresses.Address {
+                for ip, _ := range routedVlanIntf.Ipv6.Addresses.Address {
                     ipMap, _ := getIntfIpByName(d, tblName, ifName, false, true, ip)
 
                     if ipMap != nil && len(ipMap) > 0 {
@@ -1548,8 +1554,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     ifName = *sonicIfName
 	intfType, _, ierr := getIntfTypeByName(ifName)
 
-    /* if IntfTypeVxlan == intfType || IntfTypeVlan == intfType { */
-    if IntfTypeVxlan == intfType {
+    if IntfTypeVxlan == intfType || IntfTypeVlan == intfType {
 	    return subIntfmap, nil
     }
 
@@ -1807,8 +1812,15 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     intfObj := intfsObj.Interface[ifName]
 
     if intfObj.RoutedVlan == nil {
-        log.Info("YangToDb_routed_vlan_ip_xfmr : No IP address handling required")
-        return nil, nil
+        // Handling the scenario for Interface instance delete at interfaces/interface[name] level or subinterfaces container level
+        if inParams.oper == DELETE {
+            log.Info("YangToDb_routed_vlan_ip_addr_xfmr: Top level Interface instance delete or routed-vlan container delete for Interface: ", ifName)
+            return routed_vlan_ip_addr_del(inParams.d, ifName, tblName, nil)
+        }
+        errStr := "routed-vlan node doesn't exist"
+        log.Info("YangToDb_routed_vlan_ip_xfmr : " + errStr)
+        err = tlerr.InvalidArgsError{Format:errStr}
+        return vlanIntfmap, err
     }
 
     vlanIntfObj := intfObj.RoutedVlan
