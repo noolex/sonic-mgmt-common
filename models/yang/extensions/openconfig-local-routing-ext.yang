@@ -23,7 +23,7 @@ module openconfig-local-routing-ext {
       leaf nexthop-network-instance {
           type string;
           description
-              "name of the Next-hop VRF for leaked routes";
+              "name of the Next-hop network instance for leaked routes";
       }
    }
 
@@ -76,12 +76,12 @@ module openconfig-local-routing-ext {
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:config" {
       description
-          "Next hop VRF";
+          "Next hop network instance";
       uses next-hop-ntwk-instance-config;
    }
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:state" {
       description
-          "Next hop VRF";
+          "Next hop network instance";
       uses next-hop-ntwk-instance-config;
    }
 
