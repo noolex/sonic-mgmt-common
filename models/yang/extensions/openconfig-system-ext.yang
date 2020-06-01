@@ -8,31 +8,8 @@ module openconfig-system-ext {
 
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
-<<<<<<< HEAD
-    import openconfig-interfaces { prefix "oc-if"; }
-||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
-    import openconfig-interfaces { prefix "oc-if"; }
-||||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
-    import openconfig-interfaces { prefix "oc-if"; }
-||||||||| merged common ancestors
-=========
-=========
->>>>>>>>> Temporary merge branch 2
-=======
->>>>>>> origin/broadcom_sonic_3.x_share
     import openconfig-kdump { prefix oc-kdump; }
-<<<<<<< HEAD
-||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
-||||||||| merged common ancestors
->>>>>>>>> Temporary merge branch 2
-=========
     import openconfig-interfaces { prefix "oc-if"; }
-=======
-    import openconfig-interfaces { prefix "oc-if"; }
->>>>>>> origin/broadcom_sonic_3.x_share
     import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
 
     // meta
