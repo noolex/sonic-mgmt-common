@@ -50,7 +50,8 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     // Check if mode is supported.
     supported_modes := strings.Split(entry["breakout_modes"], ",")
     for _, mode_iter := range supported_modes {
-        if strings.Contains(mode_iter, mode[2:len(mode)]) {
+        if strings.Contains(mode_iter, mode[2:len(mode)])  && (strings.Compare(mode_iter[0:1], mode[0:1])==0) {
+            log.Info("[DEBUG] Matched mode: ", mode_iter)
             pos := strings.Index(mode_iter, "G")
             if pos != -1 {
                 speed,_ := strconv.Atoi(mode_iter[2:pos])
@@ -84,6 +85,11 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     }
     start_lane := subport*lane_speed[0]
     end_lane := start_lane + lane_speed[0]
+    if len(lanes) < end_lane {
+        log.Error("Invalid or unsupported breakout mode - lane count mismatch", len(lanes), " < ", end_lane)
+        return port_config, tlerr.InvalidArgs("Invalid or unsupported breakout mode")
+    }
+
     dpb_index = indeces[subport]
     dpb_lanes = lanes[start_lane]
     for i := start_lane + 1; i < end_lane; i++ {
@@ -169,6 +175,20 @@ func removePorts (ports_i []portProp) (map[db.DBNum]map[string]map[string]db.Val
     return subOpMap;
 }
 
+func getLaneSet(ifName string) (map[string]db.Value) {
+    var brkoutMap map[string]db.Value
+    entry, ok := platConfigStr[ifName]
+    if ok {
+        brkoutMap = make(map[string]db.Value)
+        fv := make(map[string]string)
+        fvpairs := db.Value{Field: fv}
+        fvpairs.Set("lanes", entry["lanes"])
+        brkoutMap[ifName] = fvpairs
+    }
+    log.Info("DPB: UPDATE Lanes Map", brkoutMap)
+    return brkoutMap;
+}
+
 func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) {
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     addMap := make(map[string]map[string]db.Value)
@@ -185,16 +205,6 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
         value.Set("speed", ports[i].speed)
         value.Set("valid_speeds", ports[i].valid_speeds)
         entryMap[ports[i].name] = value
-
-        entry, ok := platConfigStr[ports[i].name]
-        if ok {
-            brkoutMap := make(map[string]db.Value)
-            fv := make(map[string]string)
-            fvpairs := db.Value{Field: fv}
-            fvpairs.Set("lanes", entry["lanes"])
-            brkoutMap[ports[i].name] = fvpairs
-            addMap["BREAKOUT_CFG"] = brkoutMap
-        }
     }
 
     addMap["PORT"] = entryMap

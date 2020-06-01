@@ -202,13 +202,12 @@ func Test_KeyExpntVal_OCYang(t *testing.T) {
         bgp_globals_af_map := map[string]interface{}{"BGP_GLOBALS_AF":map[string]interface{}{"Vrf_test1|l2vpn_evpn":map[string]interface{}{
                                                                                                   "NULL": "NULL"}}}
         bgp_globals_evpnvni_map := map[string]interface{}{"BGP_GLOBALS_EVPN_VNI":map[string]interface{}{"Vrf_test1|L2VPN_EVPN|14628525":map[string]interface{}{
-                                                                                                  "advertise-default-gw": "true",
-											          "route-distinguisher": "trd1"}}}
+                                                                                                  "advertise-default-gw": "true"}}}
         unloadConfigDB(rclient, bgp_globals_af_map)
         unloadConfigDB(rclient, bgp_globals_evpnvni_map)
         loadConfigDB(rclient, bgp_globals_map)
 	url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf_test1]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/afi-safis/afi-safi[afi-safi-name=L2VPN_EVPN]/l2vpn-evpn/openconfig-bgp-evpn-ext:vnis/vni[vni-number=14628525]"
-        url_body_json = "{\"openconfig-bgp-evpn-ext:config\":{\"vni-number\":14628525},\"openconfig-bgp-evpn-ext:advertise-default-gw\":true,\"openconfig-bgp-evpn-ext:route-distinguisher\":\"trd1\"}"
+        url_body_json = "{\"openconfig-bgp-evpn-ext:config\":{\"vni-number\":14628525},\"openconfig-bgp-evpn-ext:advertise-default-gw\":true}"
         t.Run("Key Exponent value create.", processSetRequest(url, url_body_json, "POST", false, nil))
         time.Sleep(1 * time.Second)
         t.Run("Verify Key Exponent value create - BGP_GLOBALS_AF.", verifyDbResult(rclient, "BGP_GLOBALS_AF|Vrf_test1|l2vpn_evpn", bgp_globals_af_map, false))

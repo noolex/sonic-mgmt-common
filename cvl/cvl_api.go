@@ -858,10 +858,10 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			}
 			fltScrs := mFilterScripts[refTbl.tableName]
 			fltScrs = append(fltScrs, filterScript {
-				script: fmt.Sprintf("return (h['%s'] ~= nil and h['%s'] == '%s') or " +
+				script: fmt.Sprintf("return (h['%s'] ~= nil and (h['%s'] == '%s' or h['%s'] == '[%s|%s]')) or " +
 				"(h['%s@'] ~= nil and ((h['%s@'] == '%s') or " +
 				"(string.find(h['%s@']..',', '%s,') ~= nil)))",
-				refTbl.field, refTbl.field, key,
+				refTbl.field, refTbl.field, key, refTbl.field, tableName, key,
 				refTbl.field, refTbl.field, key,
 				refTbl.field, key),
 				field: refTbl.field,

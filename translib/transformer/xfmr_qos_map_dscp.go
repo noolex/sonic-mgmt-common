@@ -15,18 +15,75 @@ func init () {
     XlateFuncBind("DbToYang_qos_fwdgrp_tbl_key_xfmr", DbToYang_qos_fwdgrp_tbl_key_xfmr)
     XlateFuncBind("DbToYang_qos_fwdgrp_fld_xfmr", DbToYang_qos_fwdgrp_fld_xfmr)
 
-    XlateFuncBind("YangToDb_qos_fwd_group_queue_xfmr", YangToDb_qos_fwd_group_queue_xfmr)
-    XlateFuncBind("DbToYang_qos_fwd_group_queue_xfmr", DbToYang_qos_fwd_group_queue_xfmr)
-
     XlateFuncBind("YangToDb_qos_dscp_fwd_group_xfmr", YangToDb_qos_dscp_fwd_group_xfmr)
     XlateFuncBind("DbToYang_qos_dscp_fwd_group_xfmr", DbToYang_qos_dscp_fwd_group_xfmr)
     XlateFuncBind("YangToDb_qos_dscp_to_tc_map_fld_xfmr", YangToDb_qos_dscp_to_tc_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_dscp_to_tc_map_fld_xfmr", DbToYang_qos_dscp_to_tc_map_fld_xfmr)
- 
+
+}
+
+
+func qos_map_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    var err error
+    res_map := make(map[string]map[string]db.Value)
+
+    log.Info("qos_map_delete_xfmr: ", inParams.ygRoot, inParams.uri)
+    log.Info("inParams: ", inParams)
+
+    pathInfo := NewPathInfo(inParams.uri)
+    map_name := pathInfo.Var("name")
+    log.Info("YangToDb: map name: ", map_name)
+
+    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    log.Info("targetUriPath: ",  targetUriPath)
+
+
+    var map_entry db.Value
+
+    if map_name != "" {
+        map_entry, err = get_map_entry_by_map_name(inParams.d, "DSCP_TO_TC_MAP", map_name)
+        if err != nil {
+            err = tlerr.InternalError{Format:"Instance Not found"}
+            log.Info("map name not found.")
+            return res_map, err
+        }
+    }
+
+    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map") == false {
+        log.Info("YangToDb: map name unspecified, using delete_by_map_name")
+        return qos_map_delete_by_map_name(inParams, "DSCP_TO_TC_MAP", map_name)
+    }
+
+    dscp := pathInfo.Var("dscp")
+    if dscp == "" {
+        log.Info("YangToDb: map name unspecified, using delete_by_map_name")
+        return qos_map_delete_by_map_name(inParams, "DSCP_TO_TC_MAP", map_name)
+    } else  {
+        _, exist := map_entry.Field[dscp]
+        if !exist { 
+            err = tlerr.InternalError{Format:"DSCP value Not found"}
+            log.Info("DSCP value not found.")
+            return res_map, err
+        }
+    }
+
+    /* update "map" table field only */
+    rtTblMap := make(map[string]db.Value)
+    rtTblMap[map_name] = db.Value{Field: make(map[string]string)}
+    rtTblMap[map_name].Field[dscp] = ""
+
+    res_map["DSCP_TO_TC_MAP"] = rtTblMap
+
+    return res_map, err
+
 }
 
 
 var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+
+    if inParams.oper == DELETE {
+        return qos_map_delete_xfmr(inParams)
+    }
 
     var err error
     res_map := make(map[string]map[string]db.Value)
@@ -83,10 +140,15 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     }
 
     dscp := pathInfo.Var("dscp")
+    if dscp == "" {
+        return res_map, err
+    }
+
     log.Info("dscp: ", dscp)
 
     tmp, _ := strconv.ParseUint(dscp, 10, 8)
     dscp_val := uint8(tmp)
+    log.Info("dscp_val: ", dscp_val)
 
     entry, ok := mapObj.DscpMapEntries.DscpMapEntry[dscp_val]
     if !ok  {
@@ -108,7 +170,106 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     return res_map, err
 }
 
+
+func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.OpenconfigQos_Qos_DscpMaps, name string) error {
+
+    mapObj, ok := dscpMaps.DscpMap[name]
+    if !ok {
+        mapObj, _ = dscpMaps.NewDscpMap(name)
+        ygot.BuildEmptyTree(mapObj)
+        mapObj.Name = &name
+
+    }
+
+    var mapEntries ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries
+    if mapObj.DscpMapEntries == nil {
+        mapObj.DscpMapEntries = &mapEntries
+    }
+
+    var mapObjCfg ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_Config
+    if mapObj.Config == nil {
+        mapObj.Config = &mapObjCfg
+    }
+
+    var mapObjSta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_State
+    if mapObj.State == nil {
+        mapObj.State = &mapObjSta
+    }
+
+
+    key :=db.Key{Comp: []string{name}}
+    log.Info("key: ", key)
+
+    dbSpec := &db.TableSpec{Name: "DSCP_TO_TC_MAP"}
+    mapCfg, err := inParams.d.GetEntry(dbSpec, key) 
+    if  err != nil {
+        log.Info("No dscp-to-tc-map with a name of : ", name)
+        return nil
+    }
+
+    log.Info("current entry: ", mapCfg)
+
+    mapObj.Config.Name = &name
+    mapObj.State.Name = &name
+
+
+    pathInfo := NewPathInfo(inParams.uri)
+    dscp := pathInfo.Var("dscp")
+    log.Info("pathInfo.Var: ", pathInfo.Var)
+    var tmp_cfg ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_Config
+    var tmp_sta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_State
+    entry_added :=  0
+    for k, v := range mapCfg.Field {
+        if dscp != "" && k!= dscp {
+            continue
+        }
+
+        tmp, _ := strconv.ParseUint(k, 10, 8)
+        dscp_val := uint8(tmp)
+        fwdGrp := v
+
+        entryObj, ok := mapObj.DscpMapEntries.DscpMapEntry[dscp_val]
+        if !ok {
+            entryObj, _ = mapObj.DscpMapEntries.NewDscpMapEntry(dscp_val)
+            ygot.BuildEmptyTree(entryObj)
+            ygot.BuildEmptyTree(entryObj.Config)
+            ygot.BuildEmptyTree(entryObj.State)
+        }
+
+        entryObj.Dscp = &dscp_val
+
+        if entryObj.Config == nil {
+            entryObj.Config = &tmp_cfg
+        }
+        entryObj.Config.Dscp = &dscp_val
+        entryObj.Config.FwdGroup = &fwdGrp
+
+
+        if entryObj.State == nil {
+            entryObj.State = &tmp_sta
+        }
+        entryObj.State.Dscp = &dscp_val
+        entryObj.State.FwdGroup = &fwdGrp
+
+        entry_added = entry_added + 1
+
+        log.Info("Added entry: ", entryObj)
+    }
+
+    log.Info("Done fetching dscp-map : ", name)
+
+    if dscp != "" && entry_added == 0 {
+        err = tlerr.NotFoundError{Format:"Instance Not found"}
+        log.Info("Instance not found.")
+        return err
+    }
+
+    return nil
+}
+
+
 var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+    var err error
 
     pathInfo := NewPathInfo(inParams.uri)
 
@@ -126,60 +287,34 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         ygot.BuildEmptyTree(qosObj.DscpMaps)
     }
 
-    mapObj, ok := qosObj.DscpMaps.DscpMap[name]
-    if !ok {
-        mapObj, _ = qosObj.DscpMaps.NewDscpMap(name)
-        ygot.BuildEmptyTree(mapObj)
-        mapObj.Name = &name
-
-    }
-
-    var mapEntries ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries
-    if mapObj.DscpMapEntries == nil {
-        mapObj.DscpMapEntries = &mapEntries
-    }
-
-    var mapObjCfg ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_Config
-    if mapObj.Config == nil {
-        mapObj.Config = &mapObjCfg
-    }
-
-    // Classifier
     dbSpec := &db.TableSpec{Name: "DSCP_TO_TC_MAP"}
 
-    key :=db.Key{Comp: []string{name}}
-    
-    log.Info("key: ", key)
+    map_added := 0
+    keys, _ := inParams.d.GetKeys(dbSpec)
+    for _, key := range keys {
+        log.Info("key: ", key)
 
-    mapCfg, err := inParams.d.GetEntry(dbSpec, key) 
-    if  err != nil {
-        log.Info("No dscp-to-tc-map with a name of : ", name)
-        return nil
+        map_name := key.Comp[0]
+        if name != ""  && name != map_name{
+            continue
+        } 
+
+        map_added = map_added + 1 
+
+        err = fill_dscp_map_info_by_name(inParams, qosObj.DscpMaps, map_name)
+
+        if err != nil {
+           return err
+        }
     }
 
-    log.Info("current entry: ", mapCfg)
-
-    mapObj.Config.Name = &name
-
-    for k, v := range mapCfg.Field {
-        tmp, _ := strconv.ParseUint(k, 10, 8)
-        dscp_val := uint8(tmp)
-
-        entryObj, _ := mapObj.DscpMapEntries.NewDscpMapEntry(dscp_val)
-        ygot.BuildEmptyTree(entryObj)
-        ygot.BuildEmptyTree(entryObj.Config)
-
-        entryObj.Dscp = &dscp_val
-
-        entryObj.Config.Dscp = &dscp_val
-    
-        fwdGrp := v
-        entryObj.Config.FwdGroup = &fwdGrp
+    if name != "" && map_added == 0 {
+        err = tlerr.NotFoundError{Format:"Instance Not found"}
+        log.Info("Instance not found.")
+        return err
     }
 
-    log.Info("Done fetching dscp-map : ", name)
-
-    return nil
+    return err
 }
 
 
@@ -286,44 +421,6 @@ var DbToYang_qos_fwdgrp_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (
     return res_map, nil
 }
 
-var YangToDb_qos_fwd_group_queue_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-
-    var err error
-    res_map := make(map[string]map[string]db.Value)
-
-    log.Info("YangToDb_qos_fwd_group_queue_xfmr: ", inParams.ygRoot, inParams.uri)
-    log.Info("inParams: ", inParams)
-
-    pathInfo := NewPathInfo(inParams.uri)
-    name := pathInfo.Var("name")
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
-
-    log.Info("YangToDb: name: ", name)
-    log.Info("targetUriPath:",  targetUriPath)
-
-    /* parse the inParams */
-    // TODO
-
-    return res_map, err
-}
-
-var DbToYang_qos_fwd_group_queue_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-    // TODO
-
-    return nil
-}
-
-
-
-func StringToDbLeafref(name string, prefix string) (string) {
-    return "[" + prefix + "|" + name + "]"
-}
-
-func DbLeafrefToString(leafrefstr string, prefix string) (string) {
-    name := strings.Trim(leafrefstr, "[]")
-    name = strings.TrimPrefix(name, prefix + "|")
-    return name 
-}
 
 var DbToYang_qos_dscp_to_tc_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     log.Info("Entering DbToYang_qos_dscp_to_tc_map_fld_xfmr ", inParams)
@@ -342,7 +439,7 @@ var DbToYang_qos_dscp_to_tc_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrP
     log.Info("current entry: ", qCfg)
     value, _ := qCfg.Field["dscp_to_tc_map"] 
 
-    log.Info("Tc to Queue map = ", value)
+    log.Info("value = ", value)
     res_map["dscp-to-forwarding-group"] = DbLeafrefToString(value,  "DSCP_TO_TC_MAP")
     return res_map, nil
 }

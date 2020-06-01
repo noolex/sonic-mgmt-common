@@ -4,9 +4,14 @@ import (
     "errors"
     "strings"
     "strconv"
+    "reflect"
+    gnmipb "github.com/openconfig/gnmi/proto/gnmi"
+    "github.com/openconfig/goyang/pkg/yang"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/openconfig/ygot/ytypes"
     "encoding/json"
     log "github.com/golang/glog"
 )
@@ -15,6 +20,7 @@ func init () {
     XlateFuncBind("YangToDb_fdb_mac_table_xfmr", YangToDb_fdb_mac_table_xfmr)
     XlateFuncBind("DbToYang_fdb_mac_table_xfmr", DbToYang_fdb_mac_table_xfmr)
     XlateFuncBind("rpc_clear_fdb", rpc_clear_fdb)
+    XlateFuncBind("DbToYang_fdb_mac_table_count_xfmr", DbToYang_fdb_mac_table_count_xfmr)
 }
 
 const (
@@ -30,6 +36,18 @@ var FDB_ENTRY_TYPE_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_State_EntryType_DYNAMIC), 10): SONIC_ENTRY_TYPE_DYNAMIC,
 }
 
+type reqProcessor_fdb struct {
+	uri        *string
+	uriPath    *gnmipb.Path
+	opcode     int
+	rootObj    *ocbinds.Device
+	targetObj  interface{}
+	db         *db.DB
+	dbs        [db.MaxDB]*db.DB
+	intfConfigObj   *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Interface 
+	intfStateObj    *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Interface 
+	targetNode *yang.Entry
+}
 var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     var err error
     var  valLst [2]string
@@ -63,6 +81,46 @@ var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     return nil, err
 }
 
+
+func getFdbRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb {
+    var fdbObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb
+
+    deviceObj := (*s).(*ocbinds.Device)
+    niObj := deviceObj.NetworkInstances
+
+    if instance == "" {
+        instance = "default"
+    }
+    if niObj != nil {
+        if niObj.NetworkInstance != nil && len(niObj.NetworkInstance) > 0 {
+            if _, ok := niObj.NetworkInstance[instance]; ok {
+                niInst := niObj.NetworkInstance[instance]
+                if niInst.Fdb != nil {
+                    fdbObj = niInst.Fdb
+                }
+            }
+        }
+    }
+
+    if fdbObj == nil && build == true {
+        if niObj.NetworkInstance == nil || len(niObj.NetworkInstance) < 1 {
+            ygot.BuildEmptyTree(niObj)
+        }
+        var niInst *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance
+        if _, ok := niObj.NetworkInstance[instance]; !ok {
+            niInst, _  = niObj.NewNetworkInstance(instance)
+        } else {
+            niInst = niObj.NetworkInstance[instance]
+        }
+        ygot.BuildEmptyTree(niInst)
+        if niInst.Fdb == nil {
+            ygot.BuildEmptyTree(niInst.Fdb)
+        }
+        fdbObj = niInst.Fdb
+    }
+
+    return fdbObj
+}
 
 func getFdbMacTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable {
     var fdbMacTableObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable
@@ -99,16 +157,43 @@ func getFdbMacTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds
             ygot.BuildEmptyTree(niInst.Fdb)
         }
         fdbMacTableObj = niInst.Fdb.MacTable
-
     }
 
     return fdbMacTableObj
 }
 
 var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    retMap := make(map[string]map[string]db.Value)
+    path, err := getUriPath(inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+    macAddr := pathInfo.Var("mac-address")
+    vlan := pathInfo.Var("vlan")
 
-    return retMap, nil
+    reqP := &reqProcessor_fdb{&inParams.uri, path, inParams.oper, (*inParams.ygRoot).(*ocbinds.Device), inParams.param, inParams.d, inParams.dbs, nil, nil, nil}
+    log.Info("YangToDb_fdb_mac_table_xfmr =>", inParams)
+
+    key := "Vlan" + vlan + "|" + macAddr
+    var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
+    var fdbTblMap map[string]db.Value = make(map[string]db.Value)
+    dbV := db.Value{Field: make(map[string]string)}
+    if (inParams.oper == DELETE) {
+        fdbTblMap[key] = dbV
+        res_map["FDB"] = fdbTblMap
+        return res_map, nil
+    }
+
+    if targetNodeList, errTmp := ytypes.GetNode(ocbinds.SchemaTree["Device"], reqP.rootObj, path); errTmp != nil || len(targetNodeList) == 0 {
+        return nil, err
+    } else {
+        v := reflect.ValueOf(targetNodeList[0].Data).Elem()
+        var port = v.Field(0).Elem()
+        var portname string = port.String()
+        dbV.Field["port"] = portname
+        fdbTblMap[key] = dbV
+        res_map["FDB"] = fdbTblMap
+
+	return res_map, nil
+    }	
+    return nil, err
 }
 
 func getOidToIntfNameMap (d *db.DB) (map[string]string, error) {
@@ -290,12 +375,14 @@ func fdbMacTableGetEntry(inParams XfmrParams, vlan string,  macAddress string, o
                 intfName := new(string)
                 *intfName = findInMap(oidInfMap, intfOid)
                 if *intfName != "" {
+                    /* If Alias mode is enabled, get alias name from native name */
+                    cvtdName := utils.GetAliasNameFromIfName(intfName)
                     ygot.BuildEmptyTree(mcEntry.Interface)
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef)
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef.Config)
-                    mcEntry.Interface.InterfaceRef.Config.Interface = intfName
+                    mcEntry.Interface.InterfaceRef.Config.Interface = cvtdName
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef.State)
-                    mcEntry.Interface.InterfaceRef.State.Interface = intfName
+                    mcEntry.Interface.InterfaceRef.State.Interface = cvtdName
                 }
             }
         }
@@ -348,3 +435,42 @@ var DbToYang_fdb_mac_table_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams)
 
     return err
 }
+
+
+var DbToYang_fdb_mac_table_count_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    var staticCount,dynamicCount uint32 = 0,0
+    pathInfo := NewPathInfo(inParams.uri)
+    instance := pathInfo.Var("name")
+
+    fdbTbl := getFdbRoot(inParams.ygRoot, instance, true)
+    if fdbTbl == nil {
+        log.Info("DbToYang_fdb_mac_table_count_xfmr - getFdbRoot returned nil, for URI: ", inParams.uri)
+        return errors.New("Not able to get FDB root.");
+    }
+    ygot.BuildEmptyTree(fdbTbl)
+
+    oidToVlan, _, fdbMap, _ := getASICStateMaps(inParams.dbs[db.AsicDB])
+    for vlanOid, vlanEntry := range fdbMap {
+        if _, ok  := oidToVlan[vlanOid]; !ok {
+            continue
+        }
+        for mac, _ := range vlanEntry {
+            entry := fdbMap[vlanOid][mac]
+            if entry.Has("SAI_FDB_ENTRY_ATTR_TYPE") {
+                fdbEntryType := entry.Get("SAI_FDB_ENTRY_ATTR_TYPE")
+                if fdbEntryType == SONIC_ENTRY_TYPE_STATIC {
+                    staticCount++
+                } else {
+                    dynamicCount++
+                }
+            }
+        }
+    }
+    countTbl := fdbTbl.State
+    countTbl.StaticCount = &staticCount
+    countTbl.DynamicCount = &dynamicCount
+
+    return err
+}
+

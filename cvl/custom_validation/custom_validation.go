@@ -29,10 +29,6 @@ import (
 	"bufio"
 	)
 
-//Path : /sonic-sflow/SFLOW/SFLOW_LIST/agent_id
-//Purpose: Check correct for correct agent_id
-//vc : Custom Validation Context
-//Returns -  CVL Error object
 func (t *CustomValidation) ValidateSflowAgentId(
 	vc *CustValidationCtxt) CVLErrorInfo {
 
@@ -97,10 +93,6 @@ func (t *CustomValidation) ValidateSflowAgentId(
 	}
 }
 
-//Path : /sonic-ptp/PTP_PORT/PTP_PORT_LIST/underlying-interface
-//Purpose: Check correct for correct agent_id
-//vc : Custom Validation Context
-//Returns -  CVL Error object
 func (t *CustomValidation) ValidatePtpUnderlyingInterface(
 	vc *CustValidationCtxt) CVLErrorInfo {
 
@@ -161,9 +153,6 @@ func (t *CustomValidation) ValidatePtpUnderlyingInterface(
 	}
 }
 
-//Path : /sonic-ptp/PTP_CLOCK
-//Purpose: Check correct platform
-//Returns -  CVL Error object
 func (t *CustomValidation) ValidatePtp(
 	vc *CustValidationCtxt) CVLErrorInfo {
 		
@@ -210,7 +199,7 @@ func (t *CustomValidation) ValidatePtp(
 	log.Info("ValidatePtp length(redisEntries) : ", s.Len())
 	for i := 0; i < s.Len(); i+=2 {
 		log.Info("ValidatePtp index(", i, ") : ", s.Index(i).Interface().(string))
-		if "platform" == s.Index(i).Interface().(string) {
+		if  s.Index(i).Interface().(string) == "platform" {
 			platform := s.Index(i+1).Interface().(string)
 			log.Info("ValidatePtp platform : ", platform)
 

@@ -1,0 +1,224 @@
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//  Copyright 2020 Dell, Inc.                                                 //
+//                                                                            //
+//  Licensed under the Apache License, Version 2.0 (the "License");           //
+//  you may not use this file except in compliance with the License.          //
+//  You may obtain a copy of the License at                                   //
+//                                                                            //
+//  http://www.apache.org/licenses/LICENSE-2.0                                //
+//                                                                            //
+//  Unless required by applicable law or agreed to in writing, software       //
+//  distributed under the License is distributed on an "AS IS" BASIS,         //
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
+//  See the License for the specific language governing permissions and       //
+//  limitations under the License.                                            //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+package transformer
+
+import (
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+    log "github.com/golang/glog"
+)
+
+func xfmrHandlerFunc(inParams XfmrParams) (error) {
+	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
+	xfmrLogInfoAll("Subtree transformer function(\"%v\") invoked for yang path(\"%v\").", xYangSpecMap[xpath].xfmrFunc, xpath)
+	_, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrFunc), inParams)
+	if err != nil {
+		xfmrLogInfoAll("Failed to retrieve data for xpath(\"%v\") err(%v).", inParams.uri, err)
+		return err
+	}
+
+	return err
+}
+
+func leafXfmrHandlerFunc(inParams XfmrParams) (map[string]interface{}, error) {
+	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
+	ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrField), inParams)
+	if err != nil {
+		return nil, err
+	}
+	if ret != nil {
+		fldValMap := ret[0].Interface().(map[string]interface{})
+		return fldValMap, nil
+	} else {
+		return nil, nil
+	}
+}
+
+func validateHandlerFunc(inParams XfmrParams) (bool) {
+	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
+	ret, err := XlateFuncCall(xYangSpecMap[xpath].validateFunc, inParams)
+	if err != nil {
+		return false
+	}
+	return ret[0].Interface().(bool)
+}
+
+func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams) ([]string, error) {
+	xfmrLogInfoAll("Received inParams %v, table transformer function name %v", inParams, xfmrTblFunc)
+	var retTblLst []string
+	ret, err := XlateFuncCall(xfmrTblFunc, inParams)
+	if err != nil {
+		return retTblLst, err
+	}
+	if ((ret != nil) && (len(ret)>0)) {
+		if len(ret) == TBL_XFMR_RET_ARGS {
+			// table xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[TBL_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[TBL_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrTblFunc, err)
+					return retTblLst, err
+				}
+			}
+		}
+
+		if ret[TBL_XFMR_RET_VAL_INDX].Interface() != nil {
+			retTblLst = ret[TBL_XFMR_RET_VAL_INDX].Interface().([]string)
+		}
+	}
+	return retTblLst, err
+}
+
+func valueXfmrHandler(inParams XfmrDbParams, xfmrValueFuncNm string) (string, error) {
+	xfmrLogInfoAll("Received inParams %v Value transformer name %v", inParams, xfmrValueFuncNm)
+
+	ret, err := XlateFuncCall(xfmrValueFuncNm, inParams)
+	if err != nil {
+		return "", err
+	}
+
+	if ((ret != nil) && (len(ret)>0)) {
+		if len(ret) == YTDB_FLD_XFMR_RET_ARGS {
+			// value xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[YTDB_FLD_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[YTDB_FLD_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrValueFuncNm, err)
+					return "", err
+				}
+			}
+		}
+
+		if ret[YTDB_FLD_XFMR_RET_VAL_INDX].Interface() != nil {
+			retVal := ret[YTDB_FLD_XFMR_RET_VAL_INDX].Interface().(string)
+			return retVal, nil
+		}
+	}
+
+	return "", err
+}
+
+func leafXfmrHandler(inParams XfmrParams, xfmrFieldFuncNm string) (map[string]string, error) {
+	xfmrLogInfoAll("Received inParams %v Field transformer name %v", inParams, xfmrFieldFuncNm)
+	ret, err := XlateFuncCall(yangToDbXfmrFunc(xfmrFieldFuncNm), inParams)
+	if err != nil {
+		return nil, err
+	}
+	if ((ret != nil) && (len(ret)>0)) {
+		if len(ret) == YTDB_FLD_XFMR_RET_ARGS {
+			// field xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[YTDB_FLD_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[YTDB_FLD_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFieldFuncNm, err)
+					return nil, err
+				}
+			}
+		}
+
+		if ret[YTDB_FLD_XFMR_RET_VAL_INDX].Interface() != nil {
+			fldValMap := ret[YTDB_FLD_XFMR_RET_VAL_INDX].Interface().(map[string]string)
+			return fldValMap, nil
+		}
+	} else {
+		retFldValMap := map[string]string{"NULL":"NULL"}
+		return retFldValMap, nil
+	}
+
+	return nil, nil
+}
+
+func xfmrHandler(inParams XfmrParams, xfmrFuncNm string) (map[string]map[string]db.Value, error) {
+	xfmrLogInfoAll("Received inParams %v Subtree function name %v", inParams, xfmrFuncNm)
+	ret, err := XlateFuncCall(yangToDbXfmrFunc(xfmrFuncNm), inParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if ((ret != nil) && (len(ret)>0)) {
+		if len(ret) == YTDB_SBT_XFMR_RET_ARGS {
+			// subtree xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[YTDB_SBT_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[YTDB_SBT_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
+					return nil, err
+				}
+			}
+		}
+		if ret[YTDB_SBT_XFMR_RET_VAL_INDX].Interface() != nil {
+			retMap := ret[YTDB_SBT_XFMR_RET_VAL_INDX].Interface().(map[string]map[string]db.Value)
+			return retMap, nil
+		}
+	}
+	return nil, nil
+}
+
+func keyXfmrHandler(inParams XfmrParams, xfmrFuncNm string) (string, error) {
+	xfmrLogInfoAll("Received inParams %v key transformer function name %v", inParams, xfmrFuncNm)
+	ret, err := XlateFuncCall(yangToDbXfmrFunc(xfmrFuncNm), inParams)
+	retVal := ""
+	if err != nil {
+		return retVal, err
+	}
+
+	if ((ret != nil) && (len(ret)>0)) {
+		if len(ret) == YTDB_KEY_XFMR_RET_ARGS {
+			// key xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[YTDB_KEY_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[YTDB_KEY_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
+					return retVal, err
+				}
+			}
+		}
+		if ret[YTDB_KEY_XFMR_RET_VAL_INDX].Interface() != nil {
+			retVal = ret[YTDB_KEY_XFMR_RET_VAL_INDX].Interface().(string)
+			return retVal, nil
+		}
+	}
+	return retVal, nil
+}
+
+/* Invoke the post tansformer */
+func postXfmrHandlerFunc(xfmrPost string, inParams XfmrParams) (map[string]map[string]db.Value, error) {
+	retData := make(map[string]map[string]db.Value)
+	xfmrLogInfoAll("Received inParams %v, post transformer function name %v", inParams, xfmrPost)
+	ret, err := XlateFuncCall(xfmrPost, inParams)
+	if err != nil {
+		return nil, err
+	}
+	if ((ret != nil) && (len(ret)>0)) {
+		if len(ret) == POST_XFMR_RET_ARGS {
+			// post xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[POST_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[POST_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrPost, err)
+					return retData, err
+				}
+			}
+		}
+		if ret[POST_XFMR_RET_VAL_INDX].Interface() != nil {
+			retData = ret[POST_XFMR_RET_VAL_INDX].Interface().(map[string]map[string]db.Value)
+			xfmrLogInfoAll("Post Transformer function : %v retData : %v", xfmrPost, retData)
+		}
+	}
+	return retData, err
+}
