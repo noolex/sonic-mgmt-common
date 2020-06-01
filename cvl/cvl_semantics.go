@@ -1520,8 +1520,8 @@ func (c *CVL) validateSemantics(node *xmlquery.Node,
 	yangListName, key string,
 	cfgData *CVLEditConfigData) (r CVLErrorInfo) {
 
-	//Mark the list entries from DB if OP_DELETE operation
-	if (node != nil) && (cfgData.VOp == OP_DELETE) {
+	//Mark the list entries from DB if OP_DELETE operation when complete list delete requested
+	if (node != nil) && (cfgData.VOp == OP_DELETE) && (len(cfgData.Data) == 0) {
 		addAttrNode(node, "db", "")
 	}
 
