@@ -353,8 +353,8 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
                 if nexthopObj.Config.Metric != nil {
                     distance = *nexthopObj.Config.Metric
                 }
-                if nexthopObj.Config.NexthopVrfName != nil {
-                    nhVrf = *nexthopObj.Config.NexthopVrfName
+                if nexthopObj.Config.NexthopNetworkInstance != nil {
+                    nhVrf = *nexthopObj.Config.NexthopNetworkInstance
                 }
                 if nexthopObj.Config.NextHop != nil {
                     switch nexthopObj.Config.NextHop.(type) {
@@ -856,10 +856,10 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhI
                 *nhObj.Config.Metric = nh.distance
             }
             if len(nh.vrf) > 0 {
-                if nhObj.Config.NexthopVrfName == nil {
-                    nhObj.Config.NexthopVrfName = new(string)
+                if nhObj.Config.NexthopNetworkInstance == nil {
+                    nhObj.Config.NexthopNetworkInstance = new(string)
                 }
-                *nhObj.Config.NexthopVrfName = nh.vrf
+                *nhObj.Config.NexthopNetworkInstance = nh.vrf
             }
             if len(nh.ifName) > 0 {
                 if nhObj.InterfaceRef == nil {

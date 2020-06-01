@@ -6,12 +6,12 @@ module openconfig-local-routing-ext {
   namespace "http://openconfig.net/yang/local-routing/extension";
 
   prefix "oc-local-routing-ext";
-  
+
   import openconfig-bfd { prefix oc-bfd; }
   import openconfig-network-instance { prefix oc-netinst; }
 
   description
-        "This module describes a YANG model for local routing 
+        "This module describes a YANG model for local routing
         configuration extensions.";
 
   revision "2020-03-13" {
@@ -19,8 +19,8 @@ module openconfig-local-routing-ext {
       "Add OpenConfig unsupported attributes and extensions.";
   }
 
-  grouping next-hop-vrf-config {
-      leaf nexthop-vrf-name {
+  grouping next-hop-ntwk-instance-config {
+      leaf nexthop-network-instance {
           type string;
           description
               "name of the Next-hop VRF for leaked routes";
@@ -59,7 +59,7 @@ module openconfig-local-routing-ext {
 
       deviate not-supported;
   }
- 
+
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:interface-ref/oc-netinst:config/oc-netinst:subinterface {
 
       deviate not-supported;
@@ -77,12 +77,12 @@ module openconfig-local-routing-ext {
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:config" {
       description
           "Next hop VRF";
-      uses next-hop-vrf-config;
+      uses next-hop-ntwk-instance-config;
    }
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:state" {
       description
           "Next hop VRF";
-      uses next-hop-vrf-config;
+      uses next-hop-ntwk-instance-config;
    }
 
    augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:config" {
