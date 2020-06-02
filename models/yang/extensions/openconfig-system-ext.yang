@@ -10,6 +10,7 @@ module openconfig-system-ext {
     import openconfig-inet-types { prefix inet; }
     import openconfig-kdump { prefix oc-kdump; }
     import openconfig-interfaces { prefix "oc-if"; }
+    import openconfig-infra { prefix "oc-infra"; }
     import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
 
     // meta
@@ -250,5 +251,10 @@ module openconfig-system-ext {
 	}
     deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:selectors {
        deviate not-supported;
+    }
+    
+   //infra paraemters
+    augment /oc-sys:system {
+        uses oc-infra:infra-top;
     }
 }
