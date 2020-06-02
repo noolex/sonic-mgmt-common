@@ -6,6 +6,7 @@ import (
     log "github.com/golang/glog"
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 
 
@@ -39,7 +40,7 @@ var DbToYang_route_table_addr_family_xfmr FieldXfmrDbtoYang = func(inParams Xfmr
     } else if family == "ipv6" {
         af = "IPV6"
     } else {
-		return result, errors.New("Unsupported family " + family)
+        return result, errors.New("Unsupported family " + family)
     }
 
     result["address-family"] = af
@@ -76,8 +77,8 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     } else if strings.Contains(afName, "IPV6") {
         family = "ipv6"
     } else {
-		log.Info("Unsupported address-family " + afName)
-		return family, errors.New("Unsupported address-family " + afName)
+        log.Info("Unsupported address-family " + afName)
+        return family, errors.New("Unsupported address-family " + afName)
     }
 
     if strings.Contains(srcProto, "DIRECTLY_CONNECTED") {
@@ -89,15 +90,15 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     } else if strings.Contains(srcProto, "STATIC") {
         source = "static"
     } else {
-		log.Info("Unsupported protocol " + srcProto)
-		return family, errors.New("Unsupported protocol " + srcProto)
+        log.Info("Unsupported protocol " + srcProto)
+        return family, errors.New("Unsupported protocol " + srcProto)
     }
 
     if strings.Contains(dstProto, "BGP") {
         destination = "bgp"
     } else {
-		log.Info("Unsupported protocol " + dstProto)
-		return family, errors.New("Unsupported protocol " + dstProto)
+        log.Info("Unsupported protocol " + dstProto)
+        return family, errors.New("Unsupported protocol " + dstProto)
     }
 
     key := niName + "|" + source + "|" + destination + "|" + family 
@@ -130,13 +131,13 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     } else if source == "ospf3" {
         src_proto = "OSPF3"
     } else {
-		return rmap, errors.New("Unsupported src protocol " + source)
+        return rmap, errors.New("Unsupported src protocol " + source)
     }
 
     if destination == "bgp" {
         dst_proto = "BGP"
     } else {
-		return rmap, errors.New("Unsupported dst protocol " + destination)
+        return rmap, errors.New("Unsupported dst protocol " + destination)
     }
 
     if family == "ipv4" {
@@ -144,7 +145,7 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     } else if family == "ipv6" {
         af = "IPV6"
     } else {
-		return rmap, errors.New("Unsupported family " + family)
+        return rmap, errors.New("Unsupported family " + family)
     }
     rmap["src-protocol"] = src_proto
     rmap["dst-protocol"] = dst_proto
@@ -243,5 +244,41 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
 
     bgpOutput, err := exec_raw_vtysh_cmd(cmd)
     result.Output.Status = bgpOutput
+
+    var routeDict map[string]interface{}
+    if err := json.Unmarshal([]byte(bgpOutput), &routeDict); err != nil {
+        log.Infof("Error found in unmarshalling json output from vtysh - #show ip route json!")
+        return json.Marshal(&result)
+    }
+    for ipAddr, _ := range routeDict {
+        routeMapJson := routeDict[ipAddr]
+        routeMapSlice := routeMapJson.([]interface{})
+        for _, routeEntry := range routeMapSlice {
+            routeMap := routeEntry.(map[string]interface{})
+            nextHopInterface, ok := routeMap["nexthops"]
+            if !ok {
+                log.Errorf("nextHops not present in routeDictionary for IP: %s", ipAddr)
+                continue
+            }
+            nextHopSlice := nextHopInterface.([]interface{})
+            for _, nextHopEntry := range nextHopSlice {
+                nextHopMap := nextHopEntry.(map[string]interface{})
+                ifNameVal, ok := nextHopMap["interfaceName"]
+                if !ok {
+                    log.Errorf("interfaceName entry not present in nextHops for IP: %s", ipAddr)
+                    continue
+                }
+                ifName := ifNameVal.(string)
+                sonicName := utils.GetAliasNameFromIfName(&ifName)
+                nextHopMap["interfaceName"] = *sonicName
+            }
+        }
+    }
+    modifiedBgpOp, err := json.Marshal(&routeDict)
+    if err != nil {
+      log.Error("Marshalling modified BGP output failed!")
+      return json.Marshal(&result)
+    }
+    result.Output.Status = string(modifiedBgpOp)
     return json.Marshal(&result)
 }
