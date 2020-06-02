@@ -854,7 +854,7 @@ func fill_nbr_state_cmn_info (nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue 
             }
         }
 
-        if value, ok := frrNbrDataJson["adminShutDown"] ; (ok && value) {
+        if value, ok := frrNbrDataJson["adminShutDown"] ; (ok && value == true) {
             _enabled, _ := strconv.ParseBool("false")
             nbrState.Enabled = &_enabled
         } else {

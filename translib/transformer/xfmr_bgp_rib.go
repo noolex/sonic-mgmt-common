@@ -240,7 +240,7 @@ func hdl_get_bgp_ipv4_local_rib (ribAfiSafi_obj *ocbinds.OpenconfigNetworkInstan
             pathData := _pathData.(map[string]interface {})
             if value, ok := pathData["pathId"] ; ok {
                 pathId := uint32(value.(float64))
-                if ok = fill_ipv4_spec_pfx_path_loc_rib_data (ipv4LocRibRoutes_obj, rib_key, prefix, pathId, pathData) ; !ok {continue}
+                fill_ipv4_spec_pfx_path_loc_rib_data (ipv4LocRibRoutes_obj, rib_key, prefix, pathId, pathData)
             }
         }
     }
@@ -419,7 +419,7 @@ func hdl_get_bgp_ipv6_local_rib (ribAfiSafi_obj *ocbinds.OpenconfigNetworkInstan
             pathData := _pathData.(map[string]interface {})
             if value, ok := pathData["pathId"] ; ok {
                 pathId := uint32(value.(float64))
-                if ok = fill_ipv6_spec_pfx_path_loc_rib_data (ipv6LocRibRoutes_obj, rib_key, prefix, pathId, pathData) ; !ok {continue}
+                fill_ipv6_spec_pfx_path_loc_rib_data (ipv6LocRibRoutes_obj, rib_key, prefix, pathId, pathData)
             }
         }
     }
@@ -837,7 +837,7 @@ func hdl_get_bgp_ipv4_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
         pathData := _pathData.(map[string]interface {})
         if value, ok := pathData["pathId"] ; ok {
             pathId := uint32(value.(float64))
-            if ok = fill_ipv4_spec_pfx_path_loc_rib_prefix_data (ipv4LocRibPaths_obj, prefix, pathId, pathData) ; !ok {continue}
+            fill_ipv4_spec_pfx_path_loc_rib_prefix_data (ipv4LocRibPaths_obj, prefix, pathId, pathData)
         }
     }
 
@@ -912,7 +912,7 @@ func hdl_get_bgp_ipv6_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
         pathData := _pathData.(map[string]interface {})
         if value, ok := pathData["pathId"] ; ok {
             pathId := uint32(value.(float64))
-            if ok = fill_ipv6_spec_pfx_path_loc_rib_prefix_data (ipv6LocRibPaths_obj, prefix, pathId, pathData) ; !ok {continue}
+            fill_ipv6_spec_pfx_path_loc_rib_prefix_data (ipv6LocRibPaths_obj, prefix, pathId, pathData)
         }
     }
 
@@ -1122,7 +1122,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_pre (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIns
             ipv4InPreRoute_obj, err = ipv4InPreRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv4InPreRoute_obj)
-        if ok = fill_ipv4_spec_pfx_nbr_in_pre_rib_data (ipv4InPreRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        fill_ipv4_spec_pfx_nbr_in_pre_rib_data (ipv4InPreRoute_obj, prefix, pathId, prefixData)
     }
 
     return err
@@ -1277,7 +1277,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_pre (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIns
             ipv6InPreRoute_obj, err = ipv6InPreRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv6InPreRoute_obj)
-        if ok = fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj, prefix, pathId, prefixData)
     }
     return err
 }
@@ -1447,7 +1447,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIn
                 ipv4InPostRoute_obj, err = ipv4InPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
             }
             ygot.BuildEmptyTree(ipv4InPostRoute_obj)
-            if ok = fill_ipv4_spec_pfx_nbr_in_post_rib_data (ipv4InPostRoute_obj, prefix, pathId, pathData) ; !ok {continue}
+            fill_ipv4_spec_pfx_nbr_in_post_rib_data (ipv4InPostRoute_obj, prefix, pathId, pathData)
         }
     }
 
@@ -1624,7 +1624,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIn
                 ipv6InPostRoute_obj, err = ipv6InPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
             }
             ygot.BuildEmptyTree(ipv6InPostRoute_obj)
-            if ok = fill_ipv6_spec_pfx_nbr_in_post_rib_data (ipv6InPostRoute_obj, prefix, pathId, pathData) ; !ok {continue}
+            fill_ipv6_spec_pfx_nbr_in_post_rib_data (ipv6InPostRoute_obj, prefix, pathId, pathData)
         }
     }
     return err
@@ -1765,7 +1765,7 @@ func fill_bgp_ipv4_nbr_adj_rib_out_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkI
             ipv4OutPostRoute_obj, err = ipv4OutPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv4OutPostRoute_obj)
-        if ok = fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj, prefix, pathId, prefixData)
     }
 
     return err
@@ -1906,7 +1906,7 @@ func fill_bgp_ipv6_nbr_adj_rib_out_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkI
             ipv6OutPostRoute_obj, err = ipv6OutPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv6OutPostRoute_obj)
-        if ok = fill_ipv6_spec_pfx_nbr_out_post_rib_data (ipv6OutPostRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        fill_ipv6_spec_pfx_nbr_out_post_rib_data (ipv6OutPostRoute_obj, prefix, pathId, prefixData)
     }
 
     return err
@@ -2497,7 +2497,7 @@ func get_rpc_show_bgp_sub_cmd_for_community_string_ (mapData map[string]interfac
     }
     subCmd := "community " + communityStr
 
-    exactMatch, ok := mapData["community-str-exact-match"].(bool) ; if ok && exactMatch == true {
+    exactMatch, ok := mapData["community-str-exact-match"].(bool) ; if ok && exactMatch {
         subCmd = subCmd + " exact-match"
     }
 
@@ -2506,28 +2506,28 @@ func get_rpc_show_bgp_sub_cmd_for_community_string_ (mapData map[string]interfac
 }
 
 func get_rpc_show_bgp_sub_cmd_for_community_local_as_ (mapData map[string]interface{}) (bool, string, string) {
-    exactMatch, ok := mapData["community-local-as-exact-match"].(bool) ; if ok && exactMatch == true {
+    exactMatch, ok := mapData["community-local-as-exact-match"].(bool) ; if ok && exactMatch {
         return true, "", "community local-AS exact-match json"
     }
     return true, "", "community local-AS json"
 }
 
 func get_rpc_show_bgp_sub_cmd_for_community_no_advertise_ (mapData map[string]interface{}) (bool, string, string) {
-    exactMatch, ok := mapData["community-no-advertise-exact-match"].(bool) ; if ok && exactMatch == true {
+    exactMatch, ok := mapData["community-no-advertise-exact-match"].(bool) ; if ok && exactMatch {
         return true, "", "community no-advertise exact-match json"
     }
     return true, "", "community no-advertise json"
 }
 
 func get_rpc_show_bgp_sub_cmd_for_community_no_export_ (mapData map[string]interface{}) (bool, string, string) {
-    exactMatch, ok := mapData["community-no-export-exact-match"].(bool) ; if ok && exactMatch == true {
+    exactMatch, ok := mapData["community-no-export-exact-match"].(bool) ; if ok && exactMatch {
         return true, "", "community no-export exact-match json"
     }
     return true, "", "community no-export json"
 }
 
 func get_rpc_show_bgp_sub_cmd_for_community_no_peer_ (mapData map[string]interface{}) (bool, string, string) {
-    exactMatch, ok := mapData["community-no-peer-exact-match"].(bool) ; if ok && exactMatch == true {
+    exactMatch, ok := mapData["community-no-peer-exact-match"].(bool) ; if ok && exactMatch {
         return true, "", "community no-peer exact-match json"
     }
     return true, "", "community no-peer json"
@@ -2595,7 +2595,7 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
 
     log.Info("In rpc_show_bgp, RPC data:", mapData)
 
-    input, _ := mapData["sonic-bgp-show:input"]
+    input := mapData["sonic-bgp-show:input"]
     mapData = input.(map[string]interface{})
 
     log.Info("In rpc_show_bgp, RPC Input data:", mapData)
@@ -2630,5 +2630,5 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
         return nil, errors.New(dbg_err_str)
     }
     result.Output.Status = bgpOutput
-    return json.Marshal(&result), nil
+    return json.Marshal(&result)
 }

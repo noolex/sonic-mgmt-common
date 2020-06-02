@@ -20,13 +20,11 @@ const (
     SONIC_MATCH_SET_ACTION_ALL = "ALL"
 )
 
-/* PREFIX_SET_MODE_MAP for mapping IPv4 and IPv6 prefixes */
 var PREFIX_SET_MODE_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_PrefixSets_PrefixSet_Config_Mode_IPV4), 10): SONIC_PREFIX_SET_MODE_IPV4,
     strconv.FormatInt(int64(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_PrefixSets_PrefixSet_Config_Mode_IPV6), 10): SONIC_PREFIX_SET_MODE_IPV6,
 }
 
-/* MATCH_SET_ACTION_MAP for mapping set options type all and any */
 var MATCH_SET_ACTION_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigRoutingPolicy_MatchSetOptionsType_ALL), 10): SONIC_MATCH_SET_ACTION_ALL,
     strconv.FormatInt(int64(ocbinds.OpenconfigRoutingPolicy_MatchSetOptionsType_ANY), 10): SONIC_MATCH_SET_ACTION_ANY,

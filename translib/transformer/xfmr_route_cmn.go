@@ -238,5 +238,5 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
     }
 
     result.Output.Status = bgpOutput
-    return json.Marshal(&result), nil
+    return json.Marshal(&result)
 }
