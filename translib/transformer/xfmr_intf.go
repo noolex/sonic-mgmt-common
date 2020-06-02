@@ -42,6 +42,7 @@ import (
 func init () {
     XlateFuncBind("intf_table_xfmr", intf_table_xfmr)
     XlateFuncBind("alias_value_xfmr", alias_value_xfmr)
+    XlateFuncBind("alternate_name_value_xfmr", alternate_name_value_xfmr)
     XlateFuncBind("YangToDb_intf_name_xfmr", YangToDb_intf_name_xfmr)
     XlateFuncBind("DbToYang_intf_name_xfmr", DbToYang_intf_name_xfmr)
     XlateFuncBind("YangToDb_intf_enabled_xfmr", YangToDb_intf_enabled_xfmr)
@@ -230,6 +231,28 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     log.Info("Returned string from alias_value_xfmr = ", *convertedName)
     return *convertedName, err
 }
+
+func alternate_name_value_xfmr(inParams XfmrDbParams) (string, error) {
+
+    aliasName := inParams.value
+    log.Infof("alternate_name_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, aliasName)
+
+    if !utils.IsAliasModeEnabled() {
+        log.Info("Alias mode is not enabled!")
+        return aliasName, nil
+    }
+
+    if inParams.oper != GET {
+        err_str := "CRUD operations are not allowed for interface alternate name"
+        return aliasName, tlerr.NotSupported(err_str)
+    }
+    var ifName *string
+    ifName = utils.GetInterfaceNameFromAlias(&aliasName)
+
+    log.Info("Returned string from alternate_name_value_xfmr = ", *ifName)
+    return *ifName, nil
+}
+
 
 var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
@@ -3122,15 +3145,27 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.SagIpv4 != nil {
 		sagIpv4Obj := subIntfObj.Ipv4.SagIpv4
 
-		if sagIpv4Obj.Config != nil {
-			log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
+        if sagIpv4Obj.Config != nil {
+            log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
 
-			if !validIPv4(sagIpv4Obj.Config.StaticAnycastGateway[0]) {
-                            errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
-                            err = tlerr.InvalidArgsError{Format: errStr}
-                            return subIntfmap, err
-                        }
+            var templen uint8
+            tempIP := strings.Split(sagIpv4Obj.Config.StaticAnycastGateway[0], "/")
 
+            if !validIPv4(tempIP[0]) {
+                errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+                err = tlerr.InvalidArgsError{Format: errStr}
+                return subIntfmap, err
+            }
+	    
+
+      tlen, _ := strconv.Atoi(tempIP[1])
+      templen = uint8(tlen)
+      err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, true)
+      if err != nil {
+          errStr := "Invalid IPv4 Gateway lenght " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3173,11 +3208,23 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 		if sagIpv6Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv6Obj.Config.StaticAnycastGateway)
 
-			if !validIPv6(sagIpv6Obj.Config.StaticAnycastGateway[0]) {
-                            errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
-                            err = tlerr.InvalidArgsError{Format: errStr}
-                            return subIntfmap, err
-                        }
+      var templen uint8
+      tempIP := strings.Split(sagIpv6Obj.Config.StaticAnycastGateway[0], "/")
+
+      if !validIPv6(tempIP[0]) {
+          errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
+
+      tlen, _ := strconv.Atoi(tempIP[1])
+      templen = uint8(tlen)
+      err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, false)
+      if err != nil {
+          errStr := "Invalid IPv6 Gateway lenght " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
 
 			sagIPv6Key := ifName + "|IPv6"
 

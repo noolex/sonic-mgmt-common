@@ -769,7 +769,7 @@ func Test_LeafList_Get_SonicYang(t *testing.T) {
                                                                                           "stage": "INGRESS",
                                                                                           "type": "L3"}}}
         url = "/sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL1_ACL_IPV4]/ports"
-        expected_get_json = "{}"
+        expected_get_json = "{\"sonic-acl:ports\":[\"\"]}"
         loadConfigDB(rclient, prereq_map)
         t.Run("Get leaf-list empty string in DB.", processGetRequest(url, expected_get_json, false))
         time.Sleep(1 * time.Second)
