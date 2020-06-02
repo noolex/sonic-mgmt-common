@@ -22,15 +22,14 @@ module openconfig-interfaces-ext {
     import ietf-yang-types { prefix yang; }
     import ietf-inet-types { prefix "ietf-inet"; }
  
-    organization "OpenConfig working group";
+    organization "SONiC";
 
     contact
-        "OpenConfig working group
-        netopenconfig@googlegroups.com";
+        "SONiC";
 
     description
-        "This module defines configuration and state variables for extensions to
-        openconfig-interfaces yang";
+        "This module contains collection of yang definitions for extensions to
+         openconfig-interfaces yang";
 
     oc-ext:openconfig-version "1.0.0";
 
