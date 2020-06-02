@@ -9,17 +9,31 @@ module openconfig-local-routing-ext {
 
   import openconfig-bfd { prefix oc-bfd; }
   import openconfig-network-instance { prefix oc-netinst; }
+  import openconfig-extensions { prefix "oc-ext"; }
+
+  organization
+    "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
 
   description
         "This module describes a YANG model for local routing
         configuration extensions.";
 
+  oc-ext:openconfig-version "0.1.0";
+
   revision "2020-03-13" {
     description
       "Add OpenConfig unsupported attributes and extensions.";
+    reference "0.1.0";
   }
 
-  grouping next-hop-ntwk-instance-config {
+  grouping openconfig-local-routing-ext-next-hop-ntwk-instance-config {
+      description
+          "Group for static route next-hop network instance";
+
       leaf nexthop-network-instance {
           type string;
           description
@@ -27,7 +41,10 @@ module openconfig-local-routing-ext {
       }
    }
 
-   grouping blackhole-config {
+   grouping openconfig-local-routing-ext-blackhole-config {
+      description
+          "Group for static route next-hop blackhole flag";
+
       leaf blackhole {
          type boolean;
          default false;
@@ -77,20 +94,24 @@ module openconfig-local-routing-ext {
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:config" {
       description
           "Next hop network instance";
-      uses next-hop-ntwk-instance-config;
+      uses openconfig-local-routing-ext-next-hop-ntwk-instance-config;
    }
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:state" {
       description
           "Next hop network instance";
-      uses next-hop-ntwk-instance-config;
+      uses openconfig-local-routing-ext-next-hop-ntwk-instance-config;
    }
 
    augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:config" {
-      uses blackhole-config;
+      description
+          "Next hop blackhole flag";
+      uses openconfig-local-routing-ext-blackhole-config;
    }
 
    augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:state" {
-      uses blackhole-config;
+      description
+          "Next hop blackhole flag";
+      uses openconfig-local-routing-ext-blackhole-config;
    }
 
 }
