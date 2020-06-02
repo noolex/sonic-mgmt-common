@@ -8,8 +8,8 @@ module openconfig-system-ext {
 
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
-    import openconfig-interfaces { prefix "oc-if"; }
     import openconfig-kdump { prefix oc-kdump; }
+    import openconfig-interfaces { prefix "oc-if"; }
     import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
 
     // meta

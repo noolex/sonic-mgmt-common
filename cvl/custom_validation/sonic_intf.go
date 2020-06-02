@@ -21,11 +21,10 @@ package custom_validation
 
 import (
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-	"fmt"
 	"strings"
 )
 
-//Custom validation for Unnumbered interface
+//ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
 func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErrorInfo {
 
 	if vc.CurCfg.VOp == OP_DELETE {
@@ -59,7 +58,7 @@ func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErro
 			ErrCode:          CVL_SEMANTIC_ERROR,
 			TableName:        "LOOPBACK_INTERFACE",
 			Keys:             strings.Split(vc.CurCfg.Key, "|"),
-			ConstraintErrMsg: fmt.Sprintf("Multiple IPv4 address configured on Donor interface. Cannot configure IP Unnumbered"),
+			ConstraintErrMsg: "Multiple IPv4 address configured on Donor interface. Cannot configure IP Unnumbered",
 			CVLErrDetails:    "Config Validation Error",
 			ErrAppTag:        "donor-multi-ipv4-addr",
 		}
@@ -68,14 +67,14 @@ func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErro
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//Custom validation for MTU configuration on PortChannel
+//ValidateMtuForPOMemberCount Custom validation for MTU configuration on PortChannel
 func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) CVLErrorInfo {
 	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 	keys := strings.Split(vc.CurCfg.Key, "|")
 	if len(keys) > 0 {
-		if "PORTCHANNEL" == keys[0] {
+		if keys[0] == "PORTCHANNEL" {
 			poName := keys[1]
 			poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
 			if err != nil {
@@ -89,11 +88,11 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 					ErrCode:          CVL_SEMANTIC_ERROR,
 					TableName:        "PORTCHANNEL",
 					Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					ConstraintErrMsg: fmt.Sprintf("Configuration not allowed when members are configured"),
+					ConstraintErrMsg: "Configuration not allowed when members are configured",
 					ErrAppTag:        "mtu-invalid",
 				}
 			}
-		} else if "PORTCHANNEL_MEMBER" == keys[0] {
+		} else if keys[0] == "PORTCHANNEL_MEMBER" {
 			poName := keys[1]
 			intfName := keys[2]
 
@@ -108,7 +107,7 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 				}
 
 				poMtu, hasPoMtu := poData["mtu"]
-				intfMtu, _ := intfData["mtu"]
+				intfMtu := intfData["mtu"]
 				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateMtuForPOMemberCount: PO MTU=%v and Intf MTU=%v", poMtu, intfMtu)
 
 				if hasPoMtu && poMtu != intfMtu {
@@ -117,22 +116,22 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 						ErrCode:          CVL_SEMANTIC_ERROR,
 						TableName:        "PORTCHANNEL_MEMBER",
 						Keys:             strings.Split(vc.CurCfg.Key, "|"),
-						ConstraintErrMsg: fmt.Sprintf("Configuration not allowed when port MTU not same as portchannel MTU"),
+						ConstraintErrMsg: "Configuration not allowed when port MTU not same as portchannel MTU",
 						ErrAppTag:        "mtu-invalid",
 					}
 				}
 			}
-		} else if "PORT" == keys[0] {
+		} else if keys[0] == "PORT" {
 			intfName := keys[1]
 			poMembersKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + intfName).Result()
-                        // Check if requested key is already deleted in request cache
-                        for _, poMemKey := range poMembersKeys {
-                            for _, req := range vc.ReqData {
-                                if req.Key == poMemKey && req.VOp == OP_DELETE {
-                                    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-                                }
-                            }
-                        }
+			// Check if requested key is already deleted in request cache
+			for _, poMemKey := range poMembersKeys {
+				for _, req := range vc.ReqData {
+					if req.Key == poMemKey && req.VOp == OP_DELETE {
+						return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+					}
+				}
+			}
 			_, hasMtu := vc.CurCfg.Data["mtu"]
 			if hasMtu && len(poMembersKeys) > 0 {
 				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "MTU not allowed when portchannel members are configured")
@@ -140,7 +139,7 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 					ErrCode:          CVL_SEMANTIC_ERROR,
 					TableName:        "PORT",
 					Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					ConstraintErrMsg: fmt.Sprintf("Configuration not allowed when port is member of Portchannel"),
+					ConstraintErrMsg: "Configuration not allowed when port is member of Portchannel",
 					ErrAppTag:        "mtu-invalid",
 				}
 			}
@@ -150,14 +149,14 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//Custom validation for PortChannel deletion
+//ValidatePortChannelDeletion Custom validation for PortChannel deletion
 func (t *CustomValidation) ValidatePortChannelDeletion(vc *CustValidationCtxt) CVLErrorInfo {
 	if vc.CurCfg.VOp != OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 	keys := strings.Split(vc.CurCfg.Key, "|")
 	if len(keys) > 0 {
-		if "PORTCHANNEL" == keys[0] {
+		if keys[0] == "PORTCHANNEL" {
 			poName := keys[1]
 			poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
 			if err != nil {
@@ -170,7 +169,7 @@ func (t *CustomValidation) ValidatePortChannelDeletion(vc *CustValidationCtxt) C
 					ErrCode:          CVL_SEMANTIC_ERROR,
 					TableName:        "PORTCHANNEL",
 					Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					ConstraintErrMsg: fmt.Sprintf("Portchannel deletion not allowed when members are configured"),
+					ConstraintErrMsg: "Portchannel deletion not allowed when members are configured",
 					ErrAppTag:        "members-exist",
 				}
 			}
