@@ -42,6 +42,7 @@ import (
 func init () {
     XlateFuncBind("intf_table_xfmr", intf_table_xfmr)
     XlateFuncBind("alias_value_xfmr", alias_value_xfmr)
+    XlateFuncBind("alternate_name_value_xfmr", alternate_name_value_xfmr)
     XlateFuncBind("YangToDb_intf_name_xfmr", YangToDb_intf_name_xfmr)
     XlateFuncBind("DbToYang_intf_name_xfmr", DbToYang_intf_name_xfmr)
     XlateFuncBind("YangToDb_intf_enabled_xfmr", YangToDb_intf_enabled_xfmr)
@@ -230,6 +231,28 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     log.Info("Returned string from alias_value_xfmr = ", *convertedName)
     return *convertedName, err
 }
+
+func alternate_name_value_xfmr(inParams XfmrDbParams) (string, error) {
+
+    aliasName := inParams.value
+    log.Infof("alternate_name_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, aliasName)
+
+    if !utils.IsAliasModeEnabled() {
+        log.Info("Alias mode is not enabled!")
+        return aliasName, nil
+    }
+
+    if inParams.oper != GET {
+        err_str := "CRUD operations are not allowed for interface alternate name"
+        return aliasName, tlerr.NotSupported(err_str)
+    }
+    var ifName *string
+    ifName = utils.GetInterfaceNameFromAlias(&aliasName)
+
+    log.Info("Returned string from alternate_name_value_xfmr = ", *ifName)
+    return *ifName, nil
+}
+
 
 var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
