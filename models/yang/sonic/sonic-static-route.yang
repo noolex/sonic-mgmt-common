@@ -28,6 +28,48 @@ module sonic-static-route {
             "Initial revision.";
     }
 
+    typedef ip-address-list {
+        type union {
+            type ssrt:ipv4-address-list;
+            type ssrt:ipv6-address-list;
+        }
+    }
+
+    typedef ipv4-address-list {
+        type string {
+            pattern
+                '((([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}' +
+                '([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])' +
+                '(%[\p{N}\p{L}]+)?,)*' +
+                '(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}' +
+                '([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])' +
+                '(%[\p{N}\p{L}]+)?';
+        }
+    }
+
+    typedef ipv6-address-list {
+        type string {
+            pattern
+                '(((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}' +
+                '((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|' +
+                '(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}' +
+                '(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))' +
+                '(%[\p{N}\p{L}]+)?,)*' +
+                '((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}' +
+                '((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|' +
+                '(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}' +
+                '(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))' +
+                '(%[\p{N}\p{L}]+)?';
+            pattern
+                '(((([^:,]+:){6}(([^:,]+:[^:,]+)|([^,]*\.[^,]*)))|' +
+                '((([^:,]+:)*[^:,]+)?::(([^:,]+:)*[^:,]+)?)' +
+                '(%[^,]+)?),)*' +
+                '((([^:,]+:){6}(([^:,]+:[^:,]+)|([^,]*\.[^,]*)))|' +
+                '((([^:,]+:)*[^:,]+)?::(([^:,]+:)*[^:,]+)?)' +
+                '(%[^,]+)?)';
+        }
+    }
+
     container sonic-static-route {
         container STATIC_ROUTE {
             list STATIC_ROUTE_LIST {
@@ -58,7 +100,7 @@ module sonic-static-route {
 
                 leaf nexthop {
                     sonic-ext:custom-validation ValidateNexthopGateway;
-                    type string;
+                    type ip-address-list;
                     description
                          "List of gateway IP for all next-hops of specific route.
                           Each entry of comma separated list string of this and below leaves
