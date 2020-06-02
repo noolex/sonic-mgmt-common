@@ -234,7 +234,7 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
     bgpOutput, err := exec_raw_vtysh_cmd(cmd)
     if err != nil {
         log.Info("Failed to execute FRR command")
-        return nil,  errors.New("RPC show ip route, failed to execute FRR command")
+        return nil,  errors.New("Internal error!")
     }
 
     result.Output.Status = bgpOutput
