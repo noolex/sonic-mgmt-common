@@ -92,7 +92,6 @@ type PolicyBindPortEntry struct {
 	STAGE          string
 }
 
-//POLICY_NAME key
 type PolicyEntry struct {
 	POLICY_NAME        string
 	TYPE               string
@@ -272,7 +271,7 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 		return nil, tlerr.InvalidArgs("Invalid input %s", string(body))
 	}
 
-	input, _ := mapData["sonic-flow-based-services:input"]
+	input := mapData["sonic-flow-based-services:input"]
 	mapData = input.(map[string]interface{})
 	log.Infof("RPC Input data: %v", mapData)
 	configDbPtr := dbs[db.ConfigDB]
@@ -318,9 +317,13 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 		classKeys, _ := classifierTbl.GetKeys()
 		log.Infof("Match_type:%v RPC classifierTbl:%v, classkeys:%v ", match_type, classifierTbl, classKeys)
 
-		for index, _ := range classKeys {
+		for index := range classKeys {
 			class_name = classKeys[index].Comp[0]
-			classifierTblVal, err := classifierTbl.GetEntry(classKeys[index])
+            var classifierTblVal db.Value
+			classifierTblVal, err = classifierTbl.GetEntry(classKeys[index])
+            if err != nil {
+                return nil, err
+            }
 			if match_type != "" && classifierTblVal.Field["MATCH_TYPE"] != match_type {
 				log.Infof("Not matching index:%v class_name:%v match_type:%v ", index, class_name, classifierTblVal.Field["MATCH_TYPE"])
 				continue
@@ -484,12 +487,14 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 	if strings.EqualFold(policy_type, "QOS") {
 		var policer FlowPolicerStateEntry
 		var polCntTbl_ts *db.TableSpec = &db.TableSpec{Name: "POLICER_COUNTERS"}
-		polCntVal, err := countersDbPtr.GetEntry(polCntTbl_ts, polPbfKey)
 		var lastPolCntTbl_ts *db.TableSpec = &db.TableSpec{Name: "LAST_POLICER_COUNTERS"}
-		lastPolCntVal, err := countersDbPtr.GetEntry(lastPolCntTbl_ts, polPbfKey)
 
-		log.Infof("polCntVal:%v", polCntVal)
-		if err == nil {
+        var polCntVal, lastPolCntVal db.Value
+		polCntVal, err = countersDbPtr.GetEntry(polCntTbl_ts, polPbfKey)
+		lastPolCntVal, err2 = countersDbPtr.GetEntry(lastPolCntTbl_ts, polPbfKey)
+
+		log.Infof("Key:%v Value:%v Last:%v Err:%v Err2:%v", polPbfKey, polCntVal, lastPolCntVal, err, err2)
+		if err == nil && err2 == nil {
 			policer.CONFORMED_PACKETS = get_counter_diff(polCntVal, lastPolCntVal, "GreenPackets")
 			policer.CONFORMED_BYTES = get_counter_diff(polCntVal, lastPolCntVal, "GreenBytes")
 			policer.EXCEED_PACKETS = get_counter_diff(polCntVal, lastPolCntVal, "YellowPackets")
@@ -503,8 +508,9 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 
 		appDbPtr := dbs[db.ApplDB]
 		var POLICER_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICER_TABLE"}
-		policerTblVal, err := appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
-		log.Infof("policerTblVal:%v", policerTblVal)
+        var policerTblVal db.Value
+		policerTblVal, err = appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
+		log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
 		if err == nil {
 			policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
 			policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
@@ -603,7 +609,7 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxD
 	log.Infof("In rpc_show_policy, policyBindtbl:%v ", policyBindTbl)
 	policyBindKeys, _ := policyBindTbl.GetKeys()
 
-	for index, _ := range policyBindKeys {
+	for index := range policyBindKeys {
 		var appliedPort PolicyBindPortEntry
 		policyBindTblVal, _ := policyBindTbl.GetEntry(policyBindKeys[index])
 		log.Infof("policy_name:%v key:%v policyBindTblVal:%v ", policy_name, policyBindKeys[index], policyBindTblVal)
@@ -632,7 +638,7 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 		return nil, tlerr.InvalidArgs("Invalid input %s", string(body))
 	}
 
-	input, _ := mapData["sonic-flow-based-services:input"]
+	input := mapData["sonic-flow-based-services:input"]
 	mapData = input.(map[string]interface{})
 	log.Infof("RPC Input data: %v", mapData)
 	configDbPtr := dbs[db.ConfigDB]
@@ -678,7 +684,11 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 		for index := range policyKeys {
 			policy_name = policyKeys[index].Comp[0]
 			log.Infof("index:%v policy_name:%v ", index, policy_name)
-			policyTblVal, err := policyTbl.GetEntry(policyKeys[index])
+            var policyTblVal db.Value
+			policyTblVal, err = policyTbl.GetEntry(policyKeys[index])
+            if err != nil {
+                return nil, err
+            }
 			if policy_type_found && policyTblVal.Field["TYPE"] != policy_type {
 				log.Infof("index:%v policy_name:%v match_type:%v expected:%v", index, policy_name, policyTblVal.Field["TYPE"], policy_type)
 				continue
@@ -707,7 +717,7 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 		return nil, tlerr.InvalidArgs("Invalid input %s", string(body))
 	}
 
-	input, _ := mapData["sonic-flow-based-services:input"]
+	input := mapData["sonic-flow-based-services:input"]
 	mapData = input.(map[string]interface{})
 	log.Infof("RPC Input data: %v", mapData)
 
@@ -860,7 +870,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 		return nil, tlerr.InvalidArgs("Invalid input %s", string(body))
 	}
 
-	input, _ := mapData["sonic-flow-based-services:input"]
+	input := mapData["sonic-flow-based-services:input"]
 	mapData = input.(map[string]interface{})
 	log.Infof("RPC Input data: %v", mapData)
 

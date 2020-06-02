@@ -74,7 +74,7 @@ module sonic-flow-based-services {
     grouping classifier-attributes {
         leaf DESCRIPTION {
             type string {
-                length 1..255 {
+                length 1..256 {
                     error-app-tag policy-description-invalid-length;
                 }
             }
@@ -318,7 +318,7 @@ module sonic-flow-based-services {
     grouping policy-section-attributes {
         leaf DESCRIPTION {
             type string {
-                length 1..255 {
+                length 1..256 {
                     error-app-tag policy-description-invalid-length;
                 }
             }
@@ -353,6 +353,7 @@ module sonic-flow-based-services {
                 }
             }
         }
+
         leaf SET_TC {
             type uint8 {
                 range "0..7" {
@@ -420,43 +421,38 @@ module sonic-flow-based-services {
     }
 
     grouping policy-section-actions {
-        choice flow_actions {
-            /*======================================================================================================
-              QoS Actions
-              ======================================================================================================*/
-            case qos_actions {
+        choice flow-actions {
+            case qos-actions {
+                description "All QoS actions for QoS policies";
                 when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/POLICY_NAME]/TYPE = 'QOS'";
                 uses policy-section-qos-actions;
             }
 
-            /*======================================================================================================
-              Monitoring Actions
-              ======================================================================================================*/
-            case monitoring_actions {
+            case monitoring-actions {
+                description "All monitoring actions for monitoring policies";
                 when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/POLICY_NAME]/TYPE = 'MONITORING'";
                 uses policy-section-mirror-actions;
             }
 
-            /*======================================================================================================
-              Forwarding Actions
-              ======================================================================================================*/
-            case forwarding_options {
+            case forwarding-options {
+                description "All forwarding actions for forwarding policies";
                 when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/POLICY_NAME]/TYPE = 'FORWARDING'";
-                choice egress_options {
-                    case l2_egress_option {
-
-                        // <PortName>|<Priority>, <PortName>|<Priority> ....
+                choice egress-options {
+                    case l2-egress-option {
+                        description "Egress options for L2 forwarding. Each leaf is in the format <PortName>|<Priority>.
+                            Priority can be empty as its optional";
                         leaf-list SET_INTERFACE {
                             max-elements 64;
                             type string {
                                 pattern '((Ethernet([1-3][0-9]{3}|[1-9][0-9]{2}|[1-9][0-9]|[0-9]))|(PortChannel([1-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-6])))\|'
                                     + '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?';
                             }
+                            sonic-ext:custom-validation ValidateSetInterfaceConfig;
                         }
                     }
-                    case ipv4_egress_option {
-
-                        /* <IPv4Address>|<VRF>|<Priority>,<IPv4Address>|<VRF>|<Priority>.... */
+                    case ipv4-egress-option {
+                        description "Egress options for IPv4 forwarding. Each leaf is in the format <IPv4Address>|<VRF>|<Priority>.
+                            Priority and VRF can be empty as its optional";
                         leaf-list SET_IP_NEXTHOP {
                             max-elements 64;
                             type string {
@@ -464,11 +460,12 @@ module sonic-flow-based-services {
                                     + '(default|Vrf[a-zA-Z0-9_-]+)?\|'
                                     + '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?';
                             }
+                            sonic-ext:custom-validation ValidateSetIPvxNextHopConfig;
                         }
                     }
-                    case ipv6_egress_option {
-
-                        /* <IPv6Address>|<VRF>|<Priority>,<IPv6Address>|<VRF>|<Priority>.... */
+                    case ipv6-egress-option {
+                        description "Egress options for IPv6 forwarding. Each leaf is in the format <IPv6Address>|<VRF>|<Priority>.
+                            Priority and VRF can be empty as its optional";
                         leaf-list SET_IPV6_NEXTHOP {
                             max-elements 64;
                             type string {
@@ -476,6 +473,7 @@ module sonic-flow-based-services {
                                     + '(default|Vrf[a-zA-Z0-9_-]+)?\|'
                                     + '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?';
                             }
+                            sonic-ext:custom-validation ValidateSetIPvxNextHopConfig;
                         }
                     }
                 }
@@ -492,7 +490,7 @@ module sonic-flow-based-services {
     grouping policy-attributes {
         leaf DESCRIPTION {
             type string {
-                length 1..255 {
+                length 1..256 {
                     error-app-tag policy-description-invalid-length;
                 }
             }
@@ -520,7 +518,7 @@ module sonic-flow-based-services {
 
                 leaf DESCRIPTION {
                     type string {
-                        length 1..255 {
+                        length 1..256 {
                             error-app-tag policy-description-invalid-length;
                         }
                     }
@@ -558,7 +556,6 @@ module sonic-flow-based-services {
         container POLICY_SECTIONS_TABLE {
             list POLICY_SECTIONS_TABLE_LIST {
                 key "POLICY_NAME CLASSIFIER_NAME";
-                max-elements 256;
 
                 leaf POLICY_NAME {
                     type leafref {
