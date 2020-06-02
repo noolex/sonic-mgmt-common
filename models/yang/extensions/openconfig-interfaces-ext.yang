@@ -79,28 +79,28 @@ module openconfig-interfaces-ext {
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:config" {
-        description "Additional gatway-address attribute for IPv4 config associated with an interface";
+        description "Additional gatway-address attribute for IPv4 address config container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv4-address;
             description "IPv4 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:state" {
-        description "Additional gatway-address attribute for IPv4 state associated with an interface";
+        description "Additional gatway-address attribute for IPv4 address state container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv4-address;
             description "IPv4 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:config" {
-        description "Additional gatway-address attribute for IPv6 config associated with an interface";
+        description "Additional gatway-address attribute for IPv6 address config container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv6-address;
             description "IPv6 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:state" {
-        description "Additional gatway-address attribute for IPv6 state associated with an interface";
+        description "Additional gatway-address attribute for IPv6 address state container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv6-address;
             description "IPv6 Gateway address";
@@ -120,7 +120,7 @@ module openconfig-interfaces-ext {
     }
 
     grouping openconfig-interfaces-ext-interface-nat-zone-config {
-        description "Config parameters for nat-zone";
+        description "Config level grouping associated with nat-zone";
 
         leaf nat-zone {
             type uint8 {
@@ -151,7 +151,7 @@ module openconfig-interfaces-ext {
     }
 
     grouping openconfig-interfaces-ext-interface-static-arp-config {
-        description "Config parameters associated with static-arp";
+        description "Config level grouping associated with static-arp";
 
         leaf static-intf {
             type string;
@@ -206,8 +206,8 @@ module openconfig-interfaces-ext {
         description "Config grouping associated with sag-ipv4";
 
         leaf-list static-anycast-gateway {
-			type ietf-inet:ipv4-prefix;
-			max-elements 16;
+        type ietf-inet:ipv4-prefix;
+        max-elements 16;
             description
                 "Static Anycast Gateway addresses";
         }
@@ -235,8 +235,8 @@ module openconfig-interfaces-ext {
         description "Config parameters associated with sag-ipv6";
 
         leaf-list static-anycast-gateway {
-			type ietf-inet:ipv6-prefix;
-			max-elements 16;
+        type ietf-inet:ipv6-prefix;
+        max-elements 16;
             description
                 "Static Anycast Gateway addresses";
         }
