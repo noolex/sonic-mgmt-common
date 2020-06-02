@@ -2627,7 +2627,7 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     if err != nil {
         dbg_err_str := "FRR execution failed ==> " + err_str
         log.Info("In rpc_show_bgp, ", dbg_err_str)
-        return nil, errors.New(dbg_err_str)
+        return nil, errors.New("Internal error!")
     }
     result.Output.Status = bgpOutput
     return json.Marshal(&result)
