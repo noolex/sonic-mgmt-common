@@ -10,8 +10,11 @@ import (
 
 func init () {
     XlateFuncBind("YangToDb_pim_gbl_tbl_key_xfmr", YangToDb_pim_gbl_tbl_key_xfmr)
+    XlateFuncBind("DbToYang_pim_intf_tbl_key_xfmr", DbToYang_pim_intf_tbl_key_xfmr)
     XlateFuncBind("YangToDb_pim_intf_tbl_key_xfmr", YangToDb_pim_intf_tbl_key_xfmr)
     XlateFuncBind("YangToDb_pim_intf_mode_fld_xfmr", YangToDb_pim_intf_mode_fld_xfmr)
+    XlateFuncBind("DbToYang_pim_intf_mode_fld_xfmr", DbToYang_pim_intf_mode_fld_xfmr)
+    XlateFuncBind("DbToYang_pim_intf_state_xfmr", DbToYang_pim_intf_state_xfmr)
 }
 
 func validatePimRoot (inParams XfmrParams) (string, error) {
@@ -68,6 +71,17 @@ var YangToDb_pim_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     return (niName + "|" + "ipv4" + "|" + intf), err
 }
 
+var DbToYang_pim_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    rmap := make(map[string]interface{})
+    log.Info("DbToYang_pim_intf_tbl_key_xfmr: Key:", inParams.key)
+
+    intfKey := strings.Split(inParams.key, "|")
+    if len(intfKey) < 3 {return rmap, nil}
+
+    rmap["interface-id"] = intfKey[2]
+    return rmap, nil
+}
+
 var YangToDb_pim_intf_mode_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     rmap := make(map[string]string)
 
@@ -87,4 +101,33 @@ var YangToDb_pim_intf_mode_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
     }
 
     return rmap, nil
+}
+
+var DbToYang_pim_intf_mode_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    pTbl := data["PIM_INTERFACE"]
+    if _, ok := pTbl[inParams.key]; !ok {
+        return result, err
+    }
+
+    log.Info("DbToYang_pim_intf_mode_fld_xfmr: Key: ",inParams.key)
+
+    pIntfKey := pTbl[inParams.key]
+    db_mode, ok := pIntfKey.Field["mode"] ; if ok {
+        switch db_mode {
+            case "sm":
+                result["mode"] = "PIM_MODE_SPARSE"
+        }
+    }
+
+    return result, err
+}
+
+var DbToYang_pim_intf_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+    var err error
+    log.Info("DbToYang_pim_intf_state_xfmr: URI: ",inParams.uri)
+    return err
 }
