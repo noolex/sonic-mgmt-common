@@ -88,15 +88,15 @@ var logFileSize int
 var pLogFile *os.File
 var logFileMutex *sync.Mutex
 
-/* Logging Level for CVL global logging. */
+//CVLLogLevel Logging Level for CVL global logging
 type CVLLogLevel uint8
 const (
-        INFO  = 0 + iota
-        WARNING
-        ERROR
-        FATAL
+	INFO  = 0 + iota
+	WARNING
+	ERROR
+	FATAL
 	INFO_DEBUG
-        INFO_API
+	INFO_API
 	INFO_DATA
 	INFO_DETAIL
 	INFO_TRACE
@@ -105,21 +105,20 @@ const (
 
 var cvlTraceFlags uint32
 
-/* Logging levels for CVL Tracing. */
+//CVLTraceLevel Logging levels for CVL Tracing
 type CVLTraceLevel uint32 
 const (
 	TRACE_MIN = 0
 	TRACE_MAX = 8 
-        TRACE_CACHE  = 1 << TRACE_MIN 
-        TRACE_LIBYANG = 1 << 1
-        TRACE_YPARSER = 1 << 2
-        TRACE_CREATE = 1 << 3
-        TRACE_UPDATE = 1 << 4
-        TRACE_DELETE = 1 << 5
-        TRACE_SEMANTIC = 1 << 6
-        TRACE_ONERROR = 1 << 7 
-        TRACE_SYNTAX = 1 << TRACE_MAX 
-
+	TRACE_CACHE  = 1 << TRACE_MIN 
+	TRACE_LIBYANG = 1 << 1
+	TRACE_YPARSER = 1 << 2
+	TRACE_CREATE = 1 << 3
+	TRACE_UPDATE = 1 << 4
+	TRACE_DELETE = 1 << 5
+	TRACE_SEMANTIC = 1 << 6
+	TRACE_ONERROR = 1 << 7 
+	TRACE_SYNTAX = 1 << TRACE_MAX 
 )
 
 
@@ -149,7 +148,7 @@ var Tracing bool = false
 var traceFlags uint16 = 0
 
 func SetTrace(on bool) {
-	if (on == true) {
+	if on {
 		Tracing = true
 		traceFlags = 1
 	} else {
@@ -176,11 +175,7 @@ func customLogCallback(level C.LY_LOG_LEVEL, msg *C.char, path *C.char)  {
 }
 
 func IsTraceLevelSet(tracelevel CVLTraceLevel) bool {
-	if (cvlTraceFlags & (uint32)(tracelevel)) != 0 {
-		return true
-	}
-
-	return false
+	return (cvlTraceFlags & (uint32)(tracelevel)) != 0
 }
 
 func TRACE_LEVEL_LOG(tracelevel CVLTraceLevel, fmtStr string, args ...interface{}) {
@@ -197,12 +192,12 @@ func TRACE_LEVEL_LOG(tracelevel CVLTraceLevel, fmtStr string, args ...interface{
 	if ((cvlTraceFlags & (uint32)(tracelevel)) != 0) {
 		traceEnabled = true
 	}
-	if (traceEnabled == true) && (isLogToFile == true) {
+	if traceEnabled && isLogToFile {
 		logToCvlFile(fmtStr, args...)
 		return
 	}
 
-	if IsTraceSet() == true && traceEnabled == true {
+	if IsTraceSet() && traceEnabled {
 		pc := make([]uintptr, 10)
 		runtime.Callers(2, pc)
 		f := runtime.FuncForPC(pc[0])
@@ -211,7 +206,7 @@ func TRACE_LEVEL_LOG(tracelevel CVLTraceLevel, fmtStr string, args ...interface{
 		fmt.Printf("%s:%d [CVL] : %s(): ", file, line, f.Name())
 		fmt.Printf(fmtStr+"\n", args...)
 	} else {
-		if (traceEnabled == true) {
+		if traceEnabled {
 			fmtStr = "[CVL] : " + fmtStr
 			//Trace logs has verbose level INFO_TRACE
 			log.V(INFO_TRACE).Infof(fmtStr, args...)
@@ -288,7 +283,7 @@ func logToCvlFile(format string, args ...interface{}) {
 
 func CVL_LEVEL_LOG(level CVLLogLevel, format string, args ...interface{}) {
 
-	if (isLogToFile == true) {
+	if isLogToFile {
 		logToCvlFile(format, args...)
 		return
 	}
@@ -334,12 +329,11 @@ func applyCvlLogFileConfig() {
 	logFileSize = 0
 
 	enabled, exists := cvlCfgMap["LOG_TO_FILE"]
-	if exists == false {
+	if !exists {
 		return
 	}
 
-	if fileSize, sizeExists := cvlCfgMap["LOG_FILE_SIZE"];
-	sizeExists == true {
+	if fileSize, sizeExists := cvlCfgMap["LOG_FILE_SIZE"]; sizeExists {
 		logFileSize, _ = strconv.Atoi(fileSize)
 	}
 
@@ -390,9 +384,12 @@ func ReadConfFile()  map[string]string{
 	}
 
 	data, err := ioutil.ReadFile(CVL_CFG_FILE)
+	if err != nil {
+		CVL_LEVEL_LOG(INFO ,"Error in reading cvl configuration file %v", err)
+		return nil
+	}
 
 	err = json.Unmarshal(data, &cvlCfgMap)
-
 	if err != nil {
 		CVL_LEVEL_LOG(INFO ,"Error in reading cvl configuration file %v", err)
 		return nil
@@ -414,7 +411,7 @@ func ReadConfFile()  map[string]string{
 
 func SkipValidation() bool {
 	val, existing := cvlCfgMap["SKIP_VALIDATION"]
-	if (existing == true) && (val == "true") {
+	if existing && (val == "true") {
 		return true
 	}
 
@@ -423,7 +420,7 @@ func SkipValidation() bool {
 
 func SkipSemanticValidation() bool {
 	val, existing := cvlCfgMap["SKIP_SEMANTIC_VALIDATION"]
-	if (existing == true) && (val == "true") {
+	if existing && (val == "true") {
 		return true
 	}
 
@@ -516,7 +513,7 @@ func getDbInst(dbName string)(map[string]interface{}) {
 	return inst.(map[string]interface{})
 }
 
-//Get DB separator based on given DB name
+//GetDbSeparator Get DB separator based on given DB name
 func GetDbSeparator(dbName string)(string) {
 	db_list := getDbList()
 	separator, ok := db_list[dbName].(map[string]interface{})["separator"]
@@ -527,7 +524,7 @@ func GetDbSeparator(dbName string)(string) {
 	return separator.(string)
 }
 
-//Get DB id on given db name
+//GetDbId Get DB id on given db name
 func GetDbId(dbName string)(int) {
 	db_list := getDbList()
 	id, ok := db_list[dbName].(map[string]interface{})["id"]
@@ -538,7 +535,7 @@ func GetDbId(dbName string)(int) {
 	return int(id.(float64))
 }
 
-//Get DB socket path
+//GetDbSock Get DB socket path
 func GetDbSock(dbName string)(string) {
 	inst := getDbInst(dbName)
 	unix_socket_path, ok := inst["unix_socket_path"]
@@ -552,7 +549,7 @@ func GetDbSock(dbName string)(string) {
 	return unix_socket_path.(string)
 }
 
-//Get DB TCP endpoint
+//GetDbTcpAddr Get DB TCP endpoint
 func GetDbTcpAddr(dbName string)(string) {
 	inst := getDbInst(dbName)
 	hostname, ok := inst["hostname"]
@@ -570,7 +567,7 @@ func GetDbTcpAddr(dbName string)(string) {
 	return fmt.Sprintf("%v:%v", hostname, port)
 }
 
-//Get new redis client 
+//NewDbClient Get new redis client 
 func NewDbClient(dbName string) *redis.Client {
 	var redisClient *redis.Client = nil
 

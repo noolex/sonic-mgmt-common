@@ -140,11 +140,16 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:mac-table {
       deviate add {
-            sonic-ext:db-name "APPL_DB";
             sonic-ext:subtree-transformer "fdb_mac_table_xfmr";
       }
     }
-    
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:state {
+      deviate add {
+            sonic-ext:subtree-transformer "fdb_mac_table_count_xfmr";
+      }
+    }
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols {
         deviate add {
             sonic-ext:table-name "NONE";
@@ -3279,6 +3284,15 @@ module openconfig-network-instance-annot {
     }
   }
 
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+             "/oc-ospfv2-ext:route-distribution-policies/oc-ospfv2-ext:distribute-list" +
+             "/oc-ospfv2-ext:config/oc-ospfv2-ext:access-list" {
+    deviate add {
+      sonic-ext:field-transformer  "ospfv2_router_distribute_route_access_list_fld_xfmr";
+    }
+  }
+
   /*-------- OSPFV2_ROUTER_PASSIVE_INTERFACE TABLE --------*/
 
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
@@ -3368,6 +3382,7 @@ module openconfig-network-instance-annot {
              "/oc-ospfv2-ext:config/oc-ospfv2-ext:name" {
     deviate add {
       sonic-ext:field-name "import-list";
+      sonic-ext:field-transformer "ospfv2_router_area_policy_import_list_fld_xfmr";
     }
   }
 
@@ -3378,6 +3393,7 @@ module openconfig-network-instance-annot {
              "/oc-ospfv2-ext:config/oc-ospfv2-ext:name" {
     deviate add {
       sonic-ext:field-name "export-list";
+      sonic-ext:field-transformer "ospfv2_router_area_policy_export_list_fld_xfmr";
     }
   }
 
@@ -3532,6 +3548,18 @@ module openconfig-network-instance-annot {
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-ospfv2-ext:route-tables" {
     deviate add {
       sonic-ext:subtree-transformer "ospfv2_route_table_xfmr";
+    }
+  }
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+			"/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-ospfv2-ext:stub/oc-ospfv2-ext:state" {
+    deviate add {
+      sonic-ext:subtree-transformer "ospfv2_stub_state_xfmr";
+    }
+  }
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-netinst:virtual-links/oc-netinst:virtual-link/oc-netinst:state" {
+    deviate add {
+      sonic-ext:subtree-transformer "ospfv2_vlink_state_xfmr";
     }
   }
 }

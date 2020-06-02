@@ -936,11 +936,11 @@ func fill_nbr_state_cmn_info (nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue 
 
             if value, ok := statsMap["capabilityRecv"] ; ok {
                 _capability_rcvd := uint64(value.(float64))
-                _rcvd_msgs.CAPABILITY = &_capability_rcvd
+                _rcvd_msgs.Capability = &_capability_rcvd
             }
             if value, ok := statsMap["keepalivesRecv"] ; ok {
                 _keepalive_rcvd := uint64(value.(float64))
-                _rcvd_msgs.KEEPALIVE = &_keepalive_rcvd
+                _rcvd_msgs.Keepalive = &_keepalive_rcvd
             }
             if value, ok := statsMap["notificationsRecv"] ; ok {
                 _notification_rcvd := uint64(value.(float64))
@@ -948,11 +948,11 @@ func fill_nbr_state_cmn_info (nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue 
             }
             if value, ok := statsMap["opensRecv"] ; ok {
                 _open_rcvd := uint64(value.(float64))
-                _rcvd_msgs.OPEN = &_open_rcvd
+                _rcvd_msgs.Open = &_open_rcvd
             }
             if value, ok := statsMap["routeRefreshRecv"] ; ok {
                 _routeRefresh_rcvd := uint64(value.(float64))
-                _rcvd_msgs.ROUTE_REFRESH = &_routeRefresh_rcvd
+                _rcvd_msgs.RouteRefresh = &_routeRefresh_rcvd
             }
             if value, ok := statsMap["updatesRecv"] ; ok {
                 _update_rcvd := uint64(value.(float64))
@@ -961,11 +961,11 @@ func fill_nbr_state_cmn_info (nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue 
 
             if value, ok := statsMap["capabilitySent"] ; ok {
                 _capability_sent := uint64(value.(float64))
-                _sent_msgs.CAPABILITY = &_capability_sent
+                _sent_msgs.Capability = &_capability_sent
             }
             if value, ok := statsMap["keepalivesSent"] ; ok {
                 _keepalive_sent := uint64(value.(float64))
-                _sent_msgs.KEEPALIVE = &_keepalive_sent
+                _sent_msgs.Keepalive = &_keepalive_sent
             }
             if value, ok := statsMap["notificationsSent"] ; ok {
                 _notification_sent := uint64(value.(float64))
@@ -973,11 +973,11 @@ func fill_nbr_state_cmn_info (nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue 
             }
             if value, ok := statsMap["opensSent"] ; ok {
                 _open_sent := uint64(value.(float64))
-                _sent_msgs.OPEN = &_open_sent
+                _sent_msgs.Open = &_open_sent
             }
             if value, ok := statsMap["routeRefreshSent"] ; ok {
                 _routeRefresh_sent := uint64(value.(float64))
-                _sent_msgs.ROUTE_REFRESH = &_routeRefresh_sent
+                _sent_msgs.RouteRefresh = &_routeRefresh_sent
             }
             if value, ok := statsMap["updatesSent"] ; ok {
                 _update_sent := uint64(value.(float64))

@@ -10,6 +10,7 @@ module openconfig-interfaces-annot {
     import openconfig-interfaces-ext { prefix oc-intf-ext; }
     import openconfig-extensions { prefix oc-ext; }
     import openconfig-if-ethernet {prefix oc-eth; }
+    import openconfig-if-ethernet-ext {prefix oc-eth-ext; }
     import openconfig-ospfv2-ext { prefix "oc-ospfv2-ext"; }
     import openconfig-vlan {prefix oc-vlan; }
     import openconfig-if-ip {prefix oc-ip; }
@@ -198,6 +199,19 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group {
+        deviate add {
+            sonic-ext:table-name "VRRP";
+            sonic-ext:subtree-transformer "intf_vrrp_xfmr";
+        }
+    }
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group {
+        deviate add {
+            sonic-ext:table-name "VRRP6";
+            sonic-ext:subtree-transformer "intf_vrrp_xfmr";
+        }
+    }
+    
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6 {
         deviate add {
             sonic-ext:key-transformer "subintf_ipv6_tbl_key_xfmr";
@@ -291,6 +305,18 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-neighbors/oc-intf-ext:ip-neighbor {
+        deviate add {
+            sonic-ext:table-name "NEIGH";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-intf-ext:ip-neighbors/oc-intf-ext:ip-neighbor {
+        deviate add {
+            sonic-ext:table-name "NEIGH";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:unnumbered/oc-ip:interface-ref {
         deviate add {
             sonic-ext:subtree-transformer "unnumbered_intf_xfmr";
@@ -333,4 +359,28 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list" {
+        deviate add {
+            sonic-ext:table-name "PORT_STORM_CONTROL";
+            sonic-ext:key-transformer "storm_type_key_xfmr";
+        }
+    }
+
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:config/oc-eth-ext:storm-type" {
+        deviate add {
+            sonic-ext:field-name "storm_type";
+            sonic-ext:field-transformer "storm_value_xfmr";
+        }
+    }
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:state/oc-eth-ext:storm-type" {
+        deviate add {
+            sonic-ext:field-transformer "storm_value_xfmr";
+        }
+    }
+
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:config/oc-eth-ext:ifname" {
+        deviate add {
+            sonic-ext:field-transformer "storm_value_xfmr";
+        }
+    }
 }
