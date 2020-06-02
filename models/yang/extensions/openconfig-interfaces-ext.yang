@@ -19,7 +19,6 @@ module openconfig-interfaces-ext {
     import openconfig-if-aggregate {prefix oc-lag; }
     import ietf-inet-types { prefix ietf-inet; }
     import openconfig-yang-types { prefix oc-yang; }
-    import ietf-yang-types { prefix yang; }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config" {
         leaf fallback {
@@ -93,41 +92,6 @@ module openconfig-interfaces-ext {
             container state {
                 config false;
                 uses interface-nat-zone-config;
-            }
-        }
-    }
-
-    grouping interface-static-arp-config {
-        leaf static-intf {
-            type string;
-            description "Interface name";
-        }
-        leaf static-ip {
-            type oc-inet:ip-address;
-            description "IP address";
-        }
-        leaf neigh {
-            type yang:mac-address;
-            description "Mac address";
-        }
-    }
-    grouping interface-static-arp-top {
-        container ip-neighbors {
-            list ip-neighbor {
-                key "static-intf static-ip";
-                leaf static-intf {
-                    type leafref {
-                        path "../config/static-intf";
-                    }
-                }
-                leaf static-ip {
-                    type leafref {
-                        path "../config/static-ip";
-                    }
-                }
-                container config {
-                   uses interface-static-arp-config;
-                }
             }
         }
     }
@@ -238,24 +202,6 @@ module openconfig-interfaces-ext {
 			  "SAG interface config/state";
 		}
 	}
-
-    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
-        description
-            "Static ARP";
-        uses interface-static-arp-top {
-            description
-                "Static ARP config/state";
-        }
-    }
-
-    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
-        description
-            "Static ND";
-        uses interface-static-arp-top {
-            description
-                "Static ND config/state";
-        }
-    }
 
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
         description
