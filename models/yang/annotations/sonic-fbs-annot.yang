@@ -1,0 +1,21 @@
+module sonic-acl-annot {
+    namespace "http://github.com/Azure/sonic-flow-based-services-annot";
+    prefix sfbs-annot;
+    yang-version 1.1;
+
+    import sonic-flow-based-services { prefix sfbs; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sfbs:sonic-flow-based-services/sfbs:CLASSIFIER_TABLE/sfbs:CLASSIFIER_TABLE_LIST/sfbs:CLASSIFIER_NAME {
+        deviate add {
+            sonic-ext:cascade-delete "enable";
+        }
+    }
+
+    deviation /sfbs:sonic-flow-based-services/sfbs:POLICY_TABLE/sfbs:POLICY_TABLE_LIST/sfbs:POLICY_NAME {
+        deviate add {
+            sonic-ext:cascade-delete "enable";
+        }
+    }
+}
+

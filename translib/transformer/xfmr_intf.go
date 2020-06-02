@@ -3122,15 +3122,27 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.SagIpv4 != nil {
 		sagIpv4Obj := subIntfObj.Ipv4.SagIpv4
 
-		if sagIpv4Obj.Config != nil {
-			log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
+        if sagIpv4Obj.Config != nil {
+            log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
 
-			if !validIPv4(sagIpv4Obj.Config.StaticAnycastGateway[0]) {
-                            errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
-                            err = tlerr.InvalidArgsError{Format: errStr}
-                            return subIntfmap, err
-                        }
+            var templen uint8
+            tempIP := strings.Split(sagIpv4Obj.Config.StaticAnycastGateway[0], "/")
 
+            if !validIPv4(tempIP[0]) {
+                errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+                err = tlerr.InvalidArgsError{Format: errStr}
+                return subIntfmap, err
+            }
+	    
+
+      tlen, _ := strconv.Atoi(tempIP[1])
+      templen = uint8(tlen)
+      err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, true)
+      if err != nil {
+          errStr := "Invalid IPv4 Gateway lenght " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3173,11 +3185,23 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 		if sagIpv6Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv6Obj.Config.StaticAnycastGateway)
 
-			if !validIPv6(sagIpv6Obj.Config.StaticAnycastGateway[0]) {
-                            errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
-                            err = tlerr.InvalidArgsError{Format: errStr}
-                            return subIntfmap, err
-                        }
+      var templen uint8
+      tempIP := strings.Split(sagIpv6Obj.Config.StaticAnycastGateway[0], "/")
+
+      if !validIPv6(tempIP[0]) {
+          errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
+
+      tlen, _ := strconv.Atoi(tempIP[1])
+      templen = uint8(tlen)
+      err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, false)
+      if err != nil {
+          errStr := "Invalid IPv6 Gateway lenght " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
 
 			sagIPv6Key := ifName + "|IPv6"
 
@@ -3312,7 +3336,7 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_subintf_ipv6_tbl_key_xfmr")
-    }
+    }    
     var err error
     var inst_key string
     pathInfo := NewPathInfo(inParams.uri)
@@ -3321,8 +3345,17 @@ var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     log.Info("Intf name: ", ifName)
     requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     log.Info("inParams.requestUri: ", requestUriPath)
+    uriPathInfo := NewPathInfo(inParams.uri)
+    uriPath, err := getYangPathFromUri(uriPathInfo.Path)
+
+    log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr inParams.uri: ", uriPath)
     log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr")
-    inst_key = ifName
+
+    if (strings.HasPrefix(requestUriPath,  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:ip-neighbors/ip-neighbor") && 
+        strings.HasPrefix(requestUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/ip-neighbors/ip-neighbor")) {
+        log.Info("YangToDb_subintf_ipv6_tbl_key_xfmr: condition satisfied")
+        inst_key = ifName
+    }    
     return inst_key, err
 }
 

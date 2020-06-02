@@ -17,6 +17,18 @@ import (
 var qCounterTblAttr [] string = []string {"transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets", "watermark"}
 var pgCounterTblAttr [] string = []string {"headroom-watermark", "headroom-persistent-watermark", "shared-watermark", "shared-persistent-watermark"}
 
+var ECN_MAP = map[string]string{
+    strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_NONE), 10): "ecn_none",
+    strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_GREEN), 10): "ecn_green",
+    strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_YELLOW), 10): "ecn_yellow",
+    strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_RED), 10): "ecn_red",
+    strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_GREEN_YELLOW), 10): "ecn_green_yellow",
+    strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_GREEN_RED), 10): "ecn_green_red",
+    strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_YELLOW_RED), 10): "ecn_yellow_red",
+    strconv.FormatInt(int64(ocbinds.OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn_ECN_ALL), 10): "ecn_all",
+}
+
+
 
 func init () {
     XlateFuncBind("qos_intf_table_xfmr", qos_intf_table_xfmr)
@@ -38,6 +50,8 @@ func init () {
     XlateFuncBind("YangToDb_wred_profile_name_empty_fld_xfmr", YangToDb_wred_profile_name_empty_fld_xfmr)
     XlateFuncBind("YangToDb_wred_profile_name_fld_xfmr", YangToDb_wred_profile_name_fld_xfmr)
     XlateFuncBind("DbToYang_wred_profile_name_fld_xfmr", DbToYang_wred_profile_name_fld_xfmr)
+    XlateFuncBind("YangToDb_wred_ecn_fld_xfmr", YangToDb_wred_ecn_fld_xfmr)
+    XlateFuncBind("DbToYang_wred_ecn_fld_xfmr", DbToYang_wred_ecn_fld_xfmr)
 
 }
 
@@ -1511,4 +1525,33 @@ var DbToYang_wred_profile_name_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPa
 
     res_map["name"] = setName
     return res_map, err
+}
+
+var YangToDb_wred_ecn_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	var err error
+	if inParams.param == nil {
+	    res_map["ecn"] = ""
+	    return res_map, err
+	}
+	ecn, _ := inParams.param.(ocbinds.E_OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn)
+	log.Info("YangToDb_wred_ecn_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " ecn: ", ecn)
+	res_map["ecn"] = findInMap(ECN_MAP, strconv.FormatInt(int64(ecn), 10))
+	return res_map, err
+}
+
+var DbToYang_wred_ecn_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	data := (*inParams.dbDataMap)[inParams.curDb]
+	log.Info("DbToYang_wred_ecn_fld_xfmr ", data, inParams.key)
+
+    opt, ok := data["WRED_PROFILE"][inParams.key].Field["ecn"]
+    if ok {
+        oc_ecn := findInMap(ECN_MAP, opt)
+        n, _ := strconv.ParseInt(oc_ecn, 10, 64)
+        result["ecn"] = ocbinds.E_OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn(n).ΛMap()["E_OpenconfigQos_Qos_WredProfiles_WredProfile_Config_Ecn"][n].Name
+    }
+    log.Info("DbToYang_wred_ecn_fld_xfmr ", result)
+	return result, err
 }
