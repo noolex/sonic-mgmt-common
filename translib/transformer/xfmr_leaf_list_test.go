@@ -203,6 +203,19 @@ func Test_LeafList_Delete_OCYang(t *testing.T) {
         /*********************/
 
 
+       /** delete specific item from leaf-list . field-value has "/"  **/
+        prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "test1/1,test2/2"}}}
+	expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "test2/2"}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=test1/1]"
+        t.Run("Delete an item in leaf-list with field value having /.", processDeleteRequest(url, false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete an item in leaf-list with field value having /.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        /*********************/
+
+
+
 	fmt.Println("+++++++++++++ Done!!! Performing Leaf-list Deletion OC Yang Cases ++++++++++++")
 }
 
@@ -738,6 +751,17 @@ func Test_LeafList_Delete_SonicYang(t *testing.T) {
         t.Run("Verify Delete an entire leaf-list which is empty string in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_map, false))
         unloadConfigDB(rclient, prereq_map)
         /*************************/
+
+       /** delete specific item from leaf-list .Leaflist having / in the field value **/
+       prereq_snmp_vacm_view_map := map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "test1/1,test2/2"}}}
+       expected_snmp_vacm_view_map := map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "test2/2"}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include[include=test1/1]"
+        t.Run("Delete an item in leaf-list having / in field value.", processDeleteRequest(url, false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete an item in leaf-list having / in field value.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        /*********************/
 
 
 
