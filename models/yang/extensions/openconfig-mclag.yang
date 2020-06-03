@@ -69,6 +69,12 @@ module openconfig-mclag {
       description
         "peer link of MCLAG Domain";
     }
+    
+    leaf mclag-system-mac {
+      type oc-yang:mac-address;
+      description
+        "MCLAG System MAC";
+    }
 
     leaf keepalive-interval {
       type uint32 {
