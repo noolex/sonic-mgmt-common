@@ -1,0 +1,86 @@
+module openconfig-mirror-ext-annot {
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/openconfig-mirror-ext-annot";
+    prefix "oc-mirror-ext-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-mirror-ext { prefix oc-mirror-ext; }
+
+    // meta
+    organization
+       "SONiC";
+
+    contact
+       "SONiC";
+
+    description
+       "SONIC MIRROR";
+
+    revision 2020-05-16 {
+       description
+          "Initial revision.";
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:config/oc-mirror-ext:dst-port {
+        deviate add {
+            sonic-ext:field-name "dst_port";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:config/oc-mirror-ext:src-port {
+        deviate add {
+            sonic-ext:field-name "src_port";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:config/oc-mirror-ext:dst-ip {
+        deviate add {
+            sonic-ext:field-name "dst_ip";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:config/oc-mirror-ext:src-ip {
+        deviate add {
+            sonic-ext:field-name "src_ip";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state/oc-mirror-ext:dst-port {
+        deviate add {
+            sonic-ext:field-name "dst_port";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state/oc-mirror-ext:src-port {
+        deviate add {
+            sonic-ext:field-name "src_port";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state/oc-mirror-ext:dst-ip {
+        deviate add {
+            sonic-ext:field-name "dst_ip";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state/oc-mirror-ext:src-ip {
+        deviate add {
+            sonic-ext:field-name "src_ip";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session {
+        deviate add {
+            sonic-ext:table-name "MIRROR_SESSION";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state {
+        deviate add {
+            sonic-ext:db-name "STATE_DB";
+            sonic-ext:table-name "MIRROR_SESSION_TABLE";
+        }
+    }
+}
+

@@ -1,0 +1,220 @@
+module openconfig-mirror-ext {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/mirror/extension";
+
+  prefix "oc-mirror-ext";
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-interfaces { prefix oc-if; }
+  import openconfig-inet-types { prefix oc-inet; }
+
+  description
+    "This module defines configuration and operational state data
+    related to SPAN, RSPAN ,ERSPAN and ACL based mirroring policies";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  // OpenConfig specific extensions for module metadata.
+  revision "2020-04-29" {
+    description "Initial version";
+  }
+
+  typedef mirror-session-direction {
+    type enumeration {
+      enum rx {
+        description
+          "mirror in rx direction";
+      }
+      enum tx {
+        description
+          "mirror in tx direction";
+      }
+      enum both {
+        description
+          "mirror in both direction";
+      }
+
+    }
+    description
+      "Indicates mirror session direction";
+  }
+
+  grouping mirror-ext-session-config {
+    description
+      "Groups config for mirror session";
+
+    leaf name {
+      type string;
+      description
+        "Mirror session name";
+    }
+
+    leaf dst-port {
+      type oc-if:base-interface-ref;
+      description
+        "Mirror session destination port";
+    }
+
+    leaf src-port {
+      type oc-if:base-interface-ref;
+      description
+        "Mirror session source port";
+    }
+
+    leaf direction {
+      type mirror-session-direction;
+      description
+        "Mirror session direction";
+    }
+
+    leaf src-ip {
+      type oc-inet:ip-address;
+      description
+        "Mirorr session ERSPAN Source ip";
+    }
+
+    leaf dst-ip {
+      type oc-inet:ip-address;
+      description
+        "Mirorr session ERSPAN destination ip";
+    }
+
+    leaf dscp {
+      type uint8 {
+        range "0..63" {
+          error-message "Invalid DSCP value.";
+        }
+      }
+      description
+        "Mirorr session ERSPAN dscp";
+    }
+
+    leaf gre {
+      type oc-inet:port-number;
+      description
+        "Mirorr session ERSPAN gre";
+    }
+
+    leaf ttl {
+      type uint8 {
+        range "0..63" {
+          error-message "Invalid TTL value.";
+        }
+      }
+      description
+        "Mirorr session ERSPAN ttl";
+    }
+
+    leaf queue {
+      type uint8 {
+        range "0..63" {
+          error-message "Invalid queue value.";
+        }
+      }
+      description
+        "Mirorr session ERSPAN queue";
+    }
+  }
+
+  grouping mirror-ext-session-state {
+    description
+      "Operational state data for mirror session";
+
+    leaf status {
+      type string;
+      description
+       "Mirror session status. Valid valures are active/inactive/error
+          active: mirror session is active
+          inactive: mirror session is inactive when destination ip is not reachable in ERSPAN
+          error: configuration error";
+    }
+  }
+
+  grouping mirror-ext-session-top {
+    description
+      "Top-level grouping for mirror session model";
+
+    container sessions {
+      list session {
+        key "name";
+        description
+          "List of mirror sessions";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+        }
+
+        container config {
+          description
+            "Configuration data for mirror session";
+
+          uses mirror-ext-session-config;
+        }
+
+        container state {
+          config false;
+          description
+            "Operational state data for mirror session";
+
+          uses mirror-ext-session-config;
+          uses mirror-ext-session-state;
+        }
+      }
+    }
+  }
+
+  // grouping statements
+  grouping mirror-ext-config {
+    description
+      "Configuration data for global mirroring";
+  }
+
+  grouping mirror-ext-state {
+    description
+      "Operational state data for global mirroring";
+  }
+
+  grouping mirror-ext-top {
+    description
+      "Top-level grouping for mirror model";
+
+    container mirror {
+      description
+        "Top-level container for mirror data";
+
+      container config {
+        description
+          "Configuration data for global mirror";
+
+        uses mirror-ext-config;
+      }
+
+      container state {
+        config false;
+        description
+          "Operational state data for global mirror";
+
+        uses mirror-ext-config;
+        uses mirror-ext-state;
+      }
+
+      uses mirror-ext-session-top;
+    }
+  }
+
+  // data definition statements
+
+  uses mirror-ext-top;
+
+  // augment statements
+
+  // rpc statements
+
+  // notification statements
+}

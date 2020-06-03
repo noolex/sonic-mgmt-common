@@ -602,7 +602,7 @@ var rpc_clear_neighbors RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
     if input, ok := mapData["ifname"]; ok {
         input_str := fmt.Sprintf("%v", input)
-        sonicIfName := utils.GetInterfaceNameFromAlias(&input_str)
+        sonicIfName := utils.GetNativeNameFromUIName(&input_str)
         log.Info("Converted Interface name = ", *sonicIfName)
         intf = *sonicIfName
     }

@@ -234,20 +234,20 @@ func SetAliasMode(enableMode bool) {
 }
 
 // Retrieve physical interface name from alias-name
-func GetInterfaceNameFromAlias(aliasName *string) *string {
+func GetNativeNameFromUIName(uiName *string) *string {
     if !IsAliasModeEnabled() {
-        return aliasName
+        return uiName
     }
-    ifName, ok := aliasIfNameMap.Load(*aliasName)
+    ifName, ok := aliasIfNameMap.Load(*uiName)
     if ok {
         name := ifName.(string)
         return &name
     }
-    return aliasName
+    return uiName
 }
 
 // Retrieve alias-name from physical interface Name
-func GetAliasNameFromIfName(ifName *string) *string {
+func GetUINameFromNativeName(ifName *string) *string {
     if !IsAliasModeEnabled() {
         return ifName
     }
