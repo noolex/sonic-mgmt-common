@@ -22,11 +22,13 @@ import (
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "fmt"
-    "io/ioutil"
+    "os"
+    "bytes"
 )
 
 func init() {
     XlateFuncBind("rpc_showauditlog_cb", rpc_showauditlog_cb)
+    XlateFuncBind("rpc_clearauditlog_cb", rpc_clearauditlog_cb)
 }
 
 var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
@@ -37,16 +39,56 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         } `json:"sonic-show-auditlog:output"`
     }
 
-    dat, err := ioutil.ReadFile("/var/log/audit.log")
+    var operand struct {
+        Input struct {
+            otype string `json:"string"`
+        } `json:"sonic-show-auditlog:output"`
+    }
+
+    err := json.Unmarshal(body, &operand)
+    if err != nil {
+        fmt.Println("%Error: Failed to parse rpc input; err=%v", err)
+        return nil,err
+    }
+
+    fmt.Println("input ", operand.Input.otype)
+
+    f, err := os.Open("/var/log/audit.log")
     if err != nil {
         fmt.Println("File reading error", err)
         return nil, err
     }
+    defer f.Close()
 
-    showaudit.Output.Result = string(dat)
+    fileinfo, err := f.Stat()
+    if err != nil {
+        fmt.Println(err)
+        return nil, err
+    }
+    filesize := fileinfo.Size()
+    buffer := make([]byte, 4096)
+    if filesize > 4096 {
+        _, err = f.ReadAt(buffer, (filesize-4096))
+    } else {
+        _, err = f.ReadAt(buffer, filesize)
+    }
+
+    if err != nil {
+        fmt.Println(err)
+        return nil, err
+    }
+
+    res1 := bytes.Index(buffer, []byte("\n"))
+
+    showaudit.Output.Result = string(buffer[res1:])
 
     //showaudit.Output.Result = "Hello World!"
     result, _ := json.Marshal(&showaudit)
 
     return result, nil
 }
+
+var rpc_clearauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    return nil, nil
+}
+

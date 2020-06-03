@@ -276,7 +276,7 @@ func Update(req SetRequest) (SetResponse, error) {
 	log.Info("Update request received with payload =", string(payload))
 
         // generate audit message
-        auditMsg := fmt.Sprintf("Update request received with path=%s payload=%s", path, string(payload))
+        auditMsg := fmt.Sprintf("Update request received with path=%s", path)
 	Writer.Info(auditMsg)
 
 	app, appInfo, err := getAppModule(path, req.ClientVersion)
