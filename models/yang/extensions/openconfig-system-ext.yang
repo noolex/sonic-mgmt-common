@@ -12,9 +12,12 @@ module openconfig-system-ext {
     import openconfig-interfaces { prefix "oc-if"; }
     import openconfig-infra { prefix "oc-infra"; }
     import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
+    import openconfig-extensions { prefix "oc-ext"; }
 
     // meta
     organization "OpenConfig working group";
+
+    oc-ext:openconfig-version "0.7.0";
 
     contact
         "OpenConfig working group
@@ -26,29 +29,35 @@ module openconfig-system-ext {
     revision 2020-05-02 {
         description
             "Added DNS source IP support and allowed domain name as well for Radius/TACACS+ server configuration.";
+         reference "0.7.0";
     }
 
     revision 2020-03-30 {
         description
             "Added NAS-IP|IPV6-Address attribute for RADIUS.";
+         reference "0.7.0";
     }
 
     revision 2019-11-05 {
         description
             "Initial augment file.";
+         reference "0.7.0";
     }
 
     // augment statements
 
     augment /oc-sys:system {
+        description "Kernel dump information";
         uses oc-kdump:kdump-top;
     }
 
     augment /oc-sys:system {
+        description "Coredump information";
         uses oc-systemd-coredump:systemd-coredump-top;
     }
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
+        description "Additional fields for Authenication configuration";
         leaf failthrough {
             type string;
             description "Indicating whether authentication failthrough should be enabled/disabled";
@@ -56,6 +65,7 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config" {
+        description "Additional fields for AAA server config";
         leaf  auth-type {
             type string;
             description "The server authentication type pap/chap/mschap/mschapv2";
@@ -70,7 +80,8 @@ module openconfig-system-ext {
         }
     }
 
-    grouping aaa-server-groups-config {
+    grouping system-ext-aaa-server-groups-config {
+        description "AAA server group";
         leaf  source-address {
             type inet:ip-address;
             description "The global source ip";
@@ -105,16 +116,18 @@ module openconfig-system-ext {
                 "Source interface to pick the source IP address for the packets to TACACS+/Radius servers";
         }
     }
-    
+
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config" {
-        uses aaa-server-groups-config;
-    }
- 
-    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state" {
-        uses aaa-server-groups-config;
+        description "Additional fields for server-group config";
+        uses system-ext-aaa-server-groups-config;
     }
 
-    grouping ssh-vrf-config {
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state" {
+        description "Additional fields for server-group state";
+        uses system-ext-aaa-server-groups-config;
+    }
+
+    grouping system-ext-ssh-vrf-config {
       description
        "Configuration data for ssh server vrf";
         leaf vrf-name {
@@ -128,14 +141,15 @@ module openconfig-system-ext {
                 "VRF name";
         }
         leaf port {
-            default 22;
             type uint16;
+            default 22;
             description
                 "SSH port number";
         }
     }
 
     augment "/oc-sys:system/oc-sys:ssh-server" {
+        description "Additional fields for ssh server";
         container ssh-server-vrfs {
           description
            "Container for ssh server vrfs";
@@ -144,29 +158,31 @@ module openconfig-system-ext {
                 max-elements 15;
                 description
                   "list of ssh server vrf";
-            
+
                 leaf vrf-name {
                     type leafref {
                         path "../config/vrf-name";
                     }
+                    description "VRF name";
                 }
 
                 container config {
                     description
                       "Configuration data for ssh server vrf";
-                    uses ssh-vrf-config;
+                    uses system-ext-ssh-vrf-config;
                 }
                 container state {
                     config false;
                     description
                       "Operational state data for ssh server vrf";
-                    uses ssh-vrf-config;
+                    uses system-ext-ssh-vrf-config;
                 }
             }
         }
     }
 
-    grouping dns-source-config {
+    grouping system-ext-dns-source-config {
+        description "Grouping for DNS configuration";
         leaf source-interface {
             type leafref {
                 path "/oc-if:interfaces/oc-if:interface/oc-if:name";
@@ -177,11 +193,13 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:dns/oc-sys:config" {
-        uses dns-source-config;
+        description "Additional fields for DNS config";
+        uses system-ext-dns-source-config;
     }
 
     augment "/oc-sys:system/oc-sys:dns/oc-sys:state" {
-        uses dns-source-config;
+        description "Additional fields for DNS state";
+        uses system-ext-dns-source-config;
     }
 
     typedef server-address {
@@ -214,7 +232,7 @@ module openconfig-system-ext {
     deviation /oc-sys:system/oc-sys:config/oc-sys:motd-banner {
         deviate not-supported;
     }
-	
+
 	// ssh-server deviations.
 
     deviation /oc-sys:system/oc-sys:ssh-server/oc-sys:config {
@@ -223,9 +241,10 @@ module openconfig-system-ext {
     deviation /oc-sys:system/oc-sys:ssh-server/oc-sys:state {
        deviate not-supported;
     }
-	
+
 	//syslog parameters
     augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:config" {
+        description "Additional fields for remote server config";
         leaf vrf-name {
             type string {
                 pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
@@ -238,6 +257,7 @@ module openconfig-system-ext {
         }
 	}
     augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:state" {
+        description "Additional fields for remote server state";
         leaf vrf-name {
             type string {
                 pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {

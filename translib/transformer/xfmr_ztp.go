@@ -143,7 +143,7 @@ func getConfigSection(sectionName string, dataMap map[string]interface{}, status
 
 func populateStatusYgotTree(statusObj *ocbinds.OpenconfigZtp_Ztp_State, statusCache *ztpStatusCache) {
 
-    if value,present :=statusCache.ztpStatusMap[ZTP_STATUS_ACTIVITY_STRING]; present { 
+    if value,present :=statusCache.ztpStatusMap[ZTP_STATUS_ACTIVITY_STRING]; present {
         act:= value
         statusObj.ActivityString = &act
     }
@@ -184,7 +184,7 @@ func populateStatusYgotTree(statusObj *ocbinds.OpenconfigZtp_Ztp_State, statusCa
 
 /* Populate config section ygot tree */
 
-func populateConfigSectionYgotTree(sectionName string, configObj *ocbinds.OpenconfigZtp_Ztp_State_CONFIG_SECTION_LIST, statusCache *ztpStatusCache) {
+func populateConfigSectionYgotTree(sectionName string, configObj *ocbinds.OpenconfigZtp_Ztp_State_ConfigSection_ConfigSectionList, statusCache *ztpStatusCache) {
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_IGNORE_RESULT]; present {
         ignr := new(bool)
         *ignr,_ = strconv.ParseBool(value)
@@ -237,7 +237,7 @@ func getZtpStatusInfofromDb( statusObj *ocbinds.OpenconfigZtp_Ztp_State, statusC
 	log.Info("Error from sonic host service:",err)
     }
     log.Info(" message from ztp host service:",mess)
-    
+
     var empty map[string] interface{}
     err = json.Unmarshal([]byte (mess),&empty)
     if err != nil {
@@ -253,7 +253,7 @@ func getZtpStatusInfofromDb( statusObj *ocbinds.OpenconfigZtp_Ztp_State, statusC
     log.Info("Done populating status object")
     if allCfgList, present := empty[ZTP_CONFIG_SECTION_LIST]; present {
 	    for section, dataMap := range allCfgList.(map[string]interface{}) {
-                oneCfgList, err :=statusObj.NewCONFIG_SECTION_LIST(section)
+                oneCfgList, err :=statusObj.ConfigSection.NewConfigSectionList(section)
 	        if err != nil {
                     log.Info("Creation of subsectionlist subtree failed!")
                     return err
