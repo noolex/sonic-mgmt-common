@@ -75,3 +75,21 @@ func Test_List_Ygot_Merge_None_Get(t *testing.T) {
 
         unloadConfigDB(rclient, prereq)
 }
+
+
+func Test_List_Sonic_Key_Split_Get(t *testing.T) {
+
+        prereq := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet0|10.11.12.13/16":map[string]interface{}{"NULL":"NULL"}}}
+        url := "/sonic-interface:sonic-interface/INTERFACE/INTERFACE_IPADDR_LIST[portname=Ethernet0][ip_prefix=10.11.12.13/16]/"
+
+        fmt.Println("++++++++++++++  GET Test_List_Sonic_Key_Split +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        get_expected := "{\"sonic-interface:INTERFACE_IPADDR_LIST\":[{\"ip_prefix\":\"10.11.12.13/16\",\"portname\":\"Ethernet0\"}]}"
+
+        t.Run("GET on List for Sonic Yang with / in key", processGetRequest(url, get_expected, false))
+
+        unloadConfigDB(rclient, prereq)
+}

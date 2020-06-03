@@ -28,7 +28,35 @@ module sonic-portchannel {
             "Initial revision.";
     }
 
+    typedef mode {
+        type enumeration {
+            enum enable;
+            enum disable;
+        }
+    }
+
     container sonic-portchannel {
+
+        container PORTCHANNEL_GLOBAL {
+
+            list PORTCHANNEL_GLOBAL_LIST {
+                key "keyleaf";
+
+                leaf keyleaf {
+                    type enumeration {
+                        enum GLOBAL;
+                    }
+                    description
+                        "Key node identifier. It's value is always GLOBAL";
+                }
+
+                leaf graceful_shutdown_mode {
+                    type mode;
+                    description
+                        "Enable/Disable portchannel graceful shutdown mode";
+                }
+            }
+        }
 
         container PORTCHANNEL {
 

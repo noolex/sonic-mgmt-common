@@ -53,6 +53,33 @@ func leafXfmrHandlerFunc(inParams XfmrParams) (map[string]interface{}, error) {
 	}
 }
 
+func keyXfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (map[string]interface{}, error) {
+        xfmrLogInfoAll("Received inParams %v key transformer function name %v", inParams, xfmrFuncNm)
+        ret, err := XlateFuncCall(dbToYangXfmrFunc(xfmrFuncNm), inParams)
+        retVal := make(map[string]interface{})
+        if err != nil {
+                return retVal, err
+        }
+
+        if ((ret != nil) && (len(ret)>0)) {
+                if len(ret) == DBTY_KEY_XFMR_RET_ARGS {
+                        // key xfmr returns err as second value in return data list from <xfmr_func>.Call()
+                        if ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface() != nil {
+                                err = ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface().(error)
+                                if err != nil {
+                                        log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
+                                        return retVal, err
+                                }
+                        }
+                }
+                if ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface() != nil {
+                        retVal = ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
+                        return retVal, nil
+                }
+        }
+        return retVal, nil
+}
+
 func validateHandlerFunc(inParams XfmrParams) (bool) {
 	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
 	ret, err := XlateFuncCall(xYangSpecMap[xpath].validateFunc, inParams)
@@ -226,3 +253,5 @@ func postXfmrHandlerFunc(xfmrPost string, inParams XfmrParams) (map[string]map[s
 	}
 	return retData, err
 }
+
+

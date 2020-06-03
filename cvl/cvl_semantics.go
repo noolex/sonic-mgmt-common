@@ -32,12 +32,12 @@ import (
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 )
 
-//YANG Validator used for external semantic
+//YValidator YANG Validator used for external semantic
 //validation including custom/platform validation
 type YValidator struct {
 	root *xmlquery.Node    //Top evel root for data
 	current *xmlquery.Node //Current position
-	operation string     //Edit operation
+	//operation string     //Edit operation
 }
 
 //Generate leaf/leaf-list YANG data
@@ -67,7 +67,7 @@ parent *xmlquery.Node) CVLRetCode {
 				//check if it is hash-ref, then need to add only key from "TABLE|k1"
 				hashRefMatch := reHashRef.FindStringSubmatch(jsonFieldNode.FirstChild.Data)
 
-				if (hashRefMatch != nil && len(hashRefMatch) == 3) {
+				if len(hashRefMatch) == 3 {
 					c.addYangNode(tableName,
 					parent, jsonFieldNode.Data,
 					hashRefMatch[2]) //take hashref key value
@@ -127,8 +127,7 @@ parent *xmlquery.Node) CVLRetCode {
 
 //Add attribute YANG node
 func addAttrNode(n *xmlquery.Node, key, val string) {
-	var attr xml.Attr
-	attr = xml.Attr{
+	var attr xml.Attr = xml.Attr {
 		Name:  xml.Name{Local: key},
 		Value: val,
 	}
@@ -204,7 +203,7 @@ func (c *CVL) generateYangListData(jsonNode *jsonquery.Node,
 	storeInReqCache bool)(*xmlquery.Node, CVLErrorInfo) {
 	var cvlErrObj CVLErrorInfo
 
-	tableName := fmt.Sprintf("%s",jsonNode.Data)
+	tableName := jsonNode.Data
 	c.batchLeaf = nil
 	c.batchLeaf = make([]*yparser.YParserLeafValue, 0)
 
@@ -213,7 +212,7 @@ func (c *CVL) generateYangListData(jsonNode *jsonquery.Node,
 	// container ACL_RULE { list ACL_RULE_LIST {} }
 	var topNode *xmlquery.Node
 
-	if _, exists := modelInfo.tableInfo[tableName]; exists == false {
+	if _, exists := modelInfo.tableInfo[tableName]; !exists {
 		CVL_LOG(ERROR, "Failed to find schema details for table %s", tableName)
 		cvlErrObj.ErrCode = CVL_SYNTAX_ERROR
 		cvlErrObj.TableName = tableName 
@@ -254,7 +253,7 @@ func (c *CVL) generateYangListData(jsonNode *jsonquery.Node,
 		//Find number of all key combinations
 		//Each key can have one or more key values, which results in nk1 * nk2 * nk2 combinations
 		idx := 0
-		for i,_ := range keyValuePair {
+		for i := range keyValuePair {
 			totalKeyComb = totalKeyComb * len(keyValuePair[i].values)
 			keyIndices = append(keyIndices, 0)
 		}
@@ -268,10 +267,10 @@ func (c *CVL) generateYangListData(jsonNode *jsonquery.Node,
 			listNode := c.addYangNode(tableName, listConatinerNode, tableName + "_LIST", "") //Add the list to the top node
 			addAttrNode(listNode, "key", redisKey)
 
-			if (storeInReqCache == true) {
+			if storeInReqCache {
 				//store the list pointer in requestCache against the table/key
 				reqCache, exists := c.requestCache[tableName][redisKey]
-				if exists == true {
+				if exists {
 				//Store same list instance in all requests under same table/key
 					for idx := 0; idx < len(reqCache); idx++ {
 						if (reqCache[idx].yangData == nil) {
@@ -311,7 +310,7 @@ func (c *CVL) generateYangListData(jsonNode *jsonquery.Node,
 		}
 	}
 
-	if (keyPresent == false) {
+	if !keyPresent {
 		return nil, cvlErrObj
 	}
 
@@ -462,7 +461,7 @@ func (c *CVL) checkIfListNodeExists(dest, src *xmlquery.Node) *xmlquery.Node {
 	}
 
 	entry, exists := c.requestCache[tableName][redisKey]
-	if (exists == false) || (len(entry) == 0) {
+	if !exists || (len(entry) == 0) {
 		return  nil
 	}
 
@@ -538,7 +537,7 @@ destLoop:
 
 				delFlag, exists := destLeafListDeleted[srcNode.Data]
 
-				if (exists == false) || (delFlag == false) {
+				if !exists || !delFlag {
 					//Replace all leaf-list nodes from destination first
 					c.deleteDestLeafList(destNode)
 					destLeafListDeleted[srcNode.Data] = true
@@ -804,7 +803,7 @@ func (c *CVL) addYangDataForMustExp(op CVLOperation, tableName string, oneEntry 
 
 		//If one entry is needed and it is already availale in c.yv.root cache
 		//just ignore and continue
-		if (oneEntry == true) {
+		if oneEntry {
 			node := c.moveToYangList(mustTblName, "")
 			if node != nil {
 				//One entry exists, continue
@@ -847,7 +846,7 @@ func (c *CVL) addYangDataForMustExp(op CVLOperation, tableName string, oneEntry 
 				cvg.cv.tmpDbCache[redisTblName] = tblMap
 			}
 			//Load only one entry 
-			if (oneEntry == true) {
+			if oneEntry {
 				TRACE_LOG(TRACE_SEMANTIC, "addYangDataForMustExp(): Adding one entry table %s, key %s",
 				redisTblName, tableKey)
 				break
@@ -1146,8 +1145,7 @@ func (c *CVL) validateWhenExp(node *xmlquery.Node,
 			}
 
 			//Validate the when expression
-			if (ctxNode != nil) &&
-			(xmlquery.Eval(c.yv.root, ctxNode, whenExp.exprTree) == false) {
+			if (ctxNode != nil) && !(xmlquery.Eval(c.yv.root, ctxNode, whenExp.exprTree)) {
 				keys := []string{}
 				if (len(ctxNode.Parent.Attr) > 0) {
 					keys =  strings.Split(ctxNode.Parent.Attr[0].Value,
@@ -1297,8 +1295,7 @@ func (c *CVL) validateLeafRef(node *xmlquery.Node,
 
 						if (leafRefPath.exprTree == nil) {
 							//Check the key in request cache also
-							if _, exists := c.requestCache[refRedisTableName][ctxtVal];
-							exists == true {
+							if _, exists := c.requestCache[refRedisTableName][ctxtVal]; exists {
 								//no predicate and single key is referred
 								leafRefSuccess = true
 								break leafRefLoop
@@ -1325,14 +1322,13 @@ func (c *CVL) validateLeafRef(node *xmlquery.Node,
 				}
 
 				//Excute xpath expression for complex leafref path
-				if (xmlquery.Eval(c.yv.root, ctxNode, leafRefPath.exprTree) == true) {
+				if xmlquery.Eval(c.yv.root, ctxNode, leafRefPath.exprTree) {
 					leafRefSuccess = true
 					break leafRefLoop
 				}
 			} //for loop for all leafref check for a leaf - union case
 
-			if (leafRefSuccess == false) && (nonLeafRefPresent == true) &&
-			(len(leafRefs) > 1) {
+			if !leafRefSuccess && nonLeafRefPresent && (len(leafRefs) > 1) {
 				//If union has mixed type with base and leafref type,
 				//check if node value matched with any leafref.
 				//If so non-existence of leafref in DB will be treated as failure.
@@ -1345,8 +1341,7 @@ func (c *CVL) validateLeafRef(node *xmlquery.Node,
 				}
 			}
 
-			if (leafRefSuccess == false) &&
-			((nonLeafRefPresent == false) || (nodeValMatchedWithLeafref == true)) {
+			if !leafRefSuccess && (!nonLeafRefPresent || nodeValMatchedWithLeafref) {
 				//Return failure if none of the leafref exists
 				return CVLErrorInfo{
 					TableName: tableName,
@@ -1357,7 +1352,7 @@ func (c *CVL) validateLeafRef(node *xmlquery.Node,
 					ErrAppTag: "instance-required",
 					ConstraintErrMsg: "No instance found for '" + ctxtVal + "'",
 				}
-			} else if (leafRefSuccess == false) {
+			} else if !leafRefSuccess {
 				TRACE_LOG(TRACE_SEMANTIC, "validateLeafRef(): " +
 				"Leafref dependent data not found but leaf has " +
 				"other data type in union, returning success.")
@@ -1371,7 +1366,7 @@ func (c *CVL) validateLeafRef(node *xmlquery.Node,
 //Find which all tables (and which field) is using given (tableName/field)
 // as leafref
 //Use LUA script to find if table has any entry for this leafref
-func (c *CVL) findUsedAsLeafRef(tableName, field string) []tblFieldPair {
+/*func (c *CVL) findUsedAsLeafRef(tableName, field string) []tblFieldPair {
 
 	var tblFieldPairArr []tblFieldPair
 
@@ -1387,8 +1382,7 @@ func (c *CVL) findUsedAsLeafRef(tableName, field string) []tblFieldPair {
 			found := false
 			//Find leafref by searching table and field name
 			for _, leafRef := range leafRefs {
-				if ((strings.Contains(leafRef.path, tableName) == true) &&
-				(strings.Contains(leafRef.path, field) == true)) {
+				if (strings.Contains(leafRef.path, tableName) && strings.Contains(leafRef.path, field)) {
 					tblFieldPairArr = append(tblFieldPairArr,
 					tblFieldPair{tblName, fieldName})
 					//Found as leafref, no need to search further
@@ -1397,14 +1391,14 @@ func (c *CVL) findUsedAsLeafRef(tableName, field string) []tblFieldPair {
 				}
 			}
 
-			if (found == true) {
+			if found {
 				break
 			}
 		}
 	}
 
 	return tblFieldPairArr
-}
+}*/
 
 //This function returns true if any entry 
 //in request cache is using the given entry
@@ -1418,8 +1412,9 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 	leafRef *tblFieldPair, depDataKey, keyVal string) bool {
 
 	for _, cfgDataItem := range cfgData {
-		if (cfgDataItem.VType != VALIDATE_NONE) ||
-		(cfgDataItem.VOp != OP_DELETE) {
+		// All cfgDataItems which have VType as VALIDATE_NONE should be
+		// checked in cache
+		if (cfgDataItem.VType != VALIDATE_NONE) {
 			continue
 		}
 
@@ -1427,18 +1422,19 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 		//getting deleted, break immediately
 
 		//Find in request key, case - T2*|K1
-		if cfgDataItem.Key == depDataKey && len(cfgDataItem.Data) == 0 {
+		if cfgDataItem.Key == depDataKey &&
+			(cfgDataItem.VOp != OP_DELETE || (cfgDataItem.VOp == OP_DELETE && len(cfgDataItem.Data) == 0)) {
 			return true
 		}
 
 		//Find in request hash-field, case - T2*|K2:{H1: K1}
 		val, exists := cfgDataItem.Data[leafRef.field]
-		if exists == false {
+		if !exists {
 			// Leaf-lists field names are suffixed by "@".
 			val, exists = cfgDataItem.Data[leafRef.field+"@"]
 		}
 		// For delete cases, val sent is empty.
-		if (exists == true) && ((val == keyVal) || (val == "")) {
+		if exists && ((val == keyVal) || (val == "")) {
 			return true
 		}
 	}
@@ -1459,7 +1455,7 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 			continue
 		}
 
-		if _, ok := refTableFieldsMap[leafRef.tableName]; ok == false {
+		if _, ok := refTableFieldsMap[leafRef.tableName]; !ok {
 			refTableFieldsMap[leafRef.tableName] = make([]string, 0)
 		}
 		refFieldsArr := refTableFieldsMap[leafRef.tableName]
@@ -1482,7 +1478,7 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 	for _, depData := range depDataArr {
 		if len(depData.Entry) > 0 && depData.RefKey == redisKeyForDepData {
 			TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> DepData: %v", depData.Entry)
-			for depEntkey, _ := range depData.Entry {
+			for depEntkey := range depData.Entry {
 				depEntkeyList := strings.SplitN(depEntkey, "|", 2)
 				refTblName := depEntkeyList[0]
 
@@ -1493,13 +1489,13 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 				for _, leafRefField := range leafRefFieldsArr {
 					TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> Checking delete constraint for leafRef %s/%s", refTblName, leafRefField)
 					tempLeafRef := tblFieldPair{refTblName, leafRefField}
-					if (true == c.checkDeleteInRequestCache(cfgData, &tempLeafRef, depEntkey, keyVal)) {
+					if c.checkDeleteInRequestCache(cfgData, &tempLeafRef, depEntkey, keyVal) {
 						isEntryInRequestCache = true
 						break
 					}
 				}
 
-				if isEntryInRequestCache == true {
+				if isEntryInRequestCache {
 					// Entry already in delete request cache, proceed for next dep data
 					continue
 				} else {
@@ -1518,8 +1514,8 @@ func (c *CVL) validateSemantics(node *xmlquery.Node,
 	yangListName, key string,
 	cfgData *CVLEditConfigData) (r CVLErrorInfo) {
 
-	//Mark the list entries from DB if OP_DELETE operation
-	if (node != nil) && (cfgData.VOp == OP_DELETE) {
+	//Mark the list entries from DB if OP_DELETE operation when complete list delete requested
+	if (node != nil) && (cfgData.VOp == OP_DELETE) && (len(cfgData.Data) == 0) {
 		addAttrNode(node, "db", "")
 	}
 

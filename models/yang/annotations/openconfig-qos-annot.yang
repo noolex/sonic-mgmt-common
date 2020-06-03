@@ -79,43 +79,43 @@ module openconfig-qos-annot {
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:breach-value {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:breach-value {
       deviate add {
         sonic-ext:field-name "breach_value";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:counter {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:counter {
       deviate add {
         sonic-ext:field-transformer "threshold_breach_counter_field_xfmr";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:buffer {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:buffer {
       deviate add {
         sonic-ext:field-name "buffer";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:type {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:type {
       deviate add {
         sonic-ext:field-name "type";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:port {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:port {
       deviate add {
         sonic-ext:field-name "port";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:index {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:index {
       deviate add {
         sonic-ext:field-name "index";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:time-stamp {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:time-stamp {
       deviate add {
         sonic-ext:field-name "time-stamp";
       }
@@ -183,10 +183,75 @@ module openconfig-qos-annot {
         sonic-ext:field-transformer "wred_profile_name_fld_xfmr";
       }
     }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:ecn {
+      deviate add {
+        sonic-ext:field-transformer "wred_ecn_fld_xfmr";
+      }
+    }
 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:ecn {
+      deviate add {
+        sonic-ext:field-transformer "wred_ecn_fld_xfmr";
+      }
+    }
+   
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-min-threshold {
+      deviate add {
+        sonic-ext:field-name "green_min_threshold";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-max-threshold {
+      deviate add {
+        sonic-ext:field-name "green_max_threshold";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:wred-green-enable {
+      deviate add {
+        sonic-ext:field-name "wred_green_enable";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-drop-probability {
+      deviate add {
+        sonic-ext:field-name "green_drop_probability";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-min-threshold {
+      deviate add {
+        sonic-ext:field-name "green_min_threshold";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-max-threshold {
+      deviate add {
+        sonic-ext:field-name "green_max_threshold";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:wred-green-enable {
+      deviate add {
+        sonic-ext:field-name "wred_green_enable";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-drop-probability {
+      deviate add {
+        sonic-ext:field-name "green_drop_probability";
+      }
+    }
+  
     deviation /oc-qos:qos/oc-qos-maps-ext:dscp-maps/oc-qos-maps-ext:dscp-map {
         deviate add {
             sonic-ext:subtree-transformer "qos_dscp_fwd_group_xfmr";
+        }
+    }
+    deviation /oc-qos:qos/oc-qos-maps-ext:dot1p-maps/oc-qos-maps-ext:dot1p-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_dot1p_fwd_group_xfmr";
         }
     }
 
@@ -199,6 +264,12 @@ module openconfig-qos-annot {
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:dscp-to-forwarding-group {
       deviate add {
         sonic-ext:field-transformer "qos_dscp_to_tc_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:dot1p-to-forwarding-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_dot1p_to_tc_map_fld_xfmr";
       }
     }
 

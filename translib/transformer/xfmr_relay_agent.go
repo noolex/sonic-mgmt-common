@@ -41,39 +41,39 @@ type CounterObj  struct {
 
 // JSONDhcpCounters - Counters structure for DHCP
 type JSONDhcpCounters  struct {
-    BootrequestSent        CounterObj  
-    BootreplySent          CounterObj  
-    TotalDropped           CounterObj  
-    InvalidOpcode          CounterObj  
-    InvalidOptions         CounterObj  
-    BootrequestReceived    CounterObj  
-    DhcpDeclineReceived    CounterObj  
-    DhcpDiscoverReceived   CounterObj  
-    DhcpInformReceived     CounterObj  
-    DhcpRequestReceived    CounterObj  
-    DhcpReleaseReceived    CounterObj  
-    DhcpOfferSent          CounterObj  
-    DhcpAckSent            CounterObj  
-    DhcpNackSent           CounterObj  
+    BootrequestSent        CounterObj  `json:"bootrequest-sent"`
+    BootreplySent          CounterObj  `json:"bootreply-sent"`
+    TotalDropped           CounterObj  `json:"total-dropped"`
+    InvalidOpcode          CounterObj  `json:"invalid-opcode"`
+    InvalidOptions         CounterObj  `json:"invalid-options"`
+    BootrequestReceived    CounterObj  `json:"bootrequest-received"`
+    DhcpDeclineReceived    CounterObj  `json:"dhcp-decline-received"`
+    DhcpDiscoverReceived   CounterObj  `json:"dhcp-discover-received"`
+    DhcpInformReceived     CounterObj  `json:"dhcp-inform-received"`
+    DhcpRequestReceived    CounterObj  `json:"dhcp-request-received"`
+    DhcpReleaseReceived    CounterObj  `json:"dhcp-release-received"`
+    DhcpOfferSent          CounterObj  `json:"dhcp-offer-sent"`
+    DhcpAckSent            CounterObj  `json:"dhcp-ack-sent"`
+    DhcpNackSent           CounterObj  `json:"dhcp-nack-sent"`
 }
 
 // JSONDhcpv6Counters - Counters structure for DHCPv6
 type JSONDhcpv6Counters  struct {
-    TotalDropped                CounterObj  
-    InvalidOpcode               CounterObj  
-    InvalidOptions              CounterObj  
-    Dhcpv6SolicitReceived       CounterObj  
-    Dhcpv6DeclineReceived       CounterObj  
-    Dhcpv6RequestReceived       CounterObj  
-    Dhcpv6ReleaseReceived       CounterObj  
-    Dhcpv6ConfirmReceived       CounterObj  
-    Dhcpv6RebindReceived        CounterObj  
-    Dhcpv6InfoRequestReceived   CounterObj  
-    Dhcpv6RelayReplyReceived    CounterObj  
-    Dhcpv6AdvertiseSent         CounterObj  
-    Dhcpv6ReplySent             CounterObj  
-    Dhcpv6ReconfigureSent       CounterObj  
-    Dhcpv6RelayForwSent         CounterObj  
+    TotalDropped                CounterObj  `json:"total-dropped"`
+    InvalidOpcode               CounterObj  `json:"invalid-opcode"`
+    InvalidOptions              CounterObj  `json:"invalid-options"`
+    Dhcpv6SolicitReceived       CounterObj  `json:"dhcpv6-solicit-received"`
+    Dhcpv6DeclineReceived       CounterObj  `json:"dhcpv6-decline-received"`
+    Dhcpv6RequestReceived       CounterObj  `json:"dhcpv6-request-received"`
+    Dhcpv6ReleaseReceived       CounterObj  `json:"dhcpv6-release-received"`
+    Dhcpv6ConfirmReceived       CounterObj  `json:"dhcpv6-confirm-received"`
+    Dhcpv6RebindReceived        CounterObj  `json:"dhcpv6-rebind-received"`
+    Dhcpv6InfoRequestReceived   CounterObj  `json:"dhcpv6-Info-request-received"`
+    Dhcpv6RelayReplyReceived    CounterObj  `json:"dhcpv6-relay-reply-received"`
+    Dhcpv6AdvertiseSent         CounterObj  `json:"dhcpv6-advertise-sent"`
+    Dhcpv6ReplySent             CounterObj  `json:"dhcpv6-reply-sent"`
+    Dhcpv6ReconfigureSent       CounterObj  `json:"dhcpv6-reconfigure-sent"`
+    Dhcpv6RelayForwSent         CounterObj  `json:"dhcpv6-relay-forw-sent"`
 }
 
 //Sub structure required to translate yang to dbobject field

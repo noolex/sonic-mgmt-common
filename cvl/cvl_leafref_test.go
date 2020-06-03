@@ -412,12 +412,23 @@ func TestValidateEditConfig_Delete_Leafref(t *testing.T) {
 			"PortChannel2": map[string]interface{}{
 				"NULL": "NULL",
 			},
+			"PortChannel3": map[string]interface{}{
+				"NULL": "NULL",
+			},
+			"PortChannel4": map[string]interface{}{
+				"NULL": "NULL",
+			},
 		},
 		"ACL_TABLE": map[string]interface{}{
 			"TestACL1": map[string]interface{}{
 				"type":	  "L3",
 				"stage":  "INGRESS",
 				"ports@": "PortChannel1",
+			},
+			"TestACL2": map[string]interface{}{
+				"type":	  "L3",
+				"stage":  "INGRESS",
+				"ports@": "PortChannel3,PortChannel4",
 			},
 		},
 	}
@@ -427,8 +438,9 @@ func TestValidateEditConfig_Delete_Leafref(t *testing.T) {
 
 	t.Run("positive", deletePO(2, true))
 	t.Run("negative", deletePO(1, false))
-	t.Run("with_dep", deleteACLAndPO("TestACL1", "", 1, false, true))
-	t.Run("with_dep_field", deleteACLAndPO("TestACL1", "ports@", 1, false, true))
+	t.Run("with_dep", deleteACLAndPO("TestACL1", "nil", 1, false, true))
+	t.Run("with_dep_field", deleteACLAndPO("TestACL1", "", 1, false, true))
+	t.Run("with_dep_update", deleteACLAndPO("TestACL2", "PortChannel4", 3, false, true))
 	//t.Run("with_dep_bulk", deleteACLAndPO("TestACL1", 1, true, true))
 }
 
@@ -440,7 +452,7 @@ func deletePO(poId int, expSuccess bool) func(*testing.T) {
 	}
 }
 
-func deleteACLAndPO(aclName, field string, poId int, bulk, expSuccess bool) func(*testing.T) {
+func deleteACLAndPO(aclName, ports string, poId int, bulk, expSuccess bool) func(*testing.T) {
 	return func (t *testing.T) {
 		session, _ := cvl.ValidationSessOpen()
 		defer cvl.ValidationSessClose(session)
@@ -453,8 +465,11 @@ func deleteACLAndPO(aclName, field string, poId int, bulk, expSuccess bool) func
 			map[string]string{ },
 		})
 
-		if len(field) != 0 {
-			cfgData[0].Data[field] = ""
+		if ports != "nil" {
+			cfgData[0].Data["ports@"] = ports
+			if ports != "" {
+				cfgData[0].VOp = cvl.OP_UPDATE
+			}
 		}
 
 		if !bulk {
