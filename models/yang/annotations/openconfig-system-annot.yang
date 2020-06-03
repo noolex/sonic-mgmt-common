@@ -495,6 +495,17 @@ module openconfig-system-annot {
         }
     }
 
+    deviation /oc-sys:system/oc-sys-ext:infra/oc-sys-ext:state/oc-sys-ext:clock{
+        deviate add {
+            sonic-ext:field-transformer "sys_infra_state_clock_xfmr";
+            }
+    }
+    deviation /oc-sys:system/oc-sys-ext:infra/oc-sys-ext:state/oc-sys-ext:uptime{
+        deviate add {
+            sonic-ext:field-transformer "sys_infra_state_uptime_xfmr";
+            }
+    }
+
     deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:state {
         deviate add {
             sonic-ext:subtree-transformer "oc_systemd_coredump_status_xfmr";

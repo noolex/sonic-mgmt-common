@@ -286,15 +286,15 @@ func dbMapDataFill(uri string, tableName string, keyName string, d map[string]in
 				result[tableName][keyName].Field[field] = fieldValue
 				continue
 			}
+			dbval, err := unmarshalJsonToDbData(xDbSpecMap[fieldXpath].dbEntry, fieldXpath, field, value)
+			if err != nil {
+				log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+			} else {
+				result[tableName][keyName].Field[field] = dbval
+			}
 		} else {
 			// should ideally never happen , just adding for safety
 			xfmrLogInfoAll("Did not find entry in xDbSpecMap for field xpath = %v", fieldXpath)
-		}
-		dbval, err := unmarshalJsonToDbData(xDbSpecMap[fieldXpath].dbEntry, fieldXpath, field, value)
-		if err != nil {
-			log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
-		} else {
-			result[tableName][keyName].Field[field] = dbval
 		}
 	}
 	return
@@ -417,7 +417,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				if len(keyName) > 0 {
 					result[tableName][keyName] = db.Value{Field: make(map[string]string)}
 					xpath := xpathPrefix
-					uriItemList := strings.Split(strings.TrimSuffix(uri, "/"), "/")
+					uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
 					uriItemListLen := len(uriItemList)
 					var terminalNode, luri string
 					if uriItemListLen > 0 {
@@ -600,9 +600,9 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
         xlateParams.result[xlateParams.tableName] = make(map[string]db.Value)
         if (xlateParams.keyName != "") {
             // Specific key case
-            var dbVal db.Value
-            tokens:= strings.Split(xlateParams.xpath, "/")
-            if tokens[SONIC_TABLE_INDEX] == xlateParams.tableName {
+	    var dbVal db.Value
+	    tokens:= strings.Split(xlateParams.xpath, "/")
+	    if tokens[SONIC_TABLE_INDEX] == xlateParams.tableName {
 		    fieldName := ""
 		    if len(tokens) > SONIC_FIELD_INDEX {
 			    fieldName = tokens[SONIC_FIELD_INDEX]
@@ -617,7 +617,7 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 				     if yangType == YANG_LEAF_LIST {
 					     dbVal.Field = make(map[string]string)
 					     //check if it is a specific item in leaf-list delete
-					     uriItemList := strings.Split(strings.TrimSuffix(xlateParams.requestUri, "/"), "/")
+					     uriItemList := splitUri(strings.TrimSuffix(xlateParams.requestUri, "/"))
 					     uriItemListLen := len(uriItemList)
 					     var terminalNode string
 					     if uriItemListLen > 0 {
