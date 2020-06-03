@@ -214,7 +214,7 @@ func fillLacpMembers(inParams XfmrParams, lag string, TeamdJson map[string]inter
     if ports_map,ok := TeamdJson["ports"].(map[string]interface{}); ok {
         for ifKey := range ports_map {
             var ifName *string
-            ifName = utils.GetAliasNameFromIfName(&ifKey)
+            ifName = utils.GetUINameFromNativeName(&ifKey)
 
             if lacpMemberObj, ok = members.Member[*ifName]; !ok {
                 lacpMemberObj, err = members.NewMember(*ifName)
@@ -318,7 +318,7 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
         members = lacpintfObj.Members
         if members != nil && ifMemKey != "" {
             var ifName *string
-            ifName = utils.GetInterfaceNameFromAlias(&ifMemKey)
+            ifName = utils.GetNativeNameFromUIName(&ifMemKey)
 
             if member, ok = members.Member[ifMemKey]; !ok {
                 errStr := "PortChannel Member Instance doesn't exist"

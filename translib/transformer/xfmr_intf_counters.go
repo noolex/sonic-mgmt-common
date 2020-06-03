@@ -125,7 +125,7 @@ var rpc_get_interface_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
                 log.Info("rpc_get_interface_counters : PORT entry not found in AppDb " + ifName)
                 continue
             }
-            uiName := *utils.GetAliasNameFromIfName(&ifName)
+            uiName := *utils.GetUINameFromNativeName(&ifName)
             intfObj.Name = uiName
             intfObj.State.Oper_Status = "DOWN"
             operStatus, ok := prtEntry.Field[PORT_OPER_STATUS]

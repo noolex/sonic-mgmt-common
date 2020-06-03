@@ -376,7 +376,7 @@ func fdbMacTableGetEntry(inParams XfmrParams, vlan string,  macAddress string, o
                 *intfName = findInMap(oidInfMap, intfOid)
                 if *intfName != "" {
                     /* If Alias mode is enabled, get alias name from native name */
-                    cvtdName := utils.GetAliasNameFromIfName(intfName)
+                    cvtdName := utils.GetUINameFromNativeName(intfName)
                     ygot.BuildEmptyTree(mcEntry.Interface)
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef)
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef.Config)
