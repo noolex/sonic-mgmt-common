@@ -45,7 +45,7 @@ module openconfig-if-ethernet-ext {
   oc-ext:catalog-organization "openconfig";
   oc-ext:origin "openconfig";
 
-  grouping ethernet-in-frames-size-dist {
+  grouping openconfig-if-ethernet-ext-ethernet-in-frames-size-dist {
     description
       "Grouping for defining the size distribution of the frames
       received";
@@ -104,7 +104,7 @@ module openconfig-if-ethernet-ext {
     }
   }
 
-  grouping storm-control-config {
+  grouping openconfig-if-ethernet-ext-storm-control-config {
       description
           "Configurable items at the storm-control level";
       leaf ifname {
@@ -115,8 +115,6 @@ module openconfig-if-ethernet-ext {
               "name of interface on which storm-control is enabled";
       }
       leaf storm-type {
-          description
-              "Type of storm-control enabled on ethernet interface";
           type enumeration{
               enum BROADCAST {
                   description "Broadcast storm-control on interface";
@@ -128,24 +126,26 @@ module openconfig-if-ethernet-ext {
                   description "Unknown multicast storm-control on interface";
               }
           }
+          description
+              "Type of storm-control enabled on ethernet interface";
       }
       leaf kbps {
-          description
-              "kbps value for storm-control on ethernet interface";
           type uint32 {
               range "0..100000000" {
                   error-message "kbps value out of range";
               }
           }
+          description
+              "kbps value for storm-control on ethernet interface";
       }
   }
 
-  grouping storm-control-state {
+  grouping openconfig-if-ethernet-ext-storm-control-state {
       description
           "Operational state parameters for storm-control on interface";
   }
 
-  grouping storm-control-top{
+  grouping openconfig-if-ethernet-ext-storm-control-top{
       description
           "Grouping for storm-control on ethernet interface";
 
@@ -164,12 +164,14 @@ module openconfig-if-ethernet-ext {
                       "Type of storm-control enabled on ethernet interface";
               }
               container config {
-                  uses storm-control-config;
+                  description "Config parameters for storm-control instance";
+                  uses openconfig-if-ethernet-ext-storm-control-config;
               }
               container state {
                   config false;
-                  uses storm-control-config;
-                  uses storm-control-state;
+                  description "State parameters for storm-control instance";
+                  uses openconfig-if-ethernet-ext-storm-control-config;
+                  uses openconfig-if-ethernet-ext-storm-control-state;
               }
           }
       }
@@ -182,12 +184,12 @@ module openconfig-if-ethernet-ext {
       description
         "Adds size distribution to the ethernet counters";
 
-      uses ethernet-in-frames-size-dist;
+      uses openconfig-if-ethernet-ext-ethernet-in-frames-size-dist;
   }
 
   augment "/oc-if:interfaces/oc-if:interface/oc-eth:ethernet" {
           description
               "Storm control support on ethernet interface";
-          uses storm-control-top;
+          uses openconfig-if-ethernet-ext-storm-control-top;
   }
 }
