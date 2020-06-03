@@ -367,12 +367,23 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 							return err
 						}
 					} else if (spec.hasChildSubTree == true) {
+						if (spec.tblOwner != nil) && (*spec.tblOwner == false) {
+							err = tableFieldsForUriGet(uri, spec, result)
+							if err != nil {
+								return err
+							}
+						}
 						xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
 						curResult, cerr := allChildTblGetToDelete(curXlateParams)
 						if cerr != nil {
 							err = cerr
 						} else {
 							mapCopy(result, curResult)
+						}
+					} else if (spec.tblOwner != nil) && (*spec.tblOwner == false) {
+						err = tableFieldsForUriGet(uri, spec, result)
+						if err != nil {
+							return err
 						}
 					}
 				} else if (spec.hasChildSubTree == true) {
@@ -542,5 +553,9 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 			}
 		}
 	}
+	return nil
+}
+
+func tableFieldsForUriGet(uri string, spec *yangXpathInfo, result map[string]map[string]db.Value) error {
 	return nil
 }
