@@ -217,7 +217,7 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 	}
 	if str_val, found := classifierTblVal.Field["L4_DST_PORT"]; found {
 		dst_port, _ := strconv.Atoi(str_val)
-		classEntry.L4_SRC_PORT = &dst_port
+		classEntry.L4_DST_PORT = &dst_port
 	}
 	if str_val, found := classifierTblVal.Field["L4_SRC_PORT_RANGE"]; found {
 		classEntry.L4_SRC_PORT_RANGE = &str_val
