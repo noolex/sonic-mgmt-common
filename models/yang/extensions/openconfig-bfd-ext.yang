@@ -274,10 +274,6 @@ module openconfig-bfd-ext {
 	deviate not-supported;
   }
 
-  deviation /oc-ni:network-instances/oc-ni:network-instance/oc-ni:protocols/oc-ni:protocol/oc-ni:static-routes/oc-ni:static/oc-ni:next-hops/oc-ni:next-hop/oc-bfdd:enable-bfd/oc-bfdd:state/oc-bfdd:associated-session{
-	deviate not-supported;
-  } 
-
   deviation /oc-bfdd:bfd/oc-bfdd:interfaces{
 	deviate not-supported;
   }
