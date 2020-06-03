@@ -22,6 +22,19 @@ module openconfig-mirror-ext-annot {
           "Initial revision.";
     }
 
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session {
+        deviate add {
+            sonic-ext:table-name "MIRROR_SESSION";
+        }
+    }
+
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state/oc-mirror-ext:status {
+        deviate add {
+            sonic-ext:db-name "STATE_DB";
+            sonic-ext:table-name "MIRROR_SESSION_TABLE";
+        }
+    }
+
     deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:config/oc-mirror-ext:dst-port {
         deviate add {
             sonic-ext:field-name "dst_port";
@@ -70,17 +83,5 @@ module openconfig-mirror-ext-annot {
         }
     }
 
-    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session {
-        deviate add {
-            sonic-ext:table-name "MIRROR_SESSION";
-        }
-    }
-
-    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state {
-        deviate add {
-            sonic-ext:db-name "STATE_DB";
-            sonic-ext:table-name "MIRROR_SESSION_TABLE";
-        }
-    }
 }
 
