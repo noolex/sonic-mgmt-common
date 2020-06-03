@@ -274,7 +274,7 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
                     continue
                 }
                 ifName := ifNameVal.(string)
-                sonicName := utils.GetAliasNameFromIfName(&ifName)
+                sonicName := utils.GetUINameFromNativeName(&ifName)
                 nextHopMap["interfaceName"] = *sonicName
             }
         }

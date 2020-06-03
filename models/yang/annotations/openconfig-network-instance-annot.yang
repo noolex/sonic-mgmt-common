@@ -370,6 +370,26 @@ module openconfig-network-instance-annot {
       }
     }
 
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes {
+      deviate add {
+          sonic-ext:table-name "STATIC_ROUTE";
+          sonic-ext:key-transformer "static_routes_key_xfmr";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static {
+      deviate add {
+          sonic-ext:key-transformer "static_routes_key_xfmr";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop {
+      deviate add {
+          sonic-ext:key-transformer "static_routes_key_xfmr";
+          sonic-ext:subtree-transformer "static_routes_nexthop_xfmr";
+      }
+    }
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors {
       deviate add {	        
           sonic-ext:table-name "NONE";

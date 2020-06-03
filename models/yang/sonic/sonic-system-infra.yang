@@ -1,0 +1,43 @@
+module sonic-system-infra {
+    namespace "http://github.com/Azure/sonic-system-infra";
+    prefix sonic-sinfra;
+    yang-version 1;
+
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "System Infra rpc commands";
+
+    revision 2020-05-27 {
+        description
+            "Initial revision.";
+    }
+
+    rpc reboot-ops{
+        description
+            "Switch boot operations:
+                - reboot: reboot operation
+                - warm-reboot : warm reboot  operation
+                - fast-reboot : fast reboot operation
+            The result of the requested command is sent as a string.";
+        input {
+            leaf param {
+                type string {
+                    pattern "reboot warm-reboot fast-reboot";
+                }
+            }
+        }
+        output {
+            leaf result {
+                type string;
+                description
+                    "String showing the result of the last requested command (reboot, warm-reboot or fast-reboot).";
+            }
+        }
+    }
+}
