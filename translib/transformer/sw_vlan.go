@@ -1314,7 +1314,7 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("DbToYang_sw_vlans__xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -1731,7 +1731,7 @@ var DbToYang_sw_vlans_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (err
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("DbToYang_sw_vlans__xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
