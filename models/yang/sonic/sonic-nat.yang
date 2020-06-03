@@ -2,16 +2,8 @@ module sonic-nat {
     namespace "http://github.com/Azure/sonic-nat";
     prefix snat;
 
-    import ietf-yang-types {
-        prefix yang;
-    }
-
     import ietf-inet-types {
         prefix inet;
-    }
-
-    import sonic-common {
-        prefix scommon;
     }
 
     import sonic-acl {
