@@ -7,10 +7,6 @@ module sonic-flow-based-services {
         prefix inet;
     }
 
-    import sonic-common {
-        prefix cmn;
-    }
-
     import sonic-extension {
         prefix sonic-ext;
     }
