@@ -1168,6 +1168,7 @@ module openconfig-ospfv2-ext {
   }
 
 
+  /*
   grouping ospfv2-ext-policy-export-list {
     description
       "Configuration parameters relating to a export list within
@@ -1214,6 +1215,7 @@ module openconfig-ospfv2-ext {
       }
     }
   }
+  */
 
   grouping ospfv2-ext-policy-filter-list {
     description
@@ -1308,8 +1310,8 @@ module openconfig-ospfv2-ext {
       }
 
       uses ospfv2-ext-policy-address-range;
-      uses ospfv2-ext-policy-export-list;
-      uses ospfv2-ext-policy-import-list;
+      //uses ospfv2-ext-policy-export-list;
+      //uses ospfv2-ext-policy-import-list;
       uses ospfv2-ext-policy-filter-list;
     }
   }
@@ -1446,6 +1448,7 @@ module openconfig-ospfv2-ext {
         "Route map name for route distribution";
     }
 
+    /*
     leaf access-list {
       when "../direction = 'EXPORT'";
       type leafref {
@@ -1455,6 +1458,7 @@ module openconfig-ospfv2-ext {
       description
         "IPv4 Access list name for route distribution list";
     }
+    */
   }
 
 
@@ -2665,20 +2669,6 @@ module openconfig-ospfv2-ext {
 			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
 			"/oc-netinst:inter-area-propagation-policies/oc-ospfv2-ext:inter-area-policy" +
 			"/oc-ospfv2-ext:ranges/oc-ospfv2-ext:range/oc-ospfv2-ext:state" {
-	deviate not-supported;
-  }
-
-  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" + 
-			"/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
-			"/oc-netinst:inter-area-propagation-policies/oc-ospfv2-ext:inter-area-policy" +
-			"/oc-ospfv2-ext:export-list/oc-ospfv2-ext:state" {
-	deviate not-supported;
-  }
-
-  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
-            "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
-			"/oc-netinst:global/oc-netinst:inter-area-propagation-policies" +
-			"/oc-ospfv2-ext:inter-area-policy/oc-ospfv2-ext:import-list/oc-ospfv2-ext:state" {
 	deviate not-supported;
   }
 
