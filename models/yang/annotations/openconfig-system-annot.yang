@@ -520,13 +520,13 @@ module openconfig-system-annot {
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:ntp-source-address {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys-ext:ntp-source-interface {
         deviate add {
             sonic-ext:field-name "source";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:ntp-source-address {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys-ext:ntp-source-interface {
         deviate add {
             sonic-ext:field-name "source";
         }

@@ -252,9 +252,9 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
 
                         offset_sec, _ := strconv.ParseFloat(offset, 64)
                         offset_milli := offset_sec*1000
-                        currNtpServer.State.PeerOffset = &offset_milli
+                        currNtpServer.State.Peeroffset = &offset_milli
 
-                        currNtpServer.State.SelMode = &selMode
+                        currNtpServer.State.Selmode = &selMode
 
                         poll_num, _ := strconv.ParseUint(poll, 10, 32)
                         poll_num32 := uint32(poll_num)
@@ -264,11 +264,11 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
                         stratum_num8 := uint8(stratum_num)
                         currNtpServer.State.Stratum = &stratum_num8
 
-                        currNtpServer.State.PeerType = &peer_type
+                        currNtpServer.State.Peertype = &peer_type
 
                         jitter_sec, _ := strconv.ParseFloat(jitter, 64)
                         jitter_milli := jitter_sec*1000
-                        currNtpServer.State.PeerJitter = &jitter_milli
+                        currNtpServer.State.Peerjitter = &jitter_milli
 
                         reach_num, _ := strconv.ParseUint(reach, 10, 8)
                         reach_num8 := uint8(reach_num)
@@ -276,7 +276,7 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
 
                         delay_sec, _ := strconv.ParseFloat(delay, 64)
                         delay_milli := delay_sec*1000
-                        currNtpServer.State.PeerDelay = &delay_milli
+                        currNtpServer.State.Peerdelay = &delay_milli
 
                         currNtpServer.State.Refid = &refId
                 }
@@ -317,29 +317,39 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
                 return err
         }
 
+        isMgmtVrfEnabled := isMgmtVrfEnabled(inParams)
+
         ntpTable := &db.TableSpec{Name: "NTP"}
         key := db.Key{Comp: []string{"global"}}
         dbEntry, _ := d.GetEntry(ntpTable, key)
 
         /* Before migrating to Buster only mgmt VRF supported beside default vrf */
-        if (dbEntry.IsPopulated()) {
-                vrfName := (&dbEntry).Get("vrf")
+        if (isMgmtVrfEnabled == true) {
+                if (dbEntry.IsPopulated()) {
+                        vrfName := (&dbEntry).Get("vrf")
 
-                if ( (vrfName == "") || (vrfName == "default") ) {
-                        log.Info("DbToYang_ntp_server_subtree_xfmr, NTP vrf not configured")
-                        err = ProcessGetNtpServer(inParams, "ntpq", "-p")
-                } else if (vrfName == "mgmt") {
-                        log.Info("DbToYang_ntp_server_subtree_xfmr: NTP vrf is mgmt")
-                        arg0 := "-g"
-                        arg1 := "l3mdev:mgmt"
-                        arg2 := "ntpq"
-                        arg3 := "-p"
-                        err = ProcessGetNtpServer(inParams, "cgexec", arg0, arg1, arg2, arg3)
+                        if (vrfName == "default") {
+                                log.Info("DbToYang_ntp_server_subtree_xfmr, NTP vrf set to default with mgmt vrf configured")
+                                err = ProcessGetNtpServer(inParams, "ntpq", "-p")
+                        } else if (vrfName == "mgmt") {
+                                log.Info("DbToYang_ntp_server_subtree_xfmr: NTP service run in mgmt vrf context")
+                                arg0 := "-g"
+                                arg1 := "l3mdev:mgmt"
+                                arg2 := "ntpq"
+                                arg3 := "-p"
+                                err = ProcessGetNtpServer(inParams, "cgexec", arg0, arg1, arg2, arg3)
+                        } else {
+                                errStr = "Unable to determin NTP sevice context"
+                                log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
+                                err = tlerr.InvalidArgsError{Format: errStr}
+                        }
                 } else {
-                        errStr = "Invalid NTP vrf " + vrfName
-                        log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
-                        err = tlerr.InvalidArgsError{Format: errStr}
-                        return err
+                        log.Info("DbToYang_ntp_server_subtree_xfmr: NTP service run in mgmt vrf context")
+                                arg0 := "-g"
+                                arg1 := "l3mdev:mgmt"
+                                arg2 := "ntpq"
+                                arg3 := "-p"
+                                err = ProcessGetNtpServer(inParams, "cgexec", arg0, arg1, arg2, arg3)
                 }
         } else {
                 log.Info("DbToYangng_ntp_server_subtree_xfmr: NTP global not configured")

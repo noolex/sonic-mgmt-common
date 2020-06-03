@@ -24,7 +24,8 @@ module openconfig-system-ext {
 
     revision 2020-05-17 {
         description
-            "Add augment for NTP server state.";
+            "Add augments and deviations for NTP.";
+        reference "0.4.0";
     }
 
     revision 2020-05-02 {
@@ -257,26 +258,34 @@ module openconfig-system-ext {
        deviate not-supported;
     }
 
-    typedef ntp-source {
-        type union {
-            type inet:ip-address;
-            type string;
-        }
-
-        description
-            "NTP source can be ip adress or interface name";
-    }
-
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:ntp-source-address {
-        deviate replace {
-            type ntp-source;
-        }
+        deviate not-supported;
     }
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:ntp-source-address {
-        deviate replace {
-            type ntp-source;
+        deviate not-supported;
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:config" {
+        leaf ntp-source-interface {
+            type oc-if:base-interface-ref;
+            description
+                "NTP source interface name";
         }
+
+        description
+            "NTP source interface name";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:state" {
+        leaf ntp-source-interface {
+            type oc-if:base-interface-ref;
+            description
+                "NTP source interface name";
+        }
+
+        description
+            "NTP source interface name";
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:config" {
@@ -285,6 +294,9 @@ module openconfig-system-ext {
             description
                 "The VRF instance NTP is enabled in.";
         }
+
+        description
+            "The VRF instance NTP is enabled in.";
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:state" {
@@ -293,10 +305,13 @@ module openconfig-system-ext {
             description
                 "The VRF instance NTP is enabled in.";
         }
+
+        description
+            "The VRF instance NTP is enabled in.";
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state" {
-        leaf PeerDelay {
+        leaf peerdelay {
             type decimal64 {
                 fraction-digits 3;
             }
@@ -304,7 +319,7 @@ module openconfig-system-ext {
                 "The round-trip delay to the server using type decimal64, in milliseconds";
         }
 
-        leaf PeerOffset {
+        leaf peeroffset {
             type decimal64 {
                 fraction-digits 3;
             }
@@ -315,7 +330,7 @@ module openconfig-system-ext {
 
         }
 
-        leaf PeerJitter {
+        leaf peerjitter {
             type decimal64 {
                 fraction-digits 3;
             }
@@ -323,7 +338,7 @@ module openconfig-system-ext {
                 "The mean deviation of multiple time samples from this peer.";
         }
 
-        leaf selMode {
+        leaf selmode {
             type string {
                 length "1";
             }
@@ -342,7 +357,7 @@ module openconfig-system-ext {
                 "Reference clock type or address for the peer.";
         }
 
-        leaf PeerType {
+        leaf peertype {
             type string {
                 length "1";
             }
@@ -369,5 +384,8 @@ module openconfig-system-ext {
              description
                  "Indicates the reachability of the configured server or peer.";
          }
+
+        description
+            "NTP server status.";
     }
 }
