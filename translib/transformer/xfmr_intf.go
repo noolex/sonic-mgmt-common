@@ -1385,25 +1385,9 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         }
     }
 
-/*
-        // Delete interface from interface table if no other interface attributes/ip 
-        if (vlanIntfcount - len(intfIpMap)) == 1 && (tblName != LOOPBACK_INTERFACE_TN) {
-            IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
-            if err != nil {
-                return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
-            }
-            IntfMap := IntfMapObj.Field
-            if len(IntfMap) == 1 {
-                if _, ok := IntfMap["NULL"]; ok {
-                    vlanIntfmap[tblName][ifName] = data
-                }
-                if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-                    vlanIntfmap[tblName][ifName] = data
-                }
-            }
-        }
-    } else if len(intfIpMap) == 0 && vlanIntfcount == 1 && (tblName != LOOPBACK_INTERFACE_TN) {
-        // All IP Addr Attributes are deleted 
+    // Case-1: Last IP Address getting deleted on Vlan Interface
+    // Case-2: Interface Vlan getting deleted with no IP addresses configured
+    if (vlanIntfcount - len(intfIpMap)) == 1 ||  (len(intfIpMap) == 0 && vlanIntfcount == 1) {
         IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
         if err != nil {
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
@@ -1412,36 +1396,13 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         if len(IntfMap) == 1 {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
-            }
-            if _, ok := IntfMap["NULL"]; ok {
-                vlanIntfmap[tblName][ifName] = data
-            }
-            if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-                vlanIntfmap[tblName][ifName] = data
-            }
-        }
-    }
-*/
-    if tblName != LOOPBACK_INTERFACE_TN {
-        // Case-1: Last IP Address getting deleted on Vlan Interface
-        // Case-2: All IP Addr Attributes are deleted.
-        if (vlanIntfcount - len(intfIpMap)) == 1 ||  (len(intfIpMap) == 0 && vlanIntfcount == 1) {
-            IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
-            if err != nil {
-                return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
-            }
-            IntfMap := IntfMapObj.Field
-            if len(IntfMap) == 1 {
-                if _, ok := vlanIntfmap[tblName]; !ok {
-                    vlanIntfmap[tblName] = make (map[string]db.Value)
-                }
-                if _, ok := IntfMap["NULL"]; ok {
-                    vlanIntfmap[tblName][ifName] = data
-                }
-                if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-                    vlanIntfmap[tblName][ifName] = data
-                }
-            }
+	    }
+	    if _, ok := IntfMap["NULL"]; ok {
+	        vlanIntfmap[tblName][ifName] = data
+	    }
+	    if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
+	        vlanIntfmap[tblName][ifName] = data
+	    }
         }
     }
 
@@ -1869,6 +1830,10 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
         errStr := "Invalid interface type IntfTypeUnset"
         log.Info("YangToDb_routed_vlan_ip_addr_xfmr: " + errStr)
         return vlanIntfmap, errors.New(errStr)
+    }
+
+    if IntfTypeVlan != intfType {
+        return vlanIntfmap, nil
     }
 
     if _, ok := intfsObj.Interface[ifName]; !ok {
