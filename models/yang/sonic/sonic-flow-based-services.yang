@@ -671,7 +671,7 @@ module sonic-flow-based-services {
     }
 
     // RPCs
-    rpc show_classifier {
+    rpc get-classifier {
         description
             "RPC to retrieve the classifier data. The name and match-type are optional. If no name is specified then all
             classifiers with the matching match-type will be retrieved. If no match-type is provided then all
@@ -690,7 +690,7 @@ module sonic-flow-based-services {
             }
         }
         output {
-            list CLASSIFIER_LIST {
+            list CLASSIFIERS {
                 key "CLASSIFIER_NAME";
 
                 leaf CLASSIFIER_NAME {
@@ -713,7 +713,7 @@ module sonic-flow-based-services {
         }
     }
 
-    rpc show_policy {
+    rpc get-policy {
         description
             "RPC to retrieve the policy data. The name and type are optional. If no name is specified then all
             policies with the matching type will be retrieved. If no type is provided then all policies will
@@ -732,7 +732,7 @@ module sonic-flow-based-services {
             }
         }
         output {
-            list POLICY_LIST {
+            list POLICIES {
                 key "POLICY_NAME";
 
                 leaf POLICY_NAME {
@@ -788,7 +788,7 @@ module sonic-flow-based-services {
         }
     }
 
-    rpc show_service_policy {
+    rpc get-service-policy {
         description
             "Reprieves the Operational state of the policy application on interface like match counters,
             policer counters for QoS policies, selected next-hop for forwarding policies etc. Policy name or
@@ -999,7 +999,7 @@ module sonic-flow-based-services {
         }
     }
 
-    rpc clear_service_policy {
+    rpc clear-service-policy-counters {
         description
             "Clear the countes associated with the policy like Match counters and Policer counters etc.
             Policy name or Interface name is mandatory. The following list shows the different combination supported

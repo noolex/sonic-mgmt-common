@@ -26,6 +26,11 @@ module openconfig-network-instance-ext {
         configuration extensions.";
 
   oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-26" {
+    description
+      "Add static and dynamic count in FDB state container.";
+  }
   
   revision "2019-10-29" {
     description
@@ -72,6 +77,17 @@ module openconfig-network-instance-ext {
 		  }
 	  }
   }	
+
+  augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:state" {
+      leaf static-count {
+          type uint32;
+          description "Static MAC count";
+      }
+      leaf dynamic-count {
+          type uint32;
+          description "Dynamic MAC count";
+      }
+  }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" {
       description

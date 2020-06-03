@@ -21,6 +21,7 @@ package transformer
 import (
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     log "github.com/golang/glog"
     "fmt"
     "encoding/json"
@@ -124,7 +125,8 @@ var rpc_get_interface_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
                 log.Info("rpc_get_interface_counters : PORT entry not found in AppDb " + ifName)
                 continue
             }
-            intfObj.Name = ifName
+            uiName := *utils.GetUINameFromNativeName(&ifName)
+            intfObj.Name = uiName
             intfObj.State.Oper_Status = "DOWN"
             operStatus, ok := prtEntry.Field[PORT_OPER_STATUS]
             if ok {
@@ -168,7 +170,7 @@ var rpc_get_interface_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
                     intfObj.State.Counters.Out_Oversize_Frames = cnt_val
                 }
             }
-            result.Output.Interfaces.Interface[ifName] = intfObj
+            result.Output.Interfaces.Interface[uiName] = intfObj
         }
     }
 

@@ -149,7 +149,7 @@ func yangTypeGet(entry *yang.Entry) string {
     return ""
 }
 
-func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey string, dbKeySep string, txCache interface{}) (map[string]interface{}, string, error) {
+func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableName string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, dbKey string, dbKeySep string, txCache interface{}) (map[string]interface{}, string, error) {
 	var err error
 	if len(uri) == 0 && len(xpath) == 0 && len(dbKey) == 0 {
 		err = fmt.Errorf("Insufficient input")
@@ -183,12 +183,12 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey s
 
 	if len(xYangSpecMap[xpath].xfmrKey) > 0 {
 		var dbs [db.MaxDB]*db.DB
-		inParams := formXfmrInputRequest(nil, dbs, db.MaxDB, nil, uri, requestUri, GET, dbKey, nil, nil, nil, txCache)
-		ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrKey), inParams)
+		inParams := formXfmrInputRequest(nil, dbs, db.MaxDB, nil, uri, requestUri, GET, dbKey, dbDataMap, nil, nil, txCache)
+		inParams.table = tableName
+		rmap, err := keyXfmrHandlerFunc(inParams, xYangSpecMap[xpath].xfmrKey)
 		if err != nil {
 			return nil, "", err
 		}
-		rmap := ret[0].Interface().(map[string]interface{})
 		if uriWithKeyCreate {
 			for k, v := range rmap {
 				uriWithKey += fmt.Sprintf("[%v=%v]", k, v)
@@ -204,8 +204,10 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey s
 
 	rmap := make(map[string]interface{})
 	if len(keyNameList) > 1 {
-		xfmrLogInfoAll("No key transformer found for multi element yang key mapping to a single redis key string.")
-	        return rmap, uriWithKey, nil
+		log.Errorf("No key transformer found for multi element yang key mapping to a single redis key string, for uri %v", uri)
+                errStr := fmt.Sprintf("Error processing key for list %v", uri)
+                err = fmt.Errorf("%v", errStr)
+                return rmap, uriWithKey, err
 	}
 	keyXpath := xpath + "/" + keyNameList[0]
 	xyangSpecInfo, ok := xYangSpecMap[keyXpath]

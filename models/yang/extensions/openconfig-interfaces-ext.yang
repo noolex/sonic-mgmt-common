@@ -155,7 +155,7 @@ module openconfig-interfaces-ext {
 			type ietf-inet:ipv4-prefix;
         }
     }
-	
+
     grouping interface-sag-ipv4-top {
         container sag-ipv4 {
             container config {
@@ -166,7 +166,7 @@ module openconfig-interfaces-ext {
                 uses interface-sag-ipv4-config;
             }
         }
-    }	
+    }
 
 	grouping interface-sag-ipv6-config {
         leaf-list static-anycast-gateway {
@@ -176,7 +176,7 @@ module openconfig-interfaces-ext {
 			type ietf-inet:ipv6-prefix;
         }
     }
-	
+
     grouping interface-sag-ipv6-top {
         container sag-ipv6 {
             container config {
@@ -188,13 +188,62 @@ module openconfig-interfaces-ext {
             }
         }
     }
-	
+
+    grouping vrrp-track-interface-priority-increment {
+
+        description
+            "List of track interfaces for VRRP";
+
+        list vrrp-track-interface {
+            key "track-intf";
+            description
+                "List of track interface";
+
+            leaf track-intf {
+                type leafref {
+                    path "/oc-intf:interfaces/oc-intf:interface/oc-intf:name";
+                }
+                description
+                    "Reference to the list of interfaces";
+            }
+
+            container config {
+                description
+                    "Configuration data for each track interface";
+
+                leaf priority-increment {
+                    type uint8 {
+                        range "0..254";
+                    }
+                    description
+                        "priority increment upon interface up";
+                }
+            }
+
+            container state {
+                config false;
+                description
+                    "Operational data for each track interface";
+
+                leaf priority-increment {
+                    type uint8 {
+                        range "0..254";
+                    }
+                    description
+                        "priority increment upon interface up";
+                }
+            }
+
+        }
+
+    }
+
     augment "/oc-intf:interfaces/oc-intf:interface" {
         description
             "NAT zone config and state data.";
         uses interface-nat-zone-top;
     }
-	
+
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
         description
             "SAG config and state data.";
@@ -202,7 +251,7 @@ module openconfig-interfaces-ext {
 			when "oc-intf:config/oc-intf:type = 'oc-intf-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
-		}		  
+		}
 	}
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
@@ -230,10 +279,91 @@ module openconfig-interfaces-ext {
 			when "oc-intf:config/oc-intf:type = 'oc-intf-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
-		}		  
+		}
 	}
 
-	
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config" {
+        description
+            "VRRP IPv4 config version";
+        leaf version {
+            type uint8 {
+                range "2..3";
+            }
+            description
+                "version";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv4 state version";
+        leaf version {
+            type uint8 {
+                range "2..3";
+            }
+            description
+                "version";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv4 MASTER state";
+        leaf state {
+            type uint8 {
+                range "0..2";
+            }
+            description
+                "state";
+        }
+    }
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config" {
+        description
+            "VRRP IPv6 config version";
+        leaf version {
+            type uint8 {
+                range "2..3";
+            }
+            description
+                "version";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv6 state version";
+        leaf version {
+            type uint8 {
+                range "2..3";
+            }
+            description
+                "version";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv6 MASTER state";
+        leaf state {
+            type uint8 {
+                range "0..2";
+            }
+            description
+                "state";
+        }
+    }
+
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
+        description "Track interface priority for IPv4 VRRP instance";
+        uses vrrp-track-interface-priority-increment;
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
+        description "Track interface priority for IPv6 VRRP instance";
+        uses vrrp-track-interface-priority-increment;
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:hold-time {
         deviate not-supported;
     }
@@ -254,9 +384,38 @@ module openconfig-interfaces-ext {
         deviate not-supported;
     }
 
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:preempt-delay {
         deviate not-supported;
     }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:accept-mode {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:preempt-delay {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:accept-mode {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking/oc-ip:config/oc-ip:track-interface {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking/oc-ip:config/oc-ip:priority-decrement {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking/oc-ip:state/oc-ip:track-interface {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking/oc-ip:state/oc-ip:priority-decrement {
+        deviate not-supported;
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:proxy-arp {
         deviate not-supported;
     }
@@ -281,7 +440,35 @@ module openconfig-interfaces-ext {
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:config/oc-ip:dhcp-client {
         deviate not-supported;
     }
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:preempt-delay {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:accept-mode {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:preempt-delay {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:accept-mode {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:virtual-link-local {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:virtual-link-local {
         deviate not-supported;
     }
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:router-advertisement {

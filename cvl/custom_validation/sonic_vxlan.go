@@ -53,6 +53,9 @@ func fetchVNIVrfMappingFromRedis(vc *CustValidationCtxt) {
 	}
 
 	_, err = pipe.Exec()
+	if err != nil {
+		util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Failed to retreive data from Db")
+	}
 	pipe.Close()
 
 	for dbKey, val := range mCmd {
@@ -93,6 +96,9 @@ func fetchVlanVNIMappingFromRedis(vc *CustValidationCtxt) {
 	}
 
 	_, err = pipe.Exec()
+	if err != nil {
+		util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Failed to retreive data from Db")
+	}
 	pipe.Close()
 
 	for _, val := range mCmd {
@@ -107,7 +113,7 @@ func fetchVlanVNIMappingFromRedis(vc *CustValidationCtxt) {
 	}
 }
 
-//Validate unique vlan across all vlan-vni mappings
+//ValidateUniqueVlan Validate unique vlan across all vlan-vni mappings
 func (t *CustomValidation) ValidateUniqueVlan(vc *CustValidationCtxt) CVLErrorInfo {
 
 	if (vc.CurCfg.VOp == OP_DELETE) {
@@ -115,7 +121,7 @@ func (t *CustomValidation) ValidateUniqueVlan(vc *CustValidationCtxt) CVLErrorIn
 	}
 
 	vlan, hasVlan := vc.CurCfg.Data["vlan"]
-	if hasVlan == false {
+	if !hasVlan {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -141,14 +147,14 @@ func (t *CustomValidation) ValidateUniqueVlan(vc *CustValidationCtxt) CVLErrorIn
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//Validate unique vni across all vlan-vni mappings
+//ValidateUniqueVNI Validate unique vni across all vlan-vni mappings
 func (t *CustomValidation) ValidateUniqueVNI(vc *CustValidationCtxt) CVLErrorInfo {
 	if (vc.CurCfg.VOp == OP_DELETE) {
 		 return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
 	vni, hasVni := vc.CurCfg.Data["vni"]
-	if hasVni == false {
+	if !hasVni {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -190,7 +196,7 @@ func getVniFromVxlanMapEntry(vc *CustValidationCtxt) string {
 	return ""
 }
 
-//Validate Vxlan Map entry delete
+//ValidateVxlanMapDelete Validate Vxlan Map entry delete
 func (t *CustomValidation) ValidateVxlanMapDelete(vc *CustValidationCtxt) CVLErrorInfo {
 	if (vc.CurCfg.VOp != OP_DELETE) {
 		 return CVLErrorInfo{ErrCode: CVL_SUCCESS}
@@ -207,7 +213,7 @@ func (t *CustomValidation) ValidateVxlanMapDelete(vc *CustValidationCtxt) CVLErr
 
 	pVxlanMap := (vc.SessCache.Data).(*VxlanMap)
 
-	if vrf, exists := pVxlanMap.vniVrfMap[vni]; exists == true {
+	if vrf, exists := pVxlanMap.vniVrfMap[vni]; exists {
 		return CVLErrorInfo{
 			ErrCode: CVL_SEMANTIC_ERROR,
 			TableName: "VXLAN_TUNNEL_MAP",
@@ -220,7 +226,7 @@ func (t *CustomValidation) ValidateVxlanMapDelete(vc *CustValidationCtxt) CVLErr
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//Validate Vrf VNI mappings
+//ValidateVrfVNI Validate Vrf VNI mappings
 //
 func (t *CustomValidation) ValidateVrfVNI(vc *CustValidationCtxt) CVLErrorInfo {
 	if (vc.CurCfg.VOp == OP_DELETE) {
@@ -229,7 +235,7 @@ func (t *CustomValidation) ValidateVrfVNI(vc *CustValidationCtxt) CVLErrorInfo {
 
 	//Allow vni 0 for Update or create
 	vni, hasVni := vc.CurCfg.Data["vni"]
-	if (hasVni == false) || (vni == "0") {
+	if !hasVni || (vni == "0") {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -265,7 +271,7 @@ func (t *CustomValidation) ValidateVrfVNI(vc *CustValidationCtxt) CVLErrorInfo {
 	}
 
 	//Check if VNI is configured in VXLAN_TUNNEL_MAP
-	if _, exists := pVxlanMap.vniMap[vni]; exists == false {
+	if _, exists := pVxlanMap.vniMap[vni]; !exists {
 		return CVLErrorInfo{
 			ErrCode: CVL_SEMANTIC_ERROR,
 			TableName: "VRF",
@@ -276,7 +282,7 @@ func (t *CustomValidation) ValidateVrfVNI(vc *CustValidationCtxt) CVLErrorInfo {
 	}
 
 	//Check if VNI is already used in other VRF
-	if  vrf, exists := pVxlanMap.vniVrfMap[vni]; exists == true {
+	if  vrf, exists := pVxlanMap.vniVrfMap[vni]; exists {
 	    if (keyArr[0] != pVxlanMap.vniVrfMap[vni]) {
 		return CVLErrorInfo{
 			ErrCode: CVL_SEMANTIC_ERROR,

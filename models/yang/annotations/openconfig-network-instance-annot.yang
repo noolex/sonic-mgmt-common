@@ -140,11 +140,16 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:mac-table {
       deviate add {
-            sonic-ext:db-name "APPL_DB";
             sonic-ext:subtree-transformer "fdb_mac_table_xfmr";
       }
     }
-    
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:state {
+      deviate add {
+            sonic-ext:subtree-transformer "fdb_mac_table_count_xfmr";
+      }
+    }
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols {
         deviate add {
             sonic-ext:table-name "NONE";

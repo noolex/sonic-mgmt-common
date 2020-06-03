@@ -4,12 +4,11 @@ import (
     //"net"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
     "strings"
-    "fmt"
     log "github.com/golang/glog"
 
  )
 
-//Purpose: Check correct for correct agent_id
+//ValidateDpbConfigs Purpose: Check correct for correct agent_id
 //vc : Custom Validation Context
 //Returns -  CVL Error object
 func (t *CustomValidation) ValidateDpbConfigs(
@@ -42,7 +41,7 @@ func (t *CustomValidation) ValidateDpbConfigs(
                     found = true
                }
        }
-       if found == false {
+       if !found {
             errStr := "Interface not found"
             return CVLErrorInfo{
                        ErrCode: CVL_SEMANTIC_ERROR,
@@ -57,13 +56,16 @@ func (t *CustomValidation) ValidateDpbConfigs(
 }
 
 
-//Purpose: Check if DPB is in progress
+//ValidateDpbStatus Purpose: Check if DPB is in progress
 //vc : Custom Validation Context
 //Returns -  CVL Error object
 func (t *CustomValidation) ValidateDpbStatus(
        vc *CustValidationCtxt) CVLErrorInfo {
 
     key := strings.Replace(vc.CurCfg.Key, "PORT|", "BREAKOUT_PORTS|", 1)
+    log.Info("ValidateDpbStatus: ", vc.CurCfg.VOp, 
+                " Key: ", vc.CurCfg.Key, " Data: ", vc.CurCfg.Data,
+                " Req Data: ", vc.ReqData)
     entry, err := vc.RClient.HGetAll(key).Result()
     if (err == nil && len(entry) > 0 && len(entry["master"]) > 0) {
         key = "PORT_BREAKOUT|" + entry["master"]
@@ -71,6 +73,17 @@ func (t *CustomValidation) ValidateDpbStatus(
         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
     }
     log.Info("Master port for ", key, " is ", entry["master"])
+    _, ok := vc.CurCfg.Data["lanes"]
+    if (vc.CurCfg.VOp == OP_CREATE) && (!ok) {
+        return CVLErrorInfo{
+            ErrCode: CVL_SEMANTIC_ERROR,
+            TableName: "PORT",
+            Keys: strings.Split(vc.CurCfg.Key, "|"),
+            ConstraintErrMsg: "Port does not exist",
+            CVLErrDetails: "Config Validation Error",
+            ErrAppTag:  "invalid-port",
+        }
+    }
 
     /* Check STATE_DB if port state of the port s getting deleted is OK */
     rclient := util.NewDbClient("STATE_DB")
@@ -83,9 +96,9 @@ func (t *CustomValidation) ValidateDpbStatus(
     if (rclient == nil) {
         return CVLErrorInfo{
             ErrCode: CVL_SEMANTIC_ERROR,
-            TableName: "PORT_TABLE",
+            TableName: "BREAKOUT_PORTS",
             Keys: strings.Split(vc.CurCfg.Key, "|"),
-            ConstraintErrMsg: fmt.Sprintf("Failed to connect to STATE_DB"),
+            ConstraintErrMsg: "Failed to connect to STATE_DB",
             CVLErrDetails: "Config Validation Error",
             ErrAppTag:  "capability-unsupported",
         }
@@ -99,7 +112,7 @@ func (t *CustomValidation) ValidateDpbStatus(
                 ErrCode: CVL_SEMANTIC_ERROR,
                 TableName: "BREAKOUT_CFG",
                 Keys: strings.Split(vc.CurCfg.Key, ":"),
-                ConstraintErrMsg: fmt.Sprintf("Port breakout is in progress. Try later."),
+                ConstraintErrMsg: "Port breakout is in progress. Try later.",
                 CVLErrDetails: "Config Validation Error",
                 ErrAppTag:  "operation-inprogress",
         }
