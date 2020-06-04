@@ -375,14 +375,14 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         swComp.UpTime = &uptime
 
         for scanner.Scan() {
-            var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_DockerVersion
+            var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_Docker_DockerVersion
             s := strings.Fields(scanner.Text())
-            pf_docker_ver, _ = swComp.NewDockerVersion(scanner.Text())
+            pf_docker_ver, _ = swComp.Docker.NewDockerVersion(scanner.Text())
             if pf_docker_ver == nil {
                 /* If DockerVersion list with key already exist,
                  * then reuse it
                  */
-                pf_docker_ver = swComp.DockerVersion[scanner.Text()]
+                pf_docker_ver = swComp.Docker.DockerVersion[scanner.Text()]
             }
             ygot.BuildEmptyTree(pf_docker_ver)
             pf_docker_ver.DockerName = &s[0]
@@ -483,14 +483,14 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
             swComp.UpTime = &uptime
         case SW_DOCKER_VER:
             for scanner.Scan() {
-                var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_DockerVersion
+                var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_Docker_DockerVersion
                 s := strings.Fields(scanner.Text())
-                pf_docker_ver,_ = swComp.NewDockerVersion(scanner.Text())
+                pf_docker_ver,_ = swComp.Docker.NewDockerVersion(scanner.Text())
                 if pf_docker_ver == nil {
                     /* If DockerVersion list with key already exist,
                      * then reuse it
                      */
-                    pf_docker_ver = swComp.DockerVersion[scanner.Text()]
+                    pf_docker_ver = swComp.Docker.DockerVersion[scanner.Text()]
                 }
                 ygot.BuildEmptyTree(pf_docker_ver)
                 pf_docker_ver.DockerName = &s[0]
@@ -814,15 +814,15 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
             } else {
                 val := s[1]
                 name := s[0]
-                pf_sensor,_ := pf_sensor_cat.NewSensor(name)
+                pf_sensor,_ := pf_sensor_cat.Sensors.NewSensor(name)
                 if pf_sensor == nil {
-                    pf_sensor = pf_sensor_cat.Sensor[name]
+                    pf_sensor = pf_sensor_cat.Sensors.Sensor[name]
                     if pf_sensor == nil {
                         return errors.New("Can't find component")
                     }
                 }
                 ygot.BuildEmptyTree(pf_sensor)
-                pf_sensor.State = &val
+                pf_sensor.State.State = &val
             }
             scanner.Scan()
         }

@@ -19,6 +19,10 @@ openconfig-bgp-ext.yang
 openconfig-bgp-evpn-ext.yang
 openconfig-network-instance-annot.yang
 openconfig-ospfv2-ext.yang
+openconfig-udld-ext.yang
+openconfig-udld-ext-annot.yang
+openconfig-mirror-ext.yang
+openconfig-mirror-ext-annot.yang
 ietf-ptp.yang
 ietf-ptp-annot.yang
 ietf-ptp-ext.yang
@@ -83,3 +87,8 @@ openconfig-lldp.yang
 openconfig-lldp-ext.yang
 openconfig-lldp-annot.yang
 openconfig-kdump.yang
+openconfig-infra.yang
+sonic-system-infra-annot.yang
+openconfig-aggregate-ext.yang
+openconfig-aggregate-ext-annot.yang
+

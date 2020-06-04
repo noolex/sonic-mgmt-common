@@ -167,6 +167,12 @@ var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
     pathInfo := NewPathInfo(inParams.uri)
     macAddr := pathInfo.Var("mac-address")
     vlan := pathInfo.Var("vlan")
+    instance := pathInfo.Var("name")
+
+    if strings.HasPrefix(instance, "Vrf") || strings.HasPrefix(instance, "mgmt") {
+        log.Error("YangToDb_fdb_mac_table_xfmr Failed to OP:",inParams.oper," FDB on VRF:", instance)
+        return nil, err
+    }
 
     reqP := &reqProcessor_fdb{&inParams.uri, path, inParams.oper, (*inParams.ygRoot).(*ocbinds.Device), inParams.param, inParams.d, inParams.dbs, nil, nil, nil}
     log.Info("YangToDb_fdb_mac_table_xfmr =>", inParams)
@@ -192,7 +198,7 @@ var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         res_map["FDB"] = fdbTblMap
 
 	return res_map, nil
-    }	
+    }
     return nil, err
 }
 
@@ -376,7 +382,7 @@ func fdbMacTableGetEntry(inParams XfmrParams, vlan string,  macAddress string, o
                 *intfName = findInMap(oidInfMap, intfOid)
                 if *intfName != "" {
                     /* If Alias mode is enabled, get alias name from native name */
-                    cvtdName := utils.GetAliasNameFromIfName(intfName)
+                    cvtdName := utils.GetUINameFromNativeName(intfName)
                     ygot.BuildEmptyTree(mcEntry.Interface)
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef)
                     ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef.Config)

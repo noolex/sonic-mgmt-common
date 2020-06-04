@@ -759,13 +759,9 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 if len(xpathInfo.delim) > 0 {
 		 keySeparator = xpathInfo.delim
 	 }
-	 gp, err := ygot.StringToStringSlicePath(path)
-	 if err != nil {
-		 log.Errorf("Failed to get parts for uri %v.", path)
-		 return pfxPath, keyStr, tableName, err
-	 }
-	 log.Infof("path elements are : %v", gp.Element)
-	 for _, k := range gp.Element {
+	 pathList := splitUri(path)
+	 xfmrLogInfoAll("path elements are : %v", pathList)
+	 for _, k := range pathList {
 		 curPathWithKey += k
 		 yangXpath, _ := XfmrRemoveXPATHPredicates(curPathWithKey)
 		 xpathInfo, ok := xYangSpecMap[yangXpath]
@@ -897,16 +893,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			    eg. /sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL2_ACL_IPV4]/ports[ports=Ethernet12]
 			 */
 			 if fldNm != "" {
-				 pathelem, perr := ygot.StringToStringSlicePath(path)
-				 if perr != nil {
-					 log.Errorf("Failed to get parts for uri %v.", path)
-					 return xpath, keyStr, tableName
-				 }
-				 chompFld := pathelem.Element
-
-				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX-1], "/")
+				 pathLst := splitUri(path)
+				 xfmrLogInfoAll("pathList after uri split %v", pathLst)
+				 lpath = "/" + strings.Join(pathLst[:SONIC_FIELD_INDEX-1], "/")
 				 xfmrLogInfoAll("path after removing the field portion %v", lpath)
-
 			 }
 			 for i, kname := range rgp.FindAllString(lpath, -1) {
 				 if i > 0 {
@@ -1234,5 +1224,22 @@ func formXlateToDbParam(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, r
         inParamsForSet.tableName = tableName
 
         return inParamsForSet
+}
+
+func splitUri(uri string) []string {
+	if !strings.HasPrefix(uri, "/") {
+		uri = "/" + uri
+	}
+	rgp := regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
+	pathList := rgp.FindAllString(uri, -1)
+	for i, kname := range pathList {
+		//log.Infof("uri path elems: %v", kname)
+		if strings.HasPrefix(kname, "/") {
+			pathList[i] = kname[1:]
+		}
+	}
+	log.Infof("uri: %v ", uri)
+	log.Infof("uri path elems: %v", pathList)
+	return pathList
 }
 

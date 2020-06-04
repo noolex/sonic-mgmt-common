@@ -27,17 +27,16 @@ import (
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	)
 
-//Custom validation code for sonic-acl.yang//
-/////////////////////////////////////////////
+const MAX_ACL_RULE_INSTANCES = 65536
+const MAX_ACL_TABLE_INSTANCES = 1024
 
+//ValidateMaxAclRule Allow maximum 65536 ACL rules
+/////////////////////////////////////////////
 //MAX_ACL_RULE_INSTANCES Path : /sonic-acl/ACL_RULE/ACL_RULE_LIST
 //Purpose: Allow maximum 65536 ACL rules 
 //vc : Custom Validation Context
 //Returns -  CVL Error object
-const MAX_ACL_RULE_INSTANCES = 65536
-func (t *CustomValidation) ValidateMaxAclRule(
-	vc *CustValidationCtxt) CVLErrorInfo {
-
+func (t *CustomValidation) ValidateMaxAclRule(vc *CustValidationCtxt) CVLErrorInfo {
 	var nokey []string
 	ls := redis.NewScript(`return #redis.call('KEYS', "ACL_RULE|*")`)
 
@@ -47,16 +46,16 @@ func (t *CustomValidation) ValidateMaxAclRule(
 		return CVLErrorInfo{ErrCode: CVL_SEMANTIC_ERROR}
 	}
 
-	aclTblCount := int(redisEntries.(int64))
+	aclRuleCount := int(redisEntries.(int64))
 	//Get count from user request
 	for idx := 0; idx < len(vc.ReqData); idx++ {
 		if (vc.ReqData[idx].VOp == OP_CREATE) &&
 		(strings.HasPrefix(vc.ReqData[idx].Key, "ACL_RULE|")) {
-			aclTblCount = aclTblCount + 1
+			aclRuleCount = aclRuleCount + 1
 		}
 	}
 
-	if (aclTblCount > MAX_ACL_RULE_INSTANCES) {
+	if (aclRuleCount > MAX_ACL_RULE_INSTANCES) {
 		return CVLErrorInfo{
 			ErrCode: CVL_SEMANTIC_ERROR,
 			ErrAppTag: "too-many-elements",
@@ -69,7 +68,7 @@ func (t *CustomValidation) ValidateMaxAclRule(
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//ValidateAclRuleIPAddress Path : /sonic-acl/ACL_RULE/ACL_RULE_LIST/IP_TYPE
+//ValidateAclRuleIPAddress Check correct for IP address provided
 //Purpose: Check correct for IP address provided
 //         based on type IP_TYPE
 //vc : Custom Validation Context
@@ -152,8 +151,7 @@ func (t *CustomValidation) ValidateLeafConstant(vc *CustValidationCtxt) CVLError
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-// ValidateZeroACLCounters Path: generic
-// Purpose: To make sure the value of a counter doesnt change when there are ACLs applied
+// ValidateZeroACLCounters ensures that there are no ACL counters present when the counter mode is updated
 // Returns -  CVL Error object
 func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLErrorInfo {
 	log.Infof("ValidateZeroACLCounters operation %d on %s:%s:%s  ", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
@@ -201,9 +199,59 @@ func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLEr
     }
     if len(tableKeys) > 0 {
         log.Errorf("ValidateZeroACLCounters %v ACL Counters present. Update not allowed", len(tableKeys))
-        return CVLErrorInfo{ErrCode: CVL_ERROR, Keys:[]string{vc.CurCfg.Key}, Value: vc.YNodeVal, 
+        return CVLErrorInfo{ErrCode: CVL_ERROR, Keys:[]string{vc.CurCfg.Key}, Value: vc.YNodeVal,
             Field: vc.YNodeName, Msg: "Counter mode update not allowed", ErrAppTag: "counters-in-use"}
     }
 
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
+
+// ValidateSetInterfaceConfig validates the set interface config to ensure no duplicates
+// Returns -  CVL Error object 
+func (t *CustomValidation) ValidateSetInterfaceConfig(vc *CustValidationCtxt) CVLErrorInfo {
+
+	log.Infof("ValidateSetInterfaceConfig operation %d on %s:%s:%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
+	if vc.CurCfg.VOp == OP_DELETE || vc.YNodeVal == "" {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+    intfNameMap := make(map[string]bool)
+    intfs := strings.Split(vc.YNodeVal, ",")
+    for _, intf := range(intfs) {
+        parts := strings.Split(intf, "|")
+        if _, exists := intfNameMap[parts[0]]; exists {
+            return CVLErrorInfo{ErrCode: CVL_ERROR, Keys:[]string{vc.CurCfg.Key}, Value: vc.YNodeVal, Field: vc.YNodeName,
+                Msg: "Duplicate interfaces not allowed"}
+        }
+        intfNameMap[parts[0]] = true
+    }
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+// ValidateSetIPvxNextHopConfig validates the set interface config to ensure no duplicates
+// Returns -  CVL Error object 
+func (t *CustomValidation) ValidateSetIPvxNextHopConfig(vc *CustValidationCtxt) CVLErrorInfo {
+
+	log.Infof("ValidateSetIPvxNextHopConfig operation %d on %s:%s:%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
+	if vc.CurCfg.VOp == OP_DELETE || vc.YNodeVal == "" {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+    nextHopMap := make(map[string]map[string]bool)
+    nexthops := strings.Split(vc.YNodeVal, ",")
+    for _, nexthop := range(nexthops) {
+        parts := strings.Split(nexthop, "|")
+        if _, ipExist := nextHopMap[parts[0]]; !ipExist {
+            nextHopMap[parts[0]] = make(map[string]bool)
+        }
+        if _, exists := nextHopMap[parts[0]][parts[1]]; exists {
+            return CVLErrorInfo{ErrCode: CVL_ERROR, Keys:[]string{vc.CurCfg.Key}, Value: vc.YNodeVal, Field: vc.YNodeName,
+                Msg: "Duplicate next-hops not allowed"}
+        }
+        nextHopMap[parts[0]][parts[1]] = true
+    }
+
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+

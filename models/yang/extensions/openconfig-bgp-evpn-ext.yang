@@ -45,6 +45,14 @@ module openconfig-bgp-evpn-ext {
       VRF or VSI instance when it is signalled via BGP.";
     }
 
+    leaf-list import-rts {
+      type string;
+    }
+
+    leaf-list export-rts {
+      type string;
+    }
+
     uses ietfrt:vpn-route-targets;
 
   }
