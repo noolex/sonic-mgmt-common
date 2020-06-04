@@ -72,7 +72,7 @@ type dbInfo  struct {
     listName     []string
     keyList      []string
     xfmrValue    *string
-	hasXfmrFn    bool
+    hasXfmrFn    bool
     cascadeDel   int
 }
 

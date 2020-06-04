@@ -659,9 +659,9 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
             dbInfo := xDbSpecMap[xlateParams.xpath]
             if dbInfo.fieldType == "container" {
                 for dir, _ := range dbInfo.dbEntry.Dir {
-					if tblSpecInfo, ok := xDbSpecMap[dir]; ok && tblSpecInfo.cascadeDel == XFMR_ENABLE {
-						*xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, dir)
-					}
+                    if tblSpecInfo, ok := xDbSpecMap[dir]; ok && tblSpecInfo.cascadeDel == XFMR_ENABLE {
+                        *xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, dir)
+                    }
                     if dbInfo.dbEntry.Dir[dir].Config != yang.TSFalse {
                        xlateParams.result[dir] = make(map[string]db.Value)
                     }
