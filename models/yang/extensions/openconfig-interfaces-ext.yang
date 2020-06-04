@@ -150,59 +150,7 @@ module openconfig-interfaces-ext {
         }
     }
 
-    grouping openconfig-interfaces-ext-interface-static-arp-config {
-        description "Config level grouping associated with static-arp";
-
-        leaf static-intf {
-            type string;
-            description "Interface name";
-        }
-        leaf static-ip {
-            type oc-inet:ip-address;
-            description "IP address";
-        }
-        leaf neigh {
-            type yang:mac-address;
-            description "Mac address";
-        }
-    }
-    grouping openconfig-interfaces-ext-interface-static-arp-top {
-        description "Top level grouping associated with static-arp";
-
-        container ip-neighbors {
-            description "List of IP neighbors and its associated parameters";
-
-            list ip-neighbor {
-                key "static-intf static-ip";
-                description "Parameters associated with IP neighbor instance";
-
-                leaf static-intf {
-                    type leafref {
-                        path "../config/static-intf";
-                    }
-                    description "Static interface";
-                }
-                leaf static-ip {
-                    type leafref {
-                        path "../config/static-ip";
-                    }
-                    description "Static IP address";
-                }
-                container config {
-                   description "Config parameters associated with IP neighbor instance";
-                   uses openconfig-interfaces-ext-interface-static-arp-config;
-                }
-                container state {
-                    config false;
-
-                    description "Operational parameters associated with IP neighbor instance";
-                    uses openconfig-interfaces-ext-interface-static-arp-config;
-                }
-            }
-        }
-    }
-
-	grouping openconfig-interfaces-ext-interface-sag-ipv4-config {
+    grouping openconfig-interfaces-ext-interface-sag-ipv4-config {
         description "Config grouping associated with sag-ipv4";
 
         leaf-list static-anycast-gateway {
@@ -231,7 +179,7 @@ module openconfig-interfaces-ext {
         }
     }
 
-	grouping openconfig-interfaces-ext-interface-sag-ipv6-config {
+    grouping openconfig-interfaces-ext-interface-sag-ipv6-config {
         description "Config parameters associated with sag-ipv6";
 
         leaf-list static-anycast-gateway {
@@ -323,24 +271,6 @@ module openconfig-interfaces-ext {
 			  "SAG interface config/state";
 		}
 	}
-
-    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
-        description
-            "Static ARP";
-        uses openconfig-interfaces-ext-interface-static-arp-top {
-            description
-                "Static ARP config/state";
-        }
-    }
-
-    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
-        description
-            "Static ND";
-        uses openconfig-interfaces-ext-interface-static-arp-top {
-            description
-                "Static ND config/state";
-        }
-    }
 
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
         description
