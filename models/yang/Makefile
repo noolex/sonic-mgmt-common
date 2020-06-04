@@ -92,3 +92,30 @@ clean:
 	rm -f $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK)
 	rm -f allyangs.tree allyangs_tree.html yang_tree.md
 
+validate:
+	$(PYANG) \
+		-f upcheck \
+		-o deviation_errors.txt --ignore-errors \
+		--yang-dir $(YANGDIR) \
+		--plugindir $(PYANG_PLUGIN_DIR) \
+		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
+		$(YANG_MOD_FILES) $(YANG_MOD_EXTENSION_FILES)
+	@echo "+++++++++++Please find errors due to deviation in deviation_errors.txt+++++++++++++"
+
+	$(PYANG) \
+		-f stcheck \
+		-o oc_style_errors.txt --ignore-errors \
+		--extensiondir $(YANGDIR_EXTENSIONS_DIR) \
+		--plugindir $(PYANG_PLUGIN_DIR) \
+		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
+		$(YANG_MOD_FILES) $(YANG_MOD_EXTENSION_FILES)
+	@echo "+++++++++++++Please find OC style issues in oc_style_errors.txt++++++++++++++++"
+
+	- $(PYANG) \
+		--strict --lint --ietf -o strict_lint_issues.txt -f strictlint \
+		--plugindir $(PYANG_PLUGIN_DIR) \
+		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
+		$(YANG_MOD_EXTENSION_FILES) 2> /dev/null
+	@echo "++++++++++++Please find Generic YANG issues in strict_lint_issues.txt++++++++++"
+
+

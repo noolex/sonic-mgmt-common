@@ -42,24 +42,27 @@ module openconfig-udld-ext {
 
   // grouping statements
 
-  grouping udld-interface-counters {
+  grouping udld-ext-interface-counters {
     description
       "Definition of global and per-interface counters";
 
-    leaf frame-out {
+    leaf pdu-sent {
       type yang:counter64;
+      default 0;
       description
         "The number of frames transmitted out.";
     }
 
-    leaf frame-in {
+    leaf pdu-received {
       type yang:counter64;
+      default 0;
       description
         "The number of udld frames received.";
     }
 
-    leaf frame-error-in {
+    leaf pdu-recv-error {
       type yang:counter64;
+      default 0;
       description
         "The number of UDLD frames received with errors.";
     }
@@ -67,25 +70,27 @@ module openconfig-udld-ext {
   }
 
 
-  grouping udld-common-config {
+  grouping udld-ext-common-config {
     description
       "Groups UDLD enable and mode config common to both Global and interface level";
 
     leaf admin-enable {
         type boolean;
+        default false;
         description
             "Enable/Disable UDLD";
     }
 
     leaf aggressive {
         type boolean;
+        default false;
         description
             "Enable/Disable aggressive mode of UDLD";
     }
   }
 
 
-  grouping udld-interface-config {
+  grouping udld-ext-interface-config {
     description
       "Configuration data for UDLD on each interface";
 
@@ -94,56 +99,81 @@ module openconfig-udld-ext {
       description
         "Reference to the UDLD Ethernet interface";
     }
-    uses udld-common-config;
-  }
-
-  grouping udld-interface-info-common {
-	leaf device-id {
-		type string;
-		description
-			"device id(MAC)";
-	}
-
-	leaf device-name {
-		type string;
-		description
-			"device name";
-	}
-
-    leaf status {
-        type identityref {
-          base oc-udld-types:UDLD_PORT_STATUS;
-        }
-        description
-            "UDLD port status";
-    }
+    uses udld-ext-common-config;
   }
 
 
-  grouping udld-interface-state {
+  grouping udld-ext-interface-state {
     description
       "Operational state data for UDLD on each interface";
 
     container local-info {
-      uses udld-interface-info-common;
+      description
+        "Local info";
+      leaf status {
+          type identityref {
+            base oc-udld-types:UDLD_PORT_STATUS;
+          }
+          description
+              "UDLD port status";
+      }
     }
     container neighbors-info {
+      description
+        "List of Neighbors";
       list neighbor {
-        key "ifname index";
-
-        leaf ifname {
-            type oc-if:base-interface-ref;
-            description
-                "Reference of local port on which UDLD is configured.";
-        }
+        key "index";
+        description
+          "Each Neighbor info";
 
         leaf index {
-            type string;
+            type uint16;
             description
                 "Index number of neighbor port";
         }
 
-        uses udld-interface-info-common;
+        leaf device-id {
+            type string;
+            description
+                "device id(MAC)";
+        }
+
+        leaf device-name {
+            type string;
+            description
+                "device name";
+        }
+
+        leaf status {
+            type identityref {
+              base oc-udld-types:UDLD_PORT_STATUS;
+            }
+            description
+                "UDLD port status";
+        }
+
+        leaf port-id {
+            type string;
+            description
+                "Neighbor port name";
+        }
+
+        leaf msg-time {
+            type uint8;
+            units seconds;
+            default 1;
+            description
+                "Neighbor message time";
+        }
+
+        leaf timeout-interval {
+            type uint8;
+            units seconds;
+            default 1;
+            description
+                "Neighbor timeout interval";
+        }
+
       }
     }
 
@@ -151,12 +181,12 @@ module openconfig-udld-ext {
       description
         "UDLD counters on each interface";
 
-      uses udld-interface-counters;
+      uses udld-ext-interface-counters;
     }
   }
 
 
-  grouping udld-interface-top {
+  grouping udld-ext-interface-top {
     description
       "Top-level grouping ";
 
@@ -181,7 +211,7 @@ module openconfig-udld-ext {
           description
             "Configuration data for UDLD on each interface";
 
-          uses udld-interface-config;
+          uses udld-ext-interface-config;
         }
 
         container state {
@@ -191,8 +221,8 @@ module openconfig-udld-ext {
           description
             "Operational state data ";
 
-          uses udld-interface-config;
-          uses udld-interface-state;
+          uses udld-ext-interface-config;
+          uses udld-ext-interface-state;
         }
 
       }
@@ -200,11 +230,11 @@ module openconfig-udld-ext {
   }
 
 
-  grouping udld-global-config {
+  grouping udld-ext-global-config {
     description
       "Configuration data for global UDLD parameters";
 
-    uses udld-common-config;
+    uses udld-ext-common-config;
 
     leaf msg-time {
         type uint8 {
@@ -235,7 +265,7 @@ module openconfig-udld-ext {
   }
 
 
-  grouping udld-top {
+  grouping udld-ext-top {
     description
       "Top-level grouping for UDLD model";
 
@@ -247,7 +277,7 @@ module openconfig-udld-ext {
         description
           "Configuration data ";
 
-        uses udld-global-config;
+        uses udld-ext-global-config;
       }
 
       container state {
@@ -257,15 +287,32 @@ module openconfig-udld-ext {
         description
           "Operational state data for UDLD";
 
-        uses udld-global-config;
+        uses udld-ext-global-config;
+
+        container local-device-info {
+            description
+                "Local Device info";
+            leaf device-id {
+                type string;
+                description
+                    "device id(MAC)";
+            }
+
+            leaf device-name {
+                type string;
+                description
+                    "device name";
+            }
+        }
+
       }
 
-      uses udld-interface-top;
+      uses udld-ext-interface-top;
     }
   }
 
   // data definition statements
 
-  uses udld-top;
+  uses udld-ext-top;
 
 }

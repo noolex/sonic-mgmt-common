@@ -19,7 +19,6 @@
 
 package cvl
 import (
-	"fmt"
 	"github.com/antchfx/jsonquery"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
@@ -44,7 +43,7 @@ func (c *CVL) checkMaxElemConstraint(op CVLOperation, tableName string) CVLRetCo
 
 	curSize, exists := c.maxTableElem[tableName]
 
-	if (exists == false) { //fetch from Redis first time in the session
+	if !exists { //fetch from Redis first time in the session
 		redisEntries, err := luaScripts["count_entries"].Run(redisClient, nokey, tableName + "|*").Result()
 		if err != nil {
 			CVL_LOG(WARNING,"Unable to fetch current size of table %s from Redis, err= %v",
@@ -145,7 +144,7 @@ parent *yparser.YParserNode, multileaf *[]*yparser.YParserLeafValue) CVLErrorInf
 				//check if it is hash-ref, then need to add only key from "TABLE|k1"
 				hashRefMatch := reHashRef.FindStringSubmatch(jsonFieldNode.FirstChild.Data)
 
-				if (hashRefMatch != nil && len(hashRefMatch) == 3) {
+				if len(hashRefMatch) == 3 {
 
 					c.addChildLeaf(config, tableName,
 					parent, jsonFieldNode.Data,
@@ -178,7 +177,7 @@ parent *yparser.YParserNode, multileaf *[]*yparser.YParserLeafValue) CVLErrorInf
 func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*yparser.YParserNode, CVLErrorInfo) {
 	var cvlErrObj CVLErrorInfo
 
-	tableName := fmt.Sprintf("%s",jsonNode.Data)
+	tableName := jsonNode.Data
 	c.batchLeaf = nil
 	c.batchLeaf = make([]*yparser.YParserLeafValue, 0)
 
@@ -188,7 +187,7 @@ func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*yparser.
 	var topNode *yparser.YParserNode
 
 	// Add top most conatiner e.g. 'container sonic-acl {...}'
-	if _, exists := modelInfo.tableInfo[tableName]; exists == false {
+	if _, exists := modelInfo.tableInfo[tableName]; !exists {
 		CVL_LOG(ERROR, "Schema details not found for %s", tableName)
 		cvlErrObj.ErrCode = CVL_SYNTAX_ERROR
 		cvlErrObj.TableName = tableName 
@@ -220,7 +219,7 @@ func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*yparser.
 		//Find number of all key combinations
 		//Each key can have one or more key values, which results in nk1 * nk2 * nk2 combinations
 		idx := 0
-		for i,_ := range keyValuePair {
+		for i := range keyValuePair {
 			totalKeyComb = totalKeyComb * len(keyValuePair[i].values)
 			keyIndices = append(keyIndices, 0)
 		}

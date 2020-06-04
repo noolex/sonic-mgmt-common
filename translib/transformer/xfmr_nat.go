@@ -1564,7 +1564,11 @@ var rpc_clear_nat RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     }
 
     log.Infof("NAT DATA Published: %v\n", string(data))
-    err = dbs[db.ApplDB].Publish("FLUSHNATREQUEST",data)
+    if valLst[0] == "STATISTICS" {
+        err = dbs[db.ApplDB].Publish("FLUSHNATSTATISTICS",data)
+    } else {
+        err = dbs[db.ApplDB].Publish("FLUSHNATENTRIES",data)
+    }
 
     return nil, err
 }

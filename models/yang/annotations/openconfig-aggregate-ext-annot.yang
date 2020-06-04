@@ -1,0 +1,24 @@
+module openconfig-aggregate-ext-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/oc-aggregate-ext-annot";
+    prefix "oc-aggregate-ext-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-aggregate-ext { prefix oc-aggregate-ext; }
+
+    deviation /oc-aggregate-ext:aggregate/oc-aggregate-ext:config {
+      deviate add {
+              sonic-ext:table-name "PORTCHANNEL_GLOBAL";
+              sonic-ext:key-transformer "portchannel_global_key_xfmr";
+      }
+    }
+
+    deviation /oc-aggregate-ext:aggregate/oc-aggregate-ext:config/oc-aggregate-ext:graceful-shutdown-mode {
+      deviate add {
+          sonic-ext:field-name "graceful_shutdown_mode";
+
+      }
+    }
+}
