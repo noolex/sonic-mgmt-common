@@ -166,6 +166,10 @@ module sonic-portchannel {
                 leaf traffic_disable {
                     type boolean; 
                 }
+
+                leaf fallback_operational {
+                    type boolean;
+                }
             }
         }
 
