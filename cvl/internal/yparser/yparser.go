@@ -255,7 +255,7 @@ type WhenExpression struct {
 	NodeNames []string //node names under when condition
 }
 
-//Important schema information to be loaded at bootup time
+//YParserListInfo Important schema information to be loaded at bootup time
 type YParserListInfo struct {
 	ListName string
 	Module *YParserModule
@@ -281,12 +281,12 @@ type YParserLeafValue struct {
 }
 
 type YParser struct {
-	ctx *YParserCtx      //Parser context
+	//ctx *YParserCtx    //Parser context
 	root *YParserNode    //Top evel root for validation
 	operation string     //Edit operation
 }
 
-/* YParser Error Structure */
+//YParserError YParser Error Structure
 type YParserError struct {
 	ErrCode  YParserRetCode   /* Error Code describing type of error. */
 	Msg     string        /* Detailed error message. */
@@ -348,7 +348,7 @@ func init() {
 }
 
 func Debug(on bool) {
-	if  (on == true) {
+	if  on {
 		C.ly_verb(C.LY_LLDBG)
 	} else {
 		C.ly_verb(C.LY_LLERR)
@@ -356,7 +356,7 @@ func Debug(on bool) {
 }
 
 func Initialize() {
-	if (yparserInitialized != true) {
+	if !yparserInitialized {
 		ypCtx = (*YParserCtx)(C.ly_ctx_new(C.CString(CVL_SCHEMA), 0))
 		C.ly_verb(C.LY_LLERR)
 	//	yparserInitialized = true
@@ -364,20 +364,20 @@ func Initialize() {
 }
 
 func Finish() {
-	if (yparserInitialized == true) {
+	if yparserInitialized {
 		C.ly_ctx_destroy((*C.struct_ly_ctx)(ypCtx), nil)
 	//	yparserInitialized = false
 	}
 }
 
-//Parse YIN schema file
+//ParseSchemaFile Parse YIN schema file
 func ParseSchemaFile(modelFile string) (*YParserModule, YParserError) {
 	module :=  C.lys_parse_path((*C.struct_ly_ctx)(ypCtx), C.CString(modelFile), C.LYS_IN_YIN)
 	if module == nil {
 		return nil, getErrorDetails()
 	}
 
-	if (strings.Contains(modelFile, "sonic-common.yin") == true) {
+	if strings.Contains(modelFile, "sonic-common.yin") {
 		ypOpModule = (*YParserModule)(module)
 		ypOpRoot = (*YParserNode)(C.lyd_new(nil, (*C.struct_lys_module)(ypOpModule), C.CString("operation")))
 		ypOpNode = (*YParserNode)(C.lyd_new_leaf((*C.struct_lyd_node)(ypOpRoot), (*C.struct_lys_module)(ypOpModule), C.CString("operation"), C.CString("NOP")))
@@ -386,7 +386,7 @@ func ParseSchemaFile(modelFile string) (*YParserModule, YParserError) {
 	return (*YParserModule)(module), YParserError {ErrCode : YP_SUCCESS,}
 }
 
-//Add child node to a parent node
+//AddChildNode Add child node to a parent node
 func(yp *YParser) AddChildNode(module *YParserModule, parent *YParserNode, name string) *YParserNode {
 
 	ret := (*YParserNode)(C.lyd_new((*C.struct_lyd_node)(parent), (*C.struct_lys_module)(module), C.CString(name)))
@@ -397,18 +397,17 @@ func(yp *YParser) AddChildNode(module *YParserModule, parent *YParserNode, name 
 	return ret
 }
 
-//Check if value matches with leafref node in union
+//IsLeafrefMatchedInUnion Check if value matches with leafref node in union
 func (yp *YParser) IsLeafrefMatchedInUnion(module *YParserModule, xpath, value string) bool {
 
-	if (0 == C.lyd_node_leafref_match_in_union((*C.struct_lys_module)(module),
-	C.CString(xpath), C.CString(value))) {
+	if C.lyd_node_leafref_match_in_union((*C.struct_lys_module)(module), C.CString(xpath), C.CString(value)) == 0 {
 		return true
 	}
 
 	return false
 }
 
-//Add child node to a parent node
+//AddMultiLeafNodes dd child node to a parent node
 func(yp *YParser) AddMultiLeafNodes(module *YParserModule, parent *YParserNode, multiLeaf []*YParserLeafValue) YParserError {
 
 	leafValArr := make([]C.struct_leaf_value, len(multiLeaf))
@@ -425,9 +424,8 @@ func(yp *YParser) AddMultiLeafNodes(module *YParserModule, parent *YParserNode, 
 		size++
 	}
 
-	if (0 != C.lyd_multi_new_leaf((*C.struct_lyd_node)(parent), (*C.struct_lys_module)(module),
-	(*C.struct_leaf_value)(unsafe.Pointer(&leafValArr[0])), size)) {
-		if (Tracing == true) {
+	if C.lyd_multi_new_leaf((*C.struct_lyd_node)(parent), (*C.struct_lys_module)(module), (*C.struct_leaf_value)(unsafe.Pointer(&leafValArr[0])), size) != 0 {
+		if Tracing {
 			TRACE_LOG(TRACE_ONERROR, "Failed to create Multi Leaf Data = %v", multiLeaf)
 		}
 		return getErrorDetails()
@@ -436,7 +434,7 @@ func(yp *YParser) AddMultiLeafNodes(module *YParserModule, parent *YParserNode, 
 	return YParserError {ErrCode : YP_SUCCESS,}
 
 }
-//Return entire subtree in XML format in string
+//NodeDump Return entire subtree in XML format in string
 func (yp *YParser) NodeDump(root *YParserNode) string {
 	if (root == nil) {
 		return ""
@@ -447,7 +445,7 @@ func (yp *YParser) NodeDump(root *YParserNode) string {
 	}
 }
 
-//Merge source with destination
+//MergeSubtree Merge source with destination
 func (yp *YParser) MergeSubtree(root, node *YParserNode) (*YParserNode, YParserError) {
 	rootTmp := (*C.struct_lyd_node)(root)
 
@@ -455,17 +453,16 @@ func (yp *YParser) MergeSubtree(root, node *YParserNode) (*YParserNode, YParserE
 		return root, YParserError {ErrCode: YP_SUCCESS}
 	}
 
-	if (Tracing == true) {
+	if Tracing {
 		rootdumpStr := yp.NodeDump((*YParserNode)(rootTmp))
 		TRACE_LOG(TRACE_YPARSER, "Root subtree = %v\n", rootdumpStr)
 	}
 
-	if (0 != C.lyd_merge_to_ctx(&rootTmp, (*C.struct_lyd_node)(node), C.LYD_OPT_DESTRUCT,
-	(*C.struct_ly_ctx)(ypCtx))) {
+	if C.lyd_merge_to_ctx(&rootTmp, (*C.struct_lyd_node)(node), C.LYD_OPT_DESTRUCT, (*C.struct_ly_ctx)(ypCtx)) != 0 {
 		return (*YParserNode)(rootTmp), getErrorDetails()
 	}
 
-	if (Tracing == true) {
+	if Tracing {
 		dumpStr := yp.NodeDump((*YParserNode)(rootTmp))
 		TRACE_LOG(TRACE_YPARSER, "Merged subtree = %v\n", dumpStr)
 	}
@@ -483,13 +480,13 @@ func (yp *YParser) DestroyCache() YParserError {
 	return YParserError {ErrCode : YP_SUCCESS,}
 }
 
-//Set operation 
+//SetOperation Set operation 
 func (yp *YParser) SetOperation(op string) YParserError {
 	if (ypOpNode == nil) {
 		return YParserError {ErrCode : YP_INTERNAL_UNKNOWN,}
 	}
 
-	if (0 != C.lyd_change_leaf_data((*C.struct_lyd_node)(ypOpNode), C.CString(op))) {
+	if C.lyd_change_leaf_data((*C.struct_lyd_node)(ypOpNode), C.CString(op)) != 0 {
 		return YParserError {ErrCode : YP_INTERNAL_UNKNOWN,}
 	}
 
@@ -497,23 +494,21 @@ func (yp *YParser) SetOperation(op string) YParserError {
 	return YParserError {ErrCode : YP_SUCCESS,}
 }
 
-//Perform syntax checks
+//ValidateSyntax Perform syntax checks
 func (yp *YParser) ValidateSyntax(data, depData *YParserNode) YParserError {
 	dataTmp := (*C.struct_lyd_node)(data)
 
 	if (data != nil && depData != nil) {
 		//merge ependent data for synatx validation - Update/Delete case
-		if (0 != C.lyd_merge_to_ctx(&dataTmp, (*C.struct_lyd_node)(depData),
-		C.LYD_OPT_DESTRUCT, (*C.struct_ly_ctx)(ypCtx))) {
+		if C.lyd_merge_to_ctx(&dataTmp, (*C.struct_lyd_node)(depData), C.LYD_OPT_DESTRUCT, (*C.struct_ly_ctx)(ypCtx)) != 0 {
 			TRACE_LOG((TRACE_SYNTAX | TRACE_LIBYANG), "Unable to merge dependent data\n")
 			return getErrorDetails()
 		}
 	}
 
 	//Just validate syntax
-	if (0 != C.lyd_data_validate(&dataTmp, C.LYD_OPT_EDIT | C.LYD_OPT_NOEXTDEPS,
-	(*C.struct_ly_ctx)(ypCtx))) {
-		if (Tracing == true) {
+	if C.lyd_data_validate(&dataTmp, C.LYD_OPT_EDIT | C.LYD_OPT_NOEXTDEPS, (*C.struct_ly_ctx)(ypCtx)) != 0 {
+		if Tracing {
 			strData := yp.NodeDump((*YParserNode)(dataTmp))
 			TRACE_LOG(TRACE_ONERROR, "Failed to validate Syntax, data = %v", strData)
 		}
@@ -772,7 +767,7 @@ func getModelChildInfo(l *YParserListInfo, node *C.struct_lys_node,
 				&csWhenExp)
 				getModelChildInfo(l, sChild, true, &csWhenExp)
 			} else {
-				if (underWhen == true) {
+				if underWhen {
 					getModelChildInfo(l, sChild, underWhen, whenExpr)
 				} else {
 					getModelChildInfo(l, sChild, false, nil)
@@ -813,7 +808,7 @@ func getModelChildInfo(l *YParserListInfo, node *C.struct_lys_node,
 
 			//If parent has when expression, 
 			//just add leaf to when expression node list
-			if (underWhen == true) {
+			if underWhen {
 				whenExpr.NodeNames = append(whenExpr.NodeNames, leafName)
 			}
 
@@ -870,7 +865,7 @@ func getModelChildInfo(l *YParserListInfo, node *C.struct_lys_node,
 	}
 }
 
-//Get model info for YANG list and its subtree
+//GetModelListInfo Get model info for YANG list and its subtree
 func GetModelListInfo(module *YParserModule) []*YParserListInfo {
 	var list []*YParserListInfo
 

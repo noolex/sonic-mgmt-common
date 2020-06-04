@@ -44,6 +44,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_name_xfmr", DbToYang_intf_name_xfmr)
     XlateFuncBind("YangToDb_intf_enabled_xfmr", YangToDb_intf_enabled_xfmr)
     XlateFuncBind("DbToYang_intf_enabled_xfmr", DbToYang_intf_enabled_xfmr)
+    XlateFuncBind("YangToDb_intf_mtu_xfmr", YangToDb_intf_mtu_xfmr)
     XlateFuncBind("YangToDb_intf_type_xfmr", YangToDb_intf_type_xfmr)
     XlateFuncBind("DbToYang_intf_type_xfmr", DbToYang_intf_type_xfmr)
     XlateFuncBind("DbToYang_intf_admin_status_xfmr", DbToYang_intf_admin_status_xfmr)
@@ -93,6 +94,7 @@ const (
     PORTCHANNEL_MEMBER_TN  = "PORTCHANNEL_MEMBER"
     LOOPBACK_INTERFACE_TN  = "LOOPBACK_INTERFACE"
     UNNUMBERED         = "unnumbered"
+    DEFAULT_MTU        = "9100"
 )
 
 const (
@@ -644,6 +646,61 @@ var YangToDb_intf_name_empty_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     res_map := make(map[string]string)
     var err error
     return res_map, err
+}
+
+func updateDefaultMtu(inParams *XfmrParams, ifName *string, ifType E_InterfaceType, resMap map[string]string) error {
+    var err error
+    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    intfMap := make(map[string]map[string]db.Value)
+
+    intTbl := IntfTypeTblMap[ifType]
+    resMap["mtu"] = DEFAULT_MTU
+
+    intfMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+    intfMap[intTbl.cfgDb.portTN][*ifName] = db.Value{Field:resMap}
+
+    subOpMap[db.ConfigDB] = intfMap
+    inParams.subOpDataMap[UPDATE] = &subOpMap
+    return err
+}
+
+var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var ifName string
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        return res_map, nil
+    } else {
+        for infK, _ := range intfsObj.Interface {
+            ifName = infK
+        }
+    }
+    intfType, _, _ := getIntfTypeByName(ifName)
+    if IntfTypeVxlan == intfType {
+        return res_map, nil
+    }
+    if inParams.oper == DELETE {
+        log.Infof("Updating the Interface: %s with default MTU", ifName)
+        if intfType == IntfTypeLoopback {
+            log.Infof("MTU not supported for Loopback Interface Type: %d", intfType)
+            return res_map, nil
+        }
+        /* Note: For the mtu delete request, res_map with delete operation and
+           subOp map with update operation (default MTU value) is filled. This is because, transformer default
+           updates the result DS for delete oper with table and key. This needs to be fixed by transformer
+           for deletion of an attribute */
+        err := updateDefaultMtu(&inParams, &ifName, intfType, res_map)
+        if err != nil {
+            log.Errorf("Updating Default MTU for Interface: %s failed", ifName)
+            return res_map, err
+        }
+        return res_map, nil
+    }
+    // Handles all the operations other than Delete
+    intfTypeVal, _ := inParams.param.(*uint16)
+    intTypeValStr := strconv.FormatUint(uint64(*intfTypeVal), 10)
+    res_map["mtu"] = intTypeValStr
+    return res_map, nil
 }
 
 var YangToDb_intf_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -3035,15 +3092,27 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.SagIpv4 != nil {
 		sagIpv4Obj := subIntfObj.Ipv4.SagIpv4
 
-		if sagIpv4Obj.Config != nil {
-			log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
+        if sagIpv4Obj.Config != nil {
+            log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
 
-			if !validIPv4(sagIpv4Obj.Config.StaticAnycastGateway[0]) {
-                            errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
-                            err = tlerr.InvalidArgsError{Format: errStr}
-                            return subIntfmap, err
-                        }
+            var templen uint8
+            tempIP := strings.Split(sagIpv4Obj.Config.StaticAnycastGateway[0], "/")
 
+            if !validIPv4(tempIP[0]) {
+                errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+                err = tlerr.InvalidArgsError{Format: errStr}
+                return subIntfmap, err
+            }
+	    
+
+      tlen, _ := strconv.Atoi(tempIP[1])
+      templen = uint8(tlen)
+      err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, true)
+      if err != nil {
+          errStr := "Invalid IPv4 Gateway lenght " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3086,11 +3155,23 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 		if sagIpv6Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv6Obj.Config.StaticAnycastGateway)
 
-			if !validIPv6(sagIpv6Obj.Config.StaticAnycastGateway[0]) {
-                            errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
-                            err = tlerr.InvalidArgsError{Format: errStr}
-                            return subIntfmap, err
-                        }
+      var templen uint8
+      tempIP := strings.Split(sagIpv6Obj.Config.StaticAnycastGateway[0], "/")
+
+      if !validIPv6(tempIP[0]) {
+          errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
+
+      tlen, _ := strconv.Atoi(tempIP[1])
+      templen = uint8(tlen)
+      err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, false)
+      if err != nil {
+          errStr := "Invalid IPv6 Gateway lenght " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
 
 			sagIPv6Key := ifName + "|IPv6"
 

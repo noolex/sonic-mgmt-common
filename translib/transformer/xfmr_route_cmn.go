@@ -156,7 +156,7 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
 var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     log.Info("In rpc_show_ip_route")
     var cmd string
-    var af_str, vrf_name, prefix string
+    var af_str, vrf_name, prefix, proto_name string
     var err error
     var mapData map[string]interface{}
     err = json.Unmarshal(body, &mapData)
@@ -198,6 +198,12 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
         }
     }
 
+    if value, ok := mapData["protocol-name"].(string) ; ok {
+        if value != "" {
+            proto_name = value + " "
+        }
+    }
+
     cmd = "show "
     if af_str != "" {
        cmd = cmd + af_str
@@ -211,6 +217,10 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
 
     if prefix != "" {
         cmd = cmd + prefix
+    }
+
+    if proto_name != "" {
+        cmd = cmd + proto_name
     }
 
     cmd = cmd + "json"
