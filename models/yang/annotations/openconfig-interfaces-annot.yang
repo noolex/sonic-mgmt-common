@@ -82,7 +82,7 @@ module openconfig-interfaces-annot {
         }
     }
 
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-intf-ext:fast_rate {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-intf-ext:fast-rate {
         deviate add {
             sonic-ext:field-transformer "lag_fast_rate_xfmr";
         }
