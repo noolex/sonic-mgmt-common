@@ -349,23 +349,23 @@ var DbToYang_vxlan_vni_state_peer_info_key_xfmr KeyXfmrDbToYang = func(inParams 
 }
 
 var YangToDb_vxlan_state_tunnel_info_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("YangToDb_vxlan_state_tunnel_info_key_xfmr ==>inParams.uri => ", inParams.uri)
 		log.Info("YangToDb_vxlan_state_tunnel_info_key_xfmr ==>inParams.requestUri => ", inParams.requestUri)
-//	}
+	}
 
 	pathInfo := NewPathInfo(inParams.uri)
 	peerIpStr := pathInfo.Var("peer-ip")
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("YangToDb_vxlan_state_tunnel_info_key_xfmr ==> peerIpStr => ", peerIpStr)
-//	}
+	}
 
 	pathOrigInfo := NewPathInfo(inParams.requestUri)
 	peerIpOrigStr := pathOrigInfo.Var("peer-ip")
 	
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("YangToDb_vxlan_state_tunnel_info_key_xfmr ==> peerIpOrigStr => ", peerIpOrigStr)
-//	}
+	}
 
 	if peerIpOrigStr != "" {
 		var VXLAN_TUNNEL_TABLE_STATE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_TABLE"}
@@ -392,16 +392,16 @@ var YangToDb_vxlan_state_tunnel_info_key_xfmr KeyXfmrYangToDb = func(inParams Xf
 }
 
 var DbToYang_vxlan_state_tunnel_info_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_tunnel_info_key_xfmr ==> inParams.key => ", inParams.key)
-//	}
+	}
 
 	pathOrigInfo := NewPathInfo(inParams.requestUri)
 	peerIpOrigStr := pathOrigInfo.Var("peer-ip")
 	
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_tunnel_info_key_xfmr ==> peerIpOrigStr => ", peerIpOrigStr)
-//	}
+	}
 
 	rmap := make(map[string]interface{})
 	if inParams.key != "" {
@@ -418,9 +418,9 @@ var DbToYang_vxlan_state_tunnel_info_key_xfmr KeyXfmrDbToYang = func(inParams Xf
 			rmap["peer-ip"] = keyListTmp[1]
 		}
 	}
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_tunnel_info_key_xfmr ==> returning RESTULT map rmap => ", rmap)
-//	}
+	}
 	return rmap, nil
 }
 
@@ -655,9 +655,55 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 			return &res_map, tlerr.NotFound("Resource Not Found")
 		}
 
+        //Allow update when qos-mode / dscp values are different from the values in DB
 		if dbv.Field["src_ip"] != "" && (reqP.opcode == 3 || reqP.opcode == 4) {
-			log.Error("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> source-vtep-ip => ", dbv.Field["src_ip"])
-			return &res_map, tlerr.New("Source-vtep-ip %s is already exist; PUT/PATCH method not allowed on the source-vtep-ip ", dbv.Field["src_ip"])
+            src_ip_in := *(reqP.vxlanIntfConfigObj.SourceVtepIp)
+            log.Info("src_ip_in ==> ", src_ip_in)
+            src_ip_db := dbv.Field["src_ip"]
+            log.Info("src_ip_db ==> ", src_ip_db)
+
+            //QosMode is an enum with values 1 for "uniform" and 2 for "pipe"
+            qos_mode_in_int := (reqP.vxlanIntfConfigObj.QosMode)
+            qos_mode_in :=""
+            log.Info("qos_mode_in_int ==> ", qos_mode_in_int)
+            if qos_mode_in_int == 1 {
+                qos_mode_in = "uniform"
+            } else if qos_mode_in_int == 2 {
+                qos_mode_in = "pipe"
+            } else {
+                //Set default qos-mode to "pipe" when user doesn't input any value
+                qos_mode_in = "pipe"
+            }
+            log.Info("qos_mode_in ==> ", qos_mode_in)
+            qos_mode_db := dbv.Field["qos-mode"]
+            log.Info("qos_mode_db ==> ", qos_mode_db)
+
+            //set default DSCP value as 0
+            dscp_in := "0"
+            if reqP.vxlanIntfConfigObj.Dscp  != nil {
+                dscp_in = strconv.Itoa(int(*(reqP.vxlanIntfConfigObj.Dscp))) 
+            }
+            //Reset DSCP value to 0 for uniform mode
+            if qos_mode_in == "uniform" {
+                dscp_in = "0"
+            }
+            log.Info("dscp_in ==> ", dscp_in)
+            dscp_db := dbv.Field["dscp"]
+            log.Info("dscp_db ==> ", dscp_db)
+
+            //Allow update of qos-mode / dscp when src_ip is same
+            if (dbv.Field["src_ip"] == src_ip_in) {
+                //When all the values are same, return error
+                if qos_mode_in == qos_mode_db && dscp_in == dscp_db {
+                    log.Error("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> source-vtep-ip => ", dbv.Field["src_ip"])
+                    return &res_map, tlerr.New("Source-vtep-ip %s already exist; source-vtep-ip ", dbv.Field["src_ip"])
+                }
+            } else {
+                //When src_ip is different from the one in DB, return error
+                log.Info("src_ip_in ==> ",src_ip_in)
+                log.Error("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> source-vtep-ip => ", dbv.Field["src_ip"])
+                return &res_map, tlerr.New("Source-vtep-ip %s already exist; source-vtep-ip ", dbv.Field["src_ip"])
+            }
 		}
 	}
 
@@ -670,7 +716,23 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 	} else {
 		dbV1 := db.Value{Field: make(map[string]string)}
 		srcIp := *(reqP.vxlanIntfConfigObj.SourceVtepIp)
+        //QosMode is an enum with values 1 for "uniform" and 2 for "pipe"
+        //Default qosMode is "pipe"
+        qosMode := "pipe"
+        if reqP.vxlanIntfConfigObj.QosMode == 1 {
+            qosMode = "uniform"
+        } else if reqP.vxlanIntfConfigObj.QosMode == 2 {
+            qosMode = "pipe"
+        }
+        log.Info("qosMode ==> ", qosMode)
+
+        dscp := "0"
+        if reqP.vxlanIntfConfigObj.Dscp != nil {
+            dscp = strconv.Itoa(int(*(reqP.vxlanIntfConfigObj.Dscp)))
+        }
 		dbV1.Field["src_ip"] = srcIp
+		dbV1.Field["qos-mode"] = qosMode
+		dbV1.Field["dscp"] = dscp
 		vxlanTunnelTblMap[*(reqP.intfObject.Name)] = dbV1
 		dbV2 := db.Value{Field: make(map[string]string)}
 		dbV2.Field["source_vtep"] = *(reqP.intfObject.Name)
@@ -846,9 +908,13 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 			}
 
 			srcIpStr := dbv.Field["src_ip"]
+            qosModeStr := dbv.Field["qos-mode"]
+            dscpStr := dbv.Field["dscp"]
 
 			if log.V(3) {
 				log.Info("DbToYang_intf_vxlan_config_xfmr ========  srcIpStr ===> ", srcIpStr)
+				log.Info("DbToYang_intf_vxlan_config_xfmr ========  qosModeStr ===> ", qosModeStr)
+				log.Info("DbToYang_intf_vxlan_config_xfmr ========  dscpStr ===> ", dscpStr)
 			}
 
 			if srcIpStr != "" {
@@ -862,8 +928,24 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.intfObject.VxlanIf.Config => ", reqP.intfObject.VxlanIf.Config)
 					}
 					reqP.intfObject.VxlanIf.Config.SourceVtepIp = &srcIpStr
+
+                    //Return appropriate enum values based on the qos-mode set in DB
+                    if qosModeStr != "" {
+                        if qosModeStr == "pipe" {
+                            reqP.intfObject.VxlanIf.Config.QosMode = 2
+                        } else {
+                            reqP.intfObject.VxlanIf.Config.QosMode = 1
+                        }
+                    }
+                    if dscpStr != ""{
+                        dscp_conv_64,_ := strconv.ParseUint(dscpStr,10,8)
+                        dscp_conv := uint8(dscp_conv_64)
+                        reqP.intfObject.VxlanIf.Config.Dscp = &dscp_conv
+                    }
 					if log.V(3) {
 						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.SourceVtepIp ===> ", reqP.intfObject.VxlanIf.Config.SourceVtepIp)
+						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.QosMode ===> ", reqP.intfObject.VxlanIf.Config.QosMode)
+						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.Dscp ===> ", reqP.intfObject.VxlanIf.Config.Dscp)
 					}
 				} else {
 					log.Error("DbToYang_intf_vxlan_config_xfmr ========  reqP.intfObject.VxlanIf is nil")
