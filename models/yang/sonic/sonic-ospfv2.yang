@@ -552,7 +552,9 @@ module sonic-ospfv2 {
         }
 
         leaf metric {
-          type sonic-ospf-cmn:ospf-metric;
+          type uint32 {
+            range 0..16777215;
+          }
           description
             "Metric value for the prefix";
         }
@@ -722,7 +724,6 @@ module sonic-ospfv2 {
          }
 
          leaf metric {
-           //type sonic-ospf-cmn:ospf-metric;
            type uint32 {
              range "1..65535";
            }
