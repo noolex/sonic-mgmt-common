@@ -24,6 +24,8 @@ import (
     "fmt"
     "os"
     "bytes"
+    "io/ioutil"
+    log "github.com/golang/glog"
 )
 
 func init() {
@@ -39,50 +41,58 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         } `json:"sonic-show-auditlog:output"`
     }
 
-    var operand struct {
-        Input struct {
-            otype string `json:"string"`
-        } `json:"sonic-show-auditlog:output"`
-    }
-
-    err := json.Unmarshal(body, &operand)
+    var inputData map[string]interface{}
+    err := json.Unmarshal(body, &inputData)
     if err != nil {
         fmt.Println("%Error: Failed to parse rpc input; err=%v", err)
         return nil,err
     }
 
-    fmt.Println("input ", operand.Input.otype)
+    input := inputData["sonic-auditlog:input"]
+    inputData = input.(map[string]interface{})
 
-    f, err := os.Open("/var/log/audit.log")
-    if err != nil {
-        fmt.Println("File reading error", err)
-        return nil, err
-    }
-    defer f.Close()
+    var v interface{}
+    v = inputData["content-type"]
 
-    fileinfo, err := f.Stat()
-    if err != nil {
-        fmt.Println(err)
-        return nil, err
-    }
-    filesize := fileinfo.Size()
-    buffer := make([]byte, 4096)
-    if filesize > 4096 {
-        _, err = f.ReadAt(buffer, (filesize-4096))
+    if v == "brief" {
+        f, err := os.Open("/var/log/audit.log")
+        if err != nil {
+            fmt.Println("File reading error", err)
+            return nil, err
+        }
+        defer f.Close()
+
+        fileinfo, err := f.Stat()
+        if err != nil {
+            fmt.Println(err)
+            return nil, err
+        }
+        filesize := fileinfo.Size()
+        buffer := make([]byte, 8192)
+        if filesize > 8192 {
+            _, err = f.ReadAt(buffer, (filesize-8192))
+        } else {
+            _, err = f.ReadAt(buffer, filesize)
+        }
+
+        if err != nil {
+            fmt.Println(err)
+            return nil, err
+        }
+
+        res1 := bytes.Index(buffer, []byte("\n"))
+
+        showaudit.Output.Result = string(buffer[res1:])
     } else {
-        _, err = f.ReadAt(buffer, filesize)
+        data, err := ioutil.ReadFile("/var/log/audit.log")
+        if err != nil {
+            fmt.Println("File reading error", err)
+            return nil,err
+        }
+        fmt.Println("Contents of file:", string(data))
+        showaudit.Output.Result = string(data)
     }
 
-    if err != nil {
-        fmt.Println(err)
-        return nil, err
-    }
-
-    res1 := bytes.Index(buffer, []byte("\n"))
-
-    showaudit.Output.Result = string(buffer[res1:])
-
-    //showaudit.Output.Result = "Hello World!"
     result, _ := json.Marshal(&showaudit)
 
     return result, nil
