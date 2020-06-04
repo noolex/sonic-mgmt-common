@@ -21,11 +21,10 @@ package custom_validation
 
 import (
 	"strings"
-        "fmt"
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	)
 
-//Validate if feature is enabled for Broadview features
+//ValidateTAMFeature Validate if feature is enabled for Broadview features
 func (t *CustomValidation) ValidateTAMFeature(vc *CustValidationCtxt) CVLErrorInfo {
 
         rclient := util.NewDbClient("APPL_DB")
@@ -40,7 +39,7 @@ func (t *CustomValidation) ValidateTAMFeature(vc *CustValidationCtxt) CVLErrorIn
 			 ErrCode: CVL_SEMANTIC_ERROR,
 			 TableName: "SWITCH_TABLE",
 			 Keys: strings.Split(vc.CurCfg.Key, "|"),
-			 ConstraintErrMsg: fmt.Sprintf("Failed to connect to APPL_DB"),
+			 ConstraintErrMsg: "Failed to connect to APPL_DB",
 			 CVLErrDetails: "Config Validation Error",
 			 ErrAppTag:  "capability-unsupported",
 		}
@@ -54,7 +53,7 @@ func (t *CustomValidation) ValidateTAMFeature(vc *CustValidationCtxt) CVLErrorIn
 			 ErrCode: CVL_SEMANTIC_ERROR,
 			 TableName: "SWITCH_TABLE",
 			 Keys: strings.Split(vc.CurCfg.Key, "|"),
-			 ConstraintErrMsg: fmt.Sprintf("Failed to get all fields of SWITCH_TABLE"),
+			 ConstraintErrMsg: "Failed to get all fields of SWITCH_TABLE",
 			 CVLErrDetails: "Config Validation Error",
 			 ErrAppTag:  "capability-unsupported",
 		}
@@ -66,34 +65,34 @@ func (t *CustomValidation) ValidateTAMFeature(vc *CustValidationCtxt) CVLErrorIn
 
 	switch  vc.YNodeName {
 		case "TAM_INT_IFA_FEATURE_TABLE_LIST", "TAM_INT_IFA_FLOW_TABLE_LIST":
-			if (ifaExists == false) || (ifaSupported == "False"){
+			if !ifaExists || (ifaSupported == "False"){
 				return CVLErrorInfo{
 					 ErrCode: CVL_SEMANTIC_ERROR,
 					 TableName: "SWITCH_TABLE",
 					 Keys: strings.Split(vc.CurCfg.Key, "|"),
-					 ConstraintErrMsg: fmt.Sprintf("IFA capability not supported"),
+					 ConstraintErrMsg: "IFA capability not supported",
 					 CVLErrDetails: "Config Validation Error",
 					 ErrAppTag:  "ifa-capability-unsupported",
 				}
 			}
 		case "TAM_INT_IFA_TS_FEATURE_TABLE_LIST" , "TAM_INT_IFA_TS_FLOW_TABLE_LIST":
-			if (tsExists == false) || (tsSupported == "False") {
+			if !tsExists || (tsSupported == "False") {
 				return CVLErrorInfo{
 					 ErrCode: CVL_SEMANTIC_ERROR,
 					 TableName: "SWITCH_TABLE",
 					 Keys: strings.Split(vc.CurCfg.Key, "|"),
-					 ConstraintErrMsg: fmt.Sprintf("TailStamping capability not supported"),
+					 ConstraintErrMsg: "TailStamping capability not supported",
 					 CVLErrDetails: "Config Validation Error",
 					 ErrAppTag:  "ts-capability-unsupported",
 				}
 			}
 		case  "TAM_DROP_MONITOR_FEATURE_TABLE_LIST", "TAM_DROP_MONITOR_AGING_INTERVAL_TABLE_LIST" , "TAM_DROP_MONITOR_FLOW_TABLE_LIST": 
-			if (modExists == false) || (modSupported == "False") {
+			if !modExists || (modSupported == "False") {
 				return CVLErrorInfo{
 					 ErrCode: CVL_SEMANTIC_ERROR,
 					 TableName: "SWITCH_TABLE",
 					 Keys: strings.Split(vc.CurCfg.Key, "|"),
-					 ConstraintErrMsg: fmt.Sprintf("Drop-Monitor capability not supported"),
+					 ConstraintErrMsg: "Drop-Monitor capability not supported",
 					 CVLErrDetails: "Config Validation Error",
 					 ErrAppTag:  "drop-monitor-capability-unsupported",
 				}

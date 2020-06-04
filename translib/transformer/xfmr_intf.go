@@ -42,6 +42,7 @@ import (
 func init () {
     XlateFuncBind("intf_table_xfmr", intf_table_xfmr)
     XlateFuncBind("alias_value_xfmr", alias_value_xfmr)
+    XlateFuncBind("alternate_name_value_xfmr", alternate_name_value_xfmr)
     XlateFuncBind("YangToDb_intf_name_xfmr", YangToDb_intf_name_xfmr)
     XlateFuncBind("DbToYang_intf_name_xfmr", DbToYang_intf_name_xfmr)
     XlateFuncBind("YangToDb_intf_enabled_xfmr", YangToDb_intf_enabled_xfmr)
@@ -223,13 +224,35 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     var convertedName *string
 
     if inParams.oper == GET {
-        convertedName = utils.GetAliasNameFromIfName(&ifName)
+        convertedName = utils.GetUINameFromNativeName(&ifName)
     } else {
-        convertedName = utils.GetInterfaceNameFromAlias(&ifName)
+        convertedName = utils.GetNativeNameFromUIName(&ifName)
     }
     log.Info("Returned string from alias_value_xfmr = ", *convertedName)
     return *convertedName, err
 }
+
+func alternate_name_value_xfmr(inParams XfmrDbParams) (string, error) {
+
+    aliasName := inParams.value
+    log.Infof("alternate_name_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, aliasName)
+
+    if !utils.IsAliasModeEnabled() {
+        log.Info("Alias mode is not enabled!")
+        return aliasName, nil
+    }
+
+    if inParams.oper != GET {
+        err_str := "CRUD operations are not allowed for interface alternate name"
+        return aliasName, tlerr.NotSupported(err_str)
+    }
+    var ifName *string
+    ifName = utils.GetNativeNameFromUIName(&aliasName)
+
+    log.Info("Returned string from alternate_name_value_xfmr = ", *ifName)
+    return *ifName, nil
+}
+
 
 var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
@@ -367,7 +390,7 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
     input = mapData["interface-param"]
     input_str := fmt.Sprintf("%v", input)
     //input_str = strings.ToUpper(string(input_str))
-    sonicName := utils.GetInterfaceNameFromAlias(&input_str)
+    sonicName := utils.GetNativeNameFromUIName(&input_str)
     input_str = *sonicName
 
     portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
@@ -513,7 +536,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
             return dbIdToTblMap[inParams.curDb], nil
         }
     }
-    sonicIfName := utils.GetInterfaceNameFromAlias(&ifName)
+    sonicIfName := utils.GetNativeNameFromUIName(&ifName)
     log.Infof("TableXfmrFunc - Sonic Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -637,7 +660,7 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
     pathInfo := NewPathInfo(inParams.uri)
     uriIfName := pathInfo.Var("name")
 
-    ifName := *utils.GetInterfaceNameFromAlias(&uriIfName)
+    ifName := *utils.GetNativeNameFromUIName(&uriIfName)
 
 	if strings.HasPrefix(ifName, VXLAN) == true {
 		res_map["NULL"] = "NULL"
@@ -1263,7 +1286,7 @@ func validateIntfExists(d *db.DB, intfTs string, ifName string) error {
     if len(ifName) == 0 {
         return errors.New("Length of Interface name is zero")
     }
-    nativeName := utils.GetInterfaceNameFromAlias(&ifName)
+    nativeName := utils.GetNativeNameFromUIName(&ifName)
     ifName = *nativeName
     log.Infof("Converted Interface name = ", ifName)
     entry, err := d.GetEntry(&db.TableSpec{Name:intfTs}, db.Key{Comp: []string{ifName}})
@@ -1392,7 +1415,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("YangToDb_intf_ip_addr_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 	intfType, _, ierr := getIntfTypeByName(ifName)
@@ -1898,7 +1921,7 @@ var DbToYang_intf_ip_addr_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) 
     log.Info("TargetUriPath is ", targetUriPath)
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("DbToYang_intf_ip_addr_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -2201,7 +2224,7 @@ var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, count
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("name")
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&ifName)
+    sonicIfName := utils.GetNativeNameFromUIName(&ifName)
     log.Infof("Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -2404,7 +2427,7 @@ var DbToYang_intf_get_ether_counters_xfmr SubTreeXfmrDbToYang = func(inParams Xf
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
     log.Info("Ether counters subtree and ifname: ", ifName)
-    sonicIfName := utils.GetInterfaceNameFromAlias(&ifName)
+    sonicIfName := utils.GetNativeNameFromUIName(&ifName)
 
     log.Infof("DbToYang_intf_get_ether_counters_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
@@ -2457,7 +2480,7 @@ var DbToYang_intf_get_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&ifName)
+    sonicIfName := utils.GetNativeNameFromUIName(&ifName)
     log.Infof("DbToYang_intf_get_counters_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -2593,7 +2616,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("YangToDb_intf_eth_port_config_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -2884,7 +2907,7 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("YangToDb_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -2998,7 +3021,7 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
     ifName := uriIfName
 
     log.Info("db to yang - unnumbered sub tree and ifname: ", ifName)
-    sonicIfName := utils.GetInterfaceNameFromAlias(&ifName)
+    sonicIfName := utils.GetNativeNameFromUIName(&ifName)
     log.Infof("DbToYang_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -3068,7 +3091,7 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
 
-    sonicIfName := utils.GetInterfaceNameFromAlias(&uriIfName)
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("YangToDb_intf_sag_ip_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
 
@@ -3122,15 +3145,27 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.SagIpv4 != nil {
 		sagIpv4Obj := subIntfObj.Ipv4.SagIpv4
 
-		if sagIpv4Obj.Config != nil {
-			log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
+        if sagIpv4Obj.Config != nil {
+            log.Info("SAG IP:=", sagIpv4Obj.Config.StaticAnycastGateway)
 
-			if !validIPv4(sagIpv4Obj.Config.StaticAnycastGateway[0]) {
-                            errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
-                            err = tlerr.InvalidArgsError{Format: errStr}
-                            return subIntfmap, err
-                        }
+            var templen uint8
+            tempIP := strings.Split(sagIpv4Obj.Config.StaticAnycastGateway[0], "/")
 
+            if !validIPv4(tempIP[0]) {
+                errStr := "Invalid IPv4 Gateway address " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+                err = tlerr.InvalidArgsError{Format: errStr}
+                return subIntfmap, err
+            }
+	    
+
+      tlen, _ := strconv.Atoi(tempIP[1])
+      templen = uint8(tlen)
+      err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, true)
+      if err != nil {
+          errStr := "Invalid IPv4 Gateway lenght " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3173,11 +3208,23 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 		if sagIpv6Obj.Config != nil {
 			log.Info("SAG IP:=", sagIpv6Obj.Config.StaticAnycastGateway)
 
-			if !validIPv6(sagIpv6Obj.Config.StaticAnycastGateway[0]) {
-                            errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
-                            err = tlerr.InvalidArgsError{Format: errStr}
-                            return subIntfmap, err
-                        }
+      var templen uint8
+      tempIP := strings.Split(sagIpv6Obj.Config.StaticAnycastGateway[0], "/")
+
+      if !validIPv6(tempIP[0]) {
+          errStr := "Invalid IPv6 Gateway address " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
+
+      tlen, _ := strconv.Atoi(tempIP[1])
+      templen = uint8(tlen)
+      err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, false)
+      if err != nil {
+          errStr := "Invalid IPv6 Gateway lenght " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+          err = tlerr.InvalidArgsError{Format: errStr}
+          return subIntfmap, err
+      }
 
 			sagIPv6Key := ifName + "|IPv6"
 
@@ -3312,7 +3359,7 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_subintf_ipv6_tbl_key_xfmr")
-    }    
+    }
     var err error
     var inst_key string
     pathInfo := NewPathInfo(inParams.uri)
@@ -3321,17 +3368,8 @@ var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     log.Info("Intf name: ", ifName)
     requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     log.Info("inParams.requestUri: ", requestUriPath)
-    uriPathInfo := NewPathInfo(inParams.uri)
-    uriPath, err := getYangPathFromUri(uriPathInfo.Path)
-
-    log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr inParams.uri: ", uriPath)
     log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr")
-
-    if (strings.HasPrefix(requestUriPath,  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:ip-neighbors/ip-neighbor") && 
-        strings.HasPrefix(requestUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/ip-neighbors/ip-neighbor")) {
-        log.Info("YangToDb_subintf_ipv6_tbl_key_xfmr: condition satisfied")
-        inst_key = ifName
-    }    
+    inst_key = ifName
     return inst_key, err
 }
 

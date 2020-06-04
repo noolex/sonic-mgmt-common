@@ -23,7 +23,7 @@ import (
 	"reflect"
 	"github.com/antchfx/xmlquery"
 	"github.com/go-redis/redis/v7"
-	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	"github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
 	)
 
@@ -45,7 +45,7 @@ const (
 	OP_DELETE = 1 << 2//For Delete operation
 )
 
-//Error code
+//CVLRetCode CVL Error codes
 type CVLRetCode int
 const (
 	CVL_SUCCESS CVLRetCode = iota
@@ -74,7 +74,7 @@ const (
         CVL_SEMANTIC_KEY_INVALID = CVLRetCode(yparser.YP_SEMANTIC_KEY_INVALID)
 )
 
-//Strcture for key and data in API
+//CVLEditConfigData Strcture for key and data in API
 type CVLEditConfigData struct {
 	VType CVLValidateType //Validation type
 	VOp CVLOperation      //Operation type
@@ -82,7 +82,7 @@ type CVLEditConfigData struct {
 	Data map[string]string //Value :  {"alias": "40GE0/28", "mtu" : 9100,  "admin_status":  down}
 }
 
-/* CVL Error Structure. */
+//CVLErrorInfo CVL Error Structure
 type CVLErrorInfo struct {
 	TableName string      /* Table having error */
 	ErrCode  CVLRetCode   /* CVL Error return Code. */
@@ -99,7 +99,7 @@ type CustValidationCache struct {
 	Data interface{}
 }
 
-//Custom validation context passed to custom validation function 
+//CustValidationCtxt Custom validation context passed to custom validation function 
 type CustValidationCtxt struct {
 	ReqData []CVLEditConfigData //All request data
 	CurCfg *CVLEditConfigData //Current request data for which validation should be done
@@ -110,18 +110,18 @@ type CustValidationCtxt struct {
 	RClient *redis.Client //Redis client
 }
 
-//Common function to invoke custom validation
+//InvokeCustomValidation Common function to invoke custom validation
 //TBD should we do this using GO plugin feature ?
 func InvokeCustomValidation(cv *CustomValidation, name string, args... interface{}) CVLErrorInfo {
 	inputs := make([]reflect.Value, len(args))
-	for i, _ := range args {
+	for i := range args {
 		inputs[i] = reflect.ValueOf(args[i])
 	}
 
 	f := reflect.ValueOf(cv).MethodByName(name)
-	if (f.IsNil() == false) {
+	if !f.IsNil() {
 		v := f.Call(inputs)
-		TRACE_LEVEL_LOG(TRACE_SEMANTIC,
+		util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC,
 		"InvokeCustomValidation: %s(), return value = %v", v[0])
 
 		return (v[0].Interface()).(CVLErrorInfo)

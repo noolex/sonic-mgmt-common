@@ -115,7 +115,7 @@ type modelTableInfo struct {
 }
 
 
-/* CVL Error Structure. */
+// CVLErrorInfo Struct for CVL Error Info
 type CVLErrorInfo struct {
 	TableName string      /* Table having error */
 	ErrCode  CVLRetCode   /* CVL Error return Code. */
@@ -134,7 +134,7 @@ type requestCacheType struct {
 	yangData *xmlquery.Node
 }
 
-// Struct for CVL session 
+// CVL Struct for CVL session 
 type CVL struct {
 	redisClient *redis.Client
 	yp *yparser.YParser
@@ -256,7 +256,7 @@ func init() {
 	}
 
 	xpath.SetLogCallback(func(fmt string, args ...interface{}) {
-		if (IsTraceLevelSet(TRACE_SEMANTIC) == false) {
+		if !IsTraceLevelSet(TRACE_SEMANTIC) {
 			return
 		}
 
@@ -269,7 +269,7 @@ func Debug(on bool) {
 }
 
 //Get attribute value of xml node
-func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
+/*func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
 	for _, attr := range node.Attr {
 		if (attrName == attr.Name.Local) {
 			return attr.Value
@@ -277,7 +277,7 @@ func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
 	}
 
 	return ""
-}
+}*/
 
 // isLeafListNode checks if the xml node represents a leaf-list field
 func isLeafListNode(node *xmlquery.Node) bool {
@@ -316,7 +316,7 @@ func loadSchemaFiles() CVLRetCode {
 		deviceMetaData, err := redisClient.HGetAll("DEVICE_METADATA|localhost").Result()
 		var exists bool
 		platformName, exists = deviceMetaData["platform"]
-		if (err != nil) || (exists == false) || (platformName == "") {
+		if !exists || (err != nil) || (platformName == "") {
 			CVL_LOG(WARNING, "Could not fetch 'platform' details from CONFIG_DB")
 		}
 	}
@@ -368,7 +368,7 @@ func loadSchemaFiles() CVLRetCode {
 
 			sDirName := sDir.Name()
 			//Check which directory matches
-			if (strings.Contains(platformName, sDirName) == false) {
+			if !(strings.Contains(platformName, sDirName)) {
 				continue
 			}
 
@@ -417,12 +417,11 @@ func getYangListNamesInExpr(expr string) []string {
 	tbl := []string{}
 
 	//Check with all table names
-	for tblName, _ := range modelInfo.tableInfo {
+	for tblName := range modelInfo.tableInfo {
 
 		//Match 1 - Prefix is used in path
 		//Match 2 - Prefix is not used in path, it is in same YANG model
-		if (strings.Contains(expr, ":" + tblName + "_LIST") == true) ||
-		(strings.Contains(expr, "/" + tblName + "_LIST") == true) {
+		if strings.Contains(expr, ":" + tblName + "_LIST") || strings.Contains(expr, "/" + tblName + "_LIST") {
 			tbl = append(tbl, tblName)
 		}
 	}
@@ -543,7 +542,7 @@ func getYangListToRedisTbl(yangListName string) string {
 	}
 	tInfo, exists := modelInfo.tableInfo[yangListName]
 
-	if (exists == true) && (tInfo.redisTableName != "") {
+	if exists && (tInfo.redisTableName != "") {
 		return tInfo.redisTableName
 	}
 
@@ -628,22 +627,19 @@ func addTableNamesForMustExp() {
 			for _, mustExp := range mustExpArr {
 				var op CVLOperation = OP_NONE
 				//Check if 'must' expression should be executed for a particular operation
-				if (strings.Contains(mustExp.expr,
-				":operation != 'CREATE'") == true) {
+				if strings.Contains(mustExp.expr, ":operation != 'CREATE'") {
 					op = op | OP_CREATE
 				}
-				if (strings.Contains(mustExp.expr,
-				":operation != 'UPDATE'") == true) {
+				if strings.Contains(mustExp.expr, ":operation != 'UPDATE'") {
 					op = op | OP_UPDATE
 				}
-				if (strings.Contains(mustExp.expr,
-				":operation != 'DELETE'") == true) {
+				if strings.Contains(mustExp.expr, ":operation != 'DELETE'") {
 					op = op | OP_DELETE
 				}
 
 				//store the current table if aggregate function like count() is used
 				//check which table name is present in the must expression
-				for tblNameSrch, _ := range modelInfo.tableInfo {
+				for tblNameSrch := range modelInfo.tableInfo {
 					if (tblNameSrch == tblName) {
 						continue
 					}
@@ -669,7 +665,7 @@ func splitRedisKey(key string) (string, string) {
 
 	var foundIdx int = -1
 	//Check with all key delim
-	for keyDelim, _ := range modelInfo.allKeyDelims {
+	for keyDelim := range modelInfo.allKeyDelims {
 		foundIdx = strings.Index(key, keyDelim)
 		if (foundIdx >= 0) {
 			//Matched with key delim
@@ -686,7 +682,7 @@ func splitRedisKey(key string) (string, string) {
 
 	tblName := key[:foundIdx]
 
-	if _, exists := modelInfo.tableInfo[tblName]; exists == false {
+	if _, exists := modelInfo.tableInfo[tblName]; !exists {
 		//Wrong table name
 		CVL_LOG(ERROR, "Could not find table '%s' in schema", tblName)
 		return "", ""
@@ -716,7 +712,7 @@ func getRedisTblToYangList(tableName, key string) (yangList string) {
 
 	mapArr, exists := modelInfo.redisTableToYangList[tableName]
 
-	if (exists == false) || (len(mapArr) == 1) { //no map or only one
+	if !exists || (len(mapArr) == 1) { //no map or only one
 		//1:1 mapping case
 		return tableName
 	}
@@ -724,7 +720,7 @@ func getRedisTblToYangList(tableName, key string) (yangList string) {
 	//As of now determine the mapping based on number of keys
 	var foundIdx int = -1
 	numOfKeys := 1 //Assume only one key initially
-	for keyDelim, _ := range modelInfo.allKeyDelims {
+	for keyDelim := range modelInfo.allKeyDelims {
 		foundIdx = strings.Index(key, keyDelim)
 		if (foundIdx >= 0) {
 			//Matched with key delim
@@ -737,7 +733,7 @@ func getRedisTblToYangList(tableName, key string) (yangList string) {
 	//Check which list has number of keys as 'numOfKeys' 
 	for i := 0; i < len(mapArr); i++ {
 		tblInfo, exists := modelInfo.tableInfo[mapArr[i]]
-		if exists == true {
+		if exists {
 			if (len(tblInfo.keys) == numOfKeys) {
 				//Found the YANG list matching the number of keys
 				return mapArr[i]
@@ -963,8 +959,7 @@ func (c *CVL) validateSyntax(data *yparser.YParserNode) (CVLErrorInfo, CVLRetCod
 //Add config data item to accumulate per table
 func (c *CVL) addCfgDataItem(configData *map[string]interface{},
 			cfgDataItem CVLEditConfigData) (string, string){
-	var cfgData map[string]interface{}
-	cfgData = *configData
+	var cfgData map[string]interface{} = *configData
 
 	tblName, key := splitRedisKey(cfgDataItem.Key)
 	if (tblName == "" || key == "") {
@@ -1003,7 +998,7 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 		//find the node value
 		//node value is empty for custom validation function at list level
 		nodeVal := ""
-		if (strings.HasSuffix(nodeName, "_LIST") == false) {
+		if !strings.HasSuffix(nodeName, "_LIST") {
 			for nodeLeaf := node.FirstChild; nodeLeaf != nil;
 			nodeLeaf = nodeLeaf.NextSibling {
 				if (nodeName != nodeLeaf.Data) {

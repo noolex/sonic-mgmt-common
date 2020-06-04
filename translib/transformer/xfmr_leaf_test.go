@@ -862,3 +862,45 @@ func Test_Leaf_Sonic_Yang_Choice_Case_Get(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl1)
         unloadConfigDB(rclient, cleanuptbl2)
 }
+
+func Test_Leaf_Sonic_Yang_List_With_Multi_Key_Update(t *testing.T) {
+
+        cleanuptbl := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":""}}
+        prereq := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"threshold":7}}}
+        url := "/sonic-threshold:sonic-threshold/THRESHOLD_TABLE/THRESHOLD_TABLE_LIST[buffer=queue][threshold_buffer_type=unicast][interface_name=Ethernet0][buffer_index_per_port=7]/threshold"
+
+        fmt.Println("++++++++++++++  UPDATE Test_Leaf_Sonic_Yang_List_Multi_Key  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+	patch_payload := "{ \"sonic-threshold:threshold\":  5 }"
+        expected := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"threshold":"5"}}}
+
+        t.Run("UPDATE on Leaf Sonic Yang with multi Key list", processSetRequest(url, patch_payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("UPDATE on Leaf Sonic Yang with MultiKey List", verifyDbResult(rclient, "THRESHOLD_TABLE|queue|unicast|Ethernet0|7", expected, false))
+
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+
+func Test_Leaf_Sonic_Yang_List_With_Multi_Key_Delete(t *testing.T) {
+
+        cleanuptbl := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":""}}
+        prereq := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"threshold":"5"}}}
+        url := "/sonic-threshold:sonic-threshold/THRESHOLD_TABLE/THRESHOLD_TABLE_LIST[buffer=queue][threshold_buffer_type=unicast][interface_name=Ethernet0][buffer_index_per_port=7]/threshold"
+
+        fmt.Println("++++++++++++++  DELETE Test_Leaf_Sonic_Yang_List_Multi_Key  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        expected := make(map[string]interface{})
+
+        t.Run("DELETE on Leaf Sonic Yang with MultiKey List", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("DELETE on Leaf Sonic Yang with MultiKey List", verifyDbResult(rclient, "THRESHOLD_TABLE|queue|unicast|Ethernet0|7", expected, false))
+
+        unloadConfigDB(rclient, cleanuptbl)
+}
+

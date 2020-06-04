@@ -3,7 +3,7 @@ module openconfig-udld-types {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/udld/types";
+  namespace "http://openconfig.net/yang/udld/types/extension";
 
   prefix "oc-udld-types";
 
@@ -36,25 +36,25 @@ module openconfig-udld-types {
       "base identity for different port states ";
   }
 
-  identity UNDETERMINED {
+  identity Undetermined {
     base UDLD_PORT_STATUS;
     description
       "UDLD has not received enough information from the peer to determine the state";
   }
 
-  identity SHUTDOWN {
+  identity Shutdown {
     base UDLD_PORT_STATUS;
     description
       "UDLD has determined the link to be uni-directional and has shutdown the interface";
   }
 
-  identity UNI_DIRECTIONAL {
+  identity Unidirectional {
     base UDLD_PORT_STATUS;
     description
       "UDLD has determined the link to be uni-directional";
   }
 
-  identity BI_DIRECTIONAL {
+  identity Bidirectional {
     base UDLD_PORT_STATUS;
     description
       "UDLD is able to exchange the PDUs and has determined the link to be bi-directional";

@@ -84,7 +84,7 @@ var YangToDb_bgp_af_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
         log.Info("VRF Name is Missing")
         return vrfName, err
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         err = errors.New("BGP ID is missing");
         log.Info("BGP ID is missing")
         return bgpId, err
@@ -122,9 +122,7 @@ var YangToDb_bgp_af_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
     log.Info("URI Peer Group ", pGrpName)
     log.Info("URI AFI SAFI ", afName)
 
-    var afPgrpKey string
-
-    afPgrpKey = vrfName + "|" + pGrpName + "|" + afName
+    var afPgrpKey string = vrfName + "|" + pGrpName + "|" + afName
 
     log.Info("YangToDb_bgp_af_pgrp_tbl_key_xfmr: afPgrpKey:", afPgrpKey)
     return afPgrpKey, nil
@@ -178,7 +176,7 @@ var YangToDb_bgp_af_pgrp_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
         log.Info("VRF Name is Missing")
         return vrfName, err
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         err = errors.New("BGP ID is missing");
         log.Info("BGP ID is missing")
         return bgpId, err
@@ -234,9 +232,7 @@ var YangToDb_bgp_af_pgrp_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
     log.Info("URI Peer Group ", pGrpName)
     log.Info("URI AFI SAFI ", afName)
 
-    var afPgrpKey string
-
-    afPgrpKey = vrfName + "|" + pGrpName + "|" + afName
+    var afPgrpKey string = vrfName + "|" + pGrpName + "|" + afName
 
     log.Info("YangToDb_bgp_af_pgrp_tbl_key_xfmr: afPgrpKey:", afPgrpKey)
     return afPgrpKey, nil

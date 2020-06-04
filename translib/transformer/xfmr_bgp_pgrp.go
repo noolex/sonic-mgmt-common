@@ -130,7 +130,7 @@ var YangToDb_bgp_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
         log.Info("VRF Name is Missing")
         return vrfName, err
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         err = errors.New("BGP ID is missing");
         log.Info("BGP ID is missing")
         return bgpId, err
@@ -149,9 +149,7 @@ var YangToDb_bgp_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     log.Info("URI VRF", vrfName)
     log.Info("URI Peer Group", pGrpName)
 
-    var pGrpKey string
-
-    pGrpKey = vrfName + "|" + pGrpName
+    var pGrpKey string = vrfName + "|" + pGrpName
 
     log.Info("YangToDb_bgp_pgrp_tbl_key_xfmr: pGrpKey:", pGrpKey)
     return pGrpKey, nil
@@ -230,7 +228,7 @@ func fill_pgrp_state_info (pgrp_key *_xfmr_bgp_pgrp_state_key, frrPgrpDataValue 
     }
 
     if peerGroupMembers,  ok := frrPgrpDataJson["peerGroupMembers"].(map[string]interface{}) ; ok {
-        for pgMem,_ := range peerGroupMembers {
+        for pgMem := range peerGroupMembers {
             member, ok := pMember.Member[pgMem]
             if !ok {
                 member, _ = pMember.NewMember(pgMem)
@@ -312,7 +310,7 @@ var YangToDb_bgp_pgrp_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
     log.Infof("YangToDb_bgp_pgrp_auth_password_xfmr VRF:%s peer group:%s URI:%s", niName, pgrp, targetUriPath)
 
     pgrps_obj := bgp_obj.PeerGroups
-    if pgrps_obj == nil {
+    if pgrps_obj == nil || (pgrps_obj.PeerGroup == nil) {
         log.Errorf("Error: PeerGroups container missing")
         return res_map, err
     }
@@ -329,10 +327,9 @@ var YangToDb_bgp_pgrp_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
     if pgrp_obj.AuthPassword.Config != nil && pgrp_obj.AuthPassword.Config.Password != nil && (inParams.oper != DELETE){
         auth_password := pgrp_obj.AuthPassword.Config.Password
         encrypted := pgrp_obj.AuthPassword.Config.Encrypted
-        log.Infof("PeerGroup password:%d encrypted:%s", *auth_password, *encrypted)
 
         encrypted_password := *auth_password
-        if encrypted == nil || (encrypted != nil && *encrypted == false) {
+        if encrypted == nil || (encrypted != nil && !*encrypted) {
             cmd := "show bgp encrypt " + *auth_password + " json"
             bgpPgrpPasswordJson, cmd_err := exec_vtysh_cmd (cmd)
             if (cmd_err != nil) {

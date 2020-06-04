@@ -83,6 +83,12 @@ module sonic-ip-show {
                 }
             }
         }
+
+        leaf protocol-name {
+            type string;
+            description
+                "Specifies the protocol-name like ospf,bgp,static,connected etc,. If it is empty means all protocols.";
+        }
     }
 
     output {

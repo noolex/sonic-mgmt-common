@@ -149,7 +149,7 @@ func yangTypeGet(entry *yang.Entry) string {
     return ""
 }
 
-func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey string, dbKeySep string, txCache interface{}) (map[string]interface{}, string, error) {
+func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableName string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, dbKey string, dbKeySep string, txCache interface{}) (map[string]interface{}, string, error) {
 	var err error
 	if len(uri) == 0 && len(xpath) == 0 && len(dbKey) == 0 {
 		err = fmt.Errorf("Insufficient input")
@@ -183,12 +183,12 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey s
 
 	if len(xYangSpecMap[xpath].xfmrKey) > 0 {
 		var dbs [db.MaxDB]*db.DB
-		inParams := formXfmrInputRequest(nil, dbs, db.MaxDB, nil, uri, requestUri, GET, dbKey, nil, nil, nil, txCache)
-		ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrKey), inParams)
+		inParams := formXfmrInputRequest(nil, dbs, db.MaxDB, nil, uri, requestUri, GET, dbKey, dbDataMap, nil, nil, txCache)
+		inParams.table = tableName
+		rmap, err := keyXfmrHandlerFunc(inParams, xYangSpecMap[xpath].xfmrKey)
 		if err != nil {
 			return nil, "", err
 		}
-		rmap := ret[0].Interface().(map[string]interface{})
 		if uriWithKeyCreate {
 			for k, v := range rmap {
 				uriWithKey += fmt.Sprintf("[%v=%v]", k, v)
@@ -204,8 +204,10 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey s
 
 	rmap := make(map[string]interface{})
 	if len(keyNameList) > 1 {
-		xfmrLogInfoAll("No key transformer found for multi element yang key mapping to a single redis key string.")
-	        return rmap, uriWithKey, nil
+		log.Errorf("No key transformer found for multi element yang key mapping to a single redis key string, for uri %v", uri)
+                errStr := fmt.Sprintf("Error processing key for list %v", uri)
+                err = fmt.Errorf("%v", errStr)
+                return rmap, uriWithKey, err
 	}
 	keyXpath := xpath + "/" + keyNameList[0]
 	xyangSpecInfo, ok := xYangSpecMap[keyXpath]
@@ -757,13 +759,9 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 if len(xpathInfo.delim) > 0 {
 		 keySeparator = xpathInfo.delim
 	 }
-	 gp, err := ygot.StringToStringSlicePath(path)
-	 if err != nil {
-		 log.Errorf("Failed to get parts for uri %v.", path)
-		 return pfxPath, keyStr, tableName, err
-	 }
-	 log.Infof("path elements are : %v", gp.Element)
-	 for _, k := range gp.Element {
+	 pathList := splitUri(path)
+	 xfmrLogInfoAll("path elements are : %v", pathList)
+	 for _, k := range pathList {
 		 curPathWithKey += k
 		 yangXpath, _ := XfmrRemoveXPATHPredicates(curPathWithKey)
 		 xpathInfo, ok := xYangSpecMap[yangXpath]
@@ -895,16 +893,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			    eg. /sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL2_ACL_IPV4]/ports[ports=Ethernet12]
 			 */
 			 if fldNm != "" {
-				 pathelem, perr := ygot.StringToStringSlicePath(path)
-				 if perr != nil {
-					 log.Errorf("Failed to get parts for uri %v.", path)
-					 return xpath, keyStr, tableName
-				 }
-				 chompFld := pathelem.Element
-
-				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX-1], "/")
+				 pathLst := splitUri(path)
+				 xfmrLogInfoAll("pathList after uri split %v", pathLst)
+				 lpath = "/" + strings.Join(pathLst[:SONIC_FIELD_INDEX-1], "/")
 				 xfmrLogInfoAll("path after removing the field portion %v", lpath)
-
 			 }
 			 for i, kname := range rgp.FindAllString(lpath, -1) {
 				 if i > 0 {
@@ -1232,5 +1224,22 @@ func formXlateToDbParam(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, r
         inParamsForSet.tableName = tableName
 
         return inParamsForSet
+}
+
+func splitUri(uri string) []string {
+	if !strings.HasPrefix(uri, "/") {
+		uri = "/" + uri
+	}
+	rgp := regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
+	pathList := rgp.FindAllString(uri, -1)
+	for i, kname := range pathList {
+		//log.Infof("uri path elems: %v", kname)
+		if strings.HasPrefix(kname, "/") {
+			pathList[i] = kname[1:]
+		}
+	}
+	log.Infof("uri: %v ", uri)
+	log.Infof("uri path elems: %v", pathList)
+	return pathList
 }
 
