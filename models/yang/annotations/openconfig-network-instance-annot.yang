@@ -3259,6 +3259,7 @@ module openconfig-network-instance-annot {
     }
   }
 
+  /*
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
              "/oc-ospfv2-ext:route-distribution-policies/oc-ospfv2-ext:distribute-list" +
@@ -3267,6 +3268,7 @@ module openconfig-network-instance-annot {
       sonic-ext:field-transformer  "ospfv2_router_distribute_route_access_list_fld_xfmr";
     }
   }
+  */
 
   /*-------- OSPFV2_ROUTER_PASSIVE_INTERFACE TABLE --------*/
 
@@ -3350,6 +3352,7 @@ module openconfig-network-instance-annot {
     }
   }
 
+  /*
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
              "/oc-netinst:inter-area-propagation-policies" +
@@ -3371,6 +3374,7 @@ module openconfig-network-instance-annot {
       sonic-ext:field-transformer "ospfv2_router_area_policy_export_list_fld_xfmr";
     }
   }
+  */
 
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
