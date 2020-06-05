@@ -272,9 +272,10 @@ module openconfig-system-ext {
     deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:selectors {
        deviate not-supported;
     }
-    
+
    //infra paraemters
     augment /oc-sys:system {
+        description "System infra";
         uses oc-infra:infra-top;
     }
 }
