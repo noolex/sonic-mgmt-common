@@ -2,10 +2,27 @@ module openconfig-lacp-ext {
 
     yang-version "1";
 
-    namespace "http://openconfig.net/yang/lacp/extention";
+    namespace "http://openconfig.net/yang/lacp/extension";
     prefix "oc-lacp-ext";
 
     import openconfig-lacp { prefix oc-lacp; }
+    import openconfig-extensions { prefix oc-ext; }
+
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+        "This module describes a YANG model for LACP extensions.";
+
+    oc-ext:openconfig-version "0.1.0";
+
+    revision "2020-02-21" {
+      description
+        "Initial revision.";
+    }
 
 
     deviation /oc-lacp:lacp/oc-lacp:config {

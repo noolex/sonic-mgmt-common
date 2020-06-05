@@ -3869,7 +3869,7 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_subintf_ipv6_tbl_key_xfmr")
-    }    
+    }
     var err error
     var inst_key string
     pathInfo := NewPathInfo(inParams.uri)
@@ -3878,17 +3878,8 @@ var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     log.Info("Intf name: ", ifName)
     requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     log.Info("inParams.requestUri: ", requestUriPath)
-    uriPathInfo := NewPathInfo(inParams.uri)
-    uriPath, err := getYangPathFromUri(uriPathInfo.Path)
-
-    log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr inParams.uri: ", uriPath)
     log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr")
-
-    if (strings.HasPrefix(requestUriPath,  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:ip-neighbors/ip-neighbor") && 
-        strings.HasPrefix(requestUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/ip-neighbors/ip-neighbor")) {
-        log.Info("YangToDb_subintf_ipv6_tbl_key_xfmr: condition satisfied")
-        inst_key = ifName
-    }    
+    inst_key = ifName
     return inst_key, err
 }
 
