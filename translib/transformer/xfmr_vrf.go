@@ -117,7 +117,7 @@ func isVrfDbTbl (inParams XfmrParams) (bool)  {
         }
 }
 
-// mgmtVrfEnabledInDb check if "mgmtVrfEnabled" is set to true in the "MGMT_VRF_CONFIG" table
+/* mgmtVrfEnabledInDb check if "mgmtVrfEnabled" is set to true in the "MGMT_VRF_CONFIG" table */
 func mgmtVrfEnabledInDb (inParams XfmrParams) (string) {
         data := (*inParams.dbDataMap)[inParams.curDb]
         log.Info("mgmtVrfEnabledInDb ", data, "inParams :", inParams)
@@ -290,7 +290,7 @@ func xfmr_set_default_vrf_configDb() error {
         return err
 }
 
-/* check if mgmt vrf is configured and enabled */
+// isMgmtVrfEnabled  checks if mgmt vrf is configured and enabled
 func isMgmtVrfEnabled(inParams XfmrParams) (bool) {
 
         mgmtVrf, err := inParams.d.GetMapAll(&db.TableSpec{Name:"MGMT_VRF_CONFIG"+"|"+"vrf_global"})
