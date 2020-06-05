@@ -119,7 +119,7 @@ module openconfig-interfaces-ext {
         }
     }
 
-    grouping openconfig-interfaces-ext-interface-nat-zone-config {
+    grouping interfaces-ext-interface-nat-zone-config {
         description "Config level grouping associated with nat-zone";
 
         leaf nat-zone {
@@ -130,7 +130,7 @@ module openconfig-interfaces-ext {
                 "NAT zone id.";
         }
     }
-    grouping openconfig-interfaces-ext-interface-nat-zone-top {
+    grouping interfaces-ext-interface-nat-zone-top {
         description "Top level grouping associated with nat-zone";
 
         container nat-zone {
@@ -139,18 +139,18 @@ module openconfig-interfaces-ext {
             container config {
                 description "Config parameters for nat-zone";
 
-                uses openconfig-interfaces-ext-interface-nat-zone-config;
+                uses interfaces-ext-interface-nat-zone-config;
             }
             container state {
                 config false;
                 description "State parameters for nat-zone";
 
-                uses openconfig-interfaces-ext-interface-nat-zone-config;
+                uses interfaces-ext-interface-nat-zone-config;
             }
         }
     }
 
-    grouping openconfig-interfaces-ext-interface-sag-ipv4-config {
+    grouping interfaces-ext-interface-sag-ipv4-config {
         description "Config grouping associated with sag-ipv4";
 
         leaf-list static-anycast-gateway {
@@ -161,7 +161,7 @@ module openconfig-interfaces-ext {
         }
     }
 	
-    grouping openconfig-interfaces-ext-interface-sag-ipv4-top {
+    grouping interfaces-ext-interface-sag-ipv4-top {
         description "Top level grouping associated with sag-ipv4";
 
         container sag-ipv4 {
@@ -169,17 +169,17 @@ module openconfig-interfaces-ext {
 
             container config {
                 description "Config parameters associated with sag-ipv4";
-                uses openconfig-interfaces-ext-interface-sag-ipv4-config;
+                uses interfaces-ext-interface-sag-ipv4-config;
             }
             container state {
                 config false;
                 description "State parameters associated with sag-ipv4";
-                uses openconfig-interfaces-ext-interface-sag-ipv4-config;
+                uses interfaces-ext-interface-sag-ipv4-config;
             }
         }
     }
 
-    grouping openconfig-interfaces-ext-interface-sag-ipv6-config {
+    grouping interfaces-ext-interface-sag-ipv6-config {
         description "Config parameters associated with sag-ipv6";
 
         leaf-list static-anycast-gateway {
@@ -190,24 +190,24 @@ module openconfig-interfaces-ext {
         }
     }
 	
-    grouping openconfig-interfaces-ext-interface-sag-ipv6-top {
+    grouping interfaces-ext-interface-sag-ipv6-top {
         description "Top level grouping associated with sag-ipv6";
         container sag-ipv6 {
             description "Config and state parameters associated with sag-ipv6";
 
             container config {
                 description "Config parameters associated with sag-ipv6";
-                uses openconfig-interfaces-ext-interface-sag-ipv6-config;
+                uses interfaces-ext-interface-sag-ipv6-config;
             }
             container state {
                 config false;
                 description "State parameters associated with sag-ipv6";
-                uses openconfig-interfaces-ext-interface-sag-ipv6-config;
+                uses interfaces-ext-interface-sag-ipv6-config;
             }
         }
     }
 
-    grouping openconfig-interfaces-ext-vrrp-track-interface-priority-increment {
+    grouping interfaces-ext-vrrp-track-interface-priority-increment {
 
         description
             "List of track interfaces for VRRP";
@@ -259,13 +259,13 @@ module openconfig-interfaces-ext {
     augment "/oc-intf:interfaces/oc-intf:interface" {
         description
             "NAT zone config and state data.";
-        uses openconfig-interfaces-ext-interface-nat-zone-top;
+        uses interfaces-ext-interface-nat-zone-top;
     }
 
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
         description
             "SAG config and state data.";
-        uses openconfig-interfaces-ext-interface-sag-ipv4-top {
+        uses interfaces-ext-interface-sag-ipv4-top {
 			when "oc-intf:config/oc-intf:type = 'oc-intf-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
@@ -275,7 +275,7 @@ module openconfig-interfaces-ext {
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
         description
             "SAG config and state data.";
-        uses openconfig-interfaces-ext-interface-sag-ipv6-top {
+        uses interfaces-ext-interface-sag-ipv6-top {
 			when "oc-intf:config/oc-intf:type = 'oc-intf-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
@@ -356,12 +356,12 @@ module openconfig-interfaces-ext {
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
         description "Track interface priority for IPv4 VRRP instance";
-        uses openconfig-interfaces-ext-vrrp-track-interface-priority-increment;
+        uses interfaces-ext-vrrp-track-interface-priority-increment;
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
         description "Track interface priority for IPv6 VRRP instance";
-        uses openconfig-interfaces-ext-vrrp-track-interface-priority-increment;
+        uses interfaces-ext-vrrp-track-interface-priority-increment;
     }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:hold-time {

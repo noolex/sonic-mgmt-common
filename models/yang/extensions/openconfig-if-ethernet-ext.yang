@@ -45,7 +45,7 @@ module openconfig-if-ethernet-ext {
   oc-ext:catalog-organization "openconfig";
   oc-ext:origin "openconfig";
 
-  grouping openconfig-if-ethernet-ext-ethernet-in-frames-size-dist {
+  grouping if-ethernet-ext-ethernet-in-frames-size-dist {
     description
       "Grouping for defining the size distribution of the frames
       received";
@@ -104,7 +104,7 @@ module openconfig-if-ethernet-ext {
     }
   }
 
-  grouping openconfig-if-ethernet-ext-storm-control-config {
+  grouping if-ethernet-ext-storm-control-config {
       description
           "Configurable items at the storm-control level";
       leaf ifname {
@@ -140,12 +140,12 @@ module openconfig-if-ethernet-ext {
       }
   }
 
-  grouping openconfig-if-ethernet-ext-storm-control-state {
+  grouping if-ethernet-ext-storm-control-state {
       description
           "Operational state parameters for storm-control on interface";
   }
 
-  grouping openconfig-if-ethernet-ext-storm-control-top{
+  grouping if-ethernet-ext-storm-control-top{
       description
           "Grouping for storm-control on ethernet interface";
 
@@ -165,13 +165,13 @@ module openconfig-if-ethernet-ext {
               }
               container config {
                   description "Config parameters for storm-control instance";
-                  uses openconfig-if-ethernet-ext-storm-control-config;
+                  uses if-ethernet-ext-storm-control-config;
               }
               container state {
                   config false;
                   description "State parameters for storm-control instance";
-                  uses openconfig-if-ethernet-ext-storm-control-config;
-                  uses openconfig-if-ethernet-ext-storm-control-state;
+                  uses if-ethernet-ext-storm-control-config;
+                  uses if-ethernet-ext-storm-control-state;
               }
           }
       }
@@ -184,12 +184,12 @@ module openconfig-if-ethernet-ext {
       description
         "Adds size distribution to the ethernet counters";
 
-      uses openconfig-if-ethernet-ext-ethernet-in-frames-size-dist;
+      uses if-ethernet-ext-ethernet-in-frames-size-dist;
   }
 
   augment "/oc-if:interfaces/oc-if:interface/oc-eth:ethernet" {
           description
               "Storm control support on ethernet interface";
-          uses openconfig-if-ethernet-ext-storm-control-top;
+          uses if-ethernet-ext-storm-control-top;
   }
 }
