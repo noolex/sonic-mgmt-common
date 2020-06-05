@@ -320,6 +320,7 @@ module openconfig-bgp-ext {
 
       leaf network-import-check {
           type boolean;
+          default true;
           description
               "This helps to advertise a BGP route not present in the routing table.";
       }
