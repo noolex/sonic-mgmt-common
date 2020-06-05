@@ -91,4 +91,5 @@ openconfig-infra.yang
 sonic-system-infra-annot.yang
 openconfig-aggregate-ext.yang
 openconfig-aggregate-ext-annot.yang
-
+openconfig-fbs-ext.yang
+openconfig-fbs-ext-annot.yang
