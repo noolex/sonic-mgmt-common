@@ -99,6 +99,14 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 }
 
 var rpc_clearauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+
+    host_output := HostQuery("clearaudit.action")
+    if host_output.Err != nil {
+        log.Errorf("%Error: ClearAudit host exec failed: err=%v", host_output.Err)
+        log.Flush()
+        return nil, host_output.Err
+    }
+
     return nil, nil
 }
 
