@@ -751,7 +751,7 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
         }
     }
     intfType, _, _ := getIntfTypeByName(ifName)
-    if IntfTypeVxlan == intfType {
+    if IntfTypeVxlan == intfType || IntfTypeVlan == intfType {
         return res_map, nil
     }
     if inParams.oper == DELETE {
@@ -1063,7 +1063,7 @@ var DbToYang_intf_eth_port_speed_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
         log.Info("DbToYang_intf_eth_port_speed_xfmr - Invalid interface type IntfTypeUnset");
         return result, errors.New("Invalid interface type IntfTypeUnset");
     }
-    if IntfTypeVxlan == intfType {
+    if IntfTypeVxlan == intfType || IntfTypeVlan == intfType {
 	    return result, nil
     }
     
@@ -1143,7 +1143,10 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     if intfType == IntfTypeUnset || ierr != nil {
         return ifName, errors.New("Invalid interface type IntfTypeUnset");
     }
-
+    if IntfTypeVlan == intfType {
+        log.Info("YangToDb_intf_subintfs_xfmr - IntfTypeVlan")
+        return ifName, nil
+    }
 
     idx := pathInfo.Var("index")
 
@@ -1152,11 +1155,6 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
         log.Error(errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return idx, err
-    }
-
-    if (IntfTypeVlan == intfType) && (inParams.oper == GET) {
-        log.Info("YangToDb_intf_subintfs_xfmr - IntfTypeVlan")
-        return ifName, nil
     }
 
     if (inParams.oper == GET) {
@@ -1295,7 +1293,7 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
     vlanIntfmap := make(map[string]map[string]db.Value)
     intfIpMap := make(map[string]db.Value)
 
-    // Handles the case when the delete request at subinterfaces/subinterface[index = 0]
+    // Handles the case when the delete request at interfaces/interface[name] or at routed-vlan
     if routedVlanIntf == nil || (routedVlanIntf.Ipv4 == nil && routedVlanIntf.Ipv6 == nil) {
 	    ipMap, _ := getIntfIpByName(d, tblName, ifName, true, true, "")
 	    if ipMap != nil && len(ipMap) > 0 {
@@ -2388,10 +2386,10 @@ var DbToYang_intf_ip_addr_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) 
     ifName := uriIfName
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
+    log.Info("DbToYang_intf_ip_addr_xfmr: targetUriPath is ", targetUriPath)
 
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
 
-    log.Info("DbToYang_intf_ip_addr_xfmr: targetUriPath is ", targetUriPath)
     sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("DbToYang_intf_ip_addr_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
@@ -3138,7 +3136,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         err = tlerr.InvalidArgsError{Format: errStr}
         return nil, err
     }
-    if IntfTypeVxlan == intfType {
+    if IntfTypeVxlan == intfType || IntfTypeVlan == intfType {
         return memMap, nil
     }
 
