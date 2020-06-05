@@ -1173,7 +1173,7 @@ func fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj *ocbinds.
         routeAttrSets.Weight = &_weight
     }
 
-    if value, ok := pathData["med"] ; ok {
+    if value, ok := pathData["metric"] ; ok {
         _med := uint32(value.(float64))
         routeAttrSets.Med = &_med
     }
@@ -1661,7 +1661,7 @@ func fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj *ocbinds.
         ipv4OutPostRouteAttrSets.Weight = &_weight
     }
 
-    if value, ok := prefixData["med"] ; ok {
+    if value, ok := prefixData["metric"] ; ok {
         _med := uint32(value.(float64))
         ipv4OutPostRouteAttrSets.Med = &_med
     }
