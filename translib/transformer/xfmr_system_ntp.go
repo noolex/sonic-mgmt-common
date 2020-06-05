@@ -27,7 +27,7 @@ func getSystemRootObject(inParams XfmrParams) (*ocbinds.OpenconfigSystem_System)
     return deviceObj.System
 }
 
-/* Xfmr function to return key for the NTP global table */
+// YangToDb_ntp_global_key_xfmr translate Yang to Db key for global level NTP configuration DB table
 var YangToDb_ntp_global_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
         log.Info( "YangToDb_ntp_global_key_xfmr: root: ", inParams.ygRoot,
                  ", uri: ", inParams.uri)
@@ -35,7 +35,7 @@ var YangToDb_ntp_global_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (st
         return "global", nil
 }
 
-/* Xfmr function at system/ntp/servers/server level to handle NTP server configuration */
+// YangToDb_ntp_server_subtree_xfmr is a xfmr function at system/ntp/servers/server level to handle NTP server configuration
 var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
         var err error
         var errStr string
@@ -69,7 +69,7 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
         return res_map, nil
 }
 
-/* Function to find if a string is in the string slice */
+// Find is a function to find if a string is in the string slice
 func Find(slice []string, val string) (int, bool) {
     for i, item := range slice {
         if item == val {
@@ -79,7 +79,7 @@ func Find(slice []string, val string) (int, bool) {
     return -1, false
 }
 
-/* Function to run "ntpq -p" from the mgmt framework docker and populate the NTP peer config/states based on requestUri */
+// ProcessGetNtpServer is a function to run "ntpq -p" from the mgmt framework docker and populate the NTP peer config/states based on requestUri
 func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string)  error {
         var err error
         var errStr string
@@ -231,7 +231,7 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
                         ygot.BuildEmptyTree(currNtpServer)
                 }
 
-                if (getServStateOnly == false) {
+                if (!getServStateOnly) {
                         if (currNtpServer.Config == nil) {
                                 ygot.BuildEmptyTree(currNtpServer)
                         }
@@ -239,7 +239,7 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
                         currNtpServer.Config.Address = &remote
                 }
 
-                if (getServConfigOnly == false) {
+                if (!getServConfigOnly) {
                         if (currNtpServer.State == nil) {
                                 ygot.BuildEmptyTree(currNtpServer)
                         }
@@ -292,7 +292,7 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
         return nil
 }
 
-/* Xfmr function for handling GET NTP server config/state */
+// DbToYang_ntp_server_subtree_xfmr is a xfmr function for handling GET NTP server config/state
 var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
         var err error
         var errStr string
@@ -324,7 +324,7 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         dbEntry, _ := d.GetEntry(ntpTable, key)
 
         /* Before migrating to Buster only mgmt VRF supported beside default vrf */
-        if (isMgmtVrfEnabled == true) {
+        if (isMgmtVrfEnabled) {
                 if (dbEntry.IsPopulated()) {
                         vrfName := (&dbEntry).Get("vrf")
 
