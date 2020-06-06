@@ -694,6 +694,12 @@ module sonic-flow-based-services {
 
                 uses classifier-attributes;
 
+                leaf TRAP_IDS {
+                    type string;
+                    description
+                        "Comma separated list of trap_ids";
+                }
+
                 list REFERENCES {
                     leaf POLICY_NAME {
                         type string;
@@ -761,6 +767,85 @@ module sonic-flow-based-services {
                         type enumeration {
                             enum DROP;
                         }
+                    }
+
+                    leaf TRAP_GROUP {
+                        type string;
+                        description "CoPP trap group name";
+                    }
+
+                    leaf TRAP_ACTION {
+                        type string {
+                            pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
+                                error-message "Invalid value passed for trap_action";
+                            }
+                        }
+                        description
+                            "Trap action";
+                    }
+
+                    leaf TRAP_PRIORITY {
+                        type uint16 {
+                            range "0..1023" {
+                                error-message "Invalid value passed for trap_priority";
+                            }
+                        }
+                        description
+                            "Priority value";
+                    }
+                    leaf QUEUE {
+                        type uint8 {
+                            range "0..47" {
+                                error-message "Invalid value passed for queue";
+                            }
+                        }
+                        description
+                            "CPU queue id";
+                    }
+                    leaf METER_TYPE {
+                        type string {
+                            pattern "(packets)|(bytes)" {
+                                error-message "Invalid value passed for meter_type";
+                            }
+                        }
+                        description
+                            "Meter type";
+                    }
+                    leaf MODE {
+                        type string {
+                            pattern "(sr_tcm)|(tr_tcm)|(storm)" {
+                                error-message "Invalid value passed for mode";
+                            }
+                        }
+                        description
+                            "Mode";
+                    }
+                    leaf GREEN_ACTION {
+                        type string {
+                            pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
+                                error-message "Invalid value passed for green_action";
+                            }
+                        }
+                        description
+                            "Green action";
+                    }
+                    leaf RED_ACTION {
+                        type string {
+                            pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
+                                error-message "Invalid value passed for red_action";
+                            }
+                        }
+                        description
+                            "Red action";
+                    }
+                    leaf YELLOW_ACTION {
+                        type string {
+                            pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
+                                error-message "Invalid value passed for yellow_action";
+                            }
+                        }
+                        description
+                            "Yellow action";
                     }
                 }
 
