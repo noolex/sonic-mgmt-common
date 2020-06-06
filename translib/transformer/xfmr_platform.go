@@ -26,6 +26,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/openconfig/ygot/ygot"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "math"
     "os"
     "strconv"
@@ -60,6 +61,11 @@ const (
    EEPROM_TBL       = "EEPROM_INFO"
    PSU_TBL          = "PSU_INFO"
    FAN_TBL          = "FAN_INFO"
+   TRANSCEIVER_TBL  = "TRANSCEIVER_INFO"
+   PORT_TBL         = "PORT_TABLE"
+
+   PORT_IF_NAME_PREFIX   = "Ethernet"
+   ALIAS_IN_NAME_PREFIX  = "Eth"
 
    /** Valid System Components **/
    PSU1             = "PSU 1"
@@ -120,6 +126,29 @@ const (
    FAN_SPEED                  = "/openconfig-platform:components/component/fan/state/openconfig-platform-fan:speed"
    FAN_TARGET_SPEED           = "/openconfig-platform:components/component/fan/state/openconfig-platform-ext:target-speed"
    FAN_DIRECTION              = "/openconfig-platform:components/component/fan/state/openconfig-platform-ext:direction"
+
+    /** Supported Xcvr URIs **/
+    XCVR_FORM_FACTOR             = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-transceiver:form-factor"
+    XCVR_DISPLAY_NAME            = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:display-name"
+    XCVR_MEDIA_INTERFACE         = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:media-interface"
+    XCVR_CABLE_TYPE              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:cable-type"
+    XCVR_CONNECTOR_TYPE          = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-transceiver:connector-type"
+    XCVR_CABLE_LENGTH            = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:cable-length"
+    XCVR_MAX_PORT_POWER          = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:max-port-power"
+    XCVR_MAX_MODULE_POWER        = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:max-module-power"
+    XCVR_VENDOR_NAME             = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-transceiver:vendor-name"
+    XCVR_VENDOR_PART_NUMBER      = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-transceiver:vendor-part-number"
+    XCVR_VENDOR_SERIAL_NUMBER    = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-transceiver:vendor-serial-number"
+    XCVR_VENDOR_REVISION         = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-transceiver:vendor-revision"
+    XCVR_VENDOR_DATE_CODE        = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-transceiver:vendor-date-code"
+
+    XCVR_VENDOR_OUI              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:vendor-oui"
+
+    XCVR_LPMODE                  = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lpmode"
+    XCVR_MODULE_LANE_COUNT       = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:module-lane-count"
+    XCVR_PRESENCE                = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:present"
+    XCVR_QSA_ADAPTER_TYPE        = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:qsa-adapter-type"
+
 )
 
 /**
@@ -180,6 +209,31 @@ type Fan struct {
     Target_Speed        string
 }
 
+/* Most are strings since media sends 'N/A' when data is not available */
+/* Conversion will be done before sending along */
+type Xcvr struct {
+    Presence                bool
+    Form_Factor             string
+    Display_Name            string
+    Media_Interface         string
+    Cable_Type              string
+    Connector_Type          string
+    Cable_Length            string
+    Max_Port_Power          string
+    Max_Module_Power        string
+
+    Lpmode                  string
+    Module_Lane_Count       string
+    Qsa_Adapter_Type        string
+
+    Vendor_Name             string
+    Vendor_Part_Number      string
+    Vendor_Serial_Number    string
+    Vendor_Revision         string
+    Vendor_Date_Code        string
+    Vendor_OUI              string
+}
+
 var FAN_LST = []string {"FAN 1", "FAN 2", "FAN 3", "FAN 4", "FAN 5", "FAN 6", "FAN 7",
                      "FAN 8", "FAN 9", "FAN 10", "PSU 1 FAN 1", "PSU 2 FAN 1"}
 var PSU_LST = []string {"PSU 1", "PSU 2"}
@@ -188,11 +242,29 @@ func init () {
     XlateFuncBind("DbToYang_pfm_components_xfmr", DbToYang_pfm_components_xfmr)
     XlateFuncBind("DbToYang_pfm_components_psu_xfmr", DbToYang_pfm_components_psu_xfmr)
     XlateFuncBind("DbToYang_pfm_components_fan_xfmr", DbToYang_pfm_components_fan_xfmr)
+    XlateFuncBind("DbToYang_pfm_components_transceiver_xfmr", DbToYang_pfm_components_transceiver_xfmr)
 }
 
 func getPfmRootObject (s *ygot.GoStruct) (*ocbinds.OpenconfigPlatform_Components) {
     deviceObj := (*s).(*ocbinds.Device)
     return deviceObj.Components
+}
+
+var DbToYang_pfm_components_transceiver_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Infof("Received GET for PlatformApp Template: %s ,path: %s, vars: %v",
+    pathInfo.Template, pathInfo.Path, pathInfo.Vars)
+
+    if strings.Contains(inParams.requestUri, "/openconfig-platform:components") ||
+        strings.Contains(inParams.requestUri, "/openconfig-platform:components/component/transceiver") {
+
+        log.Info("inParams.Uri:",inParams.requestUri)
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+        err := getSysXcvr(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.StateDB])
+        return err
+    }
+
+    return errors.New("Component not supported")
 }
 
 var DbToYang_pfm_components_psu_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
@@ -843,6 +915,18 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
         matchStr := strings.ToLower(compName)
         log.Infof("compName: %v", compName)
         if compName == "" {
+            /* All valid media interfaces as normal naming EthernetX */
+            intfNames := getPhysicalIntfNames(d)
+            for _, intf := range intfNames{
+                if utils.IsAliasModeEnabled(){
+                    intf = *(utils.GetUINameFromNativeName(&intf))
+                }
+                pf_comp, _ := pf_cpts.NewComponent(intf)
+
+                ygot.BuildEmptyTree(pf_comp)
+                fillSysXcvrInfo(pf_comp, intf, true, targetUriPath, d)
+            }
+
             sensor_comp,_  := pf_cpts.NewComponent("Sensor")
             ygot.BuildEmptyTree(sensor_comp)
             sensor_comp.State.Type,_ = sensor_comp.State.To_OpenconfigPlatform_Components_Component_State_Type_Union(
@@ -943,6 +1027,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 ygot.BuildEmptyTree(pf_comp)
                 fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+            } else if validXcvrName(&compName){
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name")
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
+                fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
             } else {
                 err = errors.New("Invalid component name")
             }
@@ -993,6 +1085,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
           }
           ygot.BuildEmptyTree(pf_comp)
           fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+        } else if validXcvrName(&compName){
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
         } else {
             err = errors.New("Invalid component name ")
         }
@@ -1045,6 +1145,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
               }
               ygot.BuildEmptyTree(pf_comp)
               fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+            } else if validXcvrName(&compName){
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name")
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
+                fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
             } else {
                 err = errors.New("Invalid input component name")
             }
@@ -1436,4 +1544,452 @@ func getSysFans(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath st
         }
     }
     return err
+}
+
+
+func validXcvrName(name *string) (bool) {
+    if name == nil || *name == "" {
+        return false
+    }
+
+    if utils.IsAliasModeEnabled() {
+        /*
+            Expect interface name of form Ethx/y/z or Ethx/y, where x,y,z are integers
+        */
+        return utils.IsValidAliasName(name)
+    }
+
+    /*
+        Expect interface name of form EthernetX, where X is an integer
+    */
+    if !strings.HasPrefix(*name, PORT_IF_NAME_PREFIX){
+        return false
+    }
+
+    sp := strings.SplitAfter(*name, "Ethernet")
+
+    if _, err := strconv.Atoi(sp[1]); err != nil {
+        return false
+    }
+    return true
+}
+
+func getSysXcvrFromDb(name string, d *db.DB) (Xcvr, error) {
+    var xcvrInfo Xcvr
+    var err error
+
+    /* Adjust name before calling DB
+        DB expects name of form EthernetX, where X is an integer
+    */
+    if utils.IsAliasModeEnabled(){
+        name = *(utils.GetNativeNameFromUIName(&name))
+    }
+
+    xcvrEntry, err := d.GetEntry(&db.TableSpec{Name: TRANSCEIVER_TBL}, db.Key{Comp: []string{name}})
+
+    if err != nil {
+        log.Info("Cant get entry: ", name)
+        xcvrInfo.Presence = false
+        return xcvrInfo, err
+    }
+
+    /* Existence of entry implies presence */
+    xcvrInfo.Presence = true
+
+    xcvrInfo.Form_Factor = xcvrEntry.Get("form_factor")
+    xcvrInfo.Display_Name = xcvrEntry.Get("display_name")
+    xcvrInfo.Media_Interface = xcvrEntry.Get("media_interface")
+    xcvrInfo.Cable_Type = xcvrEntry.Get("cable_type")
+    xcvrInfo.Connector_Type = xcvrEntry.Get("connector_type")
+    xcvrInfo.Cable_Length = xcvrEntry.Get("cable_length")
+    xcvrInfo.Max_Port_Power = xcvrEntry.Get("max_port_power")
+    xcvrInfo.Max_Module_Power = xcvrEntry.Get("power_rating_max")
+
+    xcvrInfo.Lpmode = xcvrEntry.Get("lpmode")
+    xcvrInfo.Module_Lane_Count = xcvrEntry.Get("module_lane_count")
+    xcvrInfo.Qsa_Adapter_Type = xcvrEntry.Get("qsa_adapter")
+
+    xcvrInfo.Vendor_Name = xcvrEntry.Get("vendor_name")
+    xcvrInfo.Vendor_Part_Number = xcvrEntry.Get("vendor_part_number")
+    xcvrInfo.Vendor_Serial_Number = xcvrEntry.Get("vendor_serial_number")
+    xcvrInfo.Vendor_Revision = xcvrEntry.Get("vendor_revision")
+    xcvrInfo.Vendor_Date_Code = xcvrEntry.Get("vendor_date_code")
+    xcvrInfo.Vendor_OUI = xcvrEntry.Get("vendor_oui")
+
+    return xcvrInfo, err
+}
+
+func test_if_available (s string) bool {
+    return ((s != "") && (s != "N/A") && (s != "n/a"))
+}
+
+func convert_connector_type(ct string) ocbinds.E_OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE {
+    switch ct {
+    case "N/A":
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_UNSET
+    case "SC":
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_SC_CONNECTOR
+    case "Optical Pigtail":
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_OPTICAL_PIGTAIL_CONNECTOR
+    case "Copper Pigtail":
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_COPPER_PIGTAIL_CONNECTOR
+    case "LC":
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_LC_CONNECTOR
+    case "No separable connector":
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_NO_SEPARABLE_CONNECTOR
+    case "RJ45":
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_RJ45_CONNECTOR
+    case "MPOx12", "MPOx16", "MPO 2x12", "MPO 1x16":
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_MPO_CONNECTOR
+    default:
+        return ocbinds.OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE_UNSET
+    }
+}
+
+func convert_form_factor_type (ft string) ocbinds.E_OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE {
+    switch ft {
+    case "N/A", "":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_UNSET
+    case "SFP":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_SFP
+    case "SFP28":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_SFP28
+    case "SFP56":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_SFP56
+    case "QSFP":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_QSFP
+    case "QSFP28":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_QSFP28
+    case "SFP+":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_SFP_PLUS
+    case "SFP56-DD":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_SFP56_DD
+    case "QSFP+":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_QSFP_PLUS
+    case "QSFP28-DD":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_QSFP28_DD
+    case "QSFP56-DD":
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_QSFP56_DD
+    default:
+        return ocbinds.OpenconfigTransportTypes_TRANSCEIVER_FORM_FACTOR_TYPE_UNSET
+    }
+}
+
+func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
+                        name string, all bool, targetUriPath string, d *db.DB) (error) {
+    var err error
+
+    xcvrInfo, err := getSysXcvrFromDb(name, d)
+    if err != nil {
+        log.Info("Error Getting transceiver info from dB")
+        return err
+    }
+
+    xcvrState := xcvrCom.Transceiver.State
+    xcvrEEPROMState := xcvrCom.State
+
+    if all {
+
+        /* Top level */
+        nm := name
+        xcvrEEPROMState.Name = &nm
+
+        /* Present state */
+        p := !xcvrInfo.Presence
+        xcvrEEPROMState.Empty = &p
+
+        q := true
+        xcvrEEPROMState.Removable = &q
+        /* Not present */
+        if p {
+            return err
+        }
+
+        if test_if_available(xcvrInfo.Display_Name) {
+            xcvrEEPROMState.Description = &xcvrInfo.Display_Name
+        }
+
+        /* Vendor info */
+        if test_if_available(xcvrInfo.Vendor_Serial_Number) {
+            xcvrEEPROMState.SerialNo = &xcvrInfo.Vendor_Serial_Number
+        }
+        if test_if_available(xcvrInfo.Vendor_Part_Number) {
+            xcvrEEPROMState.PartNo = &xcvrInfo.Vendor_Part_Number
+        }
+        if test_if_available(xcvrInfo.Vendor_Name) {
+            xcvrEEPROMState.VendorName = &xcvrInfo.Vendor_Name
+            xcvrEEPROMState.MfgName = &xcvrInfo.Vendor_Name
+        }
+        if test_if_available(xcvrInfo.Vendor_Revision) {
+            xcvrEEPROMState.HardwareVersion = &xcvrInfo.Vendor_Revision
+        }
+        if test_if_available(xcvrInfo.Vendor_Date_Code) {
+            xcvrEEPROMState.MfgDate = &xcvrInfo.Vendor_Date_Code
+        }
+        xcvrEEPROMState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+
+        /* Inner level */
+        xcvrState.Present = ocbinds.OpenconfigPlatform_Components_Component_Transceiver_State_Present_PRESENT
+
+        if (test_if_available(xcvrInfo.Cable_Length)){
+            tmp, err := strconv.ParseFloat(xcvrInfo.Cable_Length, 64)
+            if err == nil {
+                xcvrState.CableLength = &tmp
+            }
+        }
+        if (test_if_available(xcvrInfo.Max_Port_Power)){
+            tmp, err := strconv.ParseFloat(xcvrInfo.Max_Port_Power, 64)
+            if err == nil {
+                xcvrState.MaxPortPower = &tmp
+            }
+        }
+        if (test_if_available(xcvrInfo.Max_Module_Power)){
+            tmp, err := strconv.ParseFloat(xcvrInfo.Max_Module_Power, 64)
+            if err == nil {
+                xcvrState.MaxModulePower = &tmp
+            }
+        }
+
+        if (test_if_available(xcvrInfo.Display_Name)){
+            xcvrState.DisplayName = &xcvrInfo.Display_Name
+        }
+        if (test_if_available(xcvrInfo.Vendor_Name)){
+            xcvrState.Vendor = &xcvrInfo.Vendor_Name
+        }
+        if (test_if_available(xcvrInfo.Vendor_Part_Number)){
+            xcvrState.VendorPart = &xcvrInfo.Vendor_Part_Number
+        }
+        if (test_if_available(xcvrInfo.Vendor_Revision)){
+            xcvrState.VendorRev = &xcvrInfo.Vendor_Revision
+        }
+        if (test_if_available(xcvrInfo.Vendor_Serial_Number)){
+            xcvrState.SerialNo = &xcvrInfo.Vendor_Serial_Number
+        }
+        if (test_if_available(xcvrInfo.Vendor_Date_Code)){
+            xcvrState.DateCode = &xcvrInfo.Vendor_Date_Code
+        }
+        if (test_if_available(xcvrInfo.Vendor_OUI)){
+            xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
+        }
+
+        if (test_if_available(xcvrInfo.Connector_Type)){
+            xcvrState.ConnectorType = convert_connector_type(xcvrInfo.Connector_Type)
+        }
+        if (test_if_available(xcvrInfo.Form_Factor)){
+            xcvrState.FormFactor = convert_form_factor_type(xcvrInfo.Form_Factor)
+        }
+
+        /*
+            Pending YANG updates
+        if (test_if_available(xcvrInfo.Module_Lane_Count)){
+            tmp, err := strconv.ParseUint(xcvrInfo.Module_Lane_Count, 10, 64)
+            if err == nil {
+                q := uint32(tmp)
+                xcvrState.ModuleLaneCount = &q
+            }
+        }
+        if (test_if_available(xcvrInfo.Lpmode)){
+            tmp, err := strconv.ParseBool(xcvrInfo.Lpmode)
+            if err == nil {
+                xcvrState.Lpmode = &tmp
+            }
+        }
+
+
+        if (test_if_available(xcvrInfo.Media_Interface)){
+            xcvrState.MediaInterface = &xcvrInfo.Media_Interface
+        }
+        if (test_if_available(xcvrInfo.Cable_Type)){
+            xcvrState.CableType = &xcvrInfo.Cable_Type
+        }
+
+        if (test_if_available(xcvrInfo.Qsa_Adapter_Type)){
+            xcvrState.QsaAdapterType = &xcvrInfo.Qsa_Adapter_Type
+        }
+        */
+
+        return err
+    }
+
+    switch targetUriPath {
+        case COMP_STATE_EMPTY:
+            q := false
+            xcvrEEPROMState.Empty = &q
+        case COMP_STATE_NAME:
+            nm := name
+            xcvrEEPROMState.Name = &nm
+        case COMP_STATE_DESCR:
+            if test_if_available(xcvrInfo.Display_Name) {
+                xcvrEEPROMState.Description = &xcvrInfo.Display_Name
+            }
+        case COMP_STATE_SERIAL_NO:
+            if test_if_available(xcvrInfo.Vendor_Serial_Number) {
+                xcvrEEPROMState.SerialNo = &xcvrInfo.Vendor_Serial_Number
+            }
+        case COMP_STATE_PART_NO:
+            if test_if_available(xcvrInfo.Vendor_Part_Number) {
+                xcvrEEPROMState.PartNo = &xcvrInfo.Vendor_Part_Number
+            }
+        case COMP_STATE_MFG_NAME:
+            if test_if_available(xcvrInfo.Vendor_Name) {
+                xcvrEEPROMState.VendorName = &xcvrInfo.Vendor_Name
+                xcvrEEPROMState.MfgName = &xcvrInfo.Vendor_Name
+            }
+        case COMP_STATE_HW_VER:
+            if test_if_available(xcvrInfo.Vendor_Revision) {
+                xcvrEEPROMState.HardwareVersion = &xcvrInfo.Vendor_Revision
+            }
+        case COMP_STATE_MFG_DATE:
+            if test_if_available(xcvrInfo.Vendor_Date_Code) {
+                xcvrEEPROMState.MfgDate = &xcvrInfo.Vendor_Date_Code
+            }
+        case COMP_STATE_OPER_STATUS:
+            xcvrEEPROMState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+
+        case COMP_STATE_REMOVABLE:
+            q := true
+            xcvrEEPROMState.Removable = &q
+
+        case XCVR_PRESENCE:
+            xcvrState.Present = ocbinds.OpenconfigPlatform_Components_Component_Transceiver_State_Present_PRESENT
+        case XCVR_CABLE_LENGTH:
+            if (test_if_available(xcvrInfo.Cable_Length)){
+                tmp, err := strconv.ParseFloat(xcvrInfo.Cable_Length, 64)
+                if err == nil {
+                    xcvrState.CableLength = &tmp
+                }
+            }
+        case XCVR_MAX_PORT_POWER:
+        if (test_if_available(xcvrInfo.Max_Port_Power)){
+            tmp, err := strconv.ParseFloat(xcvrInfo.Max_Port_Power, 64)
+            if err == nil {
+                xcvrState.MaxPortPower = &tmp
+            }
+        }
+        case XCVR_MAX_MODULE_POWER:
+        if (test_if_available(xcvrInfo.Max_Module_Power)){
+            tmp, err := strconv.ParseFloat(xcvrInfo.Max_Module_Power, 64)
+            if err == nil {
+                xcvrState.MaxModulePower = &tmp
+            }
+        }
+        case XCVR_FORM_FACTOR:
+            if (test_if_available(xcvrInfo.Form_Factor)){
+                xcvrState.FormFactor = convert_form_factor_type(xcvrInfo.Form_Factor)
+            }
+        case XCVR_CONNECTOR_TYPE:
+            if (test_if_available(xcvrInfo.Connector_Type)){
+                xcvrState.ConnectorType = convert_connector_type(xcvrInfo.Connector_Type)
+            }
+        case XCVR_DISPLAY_NAME:
+            if (test_if_available(xcvrInfo.Display_Name)){
+                xcvrState.DisplayName = &xcvrInfo.Display_Name
+            }
+        case XCVR_VENDOR_NAME:
+            if (test_if_available(xcvrInfo.Vendor_Name)){
+                xcvrState.Vendor = &xcvrInfo.Vendor_Name
+            }
+        case XCVR_VENDOR_PART_NUMBER:
+            if (test_if_available(xcvrInfo.Vendor_Part_Number)){
+                xcvrState.VendorPart = &xcvrInfo.Vendor_Part_Number
+            }
+        case XCVR_VENDOR_SERIAL_NUMBER:
+            if (test_if_available(xcvrInfo.Vendor_Revision)){
+                xcvrState.VendorRev = &xcvrInfo.Vendor_Revision
+            }
+        case XCVR_VENDOR_REVISION:
+            if (test_if_available(xcvrInfo.Vendor_Serial_Number)){
+                xcvrState.SerialNo = &xcvrInfo.Vendor_Serial_Number
+            }
+        case XCVR_VENDOR_DATE_CODE:
+            if (test_if_available(xcvrInfo.Vendor_Date_Code)){
+                xcvrState.DateCode = &xcvrInfo.Vendor_Date_Code
+            }
+        case XCVR_VENDOR_OUI:
+            if (test_if_available(xcvrInfo.Vendor_OUI)){
+                xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
+            }
+
+            /*
+            Pending YANG updates
+
+        case XCVR_MEDIA_INTERFACE:
+            if (test_if_available(xcvrInfo.Media_Interface)){
+                xcvrState.MediaInterface = &xcvrInfo.Media_Interface
+            }
+        case XCVR_CABLE_TYPE:
+            if (test_if_available(xcvrInfo.Cable_Type)){
+                xcvrState.CableType = &xcvrInfo.Cable_Type
+            }
+
+        case XCVR_LPMODE:
+            if (test_if_available(xcvrInfo.Lpmode)){
+                tmp, err := strconv.ParseBool(xcvrInfo.Lpmode)
+                if err == nil {
+                    xcvrState.Lpmode = &tmp
+                }
+            }
+        case XCVR_MODULE_LANE_COUNT:
+            if (test_if_available(xcvrInfo.Module_Lane_Count)){
+                tmp, err := strconv.ParseUint(xcvrInfo.Module_Lane_Count, 10, 64)
+                if err == nil {
+                    q := uint32(tmp)
+                    xcvrState.ModuleLaneCount = &q
+                }
+            }
+        case XCVR_QSA_ADAPTER_TYPE:
+            if (test_if_available(xcvrInfo.Qsa_Adapter_Type)){
+                xcvrState.QsaAdapterType = &xcvrInfo.Qsa_Adapter_Type
+            }
+            */
+    }
+    return err
+}
+
+func getSysXcvr(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
+
+    log.Info("Preparing dB for XCVR info");
+
+    var err error
+    log.Info("targetUriPath:", targetUriPath)
+    xcvrId := NewPathInfo(uri).Var("name")
+
+    xcvrCom := pf_cpts.Component[xcvrId]
+    if xcvrCom  == nil {
+        log.Info("Invalid Component Name")
+        return errors.New("Invalid component name")
+    }
+
+    ygot.BuildEmptyTree(xcvrCom)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.State)
+    switch targetUriPath {
+        case "/openconfig-platform:components/component":
+            fallthrough
+        case "/openconfig-platform:components/component/transceiver":
+            fallthrough
+        case "/openconfig-platform:components/component/transceiver/state":
+            fillSysXcvrInfo(xcvrCom, xcvrId, true, targetUriPath, d)
+        default:
+            /* For individual components*/
+            fillSysXcvrInfo(xcvrCom, xcvrId, false, targetUriPath, d)
+            break
+    }
+
+    return err
+}
+
+/* Get a list of all physical interfaces available */
+func getPhysicalIntfNames(d *db.DB) []string{
+
+    var ret []string
+
+    keyList, _ := d.GetKeysPattern(&(db.TableSpec{Name: PORT_TBL}), db.Key{Comp: []string{PORT_IF_NAME_PREFIX + "*"}})
+    for _, v := range keyList{
+        if len(v.Comp) == 0 {
+            continue
+        }
+        ret = append(ret, v.Comp[0])
+    }
+    return ret
 }
