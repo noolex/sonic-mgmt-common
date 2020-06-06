@@ -6,6 +6,7 @@ openconfig-platform-psu.yang
 openconfig-platform-annot.yang
 openconfig-platform-fan.yang
 openconfig-platform-fan-ext.yang
+openconfig-platform-transceiver.yang
 openconfig-interfaces.yang
 openconfig-if-ip.yang
 openconfig-if-ethernet.yang
