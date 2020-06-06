@@ -286,15 +286,15 @@ func dbMapDataFill(uri string, tableName string, keyName string, d map[string]in
 				result[tableName][keyName].Field[field] = fieldValue
 				continue
 			}
+			dbval, err := unmarshalJsonToDbData(xDbSpecMap[fieldXpath].dbEntry, fieldXpath, field, value)
+			if err != nil {
+				log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+			} else {
+				result[tableName][keyName].Field[field] = dbval
+			}
 		} else {
 			// should ideally never happen , just adding for safety
 			xfmrLogInfoAll("Did not find entry in xDbSpecMap for field xpath = %v", fieldXpath)
-		}
-		dbval, err := unmarshalJsonToDbData(xDbSpecMap[fieldXpath].dbEntry, fieldXpath, field, value)
-		if err != nil {
-			log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
-		} else {
-			result[tableName][keyName].Field[field] = dbval
 		}
 	}
 	return

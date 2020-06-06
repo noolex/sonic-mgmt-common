@@ -19,6 +19,12 @@ module sonic-port-annot {
         }
     }
 
+    deviation /prt:sonic-port/prt:PORT_TABLE/prt:PORT_TABLE_LIST/prt:alias {
+        deviate add {
+            sonic-ext:value-transformer "alternate_name_value_xfmr";
+        }
+    }
+
     deviation /prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname {
         deviate add {
             sonic-ext:cascade-delete "enable";

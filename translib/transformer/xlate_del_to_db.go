@@ -19,11 +19,7 @@
 package transformer
 import (
 	"errors"
-	"strings"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
-	"github.com/openconfig/goyang/pkg/yang"
-	"github.com/openconfig/ygot/ygot"
-	log "github.com/golang/glog"
 )
 
 func tblKeyDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, cdb db.DBNum) ([]string, error) {
@@ -118,7 +114,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 			tblData, ok := (*dbDataMap)[cdb][tbl]
 			if ok {
 				for dbKey, _ := range tblData {
-					_, curUri, kerr := dbKeyToYangDataConvert(xlateParams.uri, xlateParams.requestUri, xlateParams.xpath, dbKey, separator, xlateParams.txCache)
+					_, curUri, kerr := dbKeyToYangDataConvert(xlateParams.uri, xlateParams.requestUri, xlateParams.xpath, tbl, dbDataMap, dbKey, separator, xlateParams.txCache)
 					if kerr != nil {
 						continue
 					}

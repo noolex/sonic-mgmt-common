@@ -1,0 +1,556 @@
+submodule openconfig-fbs-classifiers-ext {
+  belongs-to openconfig-fbs-ext {
+    prefix oc-fbs-ext;
+  }
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-acl { prefix oc-acl; }
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-yang-types { prefix oc-yang; }
+  import openconfig-packet-match-types { prefix oc-pkt-match-types; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC
+    https://github.com/Azure/SONiC";
+
+  description
+    "This model defines the configuration and operational data
+    for flow based services classifiers.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-15" {
+    description
+      "Initial revision";
+
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+  identity MATCH_TYPE {
+    description
+      "Base identity for classifier match types";
+  }
+
+  identity MATCH_ACL {
+    base MATCH_TYPE;
+    description
+      "Classifiers with ACL as match criteria";
+  }
+
+  identity MATCH_FIELDS {
+    base MATCH_TYPE;
+    description
+      "Classifiers with L2-L4 header fields as match. All header
+      fields must match for the flow classification.";
+  }
+
+  // typedef statements
+
+  // grouping statements
+  grouping match-acl-config {
+    description
+      "Grouping for ACL name and acl type match configuration";
+
+    leaf acl-name {
+      type leafref {
+        path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/" +
+          "oc-acl:config/oc-acl:name";
+      }
+
+      description
+        "ACL Name to be used as match criteria";
+    }
+
+    leaf acl-type {
+      type identityref {
+        base oc-acl:ACL_TYPE;
+      }
+
+      description
+        "ACL type to be used as match criteria";
+    }
+  }
+
+  grouping match-acl-state {
+    description
+      "Grouping for ACL name and acl type match operational state";
+  }
+
+  grouping match-acl-top {
+    description
+      "Grouping for acl match related config and operational state";
+
+    container match-acl {
+      description
+        "Match ACL configuration for classifier";
+
+      container config {
+        description
+          "Classifier match acl related configuration";
+
+        uses match-acl-config;
+      }
+
+      container state {
+        config false;
+
+        description
+          "Classifier match acl operational state";
+
+        uses match-acl-config;
+        uses match-acl-state;
+      }
+    }
+  }
+
+  // Physical Layer fields
+  // ethernet-header
+  grouping ethernet-header-config {
+    description
+      "Configuration data of fields in Ethernet header.";
+
+    leaf source-mac {
+      type oc-yang:mac-address;
+      description
+        "Source IEEE 802 MAC address.";
+    }
+
+    leaf source-mac-mask {
+      type oc-yang:mac-address;
+      description
+        "Source IEEE 802 MAC address mask.";
+    }
+
+    leaf destination-mac {
+      type oc-yang:mac-address;
+      description
+        "Destination IEEE 802 MAC address.";
+    }
+
+    leaf destination-mac-mask {
+      type oc-yang:mac-address;
+      description
+        "Destination IEEE 802 MAC address mask.";
+    }
+
+    leaf ethertype {
+      type oc-pkt-match-types:ethertype-type;
+      description
+        "Ethertype field to match in Ethernet packets";
+    }
+
+    leaf pcp {
+      type uint8 {
+        range "0..7";
+      }
+      description "IEEE 802 Priority Code Point";
+    }
+
+    leaf pcp-mask {
+      type uint8 {
+        range "0..7";
+      }
+      description "IEEE 802 Priority Code Point";
+    }
+
+    leaf dei {
+      type uint8 {
+        range "0..1";
+      }
+      description "IEEE 802 Drop Eligible Indicator";
+    }
+
+    leaf vlanid {
+      type uint16 {
+        range "1..4094";
+      }
+      description "VLAN ID";
+    }
+  }
+
+  grouping ethernet-header-state {
+    description
+      "State information of fields in Ethernet header.";
+  }
+
+  grouping ethernet-header-top {
+    description
+      "Top level container for fields in Ethernet header.";
+
+    container l2 {
+      description
+        "Ethernet header fields";
+
+      container config {
+        description
+          "Configuration data";
+        uses ethernet-header-config;
+      }
+
+      container state {
+        config false;
+        description
+          "State Information.";
+        uses ethernet-header-config;
+        uses ethernet-header-state;
+      }
+    }
+  }
+
+  grouping ip-protocol-fields-common-config {
+    description
+      "IP protocol fields common to IPv4 and IPv6";
+
+    leaf dscp {
+      type oc-inet:dscp;
+      description
+        "Value of diffserv codepoint.";
+    }
+
+    leaf protocol {
+      type union {
+        type uint8;
+        type identityref {
+          base oc-pkt-match-types:IP_PROTOCOL;
+        }
+      }
+      description
+        "The protocol carried in the IP packet, expressed either
+        as its IP protocol number, or by a defined identity.";
+    }
+
+    leaf hop-limit {
+      type uint8 {
+        range 0..255;
+      }
+      description
+        "The IP packet's hop limit -- known as TTL (in hops) in
+        IPv4 packets, and hop limit in IPv6";
+    }
+  }
+
+  // IP Layer
+  // ip-protocol-fields
+  grouping ipv4-protocol-fields-config {
+    description
+      "Configuration data of IP protocol fields
+      for IPv4";
+
+    leaf source-address {
+      type oc-inet:ipv4-prefix;
+      description
+        "Source IPv4 address prefix.";
+    }
+
+    leaf destination-address {
+      type oc-inet:ipv4-prefix;
+      description
+        "Destination IPv4 address prefix.";
+    }
+
+    uses ip-protocol-fields-common-config;
+  }
+
+  grouping ipv4-protocol-fields-state {
+    description
+      "State information of IP header fields for IPv4";
+  }
+
+  grouping ipv4-protocol-fields-top {
+    description
+      "IP header fields for IPv4";
+
+    container ipv4 {
+      description
+        "Top level container for IPv4 match field data";
+
+      container config {
+        description
+          "Configuration data for IPv4 match fields";
+        uses ipv4-protocol-fields-config;
+      }
+
+      container state {
+        config false;
+        description
+          "State information for IPv4 match fields";
+        uses ipv4-protocol-fields-config;
+        uses ipv4-protocol-fields-state;
+      }
+    }
+  }
+
+  grouping ipv6-protocol-fields-config {
+    description
+      "Configuration data for IPv6 match fields";
+
+    leaf source-address {
+      type oc-inet:ipv6-prefix;
+      description
+        "Source IPv6 address prefix.";
+    }
+
+    leaf source-flow-label {
+      type oc-inet:ipv6-flow-label;
+      description
+        "Source IPv6 Flow label.";
+    }
+
+    leaf destination-address {
+      type oc-inet:ipv6-prefix;
+      description
+        "Destination IPv6 address prefix.";
+    }
+
+    leaf destination-flow-label {
+      type oc-inet:ipv6-flow-label;
+      description
+        "Destination IPv6 Flow label.";
+    }
+
+    uses ip-protocol-fields-common-config;
+  }
+
+  grouping ipv6-protocol-fields-state {
+    description
+      "Operational state data for IPv6 match fields";
+  }
+
+  grouping ipv6-protocol-fields-top {
+    description
+      "Top-level grouping for IPv6 match fields";
+
+    container ipv6 {
+      description
+        "Top-level container for IPv6 match field data";
+
+      container config {
+        description
+          "Configuration data for IPv6 match fields";
+
+        uses ipv6-protocol-fields-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for IPv6 match fields";
+
+        uses ipv6-protocol-fields-config;
+        uses ipv6-protocol-fields-state;
+      }
+    }
+  }
+
+  // Transport fields
+  grouping transport-fields-config {
+    description
+      "Configuration data of transport-layer packet fields";
+
+    leaf source-port {
+      type oc-pkt-match-types:port-num-range;
+      description
+        "Source port or range";
+    }
+
+    leaf destination-port {
+      type oc-pkt-match-types:port-num-range;
+      description
+        "Destination port or range";
+    }
+
+    leaf-list tcp-flags {
+      type identityref {
+        base oc-pkt-match-types:TCP_FLAGS;
+      }
+      description
+        "List of TCP flags to match";
+    }
+
+    leaf icmp-type {
+      type uint8;
+      description "ICMP or ICMPv6 Type";
+    }
+
+    leaf icmp-code {
+      type uint8;
+      description "ICMP or ICMPv6 Code";
+    }
+  }
+
+  grouping transport-fields-state {
+    description
+      "State data of transport-fields";
+  }
+
+  grouping transport-fields-top {
+    description
+      "Destination transport-fields top level grouping";
+
+    container transport {
+      description
+        "Transport fields container";
+
+      container config {
+        description
+          "Configuration data";
+        uses transport-fields-config;
+      }
+
+      container state {
+        config false;
+        description
+          "State data";
+        uses transport-fields-config;
+        uses transport-fields-state;
+      }
+    }
+  }
+
+  grouping match-hdr-fields-top {
+    description
+      "Grouping for header fields match related config and operational state";
+
+    container match-hdr-fields {
+      description
+        "Match header fields configuration for classifier";
+
+      container config {
+        description
+          "Classifier match header fields related configuration";
+
+        uses match-hdr-fields-config;
+      }
+
+      container state {
+        config false;
+
+        description
+          "Classifier match header fields related operational state";
+
+        uses match-hdr-fields-config;
+        uses match-hdr-fields-state;
+      }
+
+      uses ethernet-header-top;
+      uses ipv4-protocol-fields-top;
+      uses ipv6-protocol-fields-top;
+      uses transport-fields-top;
+    }
+  }
+
+  grouping match-hdr-fields-config {
+    description
+      "Grouping for header fields match configuration";
+
+    leaf match-all {
+      type boolean;
+      default true;
+
+      description
+        "If set to true, this field indicates that all configured fields
+        should match the traffic to be considered to a match for flow
+        classification. If set to false, any field can match the
+        traffic";
+    }
+  }
+
+  grouping match-hdr-fields-state {
+    description
+      "Grouping for header fields match operational state";
+  }
+
+  grouping fbs-classifier-config {
+    description
+      "Classifier config";
+
+    leaf name {
+      type string;
+
+      description
+        "Classifier name";
+    }
+
+    leaf match-type {
+      type identityref {
+        base MATCH_TYPE;
+      }
+
+      description
+        "Classifier match type";
+    }
+  }
+
+  grouping fbs-classifier-state {
+    description
+      "Classifier operational state";
+  }
+
+  grouping fbs-classifiers-top {
+    description
+      "Classifiers top container";
+
+    container classifiers {
+      description
+        "Container enclosing all classifiers configuration";
+
+      list classifier {
+        key "class-name";
+
+        description
+          "List of classifiers. Each classifier contains information
+          about the match criteria";
+
+        leaf class-name {
+          type leafref {
+            path ../config/name;
+          }
+
+          description
+            "Name of the classifier";
+        }
+
+        container config {
+          description
+            "Classifier config";
+
+          uses fbs-classifier-config;
+        }
+
+        container state {
+          config false;
+
+          description
+            "Classifier operational state";
+
+          uses fbs-classifier-config;
+          uses fbs-classifier-state;
+        }
+
+        uses match-acl-top;
+        uses match-hdr-fields-top;
+      }
+    }
+  }
+
+  // data definition statements
+
+  // augment statements
+
+  // rpc statements
+
+  // notification statements
+
+}
+

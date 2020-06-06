@@ -459,10 +459,13 @@ func extractFieldFromDb(tableName string, keyStr string, fieldName string, data 
 
 	if tableName != "" && keyStr != "" && fieldName != "" {
 		if data[tableName][keyStr].Field != nil {
-			dbData[tableName] = make(map[string]db.Value)
-			dbVal.Field = make(map[string]string)
-			dbVal.Field[fieldName] = data[tableName][keyStr].Field[fieldName]
-			dbData[tableName][keyStr] = dbVal
+			fldVal, fldValExists := data[tableName][keyStr].Field[fieldName]
+			if fldValExists {
+				dbData[tableName] = make(map[string]db.Value)
+				dbVal.Field = make(map[string]string)
+				dbVal.Field[fieldName] = fldVal
+				dbData[tableName][keyStr] = dbVal
+			}
 		}
 	}
 	return dbData
@@ -575,16 +578,20 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
 func CallRpcMethod(path string, body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 	var err error
 	var ret []byte
+	var data []reflect.Value
 
 	// TODO - check module name
 	rpcName := strings.Split(path, ":")
 	if dbXpathData, ok := xDbSpecMap[rpcName[1]]; ok {
 		xfmrLogInfo("RPC callback invoked (%v) \r\n", rpcName)
-		data, err := XlateFuncCall(dbXpathData.rpcFunc, body, dbs)
+		data, err = XlateFuncCall(dbXpathData.rpcFunc, body, dbs)
 		if err != nil {
 			return nil, err
 		}
 		ret = data[0].Interface().([]byte)
+		if !data[1].IsNil() {
+            err = data[1].Interface().(error)
+        }
 	} else {
 		log.Error("No tsupported RPC", path)
 		err = tlerr.NotSupported("Not supported RPC")

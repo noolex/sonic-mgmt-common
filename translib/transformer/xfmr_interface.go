@@ -35,6 +35,7 @@ type XfmrParams struct {
 	uri string
 	requestUri string //original uri using which a curl/NBI request is made
 	oper int
+	table string
 	key string
 	dbDataMap *map[db.DBNum]map[string]map[string]db.Value
 	subOpDataMap map[int]*RedisDbMap // used to add an in-flight data with a sub-op

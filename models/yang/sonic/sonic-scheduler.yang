@@ -31,7 +31,7 @@ module sonic-scheduler {
                     type enumeration {
                         enum DWRR;
                         enum WRR;
-                        enum PRIORITY;
+                        enum STRICT;
                     }
                 }
 

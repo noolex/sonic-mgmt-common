@@ -439,6 +439,12 @@ module openconfig-system-annot {
             }
     }
 
+    deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:kdump-records {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_kdump_records_xfmr";
+            }
+    }
+
     deviation /oc-sys:system/oc-sys-ext:kdump/oc-sys-ext:config {
         deviate add {
             sonic-ext:subtree-transformer "oc_kdump_config_xfmr";
@@ -487,5 +493,34 @@ module openconfig-system-annot {
         deviate add {
             sonic-ext:field-transformer "server_dns_field_xfmr";
         }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:infra/oc-sys-ext:state/oc-sys-ext:clock{
+        deviate add {
+            sonic-ext:field-transformer "sys_infra_state_clock_xfmr";
+            }
+    }
+    deviation /oc-sys:system/oc-sys-ext:infra/oc-sys-ext:state/oc-sys-ext:uptime{
+        deviate add {
+            sonic-ext:field-transformer "sys_infra_state_uptime_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_systemd_coredump_status_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:core-file-records {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_systemd_coredump_records_xfmr";
+            }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:config {
+        deviate add {
+            sonic-ext:subtree-transformer "oc_systemd_coredump_config_xfmr";
+            }
     }
 }

@@ -22,7 +22,6 @@ BUILD_DIR := build
 
 GOPATH ?= /tmp/go
 GO     ?= /usr/local/go/bin/go
-RMDIR  ?= rm -rf
 
 INSTALL := /usr/bin/install
 
@@ -31,7 +30,7 @@ GO_DEPS    = vendor/.done
 GO_PATCHES = $(shell find patches -type f)
 GOYANG_BIN = $(abspath $(BUILD_DIR)/bin/goyang)
 
-export TOPDIR GO GOPATH RMDIR
+export TOPDIR GO GOPATH 
 
 all: models cvl translib
 
@@ -46,7 +45,7 @@ $(GO_DEPS): $(GO_MOD) $(GO_PATCHES)
 go-deps: $(GO_DEPS)
 
 go-deps-clean:
-	$(RMDIR) vendor
+	$(RM) -r vendor
 
 .PHONY: cvl
 cvl: $(GO_DEPS)
@@ -101,8 +100,9 @@ endif
 	$(INSTALL) -D $(TOPDIR)/config/cfg_mgmt.json $(DESTDIR)/etc/sonic/
 
 clean: models-clean translib-clean cvl-clean
-	git check-ignore debian/* | xargs -r $(RMDIR)
-	$(RMDIR) $(BUILD_DIR)
+	git check-ignore debian/* | xargs -r $(RM) -r
+	$(RM) -r debian/.debhelper
+	$(RM) -r $(BUILD_DIR)
 
 cleanall: clean go-deps-clean
 	$(MAKE) -C cvl cleanall

@@ -6,7 +6,7 @@ import (
  )
 
 
-//Validate ip address of sflow collector ip 
+//ValidateCollectorIp Validate ip address of sflow collector ip 
 func (t *CustomValidation) ValidateCollectorIp(vc *CustValidationCtxt) CVLErrorInfo {
 
 	if (vc.CurCfg.VOp == OP_DELETE) {

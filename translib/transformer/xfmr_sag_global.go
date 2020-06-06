@@ -34,16 +34,10 @@ func init () {
 
 
 var YangToDb_sag_global_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    /* var err error */
 
     log.Info("YangToDb_sag_global_key_xfmr ***", inParams.uri)
-    /* pathInfo := NewPathInfo(inParams.uri) */
 
-    /* Key should contain, <network-instance-name> */
-
-    var sagTableKey string
-
-    sagTableKey = "IP"
+    sagTableKey := "IP"
 
     log.Info("YangToDb_sag_global_key_xfmr: sagTableKey:", sagTableKey)
     return sagTableKey, nil
@@ -64,9 +58,14 @@ var DbToYang_sag_global_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (ma
 var YangToDb_sag_ipv4_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
+    if inParams.oper == DELETE {
+        res_map["IPv4"] = "enable"
+        return res_map, nil
+    }
+
     enabled, _ := inParams.param.(*bool)
     var enStr string
-    if *enabled == true {
+    if *enabled {
         enStr = "enable"
     } else {
         enStr = "disable"
@@ -79,9 +78,14 @@ var YangToDb_sag_ipv4_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 var YangToDb_sag_ipv6_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
+    if inParams.oper == DELETE {
+        res_map["IPv6"] = "enable"
+        return res_map, nil
+    }
+
     enabled, _ := inParams.param.(*bool)
     var enStr string
-    if *enabled == true {
+    if *enabled {
         enStr = "enable"
     } else {
         enStr = "disable"
