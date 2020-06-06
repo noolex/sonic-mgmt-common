@@ -48,6 +48,7 @@ func init () {
     XlateFuncBind("YangToDb_intf_enabled_xfmr", YangToDb_intf_enabled_xfmr)
     XlateFuncBind("DbToYang_intf_enabled_xfmr", DbToYang_intf_enabled_xfmr)
     XlateFuncBind("YangToDb_intf_mtu_xfmr", YangToDb_intf_mtu_xfmr)
+    XlateFuncBind("DbToYang_intf_mtu_xfmr", DbToYang_intf_mtu_xfmr)
     XlateFuncBind("YangToDb_intf_type_xfmr", YangToDb_intf_type_xfmr)
     XlateFuncBind("DbToYang_intf_type_xfmr", DbToYang_intf_type_xfmr)
     XlateFuncBind("DbToYang_intf_admin_status_xfmr", DbToYang_intf_admin_status_xfmr)
@@ -776,6 +777,45 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
     intTypeValStr := strconv.FormatUint(uint64(*intfTypeVal), 10)
     res_map["mtu"] = intTypeValStr
     return res_map, nil
+}
+
+var DbToYang_intf_mtu_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+
+    intfType, _, ierr := getIntfTypeByName(inParams.key)
+    if intfType == IntfTypeUnset || ierr != nil {
+        log.Info("DbToYang_intf_mtu_xfmr - Invalid interface type IntfTypeUnset");
+        return result, errors.New("Invalid interface type IntfTypeUnset");
+    }
+    if IntfTypeVxlan == intfType {
+	    return result, nil
+    }
+    intTbl := IntfTypeTblMap[intfType]
+
+    tblName, _ := getPortTableNameByDBId(intTbl, inParams.curDb)
+    if _, ok := data[tblName]; !ok {
+        log.Info("DbToYang_intf_mtu_xfmr table not found : ", tblName)
+        return result, errors.New("table not found : " + tblName)
+    }
+
+    pTbl := data[tblName]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_intf_mtu_xfmr Interface not found : ", inParams.key)
+        return result, errors.New("Interface not found : " + inParams.key)
+    }
+    prtInst := pTbl[inParams.key]
+    mtuStr, ok := prtInst.Field["mtu"]
+    if ok {
+	    mtuVal, err := strconv.ParseFloat(mtuStr, 64)
+	    if err != nil {
+	        return result, err
+	    }
+        result["mtu"] = mtuVal
+    }
+    return result, err
 }
 
 var YangToDb_intf_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {

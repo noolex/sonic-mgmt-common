@@ -9,6 +9,7 @@ module openconfig-platform-ext {
 
     import openconfig-extensions { prefix "oc-ext"; }
     import openconfig-platform { prefix oc-pf; }
+    import openconfig-platform-transceiver { prefix oc-transceiver; }
 
     organization "SONiC";
     contact
@@ -256,6 +257,39 @@ module openconfig-platform-ext {
             type uint32;
             units rpm;
             description "Target speed of fans";
+        }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-transceiver:transceiver/oc-transceiver:state {
+        leaf cable-length{
+            type decimal64 {
+                fraction-digits 1;
+            }
+            description "The length of cable (in meters) on the xcvr module";
+        }
+
+        leaf max-port-power{
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description "The maximum power the port is allowed to provide (in watts)";
+        }
+
+        leaf max-module-power{
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description "The maximum power the xcvr can draw (in watts)";
+        }
+
+        leaf display-name{
+            type string;
+            description "Name used for identifying the xcvr module";
+        }
+
+        leaf vendor-oui{
+            type string;
+            description "OUI of the xcvr module vendor";
         }
     }
 }
