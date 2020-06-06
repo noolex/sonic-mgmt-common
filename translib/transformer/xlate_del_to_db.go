@@ -19,7 +19,11 @@
 package transformer
 import (
 	"errors"
+	"strings"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/openconfig/goyang/pkg/yang"
+	"github.com/openconfig/ygot/ygot"
+	log "github.com/golang/glog"
 )
 
 func tblKeyDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, cdb db.DBNum) ([]string, error) {
