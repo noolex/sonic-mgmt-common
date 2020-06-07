@@ -427,7 +427,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         }
 
         log.Info("field Type is set for attribute deletion")
-        sched_entry[sched_key].Field["type"] = "PRIORITY"
+        sched_entry[sched_key].Field["type"] = "STRICT"
     }
 
     attrs := []string{"cbs", "pbs", "cir" , "pir"}
@@ -584,7 +584,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
 
         if schedObj.Config != nil  {
             if schedObj.Config.Priority == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_STRICT {
-                sched_entry[sched_key].Field["type"] = "PRIORITY"
+                sched_entry[sched_key].Field["type"] = "STRICT"
             } else {
                 sched_entry[sched_key].Field["type"] = "DWRR"
             }
@@ -810,7 +810,7 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
         }
 
         if val, exist := schedCfg.Field["type"]; exist {
-            if val == "PRIORITY" {
+            if val == "STRICT" {
                 if sched_config {
                     schedObj.Config.Priority = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_STRICT
                 }

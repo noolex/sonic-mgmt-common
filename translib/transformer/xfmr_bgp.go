@@ -31,7 +31,7 @@ func getBgpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Networ
     if len(niName) == 0 {
         return nil, "", errors.New("vrf name is missing")
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return nil, "", errors.New("BGP ID is missing")
     }
     if len(protoName) == 0 {
@@ -201,7 +201,7 @@ var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
         err := errors.New(err_str); log.Info(err_str)
         return nil_tblList, err
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         err_str := "BGP ID is missing"
         err := errors.New(err_str); log.Info(err_str)
         return nil_tblList, err
@@ -549,7 +549,7 @@ var YangToDb_bgp_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
         return "", errors.New("vrf name is missing")
     }
 
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return "", errors.New("BGP ID is missing")
     }
 
@@ -611,7 +611,7 @@ var YangToDb_bgp_dyn_neigh_listen_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
         return "", errors.New("vrf name is missing")
     }
 
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return "", errors.New("BGP ID is missing")
     }
     
@@ -659,7 +659,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
         return afi, errors.New("vrf name is missing")
     }
 
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return afi, errors.New("BGP ID is missing")
     }
     
@@ -771,7 +771,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
         return afi, errors.New("vrf name is missing")
     }
 
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return afi, errors.New("BGP ID is missing")
     }
     
@@ -863,16 +863,16 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
         } `json:"sonic-bgp-clear:output"`
     }
 
-    log.Info("In rpc_clear_bgp", mapData)
+    log.Info("In rpc_clear_bgp ", mapData)
 
-    input, _ := mapData["sonic-bgp-clear:input"]
+    input := mapData["sonic-bgp-clear:input"]
     mapData = input.(map[string]interface{})
 
     log.Info("In rpc_clear_bgp", mapData)
 
     if value, ok := mapData["clear-all"].(bool) ; ok {
         log.Info("In clearall", value)
-        if value == true {
+        if value {
            clear_all = "* "
         }
     }
@@ -897,13 +897,13 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     }
 
     if value, ok := mapData["all"].(bool) ; ok {
-        if value == true {
+        if value {
            all = "* "
         }
     }
 
     if value, ok := mapData["external"].(bool) ; ok {
-        if value == true {
+        if value {
            external = "external "
         }
     }
@@ -934,31 +934,31 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     if value, ok := mapData["peer-group"].(string) ; ok {
         if value != "" {
-            peer_group = "peer_group " + value + " "
+            peer_group = "peer-group " + value + " "
         }
     }
 
     if value, ok := mapData["in"].(bool) ; ok {
-        if value == true {
+        if value {
            in = "in "
         }
     }
 
     if value, ok := mapData["out"].(bool) ; ok {
-        if value == true {
+        if value {
             out = "out "
         }
     }
 
     if value, ok := mapData["soft"].(bool) ; ok {
-        if value == true {
+        if value {
             soft = "soft "
         }
     }
 
-    log.Info("In rpc_clear_bgp", clear_all, vrf_name, af_str, all, neigh_address, intf, asn, prefix, peer_group, in, out, soft)
+    log.Info("In rpc_clear_bgp ", clear_all, vrf_name, af_str, all, neigh_address, intf, asn, prefix, peer_group, in, out, soft)
 
-    if is_evpn == false {
+    if !is_evpn {
         cmdbase = "clear ip bgp "
     } else {
         cmdbase = "clear bgp l2vpn "

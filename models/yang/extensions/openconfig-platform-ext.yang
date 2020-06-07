@@ -7,103 +7,103 @@ module openconfig-platform-ext {
 
     prefix "oc-pf-ext";
 
+    import openconfig-extensions { prefix "oc-ext"; }
     import openconfig-platform { prefix oc-pf; }
 
-    grouping platform-extra-sensor-reading {
-        list sensor-category {
-            description
-                "List of sensor category";
-            key "category";
-            leaf category {
-                type string;
-                description
-                    "Sensor Category Name";
-            }
-            list sensor {
-                description
-                    "List of sensors";
-                key "name";
-                leaf name {
-                    type string;
-                    description
-                        "Sensor Name";
-                }
-                leaf state {
-                    type string;
-                    description "Sensor State";
-                }
-            }
-        }
+    organization "SONiC";
+    contact
+        "SONiC";
+    description
+        "This module contains a collection of YANG definitions for
+           Zero Touch Provisioning";
+
+    oc-ext:openconfig-version "0.12.2";
+
+    revision 2019-10-11 {
+        description
+            "Initial revision.";
+        reference "0.12.2";
     }
 
-    augment /oc-pf:components/oc-pf:component {
-        description
-            "Add container for software-component information";
-        container software {
-            config false;
-            leaf software-version {
-                type string;
-                description "Software Version";
-            }
-            leaf product-version {
-                type string;
-                description "Product Version";
-            }
-            leaf distribution-version {
-                type string;
-                description "Debian Version";
-            }
-            leaf kernel-version {
-                type string;
-                description "Kernel Version";
-            }
-            leaf build-commit {
-                type string;
-                description "Build Commit ID";
-            }
-            leaf build-date {
-                type string;
-                description "Date of Build commit";
-            }
-            leaf built-by {
-                type string;
-                description "Built by";
-            }
-            leaf platform-name {
-                type string;
-                description "Platform Name";
-            }
-            leaf hwsku-version {
-                type string;
-                description "Hardware SKU version";
-            }
-            leaf asic-version {
-                type string;
-                description "asic version";
-            }
-            leaf hardware-version {
-                type string;
-                description "Hardware Version";
-            }
-            leaf serial-number {
-                type string;
-                description "Serial Number of Software";
-            }
-            leaf up-time {
-                type string;
-                description "System up-time";
-            }
-            leaf mfg-name {
-                type string;
-                description "Manufacturing Name";
-            }
+
+    grouping platform-ext-software {
+        description "Platform software fields";
+        leaf software-version {
+            type string;
+            description "Software Version";
+        }
+        leaf product-version {
+            type string;
+            description "Product Version";
+        }
+        leaf distribution-version {
+            type string;
+            description "Debian Version";
+        }
+        leaf kernel-version {
+            type string;
+            description "Kernel Version";
+        }
+        leaf build-commit {
+            type string;
+            description "Build Commit ID";
+        }
+        leaf build-date {
+            type string;
+            description "Date of Build commit";
+        }
+        leaf built-by {
+            type string;
+            description "Built by";
+        }
+        leaf platform-name {
+            type string;
+            description "Platform Name";
+        }
+        leaf hwsku-version {
+            type string;
+            description "Hardware SKU version";
+        }
+        leaf asic-version {
+            type string;
+            description "asic version";
+        }
+        leaf hardware-version {
+            type string;
+            description "Hardware Version";
+        }
+        leaf serial-number {
+            type string;
+            description "Serial Number of Software";
+        }
+        leaf up-time {
+            type string;
+            description "System up-time";
+        }
+        leaf mfg-name {
+            type string;
+            description "Manufacturing Name";
+        }
+        container docker {
+            description "docker information";
             list docker-version {
-                description "list of docker and their versions";
                 key "docker-name";
+                description "list of docker and their versions";
                 leaf docker-name {
-                    type string;
+                    type leafref {
+                        path "../state/docker-name";
+                    }
                     description
                         "name of the docker";
+                }
+                container state {
+                    config false;
+                    description "docker version state";
+                    leaf docker-name {
+                        type string;
+                        description
+                            "name of the docker";
+                    }
                 }
                 leaf docker-tag-id{
                     type string;
@@ -124,11 +124,76 @@ module openconfig-platform-ext {
         }
     }
 
+    grouping platform-ext-extra-sensor-reading {
+        description "group for sensor readings";
+        list sensor-category {
+            key "category";
+            description
+                "List of sensor category";
+            leaf category {
+                type leafref {
+                    path "../state/category";
+                }
+                description
+                    "Sensor Category Name";
+            }
+            container sensors {
+                description "Sensor information";
+                list sensor {
+                    key "name";
+                    description
+                        "List of sensors";
+                    leaf name {
+                        type leafref {
+                            path "../state/name";
+                        }
+                        description "Sensor name";
+                    }
+                    container state {
+                        config false;
+                        description "sensor state";
+                        leaf name {
+                            type string;
+                            description
+                                "Sensor Name";
+                        }
+                        leaf state {
+                            type string;
+                            description "Sensor State";
+                        }
+                    }
+                }
+            }
+
+            container state {
+                config false;
+                description "sensor state";
+                leaf category {
+                    type string;
+                    description
+                        "Sensor Category Name";
+                }
+            }
+        }
+    }
+
+    augment /oc-pf:components/oc-pf:component {
+        description
+            "Add container for software-component information";
+        container software {
+            config false;
+            description "Fields for software component";
+            uses platform-ext-software;
+        }
+    }
+
     augment /oc-pf:components/oc-pf:component/oc-pf:subcomponents/oc-pf:subcomponent/oc-pf:state {
-        uses platform-extra-sensor-reading;
+        description "subcomponent for sensor readings";
+        uses platform-ext-extra-sensor-reading;
     }
 
     augment /oc-pf:components/oc-pf:component/oc-pf:state {
+        description "Additional fields for component state";
         leaf service-tag {
             type string;
             description "System service tag";
@@ -176,6 +241,7 @@ module openconfig-platform-ext {
     }
 
     augment /oc-pf:components/oc-pf:component/oc-pf:fan/oc-pf:state {
+        description "Additional fields for fan state";
         leaf direction {
             type string;
             description "Fan direction";

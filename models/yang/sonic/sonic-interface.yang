@@ -300,7 +300,9 @@ module sonic-interface {
                 key "ifName";
       
                 leaf ifName {
-                    type string;
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
                 }
 
                 leaf unnumbered {
@@ -317,7 +319,9 @@ module sonic-interface {
                 key "ifName ipPrefix";
 
                 leaf ifName {
-                   type string;
+                   type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
                 }
         
                 leaf ipPrefix {

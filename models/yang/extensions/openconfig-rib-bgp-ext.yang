@@ -3,7 +3,7 @@ module openconfig-rib-bgp-ext {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/rib/bgp-ext";
+  namespace "http://openconfig.net/yang/rib-bgp/extension";
 
   prefix "oc-bgprib-ext";
 
@@ -16,11 +16,11 @@ module openconfig-rib-bgp-ext {
   import openconfig-bgp-ext { prefix oc-bgp-ext; }
   import openconfig-yang-types { prefix oc-yang; }
   import openconfig-bgp-evpn-ext { prefix oc-bgp-evpn-ext; }
-  organization "OpenConfig working group";
+  organization
+      "SONiC";
 
   contact
-    "OpenConfig working group
-    www.openconfig.net";
+      "SONiC";
 
   description
     "Defines additional data nodes for the OpenConfig BGP RIB model.
@@ -74,7 +74,7 @@ module openconfig-rib-bgp-ext {
   oc-ext:catalog-organization "openconfig";
   oc-ext:origin "openconfig";
 
-  grouping rib-ext-route-annotations {
+  grouping rib-bgp-ext-route-annotations {
     description
       "Extended annotations for routes in the routing tables";
 
@@ -101,7 +101,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to the Loc-RIB for IPv4";
 
-      uses rib-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -112,7 +112,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to the Loc-RIB for IPv6";
 
-      uses rib-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -125,7 +125,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv4";
 
-      uses rib-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations;
   }
 
   augment
@@ -139,7 +139,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv4";
 
-      uses rib-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -152,7 +152,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv4";
 
-      uses rib-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -165,7 +165,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv6";
 
-      uses rib-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -178,7 +178,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv6";
 
-      uses rib-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -191,10 +191,10 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv6";
 
-      uses rib-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations;
   }
 
-  grouping loc-rib-prefix-paths-top {
+  grouping rib-bgp-ext-prefix-paths-top {
     description
       "Top-level grouping for IPv4 routing tables for prefix";
 
@@ -282,7 +282,7 @@ module openconfig-rib-bgp-ext {
                     "Current path was selected as the best path.";
             }
 
-            uses rib-ext-route-annotations;
+            uses rib-bgp-ext-route-annotations;
             uses oc-rib-bgp:bgp-loc-rib-attr-state;
             uses oc-rib-bgp:bgp-common-route-annotations-state;
             uses oc-rib-bgp:bgp-loc-rib-route-annotations-state;
@@ -294,7 +294,7 @@ module openconfig-rib-bgp-ext {
     }
   }
 
-  grouping ipv4-loc-rib-prefix-top {
+  grouping rib-bgp-ext-ipv4-loc-rib-prefix-top {
     description
       "Top-level grouping for IPv4 routing tables for prefix";
 
@@ -341,13 +341,13 @@ module openconfig-rib-bgp-ext {
                 "The IPv4 prefix corresponding to the route";
             }
           }
-          uses loc-rib-prefix-paths-top;
+          uses rib-bgp-ext-prefix-paths-top;
         }
       }
     }
   }
 
-  grouping ipv6-loc-rib-prefix-top {
+  grouping rib-bgp-ext-ipv6-loc-rib-prefix-top {
     description
       "Top-level grouping for IPv6 routing tables for prefix";
 
@@ -394,7 +394,7 @@ module openconfig-rib-bgp-ext {
                 "The IPv6 prefix corresponding to the route";
             }
           }
-          uses loc-rib-prefix-paths-top;
+          uses rib-bgp-ext-prefix-paths-top;
         }
       }
     }
@@ -407,7 +407,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations for prefix based Loc-RIB for IPv4";
 
-      uses ipv4-loc-rib-prefix-top;
+      uses rib-bgp-ext-ipv4-loc-rib-prefix-top;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -417,7 +417,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations for prefix based Loc-RIB for IPv6";
 
-      uses ipv6-loc-rib-prefix-top;
+      uses rib-bgp-ext-ipv6-loc-rib-prefix-top;
   }
 
   deviation /oc-ni:network-instances/oc-ni:network-instance/oc-ni:protocols/oc-ni:protocol/oc-ni:bgp/oc-ni:rib/oc-ni:afi-safis/oc-ni:afi-safi/oc-ni:ipv4-unicast/oc-bgprib-ext:loc-rib-prefix/oc-bgprib-ext:routes/oc-bgprib-ext:route/oc-bgprib-ext:loc-rib-prefix-paths/oc-bgprib-ext:paths/oc-bgprib-ext:path/oc-bgprib-ext:attr-sets/oc-bgprib-ext:aigp  {

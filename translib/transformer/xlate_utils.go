@@ -149,7 +149,7 @@ func yangTypeGet(entry *yang.Entry) string {
     return ""
 }
 
-func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey string, dbKeySep string, txCache interface{}) (map[string]interface{}, string, error) {
+func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableName string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, dbKey string, dbKeySep string, txCache interface{}) (map[string]interface{}, string, error) {
 	var err error
 	if len(uri) == 0 && len(xpath) == 0 && len(dbKey) == 0 {
 		err = fmt.Errorf("Insufficient input")
@@ -183,12 +183,12 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey s
 
 	if len(xYangSpecMap[xpath].xfmrKey) > 0 {
 		var dbs [db.MaxDB]*db.DB
-		inParams := formXfmrInputRequest(nil, dbs, db.MaxDB, nil, uri, requestUri, GET, dbKey, nil, nil, nil, txCache)
-		ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrKey), inParams)
+		inParams := formXfmrInputRequest(nil, dbs, db.MaxDB, nil, uri, requestUri, GET, dbKey, dbDataMap, nil, nil, txCache)
+		inParams.table = tableName
+		rmap, err := keyXfmrHandlerFunc(inParams, xYangSpecMap[xpath].xfmrKey)
 		if err != nil {
 			return nil, "", err
 		}
-		rmap := ret[0].Interface().(map[string]interface{})
 		if uriWithKeyCreate {
 			for k, v := range rmap {
 				uriWithKey += fmt.Sprintf("[%v=%v]", k, v)
@@ -204,8 +204,10 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, dbKey s
 
 	rmap := make(map[string]interface{})
 	if len(keyNameList) > 1 {
-		xfmrLogInfoAll("No key transformer found for multi element yang key mapping to a single redis key string.")
-	        return rmap, uriWithKey, nil
+		log.Errorf("No key transformer found for multi element yang key mapping to a single redis key string, for uri %v", uri)
+                errStr := fmt.Sprintf("Error processing key for list %v", uri)
+                err = fmt.Errorf("%v", errStr)
+                return rmap, uriWithKey, err
 	}
 	keyXpath := xpath + "/" + keyNameList[0]
 	xyangSpecInfo, ok := xYangSpecMap[keyXpath]
@@ -757,8 +759,9 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 if len(xpathInfo.delim) > 0 {
 		 keySeparator = xpathInfo.delim
 	 }
-
-	 for _, k := range strings.Split(path, "/") {
+	 pathList := splitUri(path)
+	 xfmrLogInfoAll("path elements are : %v", pathList)
+	 for _, k := range pathList {
 		 curPathWithKey += k
 		 yangXpath, _ := XfmrRemoveXPATHPredicates(curPathWithKey)
 		 xpathInfo, ok := xYangSpecMap[yangXpath]
@@ -890,16 +893,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 			    eg. /sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL2_ACL_IPV4]/ports[ports=Ethernet12]
 			 */
 			 if fldNm != "" {
-				 pathelem, perr := ygot.StringToStringSlicePath(path)
-				 if perr != nil {
-					 log.Errorf("Failed to get parts for uri %v.", path)
-					 return xpath, keyStr, tableName
-				 }
-				 chompFld := pathelem.Element
-
-				 lpath = strings.Join(chompFld[:SONIC_FIELD_INDEX-1], "/")
+				 pathLst := splitUri(path)
+				 xfmrLogInfoAll("pathList after uri split %v", pathLst)
+				 lpath = "/" + strings.Join(pathLst[:SONIC_FIELD_INDEX-1], "/")
 				 xfmrLogInfoAll("path after removing the field portion %v", lpath)
-
 			 }
 			 for i, kname := range rgp.FindAllString(lpath, -1) {
 				 if i > 0 {
@@ -1184,3 +1181,65 @@ func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.V
 	xfmrLogInfoAll("Transformed resultMap(%v)", resultMap)
 	return nil
 }
+
+func formXlateFromDbParams(d *db.DB, dbs [db.MaxDB]*db.DB, cdb db.DBNum, ygRoot *ygot.GoStruct, uri string, requestUri string, xpath string, oper int, tbl string, tblKey string, dbDataMap *RedisDbMap, txCache interface{}, resultMap map[string]interface{}, validate bool) xlateFromDbParams {
+	var inParamsForGet xlateFromDbParams
+	inParamsForGet.d = d
+	inParamsForGet.dbs = dbs
+	inParamsForGet.curDb = cdb
+	inParamsForGet.ygRoot = ygRoot
+	inParamsForGet.uri = uri
+	inParamsForGet.requestUri = requestUri
+	inParamsForGet.xpath = xpath
+	inParamsForGet.oper = oper
+	inParamsForGet.tbl = tbl
+	inParamsForGet.tblKey = tblKey
+	inParamsForGet.dbDataMap = dbDataMap
+	inParamsForGet.txCache = txCache
+	inParamsForGet.resultMap = resultMap
+	inParamsForGet.validate = validate
+
+	return inParamsForGet
+}
+
+func formXlateToDbParam(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, xpathPrefix string, keyName string, jsonData interface{}, resultMap map[int]RedisDbMap, result map[string]map[string]db.Value, txCache interface{}, tblXpathMap map[string]map[string]bool, subOpDataMap map[int]*RedisDbMap, pCascadeDelTbl *[]string, xfmrErr *error, name string, value interface{}, tableName string) xlateToParams {
+        var inParamsForSet xlateToParams
+        inParamsForSet.d = d
+        inParamsForSet.ygRoot = ygRoot
+        inParamsForSet.oper = oper
+        inParamsForSet.uri = uri
+        inParamsForSet.requestUri = requestUri
+        inParamsForSet.xpath = xpathPrefix
+        inParamsForSet.keyName = keyName
+        inParamsForSet.jsonData = jsonData
+        inParamsForSet.resultMap = resultMap
+        inParamsForSet.result = result
+        inParamsForSet.txCache = txCache.(*sync.Map)
+        inParamsForSet.tblXpathMap = tblXpathMap
+        inParamsForSet.subOpDataMap = subOpDataMap
+        inParamsForSet.pCascadeDelTbl = pCascadeDelTbl
+        inParamsForSet.xfmrErr = xfmrErr
+        inParamsForSet.name = name
+        inParamsForSet.value = value
+        inParamsForSet.tableName = tableName
+
+        return inParamsForSet
+}
+
+func splitUri(uri string) []string {
+	if !strings.HasPrefix(uri, "/") {
+		uri = "/" + uri
+	}
+	rgp := regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
+	pathList := rgp.FindAllString(uri, -1)
+	for i, kname := range pathList {
+		//log.Infof("uri path elems: %v", kname)
+		if strings.HasPrefix(kname, "/") {
+			pathList[i] = kname[1:]
+		}
+	}
+	log.Infof("uri: %v ", uri)
+	log.Infof("uri path elems: %v", pathList)
+	return pathList
+}
+

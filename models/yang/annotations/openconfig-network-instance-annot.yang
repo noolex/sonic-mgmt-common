@@ -140,11 +140,16 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:mac-table {
       deviate add {
-            sonic-ext:db-name "APPL_DB";
             sonic-ext:subtree-transformer "fdb_mac_table_xfmr";
       }
     }
-    
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:state {
+      deviate add {
+            sonic-ext:subtree-transformer "fdb_mac_table_count_xfmr";
+      }
+    }
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols {
         deviate add {
             sonic-ext:table-name "NONE";
@@ -362,6 +367,26 @@ module openconfig-network-instance-annot {
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:confederation/oc-netinst:state/oc-netinst:member-as {
       deviate add {
           sonic-ext:field-name "confed_peers";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes {
+      deviate add {
+          sonic-ext:table-name "STATIC_ROUTE";
+          sonic-ext:key-transformer "static_routes_key_xfmr";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static {
+      deviate add {
+          sonic-ext:key-transformer "static_routes_key_xfmr";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop {
+      deviate add {
+          sonic-ext:key-transformer "static_routes_key_xfmr";
+          sonic-ext:subtree-transformer "static_routes_nexthop_xfmr";
       }
     }
 

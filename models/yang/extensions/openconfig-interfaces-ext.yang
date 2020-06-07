@@ -32,6 +32,21 @@ module openconfig-interfaces-ext {
             description "Fallback status on this interface";
         }
     }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config" {
+        leaf fast_rate {
+            type boolean;
+            default false;
+            description "If true, send LACP packets every second; Else every 30 secs";
+        }
+    }
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state" {
+        leaf fast_rate {
+            type boolean;
+            description "Fast Rate status on this PortChannel";
+        }
+    }
+
     augment "/oc-lacp:lacp/oc-lacp:interfaces/oc-lacp:interface/oc-lacp:members/oc-lacp:member/oc-lacp:state" {
         leaf selected {
             type boolean;

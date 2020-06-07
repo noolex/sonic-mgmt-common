@@ -11,23 +11,36 @@ module openconfig-bgp-policy-ext {
   import openconfig-routing-policy {prefix oc-rpol; }
   import openconfig-bgp-types { prefix oc-bgp-types; }
   import openconfig-bgp-policy { prefix oc-bgp-pol; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  organization
+      "SONiC";
+
+  contact
+      "SONiC";
 
   description
     "This module describes a deviation for BGP routing policy 
      configuration extensions.";
 
+  oc-ext:openconfig-version "0.1.1";
+
   revision "2020-04-08" {
     description
       "Added the attributes for IPv6 next hop.";
+    reference "0.1.1";
   }
 
 
   revision "2019-11-13" {
     description
       "BGP Routing Policy extensions.";
+    reference "0.1.0";
   }
 
-  grouping routing-policy-ext-action-next-hop-set {
+  grouping bgp-policy-ext-action-next-hop-set {
+    description
+        "Configuration data for IP nexthop under BGP policy conditions";
       leaf next-hop-set {
           type leafref {
               path "/oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:config/oc-rpol:name";
@@ -49,7 +62,9 @@ module openconfig-bgp-policy-ext {
           expression patterns";
     }
  
-  grouping routing-policy-ext-ipv6-next-hop-config {
+  grouping bgp-policy-ext-ipv6-next-hop-config {
+    description
+        "Configuration data for IPv6 nexthop under BGP policy actions";
       leaf set-ipv6-next-hop-global {
           type oc-inet:ipv6-address;
           description "set the IPv6 global next-hop attribute in the route update";
@@ -83,19 +98,27 @@ module openconfig-bgp-policy-ext {
   }
 
   augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:config {
-      uses routing-policy-ext-action-next-hop-set;
+    description
+        "Policy definition extensions for BGP conditions";
+      uses bgp-policy-ext-action-next-hop-set;
   }
 
   augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:state {
-      uses routing-policy-ext-action-next-hop-set;
+    description
+        "Policy definition extensions for BGP conditions";
+      uses bgp-policy-ext-action-next-hop-set;
   }
 
   augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config {
-        uses routing-policy-ext-ipv6-next-hop-config;
+    description
+        "Policy definition extensions for BGP actions";
+        uses bgp-policy-ext-ipv6-next-hop-config;
   }
 
   augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state {
-        uses routing-policy-ext-ipv6-next-hop-config;
+    description
+        "Policy definition extensions for BGP actions";
+        uses bgp-policy-ext-ipv6-next-hop-config;
   }
 
   // rpc statements
