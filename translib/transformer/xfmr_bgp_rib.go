@@ -15,6 +15,7 @@ import (
 func init () {
     XlateFuncBind("DbToYang_bgp_routes_get_xfmr", DbToYang_bgp_routes_get_xfmr)
     XlateFuncBind("rpc_show_bgp", rpc_show_bgp)
+    XlateFuncBind("rpc_show_bgp_stats", rpc_show_bgp_stats)
 }
 
 type _xfmr_bgp_rib_key struct {
@@ -2627,6 +2628,54 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     if err != nil {
         dbg_err_str := "FRR execution failed ==> " + err_str
         log.Info("In rpc_show_bgp, ", dbg_err_str)
+        return nil, errors.New("Internal error!")
+    }
+    result.Output.Status = bgpOutput
+    return json.Marshal(&result)
+}
+
+var rpc_show_bgp_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_bgp_stats")
+    var cmd, vrf_name, af_str string
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show bgp ipv4/6 unicast statistics, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-bgp-show:output"`
+    }
+
+    log.Info("In rpc_show_bgp_stats, RPC data:", mapData)
+
+    input := mapData["sonic-bgp-show:input"]
+    mapData = input.(map[string]interface{})
+
+    log.Info("In rpc_show_bgp_stats, RPC Input data:", mapData)
+
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = " vrf " + value
+    }
+
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value == "IPV4_UNICAST" {
+            af_str = " ipv4 "
+        }else if value == "IPV6_UNICAST" {
+            af_str = " ipv6 "
+        }
+    }
+
+    cmd = "show ip bgp" + vrf_name + af_str + "statistics json"
+
+    bgpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Info("In rpc_show_bgp_stats, FRR execution failed")
         return nil, errors.New("Internal error!")
     }
     result.Output.Status = bgpOutput
