@@ -27,6 +27,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"reflect"
+	"sort"
 	"strings"
 	//"syscall"
 	"testing"
@@ -3346,18 +3348,11 @@ func TestGetDepTables(t *testing.T) {
 	result, _ := cvSess.GetDepTables("sonic-acl", "ACL_RULE")
 
 	expectedResult := []string{"ACL_RULE", "ACL_TABLE", "MIRROR_SESSION", "PORT", "PORTCHANNEL"}
-	expectedResult1 := []string{"ACL_RULE", "MIRROR_SESSION", "ACL_TABLE", "PORT", "PORTCHANNEL"} //2nd possible result
 
-	if len(expectedResult) != len(result) {
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
 		t.Errorf("Validation failed, returned value = %v", result)
-		return 
-	}
-
-	for i := 0; i < len(expectedResult) ; i++ {
-		if result[i] != expectedResult[i] && result[i] != expectedResult1[i] {
-			t.Errorf("Validation failed, returned value = %v", result)
-			break
-		}
 	}
 
 	cvl.ValidationSessClose(cvSess)
