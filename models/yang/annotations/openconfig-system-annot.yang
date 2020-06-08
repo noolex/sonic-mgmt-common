@@ -20,6 +20,7 @@ module openconfig-system-annot {
     import sonic-extensions {prefix sonic-ext; }
     import openconfig-system-ext { prefix oc-sys-ext; }
     import openconfig-aaa-radius-ext { prefix oc-aaa-radius-ext; }
+    import openconfig-aaa-ldap-ext { prefix oc-aaa-ldap-ext; }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:users/oc-sys:user {
         deviate add {
@@ -579,4 +580,78 @@ module openconfig-system-annot {
             sonic-ext:subtree-transformer "oc_systemd_coredump_config_xfmr";
             }
     }
+				
+	/*************** ldap-servers-server-attributes-start ***********/
+	
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config {
+      deviate add {
+          sonic-ext:table-name "LDAP_SERVER";
+          sonic-ext:key-transformer "server_key_xfmr";
+       }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:use-type {
+      deviate add {
+          sonic-ext:field-transformer "ldap_use_type_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:ssl {
+      deviate add {
+          sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retry";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state {
+      deviate add {
+          sonic-ext:db-name "CONFIG_DB";
+          sonic-ext:table-name "LDAP_SERVER";
+          sonic-ext:key-transformer "server_key_xfmr";
+       }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:use-type {
+      deviate add {
+          sonic-ext:field-transformer "ldap_use_type_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:ssl {
+      deviate add {
+          sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retry";
+      }
+    }
+   		
+	/*************** ldap-servers-server-attributes-end ***********/
+    
+	/*************** ldap-servers-map-attributes-start ***********/    
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map/oc-aaa-ldap-ext:config {
+      deviate add {
+      	sonic-ext:table-name "LDAP_MAP";
+      	sonic-ext:key-transformer "ldap_server_map_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map/oc-aaa-ldap-ext:state {
+      deviate add {
+        sonic-ext:db-name "CONFIG_DB";
+      	sonic-ext:table-name "LDAP_MAP";
+      	sonic-ext:key-transformer "ldap_server_map_key_xfmr";
+      }
+    }
+    
+    /*************** ldap-servers-map-attributes-end ***********/     
 }
