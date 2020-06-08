@@ -255,6 +255,17 @@ module openconfig-qos-annot {
         }
     }
 
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dscp-maps/oc-qos-maps-ext:forwarding-group-dscp-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_fwd_group_dscp_xfmr";
+        }
+    }
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dot1p-maps/oc-qos-maps-ext:forwarding-group-dot1p-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_fwd_group_dot1p_xfmr";
+        }
+    }
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps {
       deviate add {
 		sonic-ext:table-name "PORT_QOS_MAP";
@@ -270,6 +281,18 @@ module openconfig-qos-annot {
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:dot1p-to-forwarding-group {
       deviate add {
         sonic-ext:field-transformer "qos_dot1p_to_tc_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-dscp {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_dscp_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-dot1p {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_dot1p_map_fld_xfmr";
       }
     }
 
