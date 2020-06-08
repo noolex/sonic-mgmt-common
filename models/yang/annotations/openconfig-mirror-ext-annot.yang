@@ -59,6 +59,12 @@ module openconfig-mirror-ext-annot {
         }
     }
 
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:config/oc-mirror-ext:gre-type {
+        deviate add {
+            sonic-ext:field-name "gre_type";
+        }
+    }
+
     deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state/oc-mirror-ext:dst-port {
         deviate add {
             sonic-ext:field-name "dst_port";
@@ -83,5 +89,10 @@ module openconfig-mirror-ext-annot {
         }
     }
 
+    deviation /oc-mirror-ext:mirror/oc-mirror-ext:sessions/oc-mirror-ext:session/oc-mirror-ext:state/oc-mirror-ext:gre-type {
+        deviate add {
+            sonic-ext:field-name "gre_type";
+        }
+    }
 }
 

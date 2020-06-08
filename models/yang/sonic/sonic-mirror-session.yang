@@ -152,16 +152,16 @@ module sonic-mirror-session {
 
                 leaf direction {
                     type enumeration {
-                        enum rx;
-                        enum tx;
-                        enum both;
+                        enum RX;
+                        enum TX;
+                        enum BOTH;
                     }
                     description
                         "Direction configuration for mirroring. Can be configured for both SPAN/ERSPAN.
                         Supports rx/tx/both as direction config.
-                           rx: Captures frames ingressing on source port.
-                           rx: Captures frames egressing on source port.
-                           both: Captures frames ingressing or egressing on source port.";
+                           RX: Captures frames ingressing on source port.
+                           TX: Captures frames egressing on source port.
+                           BOTH: Captures frames ingressing or egressing on source port.";
                 }
 
                 must "not (src_port) or not (dst_port) or (dst_port != src_port)" {
