@@ -146,16 +146,30 @@ class CheckDeviationPlugin(plugin.PyangPlugin):
                 continue
             check_update(ctx, mod_name+'.yang', module)
         
+        error_seen = False
+        if ctx.opts.outfile is not None:
+            fd = open(ctx.opts.outfile, "w")        
         for (epos, etag, eargs) in ctx.errors:
             elevel = error.err_level(etag)
+            
+            if "/extensions/" not in str(epos):
+                continue
+
             if error.is_warning(elevel):
                 kind = "warning"
             else:
                 kind = "error"
-            if "/extensions/" not in str(epos):
-                continue
+                error_seen = True
+            
             fd.write(str(epos) + ': %s: ' % kind + \
-                                    error.err_to_str(etag, eargs) + '\n')
+                error.err_to_str(etag, eargs) + '\n')                
+
+        if ctx.opts.outfile is not None:
+            fd.close()
+        if error_seen:
+            sys.exit(1)
+        else:
+            sys.exit(0)
 
 def mark_deviations(module):
     for deviation in module.search('deviation'):
