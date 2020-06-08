@@ -181,7 +181,7 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
     var err error
-    log.Info("translateAction:path =", app.pathInfo.Path, string(app.body))
+    log.Info("translateAction:path =", app.pathInfo.Path, app.body)
     return err
 }
 
@@ -358,8 +358,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 
 	// translate yang to db
 	result, auxMap, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget, (*app).body, txCache, &app.skipOrdTableChk)
-	fmt.Println(result)
-	log.Info("transformer.XlateToDb() returned", result)
+	log.Info("transformer.XlateToDb() returned result DB map - ", result, "\nDefault value Db Map - ", auxMap)
 
 
 	if err != nil {
@@ -531,14 +530,30 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						delete(tblRw.Field, "NULL")
 					}
 				}
-				log.Info("Processing Table row ", tblRw)
 				existingEntry, _ := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
 				switch opcode {
 				case CREATE:
-					if existingEntry.IsPopulated() && !app.deleteMapContains(tblNm, tblKey) {
-						log.Info("Entry already exists hence return.")
-						return tlerr.AlreadyExists("Entry %s already exists", tblKey)
+					if existingEntry.IsPopulated() {
+						log.Info("Create case - Entry ", tblKey, " already exists hence modifying it.")
+						/* Handle leaf-list merge if any leaf-list exists 
+						A leaf-list field in redis has "@" suffix as per swsssdk convention.
+						*/
+						resTblRw := db.Value{Field: map[string]string{}}
+						resTblRw = checkAndProcessLeafList(existingEntry, tblRw, UPDATE, d, tblNm, tblKey)
+						log.Info("Processing Table row ", resTblRw)
+						err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
+						if err != nil {
+							log.Error("CREATE case - d.ModEntry() failure")
+							return err
+						}
 					} else {
+						if tblRwDefaults, defaultOk := app.cmnAppYangDefValMap[tblNm][tblKey]; defaultOk {
+							log.Info("Entry ", tblKey, " doesn't exist so fill defaults - ", tblRwDefaults)
+							for fld, val := range tblRwDefaults.Field {
+								tblRw.Field[fld] = val
+							}
+						}
+						log.Info("Processing Table row ", tblRw)
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
 							log.Error("CREATE case - d.CreateEntry() failure")
@@ -561,6 +576,13 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 					} else {
 						// workaround to patch operation from CLI
 						log.Info("Create(pathc) an entry.")
+						if tblRwDefaults, defaultOk := app.cmnAppYangDefValMap[tblNm][tblKey]; defaultOk {
+							log.Info("Entry ", tblKey, " doesn't exist so fill defaults - ", tblRwDefaults)
+                                                        for fld, val := range tblRwDefaults.Field {
+                                                                tblRw.Field[fld] = val
+                                                        }
+                                                }
+						log.Info("Processing Table row ", tblRw)
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
 							log.Error("UPDATE case - d.CreateEntry() failure")
@@ -568,6 +590,13 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						}
 					}
 				case REPLACE:
+					if tblRwDefaults, defaultOk := app.cmnAppYangDefValMap[tblNm][tblKey]; defaultOk {
+						log.Info("For entry ", tblKey, ", being replaced, fill defaults - ", tblRwDefaults)
+						for fld, val := range tblRwDefaults.Field {
+							tblRw.Field[fld] = val
+						}
+					}
+					log.Info("Processing Table row ", tblRw)
 					if existingEntry.IsPopulated() {
 						log.Info("Entry already exists hence execute db.SetEntry")
 						err := d.SetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
@@ -809,14 +838,5 @@ func areEqual(a, b interface{}) bool {
         return reflect.DeepEqual(a, b)
 }
 
-// This function checks whether an entry exists in the db map
-func (app *CommonApp) deleteMapContains(tblNm string, tblKey string) bool {
-        if dbMap, ok := app.cmnAppTableMap[DELETE][db.ConfigDB]; ok {
-                if _, ok := dbMap[tblNm][tblKey] ; ok {
-                        return true
-                }
-         }
-        return false
-}
 
 
