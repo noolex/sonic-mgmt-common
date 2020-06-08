@@ -39,6 +39,7 @@ except ImportError:
     from io import StringIO ## for Python 3
 
 issues = []
+warnings = []
 extensionModulesList = []
 
 def pyang_plugin_init():
@@ -81,9 +82,24 @@ class CheckOcStylePlugin(plugin.PyangPlugin):
                 chk_naming_for_grouping(ctx,module)
                 chk_naming_for_enum_identity(ctx,module)  
                 chk_choice_case_feature(ctx,module)            
-        
+                
+        if ctx.opts.outfile is not None:
+            fd = open(ctx.opts.outfile, "w")
+
         for issue in issues:
+            issue = "Error: " + issue
             fd.write(issue +"\n")
+        
+        for warning in warnings:
+            warning = "Warning: " + warning
+            fd.write(warning +"\n")
+
+        if ctx.opts.outfile is not None:
+            fd.close()
+        if len(issues) > 0:
+            sys.exit(1)
+        else:
+            sys.exit(0)
 
 def chk_choice_case_feature(ctx, module):
     choiceList = []
@@ -135,11 +151,13 @@ def chk_version_prefix_namespace(ctx, module):
         sys.exit(2)
 
     namespace = module.search_one('namespace', None, module.substmts)
-    if namespace is None:
-        issues.append(module.arg + ".yang does not have namespace")
-    else:
-        if not namespace.arg.endswith('/extension'):
-            issues.append(str(namespace.pos) + " should end with /extension")
+    
+    if module.keyword != "submodule":
+        if namespace is None:
+            issues.append(module.arg + ".yang does not have namespace")
+        else:
+            if not namespace.arg.endswith('/extension'):
+                issues.append(str(namespace.pos) + " should end with /extension")
 
     if not module.i_prefix.startswith('oc-'):
         issues.append(module.arg + ".yang does not have prefix which begins with oc-")
@@ -248,6 +266,7 @@ def chk_container(ctx,container):
 
 def chk_naming_for_grouping(ctx, module):
     global issues
+    global warnings
     groupingList = []
     find_node(module,"grouping", groupingList)
     for grouping in groupingList:
@@ -256,6 +275,9 @@ def chk_naming_for_grouping(ctx, module):
             issues.append(str(grouping.pos) + " Grouping %s's name does not follow valid naming convention" %(name))
         if not name.startswith(grouping.i_module.i_modulename[11:]):
             issues.append(str(grouping.pos) + " Grouping %s's name should begin with module name" %(name))
+        last_part = name.split('-')[-1]
+        if last_part not in ["config", "state", "top"]:
+            warnings.append(str(grouping.pos) + " Grouping %s's name does not follow valid naming convention" %(name))
 
 def find_node(stmt, arg, nodelist=[]):
     if stmt.keyword == arg:
