@@ -117,4 +117,32 @@ module sonic-port-breakout {
             }
         }
     }
+
+    rpc breakout_capabilities {
+
+        description "RPC for listing the breakout capabilities of ports
+        input is Ethernet interface";
+
+        input {
+            leaf ifname {
+                type leafref {
+                    path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                }
+            }
+        }
+
+        output {
+            list caps {
+                leaf port {
+                    type string;
+                }
+                leaf modes {
+                    type string;
+                }
+                leaf defmode {
+                    type string;
+                }
+            }
+        }
+    }
 }
