@@ -246,58 +246,54 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                          ospfIntfDbValue.Field[fieldName] = dbVlaueStr
                      }
                  }
-                 if (ospfCfgObj.Authentication != nil)  {
-                     if (ospfCfgObj.Authentication.AuthenticationType != ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_UNSET) {
-                         fieldName := "authentication-type"
-                         auth_type := ospfCfgObj.Authentication.AuthenticationType
 
-                         dbVlaueStr := "NULL"
-                         switch (auth_type) {
-                             case ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_AUTH_NONE:
-                                 dbVlaueStr = "AUTH_NONE"
-                             case ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_TEXT :
-                                 dbVlaueStr = "TEXT"
-                             case ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_MD5HMAC :
-                                 dbVlaueStr = "MD5HMAC"
-                             default:
-                                 log.Info("YangToDb_ospfv2_interface_subtree_xfmr: Invalid Authentication type ", auth_type)
-                         }
-                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db authentication field to ", dbVlaueStr)
+                 if (ospfCfgObj.AuthenticationType != nil) {
+                     fieldName := "authentication-type"
 
-                         if (dbVlaueStr != "NULL") {
-                            ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
-                            ospfIntfDbValue.Field[fieldName] = dbVlaueStr
-                         }
-                     }
-                     if (ospfCfgObj.Authentication.AuthenticationKey != nil) {
-                         fieldName := "authentication-key"
+                     dbVlaueStr := *(ospfCfgObj.AuthenticationType)
+                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db authentication field to ", dbVlaueStr)
 
-                         dbVlaueStr := *(ospfCfgObj.Authentication.AuthenticationKey)
-                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth key field to ", dbVlaueStr)
-
+                     if (dbVlaueStr == "NONE" || dbVlaueStr == "TEXT" || dbVlaueStr == "MD5HMAC") {
                          ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
                          ospfIntfDbValue.Field[fieldName] = dbVlaueStr
-                     }
-                     if (ospfCfgObj.Authentication.AuthenticationKeyId != nil) {
-                         fieldName := "authentication-key-id"
-
-                         var dbVlaueInt int = int(uint(*(ospfCfgObj.Authentication.AuthenticationKeyId)))
-                         dbVlaueStr := strconv.Itoa(dbVlaueInt)
-                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth key id field to ", dbVlaueStr)
-
-                         ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
-                         ospfIntfDbValue.Field[fieldName] = dbVlaueStr
-                     }
-                     if (ospfCfgObj.Authentication.AuthenticationMd5Key != nil) {
-                         fieldName := "authentication-md5-key"
-
-                         dbVlaueStr := *(ospfCfgObj.Authentication.AuthenticationMd5Key)
-                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth md5key field to ", dbVlaueStr)
-
-                         ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
-                         ospfIntfDbValue.Field[fieldName] = dbVlaueStr
+                     } else {
+                         errStr := "Invalid Authentication type, valid values are NONE, TEXT or MD5HMAC"
+                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+                         return subIntfmap, tlerr.New(errStr)
                      }
                  }
+
+                 if (ospfCfgObj.AuthenticationKey != nil) {
+                     fieldName := "authentication-key"
+
+                     dbVlaueStr := *(ospfCfgObj.AuthenticationKey)
+                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth key field to ", dbVlaueStr)
+
+                     ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
+                     ospfIntfDbValue.Field[fieldName] = dbVlaueStr
+                 }
+
+                 if (ospfCfgObj.AuthenticationKeyId != nil) {
+                     fieldName := "authentication-key-id"
+
+                     var dbVlaueInt int = int(uint(*(ospfCfgObj.AuthenticationKeyId)))
+                     dbVlaueStr := strconv.Itoa(dbVlaueInt)
+                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth key id field to ", dbVlaueStr)
+
+                     ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
+                     ospfIntfDbValue.Field[fieldName] = dbVlaueStr
+                 }
+
+                 if (ospfCfgObj.AuthenticationMd5Key != nil) {
+                     fieldName := "authentication-md5-key"
+
+                     dbVlaueStr := *(ospfCfgObj.AuthenticationMd5Key)
+                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth md5key field to ", dbVlaueStr)
+
+                     ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
+                     ospfIntfDbValue.Field[fieldName] = dbVlaueStr
+                 }
+             
                  if (ospfCfgObj.BfdEnable != nil) {
                      fieldName := "bfd-enable"
 
@@ -688,39 +684,22 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
             }
 
             if (fieldName == "authentication-type") {
-                if (ospfCfgObj.Authentication == nil) {
-                    ygot.BuildEmptyTree(ospfCfgObj.Authentication)
-                }
-
-                if  fieldValue == "AUTH_NONE" {
-                    ospfCfgObj.Authentication.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_AUTH_NONE
-                } else if  fieldValue == "TEXT" {
-                    ospfCfgObj.Authentication.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_TEXT
-                } else if  fieldValue == "MD5HMAC" {
-                    ospfCfgObj.Authentication.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_MD5HMAC
-                }
+                ospfCfgObj.AuthenticationType = &fieldValue
             }
 
             if (fieldName == "authentication-key") {
-                if (ospfCfgObj.Authentication == nil) {
-                    ygot.BuildEmptyTree(ospfCfgObj.Authentication)
-                }
-                ospfCfgObj.Authentication.AuthenticationKey = &fieldValue
+                ospfCfgObj.AuthenticationKey = &fieldValue
             }
+
             if (fieldName == "authentication-key-id") {
-                if (ospfCfgObj.Authentication == nil) {
-                    ygot.BuildEmptyTree(ospfCfgObj.Authentication)
-                }
                 if intVal, err3 := strconv.Atoi(fieldValue); err3 == nil {
                     fieldValueInt := uint8(intVal)
-                    ospfCfgObj.Authentication.AuthenticationKeyId = &fieldValueInt
+                    ospfCfgObj.AuthenticationKeyId = &fieldValueInt
                 }
             }
+
             if (fieldName == "authentication-md5-key") {
-                if (ospfCfgObj.Authentication == nil) {
-                    ygot.BuildEmptyTree(ospfCfgObj.Authentication)
-                }
-                ospfCfgObj.Authentication.AuthenticationMd5Key = &fieldValue
+                ospfCfgObj.AuthenticationMd5Key = &fieldValue
             }
 
             if (fieldName == "dead-interval") {
@@ -729,6 +708,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
                     ospfCfgObj.DeadInterval = &fieldValueInt
                 }
             }
+
             if (fieldName == "hello-interval") {
                 if intVal, err3 := strconv.Atoi(fieldValue); err3 == nil {
                     fieldValueInt := uint32(intVal)

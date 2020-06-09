@@ -1672,10 +1672,12 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
             
             if _authtype,ok := area_info["authentication"].(string); ok {
                 if _authtype == "authenticationNone" {
-                    ospfv2AreaInfo_obj.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_AUTH_NONE
+                    authType := "NONE"
+                    ospfv2AreaInfo_obj.AuthenticationType = &authType 
                 }
                 if _authtype == "authenticationMessageDigest" {
-                    ospfv2AreaInfo_obj.AuthenticationType = ocbinds.OpenconfigOspfv2Ext_OSPF_AUTHENTICATION_TYPE_MD5HMAC
+                    authType := "MD5HMAC"
+                    ospfv2AreaInfo_obj.AuthenticationType = &authType
                 }
             }
             
