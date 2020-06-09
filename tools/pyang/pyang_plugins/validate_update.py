@@ -732,6 +732,11 @@ def chk_identityref(old, new, oldts, newts, ctx):
                     oidbase.i_module.i_modulename and
                     nidbase.arg.split(':')[-1] == oidbase.arg.split(':')[-1]):
                 extra.remove(nidbase)
+            if (nidbase.i_identity.i_module.i_modulename ==
+                    oidbase.i_identity.i_module.i_modulename and
+                    nidbase.arg.split(':')[-1] == oidbase.arg.split(':')[-1]):
+                if nidbase in extra:
+                    extra.remove(nidbase)
     for n in extra:
         err_add(ctx.errors, n.pos, 'CHK_DEF_ADDED',
                 ('base', n.arg), new)
