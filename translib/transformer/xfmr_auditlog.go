@@ -55,7 +55,7 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     v = inputData["content-type"]
 
     if v == "brief" {
-        f, err := os.Open("/var/log/audit.log")
+        f, err := os.Open("/host_var/log/audit.log")
         if err != nil {
             fmt.Println("File reading error", err)
             return nil, err
@@ -71,30 +71,33 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         buffer := make([]byte, 8192)
         if filesize > 8192 {
             _, err = f.ReadAt(buffer, (filesize-8192))
-        } else {
-            _, err = f.ReadAt(buffer, filesize)
-        }
 
-        if err != nil {
-            fmt.Println(err)
-            return nil, err
-        }
+            if err != nil {
+                fmt.Println(err)
+                return nil, err
+            }
 
-        res1 := bytes.Index(buffer, []byte("\n"))
+            res1 := bytes.Index(buffer, []byte("\n"))
 
-        showaudit.Output.Result = string(buffer[res1:])
-    } else {
-        data, err := ioutil.ReadFile("/var/log/audit.log")
-        if err != nil {
-            fmt.Println("File reading error", err)
-            return nil,err
+            if (res1 != -1) {
+                showaudit.Output.Result = string(buffer[res1:])
+            } else {
+                showaudit.Output.Result = string(buffer)
+            }
+            result, _ := json.Marshal(&showaudit)
+            return result, nil
         }
-        fmt.Println("Contents of file:", string(data))
-        showaudit.Output.Result = string(data)
     }
 
-    result, _ := json.Marshal(&showaudit)
+    data, err := ioutil.ReadFile("/host_var/log/audit.log")
+    if err != nil {
+        fmt.Println("File reading error", err)
+        return nil,err
+    }
+    fmt.Println("Contents of file:", string(data))
+    showaudit.Output.Result = string(data)
 
+    result, _ := json.Marshal(&showaudit)
     return result, nil
 }
 
