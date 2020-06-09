@@ -81,7 +81,7 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
             return natZoneMap, nil
         }
 
-        if entry.Has("nat_zone") == false {
+        if !entry.Has("nat_zone") {
             log.Info("NAT zone config not present, " + tblName + " " + ifName)
             return natZoneMap, nil
         }
@@ -149,7 +149,7 @@ var DbToYang_intf_nat_zone_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams)
     }
     ygot.BuildEmptyTree(intfObj)
     ygot.BuildEmptyTree(intfObj.NatZone)
-    if config == true {
+    if config {
         ygot.BuildEmptyTree(intfObj.NatZone.Config)
         entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
         if dbErr != nil {
@@ -165,7 +165,7 @@ var DbToYang_intf_nat_zone_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams)
             intfObj.NatZone.Config.NatZone = nil
         }
     }
-    if state == true {
+    if state {
         ygot.BuildEmptyTree(intfObj.NatZone.State)
         entry, dbErr := inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
         if dbErr != nil {
