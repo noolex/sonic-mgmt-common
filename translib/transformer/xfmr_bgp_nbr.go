@@ -112,6 +112,7 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     bgpId      := pathInfo.Var("identifier")
     protoName  := pathInfo.Var("name#2")
     nbrAddr   := pathInfo.Var("neighbor-address")
+    util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
 
     if len(pathInfo.Vars) <  3 {
         err := errors.New("Invalid Key length");
