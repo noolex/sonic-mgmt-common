@@ -1571,6 +1571,12 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
                 overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
+				if intfType == IntfTypeLoopback && validateMultiIPForDonorIntf(inParams.d, &ifName) {
+                    errStr := "Loopback interface is Donor for Unnumbered interface. Cannot add Multiple IPv4 address"
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    return subIntfmap, err
+				}
+
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
                 if addr.Config.GwAddr != nil {
@@ -2843,7 +2849,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 			continue
 		}
 
-		intfKeys, err := intfTble.GetKeys()
+		intfKeys, _ := intfTble.GetKeys()
 		for _, intfName := range intfKeys {
 			intfEntry, err := d.GetEntry(&db.TableSpec{Name: table}, intfName)
 			if(err != nil) {
@@ -2867,7 +2873,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 			return false
 		}
 
-		loIntfKeys, err := loIntfTble.GetKeys()
+		loIntfKeys, _ := loIntfTble.GetKeys()
 		for _, loIntfName := range loIntfKeys {
 			if len(loIntfName.Comp) > 1 && strings.Contains(loIntfName.Comp[0], *ifName){
 				if strings.Contains(loIntfName.Comp[1], ".") {
@@ -2908,7 +2914,7 @@ func validateUnnumIntfExistsForDonorIntf(d *db.DB, donorIfName *string) bool {
 			continue
 		}
 
-		keys, err := intfTable.GetKeys()
+		keys, _ := intfTable.GetKeys()
 		for _, key := range keys {
 			if len(key.Comp) > 2 {
 				continue
@@ -3091,7 +3097,7 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 
         var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
         if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-            subIntf, err = intfObj.Subinterfaces.NewSubinterface(0)
+            _, err = intfObj.Subinterfaces.NewSubinterface(0)
             if err != nil {
                 log.Error("Creation of subinterface subtree failed!")
                 return err
