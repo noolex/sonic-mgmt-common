@@ -6,6 +6,10 @@ module sonic-system-radius {
         prefix inet;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -14,6 +18,10 @@ module sonic-system-radius {
 
     description
         "SONiC RADIUS";
+
+    revision 2020-05-24 {
+        description "RADIUS statistics.";
+    }
 
     revision 2020-05-02 {
         description "Allowed domain name as well for server configuration.";
@@ -82,6 +90,12 @@ module sonic-system-radius {
                             "NAS-IP|IPV6-Address attribute for the outgoing RADIUS pkts.";
                 }
 
+                leaf statistics {
+                    type boolean;
+                    description
+                            "Should statistics collection be enabled/disabled";
+                }
+
                 leaf timeout {
                     default 5;
                     type uint16 {
@@ -145,7 +159,7 @@ module sonic-system-radius {
                 leaf priority {
                     type uint8 {
                         range "1..64" {
-                            error-message "RADIUS priority must be 0..99";
+                            error-message "RADIUS priority must be 1..64";
                         }
                     }
                     description
@@ -162,10 +176,10 @@ module sonic-system-radius {
                 }
 
                 leaf retransmit {
-                    default 5;
+                    default 3;
                     type uint8 {
-                        range "1..10" {
-                            error-message "RADIUS retransmit must be 1..10";
+                        range "0..10" {
+                            error-message "RADIUS retransmit must be 0..10";
                         }
                     }
                 }
@@ -177,6 +191,65 @@ module sonic-system-radius {
                 }
             }
         }
+
+        container RADIUS_SERVER_STATS {
+            sonic-ext:db-name "COUNTERS_DB";
+            sonic-ext:key-delim ":";
+
+            config false;
+            description "Counters DB RADIUS server statistics";
+
+            list RADIUS_SERVER_STATS_LIST {
+                key "ipaddress";
+
+                max-elements 8;
+
+                leaf ipaddress {
+                    type inet:host;
+                    description
+                        "RADIUS server's Domain name or IP address (IPv4 or IPv6)";
+                }
+
+                leaf access_requests {
+                    type uint64;
+                    description "Sent Access Requests";
+                }
+
+                leaf access_accepts {
+                    type uint64;
+                    description "Received Access Accepts";
+                }
+
+                leaf access_rejects {
+                    type uint64;
+                    description "Received Access Rejects";
+                }
+
+                leaf access_challenges {
+                    type uint64;
+                    description "Received Access Challenges";
+                }
+
+                leaf retried_access_requests {
+                    type uint64;
+                    description "Retried Access Requests";
+                }
+
+                leaf bad_authenticators {
+                    type uint64;
+                    description "Bad Authenticators";
+                }
+
+                leaf invalid_packets {
+                    type uint64;
+                    description "Invalid Packets";
+                }
+            }
+        }
+    }
+
+    rpc clear-radius {
+        description "Clear RADIUS statistics counters";
     }
 }
 

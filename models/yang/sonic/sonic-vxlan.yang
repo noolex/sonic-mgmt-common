@@ -51,7 +51,9 @@ module sonic-vxlan {
                         error-message "Error: Name should start with vtep";
                         error-app-tag invalid-vtep-name;
                     }
-                    type string;
+                    type string {
+                        length 1..10;
+                    }
                 }
 
                 leaf src_ip {

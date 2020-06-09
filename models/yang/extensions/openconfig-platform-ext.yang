@@ -292,4 +292,51 @@ module openconfig-platform-ext {
             description "OUI of the xcvr module vendor";
         }
     }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:state/oc-pf:temperature {
+        leaf current {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+
+        leaf high-threshold {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+
+        leaf critical-high-threshold {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+
+        leaf low-threshold {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+
+        leaf critical-low-threshold {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+    }
 }

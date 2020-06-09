@@ -2,11 +2,27 @@ module ietf-snmp-ext {
 
   yang-version 1;
 
-  namespace "http://github.com/Azure/sonic-snmp-ext";
+  namespace "urn:ietf:params:xml:ns:yang:ietf-snmp-ext";
 
   prefix snmp-ext;
 
   import ietf-snmp {prefix snmp; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module defines configuration and operational state data
+    related to the SNMP protocol.";
+
+  revision "2020-06-01" {
+    description
+      "Initial revision.";
+    reference "0.1";
+  }
 
   deviation /snmp:snmp/snmp:engine/snmp:version/snmp:v1 {
     deviate not-supported;
