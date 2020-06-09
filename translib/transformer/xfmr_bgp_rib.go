@@ -1920,9 +1920,11 @@ func hdl_get_bgp_nbrs_adj_rib_in_pre (bgpRib_obj *ocbinds.OpenconfigNetworkInsta
     var ok bool
     log.Infof("%s ==> NBRS-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "received-routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "received-routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "received-routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "received-routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)
@@ -1988,9 +1990,11 @@ func hdl_get_bgp_nbrs_adj_rib_in_post (bgpRib_obj *ocbinds.OpenconfigNetworkInst
     var ok bool
     log.Infof("%s ==> NBRS-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)
@@ -2061,9 +2065,11 @@ func hdl_get_bgp_nbrs_adj_rib_out_post (bgpRib_obj *ocbinds.OpenconfigNetworkIns
         return oper_err
     }
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "advertised-routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "advertised-routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "advertised-routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "advertised-routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)

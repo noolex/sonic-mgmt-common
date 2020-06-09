@@ -8,6 +8,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "io"
     "bytes"
     "net"
@@ -116,7 +117,7 @@ func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
 func exec_raw_vtysh_cmd (vtysh_cmd string) (string, error) {
     var err error
     oper_err := errors.New("Operational error")
-    
+
     log.Infof("In exec_raw_vtysh_cmd going to connect UDS socket call to reach BGP container  ==> \"%s\"", vtysh_cmd)
     conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
     if err != nil {
@@ -156,6 +157,23 @@ func exec_raw_vtysh_cmd (vtysh_cmd string) (string, error) {
     return buffer.String(), err
 }
 
+func util_bgp_get_native_ifname_from_ui_ifname (pIfname *string) {
+    if pIfname != nil && net.ParseIP(*pIfname) == nil {
+        pNativeIfname := utils.GetNativeNameFromUIName(pIfname)
+        if pNativeIfname != nil && len(*pNativeIfname) != 0 {
+            *pIfname = *pNativeIfname
+        }
+    }
+}
+
+func util_bgp_get_ui_ifname_from_native_ifname (pIfname *string) {
+    if pIfname != nil && net.ParseIP(*pIfname) == nil {
+        pUiIfname := utils.GetUINameFromNativeName(pIfname)
+        if pUiIfname != nil && len(*pUiIfname) != 0 {
+            *pIfname = *pUiIfname
+        }
+    }
+}
 
 func init () {
     XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
