@@ -3230,6 +3230,33 @@ module openconfig-network-instance-annot {
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
+            "/oc-netinst:max-metric/oc-netinst:state" +
+            "/oc-ospfv2-ext:administrative" {
+    deviate add {
+      sonic-ext:field-name "max-metric-administrative";
+    }
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
+            "/oc-netinst:max-metric/oc-netinst:state" +
+            "/oc-ospfv2-ext:on-startup" {
+    deviate add {
+      sonic-ext:field-name "max-metric-on-startup";
+    }
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
+            "/oc-netinst:max-metric/oc-netinst:state" +
+            "/oc-ospfv2-ext:on-shutdown" {
+    deviate add {
+      sonic-ext:field-name "max-metric-on-shutdown";
+    }
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
             "/oc-ospfv2-ext:distance/oc-ospfv2-ext:config/oc-ospfv2-ext:all" {
     deviate add {
@@ -3624,7 +3651,7 @@ module openconfig-network-instance-annot {
             "/oc-ospfv2-ext:ranges/oc-ospfv2-ext:range/oc-ospfv2-ext:state" +
             "/oc-ospfv2-ext:address-prefix" {
     deviate add {
-      sonic-ext:field-transformer  "ospfv2_router_policy_address_range_prefix_fld_xfmr";
+      sonic-ext:field-transformer  "ospfv2_router_area_policy_address_range_prefix_fld_xfmr";
     }
   }
 
