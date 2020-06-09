@@ -32,6 +32,7 @@ import (
     "strconv"
     "strings"
     "syscall"
+    "regexp"
     log "github.com/golang/glog"
 )
 
@@ -66,6 +67,7 @@ const (
 
    PORT_IF_NAME_PREFIX   = "Ethernet"
    ALIAS_IN_NAME_PREFIX  = "Eth"
+   TEMP_TBL         = "TEMPERATURE_INFO"
 
    /** Valid System Components **/
    PSU1             = "PSU 1"
@@ -149,6 +151,13 @@ const (
     XCVR_PRESENCE                = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:present"
     XCVR_QSA_ADAPTER_TYPE        = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:qsa-adapter-type"
 
+   /** Support Temperature Sensor URIs **/
+   TEMP_COMP                  = "/openconfig-platform:components/component/state/temperature"
+   TEMP_CRIT_HIGH_THRES       = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:critical-high-threshold"
+   TEMP_CRIT_LOW_THRES        = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:critical-low-threshold"
+   TEMP_CURRENT               = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:current"
+   TEMP_HIGH_THRES            = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:high-threshold"
+   TEMP_LOW_THRES             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:low-threshold"
 )
 
 /**
@@ -209,9 +218,9 @@ type Fan struct {
     Target_Speed        string
 }
 
-/* Most are strings since media sends 'N/A' when data is not available */
-/* Conversion will be done before sending along */
 type Xcvr struct {
+/* Most are strings since media sends 'N/A' when data is not available
+   Conversion will be done before sending along */
     Presence                bool
     Form_Factor             string
     Display_Name            string
@@ -234,9 +243,14 @@ type Xcvr struct {
     Vendor_OUI              string
 }
 
-var FAN_LST = []string {"FAN 1", "FAN 2", "FAN 3", "FAN 4", "FAN 5", "FAN 6", "FAN 7",
-                     "FAN 8", "FAN 9", "FAN 10", "PSU 1 FAN 1", "PSU 2 FAN 1"}
-var PSU_LST = []string {"PSU 1", "PSU 2"}
+type TempSensor struct {
+    Crit_High_Threshold  string
+    Crit_Low_Threshold   string
+    Current              string
+    High_Threshold       string
+    Low_Threshold        string
+    Name                 string
+}
 
 func init () {
     XlateFuncBind("DbToYang_pfm_components_xfmr", DbToYang_pfm_components_xfmr)
@@ -344,7 +358,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
     var eepromInfo Eeprom
     var err error
 
-    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
        targetUriPath == SW_BUILD_COMMIT || targetUriPath == SW_ASIC_VER || targetUriPath == SW_BUILD_DATE ||
        targetUriPath == SW_BUILT_BY || targetUriPath == SW_SW_VER{
         swVersionFile, err := os.Open("/etc/sonic/sonic_version.yml")
@@ -358,7 +372,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         versionScanner.Split(bufio.ScanLines)
     }
 
-    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_HWSKU_VER || targetUriPath == SW_HW_VER ||
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_HWSKU_VER || targetUriPath == SW_HW_VER ||
        targetUriPath == SW_PLAT_NAME || targetUriPath == COMP_STATE_SERIAL_NO || targetUriPath == SW_MFG_NAME {
         eepromInfo, err = getSysEepromFromDb(d)
         if err != nil {
@@ -366,9 +380,8 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         }
     }
 
-    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_DOCKER_VER {
-        var query_result HostResult
-        query_result = HostQuery("docker_version.action", "")
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DOCKER_VER {
+        var query_result = HostQuery("docker_version.action", "")
         if query_result.Err != nil {
             log.Infof("Error in Calling dbus fetch_environment %v", query_result.Err)
             return query_result.Err
@@ -377,7 +390,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         scanner = bufio.NewScanner(strings.NewReader(env_op))
     }
 
-    if allAttr == true || targetUriPath == SW_COMP {
+    if allAttr || targetUriPath == SW_COMP {
         for versionScanner.Scan() {
             if strings.Contains(versionScanner.Text(), "build_version:") {
                 res1 := strings.Split(versionScanner.Text(), ": ")
@@ -438,6 +451,8 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         err = syscall.Sysinfo(&info)
 
         if err != nil {
+            log.Errorf("Unable to get system uptime")
+            return err
         }
         uptimeSec := info.Uptime
         days := uptimeSec / (60 * 60 * 24)
@@ -546,6 +561,8 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
             err = syscall.Sysinfo(&info)
 
             if err != nil {
+                log.Errorf("Unable to get system uptime")
+                return err
             }
             uptimeSec := info.Uptime
             days := uptimeSec / (60 * 60 * 24)
@@ -607,56 +624,39 @@ func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
         switch typeCode {
         case PROD_NAME_KEY:
             eepromInfo.Product_Name = entryVal
-            break
         case PART_NUM_KEY:
             eepromInfo.Part_Number = entryVal
-            break
         case SERIAL_NUM_KEY:
             eepromInfo.Serial_Number = entryVal
-            break
         case BASE_MAC_KEY:
             eepromInfo.Base_MAC_Address = entryVal
-            break
         case MFT_DATE_KEY:
             eepromInfo.Manufacture_Date = entryVal
-            break
         case DEV_VER_KEY:
             eepromInfo.Device_Version = entryVal
-            break
         case LABEL_REV_KEY:
             eepromInfo.Label_Revision = entryVal
-            break
         case PLAT_NAME_KEY:
             eepromInfo.Platform_Name = entryVal
-            break
         case ONIE_VER_KEY:
             eepromInfo.ONIE_Version = entryVal
-            break
         case NUM_MAC_KEY:
             tmp,  _ := strconv.Atoi(entryVal)
             eepromInfo.MAC_Addresses = int32(tmp)
-            break
         case MFT_NAME_KEY:
             eepromInfo.Manufacturer = entryVal
-            break
         case MFT_CNT_KEY:
             eepromInfo.Manufacture_Country = entryVal
-            break
         case VEND_NAME_KEY:
             eepromInfo.Vendor_Name = entryVal
-            break
         case DIAG_VER_KEY:
             eepromInfo.Diag_Version = entryVal
-            break
         case SERV_TAG_KEY:
             eepromInfo.Service_Tag = entryVal
-            break
         case VEND_EXT_KEY:
             eepromInfo.Vendor_Extension = entryVal
-            break
         case CRC32_KEY:
         default:
-            break
         }
     }
 
@@ -677,7 +677,7 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
     name := "System Eeprom"
     location  :=  "Slot 1"
 
-    if all == true {
+    if all {
         eeprom.Empty = &empty
         eeprom.Removable = &removable
         eeprom.Name = &name
@@ -844,9 +844,8 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
 
 func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Component) (error) {
     var err error
-    var query_result HostResult
 
-    query_result = HostQuery("fetch_environment.action", "")
+    var query_result = HostQuery("fetch_environment.action", "")
     if query_result.Err != nil {
         log.Infof("Error in Calling dbus fetch_environment %v", query_result.Err)
     }
@@ -905,7 +904,7 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
 
 func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    log.Infof("Preparing dB for system eeprom");
+    log.Infof("Preparing dB for system components");
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -927,6 +926,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 fillSysXcvrInfo(pf_comp, intf, true, targetUriPath, d)
             }
 
+            var comp_cnt int
             sensor_comp,_  := pf_cpts.NewComponent("Sensor")
             ygot.BuildEmptyTree(sensor_comp)
             sensor_comp.State.Type,_ = sensor_comp.State.To_OpenconfigPlatform_Components_Component_State_Type_Union(
@@ -950,31 +950,63 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 return err
             }
 
-            for _, psu := range PSU_LST {
+            comp_cnt = 0
+            for i := 1; true; i++ {
+                psu := "PSU " + strconv.Itoa(i)
                 pf_comp, _ = pf_cpts.NewComponent(psu)
                 ygot.BuildEmptyTree(pf_comp)
                 err = fillSysPsuInfo(pf_comp, psu, true, true, targetUriPath, d)
                 if err != nil {
+                    if comp_cnt > 0 && strings.Contains(err.Error(), "Entry does not exist") {
+                        delete(pf_cpts.Component, psu)
+                        err = nil
+                        break
+                    }
                     return err
                 }
                 err = fillSysPsuInfo(pf_comp, psu, true, false, targetUriPath, d)
                 if err != nil {
                     return err
                 }
+                comp_cnt++;
             }
 
-
-            for _, fan := range FAN_LST {
+            comp_cnt = 0
+            for i := 1; true; i++ {
+                fan := "FAN " + strconv.Itoa(i)
                 pf_comp, _ = pf_cpts.NewComponent(fan)
                 ygot.BuildEmptyTree(pf_comp)
                 err = fillSysFanInfo(pf_comp, fan, true, true, targetUriPath, d)
                 if err != nil {
+                    if comp_cnt > 0 && strings.Contains(err.Error(), "Entry does not exist") {
+                        delete(pf_cpts.Component, fan)
+                        err = nil
+                        break
+                    }
                     return err
                 }
                 err = fillSysFanInfo(pf_comp, fan, true, false, targetUriPath, d)
                 if err != nil {
                     return err
                 }
+                comp_cnt++
+            }
+
+            comp_cnt = 0
+            for i := 1; true; i++ {
+                temp := "TEMP " + strconv.Itoa(i)
+                pf_comp, _ = pf_cpts.NewComponent(temp)
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysTempInfo(pf_comp.State, temp, true, targetUriPath, d)
+                if err != nil {
+                    if comp_cnt > 0 && strings.Contains(err.Error(), "Entry does not exist") {
+                        delete(pf_cpts.Component, temp)
+                        err = nil
+                        break
+                    }
+                    return err
+                }
+                comp_cnt++
             }
             return err
         } else {
@@ -1035,6 +1067,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 ygot.BuildEmptyTree(pf_comp)
                 fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+            } else if validTempName(&compName) {
+              pf_comp := pf_cpts.Component[compName]
+              if pf_comp  == nil {
+                  log.Info("Invalid Component Name")
+                  return errors.New("Invalid component name")
+              }
+              ygot.BuildEmptyTree(pf_comp)
+              fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
             } else {
                 err = errors.New("Invalid component name")
             }
@@ -1093,6 +1133,16 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             }
             ygot.BuildEmptyTree(pf_comp)
             fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+        } else if validTempName(&compName) {
+              pf_comp := pf_cpts.Component[compName]
+              if pf_comp  == nil {
+                  log.Info("Invalid Component Name")
+                  return errors.New("Invalid component name")
+              }
+              ygot.BuildEmptyTree(pf_comp)
+              ygot.BuildEmptyTree(pf_comp.State)
+              ygot.BuildEmptyTree(pf_comp.State.Temperature)
+              fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
         } else {
             err = errors.New("Invalid component name ")
         }
@@ -1153,6 +1203,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 ygot.BuildEmptyTree(pf_comp)
                 fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+            } else if validTempName(&compName) {
+              pf_comp := pf_cpts.Component[compName]
+              if pf_comp  == nil {
+                  log.Info("Invalid Component Name")
+                  return errors.New("Invalid component name")
+              }
+              ygot.BuildEmptyTree(pf_comp)
+              fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
             } else {
                 err = errors.New("Invalid input component name")
             }
@@ -1322,13 +1380,8 @@ func validPsuName(name *string) bool {
     if name == nil || *name == "" {
         return false
     }
-    tmp := strings.ToUpper(*name)
-    for _ , psu := range PSU_LST {
-        if tmp == psu {
-            return true
-        }
-    }
-    return false
+    valid, _ := regexp.MatchString("PSU [1-9][0-9]*\\b", *name)
+    return valid
 }
 
 func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
@@ -1357,7 +1410,6 @@ func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath str
             fillSysPsuInfo(psuCom, psuName, true, true, targetUriPath, d)
         default:
             fillSysPsuInfo(psuCom, psuName, false, true, targetUriPath, d)
-            break
         }
     }
     return err
@@ -1367,13 +1419,8 @@ func validFanName(name *string) (bool) {
     if name == nil || *name == "" {
         return false
     }
-    tmp := strings.ToUpper(*name)
-    for _ , fan := range FAN_LST {
-        if tmp == fan {
-            return true
-        }
-    }
-    return false
+    valid, _ := regexp.MatchString("FAN [1-9][0-9]*\\b", *name)
+    return valid
 }
 
 func getSysFanFromDb(name string, d *db.DB) (Fan, error) {
@@ -1410,8 +1457,8 @@ func getSysFanFromDb(name string, d *db.DB) (Fan, error) {
     return fanInfo, err
 }
 
-func fillSysFanInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
-                        name string, all bool, getPowerStats bool, targetUriPath string, d *db.DB) (error) {
+func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
+                        name string, all bool, getFanStats bool, targetUriPath string, d *db.DB) (error) {
     var err error
     var tmp uint64
 
@@ -1422,10 +1469,10 @@ func fillSysFanInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     }
 
     empty := !fanInfo.Presence
-    fanState := psuCom.Fan.State
-    fanEepromState := psuCom.State
+    fanState := fanCom.Fan.State
+    fanEepromState := fanCom.State
     if all {
-        if getPowerStats {
+        if getFanStats {
             if fanInfo.Target_Speed != "" {
                 tmp, _ = strconv.ParseUint(fanInfo.Target_Speed, 10, 32)
                 targetSpeed := uint32(tmp)
@@ -1540,12 +1587,10 @@ func getSysFans(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath st
             fillSysFanInfo(fanCom, fanName, true, true, targetUriPath, d)
         default:
             fillSysFanInfo(fanCom, fanName, false, true, targetUriPath, d)
-            break
         }
     }
     return err
 }
-
 
 func validXcvrName(name *string) (bool) {
     if name == nil || *name == "" {
@@ -1807,7 +1852,6 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
             xcvrState.QsaAdapterType = &xcvrInfo.Qsa_Adapter_Type
         }
         */
-
         return err
     }
 
@@ -1973,7 +2017,6 @@ func getSysXcvr(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath st
         default:
             /* For individual components*/
             fillSysXcvrInfo(xcvrCom, xcvrId, false, targetUriPath, d)
-            break
     }
 
     return err
@@ -1992,4 +2035,134 @@ func getPhysicalIntfNames(d *db.DB) []string{
         ret = append(ret, v.Comp[0])
     }
     return ret
+}
+
+func validTempName(name *string) bool {
+    if name == nil || *name == "" {
+        return false
+    }
+    valid, _ := regexp.MatchString("TEMP [1-9][0-9]*\\b", *name)
+    return valid
+}
+
+func getSysTempFromDb(name string, d *db.DB) (TempSensor, error) {
+    var tempInfo TempSensor
+    var err error
+
+    tempEntry, err := d.GetEntry(&db.TableSpec{Name: TEMP_TBL}, db.Key{Comp: []string{name}})
+
+    if err != nil {
+        log.Info("Cant get entry: ", name)
+    }
+
+    tempInfo.Current = tempEntry.Get("temperature")
+    tempInfo.Name = tempEntry.Get("name")
+    tempInfo.Crit_High_Threshold = tempEntry.Get("critical_high_threshold")
+    tempInfo.Crit_Low_Threshold = tempEntry.Get("critical_low_threshold")
+    tempInfo.High_Threshold = tempEntry.Get("high_threshold")
+    tempInfo.Low_Threshold = tempEntry.Get("low_threshold")
+
+    return tempInfo, err
+}
+
+func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component_State,
+                        name string, all bool, targetUriPath string, d *db.DB) (error) {
+    var err error
+    tempInfo, err := getSysTempFromDb(name, d)
+    if err != nil {
+        log.Info("Error Getting Temp Sensor info from dB")
+        return err
+    }
+    tempCom := tempState.Temperature
+
+    if all || targetUriPath == TEMP_COMP {
+        if tempInfo.Name != "" {
+            tempState.Name = &tempInfo.Name
+        }
+        if tempInfo.Current != "" {
+            cur, terr := strconv.ParseFloat(tempInfo.Current, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.Current = &cur
+        }
+        if tempInfo.Crit_High_Threshold != "" {
+            cht, terr := strconv.ParseFloat(tempInfo.Crit_High_Threshold, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.CriticalHighThreshold = &cht
+        }
+        if tempInfo.Crit_Low_Threshold != "" {
+            clt, terr := strconv.ParseFloat(tempInfo.Crit_Low_Threshold, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.CriticalLowThreshold = &clt
+        }
+        if tempInfo.High_Threshold != "" {
+            ht, terr := strconv.ParseFloat(tempInfo.High_Threshold, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.HighThreshold = &ht
+        }
+        if tempInfo.Low_Threshold != "" {
+            lt, terr := strconv.ParseFloat(tempInfo.Low_Threshold, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.LowThreshold = &lt
+        }
+        return err
+    }
+
+    switch targetUriPath {
+    case COMP_STATE_NAME:
+        if tempInfo.Name != "" {
+            tempState.Name = &tempInfo.Name
+        }
+    case TEMP_CURRENT:
+        if tempInfo.Current != "" {
+            cur, terr := strconv.ParseFloat(tempInfo.Current, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.Current = &cur
+        }
+    case TEMP_CRIT_HIGH_THRES:
+        if tempInfo.Crit_High_Threshold != "" {
+            cht, terr := strconv.ParseFloat(tempInfo.Crit_High_Threshold, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.CriticalHighThreshold = &cht
+        }
+    case TEMP_CRIT_LOW_THRES:
+        if tempInfo.Crit_Low_Threshold != "" {
+            clt, terr := strconv.ParseFloat(tempInfo.Crit_Low_Threshold, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.CriticalLowThreshold = &clt
+        }
+    case TEMP_HIGH_THRES:
+        if tempInfo.High_Threshold != "" {
+            ht, terr := strconv.ParseFloat(tempInfo.High_Threshold, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.HighThreshold = &ht
+        }
+    case TEMP_LOW_THRES:
+        if tempInfo.Low_Threshold != "" {
+            lt, terr := strconv.ParseFloat(tempInfo.Low_Threshold, 64)
+            if terr != nil {
+                return terr
+            }
+            tempCom.LowThreshold = &lt
+        }
+    }
+
+    return err
 }

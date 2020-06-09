@@ -209,7 +209,7 @@ func ospfv2TrimACLSuffix(inParams XfmrParams, fieldName string) (map[string]inte
     var err error
     res_map := make(map[string]interface{})
 
-    if (inParams.param.(*string) != nil) {
+    if ((inParams.param != nil) && (inParams.param.(*string) != nil)) {
         fieldValue := * (inParams.param.(*string))
         if (strings.HasSuffix(fieldValue, "_ACL_IPV4")) {
             acl_name := strings.TrimSuffix(fieldValue, "_ACL_IPV4")
@@ -431,7 +431,7 @@ var DbToYang_ospfv2_router_area_policy_tbl_key_xfmr KeyXfmrDbToYang = func(inPar
     areaTableKeys := strings.Split(entry_key, "|")
 
     if len(areaTableKeys) >= 2 {
-       res_map["name"] = areaTableKeys[0]
+       //res_map["name"] = areaTableKeys[0]
        res_map["src-area"] = areaTableKeys[1]
     }
 
@@ -767,8 +767,8 @@ var DbToYang_ospfv2_router_area_policy_address_range_tbl_key_xfmr KeyXfmrDbToYan
     addressRAngeTableKey := strings.Split(entry_key, "|")
 
     if len(addressRAngeTableKey) >= 3 {
-        res_map["name"] = addressRAngeTableKey[0]
-        res_map["inter-area-policy"] = addressRAngeTableKey[1]
+        //res_map["name"] = addressRAngeTableKey[0]
+        //res_map["inter-area-policy"] = addressRAngeTableKey[1]
         res_map["address-prefix"] = addressRAngeTableKey[2]
     }
 
@@ -876,8 +876,8 @@ var DbToYang_ospfv2_router_distribute_route_tbl_key_xfmr KeyXfmrDbToYang = func(
     distributionTableKeys := strings.Split(entry_key, "|")
 
     if len(distributionTableKeys) >= 3 {
-        res_map["name"] = distributionTableKeys[0]
-        res_map["protocol"] = distributionTableKeys[1]
+        //res_map["name"] = distributionTableKeys[0]
+        //res_map["protocol"] = distributionTableKeys[1]
         res_map["direction"] = distributionTableKeys[2]
     }
 
@@ -1283,6 +1283,7 @@ func ospfv2_fill_global_timers_spf_state (output_state map[string]interface{},
         ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2) error {
     var err error
     var ospfv2Gbl_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global
+    var ospfv2Timers_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_Timers
     var ospfv2GblTimersSpfState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_Timers_Spf_State 
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Global State"
@@ -1291,6 +1292,22 @@ func ospfv2_fill_global_timers_spf_state (output_state map[string]interface{},
     if ospfv2Gbl_obj == nil {
         log.Errorf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
         return  oper_err
+    }
+
+    if nil == ospfv2Gbl_obj.Timers {
+        log.Info("OSPF global Timers is nil")
+        ospfv2Timers_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_Timers)
+        if nil == ospfv2Timers_obj {
+            log.Errorf("%s failed !! Error: Failed to create timers Tree under global", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree(ospfv2Timers_obj)
+        ospfv2Gbl_obj.Timers = ospfv2Timers_obj
+    }
+
+    if nil == ospfv2Gbl_obj.Timers.Spf {
+        log.Info("OSPF global Timers Spf is nil")
+        ygot.BuildEmptyTree(ospfv2Gbl_obj.Timers.Spf)
     }
 
     ospfv2GblTimersSpfState_obj = ospfv2Gbl_obj.Timers.Spf.State
@@ -1475,6 +1492,7 @@ func ospfv2_fill_global_timers_lsa_generation_state (output_state map[string]int
         ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2) error {
     var err error
     var ospfv2Gbl_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global
+    var ospfv2Timers_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_Timers
     var ospfv2GblTimersLsaGenState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_Timers_LsaGeneration_State
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Global State"
@@ -1483,6 +1501,22 @@ func ospfv2_fill_global_timers_lsa_generation_state (output_state map[string]int
     if ospfv2Gbl_obj == nil {
         log.Errorf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
         return  oper_err
+    }
+
+    if nil == ospfv2Gbl_obj.Timers {
+        log.Info("OSPF global Timers is nil")
+        ospfv2Timers_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_Timers)
+        if nil == ospfv2Timers_obj {
+            log.Errorf("%s failed !! Error: Failed to create timers Tree under global", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree(ospfv2Timers_obj)
+        ospfv2Gbl_obj.Timers = ospfv2Timers_obj
+    }
+
+    if nil == ospfv2Gbl_obj.Timers.LsaGeneration {
+        log.Info("OSPF global Timers LsaGeneration is nil")
+        ygot.BuildEmptyTree(ospfv2Gbl_obj.Timers.LsaGeneration)
     }
 
     ospfv2GblTimersLsaGenState_obj = ospfv2Gbl_obj.Timers.LsaGeneration.State

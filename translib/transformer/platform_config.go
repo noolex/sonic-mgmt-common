@@ -5,6 +5,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "strings"
+    "sort"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
@@ -24,7 +25,12 @@ type portProp struct {
     alias string
     valid_speeds string
     speed string
-    oid string
+}
+
+type portCaps struct {
+    Port string     `json:"name,omitempty"`
+    Modes string    `json:"modes,omitempty"`
+    DefMode string `json:"defmode,omitempty"`
 }
 
 var platConfigStr map[string]map[string]string
@@ -135,7 +141,6 @@ func getPorts (port_i string, mode string) ([]portProp, error) {
         for i := 0; i < count; i++ {
             ports[i], err = decodePortParams(port_i, mode, i, entry )
         }
-
     } else {
             log.Info("Invalid interface/master port - ", mode)
             err = tlerr.NotSupported("Breakout not supported on %s", port_i)
@@ -144,6 +149,36 @@ func getPorts (port_i string, mode string) ([]portProp, error) {
     return ports, err
 }
 
+func getCapabilities () ([]portCaps) {
+    var caps []portCaps
+    offset := 0
+    for _, entry := range  platConfigStr {
+        indeces := strings.Split(entry["index"], ",")
+        if indeces[0] == "0" {
+            offset = 1;
+            log.Info("Zero based SFP index")
+        }
+    }
+    for _, entry := range  platConfigStr {
+        if len(strings.Split(entry["breakout_modes"], ",")) >1 {
+            indeces := strings.Split(entry["index"], ",")
+            index,_ := strconv.Atoi(indeces[0])
+            port := "1/" + strconv.Itoa(index + offset)
+            modes := strings.ReplaceAll(strings.Trim(entry["breakout_modes"]," "), ",", ", ")
+            caps = append(caps, portCaps {
+                        Modes: modes,
+                        DefMode: entry["default_brkout_mode"],
+                        Port: port,
+                    })
+        }
+    }
+    sort.SliceStable(caps, func(i, j int) bool {
+            first,_ := strconv.Atoi(strings.ReplaceAll(caps[i].Port, "/", ""))
+            second,_ := strconv.Atoi(strings.ReplaceAll(caps[j].Port, "/", ""))
+            return first  < second
+        })
+    return caps
+}
 
 func parsePlatformJsonFile () (error) {
 
