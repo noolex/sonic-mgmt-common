@@ -934,6 +934,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     if value, ok := mapData["interface"].(string) ; ok {
         if value != "" {
+            util_bgp_get_native_ifname_from_ui_ifname (&value)
             intf = value + " "
         }
     }
