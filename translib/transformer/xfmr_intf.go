@@ -1340,6 +1340,36 @@ func validateIpPrefixForIntfType(ifType E_InterfaceType, ip *string, prfxLen *ui
     return err
 }
 
+
+func checkIfSagAfiExistOnIntf(d *db.DB, afi string, ifName string) (bool){
+    preKey := make([]string, 2, 2)
+    preKey[0] = ifName
+    preKey[1] = afi
+
+    sagKey := db.Key{ Comp: preKey}
+
+    sagEntry, err := d.GetEntry(&db.TableSpec{Name: "SAG"}, sagKey)
+    if(err == nil) {
+        sagIpList, ok := sagEntry.Field["gwip@"]
+  
+        if (!ok) {
+            return true
+        }
+
+        if (len(sagIpList) != 0) {
+            return true
+        }
+    }
+  
+    return false
+}
+  
+func chekIfSagExistOnIntf(d *db.DB, ifName string) (bool) {
+  
+    return (checkIfSagAfiExistOnIntf(d, "IPv4", ifName) || checkIfSagAfiExistOnIntf(d, "IPv6", ifName))
+  
+}
+
 /* Check for IP overlap */
 func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isIntfIp bool) (string, error) {
     log.Info("Checking for IP overlap ....")
@@ -3205,8 +3235,8 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
       tlen, _ := strconv.Atoi(tempIP[1])
       templen = uint8(tlen)
       err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, true)
-      if err != nil {
-          errStr := "Invalid IPv4 Gateway lenght " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+      if (err != nil || templen == 0) {
+          errStr := "Invalid IPv4 Gateway length " + sagIpv4Obj.Config.StaticAnycastGateway[0]
           err = tlerr.InvalidArgsError{Format: errStr}
           return subIntfmap, err
       }
@@ -3275,8 +3305,8 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
       tlen, _ := strconv.Atoi(tempIP[1])
       templen = uint8(tlen)
       err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, false)
-      if err != nil {
-          errStr := "Invalid IPv6 Gateway lenght " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+      if (err != nil || templen == 0) {
+          errStr := "Invalid IPv6 Gateway length " + sagIpv6Obj.Config.StaticAnycastGateway[0]
           err = tlerr.InvalidArgsError{Format: errStr}
           return subIntfmap, err
       }
