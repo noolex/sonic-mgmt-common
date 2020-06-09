@@ -111,6 +111,12 @@ module openconfig-udld-ext-annot {
 		}
 	}
 
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:local-info/oc-udld-ext:status {
+		deviate add {
+            sonic-ext:field-transformer "udld_port_status_xfmr";
+		}
+	}
+
 	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor {
 		deviate add {
             sonic-ext:db-name "APPL_DB";
@@ -134,6 +140,12 @@ module openconfig-udld-ext-annot {
 	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:port-id {
 		deviate add {
 			sonic-ext:field-name "port_id";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:status {
+		deviate add {
+            sonic-ext:field-transformer "udld_port_nbr_status_xfmr";
 		}
 	}
 

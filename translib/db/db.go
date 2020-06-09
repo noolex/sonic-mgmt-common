@@ -154,8 +154,8 @@ func (dbNo DBNum) String() string {
 type Options struct {
 	DBNo               DBNum
 	InitIndicator      string
-	TableNameSeparator string
-	KeySeparator       string
+	TableNameSeparator string //Overriden by the DB config file's separator.
+	KeySeparator       string //Overriden by the DB config file's separator.
 	IsWriteDisabled    bool //Indicated if write is allowed
 
 	DisableCVLCheck bool
@@ -340,6 +340,17 @@ func NewDB(opt Options) (*DB, error) {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
+	        dbSepStr := getDbSeparator(dbInstName)
+			if len(dbSepStr) > 0 {
+				if len(opt.TableNameSeparator) > 0 && opt.TableNameSeparator != dbSepStr {
+					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the" +
+						" one configured in the Db config. file for the Db name %v", opt.TableNameSeparator, dbInstName))
+				}
+				opt.KeySeparator = dbSepStr
+				opt.TableNameSeparator = dbSepStr
+			} else {
+				glog.Warning("Database Separator not present for the Db name: ", dbInstName)
+			}
 		} else {
 			glog.Warning("Database instance not present for the Db name: ", dbInstName)
 		}
