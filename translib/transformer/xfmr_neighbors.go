@@ -321,8 +321,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 }
 
 func getNonDefaultVrfInterfaces(d *db.DB)(map[string]string) {
-    var nonDefaultVrfIntfs map[string]string
-    nonDefaultVrfIntfs = make(map[string]string)
+    nonDefaultVrfIntfs := make(map[string]string)
 
     tblList := []string{"INTERFACE", "VLAN_INTERFACE", "PORTCHANNEL_INTERFACE"}
     for _, tbl := range tblList {
@@ -331,7 +330,7 @@ func getNonDefaultVrfInterfaces(d *db.DB)(map[string]string) {
            continue
         }
 
-         keys, err := tblObj.GetKeys()
+         keys, _ := tblObj.GetKeys()
          for _, key := range keys {
             entry, err := d.GetEntry(&db.TableSpec{Name: tbl}, key)
             if(err != nil) {
@@ -364,7 +363,7 @@ func isValidVrf(d *db.DB, vrfName string)(bool) {
         return false
     }
 
-    keys, err := vrfObj.GetKeys()
+    keys, _ := vrfObj.GetKeys()
     for _, key := range keys {
         log.Info("isValidVrf - key: ", key.Get(0), " vrfname: ", vrfName)
         if (key.Get(0) == vrfName) {
@@ -511,7 +510,7 @@ func clear_ip(ip string, fam_switch string, vrf string, d *db.DB) string {
         isValidIp = true
     }
 
-    if isValidIp == true  {
+    if isValidIp {
         return "Success"
     } else {
         return "Error: IP address " + ip + " not found"
@@ -556,7 +555,7 @@ func clear_intf(intf string, fam_switch string) string {
         isValidIntf = true
     }
 
-    if isValidIntf == true {
+    if isValidIntf {
         return "Success"
     } else {
         return "Error: Interface " + intf + " not found"
@@ -618,7 +617,7 @@ var rpc_clear_neighbors RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     }
 
     if input, ok := mapData["all_vrfs"].(bool); ok {
-        if input == true {
+        if input {
            vrf = "all"
         }
     }
