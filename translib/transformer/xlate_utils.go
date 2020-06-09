@@ -1243,3 +1243,15 @@ func splitUri(uri string) []string {
 	return pathList
 }
 
+func dbTableExists(d *db.DB, tableName string, dbKey string) (bool, error) {
+        var err error
+        // Read the table entry from DB
+        dbTblSpec := &db.TableSpec{Name: tableName}
+        existingEntry, derr := d.GetEntry(dbTblSpec, db.Key{Comp: []string{dbKey}})
+        if derr != nil {
+                log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+                return false, derr
+        }
+        return existingEntry.IsPopulated(), err
+}
+

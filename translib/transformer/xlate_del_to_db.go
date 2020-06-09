@@ -20,6 +20,8 @@ package transformer
 import (
 	"errors"
 	"strings"
+	"fmt"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/openconfig/goyang/pkg/yang"
 	"github.com/openconfig/ygot/ygot"
@@ -245,6 +247,18 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	var xfmrErr error
 	*skipOrdTbl = false
 	var cascadeDelTbl []string
+
+        /* Check if the parent table exists for RFC compliance */
+        var exists bool
+        exists, err = verifyParentTable(d, oper, uri, txCache)
+        if err != nil {
+                log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
+                return err
+        }
+        if !exists {
+                errStr := fmt.Sprintf("Parent table does not exist for uri(%v)", uri)
+                return tlerr.InternalError{Format: errStr}
+        }
 
 	for i := 0; i < MAXOPER; i++ {
 		resultMap[i] = make(map[db.DBNum]map[string]map[string]db.Value)

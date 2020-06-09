@@ -24,6 +24,7 @@ import (
     "os"
     "reflect"
     "strings"
+    "regexp"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -491,6 +492,18 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	subOpDataMap := make(map[int]*RedisDbMap)
 	root         := xpathRootNameGet(uri)
 
+	/* Check if the parent table exists for RFC compliance */
+	var exists bool
+	exists, err = verifyParentTable(d, oper, uri, txCache)
+	if err != nil {
+		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
+		return err
+	}
+	if !exists {
+		errStr := fmt.Sprintf("Parent table does not exist for uri(%v)", uri)
+		return tlerr.InternalError{Format: errStr}
+	}
+
 	xlateToData := formXlateToDbParam(d, ygRoot, oper, root, uri, "", "", jsonData, resultMap, result, txCache, tblXpathMap, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
 
 	if isSonicYang(uri) {
@@ -815,6 +828,163 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 	}
 
 	return retErr
+}
+
+func verifyParentTableSonic(d *db.DB, oper int, uri string) (bool, error) {
+        var err error
+        pathList := splitUri(uri)
+
+        xpath, dbKey, table := sonicXpathKeyExtract(uri)
+        log.Infof("uri: %v xpath: %v table: %v, key: %v", uri, xpath, table, dbKey)
+
+        if (len(table) > 0) && (len(dbKey) > 0) {
+		// Valid table mapping exists. Read the table entry from DB
+		tableExists, derr := dbTableExists(d, table, dbKey)
+		if len(pathList) == SONIC_LIST_INDEX && (oper == UPDATE || oper == CREATE || oper == DELETE) && !tableExists {
+                        // Uri is at /sonic-module:sonic-module/container-table/list
+                        // PATCH opertion permitted only if table exists in DB.
+                        // POST case since the uri is the parent, the parent needs to exist
+                        // PUT case allow operation(Irrespective of table existence update the DB either through CREATE or REPLACE)
+                        // DELETE case Table instance should be available to perform delete else, CVL may throw error
+                        log.Errorf("Parent table %v with key %v does not exist for oper %v in DB", table, dbKey, oper)
+                        //err = tlerr.NotFound("Resource not found")
+                        return false, derr
+                } else if len(pathList) > SONIC_LIST_INDEX  && !tableExists {
+                        // Uri is at /sonic-module/container-table/list or /sonic-module/container-table/list/leaf
+                        // Parent table should exist for all CRUD cases
+                        log.Infof("Parent table %v with key %v does not exist in DB", table, dbKey)
+                        return false, derr
+                } else {
+                        // Allow all other operations
+                        return true, err
+                }
+        } else {
+                // Request is at module level. No need to check for parent table. Hence return true always or 
+                // Request at /sonic-module:sonic-module/container-table level
+                return true, err
+        }
+}
+
+/* This function checks the existence of Parent tables in DB for the given URI request
+   and returns a boolean indicating if the operation is permitted based on the operation type*/
+func verifyParentTable(d *db.DB, oper int, uri string, txCache interface{}) (bool, error) {
+	log.Infof("Checking for Parent table existence for uri: %v", uri)
+        if isSonicYang(uri) {
+                return verifyParentTableSonic(d, oper, uri)
+        } else {
+                return verifyParentTableOc(d, oper, uri, txCache)
+        }
+}
+
+func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (bool, error) {
+        xpath, err := XfmrRemoveXPATHPredicates(uri)
+        uriList := splitUri(uri)
+        parentTblExists := true
+        rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
+
+        xpathInfo, ok := xYangSpecMap[xpath]
+        // Check for subtree case and invoke subscribe xfmr
+        if ok && (len(xpathInfo.xfmrFunc) > 0) { //subtree
+                var dbs [db.MaxDB]*db.DB
+                var inParams XfmrSubscInParams
+                inParams.uri = uri
+                inParams.dbDataMap = make(RedisDbMap)
+                inParams.dbs = dbs
+                inParams.subscProc = TRANSLATE_SUBSCRIBE
+                st_result, st_err := xfmrSubscSubtreeHandler(inParams, xpathInfo.xfmrFunc)
+                if st_err != nil {
+                        log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
+                        return false, st_err
+                }
+                if st_result.dbDataMap != nil {
+                        log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
+                        for _, dbMap := range st_result.dbDataMap {
+                                for table, keyInstance := range dbMap {
+                                        for dbKey, _ := range keyInstance {
+                                                exists, derr := dbTableExists(d, table, dbKey)
+                                                if !exists {
+                                                        err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
+                                                        return false, derr
+                                                }
+                                        }
+                                }
+                        }
+                        return true, err
+                } else {
+                        err = fmt.Errorf("No Table information retrieved for uri %v", uri)
+                        return false, err
+                }
+        }
+
+        curUri := "/"
+        parentUriList := uriList[:len(uriList)-1]
+        for idx, path := range parentUriList {
+                curUri += uriList[idx]
+                tableName := ""
+                dbKey := ""
+
+                keyList := rgp.FindAllString(path, -1)
+                if len(keyList) > 0 {
+			log.Infof("Check parent table for uri: %v", curUri)
+                        // Get Table and Key only for yang list instances
+                        _, dbKey, tableName, err = xpathKeyExtract(d, nil, oper, curUri, uri, nil, txCache)
+                        if err != nil {
+                                log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, err)
+                                parentTblExists = false
+                                break
+                        }
+                }
+                if len(tableName) > 0 && len(dbKey) > 0 {
+                        // Check for Table existence
+                        log.Infof("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
+                        // Read the table entry from DB
+                        exists, derr := dbTableExists(d, tableName, dbKey)
+                        if derr != nil {
+                                return false, derr
+                        }
+                        if !exists {
+                                parentTblExists = false
+                                err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+                                break
+                        }
+                }
+                curUri += "/"
+        }
+        if !parentTblExists {
+                // For all operations Parent Table has to exist
+                return false, err
+        }
+        yangType := ""
+        if ok {
+                yangType = yangTypeGet(xpathInfo.yangEntry)
+        }
+
+        if yangType == YANG_LIST && (oper == UPDATE || oper == CREATE || oper == DELETE) {
+                // For PATCH request the current table instance should exist for the operation to go through
+                // For POST since the target URI is the parent URI, it should exist.
+                // For DELETE we handle the table verification here to avoid any CVL error thrown for delete on non existent table
+		log.Infof("Check last parent table for uri: %v", uri)
+                _, dbKey, tableName, err := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
+		if err != nil && len(tableName) > 0 && len(dbKey) > 0 {
+			// Read the table entry from DB
+			exists, derr := dbTableExists(d, tableName, dbKey)
+			if derr != nil {
+				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				return false, derr
+			}
+			if !exists {
+				return false, err
+			} else {
+				return true, err
+			}
+		} else {
+			return false, err
+		}
+        } else {
+                // PUT at list is allowed to do a create if table does not exist else replace OR
+                // This is a container or leaf at the end of the URI. Parent check already done and hence all operations are allowed
+                return true, err
+        }
 }
 
 /* Debug function to print the map data into file */
