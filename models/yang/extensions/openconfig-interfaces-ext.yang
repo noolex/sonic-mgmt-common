@@ -17,16 +17,37 @@ module openconfig-interfaces-ext {
     import openconfig-if-poe {prefix oc-poe; }
     import openconfig-if-tunnel {prefix oc-tun; }
     import openconfig-if-aggregate {prefix oc-lag; }
-    import ietf-inet-types { prefix ietf-inet; }
     import openconfig-yang-types { prefix oc-yang; }
+    import openconfig-extensions { prefix oc-ext; }
+    import ietf-yang-types { prefix yang; }
+    import ietf-inet-types { prefix "ietf-inet"; }
+ 
+    organization "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "This module contains collection of yang definitions for extensions to
+         openconfig-interfaces yang";
+
+    oc-ext:openconfig-version "1.0.0";
+
+    revision "2020-06-02" {
+        description
+            "Updating the YANG with respect to RFC compliance";
+        reference "1.0.0";
+    }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config" {
+        description "Additional fallback attribute for LAG configuration";
         leaf fallback {
             type boolean;
             description "Indicating whether lacp fallback is enabled or not";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state" {
+        description "Additional fallback attribute for LAG state";
         leaf fallback {
             type boolean;
             description "Fallback status on this interface";
@@ -34,20 +55,23 @@ module openconfig-interfaces-ext {
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config" {
-        leaf fast_rate {
+        description "Additional fast-rate attribute for LAG configuration";
+        leaf fast-rate {
             type boolean;
             default false;
             description "If true, send LACP packets every second; Else every 30 secs";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state" {
-        leaf fast_rate {
+        description "Additional fast-rate attribute for LAG state";
+        leaf fast-rate {
             type boolean;
             description "Fast Rate status on this PortChannel";
         }
     }
 
     augment "/oc-lacp:lacp/oc-lacp:interfaces/oc-lacp:interface/oc-lacp:members/oc-lacp:member/oc-lacp:state" {
+        description "Additional selected attribute for LACP state";
         leaf selected {
             type boolean;
             description "Selected status on this interface";
@@ -55,24 +79,28 @@ module openconfig-interfaces-ext {
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:config" {
+        description "Additional gatway-address attribute for IPv4 address config container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv4-address;
             description "IPv4 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:state" {
+        description "Additional gatway-address attribute for IPv4 address state container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv4-address;
             description "IPv4 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:config" {
+        description "Additional gatway-address attribute for IPv6 address config container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv6-address;
             description "IPv6 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:state" {
+        description "Additional gatway-address attribute for IPv6 address state container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv6-address;
             description "IPv6 Gateway address";
@@ -80,6 +108,7 @@ module openconfig-interfaces-ext {
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state/oc-eth:counters" {
+        description "Additional out-oversize-frames attribute associated with counters container for physical interface";
         leaf out-oversize-frames {
             type oc-yang:counter64;
             description
@@ -90,70 +119,95 @@ module openconfig-interfaces-ext {
         }
     }
 
-    grouping interface-nat-zone-config {
+    grouping interfaces-ext-interface-nat-zone-config {
+        description "Config level grouping associated with nat-zone";
+
         leaf nat-zone {
-            description
-                "NAT zone id.";
             type uint8 {
                 range "0..3";
             }
+            description
+                "NAT zone id.";
         }
     }
-    grouping interface-nat-zone-top {
+    grouping interfaces-ext-interface-nat-zone-top {
+        description "Top level grouping associated with nat-zone";
+
         container nat-zone {
+            description "Config and operational parameters associated with nat-zone";
+
             container config {
-                uses interface-nat-zone-config;
+                description "Config parameters for nat-zone";
+
+                uses interfaces-ext-interface-nat-zone-config;
             }
             container state {
                 config false;
-                uses interface-nat-zone-config;
+                description "State parameters for nat-zone";
+
+                uses interfaces-ext-interface-nat-zone-config;
             }
         }
     }
 
-	grouping interface-sag-ipv4-config {
+    grouping interfaces-ext-interface-sag-ipv4-config {
+        description "Config grouping associated with sag-ipv4";
+
         leaf-list static-anycast-gateway {
+        type ietf-inet:ipv4-prefix;
+        max-elements 16;
             description
                 "Static Anycast Gateway addresses";
-			max-elements 16;
-			type ietf-inet:ipv4-prefix;
         }
     }
+	
+    grouping interfaces-ext-interface-sag-ipv4-top {
+        description "Top level grouping associated with sag-ipv4";
 
-    grouping interface-sag-ipv4-top {
         container sag-ipv4 {
+            description "Config and state parameters associated with sag-ipv4";
+
             container config {
-                uses interface-sag-ipv4-config;
+                description "Config parameters associated with sag-ipv4";
+                uses interfaces-ext-interface-sag-ipv4-config;
             }
             container state {
                 config false;
-                uses interface-sag-ipv4-config;
+                description "State parameters associated with sag-ipv4";
+                uses interfaces-ext-interface-sag-ipv4-config;
             }
         }
     }
 
-	grouping interface-sag-ipv6-config {
+    grouping interfaces-ext-interface-sag-ipv6-config {
+        description "Config parameters associated with sag-ipv6";
+
         leaf-list static-anycast-gateway {
+        type ietf-inet:ipv6-prefix;
+        max-elements 16;
             description
                 "Static Anycast Gateway addresses";
-			max-elements 16;
-			type ietf-inet:ipv6-prefix;
         }
     }
-
-    grouping interface-sag-ipv6-top {
+	
+    grouping interfaces-ext-interface-sag-ipv6-top {
+        description "Top level grouping associated with sag-ipv6";
         container sag-ipv6 {
+            description "Config and state parameters associated with sag-ipv6";
+
             container config {
-                uses interface-sag-ipv6-config;
+                description "Config parameters associated with sag-ipv6";
+                uses interfaces-ext-interface-sag-ipv6-config;
             }
             container state {
                 config false;
-                uses interface-sag-ipv6-config;
+                description "State parameters associated with sag-ipv6";
+                uses interfaces-ext-interface-sag-ipv6-config;
             }
         }
     }
 
-    grouping vrrp-track-interface-priority-increment {
+    grouping interfaces-ext-vrrp-track-interface-priority-increment {
 
         description
             "List of track interfaces for VRRP";
@@ -205,13 +259,13 @@ module openconfig-interfaces-ext {
     augment "/oc-intf:interfaces/oc-intf:interface" {
         description
             "NAT zone config and state data.";
-        uses interface-nat-zone-top;
+        uses interfaces-ext-interface-nat-zone-top;
     }
 
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
         description
             "SAG config and state data.";
-        uses interface-sag-ipv4-top {
+        uses interfaces-ext-interface-sag-ipv4-top {
 			when "oc-intf:config/oc-intf:type = 'oc-intf-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
@@ -221,7 +275,7 @@ module openconfig-interfaces-ext {
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
         description
             "SAG config and state data.";
-        uses interface-sag-ipv6-top {
+        uses interfaces-ext-interface-sag-ipv6-top {
 			when "oc-intf:config/oc-intf:type = 'oc-intf-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
@@ -302,12 +356,12 @@ module openconfig-interfaces-ext {
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
         description "Track interface priority for IPv4 VRRP instance";
-        uses vrrp-track-interface-priority-increment;
+        uses interfaces-ext-vrrp-track-interface-priority-increment;
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
         description "Track interface priority for IPv6 VRRP instance";
-        uses vrrp-track-interface-priority-increment;
+        uses interfaces-ext-vrrp-track-interface-priority-increment;
     }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:hold-time {
