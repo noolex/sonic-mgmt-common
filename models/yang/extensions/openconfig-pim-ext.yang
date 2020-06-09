@@ -11,6 +11,7 @@ module openconfig-pim-ext {
     import openconfig-inet-types { prefix oc-inet; }
     import openconfig-network-instance { prefix oc-netinst; }
     import openconfig-routing-policy {prefix oc-rpol; }
+    import openconfig-interfaces { prefix oc-if; }
 
     description
         "This module describes a YANG model for PIM protocol configuration extensions.";
@@ -89,6 +90,104 @@ module openconfig-pim-ext {
         }
     }
 
+    grouping pim-ext-gbl-tib-state-cmn-info {
+        leaf rpt {
+            type boolean;
+            description
+                "When set to TRUE, this is RPT multicast entry.";
+        }
+
+        leaf incoming-interface {
+            type oc-if:interface-id;
+            description
+              "Incoming interface for this multicast entry.";
+        }
+
+        leaf uptime {
+            type string;
+            description
+                "Time since this particular multicast entry is learnt.";
+        }
+
+        leaf expiry {
+            type string;
+            description
+                "Time when this particular multicast entry will expire.";
+        }
+
+        list oil-info {
+            key "outgoing-interface";
+
+            description
+                "Details about outgoing interface for this multicast entry.";
+
+            leaf outgoing-interface {
+                type oc-if:interface-id;
+                description
+                    "Outgoing interface for this multicast entry.";
+            }
+
+            leaf uptime {
+                type string;
+                description
+                    "Time since this particular outgoing interface is present in this multicast entry.";
+            }
+
+            leaf expiry {
+                type string;
+                description
+                    "Time when this particular outgoing interface will expire from this multicast entry.";
+            }
+        }
+    }
+
+    grouping pim-ext-gbl-ipv4-tib-state {
+        list ipv4-entry {
+            key "group-address";
+
+            description
+                "List of the IPv4 multicast entries present in PIM protocol TIB.";
+
+            leaf group-address {
+                type oc-inet:ipv4-address;
+                description
+                    "IPv4 Multicast group-address";
+            }
+
+            list src-entry {
+                key "source-address rpt";
+
+                description
+                    "List of different source-address entries within this particular multicast group-address entry.";
+
+                leaf source-address {
+                    type oc-inet:ipv4-address;
+                    description
+                        "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
+                        This address can be 0.0.0.0 in case of *,G multicast group entry.";
+                }
+
+                leaf rpf-neighbor-address {
+                    type oc-inet:ipv4-address;
+                    description
+                        "IPv4 Unicast address of the RPF-neighbor for the source-address.";
+                }
+
+                uses pim-ext-gbl-tib-state-cmn-info;
+            }
+        }
+    }
+
+    grouping pim-ext-gbl-tib-state {
+        container tib-state {
+            config false;
+            description
+                "PIM Protocol TIB state information.";
+
+            uses pim-ext-gbl-ipv4-tib-state;
+        }
+    }
+
     augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
         container config {
             uses pim-ext-global-config; 
@@ -96,7 +195,11 @@ module openconfig-pim-ext {
     }
 
     augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state {
-        uses pim-ext-global-config; 
+        uses pim-ext-global-config;
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
+        uses pim-ext-gbl-tib-state;
     }
 
     augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config {

@@ -11,6 +11,7 @@ module openconfig-aft-ipv4-ext {
   import openconfig-network-instance { prefix oc-netinst; }
   import openconfig-aft { prefix oc-aft; }
   import openconfig-aft-ext { prefix oc-aft-ext; }
+  import openconfig-inet-types { prefix oc-inet; }
  
   description
     "This module describes a deviation for network instannce aft-ipv4
@@ -19,6 +20,66 @@ module openconfig-aft-ipv4-ext {
   revision "2019-11-13" {
     description
       "Network instance aft-ipv4 extensions.";
+  }
+
+  grouping aft-ipv4-multicast-structural {
+      description
+          "Structural grouping defining the schema for the IPv4 multicast abstract forwarding table.";
+
+      list ipv4-entry {
+          key "group-address";
+
+          description
+              "List of the IPv4 multicast entries within the abstract forwarding table.
+              This list is keyed by the destination IPv4 multicast group & source address.";
+
+          leaf group-address {
+              type oc-inet:ipv4-address;
+              description
+                  "IPv4 Multicast group-address";
+          }
+
+          list src-entry {
+              key "source-address";
+
+              description
+                  "List of different source-address entries within this particular multicast group-address entry.";
+
+              leaf source-address {
+                  type oc-inet:ipv4-address;
+                  description
+                      "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
+                      This address can be 0.0.0.0 in case of *,G multicast group entry.";
+              }
+
+              container state {
+                  config false;
+                  description
+                      "Operational state parameters for the IPv4 multicast AFT entry.";
+                  uses oc-aft-ext:aft-common-ip-mcast-entry-state;
+              }
+          }
+      }
+  }
+
+  grouping aft-ipv4-mcast-top {
+      container ipv4-multicast {
+          description
+              "The abstract forwarding table for IPv4 multicast. Entries
+              within this table are uniquely keyed on the IPv4 multicast
+              destination prefix which is matched by ingress packets.
+
+              The data set represented by the IPv4 Multicast AFT is the set
+              of entries from the IPv4 multicast RIB that have been selected
+              for installation into the FIB of the device exporting the
+                  data structure.";
+
+          uses aft-ipv4-multicast-structural;
+      }
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts {
+      uses aft-ipv4-mcast-top;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry {

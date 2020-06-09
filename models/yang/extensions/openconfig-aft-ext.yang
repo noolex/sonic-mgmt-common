@@ -8,6 +8,7 @@ module openconfig-aft-ext {
     prefix "oc-aft-ext";
 
     import openconfig-policy-types { prefix "oc-pol-types"; }
+    import openconfig-interfaces { prefix oc-if; }
 
     grouping aft-common-ip-state-ext {
         description "Operational state parameters relating to a forwarding entry";
@@ -34,9 +35,9 @@ module openconfig-aft-ext {
 
         leaf uptime {
          type string;
-         description 
+         description
          "Time since route is configured or learned in RIB";
-       }        
+       }
      }
 
     grouping aft-common-entry-nexthop-state-ext {
@@ -48,4 +49,37 @@ module openconfig-aft-ext {
       }
 
     }
-  }
+
+    grouping aft-common-ip-mcast-entry-state {
+        leaf incoming-interface {
+            type oc-if:interface-id;
+            description
+                "Incoming interface for this multicast entry.";
+        }
+
+        leaf installed {
+            type boolean;
+            description
+                "When set to TRUE, it states the multicast entry is installed in HW.";
+        }
+
+        list oif-info {
+            key "outgoing-interface";
+
+            description
+                "Details about outgoing interface for this multicast entry.";
+
+            leaf outgoing-interface {
+                type oc-if:interface-id;
+                description
+                    "Outgoing interface for this multicast entry.";
+            }
+
+            leaf uptime {
+                type string;
+                description
+                    "Time since this particular outgoing interface is present in this multicast entry.";
+            }
+        }
+    }
+}
