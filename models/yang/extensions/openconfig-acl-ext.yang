@@ -2,23 +2,38 @@ module openconfig-acl-ext {
 
     yang-version "1";
 
-    namespace "http://openconfig.net/yang/acl/extention";
+    namespace "http://openconfig.net/yang/acl/extension";
 
     prefix "oc-acl-ext";
 
     import openconfig-packet-match-types { prefix oc-pkt-match-types; }
     import openconfig-acl { prefix oc-acl; }
+    import openconfig-extensions { prefix oc-ext; }
+
+    // meta
+    organization "SONiC";
+
+    contact
+        "SONiC
+        https://github.com/Azure/SONiC";
 
     description
         "This model describes the acl extensions.";
 
+    oc-ext:openconfig-version "0.1.0";
+
     revision 2020-02-08 {
         description
             "Initial augment file.";
+
+        reference "0.1.0";
     }
 
     // augment statements
-    grouping ethernet-header-ext-config {
+    grouping acl-ext-ethernet-header-config {
+        description
+            "Grouping for Layer 2 header extension fields";
+
         leaf pcp {
             type uint8 {
                 range "0..7";
@@ -45,7 +60,10 @@ module openconfig-acl-ext {
         }
     }
 
-    grouping "transport-fields-ext-config" {
+    grouping "acl-ext-transport-fields-config" {
+        description
+            "Grouping for ICMP header fields";
+
         leaf icmp-type {
             type uint8;
             description "ICMP or ICMPv6 Type";
@@ -57,37 +75,52 @@ module openconfig-acl-ext {
     }
 
     augment "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:l2/oc-acl:config" {
-        uses ethernet-header-ext-config;
+        description
+            "Augmentation to support configuration of additional Layer2 header fields";
+
+        uses acl-ext-ethernet-header-config;
     }
 
     augment "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:l2/oc-acl:state" {
-        uses ethernet-header-ext-config;
+        description
+            "Augmentation to support operational state of additional Layer2 header fields";
+
+        uses acl-ext-ethernet-header-config;
     }
     
     augment "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:transport/oc-acl:config" {
-        uses transport-fields-ext-config;
+        description
+            "Augmentation to support configuration of additional TCP header fields";
+
+        uses acl-ext-transport-fields-config;
     }
 
     augment "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:transport/oc-acl:state" {
-        uses transport-fields-ext-config;
+        description
+            "Augmentation to support operational state of additional TCP header fields";
+
+        uses acl-ext-transport-fields-config;
     }
 
-    grouping acl-config-ext {
+    grouping acl-ext-config {
         description
             "Global configuration data for ACLs";
 
         leaf counter-capability {
-            description
-                "System reported indication of how ACL counters are reported by the target";
-
             type identityref {
                 base oc-acl:ACL_COUNTER_CAPABILITY;
             }
+
+            description
+                "System reported indication of how ACL counters are reported by the target";
         }
     }
 
     augment /oc-acl:acl/oc-acl:config {
-        uses acl-config-ext;
+        description
+            "Augmentation to support configuration of counter capability";
+
+        uses acl-ext-config;
     }
 
     typedef ip-protocol-type-ext {
@@ -97,6 +130,11 @@ module openconfig-acl-ext {
                 base oc-pkt-match-types:IP_PROTOCOL;
             }
         }
+
+        description
+            "The IP protocol number may be expressed as a valid protocol
+            number (integer) or using a protocol type defined by the
+            IP_PROTOCOL identity";
     }
 
     deviation /oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:ipv4/oc-acl:config/oc-acl:protocol {
@@ -159,12 +197,12 @@ module openconfig-acl-ext {
         deviate not-supported;
     }
 
-    grouping global-acl-entries-config {
+    grouping acl-ext-global-acl-entries-config {
         description
             "Configuration data global ACLs";
     }
 
-    grouping global-acl-entries-state {
+    grouping acl-ext-global-acl-entries-state {
         description
             "Operational state data for global ACL entries";
 
@@ -183,7 +221,7 @@ module openconfig-acl-ext {
         uses oc-acl:acl-counters-state;
     }
 
-    grouping global-acl-entries-top {
+    grouping acl-ext-global-acl-entries-top {
         description
             "Top-level grouping for global ACL entries";
 
@@ -214,14 +252,14 @@ module openconfig-acl-ext {
                     description
                         "Operational state data for global ACL entries";
 
-                    uses global-acl-entries-config;
-                    uses global-acl-entries-state;
+                    uses acl-ext-global-acl-entries-config;
+                    uses acl-ext-global-acl-entries-state;
                 }
             }
         }
     }
 
-    grouping global-ingress-acl-config {
+    grouping acl-ext-global-ingress-acl-config {
         description
             "Configuration data for global ingress ACLs";
 
@@ -243,12 +281,12 @@ module openconfig-acl-ext {
         }
     }
 
-    grouping global-ingress-acl-state {
+    grouping acl-ext-global-ingress-acl-state {
         description
             "Operational state data for global ingress ACL";
     }
 
-    grouping global-ingress-acl-top {
+    grouping acl-ext-global-ingress-acl-top {
         description
             "Top-level grouping for global ingress ACL data";
 
@@ -281,7 +319,7 @@ module openconfig-acl-ext {
                     description
                         "Configuration data ";
 
-                    uses global-ingress-acl-config;
+                    uses acl-ext-global-ingress-acl-config;
                 }
 
                 container state {
@@ -290,16 +328,16 @@ module openconfig-acl-ext {
                     description
                         "Operational state data for global ingress ACLs";
 
-                    uses global-ingress-acl-config;
-                    uses global-ingress-acl-state;
+                    uses acl-ext-global-ingress-acl-config;
+                    uses acl-ext-global-ingress-acl-state;
                 }
 
-                uses global-acl-entries-top;
+                uses acl-ext-global-acl-entries-top;
             }
         }
     }
 
-    grouping global-egress-acl-config {
+    grouping acl-ext-global-egress-acl-config {
         description
             "Configuration data for global egress ACLs";
 
@@ -321,12 +359,12 @@ module openconfig-acl-ext {
         }
     }
 
-    grouping global-egress-acl-state {
+    grouping acl-ext-global-egress-acl-state {
         description
             "Operational state data for global egress ACL";
     }
 
-    grouping global-egress-acl-top {
+    grouping acl-ext-global-egress-acl-top {
         description
             "Top-level grouping for global egress ACL data";
 
@@ -359,7 +397,7 @@ module openconfig-acl-ext {
                     description
                         "Configuration data ";
 
-                    uses global-egress-acl-config;
+                    uses acl-ext-global-egress-acl-config;
                 }
 
                 container state {
@@ -368,16 +406,16 @@ module openconfig-acl-ext {
                     description
                         "Operational state data for global egress ACLs";
 
-                    uses global-egress-acl-config;
-                    uses global-egress-acl-state;
+                    uses acl-ext-global-egress-acl-config;
+                    uses acl-ext-global-egress-acl-state;
                 }
 
-                uses global-acl-entries-top;
+                uses acl-ext-global-acl-entries-top;
             }
         }
     }
 
-    grouping global-acl-top {
+    grouping acl-ext-global-acl-top {
         description
             "Top-level grouping for Global ACL data";
 
@@ -393,11 +431,11 @@ module openconfig-acl-ext {
                 "Operational state for ACL per-interface data";
         }
 
-        uses global-ingress-acl-top;
-        uses global-egress-acl-top;
+        uses acl-ext-global-ingress-acl-top;
+        uses acl-ext-global-egress-acl-top;
     }
 
-    grouping ctrl-plane-ingress-acl-config {
+    grouping acl-ext-ctrl-plane-ingress-acl-config {
         description
             "Configuration data for control plane ingress ACLs";
 
@@ -410,17 +448,16 @@ module openconfig-acl-ext {
         }
 
         leaf type {
-            type leafref {
-                path "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set[oc-acl:name=current()/../set-name]" +
-                    "/oc-acl:config/oc-acl:type";
-            }
-            must '(current() = oc-acl:ACL_IPV4) or (current() = oc-acl:ACL_IPV6)';
+            type identityref {
+                base oc-acl:ACL_TYPE;
+            }   
+            must '(current() = "ACL_IPV4") or (current() = "ACL_IPV6")';
             description
                 "Reference to the ACL set type applied on ingress";
         }
     }
 
-    grouping ctrl-plane-ingress-acl-top {
+    grouping acl-ext-ctrl-plane-ingress-acl-top {
         description
             "Top-level grouping for control plane ingress ACL data";
 
@@ -453,7 +490,7 @@ module openconfig-acl-ext {
                     description
                         "Configuration data ";
 
-                    uses ctrl-plane-ingress-acl-config;
+                    uses acl-ext-ctrl-plane-ingress-acl-config;
                 }
 
                 container state {
@@ -462,13 +499,13 @@ module openconfig-acl-ext {
                     description
                         "Operational state data";
 
-                    uses ctrl-plane-ingress-acl-config;
+                    uses acl-ext-ctrl-plane-ingress-acl-config;
                 }
             }
         }
     }
 
-    grouping ctrl-plane-acl-top {
+    grouping acl-ext-ctrl-plane-acl-top {
         description
             "Top-level grouping for Control Plane ACL data";
 
@@ -484,15 +521,26 @@ module openconfig-acl-ext {
                 "Operational state for ACL per-interface data";
         }
 
-        uses ctrl-plane-ingress-acl-top;
+        uses acl-ext-ctrl-plane-ingress-acl-top;
     }
 
     augment /oc-acl:acl {
+        description
+            "Augmentation to add support for Global and Control plane ACLs";
+
         container global {
-            uses global-acl-top;
+            description
+                "Global ACL application related configuration and operational state";
+
+            uses acl-ext-global-acl-top;
         }
+
         container control-plane {
-            uses ctrl-plane-acl-top;
+            description
+                "Control plane ACL related configuration and operational state";
+
+            uses acl-ext-ctrl-plane-acl-top;
         }
     }
 }
+
