@@ -1341,7 +1341,7 @@ func validateIpPrefixForIntfType(ifType E_InterfaceType, ip *string, prfxLen *ui
 }
 
 /* Check for IP overlap */
-func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string) (string, error) {
+func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isIntfIp bool) (string, error) {
     log.Info("Checking for IP overlap ....")
 
     ipA, ipNetA, err := net.ParseCIDR(ipPref)
@@ -1360,6 +1360,38 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string) (st
             return "", err
         }
         allIntfKeys = append(allIntfKeys, keys...)
+    }
+
+    sagKeys, err := d.GetKeys(&db.TableSpec{Name:"SAG"})
+    if nil == err {
+
+        for _, sagIf := range sagKeys {
+            sagEntry, err := d.GetEntry(&db.TableSpec{Name: "SAG"}, sagIf)
+      			if(err != nil) {
+      			    continue
+      			}
+
+            sagIpList, ok := sagEntry.Field["gwip@"]
+
+            if (!ok) {
+                continue;
+            }
+
+            sagIpMap := strings.Split(sagIpList, ",")
+
+          	if (sagIpMap[0] == "") {
+          		  continue
+          	}
+
+            for _, sagIp := range sagIpMap {
+                prekey := make([]string, 3, 3)
+                prekey[0] = sagIf.Get(0)
+                prekey[1] = sagIp
+                prekey[2] = "SAG"
+                appendKey := db.Key{ Comp: prekey}
+                allIntfKeys = append(allIntfKeys, appendKey)
+            }
+        }
     }
 
     if len(allIntfKeys) > 0 {
@@ -1387,15 +1419,21 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string) (st
                     vrfNameA, _ := d.GetMap(&db.TableSpec{Name:tblName+"|"+intf}, "vrf_name")
                     vrfNameB, _ := d.GetMap(&db.TableSpec{Name:intTbl.cfgDb.intfTN+"|"+key.Get(0)}, "vrf_name")
                     if vrfNameA == vrfNameB {
-                        errStr := "IP " + ipPref + " overlaps with IP " + key.Get(1) + " of Interface " + key.Get(0)
+                        errStr := "IP " + ipPref + " overlaps with IP or IP Anycast " + key.Get(1) + " of Interface " + key.Get(0)
                         log.Error(errStr)
                         return "", errors.New(errStr)
                     }
-                } else {
+                } else if (isIntfIp == true){
                     //Handle IP overlap on same interface, replace
                     log.Error("Entry ", key.Get(1), " on ", intf, " needs to be deleted")
-                    errStr := "IP overlap on same interface with IP " + key.Get(1)
-                    return key.Get(1), errors.New(errStr)
+                    errStr := "IP overlap on same interface with IP or IP Anycast " + key.Get(1)
+
+                    if ((len(key.Comp) == 3) && (key.Get(2) == "SAG")) {
+                        return "", errors.New(errStr)
+                    } else {
+                        return key.Get(1), errors.New(errStr)
+                    }
+
                 }
             }
         }
@@ -1531,7 +1569,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 }
                 /* Check for IP overlap */
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
-                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName);
+                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
@@ -1589,7 +1627,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 }
                 /* Check for IPv6 overlap */
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
-                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName);
+                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
@@ -3166,6 +3204,17 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
           err = tlerr.InvalidArgsError{Format: errStr}
           return subIntfmap, err
       }
+
+      if (inParams.oper != DELETE) {
+          _, oerr := validateIpOverlap(inParams.d, ifName, sagIpv4Obj.Config.StaticAnycastGateway[0], "VLAN_INTERFACE", false);
+
+          if oerr != nil {
+              log.Error(oerr)
+              return nil, tlerr.InvalidArgsError{Format: oerr.Error()}
+          }
+
+      }
+
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3224,6 +3273,15 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
           errStr := "Invalid IPv6 Gateway lenght " + sagIpv6Obj.Config.StaticAnycastGateway[0]
           err = tlerr.InvalidArgsError{Format: errStr}
           return subIntfmap, err
+      }
+
+      if (inParams.oper != DELETE) {
+          _, oerr := validateIpOverlap(inParams.d, ifName, sagIpv6Obj.Config.StaticAnycastGateway[0], "VLAN_INTERFACE", false);
+
+          if oerr != nil {
+              log.Error(oerr)
+              return nil, tlerr.InvalidArgsError{Format: oerr.Error()}
+          }
       }
 
 			sagIPv6Key := ifName + "|IPv6"
