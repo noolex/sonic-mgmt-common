@@ -312,7 +312,7 @@ var DbToYang_vxlan_vni_state_peer_info_key_xfmr KeyXfmrDbToYang = func(inParams 
 //		}
 
 		if len(tblVxlanMapKeys) != 1 {
-			log.Error("DbToYang_vxlan_vni_state_peer_info_key_xfmr ==> returning ERROR")
+			log.Errorf("DbToYang_vxlan_vni_state_peer_info_key_xfmr ==> ERROR(%v)", err)
 			return rmap, tlerr.NotFound("Resource Not Found")
 		}
 
@@ -781,8 +781,8 @@ func (reqP *vxlanReqProcessor) translateToDb(inParams XfmrParams) (*map[string]m
 }
 
 func getIntfUriPath(uri string) (*gnmipb.Path, error) {
-	uriPath := strings.Replace(uri, "openconfig-interfaces:", "", -1)
-	uriPath = strings.Replace(uri, "openconfig-vxlan:", "", -1)
+	//uriPath := strings.Replace(uri, "openconfig-interfaces:", "", -1)
+	uriPath := strings.Replace(uri, "openconfig-vxlan:", "", -1)
 	path, err := ygot.StringToPath(uriPath, ygot.StructuredPath, ygot.StringSlicePath)
 	if err != nil {
 		return nil, tlerr.NotFound("Resource Not Found")
@@ -795,8 +795,8 @@ func getIntfUriPath(uri string) (*gnmipb.Path, error) {
 }
 
 func getVxlanNiUriPath(uri string) (*gnmipb.Path, error) {
-	uriPath := strings.Replace(uri, "openconfig-network-instance:", "", -1)
-	uriPath = strings.Replace(uri, "openconfig-vxlan:", "", -1)
+	//uriPath := strings.Replace(uri, "openconfig-network-instance:", "", -1)
+	uriPath := strings.Replace(uri, "openconfig-vxlan:", "", -1)
 	path, err := ygot.StringToPath(uriPath, ygot.StructuredPath, ygot.StringSlicePath)
 	if err != nil {
 		return nil, tlerr.NotFound("Resource Not Found")
@@ -847,7 +847,7 @@ var YangToDb_intf_vxlan_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
 		}
 	}
 	
-	if inParams.oper == DELETE && vxlanIfNodeFlag == false {
+	if inParams.oper == DELETE && !vxlanIfNodeFlag {
 		// need to return success abrubtly since this subtree call got initiated internally from the transformer
 		// infra for this request, otherwise the orignial given request will fail
 		log.Info("YangToDb_intf_vxlan_config_xfmr: returning success abrubtly since this subtree call got initiated internally from the transformer infra for this request => ", inParams.requestUri)
@@ -1225,7 +1225,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 		isKeysInPaylod = false
 		if vniIdKeyStr == "" && srcNveKeyStr == "" {
 			if reqP.vxlanNetInstObj.VxlanVniInstances != nil && len(reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance) > 0 {
-				for vniKeyObj, _ := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
+				for vniKeyObj := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
 					vniIdKeyStr = strconv.Itoa(int(vniKeyObj.VniId))
 					srcNveKeyStr = vniKeyObj.SourceNve
 					log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: vniIdKeyStr in payload => ", vniIdKeyStr)
@@ -1252,7 +1252,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 			if log.V(3) {
 				log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: tblVxlanMapKeys => err => ", err)
 			}
-			if err != nil && inParams.oper != 3 && isKeysInPaylod == false {
+			if err != nil && inParams.oper != 3 && !isKeysInPaylod {
 				log.Error("YangToDb_vxlan_vni_instance_subtree_xfmr ==> returning ERROR, since the key doesn't exist")
 				return res_map, tlerr.NotFound("Resource Not Found")
 			} else if err == nil && (inParams.oper == 3 || inParams.oper == 4) {
@@ -1316,7 +1316,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 		}
 		 
 	} else {
-		for vniKey, _ := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
+		for vniKey := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
 			vniId = vniKey.VniId
 			vtepName = vniKey.SourceNve
 			break
@@ -1540,7 +1540,7 @@ var DbToYang_vlan_nd_suppress_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
 	data := (*inParams.dbDataMap)[inParams.curDb]
 
 	log.Infof("vlan_nd_suppress_fld_xfmr: key: %v, data: %v", vlanIdStr, data)
-	if data != nil && len(data) > 0 {
+	if len(data) > 0 {
 		val := data["SUPPRESS_VLAN_NEIGH"][vlanIdStr]
 		if val.Get("suppress") == "on" {
 			res_map["arp-and-nd-suppress"], _ = ygot.EnumName(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_enable)
