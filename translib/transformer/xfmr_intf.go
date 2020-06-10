@@ -2921,7 +2921,6 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 }
 
 /* Validates whether Donor interface has multiple IPv4 Address configured on it */
-/* Note:func unused, to be removed.
 func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 
 	tables := [2]string{"INTERFACE", "PORTCHANNEL_INTERFACE"}
@@ -2969,7 +2968,6 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 	}
 	return false
 }
-*/
 
 func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface,
                          inParams *XfmrParams, ifdb map[string]string, ifName *string) error  {
