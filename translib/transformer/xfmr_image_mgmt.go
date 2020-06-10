@@ -49,7 +49,7 @@ var rpc_image_default RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
 func image_mgmt_operation(command string, body []byte) ([]byte, error) {
 
     var query_result  HostResult
-   var result struct { 
+   var result struct {
     Output struct {
           Status int32 `json:"status"`
           Status_detail string`json:"status-detail"`
@@ -63,9 +63,9 @@ func image_mgmt_operation(command string, body []byte) ([]byte, error) {
     if err == nil || command == "remove" {
 
       input, image_present := mapData["sonic-image-management:input"]
-      if image_present == true {
+      if image_present {
         mapData, image_present = input.(map[string]interface{})
-        if image_present == true {
+        if image_present {
             var v interface{}
             v, image_present = mapData["imagename"]
             if (image_present) {
@@ -74,26 +74,26 @@ func image_mgmt_operation(command string, body []byte) ([]byte, error) {
         }
       }
       err = nil
-    
+
       log.Info("image_present:", image_present, "image:", imagename)
-      if command == "remove" && image_present == false {
+      if command == "remove" && !image_present {
             command = "cleanup"
       }
-      if command != "cleanup" && image_present == false {
+      if command != "cleanup" && !image_present {
           log.Error("Config input not provided.")
-          err = errors.New("Image name not provided.") 
+          err = errors.New("Image name not provided.")
       }
 
       if err == nil {
         var options []string
-   
+
         if (command == "install") {
           url = imagename
-          if strings.HasPrefix(imagename, "file://") == true {
+          if strings.HasPrefix(imagename, "file://") {
             imagename = strings.TrimPrefix(imagename, "file:")
-          } else if ((strings.HasPrefix(imagename, "http:") == false) &&
-            (strings.HasPrefix(imagename, "https:") == false)) {
-            err = errors.New("ERROR:Invalid image url.") 
+          } else if (!strings.HasPrefix(imagename, "http:") &&
+            !strings.HasPrefix(imagename, "https:")) {
+            err = errors.New("ERROR:Invalid image url.")
           }
 
           if (err == nil) {
@@ -108,8 +108,7 @@ func image_mgmt_operation(command string, body []byte) ([]byte, error) {
             defer d.DeleteDB()
 
             if (err1 == nil) {
-              var MGMT_VRF_TABLE string
-              MGMT_VRF_TABLE = "MGMT_VRF_CONFIG"
+              var MGMT_VRF_TABLE string = "MGMT_VRF_CONFIG"
 
               mgmtVrfTable := &db.TableSpec{Name: MGMT_VRF_TABLE}
               key := db.Key{Comp: []string{"vrf_global"}}
