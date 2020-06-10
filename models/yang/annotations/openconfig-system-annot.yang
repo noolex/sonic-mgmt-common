@@ -19,6 +19,7 @@ module openconfig-system-annot {
     import openconfig-system { prefix oc-sys; }
     import sonic-extensions {prefix sonic-ext; }
     import openconfig-system-ext { prefix oc-sys-ext; }
+    import openconfig-aaa-radius-ext { prefix oc-aaa-radius-ext; }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:users/oc-sys:user {
         deviate add {
@@ -205,18 +206,6 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:nas-ip-address {
-      deviate add {
-          sonic-ext:field-name "nas_ip";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:retransmit-attempts {
-      deviate add {
-          sonic-ext:field-name "retransmit";
-      }
-    }
-
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:source-interface {
       deviate add {
           sonic-ext:field-name "src_intf";
@@ -244,18 +233,6 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:source-address {
       deviate add {
           sonic-ext:field-name "src_ip";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:nas-ip-address {
-      deviate add {
-          sonic-ext:field-name "nas_ip";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:retransmit-attempts {
-      deviate add {
-          sonic-ext:field-name "retransmit";
       }
     }
 
@@ -289,6 +266,24 @@ module openconfig-system-annot {
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys:name {
       deviate add {
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:config/oc-aaa-radius-ext:nas-ip-address {
+      deviate add {
+          sonic-ext:field-name "nas_ip";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:config/oc-aaa-radius-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retransmit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:config/oc-aaa-radius-ext:statistics {
+      deviate add {
+          sonic-ext:field-name "statistics";
       }
     }
 
@@ -391,6 +386,67 @@ module openconfig-system-annot {
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:config/oc-sys:source-address {
         deviate not-supported;
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state {
+      deviate add {
+        sonic-ext:table-name "RADIUS_SERVER_STATS";
+        sonic-ext:key-transformer "server_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters {
+      deviate add {
+          sonic-ext:db-name "COUNTERS_DB";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-aaa-radius-ext:access-requests {
+      deviate add {
+          sonic-ext:field-name "access_requests";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-sys:retried-access-requests {
+      deviate add {
+          sonic-ext:field-name "retried_access_requests";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-sys:access-accepts {
+      deviate add {
+          sonic-ext:field-name "access_accepts";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-sys:access-rejects {
+      deviate add {
+          sonic-ext:field-name "access_rejects";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-sys:timeout-access-requests {
+      deviate add {
+          sonic-ext:field-name "retried_access_requests";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-aaa-radius-ext:access-challenges {
+      deviate add {
+          sonic-ext:field-name "access_challenges";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-aaa-radius-ext:bad-authenticators {
+      deviate add {
+          sonic-ext:field-name "bad_authenticators";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-aaa-radius-ext:invalid-packets {
+      deviate add {
+          sonic-ext:field-name "invalid_packets";
+      }
     }
 
 /*********************************************************/

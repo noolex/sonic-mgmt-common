@@ -120,6 +120,40 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 						ErrAppTag:        "mtu-invalid",
 					}
 				}
+
+				poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
+				if err != nil {
+				   return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+				}
+
+				if len(poMembersKeys) > 0 {
+					intfData, err1 := vc.RClient.HGetAll("PORT|" + intfName).Result()
+					if err1 != nil {
+						return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+					}
+
+					intfSpeed, intfHasSpeed := intfData["speed"]
+					for _, poMemKey := range poMembersKeys {
+						poMember := strings.Split(poMemKey, "|")
+						poMemData, err1 := vc.RClient.HGetAll("PORT|" + poMember[2]).Result()
+						if err1 != nil {
+							return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+						}
+
+						poMemSpeed, poMemHasSpeed := poMemData["speed"]
+						if intfHasSpeed && poMemHasSpeed && intfSpeed != poMemSpeed {
+							util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Members can't be added to portchannel when member speed is not same as existing members")
+							return CVLErrorInfo{
+									ErrCode:          CVL_SEMANTIC_ERROR,
+									TableName:        "PORT",
+									Keys:             strings.Split(vc.CurCfg.Key, "|"),
+									ConstraintErrMsg: "Configuration not allowed when port speed is different than existing member of Portchannel.",
+									ErrAppTag:        "speed-invalid",
+							}
+						}
+						break
+					}
+				}
 			}
 		} else if keys[0] == "PORT" {
 			intfName := keys[1]

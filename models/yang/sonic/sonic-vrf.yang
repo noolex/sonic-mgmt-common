@@ -15,14 +15,14 @@ module sonic-vrf {
     description
         "SONIC VRF";
 
+	revision 2019-11-22 {
+		description
+			"Add VRF name check";
+	}
+
     revision 2019-10-30 {
         description
             "Initial revision.";
-    }
-
-    revision 2019-11-22 {
-        description
-            "Add VRF name check";
     }
 
     container sonic-vrf {

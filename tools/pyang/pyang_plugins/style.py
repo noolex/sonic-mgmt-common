@@ -146,10 +146,7 @@ def chk_version_prefix_namespace(ctx, module):
 
 def walk_child(ctx,child):
 
-    if child.keyword in statements.data_keywords:
-        # pp = statements.mk_path_str(child, True)    
-        # if pp == "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:l2/oc-acl:config/oc-acl-ext:pcp":
-        #     pdb.set_trace()        
+    if child.keyword in statements.data_keywords:   
         if child.i_module.i_modulename in extensionModulesList:
             chk_naming(ctx, child)
             if child.keyword == "container":
@@ -176,12 +173,13 @@ def chk_naming(ctx, child):
         
 def chk_list(ctx,list_node):
     global issues
-    # if hasattr (list_node, 'i_uses'):
-    #     if len(list_node.i_uses) != 0:
-    #         pdb.set_trace()
+    for child in list_node.i_children:
+        if child.keyword != "container":
+            if child in list_node.i_key:
+                continue
+            issues.append(str(child.pos) + " not allowed directly under list")
+        
     if list_node.parent.keyword != "container":
-        # if "ietf" in str(list_node.pos):
-        #     pdb.set_trace()
         issues.append(str(list_node.pos) + " should be wrapped by a container")
     if list_node.i_config:
         state_container = list_node.parent.search_one('container', 'state', list_node.i_children)
@@ -191,12 +189,14 @@ def chk_list(ctx,list_node):
     for key in list_node.i_key:
         key_type = key.search_one('type').arg
         if key_type != "leafref":
-            issues.append(str(key.pos) + " should be a leafref")
+            if list_node.i_config and config_container is not None:
+                if len(config_container.i_children) > 0:
+                    issues.append(str(key.pos) + " should be a leafref")
         else:
             try:
                 pointed_node = key.search_one('type').i_type_spec.i_target_node.parent.arg
             except:
-                pdb.set_trace()
+                issues.append(str(key.pos) + " leafref path is invalid")
             if pointed_node != "config" and pointed_node != "state":
                 issues.append(str(key.pos) + " should point to config/state attributes")
             path_ = key.search_one('type').i_type_spec.path_.arg
@@ -209,11 +209,26 @@ def chk_list(ctx,list_node):
 
 def chk_container(ctx,container):
     global issues
+    if container.arg == "config" and not container.i_config:
+        issues.append(str(container.pos) + " container with name config must be config:true")
+    if container.arg == "state" and container.i_config:
+        issues.append(str(container.pos) + " container with name state must be config:false")
+
     list_node = container.search('list', container.i_children)
     if len(list_node) > 0 and len(container.i_children) > 1:
         issues.append(str(container.pos) + " Lists should have an enclosing container with no other data nodes inside it")
 
-    if container.arg == "config":
+    if container.arg != "config" and container.i_config:
+        for child in container.i_children:
+            if child.keyword == "leaf" or child.keyword == "leaf-list":
+                issues.append(str(child.pos) + " non-config named container cannot contain leaf/leaf-list")
+
+    if container.arg == "config" and container.i_config:
+        
+        for child in container.i_children:
+            if child.keyword != "leaf" and child.keyword != "leaf-list":
+                issues.append(str(child.pos) + " not allowed, config container should only contain leaf/leaf-list")
+
         state_container = container.parent.search_one('container', 'state', container.parent.i_children)
         if state_container is None:
             issues.append(str(container.parent.pos) + " does not have state container node")

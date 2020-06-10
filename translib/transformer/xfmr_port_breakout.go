@@ -33,6 +33,7 @@ func init () {
     XlateFuncBind("DbToYang_port_breakout_config_xfmr", DbToYang_port_breakout_config_xfmr)
     XlateFuncBind("DbToYang_port_breakout_state_xfmr", DbToYang_port_breakout_state_xfmr)
     XlateFuncBind("rpc_breakout_dependencies", rpc_breakout_dependencies)
+    XlateFuncBind("rpc_breakout_capabilities", rpc_breakout_capabilities)
     parsePlatformJsonFile()
 }
 
@@ -250,6 +251,22 @@ var YangToDb_port_breakout_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     log.Info("DPB map ==>", dpbMap)
     return dpbMap, err
 }
+
+var rpc_breakout_capabilities RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+
+    log.Info("DPB Capabilities RPC")
+    var exec struct {
+        Output struct {
+            Caps []portCaps `json:"caps,omitempty"`
+        } `json:"sonic-port-breakout:output"`
+    }
+    exec.Output.Caps = getCapabilities()
+    result, err := json.Marshal(&exec)
+    log.Info("RPC Result: ", result, "Error: ", err)
+    return result, err
+
+}
+
 var rpc_breakout_dependencies RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     var err error
     var input map[string]interface{}

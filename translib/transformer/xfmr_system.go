@@ -260,7 +260,7 @@ func getCpusFromDb (d *db.DB) ([]Cpu, error) {
     }
 
     cpus = make([]Cpu, len(keys))
-    for idx, _ := range keys {
+    for idx := range keys {
         key := "CPU" + strconv.Itoa(idx)
         cpuEntry, err := cpuTbl.GetEntry(db.Key{Comp: []string{key}})
         if err != nil {
@@ -359,7 +359,6 @@ func getSystemProcesses (procs *map[string]Proc, sysprocs *ocbinds.OpenconfigSys
             getSystemProcess(&proc, sysproc, uint64 (idx))
         }
     }
-    return
 }
 
 func getProcsFromDb (d *db.DB) (map[string]Proc, error) {
@@ -525,7 +524,7 @@ var YangToDb_server_dns_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (st
     pathInfo := NewPathInfo(inParams.uri)
 
     address =  pathInfo.Var("address")
-   
+
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))

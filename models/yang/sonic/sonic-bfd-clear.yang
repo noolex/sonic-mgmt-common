@@ -3,10 +3,6 @@ module sonic-bfd-clear {
     prefix sbfdclear;
     yang-version 1.1;
 
-    import ietf-inet-types {
-        prefix inet;
-    }
-
     import sonic-vrf {
         prefix svrf;
     }
@@ -25,10 +21,6 @@ module sonic-bfd-clear {
 
     import sonic-loopback-interface {
         prefix sloif;
-    }
-
-    import sonic-common {
-        prefix cmn;
     }
 
     organization

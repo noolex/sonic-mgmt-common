@@ -36,25 +36,25 @@ module openconfig-udld-types {
       "base identity for different port states ";
   }
 
-  identity Undetermined {
+  identity UNDETERMINED {
     base UDLD_PORT_STATUS;
     description
       "UDLD has not received enough information from the peer to determine the state";
   }
 
-  identity Shutdown {
+  identity SHUTDOWN {
     base UDLD_PORT_STATUS;
     description
       "UDLD has determined the link to be uni-directional and has shutdown the interface";
   }
 
-  identity Unidirectional {
+  identity UNIDIRECTIONAL {
     base UDLD_PORT_STATUS;
     description
       "UDLD has determined the link to be uni-directional";
   }
 
-  identity Bidirectional {
+  identity BIDIRECTIONAL {
     base UDLD_PORT_STATUS;
     description
       "UDLD is able to exchange the PDUs and has determined the link to be bi-directional";

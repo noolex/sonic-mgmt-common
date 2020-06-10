@@ -86,6 +86,11 @@ module openconfig-mclag-annot {
         }
     }
 
+    deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:config/oc-mclag:mclag-system-mac {
+        deviate add {
+            sonic-ext:field-name "mclag_system_mac";
+        }
+    }
 
     deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:state/oc-mclag:domain-id {
         deviate add {
@@ -141,7 +146,12 @@ module openconfig-mclag-annot {
             sonic-ext:field-transformer "mclag_domain_system_mac_fld_xfmr";
         }
     }
-
+    
+    deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:state/oc-mclag:mclag-system-mac {
+        deviate add {
+            sonic-ext:field-transformer "mclag_domain_mclag_system_mac";
+        }
+    }
 
     deviation /oc-mclag:mclag/oc-mclag:vlan-interfaces/oc-mclag:vlan-interface/oc-mclag:config/oc-mclag:name {
         deviate add {
