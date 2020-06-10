@@ -62,7 +62,7 @@ module sonic-portchannel {
 
             list PORTCHANNEL_LIST {
                 key "name";
-                sonic-ext:custom-validation ValidatePortChannelDeletion;
+                sonic-ext:custom-validation ValidatePortChannelCreationDeletion;
 
                 leaf name {
                     type string {
