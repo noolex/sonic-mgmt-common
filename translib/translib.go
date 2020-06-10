@@ -276,7 +276,7 @@ func Update(req SetRequest) (SetResponse, error) {
 	log.Info("Update request received with payload =", string(payload))
 
         // generate audit message
-        auditMsg := fmt.Sprintf("Update request received with path=%s", path)
+        auditMsg := fmt.Sprintf("Update request received with path %s", path)
 	Writer.Info(auditMsg)
 
 	app, appInfo, err := getAppModule(path, req.ClientVersion)
@@ -448,7 +448,7 @@ func Delete(req SetRequest) (SetResponse, error) {
 	log.Info("Delete request received with path =", path)
 
         // generate audit message 
-        auditMsg := fmt.Sprintf("Delete request received with path=%s", path)
+        auditMsg := fmt.Sprintf("Delete request received with path %s", path)
 	Writer.Info(auditMsg)
 
 	requestPathInfo := NewPathInfo(path)
@@ -549,7 +549,7 @@ func Get(req GetRequest) (GetResponse, error) {
 	log.Info("Received Get request for path = ", path)
 
         // generate audit message
-        auditMsg := fmt.Sprintf("Get request received with path=%s", path)
+        auditMsg := fmt.Sprintf("Get request received with path %s", path)
 	Writer.Info(auditMsg)
 
 	app, appInfo, err := getAppModule(path, req.ClientVersion)
