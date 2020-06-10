@@ -58,9 +58,6 @@ module sonic-pim {
                         enum ipv4 {
                             description "IPV4 address family";
                         }
-                        enum ipv6 {
-                            description "IPV6 address family";
-                        }
                     }
                 }
 
@@ -120,9 +117,6 @@ module sonic-pim {
                     type enumeration {
                         enum ipv4 {
                             description "IPV4 address family";
-                        }
-                        enum ipv6 {
-                            description "IPV6 address family";
                         }
                     }
                 }
