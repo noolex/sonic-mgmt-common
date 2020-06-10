@@ -47,16 +47,29 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                   ", requestUri", inParams.requestUri,
                   ", op: ", inParams.oper)
 
-        pathInfo := NewPathInfo(inParams.requestUri)
+        pathInfo := NewPathInfo(inParams.uri)
+
+        targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+
+        log.Infof( " YangToDb_ntp_server_subtree_xfmr, pathInfo %v targetUri %v", pathInfo, targetUriPath)
 
         keyName := pathInfo.Var("address")
 
-       if keyName == "" {
-                errStr = "NTP server " + keyName + " empty"
-                log.Info("YangToDb_ntp_server_subtree_xfmr: ", errStr)
-                err = tlerr.InvalidArgsError{Format: errStr}
-                return res_map, err
+        if (inParams.oper == DELETE) {
+                if keyName == "" {
+                        errStr = "NTP server " + keyName + " empty"
+                        log.Info("YangToDb_ntp_server_subtree_xfmr: DELETE ", errStr)
+                        err = tlerr.InvalidArgsError{Format: errStr}
+                        return res_map, err
+            }
+        } else {
+                /* for configure, YangToDb subtree xfmr gets called multiple times, only care about this one */
+                if (targetUriPath != "/openconfig-system:system/ntp/servers/server/config") {
+                        return res_map, err
+                }
         }
+
+        log.Infof( "YangToDb_ntp_server_subtree_xfmr: targetUriPath %v key %v", targetUriPath, keyName)
 
         res_map[NTP_SERVER_TABLE_NAME] = make(map[string]db.Value)
 
@@ -80,11 +93,11 @@ func Find(slice []string, val string) (int, bool) {
 }
 
 // ProcessGetNtpServer is a function to run "ntpq -p" from the mgmt framework docker and populate the NTP peer config/states based on requestUri
-func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string)  error {
+func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled bool)  error {
         var err error
         var errStr string
 
-        log.Infof("ProcessGetNtpServer  %v flags %v", command, flags)
+        log.Infof("ProcessGetNtpServer  vrfName: %v isMgmtVrfEnabled %v", vrfName, isMgmtVrfEnabled)
 
         requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
 
@@ -130,21 +143,8 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
                 getServStateOnly = true
         }
 
-        cmd := exec.Command(command, flags...)
-
-        output, err := cmd.StdoutPipe()
-        if err != nil {
-                log.Info("ProcessGetNtpServer: error ", err)
-                return err
-        }
-
-        if err := cmd.Start(); err != nil {
-            log.Info("ProcessGetNtpServer error  ", err)
-            return err
-        }
-
-        in := bufio.NewScanner(output)
-
+        /* populate the config and state address accordingly */
+ 
         sysObj := getSystemRootObject(inParams)
 
         ygot.BuildEmptyTree(sysObj)
@@ -156,6 +156,87 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
         ntpServers := ntpData.Servers
 
         ygot.BuildEmptyTree(ntpServers)
+
+        ntpServer := ntpServers.Server
+
+        var currNtpServer *ocbinds.OpenconfigSystem_System_Ntp_Servers_Server
+
+        /*
+         * if address is non-empty, set the config and state accordingly first
+         * if the address name cannot be resolved, it won't show in ntpq output
+         * else if address in empty, the get come for all ntp servers, so populate
+         * each ntp server config&state
+         */
+        if (keyName != "") {
+                currNtpServer = ntpServer[keyName]
+
+                if (!getServStateOnly) {
+                        if (currNtpServer.Config == nil) {
+                                ygot.BuildEmptyTree(currNtpServer)
+                        }
+
+                        currNtpServer.Config.Address = &keyName
+                }
+
+                if (!getServConfigOnly) {
+                        if (currNtpServer.State == nil) {
+                                ygot.BuildEmptyTree(currNtpServer)
+                        }
+
+                        currNtpServer.State.Address = &keyName
+                }
+        } else {
+                /* Get all ntp servers from config DB */
+                ntpServTable := &db.TableSpec{Name: NTP_SERVER_TABLE_NAME}
+                ntpServKeys, err := inParams.d.GetKeys(ntpServTable)
+
+                if err != nil {
+                        log.Info("ProcessGetNtpServer, unable to get NTP server table keys with err ", err)
+                        return err
+                }
+
+                for i := range ntpServKeys {
+                        currAddress := ntpServKeys[i].Comp
+                        currNtpServer = ntpServer[currAddress[0]]
+                        if (currNtpServer == nil) {
+                                currNtpServer, _ = ntpServers.NewServer(currAddress[0])
+                                ygot.BuildEmptyTree(currNtpServer)
+                        }
+
+                        if (currNtpServer.Config == nil) {
+                                ygot.BuildEmptyTree(currNtpServer)
+                        }
+
+                        currNtpServer.Config.Address = &currAddress[0]
+
+                        if (currNtpServer.State == nil) {
+                                ygot.BuildEmptyTree(currNtpServer)
+                        }
+
+                        currNtpServer.State.Address = &currAddress[0]
+                }
+        }
+
+        cmd := exec.Command("ntpq", "-p")
+        if ((isMgmtVrfEnabled) &&
+            ((vrfName == "mgmt") ||
+             (vrfName == ""))) {
+                cmd = exec.Command("cgexec", "-g", "l3mdev:mgmt", "ntpq", "-p")
+        }
+
+        output, err := cmd.StdoutPipe()
+
+        if err != nil {
+                log.Info("ProcessGetNtpServer: error ", err)
+                return err
+        }
+
+        if err := cmd.Start(); err != nil {
+            log.Info("ProcessGetNtpServer error  ", err)
+            return err
+        }
+
+        in := bufio.NewScanner(output)
 
         /*  Sample output 
          *
@@ -224,27 +305,26 @@ func ProcessGetNtpServer (inParams XfmrParams, command string, flags ...string) 
                 offset := list[8]
                 jitter := list[9]
 
-                ntpServer := ntpServers.Server
-                currNtpServer, ok := ntpServer[remote]
-                if !ok {
-                        currNtpServer, _ = ntpServers.NewServer(remote)
-                        ygot.BuildEmptyTree(currNtpServer)
-                }
-
-                if (!getServStateOnly) {
-                        if (currNtpServer.Config == nil) {
-                                ygot.BuildEmptyTree(currNtpServer)
-                        }
-
-                        currNtpServer.Config.Address = &remote
-                }
-
                 if (!getServConfigOnly) {
-                        if (currNtpServer.State == nil) {
-                                ygot.BuildEmptyTree(currNtpServer)
-                        }
 
-                        currNtpServer.State.Address = &remote
+                        if (keyName == "") {
+                                /* it's possible in some error condition remote is not in config DB but in the ntpq -p */
+                                currNtpServer = ntpServers.Server[remote] 
+                                if (currNtpServer == nil)  {
+                                        currNtpServer, _ = ntpServers.NewServer(remote)
+                                        ygot.BuildEmptyTree(currNtpServer)
+                                }
+
+                                if (currNtpServer.Config == nil) {
+                                        ygot.BuildEmptyTree(currNtpServer)
+                                }
+
+                                if (currNtpServer.State == nil) {
+                                        ygot.BuildEmptyTree(currNtpServer)
+                                }
+
+                                currNtpServer.State.Address = &remote
+                        }
 
                         when_num, _ := strconv.ParseUint(when, 10, 32)
                         when_num32 := uint32(when_num)
@@ -323,38 +403,18 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         key := db.Key{Comp: []string{"global"}}
         dbEntry, _ := d.GetEntry(ntpTable, key)
 
-        /* Before migrating to Buster only mgmt VRF supported beside default vrf */
-        if (isMgmtVrfEnabled) {
-                if (dbEntry.IsPopulated()) {
-                        vrfName := (&dbEntry).Get("vrf")
-
-                        if (vrfName == "default") {
-                                log.Info("DbToYang_ntp_server_subtree_xfmr, NTP vrf set to default with mgmt vrf configured")
-                                err = ProcessGetNtpServer(inParams, "ntpq", "-p")
-                        } else if (vrfName == "mgmt") {
-                                log.Info("DbToYang_ntp_server_subtree_xfmr: NTP service run in mgmt vrf context")
-                                arg0 := "-g"
-                                arg1 := "l3mdev:mgmt"
-                                arg2 := "ntpq"
-                                arg3 := "-p"
-                                err = ProcessGetNtpServer(inParams, "cgexec", arg0, arg1, arg2, arg3)
-                        } else {
-                                errStr = "Unable to determin NTP sevice context"
-                                log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
-                                err = tlerr.InvalidArgsError{Format: errStr}
-                        }
-                } else {
-                        log.Info("DbToYang_ntp_server_subtree_xfmr: NTP service run in mgmt vrf context")
-                                arg0 := "-g"
-                                arg1 := "l3mdev:mgmt"
-                                arg2 := "ntpq"
-                                arg3 := "-p"
-                                err = ProcessGetNtpServer(inParams, "cgexec", arg0, arg1, arg2, arg3)
+        var vrfName string
+        if (dbEntry.IsPopulated()) {
+                vrfName = (&dbEntry).Get("vrf")
+                /* Before migrating to Buster only mgmt VRF supported beside default vrf */
+                if ((vrfName != "default") && (vrfName != "mgmt")) {
+                        errStr = "Unable to determin NTP sevice context for vrf " + vrfName
+                        log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
+                        err = tlerr.InvalidArgsError{Format: errStr}
                 }
-        } else {
-                log.Info("DbToYangng_ntp_server_subtree_xfmr: NTP global not configured")
-                err = ProcessGetNtpServer(inParams, "ntpq", "-p")
         }
+
+        err = ProcessGetNtpServer(inParams, vrfName, isMgmtVrfEnabled)
 
         return err
 }

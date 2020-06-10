@@ -38,7 +38,7 @@ module sonic-system-ntp {
         "SONiC";
 
     description
-        "SONIC NTP SOURCE.";
+        "SONIC NTP";
 
     revision 2020-04-25 {
         description
@@ -61,7 +61,7 @@ module sonic-system-ntp {
                         "NTP global key";
                 }
 
-                leaf source {
+                leaf source_intf {
                     must "(not(current()/../vrf = 'mgmt'))" {
                         error-message "Source interface cannot be configured if NTP runs in Management VRF";
                         error-app-tag source-interface-invalid;
