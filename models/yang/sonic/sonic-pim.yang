@@ -93,6 +93,10 @@ module sonic-pim {
                 leaf ecmp-rebalance-enabled {
                     description "Enable PIM ECMP rebalance";
                     type boolean;
+                    must "../ecmp-enabled = 'true'" {
+                        error-app-tag pim-gbl-ecmp-rebalance-err;
+                        error-message "ECMP-rebalance can enabled/disabled only, when ECMP is enabled";
+                    }
                 }
             }
         }
