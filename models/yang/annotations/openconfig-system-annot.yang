@@ -533,13 +533,13 @@ module openconfig-system-annot {
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys-ext:ntp-source-interface {
         deviate add {
-            sonic-ext:field-name "source_intf";
+            sonic-ext:field-name "src_intf";
         }
     }
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys-ext:ntp-source-interface {
         deviate add {
-            sonic-ext:field-name "source_intf";
+            sonic-ext:field-name "src_intf";
         }
     }
 

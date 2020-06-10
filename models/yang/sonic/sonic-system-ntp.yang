@@ -61,7 +61,7 @@ module sonic-system-ntp {
                         "NTP global key";
                 }
 
-                leaf source_intf {
+                leaf src_intf {
                     must "(not(current()/../vrf = 'mgmt'))" {
                         error-message "Source interface cannot be configured if NTP runs in Management VRF";
                         error-app-tag source-interface-invalid;
@@ -87,7 +87,7 @@ module sonic-system-ntp {
                 }
 
                 leaf vrf {
-                    must "(not((current() = 'mgmt') and (current()/../source)))" {
+                    must "(not((current() = 'mgmt') and (current()/../src_intf)))" {
                           error-message "Source interface cannot be configured if NTP runs in Management VRF";
                          error-app-tag source-interface-invalid;
                     }
