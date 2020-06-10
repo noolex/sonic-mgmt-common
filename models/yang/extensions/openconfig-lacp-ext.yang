@@ -22,6 +22,7 @@ module openconfig-lacp-ext {
     revision "2020-02-21" {
       description
         "Initial revision.";
+      reference "0.1.0";
     }
 
 

@@ -218,9 +218,9 @@ type Fan struct {
     Target_Speed        string
 }
 
-/* Most are strings since media sends 'N/A' when data is not available */
-/* Conversion will be done before sending along */
 type Xcvr struct {
+/* Most are strings since media sends 'N/A' when data is not available
+   Conversion will be done before sending along */
     Presence                bool
     Form_Factor             string
     Display_Name            string
@@ -358,7 +358,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
     var eepromInfo Eeprom
     var err error
 
-    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
        targetUriPath == SW_BUILD_COMMIT || targetUriPath == SW_ASIC_VER || targetUriPath == SW_BUILD_DATE ||
        targetUriPath == SW_BUILT_BY || targetUriPath == SW_SW_VER{
         swVersionFile, err := os.Open("/etc/sonic/sonic_version.yml")
@@ -372,7 +372,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         versionScanner.Split(bufio.ScanLines)
     }
 
-    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_HWSKU_VER || targetUriPath == SW_HW_VER ||
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_HWSKU_VER || targetUriPath == SW_HW_VER ||
        targetUriPath == SW_PLAT_NAME || targetUriPath == COMP_STATE_SERIAL_NO || targetUriPath == SW_MFG_NAME {
         eepromInfo, err = getSysEepromFromDb(d)
         if err != nil {
@@ -380,9 +380,8 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         }
     }
 
-    if allAttr == true || targetUriPath == SW_COMP || targetUriPath == SW_DOCKER_VER {
-        var query_result HostResult
-        query_result = HostQuery("docker_version.action", "")
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DOCKER_VER {
+        var query_result = HostQuery("docker_version.action", "")
         if query_result.Err != nil {
             log.Infof("Error in Calling dbus fetch_environment %v", query_result.Err)
             return query_result.Err
@@ -391,7 +390,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         scanner = bufio.NewScanner(strings.NewReader(env_op))
     }
 
-    if allAttr == true || targetUriPath == SW_COMP {
+    if allAttr || targetUriPath == SW_COMP {
         for versionScanner.Scan() {
             if strings.Contains(versionScanner.Text(), "build_version:") {
                 res1 := strings.Split(versionScanner.Text(), ": ")
@@ -452,6 +451,8 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         err = syscall.Sysinfo(&info)
 
         if err != nil {
+            log.Errorf("Unable to get system uptime")
+            return err
         }
         uptimeSec := info.Uptime
         days := uptimeSec / (60 * 60 * 24)
@@ -560,6 +561,8 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
             err = syscall.Sysinfo(&info)
 
             if err != nil {
+                log.Errorf("Unable to get system uptime")
+                return err
             }
             uptimeSec := info.Uptime
             days := uptimeSec / (60 * 60 * 24)
@@ -621,56 +624,39 @@ func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
         switch typeCode {
         case PROD_NAME_KEY:
             eepromInfo.Product_Name = entryVal
-            break
         case PART_NUM_KEY:
             eepromInfo.Part_Number = entryVal
-            break
         case SERIAL_NUM_KEY:
             eepromInfo.Serial_Number = entryVal
-            break
         case BASE_MAC_KEY:
             eepromInfo.Base_MAC_Address = entryVal
-            break
         case MFT_DATE_KEY:
             eepromInfo.Manufacture_Date = entryVal
-            break
         case DEV_VER_KEY:
             eepromInfo.Device_Version = entryVal
-            break
         case LABEL_REV_KEY:
             eepromInfo.Label_Revision = entryVal
-            break
         case PLAT_NAME_KEY:
             eepromInfo.Platform_Name = entryVal
-            break
         case ONIE_VER_KEY:
             eepromInfo.ONIE_Version = entryVal
-            break
         case NUM_MAC_KEY:
             tmp,  _ := strconv.Atoi(entryVal)
             eepromInfo.MAC_Addresses = int32(tmp)
-            break
         case MFT_NAME_KEY:
             eepromInfo.Manufacturer = entryVal
-            break
         case MFT_CNT_KEY:
             eepromInfo.Manufacture_Country = entryVal
-            break
         case VEND_NAME_KEY:
             eepromInfo.Vendor_Name = entryVal
-            break
         case DIAG_VER_KEY:
             eepromInfo.Diag_Version = entryVal
-            break
         case SERV_TAG_KEY:
             eepromInfo.Service_Tag = entryVal
-            break
         case VEND_EXT_KEY:
             eepromInfo.Vendor_Extension = entryVal
-            break
         case CRC32_KEY:
         default:
-            break
         }
     }
 
@@ -691,7 +677,7 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
     name := "System Eeprom"
     location  :=  "Slot 1"
 
-    if all == true {
+    if all {
         eeprom.Empty = &empty
         eeprom.Removable = &removable
         eeprom.Name = &name
@@ -858,9 +844,8 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
 
 func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Component) (error) {
     var err error
-    var query_result HostResult
 
-    query_result = HostQuery("fetch_environment.action", "")
+    var query_result = HostQuery("fetch_environment.action", "")
     if query_result.Err != nil {
         log.Infof("Error in Calling dbus fetch_environment %v", query_result.Err)
     }
@@ -1425,7 +1410,6 @@ func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath str
             fillSysPsuInfo(psuCom, psuName, true, true, targetUriPath, d)
         default:
             fillSysPsuInfo(psuCom, psuName, false, true, targetUriPath, d)
-            break
         }
     }
     return err
@@ -1603,7 +1587,6 @@ func getSysFans(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath st
             fillSysFanInfo(fanCom, fanName, true, true, targetUriPath, d)
         default:
             fillSysFanInfo(fanCom, fanName, false, true, targetUriPath, d)
-            break
         }
     }
     return err
@@ -2034,7 +2017,6 @@ func getSysXcvr(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath st
         default:
             /* For individual components*/
             fillSysXcvrInfo(xcvrCom, xcvrId, false, targetUriPath, d)
-            break
     }
 
     return err
