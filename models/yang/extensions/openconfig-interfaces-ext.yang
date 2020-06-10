@@ -263,17 +263,6 @@ module openconfig-interfaces-ext {
                 "state";
         }
     }
-    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config" {
-        description
-            "VRRP IPv6 config version";
-        leaf version {
-            type uint8 {
-                range "2..3";
-            }
-            description
-                "version";
-        }
-    }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
         description
