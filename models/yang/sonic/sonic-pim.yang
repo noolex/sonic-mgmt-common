@@ -157,7 +157,7 @@ module sonic-pim {
                 }
 
                 leaf bfd-enabled {
-                    description "Enable BFD support on this interface";
+                    description "Enable BFD support for PIM on this interface";
                     type boolean;
                 }
             }
