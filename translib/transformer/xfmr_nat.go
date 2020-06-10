@@ -132,7 +132,7 @@ var YangToDb_nat_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[
     } else {
         enabled, _ := inParams.param.(*bool)
         var enStr string
-        if *enabled == true {
+        if *enabled {
             enStr = ENABLED
         } else {
             enStr = DISABLED
@@ -184,11 +184,6 @@ func findProtocolByValue(m map[uint8]string, value string) uint8 {
     return 0
 }
 
-func getNatRoot (s *ygot.GoStruct) *ocbinds.OpenconfigNat_Nat {
-    deviceObj := (*s).(*ocbinds.Device)
-    return deviceObj.Nat
-}
-
 func getNatInstance (s *ygot.GoStruct, build bool) *ocbinds.OpenconfigNat_Nat_Instances_Instance {
     deviceObj := (*s).(*ocbinds.Device)
     var natInst *ocbinds.OpenconfigNat_Nat_Instances_Instance
@@ -204,7 +199,7 @@ func getNatInstance (s *ygot.GoStruct, build bool) *ocbinds.OpenconfigNat_Nat_In
         }
     }
 
-    if natInst == nil && build == true {
+    if natInst == nil && build {
         if natObj.Instances == nil {
             ygot.BuildEmptyTree(natObj)
         }
@@ -228,7 +223,7 @@ func getNaptTblRoot (s *ygot.GoStruct, build bool) *ocbinds.OpenconfigNat_Nat_In
     var naptTblObj *ocbinds.OpenconfigNat_Nat_Instances_Instance_NaptMappingTable
 
     if natInst != nil {
-        if natInst.NaptMappingTable == nil && build == true {
+        if natInst.NaptMappingTable == nil && build {
             ygot.BuildEmptyTree(natInst)
         }
 
@@ -244,7 +239,7 @@ func getNatTblRoot (s *ygot.GoStruct, build bool) *ocbinds.OpenconfigNat_Nat_Ins
     var natTblObj *ocbinds.OpenconfigNat_Nat_Instances_Instance_NatMappingTable
 
     if natInst != nil {
-        if natInst.NatMappingTable == nil && build == true {
+        if natInst.NatMappingTable == nil && build {
             ygot.BuildEmptyTree(natInst)
         }
 
@@ -597,7 +592,7 @@ func _DbToYang_nat_mapping_subtree_xfmr(inParams XfmrParams) (error) {
     natTblObj := getNatTblRoot(inParams.ygRoot, true)
     pathInfo := NewPathInfo(inParams.uri)
     extAddress := pathInfo.Var("external-address")
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
     cfgTbl := STATIC_NAT
     aptTbl := NAT_TABLE
@@ -649,7 +644,7 @@ func _DbToYang_nat_mapping_subtree_xfmr(inParams XfmrParams) (error) {
         } else {
             curParams := inParams
             curParams.uri = inParams.uri + "/" + "config"
-            err = _DbToYang_nat_mapping_subtree_xfmr(curParams)
+            _DbToYang_nat_mapping_subtree_xfmr(curParams)
             curParams.uri = inParams.uri + "/" + "state"
             err = _DbToYang_nat_mapping_subtree_xfmr(curParams)
         }
@@ -1055,7 +1050,7 @@ func _DbToYang_napt_mapping_subtree_xfmr(inParams XfmrParams) (error) {
     extAddress := pathInfo.Var("external-address")
     extPort := pathInfo.Var("external-port")
     protocol := pathInfo.Var("protocol")
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
     cfgTbl := STATIC_NAPT
     aptTbl := NAPT_TABLE
@@ -1125,7 +1120,7 @@ func _DbToYang_napt_mapping_subtree_xfmr(inParams XfmrParams) (error) {
         } else {
             curParams := inParams
             curParams.uri = inParams.uri + "/" + "config"
-            err = _DbToYang_napt_mapping_subtree_xfmr(curParams)
+            _DbToYang_napt_mapping_subtree_xfmr(curParams)
             curParams.uri = inParams.uri + "/" + "state"
             err = _DbToYang_napt_mapping_subtree_xfmr(curParams)
         }
@@ -1258,10 +1253,10 @@ var DbToYang_nat_ip_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
         if _, entOk := data[tblName][inParams.key]; entOk {
             entry := data[tblName][inParams.key]
             fldOk := entry.Has("nat_ip")
-            if fldOk == true {
+            if fldOk {
                 ipStr := entry.Get("nat_ip")
                 ipRange := strings.Contains(ipStr, "-")
-                if ipRange == true {
+                if ipRange {
                     result["IP-ADDRESS-RANGE"] = ipStr
                 } else {
                     result["IP-ADDRESS"] = ipStr
@@ -1346,8 +1341,7 @@ var DbToYang_nat_twice_mapping_key_xfmr KeyXfmrDbToYang = func(inParams XfmrPara
     var err error
 
     nat_key := inParams.key
-    var key_sep string
-    key_sep = ":"
+    key_sep := ":"
 
     key := strings.Split(nat_key, key_sep)
     if len(key) < 2 {
@@ -1474,7 +1468,7 @@ var DbToYang_nat_type_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (
         if _, entOk := data[tblName][inParams.key]; entOk {
             entry := data[tblName][inParams.key]
             fldOk := entry.Has(NAT_TYPE)
-            if fldOk == true {
+            if fldOk {
                 t := findInMap(NAT_TYPE_MAP, data[tblName][inParams.key].Field[NAT_TYPE])
                 var n int64
                 n, err = strconv.ParseInt(t, 10, 64)
@@ -1524,7 +1518,7 @@ var DbToYang_nat_entry_type_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
         if _, entOk := data[tblName][inParams.key]; entOk {
             entry := data[tblName][inParams.key]
             fldOk := entry.Has(NAT_ENTRY_TYPE)
-            if fldOk == true {
+            if fldOk {
                 t := findInMap(NAT_ENTRY_TYPE_MAP, data[tblName][inParams.key].Field[NAT_ENTRY_TYPE])
                 var n int64
                 n, err = strconv.ParseInt(t, 10, 64)
