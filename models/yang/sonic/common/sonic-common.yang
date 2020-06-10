@@ -45,6 +45,14 @@ module sonic-common {
           }
       }
 
+     typedef relay-policy-action {
+          type enumeration {
+              enum discard;
+              enum append;
+              enum replace;
+            }
+    }
+
     container operation {
 	    leaf operation {
 		    type enumeration {
