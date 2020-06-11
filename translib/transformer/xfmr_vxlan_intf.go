@@ -73,6 +73,7 @@ func init() {
 	//state - vxlan: tunnel info
 	XlateFuncBind("YangToDb_vxlan_state_tunnel_info_key_xfmr", YangToDb_vxlan_state_tunnel_info_key_xfmr)
 	XlateFuncBind("DbToYang_vxlan_state_tunnel_info_key_xfmr", DbToYang_vxlan_state_tunnel_info_key_xfmr)
+	XlateFuncBind("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr", DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr)
 	XlateFuncBind("YangToDb_vxlan_state_tunnel_info_tunnel_type_xfmr", YangToDb_vxlan_state_tunnel_info_tunnel_type_xfmr)
 	XlateFuncBind("DbToYang_vxlan_state_tunnel_info_tunnel_type_xfmr", DbToYang_vxlan_state_tunnel_info_tunnel_type_xfmr)
 
@@ -203,6 +204,55 @@ var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams 
 	return "", nil
 }
 
+var DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+  var err error
+  var prtInst db.Value
+  result := make(map[string]interface{})
+
+  /* if log.V(3) { */
+    log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==>inParams.uri => ", inParams.uri)
+    log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==>inParams.requestUri => ", inParams.requestUri)
+  /* } */
+
+  pathInfo := NewPathInfo(inParams.uri)
+  peerIpStr := pathInfo.Var("peer-ip")
+  /* if log.V(3) { */
+    log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> peerIpStr => ", peerIpStr)
+  /* } */
+
+  pathOrigInfo := NewPathInfo(inParams.requestUri)
+  peerIpOrigStr := pathOrigInfo.Var("peer-ip")
+
+  /* if log.V(3) { */
+    log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> peerIpOrigStr => ", peerIpOrigStr)
+  /* } */
+
+  if peerIpOrigStr != "" {
+    var VXLAN_TUNNEL_TABLE_STATE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_TABLE"}
+    evpnPeerkeyStr := "EVPN_" + peerIpOrigStr
+    /* if log.V(3) { */
+      log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> evpnPeerkeyStr ==> ", evpnPeerkeyStr)
+    /* } */
+    entry, err := stateDbPtr.GetEntry(VXLAN_TUNNEL_TABLE_STATE_TS, db.Key{[]string{evpnPeerkeyStr}})
+    if err != nil {
+      log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> returning error ==> ", err)
+      return result, err
+    }
+    prtInst = entry
+  }
+  operStatus, ok := prtInst.Field["operstatus"]
+  if ok {
+    if operStatus == "up" {
+      /* result["status"] = ocbinds.OpenconfigVxlan_TunnelStatus_UP */
+      result["status"] = "UP"
+    } else {
+      /* result["status"] = ocbinds.OpenconfigVxlan_TunnelStatus_DOWN */
+      result["status"] = "DOWN"
+    }
+  }
+  return result, err
+}
+
 var YangToDb_vxlan_state_tunnel_info_tunnel_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
@@ -214,7 +264,7 @@ var YangToDb_vxlan_state_tunnel_info_tunnel_type_xfmr FieldXfmrYangToDb = func(i
 
 var DbToYang_vxlan_state_tunnel_info_tunnel_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
 	rmap := make(map[string]interface{})
-	rmap["type"] = "dynamic"
+	rmap["type"] = "DYNAMIC"
 	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_type_xfmr ==> returning  type field ==> ", rmap)
 	}
@@ -233,7 +283,7 @@ var YangToDb_vxlan_state_peer_tunnel_type_xfmr FieldXfmrYangToDb = func(inParams
 var DbToYang_vxlan_state_peer_tunnel_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
 	rmap := make(map[string]interface{})
 	//	rmap["tunnel-type"] = ocbinds.OpenconfigVxlan_PeerType_dynamic
-	rmap["tunnel-type"] = "dynamic"
+	rmap["tunnel-type"] = "DYNAMIC"
 	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_peer_tunnel_type_xfmr ==> returning  tunnel-type field ==> ", rmap)
 	}
@@ -1524,7 +1574,7 @@ var YangToDb_vlan_nd_suppress_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 
 	if inParams.param != nil {
 		val, _ := inParams.param.(ocbinds.E_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress)
-		if val == ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_enable {
+		if val == ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_ENABLE {
 			res_map["suppress"] = "on"
 		}
 	}
@@ -1543,7 +1593,7 @@ var DbToYang_vlan_nd_suppress_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
 	if len(data) > 0 {
 		val := data["SUPPRESS_VLAN_NEIGH"][vlanIdStr]
 		if val.Get("suppress") == "on" {
-			res_map["arp-and-nd-suppress"], _ = ygot.EnumName(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_enable)
+			res_map["arp-and-nd-suppress"], _ = ygot.EnumName(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_ENABLE)
 		}
 	}
 
