@@ -35,27 +35,27 @@ var qos_map_oc_yang_key_map = map[string]string {
 
 func targetUriPathContainsMapName (uri string, map_type string) bool {
     if map_type == "DSCP_TO_TC_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map") == false {
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map")  {
         return true
     }
 
     if map_type == "DOT1P_TO_TC_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:dot1p-maps/dot1p-map") == false {
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:dot1p-maps/dot1p-map") {
         return true
     }
 
     if map_type == "TC_TO_QUEUE_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-queue-maps/forwarding-group-queue-map") == false {
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-queue-maps/forwarding-group-queue-map")  {
         return true
     }
 
     if map_type == "TC_TO_PRIORITY_GROUP_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-priority-group-maps/forwarding-group-priority-group-map") == false {
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-priority-group-maps/forwarding-group-priority-group-map")  {
         return true
     }
 
     if map_type == "PFC_PRIORITY_TO_QUEUE_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:pfc-priority-queue-maps/pfc-priority-queue-map") == false {
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:pfc-priority-queue-maps/pfc-priority-queue-map")  {
         return true
     }
 
@@ -288,7 +288,7 @@ func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[s
         return res_map, nil
     }
 
-    value, _ := qCfg.Field[db_attr_name] 
+    value := qCfg.Field[db_attr_name] 
     log.Info("value = ", value)
 
     attr_name, ok := map_type_name_in_oc_yang[map_type]

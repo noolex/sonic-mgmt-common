@@ -122,7 +122,7 @@ func qos_intf_prev_sched_policy_delete(inParams XfmrParams, if_name string) (map
         }
     }
 
-    if queue_sched == true {
+    if queue_sched {
         if _, ok := subOpMap[db.ConfigDB]; !ok {
             subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
         }
@@ -132,7 +132,7 @@ func qos_intf_prev_sched_policy_delete(inParams XfmrParams, if_name string) (map
 
         subOpMap[db.ConfigDB]["QUEUE"] = queueTblMap
     }
-    if port_sched == true {
+    if port_sched {
         if _, ok := subOpMap[db.ConfigDB]; !ok {
             subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
         }

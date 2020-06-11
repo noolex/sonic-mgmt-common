@@ -205,11 +205,7 @@ func isLastSchedulerField(sched_key string, attr string) (bool) {
 
     if len(entry.Field) == 1 {
         _, ok := entry.Field[attr] 
-        if !ok {
-            return false
-        }
-
-        return true
+        return ok
     }
 
     return false

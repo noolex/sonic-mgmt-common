@@ -315,7 +315,7 @@ func populateQCounters (inParams XfmrParams, targetUriPath string, oid string, c
         m := make(map[string]string)
         log.Info("PopulateIntfCounters : not able find the oid entry in DB COUNTERS_BACKUP table")
         /* Frame backup data with 0 as counter values */
-        for  attr,_ := range entry.Field {
+        for  attr := range entry.Field {
             m[attr] = "0"
         }
         m["LAST_CLEAR_TIMESTAMP"] = "0"
@@ -331,7 +331,6 @@ func populateQCounters (inParams XfmrParams, targetUriPath string, oid string, c
             uri := targetUriPath + "/" + attr
             if ok, err := getQueueSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter); !ok || err != nil {
                 log.Info("Get Counter URI failed :", uri)
-                err = errors.New("Get Counter URI failed")
             }
         }
 
@@ -463,7 +462,6 @@ func populatePriorityGroupCounters (inParams XfmrParams, targetUriPath string, o
             uri := targetUriPath + "/" + attr
             if ok, err := getPriorityGroupSpecificCounterAttr(uri, inParams.dbs[inParams.curDb], oid, counter); !ok || err != nil {
                 log.Info("Get Counter URI failed :", uri)
-                err = errors.New("Get Counter URI failed")
             }
         }
     
@@ -569,9 +567,7 @@ func validateQosConfigQueue(inParams XfmrParams, queueName string) error {
     var errStr string
     log.Info(" validateQosConfigQueue - queueName ", queueName);
     d := inParams.d
-    if (inParams.curDb == db.CountersDB) {
-        d = inParams.d
-    } else {
+    if (inParams.curDb != db.CountersDB) {
         d = inParams.dbs[db.CountersDB]
     }
     if (d == nil) {
@@ -621,9 +617,9 @@ var DbToYang_qos_get_one_intf_one_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
     intfName := pathInfo.Var("interface-id")
     queueName := pathInfo.Var("name")
 
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
-   
+
     err = validateQosIntfQueue(inParams.dbs, intfName, queueName)
     if err != nil {
         return err
@@ -634,8 +630,7 @@ var DbToYang_qos_get_one_intf_one_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
     var cfg * ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Output_Queues_Queue_Config
 
     if qosIntfsObj != nil && qosIntfsObj.Interface != nil && len(qosIntfsObj.Interface) > 0 {
-        var queuesObj *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Output_Queues
-        queuesObj = qosIntfsObj.Interface[intfName].Output.Queues
+        queuesObj := qosIntfsObj.Interface[intfName].Output.Queues
 
         var queueObj *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Output_Queues_Queue
         if queuesObj != nil {
@@ -647,6 +642,8 @@ var DbToYang_qos_get_one_intf_one_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
             cfg = queueObj.Config
         }
     }
+
+    var oid string
 
     switch targetUriPath {
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue":
@@ -671,7 +668,7 @@ var DbToYang_qos_get_one_intf_one_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
 
             state_counters.Name = &queueName
 
-            oid, err := getIntfQCountersTblKey(inParams.dbs[inParams.curDb], queueName)
+            oid, err = getIntfQCountersTblKey(inParams.dbs[inParams.curDb], queueName)
             if err != nil {
                 log.Info(err)
                 return err
@@ -690,7 +687,7 @@ var DbToYang_qos_get_one_intf_one_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
 
             state_counters.Name = &queueName
 
-            oid, err := getIntfQCountersTblKey(inParams.dbs[inParams.curDb], queueName)
+            oid, err = getIntfQCountersTblKey(inParams.dbs[inParams.curDb], queueName)
             if err != nil {
                 log.Info(err)
                 return err
@@ -835,7 +832,7 @@ var DbToYang_qos_get_one_intf_one_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
     intfName := pathInfo.Var("interface-id")
     pgName := pathInfo.Var("name")
 
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
 
     err = validateQosIntfPg(inParams.dbs, intfName, pgName)
@@ -848,8 +845,7 @@ var DbToYang_qos_get_one_intf_one_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
     var pgObj *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Input_PriorityGroups_PriorityGroup
 
     if qosIntfsObj != nil && qosIntfsObj.Interface != nil && len(qosIntfsObj.Interface) > 0 {
-        var pgsObj *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Input_PriorityGroups
-        pgsObj = qosIntfsObj.Interface[intfName].Input.PriorityGroups
+        pgsObj := qosIntfsObj.Interface[intfName].Input.PriorityGroups
 
         if pgsObj != nil {
             pgObj = pgsObj.PriorityGroup[pgName]
@@ -883,6 +879,8 @@ var DbToYang_qos_get_one_intf_one_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
             cfg.Name = &pgName
     }
 
+    var oid string
+
     switch targetUriPath {
          case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group":
              targetUriPath = targetUriPath + "/state"
@@ -899,7 +897,7 @@ var DbToYang_qos_get_one_intf_one_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
              }
              state_counters.Name = &pgName
 
-             oid, err := getIntfPGCountersTblKey(inParams.dbs[inParams.curDb], pgName)
+             oid, err = getIntfPGCountersTblKey(inParams.dbs[inParams.curDb], pgName)
              if err != nil {
                  log.Info(err)
                  return err
@@ -913,7 +911,7 @@ var DbToYang_qos_get_one_intf_one_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
              }
              state_counters.Name = &pgName
 
-             oid, err := getIntfPGCountersTblKey(inParams.dbs[inParams.curDb], pgName)
+             oid, err = getIntfPGCountersTblKey(inParams.dbs[inParams.curDb], pgName)
              if err != nil {
                  log.Info(err)
                  return err
@@ -1071,7 +1069,7 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     log.Info("In rpc_clear_qos ", mapData)
 
-    input, _ := mapData["sonic-qos-clear:input"]
+    input := mapData["sonic-qos-clear:input"]
     mapData = input.(map[string]interface{})
 
     log.Info("In rpc_clear_qos ", mapData)
@@ -1230,8 +1228,6 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             log.Info("In cMapData ", cMapData)
             if value, ok := cMapData["all"].(bool) ; ok {
                 log.Info("In clearall", value)
-                if value {
-                }
             }
             if value, ok := cMapData["interface"].(string) ; ok {
                 log.Info("In interface ", value)
@@ -1247,8 +1243,6 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             if value, ok := wMapData["persistent"].(bool) ; ok {
                 log.Info("In persistent", value)
                 persistent = value
-                if value {
-                }
             }
             if value, ok := wMapData["pg-type"].(string) ; ok {
                 log.Info("In pg-type ", value)
@@ -1256,8 +1250,6 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             }
             if value, ok := wMapData["all"].(bool) ; ok {
                 log.Info("In clearall", value)
-                if value {
-                }
             }
             if value, ok := wMapData["interface"].(string) ; ok {
                 log.Info("In interface ", value)
@@ -1365,7 +1357,7 @@ var DbToYang_threshold_breach_counter_field_xfmr FieldXfmrDbtoYang = func(inPara
     data := (*inParams.dbDataMap)[inParams.curDb]
     log.Info("DbToYang_threshold_breach_counter_field_xfmr", data, inParams.ygRoot)
 
-    for watermark_str, _ := range  THRESHOLD_BREACH_COUNTER_MAP {
+    for watermark_str := range  THRESHOLD_BREACH_COUNTER_MAP {
         // try each one of the strings
         val, found := data["THRESHOLD_BREACH_TABLE"][inParams.key].Field[watermark_str] 
         if  found {
