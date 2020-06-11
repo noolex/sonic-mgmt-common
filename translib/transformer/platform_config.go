@@ -6,9 +6,8 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "strings"
     "sort"
-    "github.com/openconfig/ygot/ygot"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     log "github.com/golang/glog"
-    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "io/ioutil"
     "encoding/json"
 )
@@ -28,7 +27,8 @@ type portProp struct {
 }
 
 type portCaps struct {
-    Port string     `json:"name,omitempty"`
+    Port string     `json:"port,omitempty"`
+    Name string     `json:"name,omitempty"`
     Modes string    `json:"modes,omitempty"`
     DefMode string `json:"defmode,omitempty"`
 }
@@ -42,12 +42,6 @@ func init () {
 }
 
 
-func getPlatRoot (s *ygot.GoStruct) *ocbinds.OpenconfigPlatform_Components {
-    deviceObj := (*s).(*ocbinds.Device)
-    return deviceObj.Components
-}
-
-
 func decodePortParams(port_i string, mode string, subport int, entry map[string]string) (portProp, error) {
     var port_config portProp
     var dpb_index string
@@ -56,7 +50,7 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     // Check if mode is supported.
     supported_modes := strings.Split(entry["breakout_modes"], ",")
     for _, mode_iter := range supported_modes {
-        if strings.Contains(mode_iter, mode[2:len(mode)])  && (strings.Compare(mode_iter[0:1], mode[0:1])==0) {
+        if strings.Contains(mode_iter, mode[2:])  && (strings.Compare(mode_iter[0:1], mode[0:1])==0) {
             log.Info("[DEBUG] Matched mode: ", mode_iter)
             pos := strings.Index(mode_iter, "G")
             if pos != -1 {
@@ -101,9 +95,9 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     for i := start_lane + 1; i < end_lane; i++ {
         dpb_lanes = dpb_lanes + "," + lanes[i]
     }
-    base_port,_ := strconv.Atoi(strings.TrimLeft(port_i, "Ethernet"))
+    base_port,_ := strconv.Atoi(strings.TrimLeft(port_i, "Ethernt"))
     port_config.name = "Ethernet"+strconv.Itoa(base_port+(lane_speed[0]*subport))
-    port_config.alias = strings.Split(entry["alias_at_lanes"], ",")[subport]
+    port_config.alias = strings.TrimSpace(strings.Split(entry["alias_at_lanes"], ",")[subport])
     port_config.index = dpb_index
     port_config.lanes = dpb_lanes
     port_config.speed = strconv.Itoa(lane_speed_map[mode][1])
@@ -159,13 +153,18 @@ func getCapabilities () ([]portCaps) {
             log.Info("Zero based SFP index")
         }
     }
-    for _, entry := range  platConfigStr {
+    for name, entry := range  platConfigStr {
         if len(strings.Split(entry["breakout_modes"], ",")) >1 {
             indeces := strings.Split(entry["index"], ",")
             index,_ := strconv.Atoi(indeces[0])
             port := "1/" + strconv.Itoa(index + offset)
             modes := strings.ReplaceAll(strings.Trim(entry["breakout_modes"]," "), ",", ", ")
+            name = *(utils.GetUINameFromNativeName(&name))
+            if strings.Count(name,"/") > strings.Count(port, "/") {
+                name = name[0:strings.LastIndex(name, "/")]
+            }
             caps = append(caps, portCaps {
+                        Name: name,
                         Modes: modes,
                         DefMode: entry["default_brkout_mode"],
                         Port: port,
@@ -248,4 +247,26 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
     return subOpMap;
 }
 
-
+func getIfName(port_i string) (string) {
+    offset := 0
+    var ifName string
+    for _, entry := range  platConfigStr {
+        indeces := strings.Split(entry["index"], ",")
+        if indeces[0] == "0" {
+            offset = 1;
+            log.Info("Zero based SFP index")
+        }
+    }
+    for key, entry := range  platConfigStr {
+        if len(strings.Split(entry["breakout_modes"], ",")) >1 {
+            indeces := strings.Split(entry["index"], ",")
+            index,_ := strconv.Atoi(indeces[0])
+            port := "1/" + strconv.Itoa(index + offset)
+            if (port == port_i) {
+                ifName = key
+                log.Info(port, " ", key)
+            }
+        }
+    }
+    return ifName
+}
