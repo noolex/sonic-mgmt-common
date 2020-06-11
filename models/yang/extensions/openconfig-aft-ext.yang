@@ -17,8 +17,7 @@ module openconfig-aft-ext {
         "SONiC";
 
     description
-      "This module describes a deviation for network instannce aft-ipv4
-       extensions.";
+      "This module describes a common extensions used for afts-ipv4,afts-ipv6";
 
     oc-ext:openconfig-version "0.1.0";
 
@@ -61,7 +60,7 @@ module openconfig-aft-ext {
 
     grouping aft-ext-common-entry-nexthop-state {
       description "State information relating to nexthop";
-      leaf directlyConnected {
+      leaf directly-connected {
         type boolean;
         default false;
         description

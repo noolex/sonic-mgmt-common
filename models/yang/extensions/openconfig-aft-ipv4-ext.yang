@@ -20,7 +20,7 @@ module openconfig-aft-ipv4-ext {
       "SONiC";
 
   description
-    "This module describes a deviation for network instannce aft-ipv4
+    "This module describes a deviation for network instance afts-ipv4
      extensions.";
 
   oc-ext:openconfig-version "0.1.0";
