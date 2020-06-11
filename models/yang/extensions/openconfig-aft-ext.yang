@@ -50,7 +50,10 @@ module openconfig-aft-ext {
 
     }
 
-    grouping aft-common-ip-mcast-entry-state {
+    grouping aft-ext-common-ip-mcast-entry-state {
+        description
+            "AFT common IPv4 Multicast data.";
+
         leaf incoming-interface {
             type oc-if:interface-id;
             description
@@ -63,22 +66,32 @@ module openconfig-aft-ext {
                 "When set to TRUE, it states the multicast entry is installed in HW.";
         }
 
-        list oif-info {
-            key "outgoing-interface";
-
+        container oil-info-entries {
             description
-                "Details about outgoing interface for this multicast entry.";
+                "Details about all outgoing interfaces of this multicast entry.";
 
-            leaf outgoing-interface {
-                type oc-if:interface-id;
-                description
-                    "Outgoing interface for this multicast entry.";
-            }
+            list oif-info {
+                key "outgoing-interface";
 
-            leaf uptime {
-                type string;
                 description
-                    "Time since this particular outgoing interface is present in this multicast entry.";
+                    "Details about outgoing interface for this multicast entry.";
+
+                leaf outgoing-interface {
+                    type oc-if:interface-id;
+                    description
+                        "Outgoing interface for this multicast entry.";
+                }
+
+                container state {
+                    description
+                        "Common Operational state information of an outgoing interface in this multicast entry.";
+
+                    leaf uptime {
+                        type string;
+                        description
+                            "Time since this particular outgoing interface is present in this multicast entry.";
+                    }
+                }
             }
         }
     }

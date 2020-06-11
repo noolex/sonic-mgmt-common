@@ -22,47 +22,59 @@ module openconfig-aft-ipv4-ext {
       "Network instance aft-ipv4 extensions.";
   }
 
-  grouping aft-ipv4-multicast-structural {
+  grouping aft-ipv4-ext-ipv4-multicast-structural {
       description
           "Structural grouping defining the schema for the IPv4 multicast abstract forwarding table.";
 
-      list ipv4-entry {
-          key "group-address";
-
+      container ipv4-entries {
+          config false;
           description
-              "List of the IPv4 multicast entries within the abstract forwarding table.
-              This list is keyed by the destination IPv4 multicast group & source address.";
+              "Details about all IPv4 multicast entries present in forwarding table.";
 
-          leaf group-address {
-              type oc-inet:ipv4-address;
-              description
-                  "IPv4 Multicast group-address";
-          }
-
-          list src-entry {
-              key "source-address";
+          list ipv4-entry {
+              key "group-address";
 
               description
-                  "List of different source-address entries within this particular multicast group-address entry.";
+                  "List of the IPv4 multicast entries within the abstract forwarding table.
+                  This list is keyed by the destination IPv4 multicast group & source address.";
 
-              leaf source-address {
+              leaf group-address {
                   type oc-inet:ipv4-address;
                   description
-                      "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
-                      This address can be 0.0.0.0 in case of *,G multicast group entry.";
+                      "IPv4 Multicast group-address";
               }
 
-              container state {
-                  config false;
+              container src-entries {
                   description
-                      "Operational state parameters for the IPv4 multicast AFT entry.";
-                  uses oc-aft-ext:aft-common-ip-mcast-entry-state;
+                      "Details about all multicast-source information of this particular multicast group-address entry.";
+
+                  list src-entry {
+                      key "source-address";
+
+                      description
+                          "List of different source-address entries within this particular multicast group-address entry.";
+
+                      leaf source-address {
+                          type oc-inet:ipv4-address;
+                          description
+                              "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
+                              This address can be 0.0.0.0 in case of *,G multicast group entry.";
+                      }
+
+                      container state {
+                          description
+                              "Operational state parameters for the IPv4 multicast AFT entry.";
+                          uses oc-aft-ext:aft-ext-common-ip-mcast-entry-state;
+                      }
+                  }
               }
           }
       }
   }
 
-  grouping aft-ipv4-mcast-top {
+  grouping aft-ipv4-ext-ipv4-mcast-top {
+        description
+            "AFT IPv4 Multicast data.";
       container ipv4-multicast {
           description
               "The abstract forwarding table for IPv4 multicast. Entries
@@ -74,12 +86,14 @@ module openconfig-aft-ipv4-ext {
               for installation into the FIB of the device exporting the
                   data structure.";
 
-          uses aft-ipv4-multicast-structural;
+          uses aft-ipv4-ext-ipv4-multicast-structural;
       }
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts {
-      uses aft-ipv4-mcast-top;
+        description
+            "AFT IPv4 Multicast extensions.";
+        uses aft-ipv4-ext-ipv4-mcast-top;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry {
