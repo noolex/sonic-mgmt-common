@@ -40,6 +40,7 @@ type ClassifierEntry struct {
 	DESCRIPTION       *string               `json:",omitempty"`
 	MATCH_TYPE        *string               `json:",omitempty"`
 	ACL_NAME          *string               `json:",omitempty"`
+	ACL_TYPE          *string               `json:",omitempty"`
 	ETHER_TYPE        *string               `json:",omitempty"`
 	SRC_MAC           *string               `json:",omitempty"`
 	DST_MAC           *string               `json:",omitempty"`
@@ -180,6 +181,9 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 	if str_val, found := classifierTblVal.Field["ACL_NAME"]; found {
 		classEntry.ACL_NAME = &str_val
 	}
+	if str_val, found := classifierTblVal.Field["ACL_TYPE"]; found {
+		classEntry.ACL_TYPE = &str_val
+	}
 	if str_val, found := classifierTblVal.Field["ETHER_TYPE"]; found {
 		classEntry.ETHER_TYPE = &str_val
 	}
@@ -246,7 +250,7 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 		return err
 	}
 
-	log.Infof("Sections:", classReferingPolicyKeys)
+	log.Info("Sections:", classReferingPolicyKeys)
 
 	for i := 0; i < len(classReferingPolicyKeys); i++ {
 		var referringPolicy ReferingPolicyEntry

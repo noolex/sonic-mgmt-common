@@ -183,31 +183,56 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//ValidatePortChannelDeletion Custom validation for PortChannel deletion
-func (t *CustomValidation) ValidatePortChannelDeletion(vc *CustValidationCtxt) CVLErrorInfo {
-	if vc.CurCfg.VOp != OP_DELETE {
-		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-	}
-	keys := strings.Split(vc.CurCfg.Key, "|")
-	if len(keys) > 0 {
-		if keys[0] == "PORTCHANNEL" {
-			poName := keys[1]
-			poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
-			if err != nil {
-				return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
-			}
+//ValidatePortChannelCreationDeletion Custom validation for PortChannel creation or deletion
+func (t *CustomValidation) ValidatePortChannelCreationDeletion(vc *CustValidationCtxt) CVLErrorInfo {
+	if vc.CurCfg.VOp == OP_DELETE {
 
-			if len(poMembersKeys) > 0 {
-				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Portchannel deletion not allowed when portchannel members are configured")
-				return CVLErrorInfo{
-					ErrCode:          CVL_SEMANTIC_ERROR,
-					TableName:        "PORTCHANNEL",
-					Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					ConstraintErrMsg: "Portchannel deletion not allowed when members are configured",
-					ErrAppTag:        "members-exist",
-				}
-			}
-               }
+	        keys := strings.Split(vc.CurCfg.Key, "|")
+	        if len(keys) > 0 {
+		        if keys[0] == "PORTCHANNEL" {
+			        poName := keys[1]
+			        poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
+			        if err != nil {
+				         return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+			        }
+
+			        if len(poMembersKeys) > 0 {
+				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Portchannel deletion not allowed when portchannel members are configured")
+				        return CVLErrorInfo{
+					        ErrCode:          CVL_SEMANTIC_ERROR,
+					        TableName:        "PORTCHANNEL",
+					        Keys:             strings.Split(vc.CurCfg.Key, "|"),
+					        ConstraintErrMsg: "Portchannel deletion not allowed when members are configured",
+					        ErrAppTag:        "members-exist",
+				        }
+			        }
+                       }
+                }
         }
+
+	if vc.CurCfg.VOp == OP_CREATE {
+
+	        keys := strings.Split(vc.CurCfg.Key, "|")
+	        if len(keys) > 0 {
+		        if keys[0] == "PORTCHANNEL" {
+			        poKeys, err := vc.RClient.Keys("PORTCHANNEL" + "|*").Result()
+			        if err != nil {
+				         return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+			        }
+
+			        if len(poKeys) >= 128 {
+				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Maximum number of portchannels already created.")
+				        return CVLErrorInfo{
+					        ErrCode:          CVL_SEMANTIC_ERROR,
+					        TableName:        "PORTCHANNEL",
+					        Keys:             strings.Split(vc.CurCfg.Key, "|"),
+					        ConstraintErrMsg: "Maximum number(128) of portchannels already created in the system. Cannot create new portchannel.",
+					        ErrAppTag:        "max-reached",
+				        }
+			        }
+                       }
+                }
+        }
+
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

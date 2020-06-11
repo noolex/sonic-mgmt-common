@@ -115,29 +115,6 @@ func getL2EtherType(etherType uint64) interface{} {
 	return uint16(etherType)
 }
 
-func getAclKeyStrFromOCKey(aclname string, acltype ocbinds.E_OpenconfigAcl_ACL_TYPE) string {
-	aclN := strings.Replace(strings.Replace(aclname, " ", "_", -1), "-", "_", -1)
-	aclT := acltype.ΛMap()["E_OpenconfigAcl_ACL_TYPE"][int64(acltype)].Name
-	return aclN + "_" + aclT
-}
-
-func getOCAclKeysFromStrDBKey(aclKey string) (string, ocbinds.E_OpenconfigAcl_ACL_TYPE) {
-	var aclOrigName string
-	var aclOrigType ocbinds.E_OpenconfigAcl_ACL_TYPE
-
-	if strings.Contains(aclKey, "_"+OPENCONFIG_ACL_TYPE_IPV4) {
-		aclOrigName = strings.Replace(aclKey, "_"+OPENCONFIG_ACL_TYPE_IPV4, "", 1)
-		aclOrigType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4
-	} else if strings.Contains(aclKey, "_"+OPENCONFIG_ACL_TYPE_IPV6) {
-		aclOrigName = strings.Replace(aclKey, "_"+OPENCONFIG_ACL_TYPE_IPV6, "", 1)
-		aclOrigType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV6
-	} else if strings.Contains(aclKey, "_"+OPENCONFIG_ACL_TYPE_L2) {
-		aclOrigName = strings.Replace(aclKey, "_"+OPENCONFIG_ACL_TYPE_L2, "", 1)
-		aclOrigType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_L2
-	}
-	return aclOrigName, aclOrigType
-}
-
 func getTransportConfigTcpFlags(tcpFlags string) []ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS {
 	var flags []ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS
 	if len(tcpFlags) > 0 {
@@ -244,13 +221,21 @@ func fillFbsClassDetails(inParams XfmrParams, className string, classTblVal db.V
 	ocMatchType, _ := getClassMatchTypeOCEnumFromDbStr(matchType)
     classData.Config.MatchType = ocMatchType 
     if matchType == SONIC_CLASS_MATCH_TYPE_ACL {
-        aclNameInDb          :=  classTblVal.Get("ACL_NAME")
-        ocAclName, ocAclType := getOCAclKeysFromStrDBKey(aclNameInDb)
-        classData.MatchAcl.Config.AclName = &ocAclName
-        classData.MatchAcl.Config.AclType = ocAclType
+        aclNameInDb := classTblVal.Get("ACL_NAME")
+        aclTypeInDb := classTblVal.Get("ACL_TYPE")
+        aclType := ocbinds.OpenconfigAcl_ACL_TYPE_UNSET
+        if aclTypeInDb == "L2" {
+            aclType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_L2
+        } else if aclTypeInDb == "L3" {
+            aclType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4
+        } else if aclTypeInDb == "L3V6" {
+            aclType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4
+        }
+        classData.MatchAcl.Config.AclName = &aclNameInDb
+        classData.MatchAcl.Config.AclType = aclType
 
-        classData.MatchAcl.State.AclName = &ocAclName
-        classData.MatchAcl.State.AclType = ocAclType
+        classData.MatchAcl.State.AclName = classData.MatchAcl.Config.AclName
+        classData.MatchAcl.State.AclType = classData.MatchAcl.Config.AclType
         
     } else if matchType  == SONIC_CLASS_MATCH_TYPE_FIELDS { 
         matchAll := true
@@ -541,8 +526,14 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
             if (matchType == SONIC_CLASS_MATCH_TYPE_ACL) {
                 ocAclName      := *(classVal.MatchAcl.Config.AclName)
                 ocAclType      := classVal.MatchAcl.Config.AclType
-                aclNameinDb  := getAclKeyStrFromOCKey(ocAclName, ocAclType)
-                fbsClassTblMap[className].Field["ACL_NAME"]   = aclNameinDb
+                fbsClassTblMap[className].Field["ACL_NAME"] = ocAclName
+                if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4 {
+                    fbsClassTblMap[className].Field["ACL_TYPE"] = "L3"
+                } else if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV6 {
+                    fbsClassTblMap[className].Field["ACL_TYPE"] = "L3V6"
+                } else if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_L2 {
+                    fbsClassTblMap[className].Field["ACL_TYPE"] = "L2"
+                }
 
                 log.Infof("Classifier CRUD: matchType ACL --> key: %v fbsClassTblMap:%v ", className, fbsClassTblMap)
             }  else if (matchType == SONIC_CLASS_MATCH_TYPE_FIELDS) {
@@ -675,10 +666,10 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
                     if classVal.MatchHdrFields.Transport.Config.SourcePort != nil {
                         srcPortType := reflect.TypeOf(classVal.MatchHdrFields.Transport.Config.SourcePort)
    		                switch srcPortType {
-				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_SourcePort{}):
-				     	       v := classVal.MatchHdrFields.Transport.Config.SourcePort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_SourcePort)
+				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort{}):
+				     	       v := classVal.MatchHdrFields.Transport.Config.SourcePort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort)
                     
-		                       fbsClassTblMap[className].Field["L4_SRC_PORT"] = v.E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_SourcePort.ΛMap()["E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_SourcePort"][int64(v.E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_SourcePort)].Name
+		                       fbsClassTblMap[className].Field["L4_SRC_PORT"] = v.E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort.ΛMap()["E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort"][int64(v.E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort)].Name
 				     	       break
 				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_String{}):
 				     	       v := classVal.MatchHdrFields.Transport.Config.SourcePort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_String)
@@ -694,10 +685,10 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
                     if classVal.MatchHdrFields.Transport.Config.DestinationPort != nil {
                         dstPortType := reflect.TypeOf(classVal.MatchHdrFields.Transport.Config.DestinationPort)
    		                switch dstPortType {
-				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_DestinationPort{}):
-				     	       v := classVal.MatchHdrFields.Transport.Config.DestinationPort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_DestinationPort)
+				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort{}):
+				     	       v := classVal.MatchHdrFields.Transport.Config.DestinationPort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort)
                     
-		                       fbsClassTblMap[className].Field["L4_DST_PORT"] = v.E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_DestinationPort.ΛMap()["E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_DestinationPort"][int64(v.E_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_Config_DestinationPort)].Name
+		                       fbsClassTblMap[className].Field["L4_DST_PORT"] = v.E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort.ΛMap()["E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort"][int64(v.E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort)].Name
 				     	       break
 				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_String{}):
 				     	       v := classVal.MatchHdrFields.Transport.Config.DestinationPort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_String)
@@ -814,7 +805,7 @@ func fillFbsPolicySectionDetails(inParams XfmrParams, policyName string, policyD
         for _, key := range policySectionKeys {
             className := key.Get(0)
 	        log.Infof("Policy Get;Key:%v className:%v ",  key, className)
-            policySectionData, _ := policyData.NewSections(className)
+            policySectionData, _ := policyData.Sections.NewSection(className)
             policySectionTblVal, _ := policySectionTbl.GetEntry(key)
 
             //Fill PolicySectionDetails
