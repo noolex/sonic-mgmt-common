@@ -24,5 +24,11 @@ module openconfig-fbs-ext-annot {
           sonic-ext:subtree-transformer "fbs_policy_subtree_xfmr";
       }
     }
+    deviation /oc-fbs-ext:fbs/oc-fbs-ext:interfaces {
+      deviate add {
+          sonic-ext:table-name "NONE";
+          sonic-ext:subtree-transformer "fbs_interface_subtree_xfmr";
+      }
+    }
 }
 
