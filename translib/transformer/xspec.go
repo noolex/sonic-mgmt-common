@@ -58,6 +58,7 @@ type yangXpathInfo  struct {
     subscribeOnChg     int
     subscribeMinIntvl  int
     cascadeDel     int
+    virtualTbl     *bool
 }
 
 type dbInfo  struct {
@@ -767,6 +768,14 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				} else {
 					xpathData.cascadeDel = XFMR_DISABLE
 				}
+			case "virtual-table" :
+				if xpathData.virtualTbl == nil {
+					xpathData.virtualTbl  = new(bool)
+					*xpathData.virtualTbl = false
+				}
+				if strings.EqualFold(ext.NName(), "True") {
+					*xpathData.virtualTbl = true
+				}
 			}
 		}
 	}
@@ -946,6 +955,10 @@ func mapPrint(inMap map[string]*yangXpathInfo, fileName string) {
         fmt.Fprintf(fp, "\r\n    tblOwner: ")
         if d.tblOwner != nil {
             fmt.Fprintf(fp, "%v", *d.tblOwner)
+        }
+        fmt.Fprintf(fp, "\r\n    virtualTbl: ")
+		if d.virtualTbl != nil {
+			fmt.Fprintf(fp, "%v", *d.virtualTbl)
         }
         fmt.Fprintf(fp, "\r\n    xfmrTbl  : ")
         if d.xfmrTbl != nil {
