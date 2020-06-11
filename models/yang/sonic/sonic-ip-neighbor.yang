@@ -1,0 +1,84 @@
+module sonic-ip-neighbor {
+    namespace "http://github.com/Azure/sonic-ip-neighbor";
+    prefix sarp;
+    yang-version 1.1;
+
+    import ietf-yang-types {
+        prefix yang;
+    }
+
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    import sonic-ospfv2-common { 
+        prefix "sonic-ospf-cmn"; 
+    }
+
+    import sonic-port {
+        prefix prt;
+    }
+
+    import sonic-portchannel {
+        prefix spc;
+    }
+
+    import sonic-vlan {
+        prefix svlan;
+    }
+
+    import sonic-mgmt-port {
+        prefix smt;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC STATIC ARP";
+
+    revision 2020-05-02 {
+        description
+	        "Initial revision.";
+    }
+    container sonic-ip-neighbor {
+        container NEIGH {
+            list NEIGH_LIST {
+                key "staticintf staticip";
+
+                leaf staticintf{
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                        type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                    }
+                }
+
+                leaf staticip {
+                    description "IPv4 address";
+                    type inet:ip-address;
+                }
+
+                leaf neigh {
+                    description "MAC address";
+                    type yang:mac-address;
+                }
+                leaf family{
+                    type string;
+                } 
+            }
+        }
+    }
+}

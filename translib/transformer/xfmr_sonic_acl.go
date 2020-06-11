@@ -133,6 +133,7 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 		}
 	} else {
 		aclname_str := fmt.Sprintf("%v", aclname)
+/*
 		if acl_type == "L2" {
 			aclname_str = aclname_str + "_ACL_L2"
 		} else if acl_type == "L3" {
@@ -140,6 +141,7 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 		} else if acl_type == "L3V6" {
 			aclname_str = aclname_str + "_ACL_IPV6"
 		}
+*/
 
 		ok, data := validateAclTypeAndNameMatch(aclname_str, acl_type_str, dbs)
 		if ok {

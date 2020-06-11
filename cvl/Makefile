@@ -28,6 +28,7 @@ CVL_PKG=$(TOP_DIR)/build/pkg/linux_amd64/cvl.a
 CVL_TEST_DIR = $(TOP_DIR)/build/tests/cvl
 CVL_TEST_BIN = $(CVL_TEST_DIR)/cvl.test
 CVL_TEST_SCHEMA_DIR = $(CVL_TEST_DIR)/testdata/schema
+CVL_TEST_CONFIG = $(CVL_TEST_DIR)/cvl_cfg.json
 CVL_SCHEMA_DIR = $(BUILD_DIR)/schema
 CVL_SCHEMA_FILES := 
 
@@ -76,8 +77,11 @@ test-schema:schema
 tests:
 	make -C tests
 
-gotest:schema test-schema
-	CVL_CFG_FILE=$(abspath .)/conf/cvl_cfg.json CVL_SCHEMA_PATH=$(CVL_TEST_SCHEMA_DIR) tests/run_test.sh
+$(CVL_TEST_CONFIG): conf/cvl_cfg.json
+	sed -E 's/((TRACE|LOG).*)\"false\"/\1\"true\"/' conf/cvl_cfg.json > $@
+
+gotest:schema test-schema $(CVL_TEST_CONFIG)
+	CVL_CFG_FILE=$(abspath $(CVL_TEST_CONFIG)) CVL_SCHEMA_PATH=$(CVL_TEST_SCHEMA_DIR) tests/run_test.sh
 
 clean:
 	make -C tests clean
