@@ -28,6 +28,7 @@ module openconfig-mirror-ext {
   // OpenConfig specific extensions for module metadata.
   revision "2020-04-29" {
     description "Initial version";
+    reference "0.1.0";
   }
 
   // OpenConfig specific extensions for module metadata.
@@ -107,10 +108,11 @@ module openconfig-mirror-ext {
 
     leaf gre-type {
       type string {
-        pattern "0[xX][0-9a-fA-F]*";
         length 1..6 {
           error-message "Invalid GRE type";
         }
+
+        pattern "0[xX][0-9a-fA-F]*";
       }
       description
         "Mirorr session ERSPAN gre";
@@ -156,6 +158,9 @@ module openconfig-mirror-ext {
       "Top-level grouping for mirror session model";
 
     container sessions {
+      description
+        "Container for mirror session list";
+
       list session {
         key "name";
         description
@@ -165,6 +170,9 @@ module openconfig-mirror-ext {
           type leafref {
             path "../config/name";
           }
+
+          description
+            "Mirorr session name";
         }
 
         container config {

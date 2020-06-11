@@ -746,6 +746,14 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
                                 intfName := intfKeys[i].Comp
 
+
+                                if true == chekIfSagExistOnIntf(inParams.d, intfName[0]) {
+                                        errStr = "Interface " + intfName[0] + " has IP static anycast gateway configuration"
+                                        log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                                        err = tlerr.InvalidArgsError{Format: errStr}  
+                                        return res_map, err                                    
+                                }
+
                                 err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, tblName, intfName[0])
                                 if err != nil {
                                         errStr = "Interface " + intfName[0] + " has L3 configuration"
@@ -861,15 +869,23 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                 return res_map, err
             }
         } else {
-            // VRF Unbind case. Check if all IP has been deleted before VRF unbind
-            ipKeys, _ := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
-            if len(ipKeys) != 0 {
-                errStr := "L3 Configuration exists for Interface: " + intfId
-		log.Error(errStr)
-		err = tlerr.InvalidArgsError{Format: errStr}
-		return res_map, err
-	    }
-        }
+                
+                // VRF Unbind case. Check if all IP has been deleted before VRF unbind
+		ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
+		if len(ipKeys) != 0 {
+			errStr := "L3 Configuration exists for Interface: " + intfId
+			log.Error(errStr)
+			err = tlerr.InvalidArgsError{Format: errStr}
+			return res_map, err
+		}
+	}
+
+        if true == chekIfSagExistOnIntf(inParams.d, intfId) {
+                errStr = "Interface " + intfId + " has IP static anycast gateway configuration"
+                log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                err = tlerr.InvalidArgsError{Format: errStr}
+                return res_map, err                                    
+        } 
 
         /* Check if L3 configs present on given interface */
         err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, intf_tbl_name, intfId)
