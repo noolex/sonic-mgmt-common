@@ -29,7 +29,7 @@ module openconfig-system-ext {
     revision 2020-06-10 {
         description
             "Add augments and deviations for NTP.";
-        reference "0.8.0"
+        reference "0.8.0";
     }
 
     revision 2020-06-02 {
