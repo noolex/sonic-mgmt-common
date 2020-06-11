@@ -344,53 +344,53 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdState, session_da
         s := strconv.FormatFloat(value, 'f', -1, 64)
         bfdshop_obj.RemoteDiscriminator = &s
     }
-
+    
     if value, ok := session_data["diagnostic"].(string) ; ok {
         if value == "ok" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_UNSET
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_UNSET
         } else if value == "control detection time expired" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_DETECTION_TIMEOUT
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_DETECTION_TIMEOUT
         } else if value == "echo function failed" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_ECHO_FAILED
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_ECHO_FAILED
         } else if value == "neighbor signaled session down" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_UNSET
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_NEIGHBOR_SIGNALED_DOWN
         } else if value == "forwarding plane reset" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_FORWARDING_RESET
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_FORWARDING_RESET
         } else if value == "path down" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_PATH_DOWN
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_PATH_DOWN
         } else if value == "concatenated path down" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_CONCATENATED_PATH_DOWN
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_CONCATENATED_PATH_DOWN
         } else if value == "administratively down" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_ADMIN_DOWN
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_ADMIN_DOWN
         } else if value == "reverse concatenated path down" {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_REVERSE_CONCATENATED_PATH_DOWN
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_REVERSE_CONCATENATED_PATH_DOWN
         } else {
-            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_NO_DIAGNOSTIC
+            bfdshop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_NO_DIAGNOSTIC
         }
 
     }
 
     if value, ok := session_data["remote-diagnostic"].(string) ; ok {
         if value == "ok" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_UNSET
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_UNSET
         } else if value == "control detection time expired" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_DETECTION_TIMEOUT
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_DETECTION_TIMEOUT
         } else if value == "echo function failed" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_ECHO_FAILED
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_ECHO_FAILED
         } else if value == "neighbor signaled session down" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_UNSET
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_NEIGHBOR_SIGNALED_DOWN
         } else if value == "forwarding plane reset" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_FORWARDING_RESET
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_FORWARDING_RESET
         } else if value == "path down" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_PATH_DOWN
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_PATH_DOWN
         } else if value == "concatenated path down" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_CONCATENATED_PATH_DOWN
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_CONCATENATED_PATH_DOWN
         } else if value == "administratively down" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_ADMIN_DOWN
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_ADMIN_DOWN
         } else if value == "reverse concatenated path down" {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_REVERSE_CONCATENATED_PATH_DOWN
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_REVERSE_CONCATENATED_PATH_DOWN
         } else {
-            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_NO_DIAGNOSTIC
+            bfdshop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_NO_DIAGNOSTIC
         }
     }
 
@@ -604,50 +604,50 @@ func fill_bfd_mhop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdState, session_da
 
     if value, ok := session_data["diagnostic"].(string) ; ok {
         if value == "ok" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_UNSET
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_UNSET
         } else if value == "control detection time expired" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_DETECTION_TIMEOUT
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_DETECTION_TIMEOUT
         } else if value == "echo function failed" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_ECHO_FAILED
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_ECHO_FAILED
         } else if value == "neighbor signaled session down" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_UNSET
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_NEIGHBOR_SIGNALED_DOWN
         } else if value == "forwarding plane reset" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_FORWARDING_RESET
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_FORWARDING_RESET
         } else if value == "path down" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_PATH_DOWN
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_PATH_DOWN
         } else if value == "concatenated path down" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_CONCATENATED_PATH_DOWN
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_CONCATENATED_PATH_DOWN
         } else if value == "administratively down" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_ADMIN_DOWN
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_ADMIN_DOWN
         } else if value == "reverse concatenated path down" {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_REVERSE_CONCATENATED_PATH_DOWN
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_REVERSE_CONCATENATED_PATH_DOWN
         } else {
-            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_NO_DIAGNOSTIC
+            bfdmhop_obj.LocalDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_NO_DIAGNOSTIC
         }
 
     }
 
     if value, ok := session_data["remote-diagnostic"].(string) ; ok {
         if value == "ok" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_UNSET
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_UNSET
         } else if value == "control detection time expired" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_DETECTION_TIMEOUT
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_DETECTION_TIMEOUT
         } else if value == "echo function failed" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_ECHO_FAILED
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_ECHO_FAILED
         } else if value == "neighbor signaled session down" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_UNSET
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_NEIGHBOR_SIGNALED_DOWN
         } else if value == "forwarding plane reset" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_FORWARDING_RESET
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_FORWARDING_RESET
         } else if value == "path down" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_PATH_DOWN
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_PATH_DOWN
         } else if value == "concatenated path down" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_CONCATENATED_PATH_DOWN
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_CONCATENATED_PATH_DOWN
         } else if value == "administratively down" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_ADMIN_DOWN
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_ADMIN_DOWN
         } else if value == "reverse concatenated path down" {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_REVERSE_CONCATENATED_PATH_DOWN
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_REVERSE_CONCATENATED_PATH_DOWN
         } else {
-            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCode_NO_DIAGNOSTIC
+            bfdmhop_obj.RemoteDiagnosticCode = ocbinds.OpenconfigBfd_BfdDiagnosticCodeExt_NO_DIAGNOSTIC
         }
     }
 

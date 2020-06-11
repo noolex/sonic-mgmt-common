@@ -580,3 +580,59 @@ func TestValidateEditConfig_MustExp_Update_Leaf_List_Positive(t *testing.T) {
 
 	unloadConfigDB(rclient, depDataMap)
 }
+
+func TestValidateEditConfig_MustExp_Add_NULL(t *testing.T) {
+	depDataMap := map[string]interface{} {
+		"INTERFACE": map[string]interface{} {
+			"Ethernet20": map[string] interface{} {
+				"unnumbered": "Loopback1",
+			},
+		},
+		"LOOPBACK_INTERFACE": map[string]interface{} {
+			"Loopback1": map[string] interface{} {
+				"NULL": "NULL",
+			},
+			"Loopback1|1.2.3.4/32": map[string] interface{} {
+				"NULL": "NULL",
+			},
+		},
+	}
+
+	loadConfigDB(rclient, depDataMap)
+	defer unloadConfigDB(rclient, depDataMap)
+
+	delUnnumber := cvl.CVLEditConfigData{
+		VType: cvl.VALIDATE_ALL,
+		VOp:   cvl.OP_DELETE,
+		Key:   "INTERFACE|Ethernet20",
+		Data:  map[string]string{ "unnumbered": "" },
+	}
+
+	addNull := cvl.CVLEditConfigData{
+		VType: cvl.VALIDATE_ALL,
+		VOp:   cvl.OP_UPDATE,
+		Key:   "INTERFACE|Ethernet20",
+		Data:  map[string]string{ "NULL": "NULL" },
+	}
+
+	t.Run("before", testNullAdd(addNull, delUnnumber))
+	t.Run("after", testNullAdd(delUnnumber, addNull))
+}
+
+func testNullAdd(data ...cvl.CVLEditConfigData) func(*testing.T) {
+	return func(t *testing.T) {
+		session, _ := cvl.ValidationSessOpen()
+		defer cvl.ValidationSessClose(session)
+
+		var cfgData []cvl.CVLEditConfigData
+		for i, d := range data {
+			cfgData = append(cfgData, d)
+			errInfo, status := session.ValidateEditConfig(cfgData)
+			if status != cvl.CVL_SUCCESS {
+				t.Fatalf("unexpetced error: %v", errInfo)
+			}
+
+			cfgData[i].VType = cvl.VALIDATE_NONE // dont validate for next op
+		}
+	}
+}
