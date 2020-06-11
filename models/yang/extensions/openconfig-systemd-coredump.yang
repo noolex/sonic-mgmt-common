@@ -41,22 +41,126 @@ module openconfig-systemd-coredump {
       description
         "Parameters related to systemd-coredump configuration and status";
 
-        container config {
+      container config {
+        description
+          "Configuration parameters of systemd-coredump";
+
+        uses systemd-coredump-config;
+      }
+
+      container state {
+        config false;
+        description
+          "State parameters of systemd-coredump";
+
+        uses systemd-coredump-config;
+      }
+
+      container core-file-records {
+        config false;
+        description
+          "List of systemd-coredump generated core file information";
+
+        list core-file-record {
+          key "timestamp";
           description
-            "Configuration parameters of systemd-coredump";
+            "List core dumps captured in the systemd-journal";
 
-          uses systemd-coredump-config;
+          leaf timestamp {
+            type leafref {
+              path "../state/timestamp";
+            }
+            description
+              "The time of the crash, as reported by the kernel.
+              It is expressed as the number of nanoseconds since the
+              Unix epoch";
+          }
+
+          container state {
+            description
+              "Information of a core file capture in the systemd-journal";
+
+            leaf timestamp {
+              type oc-types:timeticks64;
+              description
+                "The time of the crash, as reported by the kernel.
+                It is expressed as the number of nanoseconds since the
+                Unix epoch";
+            }
+
+            leaf executable {
+              type string;
+              description
+                "The full path to the application executable that has crashed";
+            }
+
+            leaf core-file {
+              type string;
+              description
+                "The application core dump of the executable that has crashed";
+            }
+
+            leaf pid {
+              type uint64;
+              description
+                "The identifier of the process that crashed";
+            }
+
+            leaf uid {
+              type uint32;
+              description
+                "The user identifier of the process that crashed";
+            }
+
+            leaf gid {
+              type uint32;
+              description
+                "The group identifier of the process that crashed";
+            }
+
+            leaf signal {
+              type uint32;
+              description
+                "The signal that caused the process to crash, when applicable. When
+                this information is not available, a value of 0 is set";
+            }
+
+            leaf command-line {
+              type string;
+              description
+                "The command line arguments of the process that crashed";
+            }
+
+            leaf boot-identifier {
+              type string;
+              description
+                "The unique identifier of the local system that is generated and
+                set on each system boot up event";
+            }
+
+            leaf machine-identifier {
+              type string;
+              description
+                "The unique machine identifier of the local system that is set
+                during installation";
+            }
+
+            leaf crash-message {
+              type string;
+              description
+                "A copy of the application stack trace information of the process
+                that crashed";
+            }
+
+            leaf core-file-present {
+              type boolean;
+              description
+                "Indicates whether the captured core file exists on local disk or
+                has been removed";
+            }
+          }
         }
-
-        container state {
-          config false;
-          description
-            "State parameters of systemd-coredump";
-
-          uses systemd-coredump-config;
-        }
-
-        uses systemd-coredump-records;
+      }
     }
   }
 
@@ -68,124 +172,6 @@ module openconfig-systemd-coredump {
       type boolean;
       description
         "Enable or Disable the application systemd-coredump mechanism";
-    }
-  }
-
-  grouping systemd-coredump-records {
-    description
-      "Information collected by the systemd-coredump mechanism";
-
-    container core-file-records {
-      config false;
-      description
-        "List of systemd-coredump generated core file information";
-
-      uses systemd-coredump-record-list;
-    }
-  }
-
-  grouping systemd-coredump-record-list {
-    description
-      "systemd-coredump generated core file information";
-
-    list core-file-record {
-      key "timestamp";
-      description
-        "List core dumps captured in the systemd-journal";
-
-      leaf timestamp {
-        type leafref {
-          path "../state/timestamp";
-        }
-        description
-          "The time of the crash, as reported by the kernel.
-          It is expressed as the number of nanoseconds since the
-          Unix epoch";
-      }
-
-      container state {
-        description
-          "Information of a core file capture in the systemd-journal";
-
-        leaf timestamp {
-          type oc-types:timeticks64;
-          description
-            "The time of the crash, as reported by the kernel.
-            It is expressed as the number of nanoseconds since the
-            Unix epoch";
-        }
-
-        leaf executable {
-          type string;
-          description
-            "The full path to the application executable that has crashed";
-        }
-
-        leaf core-file {
-          type string;
-          description
-            "The application core dump of the executable that has crashed";
-        }
-
-        leaf pid {
-          type uint64;
-          description
-            "The identifier of the process that crashed";
-        }
-
-        leaf uid {
-          type uint32;
-          description
-            "The user identifier of the process that crashed";
-        }
-
-        leaf gid {
-          type uint32;
-          description
-            "The group identifier of the process that crashed";
-        }
-
-        leaf signal {
-          type uint32;
-          description
-            "The signal that caused the process to crash, when applicable. When
-            this information is not available, a value of 0 is set.";
-        }
-
-        leaf command-line {
-          type string;
-          description
-            "The command line arguments of the process that crashed";
-        }
-
-        leaf boot-identifier {
-          type string;
-          description
-            "The unique identifier of the local system that is generated and
-            set on each system boot up event";
-        }
-
-        leaf machine-identifier {
-          type string;
-          description
-            "The unique machine identifier of the local system that is set
-            during installation";
-        }
-
-        leaf crash-message {
-          type string;
-          description
-            "A copy of the application stack trace information of the process
-            crashed";
-        }
-
-        leaf core-file-present {
-          type boolean;
-          description
-            "Indicates whether the captured core file exists on local disk or
-            has been removed";
-        }
-      }
     }
   }
 
