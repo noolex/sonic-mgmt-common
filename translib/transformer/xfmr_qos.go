@@ -735,7 +735,7 @@ var DbToYang_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
         return DbToYang_qos_get_one_intf_one_q_counters_xfmr(inParams)
     }
 
-    if (strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/output/queues") == false) {
+    if (!strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/output/queues")) {
         log.Info("unexpected uri path: ", targetUriPath)
         return err
     }
@@ -952,12 +952,12 @@ var DbToYang_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
     }
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
-    if ((strings.Contains(targetUriPath, "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group") == true) ||
-    (strings.Contains(targetUriPath, "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group") == true)){
+    if (strings.Contains(targetUriPath, "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group")  ||
+    strings.Contains(targetUriPath, "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group") ){
         return DbToYang_qos_get_one_intf_one_pg_counters_xfmr(inParams)
     }
 
-    if (strings.Contains(targetUriPath, "priority-groups") == false) {
+    if (!strings.Contains(targetUriPath, "priority-groups")) {
         log.Info("unexpected uri path: ", targetUriPath)
         return err
     }
@@ -1190,7 +1190,7 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             }
 
             log.Info("In intfName ", intfName, " queueName ", queueName,  " getQType: ", qType)
-            if (counters == true) { 
+            if (counters) { 
                 verr, cerr := resetQosCounters(dbs[db.CountersDB], oid)
                 if verr != nil || cerr != nil {
                     log.Info("Failed to reset counters for ", intfName, " queue", queueName)
@@ -1199,8 +1199,8 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
                 } else {
                     log.Info("Counters reset for ", intfName, " queue", queueName)
                 }
-            } else if (watermarks == true) {
-                if (persistent == true) {
+            } else if (watermarks) {
+                if (persistent) {
                     cerr := resetPersistentWatermark(dbs[db.CountersDB], oid, "queue", "shared")
                     if cerr != nil {
                         log.Info("Failed to reset counters for ", intfName, " queue", queueName)
@@ -1230,7 +1230,7 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             log.Info("In cMapData ", cMapData)
             if value, ok := cMapData["all"].(bool) ; ok {
                 log.Info("In clearall", value)
-                if value == true {
+                if value {
                 }
             }
             if value, ok := cMapData["interface"].(string) ; ok {
@@ -1247,7 +1247,7 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             if value, ok := wMapData["persistent"].(bool) ; ok {
                 log.Info("In persistent", value)
                 persistent = value
-                if value == true {
+                if value {
                 }
             }
             if value, ok := wMapData["pg-type"].(string) ; ok {
@@ -1256,7 +1256,7 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             }
             if value, ok := wMapData["all"].(bool) ; ok {
                 log.Info("In clearall", value)
-                if value == true {
+                if value {
                 }
             }
             if value, ok := wMapData["interface"].(string) ; ok {
@@ -1316,7 +1316,7 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
             log.Info("In intfName ", intfName, " priorityGroupName ", priorityGroupName, " oid ", oid)
 
-            if (counters == true) {
+            if (counters) {
                 verr, cerr := resetQosCounters(dbs[db.CountersDB], oid)
                 if verr != nil || cerr != nil {
                     log.Info("Failed to reset counters for ", intfName, " pg ", priorityGroupName)
@@ -1325,8 +1325,8 @@ var rpc_clear_qos RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
                 } else {
                     log.Info("Counters reset for ", intfName, " pg ", priorityGroupName)
                 }
-            } else if (watermarks == true) {
-                if (persistent == true) {
+            } else if (watermarks) {
+                if (persistent) {
                     cerr := resetPersistentWatermark(dbs[db.CountersDB], oid, "priority-group", pgbufftype)
                     if cerr != nil {
                         log.Info("Failed to reset counters for ", intfName, " pg ", priorityGroupName)
@@ -1368,7 +1368,7 @@ var DbToYang_threshold_breach_counter_field_xfmr FieldXfmrDbtoYang = func(inPara
     for watermark_str, _ := range  THRESHOLD_BREACH_COUNTER_MAP {
         // try each one of the strings
         val, found := data["THRESHOLD_BREACH_TABLE"][inParams.key].Field[watermark_str] 
-        if  found == true {
+        if  found {
             result["counter"] = val
             break
         }

@@ -245,7 +245,7 @@ func isLastSchedulerFields(sched_key string, attrs []string) (bool) {
                 break
             }
         }
-        if found == false {
+        if !found {
             // entry has extra field other than the queries fields
             return false
         }
@@ -275,7 +275,7 @@ func get_schedulers_by_sp_name(sp_name string) ([]string) {
     for _, key := range keys {
         if sp_name == "" || 
            key.Comp[0] == sp_name ||
-           strings.HasPrefix(key.Comp[0], sp_name+"@") == true {
+           strings.HasPrefix(key.Comp[0], sp_name+"@") {
             sched_list = append(sched_list, key.Comp[0])
         }
     }
@@ -386,7 +386,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         }
     }
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler") == false {
+    if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler")  {
         log.Info("YangToDb: scheduler sequence unspecified, using delete_by_sp_name")
         return qos_scheduler_delete_by_sp_name(inParams, sp_name)
     }
@@ -430,9 +430,44 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         sched_entry[sched_key].Field["type"] = "STRICT"
     }
 
+    if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" {
+        log.Info("Handling No Weight ")
+
+        if isLastSchedulerInActivePolicy(sched_key) &&
+           isLastSchedulerField(sched_key, "weight") {
+            err = tlerr.InternalError{Format:"Last scheduler used by interface cannot be deleted"}
+            log.Info("Not allow the last field to be deleted")
+            log.Info("Disallow to delete the last scheduler in an actively used policy: ", sched_key)
+            return res_map, err
+        }
+
+        log.Info("field Weight is set for attribute deletion")
+        sched_entry[sched_key].Field["weight"] = "0"
+    }
+
+
     attrs := []string{"cbs", "pbs", "cir" , "pir"}
-    if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color" {
+    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color") {
         log.Info("Handling deleting all rate info")
+
+        attr := strings.TrimPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color")
+        if attr != "" {
+            attr = strings.TrimPrefix(attr, "/config")
+            if attr != "" {
+                attr = strings.TrimPrefix(attr, "/")
+                if  attr != "" {
+                    if  attr == "bc" {
+                        attr = "cbs"
+                    } else  {
+                        if attr == "be" {
+                            attr = "pbs"
+                        }
+                    }
+
+                    attrs = []string{attr}
+                }
+            }
+        }
 
         if isLastSchedulerInActivePolicy(sched_key) &&
            isLastSchedulerFields(sched_key, attrs) {
@@ -443,11 +478,11 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         }
 
         log.Info("fields are set for attribute deletion")
-        sched_entry[sched_key].Field["cbs"] = "0"
-        sched_entry[sched_key].Field["pbs"] = "0"
-        sched_entry[sched_key].Field["cir"] = "0"
-        sched_entry[sched_key].Field["pir"] = "0"
+        for _, field_name := range attrs {
+            sched_entry[sched_key].Field[field_name] = "0"
+        }
     }
+
 
     if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler" {
         log.Info("checking last scheduler in an acitive policy")
@@ -466,7 +501,8 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
 
     if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler" ||
        (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/priority" && isLastSchedulerField(sched_key, "type")) ||
-       (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color" && isLastSchedulerFields(sched_key, attrs)) {
+       (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" && isLastSchedulerField(sched_key, "weight")) ||
+       (strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color") && isLastSchedulerFields(sched_key, attrs)) {
 
         // one specific scheduler is deleted
 
@@ -532,7 +568,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         return res_map, err
     }
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler") == false {
+    if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler") {
         log.Info("YangToDb: scheduler sequence unspecified, stop here")
         return res_map, err
     }
@@ -585,10 +621,11 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         if schedObj.Config != nil  {
             if schedObj.Config.Priority == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_STRICT {
                 sched_entry[sched_key].Field["type"] = "STRICT"
-            } else {
+            } else if schedObj.Config.Priority == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_DWRR {
                 sched_entry[sched_key].Field["type"] = "DWRR"
+            } else if schedObj.Config.Priority == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_WRR {
+                sched_entry[sched_key].Field["type"] = "WRR"
             }
-
             if schedObj.Config.Weight != nil  {
                 sched_entry[sched_key].Field["weight"] = strconv.Itoa((int)(*schedObj.Config.Weight))
             }
@@ -749,7 +786,7 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
             spObj.State.Name = &spname
         }
 
-        if (sched_config != true &&  sched_state != true && t23c_config != true && t23c_state != true) {
+        if (!sched_config &&  !sched_state && !t23c_config && !t23c_state ) {
             continue
         }
 
@@ -810,12 +847,23 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
         }
 
         if val, exist := schedCfg.Field["type"]; exist {
-            if val == "STRICT" {
-                if sched_config {
-                    schedObj.Config.Priority = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_STRICT
-                }
-                if sched_state {
+            if sched_config {
+               if val == "STRICT" {
+                   schedObj.Config.Priority = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_STRICT
+               } else if val == "DWRR" {
+                   schedObj.Config.Priority = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_DWRR
+               } else if val == "WRR" {
+                   schedObj.Config.Priority = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_WRR
+               }
+            }
+
+            if sched_state {
+                if val == "STRICT" {
                     schedObj.State.Priority = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_STRICT
+                } else if val == "DWRR" {
+                    schedObj.State.Priority = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_DWRR
+                } else if val == "WRR" {
+                    schedObj.State.Priority = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_WRR
                 }
             }
         }

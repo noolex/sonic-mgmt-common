@@ -41,7 +41,7 @@ PYANG_PLUGIN_DIR := $(TOOLS_DIR)/pyang/pyang_plugins
 PYANG            ?= pyang
 
 .PHONY: all
-all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
+all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK)
 
 .PHONY: annot
 annot: $(YANG_ANNOTS_CHK)
