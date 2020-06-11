@@ -298,6 +298,10 @@ var DbToYang_ztp_status_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
     ztpObj := getZtpRoot(inParams.ygRoot)
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    if err != nil {
+	    log.Info("Error fetching target URI:",err)
+	    return err
+    }
     if targetUriPath == "/openconfig-ztp:ztp/state" {
 	log.Info("TARGET URI PATH ZTP:", targetUriPath)
         log.Info("TableXfmrFunc - Uri ZTP: ", inParams.uri);
@@ -315,6 +319,10 @@ var DbToYang_ztp_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
     pathInfo := NewPathInfo(inParams.uri)
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    if err != nil {
+	    log.Info("Error fetching target URI:",err)
+	    return err
+    }
     log.Info("TARGET URI PATH ZTP:", targetUriPath)
 
     act:= "getcfg"

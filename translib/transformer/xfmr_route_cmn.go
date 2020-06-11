@@ -157,7 +157,7 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
 var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     log.Info("In rpc_show_ip_route")
     var cmd string
-    var af_str, vrf_name, options, proto_name string
+    var af_str, vrf_name, options string
     var err error
     var mapData map[string]interface{}
     err = json.Unmarshal(body, &mapData)
@@ -213,11 +213,9 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
         if value {
             options = "bgp "
         }
-    }
-
-    if value, ok := mapData["protocol-name"].(string) ; ok {
-        if value != "" {
-            proto_name = value + " "
+    } else if value, ok := mapData["ospf"].(bool) ; ok {
+        if value {
+            options = "ospf "
         }
     }
 
@@ -236,10 +234,6 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
         cmd = cmd + options
     }
 
-    if proto_name != "" {
-        cmd = cmd + proto_name
-    }
-
     cmd = cmd + "json"
 
     bgpOutput, err := exec_raw_vtysh_cmd(cmd)
@@ -249,6 +243,11 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
     }
 
     result.Output.Status = bgpOutput
+
+    if options == "summary " {
+         /* just rib and fib counts, no interface names */
+         return json.Marshal(&result)
+    }
 
     var routeDict map[string]interface{}
     if err := json.Unmarshal([]byte(bgpOutput), &routeDict); err != nil {

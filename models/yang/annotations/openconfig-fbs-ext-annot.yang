@@ -1,0 +1,28 @@
+module openconfig-fbs-ext-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/oc-fbs-ext-annot";
+    prefix "oc-fbs-ext-annot";
+
+    import openconfig-extensions { prefix oc-ext; }
+    import openconfig-fbs-ext { prefix oc-fbs-ext; }
+    import sonic-extensions { prefix sonic-ext; }
+
+
+
+    deviation /oc-fbs-ext:fbs/oc-fbs-ext:classifiers {
+      deviate add {
+          sonic-ext:table-name "NONE";
+          sonic-ext:subtree-transformer "fbs_classifier_subtree_xfmr";
+      }
+    }
+
+    deviation /oc-fbs-ext:fbs/oc-fbs-ext:policies {
+      deviate add {
+          sonic-ext:table-name "NONE";
+          sonic-ext:subtree-transformer "fbs_policy_subtree_xfmr";
+      }
+    }
+}
+

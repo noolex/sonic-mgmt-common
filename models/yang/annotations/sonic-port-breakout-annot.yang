@@ -13,5 +13,11 @@ module sonic-port-breakout-annot {
         sonic-ext:rpc-callback "rpc_breakout_dependencies";
       }
     }
+
+    deviation /sbrkprt:breakout_capabilities {
+      deviate add {
+        sonic-ext:rpc-callback "rpc_breakout_capabilities";
+      }
+    }
 }
 

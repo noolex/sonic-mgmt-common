@@ -43,7 +43,7 @@ module sonic-ip-show {
         }
 
         choice type {
-            case opt-prefix {
+            case PREFIX {
                   leaf prefix {
                           type inet:ip-prefix;
                           description
@@ -51,7 +51,7 @@ module sonic-ip-show {
                   }
             }
 
-            case opt-summary {
+            case SUMMARY {
                 leaf summary {
                     type boolean;
                     default false;
@@ -59,7 +59,7 @@ module sonic-ip-show {
                 }
             }
 
-            case opt-static {
+            case STATIC {
                 leaf static {
                     type boolean;
                     default false;
@@ -67,7 +67,7 @@ module sonic-ip-show {
                 }
             }
 
-            case opt-connected {
+            case CONNECTED {
                 leaf connected {
                     type boolean;
                     default false;
@@ -75,19 +75,21 @@ module sonic-ip-show {
                 }
             }
 
-            case opt-bgp {
+            case BGP {
                 leaf bgp {
                     type boolean;
                     default false;
                     description "True : to fetch BGP routes";
                 }
             }
-        }
 
-        leaf protocol-name {
-            type string;
-            description
-                "Specifies the protocol-name like ospf,bgp,static,connected etc,. If it is empty means all protocols.";
+            case OSPF {
+                leaf ospf {
+                    type boolean;
+                    default false;
+                    description "True : to fetch OSPF routes";
+                }
+            }
         }
     }
 

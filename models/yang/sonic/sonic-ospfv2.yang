@@ -437,26 +437,27 @@ module sonic-ospfv2 {
         }
 
         leaf authentication-type {
-          type sonic-ospf-cmn:ospf-authentication-type;
-          default AUTH_NONE;
+          type string;
           description
              "OSPF autentication type";
         }
 
         leaf authentication-key {
+          // when "../authentication-type = 'TEXT'"
           type string;
           description
             "OSPF authentication password string.";
         }
 
         leaf authentication-key-id {
-          // when "../authentication-type = 'sonic-ospf-cmn:MD5HMAC'";
+          // when "../authentication-type = 'MD5HMAC'";
           type uint8;
           description
             "Authentication key Id";
         }
 
         leaf authentication-md5-key {
+          // when "../authentication-type = 'MD5HMAC'";
           type string;
           description
             "OSPF authentication md5 password string.";
@@ -750,26 +751,27 @@ module sonic-ospfv2 {
          }
 
          leaf authentication-type {
-           type sonic-ospf-cmn:ospf-authentication-type;
-           default AUTH_NONE;
+           type string;
            description
               "OSPF autentication type";
          }
 
          leaf authentication-key {
+           // when "../authentication-type = 'TEXT'"
            type string;
            description
              "OSPF authentication password string.";
          }
 
          leaf authentication-key-id {
-           //when "../authentication-type = 'sonic-ospf-cmn:MD5HMAC'";
+           //when "../authentication-type = 'MD5HMAC'";
            type uint8;
            description
              "Authentication key Id";
          }
 
          leaf authentication-md5-key {
+           //when "../authentication-type = 'MD5HMAC'";
            type string;
            description
              "OSPF authentication md5 password string.";

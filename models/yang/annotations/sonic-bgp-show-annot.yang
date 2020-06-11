@@ -13,4 +13,10 @@ module sonic-bgp-show-annot {
             sonic-ext:rpc-callback "rpc_show_bgp";
         }
     }
+
+    deviation /sbgpshow:show-bgp-statistics {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_bgp_stats";
+        }
+    }
 }

@@ -39,6 +39,7 @@ except ImportError:
     from io import StringIO ## for Python 3
 
 issues = []
+warnings = []
 extensionModulesList = []
 
 def pyang_plugin_init():
@@ -81,9 +82,24 @@ class CheckOcStylePlugin(plugin.PyangPlugin):
                 chk_naming_for_grouping(ctx,module)
                 chk_naming_for_enum_identity(ctx,module)  
                 chk_choice_case_feature(ctx,module)            
-        
+                
+        if ctx.opts.outfile is not None:
+            fd = open(ctx.opts.outfile, "w")
+
         for issue in issues:
+            issue = "Error: " + issue
             fd.write(issue +"\n")
+        
+        for warning in warnings:
+            warning = "Warning: " + warning
+            fd.write(warning +"\n")
+
+        if ctx.opts.outfile is not None:
+            fd.close()
+        if len(issues) > 0:
+            sys.exit(1)
+        else:
+            sys.exit(0)
 
 def chk_choice_case_feature(ctx, module):
     choiceList = []
@@ -135,21 +151,20 @@ def chk_version_prefix_namespace(ctx, module):
         sys.exit(2)
 
     namespace = module.search_one('namespace', None, module.substmts)
-    if namespace is None:
-        issues.append(module.arg + ".yang does not have namespace")
-    else:
-        if not namespace.arg.endswith('/extension'):
-            issues.append(str(namespace.pos) + " should end with /extension")
+    
+    if module.keyword != "submodule":
+        if namespace is None:
+            issues.append(module.arg + ".yang does not have namespace")
+        else:
+            if not namespace.arg.endswith('/extension'):
+                issues.append(str(namespace.pos) + " should end with /extension")
 
     if not module.i_prefix.startswith('oc-'):
         issues.append(module.arg + ".yang does not have prefix which begins with oc-")
 
 def walk_child(ctx,child):
 
-    if child.keyword in statements.data_keywords:
-        # pp = statements.mk_path_str(child, True)    
-        # if pp == "/oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:l2/oc-acl:config/oc-acl-ext:pcp":
-        #     pdb.set_trace()        
+    if child.keyword in statements.data_keywords:   
         if child.i_module.i_modulename in extensionModulesList:
             chk_naming(ctx, child)
             if child.keyword == "container":
@@ -176,12 +191,13 @@ def chk_naming(ctx, child):
         
 def chk_list(ctx,list_node):
     global issues
-    # if hasattr (list_node, 'i_uses'):
-    #     if len(list_node.i_uses) != 0:
-    #         pdb.set_trace()
+    for child in list_node.i_children:
+        if child.keyword != "container":
+            if child in list_node.i_key:
+                continue
+            issues.append(str(child.pos) + " not allowed directly under list")
+        
     if list_node.parent.keyword != "container":
-        # if "ietf" in str(list_node.pos):
-        #     pdb.set_trace()
         issues.append(str(list_node.pos) + " should be wrapped by a container")
     if list_node.i_config:
         state_container = list_node.parent.search_one('container', 'state', list_node.i_children)
@@ -191,12 +207,14 @@ def chk_list(ctx,list_node):
     for key in list_node.i_key:
         key_type = key.search_one('type').arg
         if key_type != "leafref":
-            issues.append(str(key.pos) + " should be a leafref")
+            if list_node.i_config and config_container is not None:
+                if len(config_container.i_children) > 0:
+                    issues.append(str(key.pos) + " should be a leafref")
         else:
             try:
                 pointed_node = key.search_one('type').i_type_spec.i_target_node.parent.arg
             except:
-                pdb.set_trace()
+                issues.append(str(key.pos) + " leafref path is invalid")
             if pointed_node != "config" and pointed_node != "state":
                 issues.append(str(key.pos) + " should point to config/state attributes")
             path_ = key.search_one('type').i_type_spec.path_.arg
@@ -209,11 +227,26 @@ def chk_list(ctx,list_node):
 
 def chk_container(ctx,container):
     global issues
+    if container.arg == "config" and not container.i_config:
+        issues.append(str(container.pos) + " container with name config must be config:true")
+    if container.arg == "state" and container.i_config:
+        issues.append(str(container.pos) + " container with name state must be config:false")
+
     list_node = container.search('list', container.i_children)
     if len(list_node) > 0 and len(container.i_children) > 1:
         issues.append(str(container.pos) + " Lists should have an enclosing container with no other data nodes inside it")
 
-    if container.arg == "config":
+    if container.arg != "config" and container.i_config:
+        for child in container.i_children:
+            if child.keyword == "leaf" or child.keyword == "leaf-list":
+                issues.append(str(child.pos) + " non-config named container cannot contain leaf/leaf-list")
+
+    if container.arg == "config" and container.i_config:
+        
+        for child in container.i_children:
+            if child.keyword != "leaf" and child.keyword != "leaf-list":
+                issues.append(str(child.pos) + " not allowed, config container should only contain leaf/leaf-list")
+
         state_container = container.parent.search_one('container', 'state', container.parent.i_children)
         if state_container is None:
             issues.append(str(container.parent.pos) + " does not have state container node")
@@ -233,6 +266,7 @@ def chk_container(ctx,container):
 
 def chk_naming_for_grouping(ctx, module):
     global issues
+    global warnings
     groupingList = []
     find_node(module,"grouping", groupingList)
     for grouping in groupingList:
@@ -241,6 +275,9 @@ def chk_naming_for_grouping(ctx, module):
             issues.append(str(grouping.pos) + " Grouping %s's name does not follow valid naming convention" %(name))
         if not name.startswith(grouping.i_module.i_modulename[11:]):
             issues.append(str(grouping.pos) + " Grouping %s's name should begin with module name" %(name))
+        last_part = name.split('-')[-1]
+        if last_part not in ["config", "state", "top"]:
+            warnings.append(str(grouping.pos) + " Grouping %s's name does not follow valid naming convention" %(name))
 
 def find_node(stmt, arg, nodelist=[]):
     if stmt.keyword == arg:
