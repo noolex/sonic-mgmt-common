@@ -654,4 +654,30 @@ module openconfig-system-annot {
     }
     
     /*************** ldap-servers-map-attributes-end ***********/     
+
+    
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config {
+        deviate add {
+            sonic-ext:table-name "NTP";
+            sonic-ext:key-transformer "ntp_global_key_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys-ext:ntp-source-interface {
+        deviate add {
+            sonic-ext:field-name "src_intf";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys-ext:ntp-source-interface {
+        deviate add {
+            sonic-ext:field-name "src_intf";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server {
+        deviate add {
+            sonic-ext:subtree-transformer "ntp_server_subtree_xfmr";
+        }
+    }
 }

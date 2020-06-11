@@ -259,6 +259,20 @@ func xfmr_set_default_vrf_configDb() error {
         return err
 }
 
+// isMgmtVrfEnabled  checks if mgmt vrf is configured and enabled
+func isMgmtVrfEnabled(inParams XfmrParams) (bool) {
+
+        mgmtVrf, err := inParams.d.GetMapAll(&db.TableSpec{Name:"MGMT_VRF_CONFIG"+"|"+"vrf_global"})
+        if (err == nil) {
+                enabled_status := mgmtVrf.Field["mgmtVrfEnabled"]
+                if (enabled_status == "true") {
+                        return true
+                }
+        }
+
+        return false 
+}
+
 func init() {
         xfmr_set_default_vrf_configDb()
         XlateFuncBind("network_instance_table_name_xfmr", network_instance_table_name_xfmr)
