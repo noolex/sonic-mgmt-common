@@ -30,8 +30,8 @@ module sonic-lldp {
 
 		leaf mode {
 			type enumeration {
-				enum receive;
-				enum transmit;
+				enum RECEIVE;
+				enum TRANSMIT;
 			}
 			
 			description

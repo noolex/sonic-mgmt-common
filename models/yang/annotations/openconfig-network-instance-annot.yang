@@ -3141,6 +3141,14 @@ module openconfig-network-instance-annot {
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+            "/oc-netinst:config/oc-ospfv2-ext:log-adjacency-state-changes" {
+    deviate add {
+      sonic-ext:field-name "log-adjacency-changes";
+    }
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
             "/oc-netinst:spf/oc-netinst:config" +
             "/oc-netinst:initial-delay" {
@@ -3223,7 +3231,7 @@ module openconfig-network-instance-annot {
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
-            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-ospfv2-ext:route-distribution-policies" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
             "/oc-ospfv2-ext:distance/oc-ospfv2-ext:config/oc-ospfv2-ext:all" {
     deviate add {
       sonic-ext:field-name "distance-all";
@@ -3231,7 +3239,7 @@ module openconfig-network-instance-annot {
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
-            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-ospfv2-ext:route-distribution-policies" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
             "/oc-ospfv2-ext:distance/oc-ospfv2-ext:config/oc-ospfv2-ext:intra-area" {
     deviate add {
       sonic-ext:field-name "distance-intra-area";
@@ -3239,7 +3247,7 @@ module openconfig-network-instance-annot {
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
-            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-ospfv2-ext:route-distribution-policies" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
             "/oc-ospfv2-ext:distance/oc-ospfv2-ext:config/oc-ospfv2-ext:inter-area" {
     deviate add {
       sonic-ext:field-name "distance-inter-area";
@@ -3247,7 +3255,7 @@ module openconfig-network-instance-annot {
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
-            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-ospfv2-ext:route-distribution-policies" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
             "/oc-ospfv2-ext:distance/oc-ospfv2-ext:config/oc-ospfv2-ext:external" {
     deviate add {
       sonic-ext:field-name "distance-external";
@@ -3322,6 +3330,8 @@ module openconfig-network-instance-annot {
     }
   }
   */
+
+
   /*-------- OSPFV2_ROUTER_PASSIVE_INTERFACE TABLE --------*/
 
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
