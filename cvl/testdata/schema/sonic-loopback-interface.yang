@@ -30,6 +30,10 @@ module sonic-loopback-interface {
 				leaf loIfName{
                     type string;
 				}
+
+                leaf vrf_name {
+                    type string;
+                }
 			}
 
 			list LOOPBACK_INTERFACE_IPADDR_LIST {

@@ -1,0 +1,196 @@
+module sonic-copp {
+	namespace "http://github.com/Azure/sonic-copp";
+	prefix scopp;
+	yang-version 1.1;
+
+	import sonic-common {
+		prefix cmn;
+	}
+	import sonic-extension {
+		prefix sonic-ext;
+	}
+    import sonic-port {
+        prefix prt;
+    }
+
+    import sonic-portchannel {
+        prefix spc;
+    }
+
+    import sonic-vlan {
+        prefix svlan;
+    }
+
+	organization
+		"SONiC";
+
+	contact
+		"SONiC";
+
+	description
+		"SONIC CoPP";
+
+	revision 2020-05-05 {
+		description
+			"Initial revision.";
+	}
+
+	container sonic-copp {
+		container COPP_GROUP {
+			list COPP_GROUP_LIST {
+				key name;
+				leaf name {
+					type string;
+					description
+						"Control plane policing classifier name";
+				}
+				leaf trap_priority {
+					type uint16 {
+						range "0..1023" {
+							error-message "Invalid value passed for trap_priority";
+						}
+					}
+					description
+						"Priority value";
+				}
+				leaf trap_action {
+					type string {
+						pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
+							error-message "Invalid value passed for trap_action";
+						}
+					}
+					description
+						"Trap action";
+				}
+				leaf queue {
+					type uint8 {
+						range "0..47" {
+							error-message "Invalid value passed for queue";
+						}
+					}
+					description
+						"CPU queue id";
+				}
+				leaf cir {
+					type uint64;
+					description
+						"Committed information rate in bps or pps
+						(packets per second) depending on meter-type.
+						CIR is mandatory";
+				}
+				leaf cbs {
+					type uint64;
+					description
+						"Committed bucket size in packets or bytes.
+						The default value is 20% of the CIR. If
+						configured by the user, it must be greater
+						than or equal to CIR in packets or bytes.";
+
+					must "(/cmn:operation/cmn:operation = 'DELETE') or ((current()/../cir) and (current()/../cir > 0))" {
+						error-message "cbs can't be configured without cir.";
+					}
+					must "(/cmn:operation/cmn:operation = 'DELETE') or (current() >= current()/../cir)" {
+						error-message "cbs must be greater than or equal to cir";
+					}
+				}
+
+				leaf pir {
+					type uint64;
+					description
+						"Peak information rate in bps or pps. If
+						configured by the user, it must be greater
+						than CIR.";
+
+					must "(/cmn:operation/cmn:operation = 'DELETE') or ((current()/../cir) and (current()/../cir > 0))" {
+						error-message "pir can't be configured without cir.";
+					}
+					must "(/cmn:operation/cmn:operation = 'DELETE') or (current() >= current()/../cir)" {
+						error-message "pir must be greater than or equal to cir";
+					}
+				}
+				leaf pbs {
+					type uint64;
+					description
+						"Peak bucket size. The default value is 20% of
+						the PIR value. If configured by the user, it
+						must be greater than PIR and CBS value.";
+
+					must "(/cmn:operation/cmn:operation = 'DELETE') or ((current()/../pir) and (current()/../pir > 0))" {
+						error-message "pbs can't be configured without pir.";
+					}
+					must "(/cmn:operation/cmn:operation = 'DELETE') or (current() >= current()/../pir)" {
+						error-message "pbs must be greater than or equal to pir";
+					}
+					must "(/cmn:operation/cmn:operation = 'DELETE') or ((not(current()/../cbs)) or (current() >= current()/../cbs))" {
+						error-message "pbs must be greater than or equal to cbs";
+					}
+				}
+				leaf meter_type {
+					type string {
+						pattern "(packets)|(bytes)" {
+							error-message "Invalid value passed for meter_type";
+						}
+					}
+					description
+						"Meter type";
+				}
+				leaf mode {
+					type string {
+						pattern "(sr_tcm)|(tr_tcm)|(storm)" {
+							error-message "Invalid value passed for mode";
+						}
+					}
+					description
+						"Mode";
+				}
+				leaf green_action {
+					type string {
+						pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
+							error-message "Invalid value passed for green_action";
+						}
+					}
+					description
+						"Green action";
+				}
+				leaf red_action {
+					type string {
+						pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
+							error-message "Invalid value passed for red_action";
+						}
+					}
+					description
+						"Red action";
+				}
+				leaf yellow_action {
+					type string {
+						pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
+							error-message "Invalid value passed for yellow_action";
+						}
+					}
+					description
+						"Yellow action";
+				}
+			}
+		}
+		container COPP_TRAP {
+			list COPP_TRAP_LIST {
+				key name;
+				leaf name {
+					type string;
+					description
+						"Control plane policing classifier name";
+				}
+				leaf trap_ids {
+					type string;
+					description
+						"Comma separated string of trap_ids";
+				}
+				leaf trap_group {
+					type string;
+					description
+						"reference to CoPP group";
+				}
+			}
+		}
+	}
+}

@@ -126,30 +126,6 @@ module openconfig-ospfv2-ext {
       "Policy default route originate";
   }
 
-
-  identity OSPF_AUTHENTICATION_TYPE {
-    description
-      "OSPF message authentication type";
-  }
-
-  identity AUTH_NONE {
-    base "OSPF_AUTHENTICATION_TYPE";
-    description
-      "OSPF message authentication null";
-  }
-
-  identity TEXT {
-    base "OSPF_AUTHENTICATION_TYPE";
-    description
-      "OSPF message authentication plain text";
-  }
-
-  identity MD5HMAC {
-    base "OSPF_AUTHENTICATION_TYPE";
-    description
-      "OSPF message authentication MD5 HMAC";
-  }
-
   identity OSPF_ROUTER_TYPE {
     description
       "OSPF router type or role";
@@ -414,6 +390,14 @@ module openconfig-ospfv2-ext {
       description
         "OSPF configuration for default passive interface";
     }
+
+    leaf log-adjacency-state-changes {
+      type identityref {
+        base "OSPF_LOG_TYPE";
+      }
+      description
+        "OSPF Log adjacency status changes";
+    }
   }
 
   grouping ospfv2-ext-policy-distance-config {
@@ -619,44 +603,6 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-message-authentication-config {
-    description
-      "OSPFv2 Message authentication configarations";
-
-    container authentication { 
-      description
-        "OSPFv2 Message authentication configarations";
-
-      leaf authentication-type {
-        type identityref {
-          base "OSPF_AUTHENTICATION_TYPE";
-        }
-       
-        description
-           "OSPF autentication type";
-      }  
-
-      leaf authentication-key {
-        type string;
-        description
-          "OSPF authentication password string.";
-      }
-
-      leaf authentication-key-id {
-        when "../authentication-type = 'MD5HMAC'"; 
-        type uint8;
-        description
-          "Authentication key Id";
-      }
-
-      leaf authentication-md5-key {
-        type string;
-        description
-          "OSPF authentication md5 password string.";
-      }
-    }
-  } 
-
   grouping ospfv2-ext-global-state {
     description "Global state information for ospf enabled router";
 
@@ -747,9 +693,7 @@ module openconfig-ospfv2-ext {
       "Configuration parameters relating to an OSPF area";
 
     leaf authentication-type {
-      type identityref {
-        base "OSPF_AUTHENTICATION_TYPE";
-      }
+      type string;
       description
          "OSPF autentication type";
     } 
@@ -1512,7 +1456,6 @@ module openconfig-ospfv2-ext {
         "Configuration and state parameters relating route distibution";
 
       uses ospfv2-ext-policy-route-distibute-list;
-      uses ospfv2-ext-policy-distance;
     }
   }
 
@@ -1791,7 +1734,23 @@ module openconfig-ospfv2-ext {
          "OSPF interface BFD configuration.";
     }
 
-    uses ospfv2-ext-message-authentication-config;
+    leaf authentication-key {
+      type string;
+      description
+        "OSPF authentication password string.";
+    }
+
+    leaf authentication-key-id {
+      type uint8;
+      description
+        "Authentication key Id";
+    }
+
+    leaf authentication-md5-key {
+      type string;
+      description
+        "OSPF authentication md5 password string.";
+    }
   }
 
   grouping ospfv2-ext-interface-phys-config {
@@ -2271,9 +2230,35 @@ module openconfig-ospfv2-ext {
         "Enable/Disable virtual link";
     }
 
+    leaf authentication-type {
+      type string;
+      description
+         "OSPF autentication type";
+    }
+
+    leaf authentication-key {
+      when "../authentication-type = 'TEXT'";
+      type string;
+      description
+        "OSPF authentication password string.";
+    }
+
+    leaf authentication-key-id {
+      when "../authentication-type = 'MD5HMAC'";
+      type uint8;
+      description
+        "Authentication key Id";
+    }
+
+    leaf authentication-md5-key {
+      when "../authentication-type = 'MD5HMAC'";
+      type string;
+      description
+        "OSPF authentication md5 password string.";
+    }
+
     uses oc-ospfv2:ospfv2-area-interface-timers-config;
     uses ospfv2-ext-area-interface-timers-config;
-    uses ospfv2-ext-message-authentication-config;
   }
 
 
@@ -2517,22 +2502,14 @@ module openconfig-ospfv2-ext {
             "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
             "/oc-netinst:global/oc-netinst:config" +
             "/oc-netinst:log-adjacency-changes" {
-    deviate replace {
-      type identityref {
-        base "OSPF_LOG_TYPE";
-      }
-    }
+    deviate not-supported;
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
             "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
             "/oc-netinst:global/oc-netinst:state" +
             "/oc-netinst:log-adjacency-changes" {
-    deviate replace {
-      type identityref {
-        base "OSPF_LOG_TYPE";
-      }
-    }
+    deviate not-supported;
   }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
@@ -2661,16 +2638,16 @@ module openconfig-ospfv2-ext {
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:config" {
-  description
-    "extra parameters related to ospfv2 global config";
+    description
+      "extra parameters related to ospfv2 global config";
     uses ospfv2-ext-global-config;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 global state";
+    description
+      "extra parameters related to ospfv2 global state";
     uses ospfv2-ext-global-config;
     uses ospfv2-ext-global-state;
   }
@@ -2679,8 +2656,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:timers/oc-netinst:spf" +
           "/oc-netinst:config" {
-  description
-    "extra parameters related to ospfv2 global spf timers config";
+    description
+      "extra parameters related to ospfv2 global spf timers config";
     uses ospfv2-ext-global-timers-spf-config;
   }
 
@@ -2688,8 +2665,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:timers/oc-netinst:spf" +
           "/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 global spf timers state";
+    description
+      "extra parameters related to ospfv2 global spf timers state";
     uses ospfv2-ext-global-timers-spf-config;
     uses ospfv2-ext-global-timers-spf-state;
   }
@@ -2698,8 +2675,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:timers" +
           "/oc-netinst:max-metric/oc-netinst:config" {
-  description
-    "extra parameters related to ospfv2 global max metric timers config";
+    description
+      "extra parameters related to ospfv2 global max metric timers config";
         uses ospfv2-ext-global-max-metric-router-lsa-config;
   }
 
@@ -2707,8 +2684,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:timers" +
           "/oc-netinst:max-metric/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 global max metric timers state";
+    description
+      "extra parameters related to ospfv2 global max metric timers state";
         uses ospfv2-ext-global-max-metric-router-lsa-config;
   }
 
@@ -2716,8 +2693,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:timers" +
           "/oc-netinst:lsa-generation/oc-netinst:config" {
-  description
-    "extra parameters related to ospfv2 global lsa-generation timers config";
+    description
+      "extra parameters related to ospfv2 global lsa-generation timers config";
     uses ospfv2-ext-global-lsa-generation-timers-config;
   }
 
@@ -2725,8 +2702,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:timers" +
           "/oc-netinst:lsa-generation/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 global lsa-generation timers state";
+    description
+      "extra parameters related to ospfv2 global lsa-generation timers state";
     uses ospfv2-ext-global-lsa-generation-timers-config;
     uses ospfv2-ext-global-lsa-generation-timers-state;
   }
@@ -2735,33 +2712,34 @@ module openconfig-ospfv2-ext {
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global/oc-netinst:inter-area-propagation-policies" {
-  description
-    "extra parameters related to ospfv2 global inter-area-propagation-policies";
+    description
+      "extra parameters related to ospfv2 global inter-area-propagation-policies";
     uses ospfv2-ext-inter-area-propagation-policy;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:global" {
-  description
-    "extra parameters related to ospfv2 global route distribution policy and passive interface";
+    description
+      "extra parameters related to ospfv2 global route distribution policy and passive interface";
     uses ospfv2-ext-policy-route-distibution;
+    uses ospfv2-ext-policy-distance;
     uses ospfv2-ext-passive-interfaces;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:config" {
-  description
-    "extra parameters related to ospfv2 areas area config";
+    description
+      "extra parameters related to ospfv2 areas area config";
     uses ospfv2-ext-area-config;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 areas area state";
+    description
+      "extra parameters related to ospfv2 areas area state";
     uses ospfv2-ext-area-config;
     uses ospfv2-ext-area-state;
   }
@@ -2769,8 +2747,8 @@ module openconfig-ospfv2-ext {
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area" {
-  description
-    "extra parameters related to ospfv2 areas area stub and network";
+    description
+      "extra parameters related to ospfv2 areas area stub and network";
     uses ospfv2-ext-area-stub;
     uses ospfv2-ext-area-networks;
   }
@@ -2779,8 +2757,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:virtual-links" +
           "/oc-netinst:virtual-link/oc-netinst:config" {
-  description
-    "extra parameters related to ospfv2 areas area virtual-links virtual-link config";
+    description
+      "extra parameters related to ospfv2 areas area virtual-links virtual-link config";
     uses ospfv2-ext-area-virtual-link-config;
   }
 
@@ -2788,8 +2766,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:virtual-links" +
           "/oc-netinst:virtual-link/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 areas area virtual-links virtual-link state";
+    description
+      "extra parameters related to ospfv2 areas area virtual-links virtual-link state";
     uses ospfv2-ext-area-virtual-link-config;
     uses ospfv2-ext-area-virtual-link-state;
     uses ospfv2-ext-area-interface-message-stats-state; 
@@ -2801,8 +2779,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
           "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 areas area lsdb lsa-types lsa-type lsas lsa state";
+    description
+      "extra parameters related to ospfv2 areas area lsdb lsa-types lsa-type lsas lsa state";
     uses ospfv2-ext-lsdb-area-lsa-state;
   }
 
@@ -2811,8 +2789,8 @@ module openconfig-ospfv2-ext {
             "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
             "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:router-lsa" +
             "/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 areas area lsdb lsa-types lsa-type lsas lsa router lsa state";
+    description
+      "extra parameters related to ospfv2 areas area lsdb lsa-types lsa-type lsas lsa router lsa state";
     uses ospfv2-ext-lsdb-router-lsa-state;
   }
 
@@ -2866,8 +2844,8 @@ module openconfig-ospfv2-ext {
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" {
-  description
-    "extra parameters related to ospfv2 route table state information";
+    description
+      "extra parameters related to ospfv2 route table state information";
     uses ospfv2-ext-route-tables-state;
   }
 
@@ -2920,14 +2898,6 @@ module openconfig-ospfv2-ext {
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:interfaces" +
-          "/oc-netinst:interface/oc-netinst:state" +
-          "/oc-netinst:authentication-type" {
-    deviate not-supported;
-  }
-
-  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
-          "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
-          "/oc-netinst:areas/oc-netinst:area/oc-netinst:interfaces" +
           "/oc-netinst:interface/oc-netinst:state/oc-netinst:hide-network" {
     deviate not-supported;
   }
@@ -2959,8 +2929,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:interfaces" +
           "/oc-netinst:interface/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 areas area interfaces interface state";
+    description
+      "extra parameters related to ospfv2 areas area interfaces interface state";
     uses ospfv2-ext-area-interface-config;
     uses ospfv2-ext-area-interface-state;
   }
@@ -2969,8 +2939,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:interfaces" +
           "/oc-netinst:interface/oc-netinst:timers/oc-netinst:state" {
-  description
-    "extra parameters related to ospfv2 areas area interfaces interface timers state";
+    description
+      "extra parameters related to ospfv2 areas area interfaces interface timers state";
     uses ospfv2-ext-area-interface-timers-config;
     uses ospfv2-ext-area-interface-timers-state;
   }
@@ -2979,8 +2949,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:interfaces" +
           "/oc-netinst:interface" {
-  description
-    "extra parameters related to ospfv2 areas area interfaces interface";
+    description
+      "extra parameters related to ospfv2 areas area interfaces interface";
     uses ospfv2-ext-area-interface-neighbors;
     uses ospfv2-ext-area-interface-message-stats-state;
   }
@@ -2988,8 +2958,8 @@ module openconfig-ospfv2-ext {
   /* OSPF interface augmentaion under interface ipv4 */
 
   augment "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface/oc-ip:ipv4" {
-  description
-    "extra parameters related to interfaces interface subinterfaces subinterface ipv4";
+    description
+      "extra parameters related to interfaces interface subinterfaces subinterface ipv4";
     uses ospfv2-ext-interface-phys-config;
   }
 
@@ -3004,12 +2974,6 @@ module openconfig-ospfv2-ext {
   deviation "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface" +
             "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
             "/oc-ospfv2-ext:config/oc-ospfv2-ext:passive" {
-    deviate not-supported;
-  }
-
-  deviation "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface" +
-            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
-            "/oc-ospfv2-ext:config/oc-ospfv2-ext:authentication-type" {
     deviate not-supported;
   }
 
