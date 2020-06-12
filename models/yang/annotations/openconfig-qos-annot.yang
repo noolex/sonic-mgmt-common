@@ -274,6 +274,18 @@ module openconfig-qos-annot {
         }
     }
 
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dscp-maps/oc-qos-maps-ext:forwarding-group-dscp-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_fwd_group_dscp_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dot1p-maps/oc-qos-maps-ext:forwarding-group-dot1p-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_fwd_group_dot1p_xfmr";
+        }
+    }
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps {
       deviate add {
 		sonic-ext:table-name "PORT_QOS_MAP";
