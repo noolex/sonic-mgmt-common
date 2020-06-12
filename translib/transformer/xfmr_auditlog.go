@@ -68,9 +68,9 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
             return nil, err
         }
         filesize := fileinfo.Size()
-        buffer := make([]byte, 8192)
-        if filesize > 8192 {
-            _, err = f.ReadAt(buffer, (filesize-8192))
+        buffer := make([]byte, 4096)
+        if filesize > 4096 {
+            _, err = f.ReadAt(buffer, (filesize-4096))
 
             if err != nil {
                 fmt.Println(err)

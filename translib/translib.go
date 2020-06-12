@@ -34,13 +34,11 @@ This package can also talk to non-DB clients.
 package translib
 
 import (
-	"fmt"
 	"sync"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
-	"log/syslog"
 )
 
 //Write lock for all write operations to be synchronized
@@ -51,7 +49,6 @@ var minSubsInterval = 20
 var maxSubsInterval = 600
 
 type ErrSource int
-var Writer *syslog.Writer
 
 const (
 	ProtoErr ErrSource = iota
@@ -175,13 +172,7 @@ type notificationOpts struct {
 
 //initializes logging and app modules
 func init() {
-    var err error
-
 	log.Flush()
-    Writer, err = syslog.Dial("", "", (syslog.LOG_LOCAL4 | syslog.LOG_INFO), "")
-    if err != nil {
-       log.Fatal(err)
-    }
 }
 
 //Creates entries in the redis DB pertaining to the path and payload
@@ -274,10 +265,6 @@ func Update(req SetRequest) (SetResponse, error) {
 
 	log.Info("Update request received with path =", path)
 	log.Info("Update request received with payload =", string(payload))
-
-        // generate audit message
-        auditMsg := fmt.Sprintf("Update request received with path %s", path)
-	Writer.Info(auditMsg)
 
 	app, appInfo, err := getAppModule(path, req.ClientVersion)
 
@@ -447,10 +434,6 @@ func Delete(req SetRequest) (SetResponse, error) {
 
 	log.Info("Delete request received with path =", path)
 
-        // generate audit message 
-        auditMsg := fmt.Sprintf("Delete request received with path %s", path)
-	Writer.Info(auditMsg)
-
 	requestPathInfo := NewPathInfo(path)
     requestUriPath, err := getYangPathFromUri(requestPathInfo.Path)
 	log.Info("requestUriPath : ", requestUriPath)
@@ -547,10 +530,6 @@ func Get(req GetRequest) (GetResponse, error) {
 	}
 
 	log.Info("Received Get request for path = ", path)
-
-        // generate audit message
-        auditMsg := fmt.Sprintf("Get request received with path %s", path)
-	Writer.Info(auditMsg)
 
 	app, appInfo, err := getAppModule(path, req.ClientVersion)
 
