@@ -8,7 +8,7 @@ module openconfig-vxlan-annot {
     import openconfig-vxlan { prefix oc-vxlan; }
     import sonic-extensions {prefix sonic-ext; }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:state {
 	    deviate add {
 	    	sonic-ext:table-name "EVPN_REMOTE_VNI_TABLE";
       	sonic-ext:key-transformer "vxlan_vni_state_peer_info_key_xfmr";	    	
@@ -16,37 +16,37 @@ module openconfig-vxlan-annot {
 	    }    
     }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:vni-id {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:state/oc-vxlan:vni-id {
 	    deviate add {
 	    	sonic-ext:field-name "vni";
 	    }    
     }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:source-ip {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:state/oc-vxlan:source-ip {
     	deviate add {
 				sonic-ext:field-name "remote_vtep";
 			}
 		}    
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:peer-ip {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:state/oc-vxlan:peer-ip {
 	    deviate add {
 	    	sonic-ext:field-name "remote_vtep";
 	    }    
     }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:tunnel-type {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:state/oc-vxlan:tunnel-type {
 	    deviate add {
 				sonic-ext:field-transformer "vxlan_state_peer_tunnel_type_xfmr";	    
 	    }    
     }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:out-vni-id {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:state/oc-vxlan:out-vni-id {
 	    deviate add {
 				sonic-ext:field-name "vni";	    
 	    }    
     }
 
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state {
 	    deviate add {
 				sonic-ext:table-name "VXLAN_TUNNEL_TABLE";
 				sonic-ext:key-transformer "vxlan_state_tunnel_info_key_xfmr";				
@@ -54,25 +54,25 @@ module openconfig-vxlan-annot {
 	    }    
     }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:peer-ip {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state/oc-vxlan:peer-ip {
 	    deviate add {
 				sonic-ext:field-name "dst_ip";	    
 	    }    
     }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:source-ip {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state/oc-vxlan:source-ip {
 	    deviate add {
 				sonic-ext:field-name "src_ip";	    
 	    }    
     }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:status {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state/oc-vxlan:status {
 	    deviate add {
 				sonic-ext:field-transformer "vxlan_state_tunnel_info_tunnel_status_xfmr";
 	    }
 		}    
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:type {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state/oc-vxlan:type {
 	    deviate add {
 				sonic-ext:field-transformer "vxlan_state_tunnel_info_tunnel_type_xfmr";	    
 	    }    

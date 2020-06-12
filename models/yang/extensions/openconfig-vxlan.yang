@@ -381,43 +381,68 @@ module openconfig-vxlan {
         "VNI peer info container";
       list vxlan-vni-peer-info {
         key "vni-id source-ip peer-ip";
-        config false;
         description
           "The remote nve address list in a same VNI.";
         leaf vni-id {
-          type uint32 {
-            range "1..16777215";
+          type leafref {
+            path "../state/vni-id";
           }
-          config false;
           description
-            "The ID of VNI.";
+            "VxLAN tunnel info key";
         }
         leaf source-ip {
-          type oc-inet:ipv4-address;
-          config false;
+          type leafref {
+            path "../state/source-ip";
+          }
           description
-            "The source address of the NVE interface.";
+            "VxLAN tunnel info key";
         }
         leaf peer-ip {
-          type oc-inet:ipv4-address;
-          config false;
-          description
-            "The remote NVE address.";
-        }
-        leaf tunnel-type {
-          type peer-type;
-          config false;
-          description
-            "Tunnel type.";
-        }
-        leaf out-vni-id {
-          type uint32 {
-            range "1..16777215";
+          type leafref {
+            path "../state/peer-ip";
           }
+          description
+            "VxLAN tunnel info key";
+        }
+        container state {
           config false;
           description
-            "The ID of the out VNI.";
-        }        
+            "The remote nve address state container";
+          leaf vni-id {
+            type uint32 {
+              range "1..16777215";
+            }
+            config false;
+            description
+              "The ID of VNI.";
+          }
+          leaf source-ip {
+            type oc-inet:ipv4-address;
+            config false;
+            description
+              "The source address of the NVE interface.";
+          }
+          leaf peer-ip {
+            type oc-inet:ipv4-address;
+            config false;
+            description
+              "The remote NVE address.";
+          }
+          leaf tunnel-type {
+            type peer-type;
+            config false;
+            description
+              "Tunnel type.";
+          }
+          leaf out-vni-id {
+            type uint32 {
+              range "1..16777215";
+            }
+            config false;
+            description
+              "The ID of the out VNI.";
+          }        
+        }
       }
     }
   }
@@ -426,62 +451,73 @@ module openconfig-vxlan {
     description
       "VxLAN tunnel information";
     container vxlan-tunnel-infos {
+      config false;
       description
         "VxLAN tunnel info container";
       list vxlan-tunnel-info {
-        // key "tunnel-id";
         key "peer-ip";
-        config false;
         description
-          "VxLAN tunnel information list.";
+          "VxLAN tunnel info list";
         leaf peer-ip {
-          type oc-inet:ipv4-address;
-          config false;
-          description
-            "Remote NVE interface address.";        
-        }
-        leaf source-ip {
-          type oc-inet:ipv4-address;
-          config false;
-          description
-            "Local NVE interface address.";        
-        }
-        leaf status {
-          type tunnel-status;
-          config false;
-          description
-            "Tunnel status.";
-        }
-        leaf type {
-          type tunnel-type;
-          config false;
-          description
-            "Tunnel type.";
-        }
-        leaf up-time {
-          type string {
-            length "1..10";
-          }
-          config false;
-          description
-            "Vxlan tunnel up time.";
-        }
-        leaf vrf-name {
           type leafref {
-            path "/oc-ni:network-instances/oc-ni:network-instance/oc-ni:name";
+            path "../state/peer-ip";
           }
-          default "_public_";
-          config false;
           description
-            "The name of VPN instance.";
+            "VxLAN tunnel info key";
         }
-        leaf tunnel-id {
-          type uint32 {
-            range "1..4294967295";
-          }
+        container state {
           config false;
           description
-            "The ID of Vxlan tunnel.";
+            "VxLAN tunnel info state container";
+          leaf peer-ip {
+            type oc-inet:ipv4-address;
+            config false;
+            description
+              "Remote NVE interface address.";        
+          }
+          leaf source-ip {
+            type oc-inet:ipv4-address;
+            config false;
+            description
+              "Local NVE interface address.";        
+          }
+          leaf status {
+            type tunnel-status;
+            config false;
+            description
+              "Tunnel status.";
+          }
+          leaf type {
+            type tunnel-type;
+            config false;
+            description
+              "Tunnel type.";
+          }
+          leaf up-time {
+            type string {
+              length "1..10";
+            }
+            config false;
+            description
+              "Vxlan tunnel up time.";
+          }
+          leaf vrf-name {
+            type leafref {
+              path "/oc-ni:network-instances/oc-ni:network-instance/oc-ni:name";
+            }
+            default "_public_";
+            config false;
+            description
+              "The name of VPN instance.";
+          }
+          leaf tunnel-id {
+            type uint32 {
+              range "1..4294967295";
+            }
+            config false;
+            description
+              "The ID of Vxlan tunnel.";
+          }
         }
       }
     }
@@ -666,9 +702,9 @@ module openconfig-vxlan {
         config false;
         description
           "VxLAN top state";
-        uses vxlan-vni-peer-info-group-top;
-        uses vxlan-tunnel-info-group-top;
       }
+      uses vxlan-vni-peer-info-group-top;
+      uses vxlan-tunnel-info-group-top;
       uses vxlan-vni-instance-group-top;
     }
   }
@@ -751,15 +787,15 @@ module openconfig-vxlan {
 			deviate not-supported;
 		}
 		
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:up-time {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state/oc-vxlan:up-time {
 			deviate not-supported;
 		}    
 
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:vrf-name {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state/oc-vxlan:vrf-name {
 			deviate not-supported;
 		}    
 
-    deviation /oc-vxlan:vxlan/oc-vxlan:state/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:tunnel-id {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state/oc-vxlan:tunnel-id {
 			deviate not-supported;
 		}    
  

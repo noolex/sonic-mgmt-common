@@ -227,9 +227,9 @@ var DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr FieldXfmrDbtoYang = func
     log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> peerIpOrigStr => ", peerIpOrigStr)
   /* } */
 
-  if peerIpOrigStr != "" {
+  if peerIpStr != "" {
     var VXLAN_TUNNEL_TABLE_STATE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_TABLE"}
-    evpnPeerkeyStr := "EVPN_" + peerIpOrigStr
+    evpnPeerkeyStr := "EVPN_" + peerIpStr
     /* if log.V(3) { */
       log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> evpnPeerkeyStr ==> ", evpnPeerkeyStr)
     /* } */
@@ -250,6 +250,7 @@ var DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr FieldXfmrDbtoYang = func
       result["status"] = "DOWN"
     }
   }
+  log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr result ---> err---->", result, err)
   return result, err
 }
 
