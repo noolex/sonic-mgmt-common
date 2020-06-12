@@ -1554,30 +1554,40 @@ module openconfig-ospfv2-ext {
       description
         "Describes the links present in the router LSA (e.g. point-to-point, transit etc)";
 
-      leaf type {
-        type identityref {
-          base "oc-ospf-types:ROUTER_LSA_TYPES";
-        }
+      container state {
+        config false;
         description
-          "The sub-type of the Router LSA.";
+          "State parameters relating to the OSPF passive interface";
+        uses ospfv2-ext-lsdb-router-lsa-info;
       }
-
-      leaf metric {
-        type oc-ospf-types:ospf-metric;
-        description
-        "The cost of utilising the link specified independent of TOS";
-      }
-
-      leaf number-tos-metrics {
-        type uint16;
-        description
-          "The number of different TOS metrics given for this link, not
-          including the link metric (which is referred to as TOS 0).";
-      }
-      uses oc-ospfv2:ospfv2-lsdb-common-link-specification;
     }
   }
 
+  grouping ospfv2-ext-lsdb-router-lsa-info {
+    description
+      "Describes the router lsa information";
+    leaf type {
+      type identityref {
+        base "oc-ospf-types:ROUTER_LSA_TYPES";
+      }
+      description
+        "The sub-type of the Router LSA.";
+    }
+
+    leaf metric {
+      type oc-ospf-types:ospf-metric;
+      description
+      "The cost of utilising the link specified independent of TOS";
+    }
+
+    leaf number-tos-metrics {
+      type uint16;
+      description
+        "The number of different TOS metrics given for this link, not
+        including the link metric (which is referred to as TOS 0).";
+    }
+    uses oc-ospfv2:ospfv2-lsdb-common-link-specification;
+  }
   grouping ospfv2-ext-route-state {
     description
       "Operational state parameters relating to an OSPFV2 route";
@@ -1630,29 +1640,50 @@ module openconfig-ospfv2-ext {
       description
         "OSPF Router Type (ABR, ASBR etc)";
     } 
-
-    list next-hops {
-      key "next-hop out-interface";   
-
+    container next-hops-list {
       description
-        "List of OSPFv2 nexthops with ecmp legs";
+        "list of nexthops";
+      list next-hops {
+        key "next-hop out-interface";   
 
-      leaf next-hop {
-        type inet:ipv4-address-no-zone;
-        description
-          "Next hop address";
-      }
+        leaf next-hop {
+          type leafref {
+            path "../state/next-hop";
+          }
+          description
+            "Next hop address";
+        }
 
-      leaf out-interface {
-        type string;
+        leaf out-interface {
+          type leafref {
+            path "../state/out-interface";
+          }
+          description
+            "Outgoing interface name";
+        }
         description
-          "Outgoing interface name";
-      }
+          "List of OSPFv2 nexthops with ecmp legs";
+        container state {
+          description
+            "state information for a single nexthop";
+          leaf next-hop {
+            type inet:ipv4-address-no-zone;
+            description
+              "Next hop address";
+          }
 
-      leaf area-id {
-        type yang:dotted-quad;
-        description
-          "Route area id";
+          leaf out-interface {
+            type string;
+            description
+              "Outgoing interface name";
+          }
+
+          leaf area-id {
+            type yang:dotted-quad;
+            description
+              "Route area id";
+          }
+        }
       }
     }
   }
@@ -1669,24 +1700,47 @@ module openconfig-ospfv2-ext {
       list route-table {
         key "type";
 
-    description
-      "different type of route table e.g. router or network or external table";
-
+        description
+          "different type of route table e.g. router or network or external table";
         leaf type {
-          type identityref {
-             base "OSPF_ROUTE_TABLE";
+          type leafref {
+            path "../state/type";
           }
+            description
+              "Reference to the different type of route table e.g. router or network or external table";
+        }
+        container state {
+          description
+            "state information for different type of route table e.g. router or network or external table";
+          leaf type {
+            type identityref {
+              base "OSPF_ROUTE_TABLE";
+            }
           description
             "OSPF Route table type";
-        }
-
-        list route {
-          key "prefix";
-          description
-            "List of OSPFv2 routes";
-
-          uses ospfv2-ext-route-state;
-        }
+          }
+          container route-table-state {
+            description
+              "state information for route-table-state";
+            list route {
+              key "prefix";
+              leaf prefix {
+                type leafref {
+                  path "../state/prefix";
+                }
+                description
+                  "Reference to the prefix address in the route table";
+              }
+              description
+                "List of OSPFv2 routes";
+              container state {
+                description
+                  "state information for a single route";
+                uses ospfv2-ext-route-state;
+              }
+            }
+          }
+        } 
       }
     }
   }
@@ -2443,13 +2497,34 @@ module openconfig-ospfv2-ext {
 
       list neighbor {
         key "neighbor-id neighbor-address";
+
+        leaf neighbor-id {
+          type leafref {
+            path "../state/neighbor-id";
+          }
+          description
+            "Neighbor router-id";
+        }
  
+        leaf neighbor-address {
+          type leafref {
+            path "../state/neighbor-address";
+          }
+          description
+            "Ipv4 address configured on the neighbor";
+        }
+
         description
           "A neighbor with which an OSPFv2 adjacency has been
           established within this area";
 
-        uses oc-ospfv2:ospfv2-area-interface-neighbor-state;
-        uses ospfv2-ext-area-interface-neighbor-state;
+        container state {
+          description 
+            "State information for the ospf neighbor (includes interface neighbor
+            and virtual-links neighbor)";
+          uses oc-ospfv2:ospfv2-area-interface-neighbor-state;
+          uses ospfv2-ext-area-interface-neighbor-state;
+        }
       }
     }
   }
@@ -2626,12 +2701,6 @@ module openconfig-ospfv2-ext {
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:mpls" {
-    deviate not-supported;
-  }
-
-  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
-            "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
-            "/oc-netinst:global/oc-netinst:timers/oc-netinst:max-metric/oc-netinst:state" {
     deviate not-supported;
   }
 

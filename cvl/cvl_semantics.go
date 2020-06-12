@@ -29,6 +29,7 @@ import (
 	"github.com/antchfx/xmlquery"
 	"github.com/antchfx/jsonquery"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 )
 

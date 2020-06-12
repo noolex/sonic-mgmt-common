@@ -26,6 +26,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	toposort "github.com/philopon/go-toposort"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"strings"
 	"github.com/antchfx/xmlquery"

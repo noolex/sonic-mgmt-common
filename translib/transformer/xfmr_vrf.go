@@ -303,7 +303,7 @@ func getNwInstRoot(s *ygot.GoStruct) *ocbinds.OpenconfigNetworkInstance_NetworkI
         return deviceObj.NetworkInstances
 }
 
-/* Table name in config DB correspoinding to the top level network instance name */
+// network_instance_table_name_xfmr is a table name in config DB correspoinding to the top level network instance name
 var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
         var tblList []string
         var err error
@@ -757,7 +757,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                                 intfName := intfKeys[i].Comp
 
 
-                                if true == chekIfSagExistOnIntf(inParams.d, intfName[0]) {
+                                if chekIfSagExistOnIntf(inParams.d, intfName[0]) {
                                         errStr = "Interface " + intfName[0] + " has IP static anycast gateway configuration"
                                         log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
                                         err = tlerr.InvalidArgsError{Format: errStr}  
@@ -881,7 +881,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         } else {
                 
                 // VRF Unbind case. Check if all IP has been deleted before VRF unbind
-		ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
+		ipKeys, _  := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
 		if len(ipKeys) != 0 {
 			errStr := "L3 Configuration exists for Interface: " + intfId
 			log.Error(errStr)
@@ -890,7 +890,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 		}
 	}
 
-        if true == chekIfSagExistOnIntf(inParams.d, intfId) {
+        if chekIfSagExistOnIntf(inParams.d, intfId) {
                 errStr = "Interface " + intfId + " has IP static anycast gateway configuration"
                 log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
                 err = tlerr.InvalidArgsError{Format: errStr}
