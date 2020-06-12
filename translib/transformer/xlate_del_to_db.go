@@ -265,7 +265,6 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	}
 
 	if isSonicYang(uri) {
-		*skipOrdTbl = true
 		xpathPrefix, keyName, tableName := sonicXpathKeyExtract(uri)
 		xfmrLogInfo("Delete req: uri(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", uri, keyName, xpathPrefix, tableName)
 		resultMap[oper][db.ConfigDB] = result
@@ -326,7 +325,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 							_, mapped := xDbSpecMap[dbSpecXpath]
 							if mapped || len(xYangSpecMap[xpath].xfmrField) > 0 {
 								curXlateParams.uri = luri
-								curXlateParams.name = spec.fieldName
+								curXlateParams.name = spec.yangEntry.Name
 								curXlateParams.value = xYangSpecMap[xpath].defVal
 								err = mapFillDataUtil(curXlateParams)
 								if xfmrErr != nil {
@@ -352,7 +351,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 							result = make(map[string]map[string]db.Value)
 						} else {
 							curXlateParams.uri = luri
-							curXlateParams.name = spec.fieldName
+							curXlateParams.name = spec.yangEntry.Name
 							err = mapFillDataUtil(curXlateParams)
 							if xfmrErr != nil {
 								return xfmrErr
