@@ -73,7 +73,7 @@ submodule openconfig-fbs-policies-ext {
       "Operational state common for all QoS actions";
   }
 
-  grouping fbs-ext-section-qos-actions {
+  grouping fbs-ext-section-qos-actions-top {
     description
       "Grouping for all QoS actions";
 
@@ -105,7 +105,7 @@ submodule openconfig-fbs-policies-ext {
           "Remark actions to be associated with packets that match the
           classifier match conditions.";
 
-        uses fbs-ext-qos-remark-actions;
+        uses fbs-ext-qos-remark-actions-top;
       }
 
       container policer {
@@ -117,7 +117,7 @@ submodule openconfig-fbs-policies-ext {
           description
             "Configuration for policer action";
 
-          uses fbs-ext-qos-policer-config-params;
+          uses fbs-ext-qos-policer-params-config;
           uses fbs-ext-qos-police-action-config;
         }
 
@@ -127,7 +127,7 @@ submodule openconfig-fbs-policies-ext {
           description
             "Operational state for policer action";
 
-          uses fbs-ext-qos-policer-config-params;
+          uses fbs-ext-qos-policer-params-config;
           uses fbs-ext-qos-police-action-config;
         }
       }
@@ -169,7 +169,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping fbs-ext-qos-remark-actions {
+  grouping fbs-ext-qos-remark-actions-top {
     description
       "Grouping specifying actions related to re-marking
       packets";
@@ -225,7 +225,7 @@ submodule openconfig-fbs-policies-ext {
       "Grouping for Policer configuration";
   }
 
-  grouping fbs-ext-qos-policer-config-params {
+  grouping fbs-ext-qos-policer-params-config {
     description
       "Configuration data for 2 rate, 3 color policer";
 
@@ -269,7 +269,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping fbs-ext-section-forwarding-actions {
+  grouping fbs-ext-section-forwarding-actions-top {
     description
       "Grouping for all forwarding actions. A section contain either
       a layer 2 forwarding or layer 3 forwarding action.";
@@ -296,8 +296,8 @@ submodule openconfig-fbs-policies-ext {
         uses fbs-ext-forwarding-config;
       }
 
-      uses fbs-ext-layer2-forwarding-actions;
-      uses fbs-ext-layer3-forwarding-actions;
+      uses fbs-ext-layer2-forwarding-actions-top;
+      uses fbs-ext-layer3-forwarding-actions-top;
     }
   }
 
@@ -317,7 +317,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping fbs-ext-layer3-forwarding-actions {
+  grouping fbs-ext-layer3-forwarding-actions-top {
     description
       "Grouping for all egress next-hops configuration";
 
@@ -409,7 +409,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping fbs-ext-layer2-forwarding-actions {
+  grouping fbs-ext-layer2-forwarding-actions-top {
     description
       "Grouping for all Layer 2 egress interfaces";
 
@@ -477,7 +477,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping fbs-ext-section-monitoring-actions {
+  grouping fbs-ext-section-monitoring-actions-top {
     description
       "Grouping for all monitoring actions";
 
@@ -503,7 +503,7 @@ submodule openconfig-fbs-policies-ext {
         uses fbs-ext-monitoring-action-config;
       }
 
-      uses fbs-ext-monitoring-span-action;
+      uses fbs-ext-monitoring-span-action-top;
       // Additional mointoring actions like Sflow can be added here
     }
   }
@@ -513,7 +513,7 @@ submodule openconfig-fbs-policies-ext {
       "Grouping for monitoring config";
   }
 
-  grouping fbs-ext-monitoring-span-action {
+  grouping fbs-ext-monitoring-span-action-top {
     description
       "Grouping for all SPAN related actions";
 
@@ -571,14 +571,14 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping fbs-ext-section-actions {
+  grouping fbs-ext-section-actions-top {
     description
       "Grouping for actions supported by the section. The actions
       supported is dependent on the type of the policy";
 
-    uses fbs-ext-section-qos-actions;
-    uses fbs-ext-section-monitoring-actions;
-    uses fbs-ext-section-forwarding-actions;
+    uses fbs-ext-section-qos-actions-top;
+    uses fbs-ext-section-monitoring-actions-top;
+    uses fbs-ext-section-forwarding-actions-top;
   }
 
   grouping fbs-ext-section-config {
@@ -652,7 +652,7 @@ submodule openconfig-fbs-policies-ext {
           uses fbs-ext-section-state;
         }
 
-        uses fbs-ext-section-actions;
+        uses fbs-ext-section-actions-top;
       }
     }
   }

@@ -599,7 +599,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 	var lastFbsCtrTbl_ts *db.TableSpec = &db.TableSpec{Name: "LAST_FBS_COUNTERS"}
 	lastFbsCtrVal, err2 := countersDbPtr.GetEntry(lastFbsCtrTbl_ts, polPbfKey)
 
-	log.Infof("fbsCtrVal:%v", fbsCtrVal)
+	log.Infof("Current:%v:%v Last:%v:%v", fbsCtrVal, err, lastFbsCtrVal, err2)
 	if err == nil && err2 == nil {
 		state.MATCHED_PACKETS = get_counter_diff(fbsCtrVal, lastFbsCtrVal, "Packets")
 		state.MATCHED_BYTES = get_counter_diff(fbsCtrVal, lastFbsCtrVal, "Bytes")
@@ -608,6 +608,14 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 	} else {
 		state.STATUS = "Inactive"
 	}
+
+    if state.STATUS == "Inactive" {
+        exPolPbfKey := db.Key{[]string{policy_name, class_name, interface_name, bind_dir, "Excluded"}}
+        _, err := countersDbPtr.GetEntry(fbsCtrTbl_ts, exPolPbfKey)
+        if err == nil {
+            state.STATUS = "Active"
+        }
+    }
 
 	if strings.EqualFold(policy_type, "QOS") {
 		var policer FlowPolicerStateEntry
