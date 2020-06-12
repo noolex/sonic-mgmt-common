@@ -27,7 +27,7 @@ module openconfig-qos-ext {
       reference "0.1.0";
     }
 
-    grouping qos-ext-queue-state-ext {
+    grouping qos-ext-queue-state {
 	    description "Queue state and counters";
         leaf traffic-type {
             type string;
@@ -58,7 +58,7 @@ module openconfig-qos-ext {
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues/oc-qos:queue/oc-qos:state {
         description
             "Queue extesnions for state and counters";
-        uses qos-ext-queue-state-ext;
+        uses qos-ext-queue-state;
     }
 
 
@@ -176,11 +176,139 @@ module openconfig-qos-ext {
             }
         }
     }
-        
+
+    grouping qos-ext-pfc-priority-config {
+        description "PFC Configuration data per priority";
+        leaf dot1p {
+            type uint8 {
+                range 0..7;
+            }
+            description
+                "3-bit class-of-service value in the
+                Ethernet packet header for 802.1Q VLAN-tagged packets,
+                         also known as PCP (priority code point).";
+            reference
+                "IEEE 802.1Q-2014 - IEEE Standard for Local and metropolitan
+                area networks--Bridges and Bridged Networks";
+        }
+
+        leaf enable {
+            type boolean;
+            default false;
+            description
+                "Set to True Enables the Priority-based PAUSE frame based flow control.
+                Set to False, disables PFC.";
+        }
+    }
+
+    grouping qos-ext-pfc-priority-state {
+        description "PFC Operational data per priority.";
+    }
+
+    grouping qos-ext-pfc-priorities-top {
+        description
+            "Top-level grouping for PFC priorities.";
+
+        container pfc-priorities {
+            description
+                "Container for PFC priorities";
+            list pfc-priority {
+                key "dot1p";
+                description
+                    "List of PFC priorities";
+
+                leaf dot1p {
+                    type leafref {
+                        path ../config/dot1p;
+                    }
+                    description
+                        "Reference to PFC priroity key";
+                }
+
+                container config {
+                    description
+                        "Configuration data for PFC priority";
+                    uses qos-ext-pfc-priority-config;
+                }
+
+                container state {
+                    config false;
+                    description
+                        "Operational data for PFC priority";
+                    uses qos-ext-pfc-priority-config;
+                    uses qos-ext-pfc-priority-state;
+                }
+            }
+        }
+    }
+
+    grouping qos-ext-interface-pfc-config {
+        description
+            "Configuration data for the PFC associated with the interface";
+
+    }
+
+    grouping qos-ext-interface-pfc-state {
+        description
+            "Operational state data for the PFC associated with the
+            interface";
+    }
+
+    grouping qos-ext-interface-pfc-top {
+        description
+            "Top-level grouping for IEEE Std 802.3 Priority-based PAUSE frame
+            based flow control associated with the interface";
+
+        container pfc {
+            description
+                "Top Level Container for IEEE Std 802.3 Priority-based PAUSE frame based flow control.";
+            reference
+                "IEEE Std 802.3, Annex 31D";
+
+            container config {
+                description
+                    "Configuration data for the PFC on interface";
+                leaf asymmetric {
+                    type boolean;
+                    default false;
+                    description
+                        "Set to True Enables the asymmetric PFC on interface and 
+                        set to false disables Asymmetric behaviour. When asymmetric
+                        PFC enabled interface should handle all incoming pause frames on all priorities, 
+                            not just on PFC enabled priorities."; 
+                }
+            }
+
+            container state {
+                config false;
+                description
+                    "Operational state data for the PFC associated with the interface";
+
+                leaf asymmetric {
+                    type boolean;
+                    default false;
+                    description
+                        "Set to True Enables the asymmetric PFC on interface and 
+                        set to false disables Asymmetric behaviour. When asymmetric
+                        PFC enabled interface should handle all incoming pause frames on all priorities, 
+                            not just on PFC enabled priorities."; 
+                }
+            }
+            uses qos-ext-pfc-priorities-top;
+        }
+    }
+
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input {
         description 
             "Priority groups at interface input";
         uses qos-ext-interface-priority-group-top;
+    }
+        
+    augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface{
+        description 
+            "IEEE Std 802.3 Priority-based PAUSE frame
+             based flow control at interface";
+        uses qos-ext-interface-pfc-top;
     }
     
     grouping qos-ext-threshold-breach-top {
@@ -311,6 +439,57 @@ module openconfig-qos-ext {
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:state/oc-qos:type{
       deviate not-supported;
     }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config/oc-qos:priority{
+        deviate replace {
+            type enumeration {
+                enum STRICT {
+                    description
+                        "This scheduler term is considered as a strict priority
+                        term - such that packets that arrive in the queue are
+                        immediately serviced.";
+                }
+                enum DWRR {
+                    description
+                        "This scheduler term is considered as a deficit weighted 
+                        round robin term - such that packets that arrive in the queue are
+                        serviced based on deficit counter with weighted round robin fashion.";
+                }
+                enum WRR {
+                    description
+                        "This scheduler term is considered as a deficit weighted 
+                        round robin term - such that packets that arrive in the queue are
+                        serviced based on weighted round robin fashion.";
+                }
+            }
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:state/oc-qos:priority{
+        deviate replace {
+            type enumeration {
+                enum STRICT {
+                    description
+                        "This scheduler term is considered as a strict priority
+                        term - such that packets that arrive in the queue are
+                        immediately serviced.";
+                }
+                enum DWRR {
+                    description
+                        "This scheduler term is considered as a deficit weighted 
+                        round robin term - such that packets that arrive in the queue are
+                        serviced based on deficit counter with weighted round robin fashion.";
+                }
+                enum WRR {
+                    description
+                        "This scheduler term is considered as a deficit weighted 
+                        round robin term - such that packets that arrive in the queue are
+                        serviced based on weighted round robin fashion.";
+                }
+            }
+        }
+    }
+
 
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:one-rate-two-color {
       deviate not-supported;
