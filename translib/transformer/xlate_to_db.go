@@ -877,77 +877,92 @@ func verifyParentTable(d *db.DB, oper int, uri string, txCache interface{}) (boo
 }
 
 func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (bool, error) {
-        xpath, err := XfmrRemoveXPATHPredicates(uri)
+	var err error
         uriList := splitUri(uri)
         parentTblExists := true
         rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
-
-        xpathInfo, ok := xYangSpecMap[xpath]
-        // Check for subtree case and invoke subscribe xfmr
-        if ok && (len(xpathInfo.xfmrFunc) > 0) { //subtree
-                var dbs [db.MaxDB]*db.DB
-                var inParams XfmrSubscInParams
-                inParams.uri = uri
-                inParams.dbDataMap = make(RedisDbMap)
-                inParams.dbs = dbs
-                inParams.subscProc = TRANSLATE_SUBSCRIBE
-                st_result, st_err := xfmrSubscSubtreeHandler(inParams, xpathInfo.xfmrFunc)
-                if st_err != nil {
-                        log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
-                        return false, st_err
-                }
-                if st_result.dbDataMap != nil {
-                        log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
-                        for _, dbMap := range st_result.dbDataMap {
-                                for table, keyInstance := range dbMap {
-                                        for dbKey, _ := range keyInstance {
-                                                exists, derr := dbTableExists(d, table, dbKey)
-                                                if !exists {
-                                                        err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
-                                                        return false, derr
-                                                }
-                                        }
-                                }
-                        }
-                        return true, err
-                } else {
-                        err = fmt.Errorf("No Table information retrieved for uri %v", uri)
-                        return false, err
-                }
-        }
-
         curUri := "/"
         parentUriList := uriList[:len(uriList)-1]
+
+	// Loop for the parent uri to check parent table existence
         for idx, path := range parentUriList {
                 curUri += uriList[idx]
-                tableName := ""
-                dbKey := ""
 
+		/* Check for parent table for oc- yang lists*/
                 keyList := rgp.FindAllString(path, -1)
-                if len(keyList) > 0 {
-			log.Infof("Check parent table for uri: %v", curUri)
-                        // Get Table and Key only for yang list instances
-                        _, dbKey, tableName, err = xpathKeyExtract(d, nil, oper, curUri, uri, nil, txCache)
-                        if err != nil {
-                                log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, err)
-                                parentTblExists = false
-                                break
-                        }
-                }
-                if len(tableName) > 0 && len(dbKey) > 0 {
-                        // Check for Table existence
-                        log.Infof("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
-                        // Read the table entry from DB
-                        exists, derr := dbTableExists(d, tableName, dbKey)
-                        if derr != nil {
-                                return false, derr
-                        }
-                        if !exists {
-                                parentTblExists = false
-                                err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
-                                break
-                        }
-                }
+		if len(keyList) > 0 {
+
+			//Check for subtree existence
+			curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
+			curXpathInfo, ok := xYangSpecMap[curXpath]
+			// Check for subtree case and invoke subscribe xfmr
+			if ok && (len(curXpathInfo.xfmrFunc) > 0) {
+				var dbs [db.MaxDB]*db.DB
+				var inParams XfmrSubscInParams
+				inParams.uri = uri
+				inParams.dbDataMap = make(RedisDbMap)
+				inParams.dbs = dbs
+				inParams.subscProc = TRANSLATE_SUBSCRIBE
+				st_result, st_err := xfmrSubscSubtreeHandler(inParams, curXpathInfo.xfmrFunc)
+				if st_err != nil {
+					log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
+					err = st_err
+					parentTblExists = false
+					break
+				}
+				if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
+					log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
+					for _, dbMap := range st_result.dbDataMap {
+						for table, keyInstance := range dbMap {
+							for dbKey, _ := range keyInstance {
+								exists, derr := dbTableExists(d, table, dbKey)
+								if !exists || derr != nil {
+									err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
+									log.Errorf("%v", err)
+									parentTblExists = false
+									break
+								}
+							}
+						}
+					}
+				} else {
+					err = fmt.Errorf("No Table information retrieved for uri %v", uri)
+					parentTblExists = false
+					break
+				}
+			} else {
+
+				log.Infof("Check parent table for uri: %v", curUri)
+				// Get Table and Key only for yang list instances
+				_, dbKey, tableName, xerr := xpathKeyExtract(d, nil, oper, curUri, uri, nil, txCache)
+				if xerr != nil {
+					log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
+					err = xerr
+					log.Errorf("err: %v", err)
+					parentTblExists = false
+					break
+				}
+				virtualTbl := false
+				if curXpathInfo.virtualTbl != nil {
+					virtualTbl = *curXpathInfo.virtualTbl
+				}
+
+				if !virtualTbl && len(tableName) > 0 && len(dbKey) > 0 {
+					// Check for Table existence
+					log.Infof("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
+					// Read the table entry from DB
+					exists, derr := dbTableExists(d, tableName, dbKey)
+					if derr != nil {
+						return false, derr
+					}
+					if !exists {
+						parentTblExists = false
+						err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+						break
+					}
+				}
+			}
+		}
                 curUri += "/"
         }
         if !parentTblExists {
@@ -955,6 +970,8 @@ func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (b
                 return false, err
         }
         yangType := ""
+	xpath, _ := XfmrRemoveXPATHPredicates(uri)
+	xpathInfo, ok := xYangSpecMap[xpath]
         if ok {
                 yangType = yangTypeGet(xpathInfo.yangEntry)
         }
@@ -964,8 +981,8 @@ func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (b
                 // For POST since the target URI is the parent URI, it should exist.
                 // For DELETE we handle the table verification here to avoid any CVL error thrown for delete on non existent table
 		log.Infof("Check last parent table for uri: %v", uri)
-                _, dbKey, tableName, err := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
-		if err != nil && len(tableName) > 0 && len(dbKey) > 0 {
+                _, dbKey, tableName, xerr := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
+		if xerr == nil && len(tableName) > 0 && len(dbKey) > 0 {
 			// Read the table entry from DB
 			exists, derr := dbTableExists(d, tableName, dbKey)
 			if derr != nil {
@@ -973,14 +990,37 @@ func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (b
 				return false, derr
 			}
 			if !exists {
-				return false, err
+				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				return false, derr
+			} else {
+				return true, nil
+			}
+		} else {
+			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, tableName, dbKey)
+			return false, xerr
+		}
+        } else if (yangType == YANG_CONTAINER && oper == DELETE && ((xpathInfo.keyName != nil && len(*xpathInfo.keyName) > 0) || len(xpathInfo.xfmrKey) > 0)) {
+        //} else if (yangType == YANG_CONTAINER && oper = DELETE && (!xpathInfo.tableName = nil && len(*xpathInfo.tableName) > 0)
+	//	&& ((xpathInfo.keyName != nil && len(xpathInfo.keyName)) || len(xpathInfo.xfmrKey) > 0)) {
+
+		// If the delete is at container level and the container is mapped to a unique table, then check for table existence to avoid CVL throwing error
+		parentUri := strings.Join(parentUriList, "/")
+		parentUri = "/" + parentUri
+		// Get table for parent xpath
+		_, _, parentTable, perr := xpathKeyExtract(d, nil, oper, parentUri, uri, nil, txCache)
+		// Get table for current xpath
+		_, curKey, curTable, cerr := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
+		if perr == nil && cerr == nil && (curTable != parentTable) {
+			exists, _ := dbTableExists(d, curTable, curKey)
+			if !exists {
+				return false, nil
 			} else {
 				return true, err
 			}
 		} else {
-			return false, err
+			return true, err
 		}
-        } else {
+	} else {
                 // PUT at list is allowed to do a create if table does not exist else replace OR
                 // This is a container or leaf at the end of the URI. Parent check already done and hence all operations are allowed
                 return true, err
