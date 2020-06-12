@@ -752,6 +752,20 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
     // Handles all the operations other than Delete
     intfTypeVal, _ := inParams.param.(*uint16)
     intTypeValStr := strconv.FormatUint(uint64(*intfTypeVal), 10)
+
+    if IntfTypePortChannel == intfType {
+        /* Apply the MTU to all the portchannel member ports */
+        updateMemberPortsMtu(&inParams, &ifName, &intTypeValStr)
+    } else if IntfTypeEthernet == intfType {
+        /* Do not allow MTU configuration on a portchannel member port */
+        lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
+        if lagId != nil {
+            log.Infof("%s is member of %s", ifName, *lagId)
+            errStr := "Configuration not allowed when port is member of Portchannel."
+            return nil, tlerr.InvalidArgsError{Format: errStr}
+        }
+    }
+
     res_map["mtu"] = intTypeValStr
     return res_map, nil
 }
