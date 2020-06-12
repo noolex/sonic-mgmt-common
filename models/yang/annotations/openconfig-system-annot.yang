@@ -636,6 +636,27 @@ module openconfig-system-annot {
    		
 	/*************** ldap-servers-server-attributes-end ***********/
     
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:source-interface {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:source-interface {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:vrf-name {
+      deviate add {
+          sonic-ext:field-name "vrf_name";
+      }
+    }
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:vrf-name {
+      deviate add {
+          sonic-ext:field-name "vrf_name";
+      }
+    }
+
 	/*************** ldap-servers-map-attributes-start ***********/    
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map/oc-aaa-ldap-ext:config {
