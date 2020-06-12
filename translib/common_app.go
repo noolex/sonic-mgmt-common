@@ -719,14 +719,34 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 					log.Info("Finally deleted the parent table row with key = ", tblKey)
 				} else {
 					log.Info("DELETE case - fields/cols to delete hence delete only those fields.")
-					existingEntry, _ := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
-					if !existingEntry.IsPopulated() {
+					existingEntry, exstErr := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
+					if exstErr != nil {
 						log.Info("Table Entry from which the fields are to be deleted does not exist")
+						err = exstErr
 						return err
 					}
 					/* handle leaf-list merge if any leaf-list exists */
 					resTblRw := checkAndProcessLeafList(existingEntry, tblRw, DELETE, d, tblNm, tblKey)
+					log.Info("DELETE case - checkAndProcessLeafList() returned table row ", resTblRw)
 					if len(resTblRw.Field) > 0 {
+						/* check if all fields are going to be deleted from the instance then preserve instance by adding NULL/NULL */
+						lexistingEntry := existingEntry
+						for fld, _ := range(resTblRw.Field) {
+							if _, fldExstsOk := lexistingEntry.Field[fld]; fldExstsOk {
+								delete(existingEntry.Field, fld)
+							}
+						}
+						if !existingEntry.IsPopulated() {
+							log.Infof("All fields will be deleted, so preserve table instance %v by adding NULL/NULL", tblNm+tblKey)
+							nullFldTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
+							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullFldTblRw)
+							if err != nil {
+								log.Error("DELETE case - d.ModEntry() failure for NULL field addition")
+								return err
+							}
+							log.Infof("Added NULL field to preserve table instance %v", tblNm+tblKey)
+						}
+						log.Info("Processing Table row ", resTblRw)
 						err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
 						if err != nil {
 							log.Error("DELETE case - d.DeleteEntryFields() failure")
