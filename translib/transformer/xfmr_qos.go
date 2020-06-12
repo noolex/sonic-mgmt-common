@@ -494,9 +494,16 @@ func validateQosIntf(confd *db.DB, dbs [db.MaxDB]*db.DB, intfName string) error 
     if (d != nil) {
         entry, err := d.GetEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{intfName}})
         if err != nil || !entry.IsPopulated() {
-            errStr := "Invalid Interface:" + intfName
-            log.Error(errStr)
-            return tlerr.InvalidArgsError{Format:errStr}
+            entry, err := d.GetEntry(&db.TableSpec{Name:"PORTCHANNEL"}, db.Key{Comp: []string{intfName}})
+            if err != nil || !entry.IsPopulated() {
+                // entry, err := d.GetEntry(&db.TableSpec{Name:"VLAN_INTERFACE"}, db.Key{Comp: []string{intfName}})
+                entry, err := d.GetEntry(&db.TableSpec{Name:"VLAN"}, db.Key{Comp: []string{intfName}})
+                if err != nil || !entry.IsPopulated() {
+                    errStr := "Interface " + intfName + " is not available."
+                    log.Error(errStr)
+                    return tlerr.InvalidArgsError{Format:errStr}
+                }
+            }
         }
     }
     return nil

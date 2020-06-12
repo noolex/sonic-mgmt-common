@@ -56,7 +56,7 @@ submodule openconfig-fbs-classifiers-ext {
   // typedef statements
 
   // grouping statements
-  grouping match-acl-config {
+  grouping fbs-ext-match-acl-config {
     description
       "Grouping for ACL name and acl type match configuration";
 
@@ -80,12 +80,12 @@ submodule openconfig-fbs-classifiers-ext {
     }
   }
 
-  grouping match-acl-state {
+  grouping fbs-ext-match-acl-state {
     description
       "Grouping for ACL name and acl type match operational state";
   }
 
-  grouping match-acl-top {
+  grouping fbs-ext-match-acl-top {
     description
       "Grouping for acl match related config and operational state";
 
@@ -97,7 +97,7 @@ submodule openconfig-fbs-classifiers-ext {
         description
           "Classifier match acl related configuration";
 
-        uses match-acl-config;
+        uses fbs-ext-match-acl-config;
       }
 
       container state {
@@ -106,15 +106,15 @@ submodule openconfig-fbs-classifiers-ext {
         description
           "Classifier match acl operational state";
 
-        uses match-acl-config;
-        uses match-acl-state;
+        uses fbs-ext-match-acl-config;
+        uses fbs-ext-match-acl-state;
       }
     }
   }
 
   // Physical Layer fields
   // ethernet-header
-  grouping ethernet-header-config {
+  grouping fbs-ext-ethernet-header-config {
     description
       "Configuration data of fields in Ethernet header.";
 
@@ -177,12 +177,12 @@ submodule openconfig-fbs-classifiers-ext {
     }
   }
 
-  grouping ethernet-header-state {
+  grouping fbs-ext-ethernet-header-state {
     description
       "State information of fields in Ethernet header.";
   }
 
-  grouping ethernet-header-top {
+  grouping fbs-ext-ethernet-header-top {
     description
       "Top level container for fields in Ethernet header.";
 
@@ -193,20 +193,20 @@ submodule openconfig-fbs-classifiers-ext {
       container config {
         description
           "Configuration data";
-        uses ethernet-header-config;
+        uses fbs-ext-ethernet-header-config;
       }
 
       container state {
         config false;
         description
           "State Information.";
-        uses ethernet-header-config;
-        uses ethernet-header-state;
+        uses fbs-ext-ethernet-header-config;
+        uses fbs-ext-ethernet-header-state;
       }
     }
   }
 
-  grouping ip-protocol-fields-common-config {
+  grouping fbs-ext-ip-protocol-fields-common-config {
     description
       "IP protocol fields common to IPv4 and IPv6";
 
@@ -240,7 +240,7 @@ submodule openconfig-fbs-classifiers-ext {
 
   // IP Layer
   // ip-protocol-fields
-  grouping ipv4-protocol-fields-config {
+  grouping fbs-ext-ipv4-protocol-fields-config {
     description
       "Configuration data of IP protocol fields
       for IPv4";
@@ -257,15 +257,15 @@ submodule openconfig-fbs-classifiers-ext {
         "Destination IPv4 address prefix.";
     }
 
-    uses ip-protocol-fields-common-config;
+    uses fbs-ext-ip-protocol-fields-common-config;
   }
 
-  grouping ipv4-protocol-fields-state {
+  grouping fbs-ext-ipv4-protocol-fields-state {
     description
       "State information of IP header fields for IPv4";
   }
 
-  grouping ipv4-protocol-fields-top {
+  grouping fbs-ext-ipv4-protocol-fields-top {
     description
       "IP header fields for IPv4";
 
@@ -276,20 +276,20 @@ submodule openconfig-fbs-classifiers-ext {
       container config {
         description
           "Configuration data for IPv4 match fields";
-        uses ipv4-protocol-fields-config;
+        uses fbs-ext-ipv4-protocol-fields-config;
       }
 
       container state {
         config false;
         description
           "State information for IPv4 match fields";
-        uses ipv4-protocol-fields-config;
-        uses ipv4-protocol-fields-state;
+        uses fbs-ext-ipv4-protocol-fields-config;
+        uses fbs-ext-ipv4-protocol-fields-state;
       }
     }
   }
 
-  grouping ipv6-protocol-fields-config {
+  grouping fbs-ext-ipv6-protocol-fields-config {
     description
       "Configuration data for IPv6 match fields";
 
@@ -317,15 +317,15 @@ submodule openconfig-fbs-classifiers-ext {
         "Destination IPv6 Flow label.";
     }
 
-    uses ip-protocol-fields-common-config;
+    uses fbs-ext-ip-protocol-fields-common-config;
   }
 
-  grouping ipv6-protocol-fields-state {
+  grouping fbs-ext-ipv6-protocol-fields-state {
     description
       "Operational state data for IPv6 match fields";
   }
 
-  grouping ipv6-protocol-fields-top {
+  grouping fbs-ext-ipv6-protocol-fields-top {
     description
       "Top-level grouping for IPv6 match fields";
 
@@ -337,7 +337,7 @@ submodule openconfig-fbs-classifiers-ext {
         description
           "Configuration data for IPv6 match fields";
 
-        uses ipv6-protocol-fields-config;
+        uses fbs-ext-ipv6-protocol-fields-config;
       }
 
       container state {
@@ -347,14 +347,14 @@ submodule openconfig-fbs-classifiers-ext {
         description
           "Operational state data for IPv6 match fields";
 
-        uses ipv6-protocol-fields-config;
-        uses ipv6-protocol-fields-state;
+        uses fbs-ext-ipv6-protocol-fields-config;
+        uses fbs-ext-ipv6-protocol-fields-state;
       }
     }
   }
 
   // Transport fields
-  grouping transport-fields-config {
+  grouping fbs-ext-transport-fields-config {
     description
       "Configuration data of transport-layer packet fields";
 
@@ -389,12 +389,12 @@ submodule openconfig-fbs-classifiers-ext {
     }
   }
 
-  grouping transport-fields-state {
+  grouping fbs-ext-transport-fields-state {
     description
       "State data of transport-fields";
   }
 
-  grouping transport-fields-top {
+  grouping fbs-ext-transport-fields-top {
     description
       "Destination transport-fields top level grouping";
 
@@ -405,20 +405,20 @@ submodule openconfig-fbs-classifiers-ext {
       container config {
         description
           "Configuration data";
-        uses transport-fields-config;
+        uses fbs-ext-transport-fields-config;
       }
 
       container state {
         config false;
         description
           "State data";
-        uses transport-fields-config;
-        uses transport-fields-state;
+        uses fbs-ext-transport-fields-config;
+        uses fbs-ext-transport-fields-state;
       }
     }
   }
 
-  grouping match-hdr-fields-top {
+  grouping fbs-ext-match-hdr-fields-top {
     description
       "Grouping for header fields match related config and operational state";
 
@@ -430,7 +430,7 @@ submodule openconfig-fbs-classifiers-ext {
         description
           "Classifier match header fields related configuration";
 
-        uses match-hdr-fields-config;
+        uses fbs-ext-match-hdr-fields-config;
       }
 
       container state {
@@ -439,18 +439,18 @@ submodule openconfig-fbs-classifiers-ext {
         description
           "Classifier match header fields related operational state";
 
-        uses match-hdr-fields-config;
-        uses match-hdr-fields-state;
+        uses fbs-ext-match-hdr-fields-config;
+        uses fbs-ext-match-hdr-fields-state;
       }
 
-      uses ethernet-header-top;
-      uses ipv4-protocol-fields-top;
-      uses ipv6-protocol-fields-top;
-      uses transport-fields-top;
+      uses fbs-ext-ethernet-header-top;
+      uses fbs-ext-ipv4-protocol-fields-top;
+      uses fbs-ext-ipv6-protocol-fields-top;
+      uses fbs-ext-transport-fields-top;
     }
   }
 
-  grouping match-hdr-fields-config {
+  grouping fbs-ext-match-hdr-fields-config {
     description
       "Grouping for header fields match configuration";
 
@@ -466,12 +466,12 @@ submodule openconfig-fbs-classifiers-ext {
     }
   }
 
-  grouping match-hdr-fields-state {
+  grouping fbs-ext-match-hdr-fields-state {
     description
       "Grouping for header fields match operational state";
   }
 
-  grouping fbs-classifier-config {
+  grouping fbs-ext-classifier-config {
     description
       "Classifier config";
 
@@ -492,12 +492,12 @@ submodule openconfig-fbs-classifiers-ext {
     }
   }
 
-  grouping fbs-classifier-state {
+  grouping fbs-ext-classifier-state {
     description
       "Classifier operational state";
   }
 
-  grouping fbs-classifiers-top {
+  grouping fbs-ext-classifiers-top {
     description
       "Classifiers top container";
 
@@ -525,7 +525,7 @@ submodule openconfig-fbs-classifiers-ext {
           description
             "Classifier config";
 
-          uses fbs-classifier-config;
+          uses fbs-ext-classifier-config;
         }
 
         container state {
@@ -534,12 +534,12 @@ submodule openconfig-fbs-classifiers-ext {
           description
             "Classifier operational state";
 
-          uses fbs-classifier-config;
-          uses fbs-classifier-state;
+          uses fbs-ext-classifier-config;
+          uses fbs-ext-classifier-state;
         }
 
-        uses match-acl-top;
-        uses match-hdr-fields-top;
+        uses fbs-ext-match-acl-top;
+        uses fbs-ext-match-hdr-fields-top;
       }
     }
   }

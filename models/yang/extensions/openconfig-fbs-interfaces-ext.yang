@@ -7,7 +7,6 @@ submodule openconfig-fbs-interfaces-ext {
   import openconfig-interfaces { prefix oc-if; }
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-yang-types { prefix oc-yang; }
-  import openconfig-inet-types { prefix "oc-inet"; }
 
   include openconfig-fbs-policies-ext;
 
@@ -40,7 +39,7 @@ submodule openconfig-fbs-interfaces-ext {
   // typedef statements
 
   // grouping statements
-  grouping fbs-interface-qos-top {
+  grouping fbs-ext-interface-qos-top {
     description
       "Grouping for QoS policy applied per interface";
 
@@ -52,41 +51,45 @@ submodule openconfig-fbs-interfaces-ext {
         description
           "Configuration for QoS policy application on interface";
 
-        uses fbs-interface-qos-config;
+        uses fbs-ext-interface-qos-config;
       }
 
       container state {
+        config false;
+
         description
           "Operation state data for QoS policy application on interface";
 
-        uses fbs-interface-qos-config;
+        uses fbs-ext-interface-qos-config;
       }
 
-      uses fbs-interface-qos-sections-state;
+      uses fbs-ext-interface-qos-sections-state;
     }
   }
 
-  grouping fbs-interface-qos-config {
+  grouping fbs-ext-interface-qos-config {
     description
       "Grouping for QoS policy configuration";
 
     leaf policy-name {
       type leafref {
-        path "../../../../../policies/policy/config/name";
+        path "../../../../../../policies/policy/config/name";
       }
 
-      must "../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_QOS'";
+      must "../../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_QOS'";
 
       description
         "Name of the QoS policy applied on the interface";
     }
   }
 
-  grouping fbs-interface-qos-sections-state {
+  grouping fbs-ext-interface-qos-sections-state {
     description
       "Grouping for QoS Policy operation state";
 
     container sections {
+      config false;
+
       description
         "Container for Operational state of QoS Policy sections";
 
@@ -106,18 +109,20 @@ submodule openconfig-fbs-interfaces-ext {
         }
 
         container state {
+          config false;
+
           description
             "Operational state of a QoS policy section";
 
-          uses fbs-section-state-common;
-          uses fbs-qos-section-state;
-          uses qos-policer-config-params;
+          uses fbs-ext-section-state-common;
+          uses fbs-ext-qos-section-state;
+          uses fbs-ext-qos-policer-config-params;
         }
       }
     }
   }
 
-  grouping fbs-section-state-common {
+  grouping fbs-ext-section-state-common {
     description
       "Grouping for common operational state data for all policy
       sections";
@@ -157,7 +162,7 @@ submodule openconfig-fbs-interfaces-ext {
     }
   }
 
-  grouping fbs-qos-section-state {
+  grouping fbs-ext-qos-section-state {
     description
       "Grouping for QoS counters like policers";
 
@@ -204,7 +209,7 @@ submodule openconfig-fbs-interfaces-ext {
     }
   }
 
-  grouping fbs-interface-monitoring-top {
+  grouping fbs-ext-interface-monitoring-top {
     description
       "Grouping for monitoring policy applied per interface";
 
@@ -216,41 +221,45 @@ submodule openconfig-fbs-interfaces-ext {
         description
           "Configuration for monitoring policy application on interface";
 
-        uses fbs-interface-monitoring-config;
+        uses fbs-ext-interface-monitoring-config;
       }
 
       container state {
+        config false;
+
         description
           "Operation state data for monitoring policy application on interface";
 
-        uses fbs-interface-monitoring-config;
+        uses fbs-ext-interface-monitoring-config;
       }
 
-      uses fbs-interface-monitoring-sections-state;
+      uses fbs-ext-interface-monitoring-sections-state;
     }
   }
 
-  grouping fbs-interface-monitoring-config {
+  grouping fbs-ext-interface-monitoring-config {
     description
       "Grouping for monitoring policy configuration";
 
     leaf policy-name {
       type leafref {
-        path "../../../../../policies/policy/config/name";
+        path "../../../../../../policies/policy/config/name";
       }
 
-      must "../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_MONITORING'";
+      must "../../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_MONITORING'";
 
       description
         "Name of the monitoring policy applied on the interface";
     }
   }
 
-  grouping fbs-interface-monitoring-sections-state {
+  grouping fbs-ext-interface-monitoring-sections-state {
     description
       "Grouping for monitoring Policy operation state";
 
     container sections {
+      config false;
+
       description
         "Container for Operational state of monitoring Policy sections";
 
@@ -270,16 +279,18 @@ submodule openconfig-fbs-interfaces-ext {
         }
 
         container state {
+          config false;
+
           description
             "Operational state of a monitoring policy section";
 
-          uses fbs-section-state-common;
+          uses fbs-ext-section-state-common;
         }
       }
     }
   }
 
-  grouping fbs-interface-forwarding-top {
+  grouping fbs-ext-interface-forwarding-top {
     description
       "Grouping for forwarding policy applied per interface";
 
@@ -291,41 +302,45 @@ submodule openconfig-fbs-interfaces-ext {
         description
           "Configuration for forwarding policy application on interface";
 
-        uses fbs-interface-forwarding-config;
+        uses fbs-ext-interface-forwarding-config;
       }
 
       container state {
+        config false;
+
         description
           "Operation state data for forwarding policy application on interface";
 
-        uses fbs-interface-forwarding-config;
+        uses fbs-ext-interface-forwarding-config;
       }
 
-      uses fbs-interface-forwarding-sections-state;
+      uses fbs-ext-interface-forwarding-sections-state;
     }
   }
 
-  grouping fbs-interface-forwarding-config {
+  grouping fbs-ext-interface-forwarding-config {
     description
       "Grouping for forwarding policy configuration";
 
     leaf policy-name {
       type leafref {
-        path "../../../../../policies/policy/config/name";
+        path "../../../../../../policies/policy/config/name";
       }
 
-      must "../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_FORWARDING'";
+      must "../../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_FORWARDING'";
 
       description
         "Name of the forwarding policy applied on the interface";
     }
   }
 
-  grouping fbs-interface-forwarding-sections-state {
+  grouping fbs-ext-interface-forwarding-sections-state {
     description
       "Grouping for forwarding Policy operation state";
 
     container sections {
+      config false;
+
       description
         "Container for Operational state of forwarding Policy sections";
 
@@ -345,20 +360,22 @@ submodule openconfig-fbs-interfaces-ext {
         }
 
         container state {
+          config false;
+
           description
             "Operational state of a forwarding policy section";
 
-          uses fbs-section-state-common;
-	      uses fbs-forwarding-section-common-state;
+          uses fbs-ext-section-state-common;
+	      uses fbs-ext-forwarding-section-common-state;
         }
 
-        uses fbs-forwarding-section-l2-state;
-        uses fbs-forwarding-section-l3-state;
+        uses fbs-ext-forwarding-section-l2-state;
+        uses fbs-ext-forwarding-section-l3-state;
       }
     }
   }
 
-  grouping fbs-forwarding-section-common-state {
+  grouping fbs-ext-forwarding-section-common-state {
     description
       "Grouping for common forwarding operational state";
 
@@ -371,7 +388,7 @@ submodule openconfig-fbs-interfaces-ext {
     }
   }
 
-  grouping fbs-forwarding-section-l3-state {
+  grouping fbs-ext-forwarding-section-l3-state {
     description
       "Grouping for layer 3 forwarding operational state";
 
@@ -380,15 +397,17 @@ submodule openconfig-fbs-interfaces-ext {
         "Container for selected next-hop operational state.";
 
       container state {
+        config false;
+
         description
           "Container for operation state of the selected next-hop";
 
-        uses layer3-fwd-next-hop-config;
+        uses fbs-ext-layer3-fwd-next-hop-config;
       }
     }
   }
 
-  grouping fbs-forwarding-section-l2-state {
+  grouping fbs-ext-forwarding-section-l2-state {
     description
       "Grouping for layer 2 forwarding operational state";
 
@@ -397,15 +416,17 @@ submodule openconfig-fbs-interfaces-ext {
         "Container for selected egress interface operational state.";
 
       container state {
+        config false;
+
         description
           "Container for operation state of the selected egress interface";
 
-        uses egress-interface-config;
+        uses fbs-ext-egress-interface-config;
       }
     }
   }
 
-  grouping fbs-interfaces-config {
+  grouping fbs-ext-interfaces-config {
     description
       "Configuration data for interface references";
 
@@ -417,12 +438,65 @@ submodule openconfig-fbs-interfaces-ext {
     }
   }
 
-  grouping fbs-interfaces-state {
+  grouping fbs-ext-interfaces-state {
     description
       "Operational state data for interface references";
   }
 
-  grouping fbs-interfaces-top {
+  grouping fbs-ext-interface-ingress-policies-top {
+    description
+      "Grouping for policies applied at ingress direction";
+
+    container ingress-policies {
+        description
+          "Ingress policies configuration and operational state 
+          container";
+
+      container config {
+        description
+          "Configuration container for all ingress policies";
+      }
+
+      container state {
+        config false;
+
+        description
+          "Configuration container for all ingress policies";
+      }
+
+      uses fbs-ext-interface-qos-top;
+      uses fbs-ext-interface-monitoring-top;
+      uses fbs-ext-interface-forwarding-top;
+    }
+  }
+
+  grouping fbs-ext-interface-egress-policies-top {
+    description
+      "Grouping for policies applied at egress direction";
+
+    container egress-policies {
+        description
+          "Ingress policies configuration and operational state 
+          container";
+
+      container config {
+        description
+          "Configuration container for all egress policies";
+      }
+
+      container state {
+        config false;
+
+        description
+          "Configuration container for all egress policies";
+      }
+
+      uses fbs-ext-interface-qos-top;
+      uses fbs-ext-interface-monitoring-top;
+    }
+  }
+
+  grouping fbs-ext-interfaces-top {
     description
       "Top-level grouping for interface-specific policies
       data";
@@ -450,25 +524,23 @@ submodule openconfig-fbs-interfaces-ext {
           description
             "Configuration for per-interface group data";
 
-          uses fbs-interfaces-config;
+          uses fbs-ext-interfaces-config;
         }
 
         container state {
-
           config false;
 
           description
             "Operational state for flow based services polices
             per-interface data";
 
-          uses fbs-interfaces-config;
-          uses fbs-interfaces-state;
+          uses fbs-ext-interfaces-config;
+          uses fbs-ext-interfaces-state;
         }
 
         uses oc-if:interface-ref;
-        uses fbs-interface-qos-top;
-        uses fbs-interface-monitoring-top;
-        uses fbs-interface-forwarding-top;
+        uses fbs-ext-interface-ingress-policies-top;
+        uses fbs-ext-interface-egress-policies-top;
       }
     }
   }

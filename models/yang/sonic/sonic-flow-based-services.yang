@@ -90,6 +90,20 @@ module sonic-flow-based-services {
             sonic-ext:custom-validation ValidateLeafConstant;
         }
 
+        leaf ACL_TYPE {
+            type enumeration {
+                enum L2;
+                enum L3;
+                enum L3V6;
+            }
+            when "current()/../MATCH_TYPE = 'ACL'";
+            /*must "/sacl:sonic-acl/sacl:ACL_TABLE/sacl:ACL_TABLE_LIST[sacl:aclname=current()/../ACL_NAME]/type = current()" {
+                error-app-tag acl-type-mismatch;
+                error-message "ACL type is not same as input";
+            }*/
+            sonic-ext:custom-validation ValidateLeafConstant;
+        }
+
         leaf ETHER_TYPE {
             type string {
                 pattern "0[xX][6-9a-fA-F][0-9a-fA-F]{2,3}|0[xX][1-9a-fA-F][0-9a-fA-F]{3,4}" {

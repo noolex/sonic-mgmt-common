@@ -1345,9 +1345,13 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
     var err error
     var ospfv2RouteTables_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables
     var ospfv2RouteTable_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable
+    var ospfv2RouteTableListState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State
+    var ospfv2RouteTableState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState
     var prefixStr string
-    var ospfv2Route *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_Route
-    var ospfv2Nexthop *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_Route_NextHops
+    var ospfv2Route *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route
+    var ospfv2RouteState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State
+    var ospfv2Nexthop *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State_NextHopsList_NextHops
+    var ospfv2NexthopState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State_NextHopsList_NextHops_State
     var nexthop_ip, nexthop_ifname string
     var ospfv2Zero bool = false
     var ospfv2One bool = true
@@ -1403,26 +1407,40 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
             log.Errorf("failed !! Error: RouteTable not found for routeType %s", route_info["routeType"])
             return oper_err
         }
-        if nil == ospfv2RouteTable_obj.Route {
-            ospfv2Route, err = ospfv2RouteTable_obj.NewRoute(prefixStr) 
+        if nil == ospfv2RouteTable_obj.State {
+            log.Info("Routetable state information is missing");
+            ospfv2RouteTableListState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State)
+            if nil == ospfv2RouteTableListState_obj {
+                log.Info("Failed to create State information for route Table list state")
+                return oper_err
+            }
+            ygot.BuildEmptyTree(ospfv2RouteTableListState_obj)
+            ospfv2RouteTable_obj.State = ospfv2RouteTableListState_obj
+        }
+        ospfv2RouteTableState_obj = ospfv2RouteTableListState_obj.RouteTableState
+        if nil == ospfv2RouteTableState_obj.Route {
+            ospfv2Route, err = ospfv2RouteTableState_obj.NewRoute(prefixStr) 
+            ygot.BuildEmptyTree(ospfv2Route)
         } else {
-            ospfv2Route = ospfv2RouteTable_obj.Route[prefixStr]
+            ospfv2Route = ospfv2RouteTableState_obj.Route[prefixStr]
             if nil == ospfv2Route {
-                ospfv2Route, err = ospfv2RouteTable_obj.NewRoute(prefixStr)
+                ospfv2Route, err = ospfv2RouteTableState_obj.NewRoute(prefixStr)
+                ygot.BuildEmptyTree(ospfv2Route)
             }
         }
         if nil == ospfv2Route {
             log.Errorf(" failed !! Error,  prefix %s cannot be added in route table tree", prefixStr)
             return  oper_err
         }  
+        ospfv2RouteState = ospfv2Route.State
         if value,ok := route_info["cost"] ; ok {
             _cost  := uint32(value.(float64))
-            ospfv2Route.Cost = &_cost
+            ospfv2RouteState.Cost = &_cost
         }
         
         if value,ok := route_info["type2_cost"] ; ok {
             _type2cost  := uint32(value.(float64))
-            ospfv2Route.Type2Cost = &_type2cost
+            ospfv2RouteState.Type2Cost = &_type2cost
         }
         
         if value,ok := route_info["nexthops"] ; ok {
@@ -1439,13 +1457,15 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
                     nexthop_ifname = fmt.Sprintf("%v",_direct_intf)
                     nexthop_ip = "0.0.0.0"
                 }
-                ospfv2Nexthop, err = ospfv2Route.NewNextHops(nexthop_ip, nexthop_ifname)
+                ospfv2Nexthop, err = ospfv2RouteState.NextHopsList.NewNextHops(nexthop_ip, nexthop_ifname)
                 if nil != ospfv2Nexthop {
+                    ygot.BuildEmptyTree(ospfv2Nexthop)
+                    ospfv2NexthopState = ospfv2Nexthop.State
                     if _area_id, ok := route_info["area"].(string); ok {
-                        ospfv2Nexthop.AreaId = &_area_id
+                        ospfv2NexthopState.AreaId = &_area_id
                     } else {
                         if area_id, ok := nexthop["area"].(string); ok {
-                            ospfv2Nexthop.AreaId = &area_id
+                            ospfv2NexthopState.AreaId = &area_id
                         }      
                     }
                 }
@@ -1453,36 +1473,36 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
         }
         if _ia, ok := route_info["IA"].(bool); ok {
             if !_ia {
-                ospfv2Route.InterArea = &ospfv2Zero
+                ospfv2RouteState.InterArea = &ospfv2Zero
             } else {
-                ospfv2Route.InterArea = &ospfv2One
+                ospfv2RouteState.InterArea = &ospfv2One
             }
         }
         if _routertype, ok := route_info["routerType"].(string); ok {
             if _routertype == "abr" {
-                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ABR
+                ospfv2RouteState.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ABR
             }
             if _routertype == "asbr" {
-                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ASBR
+                ospfv2RouteState.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ASBR
             }
             if _routertype == "abr asbr" {
-                ospfv2Route.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ABRASBR
+                ospfv2RouteState.RouterType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTER_TYPE_ABRASBR
             }
         }
         switch(route_info["routeType"]) {
             case "R " :
-                ospfv2Route.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_ROUTER_ROUTE 
+                ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_ROUTER_ROUTE 
             case "N" : 
-                ospfv2Route.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_NETWORK_ROUTE 
+                ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_NETWORK_ROUTE 
             case "N E2" :
-                ospfv2Route.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_EXTERNAL_ROUTE 
-                ospfv2Route.SubType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_PATH_TYPE_EXTERNAL_ROUTE_TYPE_2
+                ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_EXTERNAL_ROUTE 
+                ospfv2RouteState.SubType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_PATH_TYPE_EXTERNAL_ROUTE_TYPE_2
             case "N E1" :
-                ospfv2Route.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_EXTERNAL_ROUTE 
-                ospfv2Route.SubType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_PATH_TYPE_EXTERNAL_ROUTE_TYPE_1
+                ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_EXTERNAL_ROUTE 
+                ospfv2RouteState.SubType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_PATH_TYPE_EXTERNAL_ROUTE_TYPE_1
             default:
-                ospfv2Route.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_UNSET 
-                ospfv2Route.SubType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_PATH_TYPE_UNSET
+                ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_UNSET 
+                ospfv2RouteState.SubType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_PATH_TYPE_UNSET
         }
     }
     return err
@@ -1861,7 +1881,8 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
     var ospfv2Neighbors_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_NeighborsList
     var ospfv2NeighborKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_NeighborsList_Neighbor_Key
     var ospfv2Neighbor_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_NeighborsList_Neighbor
-    var ospfv2NeighborAreaKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_NeighborsList_Neighbor_AreaId_Union_String
+    var ospfv2NeighborState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_NeighborsList_Neighbor_State
+    var ospfv2NeighborAreaKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_NeighborsList_Neighbor_State_AreaId_Union_String
     var ospfv2Zero bool = false
     var ospfv2One bool = true
     var areaNameStr string
@@ -1954,128 +1975,133 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                         }
                     } 
                     ygot.BuildEmptyTree(ospfv2Neighbor_obj)
-                    //ospfv2Neighbor_obj.InterfaceAddress = &_ifaceAddress
-                    ospfv2Neighbor_obj.InterfaceName = &intf_name
                 }
+                ospfv2NeighborState_obj = ospfv2Neighbor_obj.State
+                if nil == ospfv2NeighborState_obj {
+                    log.Info("State information not present for OSPF neighbor")
+                    ygot.BuildEmptyTree(ospfv2NeighborState_obj)
+                    ospfv2Neighbor_obj.State = ospfv2NeighborState_obj
+                }    
+                ospfv2NeighborState_obj.InterfaceName = &intf_name
 
                 if _area_id,ok := nbr_info["areaId"].(string); ok {
                     ospfv2NeighborAreaKey.String = _area_id
-                    ospfv2Neighbor_obj.AreaId = &ospfv2NeighborAreaKey
+                    ospfv2NeighborState_obj.AreaId = &ospfv2NeighborAreaKey
                 }
 
                 if _ipAddress, ok := nbr_info["ifaceLocalAddress"].(string); ok {
-                    ospfv2Neighbor_obj.InterfaceAddress = &_ipAddress
+                    ospfv2NeighborState_obj.InterfaceAddress = &_ipAddress
                 }
                 
                 if value,ok := nbr_info["nbrPriority"] ; ok {
                     _nbrPriority  := uint8(value.(float64))
-                    ospfv2Neighbor_obj.Priority = &_nbrPriority
+                    ospfv2NeighborState_obj.Priority = &_nbrPriority
                 }
                 
-                ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT 
+                ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT 
                 if _nbr_state,ok := nbr_info["nbrState"].(string); ok {
                     switch (_nbr_state) {
                         case  "Full" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_FULL 
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_FULL 
                         case "2-Way" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_TWO_WAY 
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_TWO_WAY 
                         case "ExStart" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXSTART
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXSTART
                         case "Down" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_DOWN
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_DOWN
                         case "Attempt" : 
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_ATTEMPT
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_ATTEMPT
                         case "Init" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
                         case "Exchange" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXCHANGE
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXCHANGE
                         case "Loading" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_LOADING
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_LOADING
                         default:
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
                     }
                 }
                 if value,ok := nbr_info["stateChangeCounter"] ; ok {
                     _stateChangeCounter  := uint32(value.(float64))
-                    ospfv2Neighbor_obj.StateChanges = &_stateChangeCounter
+                    ospfv2NeighborState_obj.StateChanges = &_stateChangeCounter
                 }
 
                 if value,ok := nbr_info["lastPrgrsvChangeMsec"] ; ok {
                     _lastPrgrsvChangeMsec  := uint64(value.(float64))
-                    ospfv2Neighbor_obj.LastEstablishedTime = &_lastPrgrsvChangeMsec
+                    ospfv2NeighborState_obj.LastEstablishedTime = &_lastPrgrsvChangeMsec
                 }
                 
                 if _routerDesignatedId, ok := nbr_info["routerDesignatedId"].(string); ok {
-                    ospfv2Neighbor_obj.DesignatedRouter = &_routerDesignatedId
+                    ospfv2NeighborState_obj.DesignatedRouter = &_routerDesignatedId
                 }
 
                 if _routerDesignatedBackupId, ok := nbr_info["routerDesignatedBackupId"].(string); ok {
-                    ospfv2Neighbor_obj.BackupDesignatedRouter = &_routerDesignatedBackupId
+                    ospfv2NeighborState_obj.BackupDesignatedRouter = &_routerDesignatedBackupId
                 }
 
                 if value,ok := nbr_info["optionsCounter"] ; ok {
                     _optionsCounter  := uint8(value.(float64))
-                    ospfv2Neighbor_obj.OptionValue = &_optionsCounter
+                    ospfv2NeighborState_obj.OptionValue = &_optionsCounter
                 }
                 
                 if _OptionalCapabilities, ok := nbr_info["optionsList"].(string); ok {
-                    ospfv2Neighbor_obj.OptionalCapabilities = &_OptionalCapabilities
+                    ospfv2NeighborState_obj.OptionalCapabilities = &_OptionalCapabilities
                 }
 
                 if value,ok := nbr_info["routerDeadIntervalTimerDueMsec"] ; ok {
                     _DeadTime  := uint64(value.(float64))
-                    ospfv2Neighbor_obj.DeadTime = &_DeadTime
+                    ospfv2NeighborState_obj.DeadTime = &_DeadTime
                 }
 
                 if value,ok := nbr_info["databaseSummaryListCounter"] ; ok {
                     _databaseSummaryListCounter  := uint32(value.(float64))
-                    ospfv2Neighbor_obj.DatabaseSummaryQueueLength = &_databaseSummaryListCounter
+                    ospfv2NeighborState_obj.DatabaseSummaryQueueLength = &_databaseSummaryListCounter
                 }
 
                 if value,ok := nbr_info["linkStateRetransmissionListCounter"] ; ok {
                     _linkStateRetransmissionListCounter  := uint32(value.(float64))
-                    ospfv2Neighbor_obj.RetransmitSummaryQueueLength = &_linkStateRetransmissionListCounter
+                    ospfv2NeighborState_obj.RetransmitSummaryQueueLength = &_linkStateRetransmissionListCounter
                 }
 
                 if value,ok := nbr_info["linkStateRequestListCounter"] ; ok {
                     _linkStateRequestListCounter  := uint32(value.(float64))
-                    ospfv2Neighbor_obj.LinkStateRequestQueueLength = &_linkStateRequestListCounter
+                    ospfv2NeighborState_obj.LinkStateRequestQueueLength = &_linkStateRequestListCounter
                 }
 
                 if _threadInactivityTimer, ok := nbr_info["threadInactivityTimer"].(string); ok {
                     if(_threadInactivityTimer == "on") {
-                        ospfv2Neighbor_obj.ThreadInactivityTimer = &ospfv2One;
+                        ospfv2NeighborState_obj.ThreadInactivityTimer = &ospfv2One;
                     } else {
-                        ospfv2Neighbor_obj.ThreadInactivityTimer = &ospfv2Zero;
+                        ospfv2NeighborState_obj.ThreadInactivityTimer = &ospfv2Zero;
                     }
                 }
 
                 if _threadLinkStateRequestRetransmission, ok := nbr_info["threadLinkStateRequestRetransmission"].(string); ok {
                     if(_threadLinkStateRequestRetransmission == "on") {
-                        ospfv2Neighbor_obj.ThreadLsRequestRetransmission = &ospfv2One;
+                        ospfv2NeighborState_obj.ThreadLsRequestRetransmission = &ospfv2One;
                     } else {
-                        ospfv2Neighbor_obj.ThreadLsRequestRetransmission = &ospfv2Zero;
+                        ospfv2NeighborState_obj.ThreadLsRequestRetransmission = &ospfv2Zero;
                     }
                 }
                 
                 if _threadLinkStateUpdateRetransmission, ok := nbr_info["threadLinkStateUpdateRetransmission"].(string); ok {
                     if(_threadLinkStateUpdateRetransmission == "on") {
-                        ospfv2Neighbor_obj.ThreadLsUpdateRetransmission = &ospfv2One;
+                        ospfv2NeighborState_obj.ThreadLsUpdateRetransmission = &ospfv2One;
                     } else {
-                        ospfv2Neighbor_obj.ThreadLsUpdateRetransmission = &ospfv2Zero; 
+                        ospfv2NeighborState_obj.ThreadLsUpdateRetransmission = &ospfv2Zero; 
                     }
                 }
                 if _bfdmap,ok := nbr_info["peerBfdInfo"] ; ok {
-                    ospfv2Neighbor_obj.BfdState = &ospfv2One
+                    ospfv2NeighborState_obj.BfdState = &ospfv2One
                     bfdmap := _bfdmap.(map[string]interface{})
                     if _status, ok := bfdmap["status"].(string); ok {
-                          ospfv2Neighbor_obj.BfdStatus = &_status
+                          ospfv2NeighborState_obj.BfdStatus = &_status
                     }
                     if _BfdPeerType, ok := bfdmap["type"].(string); ok {
-                          ospfv2Neighbor_obj.BfdPeerType = &_BfdPeerType
+                          ospfv2NeighborState_obj.BfdPeerType = &_BfdPeerType
                     }
                     if _lastUpdate, ok := bfdmap["lastUpdate"].(string); ok {
-                          ospfv2Neighbor_obj.BfdPeerLastUpdateTime = &_lastUpdate
+                          ospfv2NeighborState_obj.BfdPeerLastUpdateTime = &_lastUpdate
                     }
                 }    
             }
@@ -2863,7 +2889,6 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         log.Errorf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
-    log.Info(vrfName)
 
     // get the values from the backend
     pathInfo := NewPathInfo(inParams.uri)
@@ -2879,7 +2904,6 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     
     log.Info(output_state)
     log.Info(vrfName)
-    log.Info(ospfv2_obj)
     ospf_info := output_state[vrfName].(map[string]interface{})
     err = ospfv2_fill_route_table (ospf_info, ospfv2_obj)
     return  err;
@@ -3100,7 +3124,8 @@ func  ospfv2_fill_vlink_neighbors_state (output_state map[string]interface{},  o
     var ospfv2Neighbors_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_NeighborsList
     var ospfv2NeighborKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_NeighborsList_Neighbor_Key
     var ospfv2Neighbor_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_NeighborsList_Neighbor
-    var ospfv2NeighborAreaKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_NeighborsList_Neighbor_AreaId_Union_String
+    var ospfv2NeighborState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_NeighborsList_Neighbor_State
+    var ospfv2NeighborAreaKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_NeighborsList_Neighbor_State_AreaId_Union_String
     var ospfv2Zero bool = false
     var ospfv2One bool = true
     var nbr_area_id string
@@ -3161,127 +3186,133 @@ func  ospfv2_fill_vlink_neighbors_state (output_state map[string]interface{},  o
                         }
                     } 
                     ygot.BuildEmptyTree(ospfv2Neighbor_obj)
-                    ospfv2Neighbor_obj.InterfaceName = &intf_name
                 }
-
+                ospfv2NeighborState_obj = ospfv2Neighbor_obj.State
+                if nil == ospfv2NeighborState_obj {
+                    log.Info("State information not present for Vlink OSPF neighbor")
+                    ygot.BuildEmptyTree(ospfv2NeighborState_obj)
+                    ospfv2Neighbor_obj.State = ospfv2NeighborState_obj
+                }    
+                
+                ospfv2NeighborState_obj.InterfaceName = &intf_name
                 if _area_id,ok := nbr_info["areaId"].(string); ok {
                     ospfv2NeighborAreaKey.String = _area_id
-                    ospfv2Neighbor_obj.AreaId = &ospfv2NeighborAreaKey
+                    ospfv2NeighborState_obj.AreaId = &ospfv2NeighborAreaKey
                 }
 
                 if _ipAddress, ok := nbr_info["ifaceLocalAddress"].(string); ok {
-                    ospfv2Neighbor_obj.InterfaceAddress = &_ipAddress
+                    ospfv2NeighborState_obj.InterfaceAddress = &_ipAddress
                 }
                 
                 if value,ok := nbr_info["nbrPriority"] ; ok {
                     _nbrPriority  := uint8(value.(float64))
-                    ospfv2Neighbor_obj.Priority = &_nbrPriority
+                    ospfv2NeighborState_obj.Priority = &_nbrPriority
                 }
                 
-                ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT 
+                ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT 
                 if _nbr_state,ok := nbr_info["nbrState"].(string); ok {
                     switch (_nbr_state) {
                         case  "Full" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_FULL 
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_FULL 
                         case "2-Way" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_TWO_WAY 
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_TWO_WAY 
                         case "ExStart" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXSTART
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXSTART
                         case "Down" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_DOWN
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_DOWN
                         case "Attempt" : 
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_ATTEMPT
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_ATTEMPT
                         case "Init" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
                         case "Exchange" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXCHANGE
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_EXCHANGE
                         case "Loading" :
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_LOADING
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_LOADING
                         default:
-                            ospfv2Neighbor_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
+                            ospfv2NeighborState_obj.AdjacencyState = ocbinds.OpenconfigOspfTypes_OSPF_NEIGHBOR_STATE_INIT
                     }
                 }
                 if value,ok := nbr_info["stateChangeCounter"] ; ok {
                     _stateChangeCounter  := uint32(value.(float64))
-                    ospfv2Neighbor_obj.StateChanges = &_stateChangeCounter
+                    ospfv2NeighborState_obj.StateChanges = &_stateChangeCounter
                 }
 
                 if value,ok := nbr_info["lastPrgrsvChangeMsec"] ; ok {
                     _lastPrgrsvChangeMsec  := uint64(value.(float64))
-                    ospfv2Neighbor_obj.LastEstablishedTime = &_lastPrgrsvChangeMsec
+                    ospfv2NeighborState_obj.LastEstablishedTime = &_lastPrgrsvChangeMsec
                 }
                 
                 if _routerDesignatedId, ok := nbr_info["routerDesignatedId"].(string); ok {
-                    ospfv2Neighbor_obj.DesignatedRouter = &_routerDesignatedId
+                    ospfv2NeighborState_obj.DesignatedRouter = &_routerDesignatedId
                 }
 
                 if _routerDesignatedBackupId, ok := nbr_info["routerDesignatedBackupId"].(string); ok {
-                    ospfv2Neighbor_obj.BackupDesignatedRouter = &_routerDesignatedBackupId
+                    ospfv2NeighborState_obj.BackupDesignatedRouter = &_routerDesignatedBackupId
                 }
 
                 if value,ok := nbr_info["optionsCounter"] ; ok {
                     _optionsCounter  := uint8(value.(float64))
-                    ospfv2Neighbor_obj.OptionValue = &_optionsCounter
+                    ospfv2NeighborState_obj.OptionValue = &_optionsCounter
                 }
                 
                 if _OptionalCapabilities, ok := nbr_info["optionsList"].(string); ok {
-                    ospfv2Neighbor_obj.OptionalCapabilities = &_OptionalCapabilities
+                    ospfv2NeighborState_obj.OptionalCapabilities = &_OptionalCapabilities
                 }
 
                 if value,ok := nbr_info["routerDeadIntervalTimerDueMsec"] ; ok {
                     _DeadTime  := uint64(value.(float64))
-                    ospfv2Neighbor_obj.DeadTime = &_DeadTime
+                    ospfv2NeighborState_obj.DeadTime = &_DeadTime
                 }
 
                 if value,ok := nbr_info["databaseSummaryListCounter"] ; ok {
                     _databaseSummaryListCounter  := uint32(value.(float64))
-                    ospfv2Neighbor_obj.DatabaseSummaryQueueLength = &_databaseSummaryListCounter
+                    ospfv2NeighborState_obj.DatabaseSummaryQueueLength = &_databaseSummaryListCounter
                 }
 
                 if value,ok := nbr_info["linkStateRetransmissionListCounter"] ; ok {
                     _linkStateRetransmissionListCounter  := uint32(value.(float64))
-                    ospfv2Neighbor_obj.RetransmitSummaryQueueLength = &_linkStateRetransmissionListCounter
+                    ospfv2NeighborState_obj.RetransmitSummaryQueueLength = &_linkStateRetransmissionListCounter
                 }
 
                 if value,ok := nbr_info["linkStateRequestListCounter"] ; ok {
                     _linkStateRequestListCounter  := uint32(value.(float64))
-                    ospfv2Neighbor_obj.LinkStateRequestQueueLength = &_linkStateRequestListCounter
+                    ospfv2NeighborState_obj.LinkStateRequestQueueLength = &_linkStateRequestListCounter
                 }
 
                 if _threadInactivityTimer, ok := nbr_info["threadInactivityTimer"].(string); ok {
                     if(_threadInactivityTimer == "on") {
-                        ospfv2Neighbor_obj.ThreadInactivityTimer = &ospfv2One;
+                        ospfv2NeighborState_obj.ThreadInactivityTimer = &ospfv2One;
                     } else {
-                        ospfv2Neighbor_obj.ThreadInactivityTimer = &ospfv2Zero;
+                        ospfv2NeighborState_obj.ThreadInactivityTimer = &ospfv2Zero;
                     }
                 }
 
                 if _threadLinkStateRequestRetransmission, ok := nbr_info["threadLinkStateRequestRetransmission"].(string); ok {
                     if(_threadLinkStateRequestRetransmission == "on") {
-                        ospfv2Neighbor_obj.ThreadLsRequestRetransmission = &ospfv2One;
+                        ospfv2NeighborState_obj.ThreadLsRequestRetransmission = &ospfv2One;
                     } else {
-                        ospfv2Neighbor_obj.ThreadLsRequestRetransmission = &ospfv2Zero;
+                        ospfv2NeighborState_obj.ThreadLsRequestRetransmission = &ospfv2Zero;
                     }
                 }
                 
                 if _threadLinkStateUpdateRetransmission, ok := nbr_info["threadLinkStateUpdateRetransmission"].(string); ok {
                     if(_threadLinkStateUpdateRetransmission == "on") {
-                        ospfv2Neighbor_obj.ThreadLsUpdateRetransmission = &ospfv2One;
+                        ospfv2NeighborState_obj.ThreadLsUpdateRetransmission = &ospfv2One;
                     } else {
-                        ospfv2Neighbor_obj.ThreadLsUpdateRetransmission = &ospfv2Zero; 
+                        ospfv2NeighborState_obj.ThreadLsUpdateRetransmission = &ospfv2Zero; 
                     }
                 }
                 if _bfdmap,ok := nbr_info["peerBfdInfo"] ; ok {
-                    ospfv2Neighbor_obj.BfdState = &ospfv2One
+                    ospfv2NeighborState_obj.BfdState = &ospfv2One
                     bfdmap := _bfdmap.(map[string]interface{})
                     if _status, ok := bfdmap["status"].(string); ok {
-                          ospfv2Neighbor_obj.BfdStatus = &_status
+                          ospfv2NeighborState_obj.BfdStatus = &_status
                     }
                     if _BfdPeerType, ok := bfdmap["type"].(string); ok {
-                          ospfv2Neighbor_obj.BfdPeerType = &_BfdPeerType
+                          ospfv2NeighborState_obj.BfdPeerType = &_BfdPeerType
                     }
                     if _lastUpdate, ok := bfdmap["lastUpdate"].(string); ok {
-                          ospfv2Neighbor_obj.BfdPeerLastUpdateTime = &_lastUpdate
+                          ospfv2NeighborState_obj.BfdPeerLastUpdateTime = &_lastUpdate
                     }
                 }    
             }

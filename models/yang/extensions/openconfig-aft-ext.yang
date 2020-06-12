@@ -1,15 +1,34 @@
 module openconfig-aft-ext {
 
     yang-version "1";
-  
+
     //namespace
     namespace "http://openconfig.net/yang/aft/extension";
 
     prefix "oc-aft-ext";
 
     import openconfig-policy-types { prefix "oc-pol-types"; }
+    import openconfig-extensions { prefix oc-ext; }
 
-    grouping aft-common-ip-state-ext {
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+      "This module describes a common extensions used for afts-ipv4,afts-ipv6";
+
+    oc-ext:openconfig-version "0.1.0";
+
+    revision "2019-11-13" {
+      description
+        "Network instance aft common extensions.";
+
+      reference "0.1.0";
+    }
+
+    grouping aft-ext-common-ip-state {
         description "Operational state parameters relating to a forwarding entry";
 
         leaf origin-protocol {
@@ -39,8 +58,9 @@ module openconfig-aft-ext {
        }        
      }
 
-    grouping aft-common-entry-nexthop-state-ext {
-      leaf directlyConnected {
+    grouping aft-ext-common-entry-nexthop-state {
+      description "State information relating to nexthop";
+      leaf directly-connected {
         type boolean;
         default false;
         description

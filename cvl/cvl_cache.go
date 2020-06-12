@@ -21,6 +21,7 @@ package cvl
 import (
 	"encoding/json"
 	"github.com/go-redis/redis/v7"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
 	"time"

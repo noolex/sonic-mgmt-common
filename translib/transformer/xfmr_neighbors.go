@@ -19,6 +19,7 @@
 package transformer
 
 import (
+    "errors"
     "strings"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
@@ -91,6 +92,63 @@ var DbToYang_neigh_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map
     return rmap, err
 }
 
+func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[string]map[string]db.Value) (error) {
+
+    var err error
+    var neighIntfTblMap map[string]db.Value = make(map[string]db.Value)
+
+    log.Info("delete_neigh_interface_config_all: inParams", inParams)
+
+    pathInfo := NewPathInfo(inParams.uri)
+    ifName := pathInfo.Var("name")
+
+    neighTblName := "NEIGH"
+    var neighTblSpec *db.TableSpec = &db.TableSpec{Name: neighTblName}
+    neighTblData, err := configDbPtr.GetTable(neighTblSpec)
+    if err != nil {
+        errStr := "Resource Not Found"
+        log.Error("delete_neigh_interface_config_all: Neigh Interface Table data not found ", errStr)
+        return errors.New(errStr)
+    }
+
+    intfTblKeys, err := neighTblData.GetKeys()
+    if err != nil {
+        errStr := "Resource Not Found"
+        log.Error("delete_neigh_interface_config_all: get keys failed ", errStr)
+        return errors.New(errStr)
+    }
+
+    neighOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    neighOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+    neighOpMap[db.ConfigDB][neighTblName] = make(map[string]db.Value)
+
+    entryDeleted := false
+    for _, intfTblKey := range intfTblKeys {
+        keyIfName := intfTblKey.Get(0)
+        if keyIfName != ifName {
+            log.Error("delete_neigh_interface_config_all:: key ifname doesnt match ",keyIfName)
+            continue
+        }
+
+        intfTblKey2 := intfTblKey.Get(0) + "|" + intfTblKey.Get(1)
+        neighIntfDbValue := db.Value{Field: make(map[string]string)}
+        neighOpMap[db.ConfigDB][neighTblName][intfTblKey2] = db.Value{Field: make(map[string]string)}
+        neighIntfTblMap[intfTblKey2] = neighIntfDbValue
+        entryDeleted = true
+    }
+
+    if entryDeleted {
+        inParams.subOpDataMap[inParams.oper] = &neighOpMap
+        (*neighRespMap)[neighTblName] = neighIntfTblMap
+
+        log.Info("delete_neigh_interface_config_all::: neighRespMap ", neighRespMap)
+        return nil
+    }
+
+    log.Info("delete_neigh_interface_config_all: no intries to delete for ", ifName)
+    return nil
+}
+
 var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams XfmrParams) (map[string]map[string]db.Value, error)  {
     var neighTblKey string
     var neighTblName string
@@ -98,19 +156,10 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     var staticMacStr string
     var staticIpStr string
     var err error
+    valueMap := make(map[string]db.Value)
+    neighIntfmap := make(map[string]map[string]db.Value)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: --------Start------")
 
-    intfsObj := getIntfsRoot(inParams.ygRoot)
-    valueMap := make(map[string]db.Value)
-    pathInfo := NewPathInfo(inParams.uri)
-    neighIntfmap := make(map[string]map[string]db.Value)
-
-    ifName := pathInfo.Var("name")
-    rcvdUri, _ := getYangPathFromUri(inParams.uri)
-
-    intfObj := intfsObj.Interface[ifName]
-    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
-    neighTblName = "NEIGH"
     addOperation := false
     deleteOperation := false
     if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
@@ -123,12 +172,92 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, err
     }
 
+    pathInfo := NewPathInfo(inParams.uri)
+    ifName := pathInfo.Var("name")
+    rcvdUri, _ := getYangPathFromUri(inParams.uri)
+
+    if ifName == "" {
+        errStr := "Interface KEY not present"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        errStr := "IntfsObj/interface list is empty for " + ifName
+        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    intfObj := intfsObj.Interface[ifName]
+    if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
+        errStr := "SubInterface node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+        errStr := "SubInterface node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+
+    if subIntfObj.Ipv4 == nil {
+        errStr := "SubInterface IPv4 node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    neighTblName = "NEIGH"
+
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:", ifName)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:", inParams.uri)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: pathInfo ", pathInfo)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: rcvd uri ", rcvdUri)
 
+    if subIntfObj.Ipv4.Neighbors == nil {
+        errStr := "SubInterface Neighbors node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
     arpObj := subIntfObj.Ipv4.Neighbors.Neighbor
+    if arpObj == nil {
+        errStr := "arpObj node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: arpObj ", arpObj)
     for k:= range arpObj {
         staticIpStr = *arpObj[k].Ip
@@ -178,19 +307,11 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     var staticMacStr string
     var staticIpStr string
     var err error
+    valueMap := make(map[string]db.Value)
+    neighIntfmap := make(map[string]map[string]db.Value)
+    pathInfo := NewPathInfo(inParams.uri)
     log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: --------Start------")
 
-    intfsObj := getIntfsRoot(inParams.ygRoot)
-    valueMap := make(map[string]db.Value)
-    pathInfo := NewPathInfo(inParams.uri)
-    neighIntfmap := make(map[string]map[string]db.Value)
-
-    ifName := pathInfo.Var("name")
-    rcvdUri, _ := getYangPathFromUri(inParams.uri)
-
-    intfObj := intfsObj.Interface[ifName]
-    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
-    neighTblName = "NEIGH"
     addOperation := false
     deleteOperation := false
     if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
@@ -203,13 +324,90 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, err
     }
 
+    ifName := pathInfo.Var("name")
+    if ifName == "" {
+        errStr := "Interface KEY not present"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+    rcvdUri, _ := getYangPathFromUri(inParams.uri)
+
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        errStr := "IntfsObj/interface list is empty for " + ifName
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    intfObj := intfsObj.Interface[ifName]
+    if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
+        errStr := "SubInterface node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+        errStr := "SubInterface node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+    neighTblName = "NEIGH"
+
     log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:", ifName)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:", inParams.uri)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: pathInfo ", pathInfo)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: rcvd uri ", rcvdUri)
 
+     if subIntfObj.Ipv6 == nil {
+        errStr := "SubInterface IPv6 node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    if subIntfObj.Ipv6.Neighbors == nil {
+        errStr := "SubInterface Neighbors node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
     arpObj := subIntfObj.Ipv6.Neighbors.Neighbor
-    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: arpObj ", arpObj)
+    if arpObj == nil {
+        errStr := "SubInterface IPv6 node is not set"
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        if (deleteOperation) {
+            err = delete_neigh_interface_config_all(&inParams, &neighIntfmap)
+            return neighIntfmap, nil
+        }
+        return neighIntfmap, nil
+    }
+
+    log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: arpObj ", arpObj)
     for k:= range arpObj {
         staticIpStr = *arpObj[k].Ip
     }
@@ -264,16 +462,27 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Neighbors_Neighbor
 
-    intfsObj := getIntfsRoot(inParams.ygRoot)
     intfNameRcvd := pathInfo.Var("name")
 
+    if intfNameRcvd == "" {
+        errStr := "Interface KEY not present"
+        log.Info("DbToYang_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return nil
+    }
+
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        errStr := "IntfsObj/interface list is empty for " + intfNameRcvd
+        log.Info("DbToYang_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return nil
+    }
     ipAddrRcvd := pathInfo.Var("ip")
 
     if intfObj, ok = intfsObj.Interface[intfNameRcvd]; !ok {
         intfObj, err = intfsObj.NewInterface(intfNameRcvd)
         if err != nil {
             log.Error("Creation of interface subtree failed!")
-            return err
+            return nil
         }
     }
     ygot.BuildEmptyTree(intfObj)
@@ -282,7 +491,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(0)
         if err != nil {
             log.Error("Creation of subinterface subtree failed!")
-            return err
+            return nil
         }
     }
     ygot.BuildEmptyTree(subIntfObj)
@@ -399,9 +608,20 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_Neighbors_Neighbor
 
-    intfsObj := getIntfsRoot(inParams.ygRoot)
 
     intfNameRcvd := pathInfo.Var("name")
+    if intfNameRcvd == "" {
+        errStr := "Interface KEY not present"
+        log.Info("DbToYang_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        return errors.New(errStr)
+    }
+
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        errStr := "IntfsObj/interface list is empty for " + intfNameRcvd
+        log.Info("DbToYang_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        return errors.New(errStr)
+    }
     ipAddrRcvd := pathInfo.Var("ip")
 
     if intfObj, ok = intfsObj.Interface[intfNameRcvd]; !ok {
