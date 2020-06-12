@@ -309,7 +309,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				if len(keyName) > 0 {
 					result[tableName][keyName] = db.Value{Field: make(map[string]string)}
 					xpath := xpathPrefix
-					uriItemList := strings.Split(strings.TrimSuffix(uri, "/"), "/")
+					uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
 					uriItemListLen := len(uriItemList)
 					var terminalNode, luri string
 					if uriItemListLen > 0 {
@@ -520,7 +520,7 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 						if yangType == YANG_LEAF_LIST {
 							dbVal.Field = make(map[string]string)
 							//check if it is a specific item in leaf-list delete
-							uriItemList := strings.Split(strings.TrimSuffix(xlateParams.requestUri, "/"), "/")
+							uriItemList := splitUri(strings.TrimSuffix(xlateParams.requestUri, "/"))
 							uriItemListLen := len(uriItemList)
 							var terminalNode string
 							if uriItemListLen > 0 {
