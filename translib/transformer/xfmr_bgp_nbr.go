@@ -104,7 +104,9 @@ func fill_bgp_nbr_details_from_frr_info (inParams XfmrParams, vrf string, nbrAdd
 
 var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList []string
-
+    if log.V(3) {
+        log.Info("bgp_nbr_tbl_xfmr target URI:", inParams.uri)
+    }
     pathInfo := NewPathInfo(inParams.uri)
 
     vrf := pathInfo.Var("name")
@@ -144,6 +146,9 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     if _ , present := inParams.txCache.Load(vrf);!present {
         inParams.txCache.Store(vrf, vrf)
     } else {
+        if log.V(3) {
+            log.Info("bgp_nbr_tbl_xfmr: repetitive table update is avoided for target URI:", inParams.uri)
+        }
         return tblList, nil
     }
 
@@ -234,7 +239,9 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
 
     var pNbrKey string = vrfName + "|" + nbrAddr
-
+    if log.V(3) {
+        log.Info("YangToDb_bgp_nbr_tbl_key_xfmr Nbr key:", pNbrKey)
+    }
     return pNbrKey, nil
 }
 
@@ -660,7 +667,9 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
     util_bgp_get_native_ifname_from_ui_ifname (&nbr)
 
     var nbrAfKey string = vrfName + "|" + nbr + "|" + afName
-
+    if log.V(3) {
+        log.Info("YangToDb_bgp_af_nbr_tbl_key_xfmr Nbr AF key:", nbrAfKey)
+    }
     return nbrAfKey, nil
 }
 
