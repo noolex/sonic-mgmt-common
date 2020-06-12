@@ -522,14 +522,15 @@ func removeTaggedVlanAndUpdateVlanMembTbl(d *db.DB, trunkVlan *string, ifName *s
                                           stpVlanPortMap map[string]db.Value,
                                           stpPortMap map[string]db.Value) error {
     var err error
+    ifUIName := utils.GetUINameFromNativeName(ifName)
     memberPortEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_MEMBER_TN}, db.Key{Comp: []string{*trunkVlan, *ifName}})
     if err != nil || !memberPortEntry.IsPopulated() {
-        errStr := "Tagged Vlan configuration: " + *trunkVlan + " doesn't exist for Interface: " + *ifName
+        errStr := "Tagged Vlan configuration: " + *trunkVlan + " doesn't exist for Interface: " + *ifUIName
         return tlerr.InvalidArgsError{Format:errStr}
     }
     tagMode, ok := memberPortEntry.Field["tagging_mode"]
     if !ok {
-        errStr := "tagging_mode entry is not present for VLAN: " + *trunkVlan + " Interface: " + *ifName
+        errStr := "tagging_mode entry is not present for VLAN: " + *trunkVlan + " Interface: " + *ifUIName
         return errors.New(errStr)
     }
     vlanName := *trunkVlan
@@ -542,7 +543,7 @@ func removeTaggedVlanAndUpdateVlanMembTbl(d *db.DB, trunkVlan *string, ifName *s
         removeStpOnInterfaceSwitchportDeletion(d, &vlanName, memberPorts, stpVlanPortMap, stpPortMap, true)
     } else {
         vlanId := vlanName[len("Vlan"):]
-        errStr := "Tagged VLAN: " + vlanId + " configuration doesn't exist for Interface: " + *ifName
+        errStr := "Tagged VLAN: " + vlanId + " configuration doesn't exist for Interface: " + *ifUIName
         return tlerr.InvalidArgsError{Format: errStr}
     }
     return err
@@ -596,7 +597,8 @@ func removeUntaggedVlanAndUpdateVlanMembTbl(d *db.DB, ifName *string,
             return &vlanName, nil
         }
     }
-    errStr := "Untagged VLAN configuration doesn't exist for Interface: " + *ifName
+    ifUIName := utils.GetUINameFromNativeName(ifName)
+    errStr := "Untagged VLAN configuration doesn't exist for Interface: " + *ifUIName
     return nil, tlerr.InvalidArgsError{Format: errStr}
 }
 
