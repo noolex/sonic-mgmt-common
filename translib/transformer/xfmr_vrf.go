@@ -999,6 +999,11 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                 }
 
                 intfData.Config.Id = intfData.Id
+
+                if  (intfData.State == nil) {
+                        ygot.BuildEmptyTree(intfData)
+                }
+
                 intfData.State.Id =  intfData.Id
 
                 log.Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: vrf_name %v intf %v ygRoot %v ", 
