@@ -82,6 +82,7 @@ module sonic-system-ldap {
 				}
 				
 				leaf idle_timelimit {
+					when "current()/../ldap_type = 'global' or current()/../ldap_type = 'nss'";				
 					type uint32;
 				}
 				
@@ -102,6 +103,7 @@ module sonic-system-ldap {
 				}
 				
 				leaf scope {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'nss' or current()/../ldap_type = 'pam'";
 		      type enumeration {
 		        enum sub {
 		          description
@@ -157,12 +159,14 @@ module sonic-system-ldap {
 				}
 				
 				leaf pam_filter {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'pam'";				  
 					type string;
 		      description
 		        "LDAP PAM filter to use when retrieving user information.";
 				}
 				
 				leaf pam_login_attribute {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'pam'";
 					type string;
 		      description
 		        "LDAP PAM Login attribute to use when constructing the attribute
@@ -171,6 +175,7 @@ module sonic-system-ldap {
 				}
 				
 				leaf pam_group_dn {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'pam'";
 					type string;
 		      description
 		        "LDAP PAM Group Distinguished name of a group to which a user
@@ -179,6 +184,7 @@ module sonic-system-ldap {
 				}
 				
 				leaf pam_member_attribute {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'pam'";
 					type string;
 		      description
 		        "LDAP PAM Member attribute to use when testing a user's
@@ -187,42 +193,49 @@ module sonic-system-ldap {
 				}
 				
 				leaf sudoers_base {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'sudo'";
 					type string;
 		      description
 		        "Base DN to use when performing sudo LDAP queries";
 				}
 				
 				leaf nss_base_passwd {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'nss' or current()/../ldap_type = 'pam'";
 					type string;
 		      description
 		        "LDAP NSS search base for passwd map";					
 				}
 				
 				leaf nss_base_group {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'nss'";
 					type string;
 		      description
 		        "LDAP NSS search base for group map";
 				}
 				
 				leaf nss_base_shadow {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'nss'";
 					type string;
 		      description
 		        "LDAP NSS search base for shadow map";
 				}
 				
 				leaf nss_base_netgroup {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'nss'";
 					type string;
 		      description
     		    "LDAP NSS search base for netgroup map";
 				}
 				
 				leaf nss_base_sudoers {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'nss'";
 					type string;
 		      description
 		        "LDAP NSS search base for sudoers map";
 				}
 				
 				leaf nss_initgroups_ignoreusers {
+				  when "current()/../ldap_type = 'global' or current()/../ldap_type = 'nss'";
 					type string;
 		      description
 		        "LDAP NSS init groups ignore users";
