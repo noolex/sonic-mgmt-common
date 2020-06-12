@@ -44,8 +44,8 @@ func qos_fwd_group_dot1p_map_delete_xfmr(inParams XfmrParams) (map[string]map[st
         }
     }
 
-    if strings.HasPrefix(targetUriPath,
-    "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map") == false {
+    if !strings.HasPrefix(targetUriPath,
+    "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map") {
         log.Info("YangToDb: map name unspecified, using delete_by_map_name")
         return qos_map_delete_by_map_name(inParams, "TC_TO_DOT1P_MAP", map_name)
     }
@@ -129,8 +129,8 @@ var YangToDb_qos_fwd_group_dot1p_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     }
 
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") == false  &&
-       strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") == false {
+    if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") &&
+       !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") {
         log.Info("YangToDb: map entry unspecified, stop here")
         return res_map, err
     }
@@ -332,7 +332,7 @@ var DbToYang_qos_tc_to_dot1p_map_fld_xfmr FieldXfmrDbtoYang = func(inParams Xfmr
     ifCfg, _ := inParams.d.GetEntry(dbSpec, key) 
 
     log.Info("current entry: ", ifCfg)
-    value, _ := ifCfg.Field["tc_to_dot1p_map"] 
+    value := ifCfg.Field["tc_to_dot1p_map"] 
 
     log.Info("value = ", value)
     res_map["forwarding-group-to-dot1p"] = DbLeafrefToString(value, "TC_TO_DOT1P_MAP")
