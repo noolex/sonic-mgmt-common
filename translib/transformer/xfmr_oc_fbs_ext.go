@@ -574,33 +574,119 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
             for classKey, classVal := range fbsObj.Classifiers.Classifier {
                 log.Infof("Classifier %v DELETE operation; classVal ", classKey)
                 pretty.Print(classVal)
-                if classVal.Config == nil { //class level delete
-                    log.Infof("Classifier %v delete", classKey)
-                    fbsClassTblMap[classKey] = db.Value{Field: make(map[string]string)}
-                    res_map[CFG_CLASSIFIER_TABLE] = fbsClassTblMap
-					log.Info("class level delete class data")
-					pretty.Print(fbsClassTblMap)
-                        break 
-                } else  {
-                    //Specific Field delete
-                    log.Infof("Classifier %v DELETE operation; specific field delete, targetName:%v ", classKey, targetNode.Name)
-                    dbV := db.Value{Field: make(map[string]string)}
-
-                    if isSubtreeRequest(pathInfo.Template, "/match-hdr-fields/ipv4/config") { //Class match-hdr-fields ipv4
-                        log.Infof("Classifier %v DELETE operation; IPV4 field delete; targetName:%v ", classKey, targetNode.Name)
-                        if  targetNode.Name == "source-address" {
-                            dbV.Field["source-address"] = ""
-                            fbsClassTblMap[classKey] = dbV
-                            res_map[CFG_CLASSIFIER_TABLE] =fbsClassTblMap 
-                        } else if targetNode.Name == "destination-address" {
-                            dbV.Field["destination-address"] = ""
-                            fbsClassTblMap[classKey] = dbV
-                            res_map[CFG_CLASSIFIER_TABLE] =fbsClassTblMap 
+                dbV := db.Value{Field: make(map[string]string)}
+                if classVal.Config != nil { //class config level delete
+                    if  targetNode.Name == "match-type" {
+                        dbV.Field["MATCH_TYPE"] = ""
+                    } else {
+                        fbsClassTblMap[classKey] = dbV
+                    }
+                } else if classVal.MatchAcl != nil { //class  matchacl delete
+                    if classVal.MatchAcl.Config != nil { //class  matchacl config
+                        if  targetNode.Name == "acl-name" {
+                            dbV.Field["ACL_NAME"] = ""
                         }
-                    } 
-                }
+                        if  targetNode.Name == "acl-type" {
+                            dbV.Field["ACL_TYPE"] = ""
+                        } else {
+                            fbsClassTblMap[classKey] = dbV
+                        }
+                    }
+                } else if classVal.MatchHdrFields != nil { //class matchHdrFields delete
+                    if classVal.MatchHdrFields.L2 != nil { //class L2 matchhdrfields 
+                        if classVal.MatchHdrFields.L2.Config != nil { //class L2 matchhdrfields config
+                            if  targetNode.Name == "source-mac" {
+                                dbV.Field["SRC_MAC"] = ""
+                            } else if  targetNode.Name == "destination-mac" {
+                                dbV.Field["DST_MAC"] = ""
+                            } else if  targetNode.Name == "ethertype" {
+                                dbV.Field["ETHER_TYPE"] = ""
+                            } else if  targetNode.Name == "pcp" {
+                                dbV.Field["PCP"] = ""
+                            } else if  targetNode.Name == "dei" {
+                                dbV.Field["DEI"] = ""
+                            } else if  targetNode.Name == "vlanid" {
+                                dbV.Field["VLAN"] = ""
+                            } else {
+                                dbV.Field["SRC_MAC"] = ""
+                                dbV.Field["DST_MAC"] = ""
+                                dbV.Field["ETHER_TYPE"] = ""
+                                dbV.Field["PCP"] = ""
+                                dbV.Field["DEI"] = ""
+                                dbV.Field["VLAN"] = ""
+                            }
+                    }
+                } else if classVal.MatchHdrFields.Ipv4 != nil { //class Ipv4 matchhdrfields 
+                    if classVal.MatchHdrFields.Ipv4.Config != nil { //class Ipv4 matchhdrfields config
+                        if  targetNode.Name == "source-address" {
+                            dbV.Field["SRC_IP"] = ""
+                        } else if  targetNode.Name == "destination-address" {
+                            dbV.Field["DST_IP"] = ""
+                        } else if  targetNode.Name == "dscp" {
+                            dbV.Field["DSCP"] = ""
+                        } else if  targetNode.Name == "protocol" {
+                            dbV.Field["IP_PROTOCOL"] = ""
+                        } else {
+                            dbV.Field["SRC_IP"] = ""
+                            dbV.Field["DST_IP"] = ""
+                            dbV.Field["DSCP"] = ""
+                            dbV.Field["IP_PROTOCOL"] = ""
+                        }
+
+                   }
+                } else if classVal.MatchHdrFields.Ipv6 != nil { //class Ipv6 matchhdrfields 
+                     if classVal.MatchHdrFields.Ipv6.Config != nil { //class Ipv4 matchhdrfields config
+                          if  targetNode.Name == "source-address" {
+                              dbV.Field["SRC_IP"] = ""
+                          } else if  targetNode.Name == "destination-address" {
+                              dbV.Field["DST_IP"] = ""
+                          } else if  targetNode.Name == "dscp" {
+                              dbV.Field["DSCP"] = ""
+                          } else if  targetNode.Name == "protocol" {
+                              dbV.Field["IP_PROTOCOL"] = ""
+                          } else {
+                              dbV.Field["SRC_IP"] = ""
+                              dbV.Field["DST_IP"] = ""
+                              dbV.Field["DSCP"] = ""
+                              dbV.Field["IP_PROTOCOL"] = ""
+                          }
+                     }
+                } else if classVal.MatchHdrFields.Transport != nil { //class Ipv6 matchhdrfields 
+                     if classVal.MatchHdrFields.Transport.Config != nil { //class Ipv4 matchhdrfields config
+                          if  targetNode.Name == "source-port" {
+                              dbV.Field["L4_SRC_PORT"] = ""
+                              dbV.Field["L4_SRC_PORT_RANGE"] = ""
+                          } else if  targetNode.Name == "destination-port" {
+                              dbV.Field["L4_DST_PORT"] = ""
+                              dbV.Field["L4_DST_PORT_RANGE"] = ""
+                          } else if  targetNode.Name == "tcp-flags" {
+                              dbV.Field["TCP_FLAGS"] = ""
+                          } else if  targetNode.Name == "icmp-code" {
+                              dbV.Field["ICMP_CODE"] = ""
+                          } else if  targetNode.Name == "icmp-type" {
+                              dbV.Field["ICMP_TYPE"] = ""
+                          } else {
+                              dbV.Field["L4_SRC_PORT"] = ""
+                              dbV.Field["L4_SRC_PORT_RANGE"] = ""
+                              dbV.Field["L4_DST_PORT"] = ""
+                              dbV.Field["L4_DST_PORT_RANGE"] = ""
+                              dbV.Field["TCP_FLAGS"] = ""
+                              dbV.Field["ICMP_CODE"] = ""
+                              dbV.Field["ICMP_TYPE"] = ""
+                          }
+                     }
+                } //transport
+            } //matchhdrfields
+            if (len(dbV.Field) != 0) {
+                fbsClassTblMap[classKey] = dbV
             }
-        }
+            } //classifiers forloop  
+
+            if len(fbsClassTblMap) > 0 {
+                log.Infof("Fbs Class level DELETE operation" )
+		        res_map[CFG_CLASSIFIER_TABLE] = fbsClassTblMap
+            }
+        } //class level delete
 
 		return res_map, err
     }  //DELETE - END
@@ -621,24 +707,32 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
                     fbsClassTblMap[className] = db.Value{Field: make(map[string]string)}
             }
             log.Infof("Classifier CRUD: class%v fbsClassTblMap:%v ", classVal, fbsClassTblMap)
-
-            matchType, _ := getClassMatchTypeDbStrromOcEnum(classVal.Config.MatchType)
+            var matchType string
+            if (classVal.Config != nil) {
+                matchType, _ = getClassMatchTypeDbStrromOcEnum(classVal.Config.MatchType)
+            } else if (classVal.MatchAcl != nil) {
+                matchType = SONIC_CLASS_MATCH_TYPE_ACL
+            } else if (classVal.MatchHdrFields != nil) {
+                matchType = SONIC_CLASS_MATCH_TYPE_FIELDS
+            }
             fbsClassTblMap[className].Field["MATCH_TYPE"] = matchType
             log.Infof("Classifier CRUD: class%v matchType:%v ", classVal, matchType)
 
             if (matchType == SONIC_CLASS_MATCH_TYPE_ACL) {
-                ocAclName      := *(classVal.MatchAcl.Config.AclName)
-                ocAclType      := classVal.MatchAcl.Config.AclType
-                fbsClassTblMap[className].Field["ACL_NAME"] = ocAclName
-                if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4 {
-                    fbsClassTblMap[className].Field["ACL_TYPE"] = "L3"
-                } else if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV6 {
-                    fbsClassTblMap[className].Field["ACL_TYPE"] = "L3V6"
-                } else if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_L2 {
-                    fbsClassTblMap[className].Field["ACL_TYPE"] = "L2"
+                if (classVal.MatchAcl.Config != nil) {
+                    ocAclName      := *(classVal.MatchAcl.Config.AclName)
+                    ocAclType      := classVal.MatchAcl.Config.AclType
+                    fbsClassTblMap[className].Field["ACL_NAME"] = ocAclName
+                    if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4 {
+                        fbsClassTblMap[className].Field["ACL_TYPE"] = "L3"
+                    } else if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV6 {
+                        fbsClassTblMap[className].Field["ACL_TYPE"] = "L3V6"
+                    } else if ocAclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_L2 {
+                        fbsClassTblMap[className].Field["ACL_TYPE"] = "L2"
+                    }
+                    
+                    log.Infof("Classifier CRUD: matchType ACL --> key: %v fbsClassTblMap:%v ", className, fbsClassTblMap)
                 }
-
-                log.Infof("Classifier CRUD: matchType ACL --> key: %v fbsClassTblMap:%v ", className, fbsClassTblMap)
             }  else if (matchType == SONIC_CLASS_MATCH_TYPE_FIELDS) {
                 log.Infof("Classifier CRUD: class%v matchType:%v ", classVal, matchType)
                 //Fill L2 Fields - START
