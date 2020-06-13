@@ -254,7 +254,7 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
         log.Infof("Error found in unmarshalling json output from vtysh - #show ip route json!")
         return json.Marshal(&result)
     }
-    for ipAddr, _ := range routeDict {
+    for ipAddr := range routeDict {
         routeMapJson := routeDict[ipAddr]
         routeMapSlice := routeMapJson.([]interface{})
         for _, routeEntry := range routeMapSlice {

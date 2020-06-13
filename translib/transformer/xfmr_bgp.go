@@ -95,13 +95,10 @@ func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
         log.Infof("Failed to write command length to server: %s\n", err)
         return nil, oper_err
     }
-    log.Infof("Reading data from server\n")
-
-    log.Infof("Data decoding started ==> \"%s\"", vtysh_cmd)
     var outputJson map[string]interface{}
     err = json.NewDecoder(conn).Decode(&outputJson)
     if err != nil {
-        log.Infof("Not able to decode vtysh json output: %s\n", err)
+        log.Errorf("Not able to decode vtysh json output: %s\n", err)
         return nil, oper_err
     }
 
@@ -109,7 +106,6 @@ func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
         log.Infof("VTYSH output empty\n")
         return nil, oper_err
     }
-    log.Infof("Data decoding completed ==> \"%s\"", vtysh_cmd)
 
     return outputJson, err
 }
@@ -137,7 +133,6 @@ func exec_raw_vtysh_cmd (vtysh_cmd string) (string, error) {
         log.Infof("Failed to write command length to server: %s\n", err)
         return "", oper_err
     }
-    log.Infof("In exec_raw_vtysh_cmd Reading data from server\n")
     var buffer bytes.Buffer
     data := make([]byte, 10240)
     for {
@@ -152,7 +147,6 @@ func exec_raw_vtysh_cmd (vtysh_cmd string) (string, error) {
         }
         buffer.WriteString(string(data[:count]))
     }
-    log.Infof("In exec_raw_vtysh_cmd successfully got data from BGP container thru UDS socket ==> \"%s\"", vtysh_cmd)
 
     return buffer.String(), err
 }

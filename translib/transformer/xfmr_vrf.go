@@ -86,8 +86,6 @@ func getVrfTblKeyByName (name string) (string) {
             vrf_key = name
         }
 
-        log.Info("getVrfTblKeyByName: vrf key is ", vrf_key)
-
         return vrf_key
 }
 
@@ -443,8 +441,6 @@ var DbToYang_network_instance_enabled_field_xfmr FieldXfmrDbtoYang = func(inPara
 var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
         var vrfTbl_key  string
         var err error
-
-        log.Info("YangToDb_network_instance_table_key_xfmr: ")
 
         pathInfo := NewPathInfo(inParams.uri)
         keyName := pathInfo.Var("name")
