@@ -30,7 +30,7 @@ var qos_map_oc_yang_key_map = map[string]string {
     "DOT1P_TO_TC_MAP":  "dot1p",
     "TC_TO_QUEUE_MAP":  "fwd-group",
     "TC_TO_PRIORITY_GROUP_MAP":  "fwd-group",
-    "PFC_PRIORITY_TO_QUEUE_MAP": "pfc-priority",
+    "MAP_PFC_PRIORITY_TO_QUEUE": "dot1p",
 }
 
 func targetUriPathContainsMapName (uri string, map_type string) bool {
@@ -54,7 +54,7 @@ func targetUriPathContainsMapName (uri string, map_type string) bool {
         return true
     }
 
-    if map_type == "PFC_PRIORITY_TO_QUEUE_MAP" &&
+    if map_type == "MAP_PFC_PRIORITY_TO_QUEUE" &&
         !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:pfc-priority-queue-maps/pfc-priority-queue-map")  {
         return true
     }
@@ -256,7 +256,7 @@ var map_type_name_in_oc_yang = map[string]string {
     "DOT1P_TO_TC_MAP":          "dot1p-to-forwarding-group",
     "TC_TO_QUEUE_MAP":          "forwarding-group-to-queue",
     "TC_TO_PRIORITY_GROUP_MAP": "forwarding-group-to-priority-group",
-    "PFC_PRIORITY_TO_QUEUE_MAP":"pfc-priority-to-queue",
+    "MAP_PFC_PRIORITY_TO_QUEUE":"pfc-priority-to-queue",
 }
 
 var map_type_name_in_db = map[string]string {
@@ -264,7 +264,7 @@ var map_type_name_in_db = map[string]string {
     "DOT1P_TO_TC_MAP":          "dot1p_to_tc_map",
     "TC_TO_QUEUE_MAP":          "tc_to_queue_map",
     "TC_TO_PRIORITY_GROUP_MAP": "tc_to_pg_map",
-    "PFC_PRIORITY_TO_QUEUE_MAP":"pfc_priority_to_queue_map",
+    "MAP_PFC_PRIORITY_TO_QUEUE":"pfc_to_queue_map",
 }
 
 func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[string]interface{}, error) {
@@ -331,7 +331,7 @@ func YangToDb_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string)  (map[
         map_name = *(intfObj.InterfaceMaps.Config.ForwardingGroupToQueue)
     } else if map_type == "TC_TO_PRIORITY_GROUP_MAP" {
         map_name = *(intfObj.InterfaceMaps.Config.ForwardingGroupToPriorityGroup)
-    } else if map_type == "PFC_PRIORITY_TO_QUEUE_MAP" {
+    } else if map_type == "MAP_PFC_PRIORITY_TO_QUEUE" {
         map_name = *(intfObj.InterfaceMaps.Config.PfcPriorityToQueue)
     }
 
