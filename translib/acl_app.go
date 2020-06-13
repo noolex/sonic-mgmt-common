@@ -74,8 +74,6 @@ const (
 	ACL_RULE_FIELD_DEI               = "DEI"
 	ACL_RULE_ICMP_TYPE               = "ICMP_TYPE"
 	ACL_RULE_ICMP_CODE               = "ICMP_CODE"
-	ACL_RULE_ICMPV6_TYPE             = "ICMPV6_TYPE"
-	ACL_RULE_ICMPV6_CODE             = "ICMPV6_CODE"
 	ACL_RULE_FIELD_VLANID            = "VLAN"
 	ACL_RULE_FIELD_DESCRIPTION       = "DESCRIPTION"
 	ACL_RULE_PACKET_ACTION           = "PACKET_ACTION"
@@ -888,12 +886,12 @@ func (app *AclApp) convertInternalToOCAclRuleProperties(ruleData db.Value, aclTy
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
 				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
 			}
-		} else if ACL_RULE_ICMP_TYPE == ruleKey || ACL_RULE_ICMPV6_TYPE == ruleKey {
+		} else if ACL_RULE_ICMP_TYPE == ruleKey {
 			data, _ := strconv.ParseUint(ruleData.Get(ruleKey), 10, 8)
 			dataInt := uint8(data)
 			entrySet.Transport.Config.IcmpType = &dataInt
 			entrySet.Transport.State.IcmpType = &dataInt
-		} else if ACL_RULE_ICMP_CODE == ruleKey || ACL_RULE_ICMPV6_CODE == ruleKey {
+		} else if ACL_RULE_ICMP_CODE == ruleKey {
 			data, _ := strconv.ParseUint(ruleData.Get(ruleKey), 10, 8)
 			dataInt := uint8(data)
 			entrySet.Transport.Config.IcmpCode = &dataInt
@@ -2002,18 +2000,10 @@ func convertOCToInternalTransport(ruleData db.Value, aclName string, aclType ocb
 	}
 
 	if rule.Transport.Config.IcmpType != nil {
-        if aclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4 {
-			ruleData.Field[ACL_RULE_ICMP_TYPE] = strconv.FormatUint(uint64(*rule.Transport.Config.IcmpType), 10)
-        } else {
-            ruleData.Field[ACL_RULE_ICMPV6_TYPE] = strconv.FormatUint(uint64(*rule.Transport.Config.IcmpType), 10)
-        }
+		ruleData.Field[ACL_RULE_ICMP_TYPE] = strconv.FormatUint(uint64(*rule.Transport.Config.IcmpType), 10)
 	}
 	if rule.Transport.Config.IcmpCode != nil {
-		if aclType == ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4 {
-			ruleData.Field[ACL_RULE_ICMP_CODE] = strconv.FormatUint(uint64(*rule.Transport.Config.IcmpCode), 10)
-		} else {
-			ruleData.Field[ACL_RULE_ICMPV6_CODE] = strconv.FormatUint(uint64(*rule.Transport.Config.IcmpCode), 10)
-		}
+		ruleData.Field[ACL_RULE_ICMP_CODE] = strconv.FormatUint(uint64(*rule.Transport.Config.IcmpCode), 10)
 	}
 }
 
