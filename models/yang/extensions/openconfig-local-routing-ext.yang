@@ -30,7 +30,7 @@ module openconfig-local-routing-ext {
     reference "0.1.0";
   }
 
-  grouping openconfig-local-routing-ext-next-hop-ntwk-instance-config {
+  grouping local-routing-ext-next-hop-ntwk-instance-config {
       description
           "Group for static route next-hop network instance";
 
@@ -41,7 +41,7 @@ module openconfig-local-routing-ext {
       }
    }
 
-   grouping openconfig-local-routing-ext-blackhole-config {
+   grouping local-routing-ext-blackhole-config {
       description
           "Group for static route next-hop blackhole flag";
 
@@ -94,24 +94,24 @@ module openconfig-local-routing-ext {
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:config" {
       description
           "Next hop network instance";
-      uses openconfig-local-routing-ext-next-hop-ntwk-instance-config;
+      uses local-routing-ext-next-hop-ntwk-instance-config;
    }
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:state" {
       description
           "Next hop network instance";
-      uses openconfig-local-routing-ext-next-hop-ntwk-instance-config;
+      uses local-routing-ext-next-hop-ntwk-instance-config;
    }
 
    augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:config" {
       description
           "Next hop blackhole flag";
-      uses openconfig-local-routing-ext-blackhole-config;
+      uses local-routing-ext-blackhole-config;
    }
 
    augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:state" {
       description
           "Next hop blackhole flag";
-      uses openconfig-local-routing-ext-blackhole-config;
+      uses local-routing-ext-blackhole-config;
    }
 
 }

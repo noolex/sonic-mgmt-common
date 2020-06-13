@@ -601,7 +601,7 @@ func (data *vrfRouteInfo)isDataValid(scope uriScopeType, oper int, vrf string) b
                     log.Infof("route prefix %s was already in DB", pfx)
                     return false
                 }
-                for key, _ := range route.ygotNhList.nhList {
+                for key := range route.ygotNhList.nhList {
                     if _, ok := route.dbNh.nhList.nhList[key]; ok {
                         log.Infof("route prefix %s nexthop %s was already in DB", pfx, key)
                         return false
@@ -619,7 +619,7 @@ func (data *vrfRouteInfo)isDataValid(scope uriScopeType, oper int, vrf string) b
             if scope == STATIC_ROUTES_STATIC {
                 continue
             }
-            for key, _ := range route.ygotNhList.nhList {
+            for key := range route.ygotNhList.nhList {
                 if _, ok := route.dbNh.nhList.nhList[key]; !ok {
                     log.Infof("prefix %s nexthop %s not found in DB", pfx, key)
                     return false

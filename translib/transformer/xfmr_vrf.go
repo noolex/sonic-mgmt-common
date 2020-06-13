@@ -34,7 +34,7 @@ var nwInstTypeMap = map[ocbinds.E_OpenconfigNetworkInstanceTypes_NETWORK_INSTANC
         ocbinds.OpenconfigNetworkInstanceTypes_NETWORK_INSTANCE_TYPE_L2L3: "L2L3",
 }
 
-/* Top level network instance table name based on key name and type */
+// NwInstTblNameMapWithNameAndType is the top level network instance table name based on key name and type
 var NwInstTblNameMapWithNameAndType = map[NwInstMapKey]string {
         {NwInstName: "mgmt", NwInstType: "L3VRF"}: "MGMT_VRF_CONFIG",
         {NwInstName: "Vrf",  NwInstType: "L3VRF"}: "VRF",
@@ -43,7 +43,7 @@ var NwInstTblNameMapWithNameAndType = map[NwInstMapKey]string {
         {NwInstName: "Vlan", NwInstType: "L2L3"}: "VLAN",
 }
 
-/* Top level network instance table name based on key name */
+// NwInstTblNameMapWithName is the top level network instance table name based on key name
 var NwInstTblNameMapWithName = map[string]string {
 	"mgmt": "MGMT_VRF_CONFIG",
 	"Vrf": "VRF",
@@ -64,9 +64,9 @@ func getInternalNwInstName (name string) (string, error) {
                 return "", errors.New("Network instance name is empty")
         } else if (strings.Compare(name, "mgmt") == 0) {
                 return "mgmt", err
-        } else if (strings.HasPrefix(name, "Vrf") == true) {
+        } else if (strings.HasPrefix(name, "Vrf")) {
                 return "Vrf", err
-        } else if (strings.HasPrefix(name, "Vlan") == true) {
+        } else if (strings.HasPrefix(name, "Vlan")) {
                 return "Vlan", err
         } else if (strings.Compare(name, "default") == 0) {
                 return "default", err
@@ -134,7 +134,7 @@ func getNwInstType (nwInstObj *ocbinds.OpenconfigNetworkInstance_NetworkInstance
 
         /* If config not set or config.type not set, return L3VRF */
         if (nwInstObj != nil) {
-            if ntinstKeyVal, ok := nwInstObj.NetworkInstance[keyName]; ok == true && ntinstKeyVal != nil {
+            if ntinstKeyVal, ok := nwInstObj.NetworkInstance[keyName]; ok && ntinstKeyVal != nil {
                 if ((ntinstKeyVal.Config == nil) ||
                     (ntinstKeyVal.Config.Type == ocbinds.OpenconfigNetworkInstanceTypes_NETWORK_INSTANCE_TYPE_UNSET)) {
                         return DEFAULT_NETWORK_INSTANCE_CONFIG_TYPE, errors.New("Network instance type not set")
@@ -149,36 +149,6 @@ func getNwInstType (nwInstObj *ocbinds.OpenconfigNetworkInstance_NetworkInstance
             }
         }
         return DEFAULT_NETWORK_INSTANCE_CONFIG_TYPE, errors.New("Network instance type not set")
-}
-
-/* Check if this is mgmt vrf configuration. Note this is used for create, update only */
-func isMgmtVrf(inParams XfmrParams) (bool, error) {
-        var err error
-
-        log.Info("isMgmtVrf ")
-        nwInstObj := getNwInstRoot(inParams.ygRoot)
-        if nwInstObj.NetworkInstance == nil {
-                /* Should not even come here */
-                return false, errors.New("No network instance in the path")
-        }
-
-        pathInfo := NewPathInfo(inParams.uri)
-
-        /* get the name at the top network-instance table level, this is the key */
-        keyName := pathInfo.Var("name")
-        oc_nwInstType, ierr := getNwInstType(nwInstObj, keyName)
-        if (ierr != nil && ierr.Error() == "Network instance type not set") {
-            oc_nwInstType = DEFAULT_NETWORK_INSTANCE_CONFIG_TYPE
-        } else {
-            return false, errors.New("Network instance type invalid")
-        }
-
-        if ((strings.Compare(keyName, "mgmt") == 0) &&
-            (strings.Compare(oc_nwInstType, "L3VRF") == 0)) {
-                return true, err
-        } else {
-                return false, err
-        }
 }
 
 func validateMgmtVrfExists(d *db.DB) error {
@@ -234,7 +204,7 @@ func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName st
         }
 
         IntfMap, _ := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+intfName})
-        for key, _ := range IntfMap.Field {
+        for key := range IntfMap.Field {
             if (key == "NULL" || key == "vrf_name") {
                 continue
             } else {
@@ -259,8 +229,7 @@ func xfmr_set_default_vrf_configDb() error {
 
         defer d.DeleteDB()
 
-        var VRF_TABLE string
-        VRF_TABLE= "VRF"
+        var VRF_TABLE= "VRF"
 
         vrfTable := &db.TableSpec{Name: VRF_TABLE}
 
@@ -388,7 +357,7 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
         return tblList, err
 }
 
-/* YangToDB Field transformer for top level network instance config "enabled" */
+// YangToDb_network_instance_enabled_field_xfmr is a YangToDB Field transformer for top level network instance config "enabled" 
 var YangToDb_network_instance_enabled_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -429,7 +398,7 @@ var YangToDb_network_instance_enabled_field_xfmr FieldXfmrYangToDb = func(inPara
         enabled, _ := inParams.param.(*bool)
 
         var enStr string
-        if *enabled == true {
+        if *enabled {
                 enStr = "true"
         } else {
                 enStr = "false"
@@ -441,7 +410,7 @@ var YangToDb_network_instance_enabled_field_xfmr FieldXfmrYangToDb = func(inPara
         return res_map, err
 }
 
-/* DbToYang Field transformer for top level network instance config "enabled" */
+// DbToYang_network_instance_enabled_field_xfmr is a  DbToYang Field transformer for top level network instance config "enabled"
 var DbToYang_network_instance_enabled_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
@@ -456,7 +425,7 @@ var DbToYang_network_instance_enabled_field_xfmr FieldXfmrDbtoYang = func(inPara
         return res_map, err
 }
 
-/* YangToDB key transformer for top level network instance */
+// YangToDb_network_instance_table_key_xfmr is a YangToDB key transformer for top level network instance
 var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
         var vrfTbl_key  string
         var err error
@@ -514,7 +483,7 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
         return vrfTbl_key, err
 }
 
-/* DbToYang key transformer for top level network instance */
+// DbToYang_network_instance_table_key_xfmr is a DbToYang key transformer for top level network instance
 var DbToYang_network_instance_table_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
@@ -534,7 +503,7 @@ var DbToYang_network_instance_table_key_xfmr KeyXfmrDbToYang = func(inParams Xfm
         return  res_map, err
 }
 
-/* YangToDb Field transformer for name(key) in the top level network instance */
+// YangToDb_network_instance_name_key_xfmr is a YangToDb Field transformer for name(key) in the top level network instance
 var YangToDb_network_instance_name_key_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -544,7 +513,7 @@ var YangToDb_network_instance_name_key_xfmr FieldXfmrYangToDb = func(inParams Xf
         return res_map, err
 }
 
-/* YangToDb Field transformer for name in the top level network instance config */
+// YangToDb_network_instance_name_field_xfmr is a YangToDb Field transformer for name in the top level network instance confi
 var YangToDb_network_instance_name_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -562,7 +531,7 @@ var YangToDb_network_instance_name_field_xfmr FieldXfmrYangToDb = func(inParams 
         return res_map, err
 }
 
-/* DbToYang Field transformer for name in the top level network instance config */
+// DbToYang_network_instance_name_field_xfmr is a DbToYang Field transformer for name in the top level network instance config
 var DbToYang_network_instance_name_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
@@ -572,10 +541,10 @@ var DbToYang_network_instance_name_field_xfmr KeyXfmrDbToYang = func(inParams Xf
         if (inParams.key != "") {
                 if (((inParams.key == "default") ||
                      (strings.HasPrefix(inParams.key, "Vrf"))) && 
-                     ((isVrfDbTbl(inParams) == true))) {
+                     (isVrfDbTbl(inParams))) {
                         res_map["name"] = inParams.key 
                 } else if ((strings.HasPrefix(inParams.key, "vrf_global")) &&
-                           (isMgmtVrfDbTbl(inParams) == true)) {
+                           (isMgmtVrfDbTbl(inParams))) {
                         res_map["name"] = "mgmt"
                 }
 
@@ -586,7 +555,7 @@ var DbToYang_network_instance_name_field_xfmr KeyXfmrDbToYang = func(inParams Xf
         return  res_map, err
 }
 
-/* YangToDb Field transformer for type in the top level network instance config */
+// YangToDb_network_instance_type_field_xfmr is a YangToDb Field transformer for type in the top level network instance config
 var YangToDb_network_instance_type_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -596,17 +565,17 @@ var YangToDb_network_instance_type_field_xfmr FieldXfmrYangToDb = func(inParams 
         return res_map, err
 }
 
-/* DbToYang Field transformer for type in the top level network instance config */
+// DbToYang_network_instance_type_field_xfmr is a DbToYang Field transformer for type in the top level network instance config
 var DbToYang_network_instance_type_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
 
         log.Info("DbToYang_network_instance_type_field_xfmr")
 
-        if (((inParams.key == "vrf_global") && (isMgmtVrfDbTbl(inParams) == true)) ||
-             ((strings.HasPrefix(inParams.key, "Vrf")) && ((isVrfDbTbl(inParams) == true)))) {
+        if (((inParams.key == "vrf_global") && (isMgmtVrfDbTbl(inParams))) ||
+             ((strings.HasPrefix(inParams.key, "Vrf")) && ((isVrfDbTbl(inParams))))) {
                 res_map["type"] = "L3VRF"
-        } else if ((inParams.key == "default") && (isVrfDbTbl(inParams) == true)) {
+        } else if ((inParams.key == "default") && (isVrfDbTbl(inParams))) {
                 res_map["type"] = "DEFAULT_INSTANCE"
         } else if strings.HasPrefix(inParams.key, "Vlan") {
                 res_map["type"] = "L2L3"
@@ -616,7 +585,7 @@ var DbToYang_network_instance_type_field_xfmr KeyXfmrDbToYang = func(inParams Xf
         return  res_map, err
 }
 
-/* YangToDb Field transformer for enabled_address_family in the top level network instance config */
+// YangToDb_network_instance_enabled_addr_family_field_xfmr is a YangToDb Field transformer for enabled_address_family in the top level network instance config
 var YangToDb_network_instance_enabled_addr_family_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -626,7 +595,7 @@ var YangToDb_network_instance_enabled_addr_family_field_xfmr FieldXfmrYangToDb =
         return res_map, err
 }
 
-/* DbToYang Field transformer for enabled_address_family in the top level network instance config */
+// DbToYang_network_instance_enabled_addr_family_field_xfmr is a DbToYang Field transformer for enabled_address_family in the top level network instance config
 var DbToYang_network_instance_enabled_addr_family_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
@@ -636,7 +605,7 @@ var DbToYang_network_instance_enabled_addr_family_field_xfmr KeyXfmrDbToYang = f
         return res_map, err
 }
 
-/* YangToDb Field transformer for mtu in the top level network instance config */
+// YangToDb_network_instance_mtu_field_xfmr is a YangToDb Field transformer for mtu in the top level network instance config
 var YangToDb_network_instance_mtu_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -646,7 +615,7 @@ var YangToDb_network_instance_mtu_field_xfmr FieldXfmrYangToDb = func(inParams X
         return res_map, err
 }
 
-/* DbToYang Field transformer for mtu in the top level network instance config */
+// DbToYang_network_instance_mtu_field_xfmr is a DbToYang Field transformer for mtu in the top level network instance config
 var DbToYang_network_instance_mtu_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
@@ -656,7 +625,7 @@ var DbToYang_network_instance_mtu_field_xfmr KeyXfmrDbToYang = func(inParams Xfm
         return res_map, err
 }
 
-/* YangToDb Field transformer for description in the top level network instance config */
+// YangToDb_network_instance_description_field_xfmr is a YangToDb Field transformer for description in the top level network instance config
 var YangToDb_network_instance_description_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -666,7 +635,7 @@ var YangToDb_network_instance_description_field_xfmr FieldXfmrYangToDb = func(in
         return res_map, err
 }
 
-/* DbToYang Field transformer for description in the top level network instance config */
+// DbToYang_network_instance_description_field_xfmr is a DbToYang Field transformer for description in the top level network instance config
 var DbToYang_network_instance_description_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
@@ -676,7 +645,7 @@ var DbToYang_network_instance_description_field_xfmr KeyXfmrDbToYang = func(inPa
         return res_map, err
 }
 
-/* YangToDb Field transformer for router_id in the top level network instance config */
+// YangToDb_network_instance_router_id_field_xfmr is a YangToDb Field transformer for router_id in the top level network instance config
 var YangToDb_network_instance_router_id_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -686,7 +655,7 @@ var YangToDb_network_instance_router_id_field_xfmr FieldXfmrYangToDb = func(inPa
         return res_map, err
 }
 
-/* DbToYang Field transformer for router_id in the top level network instance config */
+// DbToYang_network_instance_router_id_field_xfmr is a DbToYang Field transformer for router_id in the top level network instance config
 var DbToYang_network_instance_router_id_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
@@ -696,7 +665,7 @@ var DbToYang_network_instance_router_id_field_xfmr KeyXfmrDbToYang = func(inPara
         return res_map, err
 }
 
-/* TBD for data vrf YangToDb Field transformer for route_distinguisher in the top level network instance config */
+// YangToDb_network_instance_route_distinguisher_field_xfmr is a YangToDb Field transformer for route_distinguisher in the top level network instance config
 var YangToDb_network_instance_route_distinguisher_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
@@ -706,7 +675,7 @@ var YangToDb_network_instance_route_distinguisher_field_xfmr FieldXfmrYangToDb =
         return res_map, err
 }
 
-/* TBD for data vrf DbToYang Field transformer for route_distinguisher in the top level network instance config */
+// DbToYang_network_instance_route_distinguisher_field_xfmr is a DbToYang Field transformer for route_distinguisher in the top level network instance config
 var DbToYang_network_instance_route_distinguisher_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
@@ -716,7 +685,7 @@ var DbToYang_network_instance_route_distinguisher_field_xfmr KeyXfmrDbToYang = f
         return res_map, err
 }
 
-/* YangToDb subtree transformer for network instance interface binding */
+// YangToDb_network_instance_interface_binding_subtree_xfmr is a YangToDb subtree transformer for network instance interface binding
 var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
         var err error
         var errStr string
@@ -761,7 +730,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                                 return res_map, err
                         }
 
-                        for i, _ := range intfKeys {
+                        for i := range intfKeys {
                                 /* vrf_name is only in the entry with intf name alone as the key */
                                 if (len(intfKeys[i].Comp)) >1 {
                                         continue
@@ -841,7 +810,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
         /* Check if interface already has VRF association */
         intfVrfBind, vrf_name := isIntfBindToOtherVrf(intf_tbl_name, intfId, keyName, inParams)
-        if (intfVrfBind == true) {
+        if (intfVrfBind) {
                 var errStr string
                 if (inParams.oper == DELETE) {
                         errStr = "Interface is associated with VRF " + vrf_name
@@ -887,8 +856,8 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                     err = tlerr.InvalidArgsError{Format: errStr}
                 }
 
-				isDonor := validateUnnumIntfExistsForDonorIntf(inParams.d, &intfId)
-        		if (isDonor == true) {
+                isDonor := validateUnnumIntfExistsForDonorIntf(inParams.d, &intfId)
+                if (isDonor) {
                     errStr := "Interface: " + intfId + " configured as Donor interface"
                     log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr);
                     err = tlerr.InvalidArgsError{Format: errStr}
@@ -901,15 +870,15 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
             }
         } else {
                 
-                // VRF Unbind case. Check if all IP has been deleted before VRF unbind
-		ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
-		if len(ipKeys) != 0 {
-			errStr := "L3 Configuration exists for Interface: " + intfId
-			log.Error(errStr)
-			err = tlerr.InvalidArgsError{Format: errStr}
-			return res_map, err
-		}
-	}
+            // VRF Unbind case. Check if all IP has been deleted before VRF unbind
+		    ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
+		    if len(ipKeys) != 0 {
+			    errStr := "L3 Configuration exists for Interface: " + intfId
+			    log.Error(errStr)
+			    err = tlerr.InvalidArgsError{Format: errStr}
+			    return res_map, err
+		    }
+	    }
 
         if true == chekIfSagExistOnIntf(inParams.d, intfId) {
                 errStr = "Interface " + intfId + " has IP static anycast gateway configuration"
@@ -939,7 +908,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 }
 
 
-/* DbtoYang subtree transformer for network instance interface binding */
+// DbToYang_network_instance_interface_binding_subtree_xfmr is a DbtoYang subtree transformer for network instance interface binding
 var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
         var err error
 
@@ -1008,7 +977,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                 }
 
                 /* Now build the config and state intf id info, Interfaces.Interface should be present for this case */
-                intfData, _ := nwInstTree.NetworkInstance[vrfName_str].Interfaces.Interface[pathIntfId]
+                intfData := nwInstTree.NetworkInstance[vrfName_str].Interfaces.Interface[pathIntfId]
 
                 if  (intfData.Config == nil) {
                         ygot.BuildEmptyTree(intfData)
@@ -1030,7 +999,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                                 return errors.New("Unable to get interface table keys")
                         }
 
-                        for i, _ := range intfKeys {
+                        for i := range intfKeys {
                                 /* Skip the interface entry with both interface name and ip as key, as vrf_name is not there */
                                 if (len(intfKeys[i].Comp)) > 1 {
                                         continue

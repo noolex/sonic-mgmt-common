@@ -742,7 +742,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 }
 
 func getNonDefaultVrfInterfaces(d *db.DB)(map[string]string) {
-    var nonDefaultVrfIntfs = make(map[string]string)
+    nonDefaultVrfIntfs := make(map[string]string)
 
     tblList := []string{"INTERFACE", "VLAN_INTERFACE", "PORTCHANNEL_INTERFACE"}
     for _, tbl := range tblList {

@@ -26,7 +26,7 @@ import (
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
 
-/* input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer */
+// XfmrParams represents input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer
 type XfmrParams struct {
 	d *db.DB
 	dbs [db.MaxDB]*db.DB
@@ -45,7 +45,7 @@ type XfmrParams struct {
         pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
 }
 
-/*subcription process type identifying the type of subscription request made from translib*/
+// SubscProcType represents subcription process type identifying the type of subscription request made from translib.
 type SubscProcType int
 const (
     TRANSLATE_SUBSCRIBE SubscProcType = iota
@@ -58,7 +58,7 @@ type notificationOpts struct {
 	pType     NotificationType
 }
 
-/*Input to subscribe subtree callbacks - request uri, DBs info access-pointers, DB info for request uri and subscription process type from translib */
+// XfmrSubscInParams represents input to subscribe subtree callbacks - request uri, DBs info access-pointers, DB info for request uri and subscription process type from translib. 
 type XfmrSubscInParams struct {
     uri string
     dbs [db.MaxDB]*db.DB
@@ -66,7 +66,7 @@ type XfmrSubscInParams struct {
     subscProc SubscProcType
 }
 
-/*Output from subscribe subtree callback - DB data for request uri, Need cache, OnChange, subscription preference and interval*/
+// XfmrSubscOutParams represents output from subscribe subtree callback - DB data for request uri, Need cache, OnChange, subscription preference and interval.
 type XfmrSubscOutParams struct {
     dbDataMap RedisDbMap
     needCache bool
@@ -74,7 +74,7 @@ type XfmrSubscOutParams struct {
     nOpts *notificationOpts  //these can be set regardless of error 
 }
 
-/* input parameters for value-transformer */
+// XfmrDbParams represents input paraDeters for value-transformer
 type XfmrDbParams struct {
 	oper           int
 	dbNum          db.DBNum
@@ -84,98 +84,79 @@ type XfmrDbParams struct {
 	value          string
 }
 
-/**
- * KeyXfmrYangToDb type is defined to use for conversion of Yang key to DB Key 
- * Transformer function definition.
- * Param: XfmrParams structure having Database info, YgotRoot, operation, Xpath
- * Return: Database keys to access db entry, error
- **/
+
+// KeyXfmrYangToDb type is defined to use for conversion of Yang key to DB Key,
+// Transformer function definition.
+// Param: XfmrParams structure having Database info, YgotRoot, operation, Xpath
+// Return: Database keys to access db entry, error
 type KeyXfmrYangToDb func (inParams XfmrParams) (string, error)
-/**
- * KeyXfmrDbToYang type is defined to use for conversion of DB key to Yang key
- * Transformer function definition.
- * Param: XfmrParams structure having Database info, operation, Database keys to access db entry
- * Return: multi dimensional map to hold the yang key attributes of complete xpath, error
- **/
+
+// KeyXfmrDbToYang type is defined to use for conversion of DB key to Yang key,
+// Transformer function definition.
+// Param: XfmrParams structure having Database info, operation, Database keys to access db entry
+// Return: multi dimensional map to hold the yang key attributes of complete xpath, error */
 type KeyXfmrDbToYang func (inParams XfmrParams) (map[string]interface{}, error)
 
-/**
- * FieldXfmrYangToDb type is defined to use for conversion of yang Field to DB field
- * Transformer function definition.
- * Param: Database info, YgotRoot, operation, Xpath
- * Return: multi dimensional map to hold the DB data, error
- **/
+// FieldXfmrYangToDb type is defined to use for conversion of yang Field to DB field
+// Transformer function definition.
+// Param: Database info, YgotRoot, operation, Xpath
+// Return: multi dimensional map to hold the DB data, error
 type FieldXfmrYangToDb func (inParams XfmrParams) (map[string]string, error)
-/**
- * FieldXfmrDbtoYang type is defined to use for conversion of DB field to Yang field
- * Transformer function definition.
- * Param: XfmrParams structure having Database info, operation, DB data in multidimensional map, output param YgotRoot
- * Return: error
- **/
+
+// FieldXfmrDbtoYang type is defined to use for conversion of DB field to Yang field
+// Transformer function definition.
+// Param: XfmrParams structure having Database info, operation, DB data in multidimensional map, output param YgotRoot
+// Return: error
 type FieldXfmrDbtoYang func (inParams XfmrParams)  (map[string]interface{}, error)
 
-/**
- * SubTreeXfmrYangToDb type is defined to use for handling the yang subtree to DB
- * Transformer function definition.
- * Param: XfmrParams structure having Database info, YgotRoot, operation, Xpath
- * Return: multi dimensional map to hold the DB data, error
- **/
+// SubTreeXfmrYangToDb type is defined to use for handling the yang subtree to DB
+// Transformer function definition.
+// Param: XfmrParams structure having Database info, YgotRoot, operation, Xpath
+// Return: multi dimensional map to hold the DB data, error
 type SubTreeXfmrYangToDb func (inParams XfmrParams) (map[string]map[string]db.Value, error)
-/**
- * SubTreeXfmrDbToYang type is defined to use for handling the DB to Yang subtree
- * Transformer function definition.
- * Param : XfmrParams structure having Database pointers, current db, operation, DB data in multidimensional map, output param YgotRoot, uri
- * Return :  error
- **/
+
+// SubTreeXfmrDbToYang type is defined to use for handling the DB to Yang subtree
+// Transformer function definition.
+// Param : XfmrParams structure having Database pointers, current db, operation, DB data in multidimensional map, output param YgotRoot, uri
+// Return :  error
 type SubTreeXfmrDbToYang func (inParams XfmrParams) (error)
-/**
- * SubTreeXfmrSubscribe type is defined to use for handling subscribe(translateSubscribe & processSubscribe) subtree
- * Transformer function definition.
- * Param : XfmrSubscInParams structure having uri, database pointers,  subcribe process(translate/processSusbscribe), DB data in multidimensional map 
- * Return :  XfmrSubscOutParams structure (db data in multiD map, needCache, pType, onChange, minInterval), error
- **/
+
+// SubTreeXfmrSubscribe type is defined to use for handling subscribe(translateSubscribe & processSubscribe) subtree
+// Transformer function definition.
+// Param : XfmrSubscInParams structure having uri, database pointers,  subcribe process(translate/processSusbscribe), DB data in multidimensional map 
+// Return :  XfmrSubscOutParams structure (db data in multiD map, needCache, pType, onChange, minInterval), error
 type SubTreeXfmrSubscribe func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error)
-/**
- * ValidateCallpoint is used to validate a YANG node during data translation back to YANG as a response to GET
- * Param : XfmrParams structure having Database pointers, current db, operation, DB data in multidimensional map, output param YgotRoot, uri
- * Return :  bool
- **/
+
+// ValidateCallpoint is used to validate a YANG node during data translation back to YANG as a response to GET
+// Param : XfmrParams structure having Database pointers, current db, operation, DB data in multidimensional map, output param YgotRoot, uri
+// Return :  bool
 type ValidateCallpoint func (inParams XfmrParams) (bool)
-/**
- * RpcCallpoint is used to invoke a callback for action
- * Param : []byte input payload, dbi indices
- * Return :  []byte output payload, error
- **/
+
+// RpcCallpoint is used to invoke a callback for action
+// Param : []byte input payload, dbi indices
+// Return :  []byte output payload, error
 type RpcCallpoint func (body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error)
-/**
- * PostXfmrFunc type is defined to use for handling any default handling operations required as part of the CREATE
- * Transformer function definition.
- * Param: XfmrParams structure having database pointers, current db, operation, DB data in multidimensional map, YgotRoot, uri
- * Return: Multi dimensional map to hold the DB data Map (tblName, key and Fields), error
- **/
+
+// PostXfmrFunc type is defined to use for handling any default handling operations required as part of the CREATE
+// Transformer function definition.
+// Param: XfmrParams structure having database pointers, current db, operation, DB data in multidimensional map, YgotRoot, uri
+// Return: Multi dimensional map to hold the DB data Map (tblName, key and Fields), error
 type PostXfmrFunc func (inParams XfmrParams) (map[string]map[string]db.Value, error)
 
-
-/**
- * TableXfmrFunc type is defined to use for table transformer function for dynamic derviation of redis table.
- * Param: XfmrParams structure having database pointers, current db, operation, DB data in multidimensional map, YgotRoot, uri
- * Return: List of table names, error
- **/
+// TableXfmrFunc type is defined to use for table transformer function for dynamic derviation of redis table.
+// Param: XfmrParams structure having database pointers, current db, operation, DB data in multidimensional map, YgotRoot, uri
+// Return: List of table names, error
 type TableXfmrFunc func (inParams XfmrParams) ([]string, error)
 
-/**
- * ValueXfmrFunc type is defined to use for conversion of DB field value from one forma to another
- * Transformer function definition.
- * Param: XfmrDbParams structure having Database info, operation, db-number, table, key, field, value
- * Return: value string, error
- **/
+// ValueXfmrFunc type is defined to use for conversion of DB field value from one forma to another
+// Transformer function definition.
+// Param: XfmrDbParams structure having Database info, operation, db-number, table, key, field, value
+// Return: value string, error
 type ValueXfmrFunc func (inParams XfmrDbParams)  (string, error)
 
 
-/**
- * Xfmr validation interface for validating the callback registration of app modules 
- * transformer methods.
- **/
+// XfmrInterface is a validation interface for validating the callback registration of app modules 
+// transformer methods.
 type XfmrInterface interface {
     xfmrInterfaceValiidate()
 }
