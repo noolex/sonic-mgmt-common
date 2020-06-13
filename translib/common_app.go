@@ -693,25 +693,26 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 						log.Info("Table Entry from which the fields are to be deleted does not exist")
 						return err
 					}
-					/* add the NULL field if the last field gets deleted */
-					deleteCount := 0
-					for field := range existingEntry.Field {
-						if tblRw.Has(field) {
-							deleteCount++
-						}
-					}
-					if deleteCount == len(existingEntry.Field) {
-						nullTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
-						log.Info("Last field gets deleted, add NULL field to keep an db entry")
-						err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
-						if err != nil {
-							log.Error("UPDATE case - d.ModEntry() failure")
-							return err
-						}
-					}
 					/* handle leaf-list merge if any leaf-list exists */
 					resTblRw := checkAndProcessLeafList(existingEntry, tblRw, DELETE, d, tblNm, tblKey)
 					if len(resTblRw.Field) > 0 {
+						/* add the NULL field if the last field gets deleted */
+						deleteCount := 0
+						for field := range existingEntry.Field {
+							if tblRw.Has(field) {
+								deleteCount++
+							}
+						}
+						if deleteCount == len(existingEntry.Field) {
+							nullTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
+							log.Info("Last field gets deleted, add NULL field to keep an db entry")
+							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
+							if err != nil {
+								log.Error("UPDATE case - d.ModEntry() failure")
+								return err
+							}
+						}
+						/* deleted fields */
 						err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
 						if err != nil {
 							log.Error("DELETE case - d.DeleteEntryFields() failure")
