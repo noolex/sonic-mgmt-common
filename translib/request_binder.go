@@ -122,6 +122,13 @@ func (binder *requestBinder) validateObjectType (errObj error) error {
 }
 
 func (binder *requestBinder) validateRequest(deviceObj *ocbinds.Device) error {
+
+	// Skipping the validation for the sonic yang model
+	if !binder.isOpenconfig {
+	  log.Warning("Translib: RequestBinder: Skipping the vaidatiion of the given sonic yang model request..")
+		return nil
+	}
+	
 	if binder.pathTmp == nil || len(binder.pathTmp.Elem) == 0 {
 		if binder.opcode == UPDATE || binder.opcode == REPLACE {
 			err := deviceObj.Validate(&ytypes.LeafrefOptions{IgnoreMissingData: true})
@@ -244,10 +251,14 @@ func (binder *requestBinder) unMarshall() (*ygot.GoStruct, *interface{}, error) 
 
 		targetObj, ok := (*tmpTargetNode).(ygot.ValidatedGoStruct)
 		if ok {
-			err := targetObj.Validate(&ytypes.LeafrefOptions{IgnoreMissingData: true})
-			err = binder.validateObjectType (err)
-			if err != nil {
-				return nil, nil, tlerr.TranslibSyntaxValidationError{StatusCode: 400, ErrorStr: err}
+			if binder.isOpenconfig {
+				err := targetObj.Validate(&ytypes.LeafrefOptions{IgnoreMissingData: true})
+				err = binder.validateObjectType (err)
+				if err != nil {
+					return nil, nil, tlerr.TranslibSyntaxValidationError{StatusCode: 400, ErrorStr: err}
+				}
+			} else {
+				log.Warning("Translib: Request binder: Valdation skipping for sonic yang model..")
 			}
 		}
 
