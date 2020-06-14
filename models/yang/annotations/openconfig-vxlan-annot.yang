@@ -8,7 +8,7 @@ module openconfig-vxlan-annot {
     import openconfig-vxlan { prefix oc-vxlan; }
     import sonic-extensions {prefix sonic-ext; }
  
-    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info/oc-vxlan:state {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-vni-peer-infos/oc-vxlan:vxlan-vni-peer-info {
 	    deviate add {
 	    	sonic-ext:table-name "EVPN_REMOTE_VNI_TABLE";
       	sonic-ext:key-transformer "vxlan_vni_state_peer_info_key_xfmr";	    	
@@ -46,14 +46,14 @@ module openconfig-vxlan-annot {
 	    }    
     }
 
-    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state {
+    deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info {
 	    deviate add {
 				sonic-ext:table-name "VXLAN_TUNNEL_TABLE";
-				sonic-ext:key-transformer "vxlan_state_tunnel_info_key_xfmr";				
-				sonic-ext:db-name "STATE_DB";	    
-	    }    
+				sonic-ext:key-transformer "vxlan_state_tunnel_info_key_xfmr";
+				sonic-ext:db-name "STATE_DB";
+	    }
     }
- 
+
     deviation /oc-vxlan:vxlan/oc-vxlan:vxlan-tunnel-infos/oc-vxlan:vxlan-tunnel-info/oc-vxlan:state/oc-vxlan:peer-ip {
 	    deviate add {
 				sonic-ext:field-name "dst_ip";	    

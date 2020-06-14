@@ -209,30 +209,30 @@ var DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr FieldXfmrDbtoYang = func
   var prtInst db.Value
   result := make(map[string]interface{})
 
-  /* if log.V(3) { */
+  if log.V(3) {
     log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==>inParams.uri => ", inParams.uri)
     log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==>inParams.requestUri => ", inParams.requestUri)
-  /* } */
+  }
 
   pathInfo := NewPathInfo(inParams.uri)
   peerIpStr := pathInfo.Var("peer-ip")
-  /* if log.V(3) { */
+  if log.V(3) {
     log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> peerIpStr => ", peerIpStr)
-  /* } */
+  }
 
   pathOrigInfo := NewPathInfo(inParams.requestUri)
   peerIpOrigStr := pathOrigInfo.Var("peer-ip")
 
-  /* if log.V(3) { */
+  if log.V(3) {
     log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> peerIpOrigStr => ", peerIpOrigStr)
-  /* } */
+  }
 
   if peerIpStr != "" {
     var VXLAN_TUNNEL_TABLE_STATE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_TABLE"}
     evpnPeerkeyStr := "EVPN_" + peerIpStr
-    /* if log.V(3) { */
+    if log.V(3) {
       log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> evpnPeerkeyStr ==> ", evpnPeerkeyStr)
-    /* } */
+    }
     entry, err := stateDbPtr.GetEntry(VXLAN_TUNNEL_TABLE_STATE_TS, db.Key{[]string{evpnPeerkeyStr}})
     if err != nil {
       log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> returning error ==> ", err)
