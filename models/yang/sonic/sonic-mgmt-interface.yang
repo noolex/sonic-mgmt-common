@@ -27,6 +27,32 @@ module sonic-mgmt-interface {
             "Initial revision.";
     }
 
+    /*
+     * RPC for renewing DHCP lease
+     */
+    rpc renew_dhcp_lease {
+        description "RPC for renew DHCP lease of an interface.";
+        input {
+            leaf portname{
+                type leafref {
+                    path "/mgmtprt:sonic-mgmt-port/mgmtprt:MGMT_PORT/mgmtprt:MGMT_PORT_LIST/mgmtprt:ifname";
+                }
+            }
+        }
+        output {
+            leaf status {
+                type int32;
+                description
+                    "The status of the operation execution request.";
+            }
+            leaf status-detail {
+                type string;
+                description
+                    "The detailed status of the operation execution request.";
+            }
+        }
+    }
+
     container sonic-mgmt-interface {
 
         container MGMT_INTERFACE {
