@@ -23,7 +23,7 @@ func init () {
     XlateFuncBind("YangToDb_bgp_af_nbr_tbl_key_xfmr", YangToDb_bgp_af_nbr_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_af_nbr_tbl_key_xfmr", DbToYang_bgp_af_nbr_tbl_key_xfmr)
     XlateFuncBind("YangToDb_bgp_nbr_asn_fld_xfmr", YangToDb_bgp_nbr_asn_fld_xfmr)
-    XlateFuncBind("DbToYang_bgp_nbr_asn_fld_xfmr", DbToYang_bgp_nbr_asn_fld_xfmr)    
+    XlateFuncBind("DbToYang_bgp_nbr_asn_fld_xfmr", DbToYang_bgp_nbr_asn_fld_xfmr)
     XlateFuncBind("YangToDb_bgp_nbr_afi_safi_name_fld_xfmr", YangToDb_bgp_nbr_afi_safi_name_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_nbr_afi_safi_name_fld_xfmr", DbToYang_bgp_nbr_afi_safi_name_fld_xfmr)
     XlateFuncBind("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr", YangToDb_bgp_af_nbr_proto_tbl_key_xfmr)
@@ -104,14 +104,16 @@ func fill_bgp_nbr_details_from_frr_info (inParams XfmrParams, vrf string, nbrAdd
 
 var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList []string
-
-    log.Info("bgp_nbr_tbl_xfmr: ", inParams.uri)
+    if log.V(3) {
+        log.Info("bgp_nbr_tbl_xfmr target URI:", inParams.uri)
+    }
     pathInfo := NewPathInfo(inParams.uri)
 
     vrf := pathInfo.Var("name")
     bgpId      := pathInfo.Var("identifier")
     protoName  := pathInfo.Var("name#2")
     nbrAddr   := pathInfo.Var("neighbor-address")
+    util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
 
     if len(pathInfo.Vars) <  3 {
         err := errors.New("Invalid Key length");
@@ -141,6 +143,14 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     }
 
     tblList = append(tblList, "BGP_NEIGHBOR")
+    if _ , present := inParams.txCache.Load(vrf);!present {
+        inParams.txCache.Store(vrf, vrf)
+    } else {
+        if log.V(3) {
+            log.Info("bgp_nbr_tbl_xfmr: repetitive table update is avoided for target URI:", inParams.uri)
+        }
+        return tblList, nil
+    }
 
     if len(nbrAddr) != 0 {
         key := vrf + "|" + nbrAddr
@@ -193,7 +203,6 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     var err error
     var vrfName string
 
-    log.Info("YangToDb_bgp_nbr_tbl_key_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
     /* Key should contain, <vrf name, protocol name, neighbor name> */
@@ -201,7 +210,7 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     vrfName    =  pathInfo.Var("name")
     bgpId      := pathInfo.Var("identifier")
     protoName  := pathInfo.Var("name#2")
-    pNbrAddr   := pathInfo.Var("neighbor-address")
+    nbrAddr   := pathInfo.Var("neighbor-address")
 
     if len(pathInfo.Vars) <  3 {
         err = errors.New("Invalid Key length");
@@ -224,32 +233,29 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
         log.Info("Protocol Name is Missing")
         return "", err
     }
-    if len(pNbrAddr) == 0 {
-        log.Info("Neighbor address is Missing")
+    if len(nbrAddr) == 0 {
         return "", nil
     }
+    util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
 
-    log.Info("URI VRF", vrfName)
-    log.Info("URI Neighbor address", pNbrAddr)
-
-    var pNbrKey string = vrfName + "|" + pNbrAddr
-
-    log.Info("YangToDb_bgp_nbr_tbl_key_xfmr: pNbrKey:", pNbrKey)
+    var pNbrKey string = vrfName + "|" + nbrAddr
+    if log.V(3) {
+        log.Info("YangToDb_bgp_nbr_tbl_key_xfmr Nbr key:", pNbrKey)
+    }
     return pNbrKey, nil
 }
 
 var DbToYang_bgp_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     rmap := make(map[string]interface{})
     entry_key := inParams.key
-    log.Info("DbToYang_bgp_nbr_tbl_key: ", entry_key)
 
     nbrKey := strings.Split(entry_key, "|")
     if len(nbrKey) < 2 {return rmap, nil}
 
     nbrName:= nbrKey[1]
+    util_bgp_get_ui_ifname_from_native_ifname (&nbrName)
 
     rmap["neighbor-address"] = nbrName
-
     return rmap, nil
 }
 
@@ -451,8 +457,6 @@ var DbToYang_bgp_nbr_tx_add_paths_fld_xfmr FieldXfmrDbtoYang = func(inParams Xfm
         } else if (tx_add_paths_type == "tx_best_path_per_as") {
             result["tx-add-paths"] = "TX_BEST_PATH_PER_AS"
         }
-    } else {
-        log.Info("Tx add Paths field not found in DB")
     }
     return result, err
 }
@@ -474,6 +478,7 @@ var DbToYang_bgp_nbr_address_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
     if len(nbrAddrKey) < 2 {return result, nil}
 
     nbrAddr:= nbrAddrKey[1]
+    util_bgp_get_ui_ifname_from_native_ifname (&nbrAddr)
 
     result["neighbor-address"] = nbrAddr
 
@@ -515,7 +520,6 @@ var DbToYang_bgp_nbr_afi_safi_name_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
 var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList, nil_tblList []string
 
-    log.Info("bgp_af_nbr_tbl_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
     vrf := pathInfo.Var("name")
@@ -607,7 +611,6 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
     var err error
     var vrfName string
 
-    log.Info("YangToDb_bgp_af_nbr_tbl_key_xfmr ***", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
     /* Key should contain, <vrf name, protocol name, neighbor name> */
@@ -615,7 +618,7 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
     vrfName    =  pathInfo.Var("name")
     bgpId      := pathInfo.Var("identifier")
     protoName  := pathInfo.Var("name#2")
-    pNbr   := pathInfo.Var("neighbor-address")
+    nbr   := pathInfo.Var("neighbor-address")
     afName     := pathInfo.Var("afi-safi-name")
 
     if len(pathInfo.Vars) <  4 {
@@ -639,15 +642,13 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
         log.Info("Protocol Name is Missing")
         return protoName, err
     }
-    if len(pNbr) == 0 {
+    if len(nbr) == 0 {
         err = errors.New("Neighbor is missing")
-        log.Info("Neighbor is Missing")
-        return pNbr, err
+        return nbr, err
     }
 
     if len(afName) == 0 {
         err = errors.New("AFI SAFI is missing")
-        log.Info("AFI SAFI is Missing")
         return afName, err
     }
 
@@ -663,13 +664,12 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
 	return afName, err
     }
 
-    log.Info("URI VRF ", vrfName)
-    log.Info("URI Nbr ", pNbr)
-    log.Info("URI AFI SAFI ", afName)
+    util_bgp_get_native_ifname_from_ui_ifname (&nbr)
 
-    var nbrAfKey string = vrfName + "|" + pNbr + "|" + afName
-
-    log.Info("YangToDb_bgp_af_nbr_tbl_key_xfmr: afPgrpKey:", nbrAfKey)
+    var nbrAfKey string = vrfName + "|" + nbr + "|" + afName
+    if log.V(3) {
+        log.Info("YangToDb_bgp_af_nbr_tbl_key_xfmr Nbr AF key:", nbrAfKey)
+    }
     return nbrAfKey, nil
 }
 
@@ -677,7 +677,6 @@ var DbToYang_bgp_af_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams)
     var afName string
     rmap := make(map[string]interface{})
     entry_key := inParams.key
-    log.Info("DbToYang_bgp_af_nbr_tbl_key: ", entry_key)
 
     nbrAfKey := strings.Split(entry_key, "|")
     if len(nbrAfKey) < 3 {return rmap, nil}
@@ -701,6 +700,7 @@ var DbToYang_bgp_af_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams)
 var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
     var vrfName string
+    var emptyAfName string
 
     log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr***", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
@@ -740,7 +740,6 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
 
     if len(afName) == 0 {
         err = errors.New("AFI SAFI is missing")
-        log.Info("AFI SAFI is Missing")
         return afName, err
     }
 
@@ -750,7 +749,7 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
            strings.Contains(inParams.uri, "l2vpn-evpn") {
 		err = errors.New("IPV4_UNICAST supported only on ipv4-config container")
 		log.Info("IPV4_UNICAST supported only on ipv4-config container: ", afName);
-		return afName, err
+		return emptyAfName, err
         }
     } else if strings.Contains(afName, "IPV6_UNICAST") {
         afName = "ipv6_unicast"
@@ -758,7 +757,7 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
            strings.Contains(inParams.uri, "l2vpn-evpn") {
 		err = errors.New("IPV6_UNICAST supported only on ipv6-config container")
 		log.Info("IPV6_UNICAST supported only on ipv6-config container: ", afName);
-		return afName, err
+		return emptyAfName, err
         }
     } else if strings.Contains(afName, "L2VPN_EVPN") {
         afName = "l2vpn_evpn"
@@ -766,17 +765,13 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
            strings.Contains(inParams.uri, "ipv4-unicast") {
 		err = errors.New("L2VPN_EVPN supported only on l2vpn-evpn container")
 		log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName);
-		return afName, err
+		return emptyAfName, err
         }
     } else  {
 	err = errors.New("Unsupported AFI SAFI")
 	log.Info("Unsupported AFI SAFI ", afName);
-	return afName, err
+	return emptyAfName, err
     }
-
-    log.Info("URI VRF ", vrfName)
-    log.Info("URI Nbr ", pNbr)
-    log.Info("URI AFI SAFI ", afName)
 
     var nbrAfKey string = vrfName + "|" + pNbr + "|" + afName
 
@@ -1243,16 +1238,16 @@ func get_specific_nbr_state (get_req_uri_type E_bgp_nbr_state_get_req_uri_t,
                              nbr_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Neighbors_Neighbor,
                              cfgDb *db.DB, nbr_key *_xfmr_bgp_nbr_state_key) error {
     var err error
-    var nbrKey string
-    vtysh_cmd := "show ip bgp vrf " + nbr_key.niName + " neighbors " + nbr_key.nbrAddr + " json"
+    nbrKey := nbr_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nbrKey)
+
+    vtysh_cmd := "show ip bgp vrf " + nbr_key.niName + " neighbors " + nbrKey + " json"
     nbrMapJson, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
         log.Errorf("Failed to fetch bgp neighbors state info for niName:%s nbrAddr:%s. Err: %s vtysh_cmd %s \n", nbr_key.niName, nbr_key.nbrAddr, cmd_err, vtysh_cmd)
     }
 
-    if net.ParseIP(nbr_key.nbrAddr) == nil {
-        nbrKey = nbr_key.nbrAddr
-    } else {
+    if net.ParseIP(nbr_key.nbrAddr) != nil {
         nbrKey = net.ParseIP(nbr_key.nbrAddr).String()
     }
 
@@ -1291,7 +1286,6 @@ func validate_nbr_state_get (inParams XfmrParams, dbg_log string) (*ocbinds.Open
 
     nbr_obj, ok := nbrs_obj.Neighbor[nbr_key.nbrAddr]
     if !ok {
-        log.Infof("%s Neighbor object missing, add new", dbg_log)
         nbr_obj,_ = nbrs_obj.NewNeighbor(nbr_key.nbrAddr)
     }
     ygot.BuildEmptyTree(nbr_obj)
@@ -1387,7 +1381,6 @@ func validate_nbr_af_state_get (inParams XfmrParams, dbg_log string) (*ocbinds.O
 
     nbr_obj, ok := nbrs_obj.Neighbor[nbr_af_key.nbrAddr]
     if !ok {
-        log.Errorf("%s Neighbor object missing, add new", dbg_log)
         nbr_obj,_ = nbrs_obj.NewNeighbor(nbr_af_key.nbrAddr)
     }
     ygot.BuildEmptyTree(nbr_obj)
@@ -1433,7 +1426,7 @@ func get_spec_nbr_af_cfg_tbl_entry (cfgDb *db.DB, key *_xfmr_bgp_nbr_af_state_ke
 
 var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
-    var nbrKey string
+
     cmn_log := "GET: xfmr for BGP-nbrs-nbr-af state"
 
     nbrs_af_state_obj, nbr_af_key, get_err := validate_nbr_af_state_get (inParams, cmn_log);
@@ -1441,6 +1434,8 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
         return get_err
     }
 
+    nbrKey := nbr_af_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nbrKey)
     var afiSafi_cmd string
     switch (nbr_af_key.afiSafiNameEnum) {
         case ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV4_UNICAST:
@@ -1501,16 +1496,14 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
         }
     }
 
-    vtysh_cmd := "show ip bgp vrf " + nbr_af_key.niName + " " + afiSafi_cmd + " neighbors " + nbr_af_key.nbrAddr + " json"
+    vtysh_cmd := "show ip bgp vrf " + nbr_af_key.niName + " " + afiSafi_cmd + " neighbors " + nbrKey + " json"
     nbrMapJson, nbr_cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if nbr_cmd_err != nil {
         log.Errorf("Failed to fetch bgp neighbors state info for niName:%s nbrAddr:%s afi-safi-name:%s. Err: %s, Cmd: %s\n",
                    nbr_af_key.niName, nbr_af_key.nbrAddr, afiSafi_cmd, nbr_cmd_err, vtysh_cmd)
         return nil
     }
-    if net.ParseIP(nbr_af_key.nbrAddr) == nil {
-        nbrKey = nbr_af_key.nbrAddr
-    } else {
+    if net.ParseIP(nbr_af_key.nbrAddr) != nil {
         nbrKey = net.ParseIP(nbr_af_key.nbrAddr).String()
     }
 
@@ -1526,10 +1519,9 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
     var _activeRcvdPrefixes, _activeSentPrefixes uint32
     nbrs_af_state_obj.AfiSafiName = nbr_af_key.afiSafiNameEnum
     if AddrFamilyMap, ok := frrNbrDataJson["addressFamilyInfo"].(map[string]interface{}) ; ok {
-        log.Info("Family dump: %v %d", AddrFamilyMap, nbrs_af_state_obj.AfiSafiName)
+        log.Infof("Family dump: %v %d", AddrFamilyMap, nbrs_af_state_obj.AfiSafiName)
         if nbrs_af_state_obj.AfiSafiName == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV4_UNICAST {
             if ipv4UnicastMap, ok := AddrFamilyMap["ipv4Unicast"].(map[string]interface{}) ; ok {
-                log.Info("IPv4 dump: %v", AddrFamilyMap)
                 _active = true
                 _enabled = true
                 if value, ok := ipv4UnicastMap["acceptedPrefixCounter"] ; ok {
@@ -1559,7 +1551,7 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
         }
     }
 
-    vtysh_cmd = "show ip bgp vrf " + nbr_af_key.niName + " " + afiSafi_cmd + " neighbors " + nbr_af_key.nbrAddr + " received-routes json"
+    vtysh_cmd = "show ip bgp vrf " + nbr_af_key.niName + " " + afiSafi_cmd + " neighbors " + nbrKey + " received-routes json"
     rcvdRoutesJson, rcvd_cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if rcvd_cmd_err != nil {
         log.Errorf("Failed check to fetch bgp neighbors received-routes state info for niName:%s nbrAddr:%s afi-safi-name:%s. Err: %s\n",
@@ -1728,8 +1720,6 @@ var DbToYang_bgp_nbr_orf_type_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
         } else if (orf_type == "both") {
             result["orf-type"] = "BOTH"
         }
-    } else {
-        log.Info("cap_orf_direction field not found in DB")
     }
     return result, err
 }
@@ -1818,7 +1808,6 @@ var DbToYang_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrDbToYang = func (inParam
 
     nbr_obj, ok := nbrs_obj.Neighbor[nbrAddr]
     if !ok {
-        log.Infof("%s Neighbor object missing, add new", nbrAddr)
         nbr_obj,_ = nbrs_obj.NewNeighbor(nbrAddr)
     }
     ygot.BuildEmptyTree(nbr_obj)

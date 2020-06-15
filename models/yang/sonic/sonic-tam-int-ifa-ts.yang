@@ -2,10 +2,6 @@ module sonic-tam-int-ifa-ts {
     namespace "http://github.com/Azure/sonic-tam-int-ifa-ts";
     prefix stam-ts;
 
-    import sonic-acl {
-        prefix sacl;
-    }
-
     import ietf-yang-types {
         prefix yang;
     }

@@ -9,6 +9,7 @@ module openconfig-platform-ext {
 
     import openconfig-extensions { prefix "oc-ext"; }
     import openconfig-platform { prefix oc-pf; }
+    import openconfig-platform-transceiver { prefix oc-transceiver; }
 
     organization "SONiC";
     contact
@@ -256,6 +257,88 @@ module openconfig-platform-ext {
             type uint32;
             units rpm;
             description "Target speed of fans";
+        }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-transceiver:transceiver/oc-transceiver:state {
+        description "Additional fields for transceiver";
+        leaf cable-length{
+            type decimal64 {
+                fraction-digits 1;
+            }
+            description "The length of cable (in meters) on the xcvr module";
+        }
+
+        leaf max-port-power{
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description "The maximum power the port is allowed to provide (in watts)";
+        }
+
+        leaf max-module-power{
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description "The maximum power the xcvr can draw (in watts)";
+        }
+
+        leaf display-name{
+            type string;
+            description "Name used for identifying the xcvr module";
+        }
+
+        leaf vendor-oui{
+            type string;
+            description "OUI of the xcvr module vendor";
+        }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:state/oc-pf:temperature {
+        description "Additional fields for component temperature";
+        leaf current {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+
+        leaf high-threshold {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+
+        leaf critical-high-threshold {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+
+        leaf low-threshold {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
+        }
+
+        leaf critical-low-threshold {
+            type decimal64 {
+                fraction-digits 1;
+            }
+            units celsius;
+            description
+              "The current temperature";
         }
     }
 }

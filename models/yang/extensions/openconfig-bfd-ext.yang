@@ -18,6 +18,75 @@ module openconfig-bfd-ext {
     "An OpenConfig model extension of Bi-Directional Forwarding Detection (BFD)
     configuration and operational state.";
 
+  typedef bfd-diagnostic-code-ext {
+    type enumeration {
+      enum NO_DIAGNOSTIC {
+        value 0;
+        description
+          "No diagnostic code was specified, or the session has not
+          changed state.";
+      }
+      enum DETECTION_TIMEOUT {
+        value 1;
+        description
+          "The control detection time expired: no BFD packet was
+          received within the required period.";
+      }
+      enum ECHO_FAILED {
+        value 2;
+        description
+          "The BFD echo function failed - echo packets have not been
+          received for the required period of time.";
+      }
+      enum FORWARDING_RESET {
+        value 3;
+        description
+          "The forwarding plane in the local system was reset - such
+          that the remote system cannot rely on the forwarding state of
+          the device specifying this error code.";
+      }
+      enum PATH_DOWN {
+        value 4;
+        description
+          "Signalling outside of BFD specified that the path underlying
+          this session has failed.";
+      }
+      enum CONCATENATED_PATH_DOWN {
+        value 5;
+        description
+          "When a BFD session runs over a series of path segments, this
+          error code indicates that a subsequent path segment (i.e.,
+          one in the transmit path between the source and destination
+          of the session) has failed.";
+      }
+      enum ADMIN_DOWN {
+        value 6;
+        description
+          "The BFD session has been administratively disabled by the
+          peer.";
+      }
+      enum REVERSE_CONCATENATED_PATH_DOWN {
+        value 7;
+        description
+          "In the case that a BFD session is running over a series of
+          path segments, this error code indicates that a path segment
+          on the reverse path (i.e., in the transmit direction from the
+          destination to the source of the session) has failed.";
+      }
+      enum NEIGHBOR_SIGNALED_DOWN {
+        value 8;
+        description
+          "The BFD neighbor has signaled session down.";
+      }
+    }
+    description
+      "Diagnostic codes defined by BFD. These typically indicate the
+      reason for a change of session state.";
+    reference
+      "RFC5880 - Bidirectional Forwarding Detection, Section
+      4.1";
+  }
+ 
   typedef bfd-session-type {
     type enumeration {
       enum CONFIGURED {
@@ -321,5 +390,29 @@ module openconfig-bfd-ext {
 
   deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:multi-hop-state/oc-bfd-ext:minimum-echo-interval {
         deviate not-supported;
+  }
+
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:single-hop-state/oc-bfd-ext:local-diagnostic-code {
+    deviate replace {
+        type bfd-diagnostic-code-ext;
+    }
+  }
+
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:multi-hop-state/oc-bfd-ext:local-diagnostic-code {
+    deviate replace {
+        type bfd-diagnostic-code-ext;
+    }
+  }
+
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:single-hop-state/oc-bfd-ext:remote-diagnostic-code {
+    deviate replace {
+        type bfd-diagnostic-code-ext;
+    }
+  }
+
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:multi-hop-state/oc-bfd-ext:remote-diagnostic-code {
+    deviate replace {
+        type bfd-diagnostic-code-ext;
+    }
   }
 }

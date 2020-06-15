@@ -26,6 +26,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	toposort "github.com/philopon/go-toposort"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"strings"
 	"github.com/antchfx/xmlquery"
@@ -498,6 +499,11 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 				cvlErrObj.ErrCode = CVL_SEMANTIC_KEY_NOT_EXIST
 				cvlErrObj.CVLErrDetails = cvlErrorMap[cvlErrObj.ErrCode]
 				return cvlErrObj, CVL_SEMANTIC_KEY_NOT_EXIST
+			}
+
+			// Skip validation if UPDATE is received with only NULL field
+			if _, exists := cfgData[i].Data["NULL"]; exists && len(cfgData[i].Data) == 1 {
+				continue;
 			}
 
 			c.yp.SetOperation("UPDATE")

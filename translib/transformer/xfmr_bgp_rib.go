@@ -15,6 +15,7 @@ import (
 func init () {
     XlateFuncBind("DbToYang_bgp_routes_get_xfmr", DbToYang_bgp_routes_get_xfmr)
     XlateFuncBind("rpc_show_bgp", rpc_show_bgp)
+    XlateFuncBind("rpc_show_bgp_stats", rpc_show_bgp_stats)
 }
 
 type _xfmr_bgp_rib_key struct {
@@ -451,7 +452,6 @@ func hdl_get_bgp_local_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance_Networ
         return nil
     }
 
-    log.Infof("==> Local-RIB data filling to YGOT started!")
     if outError, ok := bgpRibOutputJson["warning"] ; ok {
         log.Errorf ("%s failed !!, Error: %s", *dbg_log, outError)
         return oper_err
@@ -481,7 +481,6 @@ func hdl_get_bgp_local_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance_Networ
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
         err = hdl_get_bgp_ipv6_local_rib (ribAfiSafi_obj, rib_key, bgpRibOutputJson, dbg_log)
     }
-    log.Infof("==> Local-RIB data filling to YGOT completed!")
 
     return err
 }
@@ -925,7 +924,6 @@ func hdl_get_bgp_local_rib_prefix (bgpRib_obj *ocbinds.OpenconfigNetworkInstance
     oper_err := errors.New("Opertational error")
     var ok bool
 
-    log.Infof("%s ==> Local-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
     cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + rib_key.prefix + " " + "json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
@@ -1919,9 +1917,11 @@ func hdl_get_bgp_nbrs_adj_rib_in_pre (bgpRib_obj *ocbinds.OpenconfigNetworkInsta
     var ok bool
     log.Infof("%s ==> NBRS-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "received-routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "received-routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "received-routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "received-routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)
@@ -1939,8 +1939,6 @@ func hdl_get_bgp_nbrs_adj_rib_in_pre (bgpRib_obj *ocbinds.OpenconfigNetworkInsta
         log.Errorf ("%s failed !!, %s", outError)
         return oper_err
     }
-
-    log.Infof("NBRS-RIB ==> Got FRR response ")
 
     if vrfName, ok := bgpRibOutputJson["vrfName"] ; (!ok || vrfName != rib_key.niName) {
         log.Errorf ("%s failed !! GET-req niName:%s not same as JSON-VRFname:%s", *dbg_log, rib_key.niName, vrfName)
@@ -1987,9 +1985,11 @@ func hdl_get_bgp_nbrs_adj_rib_in_post (bgpRib_obj *ocbinds.OpenconfigNetworkInst
     var ok bool
     log.Infof("%s ==> NBRS-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)
@@ -2007,8 +2007,6 @@ func hdl_get_bgp_nbrs_adj_rib_in_post (bgpRib_obj *ocbinds.OpenconfigNetworkInst
         log.Errorf ("%s failed !!, %s", outError)
         return oper_err
     }
-
-    log.Infof("NBRS-RIB ==> Got FRR response ")
 
     if vrfName, ok := bgpRibOutputJson["vrfName"] ; (!ok || vrfName != rib_key.niName) {
         log.Errorf ("%s failed !! GET-req niName:%s not same as JSON-VRFname:%s", *dbg_log, rib_key.niName, vrfName)
@@ -2060,9 +2058,11 @@ func hdl_get_bgp_nbrs_adj_rib_out_post (bgpRib_obj *ocbinds.OpenconfigNetworkIns
         return oper_err
     }
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "advertised-routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "advertised-routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "advertised-routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "advertised-routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)
@@ -2076,7 +2076,6 @@ func hdl_get_bgp_nbrs_adj_rib_out_post (bgpRib_obj *ocbinds.OpenconfigNetworkIns
         return nil
     }
 
-    log.Infof("NBRS-RIB ==> Got FRR response ")
     if outError, ok := bgpRibOutputJson["warning"] ; ok {
         log.Errorf ("%s failed !!, %s", outError)
         return oper_err
@@ -2195,6 +2194,7 @@ func hdl_get_all_bgp_nbrs_adj_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance
         nbrData, ok := bgpRibOutputJson[nbrAddr].([]interface{}) ; if !ok {continue}
 
         rib_key.nbrAddr = nbrAddr
+        util_bgp_get_ui_ifname_from_native_ifname (&nbrAddr)
 
         var ipv4Nbr_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor
         if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV4_UNICAST {
@@ -2598,9 +2598,6 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     input := mapData["sonic-bgp-show:input"]
     mapData = input.(map[string]interface{})
 
-    log.Info("In rpc_show_bgp, RPC Input data:", mapData)
-
-
     if value, ok := mapData["vrf-name"].(string) ; ok {
         vrf_name = " vrf " + value
     }
@@ -2627,6 +2624,51 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     if err != nil {
         dbg_err_str := "FRR execution failed ==> " + err_str
         log.Info("In rpc_show_bgp, ", dbg_err_str)
+        return nil, errors.New("Internal error!")
+    }
+    result.Output.Status = bgpOutput
+    return json.Marshal(&result)
+}
+
+var rpc_show_bgp_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_bgp_stats")
+    var cmd, vrf_name, af_str string
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show bgp ipv4/6 unicast statistics, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-bgp-show:output"`
+    }
+
+    log.Info("In rpc_show_bgp_stats, RPC data:", mapData)
+
+    input := mapData["sonic-bgp-show:input"]
+    mapData = input.(map[string]interface{})
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = " vrf " + value
+    }
+
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value == "IPV4_UNICAST" {
+            af_str = " ipv4 "
+        }else if value == "IPV6_UNICAST" {
+            af_str = " ipv6 "
+        }
+    }
+
+    cmd = "show ip bgp" + vrf_name + af_str + "statistics json"
+
+    bgpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Info("In rpc_show_bgp_stats, FRR execution failed")
         return nil, errors.New("Internal error!")
     }
     result.Output.Status = bgpOutput

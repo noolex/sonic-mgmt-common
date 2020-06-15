@@ -21,11 +21,10 @@ package transformer
 import (
      "errors"
      "fmt"
-    "strings"
-	"encoding/json"
-	"github.com/Azure/sonic-mgmt-common/translib/db"
-	log "github.com/golang/glog"
-    "github.com/golang/glog"
+     "strings"
+     "encoding/json"
+     "github.com/Azure/sonic-mgmt-common/translib/db"
+     log "github.com/golang/glog"
 )
 
 func init() {
@@ -62,8 +61,8 @@ func init() {
 
 func validate_filename(filename string) (fname string, err error ) {
    
-    if  (strings.HasPrefix(filename, "file://etc/sonic/") == false)  ||
-        (strings.Contains(filename, "/..") == true)  {
+    if  (!strings.HasPrefix(filename, "file://etc/sonic/"))  ||
+        strings.Contains(filename, "/..")  {
             return filename, errors.New("ERROR:Invalid filename " + filename)
     }
 
@@ -118,7 +117,7 @@ func cfg_copy_action(body []byte) ([]byte, error) {
        if (err == nil ) {
             config := Config{source, destination, operand.Input.Overwrite}
             cfg_cmd, ok := cfg_op_map[config]
-            if ok == true {
+            if ok {
                if (source == "filename")  ||
                    (destination == "filename") {
                        options = append(options, filename)
@@ -165,8 +164,7 @@ func cfg_write_erase_action(body []byte) ([]byte, error) {
 	if err != nil {
         /* Unmarshall failed, no input provided.
          * set to default */
-       log.Error("Config input not provided.")
-       err = errors.New("Input parameters missing.")
+       log.Info("Config input not provided.Perform default.")
 	} else {
        subcmd = operand.Input.SubCmd
     }
@@ -195,8 +193,8 @@ func cfg_write_erase_action(body []byte) ([]byte, error) {
 
     host_output := HostQuery(fcnt, option)
     if host_output.Err != nil {
-        glog.Errorf("host Query failed: err=%v", host_output.Err)
-        glog.Flush()
+        log.Errorf("host Query failed: err=%v", host_output.Err)
+        log.Flush()
         return nil, host_output.Err
     }
 

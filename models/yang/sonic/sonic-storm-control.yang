@@ -8,10 +8,6 @@ module sonic-storm-control {
         prefix prt;
     }
 
-    import sonic-common {
-        prefix scommon;
-    }
-
     organization 
         "BRCM";
 

@@ -1,0 +1,21 @@
+module sonic-vrrp-annot {
+
+    namespace "http://github.com/Azure/sonic-vrrp-annot";
+    prefix svrrp-annot;
+    yang-version 1.1;
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-vrrp { prefix svrrp; }
+
+    deviation /svrrp:get-vrrp {
+        deviate add {
+	        sonic-ext:rpc-callback "rpc_show_vrrp";
+        }
+    }
+
+    deviation /svrrp:get-vrrp6 {
+        deviate add {
+	        sonic-ext:rpc-callback "rpc_show_vrrp6";
+        }
+    }
+}

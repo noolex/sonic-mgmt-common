@@ -25,6 +25,7 @@ import (
 	"os"
 	"fmt"
 	"strings"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"unsafe"
 )
@@ -400,11 +401,7 @@ func(yp *YParser) AddChildNode(module *YParserModule, parent *YParserNode, name 
 //IsLeafrefMatchedInUnion Check if value matches with leafref node in union
 func (yp *YParser) IsLeafrefMatchedInUnion(module *YParserModule, xpath, value string) bool {
 
-	if C.lyd_node_leafref_match_in_union((*C.struct_lys_module)(module), C.CString(xpath), C.CString(value)) == 0 {
-		return true
-	}
-
-	return false
+	return C.lyd_node_leafref_match_in_union((*C.struct_lys_module)(module), C.CString(xpath), C.CString(value)) == 0
 }
 
 //AddMultiLeafNodes dd child node to a parent node

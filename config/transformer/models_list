@@ -6,6 +6,7 @@ openconfig-platform-psu.yang
 openconfig-platform-annot.yang
 openconfig-platform-fan.yang
 openconfig-platform-fan-ext.yang
+openconfig-platform-transceiver.yang
 openconfig-interfaces.yang
 openconfig-if-ip.yang
 openconfig-if-ethernet.yang
@@ -83,6 +84,8 @@ openconfig-platform.yang
 openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
+openconfig-copp.yang
+openconfig-copp-annot.yang
 openconfig-lldp.yang
 openconfig-lldp-ext.yang
 openconfig-lldp-annot.yang
@@ -91,4 +94,5 @@ openconfig-infra.yang
 sonic-system-infra-annot.yang
 openconfig-aggregate-ext.yang
 openconfig-aggregate-ext-annot.yang
-
+openconfig-fbs-ext.yang
+openconfig-fbs-ext-annot.yang
