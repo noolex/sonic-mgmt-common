@@ -7,7 +7,7 @@ import (
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "fmt"
-//    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
 //  "io"
 //  "bytes"
@@ -575,6 +575,23 @@ var DbToYang_ospfv2_router_area_network_tbl_key_xfmr KeyXfmrDbToYang = func(inPa
 var YangToDb_ospfv2_router_network_prefix_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 
     res_map := make(map[string]string)
+
+    pathInfo := NewPathInfo(inParams.uri)
+    ospfv2VrfName :=  pathInfo.Var("name")
+    if len(ospfv2VrfName) == 0 {
+        err := errors.New("VRF name is missing");
+        log.Info("YangToDb_ospfv2_router_network_prefix_fld_xfmr: VRF Name is Missing")
+        return res_map, err
+    }
+
+    intfAreaIdPresent, err := ospf_area_id_present_in_interfaces(&inParams, ospfv2VrfName)
+    if err != nil {
+        log.Info("YangToDb_ospfv2_router_network_prefix_fld_xfmr: intfAreaIdPresent check Failed")
+        return res_map, tlerr.New("Internal error: Interface area id config check failed")
+    } else if (intfAreaIdPresent) {
+        log.Info("YangToDb_ospfv2_router_network_prefix_fld_xfmr: intfAreaIdPresent")
+        return res_map, tlerr.New("Please remove all interface area-id configurations first")
+    }
 
     res_map["NULL"] = "NULL"
     return res_map, nil
