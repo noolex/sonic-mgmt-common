@@ -699,7 +699,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 						/* add the NULL field if the last field gets deleted */
 						deleteCount := 0
 						for field := range existingEntry.Field {
-							if tblRw.Has(field) {
+							if resTblRw.Has(field) {
 								deleteCount++
 							}
 						}
