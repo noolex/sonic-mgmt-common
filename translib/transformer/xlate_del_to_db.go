@@ -65,20 +65,20 @@ func subTreeXfmrDelDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]ma
 		if ((len(spec.xfmrFunc) == 0) || ((len(spec.xfmrFunc) > 0) &&
 		(spec.xfmrFunc != chldSpec.xfmrFunc))) {
 			inParams := formXfmrInputRequest(xlateParams.d, dbs, cdb, xlateParams.ygRoot, xlateParams.uri, xlateParams.requestUri, xlateParams.oper, "",
-			                                 dbDataMap, xlateParams.subOpDataMap, nil, xlateParams.txCache)
+			dbDataMap, xlateParams.subOpDataMap, nil, xlateParams.txCache)
 			retMap, err := xfmrHandler(inParams, chldSpec.xfmrFunc)
 			if err != nil {
 				xfmrLogInfoAll("Error returned by %v: %v", chldSpec.xfmrFunc, err)
 				return err
 			}
 			mapCopy(*subTreeResMap, retMap)
-                        if xlateParams.pCascadeDelTbl != nil && len(*inParams.pCascadeDelTbl) > 0 {
-                            for _, tblNm :=  range *inParams.pCascadeDelTbl {
-                                if !contains(*xlateParams.pCascadeDelTbl, tblNm) {
-                                    *xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, tblNm)
-                                }
-                            }
-                        }
+			if xlateParams.pCascadeDelTbl != nil && len(*inParams.pCascadeDelTbl) > 0 {
+				for _, tblNm :=  range *inParams.pCascadeDelTbl {
+					if !contains(*xlateParams.pCascadeDelTbl, tblNm) {
+						*xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, tblNm)
+					}
+				}
+			}
 		}
 	}
 	return nil
@@ -179,42 +179,36 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 	parentUri := parentUriGet(xlateParams.uri)
 	parentTbl, perr := dbTableFromUriGet(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 	_, curKey, curTbl, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-	if perr != nil && cerr != nil && len(curTbl) > 0 && parentTbl != curTbl {
-		// Non inhertited table
-		if (spec.tblOwner != nil) && (*spec.tblOwner == false) {
-			// Fill fields only
-			fillFields = true
-		} else if (spec.keyName != nil && len(*spec.keyName) > 0) || len(spec.xfmrKey) > 0  {
-			// Table owner && Key transformer present. Fill table instance
-			dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
-			/*
-			if _, ok := xlateParams.result[curTbl]; !ok {
-				xlateParams.result[curTbl] = make(map[string]db.Value)
-				xlateParams.result[curTbl][curKey] = db.Value{Field: make(map[string]string)}
+	if perr != nil && cerr != nil && len(curTbl) > 0 {
+		if parentTbl != curTbl {
+			// Non inhertited table
+			if (spec.tblOwner != nil) && (*spec.tblOwner == false) {
+				// Fill fields only
+				fillFields = true
+			} else if (spec.keyName != nil && len(*spec.keyName) > 0) || len(spec.xfmrKey) > 0  {
+				// Table owner && Key transformer present. Fill table instance
+				dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
 			} else {
-				xlateParams.result[curTbl][curKey] = db.Value{Field: make(map[string]string)}
-			}*/
-		} else {
-			// Fallback case. Ideally should not enter here
-			fillFields = true
-		}
-	} else {
-		// Inherited Table. We always expect the curTbl entry in xlateParams.result
-		// if Instance already filled do not fill fields
-		if _, ok := xlateParams.result[curTbl]; ok {
-			if fieldMap, ok := xlateParams.result[curTbl][curKey]; ok {
-				if len(fieldMap.Field) == 0 {
-					instanceDelete = true // Instance Delete
-				}
+				// Fallback case. Ideally should not enter here
+				fillFields = true
 			}
+		} else {
+			// Inherited Table. We always expect the curTbl entry in xlateParams.result
+			// if Instance already filled do not fill fields
+			if tblMap, ok := xlateParams.result[curTbl]; ok {
+				if fieldMap, ok := tblMap[curKey]; ok {
+					if len(fieldMap.Field) == 0 {
+						instanceDelete = true // Instance Delete
+					}
+				}
 
-		}
-		if !instanceDelete {
-			//Fill fields only
-			fillFields = true
+			}
+			if !instanceDelete {
+				//Fill fields only
+				fillFields = true
+			}
 		}
 	}
-
 
 	xfmrLogInfoAll("Traverse container for DELETE (\"%v\")", xlateParams.uri)
 	for yangChldName := range spec.yangEntry.Dir {
@@ -247,6 +241,10 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
                                 //strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
                                 curXlateParams.uri = xlateParams.uri
                                 curXlateParams.name = chldSpec.yangEntry.Name
+				if len(chldSpec.defVal) > 0 {
+					curXlateParams.value = chldSpec.defVal
+					curXlateParams.oper = UPDATE
+				}
                                 err = mapFillDataUtil(curXlateParams)
                                 if err != nil {
                                         return err
@@ -298,17 +296,17 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	*skipOrdTbl = false
 	var cascadeDelTbl []string
 
-        /* Check if the parent table exists for RFC compliance */
-        var exists bool
-        exists, err = verifyParentTable(d, oper, uri, txCache)
-        if err != nil {
-                log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
-                return err
-        }
-        if !exists {
-                errStr := fmt.Sprintf("Parent table does not exist for uri(%v)", uri)
-                return tlerr.InternalError{Format: errStr}
-        }
+	/* Check if the parent table exists for RFC compliance */
+	var exists bool
+	exists, err = verifyParentTable(d, oper, uri, txCache)
+	if err != nil {
+		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
+		return err
+	}
+	if !exists {
+		errStr := fmt.Sprintf("Parent table does not exist for uri(%v)", uri)
+		return tlerr.InternalError{Format: errStr}
+	}
 
 	for i := 0; i < MAXOPER; i++ {
 		resultMap[i] = make(map[db.DBNum]map[string]map[string]db.Value)
@@ -363,27 +361,53 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					}
 				}
 			} else if specYangType == YANG_LEAF || specYangType == YANG_LEAF_LIST {
-				result[tableName] = make(map[string]db.Value)
-				result[tableName][keyName] = db.Value{Field: make(map[string]string)}
-				xpath := xpathPrefix
-				uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
-				uriItemListLen := len(uriItemList)
-				var terminalNode, luri string
-				if uriItemListLen > 0 {
-					terminalNode = uriItemList[uriItemListLen-1]
-					luri = strings.Join(uriItemList[:uriItemListLen-1], "/") //strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
+				if len(tableName) > 0 && len(keyName) > 0 {
+					result[tableName] = make(map[string]db.Value)
+					result[tableName][keyName] = db.Value{Field: make(map[string]string)}
+					xpath := xpathPrefix
+					uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
+					uriItemListLen := len(uriItemList)
+					var terminalNode, luri string
+					if uriItemListLen > 0 {
+						terminalNode = uriItemList[uriItemListLen-1]
+						luri = strings.Join(uriItemList[:uriItemListLen-1], "/") //strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
 
-				}
-				if specYangType == YANG_LEAF {
-					_, ok := xYangSpecMap[xpath]
-					if ok && len(xYangSpecMap[xpath].defVal) > 0 {
-						// Do not fill def value if leaf does not map to any redis field
-						dbSpecXpath := tableName + "/" + xYangSpecMap[xpath].fieldName
-						_, mapped := xDbSpecMap[dbSpecXpath]
-						if mapped || len(xYangSpecMap[xpath].xfmrField) > 0 {
+					}
+					if specYangType == YANG_LEAF {
+						_, ok := xYangSpecMap[xpath]
+						if ok && len(xYangSpecMap[xpath].defVal) > 0 {
+							// Do not fill def value if leaf does not map to any redis field
+							dbSpecXpath := tableName + "/" + xYangSpecMap[xpath].fieldName
+							_, mapped := xDbSpecMap[dbSpecXpath]
+							if mapped || len(xYangSpecMap[xpath].xfmrField) > 0 {
+								curXlateParams.uri = luri
+								curXlateParams.name = spec.yangEntry.Name
+								curXlateParams.value = xYangSpecMap[xpath].defVal
+								err = mapFillDataUtil(curXlateParams)
+								if xfmrErr != nil {
+									return xfmrErr
+								}
+								if err != nil {
+									return err
+								}
+								if len(subOpDataMap) > 0 && subOpDataMap[UPDATE] != nil {
+									subOperMap := subOpDataMap[UPDATE]
+									mapCopy((*subOperMap)[db.ConfigDB], result)
+								} else {
+									var redisMap = new(RedisDbMap)
+									var dbresult = make(RedisDbMap)
+									for i := db.ApplDB; i < db.MaxDB; i++ {
+										dbresult[i] = make(map[string]map[string]db.Value)
+									}
+									redisMap = &dbresult
+									(*redisMap)[db.ConfigDB] = result
+									subOpDataMap[UPDATE]     = redisMap
+								}
+							}
+							result = make(map[string]map[string]db.Value)
+						} else {
 							curXlateParams.uri = luri
 							curXlateParams.name = spec.yangEntry.Name
-							curXlateParams.value = xYangSpecMap[xpath].defVal
 							err = mapFillDataUtil(curXlateParams)
 							if xfmrErr != nil {
 								return xfmrErr
@@ -391,25 +415,20 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 							if err != nil {
 								return err
 							}
-							if len(subOpDataMap) > 0 && subOpDataMap[UPDATE] != nil {
-								subOperMap := subOpDataMap[UPDATE]
-								mapCopy((*subOperMap)[db.ConfigDB], result)
-							} else {
-								var redisMap = new(RedisDbMap)
-								var dbresult = make(RedisDbMap)
-								for i := db.ApplDB; i < db.MaxDB; i++ {
-									dbresult[i] = make(map[string]map[string]db.Value)
-								}
-								redisMap = &dbresult
-								(*redisMap)[db.ConfigDB] = result
-								subOpDataMap[UPDATE]     = redisMap
-							}
 						}
-						result = make(map[string]map[string]db.Value)
-					} else {
+					} else if specYangType == YANG_LEAF_LIST {
+						var fieldVal []interface{}
+						if strings.Contains(terminalNode, "[") {
+							terminalNodeData := strings.TrimSuffix(strings.SplitN(terminalNode, "[", 2)[1], "]")
+							terminalNodeDataLst := strings.SplitN(terminalNodeData, "=", 2)
+							terminalNodeVal := terminalNodeDataLst[1]
+							fieldVal = append(fieldVal, terminalNodeVal)
+						}
 						curXlateParams.uri = luri
 						curXlateParams.name = spec.yangEntry.Name
+						curXlateParams.value = fieldVal
 						err = mapFillDataUtil(curXlateParams)
+
 						if xfmrErr != nil {
 							return xfmrErr
 						}
@@ -417,25 +436,8 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 							return err
 						}
 					}
-				} else if specYangType == YANG_LEAF_LIST {
-					var fieldVal []interface{}
-					if strings.Contains(terminalNode, "[") {
-						terminalNodeData := strings.TrimSuffix(strings.SplitN(terminalNode, "[", 2)[1], "]")
-						terminalNodeDataLst := strings.SplitN(terminalNodeData, "=", 2)
-						terminalNodeVal := terminalNodeDataLst[1]
-						fieldVal = append(fieldVal, terminalNodeVal)
-					}
-					curXlateParams.uri = luri
-					curXlateParams.name = spec.yangEntry.Name
-					curXlateParams.value = fieldVal
-					err = mapFillDataUtil(curXlateParams)
-
-					if xfmrErr != nil {
-						return xfmrErr
-					}
-					if err != nil {
-						return err
-					}
+				}  else {
+					log.Errorf("No proper table and key information to fill result map for uri %v, table: %v, key %v", uri, tableName, keyName)
 				}
 			} else {
 				curResult, cerr := allChildTblGetToDelete(curXlateParams)
@@ -445,7 +447,6 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				} else {
 					mapCopy(result, curResult)
 				}
-
 			}
 
 			_, ok = xYangSpecMap[moduleNm]
