@@ -153,12 +153,6 @@ module sonic-interface {
 
                                 leaf dhcp_relay_link_select {
                                         type cmn:mode-enable;
-                                        must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                                               "(current()/../dhcp_servers and current()/../dhcp_relay_src_intf)"   
-                                              {
-                                                       error-message "DHCP server or src-intf not configured";
-                                                       error-app-tag dhcp-server-invalid-link-select-config;
-                                              }
                                 }
 
                                 leaf dhcp_relay_src_intf {
@@ -183,6 +177,26 @@ module sonic-interface {
 
                                 }
 
+                                leaf dhcp_server_vrf {
+                                        type string;
+                                        must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                               "(current()/../dhcp_servers)"   
+                                              {
+                                                       error-message "DHCP server not configured";
+                                                       error-app-tag dhcp-server-invalid-vrf-config;
+                                              }
+                                }
+
+                                leaf dhcp_relay_vrf_select {
+                                        type cmn:mode-enable;
+                                        default disable;
+                                }
+
+                                leaf dhcp_relay_policy_action {
+                                        type cmn:relay-policy-action;
+                                        default discard;
+                                }
+
                                 leaf dhcpv6_relay_src_intf {
                                         type string;
                                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
@@ -203,6 +217,21 @@ module sonic-interface {
                                                        error-app-tag dhcp-server-adress-config;
                                              }
 
+                                }
+
+                                leaf dhcpv6_server_vrf {
+                                        type string;
+                                        must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                               "(current()/../dhcpv6_servers)"   
+                                              {
+                                                       error-message "DHCP server or src-intf not configured";
+                                                       error-app-tag dhcp-server-invalid-vrf-config;
+                                              }
+                                }
+
+                                leaf dhcpv6_relay_vrf_select {
+                                        type cmn:mode-enable;
+                                        default disable;
                                 }
 
 				leaf ipv6_use_link_local_only {

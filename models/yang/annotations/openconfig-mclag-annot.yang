@@ -163,6 +163,7 @@ module openconfig-mclag-annot {
     deviation /oc-mclag:mclag/oc-mclag:vlan-interfaces/oc-mclag:vlan-interface/oc-mclag:config/oc-mclag:unique-ip-enable {
         deviate add {
             sonic-ext:field-name "unique_ip";
+            sonic-ext:field-transformer "mclag_unique_ip_enable_fld_xfmr";
         }
     }
 
@@ -176,6 +177,7 @@ module openconfig-mclag-annot {
     deviation /oc-mclag:mclag/oc-mclag:vlan-interfaces/oc-mclag:vlan-interface/oc-mclag:state/oc-mclag:unique-ip-enable {
         deviate add {
             sonic-ext:field-name "unique_ip";
+            sonic-ext:field-transformer "mclag_unique_ip_enable_fld_xfmr";
         }
     }
 

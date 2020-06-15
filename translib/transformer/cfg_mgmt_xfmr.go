@@ -19,12 +19,29 @@
 package transformer
 
 import (
+<<<<<<< HEAD
      "errors"
      "fmt"
      "strings"
      "encoding/json"
      "github.com/Azure/sonic-mgmt-common/translib/db"
      log "github.com/golang/glog"
+||||||| merged common ancestors
+     "errors"
+     "fmt"
+    "strings"
+	"encoding/json"
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	log "github.com/golang/glog"
+    "github.com/golang/glog"
+=======
+        "errors"
+        "fmt"
+        "strings"
+        log "github.com/golang/glog"
+        "encoding/json"
+        "github.com/Azure/sonic-mgmt-common/translib/db"
+>>>>>>> origin/broadcom_sonic_3.x_share
 )
 
 func init() {
@@ -61,8 +78,16 @@ func init() {
 
 func validate_filename(filename string) (fname string, err error ) {
    
+<<<<<<< HEAD
     if  (!strings.HasPrefix(filename, "file://etc/sonic/"))  ||
         strings.Contains(filename, "/..")  {
+||||||| merged common ancestors
+    if  (strings.HasPrefix(filename, "file://etc/sonic/") == false)  ||
+        (strings.Contains(filename, "/..") == true)  {
+=======
+    if  (!strings.HasPrefix(filename, "file://etc/sonic/"))  ||
+        (strings.Contains(filename, "/.."))  {
+>>>>>>> origin/broadcom_sonic_3.x_share
             return filename, errors.New("ERROR:Invalid filename " + filename)
     }
 
@@ -137,16 +162,16 @@ func cfg_copy_action(body []byte) ([]byte, error) {
     } else if query_result.Err != nil {
         sum.Output.Status_detail = "ERROR:Internal SONiC Hostservice communication failure."
     } else if query_result.Body[0].(int32) ==2 {
-            sum.Output.Status_detail = fmt.Sprintf("ERROR:Invalid filename %s.", filename)
+        sum.Output.Status_detail = fmt.Sprintf("ERROR:Invalid filename %s.", filename)
     } else if query_result.Body[0].(int32) != 0 {
-            sum.Output.Status_detail = "ERROR:Command Failed."
+        sum.Output.Status_detail = "ERROR:Command Failed."
     } else {
-            sum.Output.Status = 0
-            sum.Output.Status_detail = "SUCCESS."
+        sum.Output.Status = 0
+        sum.Output.Status_detail = "SUCCESS."
     }
     result, err = json.Marshal(&sum)
 
-	return result, err
+    return result, err
 }
 
 func cfg_write_erase_action(body []byte) ([]byte, error) {
@@ -155,26 +180,37 @@ func cfg_write_erase_action(body []byte) ([]byte, error) {
     var subcmd string
 
     var operand struct {
-		Input struct {
-			SubCmd string `json:"subcmd"`
-		} `json:"sonic-config-mgmt:input"`
-	}
+	Input struct {
+		SubCmd string `json:"subcmd"`
+	} `json:"sonic-config-mgmt:input"`
+    }
 
     err = json.Unmarshal(body, &operand)
-	if err != nil {
+    if err != nil {
         /* Unmarshall failed, no input provided.
          * set to default */
+<<<<<<< HEAD
        log.Info("Config input not provided.Perform default.")
 	} else {
+||||||| merged common ancestors
+       log.Error("Config input not provided.")
+       err = errors.New("Input parameters missing.")
+	} else {
+=======
+       log.Error("Config input not provided.")
+       err = errors.New("Input parameters missing.")
+       return nil, err
+    } else {
+>>>>>>> origin/broadcom_sonic_3.x_share
        subcmd = operand.Input.SubCmd
     }
 
     var sum struct {
-		Output struct {
-			Status int32 `json:"status"`
+        Output struct {
+	    Status int32 `json:"status"`
             Status_detail string`json:"status-detail"`
-		} `json:"sonic-config-mgmt:output"`
-	}
+	} `json:"sonic-config-mgmt:output"`
+    }
 
     var fcnt string = "cfg_mgmt.write_erase"
     var option string = "?"
@@ -205,12 +241,11 @@ func cfg_write_erase_action(body []byte) ([]byte, error) {
         sum.Output.Status_detail = host_output.Body[1].(string)
     }
 
-	result, err = json.Marshal(&sum)
+    result, err = json.Marshal(&sum)
 
-	return result, err
+    return result, err
 }
 
 var rpc_write_erase RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     return cfg_write_erase_action(body)
 }
-

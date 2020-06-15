@@ -878,6 +878,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
             if err != nil {
                 return res_map, err
             }
+<<<<<<< HEAD
         } else {
                 
                 // VRF Unbind case. Check if all IP has been deleted before VRF unbind
@@ -889,6 +890,54 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 			return res_map, err
 		}
 	}
+||||||| merged common ancestors
+<<<<<<<<< Temporary merge branch 1
+        } else {
+            // VRF Unbind case. Check if all IP has been deleted before VRF unbind
+            ipKeys, _ := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
+            if len(ipKeys) != 0 {
+                errStr := "L3 Configuration exists for Interface: " + intfId
+		log.Error(errStr)
+		err = tlerr.InvalidArgsError{Format: errStr}
+		return res_map, err
+	    }
+        }
+||||||||| merged common ancestors
+		} else {
+			// VRF Unbind case. Check if all IP has been deleted before VRF unbind
+			ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
+			if len(ipKeys) != 0 {
+				errStr := "L3 Configuration exists for Interface: " + intfId
+				log.Error(errStr)
+				err = tlerr.InvalidArgsError{Format: errStr}
+				return res_map, err
+			}
+		}
+=========
+        } else {
+                
+                // VRF Unbind case. Check if all IP has been deleted before VRF unbind
+		ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
+		if len(ipKeys) != 0 {
+			errStr := "L3 Configuration exists for Interface: " + intfId
+			log.Error(errStr)
+			err = tlerr.InvalidArgsError{Format: errStr}
+			return res_map, err
+		}
+	}
+=======
+        } else {
+                
+            // VRF Unbind case. Check if all IP has been deleted before VRF unbind
+		    ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ intfId, "*" }})
+		    if len(ipKeys) != 0 {
+			    errStr := "L3 Configuration exists for Interface: " + intfId
+			    log.Error(errStr)
+			    err = tlerr.InvalidArgsError{Format: errStr}
+			    return res_map, err
+		    }
+	    }
+>>>>>>> origin/broadcom_sonic_3.x_share
 
         if chekIfSagExistOnIntf(inParams.d, intfId) {
                 errStr = "Interface " + intfId + " has IP static anycast gateway configuration"

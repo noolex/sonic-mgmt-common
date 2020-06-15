@@ -319,9 +319,6 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                 t["pre_empt"] = "False"
                             }
                         }
-                        if vrrp_rtr.Config.Version != nil {
-                            t["version"] = strconv.Itoa(int(*vrrp_rtr.Config.Version))
-                        }
 
                         if vrrp_rtr.Config.AdvertisementInterval != nil {
                             t["adv_interval"] = strconv.Itoa(int(*vrrp_rtr.Config.AdvertisementInterval))
@@ -1000,14 +997,6 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                   vipmap := strings.Split(vipstr, ",")
                   vrrp6.Config.VirtualAddress = vipmap
               }
-
-              version := 3
-              if vrrpData.Has("version") {
-                  version, _ = strconv.Atoi(vrrpData.Get("version"))
-              }
-              pversion := new(uint8)
-              *pversion  = uint8(version)
-              vrrp6.Config.Version = pversion
 
             }
 
