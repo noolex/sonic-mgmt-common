@@ -2983,12 +2983,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 	}
 	return false
 }
-<<<<<<< HEAD
-||||||| merged common ancestors
-*/
-=======
 
->>>>>>> origin/broadcom_sonic_3.x_share
 
 func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface,
                          inParams *XfmrParams, ifdb map[string]string, ifName *string) error  {

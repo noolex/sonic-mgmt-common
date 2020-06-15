@@ -675,7 +675,6 @@ module openconfig-system-annot {
     }
     
     /*************** ldap-servers-map-attributes-end ***********/     
-<<<<<<< HEAD
 
     
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:config {
@@ -702,8 +701,6 @@ module openconfig-system-annot {
             sonic-ext:subtree-transformer "ntp_server_subtree_xfmr";
         }
     }
-||||||| merged common ancestors
-=======
     
 		/*************** ldap-server-group-attributes-start ***********/		
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:search-time-limit {
@@ -968,5 +965,4 @@ module openconfig-system-annot {
 
 		/*************** ldap-server-group-attributes-end ***********/
     
->>>>>>> origin/broadcom_sonic_3.x_share
 }
