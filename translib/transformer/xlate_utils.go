@@ -135,6 +135,19 @@ func parentXpathGet(xpath string) string {
     return path
 }
 
+func parentUriGet(uri string) string {
+	parentUri := ""
+	if len(uri) > 0 {
+		uriList := splitUri(uri)
+		if len(uriList) > 2 {
+			parentUriList := uriList[:len(uriList)-1]
+			parentUri = strings.Join(parentUriList, "/")
+			parentUri = "/" + parentUri
+		}
+	}
+	return parentUri
+}
+
 func isYangResType(ytype string) bool {
     if ytype == "choice" || ytype == "case" {
         return true
@@ -854,7 +867,69 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 return pfxPath, keyStr, tableName, err
  }
 
- func sonicXpathKeyExtract(path string) (string, string, string) {
+func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, error) {
+	tableName := ""
+	var err error
+	cdb := db.ConfigDB
+	var dbs [db.MaxDB]*db.DB
+
+	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
+	 xpathInfo, ok := xYangSpecMap[xPath]
+	 if !ok {
+		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", xPath)
+		 return tableName, err
+	 }
+
+	 tblPtr := xpathInfo.tableName
+	 if tblPtr != nil && *tblPtr != XFMR_NONE_STRING {
+		 tableName = *tblPtr
+	 } else if xpathInfo.xfmrTbl != nil {
+		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
+		 tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams)
+	 }
+	return tableName, err
+}
+
+/* This function is used to get the DB Key using only the annotation at the given uri
+   This is not used to get the key if you need to derive the key from its parent lists. Use xpathKeyExtract in that case */
+func dbKeyFromAnnotGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, error) {
+	dbKey := ""
+	var err error
+	cdb := db.ConfigDB
+	var dbs [db.MaxDB]*db.DB
+
+	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
+	 xpathInfo, ok := xYangSpecMap[xPath]
+	 if !ok {
+		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", xPath)
+		 return dbKey, err
+	 }
+
+         if len(xpathInfo.xfmrKey) > 0  {
+		 xfmrFuncName := yangToDbXfmrFunc(xpathInfo.xfmrKey)
+		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
+		 if oper == GET {
+			 ret, err := XlateFuncCall(xfmrFuncName, inParams)
+			 if err != nil {
+				 return dbKey, err
+			 }
+			 if ret != nil {
+				 dbKey = ret[0].Interface().(string)
+			 }
+		 } else {
+			 ret, err := keyXfmrHandler(inParams, xpathInfo.xfmrKey)
+			 if (err != nil) {
+				 return dbKey, err
+			 }
+			 dbKey = ret
+		 }
+         } else if xpathInfo.keyName != nil {
+                 dbKey += *xpathInfo.keyName
+         }
+	return dbKey, err
+}
+
+func sonicXpathKeyExtract(path string) (string, string, string) {
 	 xfmrLogInfoAll("In uri(%v)", path)
 	 xpath, keyStr, tableName, fldNm := "", "", "", ""
 	 var err error

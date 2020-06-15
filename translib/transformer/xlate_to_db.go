@@ -1004,10 +1004,13 @@ func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (b
 	//	&& ((xpathInfo.keyName != nil && len(xpathInfo.keyName)) || len(xpathInfo.xfmrKey) > 0)) {
 
 		// If the delete is at container level and the container is mapped to a unique table, then check for table existence to avoid CVL throwing error
-		parentUri := strings.Join(parentUriList, "/")
-		parentUri = "/" + parentUri
+		parentUri := ""
+		if len(parentUriList) > 0 {
+			parentUri = strings.Join(parentUriList, "/")
+			parentUri = "/" + parentUri
+		}
 		// Get table for parent xpath
-		_, _, parentTable, perr := xpathKeyExtract(d, nil, oper, parentUri, uri, nil, txCache)
+		parentTable, perr := dbTableFromUriGet(d, nil, oper, parentUri, uri, nil, txCache)
 		// Get table for current xpath
 		_, curKey, curTable, cerr := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
 		if perr == nil && cerr == nil && (curTable != parentTable) {
