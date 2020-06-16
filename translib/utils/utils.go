@@ -47,10 +47,8 @@ func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
     switch dbNo {
     case db.ApplDB, db.CountersDB, db.AsicDB:
         opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-        break
     case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB, db.UserDB:
         opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
-        break
     }
 
     return opt
@@ -134,7 +132,7 @@ func portNotifSubscribe() {
     var akey db.Key
     tsa := db.TableSpec { Name: "PORT" }
 
-    ca := make([]string, 1, 1)
+    ca := make([]string, 1)
     ca[0] = "*"
     akey = db.Key { Comp: ca}
 
@@ -179,7 +177,7 @@ func devMetaNotifSubscribe() {
     var akey db.Key
     tsa := db.TableSpec { Name: "DEVICE_METADATA" }
 
-    ca := make([]string, 1, 1)
+    ca := make([]string, 1)
     ca[0] = "*"
     akey = db.Key { Comp: ca}
 
@@ -233,7 +231,7 @@ func SetAliasMode(enableMode bool) {
     aliasMode = enableMode
 }
 
-// Retrieve physical interface name from alias-name
+// GetNativeNameFromUIName returns physical interface name for alias-name
 func GetNativeNameFromUIName(uiName *string) *string {
     if !IsAliasModeEnabled() {
         return uiName
@@ -246,7 +244,7 @@ func GetNativeNameFromUIName(uiName *string) *string {
     return uiName
 }
 
-// Retrieve alias-name from physical interface Name
+// GetUINameFromNativeName returns alias-name for physical interface Name
 func GetUINameFromNativeName(ifName *string) *string {
     if !IsAliasModeEnabled() {
         return ifName

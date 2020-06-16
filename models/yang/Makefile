@@ -94,10 +94,11 @@ clean:
 	rm -f $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
 	rm -f allyangs.tree allyangs_tree.html yang_tree.md
 
-# TODO: Remove this in next-checkin
 validate: $(YANG_VALIDATE_CHK)
 
-# TODO: When error reporting is enabled uncomment the touch line and remove -o option and remove '-' prefix to PYANG
+# TODO: When error reporting is enabled redirect outputs to console instead of files by removing -o option
+# Right now outputs are redirected to file because searching based on yang module is easy
+# Also developers are used to this approach
 $(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES)
 	- $(PYANG) \
 		-f upcheck \
@@ -130,6 +131,6 @@ $(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSIO
 		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
 		$(YANG_IETF_MOD_EXT_FILES) 2> /dev/null
 	@echo "++++++++++++Please find Generic YANG issues in ietf_issues.txt++++++++++"
-	#touch $@
+	touch $@
 
 

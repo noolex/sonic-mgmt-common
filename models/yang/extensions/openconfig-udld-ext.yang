@@ -13,12 +13,11 @@ module openconfig-udld-ext {
   import openconfig-udld-types { prefix oc-udld-types; }
 
 
-  // meta
-  organization "OpenConfig working group";
+  organization
+      "SONiC";
 
   contact
-    "OpenConfig working group
-    www.openconfig.net";
+      "SONiC";
 
   description
     "This module defines configuration and operational state data

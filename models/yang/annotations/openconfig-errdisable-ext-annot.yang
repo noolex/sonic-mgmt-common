@@ -1,0 +1,51 @@
+module openconfig-errdisable-ext-annot {
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/openconfig-errdisable-ext-annot";
+    prefix "oc-errdisable-ext-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-errdisable-ext { prefix oc-errdisable-ext; }
+
+    // meta
+    organization
+       "SONiC";
+
+    contact
+       "SONiC";
+
+    description
+       "SONIC ERRDISABLE";
+
+    revision 2020-06-04 {
+       description
+          "Initial revision.";
+    }
+
+	deviation /oc-errdisable-ext:errdisable/oc-errdisable-ext:config {
+		deviate add {
+			sonic-ext:table-name "ERRDISABLE";
+			sonic-ext:key-transformer "errdisable_global_key_xfmr";
+		}
+    }
+	
+	deviation /oc-errdisable-ext:errdisable/oc-errdisable-ext:config/oc-errdisable-ext:cause {
+		deviate add {
+            sonic-ext:field-transformer "errdisable_cause_xfmr";
+		}
+	}
+
+	deviation /oc-errdisable-ext:errdisable/oc-errdisable-ext:state {
+		deviate add {
+			sonic-ext:table-name "ERRDISABLE";
+			sonic-ext:key-transformer "errdisable_global_key_xfmr";
+		}
+    }
+
+	deviation /oc-errdisable-ext:errdisable/oc-errdisable-ext:state/oc-errdisable-ext:cause {
+		deviate add {
+            sonic-ext:field-transformer "errdisable_cause_xfmr";
+		}
+    }
+}
+
