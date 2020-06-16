@@ -677,7 +677,7 @@ module openconfig-system-annot {
     /*************** ldap-servers-map-attributes-end ***********/     
 
     
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config {
+    deviation /oc-sys:system/oc-sys:ntp {
         deviate add {
             sonic-ext:table-name "NTP";
             sonic-ext:key-transformer "ntp_global_key_xfmr";
