@@ -751,7 +751,7 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
         }
     }
     intfType, _, _ := getIntfTypeByName(ifName)
-    if IntfTypeVxlan == intfType || IntfTypeVlan == intfType {
+    if IntfTypeVxlan == intfType {
         return res_map, nil
     }
     if inParams.oper == DELETE {
@@ -2030,7 +2030,7 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
                 }
                 /* Check for IP overlap */
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
-                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName);
+                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
@@ -2072,7 +2072,7 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
                 }
                 /* Check for IPv6 overlap */
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
-                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName);
+                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
