@@ -150,15 +150,7 @@ func validateNexthopAttrCmn(vc *CustValidationCtxt, hdlr checkNHAttrHdlr,
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-<<<<<<< HEAD
-// ValidateNexthopGateway check if every item in comma separated list is valid IP address
-// Path : /sonic-static-route/STATIC_ROUTE/nexthop
-||||||| merged common ancestors
-//Path : /sonic-static-route/STATIC_ROUTE/nexthop
-// Purpose: To check if every item in comma separated list is valid IP address
-=======
 // ValidateNexthopGateway checks if every item in comma separated list is valid IP address
->>>>>>> origin/broadcom_sonic_3.x_share
 // Returns -  CVL Error object
 // Path /sonic-static-route/STATIC_ROUTE/nexthop
 func (t *CustomValidation) ValidateNexthopGateway(
@@ -166,15 +158,7 @@ func (t *CustomValidation) ValidateNexthopGateway(
     return validateNexthopAttrCmn(vc, checkNexthopGateway)
 }
 
-<<<<<<< HEAD
-// ValidateNexthopInterface check if every item in comma separated list is an active interface name
-// Path : /sonic-static-route/STATIC_ROUTE/ifname
-||||||| merged common ancestors
-//Path : /sonic-static-route/STATIC_ROUTE/ifname
-// Purpose: To check if every item in comma separated list is an active interface name
-=======
 // ValidateNexthopInterface checks if every item in comma separated list is an active interface name
->>>>>>> origin/broadcom_sonic_3.x_share
 // Returns -  CVL Error object
 // Path /sonic-static-route/STATIC_ROUTE/ifname
 func (t *CustomValidation) ValidateNexthopInterface(
@@ -183,15 +167,7 @@ func (t *CustomValidation) ValidateNexthopInterface(
     return validateNexthopAttrCmn(vc, checkNexthopIntfVrf, tableList, vc.RClient)
 }
 
-<<<<<<< HEAD
-// ValidateNexthopVrf check if every item in comma separated list is an active VRF name
-// Path : /sonic-static-route/STATIC_ROUTE/nexthop-vrf
-||||||| merged common ancestors
-//Path : /sonic-static-route/STATIC_ROUTE/nexthop-vrf
-// Purpose: To check if every item in comma separated list is an active VRF name
-=======
 // ValidateNexthopVrf checks if every item in comma separated list is an active VRF name
->>>>>>> origin/broadcom_sonic_3.x_share
 // Returns -  CVL Error object
 // Path /sonic-static-route/STATIC_ROUTE/nexthop-vrf
 func (t *CustomValidation) ValidateNexthopVrf(
