@@ -5,7 +5,7 @@ import (
     "reflect"
  )
 
-//ValidateDstPort. Validate whether destination port has any VLAN configuration
+//ValidateDstPort validates whether destination port has any VLAN configuration
 func (t *CustomValidation) ValidateDstPort(vc *CustValidationCtxt) CVLErrorInfo {
 
     if (vc.CurCfg.VOp == OP_DELETE) {
