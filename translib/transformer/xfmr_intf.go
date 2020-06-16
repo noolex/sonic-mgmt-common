@@ -1395,7 +1395,7 @@ func validateIpPrefixForIntfType(ifType E_InterfaceType, ip *string, prfxLen *ui
 
 
 func checkIfSagAfiExistOnIntf(d *db.DB, afi string, ifName string) (bool){
-    preKey := make([]string, 2, 2)
+    preKey := make([]string, 2)
     preKey[0] = ifName
     preKey[1] = afi
 
@@ -1467,7 +1467,7 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
           	}
 
             for _, sagIp := range sagIpMap {
-                prekey := make([]string, 3, 3)
+                prekey := make([]string, 3)
                 prekey[0] = sagIf.Get(0)
                 prekey[1] = sagIp
                 prekey[2] = "SAG"
@@ -1506,7 +1506,7 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
                         log.Error(errStr)
                         return "", errors.New(errStr)
                     }
-                } else if (isIntfIp == true){
+                } else if isIntfIp {
                     //Handle IP overlap on same interface, replace
                     log.Error("Entry ", key.Get(1), " on ", intf, " needs to be deleted")
                     errStr := "IP overlap on same interface with IP or IP Anycast " + key.Get(1)
