@@ -278,16 +278,24 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subTreeResMap *map[string]map[string]db.Value) error {
 	var err error
 	var dbs [db.MaxDB]*db.DB
-	spec, _ := xYangSpecMap[xlateParams.xpath]
+	spec, ok := xYangSpecMap[xlateParams.xpath]
 	cdb     := spec.dbIndex
 	dbs[cdb] = xlateParams.d
+
+	if !ok {
+		return err
+	}
+
+	if (ok && (spec.yangEntry != nil) && (spec.yangEntry.ReadOnly())) {
+		return err
+	}
 
 	fillFields := false
 	instanceDelete := false
 	parentUri := parentUriGet(xlateParams.uri)
 	parentTbl, perr := dbTableFromUriGet(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 	_, curKey, curTbl, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-	if perr != nil && cerr != nil && len(curTbl) > 0 {
+	if perr != nil && cerr != nil && len(curTbl) > 0 && len(curKey) > 0 {
 		if parentTbl != curTbl {
 			// Non inhertited table
 			if (spec.tblOwner != nil) && (*spec.tblOwner == false) {
@@ -323,7 +331,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		chldXpath    := xlateParams.xpath+"/"+yangChldName
 		chldUri      := xlateParams.uri+"/"+yangChldName
 		chldSpec, ok := xYangSpecMap[chldXpath]
-		if (ok && (chldSpec.dbIndex == db.ConfigDB) && (chldSpec.yangEntry != nil)) {
+		if (ok && (chldSpec.yangEntry != nil)) {
 			chldYangType := chldSpec.yangDataType
 			curXlateParams := xlateParams
 			curXlateParams.uri = chldUri
@@ -345,14 +353,11 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 				if err != nil {
 					return err
 				}
-			} else if (chldYangType == YANG_LEAF || chldYangType == YANG_LEAF_LIST) && fillFields {
+			} else if (chldSpec.dbIndex == db.ConfigDB) && (chldYangType == YANG_LEAF || chldYangType == YANG_LEAF_LIST) && fillFields {
                                 //strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
                                 curXlateParams.uri = xlateParams.uri
                                 curXlateParams.name = chldSpec.yangEntry.Name
-				if len(chldSpec.defVal) > 0 {
-					curXlateParams.value = chldSpec.defVal
-					curXlateParams.oper = UPDATE
-				}
+				// Default value filling is done in mapFillDataUtil
                                 err = mapFillDataUtil(curXlateParams)
                                 if err != nil {
                                         return err
