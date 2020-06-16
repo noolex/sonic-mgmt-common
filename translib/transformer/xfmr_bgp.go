@@ -9,10 +9,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
-    "io"
-    "bytes"
     "net"
-    "encoding/binary"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
 )
@@ -70,85 +67,6 @@ func getBgpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Networ
 
     ygot.BuildEmptyTree (protoInstObj.Bgp)
     return protoInstObj.Bgp, niName, err
-}
-
-func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
-    var err error
-    oper_err := errors.New("Operational error")
-    
-    log.Infof("Going to connect UDS socket call to reach BGP container  ==> \"%s\"", vtysh_cmd)
-    conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
-    if err != nil {
-        log.Infof("Failed to connect proxy server: %s\n", err)
-        return nil, oper_err
-    }
-    defer conn.Close()
-    bs := make([]byte, 4)
-    binary.BigEndian.PutUint32(bs, uint32(len(vtysh_cmd)))
-    _, err = conn.Write(bs)
-    if err != nil {
-        log.Infof("Failed to write command length to server: %s\n", err)
-        return nil, oper_err
-    }
-    _, err = conn.Write([]byte(vtysh_cmd))
-    if err != nil {
-        log.Infof("Failed to write command length to server: %s\n", err)
-        return nil, oper_err
-    }
-    var outputJson map[string]interface{}
-    err = json.NewDecoder(conn).Decode(&outputJson)
-    if err != nil {
-        log.Errorf("Not able to decode vtysh json output: %s\n", err)
-        return nil, oper_err
-    }
-
-    if outputJson == nil {
-        log.Infof("VTYSH output empty\n")
-        return nil, oper_err
-    }
-
-    return outputJson, err
-}
-
-func exec_raw_vtysh_cmd (vtysh_cmd string) (string, error) {
-    var err error
-    oper_err := errors.New("Operational error")
-
-    log.Infof("In exec_raw_vtysh_cmd going to connect UDS socket call to reach BGP container  ==> \"%s\"", vtysh_cmd)
-    conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
-    if err != nil {
-        log.Infof("Failed to connect proxy server: %s\n", err)
-        return "", oper_err
-    }
-    defer conn.Close()
-    bs := make([]byte, 4)
-    binary.BigEndian.PutUint32(bs, uint32(len(vtysh_cmd)))
-    _, err = conn.Write(bs)
-    if err != nil {
-        log.Infof("Failed to write command length to server: %s\n", err)
-        return "", oper_err
-    }
-    _, err = conn.Write([]byte(vtysh_cmd))
-    if err != nil {
-        log.Infof("Failed to write command length to server: %s\n", err)
-        return "", oper_err
-    }
-    var buffer bytes.Buffer
-    data := make([]byte, 10240)
-    for {
-        count, err := conn.Read(data)
-        if err == io.EOF {
-            log.Infof("End reading\n")
-            break
-        }
-        if err != nil {
-            log.Infof("Failed to read from server: %s\n", err)
-            return "", oper_err
-        }
-        buffer.WriteString(string(data[:count]))
-    }
-
-    return buffer.String(), err
 }
 
 func util_bgp_get_native_ifname_from_ui_ifname (pIfname *string) {
