@@ -82,12 +82,17 @@ var  relayAgentFields []string = []string{
         "dhcp_servers@",
         "dhcp_relay_src_intf",
         "dhcp_relay_max_hop_count",
-        "dhcp_relay_link_select"}
+        "dhcp_relay_link_select",
+        "dhcp_server_vrf",
+        "dhcp_relay_vrf_select",
+        "dhcp_relay_policy_action"}
 
 var  relayAgentV6Fields []string = []string{
         "dhcpv6_servers@",
         "dhcpv6_relay_src_intf",
-        "dhcpv6_relay_max_hop_count"}
+        "dhcpv6_relay_max_hop_count",
+        "dhcpv6_server_vrf",
+        "dhcpv6_relay_vrf_select"}
 
 //PATH_PREFIX - global
 const PATH_PREFIX = "/mnt/tmp/"
@@ -505,9 +510,9 @@ func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgen
    if entry.Has("dhcp_relay_link_select") == true {
       linkSelectVal := entry.Get("dhcp_relay_link_select")
       if linkSelectVal == "enable" {
-         raObj.Config.LinkSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_enable
+         raObj.Config.LinkSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_ENABLE
       } else {
-        raObj.Config.LinkSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_disable
+        raObj.Config.LinkSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_DISABLE
      }
    }
    if entry.Has("dhcp_relay_max_hop_count") == true {
@@ -522,6 +527,28 @@ func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgen
    if entry.Has("dhcp_relay_src_intf") == true {
      srcIntf := entry.Get("dhcp_relay_src_intf")
      raObj.Config.SrcIntf = &srcIntf
+   }
+   if entry.Has("dhcp_relay_vrf_select") == true {
+      vrfSelectVal := entry.Get("dhcp_relay_vrf_select")
+      if vrfSelectVal ==  "enable" {
+         raObj.Config.VrfSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_VrfSelect_ENABLE
+      } else {
+        raObj.Config.VrfSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_VrfSelect_DISABLE
+     }
+   }
+   if entry.Has("dhcp_server_vrf") == true {
+     serverVrf:= entry.Get("dhcp_server_vrf")
+     raObj.Config.Vrf = &serverVrf
+   }
+   if entry.Has("dhcp_relay_policy_action") == true {
+      policyAction := entry.Get("dhcp_relay_policy_action")
+      if policyAction == "replace" {
+         raObj.Config.PolicyAction = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_REPLACE
+      } else if policyAction == "append" {
+         raObj.Config.PolicyAction = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_APPEND
+      } else {
+        raObj.Config.PolicyAction = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_DISCARD
+     }
    }
 }
 
@@ -571,6 +598,18 @@ func getDhcpv6DataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAg
    if entry.Has("dhcpv6_relay_src_intf") == true {
       srcIntf := entry.Get("dhcpv6_relay_src_intf")
       raObj.Config.SrcIntf = &srcIntf
+   }
+   if entry.Has("dhcpv6_relay_vrf_select") == true {
+      vrfSelectVal := entry.Get("dhcpv6_relay_vrf_select")
+      if vrfSelectVal == "enable" {
+         raObj.Config.VrfSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface_Config_VrfSelect_ENABLE
+      } else {
+        raObj.Config.VrfSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface_Config_VrfSelect_DISABLE
+     }
+   }
+   if entry.Has("dhcpv6_server_vrf") == true {
+     serverVrf:= entry.Get("dhcpv6_server_vrf")
+     raObj.Config.Vrf = &serverVrf
    }
 
 }
@@ -777,7 +816,7 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
 	updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_servers@"] =  helperAddress
      
 	//link-select
-	if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_enable) {
+	if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_ENABLE) {
             entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
             if dbErr != nil {
             log.Info("Failed to read dhcp relay config info from configdb")
@@ -792,7 +831,7 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
                }
             }
 	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "enable"
-	} else if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_disable) {
+	} else if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_DISABLE) {
 	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "disable"
 	}
      
@@ -815,6 +854,27 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
           return err
         }
 	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_src_intf"] = *intf.Config.SrcIntf
+	}
+
+	//vrf
+	if intf.Config.Vrf != nil {
+	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_server_vrf"] = *intf.Config.Vrf
+	}
+
+	//vrf-select
+	if (intf.Config.VrfSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_VrfSelect_ENABLE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_vrf_select"] = "enable"
+	} else if (intf.Config.VrfSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_VrfSelect_DISABLE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_vrf_select"] = "disable"
+	}
+
+	//policy-action
+	if (intf.Config.PolicyAction == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_APPEND) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = "append"
+	} else if (intf.Config.PolicyAction == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_REPLACE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = "replace"
+	} else if (intf.Config.PolicyAction == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_DISCARD) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = "discard"
 	}
      }
      return err
@@ -921,7 +981,17 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
 
 	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = *intf.Config.SrcIntf
        }
-    
+       //vrf
+       if intf.Config.Vrf != nil {
+	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_server_vrf"] = *intf.Config.Vrf
+	}
+
+	//vrf-select
+	if (intf.Config.VrfSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface_Config_VrfSelect_ENABLE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_vrf_select"] = "enable"
+	} else if (intf.Config.VrfSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface_Config_VrfSelect_DISABLE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_vrf_select"] = "disable"
+	}
     }
     return err
  }
@@ -984,6 +1054,10 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = ""
    } else if strings.Contains(targetUriPath, "dhcpv6") && strings.Contains(targetUriPath, "max-hop-count"){
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_max_hop_count"] = ""
+   } else if  strings.Contains(targetUriPath, "dhcpv6") && strings.Contains(targetUriPath, "vrf-select"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_vrf_select"] = "disable"
+   } else if  strings.Contains(targetUriPath, "dhcpv6") && strings.Contains(targetUriPath, "vrf"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_server_vrf"] = ""
    } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "helper-address"){
       if (relayAgentObj.Dhcp != nil  && relayAgentObj.Dhcp.Interfaces != nil && relayAgentObj.Dhcp.Interfaces.Interface != nil) {
           //We have a specific address to delete - delete only that address
@@ -1013,7 +1087,13 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
    } else if strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "max-hop-count"){
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_max_hop_count"] = ""
    } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "link-select"){
-     deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = ""
+     deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "disable"
+   } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "vrf-select"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_vrf_select"] = "disable"
+   } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "vrf"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_server_vrf"] = ""
+   } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "policy-action"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = "discard"
    } else if strings.HasPrefix(targetUriPath, "/openconfig-relay-agent:relay-agent/dhcp") {
      //delete interface level attributes for DHCP
      fieldStr = append (relayAgentFields)
@@ -1102,7 +1182,9 @@ func deleteAllIntfsRelayAgentObjectAttributes(inParams XfmrParams) error {
             if intfEntry.Has(field) {
 	       if field == "dhcp_relay_link_select" {
                   deleteMap[db.ConfigDB][table][ifName].Field[field] = "disable"
-	       } else {
+	       } else if field == "dhcp_relay_vrf_select" {
+                  deleteMap[db.ConfigDB][table][ifName].Field[field] = "disable"
+               } else {
                  deleteMap[db.ConfigDB][table][ifName].Field[field] = ""
 	       }
             }

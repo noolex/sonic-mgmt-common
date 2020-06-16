@@ -52,6 +52,8 @@ func init () {
     XlateFuncBind("DbToYang_ldap_use_type_field_xfmr", DbToYang_ldap_use_type_field_xfmr)
     XlateFuncBind("YangToDb_ldap_ssl_field_xfmr", YangToDb_ldap_ssl_field_xfmr)
     XlateFuncBind("DbToYang_ldap_ssl_field_xfmr", DbToYang_ldap_ssl_field_xfmr)
+    XlateFuncBind("YangToDb_ldap_scope_field_xfmr", YangToDb_ldap_scope_field_xfmr)
+    XlateFuncBind("DbToYang_ldap_scope_field_xfmr", DbToYang_ldap_scope_field_xfmr)
     XlateFuncBind("YangToDb_ldap_server_map_key_xfmr", YangToDb_ldap_server_map_key_xfmr)
     XlateFuncBind("DbToYang_ldap_server_map_key_xfmr", DbToYang_ldap_server_map_key_xfmr)
 }
@@ -136,6 +138,8 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     pathInfo := NewPathInfo(inParams.uri)
     log.Infof("YangToDb_server_vrf_name_xfmr: pathInfo %v", pathInfo)
 
+    servergroupName := pathInfo.Var("name")
+
     key := inParams.key
     deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
     systemObj := deviceObj.System
@@ -159,13 +163,18 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
         err = tlerr.InvalidArgsError{Format: errStr}
         return res_map, err
     }
-    serverGroupObj := serverGroupsObj.ServerGroup["TACACS"]
+
+    serverGroupObj, ok := serverGroupsObj.ServerGroup["TACACS"]
+    if !ok {
+        serverGroupObj = serverGroupsObj.ServerGroup["RADIUS"]
+    }
     if serverGroupObj == nil {
-        errStr = "Server-group TACACS entry is missing"
+        errStr = "Server-group TACACS or RADIUS entry is missing"
         log.Info("YangToDb_server_vrf_name_xfmr: ", errStr)
         err = tlerr.InvalidArgsError{Format: errStr}
         return res_map, err
     }
+
     serversObj := serverGroupObj.Servers
     if serversObj == nil {
         errStr = "Servers container is missing"
@@ -213,14 +222,14 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
         subOpMap[db.ConfigDB] = subMap
         inParams.subOpDataMap[DELETE] = &subOpMap
     } else if vrfName == "mgmt" {
-        err = validateMgmtVrfExists(inParams.d)
+        if strings.Contains(servergroupName, "TACACS") {
+            err = validateMgmtVrfExists(inParams.d)
+        }
         if err == nil {
             res_map["vrf"] = vrfName
         }
     } else {
-        errStr = "Invalid VRF name"
-        log.Info("YangToDb_server_vrf_name_xfmr: ", errStr)
-        err = tlerr.InvalidArgsError{Format: errStr}
+        res_map["vrf"] = vrfName
     }
     return res_map, err
 }
@@ -228,18 +237,32 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 var DbToYang_server_vrf_name_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
     var err error
+    var errStr string
 
+    log.Infof("DbToYang_server_vrf_name_xfmr: ygRoot %v uri %v", inParams.ygRoot, inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
-    log.Infof("YangToDb_server_vrf_name_xfmr: pathInfo %v", pathInfo)
+    log.Infof("DbToYang_server_vrf_name_xfmr: pathInfo %v", pathInfo)
+
+    servergroupName := pathInfo.Var("name")
 
     data := (*inParams.dbDataMap)[inParams.curDb]
     log.Info("DbToYang_server_vrf_name_xfmr: ", data, "inParams :", inParams)
 
-    tacplusServerTbl := data["TACPLUS_SERVER"]
-    tacplusServerConfig := tacplusServerTbl[inParams.key]
-    if vrfName, ok := tacplusServerConfig.Field["vrf"]; ok {
+    serverTbl, ok := data["TACPLUS_SERVER"]
+    if !ok {
+        serverTbl = data["RADIUS_SERVER"]
+    }
+    if serverTbl == nil {
+        errStr = "Invalid server group name: " + servergroupName 
+        log.Info("DbToYang_server_vrf_name_xfmr: ", errStr)
+        err = tlerr.InvalidArgsError{Format: errStr}
+        return res_map, err
+    }
+
+    serverConfig := serverTbl[inParams.key]
+    if vrfName, ok := serverConfig.Field["vrf"]; ok {
         res_map["vrf"] = vrfName
-        log.Infof("YangToDb_server_vrf_name_xfmr: vrfName %v", vrfName)
+        log.Infof("DbToYang_server_vrf_name_xfmr: vrfName %v", vrfName)
     }
 
     return res_map, err
@@ -303,7 +326,7 @@ var server_table_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, error
         tables = append(tables, "RADIUS_SERVER")
     } else if strings.Contains(servergroupname, "TACACS") {
         tables = append(tables, "TACPLUS_SERVER")
-	} else if servergroupname == "LDAP" || servergroupname == "LDAP_NSS" || servergroupname == "LDAP_PAM" || servergroupname == "LDAP_SUDO" {
+	} else if servergroupname == "LDAP" {
 		tables = append(tables, "LDAP_SERVER")        
     } else if inParams.oper == GET {
         tables = append(tables, "RADIUS_SERVER")
@@ -390,26 +413,24 @@ var YangToDb_global_sg_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 }
 
 var DbToYang_global_sg_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-        res_map := make(map[string]interface{})
-        var err error
+    res_map := make(map[string]interface{})
+    var err error
 
-        log.Info("DbToYang_global_sg_key_xfmr: ", inParams.key)
-        
-// waiting for the fix from DELL(SONIC-22310) to uncomment this code
+    log.Info("DbToYang_global_sg_key_xfmr: inParams.key: ", inParams.key, ", inParams.table: ", inParams.table)
+    
+	if inParams.table == "LDAP" {
+        if inParams.key == "global" {
+        	res_map["name"] = "LDAP"
+        } else if inParams.key == "nss" {
+			res_map["name"] = "LDAP_NSS"
+		} else if inParams.key == "pam" {
+			res_map["name"] = "LDAP_PAM"
+		} else if inParams.key == "sudo" {
+			res_map["name"] = "LDAP_SUDO"
+		}
+	}
 
-//		if inParams.table == "LDAP" {
-//	        if inParams.key == "global" {
-//	        	res_map["name"] = "LDAP"
-//	        } else if inParams.key == "nss" {
-//				res_map["name"] = "LDAP_NSS"
-//			} else if inParams.key == "pam" {
-//				res_map["name"] = "LDAP_PAM"
-//			} else if inParams.key == "sudo" {
-//				res_map["name"] = "LDAP_SUDO"
-//			}
-//		}
-
-        return  res_map, err
+    return  res_map, err
 }
 
 var global_sg_tbl_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, error) {
@@ -475,22 +496,47 @@ var DbToYang_ldap_use_type_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
     data := (*inParams.dbDataMap)[inParams.curDb]
     log.Info("DbToYang_ldap_use_type_field_xfmr: ", data, "inParams :", inParams)
     useTypeVal := data["LDAP_SERVER"][inParams.key].Field["use_type"]
-    var useTypeEnum ocbinds.E_OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType
     if len(useTypeVal) > 0 {
-    	if useTypeVal == "all" {
-    		useTypeEnum = ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_ALL
-    	} else if useTypeVal == "nss" {
-    		useTypeEnum = ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_NSS
-    	} else if useTypeVal == "sudo" {
-    		useTypeEnum = ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_SUDO
-    	} else if useTypeVal == "pam" {
-    		useTypeEnum = ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_PAM
-    	}   	
-    	if useTypeEnum != ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_UNSET {
-	    	res_map["use-type"] = useTypeEnum
-    	}
+    	res_map["use-type"] = strings.ToUpper(useTypeVal)
     }
     log.Info("DbToYang_ldap_use_type_field_xfmr: res_map :", res_map)
+    return res_map, err
+}
+
+var YangToDb_ldap_scope_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+	
+    log.Info("YangToDb_ldap_scope_field_xfmr: inParams.param: ", inParams.param)
+    scopeEnum, ok := inParams.param.(ocbinds.E_OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Ldap_Config_Scope)
+    var scopeVal string
+    if ok {
+    	if scopeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Ldap_Config_Scope_SUB {
+    		scopeVal = "sub"
+    	} else if scopeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Ldap_Config_Scope_ONE {
+    		scopeVal = "one"
+    	} else if scopeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Ldap_Config_Scope_BASE {
+    		scopeVal = "base"
+    	}
+    	if len(scopeVal) > 0 {
+	    	res_map["scope"] = scopeVal
+    	}
+    }
+    log.Info("YangToDb_ldap_scope_field_xfmr: res_map: ", res_map)
+    return res_map, err	
+}
+
+var DbToYang_ldap_scope_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+    var err error
+	
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_ldap_scope_field_xfmr: ", data, "inParams :", inParams)
+    scopeVal := data["LDAP"][inParams.key].Field["scope"]
+    if len (scopeVal) > 0 {
+    	res_map["scope"] = strings.ToUpper(scopeVal)
+    }
+    log.Info("DbToYang_ldap_scope_field_xfmr: res_map :", res_map)
     return res_map, err
 }
 
@@ -521,20 +567,19 @@ var DbToYang_ldap_ssl_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (
     res_map := make(map[string]interface{})
     var err error
 	
-    data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_ldap_ssl_field_xfmr: ", data, "inParams :", inParams)
-    sslVal := data["LDAP_SERVER"][inParams.key].Field["ssl"]
-    var sslEnum ocbinds.E_OpenconfigAaaLdapExt_LdapSslType
-	if sslVal == "on" {
-		sslEnum = ocbinds.OpenconfigAaaLdapExt_LdapSslType_ON
-	} else if sslVal == "off" {
-		sslEnum = ocbinds.OpenconfigAaaLdapExt_LdapSslType_OFF
-	} else if sslVal == "start_tls" {
-		sslEnum = ocbinds.OpenconfigAaaLdapExt_LdapSslType_START_TLS
+    pathInfo := NewPathInfo(inParams.uri)
+    serverAddr := pathInfo.Var("address")
+    tblName := "LDAP"
+	if len(serverAddr) > 0 {
+		tblName = "LDAP_SERVER"
 	}
-	if sslEnum != ocbinds.OpenconfigAaaLdapExt_LdapSslType_UNSET {
-		res_map["ssl"] = sslEnum
-	}	
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_ldap_ssl_field_xfmr: data: ", data, ", inParams :", inParams)
+    sslVal := data[tblName][inParams.key].Field["ssl"]
+    log.Info("DbToYang_ldap_ssl_field_xfmr: tblName: ", tblName, ", sslVal :", sslVal)
+    if len(sslVal) > 0 {
+    	res_map["ssl"] = strings.ToUpper(sslVal)
+    }
     log.Info("DbToYang_ldap_ssl_field_xfmr: res_map :", res_map)
     return res_map, err
 }

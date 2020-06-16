@@ -6,20 +6,6 @@ module sonic-copp {
 	import sonic-common {
 		prefix cmn;
 	}
-	import sonic-extension {
-		prefix sonic-ext;
-	}
-    import sonic-port {
-        prefix prt;
-    }
-
-    import sonic-portchannel {
-        prefix spc;
-    }
-
-    import sonic-vlan {
-        prefix svlan;
-    }
 
 	organization
 		"SONiC";

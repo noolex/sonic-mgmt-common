@@ -228,12 +228,14 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                      log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Area id field to ", dbVlaueStr)
 
                      if (dbVlaueStr != "NULL") {
+
                          rtrPresent, _ := ospf_router_present_for_interface(&inParams, ifName)
                          if (!rtrPresent) {
                              errStr := "Area configuration not allowed without OSPF router config"
                              log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
                              return subIntfmap, tlerr.New(errStr)
                          }
+
                          if (!newEntry) {
                              currAreaId := (&ospfIfEntry).Get(fieldName)
                              if (currAreaId != "" && currAreaId != dbVlaueStr) {
@@ -242,6 +244,18 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                                  return subIntfmap, tlerr.New(errStr)
                              }
                          }
+
+                         areaNwCfgPresent, err := ospf_area_network_present_for_interface_vrf(&inParams, ifName)
+                         if (err != nil) {
+                             errStr := "Internal Error: Network area table access failed"
+                             log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+                             return subIntfmap, tlerr.New(errStr)
+                         } else if (areaNwCfgPresent) {
+                             errStr := "Please remove all network commands in ospf router area config first"
+                             log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+                             return subIntfmap, tlerr.New(errStr)
+                         }
+
                          ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = dbVlaueStr
                          ospfIntfDbValue.Field[fieldName] = dbVlaueStr
                      }
@@ -641,7 +655,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
 
             fieldValue, ok := ospfIfEntry.Field[fieldName]
             if (!ok) { 
-                log.Info("DbToYang_ospfv2_interface_subtree_xfmr: entry does nothave fieled ", fieldName)
+                log.Info("DbToYang_ospfv2_interface_subtree_xfmr: entry does not have field ", fieldName)
                 fieldValue = ""
             }
 
@@ -854,6 +868,13 @@ func get_interface_vrf(inParams *XfmrParams, ifName string) (string, error) {
 
 func ospf_router_present_for_interface(inParams *XfmrParams, ifName string) (bool, error) {
 
+    log.Info("ospf_router_present_for_interface: ifName ", ifName)
+    if (ifName == "") {
+        errStr := "Empty interface name"
+        log.Info("ospf_router_present_for_interface: ", errStr)
+        return false, errors.New(errStr)
+    }
+
     ifVrfName, ifErr := get_interface_vrf(inParams, ifName)
     if (ifErr != nil) {
         log.Info("ospf_router_present_for_interface: intf vrfs ger err ", ifErr)
@@ -865,7 +886,7 @@ func ospf_router_present_for_interface(inParams *XfmrParams, ifName string) (boo
     ospfTblData, err := configDbPtr.GetTable(ospfTblSpec)
     if err != nil {
         errStr := "OSPF table Not Found"
-        log.Error("YangToDb_ospfv2_interface_subtree_xfmr: OSPF Interface Table data not found ", errStr)
+        log.Error("ospf_router_present_for_interface: OSPF Interface Table data not found ", errStr)
         return false, errors.New(errStr)
     }
 
@@ -879,6 +900,105 @@ func ospf_router_present_for_interface(inParams *XfmrParams, ifName string) (boo
     log.Info("ospf_router_present_for_interface: ospf router present in vrf ", ospfTblKey)
     return true, nil
 }
+
+func ospf_area_network_present_for_interface_vrf(inParams *XfmrParams, ifName string) (bool, error) {
+
+    log.Info("ospf_area_network_present_for_interface_vrf: ifName ", ifName)
+    if (ifName == "") {
+        errStr := "Empty interface name"
+        log.Info("ospf_area_network_present_for_interface_vrf: ", errStr)
+        return false, errors.New(errStr)
+    }
+
+    ifVrfName, ifErr := get_interface_vrf(inParams, ifName)
+    if (ifErr != nil) {
+        log.Info("ospf_area_network_present_for_interface_vrf: intf vrfs ger err ", ifErr)
+        return false, ifErr
+    }
+
+    ospfNwTblName := "OSPFV2_ROUTER_AREA_NETWORK"
+    var ospfNwTblSpec *db.TableSpec = &db.TableSpec{Name: ospfNwTblName}
+    ospfNwTblData, err1 := configDbPtr.GetTable(ospfNwTblSpec)
+    if err1 != nil {
+        errStr := "OSPF area network table Not Found"
+        log.Error("ospf_area_network_present_for_interface_vrf: OSPF Area Nw Table data not found ", errStr)
+        return false, nil
+    }
+
+    ospfNwTblKeys, err2 := ospfNwTblData.GetKeys()
+    if err2 != nil {
+        errStr := "Area network table get keys failed"
+        log.Error("ospf_area_network_present_for_interface_vrf: get keys failed ", errStr)
+        return false, err2
+    }
+
+    for _, ospfNwTblKey := range ospfNwTblKeys {
+        nwVrfName := ospfNwTblKey.Get(0) 
+        if ifVrfName == nwVrfName {
+           log.Info("ospf_router_area_network_present: network config present with key ", ospfNwTblKey)
+           return true, nil
+        }
+    }
+
+    log.Info("ospf_area_network_present_for_interface_vrf: area nw config not present in vrf ", ifVrfName)
+    return false, nil
+}
+
+func ospf_area_id_present_in_interfaces(inParams *XfmrParams, vrfName string) (bool, error) {
+
+    log.Info("ospf_area_id_present_in_interfaces: vrfName ", vrfName)
+    if (vrfName == "") {
+        errStr := "Empty VRF name"
+        log.Info("ospf_area_id_present_in_interfaces: ", errStr)
+        return false, errors.New(errStr)
+    }
+
+    ospfIntfTblName := "OSPFV2_INTERFACE"
+    var ospfIntfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfIntfTblName}
+    ospfIntfTblData, err := configDbPtr.GetTable(ospfIntfTblSpec)
+    if err != nil {
+        errStr := "OSPF Interface table not found"
+        log.Error("ospf_area_id_present_in_interfaces: OSPF Interface Table data not found ", errStr)
+        return false, nil
+    }
+
+    ospfIntfTblKeys, err := ospfIntfTblData.GetKeys()
+    if err != nil {
+        errStr := "Interface Table get keys Failed"
+        log.Error("ospf_area_id_present_in_interfaces: get keys failed ", errStr)
+        return false, nil
+    }
+
+    for _, ospfIntfTblKey := range ospfIntfTblKeys {
+        ifName := ospfIntfTblKey.Get(0)
+
+        ospfIfEntry, err2 := ospfIntfTblData.GetEntry(ospfIntfTblKey)
+        if err2 != nil || len(ospfIfEntry.Field) == 0 {
+            log.Error("ospf_area_id_present_in_interfaces: Create new entry for ", ospfIntfTblKey)
+            continue
+        }
+
+        areaId := (& ospfIfEntry).Get("area-id")
+        if (areaId == "") {
+            continue
+        }
+
+        ifVrfName, ifErr := get_interface_vrf(inParams, ifName)
+        if (ifErr != nil) {
+            log.Info("ospf_area_id_present_in_interfaces: intf vrfs ger err ", ifErr)
+            continue
+        }
+
+        if (ifVrfName == vrfName) {
+            log.Info("ospf_area_id_present_in_interfaces: interface has area config ", ospfIntfTblKey)
+            return true, nil
+        }
+    }
+
+    log.Info("ospf_area_id_present_in_interfaces: no area config in ospf interfaces of ", vrfName)
+    return false, nil
+}
+
 
 func delete_ospf_interfaces_for_vrf(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
 
@@ -934,14 +1054,14 @@ func delete_ospf_interfaces_for_vrf(inParams *XfmrParams, ospfRespMap *map[strin
 
     ospfIntfTblName := "OSPFV2_INTERFACE"
     var ospfIfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfIntfTblName}
-    ospfTblData, err := configDbPtr.GetTable(ospfIfTblSpec)
+    ospfIntfTblData, err := configDbPtr.GetTable(ospfIfTblSpec)
     if err != nil {
         errStr := "Resource Not Found"
         log.Error("delete_ospf_interfaces_for_vrf: OSPF Interface Table data not found ", errStr)
         return nil
     }
 
-    ospfIntfTblKeys, err := ospfTblData.GetKeys()
+    ospfIntfTblKeys, err := ospfIntfTblData.GetKeys()
     if err != nil {
         errStr := "Resource Not Found"
         log.Error("delete_ospf_interfaces_for_vrf: get keys failed ", errStr)

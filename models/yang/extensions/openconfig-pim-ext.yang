@@ -112,7 +112,7 @@ module openconfig-pim-ext {
         }
     }
 
-    grouping pim-ext-gbl-tib-state-oil-cmn-info {
+    grouping pim-ext-gbl-tib-oil-cmn-info-state {
         description
             "Common Operational state information of an outgoing interface present in PIM TIB.";
 
@@ -140,7 +140,7 @@ module openconfig-pim-ext {
         }
     }
 
-    grouping pim-ext-gbl-tib-src-entry-cmn-info {
+    grouping pim-ext-gbl-tib-src-entry-cmn-info-state {
         description
             "Common Operational state information of particular multicast source present in PIM TIB.";
 
@@ -172,12 +172,12 @@ module openconfig-pim-ext {
                 description
                     "Details about outgoing interface for this multicast entry.";
 
-                uses pim-ext-gbl-tib-state-oil-cmn-info;
+                uses pim-ext-gbl-tib-oil-cmn-info-state;
             }
         }
     }
 
-    grouping pim-ext-gbl-tib-ipv4-src-entry-cmn-info {
+    grouping pim-ext-gbl-tib-ipv4-src-entry-cmn-info-state {
         description
             "Common IPv4 Operational state information of particular multicast source present in PIM TIB.";
 
@@ -188,7 +188,7 @@ module openconfig-pim-ext {
         }
     }
 
-    grouping pim-ext-gbl-ipv4-tib {
+    grouping pim-ext-gbl-ipv4-tib-state {
         description
             "Operational state IPv4 information of PIM TIB.";
 
@@ -235,8 +235,8 @@ module openconfig-pim-ext {
                             description
                                 "Operational state information of particular multicast source present in PIM TIB.";
 
-                            uses pim-ext-gbl-tib-src-entry-cmn-info;
-                            uses pim-ext-gbl-tib-ipv4-src-entry-cmn-info;
+                            uses pim-ext-gbl-tib-src-entry-cmn-info-state;
+                            uses pim-ext-gbl-tib-ipv4-src-entry-cmn-info-state;
                         }
                     }
                 }
@@ -244,7 +244,7 @@ module openconfig-pim-ext {
         }
     }
 
-    grouping pim-ext-gbl-tib {
+    grouping pim-ext-gbl-tib-state {
         description
             "Operational state information of PIM TIB.";
 
@@ -253,7 +253,7 @@ module openconfig-pim-ext {
             description
                 "PIM Protocol TIB state information.";
 
-            uses pim-ext-gbl-ipv4-tib;
+            uses pim-ext-gbl-ipv4-tib-state;
         }
     }
 
@@ -276,7 +276,7 @@ module openconfig-pim-ext {
     augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
         description
             "PIM TIB extensions.";
-        uses pim-ext-gbl-tib;
+        uses pim-ext-gbl-tib-state;
     }
 
     augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config {

@@ -308,14 +308,9 @@ var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string
 
             log.Infof("YangToDb_prefix_key_xfmr: mask length %d ge %d le %d", length, ge, le)
 
-        /*    if (length < ge) != true {
-                err = errors.New("Invalid maskrange, len < ge-value")
-                log.Error("YangToDb_prefix_key_xfmr: Invalid maskrange, make len < ge-value <= ge-value")
-                return ipPrefix, err
-            } */
-            if (ge > le) {
+            if ((length > ge) || (ge > le)) {
                 err = errors.New("Invalid range, valid range is len < ge-value <= le-value")
-                log.Error("YangToDb_prefix_key_xfmr: Invalid maskrange, make sure len < ge-value <= le-value")
+                log.Error("YangToDb_prefix_key_xfmr: Invalid maskrange, make len < ge-value <= ge-value")
                 return ipPrefix, err
             }
         }

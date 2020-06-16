@@ -752,6 +752,20 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
     // Handles all the operations other than Delete
     intfTypeVal, _ := inParams.param.(*uint16)
     intTypeValStr := strconv.FormatUint(uint64(*intfTypeVal), 10)
+
+    if IntfTypePortChannel == intfType {
+        /* Apply the MTU to all the portchannel member ports */
+        updateMemberPortsMtu(&inParams, &ifName, &intTypeValStr)
+    } else if IntfTypeEthernet == intfType {
+        /* Do not allow MTU configuration on a portchannel member port */
+        lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
+        if lagId != nil {
+            log.Infof("%s is member of %s", ifName, *lagId)
+            errStr := "Configuration not allowed when port is member of Portchannel."
+            return nil, tlerr.InvalidArgsError{Format: errStr}
+        }
+    }
+
     res_map["mtu"] = intTypeValStr
     return res_map, nil
 }
@@ -1292,7 +1306,8 @@ func validateL3ConfigExists(d *db.DB, ifName *string) error {
     intTbl := IntfTypeTblMap[intfType]
     IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:intTbl.cfgDb.intfTN+"|"+*ifName})
     if err == nil && IntfMapObj.IsPopulated() {
-        errStr := "L3 Configuration exists for Interface: " + *ifName
+        ifUIName := utils.GetUINameFromNativeName(ifName)
+        errStr := "L3 Configuration exists for Interface: " + *ifUIName
         IntfMap := IntfMapObj.Field
         if intfType == IntfTypeLoopback {
             // Checks specific to Loopback interface
@@ -1640,11 +1655,11 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
                 overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
-				if intfType == IntfTypeLoopback && validateMultiIPForDonorIntf(inParams.d, &ifName) {
+		if ((intfType == IntfTypeLoopback) && (validateMultiIPForDonorIntf(inParams.d, &ifName))) {
                     errStr := "Loopback interface is Donor for Unnumbered interface. Cannot add Multiple IPv4 address"
                     err = tlerr.InvalidArgsError{Format: errStr}
                     return subIntfmap, err
-				}
+		}
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
@@ -2968,6 +2983,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 	}
 	return false
 }
+
 
 func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface,
                          inParams *XfmrParams, ifdb map[string]string, ifName *string) error  {

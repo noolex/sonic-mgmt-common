@@ -171,11 +171,22 @@ class CheckDeviationPlugin(plugin.PyangPlugin):
         else:
             sys.exit(0)
 
+def get_lint_ignore(node):
+    name = None
+    for substmt in node.substmts: 
+        if substmt.keyword.__class__.__name__ == 'tuple':
+            if substmt.keyword[0] == 'sonic-extensions':
+                if substmt.keyword[1] == 'lint-ignore':
+                    name = substmt.arg
+    return name
+
 def mark_deviations(module):
     for deviation in module.search('deviation'):
         if not hasattr(deviation.i_target_node, "deviation_list"):
             deviation.i_target_node.deviation_list = []
         deviation.i_target_node.deviation_list.append(deviation)
+        if get_lint_ignore(deviation) is not None:
+            deviation.i_target_node.lint_ignore = True
 
 def check_update(ctx, oldfilename, newmod):
     oldpath = os.pathsep.join(ctx.opts.yang_dir)
@@ -819,22 +830,11 @@ def err_def_changed(old, new, ctx, data_node=None):
             (new.keyword, new.arg, old.arg), data_node)
 
 def err_add(ctx, pos, err_code, extra, data_node=None):
+    if data_node != None and hasattr(data_node, 'lint_ignore'):
+        return
     if data_node != None and hasattr(data_node, 'deviation_list'):
-        #pyang_err_add(ctx, pos, err_code, extra )
         for deviation in data_node.deviation_list:
-            temp_ctx = []
-            pyang_err_add(temp_ctx, pos, err_code, extra )
-            pyang_err_add(temp_ctx, deviation.pos, "DEVIATION_ERROR", () )
-            epos, etag, eargs = temp_ctx[0]
-            elevel = error.err_level(etag)
-            if error.is_warning(elevel):
-                kind = "warning"
-            else:
-                kind = "error"
-            epos2, etag2, eargs2 = temp_ctx[1]
-            global_fd.write(str(epos2) + ': %s: ' % kind + \
-                                    error.err_to_str(etag, eargs) + '\n')            
-            
+            pyang_err_add(ctx, deviation.pos, err_code, extra)
     else:
         pyang_err_add(ctx, pos, err_code, extra )
 

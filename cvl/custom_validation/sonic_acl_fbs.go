@@ -206,50 +206,29 @@ func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLEr
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-// ValidateSetInterfaceConfig validates the set interface config to ensure no duplicates
-// Returns -  CVL Error object 
-func (t *CustomValidation) ValidateSetInterfaceConfig(vc *CustValidationCtxt) CVLErrorInfo {
-
-	log.Infof("ValidateSetInterfaceConfig operation %d on %s:%s:%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
-	if vc.CurCfg.VOp == OP_DELETE || vc.YNodeVal == "" {
-		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-	}
-
-    intfNameMap := make(map[string]bool)
-    intfs := strings.Split(vc.YNodeVal, ",")
-    for _, intf := range(intfs) {
-        parts := strings.Split(intf, "|")
-        if _, exists := intfNameMap[parts[0]]; exists {
-            return CVLErrorInfo{ErrCode: CVL_ERROR, Keys:[]string{vc.CurCfg.Key}, Value: vc.YNodeVal, Field: vc.YNodeName,
-                Msg: "Duplicate interfaces not allowed"}
-        }
-        intfNameMap[parts[0]] = true
-    }
-
-	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-}
-
 // ValidateSetIPvxNextHopConfig validates the set interface config to ensure no duplicates
 // Returns -  CVL Error object 
-func (t *CustomValidation) ValidateSetIPvxNextHopConfig(vc *CustValidationCtxt) CVLErrorInfo {
+func (t *CustomValidation) ValidateEgressConfig(vc *CustValidationCtxt) CVLErrorInfo {
 
-	log.Infof("ValidateSetIPvxNextHopConfig operation %d on %s:%s:%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
-	if vc.CurCfg.VOp == OP_DELETE || vc.YNodeVal == "" {
+	log.Infof("ValidateEgressConfig operation %d on %s:%s:%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
+	if vc.CurCfg.VOp == OP_DELETE || vc.CurCfg == nil {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-    nextHopMap := make(map[string]map[string]bool)
-    nexthops := strings.Split(vc.YNodeVal, ",")
-    for _, nexthop := range(nexthops) {
-        parts := strings.Split(nexthop, "|")
-        if _, ipExist := nextHopMap[parts[0]]; !ipExist {
-            nextHopMap[parts[0]] = make(map[string]bool)
-        }
-        if _, exists := nextHopMap[parts[0]][parts[1]]; exists {
+    egressMap := make(map[string]bool)
+    data, found := vc.CurCfg.Data[vc.YNodeName + "@"]
+    if !found {
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    egresses := strings.Split(data, ",")
+    for _, egress := range(egresses) {
+        key := egress[:strings.LastIndex(egress, "|")]
+        if _, exists := egressMap[key]; exists {
             return CVLErrorInfo{ErrCode: CVL_ERROR, Keys:[]string{vc.CurCfg.Key}, Value: vc.YNodeVal, Field: vc.YNodeName,
-                Msg: "Duplicate next-hops not allowed"}
+                Msg: "Adding duplicate entries or updating entries not allowed"}
         }
-        nextHopMap[parts[0]][parts[1]] = true
+        egressMap[key] = true
     }
 
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}

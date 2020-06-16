@@ -63,22 +63,22 @@ submodule openconfig-fbs-policies-ext {
   // typedef statements
 
   // grouping statements
-  grouping qos-action-config {
+  grouping fbs-ext-qos-action-config {
     description
       "Configuration common for all QoS actions";
   }
 
-  grouping qos-action-state {
+  grouping fbs-ext-qos-action-state {
     description
       "Operational state common for all QoS actions";
   }
 
-  grouping section-qos-actions {
+  grouping fbs-ext-section-qos-actions-top {
     description
       "Grouping for all QoS actions";
 
     container qos {
-      when "../../config/type = 'POLICY_QOS'";
+      when "../../../config/type = 'POLICY_QOS'";
 
       description
         "Container for QoS actions";
@@ -87,15 +87,17 @@ submodule openconfig-fbs-policies-ext {
         description
           "QoS action configuration";
 
-        uses qos-action-config;
+        uses fbs-ext-qos-action-config;
       }
 
       container state {
+        config false;
+
         description
           "QoS action operational state";
 
-        uses qos-action-config;
-        uses qos-action-state;
+        uses fbs-ext-qos-action-config;
+        uses fbs-ext-qos-action-state;
       }
 
       container remark {
@@ -103,7 +105,7 @@ submodule openconfig-fbs-policies-ext {
           "Remark actions to be associated with packets that match the
           classifier match conditions.";
 
-        uses qos-remark-actions;
+        uses fbs-ext-qos-remark-actions-top;
       }
 
       container policer {
@@ -115,16 +117,18 @@ submodule openconfig-fbs-policies-ext {
           description
             "Configuration for policer action";
 
-          uses qos-policer-config-params;
-          uses qos-police-action-config;
+          uses fbs-ext-qos-policer-params-config;
+          uses fbs-ext-qos-police-action-config;
         }
 
         container state {
+          config false;
+
           description
             "Operational state for policer action";
 
-          uses qos-policer-config-params;
-          uses qos-police-action-config;
+          uses fbs-ext-qos-policer-params-config;
+          uses fbs-ext-qos-police-action-config;
         }
       }
 
@@ -136,20 +140,22 @@ submodule openconfig-fbs-policies-ext {
           description
             "Configuration for queueing action";
 
-          uses queuing-action-config;
+          uses fbs-ext-queuing-action-config;
         }
 
         container state {
+          config false;
+
           description
             "Operational state for queueing action";
 
-          uses queuing-action-config;
+          uses fbs-ext-queuing-action-config;
         }
       }
     }
   }
 
-  grouping queuing-action-config {
+  grouping fbs-ext-queuing-action-config {
     description
       "Grouping for queuing action for traffic";
 
@@ -163,7 +169,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping qos-remark-actions {
+  grouping fbs-ext-qos-remark-actions-top {
     description
       "Grouping specifying actions related to re-marking
       packets";
@@ -171,26 +177,30 @@ submodule openconfig-fbs-policies-ext {
     container config {
       description
         "Configuration parameters relating to remarking packets.";
-      uses qos-remark-actions-config;
+      uses fbs-ext-qos-remark-actions-config;
     }
 
     container state {
       config false;
+
       description
         "Operational state parameters relating to remarking packets.";
-      uses qos-remark-actions-config;
+
+      uses fbs-ext-qos-remark-actions-config;
     }
   }
 
-  grouping qos-remark-actions-config {
+  grouping fbs-ext-qos-remark-actions-config {
     description
       "Configuration data for QoS re-marking actions";
 
     leaf set-dscp {
       type uint8;
+
       description
         "Sets the 6-bit DSCP (differentiated services code point)
         value in the IP packet header.";
+
       reference
         "RFC 2474 - Definition of the Differentiated Services Field
         (DS Field) in the IPv4 and IPv6 Headers";
@@ -198,28 +208,31 @@ submodule openconfig-fbs-policies-ext {
 
     leaf set-dot1p {
       type uint8;
+
       description
         "Sets the 3-bit class-of-service value in the
         Ethernet packet header for 802.1Q VLAN-tagged packets,
         also known as PCP (priority code point).";
+
       reference
         "IEEE 802.1Q-2014 - IEEE Standard for Local and metropolitan
         area networks--Bridges and Bridged Networks";
     }
   }
 
-  grouping qos-police-action-config {
+  grouping fbs-ext-qos-police-action-config {
     description
       "Grouping for Policer configuration";
   }
 
-  grouping qos-policer-config-params {
+  grouping fbs-ext-qos-policer-params-config {
     description
       "Configuration data for 2 rate, 3 color policer";
 
     leaf cir {
       type uint64;
       units bps;
+
       description
         "Committed information rate for the dual-rate token
         bucket policer.  This value represents the rate at which
@@ -229,6 +242,7 @@ submodule openconfig-fbs-policies-ext {
     leaf pir {
       type uint64;
       units bps;
+
       description
         "Peak information rate for the dual-rate token bucket
         policer.  This value represents the rate at which tokens
@@ -238,6 +252,7 @@ submodule openconfig-fbs-policies-ext {
     leaf bc {
       type uint32;
       units bytes;
+
       description
         "Committed burst size for the dual-rate token bucket
         policer.  This value represents the depth of the token
@@ -247,19 +262,20 @@ submodule openconfig-fbs-policies-ext {
     leaf be {
       type uint32;
       units bytes;
+
       description
         "Excess burst size for the dual-rate token bucket policer.
         This value represents the depth of the secondary bucket.";
     }
   }
 
-  grouping section-forwarding-actions {
+  grouping fbs-ext-section-forwarding-actions-top {
     description
       "Grouping for all forwarding actions. A section contain either
       a layer 2 forwarding or layer 3 forwarding action.";
 
     container forwarding {
-      when "../../config/type = 'POLICY_FORWARDING'";
+      when "../../../config/type = 'POLICY_FORWARDING'";
 
       description
         "Container for forwarding actions";
@@ -268,22 +284,24 @@ submodule openconfig-fbs-policies-ext {
         description
           "Configuration for all forwarding actions";
 
-        uses forwarding-config;
+        uses fbs-ext-forwarding-config;
       }
 
       container state {
+        config false;
+
         description
           "Operational state for all forwarding actions";
 
-        uses forwarding-config;
+        uses fbs-ext-forwarding-config;
       }
 
-      uses layer2-forwarding-actions;
-      uses layer3-forwarding-actions;
+      uses fbs-ext-layer2-forwarding-actions-top;
+      uses fbs-ext-layer3-forwarding-actions-top;
     }
   }
 
-  grouping forwarding-config {
+  grouping fbs-ext-forwarding-config {
     description
       "Configuration common to all forwarding entries";
 
@@ -299,7 +317,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping layer3-forwarding-actions {
+  grouping fbs-ext-layer3-forwarding-actions-top {
     description
       "Grouping for all egress next-hops configuration";
 
@@ -335,20 +353,22 @@ submodule openconfig-fbs-policies-ext {
           description
             "Configuration of Next hop used for layer3 forwarding";
 
-          uses layer3-fwd-next-hop-config;
+          uses fbs-ext-layer3-fwd-next-hop-config;
         }
 
         container state {
+          config false;
+
           description
             "Operational state of the next hop used for layer3 forwarding";
 
-          uses layer3-fwd-next-hop-config;
+          uses fbs-ext-layer3-fwd-next-hop-config;
         }
       }
     }
   }
 
-  grouping layer3-fwd-next-hop-config {
+  grouping fbs-ext-layer3-fwd-next-hop-config {
     description
       "Grouping for Layer 3 egress ie next-hop related configuration";
 
@@ -389,7 +409,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping layer2-forwarding-actions {
+  grouping fbs-ext-layer2-forwarding-actions-top {
     description
       "Grouping for all Layer 2 egress interfaces";
 
@@ -417,20 +437,22 @@ submodule openconfig-fbs-policies-ext {
           description
             "Egress interface related configuration";
 
-          uses egress-interface-config;
+          uses fbs-ext-egress-interface-config;
         }
 
         container state {
+          config false;
+
           description
             "Egress interface related configuration";
 
-          uses egress-interface-config;
+          uses fbs-ext-egress-interface-config;
         }
       }
     }
   }
 
-  grouping egress-interface-config {
+  grouping fbs-ext-egress-interface-config {
     description
       "Grouping for all egress interface related configuration";
 
@@ -455,12 +477,12 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping section-monitoring-actions {
+  grouping fbs-ext-section-monitoring-actions-top {
     description
       "Grouping for all monitoring actions";
 
     container monitoring {
-      when "../../config/type = 'POLICY_MONITORING'";
+      when "../../../config/type = 'POLICY_MONITORING'";
 
       description
         "Container for monitoring actions";
@@ -469,27 +491,29 @@ submodule openconfig-fbs-policies-ext {
         description
           "Monitoring action config data";
 
-        uses monitoring-action-config;
+        uses fbs-ext-monitoring-action-config;
       }
 
       container state {
+        config false;
+
         description
           "Monitoring action operational state data";
 
-        uses monitoring-action-config;
+        uses fbs-ext-monitoring-action-config;
       }
 
-      uses monitoring-span-action;
+      uses fbs-ext-monitoring-span-action-top;
       // Additional mointoring actions like Sflow can be added here
     }
   }
 
-  grouping monitoring-action-config {
+  grouping fbs-ext-monitoring-action-config {
     description
       "Grouping for monitoring config";
   }
 
-  grouping monitoring-span-action {
+  grouping fbs-ext-monitoring-span-action-top {
     description
       "Grouping for all SPAN related actions";
 
@@ -519,20 +543,22 @@ submodule openconfig-fbs-policies-ext {
           description
             "Mirror session action configuration";
 
-          uses mirror-session-config;
+          uses fbs-ext-mirror-session-config;
         }
 
         container state {
+          config false;
+
           description
             "Mirror session action operational state";
 
-          uses mirror-session-config;
+          uses fbs-ext-mirror-session-config;
         }
       }
     }
   }
 
-  grouping mirror-session-config {
+  grouping fbs-ext-mirror-session-config {
     description
       "Grouping for mirror session name";
 
@@ -545,23 +571,23 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping section-actions {
+  grouping fbs-ext-section-actions-top {
     description
       "Grouping for actions supported by the section. The actions
       supported is dependent on the type of the policy";
 
-    uses section-qos-actions;
-    uses section-monitoring-actions;
-    uses section-forwarding-actions;
+    uses fbs-ext-section-qos-actions-top;
+    uses fbs-ext-section-monitoring-actions-top;
+    uses fbs-ext-section-forwarding-actions-top;
   }
 
-  grouping section-config {
+  grouping fbs-ext-section-config {
     description
       "Grouping for section configuration";
 
     leaf name {
       type leafref {
-        path "../../../../../classifiers/classifier/config/name";
+        path "../../../../../../classifiers/classifier/config/name";
       }
 
       description
@@ -579,52 +605,59 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping section-state {
+  grouping fbs-ext-section-state {
     description
       "Grouping for section operational state";
   }
 
-  grouping policy-sections-top {
+  grouping fbs-ext-policy-sections-top {
     description
       "Grouping for policy sections";
 
-    list sections {
-      key "class";
-
+    container sections {
       description
-        "List of sections. Each section consists of the
-        reference to a classifier used to identify the
-        traffic flow and its actions.";
+        "Container for all policy sections";
 
-      leaf class {
-        type leafref {
-          path "../config/name";
+      list section {
+        key "class";
+
+        description
+          "List of sections. Each section consists of the
+          reference to a classifier used to identify the
+          traffic flow and its actions.";
+
+        leaf class {
+          type leafref {
+            path "../config/name";
+          }
+
+          description
+            "Class name reference to be used as key";
         }
 
-        description
-          "Class name reference to be used as key";
+        container config {
+          description
+            "Policy section configuration data";
+
+          uses fbs-ext-section-config;
+        }
+
+        container state {
+          config false;
+
+          description
+            "Policy section configuration data";
+
+          uses fbs-ext-section-config;
+          uses fbs-ext-section-state;
+        }
+
+        uses fbs-ext-section-actions-top;
       }
-
-      container config {
-        description
-          "Policy section configuration data";
-
-        uses section-config;
-      }
-
-      container state {
-        description
-          "Policy section configuration data";
-
-        uses section-config;
-        uses section-state;
-      }
-
-      uses section-actions;
     }
   }
 
-  grouping fbs-policy-config {
+  grouping fbs-ext-policy-config {
     description
       "Policy configuration";
 
@@ -646,12 +679,12 @@ submodule openconfig-fbs-policies-ext {
       }
   }
 
-  grouping fbs-policy-state {
+  grouping fbs-ext-policy-state {
     description
       "Policy operational state";
   }
 
-  grouping fbs-policies-top {
+  grouping fbs-ext-policies-top {
     description
       "Policies top container";
 
@@ -680,7 +713,7 @@ submodule openconfig-fbs-policies-ext {
           description
             "Policy config";
 
-          uses fbs-policy-config;
+          uses fbs-ext-policy-config;
         }
 
         container state {
@@ -689,11 +722,11 @@ submodule openconfig-fbs-policies-ext {
           description
             "Policy operational state";
 
-          uses fbs-policy-config;
-          uses fbs-policy-state;
+          uses fbs-ext-policy-config;
+          uses fbs-ext-policy-state;
         }
 
-        uses policy-sections-top;
+        uses fbs-ext-policy-sections-top;
       }
     }
   }

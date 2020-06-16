@@ -2964,81 +2964,43 @@ module openconfig-network-instance-annot {
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vpn-target {
-      deviate add {
-        sonic-ext:table-name "BGP_GLOBALS_EVPN_RT";
-        sonic-ext:key-transformer "bgp_evpn_rt_key_xfmr";
-      }
-    } 
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vpn-target/oc-bgp-evpn-ext:route-target {
-      deviate add {
-            sonic-ext:field-transformer "bgp_rt_fld_xfmr";
-      }
-    }
-
-    /*deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vpn-target/oc-bgp-evpn-ext:route-target-type {
-      deviate add {
-        sonic-ext:field-transformer "bgp_rt_type_fld_xfmr";
-      }
-    }*/
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vnis/oc-bgp-evpn-ext:vni/oc-bgp-evpn-ext:vpn-target {
-      deviate add {
-        sonic-ext:table-name "BGP_GLOBALS_EVPN_VNI_RT";
-        sonic-ext:key-transformer "bgp_evpn_vni_rt_key_xfmr";
-      }
-    } 
-
-    /*deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vnis/oc-bgp-evpn-ext:vni/oc-bgp-evpn-ext:vpn-target/oc-bgp-evpn-ext:route-target {
-      deviate add {
-            sonic-ext:field-transformer "bgp_rt_fld_xfmr";
-      }
-    }*/
-
-    /*deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vnis/oc-bgp-evpn-ext:vni/oc-bgp-evpn-ext:vpn-target/oc-bgp-evpn-ext:route-target-type {
-      deviate add {
-        sonic-ext:field-transformer "bgp_rt_type_fld_xfmr";
-      }
-    }*/
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:default-originate/oc-bgp-evpn-ext:ipv4 {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:default-originate/oc-bgp-evpn-ext:config/oc-bgp-evpn-ext:ipv4 {
       deviate add {
         sonic-ext:field-name "default-originate-ipv4";
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:default-originate/oc-bgp-evpn-ext:ipv6 {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:default-originate/oc-bgp-evpn-ext:config/oc-bgp-evpn-ext:ipv6 {
       deviate add {
         sonic-ext:field-name "default-originate-ipv6";
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:advertise-list {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:config/oc-bgp-evpn-ext:advertise-list {
       deviate add {
             sonic-ext:field-transformer "bgp_advertise_fld_xfmr";
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:dup-addr-detection/oc-bgp-evpn-ext:enabled {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:dup-addr-detection/oc-bgp-evpn-ext:config/oc-bgp-evpn-ext:enabled {
       deviate add {
         sonic-ext:field-name "dad-enabled";
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:dup-addr-detection/oc-bgp-evpn-ext:max-moves {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:dup-addr-detection/oc-bgp-evpn-ext:config/oc-bgp-evpn-ext:max-moves {
       deviate add {
         sonic-ext:field-name "dad-max-moves";
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:dup-addr-detection/oc-bgp-evpn-ext:time {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:dup-addr-detection/oc-bgp-evpn-ext:config/oc-bgp-evpn-ext:time {
       deviate add {
         sonic-ext:field-name "dad-time";
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:dup-addr-detection/oc-bgp-evpn-ext:freeze {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:dup-addr-detection/oc-bgp-evpn-ext:config/oc-bgp-evpn-ext:freeze {
       deviate add {
         sonic-ext:field-name "dad-freeze";
       }
@@ -3224,6 +3186,33 @@ module openconfig-network-instance-annot {
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
             "/oc-netinst:max-metric/oc-netinst:config" +
+            "/oc-ospfv2-ext:on-shutdown" {
+    deviate add {
+      sonic-ext:field-name "max-metric-on-shutdown";
+    }
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
+            "/oc-netinst:max-metric/oc-netinst:state" +
+            "/oc-ospfv2-ext:administrative" {
+    deviate add {
+      sonic-ext:field-name "max-metric-administrative";
+    }
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
+            "/oc-netinst:max-metric/oc-netinst:state" +
+            "/oc-ospfv2-ext:on-startup" {
+    deviate add {
+      sonic-ext:field-name "max-metric-on-startup";
+    }
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
+            "/oc-netinst:max-metric/oc-netinst:state" +
             "/oc-ospfv2-ext:on-shutdown" {
     deviate add {
       sonic-ext:field-name "max-metric-on-shutdown";
@@ -3625,7 +3614,7 @@ module openconfig-network-instance-annot {
             "/oc-ospfv2-ext:ranges/oc-ospfv2-ext:range/oc-ospfv2-ext:state" +
             "/oc-ospfv2-ext:address-prefix" {
     deviate add {
-      sonic-ext:field-transformer  "ospfv2_router_policy_address_range_prefix_fld_xfmr";
+      sonic-ext:field-transformer  "ospfv2_router_area_policy_address_range_prefix_fld_xfmr";
     }
   }
 
