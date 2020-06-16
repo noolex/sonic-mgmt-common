@@ -26,6 +26,7 @@ import (
         "github.com/Azure/sonic-mgmt-common/translib/db"
         "github.com/Azure/sonic-mgmt-common/translib/tlerr"
         log "github.com/golang/glog"
+        "fmt"
 )
 
 func init () {
@@ -38,6 +39,7 @@ func init () {
     XlateFuncBind("DbToYang_server_key_xfmr", DbToYang_server_key_xfmr)
     XlateFuncBind("server_table_xfmr", server_table_xfmr)
     XlateFuncBind("YangToDb_server_name_xfmr", YangToDb_server_name_xfmr)
+    XlateFuncBind("YangToDb_server_ipaddr_xfmr", YangToDb_server_ipaddr_xfmr)
     XlateFuncBind("YangToDb_server_vrf_name_xfmr", YangToDb_server_vrf_name_xfmr)
     XlateFuncBind("DbToYang_server_vrf_name_xfmr", DbToYang_server_vrf_name_xfmr)
     XlateFuncBind("YangToDb_auth_method_xfmr", YangToDb_auth_method_xfmr)
@@ -316,6 +318,21 @@ var server_table_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, error
     }
 
     return tables, err
+}
+
+var YangToDb_server_ipaddr_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    log.Info( "YangToDb_server_ipaddr_xfmr: root: ", inParams.ygRoot,
+            ", uri: ", inParams.uri)
+    res_map :=  make(map[string]string)
+    pathInfo := NewPathInfo(inParams.uri)
+    servergroupname := pathInfo.Var("name")
+    if servergroupname == "LDAP" {
+	    res_map["NULL"] = "NULL"	
+    } else if inParams.param != nil {
+		res_map["ipaddress"] = fmt.Sprintf("%v", inParams.param)
+    }
+    log.Info( "YangToDb_server_ipaddr_xfmr: res_map: ", res_map)
+    return res_map, nil
 }
 
 var YangToDb_server_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
