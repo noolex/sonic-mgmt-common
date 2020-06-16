@@ -164,6 +164,7 @@ func getParentNode(targetUri *string, deviceObj *ocbinds.Device) (*interface{}, 
 	return &(treeNodeList[0].Data), treeNodeList[0].Schema, nil
 }
 
+//lint:ignore U1000 Needed
 func getNodeName(targetUri *string, deviceObj *ocbinds.Device) (string, error) {
 	path, err := ygot.StringToPath(*targetUri, ygot.StructuredPath, ygot.StringSlicePath)
 	if err != nil {
@@ -190,6 +191,7 @@ func getNodeName(targetUri *string, deviceObj *ocbinds.Device) (string, error) {
 	return treeNodeList[0].Schema.Name, nil
 }
 
+//lint:ignore U1000 Needed
 func getObjectFieldName(targetUri *string, deviceObj *ocbinds.Device, ygotTarget *interface{}) (string, error) {
 	parentObjIntf, _, err := getParentNode(targetUri, deviceObj)
 	if err != nil {

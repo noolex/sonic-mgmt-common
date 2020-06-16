@@ -7,10 +7,6 @@ module sonic-spanning-tree {
         prefix prt;
     }
 
-    import sonic-portchannel {
-        prefix spc;
-    }
-
     import sonic-vlan {
         prefix svlan;
     }

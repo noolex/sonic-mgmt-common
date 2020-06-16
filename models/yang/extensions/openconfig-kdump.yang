@@ -82,9 +82,54 @@ module openconfig-kdump {
           description
           "Kdump crash records for all the kernel crash events that
           have been detected and recorded";
- 
-          uses kdump-records-list;
+
+          list kdump-record {
+            key "id";
+            description
+            "Kdump crash records for all the kernel crash events that
+            have been detected and recorded";
+
+          leaf id {
+            type leafref {
+              path "../state/id";
+            }
+            description
+            "Unique string identifying the kernel kdump crash record";
+          }
+
+          container state {
+            description
+              "Information of a kernel crash record captured by the kdump mechanism";
+
+            leaf id {
+              type string;
+              description
+                "Unique string identifying the kernel kdump crash record";
+            }
+
+            leaf vmcore-diagnostic-message {
+              type string;
+              description
+                "A copy of the kernel diagnostic message log when the kernel crash
+                has occurred";
+            }
+
+            leaf vmcore-diagnostic-message-file {
+              type string;
+              description
+                "The file holding the kernel diagnostic message log when the kernel
+                crash occurred";
+            }
+
+            leaf vmcore {
+              type string;
+              description
+                "The exported Kernel memory image that can be analyzed for the purposes
+                of debugging and determining the cause of a kernel crash";
+            }
+          }
         }
+      }
     }
   }
 
@@ -139,59 +184,6 @@ module openconfig-kdump {
       units bytes;
       description
         "The memory reserved and allocated for loading the kdump crash kernel";
-    }
-  }
-
-  grouping kdump-records-list {
-    description
-      "Kdump crash records for all the kernel crash events that
-      have been detected and recorded";
-
-    list kdump-record {
-      key "id";
-      description
-        "Kdump crash records for all the kernel crash events that
-         have been detected and recorded";
-
-      leaf id {
-        type leafref {
-          path "../state/id";
-        }
-        description
-          "Unique string identifying the kernel kdump crash record";
-      }
-
-      container state {
-        description
-          "Information of a kernel crash record captured by the kdump mechanism";
-
-        leaf id {
-          type string;
-          description
-            "Unique string identifying the kernel kdump crash record";
-        }
-
-        leaf vmcore-diagnostic-message {
-          type string;
-          description
-            "A copy of the kernel diagnostic message log when the kernel crash
-            has occured.";
-        }
-
-        leaf vmcore-diagnostic-message-file {
-          type string;
-          description
-            "The file holding the kernel diagnostic message log when the kernel
-            crash has occured";
-        }
-
-        leaf vmcore {
-          type string;
-          description
-            "The exported Kernel memory image that can be analyzed for the purposes
-            of debugging and determining the cause of a kernel crash";
-        }
-      }
     }
   }
 

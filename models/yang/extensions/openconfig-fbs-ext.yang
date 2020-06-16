@@ -3,7 +3,7 @@ module openconfig-fbs-ext {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/fbs-ext";
+  namespace "http://openconfig.net/yang/fbs/extension";
 
   prefix "oc-fbs-ext";
 
@@ -103,17 +103,17 @@ module openconfig-fbs-ext {
   // typedef statements
 
   // grouping statements
-  grouping fbs-config {
+  grouping fbs-ext-config {
     description
       "Global configuration data for Flow based services";
   }
 
-  grouping fbs-state {
+  grouping fbs-ext-state {
     description
       "Global operational state data for Flow based services";
   }
   
-  grouping fbs-top {
+  grouping fbs-ext-top {
     description
       "Top level grouping for Flow based services data";
     
@@ -126,7 +126,7 @@ module openconfig-fbs-ext {
         description
           "Global config data for flow based services";
 
-        uses fbs-config;
+        uses fbs-ext-config;
       }   
     
       container state {
@@ -135,19 +135,19 @@ module openconfig-fbs-ext {
         description
           "Global operational state data for link state tracking";
     
-        uses fbs-config;
-        uses fbs-state;
+        uses fbs-ext-config;
+        uses fbs-ext-state;
       }   
 
-      uses fbs-classifiers-top;
-	  uses fbs-policies-top;
-      uses fbs-interfaces-top;
+      uses fbs-ext-classifiers-top;
+	  uses fbs-ext-policies-top;
+      uses fbs-ext-interfaces-top;
     }
   }
   
 
   // data definition statements
-  uses fbs-top;
+  uses fbs-ext-top;
 
   // augment statements
 

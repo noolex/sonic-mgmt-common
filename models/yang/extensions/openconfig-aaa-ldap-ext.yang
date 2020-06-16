@@ -1,4 +1,3 @@
-// I took out the tabs and replaced with spaces.
 module openconfig-aaa-ldap-ext {
 
   yang-version "1.1";
@@ -12,6 +11,8 @@ module openconfig-aaa-ldap-ext {
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-aaa-types { prefix oc-aaa-types; }
   import openconfig-system { prefix oc-sys; }  
+  import openconfig-network-instance { prefix oc-ni; }
+  import openconfig-interfaces { prefix "oc-if"; }
 
   // meta
   organization "SONiC";
@@ -256,19 +257,29 @@ module openconfig-aaa-ldap-ext {
          bind-dn.";
     }
     
-    leaf source-address {
-      type oc-inet:ip-address;
-      description
-        "IP address of the LDAP client";      
-    }
-    
-    leaf vrf-name {
-      type string;
-      description
-        "Vrf name";
-    }    
   }
   
+  grouping aaa-ldap-ext-global-attributes {
+    description
+      "Grouping for LDAP server global configuration data";
+
+        leaf source-interface {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+                "Source interface ip to be used as source ip for server connection";
+        }
+
+        leaf vrf-name {
+            type leafref {
+                path "/oc-ni:network-instances/oc-ni:network-instance/oc-ni:name";
+            }
+            description
+                "VRF name";
+        }
+  }
+
   grouping aaa-ldap-ext-nss-pam-attributes {
     description
       "Grouping for LDAP NSS and PAM server configuration data";
@@ -492,6 +503,22 @@ module openconfig-aaa-ldap-ext {
     }
   }
   
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/config" {
+  	description
+      "Adds LDAP global server-group attributes to a LDAP server group.";
+    uses aaa-ldap-ext-global-attributes {
+      when "./type = 'oc-aaa-types:LDAP'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/state" {
+  	description
+      "Adds LDAP global server-group attributes to a LDAP server group.";
+    uses aaa-ldap-ext-global-attributes {
+      when "./type = 'oc-aaa-types:LDAP'";
+    }
+  }
+
   augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/config" {
   	description
 			"Adds LDAP common server-group attributes to a LDAP, LDAP_NSS, LDAP_PAM, LDAP_SUDO server group.";

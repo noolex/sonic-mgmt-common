@@ -130,7 +130,6 @@ type CounterData struct {
 }
 
 type IntfTblData struct {
-    intfPrefix          string
     cfgDb               TblData
     appDb               TblData
     stateDb             TblData
@@ -249,8 +248,7 @@ func alternate_name_value_xfmr(inParams XfmrDbParams) (string, error) {
         err_str := "CRUD operations are not allowed for interface alternate name"
         return aliasName, tlerr.NotSupported(err_str)
     }
-    var ifName *string
-    ifName = utils.GetNativeNameFromUIName(&aliasName)
+    ifName := utils.GetNativeNameFromUIName(&aliasName)
 
     log.Info("Returned string from alternate_name_value_xfmr = ", *ifName)
     return *ifName, nil
@@ -290,17 +288,17 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
 func getIntfTypeByName (name string) (E_InterfaceType, E_InterfaceSubType, error) {
 
     var err error
-    if strings.HasPrefix(name, ETHERNET) == true {
+    if strings.HasPrefix(name, ETHERNET) {
         return IntfTypeEthernet, IntfSubTypeUnset, err
-    } else if strings.HasPrefix(name, MGMT) == true {
+    } else if strings.HasPrefix(name, MGMT) {
         return IntfTypeMgmt, IntfSubTypeUnset, err
-    } else if strings.HasPrefix(name, VLAN) == true {
+    } else if strings.HasPrefix(name, VLAN) {
         return IntfTypeVlan, IntfSubTypeUnset, err
-    } else if strings.HasPrefix(name, PORTCHANNEL) == true {
+    } else if strings.HasPrefix(name, PORTCHANNEL) {
         return IntfTypePortChannel, IntfSubTypeUnset, err
-    } else if strings.HasPrefix(name, LOOPBACK) == true {
+    } else if strings.HasPrefix(name, LOOPBACK) {
         return IntfTypeLoopback, IntfSubTypeUnset, err
-    } else if strings.HasPrefix(name, VXLAN) == true {
+    } else if strings.HasPrefix(name, VXLAN) {
         return IntfTypeVxlan, IntfSubTypeUnset, err
     } else {
         err = errors.New("Interface name prefix not matched with supported types")
@@ -385,10 +383,11 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
     err = json.Unmarshal(body, &mapData)
     if err != nil {
         log.Info("Failed to unmarshall given input data")
-        result.Output.Status_detail = fmt.Sprintf("Error: Failed to unmarshall given input data")
+        result.Output.Status_detail = "Error: Failed to unmarshall given input data"
         return json.Marshal(&result)
     }
-    input, _ := mapData["sonic-interface:input"]
+    log.Info("-----mapData[sonic-interface:input]----", mapData["sonic-interface:input"])
+    input := mapData["sonic-interface:input"]
     mapData = input.(map[string]interface{})
     input = mapData["interface-param"]
     input_str := fmt.Sprintf("%v", input)
@@ -399,7 +398,7 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
     portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
     ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
     if err != nil {
-        result.Output.Status_detail = fmt.Sprintf("Error: Port-OID (Counters) get for all the interfaces failed!")
+        result.Output.Status_detail = "Error: Port-OID (Counters) get for all the interfaces failed!"
         return json.Marshal(&result)
     }
 
@@ -498,7 +497,7 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
             log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
             return "", tlerr.New (ierr.Error())
         }
-        requestUriPath, err := getYangPathFromUri(inParams.requestUri)
+        requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
         log.Info("inParams.requestUri: ", requestUriPath)
         err = performIfNameKeyXfmrOp(&inParams, &requestUriPath, &ifName, intfType)
         if err != nil {
@@ -509,8 +508,8 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     return ifName, err
 }
 
-// Code for DBToYang - Key xfmr
 var DbToYang_intf_tbl_key_xfmr  KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+/* Code for DBToYang - Key xfmr. */
     log.Info("Entering DbToYang_intf_tbl_key_xfmr")
     res_map := make(map[string]interface{})
 
@@ -555,7 +554,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 		//handle VXLAN interface.
 	intfsObj := getIntfsRoot(inParams.ygRoot)
 	for intfKey, intfValObj := range intfsObj.Interface {
- 		if strings.HasPrefix(intfKey, VXLAN) == true && intfValObj != nil && intfValObj.Config != nil {
+ 		if strings.HasPrefix(intfKey, VXLAN) && intfValObj != nil && intfValObj.Config != nil {
  			if intfValObj.Config.Type != ocbinds.IETFInterfaces_InterfaceType_UNSET && intfValObj.Config.Type != ocbinds.IETFInterfaces_InterfaceType_IF_NVE {
  				return tblList, tlerr.InvalidArgs("Invalid Vxlan Interface type %d", intfValObj.Config.Type)
  			}
@@ -567,7 +566,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         targetUriPath ==  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6") {
             return tblList, tlerr.New("DELETE operation not allowed on  this container")
 
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") == true && IntfTypeVxlan == intfType  {
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") && IntfTypeVxlan == intfType  {
 		if inParams.oper == 5 {
 			tblList = append(tblList, "VXLAN_TUNNEL")
 			tblList = append(tblList, "EVPN_NVO")
@@ -685,16 +684,16 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
 
     ifName := *utils.GetNativeNameFromUIName(&uriIfName)
 
-	if strings.HasPrefix(ifName, VXLAN) == true {
-		res_map["NULL"] = "NULL"
-	} else if strings.HasPrefix(ifName, VLAN) == true {
-        vlanId := ifName[len("Vlan"):len(ifName)]
+    if strings.HasPrefix(ifName, VXLAN) {
+        res_map["NULL"] = "NULL"
+    } else if strings.HasPrefix(ifName, VLAN) {
+        vlanId := ifName[len("Vlan"):]
         res_map["vlanid"] = vlanId
-    } else if strings.HasPrefix(ifName, PORTCHANNEL) == true {
+    } else if strings.HasPrefix(ifName, PORTCHANNEL) {
         res_map["NULL"] = "NULL"
-    } else if strings.HasPrefix(ifName, LOOPBACK) == true {
+    } else if strings.HasPrefix(ifName, LOOPBACK) {
         res_map["NULL"] = "NULL"
-    } else if strings.HasPrefix(ifName, ETHERNET) == true {
+    } else if strings.HasPrefix(ifName, ETHERNET) {
         intTbl := IntfTypeTblMap[IntfTypeEthernet]
         //Check if physical interface exists, if not return error
         err = validateIntfExists(inParams.d, intTbl.cfgDb.portTN, ifName)
@@ -747,7 +746,7 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
         return res_map, nil
     } else {
-        for infK, _ := range intfsObj.Interface {
+        for infK := range intfsObj.Interface {
             ifName = infK
         }
     }
@@ -775,6 +774,20 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
     // Handles all the operations other than Delete
     intfTypeVal, _ := inParams.param.(*uint16)
     intTypeValStr := strconv.FormatUint(uint64(*intfTypeVal), 10)
+
+    if IntfTypePortChannel == intfType {
+        /* Apply the MTU to all the portchannel member ports */
+        updateMemberPortsMtu(&inParams, &ifName, &intTypeValStr)
+    } else if IntfTypeEthernet == intfType {
+        /* Do not allow MTU configuration on a portchannel member port */
+        lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
+        if lagId != nil {
+            log.Infof("%s is member of %s", ifName, *lagId)
+            errStr := "Configuration not allowed when port is member of Portchannel."
+            return nil, tlerr.InvalidArgsError{Format: errStr}
+        }
+    }
+
     res_map["mtu"] = intTypeValStr
     return res_map, nil
 }
@@ -890,7 +903,7 @@ var YangToDb_intf_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
         return res_map, nil
     } else {
-    	for infK, _ := range intfsObj.Interface {
+    	for infK := range intfsObj.Interface {
     		ifName = infK
     	}
     }
@@ -902,7 +915,7 @@ var YangToDb_intf_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     
     enabled, _ := inParams.param.(*bool)
     var enStr string
-    if *enabled == true {
+    if *enabled {
         enStr = "up"
     } else {
         enStr = "down"
@@ -1224,8 +1237,8 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
 
     // Handles the case when the delete request at subinterfaces/subinterface[index = 0]
     if subIntf == nil || (subIntf.Ipv4 == nil && subIntf.Ipv6 == nil) {
-	    ipMap, _ := getIntfIpByName(d, tblName, ifName, true, true, "")
-	    if ipMap != nil && len(ipMap) > 0 {
+        ipMap, _ := getIntfIpByName(d, tblName, ifName, true, true, "")
+        if len(ipMap) > 0 {
             for k, v := range ipMap {
                 intfIpMap[k] = v
             }
@@ -1237,16 +1250,16 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
         if subIntf.Ipv4.Addresses != nil {
             if len(subIntf.Ipv4.Addresses.Address) < 1 {
                 ipMap, _:= getIntfIpByName(d, tblName, ifName, true, false, "")
-                if ipMap != nil && len(ipMap) > 0 {
+                if len(ipMap) > 0 {
                     for k, v := range ipMap {
                         intfIpMap[k] = v
                     }
                 }
             } else {
-                for ip, _ := range subIntf.Ipv4.Addresses.Address {
+                for ip := range subIntf.Ipv4.Addresses.Address {
                     ipMap, _ := getIntfIpByName(d, tblName, ifName, true, false, ip)
 
-                    if ipMap != nil && len(ipMap) > 0 {
+                    if len(ipMap) > 0 {
                         for k, v := range ipMap {
                             intfIpMap[k] = v
                         }
@@ -1256,7 +1269,7 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
         } else {
             // Case when delete request is at IPv4 container level
             ipMap, _ := getIntfIpByName(d, tblName, ifName, true, false, "")
-            if ipMap != nil && len(ipMap) > 0 {
+            if len(ipMap) > 0 {
                 for k, v := range ipMap {
                     intfIpMap[k] = v
                 }
@@ -1269,16 +1282,16 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
         if subIntf.Ipv6.Addresses != nil {
             if len(subIntf.Ipv6.Addresses.Address) < 1 {
                 ipMap, _ := getIntfIpByName(d, tblName, ifName, false, true, "")
-                if ipMap != nil && len(ipMap) > 0 {
+                if len(ipMap) > 0 {
                     for k, v := range ipMap {
                         intfIpMap[k] = v
                     }
                 }
             } else {
-                for ip, _ := range subIntf.Ipv6.Addresses.Address {
+                for ip := range subIntf.Ipv6.Addresses.Address {
                     ipMap, _ := getIntfIpByName(d, tblName, ifName, false, true, ip)
 
-                    if ipMap != nil && len(ipMap) > 0 {
+                    if len(ipMap) > 0 {
                         for k, v := range ipMap {
                             intfIpMap[k] = v
                         }
@@ -1288,7 +1301,7 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
         } else {
             // Case when the delete request is at IPv6 container level
             ipMap, _ := getIntfIpByName(d, tblName, ifName, false, true, "")
-            if ipMap != nil && len(ipMap) > 0 {
+            if len(ipMap) > 0 {
                 for k, v := range ipMap {
                     intfIpMap[k] = v
                 }
@@ -1300,7 +1313,7 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
             subIntfmap[tblName] = make (map[string]db.Value)
         }
         var data db.Value
-        for k, _ := range intfIpMap {
+        for k := range intfIpMap {
             ifKey := ifName + "|" + k
             subIntfmap[tblName][ifKey] = data
         }
@@ -1456,7 +1469,8 @@ func validateL3ConfigExists(d *db.DB, ifName *string) error {
     intTbl := IntfTypeTblMap[intfType]
     IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:intTbl.cfgDb.intfTN+"|"+*ifName})
     if err == nil && IntfMapObj.IsPopulated() {
-        errStr := "L3 Configuration exists for Interface: " + *ifName
+        ifUIName := utils.GetUINameFromNativeName(ifName)
+        errStr := "L3 Configuration exists for Interface: " + *ifUIName
         IntfMap := IntfMapObj.Field
         if intfType == IntfTypeLoopback {
             // Checks specific to Loopback interface
@@ -1543,8 +1557,38 @@ func validateIpPrefixForIntfType(ifType E_InterfaceType, ip *string, prfxLen *ui
     return err
 }
 
+
+func checkIfSagAfiExistOnIntf(d *db.DB, afi string, ifName string) (bool){
+    preKey := make([]string, 2, 2)
+    preKey[0] = ifName
+    preKey[1] = afi
+
+    sagKey := db.Key{ Comp: preKey}
+
+    sagEntry, err := d.GetEntry(&db.TableSpec{Name: "SAG"}, sagKey)
+    if(err == nil) {
+        sagIpList, ok := sagEntry.Field["gwip@"]
+  
+        if (!ok) {
+            return true
+        }
+
+        if (len(sagIpList) != 0) {
+            return true
+        }
+    }
+  
+    return false
+}
+  
+func chekIfSagExistOnIntf(d *db.DB, ifName string) (bool) {
+  
+    return (checkIfSagAfiExistOnIntf(d, "IPv4", ifName) || checkIfSagAfiExistOnIntf(d, "IPv6", ifName))
+  
+}
+
 /* Check for IP overlap */
-func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string) (string, error) {
+func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isIntfIp bool) (string, error) {
     log.Info("Checking for IP overlap ....")
 
     ipA, ipNetA, err := net.ParseCIDR(ipPref)
@@ -1555,7 +1599,7 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string) (st
 
     var allIntfKeys []db.Key
 
-    for key, _ := range IntfTypeTblMap {
+    for key := range IntfTypeTblMap {
         intTbl := IntfTypeTblMap[key]
         keys, err := d.GetKeys(&db.TableSpec{Name:intTbl.cfgDb.intfTN})
         if err != nil {
@@ -1563,6 +1607,38 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string) (st
             return "", err
         }
         allIntfKeys = append(allIntfKeys, keys...)
+    }
+
+    sagKeys, err := d.GetKeys(&db.TableSpec{Name:"SAG"})
+    if nil == err {
+
+        for _, sagIf := range sagKeys {
+            sagEntry, err := d.GetEntry(&db.TableSpec{Name: "SAG"}, sagIf)
+      			if(err != nil) {
+      			    continue
+      			}
+
+            sagIpList, ok := sagEntry.Field["gwip@"]
+
+            if (!ok) {
+                continue;
+            }
+
+            sagIpMap := strings.Split(sagIpList, ",")
+
+          	if (sagIpMap[0] == "") {
+          		  continue
+          	}
+
+            for _, sagIp := range sagIpMap {
+                prekey := make([]string, 3, 3)
+                prekey[0] = sagIf.Get(0)
+                prekey[1] = sagIp
+                prekey[2] = "SAG"
+                appendKey := db.Key{ Comp: prekey}
+                allIntfKeys = append(allIntfKeys, appendKey)
+            }
+        }
     }
 
     if len(allIntfKeys) > 0 {
@@ -1590,15 +1666,21 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string) (st
                     vrfNameA, _ := d.GetMap(&db.TableSpec{Name:tblName+"|"+intf}, "vrf_name")
                     vrfNameB, _ := d.GetMap(&db.TableSpec{Name:intTbl.cfgDb.intfTN+"|"+key.Get(0)}, "vrf_name")
                     if vrfNameA == vrfNameB {
-                        errStr := "IP " + ipPref + " overlaps with IP " + key.Get(1) + " of Interface " + key.Get(0)
+                        errStr := "IP " + ipPref + " overlaps with IP or IP Anycast " + key.Get(1) + " of Interface " + key.Get(0)
                         log.Error(errStr)
                         return "", errors.New(errStr)
                     }
-                } else {
+                } else if (isIntfIp == true){
                     //Handle IP overlap on same interface, replace
                     log.Error("Entry ", key.Get(1), " on ", intf, " needs to be deleted")
-                    errStr := "IP overlap on same interface with IP " + key.Get(1)
-                    return key.Get(1), errors.New(errStr)
+                    errStr := "IP overlap on same interface with IP or IP Anycast " + key.Get(1)
+
+                    if ((len(key.Comp) == 3) && (key.Get(2) == "SAG")) {
+                        return "", errors.New(errStr)
+                    } else {
+                        return key.Get(1), errors.New(errStr)
+                    }
+
                 }
             }
         }
@@ -1708,7 +1790,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     }
 
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.Addresses != nil {
-        for ip, _ := range subIntfObj.Ipv4.Addresses.Address {
+        for ip := range subIntfObj.Ipv4.Addresses.Address {
             addr := subIntfObj.Ipv4.Addresses.Address[ip]
             if addr.Config != nil {
                 if addr.Config.Ip == nil {
@@ -1735,7 +1817,13 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 }
                 /* Check for IP overlap */
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
-                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName);
+                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
+
+		if ((intfType == IntfTypeLoopback) && (validateMultiIPForDonorIntf(inParams.d, &ifName))) {
+                    errStr := "Loopback interface is Donor for Unnumbered interface. Cannot add Multiple IPv4 address"
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    return subIntfmap, err
+		}
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
@@ -1766,7 +1854,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         }
     }
     if subIntfObj.Ipv6 != nil && subIntfObj.Ipv6.Addresses != nil {
-        for ip, _ := range subIntfObj.Ipv6.Addresses.Address {
+        for ip := range subIntfObj.Ipv6.Addresses.Address {
             addr := subIntfObj.Ipv6.Addresses.Address[ip]
             if addr.Config != nil {
                 if addr.Config.Ip == nil {
@@ -1793,7 +1881,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 }
                 /* Check for IPv6 overlap */
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
-                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName);
+                overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
@@ -2022,7 +2110,7 @@ func convertIpMapToOC (intfIpMap map[string]db.Value, ifInfo *ocbinds.Openconfig
     var err error
 
     if _, ok := ifInfo.Subinterfaces.Subinterface[0]; !ok {
-        subIntf, err = ifInfo.Subinterfaces.NewSubinterface(0)
+        _, err = ifInfo.Subinterfaces.NewSubinterface(0)
         if err != nil {
             log.Error("Creation of subinterface subtree failed!")
             return err
@@ -2044,13 +2132,13 @@ func convertIpMapToOC (intfIpMap map[string]db.Value, ifInfo *ocbinds.Openconfig
         var v6Address *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_Addresses_Address
         if validIPv4(ipB.String()) {
             if _, ok := subIntf.Ipv4.Addresses.Address[ipB.String()]; !ok {
-                v4Address, err = subIntf.Ipv4.Addresses.NewAddress(ipB.String())
+                _, err = subIntf.Ipv4.Addresses.NewAddress(ipB.String())
             }
             v4Address = subIntf.Ipv4.Addresses.Address[ipB.String()]
             v4Flag = true
         } else if validIPv6(ipB.String()) {
             if _, ok := subIntf.Ipv6.Addresses.Address[ipB.String()]; !ok {
-                v6Address, err = subIntf.Ipv6.Addresses.NewAddress(ipB.String())
+                _, err = subIntf.Ipv6.Addresses.NewAddress(ipB.String())
             }
             v6Address =  subIntf.Ipv6.Addresses.Address[ipB.String()]
             v6Flag = true
@@ -2267,7 +2355,7 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
     var err error
     intfIpMap := make(map[string]db.Value)
     all := true
-    if ipv4 == false || ipv6 == false {
+    if !ipv4 || !ipv6 {
         all = false
     }
     log.Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
@@ -2284,17 +2372,17 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
             continue
         }
         if len(key.Comp) > 2 {
-            for i, _ := range key.Comp {
+            for i := range key.Comp {
                 if i == 0 || i == 1 {
                     continue
                 }
                 key.Comp[1] = key.Comp[1] + ":" + key.Comp[i]
             }
         }
-        if all == false {
+        if !all {
             ipB, _, _ := net.ParseCIDR(key.Get(1))
-            if ((validIPv4(ipB.String()) && (ipv4 == false)) ||
-                (validIPv6(ipB.String()) && (ipv6 == false))) {
+            if ((validIPv4(ipB.String()) && (!ipv4)) ||
+                (validIPv6(ipB.String()) && (!ipv6))) {
                 continue
             }
             if ip != "" {
@@ -2311,7 +2399,7 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
 }
 
 func handleIntfIPGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName string, intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
-    ipMap := make(map[string]db.Value)
+    var ipMap map[string]db.Value
     var err error
 
     pathInfo := NewPathInfo(inParams.uri)
@@ -2347,19 +2435,27 @@ func handleIntfIPGetByTargetURI (inParams XfmrParams, targetUriPath string, ifNa
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses") {
         ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, true, false, ipAddr)
+        if err == nil {
            log.Info("handleIntfIPGetByTargetURI : ipv4 config ipMap - : ", ipMap)
-        convertIpMapToOC(ipMap, intfObj, false)
+            convertIpMapToOC(ipMap, intfObj, false)
+        }
         ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, true, false, ipAddr)
-           log.Info("handleIntfIPGetByTargetURI : ipv4 state ipMap - : ", ipMap)
-        convertIpMapToOC(ipMap, intfObj, true)
+        if err == nil {
+            log.Info("handleIntfIPGetByTargetURI : ipv4 state ipMap - : ", ipMap)
+            convertIpMapToOC(ipMap, intfObj, true)
+        }
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses") {
         ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, false, true, ipAddr)
-           log.Info("handleIntfIPGetByTargetURI : ipv6 config ipMap - : ", ipMap)
-        convertIpMapToOC(ipMap, intfObj, false)
+        if err == nil {
+            log.Info("handleIntfIPGetByTargetURI : ipv6 config ipMap - : ", ipMap)
+            convertIpMapToOC(ipMap, intfObj, false)
+        }
         ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, false, true, ipAddr)
-           log.Info("handleIntfIPGetByTargetURI : ipv6 state ipMap - : ", ipMap)
-        convertIpMapToOC(ipMap, intfObj, true)
+        if err == nil {
+            log.Info("handleIntfIPGetByTargetURI : ipv6 state ipMap - : ", ipMap)
+            convertIpMapToOC(ipMap, intfObj, true)
+        }
     }
     return err
 }
@@ -2455,11 +2551,11 @@ var DbToYang_intf_ip_addr_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) 
             ygot.BuildEmptyTree(intfObj)
         }
 
+        err = handleIntfIPGetByTargetURI(inParams, targetUriPath, ifName, intfObj)
 
     } else {
         err = errors.New("Invalid URI : " + targetUriPath)
     }
-    err = handleIntfIPGetByTargetURI(inParams, targetUriPath, ifName, intfObj)
 
     return err
 }
@@ -2799,7 +2895,7 @@ var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, count
         m := make(map[string]string)
         log.Info("PopulateIntfCounters : not able find the oid entry in DB COUNTERS_BACKUP table")
         /* Frame backup data with 0 as counter values */
-        for  attr,_ := range entry.Field {
+        for  attr := range entry.Field {
             m[attr] = "0"
         }
         m["LAST_CLEAR_TIMESTAMP"] = "0"
@@ -2813,7 +2909,7 @@ var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, count
             uri := targetUriPath + "/" + attr
             if ok, err := getSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter); !ok || err != nil {
                 log.Info("Get Counter URI failed :", uri)
-                err = errors.New("Get Counter URI failed")
+                //err = errors.New("Get Counter URI failed")
             }
         }
     case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters",
@@ -2822,7 +2918,7 @@ var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, count
             uri := targetUriPath + "/" + attr
             if ok, err := getSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter); !ok || err != nil {
                 log.Info("Get Ethernet Counter URI failed :", uri)
-                err = errors.New("Get Ethernet Counter URI failed")
+                //err = errors.New("Get Ethernet Counter URI failed")
             }
         }
     case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-distribution",
@@ -2896,9 +2992,9 @@ func getMgmtSpecificCounterAttr (uri string, cnt_data []string, counter *ocbinds
     case "/openconfig-interfaces:interfaces/interface/state/counters":
         for key := range mgmtCounterIndexMap {
             xuri := uri + "/" + key
-            e = getMgmtSpecificCounterAttr(xuri, cnt_data, counter)
+            getMgmtSpecificCounterAttr(xuri, cnt_data, counter)
         }
-        return  nil
+        return nil
     }
 
     log.Info("getMgmtSpecificCounterAttr - Invalid counters URI : ", uri)
@@ -2910,6 +3006,9 @@ var populateMGMTPortCounters PopulateIntfCounters = func (inParams XfmrParams, c
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("name")
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    if err != nil {
+        return err
+    }
 
     fileName := "/proc/net/dev"
     file, err := os.Open(fileName)
@@ -2993,8 +3092,8 @@ var DbToYang_intf_get_ether_counters_xfmr SubTreeXfmrDbToYang = func(inParams Xf
         return errors.New("Ethernet counters not supported.")
     }
 
-    if (strings.Contains(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/state/counters") == false ) &&
-    (strings.Contains(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters") == false ) {
+    if !strings.Contains(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/state/counters") &&
+        !strings.Contains(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters") {
         log.Info("%s is redundant", targetUriPath)
         return err
     }
@@ -3037,7 +3136,7 @@ var DbToYang_intf_get_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
 
-    if  (strings.Contains(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") == false) {
+    if  (!strings.Contains(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters")) {
         log.Info("%s is redundant", targetUriPath)
         return err
     }
@@ -3082,7 +3181,7 @@ var DbToYang_intf_get_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string) (*string, error) {
     var err error
 
-    if strings.HasPrefix(*ifName, ETHERNET) == true {
+    if strings.HasPrefix(*ifName, ETHERNET) {
         intTbl := IntfTypeTblMap[IntfTypePortChannel]
         tblName, _ := getMemTableNameByDBId(intTbl, inParams.curDb)
         var lagStr string
@@ -3093,7 +3192,7 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
             return nil, err
         }
         var flag bool = false
-        for i, _ := range lagKeys {
+        for i := range lagKeys {
             if *ifName == lagKeys[i].Get(1) {
                 flag = true
                 lagStr = lagKeys[i].Get(0)
@@ -3101,7 +3200,7 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
                 break
             }
         }
-        if flag == false {
+        if !flag {
             log.Info("Given Interface not part of any PortChannel")
             return nil, err
         }
@@ -3155,7 +3254,7 @@ func getDefaultSpeed(d *db.DB, ifName string) int {
 }
 
 
-/* Handle port-speed, auto-neg and aggregate-id config */
+// YangToDb_intf_eth_port_config_xfmr handles port-speed, auto-neg and aggregate-id config.
 var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     var lagStr string
@@ -3163,6 +3262,9 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, err := getYangPathFromUri(inParams.uri)
+    if err != nil {
+        return memMap, err
+    }
     uriIfName := pathInfo.Var("name")
     ifName := uriIfName
 
@@ -3218,7 +3320,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
     /* Handle AggregateId config */
     if intfObj.Ethernet.Config.AggregateId != nil {
-        if strings.HasPrefix(ifName, ETHERNET) == false {
+        if !strings.HasPrefix(ifName, ETHERNET) {
             return nil, errors.New("Invalid config request")
         }
         intTbl := IntfTypeTblMap[IntfTypePortChannel]
@@ -3328,7 +3430,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
         autoNeg := intfObj.Ethernet.Config.AutoNegotiate
         var enStr string
-        if *autoNeg == true {
+        if *autoNeg {
             enStr = "true"
         } else {
             enStr = "false"
@@ -3355,7 +3457,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 			continue
 		}
 
-		intfKeys, err := intfTble.GetKeys()
+		intfKeys, _ := intfTble.GetKeys()
 		for _, intfName := range intfKeys {
 			intfEntry, err := d.GetEntry(&db.TableSpec{Name: table}, intfName)
 			if(err != nil) {
@@ -3379,7 +3481,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 			return false
 		}
 
-		loIntfKeys, err := loIntfTble.GetKeys()
+		loIntfKeys, _ := loIntfTble.GetKeys()
 		for _, loIntfName := range loIntfKeys {
 			if len(loIntfName.Comp) > 1 && strings.Contains(loIntfName.Comp[0], *ifName){
 				if strings.Contains(loIntfName.Comp[1], ".") {
@@ -3391,6 +3493,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 	}
 	return false
 }
+
 
 func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface,
                          inParams *XfmrParams, ifdb map[string]string, ifName *string) error  {
@@ -3420,7 +3523,7 @@ func validateUnnumIntfExistsForDonorIntf(d *db.DB, donorIfName *string) bool {
 			continue
 		}
 
-		keys, err := intfTable.GetKeys()
+		keys, _ := intfTable.GetKeys()
 		for _, key := range keys {
 			if len(key.Comp) > 2 {
 				continue
@@ -3603,7 +3706,7 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 
         var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
         if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-            subIntf, err = intfObj.Subinterfaces.NewSubinterface(0)
+            _, err = intfObj.Subinterfaces.NewSubinterface(0)
             if err != nil {
                 log.Error("Creation of subinterface subtree failed!")
                 return err
@@ -3711,11 +3814,22 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
       tlen, _ := strconv.Atoi(tempIP[1])
       templen = uint8(tlen)
       err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, true)
-      if err != nil {
-          errStr := "Invalid IPv4 Gateway lenght " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+      if (err != nil || templen == 0) {
+          errStr := "Invalid IPv4 Gateway length " + sagIpv4Obj.Config.StaticAnycastGateway[0]
           err = tlerr.InvalidArgsError{Format: errStr}
           return subIntfmap, err
       }
+
+      if (inParams.oper != DELETE) {
+          _, oerr := validateIpOverlap(inParams.d, ifName, sagIpv4Obj.Config.StaticAnycastGateway[0], "VLAN_INTERFACE", false);
+
+          if oerr != nil {
+              log.Error(oerr)
+              return nil, tlerr.InvalidArgsError{Format: oerr.Error()}
+          }
+
+      }
+
 			sagIPv4Key := ifName + "|IPv4"
 
 			sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
@@ -3738,7 +3852,7 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 				}
 
 				if sagIPv4Entry.IsPopulated() {
-					gwIPListStr, _ = sagIPv4Entry.Field["gwip@"]
+					gwIPListStr = sagIPv4Entry.Field["gwip@"]
 					gwIPListStr = gwIPListStr + "," + sagIpv4Obj.Config.StaticAnycastGateway[0]
 				} else {
 					gwIPListStr = sagIpv4Obj.Config.StaticAnycastGateway[0]
@@ -3770,10 +3884,19 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
       tlen, _ := strconv.Atoi(tempIP[1])
       templen = uint8(tlen)
       err = validateIpPrefixForIntfType(IntfTypeVlan, &tempIP[0], &templen, false)
-      if err != nil {
-          errStr := "Invalid IPv6 Gateway lenght " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+      if (err != nil || templen == 0) {
+          errStr := "Invalid IPv6 Gateway length " + sagIpv6Obj.Config.StaticAnycastGateway[0]
           err = tlerr.InvalidArgsError{Format: errStr}
           return subIntfmap, err
+      }
+
+      if (inParams.oper != DELETE) {
+          _, oerr := validateIpOverlap(inParams.d, ifName, sagIpv6Obj.Config.StaticAnycastGateway[0], "VLAN_INTERFACE", false);
+
+          if oerr != nil {
+              log.Error(oerr)
+              return nil, tlerr.InvalidArgsError{Format: oerr.Error()}
+          }
       }
 
 			sagIPv6Key := ifName + "|IPv6"
@@ -3798,7 +3921,7 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 				}
 
 				if sagIPv6Entry.IsPopulated() {
-					gwIPListStr, _ = sagIPv6Entry.Field["gwip@"]
+					gwIPListStr = sagIPv6Entry.Field["gwip@"]
 					gwIPListStr = gwIPListStr + "," + sagIpv6Obj.Config.StaticAnycastGateway[0]
 				} else {
 					gwIPListStr = sagIpv6Obj.Config.StaticAnycastGateway[0]
@@ -3905,7 +4028,7 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 	return err
 }
 
-/* YangToDB Key transformer for IPv6 config */
+// YangToDb_subintf_ipv6_tbl_key_xfmr is a YangToDB Key transformer for IPv6 config.
 var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_subintf_ipv6_tbl_key_xfmr")
@@ -3923,7 +4046,7 @@ var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     return inst_key, err
 }
 
-/* DbToYang key transformer for IPv6 config */
+// DbToYang_subintf_ipv6_tbl_key_xfmr is a DbToYang key transformer for IPv6 config.
 var DbToYang_subintf_ipv6_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     if log.V(3) {
         log.Info("Entering DbToYang_subintf_ipv6_tbl_key_xfmr")
@@ -3932,7 +4055,7 @@ var DbToYang_subintf_ipv6_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     return rmap, nil
 }
 
-/* YangToDB Field transformer for IPv6 config "enabled" */
+// YangToDb_ipv6_enabled_xfmr is a YangToDB Field transformer for IPv6 config "enabled".
 var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_ipv6_enabled_xfmr")
@@ -3976,7 +4099,7 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     IntfMap := make(map[string]string)
 
     enabled, _ := inParams.param.(*bool)
-    if *enabled == true {
+    if *enabled {
         enStr = "enable"
     } else {
         enStr = "disable"
@@ -4014,7 +4137,7 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
             keys = append(keys, k)
         }
         check_keys := []string{"NULL", "ipv6_use_link_local_only"}
-        sort.Sort(sort.StringSlice(keys))
+        sort.Strings(keys)
 
         /* Delete interface from interface table if disabling IPv6 and no other interface attributes/ip 
            else remove ipv6_use_link_local_only field */
@@ -4035,7 +4158,7 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     return res_map, nil
 }
 
-/* DbToYang Field transformer for IPv6 config "enabled" */
+// DbToYang_ipv6_enabled_xfmr is a DbToYang Field transformer for IPv6 config "enabled". */
 var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     if log.V(3) {
         log.Info("Entering DbToYang_ipv6_enabled_xfmr")

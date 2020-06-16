@@ -145,14 +145,6 @@ module sonic-system-tacacs {
                     }
                 }
 
-                leaf src_ip {
-                    type inet:ip-address;
-                    must "count(../../TACPLUS_LIST[src_intf=current()]) = 0" {
-                        error-message "source interface already configured source IP/interface cant co-exist";
-                        error-app-tag src-intf-ip-cant-co-exist;
-                    }
-                }
-
                 leaf src_intf {
                     type union {
                         type leafref {
@@ -171,11 +163,6 @@ module sonic-system-tacacs {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
                         }
                     }
-                    must "count(../../TACPLUS_LIST[src_ip=current()]) = 0" {
-                        error-message "source IP already configured source IP/interface cant co-exist";
-                        error-app-tag src-intf-ip-cant-co-exist;
-                    }
-
                 }
             }
         }

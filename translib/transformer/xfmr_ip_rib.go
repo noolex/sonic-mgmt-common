@@ -36,7 +36,7 @@ func getIpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Network
 	deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
 	netInstsObj := deviceObj.NetworkInstances
 
-        netInstObj, _ := netInstsObj.NetworkInstance[niName]
+        netInstObj := netInstsObj.NetworkInstance[niName]
 	if netInstObj == nil {
                 netInstObj, _ = netInstsObj.NewNetworkInstance(niName)
                 ygot.BuildEmptyTree(netInstObj)
@@ -86,7 +86,7 @@ func fill_ipv4_nhop_entry(nexthopsArr []interface{},
 			nextHopsMap := nextHops.(map[string]interface{})
 			isactive, ok := nextHopsMap["active"]
 
-			if ok == false || isactive == false {
+			if !ok || isactive == false {
 				log.Infof("Nexthop is not active, skip")
 				break
 			}
@@ -130,7 +130,7 @@ func fill_ipv4_entry (prfxValArr []interface{},
 		case map[string]interface{}:
 
 			prfxValArrValMap := prfxValArrVal.(map[string]interface{})
-			if _, ok := prfxValArrValMap["selected"]; ok == false {
+			if _, ok := prfxValArrValMap["selected"]; !ok {
 				log.Infof("Route is not selected, skip %s", prfxKey)
 			    break
 			}
@@ -188,7 +188,7 @@ func fill_ipv6_nhop_entry(nexthopsArr []interface{},
 			nextHopsMap := nextHops.(map[string]interface{})
 			isactive, ok := nextHopsMap["active"]
 
-			if ok == false || isactive == false {
+			if !ok || isactive == false {
 				log.Infof("Nexthop is not active, skip")
 			    break	
 			}
@@ -233,7 +233,7 @@ func fill_ipv6_entry (prfxValArr []interface{},
 			// skip non-selected routes.
 
 			prfxValArrValMap := prfxValArrVal.(map[string]interface{})
-			if _, ok := prfxValArrValMap["selected"]; ok == false {
+			if _, ok := prfxValArrValMap["selected"]; !ok {
 				log.Infof("Route is not selected, skip %s", prfxKey)
 			    break
 			}

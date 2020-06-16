@@ -62,7 +62,7 @@ module sonic-portchannel {
 
             list PORTCHANNEL_LIST {
                 key "name";
-                sonic-ext:custom-validation ValidatePortChannelDeletion;
+                sonic-ext:custom-validation ValidatePortChannelCreationDeletion;
 
                 leaf name {
                     type string {
@@ -175,6 +175,10 @@ module sonic-portchannel {
                 //control to disable traffic collection and distribution for all LAG member ports
                 leaf traffic_disable {
                     type boolean; 
+                }
+
+                leaf fallback_operational {
+                    type boolean;
                 }
             }
         }

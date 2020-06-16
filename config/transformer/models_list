@@ -84,6 +84,8 @@ openconfig-platform.yang
 openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
+openconfig-copp-ext.yang
+openconfig-copp-ext-annot.yang
 openconfig-lldp.yang
 openconfig-lldp-ext.yang
 openconfig-lldp-annot.yang
@@ -92,4 +94,5 @@ openconfig-infra.yang
 sonic-system-infra-annot.yang
 openconfig-aggregate-ext.yang
 openconfig-aggregate-ext-annot.yang
-
+openconfig-fbs-ext.yang
+openconfig-fbs-ext-annot.yang

@@ -9,10 +9,6 @@ module sonic-sag {
     import ietf-yang-types {
 		prefix "yang";
     }
-	 
-    import sonic-interface {
-		prefix "sint";
-    }
 
 	import sonic-vlan {
         prefix "svlan";

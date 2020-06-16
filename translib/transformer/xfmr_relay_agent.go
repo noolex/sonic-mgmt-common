@@ -24,6 +24,7 @@ import (
     "strings"
     "strconv"
     "syscall"
+    "net"
     "io/ioutil"
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/db"
@@ -81,12 +82,17 @@ var  relayAgentFields []string = []string{
         "dhcp_servers@",
         "dhcp_relay_src_intf",
         "dhcp_relay_max_hop_count",
-        "dhcp_relay_link_select"}
+        "dhcp_relay_link_select",
+        "dhcp_server_vrf",
+        "dhcp_relay_vrf_select",
+        "dhcp_relay_policy_action"}
 
 var  relayAgentV6Fields []string = []string{
         "dhcpv6_servers@",
         "dhcpv6_relay_src_intf",
-        "dhcpv6_relay_max_hop_count"}
+        "dhcpv6_relay_max_hop_count",
+        "dhcpv6_server_vrf",
+        "dhcpv6_relay_vrf_select"}
 
 //PATH_PREFIX - global
 const PATH_PREFIX = "/mnt/tmp/"
@@ -461,6 +467,8 @@ func getRelayAgentIntfTblByType(ifName string) string {
             tblList = intTbl.cfgDb.intfTN
     } else if intfType == IntfTypeVlan {
             tblList = intTbl.cfgDb.portTN
+    } else if intfType == IntfTypeLoopback {
+            tblList = "LOOPBACK_INTERFACE"
     }
     return tblList;
 }
@@ -502,9 +510,9 @@ func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgen
    if entry.Has("dhcp_relay_link_select") == true {
       linkSelectVal := entry.Get("dhcp_relay_link_select")
       if linkSelectVal == "enable" {
-         raObj.Config.LinkSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_enable
+         raObj.Config.LinkSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_ENABLE
       } else {
-        raObj.Config.LinkSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_disable
+        raObj.Config.LinkSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_DISABLE
      }
    }
    if entry.Has("dhcp_relay_max_hop_count") == true {
@@ -519,6 +527,28 @@ func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgen
    if entry.Has("dhcp_relay_src_intf") == true {
      srcIntf := entry.Get("dhcp_relay_src_intf")
      raObj.Config.SrcIntf = &srcIntf
+   }
+   if entry.Has("dhcp_relay_vrf_select") == true {
+      vrfSelectVal := entry.Get("dhcp_relay_vrf_select")
+      if vrfSelectVal ==  "enable" {
+         raObj.Config.VrfSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_VrfSelect_ENABLE
+      } else {
+        raObj.Config.VrfSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_VrfSelect_DISABLE
+     }
+   }
+   if entry.Has("dhcp_server_vrf") == true {
+     serverVrf:= entry.Get("dhcp_server_vrf")
+     raObj.Config.Vrf = &serverVrf
+   }
+   if entry.Has("dhcp_relay_policy_action") == true {
+      policyAction := entry.Get("dhcp_relay_policy_action")
+      if policyAction == "replace" {
+         raObj.Config.PolicyAction = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_REPLACE
+      } else if policyAction == "append" {
+         raObj.Config.PolicyAction = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_APPEND
+      } else {
+        raObj.Config.PolicyAction = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_DISCARD
+     }
    }
 }
 
@@ -568,6 +598,18 @@ func getDhcpv6DataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAg
    if entry.Has("dhcpv6_relay_src_intf") == true {
       srcIntf := entry.Get("dhcpv6_relay_src_intf")
       raObj.Config.SrcIntf = &srcIntf
+   }
+   if entry.Has("dhcpv6_relay_vrf_select") == true {
+      vrfSelectVal := entry.Get("dhcpv6_relay_vrf_select")
+      if vrfSelectVal == "enable" {
+         raObj.Config.VrfSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface_Config_VrfSelect_ENABLE
+      } else {
+        raObj.Config.VrfSelect = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface_Config_VrfSelect_DISABLE
+     }
+   }
+   if entry.Has("dhcpv6_server_vrf") == true {
+     serverVrf:= entry.Get("dhcpv6_server_vrf")
+     raObj.Config.Vrf = &serverVrf
    }
 
 }
@@ -643,9 +685,35 @@ var DbToYang_relay_agent_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) er
 
 }
 
+func getIntfIpInfo(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6 bool) bool {
+   log.Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
+
+    log.Info(tblName, ifName)
+    table := db.TableSpec{Name: tblName, CompCt: 2}
+    pattern := db.Key{Comp: []string{ ifName, "*" }}
+    keys, err := dbCl.GetKeysPattern(&table, pattern)
+ 
+    if( err != nil) {
+        return false
+    }
+    log.Info(keys)
+    for _, key := range keys {
+        if len(key.Comp) < 2 {
+            continue
+        }
+        ipB, _, _ := net.ParseCIDR(key.Get(1))
+        if ((validIPv4(ipB.String()) && (ipv4 == true)) ||
+            (validIPv6(ipB.String()) && (ipv6 == true))) {
+                return true           
+        }
+      }
+      return false
+}
+
 //Helper function to modify relay info for a given interface
-func replaceRelayAgentObjectAttributes (inParams XfmrParams)  {
+func replaceRelayAgentObjectAttributes (inParams XfmrParams)  error{
    var tblList string
+   var err error
 
    log.Info("replaceRelayAgentObjectAttributes: ", inParams.uri)
    updateMap := make(map[db.DBNum]map[string]map[string]db.Value)
@@ -653,32 +721,42 @@ func replaceRelayAgentObjectAttributes (inParams XfmrParams)  {
    updateMap[db.ConfigDB] = make(map[string]map[string]db.Value)
 
    relayAgentObj := getRelayAgentRoot(inParams.ygRoot)
+   intfsObj := getIntfsRoot(inParams.ygRoot)
+   log.Info("intfsObj:", intfsObj)
  
    if (relayAgentObj.Dhcp != nil  && relayAgentObj.Dhcp.Interfaces != nil && relayAgentObj.Dhcp.Interfaces.Interface != nil) {
-       replaceDhcpObjectAttributes(relayAgentObj, updateMap, tblList)
+       err = replaceDhcpObjectAttributes(inParams, relayAgentObj, updateMap, tblList)
    } 
    if (relayAgentObj.Dhcpv6 != nil  && relayAgentObj.Dhcpv6.Interfaces != nil && relayAgentObj.Dhcpv6.Interfaces.Interface != nil) {
-       replaceDhcpV6ObjectAttributes(relayAgentObj, updateMap, tblList)
+       err = replaceDhcpV6ObjectAttributes(inParams, relayAgentObj, updateMap, tblList)
    }
-
    inParams.subOpDataMap[UPDATE] = &updateMap
+   return err
  }
 
-func replaceDhcpObjectAttributes (relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, updateMap map[db.DBNum]map[string]map[string]db.Value, tblList string)  {
+func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, updateMap map[db.DBNum]map[string]map[string]db.Value, tblList string)  error {
    var helperAddress string
    var index uint8
+   var err error
 
    log.Info("replaceDhcpObjectAttributes")
+
 
    for ifName := range relayAgentObj.Dhcp.Interfaces.Interface {
 
        if ifName == "" {
-           log.Info("replaceRelayAgentObjectAttributes - ifName is NULL")
-           return
+           errStr := "ifName is NULL"
+           err = tlerr.InvalidArgsError{Format: errStr}
+           return err
        }
 
        tblList = getRelayAgentIntfTblByType(ifName)
        log.Info(tblList)
+
+       ipTbl := tblList
+       if ( ipTbl == "VLAN") {
+          ipTbl = "VLAN_INTERFACE"
+       }
 
        if updateMap[db.ConfigDB][tblList] == nil {
          //allocate only for the first time
@@ -692,9 +770,43 @@ func replaceDhcpObjectAttributes (relayAgentObj *ocbinds.OpenconfigRelayAgent_Re
 
        intfObj := relayAgentObj.Dhcp.Interfaces
        intf := intfObj.Interface[ifName]
+       log.Info("intf:", intf)
 
+       if (len(intf.Config.HelperAddress) != 0) {
+        ipConf := false
+        if (strings.HasPrefix(ifName, "Vlan")) {
+          entry,_ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG_GLOBAL"}, db.Key{Comp: []string{"IP"}})
+          if entry.IsPopulated() {
+             status := entry.Field["IPv4"]
+             if (status == "enable") {
+                sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{ifName, "IPv4"}})
+                log.Info("sagIPv4Entry:", sagIPv4Entry)
+                if sagIPv4Entry.IsPopulated() {
+                   if (sagIPv4Entry.Has("gwip@")) {
+                      ipConf = true
+                   }
+                }
+             }
+          }
+        }   
+       
+        if (!getIntfIpInfo(inParams.d, ipTbl, ifName, true, false)) {
+          if !(strings.HasPrefix(ifName, "Vlan") && ipConf) {
+             errStr := "Dhcp Relay config not allowed on a non routing interface."
+             err :=  tlerr.InvalidArgsError{Format: errStr}
+             return err
+          }
+        }
+       }
+      
 	//helperAddress
 	for index = 0; (index < uint8(len(intf.Config.HelperAddress))  && index < 4 && intf.Config.HelperAddress[index] != ""); index++ {
+             if !validIPv4(intf.Config.HelperAddress[index]) {
+                    errStr := "Invalid IPv4 address" + intf.Config.HelperAddress[index]
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    return err
+                }
+
 	     if (index ==0) {
 		helperAddress = intf.Config.HelperAddress[index]
 	     } else {
@@ -704,9 +816,22 @@ func replaceDhcpObjectAttributes (relayAgentObj *ocbinds.OpenconfigRelayAgent_Re
 	updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_servers@"] =  helperAddress
      
 	//link-select
-	if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_enable) {
+	if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_ENABLE) {
+            entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
+            if dbErr != nil {
+            log.Info("Failed to read dhcp relay config info from configdb")
+            return  dbErr
+            }
+            log.Info("entry:", entry)
+            if (!entry.Has("dhcp_relay_src_intf")) {
+               if (intf.Config.SrcIntf == nil) {
+                errStr := "Src Intf needs to be configured before enabling link-select"
+                err = tlerr.InvalidArgsError{Format: errStr}
+                return err
+               }
+            }
 	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "enable"
-	} else if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_disable) {
+	} else if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_LinkSelect_DISABLE) {
 	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "disable"
 	}
      
@@ -719,22 +844,55 @@ func replaceDhcpObjectAttributes (relayAgentObj *ocbinds.OpenconfigRelayAgent_Re
      
 	//src intf
 	if intf.Config.SrcIntf != nil {
+          ipTbl := getRelayAgentIntfTblByType(*intf.Config.SrcIntf)
+          if (ipTbl == "VLAN") {
+             ipTbl = "VLAN_INTERFACE"
+          }
+          if (!getIntfIpInfo(inParams.d, ipTbl, *intf.Config.SrcIntf, true, false)) {
+          errStr := "No Ip configured on the src intf"
+          err :=  tlerr.InvalidArgsError{Format: errStr}
+          return err
+        }
 	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_src_intf"] = *intf.Config.SrcIntf
 	}
+
+	//vrf
+	if intf.Config.Vrf != nil {
+	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_server_vrf"] = *intf.Config.Vrf
+	}
+
+	//vrf-select
+	if (intf.Config.VrfSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_VrfSelect_ENABLE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_vrf_select"] = "enable"
+	} else if (intf.Config.VrfSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_VrfSelect_DISABLE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_vrf_select"] = "disable"
+	}
+
+	//policy-action
+	if (intf.Config.PolicyAction == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_APPEND) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = "append"
+	} else if (intf.Config.PolicyAction == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_REPLACE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = "replace"
+	} else if (intf.Config.PolicyAction == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_DISCARD) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = "discard"
+	}
      }
+     return err
  }
 
-func replaceDhcpV6ObjectAttributes (relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, updateMap map[db.DBNum]map[string]map[string]db.Value, tblList string)  {
+func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, updateMap map[db.DBNum]map[string]map[string]db.Value, tblList string)  error {
    var helperAddress string
    var index uint8
+   var err error
 
    log.Info("replaceDhcpV6ObjectAttributes")
 
    for ifName := range relayAgentObj.Dhcpv6.Interfaces.Interface {
 
        if ifName == "" {
-           log.Info("replaceDhcpV6ObjectAttributes - ifName is NULL")
-           return
+           errStr := "ifName is NULL"
+           err = tlerr.InvalidArgsError{Format: errStr}
+           return err
        }
 
        tblList = getRelayAgentIntfTblByType(ifName)
@@ -752,9 +910,48 @@ func replaceDhcpV6ObjectAttributes (relayAgentObj *ocbinds.OpenconfigRelayAgent_
 
        intfObj := relayAgentObj.Dhcpv6.Interfaces
        intf := intfObj.Interface[ifName]
-    
+
+       log.Info("intf:", intf)
+
+       if (len(intf.Config.HelperAddress) != 0) {
+        ipConf := false
+        if (strings.HasPrefix(ifName, "Vlan")) {
+          entry,_ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG_GLOBAL"}, db.Key{Comp: []string{"IP"}})
+          log.Info("entry:", entry)
+          if entry.IsPopulated() {
+             status := entry.Field["IPv6"]
+             if (status == "enable") {
+                sagIPv6Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{ifName, "IPv6"}})
+                log.Info("sagIPv6Entry:", sagIPv6Entry)
+                if sagIPv6Entry.IsPopulated() {
+                   if (sagIPv6Entry.Has("gwip@")) {
+                      ipConf = true
+                   }
+                }
+             }
+          }
+        }
+        ipTbl := tblList
+        if (ipTbl == "VLAN") {
+          ipTbl = "VLAN_INTERFACE"
+        }
+        if (!getIntfIpInfo(inParams.d, ipTbl, ifName, false, true)) {
+          if !(strings.HasPrefix(ifName, "Vlan") && ipConf) {
+             errStr := "IPv6 address not configured on this interface."
+             err :=  tlerr.InvalidArgsError{Format: errStr}
+             return err
+          }
+        }
+       } 
        //helperAddressV6
        for index = 0; (index < uint8(len(intf.Config.HelperAddress))  && index < 4 && intf.Config.HelperAddress[index] != ""); index++ {
+            if !validIPv6(intf.Config.HelperAddress[index]) {
+                    errStr := "Invalid IPv6 address " + intf.Config.HelperAddress[index]
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    log.Info("Invalid ipv6 address")
+                    return err
+                }
+
             if (index ==0) {
        	helperAddress = intf.Config.HelperAddress[index]
             } else {
@@ -772,27 +969,50 @@ func replaceDhcpV6ObjectAttributes (relayAgentObj *ocbinds.OpenconfigRelayAgent_
     
        //src intf
        if intf.Config.SrcIntf != nil {
+           tblName := getRelayAgentIntfTblByType(*intf.Config.SrcIntf)
+           if (tblName == "VLAN") {
+              tblName = "VLAN_INTERFACE"
+           }
+           if (!getIntfIpInfo(inParams.d, tblName, *intf.Config.SrcIntf, false, true)) {
+           errStr := "No IPv6 address configured on the src intf"
+           err :=  tlerr.InvalidArgsError{Format: errStr}
+           return err
+           }
+
 	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = *intf.Config.SrcIntf
        }
-    
+       //vrf
+       if intf.Config.Vrf != nil {
+	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_server_vrf"] = *intf.Config.Vrf
+	}
+
+	//vrf-select
+	if (intf.Config.VrfSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface_Config_VrfSelect_ENABLE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_vrf_select"] = "enable"
+	} else if (intf.Config.VrfSelect == ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface_Config_VrfSelect_DISABLE) {
+	    updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_vrf_select"] = "disable"
+	}
     }
+    return err
  }
     
 //Function to delete config for an interface level
-func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) {
+func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error {
    var tblList string   
    var fieldStr [] string
    var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
    var helperAddress string
    var index uint8
+   var err error
 
    targetUriPath := inParams.requestUri
 
    log.Info("deleteRelayAgentObjectAttributes: ", inParams.uri)
 
    if ifName == "" {
-       log.Info("deleteRelayAgentObjectAttributes - ifName is NULL")
-       return
+       errStr := "deleteRelayAgentObjectAttributes - ifName is NULL"
+       err = tlerr.InvalidArgsError{Format: errStr}
+       return err
    }
  
    relayAgentObj := getRelayAgentRoot(inParams.ygRoot)
@@ -802,8 +1022,9 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) {
    entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
    configDb.DeleteDB()
    if dbErr != nil {
-     log.Warning("Failed to read mgmt port status from config DB, " + tblList + " " + ifName)
-     return
+     errStr := "Failed to read mgmt port status from config DB, " + tblList + " " + ifName
+     err = tlerr.InvalidArgsError{Format: errStr}
+     return err
    }
    
    deleteMap := make(map[db.DBNum]map[string]map[string]db.Value)
@@ -833,6 +1054,10 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) {
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = ""
    } else if strings.Contains(targetUriPath, "dhcpv6") && strings.Contains(targetUriPath, "max-hop-count"){
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_max_hop_count"] = ""
+   } else if  strings.Contains(targetUriPath, "dhcpv6") && strings.Contains(targetUriPath, "vrf-select"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_vrf_select"] = "disable"
+   } else if  strings.Contains(targetUriPath, "dhcpv6") && strings.Contains(targetUriPath, "vrf"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_server_vrf"] = ""
    } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "helper-address"){
       if (relayAgentObj.Dhcp != nil  && relayAgentObj.Dhcp.Interfaces != nil && relayAgentObj.Dhcp.Interfaces.Interface != nil) {
           //We have a specific address to delete - delete only that address
@@ -849,11 +1074,26 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) {
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_servers@"] = ""
       }
    } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "src-intf"){
+       entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
+       log.Info("entry:", entry)
+       if entry.IsPopulated() {
+          if (entry.Field["dhcp_relay_link_select"]) == "enable" {
+             errStr := "Cannot remove src-intf when link-select is enabled"
+             err = tlerr.InvalidArgsError{Format: errStr}
+             return err
+          }
+       }
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_src_intf"] = ""
    } else if strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "max-hop-count"){
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_max_hop_count"] = ""
    } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "link-select"){
-     deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_link_select"] = ""
+     deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "disable"
+   } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "vrf-select"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_vrf_select"] = "disable"
+   } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "vrf"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_server_vrf"] = ""
+   } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "policy-action"){
+       deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = "discard"
    } else if strings.HasPrefix(targetUriPath, "/openconfig-relay-agent:relay-agent/dhcp") {
      //delete interface level attributes for DHCP
      fieldStr = append (relayAgentFields)
@@ -876,7 +1116,7 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) {
     } else {
       log.Warning("Delete map was not populated")
     }
-
+  return err
 }
 
 //Allocate memory only when required
@@ -942,7 +1182,9 @@ func deleteAllIntfsRelayAgentObjectAttributes(inParams XfmrParams) error {
             if intfEntry.Has(field) {
 	       if field == "dhcp_relay_link_select" {
                   deleteMap[db.ConfigDB][table][ifName].Field[field] = "disable"
-	       } else {
+	       } else if field == "dhcp_relay_vrf_select" {
+                  deleteMap[db.ConfigDB][table][ifName].Field[field] = "disable"
+               } else {
                  deleteMap[db.ConfigDB][table][ifName].Field[field] = ""
 	       }
             }
@@ -969,14 +1211,14 @@ var YangToDb_relay_agent_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
         case REPLACE:
 	    fallthrough
         case UPDATE:
-                replaceRelayAgentObjectAttributes(inParams)
+              err = replaceRelayAgentObjectAttributes(inParams)
         case DELETE:
             if  strings.HasPrefix(targetUriPath, "/openconfig-relay-agent:relay-agent/dhcp/interfaces/interface") ||
                 strings.HasPrefix(targetUriPath, "/openconfig-relay-agent:relay-agent/dhcpv6/interfaces/interface"){
 	        //Delete for specific interface or attribute
 	        pathInfo := NewPathInfo(inParams.uri)
                 ifName := pathInfo.Var("id")
-                deleteRelayAgentObjectAttributes(inParams, ifName)
+                err = deleteRelayAgentObjectAttributes(inParams, ifName)
 	    } else {
 	       //Delete for all interfaces
                //inParams.subOpDataMap = make(map[int]*map[db.DBNum]map[string]map[string]db.Value)
