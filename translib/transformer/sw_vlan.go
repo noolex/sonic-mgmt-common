@@ -536,7 +536,7 @@ func removeTaggedVlanAndUpdateVlanMembTbl(d *db.DB, trunkVlan *string, ifName *s
     vlanName := *trunkVlan
     if tagMode == "tagged" {
         vlanMemberKey := *trunkVlan + "|" + *ifName
-        vlanMemberMap[vlanMemberKey] = memberPortEntry
+        vlanMemberMap[vlanMemberKey] = db.Value{Field:map[string]string{}}
         // Disable STP configuration for ports which are removed from VLan membership
         var memberPorts []string
         memberPorts = append(memberPorts, *ifName)
@@ -588,7 +588,7 @@ func removeUntaggedVlanAndUpdateVlanMembTbl(d *db.DB, ifName *string,
         vlanName := vlanMember.Get(0)
         vlanMemberKey := vlanName + "|" + *ifName
         if tagMode == "untagged" {
-            vlanMemberMap[vlanMemberKey] = memberPortEntry
+            vlanMemberMap[vlanMemberKey] = db.Value{Field:map[string]string{}}
             // Disable STP configuration for ports which are removed from VLan membership
             var memberPorts []string
             memberPorts = append(memberPorts, *ifName)
