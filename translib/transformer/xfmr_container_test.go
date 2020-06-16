@@ -40,8 +40,8 @@ func Test_Container_Table_Xfmr_Create(t *testing.T) {
 	unloadConfigDB(rclient, prereq)
 
 	// Payload	
-	post_payload := "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 10, \"openconfig-system-ext:retransmit-attempts\": 10}"
-	post_expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret1","src_ip":"1.1.1.1","timeout":"10"}}}
+	post_payload := "{ \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 10, \"openconfig-system-ext:retransmit-attempts\": 10}"
+	post_expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret1", "timeout":"10"}}}
 
 	t.Run("CREATE on Container table transformer mapping", processSetRequest(url, post_payload, "POST", false))
 	time.Sleep(1 * time.Second)
@@ -55,7 +55,7 @@ func Test_Container_Table_Xfmr_Create(t *testing.T) {
 func Test_Container_Table_Xfmr_Replace(t *testing.T) {
 
 	cleanuptbl := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
-	prereq := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret1","src_ip":"1.1.1.1","timeout":"10"}}}
+	prereq := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret1","timeout":"10"}}}
 	url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
 
 	fmt.Println("++++++++++++++  REPLACE Test_Container_Table_Xfmr  +++++++++++++")
@@ -63,8 +63,8 @@ func Test_Container_Table_Xfmr_Replace(t *testing.T) {
 	// Setup - Prerequisite
 	loadConfigDB(rclient, prereq)
 
-	put_payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
-	put_expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","src_ip":"4.4.4.4","timeout":"20"}}}
+	put_payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+	put_expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","timeout":"20"}}}
 
 	t.Run("REPLACE on Container table transformer mapping", processSetRequest(url, put_payload, "PUT", false))
 	time.Sleep(1 * time.Second)
@@ -77,7 +77,7 @@ func Test_Container_Table_Xfmr_Replace(t *testing.T) {
 func Test_Container_Table_Xfmr_Update(t *testing.T) {
 
 	cleanuptbl := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
-	prereq := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","src_ip":"4.4.4.4","timeout":"20"}}}
+	prereq := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","timeout":"20"}}}
 	url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
 
 	fmt.Println("++++++++++++++  UPDATE Test_Container_Table_Xfmr  +++++++++++++")
@@ -86,7 +86,7 @@ func Test_Container_Table_Xfmr_Update(t *testing.T) {
 	loadConfigDB(rclient, prereq)
 
 	patch_payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"3.3.3.3\", \"openconfig-system-ext:auth-type\": \"pap\", \"openconfig-system-ext:secret-key\": \"secret2\", \"openconfig-system-ext:timeout\": 30, \"openconfig-system-ext:retransmit-attempts\": 4 }}"
-	patch_expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"pap", "passkey":"secret2","src_ip":"3.3.3.3","timeout":"30"}}}
+	patch_expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"pap", "passkey":"secret2","timeout":"30"}}}
 
 	t.Run("UPDATE on Container table transformer mapping", processSetRequest(url, patch_payload, "PATCH", false))
 	time.Sleep(1 * time.Second)
@@ -463,7 +463,7 @@ func Test_Container_Inherited_Subtree_Xfmr_TableOrderCheck_Delete(t *testing.T) 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_vlanmember := make(map[string]interface{})
+        delete_expected_vlanmember := map[string]interface{}{"VLAN_MEMBER":map[string]interface{}{"Vlan1|Ethernet36":map[string]interface{}{"NULL":"NULL"}}}
 	delete_expected_vlan := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":map[string]interface{}{"vlanid":"1"}}}
 
         t.Run("DELETE on Container with inherited subtree transformer mapping", processDeleteRequest(url, false))

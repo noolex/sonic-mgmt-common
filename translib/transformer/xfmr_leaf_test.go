@@ -150,7 +150,7 @@ func Test_Leaf_Field_Name_UINT16_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"RADIUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Field Name UINT16", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -225,7 +225,7 @@ func Test_Leaf_Field_Name_UINT32_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Field Name UINT32", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -379,7 +379,7 @@ func Test_Leaf_Field_Xfmr_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"PORTCHANNEL":map[string]interface{}{"PortChannel1":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Field Xfmr", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -468,7 +468,7 @@ func Test_Leaf_Subtree_Xfmr_Delete(t *testing.T) {
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"SAG":map[string]interface{}{"Vlan1|IPv4":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Subtree Xfmr", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -549,7 +549,7 @@ func Test_Leaf_Sonic_Yang_UINT32_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"SFLOW_SESSION":map[string]interface{}{"Ethernet0":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Sonic Yang UINT32", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -661,7 +661,7 @@ func Test_Leaf_Ref_Sonic_Yang_Delete(t *testing.T) {
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"SAG":map[string]interface{}{"Vlan1|IPv4":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Ref Sonic Yang", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -742,7 +742,7 @@ func Test_Leaf_OC_Yang_Choice_Case_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"NAT_POOL":map[string]interface{}{"pool1":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf OC Yang Choice Case", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -895,7 +895,7 @@ func Test_Leaf_Sonic_Yang_List_With_Multi_Key_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        expected := make(map[string]interface{})
+        expected := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Sonic Yang with MultiKey List", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
