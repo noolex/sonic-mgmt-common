@@ -776,10 +776,22 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
         }
 
         if len(updSubDataMap[db.ConfigDB]) > 0 {
-            inParams.subOpDataMap[REPLACE] = &updSubDataMap
+            if inParams.subOpDataMap[REPLACE] == nil {
+                inParams.subOpDataMap[REPLACE] = &updSubDataMap
+            } else {
+                for key, val := range updSubDataMap[db.ConfigDB][STATIC_ROUTE_TABLE] {
+                    (*inParams.subOpDataMap[REPLACE])[db.ConfigDB][STATIC_ROUTE_TABLE][key] = val
+                }
+            }
         }
         if len(delSubDataMap[db.ConfigDB]) > 0 {
-            inParams.subOpDataMap[DELETE] = &delSubDataMap
+            if inParams.subOpDataMap[DELETE] == nil {
+                inParams.subOpDataMap[DELETE] = &delSubDataMap
+            } else {
+                for key, val := range delSubDataMap[db.ConfigDB][STATIC_ROUTE_TABLE] {
+                    (*inParams.subOpDataMap[DELETE])[db.ConfigDB][STATIC_ROUTE_TABLE][key] = val
+                }
+            }
         }
     }
 
@@ -795,6 +807,13 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhI
     for prefixKey, route := range routeData {
         tokens := strings.Split(prefixKey, "|")
         prefix := tokens[len(tokens) - 1]
+        dbVrf := DEFAULT_VRF
+        if len(tokens) > 1 {
+            dbVrf = tokens[0]
+        }
+        if dbVrf != vrf {
+            continue
+        }
         if len(ipPrefix) != 0 && ipPrefix != prefix {
             continue
         }
