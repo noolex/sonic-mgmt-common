@@ -90,8 +90,10 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 	var tblList []string
 	xfmrLogInfoAll("Received xlateParams - %v \n delEntireList - %v\n dbDataMap - %v\n subTreeResMap - %v")
 	fillFields := false
+	removedFillFields := false
 	//instanceDelete := false
 	virtualTbl := false
+	tblOwner := true
 
 
 	////////*****************//////
@@ -130,6 +132,9 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 		for _, tbl := range(tblList) {
 			tblData, ok := (*dbDataMap)[cdb][tbl]
 			if ok {
+				parentUri := parentUriGet(xlateParams.uri)
+				_, parentKey, parentTbl, perr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
+				xfmrLogInfoAll("Parent Uri - %v, ParentTbl - %v, parentKey - %v", parentUri, parentTbl, parentKey)
 				for dbKey, _ := range tblData {
 					xfmrLogInfoAll("Process Tbl - %v, dbKey - %v", tbl, dbKey)
 					_, curUri, kerr := dbKeyToYangDataConvert(xlateParams.uri, xlateParams.requestUri, xlateParams.xpath, tbl, dbDataMap, dbKey, separator, xlateParams.txCache)
@@ -140,31 +145,36 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 					if spec.virtualTbl != nil && *spec.virtualTbl {
 						virtualTbl = true
 					}
-					parentUri := parentUriGet(xlateParams.uri)
-					//parentTbl, perr := dbTableFromUriGet(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-					_, parentKey, parentTbl, perr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-					xfmrLogInfoAll("Parent Uri - %v, ParentTbl - %v, parentKey - %v", parentUri, parentTbl, parentKey)
 					_, curKey, curTbl, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, curUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 					xfmrLogInfoAll("Current Uri - %v, CurrentTbl - %v, CurrentKey - %v", curUri, curTbl, curKey)
 					if perr != nil && cerr != nil {
 						if len(curTbl) > 0 && parentTbl != curTbl {
 							/* Non-inhertited table case */
-							if spec.tblOwner != nil {
+							xfmrLogInfoAll("Non-inhertaed table case, uri - %v", curUri)
+							if spec.tblOwner != nil  && !*spec.tblOwner {
 								xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
-								if !*spec.tblOwner {
-									/* Fill only fields */
-									fillFields = true
-								}
+								tblOwner = false
+								/* Fill only fields */
+								fillFields = true
 							}
 						} else if len(curTbl) > 0 {
 							/* Inhertited table case */
+							xfmrLogInfoAll("Inhertaed table case, uri - %v", curUri)
 							if len(parentKey) > 0 {
 								if parentKey == curKey { // List within list or List within container, where container map to entire table
+									xfmrLogInfoAll("Parent key is same as current key")
 									if strings.HasPrefix(curUri, xlateParams.requestUri)  {
 										if (len(curUri) > len(xlateParams.requestUri)) {
-											/* if table instance already filled and there are no feilds present then it's instance level delete */
-											if _, ok := xlateParams.result[curTbl]; ok {
-												if fieldMap, ok := xlateParams.result[curTbl][curKey]; ok {
+											xfmrLogInfoAll("Request is at higher level that current list - %v", curUri)
+											/* if table instance already filled and there are no feilds present then it's instance level delete
+											   If table ownership is false at parent-level(may not be immediated parent), 
+											   then table instance existence with fields will be present,which can be used to fill in fields 
+											   even if ownership at current level shows true, since parent level inheritance is not inherited in yang 
+											   but still apply to children going to same table.
+											*/
+											if tblData, tblDataOk := xlateParams.result[curTbl]; tblDataOk {
+												if fieldMap, fieldMapOk := tblData[curKey]; fieldMapOk {
+													xfmrLogInfoAll("Found table instance filled while traversing parent")
 													if len(fieldMap.Field) > 0 {
 														/* Fill only fields */
 														fillFields = true
@@ -172,32 +182,37 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 												}
 											}
 										} else {
+											xfmrLogInfoAll("Request is at same level as that of current list - %v", curUri)
+											if spec.tblOwner != nil  && !*spec.tblOwner {
+												xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
+												tblOwner = false // since query is at this level, this will make sure to add instance to result
+											}
 											/* Fill only fields */
 											fillFields = true
 										}
 									}
 
 								} else { /*same table but different keys */
-									if spec.tblOwner != nil {
+									xfmrLogInfoAll("Inherited table but parent key is NOT same as current key")
+									if spec.tblOwner != nil  && !*spec.tblOwner {
 										xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
-										if !*spec.tblOwner {
-											/* Fill only fields */
-											fillFields = true
-										}
+										tblOwner = false
+										/* Fill only fields */
+										fillFields = true
 									}
 								}
 							} else {
 								/*same table but no parent-key exists, parent must be a container wth just tableNm annot with no keyXfmr/Nm */
-								if spec.tblOwner != nil {
+								xfmrLogInfoAll("Inherited table but no parent key available")
+								if spec.tblOwner != nil  && !*spec.tblOwner {
 									xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
-									if !*spec.tblOwner {
-										/* Fill only fields */
-										fillFields = true
-									}
+									tblOwner = false
+									/* Fill only fields */
+									fillFields = true
 
 								}
 							}
-						} else {// end if len(curTbl) > 0 but parentTbl == curTbl
+						} else { //  len(curTbl) = 0 
 							log.Warning("No table found for Uri - %v ", curUri)
 						}
 					}
@@ -241,24 +256,42 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 								if len(curTbl) == 0 {
 									continue
 								}
+								if len(curKey) == 0 {
+									xfmrLogInfoAll("No key avaialble for uri - %v", curUri)
+									continue
+								}
 								if chldYangType == YANG_LEAF && xpathInfo.isKey {
 									_, ok := curXlateParams.result[curTbl]
 									if !ok {
 										curXlateParams.result[curTbl] = make(map[string]db.Value)
 									}
-									if len(curKey) == 0 {
-										continue
-									}
 									_, ok = curXlateParams.result[curTbl][curKey]
 									if !ok {
 										curXlateParams.result[curTbl][curKey] = db.Value{Field: make(map[string]string)}
+										if !tblOwner { //add dummy field to identify when to fill fields only at children traversal
+											curXlateParams.result[curTbl][curKey].Field["FillFields"] = "true"
+										}
 									}
 
 								} else if fillFields {
 									//strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
 									curXlateParams.uri = xlateParams.uri
 									curXlateParams.name = chldSpec.yangEntry.Name
+									curXlateParams.tableName = curTbl
+									curXlateParams.keyName = curKey
 									err = mapFillDataUtil(curXlateParams)
+									if !removedFillFields {
+										if fieldMap, ok := curXlateParams.result[curTbl][curKey]; ok {
+											if len(fieldMap.Field) > 1 {
+												delete(curXlateParams.result[curTbl][curKey].Field, "FillFields")
+												removedFillFields = true
+											} else if len(fieldMap.Field) == 1 {
+												if _, ok := curXlateParams.result[curTbl][curKey].Field["FillFields"]; !ok {
+													removedFillFields = true
+												}
+											}
+										}
+									}
 									if err != nil {
 										return err
 									}
