@@ -1013,7 +1013,7 @@ func fillFbsPolicySectionDetails(inParams XfmrParams, policyName string, policyD
 	        policySectionData.Config.Name = &className
 	        policySectionData.State.Name = &className
 	        log.Infof("Policy Get;Key:%v className:%v ",  key, className)
-            if str_val, found := policySectionTblVal.Field["priority"]; found {
+            if str_val, found := policySectionTblVal.Field["PRIORITY"]; found {
                 priority,_ := strconv.Atoi(str_val)
                 oc_priority := uint16(priority)
                 policySectionData.Config.Priority = &(oc_priority)
@@ -1255,26 +1255,143 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
             res_map[CFG_POLICY_SECTIONS_TABLE] = fbsPolicySectionTblMap
             return res_map, err
         } else if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/policies/policy{policy-name}") { //policyEntry level
-            for PolicyKey, policyVal := range fbsObj.Policies.Policy {
-                log.Infof("Policy %v DELETE operation; policyVal ", PolicyKey)
+            for policyKey, policyVal := range fbsObj.Policies.Policy {
+                policyName := policyKey
+                log.Infof("Policy %v DELETE operation; policyVal ", policyKey)
                 pretty.Print(policyVal)
-                if policyVal.Config == nil { //policy level delete
-                    log.Infof("Policy %v delete", PolicyKey)
-                    fbsPolicyTblMap[PolicyKey] = db.Value{Field: make(map[string]string)}
+                dbV := db.Value{Field: make(map[string]string)}
+                sectionDbV := db.Value{Field: make(map[string]string)}
+                if policyVal.Config != nil { //policy config level delete
+                    fbsPolicyTblMap[policyKey] = dbV
+                } else if policyVal.Sections != nil { //policy Sections 
+                    if policyVal.Sections.Section != nil { //policy section 
+                        for className, policySectionVal := range policyVal.Sections.Section {
+                            sectionDbKeyStr := policyName + "|" + className
+                            if policySectionVal.Config != nil { //policy section config
+                                if  targetNode.Name == "priority" {
+                                    sectionDbV.Field["PRIORITY"] = ""
+                                } 
+                            } else  if policySectionVal.Qos != nil { //policy section Qos
+                                if policySectionVal.Qos.Remark != nil { //policy section Qos Remark
+                                    if policySectionVal.Qos.Remark.Config != nil { //policy section Qos Remark
+                                        if  targetNode.Name == "set-dscp" {
+                                            sectionDbV.Field["SET_DSCP"] = ""
+                                        } else if  targetNode.Name == "set-dot1p" {
+                                            sectionDbV.Field["SET_PCP"] = ""
+                                        } else {
+                                            sectionDbV.Field["SET_DSCP"] = ""
+                                            sectionDbV.Field["SET_PCP"] = ""
+                                        }
+                                    } //qos remark config
+                                } else if (policySectionVal.Qos.Policer != nil) { //policer
+                                    delPolicer := false
+                                    if policySectionVal.Qos.Policer.Config != nil { //policer config
+                                        if  targetNode.Name == "cir" {
+                                            sectionDbV.Field["SET_POLICER_CIR"] = ""
+                                        } else if  targetNode.Name == "pir" {
+                                            sectionDbV.Field["SET_POLICER_PIR"] = ""
+                                        } else if  targetNode.Name == "bc" {
+                                            sectionDbV.Field["SET_POLICER_CBS"] = ""
+                                        } else if  targetNode.Name == "be" {
+                                            sectionDbV.Field["SET_POLICER_PBS"] = ""
+                                        } else {
+                                            delPolicer = true
+                                        }
+                                    } else {
+                                        delPolicer = true 
+                                    }
+                                    if delPolicer == true {
+                                            sectionDbV.Field["SET_POLICER_CIR"] = ""
+                                            sectionDbV.Field["SET_POLICER_PIR"] = ""
+                                            sectionDbV.Field["SET_POLICER_CBS"] = ""
+                                            sectionDbV.Field["SET_POLICER_PBS"] = ""
+                                    }
+                                } else if policySectionVal.Qos.Queuing != nil { //queuing
+                                    if policySectionVal.Qos.Queuing.Config != nil { //queuing config
+                                        if  targetNode.Name == "queue-name" {
+                                            //TBD: Qos Queuing
+                                        } 
+                                    }
+                                } 
+                            } else if policySectionVal.Monitoring != nil { //monitoring
+                                if (policySectionVal.Monitoring.MirrorSessions != nil && policySectionVal.Monitoring.MirrorSessions.MirrorSession != nil ) {
+                                    for _, mirrorSessionVal := range policySectionVal.Monitoring.MirrorSessions.MirrorSession  {
+                                        if (mirrorSessionVal.Config != nil) {
+                                            sectionDbV.Field["SET_MIRROR_SESSION"] = ""
+                                        }
+                                    }
+                                } else {
+                                    sectionDbV.Field["SET_MIRROR_SESSION"] = ""
+                                }
+                           } else if policySectionVal.Forwarding != nil { //forwarding
+                                if (policySectionVal.Forwarding.Config != nil) {
+                                    if  targetNode.Name == "discard" {
+                                        sectionDbV.Field["DEFAULT_PACKET_ACTION"] = ""
+                                    }
+                                } else  if (policySectionVal.Forwarding.EgressInterfaces != nil) { 
+                                        if (policySectionVal.Forwarding.EgressInterfaces.EgressInterface != nil) {
+                                            egressIfsDbStr := ""
+                                            for egressIfName, egressIfVal := range policySectionVal.Forwarding.EgressInterfaces.EgressInterface {
+                                                if (egressIfsDbStr != "") {
+                                                    egressIfsDbStr = egressIfsDbStr + "," 
+                                                }
+                                                egressIfsDbStr = egressIfsDbStr + egressIfName
+                                                if (egressIfVal.Config != nil)  && (egressIfVal.Config.Priority !=  nil)  {
+                                                    egressIfsDbStr = egressIfsDbStr + "|" + strconv.FormatInt(int64(*egressIfVal.Config.Priority), 10)
+                                                }
+                                            }
+                                            sectionDbV.Field["SET_INTERFACE"] = egressIfsDbStr
+                                        } 
+                                         
+                                } else if (policySectionVal.Forwarding.NextHops != nil) {
+                                    if (policySectionVal.Forwarding.NextHops.NextHop != nil) {
+                                        v4nhopsDbStr := ""
+                                        v6nhopsDbStr := ""
+                                        for nhopKey, _  := range policySectionVal.Forwarding.NextHops.NextHop {
+                                            if (isV4Address(nhopKey.IpAddress)) {
+                                                if (v4nhopsDbStr != "") {
+                                                    v4nhopsDbStr = v4nhopsDbStr + ","
+                                                }    
+                                                v4nhopsDbStr = nhopKey.IpAddress + "|" + nhopKey.NetworkInstance
+                                            } else {
+                                                if (v6nhopsDbStr != "") {
+                                                    v6nhopsDbStr = v6nhopsDbStr + ","
+                                                }    
+                                                v6nhopsDbStr = nhopKey.IpAddress + "|" + nhopKey.NetworkInstance
+                                            }
+                                        }
+                                        if (v4nhopsDbStr != "") {
+                                            sectionDbV.Field["SET_IP_NEXTHOP"] = v4nhopsDbStr 
+                                        } 
+                                        if (v6nhopsDbStr != "") {
+                                            sectionDbV.Field["SET_IPV6_NEXTHOP"] = v6nhopsDbStr 
+                                        } 
+                                    } else { 
+                                        sectionDbV.Field["SET_IP_NEXTHOP"] = ""
+                                        sectionDbV.Field["SET_IPV6_NEXTHOP"] = ""
+                                    }
+                                } //Nexthops - END
+                            } //Forwarding
+                            if (len(sectionDbV.Field) != 0) {
+                               fbsPolicySectionTblMap[sectionDbKeyStr] = dbV
+                            }
+                        } //for loop policy section
+                      } //policy section 
+                   } //policy sections
+                   if (len(dbV.Field) != 0) {
+                       fbsPolicyTblMap[policyKey] = dbV
+                   }
+                } //policies for loop
+                if len(fbsPolicyTblMap) > 0 {
+                    log.Infof("Fbs policy level delete operation" )
                     res_map[CFG_POLICY_TABLE] = fbsPolicyTblMap
-                    res_map[CFG_POLICY_SECTIONS_TABLE] = fbsPolicySectionTblMap
-					log.Info("policy level delete class data")
-					pretty.Print(fbsPolicyTblMap)
-                        break 
-                } else  {
-                    //Specific Field delete
-                    log.Infof("Policy %v DELETE operation; specific field delete, targetName:%v ", PolicyKey, targetNode.Name)
-
                 }
-            }
-        }
-
-		return res_map, err
+                if len(fbsPolicySectionTblMap) > 0 {
+                    log.Infof("Fbs policy section delete operation" )
+                    res_map[CFG_POLICY_SECTIONS_TABLE] = fbsPolicySectionTblMap
+                }
+            } //policy level delete
+		    return res_map, err
     }  //DELETE - END
 
 
@@ -1304,6 +1421,10 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                 _, found := fbsPolicySectionTblMap[sectionDbKeyStr]
                 if !found {
                     fbsPolicySectionTblMap[sectionDbKeyStr] = db.Value{Field: make(map[string]string)}
+                }
+                if (policySectionVal.Config != nil) {
+                    priority := strconv.FormatInt(int64(*(policySectionVal.Config.Priority)), 10)
+                    fbsPolicySectionTblMap[sectionDbKeyStr].Field["PRIORITY"] = priority
                 }
                 if (policySectionVal.Monitoring != nil) {
                     if (policySectionVal.Monitoring.MirrorSessions != nil && policySectionVal.Monitoring.MirrorSessions.MirrorSession != nil ) {
@@ -1387,6 +1508,18 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 
                     //TBD:Queuing
                     //TBD:Remark
+                    if (policySectionVal.Qos.Remark != nil) { 
+                        if (policySectionVal.Qos.Remark.Config != nil) { 
+                            if (policySectionVal.Qos.Remark.Config.SetDscp != nil) { 
+                                ocVal := strconv.FormatInt(int64(*policySectionVal.Qos.Remark.Config.SetDscp), 10)
+                                fbsPolicySectionTblMap[sectionDbKeyStr].Field["SET_DSCP"] = ocVal
+                            }
+                            if (policySectionVal.Qos.Remark.Config.SetDot1P != nil) { 
+                                ocVal := strconv.FormatInt(int64(*policySectionVal.Qos.Remark.Config.SetDot1P), 10)
+                                fbsPolicySectionTblMap[sectionDbKeyStr].Field["SET_PCP"] = ocVal
+                            }
+                        }
+                    }
 
                 } //Qos - END
                 log.Infof("Policy CRUD; PolicyName %v  fbsPolicySectionTblMap:%v ", policyVal, fbsPolicySectionTblMap)

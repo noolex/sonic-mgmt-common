@@ -504,12 +504,6 @@ func (yb *yanglibBuilder) getSchemaURL(m *yang.Module) *string {
 	return &uri
 }
 
-// fullName returns the version qualified name
-// in "name@version" format.
-func fullName(name, version string) string {
-	return name + "@" + version
-}
-
 /*
  * Other utilities..
  */

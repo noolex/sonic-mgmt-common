@@ -122,6 +122,7 @@ module sonic-mirror-session {
                             enum CPU;
                         }
                     }
+                    sonic-ext:custom-validation ValidateDstPort;
                     must "count(../../MIRROR_SESSION_LIST[src_port=current()]) = 0" {
                         error-message "destination port already configured in other mirror session";
                         error-app-tag dst-port-already-configured;

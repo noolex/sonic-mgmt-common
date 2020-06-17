@@ -1,0 +1,52 @@
+module openconfig-errdisable-types {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/errdisable/types/extension";
+
+  prefix "oc-errdisable-types";
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
+
+  description
+    "This module defines types related to the
+    errdisable protocol model.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-13" {
+    description
+      "Initial public revision";
+    reference "0.1.0";
+  }
+  // identity statements
+
+  identity ERRDISABLE_RECOVERY_CAUSE {
+    description
+      "base identity for different recovery causes ";
+  }
+
+  identity UDLD {
+    base ERRDISABLE_RECOVERY_CAUSE;
+    description
+      "Recover ports shutdown due to UDLD";
+  }
+
+  identity BPDUGUARD {
+    base ERRDISABLE_RECOVERY_CAUSE;
+    description
+      "Recover ports shutdown due to Bpduguard";
+  }
+
+}
+

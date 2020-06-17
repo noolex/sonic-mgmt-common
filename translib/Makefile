@@ -12,6 +12,7 @@ GO     ?= go
 export GO
 
 TRANSLIB_PKG = $(BUILD_DIR)/pkg/linux_amd64/translib.a
+STATIC_CHECK = $(BUILD_DIR)/.translib.staticcheck
 
 TRANSLIB_MAIN_SRCS = $(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/test\|transformer/')
 TRANSLIB_TEST_SRCS = $(shell find . -maxdepth 1 -name '*_test.go')
@@ -28,7 +29,7 @@ TRANSFORMER_SRCS = $(shell find transformer/ -name '*.go' | grep -v '/test/')
 YANG_FILES = $(shell find $(TOPDIR)/models/yang -name '*.yang')
 YGOT_BINDS = ocbinds/ocbinds.go
 
-DEFAULT_TARGETS = $(YGOT_BINDS)
+DEFAULT_TARGETS = $(YGOT_BINDS) $(STATIC_CHECK)
 ifeq ($(NO_TEST_BINS),)
 DEFAULT_TARGETS += $(TRANSLIB_TEST_BIN) $(TRANSL_DB_TEST_BIN) $(TRANSFORMER_TEST_BIN)
 endif
@@ -54,8 +55,16 @@ $(YGOT_BINDS): $(YANG_FILES)
 	$(RM) $@
 	cd ocbinds && $(GO) generate
 
+$(STATIC_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) | $(YGOT_BINDS)
+	$(TOPDIR)/tools/test/static-check.sh \
+		--notfail=. \
+		--notfail=transformer \
+		--exclude=ocbinds
+	mkdir -p $(@D) && touch $@
+
 clean:
 	$(RM) $(YGOT_BINDS)
 	$(RM) $(TRANSLIB_PKG)
+	$(RM) $(STATIC_CHECK)
 	$(RM) -r $(TRANSLIB_TEST_DIR)
 

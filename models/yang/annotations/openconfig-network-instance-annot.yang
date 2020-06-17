@@ -3182,6 +3182,7 @@ module openconfig-network-instance-annot {
     }
   }
 
+  /*
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
             "/oc-netinst:max-metric/oc-netinst:config" +
@@ -3190,6 +3191,7 @@ module openconfig-network-instance-annot {
       sonic-ext:field-name "max-metric-on-shutdown";
     }
   }
+  */
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
@@ -3206,15 +3208,6 @@ module openconfig-network-instance-annot {
             "/oc-ospfv2-ext:on-startup" {
     deviate add {
       sonic-ext:field-name "max-metric-on-startup";
-    }
-  }
-
-  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
-            "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global/oc-netinst:timers" +
-            "/oc-netinst:max-metric/oc-netinst:state" +
-            "/oc-ospfv2-ext:on-shutdown" {
-    deviate add {
-      sonic-ext:field-name "max-metric-on-shutdown";
     }
   }
 
