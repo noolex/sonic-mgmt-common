@@ -22,6 +22,8 @@ package custom_validation
 import (
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"strings"
+	log "github.com/golang/glog"
+	"strconv"
 )
 
 //ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
@@ -169,4 +171,40 @@ func (t *CustomValidation) ValidatePortChannelCreationDeletion(vc *CustValidatio
         }
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func (t *CustomValidation) ValidateSagMac(vc *CustValidationCtxt) CVLErrorInfo {
+  var valid bool
+  keys :=  vc.YNodeVal
+
+	log.Info("In SAG custom validation:", keys)
+
+	if keys == "00:00:00:00:00:00" {
+	        valid = false
+	} else if keys == "ff:ff:ff:ff:ff:ff" {
+		valid = false
+	} else {
+	        macSplit := strings.Split(keys, ":")
+        	macHi, err := strconv.ParseUint(macSplit[0], 16, 8)
+		if err != nil {
+			valid = false
+		} else if macHi & 0x01 == 0x01 {
+	                valid = false
+		} else {
+			valid = true
+		}
+	}
+
+        if (!valid) {
+		errStr:= "SAG MAC is not valid, it is either zero, multicast, or broadcast"
+		util.CVL_LEVEL_LOG(util.ERROR,"%s",errStr)
+		return CVLErrorInfo{
+			ErrCode: CVL_SYNTAX_INVALID_INPUT_DATA,
+			TableName: "SAG_GLOBAL",
+			CVLErrDetails : errStr,
+			ConstraintErrMsg : errStr,
+		}
+	}
+
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
