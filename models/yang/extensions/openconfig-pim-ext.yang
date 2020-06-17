@@ -318,7 +318,11 @@ module openconfig-pim-ext {
         deviate not-supported;
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state/oc-netinst:counters/oc-netinst:bootstrap-messages {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state/oc-netinst:neighbor-count {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state/oc-netinst:counters {
         deviate not-supported;
     }
 
@@ -402,7 +406,7 @@ module openconfig-pim-ext {
         deviate not-supported;
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:counters/oc-netinst:bootstrap-messages {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:counters {
         deviate not-supported;
     }
 
