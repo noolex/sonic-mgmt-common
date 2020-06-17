@@ -323,19 +323,24 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		return err
 	}
 
+	xfmrLogInfoAll("Traverse container for DELETE (\"%v\")", xlateParams.uri)
+
 	fillFields := false
 	instanceDelete := false
 	parentUri := parentUriGet(xlateParams.uri)
 	parentTbl, perr := dbTableFromUriGet(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 	_, curKey, curTbl, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 	if perr != nil && cerr != nil && len(curTbl) > 0 && len(curKey) > 0 {
+		xfmrLogInfoAll("DELETE handling at Container parentTbl %v, curTbl %v, curKey %v", parentTbl, curTbl, curKey)
 		if parentTbl != curTbl {
 			// Non inhertited table
 			if (spec.tblOwner != nil) && (*spec.tblOwner == false) {
 				// Fill fields only
+				xfmrLogInfoAll("DELETE handling at Container Non inhertited table and not table Owner")
 				fillFields = true
 			} else if (spec.keyName != nil && len(*spec.keyName) > 0) || len(spec.xfmrKey) > 0  {
 				// Table owner && Key transformer present. Fill table instance
+				xfmrLogInfoAll("DELETE handling at Container Non inhertited table & table Owner")
 				dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
 			} else {
 				// Fallback case. Ideally should not enter here
@@ -344,10 +349,12 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		} else {
 			// Inherited Table. We always expect the curTbl entry in xlateParams.result
 			// if Instance already filled do not fill fields
+			xfmrLogInfoAll("DELETE handling at Container Inherited table")
 			if tblMap, ok := xlateParams.result[curTbl]; ok {
 				if fieldMap, ok := tblMap[curKey]; ok {
 					if len(fieldMap.Field) == 0 {
 						instanceDelete = true // Instance Delete
+						xfmrLogInfoAll("Inhertited table & Instance delete case. Skip fields fill")
 					}
 				}
 
@@ -359,7 +366,6 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		}
 	}
 
-	xfmrLogInfoAll("Traverse container for DELETE (\"%v\")", xlateParams.uri)
 	for yangChldName := range spec.yangEntry.Dir {
 		chldXpath    := xlateParams.xpath+"/"+yangChldName
 		chldUri      := xlateParams.uri+"/"+yangChldName
@@ -392,7 +398,6 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
                                 //strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
                                 curXlateParams.uri = xlateParams.uri
                                 curXlateParams.name = chldSpec.yangEntry.Name
-				// Default value filling is done in mapFillDataUtil
                                 err = mapFillDataUtil(curXlateParams)
                                 if err != nil {
                                         return err
