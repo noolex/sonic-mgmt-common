@@ -336,6 +336,8 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 			curXlateParams := xlateParams
 			curXlateParams.uri = chldUri
 			curXlateParams.xpath = chldXpath
+			curXlateParams.tableName = curTbl
+			curXlateParams.keyName = curKey
 
 			if (len(chldSpec.xfmrFunc) > 0) {
 				err = subTreeXfmrDelDataGet(curXlateParams, dbDataMap, cdb, spec, chldSpec, subTreeResMap)
