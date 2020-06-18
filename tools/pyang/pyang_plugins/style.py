@@ -75,7 +75,8 @@ class CheckOcStylePlugin(plugin.PyangPlugin):
         extensionModulesList = list(map(lambda yn: os.path.splitext(yn)[0], os.listdir(ctx.opts.extensiondir)))
 
         for module in modules:
-            walk_child(ctx,module)
+            if module.arg.startswith("openconfig-"):
+                walk_child(ctx,module)
             if module.arg.startswith("openconfig-") and \
                 module.arg in extensionModulesList:
                 chk_version_prefix_namespace(ctx, module)
@@ -87,10 +88,14 @@ class CheckOcStylePlugin(plugin.PyangPlugin):
             fd = open(ctx.opts.outfile, "w")
 
         for issue in issues:
+            if "/extensions/" not in str(issue):
+                continue
             issue = "Error: " + issue
             fd.write(issue +"\n")
         
         for warning in warnings:
+            if "/extensions/" not in str(warning):
+                continue
             warning = "Warning: " + warning
             fd.write(warning +"\n")
 
@@ -165,14 +170,13 @@ def chk_version_prefix_namespace(ctx, module):
 def walk_child(ctx,child):
 
     if child.keyword in statements.data_keywords:   
-        if child.i_module.i_modulename in extensionModulesList:
-            chk_naming(ctx, child)
-            if child.keyword == "container":
-                chk_container(ctx, child)
-            elif child.keyword == "list":
-                chk_list(ctx, child)
-            else:
-                pass
+        chk_naming(ctx, child)
+        if child.keyword == "container":
+            chk_container(ctx, child)
+        elif child.keyword == "list":
+            chk_list(ctx, child)
+        else:
+            pass
 
     if hasattr(child, 'i_children'):
         for ch in child.i_children:

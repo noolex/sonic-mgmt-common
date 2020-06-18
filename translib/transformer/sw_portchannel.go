@@ -792,3 +792,39 @@ var DbToYang_lag_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[st
     return result, err
 }
 
+
+/* Function to update MTU of PortChannel member ports */
+func updateMemberPortsMtu(inParams *XfmrParams, lagName *string, mtuValStr *string) error {
+    log.Info("Inside updateLagIntfAndMembersMtu")
+    var err error
+    resMap := make(map[string]string)
+    intPortChannelTbl := IntfTypeTblMap[IntfTypePortChannel]
+
+    /* Validate given PortChannel exits */
+    err = validatePortChannel(inParams.d, *lagName)
+    if err != nil {
+        return err
+    }
+
+    lagKeys, err := inParams.d.GetKeys(&db.TableSpec{Name:intPortChannelTbl.cfgDb.memberTN})
+    if err == nil {
+        subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        intfMap := make(map[string]map[string]db.Value)
+        intTbl := IntfTypeTblMap[IntfTypeEthernet]
+        resMap["mtu"] = *mtuValStr
+        intfMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+
+        for key, _ := range lagKeys {
+            if *lagName == lagKeys[key].Get(0) {
+                portName := lagKeys[key].Get(1)
+                intfMap[intTbl.cfgDb.portTN][portName] = db.Value{Field:resMap}
+                log.Info("Member port ", portName, "updated with mtu ", *mtuValStr)
+            }
+        }
+
+        subOpMap[db.ConfigDB] = intfMap
+        inParams.subOpDataMap[UPDATE] = &subOpMap
+    }
+    return err
+ }
+

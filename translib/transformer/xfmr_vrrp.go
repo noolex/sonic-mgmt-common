@@ -138,14 +138,14 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
     }
 
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.Addresses != nil {
-        for ip, _ := range subIntfObj.Ipv4.Addresses.Address {
+        for ip := range subIntfObj.Ipv4.Addresses.Address {
             addr := subIntfObj.Ipv4.Addresses.Address[ip]
 
             if addr.Vrrp != nil {
 
                 log.Info("addr.Vrrp present")
 
-                for virtual_router_id, _ := range addr.Vrrp.VrrpGroup {
+                for virtual_router_id := range addr.Vrrp.VrrpGroup {
                     vrrp_rtr := addr.Vrrp.VrrpGroup[virtual_router_id]
 
                     t := make(map[string]string)
@@ -160,7 +160,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                         vip_count := 0
                         if vrrpEntry.IsPopulated() {
-                            vips, _ = vrrpEntry.Field["vip@"]
+                            vips = vrrpEntry.Field["vip@"]
                             vip_count = strings.Count(vips, ",")
                             vip_count += 1
                         }
@@ -175,7 +175,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                 return subIntfmap, errors.New(errStr)
                             }
 
-                            for vip_id, _ := range vrrp_rtr.Config.VirtualAddress {
+                            for vip_id := range vrrp_rtr.Config.VirtualAddress {
                                 if (vips == "" || inParams.oper == DELETE) {
                                     vips =  vrrp_rtr.Config.VirtualAddress[vip_id]
                                 } else {
@@ -214,7 +214,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                     if (vrrp_rtr.VrrpTrackInterface != nil) {
 
 
-                        for track_if, _ := range vrrp_rtr.VrrpTrackInterface {
+                        for track_if := range vrrp_rtr.VrrpTrackInterface {
                             vrrp_track_data := vrrp_rtr.VrrpTrackInterface[track_if]
 
                             log.Info("track if name:", track_if)
@@ -243,7 +243,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     }
 
-                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && track_exist == false)) {
+                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && !track_exist)) {
                         value := db.Value{Field: t}
                         if _, ok := subIntfmap["VRRP"]; !ok {
                             subIntfmap["VRRP"] = make(map[string]db.Value)
@@ -261,14 +261,14 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
     }
 
     if subIntfObj.Ipv6 != nil && subIntfObj.Ipv6.Addresses != nil {
-        for ip, _ := range subIntfObj.Ipv6.Addresses.Address {
+        for ip := range subIntfObj.Ipv6.Addresses.Address {
             addr := subIntfObj.Ipv6.Addresses.Address[ip]
 
             if addr.Vrrp != nil {
 
                 log.Info("addr.Vrrp present")
 
-                for virtual_router_id, _ := range addr.Vrrp.VrrpGroup {
+                for virtual_router_id := range addr.Vrrp.VrrpGroup {
                     vrrp_rtr := addr.Vrrp.VrrpGroup[virtual_router_id]
 
                     t := make(map[string]string)
@@ -283,7 +283,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                         vip_count := 0
                         if vrrpEntry.IsPopulated() {
-                            vips, _ = vrrpEntry.Field["vip@"]
+                            vips = vrrpEntry.Field["vip@"]
                             vip_count = strings.Count(vips, ",")
                             vip_count += 1
                         }
@@ -298,7 +298,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                 return subIntfmap, errors.New(errStr)
                             }
 
-                            for vip_id, _ := range vrrp_rtr.Config.VirtualAddress {
+                            for vip_id := range vrrp_rtr.Config.VirtualAddress {
                                 if (vips == "" || inParams.oper == DELETE) {
                                     vips =  vrrp_rtr.Config.VirtualAddress[vip_id]
                                 } else {
@@ -319,9 +319,6 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                 t["pre_empt"] = "False"
                             }
                         }
-                        if vrrp_rtr.Config.Version != nil {
-                            t["version"] = strconv.Itoa(int(*vrrp_rtr.Config.Version))
-                        }
 
                         if vrrp_rtr.Config.AdvertisementInterval != nil {
                             t["adv_interval"] = strconv.Itoa(int(*vrrp_rtr.Config.AdvertisementInterval))
@@ -335,7 +332,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     if (vrrp_rtr.VrrpTrackInterface != nil) {
 
-                        for track_if, _ := range vrrp_rtr.VrrpTrackInterface {
+                        for track_if := range vrrp_rtr.VrrpTrackInterface {
                             vrrp_track_data := vrrp_rtr.VrrpTrackInterface[track_if]
 
                             log.Info("track if name:", track_if)
@@ -364,7 +361,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                         log.Info("In track : subIntfmap : ",  subIntfmap)
                     }
 
-                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && track_exist == false)) {
+                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && !track_exist)) {
                         value := db.Value{Field: t}
                         if _, ok := subIntfmap["VRRP6"]; !ok {
                             subIntfmap["VRRP6"] = make(map[string]db.Value)
@@ -479,7 +476,7 @@ func getVrrpState(dbCl *db.DB, tblName string, ifName string, keyIp string, keyS
 
     ifup := isIntfUp(dbCl, ifName)
 
-    if (ifup != true) {
+    if (!ifup) {
         return 0
     }
 
@@ -522,19 +519,15 @@ func isIntfUp(dbCl *db.DB, ifName string) (bool) {
 
     log.Info("Portstatus:", prtInst)
 
-    adminStatus, _ := prtInst.Field[PORT_ADMIN_STATUS]
+    adminStatus := prtInst.Field[PORT_ADMIN_STATUS]
 
     if adminStatus != "up" {
         return false
     }
 
-    operStatus, _ := prtInst.Field[PORT_OPER_STATUS]
+    operStatus := prtInst.Field[PORT_OPER_STATUS]
 
-    if operStatus != "up" {
-        return false
-    }
-
-    return true
+    return operStatus == "up"
 }
 
 func getVrrpTrackPriority(dbs [db.MaxDB]*db.DB, tblName string, ifName string, vrid string) (uint8) {
@@ -548,7 +541,7 @@ func getVrrpTrackPriority(dbs [db.MaxDB]*db.DB, tblName string, ifName string, v
         vrrpTrackKeySplit := strings.Split(vrrpTrackKey, "|")
         trackIfname := vrrpTrackKeySplit[2]
         ifup := isIntfUp(dbs[db.ApplDB], trackIfname)
-        if ifup == true {
+        if ifup {
             priority, _ := strconv.Atoi(vrrpTrackData.Get("priority_increment"))
             track_priority += uint8(priority)
         }
@@ -562,7 +555,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
     var err error
     var isvrid bool
 
-    log.Info("handleVrrpGetByTargetURI")
+    log.Info("handleVrrpGetByTargetURI:", vrrpMap)
     pathInfo := NewPathInfo(inParams.uri)
 
     vrid := pathInfo.Var("virtual-router-id")
@@ -668,10 +661,10 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
     v4Flag = false
 
-    log.Info("convertVrrpMapToOC")
+    log.Info("convertVrrpMapToOC:", vrrpTrackMap)
 
     if _, ok := ifInfo.Subinterfaces.Subinterface[0]; !ok {
-        subIntf, err = ifInfo.Subinterfaces.NewSubinterface(0)
+        _, err = ifInfo.Subinterfaces.NewSubinterface(0)
         if err != nil {
             log.Error("Creation of subinterface subtree failed!")
             return err
@@ -696,7 +689,6 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
     if len(vrrpMap) == 0 {
         log.Info("VRRP entry not present")
-        errors.New("VRRP entry not found" )
         return err
     }
 
@@ -706,19 +698,20 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
     if validIPv4(ipB) {
         if _, ok := subIntf.Ipv4.Addresses.Address[ipB]; !ok {
             v4Address, _ = subIntf.Ipv4.Addresses.NewAddress(ipB)
+        } else {
+            v4Address = subIntf.Ipv4.Addresses.Address[ipB]
         }
-        v4Address = subIntf.Ipv4.Addresses.Address[ipB]
         v4Flag = true
     } else if validIPv6(ipB) {
         if _, ok := subIntf.Ipv6.Addresses.Address[ipB]; !ok {
             v6Address, _ = subIntf.Ipv6.Addresses.NewAddress(ipB)
+        } else {
+            v6Address = subIntf.Ipv6.Addresses.Address[ipB]
         }
-        v6Address = subIntf.Ipv6.Addresses.Address[ipB]
     } else {
         log.Error("Invalid IP address " + ipB)
         return err
     }
-
 
     for _, vrrpData := range vrrpMap {
 
@@ -730,9 +723,9 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
             if _, ok := v4Address.Vrrp.VrrpGroup[vrid]; !ok {
                 vrrp4, err = v4Address.Vrrp.NewVrrpGroup(vrid)
+            } else {
+                vrrp4 = v4Address.Vrrp.VrrpGroup[vrid]
             }
-
-            vrrp4 = v4Address.Vrrp.VrrpGroup[vrid]
 
             ygot.BuildEmptyTree(vrrp4)
             pvrid := new(uint8)
@@ -764,7 +757,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                   preemptstr = vrrpData.Get("pre_empt")
               }
               ppreempt := new(bool)
-              if "True" == preemptstr {
+              if preemptstr == "True"{
                   *ppreempt = true
               } else {
                   *ppreempt = false
@@ -815,7 +808,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                     preemptstr = vrrpData.Get("pre_empt")
                 }
                 ppreempt := new(bool)
-                if "True" == preemptstr {
+                if preemptstr == "True"{
                     *ppreempt = true
                 } else {
                     *ppreempt = false
@@ -880,7 +873,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         if (isTrackState) {
 
                             ifup := isIntfUp(inParams.dbs[db.ApplDB], trackIfname)
-                            if ifup == false {
+                            if !ifup {
                                 *ppriority_incr_state = 0
                             }
 
@@ -903,9 +896,10 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
             if _, ok := v6Address.Vrrp.VrrpGroup[vrid]; !ok {
                 vrrp6, err = v6Address.Vrrp.NewVrrpGroup(vrid)
+            } else {
+                vrrp6 = v6Address.Vrrp.VrrpGroup[vrid]
             }
 
-            vrrp6 = v6Address.Vrrp.VrrpGroup[vrid]
 
             ygot.BuildEmptyTree(vrrp6)
             pvrid := new(uint8)
@@ -937,7 +931,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                   preemptstr = vrrpData.Get("pre_empt")
               }
               ppreempt := new(bool)
-              if "True" == preemptstr {
+              if preemptstr == "True"{
                   *ppreempt = true
               } else {
                   *ppreempt = false
@@ -988,7 +982,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                   preemptstr = vrrpData.Get("pre_empt")
               }
               ppreempt := new(bool)
-              if "True" == preemptstr {
+              if preemptstr == "True"{
                   *ppreempt = true
               } else {
                   *ppreempt = false
@@ -1000,14 +994,6 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                   vipmap := strings.Split(vipstr, ",")
                   vrrp6.Config.VirtualAddress = vipmap
               }
-
-              version := 3
-              if vrrpData.Has("version") {
-                  version, _ = strconv.Atoi(vrrpData.Get("version"))
-              }
-              pversion := new(uint8)
-              *pversion  = uint8(version)
-              vrrp6.Config.Version = pversion
 
             }
 
@@ -1052,7 +1038,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         if (isTrackState) {
 
                             ifup := isIntfUp(inParams.dbs[db.ApplDB], trackIfname)
-                            if ifup == false {
+                            if !ifup {
                                 *ppriority_incr_state = 0
                             }
 
@@ -1076,7 +1062,7 @@ var DbToYang_intf_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (er
     intfsObj := getIntfsRoot(inParams.ygRoot)
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("name")
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
 
@@ -1099,9 +1085,8 @@ var DbToYang_intf_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (er
         }
 
 
-    } else {
-        err = errors.New("Invalid URI : " + targetUriPath)
     }
+
     err = handleVrrpGetByTargetURI(inParams, targetUriPath, intfName, intfObj)
 
     log.Info("err:", err)

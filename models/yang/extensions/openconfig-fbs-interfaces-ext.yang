@@ -114,15 +114,15 @@ submodule openconfig-fbs-interfaces-ext {
           description
             "Operational state of a QoS policy section";
 
-          uses fbs-ext-section-state-common;
+          uses fbs-ext-section-common-state;
           uses fbs-ext-qos-section-state;
-          uses fbs-ext-qos-policer-config-params;
+          uses fbs-ext-qos-policer-params-config;
         }
       }
     }
   }
 
-  grouping fbs-ext-section-state-common {
+  grouping fbs-ext-section-common-state {
     description
       "Grouping for common operational state data for all policy
       sections";
@@ -284,7 +284,7 @@ submodule openconfig-fbs-interfaces-ext {
           description
             "Operational state of a monitoring policy section";
 
-          uses fbs-ext-section-state-common;
+          uses fbs-ext-section-common-state;
         }
       }
     }
@@ -365,7 +365,7 @@ submodule openconfig-fbs-interfaces-ext {
           description
             "Operational state of a forwarding policy section";
 
-          uses fbs-ext-section-state-common;
+          uses fbs-ext-section-common-state;
 	      uses fbs-ext-forwarding-section-common-state;
         }
 

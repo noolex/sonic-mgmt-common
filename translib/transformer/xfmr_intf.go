@@ -752,6 +752,20 @@ var YangToDb_intf_mtu_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[st
     // Handles all the operations other than Delete
     intfTypeVal, _ := inParams.param.(*uint16)
     intTypeValStr := strconv.FormatUint(uint64(*intfTypeVal), 10)
+
+    if IntfTypePortChannel == intfType {
+        /* Apply the MTU to all the portchannel member ports */
+        updateMemberPortsMtu(&inParams, &ifName, &intTypeValStr)
+    } else if IntfTypeEthernet == intfType {
+        /* Do not allow MTU configuration on a portchannel member port */
+        lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
+        if lagId != nil {
+            log.Infof("%s is member of %s", ifName, *lagId)
+            errStr := "Configuration not allowed when port is member of Portchannel."
+            return nil, tlerr.InvalidArgsError{Format: errStr}
+        }
+    }
+
     res_map["mtu"] = intTypeValStr
     return res_map, nil
 }
@@ -1382,7 +1396,7 @@ func validateIpPrefixForIntfType(ifType E_InterfaceType, ip *string, prfxLen *ui
 
 
 func checkIfSagAfiExistOnIntf(d *db.DB, afi string, ifName string) (bool){
-    preKey := make([]string, 2, 2)
+    preKey := make([]string, 2)
     preKey[0] = ifName
     preKey[1] = afi
 
@@ -1454,7 +1468,7 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
           	}
 
             for _, sagIp := range sagIpMap {
-                prekey := make([]string, 3, 3)
+                prekey := make([]string, 3)
                 prekey[0] = sagIf.Get(0)
                 prekey[1] = sagIp
                 prekey[2] = "SAG"
@@ -1493,7 +1507,7 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
                         log.Error(errStr)
                         return "", errors.New(errStr)
                     }
-                } else if (isIntfIp == true){
+                } else if isIntfIp {
                     //Handle IP overlap on same interface, replace
                     log.Error("Entry ", key.Get(1), " on ", intf, " needs to be deleted")
                     errStr := "IP overlap on same interface with IP or IP Anycast " + key.Get(1)
@@ -1641,11 +1655,11 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
                 overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
-				if intfType == IntfTypeLoopback && validateMultiIPForDonorIntf(inParams.d, &ifName) {
+		if ((intfType == IntfTypeLoopback) && (validateMultiIPForDonorIntf(inParams.d, &ifName))) {
                     errStr := "Loopback interface is Donor for Unnumbered interface. Cannot add Multiple IPv4 address"
                     err = tlerr.InvalidArgsError{Format: errStr}
                     return subIntfmap, err
-				}
+		}
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
@@ -2970,6 +2984,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 	return false
 }
 
+
 func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface,
                          inParams *XfmrParams, ifdb map[string]string, ifName *string) error  {
     var err error
@@ -3152,8 +3167,8 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
     sonicIfName := utils.GetNativeNameFromUIName(&ifName)
     log.Infof("DbToYang_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
-
     targetUriPath, err := getYangPathFromUri(inParams.uri)
+
     log.Info("targetUriPath is ", targetUriPath)
 
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
@@ -3166,22 +3181,25 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 
     intTbl := IntfTypeTblMap[intfType]
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref/config/interface") {
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces") {
         if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
             var ok bool = false
             if intfObj, ok = intfsObj.Interface[uriIfName]; !ok {
                 intfObj, _ = intfsObj.NewInterface(uriIfName)
             }
+            ygot.BuildEmptyTree(intfObj)
+            if intfObj.Subinterfaces == nil {
+                ygot.BuildEmptyTree(intfObj.Subinterfaces)
+            }
         } else {
             ygot.BuildEmptyTree(intfsObj)
             intfObj, _ = intfsObj.NewInterface(uriIfName)
+            ygot.BuildEmptyTree(intfObj)
         }
-
-        ygot.BuildEmptyTree(intfObj)
 
         var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
         if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-            _, err = intfObj.Subinterfaces.NewSubinterface(0)
+            subIntf, err = intfObj.Subinterfaces.NewSubinterface(0)
             if err != nil {
                 log.Error("Creation of subinterface subtree failed!")
                 return err
@@ -3190,16 +3208,65 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 
         subIntf = intfObj.Subinterfaces.Subinterface[0]
         ygot.BuildEmptyTree(subIntf)
+        ygot.BuildEmptyTree(subIntf.Ipv4)
+        ygot.BuildEmptyTree(subIntf.Ipv4.Unnumbered)
+        ygot.BuildEmptyTree(subIntf.Ipv4.Unnumbered.InterfaceRef)
 
-        entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
-        if dbErr != nil {
-            log.Info("Failed to read DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
-            return nil
-}
+        if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref/state") ||
+            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref/state") {
+            entry, dbErr := inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
 
-        if entry.Has(UNNUMBERED) {
-            value := entry.Get(UNNUMBERED)
-            subIntf.Ipv4.Unnumbered.InterfaceRef.Config.Interface = &value
+            if dbErr != nil {
+                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                subIntf.Ipv4.Unnumbered.InterfaceRef.State.Interface = &value
+                log.Info("State Unnum Intf : " + value)
+            }
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref/config") ||
+                strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref/config") {
+            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                subIntf.Ipv4.Unnumbered.InterfaceRef.Config.Interface = &value
+                log.Info("Config Unnum Intf: " + value)
+            }
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref") ||
+                strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref") {
+            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read Config DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                subIntf.Ipv4.Unnumbered.InterfaceRef.Config.Interface = &value
+                log.Info("Config Unnum Intf: " + value)
+            }
+
+            entry, dbErr = inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                subIntf.Ipv4.Unnumbered.InterfaceRef.State.Interface = &value
+                log.Info("State Unnum Intf : " + value)
+            }
         }
     }
     return err

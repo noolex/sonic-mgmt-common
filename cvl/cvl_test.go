@@ -295,7 +295,7 @@ func clearDb() {
 
 	for _, tbl := range tblList {
 		_, err := exec.Command("/bin/sh", "-c",
-		"redis-cli -n 4 del `redis-cli -n 4 keys '" +
+		"sonic-db-cli CONFIG_DB del `sonic-db-cli CONFIG_DB keys '" +
 		tbl + "|*' | cut -d ' ' -f 2`").Output()
 
 		if err != nil {

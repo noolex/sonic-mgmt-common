@@ -43,29 +43,29 @@ func init() {
 	XlateFuncBind("DbToYang_copp_trap_ids_xfmr", DbToYang_copp_trap_ids_xfmr)
 }
 
-func getCoppRoot(s *ygot.GoStruct) *ocbinds.OpenconfigCopp_CoppConfig {
+func getCoppRoot(s *ygot.GoStruct) *ocbinds.OpenconfigCoppExt_Copp {
 	deviceObj := (*s).(*ocbinds.Device)
-	return deviceObj.CoppConfig
+	return deviceObj.Copp
 }
 
-func trap_action_enum_to_str(input ocbinds.E_OpenconfigCopp_CoppTrapAction) string {
+func trap_action_enum_to_str(input ocbinds.E_OpenconfigCoppExt_CoppTrapAction) string {
 	outval := "NULL"
 	switch input {
-	case ocbinds.OpenconfigCopp_CoppTrapAction_DROP:
+	case ocbinds.OpenconfigCoppExt_CoppTrapAction_DROP:
 		outval = "drop"
-	case ocbinds.OpenconfigCopp_CoppTrapAction_FORWARD:
+	case ocbinds.OpenconfigCoppExt_CoppTrapAction_FORWARD:
 		outval = "forward"
-	case ocbinds.OpenconfigCopp_CoppTrapAction_COPY:
+	case ocbinds.OpenconfigCoppExt_CoppTrapAction_COPY:
 		outval = "copy"
-	case ocbinds.OpenconfigCopp_CoppTrapAction_COPY_CANCEL:
+	case ocbinds.OpenconfigCoppExt_CoppTrapAction_COPY_CANCEL:
 		outval = "copy_cancel"
-	case ocbinds.OpenconfigCopp_CoppTrapAction_TRAP:
+	case ocbinds.OpenconfigCoppExt_CoppTrapAction_TRAP:
 		outval = "trap"
-	case ocbinds.OpenconfigCopp_CoppTrapAction_LOG:
+	case ocbinds.OpenconfigCoppExt_CoppTrapAction_LOG:
 		outval = "log"
-	case ocbinds.OpenconfigCopp_CoppTrapAction_DENY:
+	case ocbinds.OpenconfigCoppExt_CoppTrapAction_DENY:
 		outval = "deny"
-	case ocbinds.OpenconfigCopp_CoppTrapAction_TRANSIT:
+	case ocbinds.OpenconfigCoppExt_CoppTrapAction_TRANSIT:
 		outval = "transit"
 	}
 	return outval
@@ -74,7 +74,7 @@ func trap_action_enum_to_str(input ocbinds.E_OpenconfigCopp_CoppTrapAction) stri
 var YangToDb_copp_trap_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
-	var inval ocbinds.E_OpenconfigCopp_CoppTrapAction
+	var inval ocbinds.E_OpenconfigCoppExt_CoppTrapAction
 	if inParams.param == nil {
 		log.Info("YangToDb_copp_trap_action_xfmr Error: ")
 		return res_map, err
@@ -89,7 +89,7 @@ var YangToDb_copp_trap_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
 	coppObj := getCoppRoot(inParams.ygRoot)
 
 	field := "trap_action"
-	inval = coppObj.CoppGroup[name].TrapAction
+	inval = coppObj.CoppGroups.CoppGroup[name].Config.TrapAction
 
 	outval := trap_action_enum_to_str(inval)
 
@@ -120,7 +120,7 @@ var DbToYang_copp_trap_action_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
 var YangToDb_copp_green_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
-	var inval ocbinds.E_OpenconfigCopp_CoppTrapAction
+	var inval ocbinds.E_OpenconfigCoppExt_CoppTrapAction
 	if inParams.param == nil {
 		log.Info("YangToDb_copp_green_action_xfmr Error: ")
 		return res_map, err
@@ -135,7 +135,7 @@ var YangToDb_copp_green_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
 	coppObj := getCoppRoot(inParams.ygRoot)
 
 	field := "green_action"
-	inval = coppObj.CoppGroup[name].GreenAction
+	inval = coppObj.CoppGroups.CoppGroup[name].Config.GreenAction
 
 	outval := trap_action_enum_to_str(inval)
 
@@ -166,7 +166,7 @@ var DbToYang_copp_green_action_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
 var YangToDb_copp_yellow_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
-	var inval ocbinds.E_OpenconfigCopp_CoppTrapAction
+	var inval ocbinds.E_OpenconfigCoppExt_CoppTrapAction
 	if inParams.param == nil {
 		log.Info("YangToDb_copp_yellow_action_xfmr Error: ")
 		return res_map, err
@@ -181,7 +181,7 @@ var YangToDb_copp_yellow_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 	coppObj := getCoppRoot(inParams.ygRoot)
 
 	field := "yellow_action"
-	inval = coppObj.CoppGroup[name].YellowAction
+	inval = coppObj.CoppGroups.CoppGroup[name].Config.YellowAction
 
 	outval := trap_action_enum_to_str(inval)
 
@@ -212,7 +212,7 @@ var DbToYang_copp_yellow_action_xfmr FieldXfmrDbtoYang = func(inParams XfmrParam
 var YangToDb_copp_red_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
-	var inval ocbinds.E_OpenconfigCopp_CoppTrapAction
+	var inval ocbinds.E_OpenconfigCoppExt_CoppTrapAction
 	if inParams.param == nil {
 		log.Info("YangToDb_copp_red_action_xfmr Error: ")
 		return res_map, err
@@ -227,7 +227,7 @@ var YangToDb_copp_red_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 	coppObj := getCoppRoot(inParams.ygRoot)
 
 	field := "red_action"
-	inval = coppObj.CoppGroup[name].RedAction
+	inval = coppObj.CoppGroups.CoppGroup[name].Config.RedAction
 
 	outval := trap_action_enum_to_str(inval)
 
@@ -259,7 +259,7 @@ var YangToDb_copp_meter_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 	res_map := make(map[string]string)
 	var err error
 	var field string
-	var inval ocbinds.E_OpenconfigCopp_CoppMeterType
+	var inval ocbinds.E_OpenconfigCoppExt_CoppMeterType
 	if inParams.param == nil {
 		log.Info("YangToDb_copp_meter_type_xfmr Error: ")
 		return res_map, err
@@ -273,14 +273,14 @@ var YangToDb_copp_meter_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 
 	coppObj := getCoppRoot(inParams.ygRoot)
 
-	inval = coppObj.CoppGroup[name].MeterType
+	inval = coppObj.CoppGroups.CoppGroup[name].Config.MeterType
 	field = "meter_type"
 
 	outval := ""
 	switch inval {
-	case ocbinds.OpenconfigCopp_CoppMeterType_PACKETS:
+	case ocbinds.OpenconfigCoppExt_CoppMeterType_PACKETS:
 		outval = "packets"
-	case ocbinds.OpenconfigCopp_CoppMeterType_BYTES:
+	case ocbinds.OpenconfigCoppExt_CoppMeterType_BYTES:
 		outval = "bytes"
 	}
 
@@ -312,7 +312,7 @@ var YangToDb_copp_mode_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
 	res_map := make(map[string]string)
 	var err error
 	var field string
-	var inval ocbinds.E_OpenconfigCopp_CoppMode
+	var inval ocbinds.E_OpenconfigCoppExt_CoppMode
 	if inParams.param == nil {
 		log.Info("YangToDb_copp_mode_xfmr Error: ")
 		return res_map, err
@@ -326,16 +326,16 @@ var YangToDb_copp_mode_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
 
 	coppObj := getCoppRoot(inParams.ygRoot)
 
-	inval = coppObj.CoppGroup[name].Mode
+	inval = coppObj.CoppGroups.CoppGroup[name].Config.Mode
 	field = "mode"
 
 	outval := ""
 	switch inval {
-	case ocbinds.OpenconfigCopp_CoppMode_SR_TCM:
+	case ocbinds.OpenconfigCoppExt_CoppMode_SR_TCM:
 		outval = "sr_tcm"
-	case ocbinds.OpenconfigCopp_CoppMode_TR_TCM:
+	case ocbinds.OpenconfigCoppExt_CoppMode_TR_TCM:
 		outval = "tr_tcm"
-	case ocbinds.OpenconfigCopp_CoppMode_STORM:
+	case ocbinds.OpenconfigCoppExt_CoppMode_STORM:
 		outval = "storm"
 	}
 
@@ -398,7 +398,7 @@ var YangToDb_copp_trap_ids_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (m
 
 	coppObj := getCoppRoot(inParams.ygRoot)
 
-	inval = *coppObj.CoppTrap[name].TrapIds
+	inval = *coppObj.CoppTraps.CoppTrap[name].Config.TrapIds
 	field = "trap_ids"
 
 	if inval != "" {

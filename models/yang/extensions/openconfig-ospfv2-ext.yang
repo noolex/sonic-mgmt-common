@@ -437,7 +437,7 @@ module openconfig-ospfv2-ext {
     }
   } 
 
-  grouping ospfv2-ext-policy-distance {
+  grouping ospfv2-ext-policy-distance-top {
     description
       "Global distance configuration for OSPFv2";
     
@@ -513,6 +513,7 @@ module openconfig-ospfv2-ext {
         "Max metric startup timeout in seconds";
     }
 
+    /*
     leaf on-shutdown {
       type uint32 {
         range "5..500";
@@ -521,9 +522,10 @@ module openconfig-ospfv2-ext {
       description
         "Max metric shutdown timeout in seconds";
     }
+    */
   } 
 
-  grouping ospfv2-ext-global-timers-max-metric {
+  grouping ospfv2-ext-global-timers-max-metric-top {
     description
       "Global timers max-metric configuration for OSPFv2";
 
@@ -730,7 +732,7 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-area-stub {
+  grouping ospfv2-ext-area-stub-top {
     description
       "Stub area configuration for OSPFv2";
 
@@ -779,7 +781,7 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-area-nssa {
+  grouping ospfv2-ext-area-nssa-top {
     description
       "Area NSSA configuration for OSPFv2";
 
@@ -823,7 +825,7 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-area-networks {
+  grouping ospfv2-ext-area-networks-top {
     description
       "Configuration parameters relating to a network-addresses within
       the OSPF area";
@@ -1042,7 +1044,7 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-policy-address-range {
+  grouping ospfv2-ext-policy-address-range-top {
     description
       "Configuration parameters relating to a address-range within
       the OSPF area";
@@ -1161,7 +1163,7 @@ module openconfig-ospfv2-ext {
   }
   */
 
-  grouping ospfv2-ext-policy-filter-list {
+  grouping ospfv2-ext-policy-filter-list-top {
     description
       "Configuration parameters relating to a filter list within
       the OSPF area";
@@ -1216,7 +1218,7 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-inter-area-propagation-policy {
+  grouping ospfv2-ext-inter-area-propagation-policy-top {
     description
        "Policies defining how inter-area propagation should be performed
        by the OSPF instance";
@@ -1253,10 +1255,10 @@ module openconfig-ospfv2-ext {
           uses ospfv2-ext-inter-area-policy-config;
       }
 
-      uses ospfv2-ext-policy-address-range;
+      uses ospfv2-ext-policy-address-range-top;
       //uses ospfv2-ext-policy-export-list;
       //uses ospfv2-ext-policy-import-list;
-      uses ospfv2-ext-policy-filter-list;
+      uses ospfv2-ext-policy-filter-list-top;
     }
   }
  
@@ -1299,7 +1301,7 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-policy-default-route-originate {
+  grouping ospfv2-ext-policy-default-route-originate-top {
     description
       "Distribute a default route configuration for OSPFv2";
 
@@ -1406,7 +1408,7 @@ module openconfig-ospfv2-ext {
   }
 
 
-  grouping ospfv2-ext-policy-route-distibute-list {
+  grouping ospfv2-ext-policy-route-distibute-list-top {
     description
       "Configuration parameters relating to a route distibute list";
 
@@ -1447,7 +1449,7 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-policy-route-distibution {
+  grouping ospfv2-ext-policy-route-distibution-top {
     description
       "Configuration parameters relating to a route distibute list";
   
@@ -1455,7 +1457,7 @@ module openconfig-ospfv2-ext {
       description
         "Configuration and state parameters relating route distibution";
 
-      uses ospfv2-ext-policy-route-distibute-list;
+      uses ospfv2-ext-policy-route-distibute-list-top;
     }
   }
 
@@ -1500,7 +1502,7 @@ module openconfig-ospfv2-ext {
     }
   }
 
-  grouping ospfv2-ext-passive-interfaces {
+  grouping ospfv2-ext-passive-interfaces-top {
     description
       "Configuration parameters relating to a passive interfaces";
 
@@ -1558,12 +1560,12 @@ module openconfig-ospfv2-ext {
         config false;
         description
           "State parameters relating to the OSPF passive interface";
-        uses ospfv2-ext-lsdb-router-lsa-info;
+        uses ospfv2-ext-lsdb-router-lsa-info-state;
       }
     }
   }
 
-  grouping ospfv2-ext-lsdb-router-lsa-info {
+  grouping ospfv2-ext-lsdb-router-lsa-info-state {
     description
       "Describes the router lsa information";
     leaf type {
@@ -2484,7 +2486,7 @@ module openconfig-ospfv2-ext {
   }
 
 
-  grouping ospfv2-ext-area-interface-neighbors {
+  grouping ospfv2-ext-area-interface-neighbors-top {
     description
       "Enclosing container for the list of neighbors that
       an adjacency has been established with on the interface";
@@ -2783,7 +2785,7 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:global/oc-netinst:inter-area-propagation-policies" {
     description
       "extra parameters related to ospfv2 global inter-area-propagation-policies";
-    uses ospfv2-ext-inter-area-propagation-policy;
+    uses ospfv2-ext-inter-area-propagation-policy-top;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
@@ -2791,9 +2793,9 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:global" {
     description
       "extra parameters related to ospfv2 global route distribution policy and passive interface";
-    uses ospfv2-ext-policy-route-distibution;
-    uses ospfv2-ext-policy-distance;
-    uses ospfv2-ext-passive-interfaces;
+    uses ospfv2-ext-policy-route-distibution-top;
+    uses ospfv2-ext-policy-distance-top;
+    uses ospfv2-ext-passive-interfaces-top;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
@@ -2818,8 +2820,8 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:areas/oc-netinst:area" {
     description
       "extra parameters related to ospfv2 areas area stub and network";
-    uses ospfv2-ext-area-stub;
-    uses ospfv2-ext-area-networks;
+    uses ospfv2-ext-area-stub-top;
+    uses ospfv2-ext-area-networks-top;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
@@ -2841,7 +2843,7 @@ module openconfig-ospfv2-ext {
     uses ospfv2-ext-area-virtual-link-state;
     uses ospfv2-ext-area-interface-message-stats-state; 
     uses ospfv2-ext-area-interface-timers-state;
-    uses ospfv2-ext-area-interface-neighbors;
+    uses ospfv2-ext-area-interface-neighbors-top;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
@@ -3020,7 +3022,7 @@ module openconfig-ospfv2-ext {
           "/oc-netinst:interface" {
     description
       "extra parameters related to ospfv2 areas area interfaces interface";
-    uses ospfv2-ext-area-interface-neighbors;
+    uses ospfv2-ext-area-interface-neighbors-top;
     uses ospfv2-ext-area-interface-message-stats-state;
   }
 

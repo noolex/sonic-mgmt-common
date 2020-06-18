@@ -133,6 +133,7 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
     txCache := new(sync.Map)
     err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 
+    log.Info("tranlateSubscribe:path", path)
     subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
     if subscDt.PType == transformer.OnChange {
         notifOpts.pType = OnChange
@@ -140,6 +141,7 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
         notifOpts.pType = Sample
     }
     notifOpts.mInterval = subscDt.MinInterval
+    notifOpts.isOnChangeSupported = subscDt.OnChange
     if err != nil {
         log.Infof("returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
         return &notifOpts, nil, err
@@ -159,7 +161,8 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
                 notifInfo.table = db.TableSpec{Name:tblNm}
                 if (len(tblDt) == 1) {
                     for tblKy, _ := range(tblDt) {
-                        notifInfo.key = asKey(tblKy)
+			    notifInfo.key = asKey(tblKy)
+			    notifInfo.needCache = subscDt.NeedCache
                     }
                 } else {
                     if (len(tblDt) >  1) {
@@ -173,7 +176,6 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
             }
         }
     }
-    notifInfo.needCache = subscDt.NeedCache
     log.Infof("For path - %v, returning: notifOpts - %v, notifInfo - %v, error - nil", path, notifOpts, notifInfo)
     return &notifOpts, &notifInfo, nil
 }
@@ -696,23 +698,6 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 					/* handle leaf-list merge if any leaf-list exists */
 					resTblRw := checkAndProcessLeafList(existingEntry, tblRw, DELETE, d, tblNm, tblKey)
 					if len(resTblRw.Field) > 0 {
-						/* add the NULL field if the last field gets deleted */
-						deleteCount := 0
-						for field := range existingEntry.Field {
-							if resTblRw.Has(field) {
-								deleteCount++
-							}
-						}
-						if deleteCount == len(existingEntry.Field) {
-							nullTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
-							log.Info("Last field gets deleted, add NULL field to keep an db entry")
-							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
-							if err != nil {
-								log.Error("UPDATE case - d.ModEntry() failure")
-								return err
-							}
-						}
-						/* deleted fields */
 						err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
 						if err != nil {
 							log.Error("DELETE case - d.DeleteEntryFields() failure")
