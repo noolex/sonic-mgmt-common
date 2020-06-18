@@ -8,6 +8,23 @@ module openconfig-lldp-ext {
   prefix "oc-lldp-ext";
 
   import openconfig-lldp { prefix oc-lldp; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact 
+		  "OpenConfig working group 
+		   www.openconfig.net";
+
+  description "This model describes the LLDP extensions";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-06-01" {
+      description "Initial revision";
+      reference "0.1.0";
+  }
 
   deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:chassis-id{
       deviate not-supported;
@@ -35,16 +52,20 @@ module openconfig-lldp-ext {
 
   typedef lldp-ext-mode-type {
 	  type enumeration {
-		enum receive {
+		enum RECEIVE {
 			description "Configure LLDP in Receive only mode";
 		}
-		enum transmit {
+		enum TRANSMIT {
 			description "Configure LLDP in Transmit only mode";
 		}
 	  }
+
+      description "Enumeration for LLDP operation Mode";
   }
 
-  grouping lldp-mode-config {
+  grouping lldp-ext-mode-config {
+      description "LLDP operation Mode";
+
 	  leaf mode {
 		type lldp-ext-mode-type;
 		description
@@ -53,6 +74,8 @@ module openconfig-lldp-ext {
   }
 
   grouping lldp-ext-config {
+      description "Configuration data for global LLDP parameters";
+
 	  leaf multiplier {
 		type uint8 {
 			range "1..10";
@@ -63,27 +86,36 @@ module openconfig-lldp-ext {
 			which LLDP neighbor entry is deleted.";
 	  }
 	  
-	  uses lldp-mode-config;
+	  uses lldp-ext-mode-config;
   }
 
-  grouping lldp-interface-ext-config {
-	  uses lldp-mode-config;
+  grouping lldp-ext-interface-config {
+      description "Configuration data for LLDP on each interface";
+	  uses lldp-ext-mode-config;
   }
 
   augment /oc-lldp:lldp/oc-lldp:config {
+      description "Adds extensions to Global Configuration"; 
+
 	  uses lldp-ext-config;
   }
 
   augment /oc-lldp:lldp/oc-lldp:state {
+      description "Adds extensions to Global State"; 
+
 	  uses lldp-ext-config;
   }
 
   augment /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:config {
-	  uses lldp-interface-ext-config;
+      description "Adds extensions to Interface Configuration"; 
+
+	  uses lldp-ext-interface-config;
   }
 
   augment /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:state {
-	  uses lldp-interface-ext-config;
+      description "Adds extensions to Interface State"; 
+
+	  uses lldp-ext-interface-config;
   }
 }
 

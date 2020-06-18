@@ -31,4 +31,16 @@ module sonic-flow-based-services-annot {
 	        sonic-ext:rpc-callback "rpc_clear_service_policy";
         }
     }
+
+    deviation /sfbs:sonic-flow-based-services/sfbs:CLASSIFIER_TABLE/sfbs:CLASSIFIER_TABLE_LIST/sfbs:CLASSIFIER_NAME {
+        deviate add {
+            sonic-ext:cascade-delete "enable";
+        }
+    }
+
+    deviation /sfbs:sonic-flow-based-services/sfbs:POLICY_TABLE/sfbs:POLICY_TABLE_LIST/sfbs:POLICY_NAME {
+        deviate add {
+            sonic-ext:cascade-delete "enable";
+        }
+    }
 }

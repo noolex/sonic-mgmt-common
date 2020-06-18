@@ -27,13 +27,28 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	  "encoding/json"
 )
 
 func init () {
     XlateFuncBind("YangToDb_intf_vrrp_xfmr", YangToDb_intf_vrrp_xfmr)
     XlateFuncBind("DbToYang_intf_vrrp_xfmr", DbToYang_intf_vrrp_xfmr)
+    XlateFuncBind("rpc_show_vrrp", rpc_show_vrrp)
+  	XlateFuncBind("rpc_show_vrrp6", rpc_show_vrrp6)
 }
 
+type VrrpSummaryEntry struct {
+	Ifname            string
+	Vrid              int
+  CurrPrio          int
+  ConfPrio          int
+  State             uint8
+  Vip               string    `json:",omitempty"`
+}
+
+type VrrpSummary struct {
+	VrppSummEntry  []VrrpSummaryEntry `json:",omitempty"`
+}
 
 var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err, oerr error
@@ -123,14 +138,14 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
     }
 
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.Addresses != nil {
-        for ip, _ := range subIntfObj.Ipv4.Addresses.Address {
+        for ip := range subIntfObj.Ipv4.Addresses.Address {
             addr := subIntfObj.Ipv4.Addresses.Address[ip]
 
             if addr.Vrrp != nil {
 
                 log.Info("addr.Vrrp present")
 
-                for virtual_router_id, _ := range addr.Vrrp.VrrpGroup {
+                for virtual_router_id := range addr.Vrrp.VrrpGroup {
                     vrrp_rtr := addr.Vrrp.VrrpGroup[virtual_router_id]
 
                     t := make(map[string]string)
@@ -145,7 +160,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                         vip_count := 0
                         if vrrpEntry.IsPopulated() {
-                            vips, _ = vrrpEntry.Field["vip@"]
+                            vips = vrrpEntry.Field["vip@"]
                             vip_count = strings.Count(vips, ",")
                             vip_count += 1
                         }
@@ -160,7 +175,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                 return subIntfmap, errors.New(errStr)
                             }
 
-                            for vip_id, _ := range vrrp_rtr.Config.VirtualAddress {
+                            for vip_id := range vrrp_rtr.Config.VirtualAddress {
                                 if (vips == "" || inParams.oper == DELETE) {
                                     vips =  vrrp_rtr.Config.VirtualAddress[vip_id]
                                 } else {
@@ -198,22 +213,8 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     if (vrrp_rtr.VrrpTrackInterface != nil) {
 
-                        if (inParams.oper != DELETE) {
-/*
-                            log.Info("inParams:"inParams)
-                            vrrpTrackMap, _ := getVrrpTrackByName(inParams.dbs[db.ConfigDB], "VRRP_TRACK", ifName, strconv.Itoa(int(virtual_router_id)))
 
-                            log.Info("Trackmap len:", len(vrrpTrackMap))
-
-                            if (len(vrrpTrackMap) >= 8) {
-                                errStr := "Max allowed track interfaces on a VRRP instance is 8"
-                                log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
-                                return subIntfmap, errors.New(errStr)
-                            }
-*/
-                        }
-
-                        for track_if, _ := range vrrp_rtr.VrrpTrackInterface {
+                        for track_if := range vrrp_rtr.VrrpTrackInterface {
                             vrrp_track_data := vrrp_rtr.VrrpTrackInterface[track_if]
 
                             log.Info("track if name:", track_if)
@@ -242,7 +243,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     }
 
-                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && track_exist == false)) {
+                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && !track_exist)) {
                         value := db.Value{Field: t}
                         if _, ok := subIntfmap["VRRP"]; !ok {
                             subIntfmap["VRRP"] = make(map[string]db.Value)
@@ -260,14 +261,14 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
     }
 
     if subIntfObj.Ipv6 != nil && subIntfObj.Ipv6.Addresses != nil {
-        for ip, _ := range subIntfObj.Ipv6.Addresses.Address {
+        for ip := range subIntfObj.Ipv6.Addresses.Address {
             addr := subIntfObj.Ipv6.Addresses.Address[ip]
 
             if addr.Vrrp != nil {
 
                 log.Info("addr.Vrrp present")
 
-                for virtual_router_id, _ := range addr.Vrrp.VrrpGroup {
+                for virtual_router_id := range addr.Vrrp.VrrpGroup {
                     vrrp_rtr := addr.Vrrp.VrrpGroup[virtual_router_id]
 
                     t := make(map[string]string)
@@ -282,7 +283,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                         vip_count := 0
                         if vrrpEntry.IsPopulated() {
-                            vips, _ = vrrpEntry.Field["vip@"]
+                            vips = vrrpEntry.Field["vip@"]
                             vip_count = strings.Count(vips, ",")
                             vip_count += 1
                         }
@@ -297,7 +298,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                 return subIntfmap, errors.New(errStr)
                             }
 
-                            for vip_id, _ := range vrrp_rtr.Config.VirtualAddress {
+                            for vip_id := range vrrp_rtr.Config.VirtualAddress {
                                 if (vips == "" || inParams.oper == DELETE) {
                                     vips =  vrrp_rtr.Config.VirtualAddress[vip_id]
                                 } else {
@@ -318,9 +319,6 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                 t["pre_empt"] = "False"
                             }
                         }
-                        if vrrp_rtr.Config.Version != nil {
-                            t["version"] = strconv.Itoa(int(*vrrp_rtr.Config.Version))
-                        }
 
                         if vrrp_rtr.Config.AdvertisementInterval != nil {
                             t["adv_interval"] = strconv.Itoa(int(*vrrp_rtr.Config.AdvertisementInterval))
@@ -334,23 +332,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     if (vrrp_rtr.VrrpTrackInterface != nil) {
 
-                        if (inParams.oper != DELETE) {
-/*
-                            vrrpTrackMap, _ := getVrrpTrackByName(inParams.dbs[db.ConfigDB], "VRRP_TRACK", ifName, strconv.Itoa(int(virtual_router_id)))
-
-                            if (len(vrrpTrackMap) >= 8) {
-                                errStr := "Max allowed track interfaces on a VRRP instance is 8"
-                                log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
-                                return subIntfmap, errors.New(errStr)
-                            }
-
-                            log.Info("In track interface:", len(vrrpTrackMap))
-*/
-                        }
-
-
-
-                        for track_if, _ := range vrrp_rtr.VrrpTrackInterface {
+                        for track_if := range vrrp_rtr.VrrpTrackInterface {
                             vrrp_track_data := vrrp_rtr.VrrpTrackInterface[track_if]
 
                             log.Info("track if name:", track_if)
@@ -379,7 +361,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                         log.Info("In track : subIntfmap : ",  subIntfmap)
                     }
 
-                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && track_exist == false)) {
+                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && !track_exist)) {
                         value := db.Value{Field: t}
                         if _, ok := subIntfmap["VRRP6"]; !ok {
                             subIntfmap["VRRP6"] = make(map[string]db.Value)
@@ -441,6 +423,10 @@ func getVrrpByName(dbCl *db.DB, tblName string, ifName string, isvrid bool, vrid
         vrrpInfo, _ := dbCl.GetEntry(&db.TableSpec{Name:tblName}, key)
         vrrpMap[key.Comp[0] + "|" + key.Comp[1]] = vrrpInfo
     }
+
+    if (isvrid && len(vrrpMap) == 0) {
+        err = errors.New("VRRP entry not found")
+    }
     return vrrpMap, err
 }
 
@@ -490,7 +476,7 @@ func getVrrpState(dbCl *db.DB, tblName string, ifName string, keyIp string, keyS
 
     ifup := isIntfUp(dbCl, ifName)
 
-    if (ifup != true) {
+    if (!ifup) {
         return 0
     }
 
@@ -531,28 +517,45 @@ func isIntfUp(dbCl *db.DB, ifName string) (bool) {
 
     prtInst, _ := dbCl.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
 
-    adminStatus, _ := prtInst.Field[PORT_ADMIN_STATUS]
+    log.Info("Portstatus:", prtInst)
+
+    adminStatus := prtInst.Field[PORT_ADMIN_STATUS]
 
     if adminStatus != "up" {
         return false
     }
 
-    operStatus, _ := prtInst.Field[PORT_OPER_STATUS]
+    operStatus := prtInst.Field[PORT_OPER_STATUS]
 
-    if operStatus != "up" {
-        return false
-    }
-
-    return true
+    return operStatus == "up"
 }
 
+func getVrrpTrackPriority(dbs [db.MaxDB]*db.DB, tblName string, ifName string, vrid string) (uint8) {
+    var track_priority uint8
+    track_priority = 0
+
+    log.Info("In getVrrpTrackPriority")
+    vrrpTrackMap, _ := getVrrpTrackByName(dbs[db.ConfigDB], tblName, ifName, vrid)
+
+    for vrrpTrackKey, vrrpTrackData := range vrrpTrackMap {
+        vrrpTrackKeySplit := strings.Split(vrrpTrackKey, "|")
+        trackIfname := vrrpTrackKeySplit[2]
+        ifup := isIntfUp(dbs[db.ApplDB], trackIfname)
+        if ifup {
+            priority, _ := strconv.Atoi(vrrpTrackData.Get("priority_increment"))
+            track_priority += uint8(priority)
+        }
+    }
+
+    return track_priority
+}
 
 func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName string, intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
     vrrpMap := make(map[string]db.Value)
     var err error
     var isvrid bool
 
-    log.Info("handleVrrpGetByTargetURI")
+    log.Info("handleVrrpGetByTargetURI:", vrrpMap)
     pathInfo := NewPathInfo(inParams.uri)
 
     vrid := pathInfo.Var("virtual-router-id")
@@ -642,6 +645,8 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, true, true, true)
 
     }
+
+    log.Info("err:", err)
     return err
 }
 
@@ -656,10 +661,10 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
     v4Flag = false
 
-    log.Info("convertVrrpMapToOC")
+    log.Info("convertVrrpMapToOC:", vrrpTrackMap)
 
     if _, ok := ifInfo.Subinterfaces.Subinterface[0]; !ok {
-        subIntf, err = ifInfo.Subinterfaces.NewSubinterface(0)
+        _, err = ifInfo.Subinterfaces.NewSubinterface(0)
         if err != nil {
             log.Error("Creation of subinterface subtree failed!")
             return err
@@ -675,30 +680,38 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
         return err
     }
 
+
     vridStr := pathInfo.Var("virtual-router-id")
     if len(vridStr) == 0 {
         log.Info("Missing key in convertVrrpMapToOC")
         return err
     }
+
+    if len(vrrpMap) == 0 {
+        log.Info("VRRP entry not present")
+        return err
+    }
+
     vrid64, err := strconv.ParseUint(vridStr, 10, 8)
     vrid := uint8(vrid64)
 
     if validIPv4(ipB) {
         if _, ok := subIntf.Ipv4.Addresses.Address[ipB]; !ok {
             v4Address, _ = subIntf.Ipv4.Addresses.NewAddress(ipB)
+        } else {
+            v4Address = subIntf.Ipv4.Addresses.Address[ipB]
         }
-        v4Address = subIntf.Ipv4.Addresses.Address[ipB]
         v4Flag = true
     } else if validIPv6(ipB) {
         if _, ok := subIntf.Ipv6.Addresses.Address[ipB]; !ok {
             v6Address, _ = subIntf.Ipv6.Addresses.NewAddress(ipB)
+        } else {
+            v6Address = subIntf.Ipv6.Addresses.Address[ipB]
         }
-        v6Address = subIntf.Ipv6.Addresses.Address[ipB]
     } else {
         log.Error("Invalid IP address " + ipB)
         return err
     }
-
 
     for _, vrrpData := range vrrpMap {
 
@@ -710,9 +723,9 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
             if _, ok := v4Address.Vrrp.VrrpGroup[vrid]; !ok {
                 vrrp4, err = v4Address.Vrrp.NewVrrpGroup(vrid)
+            } else {
+                vrrp4 = v4Address.Vrrp.VrrpGroup[vrid]
             }
-
-            vrrp4 = v4Address.Vrrp.VrrpGroup[vrid]
 
             ygot.BuildEmptyTree(vrrp4)
             pvrid := new(uint8)
@@ -722,28 +735,34 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
             state = 0
 
             if isState {
+
+              priority := 100
               if vrrpData.Has("priority") {
-                  ppriority := new(uint8)
-                  priority, _ := strconv.Atoi(vrrpData.Get("priority"))
-                  *ppriority  = uint8(priority)
-                  vrrp4.State.Priority = ppriority
+                  priority, _ = strconv.Atoi(vrrpData.Get("priority"))
               }
+              ppriority := new(uint8)
+              *ppriority  = uint8(priority)
+              vrrp4.State.Priority = ppriority
+
+              advintv := 1
               if vrrpData.Has("adv_interval") {
-                  padvintv := new(uint16)
-                  advintv, _ := strconv.Atoi(vrrpData.Get("adv_interval"))
-                  *padvintv  = uint16(advintv)
-                  vrrp4.State.AdvertisementInterval = padvintv
+                  advintv, _ = strconv.Atoi(vrrpData.Get("adv_interval"))
               }
+              padvintv := new(uint16)
+              *padvintv  = uint16(advintv)
+              vrrp4.State.AdvertisementInterval = padvintv
+
+              preemptstr := "True"
               if vrrpData.Has("pre_empt") {
-                  ppreempt := new(bool)
-                  preemptstr := vrrpData.Get("pre_empt")
-                  if "True" == preemptstr {
-                      *ppreempt = true
-                  } else {
-                      *ppreempt = false
-                  }
-                  vrrp4.State.Preempt = ppreempt
+                  preemptstr = vrrpData.Get("pre_empt")
               }
+              ppreempt := new(bool)
+              if preemptstr == "True"{
+                  *ppreempt = true
+              } else {
+                  *ppreempt = false
+              }
+              vrrp4.State.Preempt = ppreempt
 
               if vrrpData.Has("vip@") {
                   vipstr := vrrpData.Get("vip@")
@@ -758,36 +777,43 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
               *pstate  = uint8(state)
               vrrp4.State.State = pstate
 
+              version := 2
               if vrrpData.Has("version") {
-                  pversion := new(uint8)
-                  version, _ := strconv.Atoi(vrrpData.Get("version"))
-                  *pversion  = uint8(version)
-                  vrrp4.State.Version = pversion
+                  version, _ = strconv.Atoi(vrrpData.Get("version"))
               }
+              pversion := new(uint8)
+              *pversion  = uint8(version)
+              vrrp4.State.Version = pversion
 
             }
             if isConfig {
+                priority := 100
                 if vrrpData.Has("priority") {
-                    ppriority := new(uint8)
-                    priority, _ := strconv.Atoi(vrrpData.Get("priority"))
-                    *ppriority  = uint8(priority)
-                    vrrp4.Config.Priority = ppriority
+                    priority, _ = strconv.Atoi(vrrpData.Get("priority"))
                 }
+                ppriority := new(uint8)
+                *ppriority  = uint8(priority)
+                vrrp4.Config.Priority = ppriority
+
+                advintv := 1
                 if vrrpData.Has("advert_int") {
-                    padvintv := new(uint16)
-                    advintv, _ := strconv.Atoi(vrrpData.Get("advert_int"))
-                    *padvintv  = uint16(advintv)
-                    vrrp4.Config.AdvertisementInterval = padvintv
+                    advintv, _ = strconv.Atoi(vrrpData.Get("advert_int"))
                 }
+                padvintv := new(uint16)
+                *padvintv  = uint16(advintv)
+                vrrp4.Config.AdvertisementInterval = padvintv
+
+                preemptstr := "True"
                 if vrrpData.Has("pre_empt") {
-                    ppreempt := new(bool)
-                    preemptstr := vrrpData.Get("pre_empt")
-                    if "True" == preemptstr {
-                      *ppreempt = true
-                    } else {
-                      *ppreempt = false
-                    }
+                    preemptstr = vrrpData.Get("pre_empt")
                 }
+                ppreempt := new(bool)
+                if preemptstr == "True"{
+                    *ppreempt = true
+                } else {
+                    *ppreempt = false
+                }
+                vrrp4.Config.Preempt = ppreempt
 
                 if vrrpData.Has("vip@") {
                     vipstr := vrrpData.Get("vip@")
@@ -795,12 +821,13 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                     vrrp4.Config.VirtualAddress = vipmap
                 }
 
+                version := 2
                 if vrrpData.Has("version") {
-                    pversion := new(uint8)
-                    version, _ := strconv.Atoi(vrrpData.Get("version"))
-                    *pversion  = uint8(version)
-                    vrrp4.Config.Version = pversion
+                    version, _ = strconv.Atoi(vrrpData.Get("version"))
                 }
+                pversion := new(uint8)
+                *pversion  = uint8(version)
+                vrrp4.Config.Version = pversion
             }
 
 
@@ -846,7 +873,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         if (isTrackState) {
 
                             ifup := isIntfUp(inParams.dbs[db.ApplDB], trackIfname)
-                            if ifup == false {
+                            if !ifup {
                                 *ppriority_incr_state = 0
                             }
 
@@ -857,7 +884,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                             vrrp4.VrrpTrackInterface[trackIfname].Config.PriorityIncrement = ppriority_increment
                         }
 
-                        log.Info("PriorityIncrement: ", priority_increment)
+                        log.Info("PriorityIncrement: ", ppriority_incr_state)
                     }
                 }
             }
@@ -869,9 +896,10 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
             if _, ok := v6Address.Vrrp.VrrpGroup[vrid]; !ok {
                 vrrp6, err = v6Address.Vrrp.NewVrrpGroup(vrid)
+            } else {
+                vrrp6 = v6Address.Vrrp.VrrpGroup[vrid]
             }
 
-            vrrp6 = v6Address.Vrrp.VrrpGroup[vrid]
 
             ygot.BuildEmptyTree(vrrp6)
             pvrid := new(uint8)
@@ -881,30 +909,34 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
             state = 0
 
             if isState {
+
+              priority := 100
               if vrrpData.Has("priority") {
-                  ppriority := new(uint8)
-                  priority, _ := strconv.Atoi(vrrpData.Get("priority"))
-                  *ppriority  = uint8(priority)
-                  vrrp6.State.Priority = ppriority
+                  priority, _ = strconv.Atoi(vrrpData.Get("priority"))
               }
-              if vrrpData.Has("advert_int") {
-                  padvintv := new(uint16)
-                  advintv, _ := strconv.Atoi(vrrpData.Get("advert_int"))
-                  *padvintv  = uint16(advintv)
-                  vrrp6.State.AdvertisementInterval = padvintv
-              }
+              ppriority := new(uint8)
+              *ppriority  = uint8(priority)
+              vrrp6.State.Priority = ppriority
 
+              advintv := 1
+              if vrrpData.Has("adv_interval") {
+                  advintv, _ = strconv.Atoi(vrrpData.Get("adv_interval"))
+              }
+              padvintv := new(uint16)
+              *padvintv  = uint16(advintv)
+              vrrp6.State.AdvertisementInterval = padvintv
+
+              preemptstr := "True"
               if vrrpData.Has("pre_empt") {
-                  ppreempt := new(bool)
-                  preemptstr := vrrpData.Get("pre_empt")
-                  if "True" == preemptstr {
-                      *ppreempt = true
-                  } else {
-                      *ppreempt = false
-                  }
-
-                  vrrp6.State.Preempt = ppreempt
+                  preemptstr = vrrpData.Get("pre_empt")
               }
+              ppreempt := new(bool)
+              if preemptstr == "True"{
+                  *ppreempt = true
+              } else {
+                  *ppreempt = false
+              }
+              vrrp6.State.Preempt = ppreempt
 
               if vrrpData.Has("vip@") {
                   vipstr := vrrpData.Get("vip@")
@@ -919,52 +951,49 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
               *pstate  = uint8(state)
               vrrp6.State.State = pstate
 
+              version := 3
               if vrrpData.Has("version") {
-                  pversion := new(uint8)
-                  version, _ := strconv.Atoi(vrrpData.Get("version"))
-                  *pversion  = uint8(version)
-                  vrrp6.State.Version = pversion
+                  version, _ = strconv.Atoi(vrrpData.Get("version"))
               }
+              pversion := new(uint8)
+              *pversion  = uint8(version)
+              vrrp6.State.Version = pversion
 
             }
             if isConfig {
-                if vrrpData.Has("priority") {
-                    ppriority := new(uint8)
-                    priority, _ := strconv.Atoi(vrrpData.Get("priority"))
-                    *ppriority  = uint8(priority)
-                    vrrp6.Config.Priority = ppriority
-                }
-                if vrrpData.Has("advert_int") {
-                    padvintv := new(uint16)
-                    advintv, _ := strconv.Atoi(vrrpData.Get("advert_int"))
-                    *padvintv  = uint16(advintv)
-                    vrrp6.Config.AdvertisementInterval = padvintv
-                }
+              priority := 100
+              if vrrpData.Has("priority") {
+                  priority, _ = strconv.Atoi(vrrpData.Get("priority"))
+              }
+              ppriority := new(uint8)
+              *ppriority  = uint8(priority)
+              vrrp6.Config.Priority = ppriority
 
-                if vrrpData.Has("pre_empt") {
-                    ppreempt := new(bool)
-                    preemptstr := vrrpData.Get("pre_empt")
-                    if "True" == preemptstr {
-                        *ppreempt = true
-                    } else {
-                        *ppreempt = false
-                    }
+              advintv := 1
+              if vrrpData.Has("advert_int") {
+                  advintv, _ = strconv.Atoi(vrrpData.Get("advert_int"))
+              }
+              padvintv := new(uint16)
+              *padvintv  = uint16(advintv)
+              vrrp6.Config.AdvertisementInterval = padvintv
 
-                    vrrp6.Config.Preempt = ppreempt
-                }
+              preemptstr := "True"
+              if vrrpData.Has("pre_empt") {
+                  preemptstr = vrrpData.Get("pre_empt")
+              }
+              ppreempt := new(bool)
+              if preemptstr == "True"{
+                  *ppreempt = true
+              } else {
+                  *ppreempt = false
+              }
+              vrrp6.Config.Preempt = ppreempt
 
-                if vrrpData.Has("vip@") {
-                    vipstr := vrrpData.Get("vip@")
-                    vipmap := strings.Split(vipstr, ",")
-                    vrrp6.Config.VirtualAddress = vipmap
-                }
-
-                if vrrpData.Has("version") {
-                    pversion := new(uint8)
-                    version, _ := strconv.Atoi(vrrpData.Get("version"))
-                    *pversion  = uint8(version)
-                    vrrp6.Config.Version = pversion
-                }
+              if vrrpData.Has("vip@") {
+                  vipstr := vrrpData.Get("vip@")
+                  vipmap := strings.Split(vipstr, ",")
+                  vrrp6.Config.VirtualAddress = vipmap
+              }
 
             }
 
@@ -1009,7 +1038,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         if (isTrackState) {
 
                             ifup := isIntfUp(inParams.dbs[db.ApplDB], trackIfname)
-                            if ifup == false {
+                            if !ifup {
                                 *ppriority_incr_state = 0
                             }
 
@@ -1023,6 +1052,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
         }
     }
 
+    log.Info("err:", err)
     return err
 }
 
@@ -1032,7 +1062,7 @@ var DbToYang_intf_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (er
     intfsObj := getIntfsRoot(inParams.ygRoot)
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("name")
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
 
@@ -1055,10 +1085,99 @@ var DbToYang_intf_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (er
         }
 
 
-    } else {
-        err = errors.New("Invalid URI : " + targetUriPath)
     }
+
     err = handleVrrpGetByTargetURI(inParams, targetUriPath, intfName, intfObj)
 
+    log.Info("err:", err)
+
+    if err != nil {
+        return tlerr.NotFound("Resource Not Found")
+    }
     return err
+}
+
+
+func vrrp_show_summary (body []byte, dbs [db.MaxDB]*db.DB, tableName string, trackTableName string) (result []byte, err error) {
+    var vip_suffix string
+
+    log.Infof("Enter rpc_show_vrrp")
+
+	  var VRRP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: tableName}
+    if tableName == "VRRP" {
+        vip_suffix = "/32"
+    } else {
+        vip_suffix = "/128"
+    }
+
+    var showOutput struct {
+	      Output struct {
+			      Vrrp [] VrrpSummaryEntry
+        } `json:"sonic-vrrp:output"`
+    }
+
+    showOutput.Output.Vrrp = make([]VrrpSummaryEntry, 0)
+
+    vrrpTbl, err := dbs[db.ConfigDB].GetTable(VRRP_TABLE_TS)
+    if nil != err {
+        return nil, err
+    }
+
+    vrrpKeys, _ := vrrpTbl.GetKeys()
+    for _, key := range vrrpKeys {
+        vrrpData, _ := vrrpTbl.GetEntry(key)
+
+        log.Infof("vrrpData:", vrrpData)
+
+        var vrrpsummaryentry VrrpSummaryEntry
+        var state uint8
+        state = 0
+        priority := 100
+
+        vrrpsummaryentry.Ifname = key.Get(0)
+        vrrpsummaryentry.Vrid, _ = strconv.Atoi(key.Get(1))
+
+        if vrrpData.Has("priority") {
+            priority, _ = strconv.Atoi(vrrpData.Get("priority"))
+        }
+        vrrpsummaryentry.ConfPrio = priority
+        vrrpsummaryentry.CurrPrio = priority
+        vrrpsummaryentry.CurrPrio += int(getVrrpTrackPriority(dbs, trackTableName, key.Get(0), key.Get(1)))
+
+        if vrrpData.Has("vip@") {
+            vipstr := vrrpData.Get("vip@")
+            vipmap := strings.Split(vipstr, ",")
+            vrrpsummaryentry.Vip = vipmap[0]
+            state = getVrrpState(dbs[db.ApplDB], "VRRP_TABLE", key.Get(0), vipmap[0], vip_suffix, key.Get(1))
+        }
+
+        vrrpsummaryentry.State = state
+
+        showOutput.Output.Vrrp = append(showOutput.Output.Vrrp, vrrpsummaryentry)
+
+    }
+
+    log.Infof("vrrp all summary:", showOutput.Output.Vrrp)
+
+    result, err = json.Marshal(&showOutput)
+	  return result, err
+
+}
+
+var rpc_show_vrrp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (result []byte, err error) {
+
+	  log.Infof("Enter rpc_show_vrrp")
+
+    result, err = vrrp_show_summary(body, dbs, "VRRP", "VRRP_TRACK")
+	  return result, err
+
+}
+
+var rpc_show_vrrp6 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (result []byte, err error) {
+
+	  log.Infof("Enter rpc_show_vrrp6")
+
+    result, err = vrrp_show_summary(body, dbs, "VRRP6", "VRRP6_TRACK")
+	  return result, err
+
 }

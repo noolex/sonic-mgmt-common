@@ -133,6 +133,7 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
     txCache := new(sync.Map)
     err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 
+    log.Info("tranlateSubscribe:path", path)
     subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
     if subscDt.PType == transformer.OnChange {
         notifOpts.pType = OnChange
@@ -140,6 +141,7 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
         notifOpts.pType = Sample
     }
     notifOpts.mInterval = subscDt.MinInterval
+    notifOpts.isOnChangeSupported = subscDt.OnChange
     if err != nil {
         log.Infof("returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
         return &notifOpts, nil, err
@@ -159,7 +161,8 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
                 notifInfo.table = db.TableSpec{Name:tblNm}
                 if (len(tblDt) == 1) {
                     for tblKy, _ := range(tblDt) {
-                        notifInfo.key = asKey(tblKy)
+			    notifInfo.key = asKey(tblKy)
+			    notifInfo.needCache = subscDt.NeedCache
                     }
                 } else {
                     if (len(tblDt) >  1) {
@@ -173,7 +176,6 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
             }
         }
     }
-    notifInfo.needCache = subscDt.NeedCache
     log.Infof("For path - %v, returning: notifOpts - %v, notifInfo - %v, error - nil", path, notifOpts, notifInfo)
     return &notifOpts, &notifInfo, nil
 }
@@ -558,7 +560,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						}
 					} else {
 						// workaround to patch operation from CLI
-						log.Info("Create(pathc) an entry.")
+						log.Info("Create(patch) an entry.")
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
 							log.Error("UPDATE case - d.CreateEntry() failure")
@@ -703,7 +705,6 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 						}
 					}
 				}
-
 			}
 		}
 	} /* end of ordered table list for loop */

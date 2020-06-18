@@ -23,14 +23,6 @@ module sonic-ospfv2-common {
       prefix "sonic-lbk";
   }
 
-  import sonic-routing-policy-sets {
-      prefix "sonic-rpolicy";
-  }
-
-  import sonic-route-map {
-      prefix "sonic-rmap";
-  }
-
   import sonic-acl {
       prefix sonic-acl;
   }

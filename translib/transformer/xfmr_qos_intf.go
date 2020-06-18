@@ -59,6 +59,98 @@ func getSchedulerIds(sp_name string) ([]string, error) {
     return sched_ids, err
 }
 
+func qos_intf_prev_sched_policy_delete(inParams XfmrParams, if_name string) (map[string]map[string]db.Value, error) {
+    var err error
+    res_map := make(map[string]map[string]db.Value)
+
+    log.Info("os_intf_sched_policy_delete: ", inParams.ygRoot, inParams.uri)
+    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    
+    queueTblMap := make(map[string]db.Value)
+    portQosTblMap := make(map[string]db.Value)
+    pTbl := &queueTblMap
+
+    d :=  inParams.d
+    if d == nil  {
+        log.Infof("unable to get configDB")
+        return res_map, err
+    }
+
+    // QUEUE or PORT_QOS_MAP
+    tbl_list := []string{"QUEUE", "PORT_QOS_MAP"}
+    var port_sched bool
+    var queue_sched bool
+
+    for _, tbl_name := range tbl_list {
+        dbSpec := &db.TableSpec{Name: tbl_name}
+
+        if tbl_name == "PORT_QOS_MAP" {
+            pTbl = &portQosTblMap
+        } else {
+            pTbl = &queueTblMap
+        }
+
+        keys, _ := d.GetKeys(dbSpec)
+        for  _, key := range keys {
+            if len(key.Comp) < 1 {
+                continue
+            }
+
+            s := strings.Split(key.Comp[0], "|")
+
+            if strings.Compare(if_name, s[0]) == 0 {
+                qCfg, _ := d.GetEntry(dbSpec, key) 
+                log.Info("current entry: ", qCfg)
+                _, ok := qCfg.Field["scheduler"] 
+                if ok {
+                    // find a entry with a scheduler config, to be deleted
+                    new_key := key.Comp[0]
+                    if tbl_name == "QUEUE" {
+                        new_key = new_key + "|" +  key.Comp[1]
+                        queue_sched = true
+                    } else {
+                        port_sched = true
+                    }
+                    log.Info("new key in rtTbl: ", new_key)
+                    _, ok := (*pTbl)[new_key]
+                    if !ok {
+                        (*pTbl)[new_key] = db.Value{Field: make(map[string]string)}
+                    }
+                    (*pTbl)[new_key].Field["scheduler"] = ""
+                }
+            }
+        }
+    }
+
+    if queue_sched {
+        if _, ok := subOpMap[db.ConfigDB]; !ok {
+            subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        }
+        if _, ok := subOpMap[db.ConfigDB]["QUEUE"]; !ok {
+            subOpMap[db.ConfigDB]["QUEUE"] = make(map[string]db.Value)
+        }
+
+        subOpMap[db.ConfigDB]["QUEUE"] = queueTblMap
+    }
+    if port_sched {
+        if _, ok := subOpMap[db.ConfigDB]; !ok {
+            subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        }
+        if _, ok := subOpMap[db.ConfigDB]["PORT_QOS_MAP"]; !ok {
+            subOpMap[db.ConfigDB]["PORT_QOS_MAP"] = make(map[string]db.Value)
+        }
+
+        subOpMap[db.ConfigDB]["PORT_QOS_MAP"] = portQosTblMap
+    }
+
+    inParams.subOpDataMap[DELETE] = &subOpMap
+
+    log.Info("inParams.subOpDataMap: ", subOpMap)
+
+    log.Info("qos_intf_prev_sched_policy_delete: End ")
+    return res_map, err
+}
+
 
 var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
@@ -100,6 +192,9 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
         return res_map, err
     }
 
+    prev_sp := doGetIntfSchedulerPolicy(inParams.d, if_name)
+
+  
     sp_name := config.Name
 
     sp_name_str := *sp_name
@@ -141,6 +236,11 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
         (*pTbl)[key].Field["scheduler"] = StringToDbLeafref(db_sp_name, "SCHEDULER")
     }
 
+    if strings.Compare(prev_sp, sp_name_str) != 0 {
+        log.Info("Modify Case, Prev scheduler policy ", prev_sp ," New Policy ", sp_name_str)
+        qos_intf_prev_sched_policy_delete(inParams, if_name)
+    }
+
     res_map["QUEUE"] = queueTblMap
     res_map["PORT_QOS_MAP"] = portQosTblMap
 
@@ -167,7 +267,6 @@ func doGetIntfSchedulerPolicy(d *db.DB, if_name string) (string) {
         dbSpec := &db.TableSpec{Name: tbl_name}
 
         keys, _ := d.GetKeys(dbSpec)
-        log.Info("keys: ", keys)
         for  _, key := range keys {
             if len(key.Comp) < 1 {
                 continue
@@ -257,10 +356,10 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
         }
     }
 
-    if queue_sched == true {
+    if queue_sched {
         res_map["QUEUE"] = queueTblMap
     }
-    if port_sched == true {
+    if port_sched {
         res_map["PORT_QOS_MAP"] = portQosTblMap
     }
 

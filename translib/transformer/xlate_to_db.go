@@ -598,6 +598,9 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
     if (xlateParams.tableName != "") {
         // Specific table entry case
         xlateParams.result[xlateParams.tableName] = make(map[string]db.Value)
+        if tblSpecInfo, ok := xDbSpecMap[xlateParams.tableName]; ok && (tblSpecInfo.cascadeDel == XFMR_ENABLE) {
+            *xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, xlateParams.tableName)
+        }
         if (xlateParams.keyName != "") {
             // Specific key case
 	    var dbVal db.Value
@@ -656,6 +659,9 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
             dbInfo := xDbSpecMap[xlateParams.xpath]
             if dbInfo.fieldType == "container" {
                 for dir, _ := range dbInfo.dbEntry.Dir {
+                    if tblSpecInfo, ok := xDbSpecMap[dir]; ok && tblSpecInfo.cascadeDel == XFMR_ENABLE {
+                        *xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, dir)
+                    }
                     if dbInfo.dbEntry.Dir[dir].Config != yang.TSFalse {
                        xlateParams.result[dir] = make(map[string]db.Value)
                     }

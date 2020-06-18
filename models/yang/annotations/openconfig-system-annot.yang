@@ -19,6 +19,8 @@ module openconfig-system-annot {
     import openconfig-system { prefix oc-sys; }
     import sonic-extensions {prefix sonic-ext; }
     import openconfig-system-ext { prefix oc-sys-ext; }
+    import openconfig-aaa-radius-ext { prefix oc-aaa-radius-ext; }
+    import openconfig-aaa-ldap-ext { prefix oc-aaa-ldap-ext; }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:users/oc-sys:user {
         deviate add {
@@ -205,18 +207,6 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:nas-ip-address {
-      deviate add {
-          sonic-ext:field-name "nas_ip";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:retransmit-attempts {
-      deviate add {
-          sonic-ext:field-name "retransmit";
-      }
-    }
-
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:source-interface {
       deviate add {
           sonic-ext:field-name "src_intf";
@@ -244,18 +234,6 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:source-address {
       deviate add {
           sonic-ext:field-name "src_ip";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:nas-ip-address {
-      deviate add {
-          sonic-ext:field-name "nas_ip";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:retransmit-attempts {
-      deviate add {
-          sonic-ext:field-name "retransmit";
       }
     }
 
@@ -289,6 +267,24 @@ module openconfig-system-annot {
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys:name {
       deviate add {
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:config/oc-aaa-radius-ext:nas-ip-address {
+      deviate add {
+          sonic-ext:field-name "nas_ip";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:config/oc-aaa-radius-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retransmit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:config/oc-aaa-radius-ext:statistics {
+      deviate add {
+          sonic-ext:field-name "statistics";
       }
     }
 
@@ -391,6 +387,67 @@ module openconfig-system-annot {
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:config/oc-sys:source-address {
         deviate not-supported;
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state {
+      deviate add {
+        sonic-ext:table-name "RADIUS_SERVER_STATS";
+        sonic-ext:key-transformer "server_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters {
+      deviate add {
+          sonic-ext:db-name "COUNTERS_DB";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-aaa-radius-ext:access-requests {
+      deviate add {
+          sonic-ext:field-name "access_requests";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-sys:retried-access-requests {
+      deviate add {
+          sonic-ext:field-name "retried_access_requests";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-sys:access-accepts {
+      deviate add {
+          sonic-ext:field-name "access_accepts";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-sys:access-rejects {
+      deviate add {
+          sonic-ext:field-name "access_rejects";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-sys:timeout-access-requests {
+      deviate add {
+          sonic-ext:field-name "retried_access_requests";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-aaa-radius-ext:access-challenges {
+      deviate add {
+          sonic-ext:field-name "access_challenges";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-aaa-radius-ext:bad-authenticators {
+      deviate add {
+          sonic-ext:field-name "bad_authenticators";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters/oc-aaa-radius-ext:invalid-packets {
+      deviate add {
+          sonic-ext:field-name "invalid_packets";
+      }
     }
 
 /*********************************************************/
@@ -523,4 +580,389 @@ module openconfig-system-annot {
             sonic-ext:subtree-transformer "oc_systemd_coredump_config_xfmr";
             }
     }
+				
+	/*************** ldap-servers-server-attributes-start ***********/
+	
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config {
+      deviate add {
+          sonic-ext:table-name "LDAP_SERVER";
+          sonic-ext:key-transformer "server_key_xfmr";
+       }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:use-type {
+      deviate add {
+          sonic-ext:field-transformer "ldap_use_type_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:ssl {
+      deviate add {
+          sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retry";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state {
+      deviate add {
+          sonic-ext:db-name "CONFIG_DB";
+          sonic-ext:table-name "LDAP_SERVER";
+          sonic-ext:key-transformer "server_key_xfmr";
+       }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:use-type {
+      deviate add {
+          sonic-ext:field-transformer "ldap_use_type_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:ssl {
+      deviate add {
+          sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retry";
+      }
+    }
+   		
+	/*************** ldap-servers-server-attributes-end ***********/
+    
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:source-interface {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:source-interface {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:vrf-name {
+      deviate add {
+          sonic-ext:field-name "vrf_name";
+      }
+    }
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:vrf-name {
+      deviate add {
+          sonic-ext:field-name "vrf_name";
+      }
+    }
+
+	/*************** ldap-servers-map-attributes-start ***********/    
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map/oc-aaa-ldap-ext:config {
+      deviate add {
+      	sonic-ext:table-name "LDAP_MAP";
+      	sonic-ext:key-transformer "ldap_server_map_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map/oc-aaa-ldap-ext:state {
+      deviate add {
+        sonic-ext:db-name "CONFIG_DB";
+      	sonic-ext:table-name "LDAP_MAP";
+      	sonic-ext:key-transformer "ldap_server_map_key_xfmr";
+      }
+    }
+    
+    /*************** ldap-servers-map-attributes-end ***********/     
+
+    
+    deviation /oc-sys:system/oc-sys:ntp {
+        deviate add {
+            sonic-ext:table-name "NTP";
+            sonic-ext:key-transformer "ntp_global_key_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys-ext:ntp-source-interface {
+        deviate add {
+            sonic-ext:field-name "src_intf";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys-ext:ntp-source-interface {
+        deviate add {
+            sonic-ext:field-name "src_intf";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server {
+        deviate add {
+            sonic-ext:subtree-transformer "ntp_server_subtree_xfmr";
+        }
+    }
+    
+		/*************** ldap-server-group-attributes-start ***********/		
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:search-time-limit {
+      deviate add {
+          sonic-ext:field-name "timelimit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:bind-time-limit {
+      deviate add {
+          sonic-ext:field-name "bind_timelimit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retry";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:version {
+      deviate add {
+          sonic-ext:field-name "ldap_version";
+      }
+    }
+    
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:ssl {
+      deviate add {
+          sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:scope {
+      deviate add {
+          sonic-ext:field-transformer "ldap_scope_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:bind-dn {
+      deviate add {
+          sonic-ext:field-name "binddn";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:bind-pw {
+      deviate add {
+          sonic-ext:field-name "bindpw";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:vrf-name {
+      deviate add {
+          sonic-ext:field-name "vrf";
+      }
+    }
+		
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:nss-base-passwd {
+      deviate add {
+          sonic-ext:field-name "nss_base_passwd";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:idle-time-limit {
+      deviate add {
+          sonic-ext:field-name "idle_timelimit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:nss-base-group {
+      deviate add {
+          sonic-ext:field-name "nss_base_group";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:nss-base-shadow {
+      deviate add {
+          sonic-ext:field-name "nss_base_shadow";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:nss-base-netgroup {
+      deviate add {
+          sonic-ext:field-name "nss_base_netgroup";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:nss-base-sudoers {
+      deviate add {
+          sonic-ext:field-name "nss_base_sudoers";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:nss-initgroups-ignoreusers {
+      deviate add {
+          sonic-ext:field-name "nss_initgroups_ignoreusers";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:sudoers-base {
+      deviate add {
+          sonic-ext:field-name "sudoers_base";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:pam-filter {
+      deviate add {
+          sonic-ext:field-name "pam_filter";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:pam-login-attribute {
+      deviate add {
+          sonic-ext:field-name "pam_login_attribute";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:pam-group-dn {
+      deviate add {
+          sonic-ext:field-name "pam_group_dn";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:pam-member-attribute {
+      deviate add {
+          sonic-ext:field-name "pam_member_attribute";
+      }
+    }
+
+    //state
+    
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state {
+      deviate add {
+          sonic-ext:db-name "CONFIG_DB";
+       }
+    }
+    
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:search-time-limit {
+      deviate add {
+          sonic-ext:field-name "timelimit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:ssl {
+      deviate add {
+          sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:scope {
+      deviate add {
+          sonic-ext:field-transformer "ldap_scope_field_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:bind-time-limit {
+      deviate add {
+          sonic-ext:field-name "bind_timelimit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retry";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:version {
+      deviate add {
+          sonic-ext:field-name "ldap_version";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:bind-dn {
+      deviate add {
+          sonic-ext:field-name "binddn";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:bind-pw {
+      deviate add {
+          sonic-ext:field-name "bindpw";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:vrf-name {
+      deviate add {
+          sonic-ext:field-name "vrf";
+      }
+    }
+	
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:nss-base-passwd {
+      deviate add {
+          sonic-ext:field-name "nss_base_passwd";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:idle-time-limit {
+      deviate add {
+          sonic-ext:field-name "idle_timelimit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:nss-base-group {
+      deviate add {
+          sonic-ext:field-name "nss_base_group";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:nss-base-shadow {
+      deviate add {
+          sonic-ext:field-name "nss_base_shadow";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:nss-base-netgroup {
+      deviate add {
+          sonic-ext:field-name "nss_base_netgroup";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:nss-base-sudoers {
+      deviate add {
+          sonic-ext:field-name "nss_base_sudoers";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:nss-initgroups-ignoreusers {
+      deviate add {
+          sonic-ext:field-name "nss_initgroups_ignoreusers";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:sudoers-base {
+      deviate add {
+          sonic-ext:field-name "sudoers_base";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:pam-filter {
+      deviate add {
+          sonic-ext:field-name "pam_filter";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:pam-login-attribute {
+      deviate add {
+          sonic-ext:field-name "pam_login_attribute";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:pam-group-dn {
+      deviate add {
+          sonic-ext:field-name "pam_group_dn";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:pam-member-attribute {
+      deviate add {
+          sonic-ext:field-name "pam_member_attribute";
+      }
+    }
+
+		/*************** ldap-server-group-attributes-end ***********/
+    
 }

@@ -36,14 +36,18 @@ import (
 )
 
 //config db tables
-var CFG_L2MC_TABLE_TS *db.TableSpec = &db.TableSpec{Name: CFG_L2MC_TABLE}
-var CFG_L2MC_MROUTER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: CFG_L2MC_MROUTER_TABLE}
-var CFG_L2MC_STATIC_GROUP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: CFG_L2MC_STATIC_GROUP_TABLE}
-var CFG_L2MC_STATIC_MEMBER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: CFG_L2MC_STATIC_MEMBER_TABLE}
+var (
+CFG_L2MC_TABLE_TS *db.TableSpec = &db.TableSpec{Name: CFG_L2MC_TABLE}
+CFG_L2MC_MROUTER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: CFG_L2MC_MROUTER_TABLE}
+CFG_L2MC_STATIC_GROUP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: CFG_L2MC_STATIC_GROUP_TABLE}
+CFG_L2MC_STATIC_MEMBER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: CFG_L2MC_STATIC_MEMBER_TABLE}
+)
 
 //app db tables
-var APP_L2MC_MROUTER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: APP_L2MC_MROUTER_TABLE}
-var APP_L2MC_MEMBER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: APP_L2MC_MEMBER_TABLE}
+var (
+APP_L2MC_MROUTER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: APP_L2MC_MROUTER_TABLE}
+APP_L2MC_MEMBER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: APP_L2MC_MEMBER_TABLE}
+)
 
 var L2MC_TABLE_DEFAULT_FIELDS_MAP = map[string]string{
 	"enabled":                    "true",
@@ -153,7 +157,7 @@ func getYangNode(path *gnmipb.Path) (*yang.Entry, error) {
 
 	fmt.Println("tmpStr pathStr ==> ", pathStr)
 
-	pathStr = pathStr[1:len(pathStr)]
+	pathStr = pathStr[1:]
 
 	fmt.Println("tmpStr pathStr ==> ", pathStr)
 
@@ -245,7 +249,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 					fmt.Println("handleDeleteReq - printing db table mRouterDbTbl keys")
 					pretty.Print(mrouterKeys)
 				
-					for j, _ := range mrouterKeys {
+					for j := range mrouterKeys {
 						mrouterDbV, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
 						if err != nil {
 							fmt.Println("mRouterDbTbl.GetEntry fails => ", err)
@@ -278,7 +282,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 					fmt.Println("handleDeleteReq - printing db table staticGrpKeys keys")
 					pretty.Print(staticGrpKeys)
 					
-					for k, _ := range staticGrpKeys {
+					for k := range staticGrpKeys {
 						staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 						if err != nil {
 							fmt.Println("staticGrpDbTbl memeber - GetEntry fails => ", err)
@@ -310,7 +314,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 					fmt.Println("handleDeleteReq - printing db table staticGrpKeys keys")
 					pretty.Print(staticGrpKeys)
 					// fetch all group entries from the db and delete the entries matches with the given grpKey							
-					for k, _ := range staticGrpKeys {
+					for k := range staticGrpKeys {
 						staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 						if err != nil {
 							fmt.Println("staticGrpDbTbl.GetEntry fails => ", err)
@@ -369,7 +373,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 					igmpsTblMap[igmpsKey] = dbV
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					fmt.Println("handleDeleteReq enabled res_map ==> ", res_map)
-				} else if len(igmpsVal.Config.MrouterInterface) == 0 && reqP.isConfigTargetNode ("mrouter-interface") == true {
+				} else if len(igmpsVal.Config.MrouterInterface) == 0 && reqP.isConfigTargetNode ("mrouter-interface"){
 					res_map[CFG_L2MC_MROUTER_TABLE] = igmpsMrouterTblMap
 				} else if len(igmpsVal.Config.MrouterInterface) == 1 {
 					for _, mrVal := range igmpsVal.Config.MrouterInterface {
@@ -377,7 +381,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 						igmpsMrouterTblMap[igmpsMrouterKey] = db.Value{Field: make(map[string]string)}
 					}
 					res_map[CFG_L2MC_MROUTER_TABLE] = igmpsMrouterTblMap
-				} else if len(igmpsVal.Config.StaticMulticastGroup) == 0 && reqP.isConfigTargetNode ("static-multicast-group") == true {
+				} else if len(igmpsVal.Config.StaticMulticastGroup) == 0 && reqP.isConfigTargetNode ("static-multicast-group"){
 					res_map[CFG_L2MC_STATIC_GROUP_TABLE] = igmpsMcastGroupTblMap
 					res_map[CFG_L2MC_STATIC_MEMBER_TABLE] = igmpsMcastGroupMemTblMap
 				} else if len(igmpsVal.Config.StaticMulticastGroup) == 1 {
@@ -396,7 +400,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 							fmt.Println("handleDeleteReq - printing db table staticGrpKeys keys")
 							pretty.Print(staticGrpKeys)
 							// fetch all group entries from the db and delete the entries matches with the given grpKey							
-							for k, _ := range staticGrpKeys {
+							for k  := range staticGrpKeys {
 								if staticGrpKeys[k].Comp[1] == grpKey {
 									igmpsGrpKey := igmpsKey + "|" + grpKey
 									igmpsMcastGroupTblMap[igmpsGrpKey] = db.Value{Field: make(map[string]string)}
@@ -604,7 +608,7 @@ var YangToDb_igmp_snooping_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
     pathInfo := NewPathInfo(inParams.uri)
     niName := pathInfo.Var("name")
     protoId := pathInfo.Var("identifier")
-    if strings.Contains(protoId,"IGMP_SNOOPING") == false {
+    if !strings.Contains(protoId,"IGMP_SNOOPING") {
         return nil, errors.New("IGMP Proto ID is missing")
     }
 
@@ -643,7 +647,7 @@ var DbToYang_igmp_snooping_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
     pathInfo := NewPathInfo(inParams.uri)
     niName := pathInfo.Var("name")
     protoId := pathInfo.Var("identifier")
-    if strings.Contains(protoId,"IGMP_SNOOPING") == false {
+    if !strings.Contains(protoId,"IGMP_SNOOPING") {
         return errors.New("IGMP Proto ID is missing")
     }
 
@@ -694,7 +698,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpConfigObj() (error) {
 			fmt.Println("unMarshalStaticGrpConfigObj - printing db table staticGrpKeys keys")
 			pretty.Print(staticGrpKeys)
 			
-			for k, _ := range staticGrpKeys {
+			for k := range staticGrpKeys {
 				staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 				if err != nil {
 					return err
@@ -734,7 +738,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpConfigObj() (error) {
 		fmt.Println("unMarshalStaticGrpConfigObj - printing db table staticGrpKeys keys")
 		pretty.Print(staticGrpKeys)
 
-		for k, _ := range staticGrpKeys {
+		for k := range staticGrpKeys {
 			staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 			if err != nil {
 				return err
@@ -746,7 +750,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpConfigObj() (error) {
 				continue
 			}
 
-			staticGrpObj, _ := reqP.intfConfigObj.StaticMulticastGroup[staticGrpKeys[k].Comp[1]]
+			staticGrpObj := reqP.intfConfigObj.StaticMulticastGroup[staticGrpKeys[k].Comp[1]]
 
 			if staticGrpObj == nil {
 				staticGrpObj, err = reqP.intfConfigObj.NewStaticMulticastGroup(staticGrpKeys[k].Comp[1])
@@ -789,7 +793,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpStateObj() (error) {
 				fmt.Println("unMarshalStaticGrpStateObj - printing db table staticGrpKeys keys")
 				pretty.Print(staticGrpKeys)
 		
-				for k, _ := range staticGrpKeys {
+				for k := range staticGrpKeys {
 					staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 					if err != nil {
 						return err
@@ -830,7 +834,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpStateObj() (error) {
 		fmt.Println("unMarshalStaticGrpStateObj - printing db table staticGrpKeys keys")
 		pretty.Print(staticGrpKeys)
 
-		for k, _ := range staticGrpKeys {
+		for k := range staticGrpKeys {
 			staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 			if err != nil {
 				return err
@@ -843,7 +847,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpStateObj() (error) {
 			}
 
 			staticGrpKey := ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_IgmpSnooping_Interfaces_Interface_State_StaticMulticastGroup_Key{staticGrpKeys[k].Comp[2], staticGrpKeys[k].Comp[1]}
-			staticGrpObj, _ := reqP.intfStateObj.StaticMulticastGroup[staticGrpKey]
+			staticGrpObj := reqP.intfStateObj.StaticMulticastGroup[staticGrpKey]
 
 			if staticGrpObj == nil {
 				staticGrpObj, err = reqP.intfStateObj.NewStaticMulticastGroup(staticGrpKeys[k].Comp[2], staticGrpKeys[k].Comp[1])
@@ -862,7 +866,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpStateObj() (error) {
 }
 
 func (reqP *reqProcessor) unMarshalMrouterState() (error) {
-	if reqP.isStateTargetNode ("mrouter-interface") == false {
+	if !reqP.isStateTargetNode ("mrouter-interface") {
 		return nil
 	}
 
@@ -879,7 +883,7 @@ func (reqP *reqProcessor) unMarshalMrouterState() (error) {
 	fmt.Println("unMarshalMrouterConfig - printing db table mRouterDbTbl keys")
 	pretty.Print(mrouterKeys)
 
-	for j, _ := range mrouterKeys {
+	for j := range mrouterKeys {
 		mrouterDbV, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
 		if err != nil {
 			return err
@@ -898,7 +902,7 @@ func (reqP *reqProcessor) unMarshalMrouterState() (error) {
 }
 
 func (reqP *reqProcessor) unMarshalMrouterConfig() (error) {
-	if reqP.isConfigTargetNode ("mrouter-interface") == false {
+	if !reqP.isConfigTargetNode ("mrouter-interface") {
 		return nil
 	}
 
@@ -915,7 +919,7 @@ func (reqP *reqProcessor) unMarshalMrouterConfig() (error) {
 	fmt.Println("unMarshalMrouterConfig - printing db table mRouterDbTbl keys")
 	pretty.Print(mrouterKeys)
 
-	for j, _ := range mrouterKeys {
+	for j := range mrouterKeys {
 		mrouterDbV, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
 		if err != nil {
 			return err
@@ -935,48 +939,48 @@ func (reqP *reqProcessor) unMarshalMrouterConfig() (error) {
 
 func (reqP *reqProcessor) unMarshalIGMPSnoopingIntfConfigObjInst (dbV *db.Value) {
 	isAllFields := reqP.isConfigTargetNode ("")
-	if reqP.targetNode.Name == "version" || isAllFields == true {
-		if fv, ok := dbV.Field["version"]; ok == true {
+	if reqP.targetNode.Name == "version" || isAllFields {
+		if fv, ok := dbV.Field["version"]; ok {
 			intV, _ := strconv.ParseInt(fv, 10, 64)
 			tmp := uint8(intV)
 			reqP.intfConfigObj.Version = &tmp
 		}
 	}
-	if reqP.targetNode.Name == "fast-leave" || isAllFields == true {
-		if fv, ok := dbV.Field["fast-leave"]; ok == true {
+	if reqP.targetNode.Name == "fast-leave" || isAllFields {
+		if fv, ok := dbV.Field["fast-leave"]; ok {
 			tmp, _ := strconv.ParseBool(fv)
 			reqP.intfConfigObj.FastLeave = &tmp
 		}
 	}
-	if reqP.targetNode.Name == "query-interval" || isAllFields == true {
-		if fv, ok := dbV.Field["query-interval"]; ok == true {
+	if reqP.targetNode.Name == "query-interval" || isAllFields {
+		if fv, ok := dbV.Field["query-interval"]; ok {
 			intV, _ := strconv.ParseInt(fv, 10, 64)
 			tmp := uint16(intV)
 			reqP.intfConfigObj.QueryInterval = &tmp
 		}
 	} 
-	if reqP.targetNode.Name == "last-member-query-interval" || isAllFields == true {
-		if fv, ok := dbV.Field["last-member-query-interval"]; ok == true {
+	if reqP.targetNode.Name == "last-member-query-interval" || isAllFields {
+		if fv, ok := dbV.Field["last-member-query-interval"]; ok {
 			intV, _ := strconv.ParseInt(fv, 10, 64)
 			tmp := uint32(intV)
 			reqP.intfConfigObj.LastMemberQueryInterval = &tmp
 		}
 	} 
-	if reqP.targetNode.Name == "query-max-response-time" || isAllFields == true {
-		if fv, ok := dbV.Field["query-max-response-time"]; ok == true {
+	if reqP.targetNode.Name == "query-max-response-time" || isAllFields {
+		if fv, ok := dbV.Field["query-max-response-time"]; ok {
 			intV, _ := strconv.ParseInt(fv, 10, 64)
 			tmp := uint16(intV)
 			reqP.intfConfigObj.QueryMaxResponseTime = &tmp
 		}
 	} 
-	if reqP.targetNode.Name == "enabled" || isAllFields == true {
-		if fv, ok := dbV.Field["enabled"]; ok == true {
+	if reqP.targetNode.Name == "enabled" || isAllFields {
+		if fv, ok := dbV.Field["enabled"]; ok {
 			tmp, _ := strconv.ParseBool(fv)
 			reqP.intfConfigObj.Enabled = &tmp
 		}
 	} 
-	if reqP.targetNode.Name == "querier" || isAllFields == true {
-		if fv, ok := dbV.Field["querier"]; ok == true {
+	if reqP.targetNode.Name == "querier" || isAllFields {
+		if fv, ok := dbV.Field["querier"]; ok {
 			tmp, _ := strconv.ParseBool(fv)
 			reqP.intfConfigObj.Querier = &tmp
 		}
@@ -985,94 +989,52 @@ func (reqP *reqProcessor) unMarshalIGMPSnoopingIntfConfigObjInst (dbV *db.Value)
 
 func (reqP *reqProcessor) unMarshalIGMPSnoopingIntfStateObjInst (dbV *db.Value) {
 	isAllFields := reqP.isStateTargetNode ("")
-	if reqP.targetNode.Name == "version" || isAllFields == true {
-		if fv, ok := dbV.Field["version"]; ok == true {
+	if reqP.targetNode.Name == "version" || isAllFields {
+		if fv, ok := dbV.Field["version"]; ok {
 			intV, _ := strconv.ParseInt(fv, 10, 64)
 			tmp := uint8(intV)
 			reqP.intfStateObj.Version = &tmp 
 		}
 	}
-	if reqP.targetNode.Name == "fast-leave" || isAllFields == true {
-		if fv, ok := dbV.Field["fast-leave"]; ok == true {
+	if reqP.targetNode.Name == "fast-leave" || isAllFields {
+		if fv, ok := dbV.Field["fast-leave"]; ok {
 			tmp, _ := strconv.ParseBool(fv)
 			reqP.intfStateObj.FastLeave = &tmp
 		}
 	}
-	if reqP.targetNode.Name == "query-interval" || isAllFields == true {
-		if fv, ok := dbV.Field["query-interval"]; ok == true {
+	if reqP.targetNode.Name == "query-interval" || isAllFields {
+		if fv, ok := dbV.Field["query-interval"]; ok {
 			intV, _ := strconv.ParseInt(fv, 10, 64)
 			tmp := uint16(intV)
 			reqP.intfStateObj.QueryInterval = &tmp
 		}
 	} 
-	if reqP.targetNode.Name == "last-member-query-interval" || isAllFields == true {
-		if fv, ok := dbV.Field["last-member-query-interval"]; ok == true {
+	if reqP.targetNode.Name == "last-member-query-interval" || isAllFields {
+		if fv, ok := dbV.Field["last-member-query-interval"]; ok {
 			intV, _ := strconv.ParseInt(fv, 10, 64)
 			tmp := uint32(intV)
 			reqP.intfStateObj.LastMemberQueryInterval = &tmp
 		}
 	} 
-	if reqP.targetNode.Name == "query-max-response-time" || isAllFields == true {
-		if fv, ok := dbV.Field["query-max-response-time"]; ok == true {
+	if reqP.targetNode.Name == "query-max-response-time" || isAllFields {
+		if fv, ok := dbV.Field["query-max-response-time"]; ok {
 			intV, _ := strconv.ParseInt(fv, 10, 64)
 			tmp := uint16(intV)
 			reqP.intfStateObj.QueryMaxResponseTime = &tmp
 		}
 	} 
-	if reqP.targetNode.Name == "enabled" || isAllFields == true {
-		if fv, ok := dbV.Field["enabled"]; ok == true {
+	if reqP.targetNode.Name == "enabled" || isAllFields {
+		if fv, ok := dbV.Field["enabled"]; ok {
 			tmp, _ := strconv.ParseBool(fv)
 			reqP.intfStateObj.Enabled = &tmp
 		}
 	} 
-	if reqP.targetNode.Name == "querier" || isAllFields == true {
-		if fv, ok := dbV.Field["querier"]; ok == true {
+	if reqP.targetNode.Name == "querier" || isAllFields {
+		if fv, ok := dbV.Field["querier"]; ok {
 			tmp, _ := strconv.ParseBool(fv)
 			reqP.intfStateObj.Querier = &tmp
 		}
 	}
-}
-
-func (reqP *reqProcessor) unMarshalIGMPSnoopingIntfState() (error) {
-	var l2McDbTbl db.Table
-	var dbErr error
-	if l2McDbTbl, dbErr = reqP.db.GetTable(CFG_L2MC_TABLE_TS); dbErr != nil {
-		fmt.Println("DB error in GetEntry ====> ", dbErr)
-	}
-
-	fmt.Println("translateToYgotObj - printing db data")
-	pretty.Print(l2McDbTbl)
-
-	l2McKeys, _ := l2McDbTbl.GetKeys()
-	fmt.Println("translateToYgotObj - printing db test ttest table keys")
-	pretty.Print(l2McKeys)
-
-	for i, _ := range l2McKeys {
-		dbV, err := l2McDbTbl.GetEntry(l2McKeys[i])
-		if err != nil {
-			return err
-		}
-		intfName := l2McKeys[i].Comp[0]
-		intfObj, err := reqP.igmpsObj.Interfaces.NewInterface(intfName)
-		if err != nil {
-			return err
-		}
-		ygot.BuildEmptyTree(intfObj)
-		
-		intfObj.Config.Name = intfObj.Name
-		reqP.intfConfigObj = intfObj.Config
-		
-		reqP.unMarshalIGMPSnoopingIntfConfigObjInst(&dbV)
-		
-		if err := reqP.unMarshalMrouterState(); err != nil {
-			return err
-		}
-		if err := reqP.unMarshalStaticGrpStateObj(); err != nil {
-			return err
-		}
-	}
-	
-	return nil
 }
 
 func (reqP *reqProcessor) unMarshalIGMPSnoopingIntf(objType int) (error) {
@@ -1089,7 +1051,7 @@ func (reqP *reqProcessor) unMarshalIGMPSnoopingIntf(objType int) (error) {
 	fmt.Println("translateToYgotObj - printing db table keys")
 	pretty.Print(l2McKeys)
 
-	for i, _ := range l2McKeys {
+	for i := range l2McKeys {
 		dbV, err := l2McDbTbl.GetEntry(l2McKeys[i])
 		if err != nil {
 			return err

@@ -73,7 +73,7 @@ func getRequestBinder(uri *string, payload *[]byte, opcode int, appRootNodeType 
 
 func (binder *requestBinder) unMarshallPayload(workObj *interface{}) error {
 	targetObj, ok := (*workObj).(ygot.GoStruct)
-	if ok == false {
+	if !ok {
 		err := errors.New("Error in casting the target object")
 		log.Error(err)
 		return tlerr.TranslibSyntaxValidationError{StatusCode: 400, ErrorStr: err}
@@ -102,7 +102,7 @@ func (binder *requestBinder) validateObjectType (errObj error) error {
 	
 	errStr := errObj.Error()
 
-	if binder.opcode == GET || binder.isOpenconfig == false {
+	if binder.opcode == GET || !binder.isOpenconfig {
 		tmpStr := strings.Replace(errStr, "ERROR_READONLY_OBJECT_FOUND", "", -1)
 		if len (tmpStr) > 0 {
 			log.Info("validateObjectType ==> GET == return err string ==> ", tmpStr)
@@ -111,7 +111,7 @@ func (binder *requestBinder) validateObjectType (errObj error) error {
 			return nil
 		}	
 	} else {
-		if strings.Contains(errStr, "ERROR_READONLY_OBJECT_FOUND") == true {
+		if strings.Contains(errStr, "ERROR_READONLY_OBJECT_FOUND") {
 			log.Info("validateObjectType ==> WRITE == return err string")
 			return errors.New("SET operation not allowed on the read-only object")
 		} else {
@@ -122,6 +122,13 @@ func (binder *requestBinder) validateObjectType (errObj error) error {
 }
 
 func (binder *requestBinder) validateRequest(deviceObj *ocbinds.Device) error {
+
+	// Skipping the validation for the sonic yang model
+	if !binder.isOpenconfig {
+	  log.Warning("Translib: RequestBinder: Skipping the vaidatiion of the given sonic yang model request..")
+		return nil
+	}
+	
 	if binder.pathTmp == nil || len(binder.pathTmp.Elem) == 0 {
 		if binder.opcode == UPDATE || binder.opcode == REPLACE {
 			err := deviceObj.Validate(&ytypes.LeafrefOptions{IgnoreMissingData: true})
@@ -146,7 +153,7 @@ func (binder *requestBinder) validateRequest(deviceObj *ocbinds.Device) error {
 			return errors.New("Invalid base URI node")
 		} else {
 			basePathObj, ok := (baseTreeNode[0].Data).(ygot.ValidatedGoStruct)
-			if ok == true {
+			if ok {
 				err := basePathObj.Validate(&ytypes.LeafrefOptions{IgnoreMissingData: true})
 				err = binder.validateObjectType (err)
 				if err != nil {
@@ -213,7 +220,7 @@ func (binder *requestBinder) unMarshall() (*ygot.GoStruct, *interface{}, error) 
 			return nil, nil, tlerr.TranslibSyntaxValidationError{StatusCode: 400, ErrorStr: err}
 		} else if ygEntry != nil {
 			var workObjIntf interface{}
-			if ygEntry.IsContainer() && binder.targetNodeListInst == false {
+			if ygEntry.IsContainer() && !binder.targetNodeListInst {
 				v := reflect.ValueOf(*tmpTargetNode).Elem()
 				for i := 0; i < v.NumField(); i++ {
 					ft := v.Type().Field(i)
@@ -224,7 +231,7 @@ func (binder *requestBinder) unMarshall() (*ygot.GoStruct, *interface{}, error) 
 						break
 					}
 				}
-			} else if ygEntry.IsList() || binder.targetNodeListInst == true {
+			} else if ygEntry.IsList() || binder.targetNodeListInst {
 				if treeNodeList, err2 := ytypes.GetNode(ygEntry, *tmpTargetNode, binder.targetNodePath); err2 != nil {
 					return nil, nil, tlerr.TranslibSyntaxValidationError{StatusCode: 400, ErrorStr: err2}
 				} else {
@@ -243,11 +250,15 @@ func (binder *requestBinder) unMarshall() (*ygot.GoStruct, *interface{}, error) 
 		}
 
 		targetObj, ok := (*tmpTargetNode).(ygot.ValidatedGoStruct)
-		if ok == true {
-			err := targetObj.Validate(&ytypes.LeafrefOptions{IgnoreMissingData: true})
-			err = binder.validateObjectType (err)
-			if err != nil {
-				return nil, nil, tlerr.TranslibSyntaxValidationError{StatusCode: 400, ErrorStr: err}
+		if ok {
+			if binder.isOpenconfig {
+				err := targetObj.Validate(&ytypes.LeafrefOptions{IgnoreMissingData: true})
+				err = binder.validateObjectType (err)
+				if err != nil {
+					return nil, nil, tlerr.TranslibSyntaxValidationError{StatusCode: 400, ErrorStr: err}
+				}
+			} else {
+				log.Warning("Translib: Request binder: Valdation skipping for sonic yang model..")
 			}
 		}
 
@@ -295,7 +306,7 @@ func (binder *requestBinder) unMarshallUri(deviceObj *ocbinds.Device) (*interfac
 	
 	for idx, p := range path.Elem {
 		pathSlice := strings.Split(p.Name, ":")
-		if idx == 0 && len(pathSlice) > 0 && strings.HasPrefix(pathSlice[0], "openconfig-") == true {
+		if idx == 0 && len(pathSlice) > 0 && strings.HasPrefix(pathSlice[0], "openconfig-") {
 			log.Info("URI path - setting isOpenconfig flag ==> ", pathSlice[0])
 			binder.isOpenconfig = true
 		}
@@ -331,7 +342,7 @@ func (binder *requestBinder) unMarshallUri(deviceObj *ocbinds.Device) (*interfac
 		binder.pathTmp = gpath
 	}
 
-	if (binder.opcode == GET || binder.opcode == DELETE) && (ygEntry.IsLeaf() == false && ygEntry.IsLeafList() == false) {
+	if (binder.opcode == GET || binder.opcode == DELETE) && (!ygEntry.IsLeaf() && !ygEntry.IsLeafList()) {
 		if err = binder.validateRequest(deviceObj); err != nil {
 			return nil, err
 		}

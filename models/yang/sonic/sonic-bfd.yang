@@ -3,11 +3,7 @@ module sonic-bfd {
         prefix sbfd;                                                                              
         yang-version 1.1;                                                                         
 
-        import ietf-inet-types {
-                prefix inet;    
-        }                       
-
-   	import sonic-vrf {
+   	    import sonic-vrf {
         	prefix svrf;
     	}
     
@@ -19,17 +15,13 @@ module sonic-bfd {
         	prefix spc;
     	}
 
-   	import sonic-vlan {
+   	    import sonic-vlan {
         	prefix svlan;
     	}
 
         import sonic-loopback-interface {
                 prefix sloif;
         }
-
-        import sonic-common {
-                prefix cmn;  
-        }                    
 
         organization
                 "SONiC";

@@ -146,9 +146,6 @@ var YangToDb_bgp_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
         return pGrpName, err
     }
 
-    log.Info("URI VRF", vrfName)
-    log.Info("URI Peer Group", pGrpName)
-
     var pGrpKey string = vrfName + "|" + pGrpName
 
     log.Info("YangToDb_bgp_pgrp_tbl_key_xfmr: pGrpKey:", pGrpKey)
@@ -206,7 +203,6 @@ func validate_pgrp_state_get (inParams XfmrParams, dbg_log string) (*ocbinds.Ope
 
     pgrp_obj, ok := pgrps_obj.PeerGroup[pgrp_key.pgrp]
     if !ok {
-        log.Info("%s Peer group object missing, add new", dbg_log)
         pgrp_obj,_ = pgrps_obj.NewPeerGroup(pgrp_key.pgrp)
     }
     ygot.BuildEmptyTree(pgrp_obj)
@@ -375,7 +371,6 @@ var DbToYang_bgp_pgrp_auth_password_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
     pgrp_obj, ok := pgrps_obj.PeerGroup[pgrp]
     if !ok {
-        log.Infof("%s PeerGroup object missing, add new", pgrp)
         pgrp_obj,_ = pgrps_obj.NewPeerGroup(pgrp)
     }
     ygot.BuildEmptyTree(pgrp_obj)

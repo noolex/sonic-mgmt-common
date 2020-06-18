@@ -22,6 +22,8 @@ openconfig-network-instance-annot.yang
 openconfig-ospfv2-ext.yang
 openconfig-udld-ext.yang
 openconfig-udld-ext-annot.yang
+openconfig-errdisable-ext.yang
+openconfig-errdisable-ext-annot.yang
 openconfig-mirror-ext.yang
 openconfig-mirror-ext-annot.yang
 ietf-ptp.yang
@@ -84,6 +86,8 @@ openconfig-platform.yang
 openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
+openconfig-copp-ext.yang
+openconfig-copp-ext-annot.yang
 openconfig-lldp.yang
 openconfig-lldp-ext.yang
 openconfig-lldp-annot.yang
@@ -92,4 +96,5 @@ openconfig-infra.yang
 sonic-system-infra-annot.yang
 openconfig-aggregate-ext.yang
 openconfig-aggregate-ext-annot.yang
-
+openconfig-fbs-ext.yang
+openconfig-fbs-ext-annot.yang

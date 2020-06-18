@@ -14,5 +14,10 @@ module sonic-mgmt-interface-annot {
             sonic-ext:db-name "APPL_DB";
         }
     }
+    deviation /smgmt:renew_dhcp_lease {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_renew_dhcp_lease";
+        }
+    }
 
 }
