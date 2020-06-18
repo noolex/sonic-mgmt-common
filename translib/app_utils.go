@@ -194,7 +194,7 @@ func dumpIetfJson(s ygot.ValidatedGoStruct, skipValidation bool) ([]byte, error)
 	})
 	var buf bytes.Buffer
 	json.Compact(&buf, []byte(jsonStr))
-	return []byte(buf.String()), err
+	return buf.Bytes(), err
 }
 
 func contains(sl []string, str string) bool {
@@ -206,12 +206,12 @@ func contains(sl []string, str string) bool {
 	return false
 }
 
+
 func removeElement(sl []string, str string) []string {
 	for i := 0; i < len(sl); i++ {
 		if sl[i] == str {
 			sl = append(sl[:i], sl[i+1:]...)
 			i--
-			sl = sl[:len(sl)]
 			break
 		}
 	}
@@ -254,7 +254,7 @@ func uniqueElements(elems []string) []string {
 
     i := 0
     ret := make([]string, len(temp))
-    for key, _ := range(temp) {
+    for key := range(temp) {
         ret[i] = key
         i++
     }

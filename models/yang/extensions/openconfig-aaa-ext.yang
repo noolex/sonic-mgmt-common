@@ -1,0 +1,239 @@
+// I took out the tabs and replaced with spaces.
+module openconfig-aaa-ext {
+
+  yang-version "1.1";
+
+  namespace "http://openconfig.net/yang/aaa/extension";
+
+  prefix "oc-aaa-ldap-ext";
+
+  // import some basic types
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-aaa-types { prefix oc-aaa-types; }
+  import openconfig-system { prefix oc-sys; }  
+  import openconfig-aaa { prefix oc-aaa; }  
+  import openconfig-aaa-ldap-ext { prefix oc-ldap-ext; }  
+  import openconfig-aaa-radius-ext { prefix oc-radius-ext; }  
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module defines configuration and operational state data
+    related to authorization, authentication, and accounting (AAA)
+    management.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-06-03" {
+    description
+      "Initial revision.";
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+  identity AAA_NAME_SERVICE_LOGIN {
+    base oc-aaa-types:AAA_METHOD_TYPE;
+    description
+      "Use the default authentication method";
+  }
+
+  // typedef statements
+
+  // grouping statements
+
+  grouping aaa-ext-authorization-login-config {
+    description
+      "Configuration data for AAA login authorization";
+
+    uses oc-aaa:aaa-authorization-methods-config;
+  }
+
+  grouping aaa-ext-authorization-login-state {
+    description
+      "Operational state data for AAA login authorization";
+  }
+
+  grouping aaa-ext-authorization-login-top {
+    description
+      "Top-level grouping for AAA authorization Extensions";
+
+    container login {
+      description
+        "Top-level container for AAA login authorization configuration
+         and operational state data";
+
+      container config {
+        description
+          "Configuration data for login authorization based on AAA";
+
+        uses aaa-ext-authorization-login-config;
+      }
+
+      container state {
+        config false;
+
+        description
+          "Operational state data for login authorization based on AAA";
+
+        uses aaa-ext-authorization-login-config;
+        uses aaa-ext-authorization-login-state;
+      }
+    }
+  }
+
+  grouping aaa-ext-name-service-methods-config {
+    description
+      "Common definitions for name-service methods type";
+
+    leaf-list passwd-method {
+      description
+        "Source for providing name-service for passwd database.
+        The list may contain a well-defined method such
+        as the set of all LDAP, TACACS or RADIUS servers. The string \"login\"
+        indicates to use the same method as used for AAA authentication";
+
+      type union {
+        type identityref {
+          base oc-aaa-types:AAA_METHOD_TYPE;
+        }
+        type string;
+      }
+      ordered-by user;
+    }
+
+    leaf-list shadow-method {
+      description
+        "Source for providing name-service for shadow database.
+        The list may contain a well-defined method such
+        as the set of all LDAP, TACACS or RADIUS servers. The string \"login\"
+        indicates to use the same method as used for AAA authentication";
+
+      type union {
+        type identityref {
+          base oc-aaa-types:AAA_METHOD_TYPE;
+        }
+        type string;
+      }
+      ordered-by user;
+    }
+
+    leaf-list group-method {
+      description
+        "Source for providing name-service for group database.
+        The list may contain a well-defined method such
+        as the set of all LDAP, TACACS or RADIUS servers. The string \"login\"
+        indicates to use the same method as used for AAA authentication";
+
+      type union {
+        type identityref {
+          base oc-aaa-types:AAA_METHOD_TYPE;
+        }
+        type string;
+      }
+      ordered-by user;
+    }
+
+    leaf-list netgroup-method {
+      description
+        "Source for providing name-service for netgroup database.
+        The list may contain a well-defined method such
+        as the set of all LDAP servers or local files.";
+
+      type union {
+        type identityref {
+          base oc-aaa-types:AAA_METHOD_TYPE;
+        }
+        type string;
+      }
+      ordered-by user;
+    }
+
+    leaf-list sudoers-method {
+      description
+        "Source for providing name-service for sudoers database.
+        The list may contain a well-defined method such
+        as the set of all LDAP servers or local files.";
+
+      type union {
+        type identityref {
+          base oc-aaa-types:AAA_METHOD_TYPE;
+        }
+        type string;
+      }
+      ordered-by user;
+    }
+  }
+
+  grouping aaa-ext-name-service-config {
+    description
+      "Configuration data for AAA name-service";
+
+    uses aaa-ext-name-service-methods-config;
+  }
+
+  grouping aaa-ext-name-service-state {
+    description
+      "Operational state data for AAA name-service";
+  }
+
+  grouping aaa-ext-name-service-top {
+    description
+      "Top-level grouping for AAA name-service";
+
+    container name-service {
+      description
+        "Top-level container for AAA name-service configuration
+        and operational state data";
+
+      container config {
+        description
+          "Configuration data for AAA name-service methods";
+
+        uses aaa-ext-name-service-config;
+      }
+
+      container state {
+        config false;
+
+        description
+          "Operational state data for AAA name-service";
+
+        uses aaa-ext-name-service-config;
+        uses aaa-ext-name-service-state;
+      }
+    }
+  }
+
+
+  // data definition statements
+
+  // augment statements
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:authorization" {
+    description
+      "Adds top level container for login authorization.";
+
+    uses aaa-ext-authorization-login-top;
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa" {
+    description
+      "Adds top level container for Name Service.";
+
+    uses aaa-ext-name-service-top;
+  }
+
+  // rpc statements
+
+  // notification statements
+
+}
