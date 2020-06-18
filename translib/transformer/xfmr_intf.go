@@ -69,6 +69,8 @@ func init () {
     XlateFuncBind("YangToDb_subintf_ipv6_tbl_key_xfmr", YangToDb_subintf_ipv6_tbl_key_xfmr)
     XlateFuncBind("DbToYang_subintf_ipv6_tbl_key_xfmr", DbToYang_subintf_ipv6_tbl_key_xfmr)
     XlateFuncBind("YangToDb_intf_name_empty_xfmr", YangToDb_intf_name_empty_xfmr)
+    XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
+    XlateFuncBind("YangToDb_igmp_tbl_key_xfmr", YangToDb_igmp_tbl_key_xfmr)
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
@@ -3088,4 +3090,42 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
         res_map["enabled"] = true
     }
     return res_map, nil
+}
+
+var YangToDb_igmp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+    var igmptbl_key string
+    var err error
+    requestUriPath, err := getYangPathFromUri(inParams.requestUri)
+    pathInfo := NewPathInfo(inParams.uri)
+    ifName := pathInfo.Var("name")
+
+    if ifName == "" {
+       errStr := "Interface KEY not present"
+       log.Info("YangToDb_igmp_tbl_key_xfmr: " + errStr)
+       return "", errors.New(errStr)
+    }
+
+    log.Info("YangToDb_igmp_tbl_key_xfmr - requestUriPath:", requestUriPath)
+
+    if strings.HasPrefix(requestUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-igmp-ext:igmp/joins/join") {
+        mcastGrpAddr := pathInfo.Var("mcastgrpaddr")
+        srcAddr := pathInfo.Var("srcaddr")
+
+        log.Info("YangToDb_igmp_tbl_key_xfmr - mcastGrpAddr:", mcastGrpAddr)
+        log.Info("YangToDb_igmp_tbl_key_xfmr - srcAddr:", srcAddr)
+        if (len(mcastGrpAddr) > 0 && len(srcAddr) > 0) {
+            igmptbl_key = ifName + "|" +  mcastGrpAddr + "|" + srcAddr
+            log.Info("YangToDb_neigh_tbl_key_xfmr - key returned: ", igmptbl_key)
+            return igmptbl_key, err
+        }
+    } else {
+        igmptbl_key = ifName
+    }
+    return igmptbl_key, err
+}
+
+var DbToYang_igmp_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+
+    return nil, err
 }
