@@ -79,6 +79,10 @@ module sonic-port {
                 leaf admin_status {
                     type scommon:admin-status;
                 }
+
+                leaf pfc_asym {
+                    type string;
+                }
             }
         }
         container PORT_TABLE {

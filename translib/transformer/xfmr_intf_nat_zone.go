@@ -26,6 +26,7 @@ import (
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 
 func init () {
@@ -42,29 +43,29 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         return natZoneMap, errors.New("IntfsObj/Interface is not specified")
     }
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    ifUIName := pathInfo.Var("name")
 
-    if ifName == "" {
+    if ifUIName == "" {
         errStr := "Interface KEY not present"
         log.Info("YangToDb_intf_nat_zone_xfmr : " + errStr)
         return natZoneMap, errors.New(errStr)
     }
 
-    if _, ok := intfsObj.Interface[ifName]; !ok {
-        errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
+    if _, ok := intfsObj.Interface[ifUIName]; !ok {
+        errStr := "Interface entry not found in Ygot tree, ifname: " + ifUIName
         log.Info("YangToDb_intf_nat_zone_xfmr : " + errStr)
         return natZoneMap, errors.New(errStr)
     }
 
-    intfObj := intfsObj.Interface[ifName]
+    intfObj := intfsObj.Interface[ifUIName]
 
     if intfObj.NatZone == nil || intfObj.NatZone.Config == nil || intfObj.NatZone.Config.NatZone == nil {
 	    if inParams.oper != DELETE {
-            log.Info("YangToDb Interface nat zone config is not valid - ", ifName)
-            return natZoneMap, errors.New("YangToDb Interface nat zone config is not valid - " + ifName)
+            log.Info("YangToDb Interface nat zone config is not valid - ", ifUIName)
+            return natZoneMap, errors.New("YangToDb Interface nat zone config is not valid - " + ifUIName)
         }
     }
-    intfType, _, ierr := getIntfTypeByName(ifName)
+    intfType, _, ierr := getIntfTypeByName(ifUIName)
     if intfType == IntfTypeUnset || ierr != nil {
         errStr := "Invalid interface type IntfTypeUnset"
         log.Info("YangToDb_intf_nat_zone_xfmr : " + errStr)
@@ -73,16 +74,16 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
     intTbl := IntfTypeTblMap[intfType]
     tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
 
-
+    ifName := utils.GetNativeNameFromUIName(&ifUIName)
     if inParams.oper == DELETE {
-        entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
+        entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{*ifName}})
         if dbErr != nil {
-            log.Info("Failed to read DB entry, " + tblName + " " + ifName)
+            log.Info("Failed to read DB entry, " + tblName + " " + *ifName)
             return natZoneMap, nil
         }
 
         if !entry.Has("nat_zone") {
-            log.Info("NAT zone config not present, " + tblName + " " + ifName)
+            log.Info("NAT zone config not present, " + tblName + " " + *ifName)
             return natZoneMap, nil
         }
         if _, ok := natZoneMap[tblName]; !ok {
@@ -91,7 +92,7 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         m := make(map[string]string)
         data := db.Value{Field: m}
         data.Set("nat_zone", "")
-        natZoneMap[tblName][ifName] = data
+        natZoneMap[tblName][*ifName] = data
     } else {
         m := make(map[string]string)
         data := db.Value{Field: m}
@@ -99,7 +100,7 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         if _, ok := natZoneMap[tblName]; !ok {
             natZoneMap[tblName] = make (map[string]db.Value)
         }
-        natZoneMap[tblName][ifName] = data
+        natZoneMap[tblName][*ifName] = data
     }
     log.Info("NAT Zone map :", natZoneMap)
     return natZoneMap, err
@@ -138,14 +139,15 @@ var DbToYang_intf_nat_zone_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams)
         return errors.New("DbToYang_intf_nat_zone_xfmr : Invalid URI, " + inParams.uri)
     }
 
+    ifUIName := utils.GetUINameFromNativeName(&ifName)
     if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
         var ok bool = false
-        if intfObj, ok = intfsObj.Interface[ifName]; !ok {
-            intfObj, _ = intfsObj.NewInterface(ifName)
+        if intfObj, ok = intfsObj.Interface[*ifUIName]; !ok {
+            intfObj, _ = intfsObj.NewInterface(*ifUIName)
         }
     } else {
         ygot.BuildEmptyTree(intfsObj)
-        intfObj, _ = intfsObj.NewInterface(ifName)
+        intfObj, _ = intfsObj.NewInterface(*ifUIName)
     }
     ygot.BuildEmptyTree(intfObj)
     ygot.BuildEmptyTree(intfObj.NatZone)

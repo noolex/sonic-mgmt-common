@@ -48,21 +48,6 @@ func hostAccountParseCallReturn(call *dbus.Call) (bool, string) {
 	return success, errmsg
 }
 
-// hostAccountUserAdd calls the HAM useradd function over D-Bus
-func hostAccountUserAdd(login, role, hashed_pw string) (bool, string) {
-	obj, dest, err := hostAccountCallObject("useradd")
-	if err != nil {
-		return false, err.Error()
-	}
-
-	roles := roleToGroup(role)
-	if len(roles) == 0 {
-		return false, fmt.Sprintf("Invalid role %s", role)
-	}
-
-	return hostAccountParseCallReturn(obj.Call(dest, 0, login, roles, hashed_pw))
-}
-
 // hostAccountUserMod calls the HAM usermod function over D-Bus
 func hostAccountUserMod(login, role, hashed_pw string) (bool, string) {
         obj, dest, err := hostAccountCallObject("usermod")
@@ -86,29 +71,4 @@ func hostAccountUserDel(login string) (bool, string) {
 	}
 
 	return hostAccountParseCallReturn(obj.Call(dest, 0, login))
-}
-
-// hostAccountChPasswd calls the HAM chpasswd over D-Bus
-func hostAccountChPasswd(login, hashed_pw string) (bool, string) {
-	obj, dest, err := hostAccountCallObject("chpasswd")
-	if err != nil {
-		return false, err.Error()
-	}
-
-	return hostAccountParseCallReturn(obj.Call(dest, 0, login, hashed_pw))
-}
-
-// hostAccountChRole calls the HAM chrole over D-Bus
-func hostAccountChRole(login, role string) (bool, string) {
-	obj, dest, err := hostAccountCallObject("chrole")
-	if err != nil {
-		return false, err.Error()
-	}
-
-	roles := roleToGroup(role)
-	if len(roles) == 0 {
-		return false, fmt.Sprintf("Invalid role %s", role)
-	}
-
-	return hostAccountParseCallReturn(obj.Call(dest, 0, login, roles))
 }

@@ -140,6 +140,8 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     pathInfo := NewPathInfo(inParams.uri)
     log.Infof("YangToDb_server_vrf_name_xfmr: pathInfo %v", pathInfo)
 
+    servergroupName := pathInfo.Var("name")
+
     key := inParams.key
     deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
     systemObj := deviceObj.System
@@ -163,13 +165,18 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
         err = tlerr.InvalidArgsError{Format: errStr}
         return res_map, err
     }
-    serverGroupObj := serverGroupsObj.ServerGroup["TACACS"]
+
+    serverGroupObj, ok := serverGroupsObj.ServerGroup["TACACS"]
+    if !ok {
+        serverGroupObj = serverGroupsObj.ServerGroup["RADIUS"]
+    }
     if serverGroupObj == nil {
-        errStr = "Server-group TACACS entry is missing"
+        errStr = "Server-group TACACS or RADIUS entry is missing"
         log.Info("YangToDb_server_vrf_name_xfmr: ", errStr)
         err = tlerr.InvalidArgsError{Format: errStr}
         return res_map, err
     }
+
     serversObj := serverGroupObj.Servers
     if serversObj == nil {
         errStr = "Servers container is missing"
@@ -217,14 +224,14 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
         subOpMap[db.ConfigDB] = subMap
         inParams.subOpDataMap[DELETE] = &subOpMap
     } else if vrfName == "mgmt" {
-        err = validateMgmtVrfExists(inParams.d)
+        if strings.Contains(servergroupName, "TACACS") {
+            err = validateMgmtVrfExists(inParams.d)
+        }
         if err == nil {
             res_map["vrf"] = vrfName
         }
     } else {
-        errStr = "Invalid VRF name"
-        log.Info("YangToDb_server_vrf_name_xfmr: ", errStr)
-        err = tlerr.InvalidArgsError{Format: errStr}
+        res_map["vrf"] = vrfName
     }
     return res_map, err
 }
@@ -232,18 +239,32 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 var DbToYang_server_vrf_name_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
     var err error
+    var errStr string
 
+    log.Infof("DbToYang_server_vrf_name_xfmr: ygRoot %v uri %v", inParams.ygRoot, inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
-    log.Infof("YangToDb_server_vrf_name_xfmr: pathInfo %v", pathInfo)
+    log.Infof("DbToYang_server_vrf_name_xfmr: pathInfo %v", pathInfo)
+
+    servergroupName := pathInfo.Var("name")
 
     data := (*inParams.dbDataMap)[inParams.curDb]
     log.Info("DbToYang_server_vrf_name_xfmr: ", data, "inParams :", inParams)
 
-    tacplusServerTbl := data["TACPLUS_SERVER"]
-    tacplusServerConfig := tacplusServerTbl[inParams.key]
-    if vrfName, ok := tacplusServerConfig.Field["vrf"]; ok {
+    serverTbl, ok := data["TACPLUS_SERVER"]
+    if !ok {
+        serverTbl = data["RADIUS_SERVER"]
+    }
+    if serverTbl == nil {
+        errStr = "Invalid server group name: " + servergroupName 
+        log.Info("DbToYang_server_vrf_name_xfmr: ", errStr)
+        err = tlerr.InvalidArgsError{Format: errStr}
+        return res_map, err
+    }
+
+    serverConfig := serverTbl[inParams.key]
+    if vrfName, ok := serverConfig.Field["vrf"]; ok {
         res_map["vrf"] = vrfName
-        log.Infof("YangToDb_server_vrf_name_xfmr: vrfName %v", vrfName)
+        log.Infof("DbToYang_server_vrf_name_xfmr: vrfName %v", vrfName)
     }
 
     return res_map, err

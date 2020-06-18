@@ -44,8 +44,8 @@ func qos_fwd_group_dscp_map_delete_xfmr(inParams XfmrParams) (map[string]map[str
         }
     }
 
-    if strings.HasPrefix(targetUriPath,
-    "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map") == false {
+    if !strings.HasPrefix(targetUriPath,
+    "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map") {
         log.Info("YangToDb: map name unspecified, using delete_by_map_name")
         return qos_map_delete_by_map_name(inParams, "TC_TO_DSCP_MAP", map_name)
     }
@@ -129,8 +129,8 @@ var YangToDb_qos_fwd_group_dscp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     }
 
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") == false  &&
-       strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") == false {
+    if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") &&
+       !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") {
         log.Info("YangToDb: map entry unspecified, stop here")
         return res_map, err
     }
@@ -332,7 +332,7 @@ var DbToYang_qos_tc_to_dscp_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrP
     ifCfg, _ := inParams.d.GetEntry(dbSpec, key) 
 
     log.Info("current entry: ", ifCfg)
-    value, _ := ifCfg.Field["tc_to_dscp_map"] 
+    value := ifCfg.Field["tc_to_dscp_map"] 
 
     log.Info("value = ", value)
     res_map["forwarding-group-to-dscp"] = DbLeafrefToString(value, "TC_TO_DSCP_MAP")

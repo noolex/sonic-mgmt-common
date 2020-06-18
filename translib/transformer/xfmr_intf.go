@@ -1298,7 +1298,8 @@ func validateL3ConfigExists(d *db.DB, ifName *string) error {
     intTbl := IntfTypeTblMap[intfType]
     IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:intTbl.cfgDb.intfTN+"|"+*ifName})
     if err == nil && IntfMapObj.IsPopulated() {
-        errStr := "L3 Configuration exists for Interface: " + *ifName
+        ifUIName := utils.GetUINameFromNativeName(ifName)
+        errStr := "L3 Configuration exists for Interface: " + *ifUIName
         IntfMap := IntfMapObj.Field
         if intfType == IntfTypeLoopback {
             // Checks specific to Loopback interface
