@@ -151,19 +151,19 @@ module openconfig-interfaces-ext {
         }
     }
 
-      grouping interface-sag-ipv4-config {
+	  grouping interface-sag-ipv4-config {
         description
             "IPv4 static anycast gateway config";
 
         leaf-list static-anycast-gateway {
-                  type ietf-inet:ipv4-prefix;
+			      type ietf-inet:ipv4-prefix;
             max-elements 16;
 
             description
                 "IPv4 static anycast gateway addresses";
         }
     }
-    
+	
     grouping interface-sag-ipv4-top {
         description
             "IPv4 static anycast gateway";
@@ -194,8 +194,8 @@ module openconfig-interfaces-ext {
 
         leaf-list static-anycast-gateway {
 
-                  type ietf-inet:ipv6-prefix;
-                  max-elements 16;
+			      type ietf-inet:ipv6-prefix;
+			      max-elements 16;
 
             description
                 "IPv6 static anycast gateway addresses";
@@ -282,25 +282,25 @@ module openconfig-interfaces-ext {
         uses interfaces-ext-interface-nat-zone-top;
     }
 
-    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
+	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
         description
             "SAG config and state data.";
         uses interface-sag-ipv4-top {
       when "oc-intf:config/oc-intf:type = 'oc-if-types-ext:IF_NVE'";
-            description
-              "SAG interface config/state";
-        }
-    }
+			description
+			  "SAG interface config/state";
+		}
+	}
 
-    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
+	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
         description
             "SAG config and state data.";
         uses interface-sag-ipv6-top {
       when "oc-intf:config/oc-intf:type = 'oc-if-types-ext:IF_NVE'";
-            description
-              "SAG interface config/state";
-        }
-    }
+			description
+			  "SAG interface config/state";
+		}
+	}
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config" {
         description
@@ -548,4 +548,3 @@ module openconfig-interfaces-ext {
         deviate not-supported;
     }
 }
-
