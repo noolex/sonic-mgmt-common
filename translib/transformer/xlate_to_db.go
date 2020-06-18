@@ -37,15 +37,15 @@ var ocbSch, _ = ocbinds.Schema()
 
 /* Fill redis-db map with field & value info */
 func dataToDBMapAdd(tableName string, dbKey string, result map[string]map[string]db.Value, field string, value string) {
-    _, ok := result[tableName]
-    if !ok {
-        result[tableName] = make(map[string]db.Value)
-    }
+	_, ok := result[tableName]
+	if !ok {
+		result[tableName] = make(map[string]db.Value)
+	}
 
-    _, ok = result[tableName][dbKey]
-    if !ok {
-        result[tableName][dbKey] = db.Value{Field: make(map[string]string)}
-    }
+	_, ok = result[tableName][dbKey]
+	if !ok {
+		result[tableName][dbKey] = db.Value{Field: make(map[string]string)}
+	}
 
 	if field == XFMR_NONE_STRING {
 		if len(result[tableName][dbKey].Field) == 0 {
@@ -54,8 +54,10 @@ func dataToDBMapAdd(tableName string, dbKey string, result map[string]map[string
 		return
 	}
 
-    result[tableName][dbKey].Field[field] = value
-    return
+	if len(field) > 0 {
+		result[tableName][dbKey].Field[field] = value
+	}
+	return
 }
 
 /*use when single table name is expected*/
