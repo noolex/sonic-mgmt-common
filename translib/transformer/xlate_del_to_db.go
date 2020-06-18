@@ -239,7 +239,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 										return err
 									}
 								} else if chldYangType == YANG_CONTAINER {
-									err = yangContainerDelData(curXlateParams, dbDataMap, subTreeResMap)
+									err = yangContainerDelData(curXlateParams, dbDataMap, subTreeResMap, false)
 									if err != nil {
 										return err
 									}
