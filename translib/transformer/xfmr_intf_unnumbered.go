@@ -267,8 +267,8 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
     sonicIfName := utils.GetNativeNameFromUIName(&ifName)
     log.Infof("DbToYang_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
-
     targetUriPath, err := getYangPathFromUri(inParams.uri)
+
     log.Info("targetUriPath is ", targetUriPath)
 
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
@@ -281,22 +281,25 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 
     intTbl := IntfTypeTblMap[intfType]
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref/config/interface") {
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces") {
         if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
             var ok bool = false
             if intfObj, ok = intfsObj.Interface[uriIfName]; !ok {
                 intfObj, _ = intfsObj.NewInterface(uriIfName)
             }
+            ygot.BuildEmptyTree(intfObj)
+            if intfObj.Subinterfaces == nil {
+                ygot.BuildEmptyTree(intfObj.Subinterfaces)
+            }
         } else {
             ygot.BuildEmptyTree(intfsObj)
             intfObj, _ = intfsObj.NewInterface(uriIfName)
+            ygot.BuildEmptyTree(intfObj)
         }
-
-        ygot.BuildEmptyTree(intfObj)
 
         var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
         if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-            _, err = intfObj.Subinterfaces.NewSubinterface(0)
+            subIntf, err = intfObj.Subinterfaces.NewSubinterface(0)
             if err != nil {
                 log.Error("Creation of subinterface subtree failed!")
                 return err
@@ -305,16 +308,65 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 
         subIntf = intfObj.Subinterfaces.Subinterface[0]
         ygot.BuildEmptyTree(subIntf)
+        ygot.BuildEmptyTree(subIntf.Ipv4)
+        ygot.BuildEmptyTree(subIntf.Ipv4.Unnumbered)
+        ygot.BuildEmptyTree(subIntf.Ipv4.Unnumbered.InterfaceRef)
 
-        entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
-        if dbErr != nil {
-            log.Info("Failed to read DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
-            return nil
-}
+        if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref/state") ||
+            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref/state") {
+            entry, dbErr := inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
 
-        if entry.Has(UNNUMBERED) {
-            value := entry.Get(UNNUMBERED)
-            subIntf.Ipv4.Unnumbered.InterfaceRef.Config.Interface = &value
+            if dbErr != nil {
+                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                subIntf.Ipv4.Unnumbered.InterfaceRef.State.Interface = &value
+                log.Info("State Unnum Intf : " + value)
+            }
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref/config") ||
+                strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref/config") {
+            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                subIntf.Ipv4.Unnumbered.InterfaceRef.Config.Interface = &value
+                log.Info("Config Unnum Intf: " + value)
+            }
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref") ||
+                strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref") {
+            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read Config DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                subIntf.Ipv4.Unnumbered.InterfaceRef.Config.Interface = &value
+                log.Info("Config Unnum Intf: " + value)
+            }
+
+            entry, dbErr = inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                subIntf.Ipv4.Unnumbered.InterfaceRef.State.Interface = &value
+                log.Info("State Unnum Intf : " + value)
+            }
         }
     }
     return err
