@@ -185,7 +185,7 @@ func isIntfBindToOtherVrf(intf_tbl_name string, intf_name string, nwInst_name st
         }
 }
 
-func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName string) error {
+func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName string, otherValueExist *bool) error {
         var err error
         if log.V(3) {
             log.Infof("ValidateIntfNotL3ConfigedOtherThanVrf: table %v, intf %v", tblName, intfName)
@@ -203,6 +203,12 @@ func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName st
 
         IntfMap, _ := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+intfName})
         for key := range IntfMap.Field {
+
+            /* update the otherValueExist value if non vrf_name field is seen */
+            if  (key != "vrf_name") {
+                *otherValueExist = true
+            }
+
             if (key == "NULL" || key == "vrf_name") {
                 continue
             } else {
@@ -700,6 +706,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         var err error
         var errStr string
         res_map := make(map[string]map[string]db.Value)
+        var fieldOtherThanVrf bool
 
         log.Infof("YangToDb_network_instance_interface_binding_subtree_xfmr: ygRoot %v uri %v", inParams.ygRoot, inParams.uri)
 
@@ -764,7 +771,8 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                                         return res_map, err                                    
                                 }
 
-                                err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, tblName, intfName[0])
+                                fieldOtherThanVrf = false
+                                err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, tblName, intfName[0], &fieldOtherThanVrf)
                                 if err != nil {
                                         errStr = "Interface " + intfName[0] + " has L3 configuration"
                                         log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
@@ -780,7 +788,11 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
                                 res_map[tblName][intfName[0]] = db.Value{Field: map[string]string{}}
                                 dbVal := res_map[tblName][intfName[0]]
-                                (&dbVal).Set("vrf_name", keyName)
+
+                                /* for DELETE operation, if vrf_name is the last field, delete the entry */
+                                if (fieldOtherThanVrf) {
+                                        (&dbVal).Set("vrf_name", keyName)
+                                }
                         }
                 }
                 log.Infof("YangToDb_network_instance_interface_binding_subtree_xfmr: delete VRF %v res_map %v", keyName, res_map)
@@ -898,7 +910,8 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         } 
 
         /* Check if L3 configs present on given interface */
-        err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, intf_tbl_name, intfId)
+        fieldOtherThanVrf = false
+        err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, intf_tbl_name, intfId, &fieldOtherThanVrf)
         if err != nil {
             return res_map, err
         }
@@ -907,7 +920,12 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
         res_map[intf_tbl_name][intfId] = db.Value{Field: map[string]string{}}
         dbVal := res_map[intf_tbl_name][intfId]
-        (&dbVal).Set("vrf_name", keyName)
+
+        /* for DELETE operation, if vrf_name is the last field, delete the entry */
+        if ((inParams.oper != DELETE) ||
+            ((inParams.oper == DELETE) && fieldOtherThanVrf)) {
+                (&dbVal).Set("vrf_name", keyName)
+        }
 
         log.Infof("YangToDb_network_instance_interface_binding_subtree_xfmr: set vrf_name %v for %v in %v",
                   keyName, intfId, intf_tbl_name)
