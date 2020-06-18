@@ -550,11 +550,15 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
             
             if _authtype,ok := area_info["authentication"].(string); ok {
                 if _authtype == "authenticationNone" {
-                    authType := "NONE"
+                    authType := "no"
                     ospfv2AreaInfo_obj.AuthenticationType = &authType 
                 }
+                if _authtype == "authenticationSimplePassword" {
+                    authType := "simple password"
+                    ospfv2AreaInfo_obj.AuthenticationType = &authType
+                }
                 if _authtype == "authenticationMessageDigest" {
-                    authType := "MD5HMAC"
+                    authType := "message digest"
                     ospfv2AreaInfo_obj.AuthenticationType = &authType
                 }
             }
@@ -1368,6 +1372,13 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
             ospfv2InterfaceState_obj.MemberOfOspfDesignatedRouters = &ospfv2Zero
         } else {
             ospfv2InterfaceState_obj.MemberOfOspfDesignatedRouters = &ospfv2One
+        }
+    }
+    if _ifUnnumbered,ok := intf_info["ifUnnumbered"].(bool); ok {
+        if !_ifUnnumbered {
+            ospfv2InterfaceState_obj.Unnumbered = &ospfv2Zero
+        } else {
+            ospfv2InterfaceState_obj.Unnumbered = &ospfv2One
         }
     }
     if value,ok := intf_info["nbrCount"] ; ok {

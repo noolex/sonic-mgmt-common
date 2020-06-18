@@ -1999,6 +1999,13 @@ module openconfig-ospfv2-ext {
       description
         "Saved Network-LSA sequence number in hex";
     }
+
+    leaf unnumbered {
+      type boolean;
+      description
+        "Boolean flag indicating interface is unnumbered";
+    }
+
   }
 
   grouping ospfv2-ext-area-virtual-link-state {
