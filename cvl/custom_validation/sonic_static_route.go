@@ -150,26 +150,26 @@ func validateNexthopAttrCmn(vc *CustValidationCtxt, hdlr checkNHAttrHdlr,
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-// ValidateNexthopGateway check if every item in comma separated list is valid IP address
-// Path : /sonic-static-route/STATIC_ROUTE/nexthop
+// ValidateNexthopGateway checks if every item in comma separated list is valid IP address
 // Returns -  CVL Error object
+// Path /sonic-static-route/STATIC_ROUTE/nexthop
 func (t *CustomValidation) ValidateNexthopGateway(
 	vc *CustValidationCtxt) CVLErrorInfo {
     return validateNexthopAttrCmn(vc, checkNexthopGateway)
 }
 
-// ValidateNexthopInterface check if every item in comma separated list is an active interface name
-// Path : /sonic-static-route/STATIC_ROUTE/ifname
+// ValidateNexthopInterface checks if every item in comma separated list is an active interface name
 // Returns -  CVL Error object
+// Path /sonic-static-route/STATIC_ROUTE/ifname
 func (t *CustomValidation) ValidateNexthopInterface(
 	vc *CustValidationCtxt) CVLErrorInfo {
     var tableList = []string{"PORT", "PORTCHANNEL", "VLAN", "LOOPBACK_INTERFACE"}
     return validateNexthopAttrCmn(vc, checkNexthopIntfVrf, tableList, vc.RClient)
 }
 
-// ValidateNexthopVrf check if every item in comma separated list is an active VRF name
-// Path : /sonic-static-route/STATIC_ROUTE/nexthop-vrf
+// ValidateNexthopVrf checks if every item in comma separated list is an active VRF name
 // Returns -  CVL Error object
+// Path /sonic-static-route/STATIC_ROUTE/nexthop-vrf
 func (t *CustomValidation) ValidateNexthopVrf(
 	vc *CustValidationCtxt) CVLErrorInfo {
     var tableList = []string{"VRF"}

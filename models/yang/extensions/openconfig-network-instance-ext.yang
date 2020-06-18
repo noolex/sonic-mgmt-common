@@ -49,34 +49,57 @@ module openconfig-network-instance-ext {
   }
 
   grouping global-sag-config {
-	  leaf anycast-mac {
-		  description
-			  "Static Anycast Gateway MAC addresses";
-		  type ietf:mac-address;
-	  }
-	  
-      leaf ipv4-enable {
-        type boolean;
-		default true;
-      }
 
-      leaf ipv6-enable {
-        type boolean;
-		default true;
-      }
+    description
+      "Global static anycast gateway config";
+
+	  leaf anycast-mac {
+		  type ietf:mac-address;
+
+		  description
+			  "static anycast gateway MAC addresses";
+
+	  }
+
+    leaf ipv4-enable {
+      type boolean;
+		  default true;
+
+      description
+        "static anycast gateway IPv4 enable";
+    }
+
+    leaf ipv6-enable {
+      type boolean;
+		  default true;
+
+      description
+        "static anycast gateway IPv6 enable";
+    }
   }
 
   grouping global-sag-top {
+    description
+      "Global static anycast gateway";
 	  container global-sag {
 		  container config {
 			  uses global-sag-config;
+
+        description
+          "Global static anycast gateway config";
 		  }
 		  container state {
 			  config false;
 			  uses global-sag-config;
+
+        description
+          "Global static anycast gateway state";
 		  }
+
+      description
+        "Static anycast gateway";
 	  }
-  }	
+  }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:state" {
       leaf static-count {
@@ -92,9 +115,9 @@ module openconfig-network-instance-ext {
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" {
       description
           "Global Anycast Gateway";
-      uses global-sag-top;	
+      uses global-sag-top;
   }
-	
+
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config {
       description
           "Extension for table connection";

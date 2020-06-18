@@ -1,0 +1,93 @@
+module openconfig-errdisable-ext {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/errdisable/extension";
+
+  prefix "oc-errdisable-ext";
+
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-errdisable-types { prefix oc-errdisable-types; }
+
+  organization
+      "SONiC";
+
+  contact
+      "SONiC";
+
+  description
+    "This module defines configuration and operational state data
+    for the ERRDISABLE recovery protocol.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-06-04" {
+    description
+      "Initial public revision";
+    reference "0.1.0";
+  }
+
+  // OpenConfig specific extensions for module metadata.
+  oc-ext:regexp-posix;
+  oc-ext:catalog-organization "openconfig";
+  oc-ext:origin "openconfig";
+
+  // identity statements
+
+
+  // grouping statements
+
+
+  grouping errdisable-ext-config {
+    description
+      "Groups ErrDisable Recovery commands ";
+
+    leaf interval {
+        type uint32;
+        default 300;
+        description
+            "Interval after which errdisabled ports will be recovered";
+    }
+
+    leaf-list cause {
+        type identityref {
+          base oc-errdisable-types:ERRDISABLE_RECOVERY_CAUSE;
+        }
+        description
+            "Enable/Disable ErrDisable Recovery for a specific cause";
+    }
+  }
+
+  grouping errdisable-ext-top {
+    description
+      "Top-level grouping for ERRDISABLE model";
+
+    container errdisable {
+      description
+        "Top-level container for ERRDISABLE configuration and state data";
+
+      container config {
+        description
+          "Configuration data ";
+
+        uses errdisable-ext-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for ERRDISABLE";
+
+        uses errdisable-ext-config;
+      }
+    }
+  }
+
+  // data definition statements
+
+  uses errdisable-ext-top;
+
+}

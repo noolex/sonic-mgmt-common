@@ -303,7 +303,7 @@ module openconfig-bgp-evpn-ext {
 
     leaf autort {
       type enumeration {
-        enum rfc8365-compatible {
+        enum RFC8365_COMPATIBLE {
           description 
             "Automatic route-target deduction following RFC 8365";
         }
