@@ -98,3 +98,5 @@ openconfig-aggregate-ext.yang
 openconfig-aggregate-ext-annot.yang
 openconfig-fbs-ext.yang
 openconfig-fbs-ext-annot.yang
+openconfig-ip-sla.yang
+openconfig-ip-sla-annot.yang
