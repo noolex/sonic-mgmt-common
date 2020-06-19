@@ -67,6 +67,12 @@ module openconfig-aaa-ldap-ext {
       server";
   }
 
+  identity LDAP_ALL {
+    base oc-aaa-types:AAA_METHOD_TYPE;
+    description
+      "The group of all LDAP servers.";
+  }
+
   // typedef statements
   typedef ldap-ssl-type {
     type enumeration {
@@ -210,9 +216,7 @@ module openconfig-aaa-ldap-ext {
     }
     
     leaf retransmit-attempts {
-      type uint8  {
-        range "0..10";
-      }
+      type uint8;
       description
         "Number of retransmit attempt by LDAP server";
     }

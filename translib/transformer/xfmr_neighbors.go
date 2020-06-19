@@ -508,7 +508,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
     for _, key := range keys {
         intfName := key.Comp[0]
-        if (len(key.Comp) == 2) {
+        if (len(key.Comp) > 2) {
             continue
         }
         ipAddr := ""

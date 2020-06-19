@@ -44,10 +44,10 @@ var rpc_clear_threshold_breach RpcCallpoint = func(body []byte, dbs [db.MaxDB]*d
     err = json.Unmarshal(body, &mapData)
     if err != nil {
         log.Errorf("Failed to unmarshall given input data, error=%v", err)
-        result.Output.Status_detail = fmt.Sprintf("Error: Unable to unmarshall given input data")
+        result.Output.Status_detail = "Error: Unable to unmarshall given input data"
         return json.Marshal(&result)
     }
-    input, _ := mapData["sonic-threshold:input"]
+    input := mapData["sonic-threshold:input"]
     mapData = input.(map[string]interface{})
     input = mapData["breach_event_id"]
     input_str := fmt.Sprintf("%v", input)
