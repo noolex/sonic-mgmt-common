@@ -916,46 +916,39 @@ func (app *LstApp) processLstInterfaceGet(dbs [db.MaxDB]*db.DB, intfPtr *ocbinds
 		return tlerr.NotFound("Intf %s is not associated with any groups", *intfPtr.Id)
 	}
 
-	log.Infof("Intf:%s Up:%v Down:%v", *intfPtr.Id, upFound, downFound)
-	if *app.ygotTarget == intfPtr {
-		ygot.BuildEmptyTree(intfPtr)
-		if !upFound {
-			log.Infof("No upstream groups for %s", *intfPtr.Id)
-			intfPtr.UpstreamGroups = nil
-		}
-		if !downFound {
-			log.Infof("No downstream groups for %s", *intfPtr.Id)
-			intfPtr.DownstreamGroup = nil
-		}
-	}
+	ygot.BuildEmptyTree(intfPtr)
 
-	if nil != intfPtr.Config {
-		intfPtr.Config.Id = intfPtr.Id
-	}
-	if nil != intfPtr.State {
-		intfPtr.State.Id = intfPtr.Id
-	}
-	if nil != intfPtr.InterfaceRef {
-		ygot.BuildEmptyTree(intfPtr.InterfaceRef)
-		ygot.BuildEmptyTree(intfPtr.InterfaceRef.Config)
-		ygot.BuildEmptyTree(intfPtr.InterfaceRef.State)
-		intfPtr.InterfaceRef.Config.Interface = intfPtr.Id
-		intfPtr.InterfaceRef.State.Interface = intfPtr.Id
-	}
-	if nil != intfPtr.UpstreamGroups {
+	ygot.BuildEmptyTree(intfPtr.Config)
+	intfPtr.Config.Id = intfPtr.Id
+
+	ygot.BuildEmptyTree(intfPtr.State)
+	intfPtr.State.Id = intfPtr.Id
+
+	ygot.BuildEmptyTree(intfPtr.InterfaceRef)
+	ygot.BuildEmptyTree(intfPtr.InterfaceRef.Config)
+	ygot.BuildEmptyTree(intfPtr.InterfaceRef.State)
+	intfPtr.InterfaceRef.Config.Interface = intfPtr.Id
+	intfPtr.InterfaceRef.State.Interface = intfPtr.Id
+
+	if upFound {
 		log.Info("Filling upstream info")
 		err := app.processLstInterfaceUpstreamGet(dbs, *intfPtr.Id, intfPtr.UpstreamGroups)
 		if err != nil {
 			return err
 		}
-	}
-	if nil != intfPtr.DownstreamGroup {
+	} else {
+        intfPtr.UpstreamGroups = nil
+    }
+
+	if downFound {
 		log.Info("Filling Downstream info")
 		err := app.processLstInterfaceDownstreamGet(dbs, *intfPtr.Id, intfPtr.DownstreamGroup)
 		if err != nil {
 			return err
 		}
-	}
+	} else {
+        intfPtr.DownstreamGroup = nil
+    }
 
 	return nil
 }
@@ -963,15 +956,17 @@ func (app *LstApp) processLstInterfaceGet(dbs [db.MaxDB]*db.DB, intfPtr *ocbinds
 func (app *LstApp) processLstInterfaceUpstreamGet(dbs [db.MaxDB]*db.DB, intf string,
 	upIntfPtr *ocbinds.OpenconfigLstExt_Lst_Interfaces_Interface_UpstreamGroups) error {
 
-	if nil == upIntfPtr.UpstreamGroup || len(upIntfPtr.UpstreamGroup) > 0 {
+	if nil == upIntfPtr.UpstreamGroup || len(upIntfPtr.UpstreamGroup) == 0 {
 		upGrps, found := app.intfUpstreamCfgTblMap[intf]
 		if !found {
 			return tlerr.NotFound("Intf %s is not configured as upstream for any groups", intf)
 		}
 
+		log.Info(upGrps)
 		for _, upgrp := range upGrps {
 			upGrpPtr, err := upIntfPtr.NewUpstreamGroup(upgrp)
 			if nil != err {
+				log.Error(err)
 				return err
 			}
 
@@ -983,6 +978,7 @@ func (app *LstApp) processLstInterfaceUpstreamGet(dbs [db.MaxDB]*db.DB, intf str
 		if !contains(app.intfUpstreamCfgTblMap[intf], grpName) {
 			return tlerr.NotFound("Intf %s is not configured as upstream of %s", intf, grpName)
 		}
+		ygot.BuildEmptyTree(grpPtr)
 		ygot.BuildEmptyTree(grpPtr.Config)
 		ygot.BuildEmptyTree(grpPtr.State)
 		grpPtr.Config.GroupName = grpPtr.GroupName
