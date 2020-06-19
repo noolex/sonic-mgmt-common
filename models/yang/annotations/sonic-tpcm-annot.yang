@@ -1,0 +1,27 @@
+module sonic-tpcma-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/tpcm-annot";
+    prefix "tpcm-annot"; 
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-tpcm { prefix tpcm-rpc; }
+
+    deviation /tpcm-rpc:tpcm-install{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_tpcm_install_cb";
+        }
+    }
+    deviation /tpcm-rpc:tpcm-uninstall{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_tpcm_uninstall_cb";
+        }
+    }
+
+    deviation /tpcm-rpc:tpcm-upgrade{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_tpcm_upgrade_cb";
+        }
+    } 
+}

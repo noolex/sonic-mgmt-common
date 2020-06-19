@@ -1,7 +1,7 @@
 module openconfig-infra {
     yang-version "1";
 
-    namespace "http://openconfig.net/yang/system/infra";
+    namespace "http://openconfig.net/yang/system/infra/extension";
 
     prefix "oc-infra";
 
@@ -39,12 +39,12 @@ module openconfig-infra {
           config false;
           description
             "State parameters of infra ";
-          uses infra-sys-time;
+          uses infra-sys-time-state;
         }
     }
   }
 
-  grouping infra-sys-time{
+  grouping infra-sys-time-state{
           description
                "Global clock/time for the system";
           leaf clock {
