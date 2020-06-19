@@ -1073,7 +1073,7 @@ func copyYangXpathSpecData(dstNode *yangXpathInfo, srcNode *yangXpathInfo) {
 	return
 }
 
-func tblSchemaCopy(dst, src map[string]map[string]db.Value){
+/*func tblSchemaCopy(dst, src map[string]map[string]db.Value){
 	for tbl, tblData := range src {
 		_, ok := dst[tbl]
 		if !ok {
@@ -1091,7 +1091,7 @@ func tblSchemaCopy(dst, src map[string]map[string]db.Value){
 		}
 	}
 	return
-}
+}*/
 
 func isYangLeaf(uri string) (bool, error) {
 	xpath, err := XfmrRemoveXPATHPredicates(uri)

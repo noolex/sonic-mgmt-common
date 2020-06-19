@@ -510,8 +510,32 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 
 	if isSonicYang(uri) {
 		err = sonicYangReqToDbMapCreate(xlateToData)
-		resultMap[oper] = make(RedisDbMap)
-		resultMap[oper][db.ConfigDB] = result
+		xpathPrefix, keyName, tableName := sonicXpathKeyExtract(uri)
+		xfmrLogInfoAll("xpath - %v, keyName - %v, tableName - %v , for uri - %v", xpathPrefix, keyName, tableName, uri)
+		fldPth := strings.Split(xpathPrefix, "/")
+		if len(fldPth) > SONIC_FIELD_INDEX {
+			fldNm := fldPth[SONIC_FIELD_INDEX]
+			xfmrLogInfoAll("Field Name : %v", fldNm)
+			if fldNm != "" {
+				_, ok := xDbSpecMap[tableName]
+				if ok {
+					dbSpecField := tableName + "/" + fldNm
+					_, dbFldok := xDbSpecMap[dbSpecField]
+					if dbFldok {
+						/* RFC compliance - REPLACE on leaf/leaf-list becomes UPDATE/merge */
+						resultMap[UPDATE] = make(RedisDbMap)
+						resultMap[UPDATE][db.ConfigDB] = result
+					} else {
+						log.Errorf("For uri - %v, no entry found in xDbSpecMap for table(%v)/field(%v)", uri, tableName, fldNm)
+					}
+				} else {
+					log.Errorf("For uri - %v, no entry found in xDbSpecMap with tableName - %v", uri, tableName)
+				}
+			}
+		} else {
+			resultMap[oper] = make(RedisDbMap)
+			resultMap[oper][db.ConfigDB] = result
+		}
 	} else {
 		err = yangReqToDbMapCreate(xlateToData)
 		if xfmrErr != nil {
@@ -542,11 +566,8 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					resultMap[UPDATE][db.ConfigDB] = result
 					result = make(map[string]map[string]db.Value)
 				} else if yangNode.yangDataType == YANG_LEAF_LIST {
+					/* RFC compliance - REPLACE on leaf-list becomes UPDATE/merge */
 					xfmrLogInfo("Change leaflist oper to UPDATE for %v, oper(%v)\r\n", uri, oper)
-					delMap := make(map[string]map[string]db.Value)
-					resultMap[DELETE] = make(RedisDbMap)
-					tblSchemaCopy(delMap, result)
-					resultMap[DELETE][db.ConfigDB] = delMap
 					resultMap[UPDATE] = make(RedisDbMap)
 					resultMap[UPDATE][db.ConfigDB] = result
 					result = make(map[string]map[string]db.Value)
