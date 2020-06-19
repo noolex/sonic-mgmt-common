@@ -904,3 +904,27 @@ func Test_Leaf_Sonic_Yang_List_With_Multi_Key_Delete(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl)
 }
 
+func Test_Leaf_Add_Null_Field(t *testing.T) {
+
+	cleanuptbl1 := map[string]interface{}{"LOOPBACK_INTERFACE":map[string]interface{}{"Loopback1":""}}
+        cleanuptbl2 := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":""}}
+        prereq1 := map[string]interface{}{"LOOPBACK_INTERFACE":map[string]interface{}{"Loopback1":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":map[string]interface{}{"unnumbered":"Loopback1"}}}
+        url := "/sonic-interface:sonic-interface/INTERFACE/INTERFACE_LIST[portname=Ethernet4]/unnumbered"
+
+        fmt.Println("++++++++++++++  ADD a NULL field when a last field gets deleted  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+
+        delete_expected := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":map[string]interface{}{"NULL":"NULL"}}}
+
+        t.Run("DELETE a last field on a given entry", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify delete entry", verifyDbResult(rclient, "INTERFACE|Ethernet4", delete_expected, false))
+
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+}
+
