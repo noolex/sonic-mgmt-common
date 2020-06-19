@@ -291,7 +291,8 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 						}
 					}
 				} // end of curUri children traversal loop
-			} // hasChildSubtree || fill fields
+			} // Child Subtree or fill fields
+
 		} // end of for dbKey loop
 	} // end of tbl in dbDataMap
 } // end of for tbl loop
@@ -528,8 +529,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				}
 			} else if specYangType == YANG_LEAF || specYangType == YANG_LEAF_LIST {
 				if len(tableName) > 0 && len(keyName) > 0 {
-					result[tableName] = make(map[string]db.Value)
-					result[tableName][keyName] = db.Value{Field: make(map[string]string)}
+					dataToDBMapAdd(tableName, keyName, result, "", "")
 					xpath := xpathPrefix
 					uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
 					uriItemListLen := len(uriItemList)
@@ -606,6 +606,8 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					log.Errorf("No proper table and key information to fill result map for uri %v, table: %v, key %v", uri, tableName, keyName)
 				}
 			} else {
+				dataToDBMapAdd(tableName, keyName, curXlateParams.result, "", "")
+				log.Infof("Before calling allChildTblGetToDelete result: %v", curXlateParams.result)
 				curResult, cerr := allChildTblGetToDelete(curXlateParams)
 				if cerr != nil {
 					err = cerr
