@@ -1,0 +1,184 @@
+module sonic-ip-sla {
+    namespace "http://github.com/Azure/sonic-ip-sla";
+        prefix sipsla;
+    yang-version 1.1;
+
+    import ietf-yang-types {
+        prefix yang;
+    }
+
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    import sonic-common {
+        prefix scommon;
+    }
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    import sonic-port {
+        prefix prt;
+    }
+
+    import sonic-portchannel {
+        prefix spc;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC IPSLA";
+
+    revision 2019-10-01 {
+        description
+            "Initial revision.";
+    }
+
+    container sonic-ip-sla {
+        container IP_SLA {
+            list IP_SLA_LIST {
+                key "ip_sla_id";
+
+                leaf ip_sla_id {
+                    type uint16 {
+                        range "1..4095" {
+                            error-message "IP SLA ID out of range";
+                        }
+                    }
+                    description
+                      "ip sla id of IP SLA";
+                }
+
+                leaf frequency {
+                    type uint16 {
+                        range "1..300" {
+                            error-message "Frequency out of range";
+                        }
+                    }
+                    description
+                      "frequency of IP SLA";
+                }
+
+                leaf threshold {
+                    type uint16 {
+                        range "1..1000" {
+                            error-message "Threshold out of range";
+                        }
+                    }
+                    description
+                      "threshold of IP SLA";
+                }
+
+                leaf timeout {
+                    type uint16 {
+                        range "1..4095" {
+                            error-message "Timeout out of range";
+                        }
+                    }
+                    description
+                      "timeout of IP SLA";
+                }
+                leaf tcp_source_port {
+                    type uint16 {
+                        range "1..4095" {
+                            error-message "Timeout out of range";
+                        }
+                    }
+                    description
+                      "tcp source port of IP SLA";
+                }
+
+                leaf tcp_dst_port {
+                    type uint16 {
+                        range "1..4095" {
+                            error-message "Timeout out of range";
+                        }
+                    }
+                    description
+                      "tcp destination port of IP SLA";
+
+                }
+
+                leaf tcp_source_ip {
+                    type inet:ip-address;
+                    description
+                      "tcp source ip of IP SLA";
+                }
+
+                leaf tcp_dst_ip {
+                    type inet:ip-address;
+                    description
+                      "tcp destination ip of IP SLA";
+                }
+
+                leaf tcp_ttl {
+                    type uint16 {
+                        range "1..256" {
+                            error-message "tcp_ttl out of range";
+                        }
+                    }
+                    description
+                      "tcp TTL of IP SLA";
+                }
+
+                leaf tcp_tos {
+                    type uint16 {
+                        range "1..1000" {
+                            error-message "tcp_tos out of range";
+                        }
+                    }
+                    description
+                      "tcp tos of IP SLA";
+                }
+                leaf vrf {
+                    type string;
+                    description
+                      "vrf of IP SLA";
+                }
+
+                leaf icmp_source_interface {
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                    }
+                    description
+                      "icmp source interface of IP SLA";
+                }
+
+                leaf icmp_source_ip {
+                    type inet:ip-address;
+                    description
+                      "icmp source ip of IP SLA";
+                }
+
+
+                leaf icmp_dst_ip {
+                    type inet:ip-address;
+                    description
+                      "icmp destination ip of IP SLA";
+                }
+                leaf icmp_size {
+                    type uint16 {
+                        range "1..9200" {
+                            error-message "icmp_size out of range";
+                        }
+                    }
+                    description
+                      "icmp size of IP SLA";
+                }
+            }
+        }
+    }
+}
+   
