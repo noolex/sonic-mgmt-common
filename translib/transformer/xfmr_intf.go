@@ -2700,6 +2700,10 @@ func isValidSpeed(d *db.DB, ifName string, speed string) bool {
         isValid = true
     } else {
         speeds := strings.Split(portEntry.Field["valid_speeds"], ",");
+        if len(portEntry.Field["valid_speeds"]) < 1 {
+            speeds,_ = getValidSpeeds(ifName)
+            log.Info("Speed from platform.json ", speeds)
+        }
         log.Info("Valid speeds for ",ifName, " is ", speeds, " SET ", speed)
         for _, vspeed := range speeds {
             if  speed == strings.TrimSpace(vspeed) {
@@ -2722,6 +2726,9 @@ func getDefaultSpeed(d *db.DB, ifName string) int {
         log.Info("Could not retrieve PORT|",ifName)
     } else {
         speeds := strings.Split(portEntry.Field["valid_speeds"], ",");
+        if len(portEntry.Field["valid_speeds"]) < 1 {
+            speeds,_ = getValidSpeeds(ifName)
+        }
         for _, speed := range speeds {
             log.Info("Speed check ", defaultSpeed, " vs ", speed)
             speed_i,_ := strconv.Atoi(speed)
@@ -2868,7 +2875,9 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
        }
     }
     /* Handle PortSpeed config */
-    if intfObj.Ethernet.Config.PortSpeed != 0 {
+    if isPortGroupMember(ifName) {
+        err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
+    } else if intfObj.Ethernet.Config.PortSpeed != 0 {
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
         intTbl := IntfTypeTblMap[intfType]

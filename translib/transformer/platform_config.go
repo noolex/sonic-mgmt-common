@@ -15,6 +15,7 @@ import (
 
 const (
     PLATFORM_JSON = "/usr/share/sonic/hwsku/platform.json"
+    PLATFORM_DEF_JSON = "/usr/share/sonic/hwsku/platform-def.json"
 )
 
 
@@ -34,6 +35,7 @@ type portCaps struct {
 }
 
 var platConfigStr map[string]map[string]string
+var platDefStr map[string]map[string]map[string]string
 
 /* Functions */
 
@@ -180,6 +182,36 @@ func getCapabilities () ([]portCaps) {
     return caps
 }
 
+func getValidSpeeds(port_i string) ([]string, error) {
+    var valid_speeds []string
+    if len(platConfigStr) < 1 {
+        parsePlatformJsonFile()
+    }
+    if entry, ok := platConfigStr[port_i]; ok {
+        // Get the valid speed from default breakout mode.
+        mode :=  entry["default_brkout_mode"]
+        log.Info("[DEBUG] Default mode: ", mode)
+        pos := strings.Index(mode, "G")
+        if pos != -1 {
+            speed,_ := strconv.Atoi(mode[2:pos])
+            valid_speeds = append(valid_speeds, strconv.Itoa(speed*1000))
+        } else {
+            log.Error("Invalid mode: ", mode)
+        }
+        pos = strings.Index(mode, "[")
+        epos := strings.Index(mode, "]")
+        if pos != -1 && epos != -1 {
+            speed,_ := strconv.Atoi(mode[pos+1:epos-1])
+            valid_speeds = append(valid_speeds, strconv.Itoa(speed*1000))
+        }
+    }
+    if len(valid_speeds) < 1 {
+        log.Error("Could not get valid speeds from default breakout mode")
+        return valid_speeds, tlerr.InvalidArgs("Unable to determine valid speeds")
+    }
+    return valid_speeds, nil
+}
+
 func parsePlatformJsonFile () (error) {
 
     file, err := ioutil.ReadFile(PLATFORM_JSON)
@@ -193,6 +225,45 @@ func parsePlatformJsonFile () (error) {
     err = json.Unmarshal([]byte(file), &platConfigStr)
     return err
 }
+
+func parsePlatformDefJsonFile () (error) {
+
+    file, err := ioutil.ReadFile(PLATFORM_DEF_JSON)
+
+    if nil != err {
+        log.Info("Platform specific properties not supported");
+        return err
+    }
+
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    return err
+}
+
+func isPortGroupMember(ifName string) (bool) {
+    if len(platDefStr) < 1 {
+        parsePlatformDefJsonFile()
+        if len(platDefStr) < 1 {
+            return false
+        }
+    }
+    if pgs, ok := platDefStr["port-group"]; ok {
+        for id, pg := range pgs {
+            memRange := strings.Split(strings.TrimLeft(pg["members"], "Ethernt"), "-")
+            ifNum,_ := strconv.Atoi(strings.TrimLeft(ifName, "Ethernt"))
+            startNum,_ := strconv.Atoi(memRange[0])
+            endNum,_ := strconv.Atoi(memRange[0])
+            log.Info("PG ", id, pg["members"], " ", pg["valid_speeds"], " ==> ",
+                        startNum, " - ", ifNum, " - ", endNum)
+            if (ifNum >= startNum) && (ifNum <= endNum) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
 
 func removePorts (ports_i []portProp) (map[db.DBNum]map[string]map[string]db.Value) {
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
