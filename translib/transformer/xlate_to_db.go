@@ -1012,11 +1012,11 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 				curKey   := xlateParams.keyName
 				pathAttr := key.String()
 				if len(xlateParams.xpath) > 0 {
+					curUri = xlateParams.uri + "/" + pathAttr
 					if strings.Contains(pathAttr, ":") {
 						pathAttr = strings.Split(pathAttr, ":")[1]
 					}
 					xpath  = xlateParams.xpath + "/" + pathAttr
-					curUri = xlateParams.uri + "/" + pathAttr
 				}
 				_, ok := xYangSpecMap[xpath]
 				xfmrLogInfoAll("slice/map data: curKey(\"%v\"), xpath(\"%v\"), curUri(\"%v\").",

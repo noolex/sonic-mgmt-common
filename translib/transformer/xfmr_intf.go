@@ -2745,7 +2745,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     memMap := make(map[string]map[string]db.Value)
 
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, err := getYangPathFromUri(inParams.requestUri)
     if err != nil {
         return memMap, err
     }

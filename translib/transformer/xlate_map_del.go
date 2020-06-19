@@ -81,6 +81,7 @@ func subTreeXfmrDelDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]ma
 func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subTreeResMap *map[string]map[string]db.Value) error {
 	var err error
 	var dbs [db.MaxDB]*db.DB
+	var chldUri string
 
 	spec, ok := xYangSpecMap[xlateParams.xpath]
 	if ok && (spec.dbIndex == db.ConfigDB) {
@@ -120,10 +121,14 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 					}
 					for yangChldName := range spec.yangEntry.Dir {
 						chldXpath    := xlateParams.xpath+"/"+yangChldName
-						chldUri      := curUri+"/"+yangChldName
 						chldSpec, ok := xYangSpecMap[chldXpath]
 						if (ok && (chldSpec.dbIndex == db.ConfigDB) && chldSpec.hasChildSubTree &&
 						(chldSpec.yangEntry != nil)) {
+							if chldSpec.nameWithMod != nil {
+								chldUri   = curUri +"/"+ *chldSpec.nameWithMod
+							} else {
+								chldUri   = curUri +"/"+yangChldName
+							}
 							chldYangType := chldSpec.yangDataType
 							curXlateParams := xlateParams
 							curXlateParams.uri = chldUri
@@ -164,6 +169,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subTreeResMap *map[string]map[string]db.Value) error {
 	var err error
 	var dbs [db.MaxDB]*db.DB
+	var chldUri string
 	spec, _ := xYangSpecMap[xlateParams.xpath]
 	cdb     := spec.dbIndex
 	dbs[cdb] = xlateParams.d
@@ -171,9 +177,13 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 	xfmrLogInfoAll("Parse container for subtree-xfmr(\"%v\")", xlateParams.uri)
 	for yangChldName := range spec.yangEntry.Dir {
 		chldXpath    := xlateParams.xpath+"/"+yangChldName
-		chldUri      := xlateParams.uri+"/"+yangChldName
 		chldSpec, ok := xYangSpecMap[chldXpath]
 		if (ok && (chldSpec.dbIndex == db.ConfigDB) && (chldSpec.yangEntry != nil)) {
+			if chldSpec.nameWithMod != nil {
+				chldUri = xlateParams.uri + "/" + *chldSpec.nameWithMod
+			} else {
+				chldUri = xlateParams.uri+"/"+yangChldName
+			}
 			chldYangType := chldSpec.yangDataType
 			curXlateParams := xlateParams
 			curXlateParams.uri = chldUri
