@@ -4,11 +4,7 @@ the rules defined in Section 10 of RFC 6020 and Section 11 of RFC 7950.
 Developed by Broadcom Inc.
 """
 
-import optparse
-import sys
-import os
-import io
-import pdb
+import optparse, sys, os, io, copy, pdb
 
 import pyang
 from pyang import plugin
@@ -16,9 +12,9 @@ from pyang import statements
 from pyang import error
 from pyang import util
 from pyang import types
-from pyang.error import err_add as pyang_err_add
 
-global_fd = None
+# Globals
+global_ctx = None
 
 def pyang_plugin_init():
     plugin.register_plugin(CheckDeviationPlugin())
@@ -34,6 +30,10 @@ class CheckDeviationPlugin(plugin.PyangPlugin):
             optparse.make_option("--yang-dir",
                                  dest="yang_dir",
                                  help="Directory path for non-extension modules"),
+            optparse.make_option("--disable-lint-ignore",
+                                 dest="disable_lint",
+                                 action="store_true",
+                                 help="Treat lint-ignore as error"), 
             ]
         optparser.add_options(optlist)
 
@@ -125,8 +125,8 @@ class CheckDeviationPlugin(plugin.PyangPlugin):
         ctx.implicit_errors = False
 
     def emit(self, ctx, modules, fd):
-        global global_fd
-        global_fd = fd
+        global global_ctx
+        global_ctx = ctx
         if ctx.opts.yang_dir is None:
             print("[Info]: YANG directory is not mentioned")
             sys.exit(2)
@@ -149,7 +149,7 @@ class CheckDeviationPlugin(plugin.PyangPlugin):
         error_seen = False
         if ctx.opts.outfile is not None:
             fd = open(ctx.opts.outfile, "w")        
-        for (epos, etag, eargs) in ctx.errors:
+        for (epos, etag, eargs, ignore_lint) in ctx.errors:
             elevel = error.err_level(etag)
             
             if "/extensions/" not in str(epos):
@@ -158,8 +158,11 @@ class CheckDeviationPlugin(plugin.PyangPlugin):
             if error.is_warning(elevel):
                 kind = "warning"
             else:
-                kind = "error"
-                error_seen = True
+                if ignore_lint:
+                    kind = "ignored"
+                else:
+                    kind = "error"
+                    error_seen = True
             
             fd.write(str(epos) + ': %s: ' % kind + \
                 error.err_to_str(etag, eargs) + '\n')                
@@ -175,7 +178,7 @@ def get_lint_ignore(node):
     name = None
     for substmt in node.substmts: 
         if substmt.keyword.__class__.__name__ == 'tuple':
-            if substmt.keyword[0] == 'sonic-extensions':
+            if substmt.keyword[0] == 'sonic-codegen':
                 if substmt.keyword[1] == 'lint-ignore':
                     name = substmt.arg
     return name
@@ -185,8 +188,10 @@ def mark_deviations(module):
         if not hasattr(deviation.i_target_node, "deviation_list"):
             deviation.i_target_node.deviation_list = []
         deviation.i_target_node.deviation_list.append(deviation)
-        if get_lint_ignore(deviation) is not None:
-            deviation.i_target_node.lint_ignore = True
+        for deviate in deviation.search('deviate'):
+            if get_lint_ignore(deviate) is not None:
+                for child in deviate.substmts:
+                    child.lint_ignore = True
 
 def check_update(ctx, oldfilename, newmod):
     oldpath = os.pathsep.join(ctx.opts.yang_dir)
@@ -208,7 +213,7 @@ def check_update(ctx, oldfilename, newmod):
     
     oldctx.validate()
 
-    ctx.errors.extend(oldctx.errors)
+    #ctx.errors.extend(oldctx.errors)
 
     chk_modulename(oldmod, newmod, ctx)
 
@@ -444,8 +449,6 @@ def chk_config(old, new, ctx):
         if statements.is_mandatory_node(new):
             err_add(ctx.errors, new.pos, 'CHK_MANDATORY_CONFIG', new.arg)
     elif old.i_config == True and new.i_config == False:
-        #pdb.set_trace()
-        #err_add(ctx.errors, new.pos, 'CHK_BAD_CONFIG', new.arg)
         err_add(ctx.errors, new.pos, 'CHK_BAD_CONFIG', new.arg, new)
 
 def chk_must(old, new, ctx):
@@ -829,13 +832,23 @@ def err_def_changed(old, new, ctx, data_node=None):
     err_add(ctx.errors, new.pos, 'CHK_DEF_CHANGED',
             (new.keyword, new.arg, old.arg), data_node)
 
+def pyang_err_add(errors, pos, tag, args, ignore_error=False):
+    error = (copy.copy(pos), tag, args, ignore_error)
+    for (i_pos, i_tag, i_args, i_ignore) in errors:
+        if (i_pos.line == pos.line and i_pos.ref == pos.ref and
+            i_pos.top == pos.top and i_tag == tag and i_args == args):
+            return
+    errors.append(error)
+
 def err_add(ctx, pos, err_code, extra, data_node=None):
-    if data_node != None and hasattr(data_node, 'lint_ignore'):
-        return
+    ignore_error=False
+    if data_node != None and hasattr(data_node, 'lint_ignore') \
+        and global_ctx.opts.disable_lint is None:
+        ignore_error = True
     if data_node != None and hasattr(data_node, 'deviation_list'):
         for deviation in data_node.deviation_list:
-            pyang_err_add(ctx, deviation.pos, err_code, extra)
+            pyang_err_add(ctx, deviation.pos, err_code, extra, ignore_error)
     else:
-        pyang_err_add(ctx, pos, err_code, extra )
+        pyang_err_add(ctx, pos, err_code, extra, ignore_error)
 
 

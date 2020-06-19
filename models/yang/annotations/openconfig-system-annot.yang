@@ -19,6 +19,7 @@ module openconfig-system-annot {
     import openconfig-system { prefix oc-sys; }
     import sonic-extensions {prefix sonic-ext; }
     import openconfig-system-ext { prefix oc-sys-ext; }
+    import openconfig-aaa-ext { prefix oc-aaa-ext; }
     import openconfig-aaa-radius-ext { prefix oc-aaa-radius-ext; }
     import openconfig-aaa-ldap-ext { prefix oc-aaa-ldap-ext; }
 
@@ -163,7 +164,61 @@ module openconfig-system-annot {
       }
     }
 
-/*********************************************************/
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:authorization/oc-aaa-ext:login/oc-aaa-ext:config {
+      deviate add {
+          sonic-ext:table-name "AAA";
+          sonic-ext:key-transformer "authorization_set_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:authorization/oc-aaa-ext:login/oc-aaa-ext:config/oc-aaa-ext:authorization-method {
+      deviate add {
+          sonic-ext:field-name "login";
+          sonic-ext:field-transformer "authorization_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:config {
+      deviate add {
+          sonic-ext:table-name "AAA";
+          sonic-ext:key-transformer "name_service_set_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:config/oc-aaa-ext:passwd-method {
+      deviate add {
+          sonic-ext:field-name "passwd";
+          sonic-ext:field-transformer "passwd_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:config/oc-aaa-ext:shadow-method {
+      deviate add {
+          sonic-ext:field-name "shadow";
+          sonic-ext:field-transformer "shadow_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:config/oc-aaa-ext:group-method {
+      deviate add {
+          sonic-ext:field-name "group";
+          sonic-ext:field-transformer "group_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:config/oc-aaa-ext:netgroup-method {
+      deviate add {
+          sonic-ext:field-name "netgroup";
+          sonic-ext:field-transformer "netgroup_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:config/oc-aaa-ext:sudoers-method {
+      deviate add {
+          sonic-ext:field-name "sudoers";
+          sonic-ext:field-transformer "sudoers_method_xfmr";
+      }
+    }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group {
       deviate add {
@@ -327,7 +382,7 @@ module openconfig-system-annot {
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address {
       deviate add {
-          sonic-ext:field-name "ipaddress";
+      		sonic-ext:field-transformer "server_ipaddr_xfmr";          
       }
     }
 
@@ -659,18 +714,16 @@ module openconfig-system-annot {
 
 	/*************** ldap-servers-map-attributes-start ***********/    
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map/oc-aaa-ldap-ext:config {
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map {
       deviate add {
-      	sonic-ext:table-name "LDAP_MAP";
-      	sonic-ext:key-transformer "ldap_server_map_key_xfmr";
+        sonic-ext:table-name "LDAP_MAP";
+        sonic-ext:key-transformer "ldap_server_map_key_xfmr";
       }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map/oc-aaa-ldap-ext:state {
       deviate add {
         sonic-ext:db-name "CONFIG_DB";
-      	sonic-ext:table-name "LDAP_MAP";
-      	sonic-ext:key-transformer "ldap_server_map_key_xfmr";
       }
     }
     
@@ -748,12 +801,6 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:bind-pw {
       deviate add {
           sonic-ext:field-name "bindpw";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:vrf-name {
-      deviate add {
-          sonic-ext:field-name "vrf";
       }
     }
 		
@@ -882,12 +929,6 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:bind-pw {
       deviate add {
           sonic-ext:field-name "bindpw";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:vrf-name {
-      deviate add {
-          sonic-ext:field-name "vrf";
       }
     }
 	

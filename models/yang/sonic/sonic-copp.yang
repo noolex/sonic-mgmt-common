@@ -6,6 +6,9 @@ module sonic-copp {
 	import sonic-common {
 		prefix cmn;
 	}
+	import sonic-extension {
+		prefix sonic-ext;
+	}
 
 	organization
 		"SONiC";
@@ -25,6 +28,7 @@ module sonic-copp {
 		container COPP_GROUP {
 			list COPP_GROUP_LIST {
 				key name;
+				sonic-ext:custom-validation ValidateCoppName;
 				leaf name {
 					type string;
 					description
@@ -119,6 +123,9 @@ module sonic-copp {
 					}
 					description
 						"Meter type";
+					must "(/cmn:operation/cmn:operation = 'DELETE') or (current() != 'bytes')" {
+						error-message "Bytes(bps) is not supported";
+					}
 				}
 				leaf mode {
 					type string {
@@ -128,6 +135,9 @@ module sonic-copp {
 					}
 					description
 						"Mode";
+					must "(/cmn:operation/cmn:operation = 'DELETE') or ((current() != 'storm'))" {
+						error-message "Storm mode is not supported";
+					}
 				}
 				leaf green_action {
 					type string {
@@ -161,6 +171,7 @@ module sonic-copp {
 		container COPP_TRAP {
 			list COPP_TRAP_LIST {
 				key name;
+				sonic-ext:custom-validation ValidateCoppName;
 				leaf name {
 					type string;
 					description

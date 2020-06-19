@@ -607,7 +607,7 @@ func xfmrSubscSubtreeHandler(inParams XfmrSubscInParams, xfmrFuncNm string) (Xfm
     var retVal XfmrSubscOutParams
     retVal.dbDataMap = nil
     retVal.needCache = false
-    retVal.onChange = true
+    retVal.onChange = false
     retVal.nOpts = nil
 
     xfmrLogInfo("Received inParams %v Subscribe Subtree function name %v", inParams, xfmrFuncNm)
@@ -727,6 +727,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                subscribe_result.NeedCache = st_result.needCache
                xfmrLogInfo("Subtree subcribe need Cache %v", subscribe_result.NeedCache)
            } else {
+		   subscribe_result.OnChange = true
 		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{dbTbl: {dbKey: {}}}
 	   }
            break

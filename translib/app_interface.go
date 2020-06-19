@@ -98,7 +98,7 @@ func register(path string, info *appInfo) error {
 		appMap = make(map[string]*appInfo)
 	}
 
-	if _, ok := appMap[path]; ok == false {
+	if _, ok := appMap[path]; !ok {
 
 		appMap[path] = info
 
@@ -121,7 +121,7 @@ func addModel(model *ModelData) error {
 }
 
 //App modules can use this function to unregister itself from the app interface
-func unregister(path string) error {
+/*func unregister(path string) error {
 	var err error
 	log.Info("Unregister for path =", path)
 
@@ -133,7 +133,7 @@ func unregister(path string) error {
 	}
 
 	return err
-}
+}*/
 
 //Translib infra will use this function get the app info for a given path
 func getAppModuleInfo(path string) (*appInfo, error) {
