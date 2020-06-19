@@ -237,9 +237,7 @@ func removeStpConfigOnVlanDeletion(inParams *XfmrParams, vlanName *string, membe
                 stpPortMap[memberPort] = db.Value{Field:map[string]string{}}
             }
         }
-	    if len(stpVlanPortMap) != 0 {
-            resMap[STP_VLAN_PORT_TABLE] = stpVlanPortMap
-	    }
+        resMap[STP_VLAN_PORT_TABLE] = stpVlanPortMap
 
         /* only remove STP_PORT if stpPortMap is not empty */
         if (len(stpPortMap) != 0) {
