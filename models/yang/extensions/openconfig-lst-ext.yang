@@ -83,7 +83,7 @@ module openconfig-lst-ext {
 
 	leaf timeout {
 	  type uint16 {
-        range "1..999";
+        range "1..1800";
 	  }
 	  units seconds;
 	  description
