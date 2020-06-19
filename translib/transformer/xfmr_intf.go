@@ -3107,7 +3107,7 @@ var YangToDb_igmp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
 
     log.Info("YangToDb_igmp_tbl_key_xfmr - requestUriPath:", requestUriPath)
 
-    if strings.HasPrefix(requestUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-igmp-ext:igmp/joins/join") {
+    if strings.HasPrefix(requestUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-igmp-ext:igmp/joins") || strings.HasPrefix(requestUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/igmp/joins") {
         mcastGrpAddr := pathInfo.Var("mcastgrpaddr")
         srcAddr := pathInfo.Var("srcaddr")
 
