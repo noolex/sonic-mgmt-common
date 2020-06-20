@@ -542,7 +542,6 @@ module openconfig-vxlan {
             "Pipe QoS mode";
         }
       }
-      default PIPE;
       description
         "Uniform QoS mode copies payload DSCP to outer header DSCP 
         on encapsulation and copies outer header DSCP to payload 
@@ -558,7 +557,6 @@ module openconfig-vxlan {
           error-message "DSCP value out of range";
         }
       }
-      default 0;
       description
         "DSCP value for Pipe QoS mode";
     }
