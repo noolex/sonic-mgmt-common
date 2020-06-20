@@ -553,10 +553,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
  		}
  	}	
     }
-
-	if  inParams.oper == DELETE && (targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4" ||
-        targetUriPath ==  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6") {
-            return tblList, tlerr.New("DELETE operation not allowed on  this container")
+    if  inParams.oper == DELETE && (targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4" ||
+                targetUriPath ==  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6") {
+        return tblList, tlerr.New("DELETE operation not allowed on  this container")
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") && IntfTypeVxlan == intfType  {
 		if inParams.oper == 5 {
@@ -638,9 +637,14 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     } else if strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/openconfig-interfaces-ext:nat-zone") ||
         strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/nat-zone") {
         tblList = append(tblList, intTbl.cfgDb.intfTN)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface" {
         tblList = append(tblList, intTbl.cfgDb.portTN)
-    } else {       err = errors.New("Invalid URI")
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
+        if inParams.oper != DELETE {
+            tblList = append(tblList, intTbl.cfgDb.portTN)
+        }
+    }else {
+        err = errors.New("Invalid URI")
     }
 
     log.Infof("TableXfmrFunc - uri(%v), tblList(%v)\r\n", inParams.uri, tblList);
