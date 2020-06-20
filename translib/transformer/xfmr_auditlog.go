@@ -48,13 +48,24 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         return nil,err
     }
 
-    input := inputData["sonic-auditlog:input"]
-    inputData = input.(map[string]interface{})
-
     var v interface{}
-    v = inputData["content-type"]
+    v = "brief"
+    input := inputData["sonic-auditlog:input"]
+    if (input != nil) {
+        inputData = input.(map[string]interface{})
+        v = inputData["content-type"]
+    }
 
-    if v == "brief" {
+    if v == "all" {
+        data1, _ := ioutil.ReadFile("/host_var/log/audit.log.1")
+        data, err := ioutil.ReadFile("/host_var/log/audit.log")
+        if err != nil {
+            fmt.Println("File reading error", err)
+            return nil,err
+        }
+        showaudit.Output.Result = string(data1) + string(data)
+    } else {
+        var buffer []byte
         f, err := os.Open("/host_var/log/audit.log")
         if err != nil {
             fmt.Println("File reading error", err)
@@ -68,34 +79,26 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
             return nil, err
         }
         filesize := fileinfo.Size()
-        buffer := make([]byte, 4096)
         if filesize > 4096 {
+            buffer = make([]byte, 4096)
             _, err = f.ReadAt(buffer, (filesize-4096))
+        } else {
+            buffer = make([]byte, filesize)
+            _, err = f.Read(buffer)
+        }
+        if err != nil {
+           fmt.Println(err)
+           return nil, err
+        }
 
-            if err != nil {
-                fmt.Println(err)
-                return nil, err
-            }
+        res1 := bytes.Index(buffer, []byte("\n"))
 
-            res1 := bytes.Index(buffer, []byte("\n"))
-
-            if (res1 != -1) {
-                showaudit.Output.Result = string(buffer[res1:])
-            } else {
-                showaudit.Output.Result = string(buffer)
-            }
-            result, _ := json.Marshal(&showaudit)
-            return result, nil
+        if (res1 != -1) {
+            showaudit.Output.Result = string(buffer[res1:])
+        } else {
+            showaudit.Output.Result = string(buffer)
         }
     }
-
-    data, err := ioutil.ReadFile("/host_var/log/audit.log")
-    if err != nil {
-        fmt.Println("File reading error", err)
-        return nil,err
-    }
-    fmt.Println("Contents of file:", string(data))
-    showaudit.Output.Result = string(data)
 
     result, _ := json.Marshal(&showaudit)
     return result, nil

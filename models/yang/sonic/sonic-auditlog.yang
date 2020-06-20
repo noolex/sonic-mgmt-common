@@ -23,7 +23,6 @@ module sonic-auditlog {
        input {
            leaf content-type {
                type string {
-                   pattern "brief" ;
                    pattern "all";
                }
                description "Indicates if user wants to display all or subset of audit log";
