@@ -67,6 +67,12 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc {
+      deviate add {
+        sonic-ext:subtree-transformer "qos_intf_pfc_xfmr";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos-ext:threshold-breaches {
       deviate add {
         sonic-ext:db-name "COUNTERS_DB";
@@ -249,9 +255,28 @@ module openconfig-qos-annot {
             sonic-ext:subtree-transformer "qos_dscp_fwd_group_xfmr";
         }
     }
+
     deviation /oc-qos:qos/oc-qos-maps-ext:dot1p-maps/oc-qos-maps-ext:dot1p-map {
         deviate add {
             sonic-ext:subtree-transformer "qos_dot1p_fwd_group_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-queue-maps/oc-qos-maps-ext:forwarding-group-queue-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_tc_queue_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-priority-group-maps/oc-qos-maps-ext:forwarding-group-priority-group-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_tc_pg_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:pfc-priority-queue-maps/oc-qos-maps-ext:pfc-priority-queue-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_pfc_priority_queue_xfmr";
         }
     }
 
@@ -260,6 +285,7 @@ module openconfig-qos-annot {
             sonic-ext:subtree-transformer "qos_fwd_group_dscp_xfmr";
         }
     }
+
     deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dot1p-maps/oc-qos-maps-ext:forwarding-group-dot1p-map {
         deviate add {
             sonic-ext:subtree-transformer "qos_fwd_group_dot1p_xfmr";
@@ -283,6 +309,28 @@ module openconfig-qos-annot {
         sonic-ext:field-transformer "qos_dot1p_to_tc_map_fld_xfmr";
       }
     }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-queue {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_queue_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-priority-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_pg_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:pfc-priority-to-queue {
+      deviate add {
+        sonic-ext:field-transformer "qos_pfc_priority_to_queue_map_fld_xfmr";
+      }
+    }
+
+
+
+
 
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-dscp {
       deviate add {
@@ -315,17 +363,6 @@ module openconfig-qos-annot {
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-queue-maps/oc-qos-maps-ext:forwarding-group-queue-map {
-        deviate add {
-            sonic-ext:subtree-transformer "qos_fwd_group_queue_xfmr";
-        }
-    }
-	
-    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-queue {
-      deviate add {
-        sonic-ext:field-name "tc_to_queue_map";
-      }
-    }
 }
 
 

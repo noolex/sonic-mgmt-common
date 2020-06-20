@@ -452,7 +452,6 @@ func hdl_get_bgp_local_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance_Networ
         return nil
     }
 
-    log.Infof("==> Local-RIB data filling to YGOT started!")
     if outError, ok := bgpRibOutputJson["warning"] ; ok {
         log.Errorf ("%s failed !!, Error: %s", *dbg_log, outError)
         return oper_err
@@ -482,7 +481,6 @@ func hdl_get_bgp_local_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance_Networ
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
         err = hdl_get_bgp_ipv6_local_rib (ribAfiSafi_obj, rib_key, bgpRibOutputJson, dbg_log)
     }
-    log.Infof("==> Local-RIB data filling to YGOT completed!")
 
     return err
 }
@@ -926,7 +924,6 @@ func hdl_get_bgp_local_rib_prefix (bgpRib_obj *ocbinds.OpenconfigNetworkInstance
     oper_err := errors.New("Opertational error")
     var ok bool
 
-    log.Infof("%s ==> Local-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
     cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + rib_key.prefix + " " + "json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
@@ -1943,8 +1940,6 @@ func hdl_get_bgp_nbrs_adj_rib_in_pre (bgpRib_obj *ocbinds.OpenconfigNetworkInsta
         return oper_err
     }
 
-    log.Infof("NBRS-RIB ==> Got FRR response ")
-
     if vrfName, ok := bgpRibOutputJson["vrfName"] ; (!ok || vrfName != rib_key.niName) {
         log.Errorf ("%s failed !! GET-req niName:%s not same as JSON-VRFname:%s", *dbg_log, rib_key.niName, vrfName)
         return oper_err
@@ -2012,8 +2007,6 @@ func hdl_get_bgp_nbrs_adj_rib_in_post (bgpRib_obj *ocbinds.OpenconfigNetworkInst
         log.Errorf ("%s failed !!, %s", outError)
         return oper_err
     }
-
-    log.Infof("NBRS-RIB ==> Got FRR response ")
 
     if vrfName, ok := bgpRibOutputJson["vrfName"] ; (!ok || vrfName != rib_key.niName) {
         log.Errorf ("%s failed !! GET-req niName:%s not same as JSON-VRFname:%s", *dbg_log, rib_key.niName, vrfName)
@@ -2083,7 +2076,6 @@ func hdl_get_bgp_nbrs_adj_rib_out_post (bgpRib_obj *ocbinds.OpenconfigNetworkIns
         return nil
     }
 
-    log.Infof("NBRS-RIB ==> Got FRR response ")
     if outError, ok := bgpRibOutputJson["warning"] ; ok {
         log.Errorf ("%s failed !!, %s", outError)
         return oper_err
@@ -2606,9 +2598,6 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     input := mapData["sonic-bgp-show:input"]
     mapData = input.(map[string]interface{})
 
-    log.Info("In rpc_show_bgp, RPC Input data:", mapData)
-
-
     if value, ok := mapData["vrf-name"].(string) ; ok {
         vrf_name = " vrf " + value
     }
@@ -2662,9 +2651,6 @@ var rpc_show_bgp_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
 
     input := mapData["sonic-bgp-show:input"]
     mapData = input.(map[string]interface{})
-
-    log.Info("In rpc_show_bgp_stats, RPC Input data:", mapData)
-
 
     if value, ok := mapData["vrf-name"].(string) ; ok {
         vrf_name = " vrf " + value

@@ -558,7 +558,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						}
 					} else {
 						// workaround to patch operation from CLI
-						log.Info("Create(pathc) an entry.")
+						log.Info("Create(patch) an entry.")
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
 							log.Error("UPDATE case - d.CreateEntry() failure")
@@ -703,7 +703,6 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 						}
 					}
 				}
-
 			}
 		}
 	} /* end of ordered table list for loop */

@@ -168,7 +168,7 @@ func validateIntfAssociatedWithPortChannel(d *db.DB, ifName *string) error {
     }
     lagKeys, err := d.GetKeys(&db.TableSpec{Name:PORTCHANNEL_MEMBER_TN})
     if err == nil {
-        for i, _ := range lagKeys {
+        for i := range lagKeys {
             if *ifName == lagKeys[i].Get(1) {
                 errStr := lagKeys[i].Get(1) + " is already part of : " + lagKeys[i].Get(0)
                 log.Error(errStr)
@@ -179,7 +179,7 @@ func validateIntfAssociatedWithPortChannel(d *db.DB, ifName *string) error {
     return err
 }
 
-/* Handle min-links config */
+// YangToDb_lag_min_links_xfmr is a Yang to DB translation overloaded method for handle min-links config 
 var YangToDb_lag_min_links_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_lag_min_links_xfmr")
@@ -340,7 +340,7 @@ func can_configure_fast_rate(inParams XfmrParams) error {
     return nil
 }
 
-/* Handle fast_rate config */
+// YangToDb_lag_fast_rate_xfmr is a Yang to DB translation overloaded method for handle fast_rate config
 var YangToDb_lag_fast_rate_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_lag_fast_rate_xfmr")
@@ -366,7 +366,7 @@ var YangToDb_lag_fast_rate_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (m
 }
 
 
-/* Handle fallback config */
+// YangToDb_lag_fallback_xfmr is a Yang to DB translation overloaded method for handle fallback config 
 var YangToDb_lag_fallback_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_lag_fallback_xfmr")
@@ -518,7 +518,7 @@ func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMa
     log.Infof("lag-member-table keys", lagMemKeys)
     var lagMembers []string
     var memberPortsStr strings.Builder
-    for i, _ := range lagMemKeys {
+    for i := range lagMemKeys {
         if *ifName == lagMemKeys[i].Get(0) {
             log.Info("Found member")
             ethName := lagMemKeys[i].Get(1)
@@ -592,7 +592,7 @@ func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMa
     return err
 }
 
-/* PortChannel GET operation */
+// DbToYang_intf_lag_state_xfmr is a DB to Yang translation overloaded method for PortChannel GET operation 
 var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
 
@@ -628,7 +628,7 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
         return err
     }
 
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
     lagInfoMap := make(map[string]db.Value)
     ocAggregationStateVal := intfObj.Aggregation.State
@@ -731,7 +731,7 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
     var flag bool = false
     lagKeys, err := inParams.d.GetKeys(&db.TableSpec{Name:intTbl.cfgDb.memberTN})
     if err == nil {
-        for key, _ := range lagKeys {
+        for key := range lagKeys {
             if *lagName == lagKeys[key].Get(0) {
                 flag = true
                 log.Info("Member port", lagKeys[key].Get(1))
@@ -739,7 +739,7 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
                 lagMemberMap[memberKey] = db.Value{Field:map[string]string{}}
             }
         }
-        if flag == true {
+        if flag {
             resMap["PORTCHANNEL_MEMBER"] = lagMemberMap
         }
     }

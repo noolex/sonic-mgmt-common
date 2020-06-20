@@ -164,10 +164,8 @@ func cfg_write_erase_action(body []byte) ([]byte, error) {
     if err != nil {
         /* Unmarshall failed, no input provided.
          * set to default */
-       log.Error("Config input not provided.")
-       err = errors.New("Input parameters missing.")
-       return nil, err
-    } else {
+       log.Info("Config input not provided.Perform default.")
+	} else {
        subcmd = operand.Input.SubCmd
     }
 
