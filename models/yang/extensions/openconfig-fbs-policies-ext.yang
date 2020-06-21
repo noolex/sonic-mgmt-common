@@ -159,13 +159,13 @@ submodule openconfig-fbs-policies-ext {
     description
       "Grouping for queuing action for traffic";
 
-    leaf queue-name {
-      type leafref {
-        path "/oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:config/oc-qos:name";
+    leaf output-queue-index {
+      type uint8 {
+        range "0..7";
       }
 
       description
-        "Name of the Queue the traffic should be queued to";
+        "Output queue index";
     }
   }
 
@@ -250,7 +250,7 @@ submodule openconfig-fbs-policies-ext {
     }
 
     leaf bc {
-      type uint32;
+      type uint64;
       units bytes;
 
       description
@@ -260,7 +260,7 @@ submodule openconfig-fbs-policies-ext {
     }
 
     leaf be {
-      type uint32;
+      type uint64;
       units bytes;
 
       description
@@ -383,9 +383,8 @@ submodule openconfig-fbs-policies-ext {
     }
 
     leaf network-instance {
-      type leafref {
-        path "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:config/oc-netinst:name";
-      }
+      type string;
+      default "";
 
       description
         "When this leaf is set, packets matching the match criteria
@@ -603,6 +602,13 @@ submodule openconfig-fbs-policies-ext {
          numerical value, higher the priority. The range is dependent on
          implementation of the vendor.";
     }
+
+    leaf description {
+      type string;
+
+      description
+          "Section description";
+      }
   }
 
   grouping fbs-ext-section-state {
@@ -661,21 +667,28 @@ submodule openconfig-fbs-policies-ext {
     description
       "Policy configuration";
 
-      leaf name {
-        type string;
+    leaf name {
+      type string;
 
-        description
-          "Name of the policy";
+      description
+        "Name of the policy";
+    }
+
+    leaf type {
+      type identityref {
+        base POLICY_TYPE;
       }
 
-      leaf type {
-        type identityref {
-          base POLICY_TYPE;
-        }
+      description
+        "Type of the policy. This decides what actions the policy
+         supports.";
+    }
 
-        description
-          "Type of the policy. This decides what actions the policy
-           supports.";
+    leaf description {
+      type string;
+
+      description
+          "Policy description";
       }
   }
 
