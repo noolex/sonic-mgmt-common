@@ -830,7 +830,7 @@ func updateMemberPortsMtu(inParams *XfmrParams, lagName *string, mtuValStr *stri
         resMap["mtu"] = *mtuValStr
         intfMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
 
-        for key, _ := range lagKeys {
+        for key := range lagKeys {
             if *lagName == lagKeys[key].Get(0) {
                 portName := lagKeys[key].Get(1)
                 intfMap[intTbl.cfgDb.portTN][portName] = db.Value{Field:resMap}

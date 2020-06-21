@@ -169,7 +169,7 @@ func tpcm_image_operation(command string, body []byte) ([]byte, error) {
         success_status :=  strings.Contains(_output, "SUCCESS")
 
         log.Info("tpcm_image_operation output:", _output)
-        if (options == "--help" || failure_status == true || success_status != true) {
+        if (options == "--help" || failure_status || !success_status) {
            log.Info("tpcm_image_operation Dispaly all")
            out_list = strings.Split(_output,"\n")
         } else { 

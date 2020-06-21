@@ -72,10 +72,10 @@ var rpc_renew_dhcp_lease RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) 
     err= json.Unmarshal(body, &mapData)
     if err != nil {
         log.Info("Failed to unmarshall given input data")
-        result.Output.Status_detail = fmt.Sprintf("Error: Internal error!")
+        result.Output.Status_detail = "Error: Internal error!"
         return json.Marshal(&result)
     }
-    input, _ := mapData["sonic-mgmt-interface:input"]
+    input := mapData["sonic-mgmt-interface:input"]
     mapData = input.(map[string]interface{})
     portname := mapData["portname"]
     ifName := portname.(string)
@@ -112,7 +112,7 @@ var rpc_renew_dhcp_lease RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) 
     query_result := HostQuery("renew_dhcp_lease.action", options)
     log.Info("rpc_renew_dhcp_lease ", query_result)
     if query_result.Err != nil || query_result.Body[0].(int32) != 0 {
-        result.Output.Status_detail = fmt.Sprintf("ERROR: Internal error!")
+        result.Output.Status_detail = "ERROR: Internal error!"
     } else {
         result.Output.Status = 0
         result.Output.Status_detail = "Success"

@@ -87,7 +87,7 @@ func ValidateTacplusServerNotUseMgmtVRF(d *db.DB) error {
     tpsKeys, _ := d.GetKeys(tpsTblSpec)
     log.Infof("ValidateTacplusServerNotUseMgmtVRF: tpsKeys %v", tpsKeys)
 
-    for idx, _ := range tpsKeys {
+    for idx := range tpsKeys {
         tpsEntry, _ := d.GetEntry(tpsTblSpec, tpsKeys[idx])
         vrfName := (&tpsEntry).Get("vrf")
         if (vrfName == "mgmt") {

@@ -188,8 +188,7 @@ var YangToDb_mclag_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xf
 		return res_map, err
 	}
 
-	for intfId, _ := range mclagObj.Interfaces.Interface {
-		intf := mclagObj.Interfaces.Interface[intfId]
+	for _, intf := range mclagObj.Interfaces.Interface {
 		if intf != nil {
 			var mclagdomainId int
 			if intf.Config != nil {
@@ -235,8 +234,7 @@ var DbToYang_mclag_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xf
 			for _, intfKey := range mclagIntfKeys {
 				ifname := intfKey.Get(1)
 				if ifname == pathInfo.Var("name") && mclagObj.Interfaces != nil {
-					for k, _ := range mclagObj.Interfaces.Interface {
-						intfData := mclagObj.Interfaces.Interface[k]
+					for _, intfData := range mclagObj.Interfaces.Interface {
 						fillMclagIntfDetails(inParams, ifname, intfKey.Get(0), intfData)
 					}
 				}
@@ -247,7 +245,7 @@ var DbToYang_mclag_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xf
 
 		mclagIntfTbl := data["MCLAG_INTERFACE"]
 		mclagIntfData = make(map[string]map[string]string)
-		for key, _ := range mclagIntfTbl {
+		for key := range mclagIntfTbl {
 			//split key into domain-id and if-name
 			tokens := strings.Split(key, "|")
 			ifname := tokens[1]

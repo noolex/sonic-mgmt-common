@@ -572,7 +572,7 @@ func getVrrpTrackPriority(cfg *db.DB, app *db.DB, tblName string, ifName string,
             track_priority += uint8(priority)
         } else {
             ifup := isIntfUp(app, trackIfname)
-            if ifup == true {
+            if ifup {
                 priority, _ := strconv.Atoi(vrrpTrackData.Get("priority_increment"))
                 track_priority += uint8(priority)
             }

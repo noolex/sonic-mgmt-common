@@ -85,16 +85,17 @@ gotest:schema test-schema $(CVL_TEST_CONFIG)
 	CVL_CFG_FILE=$(abspath $(CVL_TEST_CONFIG)) CVL_SCHEMA_PATH=$(CVL_TEST_SCHEMA_DIR) tests/run_test.sh
 
 $(STATIC_CHECK): $(SRC_FILES)
-	$(TOPDIR)/tools/test/static-check.sh
+	$(TOPDIR)/tools/test/static-check.sh \
+		--log=$(BUILD_DIR)/staticcheck.log
 	touch $@
 
 clean:
 	make -C tests clean
 	make -C schema clean
 	make -C testdata/schema clean
-	$(RM) $(CVL_PKG) $(STATIC_CHECK)
+	$(RM) $(CVL_PKG)
+	$(RM) -r $(BUILD_DIR)
 	$(RM) -r $(CVL_TEST_DIR)
 
 cleanall:clean
-	$(RM) -r $(BUILD_DIR)
 
