@@ -660,18 +660,12 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
         if err != nil {
             return err
         }
-<<<<<<< HEAD
     case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fast-rate":
-||||||| merged common ancestors
-    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fast_rate":
-=======
 
         links, _ := strconv.Atoi(DEFAULT_PORTCHANNEL_MIN_LINKS)
         minlinks := uint16(links)
         ocAggregationStateVal.MinLinks = &minlinks
 
-    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fast_rate":
->>>>>>> origin/broadcom_sonic_3.x_share
         log.Info("Get is for fast rate")
         attr := "fast-rate"
         err = getLagStateAttr(&attr, &ifName, lagInfoMap, ocAggregationStateVal)
