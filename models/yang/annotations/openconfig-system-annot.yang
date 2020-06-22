@@ -1004,6 +1004,12 @@ module openconfig-system-annot {
       }
     }
 
-		/*************** ldap-server-group-attributes-end ***********/
     
+
+    deviation /oc-sys:system/oc-sys-ext:tpcm/oc-sys-ext:state/oc-sys-ext:tpcm-image-list{
+      deviate add {
+            sonic-ext:field-transformer "sys_tpcm_state_image_list_xfmr";
+      }
+    }
+
 }

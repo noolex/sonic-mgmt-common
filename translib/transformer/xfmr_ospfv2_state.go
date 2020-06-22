@@ -7,6 +7,9 @@ import (
     "fmt"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/openconfig/ygot/ygot"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "encoding/json"
+    "net"
     log "github.com/golang/glog"
 )
 
@@ -22,6 +25,8 @@ func init () {
     XlateFuncBind("DbToYang_ospfv2_stub_state_xfmr", DbToYang_ospfv2_stub_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_route_table_xfmr", DbToYang_ospfv2_route_table_xfmr)
     XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
+
+    XlateFuncBind("rpc_clear_ospfv2", rpc_clear_ospfv2)
 }
 
 
@@ -550,11 +555,15 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
             
             if _authtype,ok := area_info["authentication"].(string); ok {
                 if _authtype == "authenticationNone" {
-                    authType := "NONE"
+                    authType := "no"
                     ospfv2AreaInfo_obj.AuthenticationType = &authType 
                 }
+                if _authtype == "authenticationSimplePassword" {
+                    authType := "simple password"
+                    ospfv2AreaInfo_obj.AuthenticationType = &authType
+                }
                 if _authtype == "authenticationMessageDigest" {
-                    authType := "MD5HMAC"
+                    authType := "message digest"
                     ospfv2AreaInfo_obj.AuthenticationType = &authType
                 }
             }
@@ -1368,6 +1377,13 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
             ospfv2InterfaceState_obj.MemberOfOspfDesignatedRouters = &ospfv2Zero
         } else {
             ospfv2InterfaceState_obj.MemberOfOspfDesignatedRouters = &ospfv2One
+        }
+    }
+    if _ifUnnumbered,ok := intf_info["ifUnnumbered"].(bool); ok {
+        if !_ifUnnumbered {
+            ospfv2InterfaceState_obj.Unnumbered = &ospfv2Zero
+        } else {
+            ospfv2InterfaceState_obj.Unnumbered = &ospfv2One
         }
     }
     if value,ok := intf_info["nbrCount"] ; ok {
@@ -2463,6 +2479,86 @@ var ospfv2_router_area_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]s
 
     }
     return tblList, nil
+}
+
+
+
+
+func util_ospfv2_get_native_ifname_from_ui_ifname (pIfname *string) {
+    if pIfname != nil && net.ParseIP(*pIfname) == nil {
+        pNativeIfname := utils.GetNativeNameFromUIName(pIfname)
+        if pNativeIfname != nil && len(*pNativeIfname) != 0 {
+            *pIfname = *pNativeIfname
+        }
+    }
+}
+
+var rpc_clear_ospfv2 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+
+    var err error
+    var status string
+    var mapData map[string]interface{}
+
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, err
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-ospfv2-clear:output"`
+    }
+
+    input := mapData["sonic-ospfv2-clear:input"]
+    mapData = input.(map[string]interface{})
+
+    log.Info("rpc_clear_ospfv2: mapData ", mapData)
+
+    vrfName := "default" 
+    intfName := ""
+    intfAll := false 
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        if (value != "") {
+           vrfName = value
+        }
+    }
+
+    if value, ok := mapData["interface-all"].(bool) ; ok {
+        if value {
+            intfAll = true
+        }
+    }
+
+    if value, ok := mapData["interface"].(string) ; ok {
+        if value != "" {
+            util_ospfv2_get_native_ifname_from_ui_ifname (&value)
+            intfName = value 
+        }
+    }
+
+    cmdStr := ""
+    if (intfAll) {
+        cmdStr = "clear ip ospf vrf " + vrfName + " interface"
+    } else if (intfName != "") {
+        cmdStr = "clear ip ospf vrf " + vrfName + " interface " + intfName
+    }
+
+    log.Infof("rpc_clear_ospfv2: vrf-%s intf-%s all-%v.", vrfName, intfName, intfAll)
+
+    if cmdStr != "" {
+       exec_vtysh_cmd(cmdStr)
+       status = "Success"
+    } else {
+       log.Error("rpc_clear_ospfv2: Invalid input received mapData ", mapData)
+       status = "Failed"
+    }
+
+    log.Infof("rpc_clear_ospfv2: %s", status)
+    result.Output.Status = status
+    return json.Marshal(&result)
 }
 
 

@@ -7,6 +7,7 @@ import (
 	"github.com/openconfig/ygot/ygot"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	"encoding/hex"
 	"strconv"
 )
@@ -280,7 +281,8 @@ func getLldpNeighborEntry(inParams XfmrParams, ifName string, intfObj *ocbinds.O
 
 	nbrObj, ok := intfObj.Neighbors.Neighbor[ifName]
 	if !ok {
-		nbrObj, err = intfObj.Neighbors.NewNeighbor(ifName)
+		ifStdName := utils.GetUINameFromNativeName(&ifName)
+		nbrObj, err = intfObj.Neighbors.NewNeighbor(*ifStdName)
 		if err != nil {
 			log.Info("Creation of neighbor failed!")
 			return err

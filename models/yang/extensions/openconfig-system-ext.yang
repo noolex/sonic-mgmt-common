@@ -11,6 +11,7 @@ module openconfig-system-ext {
     import openconfig-kdump { prefix oc-kdump; }
     import openconfig-interfaces { prefix "oc-if"; }
     import openconfig-infra { prefix "oc-infra"; }
+    import openconfig-tpcm { prefix "oc-tpcm"; }
     import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
     import openconfig-extensions { prefix "oc-ext"; }
 
@@ -285,6 +286,11 @@ module openconfig-system-ext {
     augment /oc-sys:system {
         description "System infra";
         uses oc-infra:infra-top;
+    }
+
+   //tpcm paraemters
+    augment /oc-sys:system {
+        uses oc-tpcm:tpcm-top;
     }
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:ntp-source-address {

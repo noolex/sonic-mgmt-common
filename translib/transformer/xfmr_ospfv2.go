@@ -7,12 +7,6 @@ import (
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-//  "github.com/Azure/sonic-mgmt-common/translib/db"
-//  "fmt"
-//  "io"
-//  "bytes"
-//  "net"
-//  "encoding/binary"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
 )

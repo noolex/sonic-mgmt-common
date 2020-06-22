@@ -83,11 +83,11 @@ module sonic-flow-based-services {
         }
 
         leaf ACL_NAME {
-            type leafref {
-                path "/sacl:sonic-acl/sacl:ACL_TABLE/sacl:ACL_TABLE_LIST/sacl:aclname";
+            type string {
+                pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,71})';
+                length 1..72;
             }
             when "current()/../MATCH_TYPE = 'ACL'";
-            sonic-ext:custom-validation ValidateLeafConstant;
         }
 
         leaf ACL_TYPE {
@@ -97,11 +97,6 @@ module sonic-flow-based-services {
                 enum L3V6;
             }
             when "current()/../MATCH_TYPE = 'ACL'";
-            /*must "/sacl:sonic-acl/sacl:ACL_TABLE/sacl:ACL_TABLE_LIST[sacl:aclname=current()/../ACL_NAME]/type = current()" {
-                error-app-tag acl-type-mismatch;
-                error-message "ACL type is not same as input";
-            }*/
-            sonic-ext:custom-validation ValidateLeafConstant;
         }
 
         leaf ETHER_TYPE {

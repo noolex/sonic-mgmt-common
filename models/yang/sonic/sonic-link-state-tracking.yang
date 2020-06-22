@@ -56,8 +56,8 @@ module sonic-link-state-tracking {
 
                 leaf timeout {
                      type uint16 {
-                        range "1..999" {
-                            error-message "Timeout value is out of range (1-999)";
+                        range "1..1800" {
+                            error-message "Timeout value is out of range (1-1800)";
                         }
                     }
                     default 60;

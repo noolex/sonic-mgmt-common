@@ -49,7 +49,7 @@ var rpc_showtech_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]by
     if operand.Input.Date == "" {
         matched = true
     } else {
-        matched, err = regexp.MatchString((`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?` +
+        matched, _ = regexp.MatchString((`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?` +
                                            `(Z|[\+\-]\d{2}:\d{2})`), operand.Input.Date)
         if err != nil {
             glog.Errorf("%Error: Failed to match regex pattern for parsesd rpc input; err=%v", err)
@@ -63,7 +63,13 @@ var rpc_showtech_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]by
         } `json:"sonic-show-techsupport:output"`
     }
 
+<<<<<<< HEAD
     if !(matched) {
+||||||| merged common ancestors
+    if matched != true {
+=======
+    if !matched {
+>>>>>>> origin/broadcom_sonic_3.x_share
         showtech.Output.Result = "Invalid input: Incorrect DateTime format"
         result, _ := json.Marshal(&showtech)
         return result, nil
