@@ -16,11 +16,6 @@ func init () {
     XlateFuncBind("rpc_infra_reboot_cb",  rpc_infra_reboot_cb)
 }
 
-
-/* Get ygot root object */
-
-
-/* Transformer specific functions */
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         log.Info("DbToYang_sys_infra_state_clock_xfmr uri: ", inParams.uri)
 

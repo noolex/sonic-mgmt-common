@@ -87,7 +87,7 @@ func handleCascadeDelete(d *db.DB, dbDataMap map[int]map[db.DBNum]map[string]map
                             for depEntkey, depEntkeyInst := range depEntry.Entry {
                                 depEntkeyList := strings.SplitN(depEntkey, "|", 2)
                                 cbkHdlName := depEntkeyList[0] + "_cascade_cfg_hdl"
-                                if IsXlateFuncBinded(cbkHdlName) == true {
+                                if IsXlateFuncBinded(cbkHdlName) {
                                     //handle callback for table call Table Call back method and consolidate the data
                                     inParams := formXfmrDbTblCbkParams(d, DELETE, depEntry.RefKey, depEntkeyList[0], depEntkeyList[1], depEntkeyInst, dbDataMap[DELETE])
                                     xfmrLogInfo("handleCascadeDelete CBKHDL present depIndex %v, inParams : %v ", depIndex, inParams)

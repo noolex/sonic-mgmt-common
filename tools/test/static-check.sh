@@ -167,10 +167,15 @@ if [[ ${#NOTFAIL[@]} != 0 ]]; then
 
     NUM_IGNORE=$(grep "^[^[:space:]].*\.go:[0-9]*:[0-9]*: " ${LOGFILE} | \
                     grep -v " (compile)$" | grep -c "${NOTFAIL_EXPR::(-2)}" || true)
+    if [[ ${NUM_IGNORE} != 0 ]]; then
+        IGNORE_MSG=", ${NUM_IGNORE} exempted"
+        NON_IGNORE=( $(grep -o "^[^[:space:]].*\.go:[0-9]*:[0-9]*:" ${LOGFILE} | \
+            grep -v "${NOTFAIL_EXPR::(-2)}" | sed 's/:[0-9]*:[0-9]*:$//' | sort -u) )
+    fi
 fi
 
 # Print summary
-[[ ${NUM_IGNORE} == 0 ]] || IGNORE_MSG=" ${NUM_IGNORE} exempted"
+[[ -z ${NON_IGNORE}   ]] || echo -e "\nNew errors found in: $(printf "\n  %s" "${NON_IGNORE[@]}")"
 [[ ${NUM_ERROR} == 0  ]] || echo -e "\n(${NUM_ERROR} errors${IGNORE_MSG}, logs written to ${LOGFILE})"
 
 test $((NUM_ERROR - NUM_IGNORE)) -lt 1

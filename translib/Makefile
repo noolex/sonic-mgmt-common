@@ -11,8 +11,9 @@ BUILD_DIR ?= $(TOPDIR)/build
 GO     ?= go
 export GO
 
+TRANSLIB_BLD = $(BUILD_DIR)/translib
 TRANSLIB_PKG = $(BUILD_DIR)/pkg/linux_amd64/translib.a
-STATIC_CHECK = $(BUILD_DIR)/.translib.staticcheck
+STATIC_CHECK = $(TRANSLIB_BLD)/.staticcheck
 
 TRANSLIB_MAIN_SRCS = $(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/test\|transformer/')
 TRANSLIB_TEST_SRCS = $(shell find . -maxdepth 1 -name '*_test.go')
@@ -57,14 +58,27 @@ $(YGOT_BINDS): $(YANG_FILES)
 
 $(STATIC_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) | $(YGOT_BINDS)
 	$(TOPDIR)/tools/test/static-check.sh \
-		--notfail=. \
-		--notfail=transformer \
+		--log=$(TRANSLIB_BLD)/staticcheck.log \
+		--notfail=common_app.go \
+		--notfail=transformer/platform_config.go \
+		--notfail=transformer/transformer.go \
+		--notfail=transformer/xfmr_fdb.go \
+		--notfail=transformer/xfmr_oc_fbs_ext.go \
+		--notfail=transformer/xfmr_port_breakout.go \
+		--notfail=transformer/xfmr_vrf.go \
+		--notfail=transformer/xlate.go \
+		--notfail=transformer/xlate_from_db.go \
+		--notfail=transformer/xlate_map_del.go \
+		--notfail=transformer/xlate_tbl_info.go \
+		--notfail=transformer/xlate_to_db.go \
+		--notfail=transformer/xlate_utils.go \
+		--notfail=transformer/xspec.go \
 		--exclude=ocbinds
-	mkdir -p $(@D) && touch $@
+	touch $@
 
 clean:
 	$(RM) $(YGOT_BINDS)
 	$(RM) $(TRANSLIB_PKG)
-	$(RM) $(STATIC_CHECK)
+	$(RM) -r $(TRANSLIB_BLD)
 	$(RM) -r $(TRANSLIB_TEST_DIR)
 
