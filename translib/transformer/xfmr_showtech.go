@@ -63,13 +63,7 @@ var rpc_showtech_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]by
         } `json:"sonic-show-techsupport:output"`
     }
 
-<<<<<<< HEAD
     if !(matched) {
-||||||| merged common ancestors
-    if matched != true {
-=======
-    if !matched {
->>>>>>> origin/broadcom_sonic_3.x_share
         showtech.Output.Result = "Invalid input: Incorrect DateTime format"
         result, _ := json.Marshal(&showtech)
         return result, nil
