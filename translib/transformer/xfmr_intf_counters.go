@@ -32,13 +32,7 @@ func init () {
 
 
 
-<<<<<<< HEAD
 // InterfaceObj is defined to use as RPC response for get interface counters 
-||||||| merged common ancestors
-/* RPC for get interface counters */
-=======
-// InterfaceObj is the output record for get interface counters RPC
->>>>>>> origin/broadcom_sonic_3.x_share
 type InterfaceObj struct {
     Name string `json:"name"`
     State struct {
