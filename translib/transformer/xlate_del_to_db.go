@@ -88,7 +88,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 	var err, perr error
 	var dbs [db.MaxDB]*db.DB
 	var tblList []string
-	xfmrLogInfoAll("Received xlateParams - %v \n dbDataMap - %v\n subTreeResMap - %v\n isFirstCall - %v", xlateParams, dbDataMap, subTreeResMap, isFirstCall)
+	xfmrLogInfoAll("yangListDelData Received xlateParams - %v \n dbDataMap - %v\n subTreeResMap - %v\n isFirstCall - %v", xlateParams, dbDataMap, subTreeResMap, isFirstCall)
 	fillFields := false
 	removedFillFields := false
 	virtualTbl := false
@@ -294,7 +294,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 			} // Child Subtree or fill fields
 		} // end of for dbKey loop
 	} // end of tbl in dbDataMap
-} // end of for tbl loop
+	} // end of for tbl loop
 return err
 }
 
@@ -320,7 +320,12 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 
 	_, curKey, curTbl, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 
-	if isFirstCall {
+	if cerr != nil {
+		log.Errorf("Received xpathKeyExtract error for uri: %v : err %v", xlateParams.uri, cerr)
+		return cerr
+	}
+
+	if isFirstCall || len(xlateParams.result) == 0 {
 		parentUri := parentUriGet(xlateParams.uri)
 		parentTbl, perr := dbTableFromUriGet(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 		if perr != nil && cerr != nil && len(curTbl) > 0 && len(curKey) > 0 {
@@ -361,7 +366,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 	} else {
 		// Inherited Table. We always expect the curTbl entry in xlateParams.result
 		// if Instance already filled do not fill fields
-		xfmrLogInfoAll("DELETE handling at Container Inherited table")
+		xfmrLogInfoAll("DELETE handling at Container Inherited table curTbl: %v, curKey %v", curTbl, curKey)
 		if tblMap, ok := xlateParams.result[curTbl]; ok {
 			if fieldMap, ok := tblMap[curKey]; ok {
 				if len(fieldMap.Field) == 0 {
@@ -377,7 +382,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		}
 	}
 
-	if (fillFields || spec.hasChildSubTree) {
+	if (fillFields || spec.hasChildSubTree || isFirstCall || len(xlateParams.result) == 0 ) {
 		for yangChldName := range spec.yangEntry.Dir {
 			chldXpath    := xlateParams.xpath+"/"+yangChldName
 			chldUri      := xlateParams.uri+"/"+yangChldName
@@ -614,9 +619,9 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					mapCopy(result, curResult)
 				}
 				log.Infof("allChildTblGetToDelete result: %v  subtree curResult: %v", result, curResult)
-				// Add the child tables to delete when table at request URI is available but no key (not specific instance)
+				// Add the child tables to delete when table at request URI is not available or its complete table delete request (not specific instance)
 				chResult := make(map[string]map[string]db.Value)
-				if len(tableName) > 0 && len(keyName) == 0 && len(spec.childTable) > 0 {
+				if (len(tableName) == 0 || (len(tableName) > 0 && len(keyName) == 0)) && len(spec.childTable) > 0 {
 					for _, child := range spec.childTable {
 						chResult[child] = make(map[string]db.Value)
 					}
