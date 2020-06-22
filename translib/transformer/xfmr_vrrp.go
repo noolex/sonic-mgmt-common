@@ -51,12 +51,8 @@ type VrrpSummary struct {
 }
 
 var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    var err, oerr error
-    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    var err error
     subIntfmap := make(map[string]map[string]db.Value)
-    subIntfmap_del := make(map[string]map[string]db.Value)
-    var value db.Value
-    var overlapIP string
 
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("name")
@@ -158,22 +154,13 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                         t["vrid"] = strconv.Itoa(int(virtual_router_id))
 
-                        vip_count := 0
                         if vrrpEntry.IsPopulated() {
                             vips = vrrpEntry.Field["vip@"]
-                            vip_count = strings.Count(vips, ",")
-                            vip_count += 1
                         }
 
                         log.Info("vips:", vips)
 
                         if vrrp_rtr.Config.VirtualAddress != nil {
-
-                            if ((inParams.oper != DELETE) && (vip_count >= 4)) {
-                                errStr := "Max allowed virtual IP on an VRRP instance is 4"
-                                log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
-                                return subIntfmap, errors.New(errStr)
-                            }
 
                             for vip_id := range vrrp_rtr.Config.VirtualAddress {
                                 if (vips == "" || inParams.oper == DELETE) {
@@ -186,6 +173,17 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                         }
 
                         if vrrp_rtr.Config.Priority != nil {
+
+                            base_priority := int(*vrrp_rtr.Config.Priority)
+
+                            track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), "", true, false))
+
+                            if base_priority + track_priority > 254 {
+                                errStr := "VRRP instance priority and track priority exceeds 254"
+                                log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                            }
+
                             t["priority"] = strconv.Itoa(int(*vrrp_rtr.Config.Priority))
                         }
 
@@ -225,6 +223,25 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                             if vrrp_track_data.Config != nil {
 
                                 if vrrp_track_data.Config.PriorityIncrement != nil {
+                                    if ifName == track_if {
+                                        errStr := "VRRP track interface cannot be same as VRRP instance interface"
+                                        log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                        return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                                    }
+
+                                    base_priority := 100
+                                    if vrrpEntry.Has("priority") {
+                                        base_priority, _ = strconv.Atoi(vrrpEntry.Get("priority"))
+                                    }
+                                    new_priority := int(*vrrp_track_data.Config.PriorityIncrement)
+                                    track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), track_if, true, true))
+
+                                    if (base_priority + track_priority + new_priority) > 254 {
+                                        errStr := "VRRP instance priority and track priority exceeds 254"
+                                        log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                        return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                                    }
+
                                     track_table["priority_increment"] = strconv.Itoa(int(*vrrp_track_data.Config.PriorityIncrement))
                                 }
                             }
@@ -281,22 +298,13 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                         t["vrid"] = strconv.Itoa(int(virtual_router_id))
 
-                        vip_count := 0
                         if vrrpEntry.IsPopulated() {
                             vips = vrrpEntry.Field["vip@"]
-                            vip_count = strings.Count(vips, ",")
-                            vip_count += 1
                         }
 
                         log.Info("vips:", vips)
 
                         if vrrp_rtr.Config.VirtualAddress != nil {
-
-                            if ((inParams.oper != DELETE) && (vip_count >= 4)) {
-                                errStr := "Max allowed virtual IP on an VRRP instance is 4"
-                                log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
-                                return subIntfmap, errors.New(errStr)
-                            }
 
                             for vip_id := range vrrp_rtr.Config.VirtualAddress {
                                 if (vips == "" || inParams.oper == DELETE) {
@@ -309,6 +317,15 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                         }
 
                         if vrrp_rtr.Config.Priority != nil {
+                            base_priority := int(*vrrp_rtr.Config.Priority)
+
+                            track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP6_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), "", true, false))
+
+                            if base_priority + track_priority > 254 {
+                                errStr := "VRRP instance priority and track priority exceeds 254"
+                                log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                            }
                             t["priority"] = strconv.Itoa(int(*vrrp_rtr.Config.Priority))
                         }
 
@@ -343,6 +360,25 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                             if vrrp_track_data.Config != nil {
 
                                 if vrrp_track_data.Config.PriorityIncrement != nil {
+
+                                    if ifName == track_if {
+                                        errStr := "VRRP track interface cannot be same as VRRP instance interface"
+                                        log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                        return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                                    }
+
+                                    base_priority := 100
+                                    if vrrpEntry.Has("priority") {
+                                        base_priority, _ = strconv.Atoi(vrrpEntry.Get("priority"))
+                                    }
+                                    new_priority := int(*vrrp_track_data.Config.PriorityIncrement)
+                                    track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP6_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), track_if, true, true))
+
+                                    if (base_priority + track_priority + new_priority) > 254 {
+                                        errStr := "VRRP instance priority and track priority exceeds 254"
+                                        log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                        return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                                    }
                                     track_table["priority_increment"] = strconv.Itoa(int(*vrrp_track_data.Config.PriorityIncrement))
                                 }
                             }
@@ -372,20 +408,6 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                     log.Info("Outside : subIntfmap : ",  subIntfmap)
                 }
             }
-        }
-    }
-
-    if oerr != nil {
-        if overlapIP == "" {
-            log.Error(oerr)
-            return nil, tlerr.InvalidArgsError{Format: oerr.Error()}
-        } else {
-            subIntfmap_del[tblName] = make(map[string]db.Value)
-            key := ifName + "|" + overlapIP
-            subIntfmap_del[tblName][key] = value
-            subOpMap[db.ConfigDB] = subIntfmap_del
-            log.Info("subOpMap: ", subOpMap)
-            inParams.subOpDataMap[DELETE] = &subOpMap
         }
     }
 
@@ -530,20 +552,30 @@ func isIntfUp(dbCl *db.DB, ifName string) (bool) {
     return operStatus == "up"
 }
 
-func getVrrpTrackPriority(dbs [db.MaxDB]*db.DB, tblName string, ifName string, vrid string) (uint8) {
+func getVrrpTrackPriority(cfg *db.DB, app *db.DB, tblName string, ifName string, vrid string, inTrackIf string, from_cfg bool, exclude_track bool) (uint8) {
     var track_priority uint8
     track_priority = 0
 
     log.Info("In getVrrpTrackPriority")
-    vrrpTrackMap, _ := getVrrpTrackByName(dbs[db.ConfigDB], tblName, ifName, vrid)
+    vrrpTrackMap, _ := getVrrpTrackByName(cfg, tblName, ifName, vrid)
 
     for vrrpTrackKey, vrrpTrackData := range vrrpTrackMap {
         vrrpTrackKeySplit := strings.Split(vrrpTrackKey, "|")
         trackIfname := vrrpTrackKeySplit[2]
-        ifup := isIntfUp(dbs[db.ApplDB], trackIfname)
-        if ifup {
+
+        if (exclude_track && (trackIfname == inTrackIf)) {
+            continue
+        }
+
+        if from_cfg {
             priority, _ := strconv.Atoi(vrrpTrackData.Get("priority_increment"))
             track_priority += uint8(priority)
+        } else {
+            ifup := isIntfUp(app, trackIfname)
+            if ifup {
+                priority, _ := strconv.Atoi(vrrpTrackData.Get("priority_increment"))
+                track_priority += uint8(priority)
+            }
         }
     }
 
@@ -1142,7 +1174,7 @@ func vrrp_show_summary (body []byte, dbs [db.MaxDB]*db.DB, tableName string, tra
         }
         vrrpsummaryentry.ConfPrio = priority
         vrrpsummaryentry.CurrPrio = priority
-        vrrpsummaryentry.CurrPrio += int(getVrrpTrackPriority(dbs, trackTableName, key.Get(0), key.Get(1)))
+        vrrpsummaryentry.CurrPrio += int(getVrrpTrackPriority(dbs[db.ConfigDB], dbs[db.ApplDB], trackTableName, key.Get(0), key.Get(1), "", false, false))
 
         if vrrpData.Has("vip@") {
             vipstr := vrrpData.Get("vip@")

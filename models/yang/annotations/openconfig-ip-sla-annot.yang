@@ -1,0 +1,84 @@
+module openconfig-ip-sla-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/openconfig-ip-sla-annot";
+    prefix "oc-ip-sla-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-ip-sla { prefix oc-ip-sla; }
+
+
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla {
+        deviate add {
+            sonic-ext:table-name "IP_SLA";
+        }
+    }
+
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:ip-sla-id {
+        deviate add {
+            sonic-ext:field-name "ip_sla_id";
+            sonic-ext:field-transformer "ip_sla_id_fld_xfmr";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-source-port {
+        deviate add {
+            sonic-ext:field-name "tcp_source_port";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-dst-port {
+        deviate add {
+            sonic-ext:field-name "tcp_dst_port";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-ttl {
+        deviate add {
+            sonic-ext:field-name "tcp_ttl";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-tos {
+        deviate add {
+            sonic-ext:field-name "tcp_tos";
+        }
+    }
+
+
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:icmp-source-interface {
+        deviate add {
+            sonic-ext:field-name "icmp_source_interface";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:icmp-source-ip {
+        deviate add {
+            sonic-ext:field-name "icmp_source_ip";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:icmp-dst-ip {
+        deviate add {
+            sonic-ext:field-name "icmp_dst_ip";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:icmp-size {
+        deviate add {
+            sonic-ext:field-name "icmp_size";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:state {
+        deviate add {
+            sonic-ext:subtree-transformer "ip_sla_state_xfmr";
+        }
+    }
+
+
+}

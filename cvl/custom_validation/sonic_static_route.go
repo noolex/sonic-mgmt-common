@@ -150,7 +150,8 @@ func validateNexthopAttrCmn(vc *CustValidationCtxt, hdlr checkNHAttrHdlr,
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-// ValidateNexthopGateway checks if every item in comma separated list is valid IP address
+// ValidateNexthopGateway check if every item in comma separated list is valid IP address
+// Path : /sonic-static-route/STATIC_ROUTE/nexthop
 // Returns -  CVL Error object
 // Path /sonic-static-route/STATIC_ROUTE/nexthop
 func (t *CustomValidation) ValidateNexthopGateway(
@@ -158,7 +159,8 @@ func (t *CustomValidation) ValidateNexthopGateway(
     return validateNexthopAttrCmn(vc, checkNexthopGateway)
 }
 
-// ValidateNexthopInterface checks if every item in comma separated list is an active interface name
+// ValidateNexthopInterface check if every item in comma separated list is an active interface name
+// Path : /sonic-static-route/STATIC_ROUTE/ifname
 // Returns -  CVL Error object
 // Path /sonic-static-route/STATIC_ROUTE/ifname
 func (t *CustomValidation) ValidateNexthopInterface(
@@ -167,7 +169,8 @@ func (t *CustomValidation) ValidateNexthopInterface(
     return validateNexthopAttrCmn(vc, checkNexthopIntfVrf, tableList, vc.RClient)
 }
 
-// ValidateNexthopVrf checks if every item in comma separated list is an active VRF name
+// ValidateNexthopVrf check if every item in comma separated list is an active VRF name
+// Path : /sonic-static-route/STATIC_ROUTE/nexthop-vrf
 // Returns -  CVL Error object
 // Path /sonic-static-route/STATIC_ROUTE/nexthop-vrf
 func (t *CustomValidation) ValidateNexthopVrf(

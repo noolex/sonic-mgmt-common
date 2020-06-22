@@ -49,7 +49,7 @@ var rpc_showtech_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]by
     if operand.Input.Date == "" {
         matched = true
     } else {
-        matched, err = regexp.MatchString((`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?` +
+        matched, _ = regexp.MatchString((`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?` +
                                            `(Z|[\+\-]\d{2}:\d{2})`), operand.Input.Date)
         if err != nil {
             glog.Errorf("%Error: Failed to match regex pattern for parsesd rpc input; err=%v", err)

@@ -27,104 +27,53 @@ module openconfig-relay-agent-ext {
          reference "0.1";
     }
 
-    augment "/oc-relay:relay-agent/oc-relay:dhcpv6/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "Source Interface from which the packet should be relayed";
+   // mode
+   typedef mode {
+       type enumeration {
+             enum ENABLE {
+             description "Enable field option";
+             }
+             enum DISABLE {
+             description "Disable field option";
+             }
+       }
+       description "To ENABLE/DISABLE a field";
+   }
+   
+
+   // augment statements
+    grouping "relay-agent-ext-config" {
+                description "Augmented parameters for DHCP relay agent";
                 leaf src-intf {
                         type string;
                         description "Configure the src-intf from which the packet should be relayed.";
                 }
-        }
+                
+                leaf vrf {
+                        type string;
+                        description "Configure the VRF in which the server resides.";
+                }
 
-     augment "/oc-relay:relay-agent/oc-relay:dhcpv6/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "Max hops that the packet could be forwarded to";
                 leaf max-hop-count {
                         type uint32;
                         description "Configure the max hops the packet could be forwarded.";
                 }
-        }
 
-     augment "/oc-relay:relay-agent/oc-relay:dhcpv6/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "VRF in which the server resides";
-                leaf vrf {
-                        type string;
-                        description "Configure the VRF in which the server resides.";
-                }
-        }
-
-     augment "/oc-relay:relay-agent/oc-relay:dhcpv6/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "VRF select option";
                 leaf vrf-select {
-                        type enumeration {
-                              enum ENABLE {
-                              description "Enable vrf-select option";
-			      }
-                              enum DISABLE {
-			      description "Disable vrf-select option";
-			      }
-                        }
+                        type mode;
                         description "Enable/Disable VRF selection option.";
                 }
-        }
+    }
 
-     augment "/oc-relay:relay-agent/oc-relay:dhcp/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "Link select option";
+    grouping "relay-agent-ext-v4-config" {
+    		description "Params applicable to DHCPv4 only";
                 leaf link-select {
-                        type enumeration {
-                              enum ENABLE {
-                              description "Enable link-select option";
-			      }
-                              enum DISABLE {
-			      description "Disable link-select option";
-			      }
+                       type mode;
+                        description "Enable/Disable link selection option."; 
                        }
-                        description "Enables link-selection on the referenced interface.";
-                }
-        }
 
-     augment "/oc-relay:relay-agent/oc-relay:dhcp/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "Source Interface from which the packet should be relayed";
-                leaf src-intf {
-                        type string;
-                        description "Configure the src-intf from which the packet should be relayed.";
-                }
-        }
-
-     augment "/oc-relay:relay-agent/oc-relay:dhcp/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "Max hops that the packet could be forwarded to";
-                leaf max-hop-count {
-                        type uint32;
-                        description
-                                "Configure the max hops the packet could be forwarded.";
-                }
-        }
-
-     augment "/oc-relay:relay-agent/oc-relay:dhcp/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "VRF in which the server resides";
-                leaf vrf {
-                        type string;
-                        description "Configure the VRF in which the server resides.";
-                }
-        }
-
-     augment "/oc-relay:relay-agent/oc-relay:dhcp/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "VRF select option";
-                leaf vrf-select {
-                        type enumeration {
-                              enum ENABLE {
-                              description "Enable vrf-select option";
-			      }
-                              enum DISABLE {
-			      description "Diable vrf-select option";
-			      }
-                        }
-                        description "Enable/Disable VRF selection sub-option.";
-                }
-        }
-
-     augment "/oc-relay:relay-agent/oc-relay:dhcp/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
-                description "Policy for handling relay packets";
                 leaf policy-action {
-                        type enumeration {
+                       type enumeration {
                               enum DISCARD {
 			      description "Relay agent discards the incoming packet";
 			      }
@@ -137,6 +86,29 @@ module openconfig-relay-agent-ext {
                         }
                         description "Configure the policy for handling of DHCPv4 relay options.";
                 }
+        }		
+
+    augment "/oc-relay:relay-agent/oc-relay:dhcpv6/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
+            uses relay-agent-ext-config;       
+            description "Configure the extended parameters";         
+        }
+
+    augment "/oc-relay:relay-agent/oc-relay:dhcpv6/oc-relay:interfaces/oc-relay:interface/oc-relay:state" {
+            uses relay-agent-ext-config;     
+            description "State of the extended parameters";
+	    }
+
+
+     augment "/oc-relay:relay-agent/oc-relay:dhcp/oc-relay:interfaces/oc-relay:interface/oc-relay:config" {
+            uses relay-agent-ext-config;  
+            uses relay-agent-ext-v4-config;  
+            description "Configure the extended parameters, including the v4 specific parameters";        
+        }
+
+     augment "/oc-relay:relay-agent/oc-relay:dhcp/oc-relay:interfaces/oc-relay:interface/oc-relay:state" {
+            uses relay-agent-ext-config;  
+            uses relay-agent-ext-v4-config;  
+            description "Configure the extended parameters, including the v4 specific parameters";        
         }
 
     deviation /oc-relay:relay-agent/oc-relay:dhcp/oc-relay:config/oc-relay:enable-relay-agent {

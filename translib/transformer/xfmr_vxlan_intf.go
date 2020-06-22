@@ -652,26 +652,39 @@ func (reqP *vxlanReqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string
 					log.Error("handleDeleteReq ==> returning ERROR")
 					return &res_map, tlerr.New("source-vtep-ip cannot be deleted since tunnel map (VLAN-VNI) has reference to the vxlan interface \"%s\" of the source-vtep-ip %s", vxlanIntfName, tblValList.Field["src_ip"])
 				}
-
-				vxlanIntfdbV.Field["src_ip"] = tblValList.Field["src_ip"]
-				subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
-				subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-				subOpMap[db.ConfigDB]["VXLAN_TUNNEL"] = make(map[string]db.Value)
-				subOpMap[db.ConfigDB]["VXLAN_TUNNEL"][vxlanIntfName] = db.Value{Field: make(map[string]string)}
-				subOpMap[db.ConfigDB]["VXLAN_TUNNEL"][vxlanIntfName].Field["NULL"] = "NULL"
-				inParams.subOpDataMap[UPDATE] = &subOpMap
-				vxlanIntfConfTbl[vxlanIntfName] = vxlanIntfdbV
-				res_map["VXLAN_TUNNEL"] = vxlanIntfConfTbl
-				evpnNvodbV.Field["source_vtep"] = vxlanIntfName
-				evpnNvoTbl["nvo1"] = evpnNvodbV
-				res_map["EVPN_NVO"] = evpnNvoTbl
-			} // else {
-//				return &res_map, tlerr.NotFound("Resource Not Found")
-//			}
-		} else {
-			return &res_map, tlerr.NotFound("Resource Not Found")
-		}
-	}
+                if reqP.targetNode.Name == "qos-mode" {
+                    //vxlanIntfdbV.Field["qos-mode"] = tblValList.Field["qos-mode"]
+                    return &res_map, tlerr.New("qos-mode cannot be deleted.")
+                } else if reqP.targetNode.Name == "src_ip" {
+                    vxlanIntfdbV.Field["src_ip"] = tblValList.Field["src_ip"]
+                } else if reqP.targetNode.Name == "dscp" {
+                    //vxlanIntfdbV.Field["dscp"] = tblValList.Field["dscp"]
+                    return &res_map, tlerr.New("dscp cannot be deleted.")
+                } else {
+                    vxlanIntfdbV.Field["qos-mode"] = tblValList.Field["qos-mode"]
+                    vxlanIntfdbV.Field["src_ip"] = tblValList.Field["src_ip"]
+                    vxlanIntfdbV.Field["dscp"] = tblValList.Field["dscp"]
+                }
+                subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+                subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+                subOpMap[db.ConfigDB]["VXLAN_TUNNEL"] = make(map[string]db.Value)
+                subOpMap[db.ConfigDB]["VXLAN_TUNNEL"][vxlanIntfName] = db.Value{Field: make(map[string]string)}
+                subOpMap[db.ConfigDB]["VXLAN_TUNNEL"][vxlanIntfName].Field["NULL"] = "NULL"
+                inParams.subOpDataMap[UPDATE] = &subOpMap
+                vxlanIntfConfTbl[vxlanIntfName] = vxlanIntfdbV
+                res_map["VXLAN_TUNNEL"] = vxlanIntfConfTbl
+                if reqP.targetNode.Name != "qos-mode" && reqP.targetNode.Name != "dscp" {
+                    evpnNvodbV.Field["source_vtep"] = vxlanIntfName
+                    evpnNvoTbl["nvo1"] = evpnNvodbV
+                    res_map["EVPN_NVO"] = evpnNvoTbl
+                }
+            } // else {
+            //				return &res_map, tlerr.NotFound("Resource Not Found")
+            //			}
+        } else {
+            return &res_map, tlerr.NotFound("Resource Not Found")
+        }
+    }
 
 	if log.V(3) {
 		log.Info(" =====> handleDeleteReq ==> handleDeleteReq - res_map => ", res_map)

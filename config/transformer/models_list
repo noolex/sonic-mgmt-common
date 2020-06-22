@@ -101,3 +101,5 @@ openconfig-fbs-ext-annot.yang
 openconfig-aft-ext.yang
 openconfig-aft-ipv4-ext.yang
 openconfig-aft-ipv6-ext.yang
+openconfig-ip-sla.yang
+openconfig-ip-sla-annot.yang

@@ -45,6 +45,7 @@ func init () {
 const (
        LAG_TYPE           = "lag-type"
        PORTCHANNEL_TABLE  = "PORTCHANNEL"
+       DEFAULT_PORTCHANNEL_MIN_LINKS = "1"
 )
 
 var LAG_TYPE_MAP = map[string]string{
@@ -504,7 +505,7 @@ func getLagState(ifName *string, lagInfoMap  map[string]db.Value,
 }
 
 /* Get PortChannel Info */
-func fillLagInfoForIntf(d *db.DB, ifName *string, lagInfoMap map[string]db.Value) error {
+func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMap map[string]db.Value) error {
     var err error
     var lagMemKeys []db.Key
     intTbl := IntfTypeTblMap[IntfTypePortChannel]
@@ -547,8 +548,18 @@ func fillLagInfoForIntf(d *db.DB, ifName *string, lagInfoMap map[string]db.Value
     }
     lagInfoMap[*ifName].Field["min-links"] = strconv.Itoa(links)
     /* Get fallback value */
+
+    lagTbl := &db.TableSpec{Name: "LAG_TABLE"}
+    appDb := inParams.dbs[db.ApplDB]
+    dbEntry, err := appDb.GetEntry(lagTbl, db.Key{Comp: []string{*ifName}})
+    if err != nil {
+        errStr := "Failed to get PortChannel APP_DB entry"
+        log.Info(errStr)
+        return errors.New(errStr)
+    }
+
     var fallbackVal string
-    if val, ok := curr.Field["fallback"]; ok {
+    if val, ok := dbEntry.Field["fallback_operational"]; ok {
         fallbackVal = val
     } else {
         log.Info("Fallback set to False, default value")
@@ -621,7 +632,7 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     log.Info("targetUriPath is ", targetUriPath)
     lagInfoMap := make(map[string]db.Value)
     ocAggregationStateVal := intfObj.Aggregation.State
-    err = fillLagInfoForIntf(inParams.d, &ifName, lagInfoMap)
+    err = fillLagInfoForIntf(inParams, inParams.d, &ifName, lagInfoMap)
     if err != nil {
         log.Errorf("Failed to get info: %s failed!", ifName)
         return err
@@ -650,6 +661,11 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
             return err
         }
     case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fast-rate":
+
+        links, _ := strconv.Atoi(DEFAULT_PORTCHANNEL_MIN_LINKS)
+        minlinks := uint16(links)
+        ocAggregationStateVal.MinLinks = &minlinks
+
         log.Info("Get is for fast rate")
         attr := "fast-rate"
         err = getLagStateAttr(&attr, &ifName, lagInfoMap, ocAggregationStateVal)
