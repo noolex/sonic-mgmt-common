@@ -70,15 +70,23 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
-        description "Additional fields for Authenication configuration";
+        description "Additional fields for authentication configuration";
         leaf failthrough {
             type string;
-            description "Indicating whether authentication failthrough should be enabled/disabled";
+            description "Indicates whether authentication failthrough should be enabled/disabled";
         }
     }
 
-    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config" {
-        description "Additional fields for AAA server config";
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:state" {
+        description "Additional fields for authentication configuration";
+        leaf failthrough {
+            type string;
+            description "Indicates whether authentication failthrough should be enabled/disabled";
+        }
+    }
+
+    grouping system-ext-aaa-server-group-server-config {
+        description "Additional fields for AAA server";
         leaf  auth-type {
             type string;
             description "The server authentication type pap/chap/mschap/mschapv2";
@@ -91,6 +99,16 @@ module openconfig-system-ext {
             type string;
             description "The server's VRF";
         }
+    }
+
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config" {
+        description "Additional fields for AAA server config";
+        uses system-ext-aaa-server-group-server-config;
+    }
+
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state" {
+        description "Additional fields for AAA server state";
+        uses system-ext-aaa-server-group-server-config;
     }
 
     grouping system-ext-aaa-server-groups-config {
@@ -290,6 +308,7 @@ module openconfig-system-ext {
 
    //tpcm paraemters
     augment /oc-sys:system {
+        description "Additional fields TPCM";
         uses oc-tpcm:tpcm-top;
     }
 
