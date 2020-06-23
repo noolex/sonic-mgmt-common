@@ -572,6 +572,9 @@ func Action(req ActionRequest) (ActionResponse, error) {
 		return resp, err
 	}
 
+    writeMutex.Lock()
+    defer writeMutex.Unlock()
+
 	isGetCase := false
 	dbs, err := getAllDbs(isGetCase)
 
