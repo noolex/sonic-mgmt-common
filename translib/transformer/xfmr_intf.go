@@ -174,6 +174,8 @@ var intfOCToSpeedMap = map[ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED] string
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_40GB: "40000",
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_50GB: "50000",
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_100GB: "100000",
+    ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_200GB: "200000",
+    ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_400GB: "400000",
 
 }
 
