@@ -1,0 +1,40 @@
+module openconfig-port-breakout-ext {
+
+    yang-version "1";
+
+    // namespace
+    namespace "http://openconfig.net/yang/platform/port/extension";
+
+    prefix "oc-pf-ext";
+
+    import openconfig-extensions { prefix "oc-ext"; }
+    import openconfig-platform { prefix oc-pf; }
+    import openconfig-platform-port { prefix oc-port; }
+
+    organization "SONiC";
+    contact
+        "SONiC";
+    description
+        "This module contains a collection of YANG extension for
+           breakout port";
+
+    oc-ext:openconfig-version "0.12.2";
+
+    revision 2020-06-10 {
+        description
+            "Initial revision.";
+        reference "0.12.2";
+    }
+    augment /oc-pf:components/oc-pf:component/oc-pf:port/oc-port:breakout-mode/oc-port:state {
+        description "Additional fields for port breakout state";
+        leaf status {
+            type string;
+            description "Status of breakout operation";
+        }
+
+        leaf-list members {
+            type string;
+            description "List of brokenout member ports";
+        }
+    }
+}
