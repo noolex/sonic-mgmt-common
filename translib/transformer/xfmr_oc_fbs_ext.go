@@ -109,7 +109,7 @@ var ETHERTYPE_MAP = map[ocbinds.E_OpenconfigPacketMatchTypes_ETHERTYPE]uint32{
 	ocbinds.OpenconfigPacketMatchTypes_ETHERTYPE_ETHERTYPE_MPLS: 0x8847,
 }
 
-/* E_OpenconfigPacketMatchTypes_IP_PROTOCOL */
+// IP_PROTOCOL_MAP represents map of E_OpenconfigPacketMatchTypes_IP_PROTOCOL enum value to protocol value in DB
 var IP_PROTOCOL_MAP = map[ocbinds.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]uint8{
 	ocbinds.OpenconfigPacketMatchTypes_IP_PROTOCOL_IP_ICMP: 1,
 	ocbinds.OpenconfigPacketMatchTypes_IP_PROTOCOL_IP_IGMP: 2,
@@ -122,13 +122,13 @@ var IP_PROTOCOL_MAP = map[ocbinds.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]uint8
 	ocbinds.OpenconfigPacketMatchTypes_IP_PROTOCOL_IP_L2TP: 115,
 }
 
-/* E_OpenconfigFbsExt_MATCH_TYPE */
+// CLASS_MATCH_TYPE_MAP represents map of E_OpenconfigFbsExt_MATCH_TYPE enum value to protocol value to db match type values
 var CLASS_MATCH_TYPE_MAP = map[string]string{
 	strconv.FormatInt(int64(ocbinds.OpenconfigFbsExt_MATCH_TYPE_MATCH_ACL), 10): SONIC_CLASS_MATCH_TYPE_ACL,
 	strconv.FormatInt(int64(ocbinds.OpenconfigFbsExt_MATCH_TYPE_MATCH_FIELDS), 10): SONIC_CLASS_MATCH_TYPE_FIELDS,
 }
 
-/* E_OpenconfigFbsExt_POLICY_TYPE */
+// POLICY_POLICY_TYPE_MAP represents map of E_OpenconfigFbsExt_POLICY_TYPE enum value to protocol value to db match type values
 var POLICY_POLICY_TYPE_MAP = map[string]string{
 	strconv.FormatInt(int64(ocbinds.OpenconfigFbsExt_POLICY_TYPE_POLICY_FORWARDING), 10): SONIC_POLICY_TYPE_FORWARDING,
 	strconv.FormatInt(int64(ocbinds.OpenconfigFbsExt_POLICY_TYPE_POLICY_QOS), 10): SONIC_POLICY_TYPE_QOS,
@@ -236,7 +236,7 @@ func getFbsYangNode(path *gnmipb.Path) (*yang.Entry, error) {
 
 	fmt.Println("tmpStr pathStr ==> ", pathStr)
 
-	pathStr = pathStr[1:len(pathStr)]
+	pathStr = pathStr[1:]
 
 	fmt.Println("tmpStr pathStr ==> ", pathStr)
 
@@ -246,7 +246,7 @@ func getFbsYangNode(path *gnmipb.Path) (*yang.Entry, error) {
 	return ygNode, err
 }
 
-func isFbsConfigTargetNode(targetName string, nodeName string) bool {
+/* func isFbsConfigTargetNode(targetName string, nodeName string) bool {
 	if targetName == "fbs" || targetName == "classifiers" || targetName == "policies" || targetName == "interfaces" || targetName == "config" || nodeName == targetName {
 		return true
 	}
@@ -259,7 +259,7 @@ func isFbsStateTargetNode(targetName string, nodeName string) bool {
 		return true
 	}
 	return false  
-}
+} */
 
 
 //get fbs classifier oc yang match type for match type in db
@@ -407,12 +407,12 @@ func fillFbsClassDetails(inParams XfmrParams, className string, classTblVal db.V
 			ipProto, _ := strconv.ParseInt(str_val, 10, 64)
             ip_proto_val  := getIpProtocol(ipProto)
 
-            if (ipv4 == true) {
+            if (ipv4) {
 	            log.Infof("fillFbsClassDetails; ipv4 protocol:%v ", ip_proto_val)
                 
                 classData.MatchHdrFields.Ipv4.Config.Protocol,_ = classData.MatchHdrFields.Ipv4.Config.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv4_Config_Protocol_Union(ip_proto_val)
                 classData.MatchHdrFields.Ipv4.State.Protocol,_  = classData.MatchHdrFields.Ipv4.State.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv4_State_Protocol_Union(ip_proto_val)
-            } else if (ipv6 == true) {
+            } else if (ipv6) {
 	            log.Infof("fillFbsClassDetails; ipv6 protocol:%v ", ip_proto_val)
                 //classData.MatchHdrFields.Ipv6.Config.Protocol,_ = classData.MatchHdrFields.Ipv6.Config.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv6_Config_Protocol_Union(ip_proto_val)
                 //classData.MatchHdrFields.Ipv6.State.Protocol,_  = classData.MatchHdrFields.Ipv6.State.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv6_State_Protocol_Union(ip_proto_val)
@@ -485,7 +485,7 @@ func fillFbsClassDetails(inParams XfmrParams, className string, classTblVal db.V
 }
 
 
-//Get
+//DbToYang_fbs_classifier_subtree_xfmr function takes care of handling Get operation for Classifier urls
 var DbToYang_fbs_classifier_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
 
@@ -538,7 +538,7 @@ var DbToYang_fbs_classifier_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     return err
 }
 
-//CRUD
+//YangToDb_fbs_classifier_subtree_xfmr function takes care of handling CRUD operations for Classifier urls
 var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
 	var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
@@ -719,7 +719,7 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
             log.Infof("Classifier CRUD: class%v matchType:%v ", classVal, matchType)
 
             if (matchType == SONIC_CLASS_MATCH_TYPE_ACL) {
-                if (classVal.MatchAcl.Config != nil) {
+                if (classVal.MatchAcl != nil &&  classVal.MatchAcl.Config != nil) {
                     ocAclName      := *(classVal.MatchAcl.Config.AclName)
                     ocAclType      := classVal.MatchAcl.Config.AclType
                     fbsClassTblMap[className].Field["ACL_NAME"] = ocAclName
@@ -733,10 +733,10 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
                     
                     log.Infof("Classifier CRUD: matchType ACL --> key: %v fbsClassTblMap:%v ", className, fbsClassTblMap)
                 }
-            }  else if (matchType == SONIC_CLASS_MATCH_TYPE_FIELDS) {
+            }  else if (matchType == SONIC_CLASS_MATCH_TYPE_FIELDS && classVal.MatchHdrFields != nil) {
                 log.Infof("Classifier CRUD: class%v matchType:%v ", classVal, matchType)
                 //Fill L2 Fields - START
-                if classVal.MatchHdrFields.L2 != nil {
+                if (classVal.MatchHdrFields.L2 != nil && classVal.MatchHdrFields.L2.Config != nil) {
                     if classVal.MatchHdrFields.L2.Config.DestinationMac != nil {
                         ocMacStr := *(classVal.MatchHdrFields.L2.Config.DestinationMac)
                         log.Infof("Classifier CRUD: class%v ocMacStr:%v ", className, ocMacStr)
@@ -782,12 +782,10 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
 				     	       v := classVal.MatchHdrFields.L2.Config.Ethertype.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_L2_Config_Ethertype_Union_E_OpenconfigPacketMatchTypes_ETHERTYPE)
 				     	       fmt.Fprintf(&b, "0x%0.4x", ETHERTYPE_MAP[v.E_OpenconfigPacketMatchTypes_ETHERTYPE])
 				     	       dbEtype = b.String()
-				     	       break
 			 	            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_L2_Config_Ethertype_Union_Uint16{}):
 				    			v := classVal.MatchHdrFields.L2.Config.Ethertype.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_L2_Config_Ethertype_Union_Uint16)
 				    			fmt.Fprintf(&b, "0x%0.4x", v.Uint16)
 				     	        dbEtype = b.String()
-				    			break
 				        }
                         fbsClassTblMap[className].Field["ETHER_TYPE"]   = dbEtype
                     }
@@ -795,7 +793,7 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
                 //Fill L2 Fields - END
 
                 //Fill IPV4/Ipv6 Fields - START
-                if classVal.MatchHdrFields.Ipv4 != nil {
+                if (classVal.MatchHdrFields.Ipv4 != nil && classVal.MatchHdrFields.Ipv4.Config != nil) {
                     if classVal.MatchHdrFields.Ipv4.Config.SourceAddress != nil {
                         fbsClassTblMap[className].Field["SRC_IP"]   = *(classVal.MatchHdrFields.Ipv4.Config.SourceAddress)
                     }
@@ -815,17 +813,15 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
 				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL{}):
 				     	       v := classVal.MatchHdrFields.Ipv4.Config.Protocol.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL)
                                dbIpProto = strconv.FormatInt(int64(IP_PROTOCOL_MAP[v.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]), 10)
-				     	       break
 			 	            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv4_Config_Protocol_Union_Uint8{}):
 				    			v := classVal.MatchHdrFields.Ipv4.Config.Protocol.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv4_Config_Protocol_Union_Uint8)
                                 dbIpProto =  strconv.FormatInt(int64(v.Uint8), 10)
-				    			break
 				        }
                         fbsClassTblMap[className].Field["IP_PROTOCOL"]   = dbIpProto 
                     }
                 } 
 
-                if classVal.MatchHdrFields.Ipv6 != nil   {
+                if (classVal.MatchHdrFields.Ipv6 != nil  && classVal.MatchHdrFields.Ipv6.Config != nil) {
                     if  classVal.MatchHdrFields.Ipv6.Config.Protocol != nil  {
                         ipProtocolType := reflect.TypeOf(classVal.MatchHdrFields.Ipv6.Config.Protocol)
                         var dbIpProto string
@@ -833,11 +829,9 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
 				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv6_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL{}):
 				     	       v := classVal.MatchHdrFields.Ipv6.Config.Protocol.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv6_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL)
                                dbIpProto = strconv.FormatInt(int64(IP_PROTOCOL_MAP[v.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]), 10)
-				     	       break
 			 	            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv6_Config_Protocol_Union_Uint8{}):
 				    			v := classVal.MatchHdrFields.Ipv6.Config.Protocol.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Ipv6_Config_Protocol_Union_Uint8)
                                 dbIpProto =  strconv.FormatInt(int64(v.Uint8), 10)
-				    			break
 				        }
                         fbsClassTblMap[className].Field["IP_PROTOCOL"]   = dbIpProto 
                     }
@@ -867,15 +861,12 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
 				     	       v := classVal.MatchHdrFields.Transport.Config.SourcePort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort)
                     
 		                       fbsClassTblMap[className].Field["L4_SRC_PORT"] = v.E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort.ΛMap()["E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort"][int64(v.E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort)].Name
-				     	       break
 				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_String{}):
 				     	       v := classVal.MatchHdrFields.Transport.Config.SourcePort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_String)
 		                       fbsClassTblMap[className].Field["L4_SRC_PORT_RANGE"]  = strings.Replace(v.String, "..", "-", 1)
-				    		   break
 	                         case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_Uint16{}):
 				     	       v := classVal.MatchHdrFields.Transport.Config.SourcePort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union_Uint16)
 		                       fbsClassTblMap[className].Field["L4_SRC_PORT"] = strconv.FormatInt(int64(v.Uint16), 10)
-				    		   break
 				        }
                     
                     }
@@ -886,15 +877,12 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
 				     	       v := classVal.MatchHdrFields.Transport.Config.DestinationPort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort)
                     
 		                       fbsClassTblMap[className].Field["L4_DST_PORT"] = v.E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort.ΛMap()["E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort"][int64(v.E_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort)].Name
-				     	       break
 				            case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_String{}):
 				     	       v := classVal.MatchHdrFields.Transport.Config.DestinationPort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_String)
 		                       fbsClassTblMap[className].Field["L4_DST_PORT_RANGE"]  = strings.Replace(v.String, "..", "-", 1)
-				    		   break
 	                         case reflect.TypeOf(ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_Uint16{}):
 				     	       v := classVal.MatchHdrFields.Transport.Config.DestinationPort.(*ocbinds.OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union_Uint16)
 		                       fbsClassTblMap[className].Field["L4_DST_PORT"] = strconv.FormatInt(int64(v.Uint16), 10)
-				    		   break
 				        }
                     }
                     if classVal.MatchHdrFields.Transport.Config.TcpFlags != nil {
@@ -909,28 +897,20 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
                             switch flag {
                                 case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_FIN:
                                     tcpFlags |= 0x01
-                                    break
                                 case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_SYN:
                                     tcpFlags |= 0x02
-                                    break
                                 case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_RST:
                                     tcpFlags |= 0x04
-                                    break
                                 case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_PSH:
                                     tcpFlags |= 0x08
-                                    break
                                 case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ACK:
                                     tcpFlags |= 0x10
-                                    break
                                 case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_URG:
                                     tcpFlags |= 0x20
-                                    break
                                 case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ECE:
                                     tcpFlags |= 0x40
-                                    break
                                 case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_CWR:
                                     tcpFlags |= 0x80
-                                    break
                             }
                         }
 				        fmt.Fprintf(&b, "0x%0.2x/0x%0.2x", tcpFlags, tcpFlags)
@@ -966,7 +946,7 @@ var YangToDb_fbs_classifier_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
 
 //Policiers - START
 
-//get fbs classifier oc yang match type for match type in db
+//getPolicyTypeOCEnumFromDbStr function gets OC Yang Enum corresponding policyType string from DB 
 func getPolicyTypeOCEnumFromDbStr(val string) (ocbinds.E_OpenconfigFbsExt_POLICY_TYPE, error) {
 	switch val {
 	case SONIC_POLICY_TYPE_QOS, "openconfig-fbs-ext:QOS":
@@ -1168,7 +1148,7 @@ func fillFbsPolicyDetails(inParams XfmrParams, policyName string, policyTblVal d
 }
 
 
-//Get
+//DbToYang_fbs_policy_subtree_xfmr function takes care of handling Get operation for policy urls
 var DbToYang_fbs_policy_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
 
@@ -1220,7 +1200,7 @@ var DbToYang_fbs_policy_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     return err
 }
 
-//CRUD
+//YangToDb_fbs_policy_subtree_xfmr function takes care of handling CRUD operations for policy urls
 var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
 	var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
@@ -1300,19 +1280,19 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                                     } else {
                                         delPolicer = true 
                                     }
-                                    if delPolicer == true {
+                                    if delPolicer {
                                             sectionDbV.Field["SET_POLICER_CIR"] = ""
                                             sectionDbV.Field["SET_POLICER_PIR"] = ""
                                             sectionDbV.Field["SET_POLICER_CBS"] = ""
                                             sectionDbV.Field["SET_POLICER_PBS"] = ""
                                     }
-                                } else if policySectionVal.Qos.Queuing != nil { //queuing
+                                } /* else if policySectionVal.Qos.Queuing != nil { //queuing
+                                    //TBD: Qos Queuing
                                     if policySectionVal.Qos.Queuing.Config != nil { //queuing config
                                         if  targetNode.Name == "queue-name" {
-                                            //TBD: Qos Queuing
-                                        } 
                                     }
                                 } 
+                                } */
                             } else if policySectionVal.Monitoring != nil { //monitoring
                                 if (policySectionVal.Monitoring.MirrorSessions != nil && policySectionVal.Monitoring.MirrorSessions.MirrorSession != nil ) {
                                     for _, mirrorSessionVal := range policySectionVal.Monitoring.MirrorSessions.MirrorSession  {
@@ -1345,25 +1325,27 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                                          
                                 } else if (policySectionVal.Forwarding.NextHops != nil) {
                                     if (policySectionVal.Forwarding.NextHops.NextHop != nil) {
-                                        v4nhopsDbStr := ""
-                                        v6nhopsDbStr := ""
-                                        for nhopKey, _  := range policySectionVal.Forwarding.NextHops.NextHop {
+                                        var v4nhopsDbStr string
+                                        var v6nhopsDbStr string 
+                                        for nhopKey  := range policySectionVal.Forwarding.NextHops.NextHop {
+                                            nhopsDbStr := nhopKey.IpAddress + "|" + nhopKey.NetworkInstance
                                             if (isV4Address(nhopKey.IpAddress)) {
-                                                if (v4nhopsDbStr != "") {
+                                                if (len(v4nhopsDbStr) > 0) {
                                                     v4nhopsDbStr = v4nhopsDbStr + ","
                                                 }    
-                                                v4nhopsDbStr = nhopKey.IpAddress + "|" + nhopKey.NetworkInstance
+                                                v4nhopsDbStr = v4nhopsDbStr + nhopsDbStr
+                                                
                                             } else {
-                                                if (v6nhopsDbStr != "") {
+                                                if (len(v6nhopsDbStr) > 0) {
                                                     v6nhopsDbStr = v6nhopsDbStr + ","
                                                 }    
-                                                v6nhopsDbStr = nhopKey.IpAddress + "|" + nhopKey.NetworkInstance
+                                                v6nhopsDbStr = v6nhopsDbStr + nhopsDbStr
                                             }
                                         }
-                                        if (v4nhopsDbStr != "") {
+                                        if (len(v4nhopsDbStr) > 0) {
                                             sectionDbV.Field["SET_IP_NEXTHOP"] = v4nhopsDbStr 
                                         } 
-                                        if (v6nhopsDbStr != "") {
+                                        if (len(v6nhopsDbStr) > 0) {
                                             sectionDbV.Field["SET_IPV6_NEXTHOP"] = v6nhopsDbStr 
                                         } 
                                     } else { 
@@ -1440,7 +1422,7 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 
                     log.Infof("Policy CRUD; --> key: %v class:%v ", policyName, className)
                     if (policySectionVal.Forwarding.Config != nil) {
-                        if *(policySectionVal.Forwarding.Config.Discard) == true {
+                        if *(policySectionVal.Forwarding.Config.Discard) {
                             fbsPolicySectionTblMap[sectionDbKeyStr].Field["DEFAULT_PACKET_ACTION"] = SONIC_PACKET_ACTION_DROP
                         }
                     }
@@ -1463,25 +1445,27 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                     } //EgressInterfaces - END
 
                     if (policySectionVal.Forwarding.NextHops != nil && policySectionVal.Forwarding.NextHops.NextHop != nil) {
-                        v4nhopsDbStr := ""
-                        v6nhopsDbStr := ""
-                        for nhopKey, _  := range policySectionVal.Forwarding.NextHops.NextHop {
+                        var v4nhopsDbStr string
+                        var v6nhopsDbStr string 
+                        for nhopKey  := range policySectionVal.Forwarding.NextHops.NextHop {
+                            nhopsDbStr := nhopKey.IpAddress + "|" + nhopKey.NetworkInstance
                             if (isV4Address(nhopKey.IpAddress)) {
-                                if (v4nhopsDbStr != "") {
+                                if (len(v4nhopsDbStr) > 0) {
                                     v4nhopsDbStr = v4nhopsDbStr + ","
                                 }    
-                                v4nhopsDbStr = nhopKey.IpAddress + "|" + nhopKey.NetworkInstance
+                                v4nhopsDbStr = v4nhopsDbStr + nhopsDbStr
+                                
                             } else {
-                                if (v6nhopsDbStr != "") {
+                                if (len(v6nhopsDbStr) > 0) {
                                     v6nhopsDbStr = v6nhopsDbStr + ","
                                 }    
-                                v6nhopsDbStr = nhopKey.IpAddress + "|" + nhopKey.NetworkInstance
+                                v6nhopsDbStr = v6nhopsDbStr + nhopsDbStr
                             }
                         }
-                        if (v4nhopsDbStr != "") {
+                        if (len(v4nhopsDbStr) > 0) {
                             fbsPolicySectionTblMap[sectionDbKeyStr].Field["SET_IP_NEXTHOP"] = v4nhopsDbStr 
                         } 
-                        if (v6nhopsDbStr != "") {
+                        if (len(v6nhopsDbStr) > 0) {
                             fbsPolicySectionTblMap[sectionDbKeyStr].Field["SET_IPV6_NEXTHOP"] = v6nhopsDbStr 
                         } 
                     } //Nexthops - END
@@ -2082,7 +2066,7 @@ func fillFbsInterfaceDetails(inParams XfmrParams, interfaceId string, policyBind
 }
 
 
-//Get
+//DbToYang_fbs_interface_subtree_xfmr function takes care of handling Get operation for interface urls
 var DbToYang_fbs_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
 
@@ -2136,7 +2120,7 @@ var DbToYang_fbs_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
     return err
 } 
 
-//CRUD
+//YangToDb_fbs_interface_subtree_xfmr function takes care of handling CRUD operations for interface urls
 var YangToDb_fbs_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
 	var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
@@ -2151,7 +2135,7 @@ var YangToDb_fbs_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
     log.Infof("Fbs Interface CRUD;: key:%v pathInfo%v fbsObj ", keyName, pathInfo.Path)
     pretty.Print(fbsObj)
 
-    path, err := getFbsUriPath(inParams.uri)
+    path, _ := getFbsUriPath(inParams.uri)
     log.Info("Fbs interface operation %v path:%v ", inParams.oper, path)
     //pretty.Print(path)
 
