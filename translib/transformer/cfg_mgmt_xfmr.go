@@ -30,6 +30,7 @@ import (
 func init() {
 	XlateFuncBind("rpc_config_copy", rpc_config_copy)
 	XlateFuncBind("rpc_write_erase", rpc_write_erase)
+        XlateFuncBind("rpc_factory_default_profile", rpc_factory_default_profile)
 }
 
 
@@ -212,4 +213,50 @@ func cfg_write_erase_action(body []byte) ([]byte, error) {
 
 var rpc_write_erase RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     return cfg_write_erase_action(body)
+}
+
+func cfg_default_profile_action(body []byte) ([]byte, error) {
+    var err error
+    var result []byte
+    var profile_name string
+
+    var operand struct {
+       Input struct {
+               ProfileName string `json:"profile-name"`
+       } `json:"sonic-config-mgmt:input"`
+    }
+
+    err = json.Unmarshal(body, &operand)
+    if err != nil {
+       log.Error("Default configuration profile name not provided")
+       err = errors.New("profile-name parameters missing.")
+       return nil, err
+    } else {
+       profile_name = operand.Input.ProfileName
+    }
+
+    var response struct {
+        Output struct {
+            Status int32 `json:"status"`
+            Status_detail string`json:"status-detail"`
+       } `json:"sonic-config-mgmt:output"`
+    }
+
+    var fcnt string = "cfg_mgmt.profile_factory"
+    var option string = profile_name;
+
+    host_output := HostQuery(fcnt, option)
+    if host_output.Err != nil {
+        log.Errorf("Failed to execute host Query to set default profile name: err=%v", host_output.Err)
+        return nil, host_output.Err
+    }
+
+    response.Output.Status = host_output.Body[0].(int32)
+    response.Output.Status_detail = host_output.Body[1].(string)
+    result, err = json.Marshal(&response)
+    return result, err
+}
+
+var rpc_factory_default_profile RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    return cfg_default_profile_action(body)
 }

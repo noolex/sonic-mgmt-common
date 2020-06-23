@@ -20,9 +20,8 @@ class CFG_MGMT(host_service.HostModule):
     """DBus endpoint that executes CFG_MGMT related commands """
 
     @staticmethod
-    def _run_command(commands, options):
+    def _run_command(commands, options, cmd = ['/usr/bin/config']):
         """ Run config mgmt command """
-        cmd = ['/usr/bin/config']
         if isinstance(commands, list):
             cmd.extend(commands)
         else:
@@ -257,9 +256,20 @@ class CFG_MGMT(host_service.HostModule):
             rc, err = CFG_MGMT._delete_host_file("/pending_erase")
         return rc, err
 
+    @staticmethod
+    def _run_command_profile_factory(profile):
+        """ Run config mgmt command """
+
+        rc, output = CFG_MGMT._run_command(["factory"], [profile], cmd=['/usr/bin/config-profiles'])
+        return rc, output
+
     @host_service.method(host_service.bus_name(MOD_NAME), in_signature='s', out_signature='is')
     def write_erase(self, option):
         return self._run_command_erase(option)
+
+    @host_service.method(host_service.bus_name(MOD_NAME), in_signature='s', out_signature='is')
+    def profile_factory(self, option):
+        return self._run_command_profile_factory(option)
 
     @staticmethod
     def _load_config():
