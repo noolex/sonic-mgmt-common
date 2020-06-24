@@ -3038,11 +3038,6 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
 
     if enStr == "disable" {
 
-        if _, ok := IntfMap["ipv6_use_link_local_only"]; !ok {
-            // Already disabled if field not present in DB
-            return nil, nil
-        }
-
         /* Update ipv6_use_link_local_only field's value if explicit IP configured and no other interface attribute */
         if len(ipMap) > 0 && len(IntfMap) == 1 {
             return res_map, nil
@@ -3054,11 +3049,11 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         }
         check_keys := []string{"NULL", "ipv6_use_link_local_only"}
         sort.Strings(keys)
-
         /* Delete interface from interface table if disabling IPv6 and no other interface attributes/ip 
            else remove ipv6_use_link_local_only field */
-        if !(reflect.DeepEqual(keys, check_keys) && len(ipMap) == 0 && intfType != IntfTypeLoopback) {
+        if !((reflect.DeepEqual(keys, check_keys) || reflect.DeepEqual(keys, check_keys[1:])) && len(ipMap) == 0 && intfType != IntfTypeLoopback) {
             log.Info("YangToDb_ipv6_enabled_xfmr, deleting ipv6_use_link_local_only field")
+            // Adding field to the map
             (&res_values).Set("ipv6_use_link_local_only", enStr)
         }
         field_map[*ifName] = res_values
