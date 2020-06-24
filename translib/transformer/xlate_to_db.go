@@ -54,7 +54,6 @@ func dataToDBMapAdd(tableName string, dbKey string, result map[string]map[string
 	}
 
     result[tableName][dbKey].Field[field] = value
-    return
 }
 
 /*use when single table name is expected*/
@@ -297,7 +296,6 @@ func dbMapDataFill(uri string, tableName string, keyName string, d map[string]in
 			xfmrLogInfoAll("Did not find entry in xDbSpecMap for field xpath = %v", fieldXpath)
 		}
 	}
-	return
 }
 
 func dbMapListDataFill(uri string, tableName string, dbEntry *yang.Entry, jsonData interface{}, result map[string]map[string]db.Value) {
@@ -321,7 +319,6 @@ func dbMapListDataFill(uri string, tableName string, dbEntry *yang.Entry, jsonDa
 		}
 		dbMapDataFill(uri, tableName, keyName, d, result)
 	}
-	return
 }
 
 func directDbMapData(uri string, tableName string, jsonData interface{}, result map[string]map[string]db.Value) bool {
@@ -357,326 +354,10 @@ func directDbMapData(uri string, tableName string, jsonData interface{}, result 
 	return true
 }
 
-/* Get the db table, key and field name for the incoming delete request */
-func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, jsonData interface{}, resultMap map[int]map[db.DBNum]map[string]map[string]db.Value, txCache interface{}, skipOrdTbl *bool) error {
-	var err error
-	var result = make(map[string]map[string]db.Value)
-	subOpDataMap := make(map[int]*RedisDbMap)
-	var xfmrErr error
-	*skipOrdTbl = false
-        var cascadeDelTbl []string
-
-	for i := 0; i < MAXOPER; i++ {
-		resultMap[i] = make(map[db.DBNum]map[string]map[string]db.Value)
-	}
-
-
-	if isSonicYang(uri) {
-		*skipOrdTbl = true
-		xpathPrefix, keyName, tableName := sonicXpathKeyExtract(uri)
-		xfmrLogInfo("Delete req: uri(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", uri, keyName, xpathPrefix, tableName)
-		resultMap[oper][db.ConfigDB] = result
-		xlateToData := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpathPrefix, keyName, jsonData, resultMap, result, txCache, nil, subOpDataMap, &cascadeDelTbl, &xfmrErr, "","",tableName)
-		err = sonicYangReqToDbMapDelete(xlateToData)
-	} else {
-		xpathPrefix, keyName, tableName, err := xpathKeyExtract(d, ygRoot, oper, uri, requestUri, subOpDataMap, txCache)
-		if err != nil {
-			return err
-		}
-		xfmrLogInfo("Delete req: uri(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", uri, keyName, xpathPrefix, tableName)
-		spec, ok := xYangSpecMap[xpathPrefix]
-		if ok {
-			specYangType := yangTypeGet(spec.yangEntry)
-			moduleNm := "/" + strings.Split(uri, "/")[1]
-			xfmrLogInfo("Module name for uri %s is %s", uri, moduleNm)
-                        if spec.cascadeDel == XFMR_ENABLE && tableName != "" && tableName != XFMR_NONE_STRING {
-                            if !contains(cascadeDelTbl, tableName) {
-                                cascadeDelTbl = append(cascadeDelTbl, tableName)
-                            }
-                        }
-			curXlateParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpathPrefix, keyName, jsonData, resultMap, result, txCache, nil, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", tableName)
-			if len(spec.xfmrFunc) > 0 {
-				var dbs [db.MaxDB]*db.DB
-				cdb := spec.dbIndex
-				inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
-				stRetData, err := xfmrHandler(inParams, spec.xfmrFunc)
-				if err == nil {
-					mapCopy(result, stRetData)
-				} else {
-					return err
-				}
-                                if inParams.pCascadeDelTbl != nil && len(*inParams.pCascadeDelTbl) > 0 {
-                                    for _, tblNm :=  range *inParams.pCascadeDelTbl {
-                                        if !contains(cascadeDelTbl, tblNm) {
-                                            cascadeDelTbl = append(cascadeDelTbl, tblNm)
-                                        }
-                                    }
-                                }
-			} else if len(tableName) > 0 {
-				result[tableName] = make(map[string]db.Value)
-				if len(keyName) > 0 {
-					result[tableName][keyName] = db.Value{Field: make(map[string]string)}
-					xpath := xpathPrefix
-					uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
-					uriItemListLen := len(uriItemList)
-					var terminalNode, luri string
-					if uriItemListLen > 0 {
-						terminalNode = uriItemList[uriItemListLen-1]
-						luri = strings.Join(uriItemList[:uriItemListLen-1], "/") //strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
-
-					}
-					if specYangType == YANG_LEAF {
-						_, ok := xYangSpecMap[xpath]
-						if ok && len(xYangSpecMap[xpath].defVal) > 0 {
-							// Do not fill def value if leaf does not map to any redis field
-							dbSpecXpath := tableName + "/" + xYangSpecMap[xpath].fieldName
-							_, mapped := xDbSpecMap[dbSpecXpath]
-							if mapped || len(xYangSpecMap[xpath].xfmrField) > 0 {
-								curXlateParams.uri = luri
-								curXlateParams.name = spec.fieldName
-								curXlateParams.value = xYangSpecMap[xpath].defVal
-								err = mapFillDataUtil(curXlateParams)
-								if xfmrErr != nil {
-									return xfmrErr
-								}
-								if err != nil {
-									return err
-								}
-								if len(subOpDataMap) > 0 && subOpDataMap[UPDATE] != nil {
-									subOperMap := subOpDataMap[UPDATE]
-									mapCopy((*subOperMap)[db.ConfigDB], result)
-								} else {
-									var redisMap = new(RedisDbMap)
-									var dbresult = make(RedisDbMap)
-									for i := db.ApplDB; i < db.MaxDB; i++ {
-										dbresult[i] = make(map[string]map[string]db.Value)
-									}
-									redisMap = &dbresult
-									(*redisMap)[db.ConfigDB] = result
-									subOpDataMap[UPDATE]     = redisMap
-								}
-							}
-							result = make(map[string]map[string]db.Value)
-						} else {
-							curXlateParams.uri = luri
-							curXlateParams.name = spec.fieldName
-							err = mapFillDataUtil(curXlateParams)
-							if xfmrErr != nil {
-								return xfmrErr
-							}
-							if err != nil {
-								return err
-							}
-						}
-					} else if specYangType == YANG_LEAF_LIST {
-						var fieldVal []interface{}
-						if strings.Contains(terminalNode, "[") {
-							terminalNodeData := strings.TrimSuffix(strings.SplitN(terminalNode, "[", 2)[1], "]")
-							terminalNodeDataLst := strings.SplitN(terminalNodeData, "=", 2)
-							terminalNodeVal := terminalNodeDataLst[1]
-							fieldVal = append(fieldVal, terminalNodeVal)
-						}
-						curXlateParams.uri = luri
-						curXlateParams.name = spec.yangEntry.Name
-						curXlateParams.value = fieldVal
-						err = mapFillDataUtil(curXlateParams)
-
-						if xfmrErr != nil {
-							return xfmrErr
-						}
-						if err != nil {
-							return err
-						}
-					} else if (spec.hasChildSubTree == true) {
-						xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
-						curResult, cerr := allChildTblGetToDelete(curXlateParams)
-						if cerr != nil {
-							err = cerr
-						} else {
-							mapCopy(result, curResult)
-						}
-					}
-				} else if (spec.hasChildSubTree == true) {
-					xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
-					curResult, cerr := allChildTblGetToDelete(curXlateParams)
-					if cerr != nil {
-						err = cerr
-					} else {
-						mapCopy(result, curResult)
-					}
-				}
-			} else if len(spec.childTable) > 0 {
-				if (spec.hasChildSubTree == true) {
-					xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
-					result, err = allChildTblGetToDelete(curXlateParams)
-				}
-				chResult := make(map[string]map[string]db.Value)
-				for _, child := range spec.childTable {
-					chResult[child] = make(map[string]db.Value)
-				}
-				log.Infof("Before Merge result: %v  result with  child tables: %v", result, chResult)
-                                mapCopy(result, chResult)
-                                log.Infof("Merged result tables with child tables: %v", result)
-
-			} else {
-				if (spec.hasChildSubTree == true) {
-					xfmrLogInfoAll("Uri(\"%v\") has child subtree-xfmr", uri)
-					result, err = allChildTblGetToDelete(curXlateParams)
-				}
-			}
-			if err != nil {
-				return err
-			}
-
-			_, ok := xYangSpecMap[moduleNm]
-			if ok && len(xYangSpecMap[moduleNm].xfmrPost) > 0 {
-				xfmrLogInfo("Invoke post transformer: %v", xYangSpecMap[moduleNm].xfmrPost)
-				var dbs [db.MaxDB]*db.DB
-				var dbresult = make(RedisDbMap)
-				dbresult[db.ConfigDB] = result
-				inParams := formXfmrInputRequest(d, dbs, db.ConfigDB, ygRoot, uri, requestUri, oper, "", &dbresult, subOpDataMap, nil, txCache)
-				result, err = postXfmrHandlerFunc(xYangSpecMap[moduleNm].xfmrPost, inParams)
-				if err != nil {
-					return err
-				}
-				if inParams.skipOrdTblChk != nil {
-					*skipOrdTbl = *(inParams.skipOrdTblChk)
-					xfmrLogInfo("skipOrdTbl flag: %v", *skipOrdTbl)
-				}
-                                if inParams.pCascadeDelTbl != nil && len(*inParams.pCascadeDelTbl) > 0 {
-                                    for _, tblNm :=  range *inParams.pCascadeDelTbl {
-                                        if !contains(cascadeDelTbl, tblNm) {
-                                            cascadeDelTbl = append(cascadeDelTbl, tblNm)
-                                        }
-                                    }
-                                }
-			}
-
-			if len(result) > 0 {
-				resultMap[oper][db.ConfigDB] = result
-			}
-
-			if len(subOpDataMap) > 0 {
-				for op, data := range subOpDataMap {
-					if len(*data) > 0 {
-						for dbType, dbData := range (*data) {
-							if len(dbData) > 0 {
-                                if _, ok := resultMap[op][dbType]; !ok {
-                                    resultMap[op][dbType] = make(map[string]map[string]db.Value)
-                                }
-                                mapCopy(resultMap[op][dbType], (*subOpDataMap[op])[dbType])
-							}
-						}
-					}
-				}
-
-			}
-			/* for container/list delete req , it should go through, even if there are any leaf default-yang-values */
-		}
-	}
-
-	err = dbDataXfmrHandler(resultMap)
-	if err != nil {
-		log.Errorf("Failed in dbdata-xfmr for %v", resultMap)
-		return err
-	}
-        if (len(cascadeDelTbl) > 0) {
-            cdErr := handleCascadeDelete(d, resultMap, cascadeDelTbl)
-	    if cdErr != nil {
-		xfmrLogInfo("Cascade Delete Failed for cascadeDelTbl (%v), Error: (%v)", cascadeDelTbl, cdErr)
-		return cdErr
-	    }
-        }
-
-    printDbData(resultMap, "/tmp/yangToDbDataDel.txt")
-	xfmrLogInfo("Delete req: uri(\"%v\") resultMap(\"%v\").", uri, resultMap)
-	return err
-}
-
-func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
-	var err error
-    if (xlateParams.tableName != "") {
-        // Specific table entry case
-        xlateParams.result[xlateParams.tableName] = make(map[string]db.Value)
-        if tblSpecInfo, ok := xDbSpecMap[xlateParams.tableName]; ok && (tblSpecInfo.cascadeDel == XFMR_ENABLE) {
-            *xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, xlateParams.tableName)
-        }
-        if (xlateParams.keyName != "") {
-            // Specific key case
-	    var dbVal db.Value
-	    tokens:= strings.Split(xlateParams.xpath, "/")
-	    if tokens[SONIC_TABLE_INDEX] == xlateParams.tableName {
-		    fieldName := ""
-		    if len(tokens) > SONIC_FIELD_INDEX {
-			    fieldName = tokens[SONIC_FIELD_INDEX]
-		    }
-
-		     if fieldName != "" {
-			     dbSpecField := xlateParams.tableName + "/" + fieldName
-			     _, ok := xDbSpecMap[dbSpecField]
-			     if ok {
-				     yangType := xDbSpecMap[dbSpecField].fieldType
-				     // terminal node case
-				     if yangType == YANG_LEAF_LIST {
-					     dbVal.Field = make(map[string]string)
-					     //check if it is a specific item in leaf-list delete
-					     uriItemList := splitUri(strings.TrimSuffix(xlateParams.requestUri, "/"))
-					     uriItemListLen := len(uriItemList)
-					     var terminalNode string
-					     if uriItemListLen > 0 {
-						     terminalNode = uriItemList[uriItemListLen-1]
-						     dbFldVal := ""
-						     if strings.Contains(terminalNode, "[") {
-							     terminalNodeData := strings.TrimSuffix(strings.SplitN(terminalNode, "[", 2)[1], "]")
-							     terminalNodeDataLst := strings.SplitN(terminalNodeData, "=", 2)
-							     terminalNodeVal := terminalNodeDataLst[1]
-							     dbFldVal, err = unmarshalJsonToDbData(xDbSpecMap[dbSpecField].dbEntry, dbSpecField, fieldName, terminalNodeVal)
-							     if err != nil {
-								     log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", dbSpecField, err)
-								     return err
-							     }
-						     }
-						     fieldName = fieldName + "@"
-						     dbVal.Field[fieldName] = dbFldVal
-					     }
-				     }
-				     if yangType == YANG_LEAF {
-					     dbVal.Field = make(map[string]string)
-					     dbVal.Field[fieldName] = ""
-				     }
-			     }
-		     }
-	     }
-	     xlateParams.result[xlateParams.tableName][xlateParams.keyName] = dbVal
-        } else {
-            // Get all keys
-        }
-    } else {
-        // Get all table entries
-        // If table name not available in xpath get top container name
-	_, ok := xDbSpecMap[xlateParams.xpath]
-        if ok && xDbSpecMap[xlateParams.xpath] != nil {
-            dbInfo := xDbSpecMap[xlateParams.xpath]
-            if dbInfo.fieldType == "container" {
-                for dir, _ := range dbInfo.dbEntry.Dir {
-                    if tblSpecInfo, ok := xDbSpecMap[dir]; ok && tblSpecInfo.cascadeDel == XFMR_ENABLE {
-                        *xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, dir)
-                    }
-                    if dbInfo.dbEntry.Dir[dir].Config != yang.TSFalse {
-                       xlateParams.result[dir] = make(map[string]db.Value)
-                    }
-                }
-            }
-        }
-    }
-    return nil
-}
-
 /* Get the data from incoming update/replace request, create map and fill with dbValue(ie. field:value to write into redis-db */
 func dbMapUpdate(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, jsonData interface{}, result map[int]map[db.DBNum]map[string]map[string]db.Value, txCache interface{}) error {
     xfmrLogInfo("Update/replace req: path(\"%v\").", path)
-    var err error
-    err = dbMapCreate(d, ygRoot, oper, path, requestUri, jsonData, result, txCache)
+    err := dbMapCreate(d, ygRoot, oper, path, requestUri, jsonData, result, txCache)
     xfmrLogInfo("Update/replace req: path(\"%v\") result(\"%v\").", path, result)
     printDbData(result, "/tmp/yangToDbDataUpRe.txt")
     return err
@@ -778,10 +459,10 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 
 func dbMapDefaultValFill(xlateParams xlateToParams) error {
 	for tbl, tblData := range xlateParams.result {
-		for dbKey, _ := range tblData {
+		for dbKey := range tblData {
 			var yxpathList []string //contains all uris(with keys) that were traversed for a table while processing the incoming request
 			if tblUriMapVal, ok := xlateParams.tblXpathMap[tbl]; ok {
-				for tblUri, _ := range tblUriMapVal {
+				for tblUri := range tblUriMapVal {
 					yxpathList = append(yxpathList, tblUri)
 				}
 			}
@@ -1157,5 +838,4 @@ func printDbData(resMap map[int]map[db.DBNum]map[string]map[string]db.Value, fil
 		}
 	}
 	fmt.Fprintf(fp, "-----------------------------------------------------------------\r\n")
-	return
 }
