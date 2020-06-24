@@ -160,9 +160,9 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
             for tblNm, tblDt := range(dbDt) {
                 notifInfo.table = db.TableSpec{Name:tblNm}
                 if (len(tblDt) == 1) {
-                    for tblKy, _ := range(tblDt) {
-			    notifInfo.key = asKey(tblKy)
-			    notifInfo.needCache = subscDt.NeedCache
+                    for tblKy := range(tblDt) {
+                        notifInfo.key = asKey(tblKy)
+                        notifInfo.needCache = subscDt.NeedCache
                     }
                 } else {
                     if (len(tblDt) >  1) {
@@ -250,7 +250,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    origYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
 	    xfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
             isEmptyPayload  := false
-	    payload, err, isEmptyPayload = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
+	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
 	    if err != nil {
 		    log.Error("transformer.transformer.GetAndXlateFromDB failure. error:", err)
 		    resPayload = payload
@@ -263,7 +263,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    }
 
 	    targetObj, tgtObjCastOk := (*app.ygotTarget).(ygot.GoStruct)
-	    if tgtObjCastOk == false {
+	    if !tgtObjCastOk {
 		    /*For ygotTarget populated by tranlib, for query on leaf level and list(without instance) level, 
 		      casting to GoStruct fails so use the parent node of ygotTarget to Unmarshall the payload into*/
 		    log.Infof("Use GetParentNode() since casting ygotTarget to GoStruct failed(uri - %v", app.pathInfo.Path)
@@ -276,7 +276,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		    }
 		    if parentTargetObj != nil {
 			    targetObj, tgtObjCastOk = (*parentTargetObj).(ygot.GoStruct)
-			    if tgtObjCastOk == false {
+			    if !tgtObjCastOk {
 				    log.Warningf("Casting of parent object returned from getParentNode() to GoStruct failed(uri - %v)", app.pathInfo.Path)
 				    resPayload = payload
 				    break
@@ -298,12 +298,11 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		    resYgot := (*app.ygotRoot)
 		    if !strings.HasPrefix(app.pathInfo.Path, "/sonic") {
 			    // if payload is empty, no need to invoke merge-struct
-			    if isEmptyPayload == true {
+			    if isEmptyPayload {
 				    if areEqual(xfmrYgotRoot, resYgot.(ygot.GoStruct)) {
 					    // No data available in xfmrYgotRoot.
 					    resPayload = payload
-					    errStr := fmt.Sprintf("No data available")
-					    log.Error(errStr)
+					    log.Error("No data available")
 					    //TODO: Return not found error
 					    //err = tlerr.NotFound("Resource not found")
 					    break
@@ -341,8 +340,8 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 }
 
 func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
-    var resp ActionResponse
-	err := errors.New("Not implemented")
+        var resp ActionResponse
+        var err error
 
 	resp.Payload, err = transformer.CallRpcMethod(app.pathInfo.Path, app.body, dbs)
 	log.Info("transformer.CallRpcMethod() returned")
@@ -384,7 +383,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	var resultTblList []string
         for _, dbMap := range result { //Get dependency list for all tables in result
 		for _, resMap := range dbMap { //Get dependency list for all tables in result
-		        for tblnm, _ := range resMap { //Get dependency list for all tables in result
+		        for tblnm := range resMap { //Get dependency list for all tables in result
 				resultTblList = append(resultTblList, tblnm)
 			}
 		}
@@ -498,7 +497,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 	var xfmrTblLst []string
 	var resultTblLst []string
 
-	for tblNm, _ := range(dbMap) {
+	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
 	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
@@ -527,9 +526,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 					tblRw.Field["NULL"] = "NULL"
 				}
 				if len(tblRw.Field) > 1 {
-					if _, ok := tblRw.Field["NULL"]; ok {
-						delete(tblRw.Field, "NULL")
-					}
+					delete(tblRw.Field, "NULL")
 				}
 				log.Info("Processing Table row ", tblRw)
 				existingEntry, _ := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
@@ -598,7 +595,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 	var resultTblLst []string
 	var ordTblList []string
 
-	for tblNm, _ := range(dbMap) {
+	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
 	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
