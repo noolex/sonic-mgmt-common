@@ -23,7 +23,6 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
     log "github.com/golang/glog"
-    "fmt"
     "encoding/json"
 )
 
@@ -33,7 +32,7 @@ func init () {
 
 
 
-/* RPC for get interface counters */
+// InterfaceObj is defined to use as RPC response for get interface counters 
 type InterfaceObj struct {
     Name string `json:"name"`
     State struct {
@@ -95,7 +94,7 @@ var rpc_get_interface_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
     ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
     if err != nil {
-        result.Output.Status_detail = fmt.Sprintf("Server error, data not found!")
+        result.Output.Status_detail = "Server error, data not found!"
         return json.Marshal(&result)
     }
     cntTs := &db.TableSpec{Name: "COUNTERS"}
@@ -112,7 +111,7 @@ var rpc_get_interface_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             entry_backup, dbErr := dbs[db.CountersDB].GetEntry(cntTs_cp, db.Key{Comp: []string{oid}})
             if dbErr != nil {
                 m := make(map[string]string)
-                for  attr,_ := range entry.Field {
+                for  attr := range entry.Field {
                     m[attr] = "0"
                 }
                 m["LAST_CLEAR_TIMESTAMP"] = "0"

@@ -11,6 +11,7 @@ module openconfig-system-ext {
     import openconfig-kdump { prefix oc-kdump; }
     import openconfig-interfaces { prefix "oc-if"; }
     import openconfig-infra { prefix "oc-infra"; }
+    import openconfig-tpcm { prefix "oc-tpcm"; }
     import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
     import openconfig-extensions { prefix "oc-ext"; }
 
@@ -26,6 +27,18 @@ module openconfig-system-ext {
     description
         "Model for managing TACACS+ configurations .";
 
+    revision 2020-06-10 {
+        description
+            "Add augments and deviations for NTP.";
+        reference "0.8.0";
+    }
+
+    revision 2020-06-02 {
+        description
+            "Moved RADIUS extensions to separate file.";
+        reference "0.4.0";
+    }
+
     revision 2020-05-02 {
         description
             "Added DNS source IP support and allowed domain name as well for Radius/TACACS+ server configuration.";
@@ -35,7 +48,7 @@ module openconfig-system-ext {
     revision 2020-03-30 {
         description
             "Added NAS-IP|IPV6-Address attribute for RADIUS.";
-         reference "0.7.0";
+        reference "0.2.0";
     }
 
     revision 2019-11-05 {
@@ -57,15 +70,23 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
-        description "Additional fields for Authenication configuration";
+        description "Additional fields for authentication configuration";
         leaf failthrough {
             type string;
-            description "Indicating whether authentication failthrough should be enabled/disabled";
+            description "Indicates whether authentication failthrough should be enabled/disabled";
         }
     }
 
-    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config" {
-        description "Additional fields for AAA server config";
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:state" {
+        description "Additional fields for authentication configuration";
+        leaf failthrough {
+            type string;
+            description "Indicates whether authentication failthrough should be enabled/disabled";
+        }
+    }
+
+    grouping system-ext-aaa-server-group-server-config {
+        description "Additional fields for AAA server";
         leaf  auth-type {
             type string;
             description "The server authentication type pap/chap/mschap/mschapv2";
@@ -80,15 +101,21 @@ module openconfig-system-ext {
         }
     }
 
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config" {
+        description "Additional fields for AAA server config";
+        uses system-ext-aaa-server-group-server-config;
+    }
+
+    augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state" {
+        description "Additional fields for AAA server state";
+        uses system-ext-aaa-server-group-server-config;
+    }
+
     grouping system-ext-aaa-server-groups-config {
         description "AAA server group";
         leaf  source-address {
             type inet:ip-address;
             description "The global source ip";
-        }
-        leaf  nas-ip-address {
-            type inet:ip-address;
-            description "The global nas ip|ipv6 address attribute";
         }
         leaf  auth-type {
             type string;
@@ -273,9 +300,146 @@ module openconfig-system-ext {
        deviate not-supported;
     }
 
-   //infra paraemters
+    //infra paraemters
     augment /oc-sys:system {
         description "System infra";
         uses oc-infra:infra-top;
+    }
+
+   //tpcm paraemters
+    augment /oc-sys:system {
+        description "Additional fields TPCM";
+        uses oc-tpcm:tpcm-top;
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:ntp-source-address {
+        deviate not-supported;
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:ntp-source-address {
+        deviate not-supported;
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:config" {
+        leaf ntp-source-interface {
+            type oc-if:base-interface-ref;
+            description
+                "NTP source interface name";
+        }
+
+        description
+            "NTP source interface name";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:state" {
+        leaf ntp-source-interface {
+            type oc-if:base-interface-ref;
+            description
+                "NTP source interface name";
+        }
+
+        description
+            "NTP source interface name";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:config" {
+        leaf vrf {
+            type string;
+            description
+                "The VRF instance NTP is enabled in.";
+        }
+
+        description
+            "The VRF instance NTP is enabled in.";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:state" {
+        leaf vrf {
+            type string;
+            description
+                "The VRF instance NTP is enabled in.";
+        }
+
+        description
+            "The VRF instance NTP is enabled in.";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state" {
+        leaf peerdelay {
+            type decimal64 {
+                fraction-digits 3;
+            }
+            description
+                "The round-trip delay to the server using type decimal64, in milliseconds";
+        }
+
+        leaf peeroffset {
+            type decimal64 {
+                fraction-digits 3;
+            }
+            description
+                "Estimate of the current time offset from the peer.  This is
+                 the time difference between the local and reference clock.
+                 Using type decimal64, in milliseconds.";
+
+        }
+
+        leaf peerjitter {
+            type decimal64 {
+                fraction-digits 3;
+            }
+            description
+                "The mean deviation of multiple time samples from this peer.";
+        }
+
+        leaf selmode {
+            type string {
+                length "1";
+            }
+            description
+                "Character before the peer address or peer name:
+                * Synchronized to this peer
+                # Almost synchronized to this peer
+                + Peer selected for possible synchronization
+                - Peer is a candidate for selection
+                ~ Peer is statically configured.";
+        }
+
+        leaf refid {
+            type inet:host;
+            description
+                "Reference clock type or address for the peer.";
+        }
+
+        leaf peertype {
+            type string {
+                length "1";
+            }
+            description
+                "Type of the peer.
+                u: unicast or manycast client
+                b: broadcast or multicast client
+                l: local reference clock
+                s: symmetric peer
+                A: manycast server
+                B: boadcast server
+                M: multicast server.";
+        }
+
+        leaf now {
+            type uint32;
+            description
+                "Indicates the time sine the NTP packet was not received or
+                last synchronized, in seconds.";
+         }
+
+         leaf reach {
+             type uint8;
+             description
+                 "Indicates the reachability of the configured server or peer.";
+         }
+
+        description
+            "NTP server status.";
     }
 }

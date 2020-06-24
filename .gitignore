@@ -9,3 +9,7 @@ __pycache__
 *.yin
 *.tree
 translib/ocbinds/ocbinds.go
+deviation_errors.txt
+ietf_issues.txt
+oc_style_errors.txt
+strict_lint_issues.txt

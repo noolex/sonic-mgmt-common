@@ -11,26 +11,38 @@ module openconfig-aft-ipv6-ext {
   import openconfig-network-instance { prefix oc-netinst; }
   import openconfig-aft { prefix oc-aft; }
   import openconfig-aft-ext { prefix oc-aft-ext; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  organization
+      "SONiC";
+
+  contact
+      "SONiC";
 
   description
-    "This module describes a deviation for network instance aft-ipv6
+    "This module describes a deviation for network instance afts-ipv6
      extensions.";
+
+  oc-ext:openconfig-version "0.1.0";
 
   revision "2019-11-13" {
     description
       "Network instance aft-ipv6 extensions.";
+
+    reference "0.1.0";
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry {
+      description "AFT extensions for IPv6 forwarding entry";
       uses oc-aft:aft-nhop-structural;
-      uses oc-aft-ext:aft-common-ip-state-ext;
   }
 
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-netinst:state {
+      description "AFT extensions for IPv6 forwarding entry state";
+      uses oc-aft-ext:aft-ext-common-ip-state;
+  }
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/next-hops/next-hop/state {
-      uses oc-aft-ext:aft-common-entry-nexthop-state-ext;
+      description "AFT nexthop state extensions for IPv6 forwarding entry";
+      uses oc-aft-ext:aft-ext-common-entry-nexthop-state;
   }
-
-//  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/next-hops/next-hop/config {
-//      deviate not-supported;
-// }
 }

@@ -1,0 +1,125 @@
+module openconfig-igmp-ext {
+
+  yang-version "1.1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/igmp/extension";
+
+  prefix "oc-igmp-ext";
+
+  // import some basic types/interfaces
+  import openconfig-extensions { prefix "oc-ext"; }
+  import openconfig-interfaces { prefix "oc-intf"; }
+  import openconfig-igmp { prefix "oc-igmp"; }
+  import openconfig-if-ip {prefix oc-ip; }
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-network-instance { prefix oc-netinst; }
+  
+  // meta
+  organization
+    "OpenConfig working group";
+
+  contact
+    "SONiC";
+
+  description
+    "Deviation for the Network Instance model to add Internet Group 
+    Management Protocol (IGMP).";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-06-17" {
+    description
+      "Initial revision.";
+    reference "0.1.0";
+  }
+  
+    grouping interface-igmp-config {
+        description "IGMP interface configuration";
+        container igmp {
+            description "IGMP interface config container";
+            uses oc-igmp:igmp-interface-config;
+
+            container joins {
+                description "IGMP join container";
+                list join {
+                    key "mcastgrpaddr srcaddr";
+                    description "List of IGMP join config";
+                    leaf mcastgrpaddr {
+                        type oc-inet:ipv4-address;
+                        description "Multicast Group Address";
+                    }
+                    leaf srcaddr {
+                        type oc-inet:ipv4-address;
+                        description "Source Address";
+                    }
+                    container config {
+                        description "IGMP interface join config";
+                        uses interface-igmp-attr-config;
+                    }
+                    container state {
+                        config false;
+                        description "IGMP interface join state";
+                        uses interface-igmp-attr-config;
+                    }
+                }
+            }
+        }
+    }
+
+    grouping interface-igmp-attr-config {
+        description "IGMP interface join attribute group";
+        leaf enable {
+             type boolean;
+             description
+                 "Flag to enable or disable igmp feature.";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
+        description
+            "IGMP";
+        uses oc-igmp-ext:interface-igmp-config;
+    }
+
+    grouping interface-igmp-query-config {
+        description "IGMP interface query fields";
+        leaf last-member-query-count {
+            type uint16 {
+                range 1..7;
+            }
+            description
+                "Interval at which the router sends the IGMP member query message toward
+                   the upstream neighbor.";
+        }
+
+        leaf last-member-query-interval {
+            type uint32 {
+                range "1..255";
+            }
+            units milliseconds;
+            description
+                 "Interval at which the router sends the IGMP last member query message toward
+                     the upstream neighbor.";
+        }
+
+        leaf query-max-response-time {
+            type uint16 {
+                range "10..250";
+            }
+            units "seconds";
+            description
+                "IGMP Query Max Response Time.";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/igmp" {
+        description "Extended leaf last-member-query-count from standard igmp model";
+        uses oc-igmp-ext:interface-igmp-query-config;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/igmp/filter-prefixes {
+        deviate not-supported;
+    }
+
+}

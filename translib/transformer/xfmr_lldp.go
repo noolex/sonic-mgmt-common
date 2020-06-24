@@ -7,6 +7,7 @@ import (
 	"github.com/openconfig/ygot/ygot"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	"encoding/hex"
 	"strconv"
 )
@@ -127,17 +128,17 @@ var YangToDb_lldp_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 		var value db.Value
 
 		if lldpIntfObj.Config.Enabled != nil {
-			if *lldpIntfObj.Config.Enabled == true {
+			if *lldpIntfObj.Config.Enabled {
 				dataMap["enabled"] = "true"
 			} else {
 				dataMap["enabled"] = "false"
 			}
 		}
 
-		if lldpIntfObj.Config.Mode == ocbinds.OpenconfigLldpExt_LldpExtModeType_receive {
-			dataMap["mode"] = "receive"
-		} else if lldpIntfObj.Config.Mode == ocbinds.OpenconfigLldpExt_LldpExtModeType_transmit {
-			dataMap["mode"] = "transmit"
+		if lldpIntfObj.Config.Mode == ocbinds.OpenconfigLldpExt_LldpExtModeType_RECEIVE {
+			dataMap["mode"] = "RECEIVE"
+		} else if lldpIntfObj.Config.Mode == ocbinds.OpenconfigLldpExt_LldpExtModeType_TRANSMIT {
+			dataMap["mode"] = "TRANSMIT"
 		}
 
 		value = db.Value{Field: dataMap}
@@ -215,7 +216,7 @@ func getLldpIntfEntry(inParams XfmrParams, isState bool, ifName string, intfObj 
 		return errors.New(errStr)
 	}
 
-	if isState == true {
+	if isState {
 		if intfObj.State == nil {
 			log.Info("lldpIntfState == nil")
 			ygot.BuildEmptyTree(intfObj)
@@ -237,7 +238,7 @@ func getLldpIntfEntry(inParams XfmrParams, isState bool, ifName string, intfObj 
 		if lldpEntry.Get("enabled") == "true" {
 			value = true
 		}
-		if isState == false {
+		if !isState {
 			lldpIntfCfg.Enabled = &value
 		} else {
 			lldpIntfState.Enabled = &value
@@ -245,17 +246,17 @@ func getLldpIntfEntry(inParams XfmrParams, isState bool, ifName string, intfObj 
 	}
 
 	if lldpEntry.Has("mode") {
-		if lldpEntry.Get("mode") == "receive" {
-			if isState == false {
-				lldpIntfCfg.Mode = ocbinds.OpenconfigLldpExt_LldpExtModeType_receive
+		if lldpEntry.Get("mode") == "RECEIVE" {
+			if !isState {
+				lldpIntfCfg.Mode = ocbinds.OpenconfigLldpExt_LldpExtModeType_RECEIVE
 			} else {
-				lldpIntfState.Mode = ocbinds.OpenconfigLldpExt_LldpExtModeType_receive
+				lldpIntfState.Mode = ocbinds.OpenconfigLldpExt_LldpExtModeType_RECEIVE
 			}
 		} else {
-			if isState == false {
-				lldpIntfCfg.Mode = ocbinds.OpenconfigLldpExt_LldpExtModeType_transmit
+			if !isState {
+				lldpIntfCfg.Mode = ocbinds.OpenconfigLldpExt_LldpExtModeType_TRANSMIT
 			} else {
-				lldpIntfState.Mode = ocbinds.OpenconfigLldpExt_LldpExtModeType_transmit
+				lldpIntfState.Mode = ocbinds.OpenconfigLldpExt_LldpExtModeType_TRANSMIT
 			}
 		}
 	}
@@ -280,7 +281,8 @@ func getLldpNeighborEntry(inParams XfmrParams, ifName string, intfObj *ocbinds.O
 
 	nbrObj, ok := intfObj.Neighbors.Neighbor[ifName]
 	if !ok {
-		nbrObj, err = intfObj.Neighbors.NewNeighbor(ifName)
+		ifStdName := utils.GetUINameFromNativeName(&ifName)
+		nbrObj, err = intfObj.Neighbors.NewNeighbor(*ifStdName)
 		if err != nil {
 			log.Info("Creation of neighbor failed!")
 			return err

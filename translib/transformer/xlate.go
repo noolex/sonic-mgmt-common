@@ -76,7 +76,7 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 		return nil, nil
 	}
 	if len(params) != XlateFuncs[name].Type().NumIn() {
-		err = ErrParamsNotAdapted
+                log.Errorf("Error parameters not adapted") 
 		return nil, nil
 	}
 	in := make([]reflect.Value, len(params))
@@ -120,9 +120,8 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 
 func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key) error {
 	var err error
-	var dbOpts db.Options
+	var dbOpts db.Options = getDBOptions(spec.DbNum)
 
-	dbOpts = getDBOptions(spec.DbNum)
 	separator := dbOpts.KeySeparator
 
 	if spec.Key.Len() > 0 {
@@ -154,15 +153,18 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 				return err
 			}
 			xfmrLogInfoAll("keys for table %v in Db %v are %v", spec.Ts.Name, spec.DbNum, keys)
-			for i, _ := range keys {
-				if parentKey != nil && (spec.IgnoreParentKey == false) {
+			for i := range keys {
+				if parentKey != nil && !spec.IgnoreParentKey {
 					// TODO - multi-depth with a custom delimiter
-					if strings.Index(strings.Join(keys[i].Comp, separator), strings.Join((*parentKey).Comp, separator)) == -1 {
+					if !strings.Contains(strings.Join(keys[i].Comp, separator), strings.Join((*parentKey).Comp, separator)) {
 						continue
 					}
 				}
 				spec.Key = keys[i]
-				err = traverseDbHelper(dbs, spec, result, parentKey)
+                                err = traverseDbHelper(dbs, spec, result, parentKey)
+                                if err != nil {
+                                        log.Errorf("Traversal failed for : %v", err)
+                                }
 			}
 		} else if len(spec.Child) > 0 {
                         for _, ch := range spec.Child {
@@ -182,7 +184,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 	if isSonicYang(uri) {
 		/* Extract the xpath and key from input xpath */
 		xpath, keyStr, tableName := sonicXpathKeyExtract(uri)
-		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && tblSpecInfo.hasXfmrFn == true {
+		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && tblSpecInfo.hasXfmrFn {
 			/* key from uri should be converted into redis-db key, to read data */
 			keyStr, err = dbKeyValueXfmrHandler(CREATE, tblSpecInfo.dbIndex, tableName, keyStr)
 			if err != nil {
@@ -219,7 +221,7 @@ func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]K
 				dbFormat.IgnoreParentKey = false
 			}
 			if keyStr != "" {
-				if tblSpecInfo, ok := xDbSpecMap[dbFormat.Ts.Name]; ok && tblSpecInfo.hasXfmrFn == true {
+				if tblSpecInfo, ok := xDbSpecMap[dbFormat.Ts.Name]; ok && tblSpecInfo.hasXfmrFn {
 					/* key from uri should be converted into redis-db key, to read data */
 					keyStr, err = dbKeyValueXfmrHandler(CREATE, dbFormat.DbNum, dbFormat.Ts.Name, keyStr)
 					if err != nil {
@@ -284,7 +286,7 @@ func fillSonicKeySpec(xpath string , tableName string, keyStr string) ( []KeySpe
 			if _, ok := xDbSpecMap[container]; ok {
 				dbInfo := xDbSpecMap[container]
 				if dbInfo.fieldType == "container" {
-					for dir, _ := range dbInfo.dbEntry.Dir {
+					for dir := range dbInfo.dbEntry.Dir {
 						_, ok := xDbSpecMap[dir]
 						if ok && xDbSpecMap[dir].dbEntry.Node.Statement().Keyword == "container" {
 						cdb := xDbSpecMap[dir].dbIndex
@@ -308,7 +310,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 	jsonData := make(map[string]interface{})
 
 	device := (*yg).(*ocbinds.Device)
-	jsonStr, err := ygot.EmitJSON(device, &ygot.EmitJSONConfig{
+	jsonStr, _ := ygot.EmitJSON(device, &ygot.EmitJSONConfig{
 		Format:         ygot.RFC7951,
 		Indent:         "  ",
 		SkipValidation: true,
@@ -360,13 +362,13 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 	return result, yangDefValMap, err
 }
 
-func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, txCache interface{}) ([]byte, error, bool) {
+func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, txCache interface{}) ([]byte, bool, error) {
 	var err error
 	var payload []byte
 	xfmrLogInfo("received xpath = " + uri)
 
 	requestUri := uri
-	keySpec, err := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
+	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
 	var dbresult = make(RedisDbMap)
         for i := db.ApplDB; i < db.MaxDB; i++ {
                 dbresult[i] = make(map[string]map[string]db.Value)
@@ -380,16 +382,16 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	}
 
 	isEmptyPayload := false
-	payload, err, isEmptyPayload = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache)
+	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache)
 	if err != nil {
 		log.Error("XlateFromDb() failure.")
-		return payload, err, true
+		return payload, true, err
 	}
 
-	return payload, err, isEmptyPayload
+	return payload, isEmptyPayload, err
 }
 
-func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data RedisDbMap, txCache interface{}) ([]byte, error, bool) {
+func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data RedisDbMap, txCache interface{}) ([]byte, bool, error) {
 
 	var err error
 	var result []byte
@@ -471,16 +473,16 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 		}
 	}
 	inParamsForGet = formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, xpath, GET, "", "", &dbData, txCache, nil, false)
-	payload, err, isEmptyPayload := dbDataToYangJsonCreate(inParamsForGet)
+	payload, isEmptyPayload, err := dbDataToYangJsonCreate(inParamsForGet)
 	xfmrLogInfo("Payload generated : " + payload)
 
 	if err != nil {
 		log.Errorf("Error: failed to create json response from DB data.")
-		return nil, err, isEmptyPayload
+		return nil, isEmptyPayload, err
 	}
 
 	result = []byte(payload)
-	return result, err, isEmptyPayload
+	return result, isEmptyPayload, err
 
 }
 
@@ -533,9 +535,8 @@ func GetOrdDBTblList(ygModuleNm string) ([]string, error) {
 func GetOrdTblList(xfmrTbl string, uriModuleNm string) []string {
         var ordTblList []string
         processedTbl := false
-        var sncMdlList []string
+        var sncMdlList []string = getYangMdlToSonicMdlList(uriModuleNm)
 
-	sncMdlList = getYangMdlToSonicMdlList(uriModuleNm)
         for _, sonicMdlNm := range(sncMdlList) {
                 sonicMdlTblInfo := xDbSpecTblSeqnMap[sonicMdlNm]
                 for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
@@ -553,8 +554,8 @@ func GetOrdTblList(xfmrTbl string, uriModuleNm string) []string {
 		return ordTblList
 	}
 
-/* Table hierarchy read from json file */
 func GetXfmrOrdTblList(xfmrTbl string) []string {
+	/* get the table hierarchy read from json file */
 	var ordTblList []string
 	if _, ok := sonicOrdTblListMap[xfmrTbl]; ok {
 		ordTblList = sonicOrdTblListMap[xfmrTbl]
@@ -576,7 +577,7 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
 	for _, xfmrTblNm :=range(xfmrTblList) {
 		xfmrTblMap[xfmrTblNm] = true
 	}
-	for xfmrTblNm, _ := range(xfmrTblMap) {
+	for xfmrTblNm := range(xfmrTblMap) {
 		lXfmrTblList = append(lXfmrTblList, xfmrTblNm)
 	}
 
@@ -601,7 +602,7 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
                                 break
                         }
                 }
-		if processedTbl == false {
+		if !processedTbl {
 			depTblMap[xfmrTbl] = false
 		}
         }
@@ -644,7 +645,7 @@ func xfmrSubscSubtreeHandler(inParams XfmrSubscInParams, xfmrFuncNm string) (Xfm
     var retVal XfmrSubscOutParams
     retVal.dbDataMap = nil
     retVal.needCache = false
-    retVal.onChange = true
+    retVal.onChange = false
     retVal.nOpts = nil
 
     xfmrLogInfo("Received inParams %v Subscribe Subtree function name %v", inParams, xfmrFuncNm)
@@ -682,6 +683,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
        subscribe_result.NeedCache = true
 
        for {
+           done := true
            xpath, predc_err := XfmrRemoveXPATHPredicates(path)
            if predc_err != nil {
                log.Errorf("cannot convert request Uri to yang xpath - %v, %v", path, predc_err)
@@ -764,10 +766,14 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                subscribe_result.NeedCache = st_result.needCache
                xfmrLogInfo("Subtree subcribe need Cache %v", subscribe_result.NeedCache)
            } else {
+		   subscribe_result.OnChange = true
 		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{dbTbl: {dbKey: {}}}
 	   }
-           break
+           if done {
+                   break
+           }
        } // end of infinite for
 
        return subscribe_result, err
+
 }

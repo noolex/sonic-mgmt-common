@@ -22,6 +22,8 @@ package custom_validation
 import (
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"strings"
+	log "github.com/golang/glog"
+	"strconv"
 )
 
 //ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
@@ -74,25 +76,7 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 	}
 	keys := strings.Split(vc.CurCfg.Key, "|")
 	if len(keys) > 0 {
-		if keys[0] == "PORTCHANNEL" {
-			poName := keys[1]
-			poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
-			if err != nil {
-				return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
-			}
-
-			_, hasMtu := vc.CurCfg.Data["mtu"]
-			if hasMtu && len(poMembersKeys) > 0 {
-				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "MTU not allowed when portchannel members are configured")
-				return CVLErrorInfo{
-					ErrCode:          CVL_SEMANTIC_ERROR,
-					TableName:        "PORTCHANNEL",
-					Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					ConstraintErrMsg: "Configuration not allowed when members are configured",
-					ErrAppTag:        "mtu-invalid",
-				}
-			}
-		} else if keys[0] == "PORTCHANNEL_MEMBER" {
+		if keys[0] == "PORTCHANNEL_MEMBER" {
 			poName := keys[1]
 			intfName := keys[2]
 
@@ -120,27 +104,37 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 						ErrAppTag:        "mtu-invalid",
 					}
 				}
-			}
-		} else if keys[0] == "PORT" {
-			intfName := keys[1]
-			poMembersKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + intfName).Result()
-			// Check if requested key is already deleted in request cache
-			for _, poMemKey := range poMembersKeys {
-				for _, req := range vc.ReqData {
-					if req.Key == poMemKey && req.VOp == OP_DELETE {
-						return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-					}
+
+				poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
+				if err != nil {
+				   return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
 				}
-			}
-			_, hasMtu := vc.CurCfg.Data["mtu"]
-			if hasMtu && len(poMembersKeys) > 0 {
-				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "MTU not allowed when portchannel members are configured")
-				return CVLErrorInfo{
-					ErrCode:          CVL_SEMANTIC_ERROR,
-					TableName:        "PORT",
-					Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					ConstraintErrMsg: "Configuration not allowed when port is member of Portchannel",
-					ErrAppTag:        "mtu-invalid",
+
+				if len(poMembersKeys) > 0 {
+					intfData, err1 := vc.RClient.HGetAll("PORT|" + intfName).Result()
+					if err1 != nil {
+						return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+					}
+
+					intfSpeed, intfHasSpeed := intfData["speed"]
+					poMemKey := poMembersKeys[0]
+					poMember := strings.Split(poMemKey, "|")
+					poMemData, err1 := vc.RClient.HGetAll("PORT|" + poMember[2]).Result()
+					if err1 != nil {
+						return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+					}
+
+					poMemSpeed, poMemHasSpeed := poMemData["speed"]
+					if intfHasSpeed && poMemHasSpeed && intfSpeed != poMemSpeed {
+						util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Members can't be added to portchannel when member speed is not same as existing members")
+						return CVLErrorInfo{
+								ErrCode:          CVL_SEMANTIC_ERROR,
+								TableName:        "PORT",
+								Keys:             strings.Split(vc.CurCfg.Key, "|"),
+								ConstraintErrMsg: "Configuration not allowed when port speed is different than existing member of Portchannel.",
+								ErrAppTag:        "speed-invalid",
+						}
+					}
 				}
 			}
 		}
@@ -149,31 +143,68 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//ValidatePortChannelDeletion Custom validation for PortChannel deletion
-func (t *CustomValidation) ValidatePortChannelDeletion(vc *CustValidationCtxt) CVLErrorInfo {
-	if vc.CurCfg.VOp != OP_DELETE {
-		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-	}
-	keys := strings.Split(vc.CurCfg.Key, "|")
-	if len(keys) > 0 {
-		if keys[0] == "PORTCHANNEL" {
-			poName := keys[1]
-			poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
-			if err != nil {
-				return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
-			}
 
-			if len(poMembersKeys) > 0 {
-				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Portchannel deletion not allowed when portchannel members are configured")
-				return CVLErrorInfo{
-					ErrCode:          CVL_SEMANTIC_ERROR,
-					TableName:        "PORTCHANNEL",
-					Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					ConstraintErrMsg: "Portchannel deletion not allowed when members are configured",
-					ErrAppTag:        "members-exist",
-				}
-			}
-               }
+//ValidatePortChannelCreationDeletion Custom validation for PortChannel creation or deletion
+func (t *CustomValidation) ValidatePortChannelCreationDeletion(vc *CustValidationCtxt) CVLErrorInfo {
+	if vc.CurCfg.VOp == OP_CREATE {
+
+	        keys := strings.Split(vc.CurCfg.Key, "|")
+	        if len(keys) > 0 {
+		        if keys[0] == "PORTCHANNEL" {
+			        poKeys, err := vc.RClient.Keys("PORTCHANNEL" + "|*").Result()
+			        if err != nil {
+				         return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+			        }
+
+			        if len(poKeys) >= 128 {
+				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Maximum number of portchannels already created.")
+				        return CVLErrorInfo{
+					        ErrCode:          CVL_SEMANTIC_ERROR,
+					        TableName:        "PORTCHANNEL",
+					        Keys:             strings.Split(vc.CurCfg.Key, "|"),
+					        ConstraintErrMsg: "Maximum number(128) of portchannels already created in the system. Cannot create new portchannel.",
+					        ErrAppTag:        "max-reached",
+				        }
+			        }
+                       }
+                }
         }
+
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func (t *CustomValidation) ValidateSagMac(vc *CustValidationCtxt) CVLErrorInfo {
+  var valid bool
+  keys :=  vc.YNodeVal
+
+	log.Info("In SAG custom validation:", keys)
+
+	if keys == "00:00:00:00:00:00" {
+	        valid = false
+	} else if keys == "ff:ff:ff:ff:ff:ff" {
+		valid = false
+	} else {
+	        macSplit := strings.Split(keys, ":")
+        	macHi, err := strconv.ParseUint(macSplit[0], 16, 8)
+		if err != nil {
+			valid = false
+		} else if macHi & 0x01 == 0x01 {
+	                valid = false
+		} else {
+			valid = true
+		}
+	}
+
+        if (!valid) {
+		errStr:= "SAG MAC is not valid, it is either zero, multicast, or broadcast"
+		util.CVL_LEVEL_LOG(util.ERROR,"%s",errStr)
+		return CVLErrorInfo{
+			ErrCode: CVL_SYNTAX_INVALID_INPUT_DATA,
+			TableName: "SAG_GLOBAL",
+			CVLErrDetails : errStr,
+			ConstraintErrMsg : errStr,
+		}
+	}
+
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

@@ -78,14 +78,14 @@ func getDbInst(dbName string) map[string]interface{} {
 	return inst.(map[string]interface{})
 }
 
-/*func getDbSeparator(dbName string) string {
+func getDbSeparator(dbName string) string {
 	dbEntries := getDbList()
 	separator, ok := dbEntries[dbName].(map[string]interface{})["separator"]
 	if !ok {
 		assert(fmt.Errorf("'separator' is not a valid field"))
 	}
 	return separator.(string)
-}*/
+}
 
 func getDbId(dbName string) int {
 	dbEntries := getDbList()

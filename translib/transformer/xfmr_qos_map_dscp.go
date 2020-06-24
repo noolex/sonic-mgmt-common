@@ -23,66 +23,12 @@ func init () {
 }
 
 
-func qos_map_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    var err error
-    res_map := make(map[string]map[string]db.Value)
-
-    log.Info("qos_map_delete_xfmr: ", inParams.ygRoot, inParams.uri)
-    log.Info("inParams: ", inParams)
-
-    pathInfo := NewPathInfo(inParams.uri)
-    map_name := pathInfo.Var("name")
-    log.Info("YangToDb: map name: ", map_name)
-
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
-    log.Info("targetUriPath: ",  targetUriPath)
-
-
-    var map_entry db.Value
-
-    if map_name != "" {
-        map_entry, err = get_map_entry_by_map_name(inParams.d, "DSCP_TO_TC_MAP", map_name)
-        if err != nil {
-            err = tlerr.InternalError{Format:"Instance Not found"}
-            log.Info("map name not found.")
-            return res_map, err
-        }
-    }
-
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map") == false {
-        log.Info("YangToDb: map name unspecified, using delete_by_map_name")
-        return qos_map_delete_by_map_name(inParams, "DSCP_TO_TC_MAP", map_name)
-    }
-
-    dscp := pathInfo.Var("dscp")
-    if dscp == "" {
-        log.Info("YangToDb: map name unspecified, using delete_by_map_name")
-        return qos_map_delete_by_map_name(inParams, "DSCP_TO_TC_MAP", map_name)
-    } else  {
-        _, exist := map_entry.Field[dscp]
-        if !exist { 
-            err = tlerr.InternalError{Format:"DSCP value Not found"}
-            log.Info("DSCP value not found.")
-            return res_map, err
-        }
-    }
-
-    /* update "map" table field only */
-    rtTblMap := make(map[string]db.Value)
-    rtTblMap[map_name] = db.Value{Field: make(map[string]string)}
-    rtTblMap[map_name].Field[dscp] = ""
-
-    res_map["DSCP_TO_TC_MAP"] = rtTblMap
-
-    return res_map, err
-
-}
-
-
 var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
+    map_type := "DSCP_TO_TC_MAP"
+
     if inParams.oper == DELETE {
-        return qos_map_delete_xfmr(inParams)
+        return qos_map_delete_xfmr(inParams, map_type)
     }
 
     var err error
@@ -118,60 +64,48 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     map_entry := make(map[string]db.Value)
     map_key := name
     map_entry[map_key] = db.Value{Field: make(map[string]string)}
-    log.Info("YangToDb_qos_classifier_xfmr - entry_key : ", map_key)
+    log.Info("map_key : ", map_key)
 
-    if targetUriPath == "/openconfig-qos:qos/dscp-maps/dscp-map" ||
-       targetUriPath == "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map" {
-        if inParams.oper == DELETE {
-
-            res_map["DSCP_TO_TC_MAP"] = map_entry
-            return res_map, err
-        }
-
-        // no op at this level
-        return res_map, err
-    }
-
-
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/dscp-maps/dscp-map/dscp-map-entries/dscp-map-entry") == false  &&
-       strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map/dscp-map-entries/dscp-map-entry") == false {
+    if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/dscp-maps/dscp-map/dscp-map-entries/dscp-map-entry")  &&
+       !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map/dscp-map-entries/dscp-map-entry") {
         log.Info("YangToDb: map entry unspecified, stop here")
         return res_map, err
     }
 
-    dscp := pathInfo.Var("dscp")
-    if dscp == "" {
+    str := qos_map_oc_yang_key_map[map_type]
+    log.Info("key string: " , str)
+    entry_key := pathInfo.Var(str)
+    //entry_key := pathInfo.Var("dscp")
+    log.Info("entry_key : ", entry_key)
+    if entry_key == "" {
         return res_map, err
     }
 
-    log.Info("dscp: ", dscp)
+    tmp, _ := strconv.ParseUint(entry_key, 10, 8)
+    tmp2 := uint8(tmp)
+    log.Info("entry_key in val: ", tmp2)
 
-    tmp, _ := strconv.ParseUint(dscp, 10, 8)
-    dscp_val := uint8(tmp)
-    log.Info("dscp_val: ", dscp_val)
-
-    entry, ok := mapObj.DscpMapEntries.DscpMapEntry[dscp_val]
+    entry, ok := mapObj.DscpMapEntries.DscpMapEntry[tmp2]
     if !ok  {
         log.Info("entry is nil.")
         return res_map, err
     }
 
-    tc := ""
-    if inParams.oper == CREATE ||
-       inParams.oper == UPDATE {
-        tc =  *(entry.Config.FwdGroup)
-    }
+    val :=  *(entry.Config.FwdGroup)
 
-    map_entry[map_key].Field[dscp] = tc
+    map_entry[map_key].Field[entry_key] = val 
 
-    log.Info("YangToDb_qos_classifier_xfmr - entry_key : ", map_key)
-    res_map["DSCP_TO_TC_MAP"] = map_entry
+    log.Info("map key : ", map_key, " entry_key: ", entry_key)
+    res_map[map_type] = map_entry
 
     return res_map, err
+
 }
 
 
 func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.OpenconfigQos_Qos_DscpMaps, name string) error {
+
+    map_type := "DSCP_TO_TC_MAP"
 
     mapObj, ok := dscpMaps.DscpMap[name]
     if !ok {
@@ -200,10 +134,10 @@ func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.Openconf
     key :=db.Key{Comp: []string{name}}
     log.Info("key: ", key)
 
-    dbSpec := &db.TableSpec{Name: "DSCP_TO_TC_MAP"}
+    dbSpec := &db.TableSpec{Name: map_type}
     mapCfg, err := inParams.d.GetEntry(dbSpec, key) 
     if  err != nil {
-        log.Info("No dscp-to-tc-map with a name of : ", name)
+        log.Info("No map with a name of : ", name)
         return nil
     }
 
@@ -214,42 +148,42 @@ func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.Openconf
 
 
     pathInfo := NewPathInfo(inParams.uri)
-    dscp := pathInfo.Var("dscp")
+    entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
     log.Info("pathInfo.Var: ", pathInfo.Var)
     var tmp_cfg ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_Config
     var tmp_sta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
-        if dscp != "" && k!= dscp {
+        if entry_key != "" && k!= entry_key {
             continue
         }
 
         tmp, _ := strconv.ParseUint(k, 10, 8)
-        dscp_val := uint8(tmp)
-        fwdGrp := v
+        key := uint8(tmp)
+        value := v
 
-        entryObj, ok := mapObj.DscpMapEntries.DscpMapEntry[dscp_val]
+        entryObj, ok := mapObj.DscpMapEntries.DscpMapEntry[key]
         if !ok {
-            entryObj, _ = mapObj.DscpMapEntries.NewDscpMapEntry(dscp_val)
+            entryObj, _ = mapObj.DscpMapEntries.NewDscpMapEntry(key)
             ygot.BuildEmptyTree(entryObj)
             ygot.BuildEmptyTree(entryObj.Config)
             ygot.BuildEmptyTree(entryObj.State)
         }
 
-        entryObj.Dscp = &dscp_val
+        entryObj.Dscp = &key
 
         if entryObj.Config == nil {
             entryObj.Config = &tmp_cfg
         }
-        entryObj.Config.Dscp = &dscp_val
-        entryObj.Config.FwdGroup = &fwdGrp
+        entryObj.Config.Dscp = &key
+        entryObj.Config.FwdGroup = &value
 
 
         if entryObj.State == nil {
             entryObj.State = &tmp_sta
         }
-        entryObj.State.Dscp = &dscp_val
-        entryObj.State.FwdGroup = &fwdGrp
+        entryObj.State.Dscp = &key
+        entryObj.State.FwdGroup = &value
 
         entry_added = entry_added + 1
 
@@ -258,7 +192,7 @@ func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.Openconf
 
     log.Info("Done fetching dscp-map : ", name)
 
-    if dscp != "" && entry_added == 0 {
+    if entry_key != "" && entry_added == 0 {
         err = tlerr.NotFoundError{Format:"Instance Not found"}
         log.Info("Instance not found.")
         return err
@@ -423,58 +357,12 @@ var DbToYang_qos_fwdgrp_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (
 
 
 var DbToYang_qos_dscp_to_tc_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_qos_dscp_to_tc_map_fld_xfmr ", inParams)
-
-    res_map := make(map[string]interface{})
-
-    pathInfo := NewPathInfo(inParams.uri)
-
-    if_name := pathInfo.Var("interface-id")
-
-    dbSpec := &db.TableSpec{Name: "PORT_QOS_MAP"}
-
-    key := db.Key{Comp: []string{if_name}}
-    qCfg, _ := inParams.d.GetEntry(dbSpec, key) 
-
-    log.Info("current entry: ", qCfg)
-    value, _ := qCfg.Field["dscp_to_tc_map"] 
-
-    log.Info("value = ", value)
-    res_map["dscp-to-forwarding-group"] = DbLeafrefToString(value,  "DSCP_TO_TC_MAP")
-    return res_map, nil
+    return DbToYang_qos_intf_qos_map_xfmr(inParams, "DSCP_TO_TC_MAP")
 }
 
 
 
 var YangToDb_qos_dscp_to_tc_map_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
-    var err error
-
-    log.Info("Entering YangToDb_qos_dscp_to_tc_map_fld_xfmr ===> ", inParams)
-
-    pathInfo := NewPathInfo(inParams.uri)
-
-    if_name := pathInfo.Var("interface-id")
-
-    qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
-    if qosIntfsObj == nil {
-        return res_map, err
-    }
-
-    intfObj, ok := qosIntfsObj.Interface[if_name]
-    if !ok {
-        return res_map, err
-    }
-
-    map_name := *(intfObj.InterfaceMaps.Config.DscpToForwardingGroup)
-
-    if len(map_name) == 0 {
-        log.Error("map name is Missing")
-        return res_map, err
-    }
-
-    log.Info("map name is : ", map_name)
-    res_map["dscp_to_tc_map"] = StringToDbLeafref(map_name, "DSCP_TO_TC_MAP")
-    return res_map, err
+    return YangToDb_qos_intf_qos_map_xfmr(inParams, "DSCP_TO_TC_MAP")
 }
 

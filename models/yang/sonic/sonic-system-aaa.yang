@@ -2,6 +2,10 @@ module sonic-system-aaa {
     namespace "http://github.com/Azure/sonic-system-aaa";
     prefix ssys;
 
+    revision 2020-06-08 {
+        description "AAA Name Service.";
+    }
+
     revision 2019-11-13 {
         description "Initial revision.";
     }
@@ -14,12 +18,35 @@ module sonic-system-aaa {
                 leaf type {
                     type enumeration {
                         enum authentication;
+                        enum authorization;
+                        enum nss;
                     }
                 }
 
                 leaf login {
                     type string;
                 }
+
+                leaf passwd {
+                    type string;
+                }
+
+                leaf shadow {
+                    type string;
+                }
+
+                leaf group {
+                    type string;
+                }
+
+                leaf netgroup {
+                    type string;
+                }
+
+                leaf sudoers {
+                    type string;
+                }
+
                 leaf failthrough {
                     type string {
                         pattern "True|False" {

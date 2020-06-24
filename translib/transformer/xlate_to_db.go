@@ -61,7 +61,6 @@ func dataToDBMapAdd(tableName string, dbKey string, result map[string]map[string
 			}
 		}
 	}
-	return
 }
 
 /*use when single table name is expected*/
@@ -304,7 +303,6 @@ func dbMapDataFill(uri string, tableName string, keyName string, d map[string]in
 			xfmrLogInfoAll("Did not find entry in xDbSpecMap for field xpath = %v", fieldXpath)
 		}
 	}
-	return
 }
 
 func dbMapListDataFill(uri string, tableName string, dbEntry *yang.Entry, jsonData interface{}, result map[string]map[string]db.Value) {
@@ -328,7 +326,6 @@ func dbMapListDataFill(uri string, tableName string, dbEntry *yang.Entry, jsonDa
 		}
 		dbMapDataFill(uri, tableName, keyName, d, result)
 	}
-	return
 }
 
 func directDbMapData(uri string, tableName string, jsonData interface{}, result map[string]map[string]db.Value) bool {
@@ -367,8 +364,7 @@ func directDbMapData(uri string, tableName string, jsonData interface{}, result 
 /* Get the data from incoming update/replace request, create map and fill with dbValue(ie. field:value to write into redis-db */
 func dbMapUpdate(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, jsonData interface{}, result map[int]map[db.DBNum]map[string]map[string]db.Value, yangDefValMap map[string]map[string]db.Value, txCache interface{}) error {
     xfmrLogInfo("Update/replace req: path(\"%v\").", path)
-    var err error
-    err = dbMapCreate(d, ygRoot, oper, path, requestUri, jsonData, result, yangDefValMap, txCache)
+    err := dbMapCreate(d, ygRoot, oper, path, requestUri, jsonData, result, yangDefValMap, txCache)
     xfmrLogInfo("Update/replace req: path(\"%v\") result(\"%v\").", path, result)
     printDbData(result, nil, "/tmp/yangToDbDataUpRe.txt")
     return err
@@ -470,10 +466,10 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 
 func dbMapDefaultValFill(xlateParams xlateToParams) error {
 	for tbl, tblData := range xlateParams.result {
-		for dbKey, _ := range tblData {
+		for dbKey := range tblData {
 			var yxpathList []string //contains all uris(with keys) that were traversed for a table while processing the incoming request
 			if tblUriMapVal, ok := xlateParams.tblXpathMap[tbl]; ok {
-				for tblUri, _ := range tblUriMapVal {
+				for tblUri := range tblUriMapVal {
 					yxpathList = append(yxpathList, tblUri)
 				}
 			}
@@ -737,11 +733,11 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 				curKey   := xlateParams.keyName
 				pathAttr := key.String()
 				if len(xlateParams.xpath) > 0 {
+					curUri = xlateParams.uri + "/" + pathAttr
 					if strings.Contains(pathAttr, ":") {
 						pathAttr = strings.Split(pathAttr, ":")[1]
 					}
 					xpath  = xlateParams.xpath + "/" + pathAttr
-					curUri = xlateParams.uri + "/" + pathAttr
 				}
 				_, ok := xYangSpecMap[xpath]
 				xfmrLogInfoAll("slice/map data: curKey(\"%v\"), xpath(\"%v\"), curUri(\"%v\").",

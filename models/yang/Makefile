@@ -27,19 +27,21 @@ YANGDIR_EXTENSIONS_DIR	    := $(YANGDIR)/extensions
 YANGDIR_SONIC               := $(YANGDIR)/sonic
 YANG_MOD_FILES              := $(shell find $(YANGDIR) -maxdepth 1 -name '*.yang' | sort)
 YANG_MOD_EXTENSION_FILES    := $(shell find $(YANGDIR_EXTENSIONS_DIR) -maxdepth 1 -name '*.yang' | sort)
+YANG_IETF_MOD_EXT_FILES     := $(shell find $(YANGDIR_EXTENSIONS_DIR) -maxdepth 1 -name 'ietf-*.yang' | sort)
 YANG_ANNOTATIONS_FILES      := $(shell find $(YANGDIR_ANNOTATIONS) -name '*.yang' | sort)
 YANG_COMMON_FILES           := $(shell find $(YANGDIR_COMMON) -name '*.yang' | sort)
 
 YANG_BUILD_DIR    := $(TOPDIR)/build/yang
 YANG_API_IGNORES  := $(YANG_BUILD_DIR)/api_ignore
 YANG_ANNOTS_CHK   := $(YANG_BUILD_DIR)/annots_checked
+YANG_VALIDATE_CHK := $(YANG_BUILD_DIR)/validate_checked
 
 TOOLS_DIR        := $(TOPDIR)/tools
 PYANG_PLUGIN_DIR := $(TOOLS_DIR)/pyang/pyang_plugins
 PYANG            ?= pyang
 
 .PHONY: all
-all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK)
+all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
 
 .PHONY: annot
 annot: $(YANG_ANNOTS_CHK)
@@ -89,11 +91,16 @@ $(YANG_API_IGNORES): $(YANG_ANNOTATIONS_FILES)
 #======================================================================
 
 clean:
-	rm -f $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK)
+	rm -f $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
 	rm -f allyangs.tree allyangs_tree.html yang_tree.md
 
-validate:
-	$(PYANG) \
+validate: $(YANG_VALIDATE_CHK)
+
+# TODO: When error reporting is enabled redirect outputs to console instead of files by removing -o option
+# Right now outputs are redirected to file because searching based on yang module is easy
+# Also developers are used to this approach
+$(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES)
+	- $(PYANG) \
 		-f upcheck \
 		-o deviation_errors.txt --ignore-errors \
 		--yang-dir $(YANGDIR) \
@@ -102,7 +109,7 @@ validate:
 		$(YANG_MOD_FILES) $(YANG_MOD_EXTENSION_FILES)
 	@echo "+++++++++++Please find errors due to deviation in deviation_errors.txt+++++++++++++"
 
-	$(PYANG) \
+	- $(PYANG) \
 		-f stcheck \
 		-o oc_style_errors.txt --ignore-errors \
 		--extensiondir $(YANGDIR_EXTENSIONS_DIR) \
@@ -112,10 +119,18 @@ validate:
 	@echo "+++++++++++++Please find OC style issues in oc_style_errors.txt++++++++++++++++"
 
 	- $(PYANG) \
-		--strict --lint --ietf -o strict_lint_issues.txt -f strictlint \
+		--strict --lint -o strict_lint_issues.txt -f strictlint \
 		--plugindir $(PYANG_PLUGIN_DIR) \
 		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
 		$(YANG_MOD_EXTENSION_FILES) 2> /dev/null
 	@echo "++++++++++++Please find Generic YANG issues in strict_lint_issues.txt++++++++++"
+
+	- $(PYANG) \
+		--ietf -o ietf_issues.txt -f strictlint \
+		--plugindir $(PYANG_PLUGIN_DIR) \
+		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
+		$(YANG_IETF_MOD_EXT_FILES) 2> /dev/null
+	@echo "++++++++++++Please find Generic YANG issues in ietf_issues.txt++++++++++"
+	touch $@
 
 

@@ -425,7 +425,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 						return err
 					}
 				} else {
-					// Instance Fill case. Have filled the result table with table and key
+					xfmrLogInfoAll("%v", "Instance Fill case. Have filled the result table with table and key")
 				}
 			}
 		}
@@ -495,6 +495,9 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		resultMap[oper][db.ConfigDB] = result
 		xlateToData := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpathPrefix, keyName, jsonData, resultMap, result, txCache, nil, subOpDataMap, &cascadeDelTbl, &xfmrErr, "","",tableName)
 		err = sonicYangReqToDbMapDelete(xlateToData)
+		if err != nil {
+			return err
+		}
 	} else {
 		xpathPrefix, keyName, tableName, err := xpathKeyExtract(d, ygRoot, oper, uri, requestUri, subOpDataMap, txCache)
 		if err != nil {
@@ -706,6 +709,9 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 	if (xlateParams.tableName != "") {
 		// Specific table entry case
 		xlateParams.result[xlateParams.tableName] = make(map[string]db.Value)
+		if tblSpecInfo, ok := xDbSpecMap[xlateParams.tableName]; ok && (tblSpecInfo.cascadeDel == XFMR_ENABLE) {
+			*xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, xlateParams.tableName)
+		}
 		if (xlateParams.keyName != "") {
 			// Specific key case
 			var dbVal db.Value
@@ -753,8 +759,6 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 				}
 			}
 			xlateParams.result[xlateParams.tableName][xlateParams.keyName] = dbVal
-		} else {
-			// Get all keys
 		}
 	} else {
 		// Get all table entries
@@ -763,7 +767,10 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 		if ok && xDbSpecMap[xlateParams.xpath] != nil {
 			dbInfo := xDbSpecMap[xlateParams.xpath]
 			if dbInfo.fieldType == "container" {
-				for dir, _ := range dbInfo.dbEntry.Dir {
+				for dir := range dbInfo.dbEntry.Dir {
+					if tblSpecInfo, ok := xDbSpecMap[dir]; ok && tblSpecInfo.cascadeDel == XFMR_ENABLE {
+						*xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, dir)
+					}
 					if dbInfo.dbEntry.Dir[dir].Config != yang.TSFalse {
 						xlateParams.result[dir] = make(map[string]db.Value)
 					}

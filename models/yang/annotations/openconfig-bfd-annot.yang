@@ -24,21 +24,29 @@ module openconfig-bfd-annot {
           "Initial revision.";
     }
 
-    deviation /oc-bfd:bfd/oc-bfd-ext:sessions/oc-bfd-ext:single-hop {
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop {
       deviate add {
-        sonic-ext:table-name "BFD_PEER_SINGLE_HOP";
+        sonic-ext:key-transformer "bfd_shop_tbl_key_xfmr";
+        sonic-ext:table-transformer "bfd_shop_session_tbl_xfmr";
       }
     }
 
-    deviation /oc-bfd:bfd/oc-bfd-ext:sessions/oc-bfd-ext:multi-hop {
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop {
       deviate add {
-        sonic-ext:table-name "BFD_PEER_MULTI_HOP";
+        sonic-ext:key-transformer "bfd_mhop_tbl_key_xfmr";
+        sonic-ext:table-transformer "bfd_mhop_session_tbl_xfmr";
       }
     }
 
-    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-state {
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:state {
       deviate add {
-        sonic-ext:subtree-transformer "bfd_state_xfmr";
+        sonic-ext:subtree-transformer "bfd_shop_state_xfmr";
+      }
+    }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:state {
+      deviate add {
+        sonic-ext:subtree-transformer "bfd_mhop_state_xfmr";
       }
     }
 }

@@ -40,6 +40,7 @@ type ClassifierEntry struct {
 	DESCRIPTION       *string               `json:",omitempty"`
 	MATCH_TYPE        *string               `json:",omitempty"`
 	ACL_NAME          *string               `json:",omitempty"`
+	ACL_TYPE          *string               `json:",omitempty"`
 	ETHER_TYPE        *string               `json:",omitempty"`
 	SRC_MAC           *string               `json:",omitempty"`
 	DST_MAC           *string               `json:",omitempty"`
@@ -57,6 +58,7 @@ type ClassifierEntry struct {
 	L4_DST_PORT       *int                  `json:",omitempty"`
 	L4_DST_PORT_RANGE *string               `json:",omitempty"`
 	TCP_FLAGS         *string               `json:",omitempty"`
+	TRAP_IDS          *string               `json:",omitempty"`
 	REFERENCES        []ReferingPolicyEntry `json:",omitempty"`
 	STATE             *FlowStateEntry       `json:",omitempty"`
 }
@@ -81,6 +83,15 @@ type PolicyFlowEntry struct {
 	SET_POLICER_PBS       *uint64                  `json:",omitempty"`
 	SET_MIRROR_SESSION    *string                  `json:",omitempty"`
 	DEFAULT_PACKET_ACTION *string                  `json:",omitempty"`
+	TRAP_GROUP            *string                  `json:",omitempty"`
+	TRAP_ACTION           *string                  `json:",omitempty"`
+	TRAP_PRIORITY         *uint16                  `json:",omitempty"`
+	QUEUE                 *uint8                   `json:",omitempty"`
+	METER_TYPE            *string                  `json:",omitempty"`
+	MODE                  *string                  `json:",omitempty"`
+	GREEN_ACTION          *string                  `json:",omitempty"`
+	RED_ACTION            *string                  `json:",omitempty"`
+	YELLOW_ACTION         *string                  `json:",omitempty"`
 	SET_INTERFACE         *[]ForwardingEgressEntry `json:",omitempty"`
 	SET_IP_NEXTHOP        *[]ForwardingEgressEntry `json:",omitempty"`
 	SET_IPV6_NEXTHOP      *[]ForwardingEgressEntry `json:",omitempty"`
@@ -170,6 +181,9 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 	if str_val, found := classifierTblVal.Field["ACL_NAME"]; found {
 		classEntry.ACL_NAME = &str_val
 	}
+	if str_val, found := classifierTblVal.Field["ACL_TYPE"]; found {
+		classEntry.ACL_TYPE = &str_val
+	}
 	if str_val, found := classifierTblVal.Field["ETHER_TYPE"]; found {
 		classEntry.ETHER_TYPE = &str_val
 	}
@@ -236,7 +250,7 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 		return err
 	}
 
-	log.Infof("Sections:", classReferingPolicyKeys)
+	log.Info("Sections:", classReferingPolicyKeys)
 
 	for i := 0; i < len(classReferingPolicyKeys); i++ {
 		var referringPolicy ReferingPolicyEntry
@@ -259,6 +273,17 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 	return nil
 }
 
+func fill_copp_classifier_trap_details(class_name string, coppTrapTblVal db.Value, classEntry *ClassifierEntry) error {
+	classEntry.CLASSIFIER_NAME = class_name
+	classEntry.MATCH_TYPE = new(string)
+	*classEntry.MATCH_TYPE = "copp"
+	if str_val, found := coppTrapTblVal.Field["trap_ids"]; found {
+		classEntry.TRAP_IDS = &str_val
+	}
+
+	return nil
+}
+
 var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (result []byte, err error) {
 	var class_name, match_type string
 
@@ -276,6 +301,7 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 	log.Infof("RPC Input data: %v", mapData)
 	configDbPtr := dbs[db.ConfigDB]
 	var CLASSIFIER_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "CLASSIFIER_TABLE"}
+	var COPP_TRAP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COPP_TRAP"}
 
 	var showOutput struct {
 		Output struct {
@@ -292,15 +318,24 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 		//get classifier db output
 		classifierTblVal, err := configDbPtr.GetEntry(CLASSIFIER_TABLE_TS, db.Key{Comp: []string{class_name}})
 		log.Infof("Class_name:%v, RPC classifierTblVal:%v", class_name, classifierTblVal)
-		if err != nil {
-			log.Errorf("Failed to  find classifier:%v err%v", class_name, err)
-			return nil, tlerr.NotFound("Classifier %s not found", arg_class_name)
-		}
-
 		var classEntry ClassifierEntry
-		err = fill_classifier_details(class_name, classifierTblVal, &classEntry)
-		if err != nil {
-			return nil, err
+		if err == nil {
+			err = fill_classifier_details(class_name, classifierTblVal, &classEntry)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			coppTrapTblVal, err := configDbPtr.GetEntry(COPP_TRAP_TABLE_TS, db.Key{Comp: []string{class_name}})
+			log.Infof("Class_name:%v, RPC coppTrapTblVal:%v", class_name, coppTrapTblVal)
+			if err == nil {
+				err = fill_copp_classifier_trap_details(class_name, coppTrapTblVal, &classEntry)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				log.Errorf("Failed to  find classifier:%v err%v", class_name, err)
+				return nil, tlerr.NotFound("Classifier %s not found", arg_class_name)
+			}
 		}
 
 		showOutput.Output.CLASSIFIERS = append(showOutput.Output.CLASSIFIERS, classEntry)
@@ -310,27 +345,53 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 		}
 
 		classifierTbl, err := configDbPtr.GetTable(CLASSIFIER_TABLE_TS)
+		if err == nil {
+			classKeys, _ := classifierTbl.GetKeys()
+			log.Infof("Match_type:%v RPC classifierTbl:%v, classkeys:%v ", match_type, classifierTbl, classKeys)
+
+			for index := range classKeys {
+				class_name = classKeys[index].Comp[0]
+				var classifierTblVal db.Value
+				classifierTblVal, err = classifierTbl.GetEntry(classKeys[index])
+				if err != nil {
+					return nil, err
+				}
+				if match_type != "" && classifierTblVal.Field["MATCH_TYPE"] != match_type {
+					log.Infof("Not matching index:%v class_name:%v match_type:%v ", index, class_name, classifierTblVal.Field["MATCH_TYPE"])
+					continue
+				}
+
+				var classEntry ClassifierEntry
+				err = fill_classifier_details(class_name, classifierTblVal, &classEntry)
+				if err != nil {
+					continue
+				}
+				showOutput.Output.CLASSIFIERS = append(showOutput.Output.CLASSIFIERS, classEntry)
+			}
+		}
+
+		coppTrapTbl, err := configDbPtr.GetTable(COPP_TRAP_TABLE_TS)
 		if err != nil {
 			return nil, err
 		}
 
-		classKeys, _ := classifierTbl.GetKeys()
-		log.Infof("Match_type:%v RPC classifierTbl:%v, classkeys:%v ", match_type, classifierTbl, classKeys)
+		classKeys, _ := coppTrapTbl.GetKeys()
+		log.Infof("Match_type:%v RPC coppTrapTbl:%v, classkeys:%v ", match_type, coppTrapTbl, classKeys)
 
 		for index := range classKeys {
 			class_name = classKeys[index].Comp[0]
-            var classifierTblVal db.Value
-			classifierTblVal, err = classifierTbl.GetEntry(classKeys[index])
-            if err != nil {
-                return nil, err
-            }
-			if match_type != "" && classifierTblVal.Field["MATCH_TYPE"] != match_type {
-				log.Infof("Not matching index:%v class_name:%v match_type:%v ", index, class_name, classifierTblVal.Field["MATCH_TYPE"])
+			var coppTrapTblVal db.Value
+			coppTrapTblVal, err = coppTrapTbl.GetEntry(classKeys[index])
+			if err != nil {
+				return nil, err
+			}
+			if match_type != "" && match_type != "COPP" {
+				log.Infof("Not matching index:%v class_name:%v match_type:%v ", index, class_name, match_type)
 				continue
 			}
 
 			var classEntry ClassifierEntry
-			err = fill_classifier_details(class_name, classifierTblVal, &classEntry)
+			err = fill_copp_classifier_trap_details(class_name, coppTrapTblVal, &classEntry)
 			if err != nil {
 				continue
 			}
@@ -450,6 +511,70 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 	return nil
 }
 
+func fill_copp_policy_section_table_info(policy_name string, class_name string,
+	policySectionTblVal db.Value, dbs [db.MaxDB]*db.DB, policySectionInfo *PolicyFlowEntry) error {
+
+	log.Infof("Policy:%s Class:%s Intf:%s", policy_name, class_name)
+
+	policySectionInfo.CLASS_NAME = class_name
+
+	if str_val, found := policySectionTblVal.Field["trap_group"]; found {
+		policySectionInfo.TRAP_GROUP = &str_val
+
+		var COPP_GROUP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COPP_GROUP"}
+		coppGroupTblVal, err := configDbPtr.GetEntry(COPP_GROUP_TABLE_TS, db.Key{Comp: []string{str_val}})
+		log.Infof("coppGroupTblVal:%v ", coppGroupTblVal)
+		if err == nil {
+			if str_val, found := coppGroupTblVal.Field["trap_priority"]; found {
+				val, _ := strconv.ParseUint(str_val, 10, 64)
+				val16 := uint16(val)
+				policySectionInfo.TRAP_PRIORITY = &val16
+			}
+			if str_val, found := coppGroupTblVal.Field["trap_action"]; found {
+				policySectionInfo.TRAP_ACTION = &str_val
+			}
+			if str_val, found := coppGroupTblVal.Field["queue"]; found {
+				val, _ := strconv.ParseUint(str_val, 10, 64)
+				val8 := uint8(val)
+				policySectionInfo.QUEUE = &val8
+			}
+			if str_val, found := coppGroupTblVal.Field["cir"]; found {
+				val, _ := strconv.ParseUint(str_val, 10, 64)
+				policySectionInfo.SET_POLICER_CIR = &val
+			}
+			if str_val, found := coppGroupTblVal.Field["cbs"]; found {
+				val, _ := strconv.ParseUint(str_val, 10, 64)
+				policySectionInfo.SET_POLICER_CBS = &val
+			}
+			if str_val, found := coppGroupTblVal.Field["pir"]; found {
+				val, _ := strconv.ParseUint(str_val, 10, 64)
+				policySectionInfo.SET_POLICER_PIR = &val
+			}
+			if str_val, found := coppGroupTblVal.Field["pbs"]; found {
+				val, _ := strconv.ParseUint(str_val, 10, 64)
+				policySectionInfo.SET_POLICER_PBS = &val
+			}
+			if str_val, found := coppGroupTblVal.Field["meter_type"]; found {
+				policySectionInfo.METER_TYPE = &str_val
+			}
+			if str_val, found := coppGroupTblVal.Field["mode"]; found {
+				policySectionInfo.MODE = &str_val
+			}
+			if str_val, found := coppGroupTblVal.Field["green_action"]; found {
+				policySectionInfo.GREEN_ACTION = &str_val
+			}
+			if str_val, found := coppGroupTblVal.Field["red_action"]; found {
+				policySectionInfo.RED_ACTION = &str_val
+			}
+			if str_val, found := coppGroupTblVal.Field["yellow_action"]; found {
+				policySectionInfo.YELLOW_ACTION = &str_val
+			}
+		}
+	}
+
+	return nil
+}
+
 func get_counter_diff(currentVal db.Value, lastVal db.Value, field string) uint64 {
 	current, _ := strconv.ParseUint(currentVal.Field[field], 10, 64)
 	last, _ := strconv.ParseUint(lastVal.Field[field], 10, 64)
@@ -474,7 +599,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 	var lastFbsCtrTbl_ts *db.TableSpec = &db.TableSpec{Name: "LAST_FBS_COUNTERS"}
 	lastFbsCtrVal, err2 := countersDbPtr.GetEntry(lastFbsCtrTbl_ts, polPbfKey)
 
-	log.Infof("fbsCtrVal:%v", fbsCtrVal)
+	log.Infof("Current:%v:%v Last:%v:%v", fbsCtrVal, err, lastFbsCtrVal, err2)
 	if err == nil && err2 == nil {
 		state.MATCHED_PACKETS = get_counter_diff(fbsCtrVal, lastFbsCtrVal, "Packets")
 		state.MATCHED_BYTES = get_counter_diff(fbsCtrVal, lastFbsCtrVal, "Bytes")
@@ -484,12 +609,20 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 		state.STATUS = "Inactive"
 	}
 
+    if state.STATUS == "Inactive" {
+        exPolPbfKey := db.Key{[]string{policy_name, class_name, interface_name, bind_dir, "Excluded"}}
+        _, err := countersDbPtr.GetEntry(fbsCtrTbl_ts, exPolPbfKey)
+        if err == nil {
+            state.STATUS = "Active"
+        }
+    }
+
 	if strings.EqualFold(policy_type, "QOS") {
 		var policer FlowPolicerStateEntry
 		var polCntTbl_ts *db.TableSpec = &db.TableSpec{Name: "POLICER_COUNTERS"}
 		var lastPolCntTbl_ts *db.TableSpec = &db.TableSpec{Name: "LAST_POLICER_COUNTERS"}
 
-        var polCntVal, lastPolCntVal db.Value
+		var polCntVal, lastPolCntVal db.Value
 		polCntVal, err = countersDbPtr.GetEntry(polCntTbl_ts, polPbfKey)
 		lastPolCntVal, err2 = countersDbPtr.GetEntry(lastPolCntTbl_ts, polPbfKey)
 
@@ -508,7 +641,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 
 		appDbPtr := dbs[db.ApplDB]
 		var POLICER_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICER_TABLE"}
-        var policerTblVal db.Value
+		var policerTblVal db.Value
 		policerTblVal, err = appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
 		log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
 		if err == nil {
@@ -629,6 +762,40 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxD
 	return nil
 }
 
+func fill_policy_copp_details(policy_name string, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
+	var COPP_TRAP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COPP_TRAP"}
+	configDbPtr := dbs[db.ConfigDB]
+
+	policyEntry.POLICY_NAME = policy_name
+	policyEntry.TYPE = "copp"
+
+	referingClassKeys, err := configDbPtr.GetKeysPattern(COPP_TRAP_TABLE_TS, db.Key{[]string{"*"}})
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	log.Infof("referingClassKeys ==> %v", referingClassKeys)
+
+	for i := 0; i < len(referingClassKeys); i++ {
+		log.Infof("key:%v", referingClassKeys[i].Comp)
+
+		coppTrapTblVal, err := configDbPtr.GetEntry(COPP_TRAP_TABLE_TS, referingClassKeys[i])
+		if err != nil {
+			log.Error("Failed to  find related class:%v err%v", referingClassKeys[i], err)
+			return err
+		}
+		log.Infof("Data:%v", coppTrapTblVal)
+
+		var referingClass PolicyFlowEntry
+		fill_copp_policy_section_table_info(policy_name, referingClassKeys[i].Comp[0], coppTrapTblVal, dbs, &referingClass)
+
+		policyEntry.FLOWS = append(policyEntry.FLOWS, referingClass)
+	}
+
+	return nil
+}
+
 var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (result []byte, err error) {
 	log.Infof("Enter")
 	var mapData map[string]interface{}
@@ -657,46 +824,64 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 	if policy_name_found {
 		//get policy db output
 		policyTblVal, err := configDbPtr.GetEntry(POLICY_TABLE_TS, db.Key{Comp: []string{policy_name}})
-		if err != nil {
-			log.Errorf("Failed to  find policy:%v err%v", policy_name, err)
-			return nil, err
-		}
-		log.Infof("In rpc_show_policy, policy_name:%v, RPC policyTblVal:%v", policy_name, policyTblVal)
-
 		var policyEntry PolicyEntry
-		err = fill_policy_details(policy_name, policyTblVal, dbs, &policyEntry)
-		if err != nil {
-			log.Errorf("Failed to fetch policy:%v details err%v", policy_name, err)
-			return nil, err
+		if err == nil {
+			log.Infof("In rpc_show_policy, policy_name:%v, RPC policyTblVal:%v", policy_name, policyTblVal)
+
+			err = fill_policy_details(policy_name, policyTblVal, dbs, &policyEntry)
+			if err != nil {
+				log.Errorf("Failed to fetch policy:%v details err%v", policy_name, err)
+				return nil, err
+			}
+		} else {
+			if policy_name == "copp-system-policy" {
+				err = fill_policy_copp_details(policy_name, dbs, &policyEntry)
+				if err != nil {
+					log.Errorf("Failed to fetch policy:%v details err%v", policy_name, err)
+					return nil, err
+				}
+			} else {
+				log.Errorf("Failed to  find policy:%v err%v", policy_name, err)
+				return nil, err
+			}
 		}
 		showOutput.Output.POLICIES = append(showOutput.Output.POLICIES, policyEntry)
 	} else {
 		policy_type = strings.ToUpper(policy_type)
 
 		policyTbl, err := configDbPtr.GetTable(POLICY_TABLE_TS)
-		if nil != err {
-			return nil, err
-		}
-		log.Infof("policy_type:%v, RPC policyTbl:%v", policy_type, policyTbl)
+		if nil == err {
+			log.Infof("policy_type:%v, RPC policyTbl:%v", policy_type, policyTbl)
 
-		policyKeys, _ := policyTbl.GetKeys()
-		log.Infof("policykeys:%v", policyKeys)
-		for index := range policyKeys {
-			policy_name = policyKeys[index].Comp[0]
-			log.Infof("index:%v policy_name:%v ", index, policy_name)
-            var policyTblVal db.Value
-			policyTblVal, err = policyTbl.GetEntry(policyKeys[index])
-            if err != nil {
-                return nil, err
-            }
-			if policy_type_found && policyTblVal.Field["TYPE"] != policy_type {
-				log.Infof("index:%v policy_name:%v match_type:%v expected:%v", index, policy_name, policyTblVal.Field["TYPE"], policy_type)
-				continue
+			policyKeys, _ := policyTbl.GetKeys()
+			log.Infof("policykeys:%v", policyKeys)
+			for index := range policyKeys {
+				policy_name = policyKeys[index].Comp[0]
+				log.Infof("index:%v policy_name:%v ", index, policy_name)
+				var policyTblVal db.Value
+				policyTblVal, err = policyTbl.GetEntry(policyKeys[index])
+				if err != nil {
+					return nil, err
+				}
+				if policy_type_found && policyTblVal.Field["TYPE"] != policy_type {
+					log.Infof("index:%v policy_name:%v match_type:%v expected:%v", index, policy_name, policyTblVal.Field["TYPE"], policy_type)
+					continue
+				}
+				var policyEntry PolicyEntry
+				err = fill_policy_details(policy_name, policyTblVal, dbs, &policyEntry)
+				if err != nil {
+					continue
+				}
+				showOutput.Output.POLICIES = append(showOutput.Output.POLICIES, policyEntry)
 			}
+		}
+
+		if policy_type == "COPP" || !policy_type_found {
 			var policyEntry PolicyEntry
-			err = fill_policy_details(policy_name, policyTblVal, dbs, &policyEntry)
+			err = fill_policy_copp_details("copp-system-policy", dbs, &policyEntry)
 			if err != nil {
-				continue
+				log.Errorf("Failed to fetch policy:copp-system-policy details err%v", err)
+				return nil, err
 			}
 			showOutput.Output.POLICIES = append(showOutput.Output.POLICIES, policyEntry)
 		}

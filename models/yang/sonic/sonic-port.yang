@@ -40,12 +40,6 @@ module sonic-port {
                             error-app-tag interface-name-invalid;
                         }
                     }
-                    must "(/scommon:operation/scommon:operation != 'DELETE') or  (../../PORT_LIST[ifname=current()]/admin_status != 'up')"
-                    {
-                        error-message "Port has to be in shutdown state";
-                        error-app-tag interface-remove-invalid;
-                    }
-
                 }
 
                 leaf index {
@@ -84,6 +78,10 @@ module sonic-port {
 
                 leaf admin_status {
                     type scommon:admin-status;
+                }
+
+                leaf pfc_asym {
+                    type string;
                 }
             }
         }

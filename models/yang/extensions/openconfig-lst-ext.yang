@@ -3,7 +3,7 @@ module openconfig-lst-ext {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/lst-ext";
+  namespace "http://openconfig.net/yang/lst/extension";
 
   prefix "oc-lst-ext";
 
@@ -56,7 +56,7 @@ module openconfig-lst-ext {
   // typedef statements
 
   // grouping statements
-  grouping lst-group-config {
+  grouping lst-ext-group-config {
     description
       "Link state tracking group config";
 
@@ -83,7 +83,7 @@ module openconfig-lst-ext {
 
 	leaf timeout {
 	  type uint16 {
-        range "1..999";
+        range "1..1800";
 	  }
 	  units seconds;
 	  description
@@ -99,12 +99,12 @@ module openconfig-lst-ext {
 	}
   }
 
-  grouping lst-group-state {
+  grouping lst-ext-group-state {
     description
       "Link state tracking group operational state";
   }
   
-  grouping lst-group-top {
+  grouping lst-ext-group-top {
     description
       "Top level grouping for Link state tracking data and structure";
       
@@ -128,21 +128,21 @@ module openconfig-lst-ext {
         container config {
           description
             "Link state tracking group configuration";
-          uses lst-group-config;
+          uses lst-ext-group-config;
         }
 
         container state {
           config false;
           description
             "Link state tracking group operational state";
-          uses lst-group-config;
-          uses lst-group-state;
+          uses lst-ext-group-config;
+          uses lst-ext-group-state;
         }
       }
     }
   }
 
-  grouping interface-upstream-lst-group-config {
+  grouping lst-ext-interface-upstream-group-config {
     description
       "Configuration data for per-interface upstream link state tracking group";
 
@@ -156,12 +156,12 @@ module openconfig-lst-ext {
     }
   }
 
-  grouping interface-upstream-lst-group-state {
+  grouping lst-ext-interface-upstream-group-state {
     description
       "Operational state data per-interface upstream link state tracking group";
   }
 
-  grouping interface-upstream-lst-top {
+  grouping lst-ext-interface-upstream-top {
     description
       "Top-level grouping for per-interface upstream group data";
       
@@ -189,7 +189,7 @@ module openconfig-lst-ext {
           description
             "Configuration data";
 
-          uses interface-upstream-lst-group-config;
+          uses lst-ext-interface-upstream-group-config;
         }
 
         container state {
@@ -199,14 +199,14 @@ module openconfig-lst-ext {
           description
             "Operational state data for interface upstream group";
 
-          uses interface-upstream-lst-group-config;
-          uses interface-upstream-lst-group-state;
+          uses lst-ext-interface-upstream-group-config;
+          uses lst-ext-interface-upstream-group-state;
         }        
       }
     }
   }
 
-  grouping interface-downstream-lst-group-config {
+  grouping lst-ext-interface-downstream-group-config {
     description
       "Configuration data for per-interface downstream link state tracking group";
 
@@ -221,7 +221,7 @@ module openconfig-lst-ext {
 
   }
 
-  grouping interface-downstream-lst-group-state {
+  grouping lst-ext-interface-downstream-group-state {
     description
       "Operational state data per-interface downstream link state tracking group";
       
@@ -233,7 +233,7 @@ module openconfig-lst-ext {
     }
   }
 
-  grouping interface-downstream-lst-top {
+  grouping lst-ext-interface-downstream-top {
     description
       "Top-level grouping for per-interface downstream group data";
       
@@ -245,7 +245,7 @@ module openconfig-lst-ext {
         description
           "Configuration data";
 
-        uses interface-downstream-lst-group-config;
+        uses lst-ext-interface-downstream-group-config;
       }
 
       container state {
@@ -255,13 +255,13 @@ module openconfig-lst-ext {
         description
           "Operational state data for interface used as downstream";
 
-        uses interface-downstream-lst-group-config;
-        uses interface-downstream-lst-group-state;
+        uses lst-ext-interface-downstream-group-config;
+        uses lst-ext-interface-downstream-group-state;
       }
     }      
   }
 
-  grouping lst-interfaces-config {
+  grouping lst-ext-interfaces-config {
     description
       "Configuration data for interface references";
 
@@ -273,12 +273,12 @@ module openconfig-lst-ext {
     }
   }
 
-  grouping lst-interfaces-state {
+  grouping lst-ext-interfaces-state {
     description
       "Operational state data for interface references";
   }
 
-  grouping lst-interfaces-top {
+  grouping lst-ext-interfaces-top {
     description
       "Top-level grouping for interface-specific link state 
       tracking data";
@@ -306,7 +306,7 @@ module openconfig-lst-ext {
           description
             "Configuration for per-interface group data";
 
-          uses lst-interfaces-config;
+          uses lst-ext-interfaces-config;
         }
 
         container state {
@@ -316,28 +316,28 @@ module openconfig-lst-ext {
           description
             "Operational state for Link state tracking per-interface data";
 
-          uses lst-interfaces-config;
-          uses lst-interfaces-state;
+          uses lst-ext-interfaces-config;
+          uses lst-ext-interfaces-state;
         }
 
         uses oc-if:interface-ref;
-        uses interface-upstream-lst-top;
-        uses interface-downstream-lst-top;
+        uses lst-ext-interface-upstream-top;
+        uses lst-ext-interface-downstream-top;
       }
     }  
   }
   
-  grouping lst-config {
+  grouping lst-ext-config {
     description
       "Global configuration data for link state tracking";
   }
 
-  grouping lst-state {
+  grouping lst-ext-state {
     description
       "Global operational state data for link state tracking";
   }
 
-  grouping lst-top {
+  grouping lst-ext-top {
     description
       "Top level grouping for Link state tracking data";
       
@@ -350,7 +350,7 @@ module openconfig-lst-ext {
         description
           "Global config data for link state tracking";
         
-        uses lst-config;
+        uses lst-ext-config;
       }
       
       container state {
@@ -359,17 +359,17 @@ module openconfig-lst-ext {
         description
           "Global operational state data for link state tracking";
           
-        uses lst-config;
-        uses lst-state;
+        uses lst-ext-config;
+        uses lst-ext-state;
       }
 
-      uses lst-group-top;
-      uses lst-interfaces-top;
+      uses lst-ext-group-top;
+      uses lst-ext-interfaces-top;
     }
   }
 
   // data definition statements
-  uses lst-top;
+  uses lst-ext-top;
 
   // augment statements
 

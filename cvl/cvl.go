@@ -29,6 +29,7 @@ import (
 	"github.com/antchfx/xpath"
 	"github.com/antchfx/jsonquery"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"sync"
 	"io/ioutil"
@@ -56,10 +57,10 @@ const MAX_BULK_ENTRIES_IN_PIPELINE int = 50
 const MAX_DEVICE_METADATA_FETCH_RETRY = 60
 const PLATFORM_SCHEMA_PATH = "platform/"
 
-var reLeafRef *regexp.Regexp = nil
+//var reLeafRef *regexp.Regexp = nil
 var reHashRef *regexp.Regexp = nil
-var reSelKeyVal *regexp.Regexp = nil
-var reLeafInXpath *regexp.Regexp = nil
+//var reSelKeyVal *regexp.Regexp = nil
+//var reLeafInXpath *regexp.Regexp = nil
 
 var cvlInitialized bool
 var dbNameToDbNum map[string]uint8
@@ -136,14 +137,14 @@ type requestCacheType struct {
 
 // CVL Struct for CVL session 
 type CVL struct {
-	redisClient *redis.Client
+	//redisClient *redis.Client
 	yp *yparser.YParser
 	tmpDbCache map[string]interface{} //map of table storing map of key-value pair
 	requestCache map[string]map[string][]*requestCacheType//Cache of validated data,
 				//per table, per key. Can be used as dependent data in next request
 	maxTableElem map[string]int //max element count per table
 	batchLeaf []*yparser.YParserLeafValue //field name and value
-	chkLeafRefWithOthCache bool
+	//chkLeafRefWithOthCache bool
 	yv *YValidator //Custom YANG validator for validating external dependencies
 	custvCache custv.CustValidationCache //Custom validation cache per session
 }
@@ -163,16 +164,16 @@ type modelDataInfo struct {
 }
 
 //Struct for storing global DB cache to store DB which are needed frequently like PORT
-type dbCachedData struct {
+/*type dbCachedData struct {
 	root *yparser.YParserNode //Root of the cached data
 	startTime time.Time  //When cache started
 	expiry uint16    //How long cache should be maintained in sec
-}
+}*/
 
 //Global data cache for redis table
 type cvlGlobalSessionType struct {
-	db map[string]dbCachedData
-	pubsub *redis.PubSub
+	//db map[string]dbCachedData
+	//pubsub *redis.PubSub
 	stopChan chan int //stop channel to stop notification listener
 	cv *CVL
 	mutex *sync.Mutex
@@ -228,18 +229,18 @@ func init() {
 	}
 
 	//regular expression for leafref and hashref finding
-	reLeafRef = regexp.MustCompile(`.*[/]([-_a-zA-Z]*:)?(.*)[/]([-_a-zA-Z]*:)?(.*)`)
+	//reLeafRef = regexp.MustCompile(`.*[/]([-_a-zA-Z]*:)?(.*)[/]([-_a-zA-Z]*:)?(.*)`)
 	reHashRef = regexp.MustCompile(`\[(.*)\|(.*)\]`)
 	//Regular expression to select key value
-	reSelKeyVal = regexp.MustCompile("=[ ]*['\"]?([0-9_a-zA-Z]+)['\"]?|(current[(][)])")
+	//reSelKeyVal = regexp.MustCompile("=[ ]*['\"]?([0-9_a-zA-Z]+)['\"]?|(current[(][)])")
 	//Regular expression to find leafref in xpath
-	reLeafInXpath = regexp.MustCompile("(.*[:/]{1})([a-zA-Z0-9_-]+)([^a-zA-Z0-9_-]*)")
+	//reLeafInXpath = regexp.MustCompile("(.*[:/]{1})([a-zA-Z0-9_-]+)([^a-zA-Z0-9_-]*)")
 
 	if Initialize() != CVL_SUCCESS {
 		CVL_LOG(FATAL, "CVL initialization failed")
 	}
 
-	cvg.db = make(map[string]dbCachedData)
+	//cvg.db = make(map[string]dbCachedData)
 
 	//Global session keeps the global cache
 	cvg.cv, _ = ValidationSessOpen()
@@ -1040,3 +1041,27 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 	return cvlErrObj
 }
 
+// getLeafRefInfo This function returns leafrefInfo structure based on table name,
+// target table name and leaf node name where leafRef is present
+func getLeafRefInfo(tblName, fldName, targetTblName string) leafRefInfo {
+	var leafRef leafRefInfo
+	for _, refTblLeafRef := range modelInfo.tableInfo[tblName].leafRef[fldName] {
+		if (refTblLeafRef.path == "non-leafref") {
+			continue
+		}
+
+		var leafRefFound bool
+		for k := range refTblLeafRef.yangListNames {
+			if refTblLeafRef.yangListNames[k] == targetTblName {
+				leafRef = *refTblLeafRef
+				leafRefFound = true
+				break
+			}
+		}
+
+		if leafRefFound {
+			break
+		}
+	}
+	return leafRef
+}

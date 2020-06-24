@@ -59,6 +59,7 @@ type yangXpathInfo  struct {
     subscribeMinIntvl  int
     cascadeDel     int
     virtualTbl     *bool
+    nameWithMod    *string
 }
 
 type dbInfo  struct {
@@ -74,7 +75,8 @@ type dbInfo  struct {
     listName     []string
     keyList      []string
     xfmrValue    *string
-	hasXfmrFn    bool
+    hasXfmrFn    bool
+    cascadeDel   int
 }
 
 type sonicTblSeqnInfo struct {
@@ -108,7 +110,6 @@ func addMdlCpbltEntry(yangMdlNm string) {
        mdlInfoEntry.Org = ""
        mdlInfoEntry.Ver = ""
        xMdlCpbltMap[yangMdlNm] = mdlInfoEntry
-       return
 }
 
 /* Add version and organization info for model capabilities into map */
@@ -127,7 +128,6 @@ func addMdlCpbltData(yangMdlNm string, version string, organization string) {
        mdlInfoEntry.Ver = version
        mdlInfoEntry.Org = organization
        xMdlCpbltMap[yangMdlNm] = mdlInfoEntry
-       return
 }
 
 /* update transformer spec with db-node */
@@ -153,7 +153,6 @@ func childContainerListPresenceFlagSet(xpath string) {
 		}
 		parXpath = parentXpathGet(parXpath)
 	}
-	return
 }
 
 func childSubTreePresenceFlagSet(xpath string) {
@@ -167,7 +166,6 @@ func childSubTreePresenceFlagSet(xpath string) {
 		}
 		parXpath = parentXpathGet(parXpath)
 	}
-	return
 }
 
 /* Recursive api to fill the map with yang details */
@@ -226,7 +224,6 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		xpathData.subscribeMinIntvl = XFMR_INVALID
 		xpathData.cascadeDel = XFMR_INVALID
 	} else {
-		xpathData = xYangSpecMap[xpath]
 		if len(xpathData.xfmrFunc) > 0 {
 			childSubTreePresenceFlagSet(xpath)
 		}
@@ -282,8 +279,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 	   if xpathData.subscribePref != nil && *xpathData.subscribePref == "NONE" {
 		   xpathData.subscribePref = nil
 	   }
-   }
-	if ok {
+
 		if parentXpathData.cascadeDel == XFMR_INVALID {
 			/* should not hit this case */
 			log.Errorf("Cascade-delete flag is set to invalid for(%v) \r\n", xpathPrefix)
@@ -292,6 +288,19 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 
 		if xpathData.cascadeDel == XFMR_INVALID && xpathData.dbIndex == db.ConfigDB{
 			xpathData.cascadeDel = parentXpathData.cascadeDel
+		}
+
+		if entry.Prefix != nil && entry.Prefix.Parent != nil   &&
+		   entry.Prefix.Parent.Statement().Keyword == "module" &&
+		   parentXpathData.yangEntry.Prefix != nil && parentXpathData.yangEntry.Prefix.Parent != nil {
+
+			if (len(parentXpathData.yangEntry.Prefix.Parent.NName()) > 0) &&
+			   (len(parentXpathData.yangEntry.Prefix.Parent.Statement().Keyword) > 0) &&
+			   (parentXpathData.yangEntry.Prefix.Parent.NName() != entry.Prefix.Parent.NName()) {
+					xpathData.nameWithMod = new(string)
+					*xpathData.nameWithMod = entry.Prefix.Parent.NName() + ":" + entry.Name
+			}
+
 		}
 	}
 
@@ -373,7 +382,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		xpathData.cascadeDel = XFMR_DISABLE
 	}
 
-	if updateChoiceCaseXpath == true {
+	if updateChoiceCaseXpath {
 		copyYangXpathSpecData(xYangSpecMap[curXpathFull], xYangSpecMap[xpath])
 	}
 
@@ -491,6 +500,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 			xDbSpecMap[dbXpath].dbEntry   = entry
 			xDbSpecMap[dbXpath].fieldType = entryType
 			xDbSpecMap[dbXpath].module = moduleNm
+			xDbSpecMap[dbXpath].cascadeDel = XFMR_INVALID
 			if entryType == "container" {
 				xDbSpecMap[dbXpath].dbIndex = db.ConfigDB
 				if entry.Exts != nil && len(entry.Exts) > 0 {
@@ -516,9 +526,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 				}
 			} else if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && (entryType == YANG_LIST && len(entry.Key) != 0) {
 				tblSpecInfo.listName = append(tblSpecInfo.listName, entry.Name)
-				for _, keyName := range(strings.Split(entry.Key, " ")) {
-					xDbSpecMap[dbXpath].keyList = append(xDbSpecMap[dbXpath].keyList, keyName)
-				}
+				xDbSpecMap[dbXpath].keyList = append(xDbSpecMap[dbXpath].keyList, strings.Split(entry.Key, " ")...)
 			} else if entryType == YANG_LEAF || entryType == YANG_LEAF_LIST {
 				if entry.Type.Kind == yang.Yleafref {
                                         var lerr error
@@ -562,7 +570,9 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 		xDbSpecMap[moduleXpath].dbEntry   = entry
 		xDbSpecMap[moduleXpath].fieldType = entryType
 		xDbSpecMap[moduleXpath].module = moduleNm
-                for {
+		xDbSpecMap[moduleXpath].cascadeDel = XFMR_INVALID
+		for {
+			done := true
 			sncTblInfo := new(sonicTblSeqnInfo)
 			if sncTblInfo == nil {
 				log.Warningf("Memory allocation failure for storing Tbl order and dependency info for sonic module %v", moduleNm)
@@ -596,16 +606,15 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 			}
 			xDbSpecTblSeqnMap[moduleNm] = sncTblInfo
 			cvl.ValidationSessClose(cvlSess)
-			break
+			if done {
+				break
+			}
 		}
 
 	}
 
 	var childList []string
-	for _, k := range entry.DirOKeys {
-		childList = append(childList, k)
-	}
-
+	childList = append(childList, entry.DirOKeys...)
 
 	for _, child := range childList {
 		childPath := tableName + "/" + entry.Dir[child].Name
@@ -896,6 +905,12 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 						}
 					}
 				}
+			case "cascade-delete" :
+				if ext.NName() == "ENABLE" ||  ext.NName() == "enable" {
+					dbXpathData.cascadeDel = XFMR_ENABLE
+				} else {
+					dbXpathData.cascadeDel = XFMR_DISABLE
+				}
 			default :
 			}
 		}
@@ -938,6 +953,9 @@ func mapPrint(inMap map[string]*yangXpathInfo, fileName string) {
         fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
         fmt.Fprintf(fp, "%v:\r\n", k)
         fmt.Fprintf(fp, "    yangDataType: %v\r\n", d.yangDataType)
+        if d.nameWithMod != nil {
+            fmt.Fprintf(fp, "    nameWithMod : %v\r\n", *d.nameWithMod)
+        }
 		fmt.Fprintf(fp, "    cascadeDel  : %v\r\n", d.cascadeDel)
         fmt.Fprintf(fp, "    hasChildSubTree : %v\r\n", d.hasChildSubTree)
         fmt.Fprintf(fp, "    hasNonTerminalNode : %v\r\n", d.hasNonTerminalNode)
@@ -1013,6 +1031,7 @@ func dbMapPrint( fname string) {
         fmt.Fprintf(fp, "     module   :%v \r\n", v.module)
         fmt.Fprintf(fp, "     listName :%v \r\n", v.listName)
         fmt.Fprintf(fp, "     keyList  :%v \r\n", v.keyList)
+        fmt.Fprintf(fp, "     cascadeDel :%v \r\n", v.cascadeDel)
         if v.xfmrValue != nil {
 			fmt.Fprintf(fp, "     xfmrValue:%v \r\n", *v.xfmrValue)
 		}
@@ -1065,7 +1084,6 @@ func xDbSpecTblSeqnMapPrint(fname string) {
 				fmt.Fprintf(fp, "    %v : %v\r\n", tbl, tlist)
 			}
 			fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
-			return
 
 }
 
@@ -1086,7 +1104,6 @@ func sonicLeafRefDataPrint(fname string) {
 		}
 	fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
 	}
-	return
 }
 
 func updateSchemaOrderedMap(module string, entry *yang.Entry) {

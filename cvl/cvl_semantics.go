@@ -29,6 +29,7 @@ import (
 	"github.com/antchfx/xmlquery"
 	"github.com/antchfx/jsonquery"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 )
 
@@ -1442,6 +1443,73 @@ func (c *CVL) checkDeleteInRequestCache(cfgData []CVLEditConfigData,
 	return false
 }
 
+// checkDepDataCompatible This function evaluates relationship between two table
+// keys based on leafref
+func (c *CVL) checkDepDataCompatible(tblName, key, reftblName, refTblKey, leafRefField string, depEntry map[string]string) bool {
+	CVL_LOG(INFO_DEBUG, "checkDepDataCompatible--> TargetTbl: %s[%s] referred by refTbl: %s[%s] through field: %s", tblName, key, reftblName, refTblKey, leafRefField)
+
+	// Key compatibility to be checked only if no. of keys are more than 1
+	if len(modelInfo.tableInfo[tblName].keys) <= 1 {
+		return true
+	}
+
+	// Fetch key value pair for both current table and ref table
+	tblKeysKVP := getRedisToYangKeys(tblName, key)
+	refTblKeysKVP := getRedisToYangKeys(reftblName, refTblKey)
+
+	// Determine the leafref
+	leafRef := getLeafRefInfo(reftblName, leafRefField, tblName)
+
+	// If depEntry map is Entry, it means leafRefField is one of key of RefTable.
+	// So RefTblKey should equal to targetTbl key plus additional 1 or more key
+	// For ex. BGP_NEIGHBOR|Vrf1|2114::2 referred by BGP_NEIGHBOR_AF|Vrf1|2114::2|ipv4_unicast
+	if len(depEntry) == 0 {
+		return strings.Contains(refTblKey, key)
+	} else {
+		// leafRefField is NOT key but a normal leaf node
+		for depEntryKey := range depEntry {
+			if leafRefField != depEntryKey {
+				continue
+			}
+			// Compare keys of table and refTable
+			//LeafRef: /sonic-bgp-peergroup:sonic-bgp-peergroup/sonic-bgp-peergroup:BGP_PEER_GROUP/sonic-bgp-peergroup:BGP_PEER_GROUP_LIST[sonic-bgp-peergroup:vrf_name=current()/../vrf_name]/sonic-bgp-peergroup:peer_group_name
+			if leafRef.exprTree != nil {
+				leafrefExpr := leafRef.exprTree.String()
+				if len(leafrefExpr) > 0 {
+					// predicate looks like [sonic-bgp-peergroup:vrf_name=current()/../vrf_name]
+					predicate := leafrefExpr[strings.Index(leafrefExpr, "[")+1 : strings.Index(leafrefExpr, "]")]
+					if strings.Contains(predicate, "=") {
+						// target tbl key is left of '='
+						leafrefTargetTblkey := predicate[:strings.Index(predicate, "=")]
+						if strings.Contains(leafrefTargetTblkey, ":") {
+							leafrefTargetTblkey = leafrefTargetTblkey[strings.Index(leafrefTargetTblkey, ":")+1 :]
+						}
+						// current tbl key is right of '=' after last '/'('current()/../vrf_name")
+						leafrefCurrentTblkey := predicate[strings.LastIndex(predicate, "/")+1:]
+
+						var leafrefTargetKeyVal, leafrefCurrentKeyVal string
+						for _, kvp := range refTblKeysKVP {
+							if kvp.key == leafrefTargetTblkey {
+								leafrefTargetKeyVal = kvp.values[0]
+							}
+						}
+
+						for _, kvp := range tblKeysKVP {
+							if kvp.key == leafrefCurrentTblkey {
+								leafrefCurrentKeyVal = kvp.values[0]
+							}
+						}
+
+						return leafrefTargetKeyVal == leafrefCurrentKeyVal
+					}
+				}
+			}
+		}
+	}
+
+	return true
+}
+
 //Check delete constraint for leafref if key/field is deleted
 func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 			tableName, keyVal, field string) CVLRetCode {
@@ -1473,6 +1541,7 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 	// Retrieve all dependent DB entries referring the given entry tableName and keyVal
 	redisKeyForDepData := tableName + "|" + keyVal
 	depDataArr := c.GetDepDataForDelete(redisKeyForDepData)
+	TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> All Data for deletion: %v", depDataArr)
 
 	// Iterate through dependent DB entries and check if it already present in delete request cache
 	for _, depData := range depDataArr {
@@ -1481,18 +1550,32 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 			for depEntkey := range depData.Entry {
 				depEntkeyList := strings.SplitN(depEntkey, "|", 2)
 				refTblName := depEntkeyList[0]
+				refTblKey := depEntkeyList[1]
 
+				var isRefTblKeyNotCompatible bool
 				var isEntryInRequestCache bool
 				leafRefFieldsArr := refTableFieldsMap[refTblName]
-				TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> leafRefFieldsArr: %v", leafRefFieldsArr)
 				// Verify each dependent data with help of its associated leaf-ref
 				for _, leafRefField := range leafRefFieldsArr {
 					TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> Checking delete constraint for leafRef %s/%s", refTblName, leafRefField)
+					// Key compatibility to be checked only if no. of keys are more than 1
+					// because dep data for key like "BGP_PEER_GROUP|Vrf1|PG1" can be returned as 
+					// BGP_NEIGHBOR|Vrf1|11.1.1.1 or BGP_NEIGHBOR|default|11.1.1.1 or BGP_NEIGHBOR|Vrf2|11.1.1.1
+					// So we have to discard imcompatible dep data
+					if !c.checkDepDataCompatible(tableName, keyVal, refTblName, refTblKey, leafRefField, depData.Entry[depEntkey]) {
+						isRefTblKeyNotCompatible = true
+						TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> %s is NOT compatible with %s", redisKeyForDepData, depEntkey)
+						break
+					}
 					tempLeafRef := tblFieldPair{refTblName, leafRefField}
 					if c.checkDeleteInRequestCache(cfgData, &tempLeafRef, depEntkey, keyVal) {
 						isEntryInRequestCache = true
 						break
 					}
+				}
+
+				if isRefTblKeyNotCompatible {
+					continue
 				}
 
 				if isEntryInRequestCache {

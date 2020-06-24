@@ -3,21 +3,105 @@ module openconfig-bfd-ext {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/bfd-ext";
+  namespace "http://openconfig.net/yang/bfd/extension";
 
   prefix "oc-bfd-ext";
 
   // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
   import openconfig-types { prefix "oc-types"; }
   import openconfig-interfaces { prefix "oc-if"; }
   import openconfig-inet-types { prefix "oc-inet"; }
   import openconfig-network-instance { prefix "oc-ni"; }
   import openconfig-bfd { prefix "oc-bfdd"; }
 
+  organization 
+    "OCP SONiC Subproject";
+
+  contact
+    "OCP SONiC Subproject Working Group";
+
   description
     "An OpenConfig model extension of Bi-Directional Forwarding Detection (BFD)
     configuration and operational state.";
 
+  oc-ext:openconfig-version "0.1.1";
+
+  revision "2020-01-15" {
+    description
+      "Add BFD yang extensions for FRR config and show";
+    reference "RFC5880";
+  }
+
+  typedef bfd-ext-diagnostic-code {
+    type enumeration {
+      enum NO_DIAGNOSTIC {
+        value 0;
+        description
+          "No diagnostic code was specified, or the session has not
+          changed state.";
+      }
+      enum DETECTION_TIMEOUT {
+        value 1;
+        description
+          "The control detection time expired: no BFD packet was
+          received within the required period.";
+      }
+      enum ECHO_FAILED {
+        value 2;
+        description
+          "The BFD echo function failed - echo packets have not been
+          received for the required period of time.";
+      }
+      enum FORWARDING_RESET {
+        value 3;
+        description
+          "The forwarding plane in the local system was reset - such
+          that the remote system cannot rely on the forwarding state of
+          the device specifying this error code.";
+      }
+      enum PATH_DOWN {
+        value 4;
+        description
+          "Signalling outside of BFD specified that the path underlying
+          this session has failed.";
+      }
+      enum CONCATENATED_PATH_DOWN {
+        value 5;
+        description
+          "When a BFD session runs over a series of path segments, this
+          error code indicates that a subsequent path segment (i.e.,
+          one in the transmit path between the source and destination
+          of the session) has failed.";
+      }
+      enum ADMIN_DOWN {
+        value 6;
+        description
+          "The BFD session has been administratively disabled by the
+          peer.";
+      }
+      enum REVERSE_CONCATENATED_PATH_DOWN {
+        value 7;
+        description
+          "In the case that a BFD session is running over a series of
+          path segments, this error code indicates that a path segment
+          on the reverse path (i.e., in the transmit direction from the
+          destination to the source of the session) has failed.";
+      }
+      enum NEIGHBOR_SIGNALED_DOWN {
+        value 8;
+        description
+          "The BFD neighbor has signaled session down.";
+      }
+    }
+    description
+      "Diagnostic codes defined by BFD. These typically indicate the
+      reason for a change of session state.";
+    reference
+      "RFC5880 - Bidirectional Forwarding Detection, Section
+      4.1";
+  }
+ 
   typedef bfd-session-type {
     type enumeration {
       enum CONFIGURED {
@@ -34,7 +118,7 @@ module openconfig-bfd-ext {
       to by the context of the leaf.";
   }
 
-  grouping bfd-config {
+  grouping bfd-ext-config {
     description
       "Top-level configuration parameters for BFD peer.";
 
@@ -84,7 +168,7 @@ module openconfig-bfd-ext {
     }
   }
 
-  grouping bfd-echo-config {
+  grouping bfd-ext-echo-config {
     description
       "Top-level configuration parameters for BFD echo.";
 
@@ -109,14 +193,14 @@ module openconfig-bfd-ext {
     }
   }
 
-  grouping bfd-session-state-sessiondetails-common-ext {
+  grouping bfd-ext-session-state-sessiondetails-common {
     description
-      "Common session details extension for a BFD session.";
+      "Common session details extension for a BFD session";
 
     leaf session-type {
       type bfd-session-type;
       description
-        "The type of the BFD session perceived by the local system.";    
+        "The type of the BFD session perceived by the local system";
     }
 
     leaf remote-multiplier {
@@ -124,33 +208,16 @@ module openconfig-bfd-ext {
       description "Remote session detection multiplier";
     }
 
-    leaf local-multiplier {
-      type uint32;
-      description "Remote session detection multiplier";
-    }
-
-    leaf negotiated-transmission-interval {
-      description "Negotiated transmit interval";
-      type uint32;
-      units microseconds;
-    }
-
-    leaf negotiated-receive-interval {
-      description "Negotiated receive interval";
-      type uint32;
-      units microseconds;
-    }
-
     leaf remote-desired-transmission-interval {
-      description "Remote Tx interval";
       type uint32;
       units microseconds;
+      description "Remote Tx interval";
     }
 
     leaf remote-echo-receive-interval {
-      description "Remote Echo Rx interval";
       type uint32;
       units microseconds;
+      description "Remote Echo Rx interval";
     }
 
     leaf last-up-time {
@@ -162,33 +229,18 @@ module openconfig-bfd-ext {
     }
   }
 
-  grouping bfd-echo-state {
-    leaf minimum-echo-interval {
-      type uint32;
-      units microseconds;
-      default 50;
-      description
-        "The minimum interval between sent BFD control packets that
-        the operator desires. This value is advertised to the remote peer
-        to indicate the maximum frequency (i.e., minimum inter-packet interval)
-        between BFD control packets the local system desires.";
-    }
-  }
-
-
-  grouping session-states {
+  grouping bfd-ext-session-states {
     description
       "Common operational state parameters that may be re-used across
       multiple BFD session contexts.";
 
     uses oc-bfdd:bfd-session-state-sessiondetails-common;
-    uses bfd-session-state-sessiondetails-common-ext;
-    uses bfd-echo-state;
+    uses bfd-ext-session-state-sessiondetails-common;
     uses oc-bfdd:bfd-session-state-echo-common;
     uses oc-bfdd:bfd-session-state-async-common;
   }
 
-  grouping bfd-session-key {
+  grouping bfd-ext-session-key {
     description
       "grouping of session key identifiers";
   
@@ -222,48 +274,120 @@ module openconfig-bfd-ext {
       }
   }
 
-  grouping bfd-peer {
+  grouping bfd-ext-peer {
     description
-      "Configuration and operational state parameters for BFD.";
+      "Configuration and operational state parameters for BFD";
     reference "RFC5880, RFC5881";
-    container sessions {
+
+    container bfd-shop-sessions {
+      description "BFD single-hop session list";
+
       list single-hop {
         key "remote-address interface vrf local-address";
         description "List of single hop sessions";
 
-	uses bfd-session-key;
-        uses bfd-config;
-	uses bfd-echo-config;
+        leaf remote-address {
+          type leafref {
+            path "../config/remote-address";
+          }
+          description
+          "The IP address used by the remote system for this BFD session.";
+        }
+
+        leaf vrf {
+          type leafref {
+            path "../config/vrf";
+          }
+          description "Virtual Routing Domain name";
+        }
+
+        leaf interface {
+          type leafref {
+            path "../config/interface";
+          }
+          description "Interface to use to contact peer";
+        }
+
+        leaf local-address {
+          type leafref {
+            path "../config/local-address";
+          }
+          description
+            "The source IP address to be used for BFD sessions over this
+            interface.";
+        }
+
+        container config {
+          description "Single hop sessions config container";
+          uses bfd-ext-session-key;
+          uses bfd-ext-config;
+	  uses bfd-ext-echo-config;
+        }
+
+        container state {
+          config false;
+          description "Single hop sessions state container";
+          uses bfd-ext-session-key;
+          uses bfd-ext-config;
+          uses bfd-ext-echo-config;
+          uses bfd-ext-session-states;
+        }
       }
+    }
+
+    container bfd-mhop-sessions {
+      description "BFD single-hop session list";
 
       list multi-hop {
         key "remote-address interface vrf local-address";
         description "List of multi hop sessions";
 
-        uses bfd-session-key;
-        uses bfd-config;
-      }
-    }
+        leaf remote-address {
+          type leafref {
+            path "../config/remote-address";
+          }
+          description
+          "The IP address used by the remote system for this BFD session.";
+        }
 
-    container bfd-state {
-      list single-hop-state {
-        key "remote-address interface vrf local-address";
-        description "List of single hop sessions state";
+        leaf vrf {
+          type leafref {
+            path "../config/vrf";
+          }
+          description "Virtual Routing Domain name";
+        }
 
-        uses bfd-session-key;
-	uses session-states;
-        config false;
-      }
+        leaf interface {
+          type leafref {
+            path "../config/interface";
+          }
+          description "Interface to use to contact peer";
+        }
 
-      list multi-hop-state {
-        key "remote-address interface vrf local-address";
-        description "List of multi hop sessions state";
+        leaf local-address {
+          type leafref {
+            path "../config/local-address";
+          }
+          description
+            "The source IP address to be used for BFD sessions over this
+            interface.";
+        }
 
-	  uses bfd-session-key;
-	  uses session-states;
-	  config false;
+        container config {
+          description "Multi hop sessions config container";
+          uses bfd-ext-session-key;
+          uses bfd-ext-config;
+        }
+
+        container state {
+          config false;
+          description "Multi hop sessions state container";
+          uses bfd-ext-session-key;
+          uses bfd-ext-config;
+          uses bfd-ext-session-states;
         }
       }
+    }
   }
 
   deviation /oc-ni:network-instances/oc-ni:network-instance/oc-ni:protocols/oc-ni:protocol/oc-ni:bgp/oc-ni:neighbors/oc-ni:neighbor/oc-bfdd:enable-bfd/oc-bfdd:state/oc-bfdd:associated-session{
@@ -279,47 +403,68 @@ module openconfig-bfd-ext {
   }
 
   augment /oc-bfdd:bfd {
+       description "BFD peer config and state node";
 
-       uses bfd-peer;
+       uses bfd-ext-peer;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:multi-hop-state/oc-bfd-ext:echo {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:state/oc-bfd-ext:echo {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:single-hop-state/oc-bfd-ext:echo/oc-bfd-ext:last-packet-transmitted {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:state/oc-bfd-ext:echo/oc-bfd-ext:last-packet-transmitted {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:single-hop-state/oc-bfd-ext:echo/oc-bfd-ext:last-packet-received {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:state/oc-bfd-ext:echo/oc-bfd-ext:last-packet-received {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:single-hop-state/oc-bfd-ext:async/oc-bfd-ext:last-packet-transmitted {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:state/oc-bfd-ext:async/oc-bfd-ext:last-packet-transmitted {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:single-hop-state/oc-bfd-ext:async/oc-bfd-ext:last-packet-received {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:state/oc-bfd-ext:async/oc-bfd-ext:last-packet-received {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:multi-hop-state/oc-bfd-ext:async/oc-bfd-ext:last-packet-transmitted {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:state/oc-bfd-ext:async/oc-bfd-ext:last-packet-transmitted {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:multi-hop-state/oc-bfd-ext:async/oc-bfd-ext:last-packet-received {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:state/oc-bfd-ext:async/oc-bfd-ext:last-packet-received {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:single-hop-state/oc-bfd-ext:remote-session-state {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:state/oc-bfd-ext:remote-session-state {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:multi-hop-state/oc-bfd-ext:remote-session-state {
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:state/oc-bfd-ext:remote-session-state {
         deviate not-supported;
   }
 
-  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-state/oc-bfd-ext:multi-hop-state/oc-bfd-ext:minimum-echo-interval {
-        deviate not-supported;
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:state/oc-bfd-ext:local-diagnostic-code {
+    deviate replace {
+        type bfd-ext-diagnostic-code;
+    }
+  }
+
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:state/oc-bfd-ext:local-diagnostic-code {
+    deviate replace {
+        type bfd-ext-diagnostic-code;
+    }
+  }
+
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:state/oc-bfd-ext:remote-diagnostic-code {
+    deviate replace {
+        type bfd-ext-diagnostic-code;
+    }
+  }
+
+  deviation /oc-bfdd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:state/oc-bfd-ext:remote-diagnostic-code {
+    deviate replace {
+        type bfd-ext-diagnostic-code;
+    }
   }
 }

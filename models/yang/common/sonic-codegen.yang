@@ -1,0 +1,39 @@
+module sonic-codegen {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://github.com/Azure/sonic-ext";
+
+  prefix "sonic-codegen";
+
+  // meta
+  organization "Sonic working group";
+
+  contact
+    "SONiC working group
+    https://azure.github.io/SONiC";
+
+  description
+    "This module provides extensions to the YANG language to allow
+    code generator specific functionalities.";
+
+  revision "2020-06-15" {
+    description
+      "Add suport for custom operationID in openAPI codegen
+	  and lint-ignore in YANG validator(deviation checker).";
+  }
+
+  // extension statements
+
+  extension openapi-opid {
+    argument "openapi-opid";
+    description "Custom Operation ID for OpenAPI";
+  }
+
+  extension lint-ignore {
+    argument "reason";
+    description "Skips linting";
+  }
+
+}

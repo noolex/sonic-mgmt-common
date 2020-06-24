@@ -100,6 +100,11 @@ module sonic-mclag {
                         }
                     }
                 }
+                leaf mclag_system_mac {
+                    type yang:mac-address;
+                    description
+                        "MCLAG system MAC";
+                }
                 leaf keepalive_interval {
                     type uint16 {
                         range "1..60" {
@@ -121,6 +126,19 @@ module sonic-mclag {
                 must "(keepalive_interval * 3) <= session_timeout" {
                         error-message "(keepalive interval * 3) <= session_timeout value";
                         error-app-tag keepalive_interval-invalid;
+                }
+                leaf delay_restore {
+                    type uint16 {
+                        range "1..3600" {
+                            error-message "MCLAG delay restore time is out of range";
+                            error-app-tag delay_restore-invalid;
+                        }
+                    }
+                    units seconds;
+                    default 300;
+                    description
+                        "Time to wait for protocol to converge before bringing up
+                         all MCLAG and orphan interfaces";
                 }
             }
         }

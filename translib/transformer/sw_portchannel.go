@@ -45,6 +45,7 @@ func init () {
 const (
        LAG_TYPE           = "lag-type"
        PORTCHANNEL_TABLE  = "PORTCHANNEL"
+       DEFAULT_PORTCHANNEL_MIN_LINKS = "1"
 )
 
 var LAG_TYPE_MAP = map[string]string{
@@ -139,7 +140,7 @@ func get_fallback(d *db.DB, lagName *string, fallback *string) error {
 }
 
 
-func get_fast_rate(d *db.DB, lagName *string, fast_rate *string) error {
+func get_fast_rate(d *db.DB, lagName *string, fastRate *string) error {
     intTbl := IntfTypeTblMap[IntfTypePortChannel]
     curr, err := d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.portTN}, db.Key{Comp: []string{*lagName}})
     if err != nil {
@@ -147,12 +148,12 @@ func get_fast_rate(d *db.DB, lagName *string, fast_rate *string) error {
         log.Info(errStr)
         return errors.New(errStr)
     }
-    if val, ok := curr.Field["fast_rate"]; ok {
-        *fast_rate = val
-        log.Infof("Fast Rate option read from DB: %s\n", *fast_rate)
+    if val, ok := curr.Field["fast-rate"]; ok {
+        *fastRate = val
+        log.Infof("Fast Rate option read from DB: %s\n", *fastRate)
     } else {
-        *fast_rate = "false"
-        log.Infof("Default Fast Rate option: %s\n", *fast_rate)
+        *fastRate = "false"
+        log.Infof("Default Fast Rate option: %s\n", *fastRate)
     }
     return nil
 }
@@ -167,7 +168,7 @@ func validateIntfAssociatedWithPortChannel(d *db.DB, ifName *string) error {
     }
     lagKeys, err := d.GetKeys(&db.TableSpec{Name:PORTCHANNEL_MEMBER_TN})
     if err == nil {
-        for i, _ := range lagKeys {
+        for i := range lagKeys {
             if *ifName == lagKeys[i].Get(1) {
                 errStr := lagKeys[i].Get(1) + " is already part of : " + lagKeys[i].Get(0)
                 log.Error(errStr)
@@ -178,7 +179,7 @@ func validateIntfAssociatedWithPortChannel(d *db.DB, ifName *string) error {
     return err
 }
 
-/* Handle min-links config */
+// YangToDb_lag_min_links_xfmr is a Yang to DB translation overloaded method for handle min-links config 
 var YangToDb_lag_min_links_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_lag_min_links_xfmr")
@@ -328,9 +329,9 @@ func can_configure_fast_rate(inParams XfmrParams) error {
     }
 
     // LACP LAG: Check for fast_rate interval re-configuration
-    var fast_rate string
-    e = get_fast_rate(inParams.d, &ifKey, &fast_rate)
-    if e == nil && fast_rate == "false" {
+    var fastRate string
+    e = get_fast_rate(inParams.d, &ifKey, &fastRate)
+    if e == nil && fastRate == "false" {
         errStr := "Fast Rate option cannot be configured for an already existing PortChannel: " + ifKey
         return tlerr.InvalidArgsError{Format:errStr}
     }
@@ -339,7 +340,7 @@ func can_configure_fast_rate(inParams XfmrParams) error {
     return nil
 }
 
-/* Handle fast_rate config */
+// YangToDb_lag_fast_rate_xfmr is a Yang to DB translation overloaded method for handle fast_rate config
 var YangToDb_lag_fast_rate_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_lag_fast_rate_xfmr")
@@ -359,13 +360,13 @@ var YangToDb_lag_fast_rate_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (m
         return res_map, err
     }
 
-    fast_rate, _ := inParams.param.(*bool)
-    res_map["fast_rate"] = strconv.FormatBool(*fast_rate)
+    fastRate, _ := inParams.param.(*bool)
+    res_map["fast_rate"] = strconv.FormatBool(*fastRate)
     return res_map, nil
 }
 
 
-/* Handle fallback config */
+// YangToDb_lag_fallback_xfmr is a Yang to DB translation overloaded method for handle fallback config 
 var YangToDb_lag_fallback_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     if log.V(3) {
         log.Info("Entering YangToDb_lag_fallback_xfmr")
@@ -432,9 +433,9 @@ var DbToYang_lag_fast_rate_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (m
 
     data := (*inParams.dbDataMap)[inParams.curDb]
 
-    fast_rate, ok := data[PORTCHANNEL_TABLE][inParams.key].Field["fast_rate"]
+    fastRate, ok := data[PORTCHANNEL_TABLE][inParams.key].Field["fast_rate"]
     if ok {
-        result["fast_rate"], _ = strconv.ParseBool(fast_rate)
+        result["fast-rate"], _ = strconv.ParseBool(fastRate)
     }
     return result, err
 }
@@ -464,9 +465,9 @@ func getLagStateAttr(attr *string, ifName *string, lagInfoMap  map[string]db.Val
     case "fallback":
         fallbackVal, _:= strconv.ParseBool(lagEntries.Field["fallback"])
         oc_val.Fallback = &fallbackVal
-   case "fast_rate":
-        fast_rate_val, _:= strconv.ParseBool(lagEntries.Field["fast_rate"])
-        oc_val.FastRate = &fast_rate_val
+   case "fast-rate":
+        fastRateVal, _:= strconv.ParseBool(lagEntries.Field["fast-rate"])
+        oc_val.FastRate = &fastRateVal
     case "member":
         lagMembers := strings.Split(lagEntries.Field["member@"], ",")
         oc_val.Member = lagMembers
@@ -487,7 +488,7 @@ func getLagState(ifName *string, lagInfoMap  map[string]db.Value,
     oc_val.MinLinks = &minlinks
     fallbackVal, _:= strconv.ParseBool(lagEntries.Field["fallback"])
     oc_val.Fallback = &fallbackVal
-    fastRateVal, _:= strconv.ParseBool(lagEntries.Field["fast_rate"])
+    fastRateVal, _:= strconv.ParseBool(lagEntries.Field["fast-rate"])
     oc_val.FastRate = &fastRateVal
 
     oc_val.LagType = ocbinds.OpenconfigIfAggregate_AggregationType_LACP
@@ -504,7 +505,7 @@ func getLagState(ifName *string, lagInfoMap  map[string]db.Value,
 }
 
 /* Get PortChannel Info */
-func fillLagInfoForIntf(d *db.DB, ifName *string, lagInfoMap map[string]db.Value) error {
+func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMap map[string]db.Value) error {
     var err error
     var lagMemKeys []db.Key
     intTbl := IntfTypeTblMap[IntfTypePortChannel]
@@ -517,7 +518,7 @@ func fillLagInfoForIntf(d *db.DB, ifName *string, lagInfoMap map[string]db.Value
     log.Infof("lag-member-table keys", lagMemKeys)
     var lagMembers []string
     var memberPortsStr strings.Builder
-    for i, _ := range lagMemKeys {
+    for i := range lagMemKeys {
         if *ifName == lagMemKeys[i].Get(0) {
             log.Info("Found member")
             ethName := lagMemKeys[i].Get(1)
@@ -547,8 +548,18 @@ func fillLagInfoForIntf(d *db.DB, ifName *string, lagInfoMap map[string]db.Value
     }
     lagInfoMap[*ifName].Field["min-links"] = strconv.Itoa(links)
     /* Get fallback value */
+
+    lagTbl := &db.TableSpec{Name: "LAG_TABLE"}
+    appDb := inParams.dbs[db.ApplDB]
+    dbEntry, err := appDb.GetEntry(lagTbl, db.Key{Comp: []string{*ifName}})
+    if err != nil {
+        errStr := "Failed to get PortChannel APP_DB entry"
+        log.Info(errStr)
+        return errors.New(errStr)
+    }
+
     var fallbackVal string
-    if val, ok := curr.Field["fallback"]; ok {
+    if val, ok := dbEntry.Field["fallback_operational"]; ok {
         fallbackVal = val
     } else {
         log.Info("Fallback set to False, default value")
@@ -567,7 +578,7 @@ func fillLagInfoForIntf(d *db.DB, ifName *string, lagInfoMap map[string]db.Value
         fastRateVal = "false"
     }
 
-    lagInfoMap[*ifName].Field["fast_rate"] = fastRateVal
+    lagInfoMap[*ifName].Field["fast-rate"] = fastRateVal
 
     /*Get Static Value*/
     if v, k := curr.Field["static"]; k {
@@ -581,7 +592,7 @@ func fillLagInfoForIntf(d *db.DB, ifName *string, lagInfoMap map[string]db.Value
     return err
 }
 
-/* PortChannel GET operation */
+// DbToYang_intf_lag_state_xfmr is a DB to Yang translation overloaded method for PortChannel GET operation 
 var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
 
@@ -617,11 +628,11 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
         return err
     }
 
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath is ", targetUriPath)
     lagInfoMap := make(map[string]db.Value)
     ocAggregationStateVal := intfObj.Aggregation.State
-    err = fillLagInfoForIntf(inParams.d, &ifName, lagInfoMap)
+    err = fillLagInfoForIntf(inParams, inParams.d, &ifName, lagInfoMap)
     if err != nil {
         log.Errorf("Failed to get info: %s failed!", ifName)
         return err
@@ -649,9 +660,14 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
         if err != nil {
             return err
         }
-    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fast_rate":
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fast-rate":
+
+        links, _ := strconv.Atoi(DEFAULT_PORTCHANNEL_MIN_LINKS)
+        minlinks := uint16(links)
+        ocAggregationStateVal.MinLinks = &minlinks
+
         log.Info("Get is for fast rate")
-        attr := "fast_rate"
+        attr := "fast-rate"
         err = getLagStateAttr(&attr, &ifName, lagInfoMap, ocAggregationStateVal)
         if err != nil {
             return err
@@ -715,7 +731,7 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
     var flag bool = false
     lagKeys, err := inParams.d.GetKeys(&db.TableSpec{Name:intTbl.cfgDb.memberTN})
     if err == nil {
-        for key, _ := range lagKeys {
+        for key := range lagKeys {
             if *lagName == lagKeys[key].Get(0) {
                 flag = true
                 log.Info("Member port", lagKeys[key].Get(1))
@@ -723,7 +739,7 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
                 lagMemberMap[memberKey] = db.Value{Field:map[string]string{}}
             }
         }
-        if flag == true {
+        if flag {
             resMap["PORTCHANNEL_MEMBER"] = lagMemberMap
         }
     }
@@ -791,4 +807,40 @@ var DbToYang_lag_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[st
     log.Infof("Lag Type returned from Field Xfmr: %v\n", result)
     return result, err
 }
+
+
+/* Function to update MTU of PortChannel member ports */
+func updateMemberPortsMtu(inParams *XfmrParams, lagName *string, mtuValStr *string) error {
+    log.Info("Inside updateLagIntfAndMembersMtu")
+    var err error
+    resMap := make(map[string]string)
+    intPortChannelTbl := IntfTypeTblMap[IntfTypePortChannel]
+
+    /* Validate given PortChannel exits */
+    err = validatePortChannel(inParams.d, *lagName)
+    if err != nil {
+        return err
+    }
+
+    lagKeys, err := inParams.d.GetKeys(&db.TableSpec{Name:intPortChannelTbl.cfgDb.memberTN})
+    if err == nil {
+        subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        intfMap := make(map[string]map[string]db.Value)
+        intTbl := IntfTypeTblMap[IntfTypeEthernet]
+        resMap["mtu"] = *mtuValStr
+        intfMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+
+        for key := range lagKeys {
+            if *lagName == lagKeys[key].Get(0) {
+                portName := lagKeys[key].Get(1)
+                intfMap[intTbl.cfgDb.portTN][portName] = db.Value{Field:resMap}
+                log.Info("Member port ", portName, "updated with mtu ", *mtuValStr)
+            }
+        }
+
+        subOpMap[db.ConfigDB] = intfMap
+        inParams.subOpDataMap[UPDATE] = &subOpMap
+    }
+    return err
+ }
 

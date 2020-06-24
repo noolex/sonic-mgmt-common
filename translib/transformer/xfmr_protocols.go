@@ -31,7 +31,7 @@ var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (in
                 cfg_tbl_updated = true
             }
             if ((niName == "default") || (strings.HasPrefix(niName, "Vlan"))) {
-                if cfg_tbl_updated == false {
+                if !cfg_tbl_updated {
                     (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
                     cfg_tbl_updated = true
                 }
@@ -48,15 +48,12 @@ var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (in
 
 var YangToDb_network_instance_protocol_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var key string
-    log.Info("YangToDb_network_instance_protocol_key_xfmr - Operation: ", inParams.oper)
-    log.Info("YangToDb_network_instance_protocol_key_xfmr - URI: ", inParams.uri)
     if (inParams.oper == GET) {
         pathInfo := NewPathInfo(inParams.uri)
         protoId := pathInfo.Var("identifier")
         protoName := pathInfo.Var("name#2")
         key = protoId+"|"+protoName
     }
-    log.Info("returned Key: ", key)
     return key, nil
 }
 

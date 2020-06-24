@@ -69,6 +69,12 @@ module openconfig-mclag {
       description
         "peer link of MCLAG Domain";
     }
+    
+    leaf mclag-system-mac {
+      type oc-yang:mac-address;
+      description
+        "MCLAG System MAC";
+    }
 
     leaf keepalive-interval {
       type uint32 {
@@ -90,9 +96,19 @@ module openconfig-mclag {
         "Session Timeout for ICCP MCLAG session";
     }
 
+    leaf delay-restore {
+      type uint16 {
+          range 1..3600;
+      }
+      units "seconds";
+      default 300;
+      description
+        "Time to wait for protocol to converge before bringing up
+        all MCLAG and orphan interfaces";
+    }
   }
 
-  grouping gateway-mac-config {
+  grouping mclag-gateway-mac-config {
     description
       "MCLAG Domain config";
     leaf gateway-mac {
@@ -185,7 +201,7 @@ module openconfig-mclag {
   }
 
 
-  grouping mclag-gateway-mac-config {
+  grouping mclag-gateway-mac-top {
     description
       "MCLAG Gateway mac top level container";
 
@@ -207,12 +223,13 @@ module openconfig-mclag {
         container config {
           description
             "MCLAG gw-mac config";
-          uses gateway-mac-config;
+          uses mclag-gateway-mac-config;
         }
         container state {
+          config false;
           description
             "MCLAG gw-mac config";
-          uses gateway-mac-config;
+          uses mclag-gateway-mac-config;
         }
       }
     }
@@ -362,7 +379,7 @@ module openconfig-mclag {
 
     leaf unique-ip-enable {
         type enumeration {
-            enum enable {
+            enum ENABLE {
                 description
                     "Enable MCLAG Unique-ip";
             }
@@ -455,7 +472,7 @@ module openconfig-mclag {
       uses mclag-domain-top;
       uses mclag-interfaces-top;
       uses mclag-unique-ip-top;
-      uses mclag-gateway-mac-config;
+      uses mclag-gateway-mac-top;
     }
   }
 
