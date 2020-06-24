@@ -928,7 +928,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 		log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
 		err = st_err
 		parentTblExists = false
-		return parentTblExists, err
+		goto Exit
 	} else if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
 		log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
 		for dbNo, dbMap := range st_result.dbDataMap {
@@ -941,7 +941,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 					if oper != GET {
 						d, err = db.NewDB(getDBOptions(dbNo))
 						if err != nil {
-							log.Error("Couldn't allocate NewDb/DbOptions for db - %vi, while processing uri - %v", dbNo, uri)
+							log.Error("Couldn't allocate NewDb/DbOptions for db - %v, while processing uri - %v", dbNo, uri)
 							parentTblExists = false
 							goto Exit
 						}
@@ -960,7 +960,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 
 		}
 	} else {
-		err = fmt.Errorf("No Table information retrieved for uri %v", uri)
+		err = fmt.Errorf("No Table information retrieved from subtree for uri %v", uri)
 		parentTblExists = false
 		goto Exit
 	}
@@ -1074,26 +1074,30 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
                 // For POST since the target URI is the parent URI, it should exist.
                 // For DELETE we handle the table verification here to avoid any CVL error thrown for delete on non existent table
 		log.Infof("Check last parent table for uri: %v", uri)
-		xpath, xpathErr := XfmrRemoveXPATHPredicates(curUri)
+		xpath, xpathErr := XfmrRemoveXPATHPredicates(uri)
 		if xpathErr != nil {
-			log.Errorf("Xpath conversion didn't happen for Uri - %v, due to - %v", xpathErr)
+			log.Errorf("Xpath conversion didn't happen for Uri - %v, due to - %v", uri, xpathErr)
 			return false, xpathErr
 		}
 		xpathInfo, ok := xYangSpecMap[xpath]
+		if !ok {
+			err = fmt.Errorf("xYangSpecMap does not contain xpath - %v", xpath)
+			log.Error("%v", err)
+			return false, err
+		}
 		// Check for subtree case and invoke subscribe xfmr
-		if ok && (len(xpathInfo.xfmrFunc) > 0) {
+		if len(xpathInfo.xfmrFunc) > 0 {
 			xfmrLogInfoAll("Found subtree for uri - %v", uri)
 			parentTblExists, err = verifyParentTblSubtree(dbs, uri, xpathInfo.xfmrFunc, oper)
-			if ((!parentTblExists) || (err != nil)) {
-				if err != nil {
-					return false, err
-				}
+			if err != nil {
+				return false, err
+			}
+			if !parentTblExists {
 				err = fmt.Errorf("Parent Table does not exist for uri %v", uri)
 				log.Errorf("%v", err)
 				return false, err
-			} else {
-				return true, nil
 			}
+			return true, nil
 		}
 		virtualTbl := false
 		if xpathInfo.virtualTbl != nil {
