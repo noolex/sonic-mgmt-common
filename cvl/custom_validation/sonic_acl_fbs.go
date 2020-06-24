@@ -211,7 +211,7 @@ func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLEr
 func (t *CustomValidation) ValidateEgressConfig(vc *CustValidationCtxt) CVLErrorInfo {
 
 	log.Infof("ValidateEgressConfig operation %d on %s:%s:%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
-	if vc.CurCfg.VOp == OP_DELETE || vc.CurCfg == nil {
+	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 

@@ -472,10 +472,12 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                 pf_docker_ver = swComp.Docker.DockerVersion[scanner.Text()]
             }
             ygot.BuildEmptyTree(pf_docker_ver)
+            ygot.BuildEmptyTree(pf_docker_ver.State)
             pf_docker_ver.DockerName = &s[0]
-            pf_docker_ver.DockerTagId = &s[1]
-            pf_docker_ver.DockerImageId = &s[2]
-            pf_docker_ver.DockerSize = &s[3]
+            pf_docker_ver.State.DockerName = &s[0]
+            pf_docker_ver.State.DockerTagId = &s[1]
+            pf_docker_ver.State.DockerImageId = &s[2]
+            pf_docker_ver.State.DockerSize = &s[3]
         }
     } else {
         switch targetUriPath {
@@ -582,10 +584,12 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     pf_docker_ver = swComp.Docker.DockerVersion[scanner.Text()]
                 }
                 ygot.BuildEmptyTree(pf_docker_ver)
+                ygot.BuildEmptyTree(pf_docker_ver.State)
                 pf_docker_ver.DockerName = &s[0]
-                pf_docker_ver.DockerTagId = &s[1]
-                pf_docker_ver.DockerImageId = &s[2]
-                pf_docker_ver.DockerSize = &s[3]
+                pf_docker_ver.State.DockerName = &s[0]
+                pf_docker_ver.State.DockerTagId = &s[1]
+                pf_docker_ver.State.DockerImageId = &s[2]
+                pf_docker_ver.State.DockerSize = &s[3]
             }
         default:
             log.Infof("Attribute not found")

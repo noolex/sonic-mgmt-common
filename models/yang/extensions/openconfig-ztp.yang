@@ -98,67 +98,67 @@ module openconfig-ztp {
                       "Name of the ZTP configuration section.";
                 }
 
-                leaf error {
-                    type string;
-                    description
-                      "If the executed program defined in the configuration section has failed, this capture the output of this program.
-                       An empty string indicates that the configuration section has succeeded to execute successfully.";
-                }
-
-                leaf status {
-                    type string;
-                    description
-                      "Displays the current state and result of a configuration section. The following are possible values this field can display:
-                       - IN-PROGRESS: Corresponding configuration section is currently being processed.
-                       - SUCCESS: Corresponding configuration section was processed successfully.
-                       - FAILED: Corresponding configuration section failed to execute successfully.
-                       - Not Started: ZTP service has not started processing the corresponding configuration section.
-                       - DISABLED: Corresponding configuration section has been marked as disabled and will not be processed.";
-                }
-
-                leaf runtime {
-                    type string;
-                    description
-                      "It indicates the time taken to process the associated configuration section.";
-                }
-
-                leaf timestamp {
-                    type yang:date-and-time;
-                    description
-                      "Timestamp - Displays the date/time stamp when the status field was last changed.";
-                }
-
-                leaf exitcode {
-                    type uint64;
-                    description
-                      "It indicates the program exit code of the configuration section executed.
-                       Non-zero exit code indicates that the configuration section has failed to execute successfully.";
-                }
-
-                leaf ignoreresult {
-                    type boolean;
-                    description
-                      "If this value is True, the result of the corresponding configuration section is ignored and not used to evaluate the overall ZTP result.";
-                }
-
-                leaf description {
-                    type string;
-                    description
-                      "Description of the ZTP configuration section.";
-                }
-
-                leaf haltonfailure {
-                    type boolean;
-                    description
-                      "Any configuration section failing will abort the ZTP operation.";
-                }
-
                 container state {
-                    description "ztp section name";
+                    description "ztp config-section state";
+
                     leaf sectionname {
                         type string;
                         description
                           "Name of the ZTP configuration section.";
+                    }
+                    leaf error {
+                        type string;
+                        description
+                          "If the executed program defined in the configuration section has failed, this capture the output of this program.
+                           An empty string indicates that the configuration section has succeeded to execute successfully.";
+                    }
+
+                    leaf status {
+                        type string;
+                        description
+                          "Displays the current state and result of a configuration section. The following are possible values this field can display:
+                           - IN-PROGRESS: Corresponding configuration section is currently being processed.
+                           - SUCCESS: Corresponding configuration section was processed successfully.
+                           - FAILED: Corresponding configuration section failed to execute successfully.
+                           - Not Started: ZTP service has not started processing the corresponding configuration section.
+                           - DISABLED: Corresponding configuration section has been marked as disabled and will not be processed.";
+                    }
+
+                    leaf runtime {
+                        type string;
+                        description
+                          "Indicates the time taken to process the associated configuration section.";
+                    }
+
+                    leaf timestamp {
+                        type yang:date-and-time;
+                        description
+                          "Displays the date/time stamp when the status field was last changed.";
+                    }
+
+                    leaf exitcode {
+                        type uint64;
+                        description
+                          "Indicates the program exit code of the configuration section executed.
+                           Non-zero exit code indicates that the configuration section has failed to execute successfully.";
+                    }
+
+                    leaf ignoreresult {
+                        type boolean;
+                        description
+                          "If this value is True, the result of the corresponding configuration section is ignored and not used to evaluate the overall ZTP result.";
+                    }
+
+                    leaf description {
+                        type string;
+                        description
+                          "Description of the ZTP configuration section.";
+                    }
+
+                    leaf haltonfailure {
+                        type boolean;
+                        description
+                          "Any configuration section failing will abort the ZTP operation.";
                     }
                 }
             }

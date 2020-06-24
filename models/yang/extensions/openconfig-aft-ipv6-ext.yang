@@ -33,13 +33,16 @@ module openconfig-aft-ipv6-ext {
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry {
-      description "AFT augmentations for nexthop entry and state extensions to a forwarding IPv6 entry";
+      description "AFT extensions for IPv6 forwarding entry";
       uses oc-aft:aft-nhop-structural;
-      uses oc-aft-ext:aft-ext-common-ip-state;
   }
 
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-netinst:state {
+      description "AFT extensions for IPv6 forwarding entry state";
+      uses oc-aft-ext:aft-ext-common-ip-state;
+  }
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/next-hops/next-hop/state {
-      description "AFT augmentations for nexthop state extensions for IPv6 ";
+      description "AFT nexthop state extensions for IPv6 forwarding entry";
       uses oc-aft-ext:aft-ext-common-entry-nexthop-state;
   }
 }

@@ -127,6 +127,19 @@ module sonic-mclag {
                         error-message "(keepalive interval * 3) <= session_timeout value";
                         error-app-tag keepalive_interval-invalid;
                 }
+                leaf delay_restore {
+                    type uint16 {
+                        range "1..3600" {
+                            error-message "MCLAG delay restore time is out of range";
+                            error-app-tag delay_restore-invalid;
+                        }
+                    }
+                    units seconds;
+                    default 300;
+                    description
+                        "Time to wait for protocol to converge before bringing up
+                         all MCLAG and orphan interfaces";
+                }
             }
         }
 

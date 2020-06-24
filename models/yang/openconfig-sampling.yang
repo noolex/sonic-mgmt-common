@@ -1,0 +1,96 @@
+module openconfig-sampling {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/sampling";
+
+  prefix "oc-sampling";
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+
+  include openconfig-sampling-ipfix;
+  include openconfig-sampling-sflow;
+
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
+
+  description
+    "This module defines configuration and operational state data
+    related to data plane traffic sampling.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2018-07-20" {
+    description
+      "Initial revision";
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  // typedef statements
+
+  // grouping statements
+
+
+  grouping sampling-config {
+    description
+      "Configuration data for traffic sampling data.";
+  }
+
+  grouping sampling-state {
+    description
+      "Operational state data for traffic sampling data.";
+  }
+
+  grouping sampling-top {
+    description
+      "Top-level grouping for traffic sampling data.";
+
+    container sampling {
+      description
+        "Top-level container for data related to traffic sampling
+        protocols.";
+
+      container config {
+        description
+          "Configuration data for traffic sampling data.";
+
+        uses sampling-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for traffic sampling data.";
+
+        uses sampling-config;
+        uses sampling-state;
+      }
+
+      uses sflow-global-top;
+      uses ipfix-top;
+    }
+  }
+
+  // data definition statements
+
+  uses sampling-top;
+
+
+  // augment statements
+
+}

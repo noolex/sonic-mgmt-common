@@ -1,0 +1,336 @@
+module openconfig-ip-sla {
+
+  yang-version "1.1";
+  // namespace
+  namespace "http://openconfig.net/yang/ip-sla/extension";
+  prefix "oc-ip-sla";
+
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-interfaces { prefix oc-if; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "IP SLA track features provide periodic reachability check for tracked services.
+     This module defines configuration and operational state data for IP SLA.";
+
+
+  revision "2020-06-16" {
+  description
+    "Initial revision";
+    reference "0.1.0";
+  }
+
+  oc-ext:openconfig-version "1.0.2";
+
+  grouping ip-sla-config {
+    description
+      "IP SLA config";
+    leaf ip-sla-id {
+      type uint16 {
+        range "1..4095" {
+          error-message "IP SLA ID out of range";
+        }
+      }
+      description
+        "Ip sla id of IP SLA";
+
+    }
+
+    leaf frequency {
+      type uint16 {
+        range "1..300" {
+          error-message "Frequency out of range";
+        }
+      }
+      description
+        "Frequency of IP SLA";
+
+    }
+
+    leaf threshold {
+      type uint16 {
+        range "1..1000" {
+          error-message "Threshold out of range";
+        }
+      }
+      description
+        "Threshold of IP SLA";
+
+    }
+
+    leaf timeout {
+      type uint16 {
+        range "1..4095" {
+          error-message "Timeout out of range";
+        }
+      }
+      description
+        "Timeout of IP SLA";
+    }
+
+    leaf tcp-source-port {
+      type uint16 {
+        range "1..4095" {
+          error-message "Timeout out of range";
+        }
+      }
+      description
+        "Tcp source port of IP SLA";
+
+    }
+
+    leaf tcp-dst-port {
+      type uint16 {
+        range "1..4095" {
+          error-message "Timeout out of range";
+        }
+      }
+      description
+        "Tcp destination port of IP SLA";
+    }
+
+    leaf tcp-source-interface {
+      type oc-if:base-interface-ref;
+      description
+        "Tcp source interface of IP SLA";
+
+    }
+
+    leaf tcp-ttl {
+      type uint16 {
+        range "1..256" {
+          error-message "tcp-ttl out of range";
+        }
+      }
+      description
+        "Tcp TTL of IP SLA";
+    }
+
+    leaf tcp-tos {
+      type uint16 {
+        range "0..7" {
+          error-message "tcp-tos out of range";
+        }
+      }
+      description
+        "Tcp tos of IP SLA";
+    }
+
+    leaf tcp-source-ip {
+      type oc-inet:ip-address;
+      description
+        "Tcp source ip of IP SLA";
+    }
+
+    leaf tcp-dst-ip {
+      type oc-inet:ip-address;
+      description
+        "Tcp destination ip of IP SLA";
+    }
+
+    leaf vrf {
+      type string;
+      description
+        "Vrf of IP SLA";
+    }
+
+    leaf icmp-source-interface {
+      type oc-if:base-interface-ref;
+      description
+        "Icmp source interface of IP SLA";
+    }
+
+    leaf icmp-source-ip {
+      type oc-inet:ip-address;
+      description
+        "Icmp source ip of IP SLA";
+    }
+
+
+    leaf icmp-dst-ip {
+      type oc-inet:ip-address;
+      description
+        "Icmp destination ip of IP SLA";
+    }
+
+    leaf icmp-size {
+      type uint16 {
+        range "1..9200" {
+          error-message "icmp-size out of range";
+        }
+      }
+      description
+        "Icmp size of IP SLA";
+    }
+  }
+
+  grouping ip-sla-state {
+    description
+      "IP SLA state";
+
+    leaf transition {
+      type enumeration {
+        enum OPER_UP {
+          description
+            "IP SLA is operationally up";
+        }
+        enum OPER_DOWN {
+          description
+            "IP SLA is operationally down";
+        }
+      }
+      description
+        "IP SLA oper status";
+     }
+
+    leaf timestamp {
+      type string;
+      description
+        "Timestamp of oper change of IP SLA";
+    }
+
+    leaf lastchange {
+      type string;
+      description
+        "Timestamp of last change of IP SLA";
+    }
+
+    leaf transition-count {
+      type uint16; 
+      description
+        "Transition count of state of IP SLA";
+    }
+
+    leaf icmp-operation-state {
+      type string;
+      description
+        "Icmp operational state of IP SLA";
+    }
+
+    leaf icmp-success-counter {
+      type uint16; 
+      description
+        "Icmp success counter of IP SLA";
+    }
+
+    leaf icmp-fail-counter {
+      type uint16; 
+      description
+        "Icmp failure counter of IP SLA";
+    }
+
+    leaf icmp-echo-req-counter {
+      type uint16; 
+      description
+        "Icmp echo request counter of IP SLA";
+    }
+
+    leaf icmp-echo-reply-counter {
+      type uint16; 
+      description
+        "Icmp echo reply counter of IP SLA";
+    }
+
+    leaf icmp-error-counter {
+      type uint16; 
+      description
+        "Icmp error counter of IP SLA";
+    }
+
+    leaf tcp-operation-frequency {
+      type uint16; 
+      description
+        "Tcp operation frequency of IP SLA";
+    }
+
+    leaf tcp-operation-timeout {
+      type uint16; 
+      description
+        "Tcp operational timeout of IP SLA";
+    }
+
+    leaf tcp-operation-state {
+     type string;
+     description
+       "Tcp operational state of IP SLA";
+    }
+
+    leaf tcp-operation-success-counter {
+      type uint16; 
+      description
+        "Tcp operational succes counter of IP SLA";
+    }
+
+    leaf tcp-operation-fail-counter {
+      type uint16; 
+      description
+        "tcp operational failure counter of IP SLA";
+    }
+ 
+    leaf tcp-connect-req-counter {
+      type uint16; 
+      description
+        "Tcp connect request counter of IP SLA";
+    }
+
+    leaf tcp-connect-success-counter {
+      type uint16; 
+      description
+        "Tcp connect success counter of IP SLA";
+    }
+
+    leaf tcp-connect-fail-counter {
+      type uint16; 
+      description
+        "tcp connect failure counter of IP SLA";
+    }
+  }
+
+  grouping ip-sla-top {
+    description
+       "IP SLA variables top level container";
+
+  container ip-slas {
+    description
+      "IP SLA entries variables enclosing container";
+
+    list ip-sla {
+      key "ip-sla-id";
+      description
+        "List of ip sla entries";
+
+        leaf ip-sla-id {
+          type leafref {
+            path "../config/ip-sla-id";
+          }
+          description
+            "Reference to the ip-sla-id list  key";
+        }
+
+        container config {
+          description
+            "The configuration and information table for ip-sla";
+          uses ip-sla-config;
+
+        }
+
+        container state {
+          config false;
+          description
+            "ip-sla state table information";
+          uses ip-sla-config;
+          uses ip-sla-state;
+        }
+      }
+    }
+  }
+
+  // data definition statements
+  uses ip-sla-top;
+}

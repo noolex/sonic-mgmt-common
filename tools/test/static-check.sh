@@ -28,9 +28,10 @@ function print_help_and_exit() {
     echo " -tests        Include test files for static checks."
     echo " -exclude=DIR  Directory to exclude for static checks. It can be repeated"
     echo "               multiple times to specify multiple exclude directories."
-    echo " -notfail=DIR  Do not treat failures as error for a directory. It can be"
-    echo "               repeated multiple times specify multiple such directories."
+    echo " -notfail=FILE Do not treat failures as error for a file or directory."
+    echo "               It can be repeated multiple times specify multiple such paths."
     echo "               Special value 'all' selects all directories."
+    echo " -log=FILE     Write static checker logs to a file (and to stdout)."
     echo ""
     echo "SRC_PATH selects source directories for static analysis."
     echo "If SRC_PATH is not specified, whole current directory tree is included."
@@ -72,6 +73,9 @@ case "$1" in
     -notfail=*|--notfail=*)
         NOTFAIL+=( "$(echo $1 | cut -d= -f2-)" )
         shift ;;
+    -log=*|--log=*)
+        LOGFILE="$(echo $1 | cut -d= -f2-)"
+        shift ;;
     -*) print_help_and_exit ;;
     *)  break ;;
 esac
@@ -85,7 +89,7 @@ function pkgpath() {
 
 # Resolve package name for static checker and grep expression.
 # Other options would have been already available in OPTIONS array.
-PIPE=(tee)
+PIPE=(cat)
 
 if [[ $# -gt 1 ]]; then
     print_help_and_exit
@@ -138,19 +142,40 @@ if [[ -z ${MAKELEVEL} ]]; then
     ifmake -C ${TOPDIR}/translib ocbinds/ocbinds.go
 fi
 
-[[ "${NOTFAIL}" == "all" ]] && NOTFAIL=( "${PACKAGE[@]}" )
-for D in "${NOTFAIL[@]}"; do NOTFAILPATH+=":$(pkgpath $D):"; done
-EXITSTATUS=0
+# Create a temporary logfile if not specified thru -log option.
+[[ -z ${LOGFILE} ]] && LOGFILE=$(mktemp) || mkdir -p "$(dirname ${LOGFILE})"
 
 echo "Running Go static checks at ${PWD}"
-echo "Pacakage = ${PACKAGE}$(test ${#PACKAGE[@]} -lt 2 || echo /...), files = ${FILE}*"
+echo "Pacakage = [${PACKAGE[@]}], files = ${FILE}*"
 echo ""
+GOFLAGS="-mod=vendor" ${GOBIN}/staticcheck "${OPTIONS[@]}" "${PACKAGE[@]}" | "${PIPE[@]}" | tee ${LOGFILE}
 
-# Run staticcheck for each package and collect the exit status.
-# Ignores the error status if the package was marked via -notfail option.
-for PKG in "${PACKAGE[@]}"; do
-    GOFLAGS="-mod=vendor" ${GOBIN}/staticcheck "${OPTIONS[@]}" "${PKG}" | "${PIPE[@]}"
-    [[ ${PIPESTATUS[0]} == 0 ]] || [[ "${NOTFAILPATH}" =~ ":${PKG}:" ]] || EXITSTATUS=1
-done
+# Count error using the check code printed at end of line, like " (S1005)"
+NUM_ERROR=$(grep -c " ([[:alnum:]]*)$" ${LOGFILE} || true)
+NUM_IGNORE=0
 
-exit ${EXITSTATUS}
+# Count ignored errors by matching log line's file path with -notfail paths.
+# Compilation errors are not ignored.
+if [[ ${#NOTFAIL[@]} != 0 ]]; then
+    for NF in "${NOTFAIL[@]}"; do
+        case ${NF} in
+        all)  NOTFAIL_EXPR="^.*\.go:\|"; break ;;
+        *.go) NOTFAIL_EXPR+="^$(realpath --relative-to=. ${NF}):\|" ;;
+        *)    NOTFAIL_EXPR+="^$(realpath --relative-to=. ${NF})[/]*[^/]*\.go:\|" ;;
+        esac
+    done
+
+    NUM_IGNORE=$(grep "^[^[:space:]].*\.go:[0-9]*:[0-9]*: " ${LOGFILE} | \
+                    grep -v " (compile)$" | grep -c "${NOTFAIL_EXPR::(-2)}" || true)
+    if [[ ${NUM_IGNORE} != 0 ]]; then
+        IGNORE_MSG=", ${NUM_IGNORE} exempted"
+        NON_IGNORE=( $(grep -o "^[^[:space:]].*\.go:[0-9]*:[0-9]*:" ${LOGFILE} | \
+            grep -v "${NOTFAIL_EXPR::(-2)}" | sed 's/:[0-9]*:[0-9]*:$//' | sort -u) )
+    fi
+fi
+
+# Print summary
+[[ -z ${NON_IGNORE}   ]] || echo -e "\nNew errors found in: $(printf "\n  %s" "${NON_IGNORE[@]}")"
+[[ ${NUM_ERROR} == 0  ]] || echo -e "\n(${NUM_ERROR} errors${IGNORE_MSG}, logs written to ${LOGFILE})"
+
+test $((NUM_ERROR - NUM_IGNORE)) -lt 1

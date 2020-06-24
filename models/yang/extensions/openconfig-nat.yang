@@ -76,7 +76,17 @@ module openconfig-nat {
             "Dynamic entry type.";
     }
 
+    typedef ip-addr-type {
+        type union {
+          type oc-inet:ipv4-address;
+          type string {
+                          pattern '(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(-(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))?';
+                      }
+        }
 
+        description
+          "This type denotes a single IPv4 address or a range of IPv4 addresses.";
+    }
 
     grouping nat-napt-mapping-table-config {
         description
@@ -596,25 +606,10 @@ module openconfig-nat {
                 "NAT pool name.";
         }
 
-        choice nat-ip {
-            description 
+        leaf nat-ip {
+            type ip-addr-type;
+            description
                 "NAT Pool can be configured using either a single IP or an IP address range.";
-            case ip-address {
-                leaf IP-ADDRESS {
-                    type oc-inet:ipv4-address;
-                    description 
-                        "Single valid IPv4 address as defined by openconfig inet yang.";
-                }
-            }
-            case ip-address-range {
-                leaf IP-ADDRESS-RANGE {
-                    type string {
-                        pattern '(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(-(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))?';
-                    }
-                    description
-                        "Range of IPv4 addresses.";
-                }
-            }
         }
 
         leaf nat-port {

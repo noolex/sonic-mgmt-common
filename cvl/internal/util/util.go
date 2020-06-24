@@ -62,7 +62,7 @@ var CVL_SCHEMA string = "schema/"
 var CVL_CFG_FILE string = "/usr/sbin/cvl_cfg.json"
 const CVL_LOG_FILE = "/tmp/cvl.log"
 const SONIC_DB_CONFIG_FILE string = "/var/run/redis/sonic-db/database_config.json"
-const ENV_VAR_SONIC_DB_CONFIG_FILE = "SONIC_DB_CFG_FILE"
+const ENV_VAR_SONIC_DB_CONFIG_FILE = "DB_CONFIG_PATH"
 var sonic_db_config = make(map[string]interface{})
 
 //package init function 
@@ -441,6 +441,11 @@ func dbCfgInit() {
 		"DATABASES" : {
 			"CONFIG_DB" : {
 				"id" : 4,
+				"separator": "|",
+				"instance" : "redis"
+			},
+			"STATE_DB" : {
+				"id" : 6,
 				"separator": "|",
 				"instance" : "redis"
 			}

@@ -33,7 +33,7 @@ var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (in
                 cfg_tbl_updated = true
             }
             if ((niName == "default") || (strings.HasPrefix(niName, "Vlan"))) {
-                if cfg_tbl_updated == false {
+                if !cfg_tbl_updated {
                     (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
                     cfg_tbl_updated = true
                 }
