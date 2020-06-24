@@ -133,7 +133,10 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 			mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
 		}
 	}
-	if isFirstCall {
+
+	// Not required to process parent and current table as subtree is already invoked before we get here
+        // We only need to traverse nested subtrees here
+	if isFirstCall && len(spec.xfmrFunc) == 0 {
 		parentUri := parentUriGet(xlateParams.uri)
 		_, parentKey, parentTbl, perr = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 		xfmrLogInfoAll("Parent Uri - %v, ParentTbl - %v, parentKey - %v", parentUri, parentTbl, parentKey)
@@ -155,6 +158,9 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				_, curKey, curTbl, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, curUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 				xfmrLogInfoAll("Current Uri - %v, CurrentTbl - %v, CurrentKey - %v", curUri, curTbl, curKey)
 
+				// Not required to check for table inheritence case here as we have a subtree and subtree is already processed before we get here
+                               // We only need to traverse nested subtrees here
+				if len(spec.xfmrFunc) == 0 {
 				if isFirstCall {
 					if perr != nil && cerr != nil {
 						if len(curTbl) > 0 && parentTbl != curTbl {
@@ -219,6 +225,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				}
 
 			}// end of if isFirstCall
+			} // end if !subtree case
 			xfmrLogInfoAll("For uri - %v , table-owner - %v, fillFields - %v", curUri, tblOwner, fillFields)
 			if fillFields || spec.hasChildSubTree || isFirstCall {
 				for yangChldName := range spec.yangEntry.Dir {
