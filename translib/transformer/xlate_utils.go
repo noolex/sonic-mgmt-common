@@ -150,13 +150,6 @@ func parentUriGet(uri string) string {
 	return parentUri
 }
 
-func isYangResType(ytype string) bool {
-    if ytype == "choice" || ytype == "case" {
-        return true
-    }
-    return false
-}
-
 func yangTypeGet(entry *yang.Entry) string {
     if entry != nil && entry.Node != nil {
         return entry.Node.Statement().Keyword
@@ -770,6 +763,7 @@ func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
 
 /* This function is used to get the DB Key using only the annotation at the given uri
    This is not used to get the key if you need to derive the key from its parent lists. Use xpathKeyExtract in that case */
+/*
 func dbKeyFromAnnotGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, error) {
 	dbKey := ""
 	var err error
@@ -806,7 +800,7 @@ func dbKeyFromAnnotGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
          }
 	return dbKey, err
 }
-
+*/
 func sonicXpathKeyExtract(path string) (string, string, string) {
 	 xfmrLogInfoAll("In uri(%v)", path)
 	 xpath, keyStr, tableName, fldNm := "", "", "", ""
@@ -937,20 +931,6 @@ func copyYangXpathSpecData(dstNode *yangXpathInfo, srcNode *yangXpathInfo) {
 	if dstNode != nil && srcNode != nil {
 		*dstNode = *srcNode
 	}
-}
-
-func isYangLeaf(uri string) (bool, error) {
-	xpath, err := XfmrRemoveXPATHPredicates(uri)
-	if err == nil {
-		if d, ok := xYangSpecMap[xpath]; ok {
-			if d.yangDataType == YANG_LEAF {
-				return true, nil
-			}
-		} else {
-			err = fmt.Errorf("YangSpecData doest not have data for xpath(%v)\r\n", xpath)
-		}
-	}
-	return false, err
 }
 
 func isJsonDataEmpty(jsonData string) bool {

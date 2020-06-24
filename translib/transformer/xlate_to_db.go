@@ -1007,7 +1007,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
 					for _, dbMap := range st_result.dbDataMap {
 						for table, keyInstance := range dbMap {
-							for dbKey, _ := range keyInstance {
+							for dbKey := range keyInstance {
 								exists, derr := dbTableExists(d, table, dbKey)
 								if !exists || derr != nil {
 									err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
@@ -1190,5 +1190,4 @@ func printDbData(resMap map[int]map[db.DBNum]map[string]map[string]db.Value, yan
 		}
 	}
 	fmt.Fprintf(fp, "-----------------------------------------------------------------\r\n")
-	return
 }

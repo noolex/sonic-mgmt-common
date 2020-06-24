@@ -146,7 +146,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 		tblData, ok := (*dbDataMap)[cdb][tbl]
 		xfmrLogInfoAll("Process Tbl - %v", tbl)
 		if ok {
-			for dbKey, _ := range tblData {
+			for dbKey := range tblData {
 				xfmrLogInfoAll("Process Tbl - %v with dbKey - %v", tbl, dbKey)
 				_, curUri, kerr := dbKeyToYangDataConvert(xlateParams.uri, xlateParams.requestUri, xlateParams.xpath, tbl, dbDataMap, dbKey, separator, xlateParams.txCache)
 				if kerr != nil {
@@ -343,7 +343,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 				xfmrLogInfoAll("DELETE handling at Container parentTbl %v, curTbl %v, curKey %v", parentTbl, curTbl, curKey)
 				if parentTbl != curTbl {
 					// Non inhertited table
-					if (spec.tblOwner != nil) && (*spec.tblOwner == false) {
+					if (spec.tblOwner != nil) && !(*spec.tblOwner) {
 						// Fill fields only
 						xfmrLogInfoAll("DELETE handling at Container Non inhertited table and not table Owner")
 						fillFields = true
@@ -528,7 +528,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				// TODO: Nested subtree invoke
 				curResult, cerr := allChildTblGetToDelete(curXlateParams)
 				if cerr != nil {
-					err = cerr
+					return cerr
 				} else {
 					mapCopy(result, curResult)
 				}
