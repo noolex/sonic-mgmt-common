@@ -75,7 +75,8 @@ module openconfig-copp-ext-annot {
 
     deviation /oc-copp:copp/oc-copp:copp-traps/oc-copp:copp-trap/oc-copp:config/oc-copp:trap-group {
       deviate add {
-		  sonic-ext:field-name "trap_group";
+		  sonic-ext:field-transformer "copp_trap_group_xfmr";
+		  // sonic-ext:field-name "trap_group";
       }
     }
 

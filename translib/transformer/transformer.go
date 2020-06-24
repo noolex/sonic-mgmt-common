@@ -21,7 +21,6 @@ package transformer
 import (
 	"fmt"
 	"github.com/openconfig/goyang/pkg/yang"
-	"github.com/openconfig/ygot/ygot"
 	"os"
 	"strings"
         "bufio"
@@ -32,15 +31,6 @@ import (
 var YangPath = "/usr/models/yang/" // OpenConfig-*.yang and sonic yang models path
 var ModelsListFile  = "models_list"
 var TblInfoJsonFile = "sonic_table_info.json"
-
-var entries = map[string]*yang.Entry{}
-
-//Interface for xfmr methods
-type xfmrInterface interface {
-	tableXfmr(s *ygot.GoStruct, t *interface{}) (string, error)
-	keyXfmr(s *ygot.GoStruct, t *interface{}) (string, error)
-	fieldXfmr(s *ygot.GoStruct, t *interface{}) (string, error)
-}
 
 func reportIfError(errs []error) {
 	if len(errs) > 0 {
@@ -60,7 +50,7 @@ func getOcModelsList () ([]string) {
     scanner := bufio.NewScanner(file)
     for scanner.Scan() {
         fileEntry := scanner.Text()
-        if strings.HasPrefix(fileEntry, "#") != true {
+        if !strings.HasPrefix(fileEntry, "#") {
             _, err := os.Stat(YangPath + fileEntry)
             if err != nil {
                 continue
@@ -88,9 +78,8 @@ func getDefaultModelsList () ([]string) {
 
 func init() {
 	initYangModelsPath()
-	yangFiles := []string{}
         ocList := getOcModelsList()
-        yangFiles = getDefaultModelsList()
+	yangFiles := getDefaultModelsList()
         yangFiles = append(yangFiles, ocList...)
         fmt.Println("Yang model List:", yangFiles)
 	err := loadYangModules(yangFiles...)
@@ -171,37 +160,35 @@ func loadYangModules(files ...string) error {
 	}
 
 	// populate model capabilities data
-	if xMdlCpbltMap != nil {
-		for yngMdlNm, _ := range(xMdlCpbltMap) {
-			org := ""
-			ver := ""
-			ocVerSet := false
-			yngEntry := oc_entries[yngMdlNm]
-			if (yngEntry != nil) {
-				// OC yang has version in standard extension oc-ext:openconfig-version
-				if strings.HasPrefix(yngMdlNm, "openconfig-") {
-					for _, ext := range yngEntry.Exts {
-						dataTagArr := strings.Split(ext.Keyword, ":")
-						tagType := dataTagArr[len(dataTagArr)-1]
-						if tagType == "openconfig-version" {
-							ver = ext.NName()
-							fmt.Printf("Found version %v for yang module %v", ver, yngMdlNm)
-							if len(strings.TrimSpace(ver)) > 0 {
-								ocVerSet = true
-							}
-							break
+	for yngMdlNm := range(xMdlCpbltMap) {
+		org := ""
+		ver := ""
+		ocVerSet := false
+		yngEntry := oc_entries[yngMdlNm]
+		if (yngEntry != nil) {
+			// OC yang has version in standard extension oc-ext:openconfig-version
+			if strings.HasPrefix(yngMdlNm, "openconfig-") {
+				for _, ext := range yngEntry.Exts {
+					dataTagArr := strings.Split(ext.Keyword, ":")
+					tagType := dataTagArr[len(dataTagArr)-1]
+					if tagType == "openconfig-version" {
+						ver = ext.NName()
+						fmt.Printf("Found version %v for yang module %v", ver, yngMdlNm)
+						if len(strings.TrimSpace(ver)) > 0 {
+							ocVerSet = true
 						}
-
+					break
 					}
+
 				}
 			}
-			if ((strings.HasPrefix(yngMdlNm, "ietf-")) || (!ocVerSet)) {
-				// as per RFC7895 revision date to be used as version
-				ver = mods[yngMdlNm].Current() //gives the most recent revision date for yang module
-			}
-			org = mods[yngMdlNm].Organization.Name
-			addMdlCpbltData(yngMdlNm, ver, org)
 		}
+		if ((strings.HasPrefix(yngMdlNm, "ietf-")) || (!ocVerSet)) {
+			// as per RFC7895 revision date to be used as version
+			ver = mods[yngMdlNm].Current() //gives the most recent revision date for yang module
+		}
+		org = mods[yngMdlNm].Organization.Name
+		addMdlCpbltData(yngMdlNm, ver, org)
 	}
 	dbMapBuild(sonic_entries)
 	annotDbSpecMap(sonic_annot_entries)

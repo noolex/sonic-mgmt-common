@@ -96,6 +96,16 @@ module openconfig-mclag {
         "Session Timeout for ICCP MCLAG session";
     }
 
+    leaf delay-restore {
+      type uint16 {
+          range 1..3600;
+      }
+      units "seconds";
+      default 300;
+      description
+        "Time to wait for protocol to converge before bringing up
+        all MCLAG and orphan interfaces";
+    }
   }
 
   grouping mclag-gateway-mac-config {

@@ -3,7 +3,7 @@ module openconfig-if-ethernet-ext2 {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/interfaces/ethernet-ext2";
+  namespace "http://openconfig.net/yang/ethernet-ext2/extension";
 
   prefix "oc-eth-ext2";
 

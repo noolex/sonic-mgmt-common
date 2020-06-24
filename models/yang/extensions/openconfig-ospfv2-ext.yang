@@ -513,6 +513,7 @@ module openconfig-ospfv2-ext {
         "Max metric startup timeout in seconds";
     }
 
+    /*
     leaf on-shutdown {
       type uint32 {
         range "5..500";
@@ -521,6 +522,7 @@ module openconfig-ospfv2-ext {
       description
         "Max metric shutdown timeout in seconds";
     }
+    */
   } 
 
   grouping ospfv2-ext-global-timers-max-metric-top {
@@ -1997,6 +1999,13 @@ module openconfig-ospfv2-ext {
       description
         "Saved Network-LSA sequence number in hex";
     }
+
+    leaf unnumbered {
+      type boolean;
+      description
+        "Boolean flag indicating interface is unnumbered";
+    }
+
   }
 
   grouping ospfv2-ext-area-virtual-link-state {
