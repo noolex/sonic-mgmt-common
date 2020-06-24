@@ -500,7 +500,8 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 
 	/* Check if the parent table exists for RFC compliance */
 	var exists bool
-	exists, err = verifyParentTable(d, oper, uri, txCache)
+	var dbs [db.MaxDB]*db.DB
+	exists, err = verifyParentTable(d, dbs, oper, uri, txCache)
 	if err != nil {
 		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
 		return err
@@ -857,7 +858,7 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 	return retErr
 }
 
-func verifyParentTableSonic(d *db.DB, oper int, uri string) (bool, error) {
+func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string) (bool, error) {
         var err error
         pathList := splitUri(uri)
 
@@ -867,7 +868,7 @@ func verifyParentTableSonic(d *db.DB, oper int, uri string) (bool, error) {
         if (len(table) > 0) && (len(dbKey) > 0) {
 		// Valid table mapping exists. Read the table entry from DB
 		tableExists, derr := dbTableExists(d, table, dbKey)
-		if len(pathList) == SONIC_LIST_INDEX && (oper == UPDATE || oper == CREATE || oper == DELETE) && !tableExists {
+		if len(pathList) == SONIC_LIST_INDEX && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) && !tableExists {
                         // Uri is at /sonic-module:sonic-module/container-table/list
                         // PATCH opertion permitted only if table exists in DB.
                         // POST case since the uri is the parent, the parent needs to exist
@@ -894,16 +895,68 @@ func verifyParentTableSonic(d *db.DB, oper int, uri string) (bool, error) {
 
 /* This function checks the existence of Parent tables in DB for the given URI request
    and returns a boolean indicating if the operation is permitted based on the operation type*/
-func verifyParentTable(d *db.DB, oper int, uri string, txCache interface{}) (bool, error) {
+func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, txCache interface{}) (bool, error) {
 	log.Infof("Checking for Parent table existence for uri: %v", uri)
         if isSonicYang(uri) {
-                return verifyParentTableSonic(d, oper, uri)
+                return verifyParentTableSonic(d, dbs, oper, uri)
         } else {
-                return verifyParentTableOc(d, oper, uri, txCache)
+                return verifyParentTableOc(d, dbs, oper, uri, txCache)
         }
 }
 
-func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (bool, error) {
+func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string, oper int) (bool, error) {
+	var inParams XfmrSubscInParams
+	inParams.uri = uri
+	inParams.dbDataMap = make(RedisDbMap)
+	inParams.dbs = dbs
+	inParams.subscProc = TRANSLATE_SUBSCRIBE
+	parentTblExists := true
+	var err error
+
+	st_result, st_err := xfmrSubscSubtreeHandler(inParams, xfmrFuncNm)
+	if st_err != nil {
+		log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
+		err = st_err
+		parentTblExists = false
+		return parentTblExists, err
+	} else if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
+		log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
+		for dbNo, dbMap := range st_result.dbDataMap {
+			for table, keyInstance := range dbMap {
+				for dbKey, _ := range keyInstance {
+					var d *db.DB
+					if oper != GET {
+						d, err = db.NewDB(getDBOptions(dbNo))
+						if err != nil {
+							log.Error("Coudldn' allocate NewDb/DbOptions for db - %v", dbNo)
+							parentTblExists = false
+							goto Exit
+						}
+					} else {
+						d = dbs[dbNo]
+					}
+					exists, derr := dbTableExists(d, table, dbKey)
+					if !exists || derr != nil {
+						err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
+						log.Errorf("%v", err)
+						parentTblExists = false
+						goto Exit
+					}
+				}
+			}
+
+		}
+	} else {
+		err = fmt.Errorf("No Table information retrieved for uri %v", uri)
+		parentTblExists = false
+		goto Exit
+	}
+	Exit:
+	xfmrLogInfoAll("For subtree at uri - %v, returning ,parentTblExists - %v, err - %v", parentTblExists, err)
+	return parentTblExists, err
+}
+
+func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, txCache interface{}) (bool, error) {
 	var err error
         uriList := splitUri(uri)
         parentTblExists := true
@@ -1003,12 +1056,42 @@ func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (b
                 yangType = yangTypeGet(xpathInfo.yangEntry)
         }
 
-        if yangType == YANG_LIST && (oper == UPDATE || oper == CREATE || oper == DELETE) {
+        if yangType == YANG_LIST && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) {
                 // For PATCH request the current table instance should exist for the operation to go through
                 // For POST since the target URI is the parent URI, it should exist.
                 // For DELETE we handle the table verification here to avoid any CVL error thrown for delete on non existent table
 		log.Infof("Check last parent table for uri: %v", uri)
-                _, dbKey, tableName, xerr := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
+		xpath, xpathErr := XfmrRemoveXPATHPredicates(curUri)
+		if xpathErr != nil {
+			log.Errorf("Xpath conversion didn't happen for Uri - %v, due to - %v", xpathErr)
+			return false, xpathErr
+		}
+		xpathInfo, ok := xYangSpecMap[xpath]
+		// Check for subtree case and invoke subscribe xfmr
+		if ok && (len(xpathInfo.xfmrFunc) > 0) {
+			xfmrLogInfoAll("Found subtree for uri - %v", uri)
+			parentTblExists, err = verifyParentTblSubtree(dbs, uri, xpathInfo.xfmrFunc, oper)
+			if ((!parentTblExists) || (err != nil)) {
+				if err != nil {
+					return false, err
+				}
+				err = fmt.Errorf("Parent Table does not exist for uri %v", uri)
+				log.Errorf("%v", err)
+				return false, err
+			} else {
+				return true, nil
+			}
+		}
+		virtualTbl := false
+		if xpathInfo.virtualTbl != nil {
+			virtualTbl = *xpathInfo.virtualTbl
+		}
+		if virtualTbl {
+			xfmrLogInfoAll("Virtual table at uri - %v", uri)
+			return true, nil
+		}
+
+		 _, dbKey, tableName, xerr := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
 		if xerr == nil && len(tableName) > 0 && len(dbKey) > 0 {
 			// Read the table entry from DB
 			exists, derr := dbTableExists(d, tableName, dbKey)
@@ -1022,6 +1105,8 @@ func verifyParentTableOc(d *db.DB, oper int, uri string, txCache interface{}) (b
 			} else {
 				return true, nil
 			}
+		} else if ((xerr == nil) && !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {//uri points to entire list
+			return true, nil
 		} else {
 			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, tableName, dbKey)
 			return false, xerr
