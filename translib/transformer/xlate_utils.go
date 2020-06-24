@@ -1330,3 +1330,24 @@ func dbTableExists(d *db.DB, tableName string, dbKey string) (bool, error) {
         return existingEntry.IsPopulated(), err
 }
 
+func dbTableExistsInDbData(dbNo db.DBNum, table string, dbKey string, dbData RedisDbMap) bool {
+	xfmrLogInfoAll("received Db no - %v, table - %v, dbkey - %v", dbNo, table, dbKey)
+	if _, exists := dbData[dbNo][table][dbKey]; exists {
+		return true
+	} else {
+		return false
+	}
+}
+
+func leafListInstExists(leafListInDbVal string, checkLeafListInstVal string) bool {
+	exists := false
+	xfmrLogInfoAll("received value of leaf-list in DB - %v,  Value to be checked if exists in leaf-list - %v", leafListInDbVal, checkLeafListInstVal)
+	leafListItemLst := strings.Split(leafListInDbVal, ",")
+	for idx := range(leafListItemLst) {
+		if leafListItemLst[idx] == checkLeafListInstVal {
+			exists = true
+			break
+		}
+	}
+	return exists
+}

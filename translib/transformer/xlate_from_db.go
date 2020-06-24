@@ -27,7 +27,7 @@ import (
     "errors"
     "sync"
     "github.com/openconfig/goyang/pkg/yang"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    //"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 
     log "github.com/golang/glog"
 )
@@ -984,7 +984,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, error, bo
 	inParamsForGet.resultMap = resultMap
 
 	/* Check if the parent table exists for RFC compliance */
-	var exists bool
+	/*var exists bool
 	exists, err = verifyParentTable(d, dbs, GET, uri, txCache)
 	if err != nil {
 		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation GET", uri)
@@ -993,7 +993,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, error, bo
 	if !exists {
 		err = tlerr.NotFoundError{Format:"Instance Not found"}
 		return "", err, true
-	}
+	}*/
 
 
 	if isSonicYang(uri) {

@@ -470,7 +470,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	/* Check if the parent table exists for RFC compliance */
 	var exists bool
 	var dbs [db.MaxDB]*db.DB
-	exists, err = verifyParentTable(d, dbs, oper, uri, txCache)
+	exists, err = verifyParentTable(d, dbs, oper, uri, nil, txCache)
 	if err != nil {
 		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
 		return err

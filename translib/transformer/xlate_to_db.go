@@ -501,7 +501,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	/* Check if the parent table exists for RFC compliance */
 	var exists bool
 	var dbs [db.MaxDB]*db.DB
-	exists, err = verifyParentTable(d, dbs, oper, uri, txCache)
+	exists, err = verifyParentTable(d, dbs, oper, uri, nil, txCache)
 	if err != nil {
 		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
 		return err
@@ -858,7 +858,7 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 	return retErr
 }
 
-func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string) (bool, error) {
+func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, dbData RedisDbMap) (bool, error) {
         var err error
         pathList := splitUri(uri)
 
@@ -866,8 +866,22 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
         log.Infof("uri: %v xpath: %v table: %v, key: %v", uri, xpath, table, dbKey)
 
         if (len(table) > 0) && (len(dbKey) > 0) {
-		// Valid table mapping exists. Read the table entry from DB
-		tableExists, derr := dbTableExists(d, table, dbKey)
+		tableExists := false
+		var derr error
+		if oper == GET {
+			var cdb db.DBNum = db.ConfigDB
+			dbInfo, ok := xDbSpecMap[table]
+			if !ok {
+				log.Warningf("No entry in xDbSpecMap for xpath %v, for uri - %v", table, uri)
+			} else {
+				cdb =  dbInfo.dbIndex
+			}
+			tableExists = dbTableExistsInDbData(cdb, table, dbKey, dbData)
+			derr = tlerr.NotFoundError{Format:"Resource not found"}
+		} else {
+			// Valid table mapping exists. Read the table entry from DB
+			tableExists, derr = dbTableExists(d, table, dbKey)
+		}
 		if len(pathList) == SONIC_LIST_INDEX && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) && !tableExists {
                         // Uri is at /sonic-module:sonic-module/container-table/list
                         // PATCH opertion permitted only if table exists in DB.
@@ -895,12 +909,12 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 
 /* This function checks the existence of Parent tables in DB for the given URI request
    and returns a boolean indicating if the operation is permitted based on the operation type*/
-func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, txCache interface{}) (bool, error) {
+func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
 	log.Infof("Checking for Parent table existence for uri: %v", uri)
         if isSonicYang(uri) {
-                return verifyParentTableSonic(d, dbs, oper, uri)
+                return verifyParentTableSonic(d, dbs, oper, uri, dbData)
         } else {
-                return verifyParentTableOc(d, dbs, oper, uri, txCache)
+                return verifyParentTableOc(d, dbs, oper, uri, dbData, txCache)
         }
 }
 
@@ -922,13 +936,16 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 	} else if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
 		log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
 		for dbNo, dbMap := range st_result.dbDataMap {
+			xfmrLogInfoAll("processing Db no - %v", dbNo)
 			for table, keyInstance := range dbMap {
-				for dbKey, _ := range keyInstance {
+				xfmrLogInfoAll("processing Db table - %v", table)
+				for dbKey := range keyInstance {
+					xfmrLogInfoAll("processing Db key - %v", dbKey)
 					var d *db.DB
 					if oper != GET {
 						d, err = db.NewDB(getDBOptions(dbNo))
 						if err != nil {
-							log.Error("Coudldn' allocate NewDb/DbOptions for db - %v", dbNo)
+							log.Error("Couldn't allocate NewDb/DbOptions for db - %vi, while processing uri - %v", dbNo, uri)
 							parentTblExists = false
 							goto Exit
 						}
@@ -956,7 +973,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 	return parentTblExists, err
 }
 
-func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, txCache interface{}) (bool, error) {
+func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
 	var err error
         uriList := splitUri(uri)
         parentTblExists := true

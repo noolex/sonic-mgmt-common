@@ -400,6 +400,18 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 
 	dbData = data
 	requestUri := uri
+	/* Check if the parent table exists for RFC compliance */
+        var exists bool
+        exists, err = verifyParentTable(nil, dbs, GET, uri, dbData, txCache)
+        if err != nil {
+                log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation GET", uri)
+                return []byte(""), err, true
+        }
+        if !exists {
+                err = tlerr.NotFoundError{Format:"Resource Not found"}
+                return []byte(""), err, true
+        }
+
 	if isSonicYang(uri) {
 		lxpath, keyStr, tableName := sonicXpathKeyExtract(uri)
 		xpath = lxpath
@@ -424,8 +436,28 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 							fieldName = fieldName + "@"
 						}
 						if ((yangNodeType == YANG_LEAF_LIST) || (yangNodeType == YANG_LEAF)) {
-							dbData[cdb] = extractFieldFromDb(tableName, keyStr, fieldName, data[cdb])
+							dbData[cdb], err = extractFieldFromDb(tableName, keyStr, fieldName, data[cdb])
+							// return resource not found when the leaf/leaf-list instance(not entire leaf-list GET) not found 
+							if ((err != nil) && ((yangNodeType == YANG_LEAF) || ((yangNodeType == YANG_LEAF_LIST) && (strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/"))))) {
+								return []byte(""), err, true
+							}
+							if ((yangNodeType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+								uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
+								uriItemListLen := len(uriItemList)
+								if uriItemListLen > 0 {
+									terminalNode := uriItemList[uriItemListLen-1]
+									terminalNodeData := strings.TrimSuffix(strings.SplitN(terminalNode, "[", 2)[1], "]")
+									terminalNodeDataLst := strings.SplitN(terminalNodeData, "=", 2)
+									terminalNodeVal := terminalNodeDataLst[1]
+									if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], terminalNodeVal) {
+										dbData[cdb][tableName][keyStr].Field[fieldName] = terminalNodeVal
+									} else {
+										return []byte(""), tlerr.NotFoundError{Format:"Resource not found"}, true
+									}
+								}
 
+
+							}
 						}
 					}
 				}
@@ -452,10 +484,11 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 
 }
 
-func extractFieldFromDb(tableName string, keyStr string, fieldName string, data map[string]map[string]db.Value) (map[string]map[string]db.Value) {
+func extractFieldFromDb(tableName string, keyStr string, fieldName string, data map[string]map[string]db.Value) (map[string]map[string]db.Value, error) {
 
 	var dbVal db.Value
 	var dbData = make(map[string]map[string]db.Value)
+	var err error
 
 	if tableName != "" && keyStr != "" && fieldName != "" {
 		if data[tableName][keyStr].Field != nil {
@@ -465,10 +498,13 @@ func extractFieldFromDb(tableName string, keyStr string, fieldName string, data 
 				dbVal.Field = make(map[string]string)
 				dbVal.Field[fieldName] = fldVal
 				dbData[tableName][keyStr] = dbVal
+			} else {
+				log.Error("Field %v doesn't exist in table - %v, instance - %v", fieldName, tableName, keyStr)
+				err = tlerr.NotFoundError{Format: "Resource not found."}
 			}
 		}
 	}
-	return dbData
+	return dbData, err
 }
 
 func GetModuleNmFromPath(uri string) (string, error) {
