@@ -407,11 +407,11 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
         exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache)
         if err != nil {
                 log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation GET", uri)
-                return []byte(""), err, true
+                return []byte(""), true, err
         }
         if !exists {
                 err = tlerr.NotFoundError{Format:"Resource Not found"}
-                return []byte(""), err, true
+                return []byte(""), true, err
         }
 
 	if isSonicYang(uri) {
@@ -441,7 +441,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 							dbData[cdb], err = extractFieldFromDb(tableName, keyStr, fieldName, data[cdb])
 							// return resource not found when the leaf/leaf-list instance(not entire leaf-list GET) not found 
 							if ((err != nil) && ((yangNodeType == YANG_LEAF) || ((yangNodeType == YANG_LEAF_LIST) && (strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/"))))) {
-								return []byte(""), err, true
+								return []byte(""), true, err
 							}
 							if ((yangNodeType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
 								uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
@@ -454,7 +454,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 									if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], terminalNodeVal) {
 										dbData[cdb][tableName][keyStr].Field[fieldName] = terminalNodeVal
 									} else {
-										return []byte(""), tlerr.NotFoundError{Format:"Resource not found"}, true
+										return []byte(""), true, tlerr.NotFoundError{Format:"Resource not found"}
 									}
 								}
 
