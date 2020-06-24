@@ -501,7 +501,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	/* Check if the parent table exists for RFC compliance */
 	var exists bool
 	var dbs [db.MaxDB]*db.DB
-	exists, err = verifyParentTable(d, dbs, oper, uri, nil, txCache)
+	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache)
 	if err != nil {
 		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
 		return err
@@ -909,12 +909,12 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 
 /* This function checks the existence of Parent tables in DB for the given URI request
    and returns a boolean indicating if the operation is permitted based on the operation type*/
-func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
+func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
 	log.Infof("Checking for Parent table existence for uri: %v", uri)
         if isSonicYang(uri) {
                 return verifyParentTableSonic(d, dbs, oper, uri, dbData)
         } else {
-                return verifyParentTableOc(d, dbs, oper, uri, dbData, txCache)
+                return verifyParentTableOc(d, dbs, ygRoot, oper, uri, dbData, txCache)
         }
 }
 
@@ -973,7 +973,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 	return parentTblExists, err
 }
 
-func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
+func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
 	var err error
         uriList := splitUri(uri)
         parentTblExists := true
@@ -1031,7 +1031,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, d
 
 				log.Infof("Check parent table for uri: %v", curUri)
 				// Get Table and Key only for yang list instances
-				_, dbKey, tableName, xerr := xpathKeyExtract(d, nil, oper, curUri, uri, nil, txCache)
+				_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, nil, txCache)
 				if xerr != nil {
 					log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
 					err = xerr
@@ -1108,7 +1108,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, d
 			return true, nil
 		}
 
-		 _, dbKey, tableName, xerr := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
+		 _, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, txCache)
 		if xerr == nil && len(tableName) > 0 && len(dbKey) > 0 {
 			// Read the table entry from DB
 			exists, derr := dbTableExists(d, tableName, dbKey)
@@ -1139,9 +1139,9 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, d
 			parentUri = "/" + parentUri
 		}
 		// Get table for parent xpath
-		parentTable, perr := dbTableFromUriGet(d, nil, oper, parentUri, uri, nil, txCache)
+		parentTable, perr := dbTableFromUriGet(d, ygRoot, oper, parentUri, uri, nil, txCache)
 		// Get table for current xpath
-		_, curKey, curTable, cerr := xpathKeyExtract(d, nil, oper, uri, uri, nil, txCache)
+		_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, txCache)
 		if perr == nil && cerr == nil && (curTable != parentTable) {
 			exists, _ := dbTableExists(d, curTable, curKey)
 			if !exists {
