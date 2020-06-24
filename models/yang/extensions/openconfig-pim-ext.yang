@@ -413,4 +413,16 @@ module openconfig-pim-ext {
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:interface-ref {
         deviate not-supported;
     }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:neighbor-established {
+        deviate replace {
+            type string;
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:neighbor-expires {
+        deviate replace {
+            type string;
+        }
+    }
 }

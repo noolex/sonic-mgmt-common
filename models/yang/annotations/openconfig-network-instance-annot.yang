@@ -3734,4 +3734,10 @@ module openconfig-network-instance-annot {
           sonic-ext:subtree-transformer "pim_intf_state_xfmr";
       }
   }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:neighbors {
+      deviate add {
+          sonic-ext:subtree-transformer "pim_nbrs_state_xfmr";
+      }
+  }
 }
