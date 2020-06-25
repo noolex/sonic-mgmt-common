@@ -1347,7 +1347,7 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
     // Handles the case when the delete request at interfaces/interface[name] or at routed-vlan
     if routedVlanIntf == nil || (routedVlanIntf.Ipv4 == nil && routedVlanIntf.Ipv6 == nil) {
 	    ipMap, _ := getIntfIpByName(d, tblName, ifName, true, true, "")
-	    if ipMap != nil && len(ipMap) > 0 {
+	    if len(ipMap) > 0 {
             for k, v := range ipMap {
                 intfIpMap[k] = v
             }
@@ -1359,16 +1359,16 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         if routedVlanIntf.Ipv4.Addresses != nil {
             if len(routedVlanIntf.Ipv4.Addresses.Address) < 1 {
                 ipMap, _:= getIntfIpByName(d, tblName, ifName, true, false, "")
-                if ipMap != nil && len(ipMap) > 0 {
+                if len(ipMap) > 0 {
                     for k, v := range ipMap {
                         intfIpMap[k] = v
                     }
                 }
             } else {
-                for ip, _ := range routedVlanIntf.Ipv4.Addresses.Address {
+                for ip := range routedVlanIntf.Ipv4.Addresses.Address {
                     ipMap, _ := getIntfIpByName(d, tblName, ifName, true, false, ip)
 
-                    if ipMap != nil && len(ipMap) > 0 {
+                    if len(ipMap) > 0 {
                         for k, v := range ipMap {
                             intfIpMap[k] = v
                         }
@@ -1378,7 +1378,7 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         } else {
             // Case when delete request is at IPv4 container level
             ipMap, _ := getIntfIpByName(d, tblName, ifName, true, false, "")
-            if ipMap != nil && len(ipMap) > 0 {
+            if len(ipMap) > 0 {
                 for k, v := range ipMap {
                     intfIpMap[k] = v
                 }
@@ -1391,16 +1391,16 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         if routedVlanIntf.Ipv6.Addresses != nil {
             if len(routedVlanIntf.Ipv6.Addresses.Address) < 1 {
                 ipMap, _ := getIntfIpByName(d, tblName, ifName, false, true, "")
-                if ipMap != nil && len(ipMap) > 0 {
+                if len(ipMap) > 0 {
                     for k, v := range ipMap {
                         intfIpMap[k] = v
                     }
                 }
             } else {
-                for ip, _ := range routedVlanIntf.Ipv6.Addresses.Address {
+                for ip := range routedVlanIntf.Ipv6.Addresses.Address {
                     ipMap, _ := getIntfIpByName(d, tblName, ifName, false, true, ip)
 
-                    if ipMap != nil && len(ipMap) > 0 {
+                    if len(ipMap) > 0 {
                         for k, v := range ipMap {
                             intfIpMap[k] = v
                         }
@@ -1410,7 +1410,7 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         } else {
             // Case when the delete request is at IPv6 container level
             ipMap, _ := getIntfIpByName(d, tblName, ifName, false, true, "")
-            if ipMap != nil && len(ipMap) > 0 {
+            if len(ipMap) > 0 {
                 for k, v := range ipMap {
                     intfIpMap[k] = v
                 }
@@ -1428,7 +1428,7 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
             vlanIntfmap[tblName] = make (map[string]db.Value)
         }
 
-        for k, _ := range intfIpMap {
+        for k := range intfIpMap {
             ifKey := ifName + "|" + k
             vlanIntfmap[tblName][ifKey] = data
         }
@@ -2001,7 +2001,7 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     }
 
     if vlanIntfObj.Ipv4 != nil && vlanIntfObj.Ipv4.Addresses != nil {
-        for ip, _ := range vlanIntfObj.Ipv4.Addresses.Address {
+        for ip := range vlanIntfObj.Ipv4.Addresses.Address {
             addr := vlanIntfObj.Ipv4.Addresses.Address[ip]
             if addr.Config != nil {
                 if addr.Config.Ip == nil {
@@ -2043,7 +2043,7 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
         }
     }
     if vlanIntfObj.Ipv6 != nil && vlanIntfObj.Ipv6.Addresses != nil {
-        for ip, _ := range vlanIntfObj.Ipv6.Addresses.Address {
+        for ip := range vlanIntfObj.Ipv6.Addresses.Address {
             addr := vlanIntfObj.Ipv6.Addresses.Address[ip]
             if addr.Config != nil {
                 if addr.Config.Ip == nil {
@@ -2213,7 +2213,7 @@ func convertRoutedVlanIpMapToOC (intfIpMap map[string]db.Value, ifInfo *ocbinds.
     ygot.BuildEmptyTree(routedVlan.Ipv4)
     ygot.BuildEmptyTree(routedVlan.Ipv6)
 
-    for ipKey, _ := range intfIpMap {
+    for ipKey := range intfIpMap {
         log.Info("IP address = ", ipKey)
         ipB, ipNetB, _ := net.ParseCIDR(ipKey)
         v4Flag := false
@@ -2223,13 +2223,13 @@ func convertRoutedVlanIpMapToOC (intfIpMap map[string]db.Value, ifInfo *ocbinds.
         var v6Address *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv6_Addresses_Address
         if validIPv4(ipB.String()) {
             if _, ok := routedVlan.Ipv4.Addresses.Address[ipB.String()]; !ok {
-                v4Address, err = routedVlan.Ipv4.Addresses.NewAddress(ipB.String())
+                _, err = routedVlan.Ipv4.Addresses.NewAddress(ipB.String())
             }
             v4Address = routedVlan.Ipv4.Addresses.Address[ipB.String()]
             v4Flag = true
         } else if validIPv6(ipB.String()) {
             if _, ok := routedVlan.Ipv6.Addresses.Address[ipB.String()]; !ok {
-                v6Address, err = routedVlan.Ipv6.Addresses.NewAddress(ipB.String())
+                _, err = routedVlan.Ipv6.Addresses.NewAddress(ipB.String())
             }
             v6Address =  routedVlan.Ipv6.Addresses.Address[ipB.String()]
             v6Flag = true
@@ -2459,7 +2459,6 @@ func handleIntfIPGetByTargetURI (inParams XfmrParams, targetUriPath string, ifNa
 }
 
 func handleVlanIntfIPGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName string, intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
-    ipMap := make(map[string]db.Value)
     var err error
 
     pathInfo := NewPathInfo(inParams.uri)
@@ -2472,42 +2471,60 @@ func handleVlanIntfIPGetByTargetURI (inParams XfmrParams, targetUriPath string, 
     }
     intTbl := IntfTypeTblMap[intfType]
 
-     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/config") ||
+    var ipMap map[string]db.Value
+
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/config") {
-           ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, true, false, ipAddr)
-           log.Info("handleVlanIntfIPGetByTargetURI: ipv4 config ipMap - : ", ipMap)
-           convertRoutedVlanIpMapToOC(ipMap, intfObj, false)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/config") ||
-           strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/config") {
-           ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, false, true, ipAddr)
-           log.Info("handleVlanIntfIPGetByTargetURI: ipv6 config ipMap - : ", ipMap)
-           convertRoutedVlanIpMapToOC(ipMap, intfObj, false)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/state") ||
-           strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/state") {
-           ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, true, false, ipAddr)
-           log.Info("handleVlanIntfIPGetByTargetURI: ipv4 state ipMap - : ", ipMap)
-           convertRoutedVlanIpMapToOC(ipMap, intfObj, true)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/state") ||
-           strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/state") {
-           ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, false, true, ipAddr)
-           log.Info("handleVlanIntfIPGetByTargetURI: ipv6 state ipMap - : ", ipMap)
-           convertRoutedVlanIpMapToOC(ipMap, intfObj, true)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses") ||
-           strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses") {
         ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, true, false, ipAddr)
-           log.Info("handleVlanIntfIPGetByTargetURI: ipv4 config ipMap - : ", ipMap)
-        convertRoutedVlanIpMapToOC(ipMap, intfObj, false)
-        ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, true, false, ipAddr)
-           log.Info("handleVlanIntfIPGetByTargetURI: ipv4 state ipMap - : ", ipMap)
-        convertRoutedVlanIpMapToOC(ipMap, intfObj, true)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses") ||
-           strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses") {
+        if err == nil {
+            log.Info("handleVlanIntfIPGetByTargetURI: ipv4 config ipMap - : ", ipMap)
+            convertRoutedVlanIpMapToOC(ipMap, intfObj, false)
+        }
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/config") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/config") {
         ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, false, true, ipAddr)
-           log.Info("handleVlanIntfIPGetByTargetURI: ipv6 config ipMap - : ", ipMap)
-        convertRoutedVlanIpMapToOC(ipMap, intfObj, false)
+        if err == nil {
+            log.Info("handleVlanIntfIPGetByTargetURI: ipv6 config ipMap - : ", ipMap)
+            convertRoutedVlanIpMapToOC(ipMap, intfObj, false)
+        }
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/state") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/state") {
+        ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, true, false, ipAddr)
+        if err == nil {
+            log.Info("handleVlanIntfIPGetByTargetURI: ipv4 state ipMap - : ", ipMap)
+            convertRoutedVlanIpMapToOC(ipMap, intfObj, true)
+        }
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/state") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/state") {
         ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, false, true, ipAddr)
-           log.Info("handleVlanIntfIPGetByTargetURI: ipv6 state ipMap - : ", ipMap)
-        convertRoutedVlanIpMapToOC(ipMap, intfObj, true)
+        if err == nil {
+            log.Info("handleVlanIntfIPGetByTargetURI: ipv6 state ipMap - : ", ipMap)
+            convertRoutedVlanIpMapToOC(ipMap, intfObj, true)
+        }
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses") {
+        ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, true, false, ipAddr)
+        if err == nil {
+            log.Info("handleVlanIntfIPGetByTargetURI: ipv4 config ipMap - : ", ipMap)
+             convertRoutedVlanIpMapToOC(ipMap, intfObj, false)
+        }
+        ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, true, false, ipAddr)
+        if err == nil {
+            log.Info("handleVlanIntfIPGetByTargetURI: ipv4 state ipMap - : ", ipMap)
+            convertRoutedVlanIpMapToOC(ipMap, intfObj, true)
+        }
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses") {
+        ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, false, true, ipAddr)
+        if err == nil {
+           log.Info("handleVlanIntfIPGetByTargetURI: ipv6 config ipMap - : ", ipMap)
+            convertRoutedVlanIpMapToOC(ipMap, intfObj, false)
+        }
+        ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, false, true, ipAddr)
+        if err == nil {
+            log.Info("handleVlanIntfIPGetByTargetURI: ipv6 state ipMap - : ", ipMap)
+            convertRoutedVlanIpMapToOC(ipMap, intfObj, true)
+        }
     }
     return err
 }
@@ -2520,6 +2537,9 @@ var DbToYang_intf_ip_addr_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) 
     ifName := uriIfName
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
+    if err != nil {
+        return err
+    }
     log.Info("DbToYang_intf_ip_addr_xfmr: targetUriPath is ", targetUriPath)
 
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
@@ -2564,6 +2584,9 @@ var DbToYang_routed_vlan_ip_addr_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("name")
     targetUriPath, err := getYangPathFromUri(inParams.uri)
+    if err != nil {
+        return err
+    }
     log.Info("DbToYang_routed_vlan_ip_addr_xfmr: targetUriPath is ", targetUriPath)
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
 
@@ -2584,11 +2607,11 @@ var DbToYang_routed_vlan_ip_addr_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
             ygot.BuildEmptyTree(intfObj)
         }
 
+        err = handleVlanIntfIPGetByTargetURI(inParams, targetUriPath, intfName, intfObj)
 
     } else {
         err = errors.New("Invalid URI : " + targetUriPath)
     }
-    err = handleVlanIntfIPGetByTargetURI(inParams, targetUriPath, intfName, intfObj)
 
     return err
 }
