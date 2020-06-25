@@ -30,27 +30,48 @@ func xfmrHandlerFunc(inParams XfmrParams) (error) {
 	if yerr != nil {
 		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
 	}
-	_, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrFunc), inParams)
+	ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrFunc), inParams)
 	if err != nil {
 		xfmrLogInfoAll("Failed to retrieve data for xpath(\"%v\") err(%v).", inParams.uri, err)
 		return err
 	}
-
+        if ((ret != nil) && (len(ret)>0)) {
+		// db to yang subtree xfmr returns err as the only value in return data list from <xfmr_func>.Call()
+		if ret[DBTY_SBT_XFMR_RET_ERR_INDX].Interface() != nil {
+			err = ret[DBTY_SBT_XFMR_RET_ERR_INDX].Interface().(error)
+			if err != nil {
+				log.Warningf("Transformer function(\"%v\") returned error - %v.", xYangSpecMap[xpath].xfmrFunc, err)
+			}
+		}
+        }
 	return err
 }
 
-func leafXfmrHandlerFunc(inParams XfmrParams) (map[string]interface{}, error) {
-	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
-	ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrField), inParams)
+func leafXfmrHandlerFunc(inParams XfmrParams, xfmrFieldFuncNm string) (map[string]interface{}, error) {
+	var err error
+	var fldValMap map[string]interface{}
+
+	xfmrLogInfoAll("Received inParams %v to invoke Field transformer %v", inParams, xfmrFieldFuncNm)
+	ret, err := XlateFuncCall(dbToYangXfmrFunc(xfmrFieldFuncNm), inParams)
 	if err != nil {
-		return nil, err
+		return fldValMap, err
 	}
-	if ret != nil {
-		fldValMap := ret[0].Interface().(map[string]interface{})
-		return fldValMap, nil
-	} else {
-		return nil, nil
-	}
+	if ((ret != nil) && (len(ret)>0)) {
+		if len(ret) == DBTY_FLD_XFMR_RET_ARGS {
+			// field xfmr returns err as second value in return data list from <xfmr_func>.Call()
+                        if ret[DBTY_FLD_XFMR_RET_ERR_INDX].Interface() != nil {
+                                err = ret[DBTY_FLD_XFMR_RET_ERR_INDX].Interface().(error)
+                                if err != nil {
+                                        log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFieldFuncNm, err)
+                                }
+                        }
+                }
+
+                if ret[DBTY_FLD_XFMR_RET_VAL_INDX].Interface() != nil {
+                        fldValMap = ret[DBTY_FLD_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
+                }
+        }
+	return fldValMap, err
 }
 
 func keyXfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (map[string]interface{}, error) {
