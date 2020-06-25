@@ -879,6 +879,7 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 			tableExists, derr = dbTableExists(d, table, dbKey)
 			if derr != nil {
 				log.Errorf("%v", derr)
+				return false, derr
 			}
 		}
 		if len(pathList) == SONIC_LIST_INDEX && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) && !tableExists {
@@ -918,7 +919,7 @@ func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, op
         }
 }
 
-func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string, oper int) (bool, error) {
+func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string, oper int, dbData RedisDbMap) (bool, error) {
 	var inParams XfmrSubscInParams
 	inParams.uri = uri
 	inParams.dbDataMap = make(RedisDbMap)
@@ -932,7 +933,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 		log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
 		err = st_err
 		parentTblExists = false
-		return parentTblExists, err
+		goto Exit
 	} else if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
 		xfmrLogInfoAll("Subtree subcribe dbData %v", st_result.dbDataMap)
 		for dbNo, dbMap := range st_result.dbDataMap {
@@ -942,18 +943,25 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 				for dbKey := range keyInstance {
 					xfmrLogInfoAll("processing Db key - %v", dbKey)
 					var d *db.DB
+					exists := false
 					if oper != GET {
 						d, err = db.NewDB(getDBOptions(dbNo))
 						if err != nil {
-							log.Error("Couldn't allocate NewDb/DbOptions for db - %vi, while processing uri - %v", dbNo, uri)
+							log.Error("Couldn't allocate NewDb/DbOptions for db - %v, while processing uri - %v", dbNo, uri)
 							parentTblExists = false
 							goto Exit
 						}
 					} else {
 						d = dbs[dbNo]
+						// GET case - attempt to find in dbData before doing a dbGet in dbTableExists()
+						exists = dbTableExistsInDbData(dbNo, table, dbKey, dbData)
+						if exists {
+							xfmrLogInfoAll("Found table instance in dbData")
+							goto Exit
+						}
 					}
-					exists, derr := dbTableExists(d, table, dbKey)
-					if !exists || derr != nil {
+					exists, err = dbTableExists(d, table, dbKey)
+					if !exists || err != nil {
 						err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
 						log.Errorf("%v", err)
 						parentTblExists = false
@@ -964,7 +972,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 
 		}
 	} else {
-		err = fmt.Errorf("No Table information retrieved for uri %v", uri)
+		err = fmt.Errorf("No Table information retrieved from subtree for uri %v", uri)
 		parentTblExists = false
 		goto Exit
 	}
@@ -975,6 +983,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 
 func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
 	var err error
+	var cdb db.DBNum
         uriList := splitUri(uri)
         parentTblExists := true
         rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
@@ -992,6 +1001,11 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			//Check for subtree existence
 			curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
 			curXpathInfo, ok := xYangSpecMap[curXpath]
+			if oper == GET {
+				cdb = curXpathInfo.dbIndex
+				xfmrLogInfoAll("db index for curXpath - %v is %v", curXpath, cdb)
+				d = dbs[cdb]
+			}
 			// Check for subtree case and invoke subscribe xfmr
 			if ok && (len(curXpathInfo.xfmrFunc) > 0) {
 				var dbs [db.MaxDB]*db.DB
@@ -1047,10 +1061,19 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				if !virtualTbl && len(tableName) > 0 && len(dbKey) > 0 {
 					// Check for Table existence
 					xfmrLogInfoAll("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
+					existsInDbData := false
+					if ((oper == GET) && (idx == (len(parentUriList)-1))) {
+                                                // GET case - attempt to find in dbData before doing a dbGet in dbTableExists()
+                                                existsInDbData = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
+					}
 					// Read the table entry from DB
-					exists, derr := dbTableExists(d, tableName, dbKey)
-					if derr != nil {
-						return false, derr
+					exists := false
+					if !existsInDbData {
+						dexists, derr := dbTableExists(d, tableName, dbKey)
+						if derr != nil {
+							return false, derr
+						}
+						exists = dexists
 					}
 					if !exists {
 						parentTblExists = false
@@ -1079,26 +1102,30 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
                 // For POST since the target URI is the parent URI, it should exist.
                 // For DELETE we handle the table verification here to avoid any CVL error thrown for delete on non existent table
 		xfmrLogInfoAll("Check last parent table for uri: %v", uri)
-		xpath, xpathErr := XfmrRemoveXPATHPredicates(curUri)
+		xpath, xpathErr := XfmrRemoveXPATHPredicates(uri)
 		if xpathErr != nil {
-			log.Errorf("Xpath conversion didn't happen for Uri - %v, due to - %v", xpathErr)
+			log.Errorf("Xpath conversion didn't happen for Uri - %v, due to - %v", uri, xpathErr)
 			return false, xpathErr
 		}
 		xpathInfo, ok := xYangSpecMap[xpath]
+		if !ok {
+			err = fmt.Errorf("xYangSpecMap does not contain xpath - %v", xpath)
+			log.Error("%v", err)
+			return false, err
+		}
 		// Check for subtree case and invoke subscribe xfmr
-		if ok && (len(xpathInfo.xfmrFunc) > 0) {
+		if len(xpathInfo.xfmrFunc) > 0 {
 			xfmrLogInfoAll("Found subtree for uri - %v", uri)
-			parentTblExists, err = verifyParentTblSubtree(dbs, uri, xpathInfo.xfmrFunc, oper)
-			if ((!parentTblExists) || (err != nil)) {
-				if err != nil {
-					return false, err
-				}
+			parentTblExists, err = verifyParentTblSubtree(dbs, uri, xpathInfo.xfmrFunc, oper, dbData)
+			if err != nil {
+				return false, err
+			}
+			if !parentTblExists {
 				err = fmt.Errorf("Parent Table does not exist for uri %v", uri)
 				log.Errorf("%v", err)
 				return false, err
-			} else {
-				return true, nil
 			}
+			return true, nil
 		}
 		virtualTbl := false
 		if xpathInfo.virtualTbl != nil {
@@ -1112,7 +1139,19 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		 _, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, txCache)
 		if xerr == nil && len(tableName) > 0 && len(dbKey) > 0 {
 			// Read the table entry from DB
-			exists, derr := dbTableExists(d, tableName, dbKey)
+			exists := false
+			var derr error
+			if oper == GET {
+				// GET case - find in dbData instead of doing a dbGet in dbTableExists()
+				cdb = xpathInfo.dbIndex
+				xfmrLogInfoAll("db index for xpath - %v is %v", xpath, cdb)
+				exists = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
+				if !exists {
+					derr = tlerr.NotFoundError{Format:"Resource Not found"}
+				}
+			} else {
+				exists, derr = dbTableExists(d, tableName, dbKey)
+			}
 			if derr != nil {
 				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
 				return false, derr
