@@ -897,7 +897,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
             }
         } else {
             // VRF Unbind case. Check if all IP has been deleted before VRF unbind
-		    ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ *ifName, "*" }})
+		    ipKeys, _ := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ *ifName, "*" }})
 		    if len(ipKeys) != 0 {
 			    errStr := "L3 Configuration exists for Interface: " + intfId
 			    log.Error(errStr)
@@ -939,9 +939,9 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         return res_map, err
 }
 
-
-// DbToYang_network_instance_interface_binding_Subtree_xfmr is a DbtoYang subtree transformer for network instance interface binding
+//DbToYang_network_instance_interface_binding_subtree_xfmr is a DbtoYang subtree transformer for network instance interface binding
 var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+
         var err error
 
         log.Info("DbToYang_network_instance_interface_binding_subtree_xfmr:")
