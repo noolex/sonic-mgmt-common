@@ -145,6 +145,8 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 	for _, tbl := range(tblList) {
 		tblData, ok := (*dbDataMap)[cdb][tbl]
 		xfmrLogInfoAll("Process Tbl - %v", tbl)
+		var curTbl, curKey string
+		var cerr error
 		if ok {
 			for dbKey := range tblData {
 				xfmrLogInfoAll("Process Tbl - %v with dbKey - %v", tbl, dbKey)
@@ -155,12 +157,13 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				if spec.virtualTbl != nil && *spec.virtualTbl {
 					virtualTbl = true
 				}
-				_, curKey, curTbl, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, curUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-				xfmrLogInfoAll("Current Uri - %v, CurrentTbl - %v, CurrentKey - %v", curUri, curTbl, curKey)
-
 				// Not required to check for table inheritence case here as we have a subtree and subtree is already processed before we get here
                                // We only need to traverse nested subtrees here
 				if len(spec.xfmrFunc) == 0 {
+
+				_, curKey, curTbl, cerr = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, curUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
+				xfmrLogInfoAll("Current Uri - %v, CurrentTbl - %v, CurrentKey - %v", curUri, curTbl, curKey)
+
 				if isFirstCall {
 					if perr != nil && cerr != nil {
 						if len(curTbl) > 0 && parentTbl != curTbl {
@@ -438,7 +441,7 @@ func allChildTblGetToDelete(xlateParams xlateToParams) (map[string]map[string]db
 	subTreeResMap := make(map[string]map[string]db.Value)
 	xpath, _ := XfmrRemoveXPATHPredicates(xlateParams.requestUri)
 	spec, ok := xYangSpecMap[xpath]
-
+	isFirstCall := true
 	if !ok {
 		errStr := "Xpath not found in spec-map:" + xpath
 		return subTreeResMap, errors.New(errStr)
@@ -449,15 +452,21 @@ func allChildTblGetToDelete(xlateParams xlateToParams) (map[string]map[string]db
 		dbDataMap[i] = make(map[string]map[string]db.Value)
 	}
 
+	if len(spec.xfmrFunc) > 0 {
+		// Subtree is already invoked before we get here
+		// Not required to process parent and current tables
+		isFirstCall = false
+	}
+
 	xfmrLogInfoAll("Req-uri (\"%v\") to traverse for delete", xlateParams.requestUri)
 	if ok && spec.yangEntry != nil {
 		xlateParams.uri = xlateParams.requestUri
 		xlateParams.xpath = xpath
 		if (spec.yangDataType == YANG_LIST) {
-			err = yangListDelData(xlateParams, &dbDataMap, &subTreeResMap, true)
+			err = yangListDelData(xlateParams, &dbDataMap, &subTreeResMap, isFirstCall)
 			return subTreeResMap, err
 		} else if (spec.yangDataType == YANG_CONTAINER) {
-			err = yangContainerDelData(xlateParams, &dbDataMap, &subTreeResMap, true)
+			err = yangContainerDelData(xlateParams, &dbDataMap, &subTreeResMap, isFirstCall)
 		}
 	}
 	return subTreeResMap, err
@@ -619,7 +628,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					log.Errorf("No proper table and key information to fill result map for uri %v, table: %v, key %v", uri, tableName, keyName)
 				}
 			} else {
-				log.Infof("Before calling allChildTblGetToDelete result: %v", curXlateParams.result)
+				xfmrLogInfoAll("Before calling allChildTblGetToDelete result: %v", curXlateParams.result)
 				curResult, cerr := allChildTblGetToDelete(curXlateParams)
 				if cerr != nil {
 					err = cerr
@@ -627,14 +636,14 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				} else {
 					mapCopy(result, curResult)
 				}
-				log.Infof("allChildTblGetToDelete result: %v  subtree curResult: %v", result, curResult)
+				xfmrLogInfoAll("allChildTblGetToDelete result: %v  subtree curResult: %v", result, curResult)
 				// Add the child tables to delete when table at request URI is not available or its complete table delete request (not specific instance)
 				chResult := make(map[string]map[string]db.Value)
 				if (len(tableName) == 0 || (len(tableName) > 0 && len(keyName) == 0)) && len(spec.childTable) > 0 {
 					for _, child := range spec.childTable {
 						chResult[child] = make(map[string]db.Value)
 					}
-					log.Infof("Before adding children result: %v  result with child tables: %v", result, chResult)
+					xfmrLogInfoAll("Before adding children result: %v  result with child tables: %v", result, chResult)
 				}
 				mapCopy(result, chResult)
 			}
