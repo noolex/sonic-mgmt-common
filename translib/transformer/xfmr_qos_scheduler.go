@@ -606,11 +606,13 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
             }
 
             if schedObj.TwoRateThreeColor.Config.Cir != nil  {
-                sched_entry[sched_key].Field["cir"] = strconv.Itoa((int)(*schedObj.TwoRateThreeColor.Config.Cir))
+                cir := (int)(*schedObj.TwoRateThreeColor.Config.Cir)/8
+                sched_entry[sched_key].Field["cir"] = strconv.Itoa(cir)
             }
 
             if schedObj.TwoRateThreeColor.Config.Pir != nil  {
-                sched_entry[sched_key].Field["pir"] = strconv.Itoa((int)(*schedObj.TwoRateThreeColor.Config.Pir))
+                pir := (int)(*schedObj.TwoRateThreeColor.Config.Pir)/8
+                sched_entry[sched_key].Field["pir"] = strconv.Itoa(pir)
             }
         }
 
@@ -824,6 +826,7 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
 
         if val, exist := schedCfg.Field["cir"]; exist {
             cir,_ := strconv.ParseUint(val, 10, 32)
+            cir = cir * 8
             if t23c_config {
                 schedObj.TwoRateThreeColor.Config.Cir = &cir
             }
@@ -834,6 +837,7 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
 
         if val, exist := schedCfg.Field["pir"]; exist {
             pir,_ := strconv.ParseUint(val, 10, 32)
+            pir = pir * 8
             if t23c_config {
                 schedObj.TwoRateThreeColor.Config.Pir = &pir
             }

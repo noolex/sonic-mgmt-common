@@ -10,6 +10,7 @@ module openconfig-qos-ext {
     import openconfig-qos { prefix oc-qos; }
     import openconfig-yang-types { prefix oc-yang; }
     import openconfig-extensions { prefix oc-ext; }
+    import openconfig-types { prefix "oc-types"; }
 
     organization "Dell";
 
@@ -47,12 +48,36 @@ module openconfig-qos-ext {
                 "occupancy watermark in bytes since last watermark clearance";
         }
 
+        leaf watermark-percent {
+            type oc-types:percentage;
+            description
+                "occupancy watermark in percentage since last watermark clearance";
+        }
+
+
         leaf persistent-watermark {
             type oc-yang:counter64;
             description
                 "occupancy watermark in bytes since system up";
         }
 
+        leaf persistent-watermark-percent {
+            type oc-types:percentage;
+            description
+                "occupancy watermark in percent since system up";
+        }
+
+        leaf transmit-pkts-per-second {
+            type oc-yang:counter64;
+            description
+                "Number of packets transmitted per second by the queue";
+        }
+
+        leaf transmit-octets-per-second {
+            type oc-yang:counter64;
+            description
+                "Number of octets transmitted per second by the queue";
+        }
     }
 
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues/oc-qos:queue/oc-qos:state {
@@ -79,12 +104,6 @@ module openconfig-qos-ext {
             type string;
             description
                 "Name of the WRED profile";
-        }
-
-        leaf scheduler-policy {
-            type string;
-            description
-                "Name of the Scheduer policy";
         }
     }
 
@@ -127,6 +146,30 @@ module openconfig-qos-ext {
             type oc-yang:counter64;
             description
                 "occupancy watermark in shared buffer in bytes since system up";
+        }
+
+        leaf headroom-watermark-percent {
+            type oc-types:percentage;
+            description
+                "occupancy watermark in the headroom in percentage since last watermark clearance";
+        }
+
+        leaf headroom-persistent-watermark-percent {
+            type oc-types:percentage;
+            description
+                "occupancy watermark in percentage since system up";
+        }
+
+        leaf shared-watermark-percent {
+            type oc-types:percentage;
+            description
+                "occupancy watermark in shared buffer in percentage since last watermark clearance";
+        }
+
+        leaf shared-persistent-watermark-percent {
+            type oc-types:percentage;
+            description
+                "occupancy watermark in shared buffer in percentage since system up";
         }
     }
     
