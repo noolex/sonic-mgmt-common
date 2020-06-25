@@ -1161,13 +1161,13 @@ func splitUri(uri string) []string {
 	rgp := regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
 	pathList := rgp.FindAllString(uri, -1)
 	for i, kname := range pathList {
-		//log.Infof("uri path elems: %v", kname)
+		//xfmrLogInfoAll("uri path elems: %v", kname)
 		if strings.HasPrefix(kname, "/") {
 			pathList[i] = kname[1:]
 		}
 	}
-	log.Infof("uri: %v ", uri)
-	log.Infof("uri path elems: %v", pathList)
+	xfmrLogInfoAll("uri: %v ", uri)
+	xfmrLogInfoAll("uri path elems: %v", pathList)
 	return pathList
 }
 

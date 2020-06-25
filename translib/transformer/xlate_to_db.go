@@ -859,7 +859,7 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
         pathList := splitUri(uri)
 
         xpath, dbKey, table := sonicXpathKeyExtract(uri)
-        log.Infof("uri: %v xpath: %v table: %v, key: %v", uri, xpath, table, dbKey)
+        xfmrLogInfoAll("uri: %v xpath: %v table: %v, key: %v", uri, xpath, table, dbKey)
 
         if (len(table) > 0) && (len(dbKey) > 0) {
 		tableExists := false
@@ -878,6 +878,7 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 			// Valid table mapping exists. Read the table entry from DB
 			tableExists, derr = dbTableExists(d, table, dbKey)
 			if derr != nil {
+				log.Errorf("%v", derr)
 				return false, derr
 			}
 		}
@@ -888,13 +889,14 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
                         // PUT case allow operation(Irrespective of table existence update the DB either through CREATE or REPLACE)
                         // DELETE case Table instance should be available to perform delete else, CVL may throw error
                         log.Errorf("Parent table %v with key %v does not exist for oper %v in DB", table, dbKey, oper)
-                        //err = tlerr.NotFound("Resource not found")
-                        return false, derr
+                        err = tlerr.NotFound("Resource not found")
+                        return false, err
                 } else if len(pathList) > SONIC_LIST_INDEX  && !tableExists {
                         // Uri is at /sonic-module/container-table/list or /sonic-module/container-table/list/leaf
                         // Parent table should exist for all CRUD cases
-                        log.Infof("Parent table %v with key %v does not exist in DB", table, dbKey)
-                        return false, derr
+                        log.Errorf("Parent table %v with key %v does not exist in DB", table, dbKey)
+                        err = tlerr.NotFound("Resource not found")
+                        return false, err
                 } else {
                         // Allow all other operations
                         return true, err
@@ -909,7 +911,7 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 /* This function checks the existence of Parent tables in DB for the given URI request
    and returns a boolean indicating if the operation is permitted based on the operation type*/
 func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
-	log.Infof("Checking for Parent table existence for uri: %v", uri)
+	xfmrLogInfoAll("Checking for Parent table existence for uri: %v", uri)
         if isSonicYang(uri) {
                 return verifyParentTableSonic(d, dbs, oper, uri, dbData)
         } else {
@@ -933,7 +935,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 		parentTblExists = false
 		goto Exit
 	} else if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
-		log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
+		xfmrLogInfoAll("Subtree subcribe dbData %v", st_result.dbDataMap)
 		for dbNo, dbMap := range st_result.dbDataMap {
 			xfmrLogInfoAll("processing Db no - %v", dbNo)
 			for table, keyInstance := range dbMap {
@@ -1020,14 +1022,14 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					break
 				}
 				if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
-					log.Infof("Subtree subcribe dbData %v", st_result.dbDataMap)
+					xfmrLogInfoAll("Subtree subcribe dbData %v", st_result.dbDataMap)
 					for _, dbMap := range st_result.dbDataMap {
 						for table, keyInstance := range dbMap {
 							for dbKey := range keyInstance {
 								exists, derr := dbTableExists(d, table, dbKey)
 								if !exists || derr != nil {
-									err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
-									log.Errorf("%v", err)
+									log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
+									err = tlerr.NotFound("Resource not found")
 									parentTblExists = false
 									break
 								}
@@ -1041,7 +1043,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				}
 			} else {
 
-				log.Infof("Check parent table for uri: %v", curUri)
+				xfmrLogInfoAll("Check parent table for uri: %v", curUri)
 				// Get Table and Key only for yang list instances
 				_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, nil, txCache)
 				if xerr != nil {
@@ -1058,7 +1060,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 
 				if !virtualTbl && len(tableName) > 0 && len(dbKey) > 0 {
 					// Check for Table existence
-					log.Infof("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
+					xfmrLogInfoAll("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
 					existsInDbData := false
 					if ((oper == GET) && (idx == (len(parentUriList)-1))) {
                                                 // GET case - attempt to find in dbData before doing a dbGet in dbTableExists()
@@ -1075,7 +1077,8 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					}
 					if !exists {
 						parentTblExists = false
-						err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+						log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+						err = tlerr.NotFound("Resource not found")
 						break
 					}
 				}
@@ -1098,7 +1101,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
                 // For PATCH request the current table instance should exist for the operation to go through
                 // For POST since the target URI is the parent URI, it should exist.
                 // For DELETE we handle the table verification here to avoid any CVL error thrown for delete on non existent table
-		log.Infof("Check last parent table for uri: %v", uri)
+		xfmrLogInfoAll("Check last parent table for uri: %v", uri)
 		xpath, xpathErr := XfmrRemoveXPATHPredicates(uri)
 		if xpathErr != nil {
 			log.Errorf("Xpath conversion didn't happen for Uri - %v, due to - %v", uri, xpathErr)
@@ -1155,7 +1158,8 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			}
 			if !exists {
 				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
-				return false, derr
+				err = tlerr.NotFound("Resource not found")
+				return false, err
 			} else {
 				return true, nil
 			}
