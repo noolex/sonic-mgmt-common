@@ -19,6 +19,11 @@ module sonic-counters {
     description
         "SONIC COUNTERS";
 
+    revision 2020-06-20 {
+        description
+            "Adding RPC for clear relay statistics.";
+    }
+
     revision 2020-05-19 {
         description
             "Initial revision.";
@@ -83,6 +88,28 @@ module sonic-counters {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    rpc clear_relay_counters {
+        input {
+            leaf ipv4-relay-param {
+                type string;
+                description
+                    "Parameter for clearing ipv4 interface statistics";
+            }
+            leaf ipv6-relay-param {
+                type string;
+                description
+                    "Parameter for clearing ipv6 interface statistics";
+            }
+        }
+        output {
+            leaf status {
+                type string;
+                description
+                    " Success / Failure of clearing of dhcp relay statistics";
             }
         }
     }
