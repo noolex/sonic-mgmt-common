@@ -27,6 +27,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 
 	"github.com/facette/natsort"
 	log "github.com/golang/glog"
@@ -288,7 +289,7 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 	}
 
 	targetUriPath, _ := getYangPathFromUri(app.pathInfo.Path)
-	log.Infof("processCommon -- isTopmostPath: %t and Uri: %s", topmostPath, targetUriPath)
+	log.Infof("processCommon -- isTopmostPath: %t and Uri: %s Opcode: %d", topmostPath, targetUriPath, opcode)
 	if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/global") {
 		mode, _ := app.getStpModeFromConfigDB(d)
 		switch opcode {
@@ -345,6 +346,9 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 					// Subtree of one interface under a vlan
 					for intfId := range pvstVlan.Interfaces.Interface {
 						pvstVlanIntf := pvstVlan.Interfaces.Interface[intfId]
+						nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+						intfId = *nativeIntfName
+
 						switch opcode {
 						case CREATE, REPLACE, UPDATE, DELETE:
 							err = app.handleRpvstCRUDOperationsAtVlanInterfaceLevel(d, opcode, vlanName, intfId, pvstVlan, pvstVlanIntf)
@@ -408,6 +412,9 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 					// Subtree of one interface under a vlan
 					for intfId := range rpvstVlanConf.Interfaces.Interface {
 						rpvstVlanIntfConf := rpvstVlanConf.Interfaces.Interface[intfId]
+						nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+						intfId = *nativeIntfName
+
 						switch opcode {
 						case CREATE, REPLACE, UPDATE, DELETE:
 							err = app.handleRpvstCRUDOperationsAtVlanInterfaceLevel(d, opcode, vlanName, intfId, rpvstVlanConf, rpvstVlanIntfConf)
@@ -467,6 +474,9 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 		if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/interfaces/interface{}") {
 			for intfId := range stp.Interfaces.Interface {
 				intfData := stp.Interfaces.Interface[intfId]
+				nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+				intfId = *nativeIntfName
+
 				switch opcode {
 				case CREATE:
 					err = app.setStpInterfacesDataInDB(d, true)
@@ -879,6 +889,9 @@ func (app *StpApp) convertOCRpvstConfToInternal(opcode int) error {
 				app.vlanIntfTableMap[vlanName] = make(map[string]db.Value)
 				for intfId := range rpvstVlanConf.Interfaces.Interface {
 					rpvstVlanIntfConf := rpvstVlanConf.Interfaces.Interface[intfId]
+					nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+					intfId = *nativeIntfName
+
 					app.vlanIntfTableMap[vlanName][intfId] = db.Value{Field: map[string]string{}}
 					if rpvstVlanIntfConf.Config != nil {
 						dbVal := app.vlanIntfTableMap[vlanName][intfId]
@@ -1138,7 +1151,8 @@ func (app *StpApp) convertInternalToOCRpvstVlanInterface(vlanName string, intfId
 
 		if rpvstVlanIntfConf == nil {
 			if rpvstVlanConf != nil {
-				rpvstVlanIntfConf_, _ := rpvstVlanConf.Interfaces.NewInterface(intfId)
+				ifUIName := utils.GetUINameFromNativeName(&intfId)
+				rpvstVlanIntfConf_, _ := rpvstVlanConf.Interfaces.NewInterface(*ifUIName)
 				rpvstVlanIntfConf = rpvstVlanIntfConf_
 				ygot.BuildEmptyTree(rpvstVlanIntfConf)
 			}
@@ -1212,6 +1226,9 @@ func (app *StpApp) convertOCPvstToInternal(opcode int) error {
 				app.vlanIntfTableMap[vlanName] = make(map[string]db.Value)
 				for intfId := range pvstVlan.Interfaces.Interface {
 					pvstVlanIntf := pvstVlan.Interfaces.Interface[intfId]
+					nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+					intfId = *nativeIntfName
+
 					app.vlanIntfTableMap[vlanName][intfId] = db.Value{Field: map[string]string{}}
 					if pvstVlanIntf.Config != nil {
 						dbVal := app.vlanIntfTableMap[vlanName][intfId]
@@ -1352,6 +1369,9 @@ func (app *StpApp) convertInternalToOCPvstVlanInterface(vlanName string, intfId 
 	} else {
 		dbVal := app.vlanIntfTableMap[vlanName][intfId]
 
+		ifUIName := utils.GetUINameFromNativeName(&intfId)
+		intfId = *ifUIName
+
 		if pvstVlanIntf == nil {
 			if pvstVlan != nil {
 				pvstVlanIntf_, _ := pvstVlan.Interfaces.NewInterface(intfId)
@@ -1382,9 +1402,13 @@ func (app *StpApp) convertOCStpInterfacesToInternal() {
 	stp := app.getAppRootObject()
 	if stp != nil && stp.Interfaces != nil && len(stp.Interfaces.Interface) > 0 {
 		for intfId := range stp.Interfaces.Interface {
+			stpIntfConf := stp.Interfaces.Interface[intfId]
+
+			nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+			intfId = *nativeIntfName
+
 			app.intfTableMap[intfId] = db.Value{Field: map[string]string{}}
 
-			stpIntfConf := stp.Interfaces.Interface[intfId]
 			if stpIntfConf.Config != nil {
 				dbVal := app.intfTableMap[intfId]
 
@@ -1672,7 +1696,8 @@ func (app *StpApp) convertInternalToOCStpInterfaces(intfName string, interfaces 
 		}
 	} else {
 		for intfName := range app.intfTableMap {
-			intfPtr, _ := interfaces.NewInterface(intfName)
+			ifUIName := utils.GetUINameFromNativeName(&intfName)
+			intfPtr, _ := interfaces.NewInterface(*ifUIName)
 			ygot.BuildEmptyTree(intfPtr)
 			app.convertInternalToOCStpInterfaces(intfName, interfaces, intfPtr)
 		}
@@ -1687,13 +1712,15 @@ func (app *StpApp) convertOperInternalToOCVlanInterface(vlanName string, intfId 
 		var rpvstVlanIntf *ocbinds.OpenconfigSpanningTree_Stp_RapidPvst_Vlan_Interfaces_Interface
 		var num uint64
 
+		ifUIName := utils.GetUINameFromNativeName(&intfId)
+
 		switch reflect.TypeOf(vlan).Elem().Name() {
 		case "OpenconfigSpanningTree_Stp_Pvst_Vlan":
 			pvstVlan, _ = vlan.(*ocbinds.OpenconfigSpanningTree_Stp_Pvst_Vlan)
 			if vlanIntf == nil {
-				pvstVlanIntf = pvstVlan.Interfaces.Interface[intfId]
+				pvstVlanIntf = pvstVlan.Interfaces.Interface[*ifUIName]
 				if pvstVlanIntf == nil {
-					pvstVlanIntf, _ = pvstVlan.Interfaces.NewInterface(intfId)
+					pvstVlanIntf, _ = pvstVlan.Interfaces.NewInterface(*ifUIName)
 				}
 				ygot.BuildEmptyTree(pvstVlanIntf)
 			} else {
@@ -1703,9 +1730,9 @@ func (app *StpApp) convertOperInternalToOCVlanInterface(vlanName string, intfId 
 		case "OpenconfigSpanningTree_Stp_RapidPvst_Vlan":
 			rpvstVlan, _ = vlan.(*ocbinds.OpenconfigSpanningTree_Stp_RapidPvst_Vlan)
 			if vlanIntf == nil {
-				rpvstVlanIntf = rpvstVlan.Interfaces.Interface[intfId]
+				rpvstVlanIntf = rpvstVlan.Interfaces.Interface[*ifUIName]
 				if rpvstVlanIntf == nil {
-					rpvstVlanIntf, _ = rpvstVlan.Interfaces.NewInterface(intfId)
+					rpvstVlanIntf, _ = rpvstVlan.Interfaces.NewInterface(*ifUIName)
 				}
 				ygot.BuildEmptyTree(rpvstVlanIntf)
 			} else {
