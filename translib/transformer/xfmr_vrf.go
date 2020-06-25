@@ -187,14 +187,15 @@ func isIntfBindToOtherVrf(intf_tbl_name string, intf_name string, nwInst_name st
 }
 
 func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName string, otherValueExist *bool) error {
+        ifUIName := utils.GetUINameFromNativeName(&intfName)
         var err error
         if log.V(3) {
-            log.Infof("ValidateIntfNotL3ConfigedOtherThanVrf: table %v, intf %v", tblName, intfName)
+            log.Infof("ValidateIntfNotL3ConfigedOtherThanVrf: table %v, intf %v", tblName, *ifUIName)
         }
 
         ipKeys, err := doGetIntfIpKeys(d, tblName, intfName)
         if (err == nil && len(ipKeys) > 0) {
-            errStr :=  "IP address configuration exists for " + intfName
+            errStr :=  "IP address configuration exists for " + *ifUIName
             log.Info("ValidateIntfNotL3ConfigedOtherThanVrf: ", errStr);
             err = tlerr.InvalidArgsError{Format: errStr}
         }
@@ -213,7 +214,7 @@ func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName st
             if (key == "NULL" || key == "vrf_name") {
                 continue
             } else {
-                errStr := "Layer 3 configuration exists for " + intfName
+                errStr := "Layer 3 configuration exists for " + *ifUIName
                 log.Info("ValidateIntfNotL3ConfigedOtherThanVrf: ", errStr);
                 err = tlerr.InvalidArgsError{Format: errStr}
                 break
@@ -854,7 +855,6 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                 log.Infof("YangToDb_network_instance_interface_binding_subtree_xfmr vrf intf binding for default intf %v", intfId)
                 return res_map, err
         }
-
         if ((inParams.oper == CREATE) ||
             (inParams.oper == REPLACE) ||
             (inParams.oper == UPDATE)) {
@@ -897,14 +897,14 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
             }
         } else {
             // VRF Unbind case. Check if all IP has been deleted before VRF unbind
-		    ipKeys, err := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ *ifName, "*" }})
+		    ipKeys, _ := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ *ifName, "*" }})
 		    if len(ipKeys) != 0 {
 			    errStr := "L3 Configuration exists for Interface: " + intfId
 			    log.Error(errStr)
 			    err = tlerr.InvalidArgsError{Format: errStr}
 			    return res_map, err
 		    }
-	    }
+	}
 
         if chekIfSagExistOnIntf(inParams.d, *ifName) {
                 errStr = "Interface " + intfId + " has IP static anycast gateway configuration"
@@ -915,7 +915,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
         /* Check if L3 configs present on given interface */
         fieldOtherThanVrf = false
-        err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, intf_tbl_name, intfId, &fieldOtherThanVrf)
+        err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, intf_tbl_name, *ifName, &fieldOtherThanVrf)
         if err != nil {
             return res_map, err
         }
@@ -939,9 +939,9 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         return res_map, err
 }
 
-
-// DbToYang_network_instance_interface_binding_Subtree_xfmr is a DbtoYang subtree transformer for network instance interface binding
+//DbToYang_network_instance_interface_binding_subtree_xfmr is a DbtoYang subtree transformer for network instance interface binding
 var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+
         var err error
 
         log.Info("DbToYang_network_instance_interface_binding_subtree_xfmr:")
