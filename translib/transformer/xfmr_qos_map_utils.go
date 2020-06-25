@@ -5,6 +5,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 
 
@@ -275,10 +276,11 @@ func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[s
     pathInfo := NewPathInfo(inParams.uri)
 
     if_name := pathInfo.Var("interface-id")
+    dbIfName := utils.GetNativeNameFromUIName(&if_name)
 
     dbSpec := &db.TableSpec{Name: "PORT_QOS_MAP"}
 
-    key := db.Key{Comp: []string{if_name}}
+    key := db.Key{Comp: []string{*dbIfName}}
     qCfg, _ := inParams.d.GetEntry(dbSpec, key) 
 
     log.Info("current entry: ", qCfg)
@@ -288,16 +290,19 @@ func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[s
         return res_map, nil
     }
 
-    value := qCfg.Field[db_attr_name] 
-    log.Info("value = ", value)
+    value, ok := qCfg.Field[db_attr_name]
 
-    attr_name, ok := map_type_name_in_oc_yang[map_type]
-    if !ok {
-        log.Info("map_type not implemented", map_type)
-        return res_map, nil
+    if ok {
+        log.Info("value = ", value)
+
+        attr_name, ok := map_type_name_in_oc_yang[map_type]
+        if !ok {
+            log.Info("map_type not implemented", map_type)
+            return res_map, nil
+        }
+
+        res_map[attr_name] = DbLeafrefToString(value,  map_type)
     }
-
-    res_map[attr_name] = DbLeafrefToString(value,  map_type)
     return res_map, nil
 }
 
