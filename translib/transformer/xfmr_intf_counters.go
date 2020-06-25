@@ -28,6 +28,7 @@ import (
 
 func init () {
     XlateFuncBind("rpc_get_interface_counters", rpc_get_interface_counters)
+    XlateFuncBind("rpc_clear_relay_counters", rpc_clear_relay_counters)
 }
 
 
@@ -176,5 +177,52 @@ var rpc_get_interface_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     result.Output.Status = 0
     result.Output.Status_detail = "Success!"
     return json.Marshal(&result)
+}
+
+var rpc_clear_relay_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var err error
+    log.Infof("Inside rpc_clear_relay_counters: Input: %s\n", string(body))
+
+    var input map[string]interface{}
+    err = json.Unmarshal(body, &input)
+    if err != nil {
+        log.Infof("UnMarshall Error %v\n", err)
+        return nil, err
+    }
+
+    var  valLst [2]string
+    var  data  []byte
+    var  ipv4type string
+    var  ipv6type string
+
+    i := input["sonic-counters:input"].(map[string]interface{})
+
+    ipv4type = i["ipv4-relay-param"].(string)
+    ipv6type = i["ipv6-relay-param"].(string)
+
+    if ipv4type != "NULL" && ipv6type == "NULL" {
+        valLst[0] = "V4-INTERFACE"
+        valLst[1] = i["ipv4-relay-param"].(string)
+
+    } else if ipv4type == "NULL" && ipv6type != "NULL" {
+        valLst[0] = "V6-INTERFACE"
+        valLst[1] = i["ipv6-relay-param"].(string)
+
+    } else {
+        log.Infof("Error - Unknown family type\n")
+        return nil, err
+    }
+
+    data, err = json.Marshal(valLst)
+
+    if err != nil {
+        log.Error("Failed to  marshal input data; err=%v", err)
+        return nil, err
+    }
+
+    log.Infof("DHCP RELAY DATA Published: %v\n", string(data))
+    err = dbs[db.ApplDB].Publish("DHCP_RELAY_NOTIFICATIONS",data)
+
+    return nil, err
 }
 
