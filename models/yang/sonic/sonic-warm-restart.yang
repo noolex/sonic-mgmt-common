@@ -1,0 +1,157 @@
+module sonic-warm-restart {
+    namespace "http://github.com/Azure/sonic-warm-restart";
+    prefix wrm;
+
+    yang-version 1.1;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC WARMRESTART";
+
+    revision 2020-06-25 {
+        description
+            "Initial revision.";
+    }
+
+    typedef module-name {
+
+        type enumeration {
+
+            enum bgp {
+               description
+                 "BGP module";
+            }
+
+            enum teamd {
+               description
+                 "Teamd module";
+            }
+
+            enum swss {
+               description
+                 "Switch State Services module";
+            }
+
+            enum system {
+               description
+                 "system level enable/disable warm-restart";
+            }
+
+        }
+
+        description
+            "The modules supported in warm-restart";
+    }
+
+    container sonic-warm-restart {
+
+        container WARM_RESTART_TABLE {
+        config  false;
+
+            list WARM_RESTART_TABLE_LIST {
+                key "submodule";
+             
+                leaf submodule {
+                    type string;
+                    description
+                      "Submodule names to get data";
+          
+                }
+
+                leaf restore_count {
+                    type uint16;
+                    description
+                      "Restore count value";
+                }
+
+                leaf state {
+                    type string; 
+                    description
+                      "Warm-reboot state of submodule.";
+                }
+            }
+        }
+
+        container WARM_RESTART_ENABLE {
+
+             list WARM_RESTART_ENABLE_LIST {
+                key "module";
+
+                leaf module {
+                    type module-name;
+                    description
+                       "Name of the module";
+                }
+
+                leaf enable {
+                    type boolean;
+                    description
+                       "Enable/Disable a module";
+                }
+            }
+        }
+
+        container WARM_RESTART {
+
+             list WARM_RESTART_LIST {
+                key "module";
+
+                leaf module {
+                    type module-name;
+                    description
+                       "Name of the module";
+                }
+
+                leaf bgp_eoiu {
+                    type boolean;
+                    must "current()/../module = 'bgp'" { error-message "bgp_eoiu is only supported for module bgp."; }
+                    description
+                       "BGP EOIU enable/disable";
+                }
+
+                leaf bgp_timer {
+                    type uint16 {
+                        range "1..3599" {
+                            error-message "Timer must be 1..3599";
+                            error-app-tag timer-invalid;
+                        }
+                    }
+                    must "current()/../module = 'bgp'" { error-message "bgp_timer is only supported for module bgp."; }
+                    description
+                       "Timer value for BGP module";
+                }
+
+                leaf teamsyncd_timer {
+                    type uint16 {
+                        range "1..3599" {
+                            error-message "Timer must be 1..3599";
+                            error-app-tag timer-invalid;
+                        }
+                    }
+                    must "current()/../module = 'teamd'" { error-message "teamsyncd_timer is only supported for module teamd."; }
+                    description
+                       "Timer value for teamd module";
+                }
+
+                leaf neighsyncd_timer {
+                    type uint16 {
+                        range "1..9998" {
+                            error-message "Timer must be 1..9998";
+                            error-app-tag timer-invalid;
+                        }
+                    }
+                    must "current()/../module = 'swss'" { error-message "neighsyncd_timer is only supported for module swss."; }
+                    description
+                       "Timer value for swss module";
+                }
+
+            }
+        }
+    }
+}
+
