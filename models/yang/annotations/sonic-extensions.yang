@@ -126,4 +126,9 @@ module sonic-extensions {
     description "Db table field/key value transformer name. This can be applied to transform yang value to some different format.";
   }
 
+  extension pre-transformer {
+	  argument "pre-transformer-name";
+	  description "Transformer name that will perform pre-translation tasks.";
+  }
+
 }

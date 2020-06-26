@@ -58,6 +58,7 @@ type yangXpathInfo  struct {
     subscribeMinIntvl  int
     cascadeDel     int
     nameWithMod    *string
+	xfmrPre        string
 }
 
 type dbInfo  struct {
@@ -731,6 +732,8 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				xpathData.xfmrField  = ext.NName()
 			case "post-transformer" :
 				xpathData.xfmrPost  = ext.NName()
+			case "pre-transformer" :
+				xpathData.xfmrPre  = ext.NName()
 			case "get-validate" :
 				xpathData.validateFunc  = ext.NName()
 			case "rpc-callback" :
@@ -951,6 +954,7 @@ func mapPrint(inMap map[string]*yangXpathInfo, fileName string) {
         if d.tableName != nil {
             fmt.Fprintf(fp, "%v", *d.tableName)
         }
+    fmt.Fprintf(fp, "\r\n    preXfmr  : %v", d.xfmrPre)
 	fmt.Fprintf(fp, "\r\n    postXfmr : %v", d.xfmrPost)
         fmt.Fprintf(fp, "\r\n    xfmrTbl  : ")
         if d.xfmrTbl != nil {
