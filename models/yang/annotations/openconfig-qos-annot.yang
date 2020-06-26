@@ -328,10 +328,6 @@ module openconfig-qos-annot {
       }
     }
 
-
-
-
-
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-dscp {
       deviate add {
         sonic-ext:field-transformer "qos_tc_to_dscp_map_fld_xfmr";
@@ -343,6 +339,49 @@ module openconfig-qos-annot {
         sonic-ext:field-transformer "qos_tc_to_dot1p_map_fld_xfmr";
       }
     }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:dscp-to-forwarding-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_dscp_to_tc_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:dot1p-to-forwarding-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_dot1p_to_tc_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:forwarding-group-to-queue {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_queue_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:forwarding-group-to-priority-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_pg_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:pfc-priority-to-queue {
+      deviate add {
+        sonic-ext:field-transformer "qos_pfc_priority_to_queue_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:forwarding-group-to-dscp {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_dscp_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:forwarding-group-to-dot1p {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_dot1p_map_fld_xfmr";
+      }
+    }
+
 
     deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group {
       deviate add {

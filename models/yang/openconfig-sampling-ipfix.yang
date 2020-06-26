@@ -1,0 +1,497 @@
+submodule openconfig-sampling-ipfix {
+
+  belongs-to openconfig-sampling {
+    prefix "oc-sampling";
+  }
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-interfaces { prefix oc-if; }
+  import openconfig-types { prefix oc-types; }
+  import openconfig-yang-types { prefix oc-yang; }
+
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
+
+  description
+    "This module defines configuration and operational state data
+    related to data plane traffic sampling based on IPFIX.
+
+    RFC 7011 - Specification of the IP Flow Information Export
+    (IPFIX) Protocol for the Exchange of Flow Information";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2018-07-20" {
+    description
+      "Initial revision";
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  // typedef statements
+
+  // grouping statements
+
+  grouping ipfix-exporter-config {
+    description
+      "Configuration data for the list of IPFIX exporters.";
+
+    leaf name {
+      type string;
+      description
+        "Name of the exporter configuration.";
+    }
+
+    leaf address {
+      type oc-inet:ip-address;
+      description
+        "IP address of the IPFIX collector.";
+    }
+
+    leaf port {
+      type oc-inet:port-number;
+      default 4739;
+      description
+        "Transport port number on the IPFIX collector.";
+    }
+
+    leaf transport {
+      type enumeration {
+        enum SCTP {
+          description
+            "Stream Control Transmission Protocol";
+        }
+        enum TCP {
+          description
+            "Transmission Control Protocol";
+        }
+        enum UDP {
+          description
+            "User Datagran Protocol";
+        }
+      }
+      default SCTP;
+      description
+        "Transport layer protocol used by the exporter.";
+    }
+
+    leaf source-address {
+      type oc-inet:ip-address;
+      description
+        "Sets the source IP address for IPFIX messages sent to
+        collectors.";
+    }
+
+    leaf dscp {
+      type oc-inet:dscp;
+      description
+        "Sets the DSCP codepoint for the packets sent to
+        collectors.";
+    }
+
+    leaf template-timeout {
+      type uint32;
+      units seconds;
+      description
+        "The time between refreshes of the Template data.";
+    }
+
+    leaf options-timeout {
+      type uint32;
+      units seconds;
+      description
+        "The time between export of the Options data.";
+    }
+
+  }
+
+  grouping ipfix-exporter-state {
+    description
+      "Operational state data for the list of IPFIX exporters.";
+  }
+
+  grouping ipfix-exporter-top {
+    description
+      "Top-level grouping for list of IPFIX exporters.";
+
+    container exporters {
+      description
+        "Enclosing container.";
+
+      list exporter {
+        key "name";
+        description
+          "List of IPFIX exporters.";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+          description
+            "Reference to list key.";
+        }
+
+        container config {
+          description
+            "Configuration data for the list of IPFIX exporters.";
+
+          uses ipfix-exporter-config;
+        }
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state data for the list of IPFIX exporters.";
+
+          uses ipfix-exporter-config;
+          uses ipfix-exporter-state;
+        }
+      }
+    }
+  }
+
+
+  grouping ipfix-selector-config {
+    description
+      "Configuration data for IPFIX flow selectors.";
+
+    leaf name {
+      type string;
+      description
+        "Name of the defined selector.";
+    }
+
+    leaf family {
+      type identityref {
+        base oc-types:ADDRESS_FAMILY;
+      }
+      description
+        "Sets the address family for the flow selector.  On many
+        systems, this may be IPv4, IPv6, or MPLS flows.";
+    }
+
+    leaf sampling-rate {
+      type uint32;
+      description
+        "Sets the packet sampling rate.  The rate is
+        is expressed as an integer N, where the intended sampling
+        rate is 1/N packets.  In many implementations the rate
+        is a stastical average, rather than a strict periodic
+        sampling.
+
+        The allowable sampling rate range is generally a
+        property of the system, e.g., determined by the
+        capability of the hardware.";
+    }
+
+    leaf active-timeout {
+      type uint32;
+      units seconds;
+      description
+        "The time after which an active flow is expired and a flow
+        record is sent to the collector.";
+    }
+
+    leaf inactive-timeout {
+      type uint32;
+      units seconds;
+      description
+        "The time interval between the time that a flow becomes
+        inactive, and the time that a flow record should be
+        sent to the collector.  Once a record is generated for an
+        inactive flow, the device typically purges the flow.";
+    }
+  }
+
+  grouping ipfix-selector-state {
+    description
+      "Operational state data for IPFIX flow selectors.";
+  }
+
+  grouping ipfix-selector-top {
+    description
+      "Top-level grouping for IPFIX flow selectors.";
+
+    container selectors {
+      description
+        "Enclosing container for list of IPFIX selectors.";
+
+      list selector {
+        key "name";
+        description
+          "List of defined IPFIX selectors.";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+          description
+            "Reference to list key.";
+        }
+
+        container config {
+          description
+            "Configuration data for IPFIX flow selectors.";
+
+          uses ipfix-selector-config;
+        }
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state data for IPFIX flow selectors.";
+
+          uses ipfix-selector-config;
+          uses ipfix-selector-state;
+        }
+      }
+    }
+  }
+
+  grouping ipfix-interface-config {
+    description
+      "Configuration data for IPFIX-enabled interfaces.";
+
+    leaf id {
+      type oc-if:interface-id;
+      description
+        "Interface identifier for the sampled interface.";
+    }
+
+    leaf exporter {
+      type leafref {
+        path "../../../../exporters/exporter/config/name";
+      }
+      description
+        "Reference to the exporter profile for sampling on the
+        interface.";
+    }
+  }
+
+  grouping ipfix-interface-state {
+    description
+      "Operational state data for IPFIX-enabled interfaces";
+  }
+
+  grouping ipfix-interface-direction-config {
+    description
+      "Configuration data per-direction for IPFIX-enabled
+      interfaces";
+
+    leaf-list selector {
+      type leafref {
+        path "../../../../../selectors/selector/config/name";
+      }
+      description
+        "Reference to the selector profile for sampling on the
+        interface.";
+    }
+  }
+
+  grouping ipfix-interface-direction-state {
+    description
+      "Operational state data for IPFIX-enabled interfaces.";
+
+    leaf active-flows {
+      type oc-yang:counter64;
+      description
+        "Number of active flows being tracked at the interface.";
+    }
+
+    leaf exported-flows {
+      type oc-yang:counter64;
+      description
+        "Total number of flows exported by the interface.";
+    }
+
+    leaf active-timeouts {
+      type oc-yang:counter64;
+      description
+        "Number of flows exported due to an active timeout.";
+    }
+
+    leaf inactive-timeouts {
+      type oc-yang:counter64;
+      description
+        "Number of flows exported due to an inactivity timeout.";
+    }
+  }
+
+
+  grouping ipfix-interface-ingress-top {
+    description
+      "Top-level grouping for IPFIX data on interfaces
+      in the ingress direction";
+
+    container ingress {
+      description
+        "Top-level container for IPFIX data on interfaces in the
+        ingress direction";
+
+      container config {
+        description
+          "Configuration data for IPFIX data on interfaces
+          in the ingress direction";
+
+        uses ipfix-interface-direction-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for IPFIX data on interfaces
+          in the ingress direction";
+
+        uses ipfix-interface-direction-config;
+        uses ipfix-interface-direction-state;
+      }
+    }
+  }
+
+  grouping ipfix-interface-egress-top {
+    description
+      "Top-level grouping for IPFIX data on interfaces
+      in the egress direction";
+
+    container egress {
+      description
+        "Top-level container for IPFIX data on interfaces in the
+        egress direction";
+
+      container config {
+        description
+          "Configuration data for IPFIX data on interfaces
+          in the egress direction";
+
+        uses ipfix-interface-direction-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for IPFIX data on interfaces
+          in the egress direction";
+
+        uses ipfix-interface-direction-config;
+        uses ipfix-interface-direction-state;
+      }
+    }
+  }
+
+  grouping ipfix-interface-top {
+    description
+      "Top-level grouping for IPFIX-enabled interfaces";
+
+    container interfaces {
+      description
+        "Enclosing container for list of interfaces enabled for
+        IPFIX.";
+
+      list interface {
+        key "id";
+        description
+          "List of IPFIX-enabled interfaces.";
+
+        leaf id {
+          type leafref {
+            path "../config/id";
+          }
+          description
+            "Reference to list key.";
+        }
+
+        container config {
+          description
+            "Configuration data for IPFIX-enabled interfaces.";
+
+          uses ipfix-interface-config;
+        }
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state data for IPFIX-enabled interfaces.";
+
+          uses ipfix-interface-config;
+          uses ipfix-interface-state;
+        }
+
+        uses ipfix-interface-ingress-top;
+        uses ipfix-interface-egress-top;
+        uses oc-if:interface-ref;
+      }
+    }
+  }
+
+
+  grouping ipfix-config {
+    description
+      "Configuration data for IPFIX sampling.";
+  }
+
+  grouping ipfix-state {
+    description
+      "Operational state data for IPFIX sampling.";
+  }
+
+  grouping ipfix-top {
+    description
+      "Top-level grouping for IPFIX sampling.";
+
+    container ipfix {
+      description
+        "Top-level container for data related to IPFIX sampling.";
+
+      container config {
+        description
+          "Configuration data for IPFIX sampling.";
+
+        uses ipfix-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for IPFIX sampling";
+
+        uses ipfix-config;
+        uses ipfix-state;
+      }
+
+      uses ipfix-exporter-top;
+      uses ipfix-selector-top;
+      uses ipfix-interface-top;
+    }
+  }
+
+  // data definition statements
+
+
+
+  // augment statements
+
+}

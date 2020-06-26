@@ -1,0 +1,34 @@
+module openconfig-sampling-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/oc-sampling-annot";
+    prefix "oc-sampling-annot";
+
+    import openconfig-extensions { prefix oc-ext; }
+    import openconfig-sampling { prefix oc-sampling; }
+    import openconfig-sampling-ext { prefix oc-sampling-ext; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow {
+      deviate add {
+        sonic-ext:subtree-transformer "sflow_xfmr";
+      }
+    }
+
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:collectors {
+      deviate add {
+        sonic-ext:subtree-transformer "sflow_collector_xfmr";
+      }
+    }
+
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:interfaces {
+      deviate add {
+        sonic-ext:subtree-transformer "sflow_interface_xfmr";
+      }
+    }
+
+}
+
