@@ -63,10 +63,11 @@ func init () {
 // authMethodFind takes a slice and looks for an element in it. If found it will
 // return True, otherwise False
 func authMethodFind(val string) (bool) {
-    methods := [3]string{
+    methods := [4]string{
        "local",
        "tacacs+",
        "radius",
+       "ldap",
     }
 
     for _, item := range methods {
