@@ -1,0 +1,75 @@
+module openconfig-warm-restart-annot {
+
+  yang-version "1.1";
+
+  namespace "http://openconfig.net/yang/annotation/openconfig-warm-restart-annot";
+  prefix "oc-warm-restart-annot";
+
+  import sonic-extensions { prefix sonic-ext; }
+  import openconfig-warm-restart { prefix oc-wmr; }
+
+
+  deviation /oc-wmr:warm-restart/oc-wmr:config/oc-wmr:enable {
+    deviate add {
+      sonic-ext:table-name "WARM_RESTART_ENABLE";
+      sonic-ext:key-transformer "wmr_config_en_key_xfmr";
+      sonic-ext:field-name "enable";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:config/oc-wmr:bgp-eoiu {
+    deviate add {
+      sonic-ext:table-name "WARM_RESTART";
+      sonic-ext:key-transformer "wmr_config_eoiu_key_xfmr";
+      sonic-ext:field-name "bgp_eoiu";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:state/oc-wmr:enable {
+    deviate add {
+      sonic-ext:table-name "WARM_RESTART_ENABLE";
+      sonic-ext:key-transformer "wmr_config_en_key_xfmr";
+      sonic-ext:field-name "enable";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:state/oc-wmr:bgp-eoiu {
+    deviate add {
+      sonic-ext:table-name "WARM_RESTART";
+      sonic-ext:key-transformer "wmr_config_eoiu_key_xfmr";
+      sonic-ext:field-name "bgp_eoiu";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:enable-warm-restart/oc-wmr:modules {
+    deviate add {
+      sonic-ext:table-name "WARM_RESTART_ENABLE";
+      sonic-ext:key-transformer "wmr_module_key_xfmr";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:timers {
+    deviate add {
+      sonic-ext:table-name "WARM_RESTART";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:timers/oc-wmr:timer {
+    deviate add {
+      sonic-ext:key-transformer "wmr_timer_key_xfmr";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:timers/oc-wmr:timer/oc-wmr:config/oc-wmr:value {
+    deviate add {
+      sonic-ext:field-transformer "wmr_timer_value_field_xfmr";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:status/oc-wmr:submodules {
+    deviate add {
+      sonic-ext:db-name "STATE_DB";
+      sonic-ext:subtree-transformer "wrm_status_subtree_xfmr";
+    }
+  }
+}
