@@ -2,6 +2,7 @@ package transformer
 
 import (
     "fmt"
+    "strings"
     log "github.com/golang/glog"
     "github.com/shirou/gopsutil/host"
     "encoding/json"
@@ -56,6 +57,7 @@ var rpc_infra_reboot_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
                 } `json:"sonic-system-infra:input"`
         }
 
+
         err = json.Unmarshal(body, &operand)
         if err != nil {
                 log.Errorf("rpc_infra_reboot_cb: Failed to parse rpc input; err=%v", err)
@@ -68,6 +70,22 @@ var rpc_infra_reboot_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
                 } `json:"sonic-system-infra:output"`
         }
 
+        //Don't allow warm-reboot when spanning-tree is enabled
+        if(strings.Contains(operand.Input.Param, "warm-reboot")){
+            configDbPtr := dbs[db.ConfigDB]
+            var stpGlobalTable *db.TableSpec = &db.TableSpec{Name: STP_GLOBAL_TABLE}
+            stpGlobalDbEntry, err := configDbPtr.GetEntry(stpGlobalTable, db.Key{Comp: []string{"GLOBAL"}})
+            if err == nil {
+                mode := (&stpGlobalDbEntry).Get("mode")
+                if(len(mode) != 0){
+                    log.Errorf("rpc_infra_reboot_cb: warm-reboot not allowed as spanning-tree is enabled; mode=%s", mode)
+                    exec.Output.Result = "Error: warm-reboot not allowed as spanning-tree is enabled"   
+                    result, err := json.Marshal(&exec)
+                    return result, err
+                }
+            }
+        }
+
         host_output := HostQuery("infra_host.exec_cmd", operand.Input.Param)
         if host_output.Err != nil {
               log.Errorf("rpc_infra_reboot_cb: host Query failed: err=%v", host_output.Err)
@@ -77,7 +95,7 @@ var rpc_infra_reboot_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         var output string
         output, _ = host_output.Body[1].(string)
 
-        exec.Output.Result = output
+        exec.Output.Result = output   
         result, err := json.Marshal(&exec)
 
         return result, err

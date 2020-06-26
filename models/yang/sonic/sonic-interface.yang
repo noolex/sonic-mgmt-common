@@ -260,13 +260,6 @@ module sonic-interface {
                         error-app-tag intf-ip-config;
                     }
 
-                    must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                         "(count(/sonic-interface/INTERFACE/INTERFACE_LIST[portname=current()/../portname]/unnumbered)  <= 1)"
-                    {
-                        error-message "IP Unnumbered interface configuration is already done on this interface";
-                        error-app-tag intf-unnum-config;
-                    }
-
                     must "count(/spc:sonic-portchannel/spc:PORTCHANNEL_MEMBER/spc:PORTCHANNEL_MEMBER_LIST[spc:ifname=current()/../portname]) = 0"
                     {
                         error-message "Interface configured as a member of portchannel. Cannot configure IP Unnumbered";

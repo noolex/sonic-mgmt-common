@@ -8,6 +8,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_fwd_group_dscp_xfmr", YangToDb_qos_fwd_group_dscp_xfmr)
@@ -326,16 +327,22 @@ var DbToYang_qos_tc_to_dscp_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrP
 
     if_name := pathInfo.Var("interface-id")
 
+    dbIfName := utils.GetNativeNameFromUIName(&if_name)
     dbSpec := &db.TableSpec{Name: "PORT_QOS_MAP"}
 
-    key := db.Key{Comp: []string{if_name}}
-    ifCfg, _ := inParams.d.GetEntry(dbSpec, key) 
-
+    key := db.Key{Comp: []string{*dbIfName}}
+    ifCfg, err := inParams.d.GetEntry(dbSpec, key)
+    if  err != nil {
+        log.Info("No port_qos_map with a name of : ", dbIfName)
+        return res_map, nil
+    }
+ 
     log.Info("current entry: ", ifCfg)
-    value := ifCfg.Field["tc_to_dscp_map"] 
-
-    log.Info("value = ", value)
-    res_map["forwarding-group-to-dscp"] = DbLeafrefToString(value, "TC_TO_DSCP_MAP")
+    value, ok := ifCfg.Field["tc_to_dscp_map"]
+    if ok {
+        log.Info("value = ", value)
+        res_map["forwarding-group-to-dscp"] = DbLeafrefToString(value, "TC_TO_DSCP_MAP")
+    }
     return res_map, nil
 }
 
