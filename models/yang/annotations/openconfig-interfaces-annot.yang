@@ -357,4 +357,11 @@ module openconfig-interfaces-annot {
             sonic-ext:field-transformer "storm_value_xfmr";
         }
     }
+
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:state/oc-eth-ext:ifname" {
+        deviate add {
+            sonic-ext:field-transformer "storm_value_xfmr";
+        }
+    }
+
 }
