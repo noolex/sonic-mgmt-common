@@ -607,10 +607,10 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					} else if specYangType == YANG_LEAF_LIST {
 						var fieldVal []interface{}
 						if strings.Contains(terminalNode, "[") {
-							terminalNodeData := strings.TrimSuffix(strings.SplitN(terminalNode, "[", 2)[1], "]")
-							terminalNodeDataLst := strings.SplitN(terminalNodeData, "=", 2)
-							terminalNodeVal := terminalNodeDataLst[1]
-							fieldVal = append(fieldVal, terminalNodeVal)
+							leafListInstVal, valErr := extractLeafListInstFromUri(uri)
+							if valErr == nil {
+								fieldVal = append(fieldVal, leafListInstVal)
+							}
 						}
 						curXlateParams.uri = luri
 						curXlateParams.name = spec.yangEntry.Name
@@ -739,26 +739,18 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 						// terminal node case
 						if yangType == YANG_LEAF_LIST {
 							dbVal.Field = make(map[string]string)
+							dbFldVal := ""
 							//check if it is a specific item in leaf-list delete
-							uriItemList := splitUri(strings.TrimSuffix(xlateParams.requestUri, "/"))
-							uriItemListLen := len(uriItemList)
-							var terminalNode string
-							if uriItemListLen > 0 {
-								terminalNode = uriItemList[uriItemListLen-1]
-								dbFldVal := ""
-								if strings.Contains(terminalNode, "[") {
-									terminalNodeData := strings.TrimSuffix(strings.SplitN(terminalNode, "[", 2)[1], "]")
-									terminalNodeDataLst := strings.SplitN(terminalNodeData, "=", 2)
-									terminalNodeVal := terminalNodeDataLst[1]
-									dbFldVal, err = unmarshalJsonToDbData(xDbSpecMap[dbSpecField].dbEntry, dbSpecField, fieldName, terminalNodeVal)
-									if err != nil {
-										log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", dbSpecField, err)
-										return err
-									}
+							leafListInstVal, valErr := extractLeafListInstFromUri(xlateParams.requestUri)
+							if valErr == nil {
+								dbFldVal, err = unmarshalJsonToDbData(xDbSpecMap[dbSpecField].dbEntry, dbSpecField, fieldName, leafListInstVal)
+								if err != nil {
+									log.Errorf("Failed to unmarshal Json to DbData: path(\"%v\") error (\"%v\").", dbSpecField, err)
+									return err
 								}
-								fieldName = fieldName + "@"
-								dbVal.Field[fieldName] = dbFldVal
 							}
+							fieldName = fieldName + "@"
+							dbVal.Field[fieldName] = dbFldVal
 						}
 						if yangType == YANG_LEAF {
 							dbVal.Field = make(map[string]string)

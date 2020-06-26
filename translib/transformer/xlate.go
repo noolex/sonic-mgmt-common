@@ -444,21 +444,15 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 								return []byte(""), true, err
 							}
 							if ((yangNodeType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
-								uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
-								uriItemListLen := len(uriItemList)
-								if uriItemListLen > 0 {
-									terminalNode := uriItemList[uriItemListLen-1]
-									terminalNodeData := strings.TrimSuffix(strings.SplitN(terminalNode, "[", 2)[1], "]")
-									terminalNodeDataLst := strings.SplitN(terminalNodeData, "=", 2)
-									terminalNodeVal := terminalNodeDataLst[1]
-									if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], terminalNodeVal) {
-										dbData[cdb][tableName][keyStr].Field[fieldName] = terminalNodeVal
-									} else {
-										return []byte(""), true, tlerr.NotFoundError{Format:"Resource not found"}
-									}
+								leafListInstVal, valErr := extractLeafListInstFromUri(uri)
+								if valErr != nil {
+									return []byte(""), true, valErr
 								}
-
-
+								if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], leafListInstVal) {
+									dbData[cdb][tableName][keyStr].Field[fieldName] = leafListInstVal
+								} else {
+									return []byte(""), true, tlerr.NotFoundError{Format:"Resource not found"}
+								}
 							}
 						}
 					}
