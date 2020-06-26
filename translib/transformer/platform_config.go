@@ -104,7 +104,7 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     port_config.lanes = dpb_lanes
     port_config.speed = strconv.Itoa(lane_speed_map[mode][1])
     if strings.HasPrefix(mode, "1x") {
-        pos := strings.Index(port_config.alias, ":")
+        pos := strings.LastIndex(port_config.alias, "/")
         if pos != -1 {
            port_config.alias =  port_config.alias[0:pos]
         }
