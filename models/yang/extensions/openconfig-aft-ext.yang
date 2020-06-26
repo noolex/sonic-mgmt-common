@@ -97,14 +97,22 @@ module openconfig-aft-ext {
                     "Details about outgoing interface for this multicast entry.";
 
                 leaf outgoing-interface {
-                    type oc-if:interface-id;
+                    type leafref {
+                        path "../state/outgoing-interface";
+                    }
                     description
-                        "Outgoing interface for this multicast entry.";
+                        "Reference to the outgoing-interface key";
                 }
 
                 container state {
                     description
                         "Common Operational state information of an outgoing interface in this multicast entry.";
+
+                    leaf outgoing-interface {
+                        type oc-if:interface-id;
+                        description
+                            "Outgoing interface for this multicast entry.";
+                    }
 
                     leaf uptime {
                         type string;

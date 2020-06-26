@@ -117,14 +117,22 @@ module openconfig-pim-ext {
             "Common Operational state information of an outgoing interface present in PIM TIB.";
 
         leaf outgoing-interface {
-            type oc-if:interface-id;
+            type leafref {
+                path "../state/outgoing-interface";
+            }
             description
-                "Outgoing interface for this multicast entry.";
+                "Reference to the outgoing-interface key";
         }
 
         container state {
             description
                 "Common Operational state information of an outgoing interface present in PIM TIB.";
+
+            leaf outgoing-interface {
+                type oc-if:interface-id;
+                description
+                    "Outgoing interface for this multicast entry.";
+            }
 
             leaf uptime {
                 type string;
@@ -181,10 +189,65 @@ module openconfig-pim-ext {
         description
             "Common IPv4 Operational state information of particular multicast source present in PIM TIB.";
 
-        leaf rpf-neighbor-address {
-            type oc-inet:ipv4-address;
+        container rpf-info {
             description
-                "IPv4 Unicast address of the RPF-neighbor for the source-address.";
+                "Details about RPF-neighbor for a particular multicast source present in PIM protocol TIB.";
+
+            container state {
+                description "Operational state information.";
+
+                leaf rpf-neighbor-address {
+                    type oc-inet:ipv4-address;
+                    description
+                        "IPv4 Unicast address of the RPF-neighbor for the multicast source-address.";
+                }
+
+                leaf metric {
+                    type uint32;
+                    description
+                        "Distance metric of the route for this RPF-neighbor";
+                }
+
+                leaf preference {
+                    type uint32;
+                    description
+                        "Preference of the route for this RPF-neighbor";
+                }
+            }
+        }
+    }
+
+    grouping pim-ext-gbl-ip-entry-key-refs-state {
+        description
+            "Common PIM TIB IP multicast group entries keys refereneces.";
+
+        leaf group-address {
+            type leafref {
+                path "../state/group-address";
+            }
+            description
+                "Reference to the group-address key";
+        }
+    }
+
+    grouping pim-ext-gbl-tib-src-entry-key-refs-state {
+        description
+            "Common PIM TIB IP multicast group's source entries keys refereneces.";
+
+        leaf source-address {
+            type leafref {
+                path "../state/source-address";
+            }
+            description
+                "Reference to the source-address key";
+        }
+
+        leaf rpt {
+            type leafref {
+                path "../state/rpt";
+            }
+            description
+                "Reference to the rpt key";
         }
     }
 
@@ -202,41 +265,49 @@ module openconfig-pim-ext {
                 description
                     "List of the IPv4 multicast entries present in PIM protocol TIB.";
 
-                leaf group-address {
-                    type oc-inet:ipv4-address;
-                    description
-                        "IPv4 Multicast group-address";
-                }
+                uses pim-ext-gbl-ip-entry-key-refs-state;
 
-                container src-entries {
-                    description
-                        "Details about all multicast-source information of this particular multicast group-address entry.";
+                container state {
+                    description "Operational state information.";
 
-                    list src-entry {
-                        key "source-address rpt";
-
+                    leaf group-address {
+                        type oc-inet:ipv4-address;
                         description
-                            "List of different source-address entries within this particular multicast group-address entry.";
+                            "IPv4 Multicast group-address";
+                    }
 
-                        leaf source-address {
-                            type oc-inet:ipv4-address;
+                    container src-entries {
+                        description
+                            "Details about all multicast-source information of this particular multicast group-address entry.";
+
+                        list src-entry {
+                            key "source-address rpt";
+
                             description
-                                "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
-                                This address can be 0.0.0.0 in case of *,G multicast group entry.";
-                        }
+                                "List of different source-address entries within this particular multicast group-address entry.";
 
-                        leaf rpt {
-                            type boolean;
-                            description
-                                "When set to TRUE, this is RPT multicast entry.";
-                        }
+                            uses pim-ext-gbl-tib-src-entry-key-refs-state;
 
-                        container state {
-                            description
-                                "Operational state information of particular multicast source present in PIM TIB.";
+                            container state {
+                                description
+                                    "Operational state information of particular multicast source present in PIM TIB.";
 
-                            uses pim-ext-gbl-tib-src-entry-cmn-info-state;
-                            uses pim-ext-gbl-tib-ipv4-src-entry-cmn-info-state;
+                                leaf source-address {
+                                    type oc-inet:ipv4-address;
+                                    description
+                                        "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
+                                        This address can be 0.0.0.0 in case of *,G multicast group entry.";
+                                }
+
+                                leaf rpt {
+                                    type boolean;
+                                    description
+                                        "When set to TRUE, this is RPT multicast entry.";
+                                }
+
+                                uses pim-ext-gbl-tib-src-entry-cmn-info-state;
+                                uses pim-ext-gbl-tib-ipv4-src-entry-cmn-info-state;
+                            }
                         }
                     }
                 }

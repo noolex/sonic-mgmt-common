@@ -33,7 +33,7 @@ module openconfig-aft-ipv4-ext {
     reference "0.1.0";
   }
 
-  grouping aft-ipv4-ext-ipv4-multicast-structural {
+  grouping aft-ipv4-ext-ipv4-multicast-structural-state {
       description
           "Structural grouping defining the schema for the IPv4 multicast abstract forwarding table.";
 
@@ -50,32 +50,53 @@ module openconfig-aft-ipv4-ext {
                   This list is keyed by the destination IPv4 multicast group & source address.";
 
               leaf group-address {
-                  type oc-inet:ipv4-address;
+                  type leafref {
+                      path "../state/group-address";
+                  }
                   description
-                      "IPv4 Multicast group-address";
+                      "Reference to the group-address key";
               }
 
-              container src-entries {
-                  description
-                      "Details about all multicast-source information of this particular multicast group-address entry.";
+              container state {
+                  description "Operational state information.";
 
-                  list src-entry {
-                      key "source-address";
-
+                  leaf group-address {
+                      type oc-inet:ipv4-address;
                       description
-                          "List of different source-address entries within this particular multicast group-address entry.";
+                          "IPv4 Multicast group-address";
+                  }
 
-                      leaf source-address {
-                          type oc-inet:ipv4-address;
-                          description
-                              "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
-                              This address can be 0.0.0.0 in case of *,G multicast group entry.";
-                      }
+                  container src-entries {
+                      description
+                          "Details about all multicast-source information of this particular multicast group-address entry.";
 
-                      container state {
+                      list src-entry {
+                          key "source-address";
+
                           description
-                              "Operational state parameters for the IPv4 multicast AFT entry.";
-                          uses oc-aft-ext:aft-ext-common-ip-mcast-entry-state;
+                              "List of different source-address entries within this particular multicast group-address entry.";
+
+                          leaf source-address {
+                              type leafref {
+                                  path "../state/source-address";
+                              }
+                              description
+                                  "Reference to the source-address key";
+                          }
+
+                          container state {
+                              description
+                                  "Operational state parameters for the IPv4 multicast AFT entry.";
+
+                              leaf source-address {
+                                  type oc-inet:ipv4-address;
+                                  description
+                                      "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
+                                      This address can be 0.0.0.0 in case of *,G multicast group entry.";
+                              }
+
+                              uses oc-aft-ext:aft-ext-common-ip-mcast-entry-state;
+                          }
                       }
                   }
               }
@@ -97,7 +118,7 @@ module openconfig-aft-ipv4-ext {
               for installation into the FIB of the device exporting the
                   data structure.";
 
-          uses aft-ipv4-ext-ipv4-multicast-structural;
+          uses aft-ipv4-ext-ipv4-multicast-structural-state;
       }
   }
 
