@@ -204,7 +204,8 @@ func (t *CustomValidation) ValidatePtp(
 			log.Info("ValidatePtp platform : ", platform)
 
 			if !strings.Contains(platform, "x86_64-accton_as7712_32x") &&
-				!strings.Contains(platform, "x86_64-accton_as5712_54x") {
+				!strings.Contains(platform, "x86_64-accton_as5712_54x") &&
+				!strings.Contains(platform, "VDI") {
 				errStr := "This object is not supported in this platform"
 				return CVLErrorInfo{
 					ErrCode: CVL_SEMANTIC_ERROR,
