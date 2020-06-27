@@ -284,18 +284,18 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         neighTblKey = ifName + "|" + staticIpStr
         var neighTblSpec *db.TableSpec = &db.TableSpec{Name: neighTblName}
         neighTblData, _ := configDbPtr.GetTable(neighTblSpec)
-
         neighEntry, err := neighTblData.GetEntry(db.Key{[]string{neighTblKey}})
         if err != nil || len(neighEntry.Field) == 0 {
             errStr := "Resource Not Found"
             log.Error(" Static arp empty row ", errStr)
             return neighIntfmap, err
         }
-
-        valueMap[neighTblKey] = db.Value{Field: make(map[string]string)}
-        valueMap[neighTblKey].Field["family"] = "NULL"
-        valueMap[neighTblKey].Field["neigh"] = "NULL"
-        neighIntfmap[neighTblName] = valueMap
+        subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        subIntfmap_del := make(map[string]map[string]db.Value)
+        subIntfmap_del[neighTblName] = make(map[string]db.Value)
+        subIntfmap_del[neighTblName][neighTblKey] = db.Value{}
+        subOpMap[db.ConfigDB] = subIntfmap_del
+        inParams.subOpDataMap[DELETE] = &subOpMap
     }
     return neighIntfmap, err
 }
@@ -429,23 +429,23 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         neighIntfmap[neighTblName] = valueMap
         log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: valueMap ", valueMap[neighTblKey])
     } else if (deleteOperation) {
-        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: staticIpStr ", staticIpStr)
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: staticIpStr ", staticIpStr)
         neighTblKey = ifName + "|" + staticIpStr
         var neighTblSpec *db.TableSpec = &db.TableSpec{Name: neighTblName}
         neighTblData, _ := configDbPtr.GetTable(neighTblSpec)
-
         neighEntry, err := neighTblData.GetEntry(db.Key{[]string{neighTblKey}})
         if err != nil || len(neighEntry.Field) == 0 {
             errStr := "Resource Not Found"
             log.Error(" Static arp empty row ", errStr)
             return neighIntfmap, err
         }
-
-        valueMap[neighTblKey] = db.Value{Field: make(map[string]string)}
-        valueMap[neighTblKey].Field["family"] = "NULL"
-        valueMap[neighTblKey].Field["neigh"] = "NULL"
-        neighIntfmap[neighTblName] = valueMap
-    } 
+        subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        subIntfmap_del := make(map[string]map[string]db.Value)
+        subIntfmap_del[neighTblName] = make(map[string]db.Value)
+        subIntfmap_del[neighTblName][neighTblKey] = db.Value{}
+        subOpMap[db.ConfigDB] = subIntfmap_del
+        inParams.subOpDataMap[DELETE] = &subOpMap
+    }
     return neighIntfmap, err
 } 
 
