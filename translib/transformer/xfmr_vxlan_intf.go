@@ -1247,6 +1247,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	pathInfo := NewPathInfo(inParams.uri)
 	if log.V(3) {
 		log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: ", inParams.ygRoot, inParams.uri)
+	  log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: template => ", pathInfo.Template)
 	}
 
 	path, err := getVxlanNiUriPath(inParams.uri)
@@ -1258,6 +1259,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	if err := reqP.setVxlanNetInstObjFromReq(); err != nil {
 		return nil, err
 	}
+	log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: reqP=> ", reqP)
 
 	if reqP.opcode != DELETE && (reqP.vxlanNetInstObj.VxlanVniInstances == nil || len(reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance) == 0) {
 		return res_map, tlerr.NotFound("Resource Not Found")
@@ -1316,6 +1318,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 			if log.V(3) {
 				log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: tblVxlanMapKeys => err => ", err)
 			}
+			log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: tblVxlanMapKeys => err => ", err)
 			if err != nil && inParams.oper != 3 && !isKeysInPaylod {
 				log.Error("YangToDb_vxlan_vni_instance_subtree_xfmr ==> returning ERROR, since the key doesn't exist")
 				return res_map, tlerr.NotFound("Resource Not Found")
@@ -1330,11 +1333,16 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	var vtepName string
 	var tblKeyStr string
 
-	if reqP.opcode == DELETE && (pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance" ||
-		pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances" ||
-        pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/vxlan-vni-instances") {
+	log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: template => ", pathInfo.Template)
+	log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: reqP=> ", reqP)
+
+	if reqP.opcode == DELETE && 
+    (pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance{vni-id}{source-nve}" ||
+		 pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances" ||
+     pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/vxlan-vni-instances") {
 		dbKeys, err := inParams.d.GetKeys(&db.TableSpec{Name: tblName})
 		if err != nil {
+	    log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: res_map=> err => ", res_map, err)
 			return res_map, err
 		}
 		if len(dbKeys) > 0 {
@@ -1350,9 +1358,16 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 					if mapNameList[2] == niName {
 						tblKeyStr = vtepName + "|" + "map_" + strconv.Itoa(int(vniId)) + "_" + niName
 						log.Info ("tblKeyStr ==> ", tblKeyStr)
-						valueMap[tblKeyStr] = db.Value{Field: make(map[string]string)}
+						// valueMap[tblKeyStr] = db.Value{Field: make(map[string]string)}
 						// valueMap[tblKeyStr].Field["vlan"] = niName
 						// valueMap[tblKeyStr].Field["vni"] = strconv.Itoa(int(vniId))
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subIntfmap_del := make(map[string]map[string]db.Value)
+            subIntfmap_del[tblName] = make(map[string]db.Value)
+            subIntfmap_del[tblName][tblKeyStr] = db.Value{}
+            subOpMap[db.ConfigDB] = subIntfmap_del
+            inParams.subOpDataMap[DELETE] = &subOpMap
+				    log.Info("DELETE Request YangToDb_vxlan_vni_instance_subtree_xfmr: valueMap", valueMap)
 					}
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := inParams.d.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
@@ -1372,6 +1387,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 			if len(valueMap) > 0 {
 				log.Info("vniId ==> deleting ", vniId)
 				res_map[tblName] = valueMap
+				log.Info("DELETE Request Returning for Deletion YangToDb_vxlan_vni_instance_subtree_xfmr: valueMap", valueMap)
 				return res_map, err	
 			} else {
 				log.Info("vniId ==> NO delete ", vniId)
