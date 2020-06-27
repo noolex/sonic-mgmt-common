@@ -1351,8 +1351,8 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 						tblKeyStr = vtepName + "|" + "map_" + strconv.Itoa(int(vniId)) + "_" + niName
 						log.Info ("tblKeyStr ==> ", tblKeyStr)
 						valueMap[tblKeyStr] = db.Value{Field: make(map[string]string)}
-						valueMap[tblKeyStr].Field["vlan"] = niName
-						valueMap[tblKeyStr].Field["vni"] = strconv.Itoa(int(vniId))
+						// valueMap[tblKeyStr].Field["vlan"] = niName
+						// valueMap[tblKeyStr].Field["vni"] = strconv.Itoa(int(vniId))
 					}
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := inParams.d.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
