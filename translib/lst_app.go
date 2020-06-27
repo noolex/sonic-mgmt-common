@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"reflect"
 	"strconv"
@@ -243,10 +244,6 @@ func (app *LstApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
 func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 
 	root := app.getAppRootObject()
-	//    stateDb, err = db.NewDB(getDBOptions(db.StateDB, true))
-	//    if err != nil {
-	//        return nil
-	//    }
 
 	// Process Groups first
 	if nil != root.LstGroups && len(root.LstGroups.LstGroup) > 0 {
@@ -295,8 +292,9 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 			}
 
 			if id != *intfPtr.InterfaceRef.Config.Interface {
-				return tlerr.NotSupported("Different ID %s and Interface name %s not supported")
+				return tlerr.NotSupported("Different ID %s and Interface name %s not supported", id, *intfPtr.InterfaceRef.Config.Interface)
 			}
+
 		SkipIntfCheck:
 			if nil != intfPtr.UpstreamGroups && nil != intfPtr.DownstreamGroup {
 				return tlerr.InvalidArgs("Interface %s has both upstream and downstream groups", id)
@@ -307,9 +305,10 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 				}
 				for upstr := range intfPtr.UpstreamGroups.UpstreamGroup {
 					// Check group is part of request
-					upstreams := app.intfUpstreamCfgTblMap[id]
+                    ifName := *utils.GetNativeNameFromUIName(&id)
+					upstreams := app.intfUpstreamCfgTblMap[ifName]
 					upstreams = append(upstreams, upstr)
-					app.intfUpstreamCfgTblMap[id] = upstreams
+					app.intfUpstreamCfgTblMap[ifName] = upstreams
 				}
 			}
 
@@ -318,7 +317,8 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 				if !isInterfaceNameValid(id, true) {
 					return tlerr.InvalidArgs("Interface %s is invalid for downstream", id)
 				}
-				app.intfDownstreamCfgTblMap[id] = *intfPtr.DownstreamGroup.Config.GroupName
+                ifName := *utils.GetNativeNameFromUIName(&id)
+				app.intfDownstreamCfgTblMap[ifName] = *intfPtr.DownstreamGroup.Config.GroupName
 			}
 		}
 
@@ -749,6 +749,7 @@ func (app *LstApp) applyData(d *db.DB) error {
 	}
 
 	for name, grpData := range app.intfTrackCfgTblMap {
+        grpData.Field["NULL"] = "NULL"
 		if _, found := app.intfTrackCfgTblCache[name]; !found {
 			err := d.CreateEntry(app.intfTrackCfgTs, db.Key{Comp: []string{name}}, grpData)
 			if err != nil {
@@ -767,9 +768,9 @@ func (app *LstApp) applyData(d *db.DB) error {
 
 func isInterfaceNameValid(intf string, isDown bool) bool {
 	if isDown {
-		return strings.HasPrefix(intf, "Ethernet") || strings.HasPrefix(intf, "PortChannel")
+		return strings.HasPrefix(intf, "Eth") || strings.HasPrefix(intf, "PortChannel")
 	} else {
-		return strings.HasPrefix(intf, "Ethernet") || strings.HasPrefix(intf, "PortChannel") || strings.HasPrefix(intf, "Vlan")
+		return strings.HasPrefix(intf, "Eth") || strings.HasPrefix(intf, "PortChannel") || strings.HasPrefix(intf, "Vlan")
 	}
 }
 
