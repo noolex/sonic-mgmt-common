@@ -143,13 +143,15 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     }
 
     tblList = append(tblList, "BGP_NEIGHBOR")
-    if _ , present := inParams.txCache.Load(vrf);!present {
-        inParams.txCache.Store(vrf, vrf)
-    } else {
-        if log.V(3) {
-            log.Info("bgp_nbr_tbl_xfmr: repetitive table update is avoided for target URI:", inParams.uri)
+    if inParams.dbDataMap != nil {
+        if _ , present := inParams.txCache.Load(vrf);!present {
+            inParams.txCache.Store(vrf, vrf)
+        } else {
+            if log.V(3) {
+                log.Info("bgp_nbr_tbl_xfmr: repetitive table update is avoided for target URI:", inParams.uri)
+            }
+            return tblList, nil
         }
-        return tblList, nil
     }
 
     if len(nbrAddr) != 0 {
