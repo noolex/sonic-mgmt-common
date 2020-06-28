@@ -1,0 +1,30 @@
+module sonic-warm-restart-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/warm-restart-annot";
+    prefix "warm-restart-annot";
+
+    import sonic-warm-restart { prefix warm-restart; }
+    import sonic-extensions { prefix sonic-ext; }
+
+
+    deviation /warm-restart:sonic-warm-restart/warm-restart:WARM_RESTART_TABLE {
+      deviate add {
+        sonic-ext:db-name "STATE_DB";
+      }
+    }
+
+    deviation /warm-restart:sonic-warm-restart/warm-restart:WARM_RESTART_ENABLE {
+      deviate add {
+        sonic-ext:db-name "CONFIG_DB";
+      }
+    }
+
+    deviation /warm-restart:sonic-warm-restart/warm-restart:WARM_RESTART {
+      deviate add {
+        sonic-ext:db-name "CONFIG_DB";
+      }
+    }
+}
+
