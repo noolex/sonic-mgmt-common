@@ -9,6 +9,7 @@ import (
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
@@ -29,11 +30,6 @@ func pim_exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
     pimOutputJson, cmdErr := exec_vtysh_cmd (vtysh_cmd)
     if (cmdErr != nil) {
         log.Errorf ("PIM: VTYSH-cmd : \"%s\" execution failed with Error:%s", vtysh_cmd, cmdErr);
-        return nil, operErr
-    }
-
-    if len(pimOutputJson) == 0 {
-        log.Infof ("PIM: VTYSH-cmd : \"%s\" execution output is empty !!", vtysh_cmd);
         return nil, operErr
     }
 
@@ -135,6 +131,26 @@ func getPimRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Networ
     return protoInstObj.Pim, niName, err
 }
 
+func util_pim_get_native_ifname_from_ui_ifname (pUiIfname *string, pNativeIfname *string) {
+    if pUiIfname == nil || pNativeIfname == nil {return}
+    if len(*pUiIfname) == 0 {return}
+    *pNativeIfname = *pUiIfname
+    _pNativeIfname := utils.GetNativeNameFromUIName(pUiIfname)
+    if _pNativeIfname != nil && len(*_pNativeIfname) != 0 {
+        *pNativeIfname = *_pNativeIfname
+    }
+}
+
+func util_pim_get_ui_ifname_from_native_ifname (pNativeIfname *string, pUiIfname *string) {
+    if pUiIfname == nil || pNativeIfname == nil {return}
+    if len(*pNativeIfname) == 0 {return}
+    *pUiIfname = *pNativeIfname
+    _pUiIfname := utils.GetUINameFromNativeName(pNativeIfname)
+    if _pUiIfname != nil && len(*_pUiIfname) != 0 {
+        *pUiIfname = *_pUiIfname
+    }
+}
+
 var YangToDb_pim_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     niName, err := validatePimRoot (inParams); if err != nil {
         return "", err
@@ -151,14 +167,14 @@ var YangToDb_pim_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     }
 
     pathInfo := NewPathInfo(inParams.uri)
-    intf := pathInfo.Var("interface-id")
-    if (len(intf) == 0) {
+    uiIntfId := pathInfo.Var("interface-id")
+    if (len(uiIntfId) == 0) {
         return "", errors.New("interface name is missing")
     }
 
-    log.Info("YangToDb_pim_intf_tbl_key_xfmr : URI:", inParams.uri, " VRF:", niName, " Interface:", intf)
+    log.Info("YangToDb_pim_intf_tbl_key_xfmr : URI:", inParams.uri, " VRF:", niName, " uiIntfId:", uiIntfId)
 
-    return (niName + "|" + "ipv4" + "|" + intf), err
+    return (niName + "|" + "ipv4" + "|" + uiIntfId), err
 }
 
 var DbToYang_pim_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -235,11 +251,8 @@ func get_spec_pim_intf_cfg_tbl_entry (cfgDb *db.DB, key *_xfmr_pim_intf_state_ke
     return entryValue.Field, err
 }
 
-func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state_key, intfData map[string]interface{},
-                               intfStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces_Interface_State) bool {
-
-    intfStateObj.InterfaceId = &intfKey.intfId
-
+func fill_pim_intf_cfg_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state_key,
+                                   intfStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces_Interface_State) bool {
     if cfgDbEntry, cfgDbGetErr := get_spec_pim_intf_cfg_tbl_entry (inParams.dbs[db.ConfigDB], &intfKey) ; cfgDbGetErr == nil {
         if value, ok := cfgDbEntry["bfd-enabled"] ; ok {
             _bfdEnabled, _ := strconv.ParseBool(value)
@@ -268,6 +281,11 @@ func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state
         }
     }
 
+    return true
+}
+
+func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state_key, intfData map[string]interface{},
+                               intfStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces_Interface_State) bool {
     if value, ok := intfData["state"] ; ok {
         _enabled := false
         switch value {
@@ -307,9 +325,16 @@ var DbToYang_pim_intf_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     }
 
     pathInfo := NewPathInfo(inParams.uri)
-    intfIdKey := pathInfo.Var("interface-id")
+    uiIntfIdKey := pathInfo.Var("interface-id")
+    if (uiIntfIdKey == "") {
+        log.Errorf ("%s failed !! Mandatory param Interface-id is missing !!", cmnLog)
+        return operErr
+    }
+    var nativeIntfIdKey string
+    util_pim_get_native_ifname_from_ui_ifname (&uiIntfIdKey, &nativeIntfIdKey)
 
-    log.Info("DbToYang_pim_intf_state_xfmr: ", cmnLog, " ==> URI: ",inParams.uri, " niName:", niName, " intfIdKey:", intfIdKey)
+    log.Info("DbToYang_pim_intf_state_xfmr: ", cmnLog, " ==> URI: ",inParams.uri, " niName:", niName,
+             " uiIntfIdKey:", uiIntfIdKey, " nativeIntfIdKey:", nativeIntfIdKey)
 
     intfsObj := pimObj.Interfaces ; if intfsObj == nil {
         var _intfsObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces
@@ -321,31 +346,31 @@ var DbToYang_pim_intf_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     cmd := "show ip pim vrf " + niName + " interface json"
     pimIntfOutputJson, cmdErr := pim_exec_vtysh_cmd (cmd)
     if (cmdErr != nil) {
-        log.Errorf ("%s failed !! Error:%s", cmnLog, cmdErr);
+        log.Errorf ("%s failed !! Error:%s", cmnLog, cmdErr)
         return operErr
     }
 
+    intfObj, ok := intfsObj.Interface[uiIntfIdKey] ; if !ok {
+        intfObj,_ = intfsObj.NewInterface(uiIntfIdKey)
+        ygot.BuildEmptyTree(intfObj)
+    }
+
+    intfStateObj := intfObj.State ; if intfStateObj == nil {
+        var _intfStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces_Interface_State
+        intfObj.State = &_intfStateObj
+        intfStateObj = intfObj.State
+        ygot.BuildEmptyTree(intfStateObj)
+    }
+    intfStateObj.InterfaceId = &uiIntfIdKey
+
     var intfKey _xfmr_pim_intf_state_key
     intfKey.niName = niName
+    intfKey.intfId = nativeIntfIdKey
 
+    fill_pim_intf_cfg_state_info (inParams, intfKey, intfStateObj)
     for intfId := range pimIntfOutputJson {
-        if (intfIdKey != "" && (intfId != intfIdKey)) {continue}
+        if (nativeIntfIdKey != "" && (intfId != nativeIntfIdKey)) {continue}
         intfData, ok := pimIntfOutputJson[intfId].(map[string]interface{}) ; if !ok {continue}
-
-        intfObj, ok := intfsObj.Interface[intfId] ; if !ok {
-            intfObj,_ = intfsObj.NewInterface(intfId)
-            ygot.BuildEmptyTree(intfObj)
-        }
-
-        intfStateObj := intfObj.State ; if intfStateObj == nil {
-            var _intfStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces_Interface_State
-            intfObj.State = &_intfStateObj
-            intfStateObj = intfObj.State
-            ygot.BuildEmptyTree(intfStateObj)
-        }
-
-        intfKey.intfId = intfId
-
         fill_pim_intf_state_info (inParams, intfKey, intfData, intfStateObj)
     }
 
@@ -408,23 +433,26 @@ var DbToYang_pim_nbrs_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     }
 
     pathInfo := NewPathInfo(inParams.uri)
-    intfIdKey := pathInfo.Var("interface-id")
-    if (intfIdKey == "") {
+    uiIntfIdKey := pathInfo.Var("interface-id")
+    if (uiIntfIdKey == "") {
         log.Errorf ("%s failed !! Mandatory param Interface-id is missing !!", cmnLog)
         return operErr
     }
+    var nativeIntfIdKey string
+    util_pim_get_native_ifname_from_ui_ifname (&uiIntfIdKey, &nativeIntfIdKey)
     nbrAddrKey := pathInfo.Var("neighbor-address")
 
-    log.Info("DbToYang_pim_nbrs_state_xfmr: ", cmnLog, " ==> URI: ",inParams.uri, " niName:", niName, " intfIdKey:", intfIdKey, " nbrAddrKey:", nbrAddrKey)
+    log.Info("DbToYang_pim_nbrs_state_xfmr: ", cmnLog, " ==> URI: ",inParams.uri, " niName:", niName,
+             " uiIntfIdKey:", uiIntfIdKey, " nativeIntfIdKey:", nativeIntfIdKey, " nbrAddrKey:", nbrAddrKey)
 
-    cmd := "show ip pim vrf " + niName + " interface " + intfIdKey + " json"
+    cmd := "show ip pim vrf " + niName + " interface " + nativeIntfIdKey + " json"
     pimIntfOutputJson, cmdErr := pim_exec_vtysh_cmd (cmd)
     if (cmdErr != nil) {
         log.Errorf ("%s failed !! Error:%s", cmnLog, cmdErr);
         return operErr
     }
-    intfData, ok := pimIntfOutputJson[intfIdKey].(map[string]interface{}) ; if !ok {
-        log.Errorf ("%s failed !! Failed to fetch PIM-interface:%s specific details from FRR !!", cmnLog, intfIdKey);
+    intfData, ok := pimIntfOutputJson[nativeIntfIdKey].(map[string]interface{}) ; if !ok {
+        log.Errorf ("%s failed !! Failed to fetch PIM-interface:%s specific details from FRR !!", cmnLog, nativeIntfIdKey);
         return operErr
     }
 
@@ -444,18 +472,20 @@ var DbToYang_pim_nbrs_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
 
     var nbrKey _xfmr_pim_nbr_state_key
     nbrKey.niName = niName
-    nbrKey.intfId = intfIdKey
+    nbrKey.intfId = nativeIntfIdKey
 
     for intfId := range pimNbrOutputJson {
-        if (intfId != intfIdKey) {continue}
+        if (intfId != nativeIntfIdKey) {continue}
         intfNbrData, ok := pimNbrOutputJson[intfId].(map[string]interface{}) ; if !ok {continue}
 
         for nbrAddr := range intfNbrData {
             nbrData, ok := intfNbrData[nbrAddr].(map[string]interface{}) ; if !ok {continue}
             if ((nbrAddrKey != "") && (nbrAddr != nbrAddrKey)) {continue}
 
-            intfObj, ok := intfsObj.Interface[intfId] ; if !ok {
-                intfObj,_ = intfsObj.NewInterface(intfId)
+            var _uiIntfId string
+            util_pim_get_ui_ifname_from_native_ifname (&intfId, &_uiIntfId)
+            intfObj, ok := intfsObj.Interface[_uiIntfId] ; if !ok {
+                intfObj,_ = intfsObj.NewInterface(_uiIntfId)
                 ygot.BuildEmptyTree(intfObj)
             }
 
