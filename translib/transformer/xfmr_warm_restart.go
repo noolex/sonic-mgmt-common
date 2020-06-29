@@ -20,7 +20,6 @@ package transformer
 
 import (
 	log "github.com/golang/glog"
-	"strings"
         "strconv"
 	"errors"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
@@ -44,36 +43,59 @@ func init() {
 
 //Currently supported module
 
-var modules = map[string]string {
-    "bgp"   :  "bgp" ,
-    "teamd" :  "teamsyncd" ,
-    "swss"  :  "neighsyncd" ,
+var ocToDBmodules = map[string]string {
+    "BGP"   : "bgp" ,
+    "TEAMD" : "teamd",
+    "SWSS"  : "swss",
 }
 
-var subModules = map[string]string {
-    "bgp"        : "bgp" ,
-    "teamsyncd"  : "teamd" ,
-    "neighsyncd" : "swss" ,
+var dbToOCmodules = map[string]string {
+
+    "bgp"   :  "BGP" ,
+    "teamd" :  "TEAMD" ,
+    "swss"  :  "SWSS" ,
 }
 
-var subModuleTimers = map[string]string {
-    "bgp"        : "bgp_timer" ,
-    "teamsyncd"  : "teamsyncd_timer" ,
-    "neighsyncd" : "neighsyncd_timer" ,
+var modulesToSubmodules = map[string]string {
+    "bgp"   :  "BGP" ,
+    "teamd" :  "TEAMSYNCD" ,
+    "swss"  :  "NEIGHSYNCD" ,
 }
 
-func getSubModuleFromModule (subModname string) (string,bool) {
-    value, ret := modules[subModname]
+var subModulesToModules = map[string]string {
+    "BGP"        : "bgp" ,
+    "TEAMSYNCD"  : "teamd" ,
+    "NEIGHSYNCD" : "swss" ,
+}
+
+var subModuleToTimers = map[string]string {
+    "BGP"        : "bgp_timer" ,
+    "TEAMSYNCD"  : "teamsyncd_timer" ,
+    "NEIGHSYNCD" : "neighsyncd_timer" ,
+}
+
+func getOCModuleName (modname string) (string,bool) {
+    value, ret := dbToOCmodules[modname]
+    return  value, ret
+}
+
+func getDBModuleName (modname string) (string,bool) {
+    value, ret := ocToDBmodules[modname]
+    return  value, ret
+}
+
+func getSubModuleFromModule (modname string) (string,bool) {
+    value, ret := modulesToSubmodules[modname]
     return  value, ret
 }
 
 func getModuleFromSubmodule (subModname string) (string,bool) {
-     value, ret := subModules[subModname]
+     value, ret := subModulesToModules[subModname]
     return  value, ret
 }
 
 func getFieldFromSubModule (subModname string) (string,bool) {
-     value, ret := subModuleTimers[subModname]
+     value, ret := subModuleToTimers[subModname]
     return  value, ret
 }
 
@@ -123,15 +145,14 @@ var YangToDb_wmr_module_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (st
 
     pathInfo := NewPathInfo(inParams.uri)
     modname := pathInfo.Var("module")
-    moduleName := strings.ToLower(modname)
-    _ , isOk := modules[moduleName]
+    dbModulename , isOk := getDBModuleName(modname)
 
     if !isOk {
         log.Error("YangToDb_wmr_module_key_xfmr Unknown submodule ", modname)
         return "", err
     }
     log.V(3).Info("YangToDb_wmr_module_key_xfmr - return module ", modname)
-    return modname, err
+    return dbModulename, err
 }
 
 var DbToYang_wmr_module_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -139,14 +160,13 @@ var DbToYang_wmr_module_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (ma
     rmap := make(map[string]interface{})
     var err error
 
-    _ , isOk := modules[inParams.key]
+    moduleName , isOk := getOCModuleName(inParams.key)
 
     if !isOk {
         log.Error("DbToYang_wmr_module__key_xfmr Unknown submodule ", inParams.key)
         return rmap, err
     }
-    inParams.key = strings.ToUpper(inParams.key)
-    rmap["module"] = inParams.key
+    rmap["module"] = moduleName
     log.V(3).Info("DbToYang_wmr_module_key_xfmr rmap ", rmap)
     return rmap, err
 }
@@ -158,8 +178,7 @@ var YangToDb_wmr_timer_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 
     pathInfo := NewPathInfo(inParams.uri)
     subMod := pathInfo.Var("submodule")
-    subModuleName := strings.ToLower(subMod)
-    moduleName, ok := getModuleFromSubmodule(subModuleName)
+    moduleName, ok := getModuleFromSubmodule(subMod)
 
     if (!ok) {
         return "", err
@@ -178,8 +197,7 @@ var DbToYang_wmr_timer_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map
     if (!ok) {
         return rmap, err
     }
-    rmap["submodule"] = strings.ToUpper(subModule)
-
+    rmap["submodule"] = subModule
     log.V(3).Info("DbToYang_wmr_timer_key_xfmr rmap ", rmap)
     return rmap, err
 }
@@ -229,7 +247,6 @@ var DbToYang_wmr_timer_value_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrPa
         res_val, isOk := str1.Field[field]
         if (isOk) {
              value, _ := strconv.ParseInt(res_val, 10, 16)
-                 inParams.key = strings.ToUpper(inParams.key)
                  rmap["value"] = value
         }
     }
