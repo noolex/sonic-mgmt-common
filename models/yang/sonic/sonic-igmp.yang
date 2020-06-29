@@ -44,6 +44,10 @@ module sonic-igmp {
     container sonic-igmp {
         container IGMP_INTERFACE {
             list IGMP_INTERFACE_LIST {
+                must "(../../IGMP_INTERFACE_QUERY/IGMP_INTERFACE_QUERY_LIST/enabled='true')" {
+                    error-message "IGMP not enabled on this interface";
+                }
+
                 key "igmpintfname mcastgrpaddr srcaddr";
                 leaf igmpintfname{
                     type union {
@@ -71,7 +75,6 @@ module sonic-igmp {
                     description "Source Address";
                     type inet:ipv4-address;
                 }
-
                 leaf enable {
                     type boolean;
                     description
@@ -94,14 +97,20 @@ module sonic-igmp {
                 }
 
                 leaf version {
+                    must "(../enabled='true')" {
+                         error-message "IGMP not enabled on this interface";
+                    }
                     type uint8 {
-                        range "1..3"{
+                        range "2..3"{
                             error-message "Invalid IGMP version.";
                         }
                     }
                 }
 	
                 leaf query-interval {
+                    must "(../enabled='true')" {
+                         error-message "IGMP not enabled on this interface";
+                    }
                     type uint32 {
                         range "1..1024" {
                             error-message "Invalid IGMP Query Interval.";
@@ -110,28 +119,38 @@ module sonic-igmp {
                 }
 				
                 leaf last-member-query-count {
-                     type uint32 {
-                         range "1..7"{
-                             error-message "Invalid IGMP Last Member Query Interval.";
-                         }
-                     }
+                    must "(../enabled='true')" {
+                         error-message "IGMP not enabled on this interface";
+                    }
+                    type uint32 {
+                        range "1..7"{
+                            error-message "Invalid IGMP Last Member Query Interval.";
+                        }
+                    }
                 }
 
                 leaf last-member-query-interval {
-                     type uint32 {
-                         range "1..255"{
-                             error-message "Invalid IGMP Last Member Query Interval.";
-                         }
-                     }
+                    must "(../enabled='true')" {
+                         error-message "IGMP not enabled on this interface";
+                    }
+                    type uint32 {
+                        range "1..255"{
+                            error-message "Invalid IGMP Last Member Query Interval.";
+                        }
+                    }
                 }
 				
                 leaf query-max-response-time {
-                     type uint16 {
-                          range "10..250"{
-                               error-message "Invalid IGMP Query Max Response Time.";
-                          }
-                     }
+                    must "(../enabled='true')" {
+                         error-message "IGMP not enabled on this interface";
+                    }
+                    type uint16 {
+                         range "10..250"{
+                              error-message "Invalid IGMP Query Max Response Time.";
+                         }
+                    }
                 }				
+
              }
         }
    }

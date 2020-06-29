@@ -71,6 +71,10 @@ func init () {
     XlateFuncBind("YangToDb_intf_name_empty_xfmr", YangToDb_intf_name_empty_xfmr)
     XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
     XlateFuncBind("YangToDb_igmp_tbl_key_xfmr", YangToDb_igmp_tbl_key_xfmr)
+    XlateFuncBind("DbToYang_igmp_mcastgrpaddr_fld_xfmr", DbToYang_igmp_mcastgrpaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_igmp_mcastgrpaddr_fld_xfmr", YangToDb_igmp_mcastgrpaddr_fld_xfmr)
+    XlateFuncBind("DbToYang_igmp_srcaddr_fld_xfmr", DbToYang_igmp_srcaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr)
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
@@ -3102,6 +3106,49 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
         res_map["enabled"] = true
     }
     return res_map, nil
+}
+
+var YangToDb_igmp_mcastgrpaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	log.Info("YangToDb_igmp_mcastgrpaddr_xfmr: ", inParams.key)
+        res_map["enable"] = "true"
+	return res_map, nil
+}
+
+var DbToYang_igmp_mcastgrpaddr_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	log.Info("DbToYang_igmp_mcastgrpaddr_fld_xfmr: ", inParams.key)
+
+	cdb := inParams.dbs[db.ConfigDB]
+	igmpEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "IGMP_INTERFACE"}, db.Key{Comp: []string{inParams.key}})
+	mcastgrpaddr := igmpEntry.Get("mcastgrpaddr")
+
+	result["mcastgrpaddr"] = &mcastgrpaddr
+
+	return result, err
+}
+
+var YangToDb_igmp_srcaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	log.Info("YangToDb_igmp_srcaddr_xfmr: ", inParams.key)
+
+        res_map["enable"] = "true"
+	return res_map, nil
+}
+
+var DbToYang_igmp_srcaddr_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	log.Info("DbToYang_igmp_srcaddr_fld_xfmr: ", inParams.key)
+
+	cdb := inParams.dbs[db.ConfigDB]
+	igmpEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "IGMP_INTERFACE"}, db.Key{Comp: []string{inParams.key}})
+	srcaddr := igmpEntry.Get("srcaddr")
+
+	result["srcaddr"] = &srcaddr
+
+	return result, err
 }
 
 var YangToDb_igmp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
