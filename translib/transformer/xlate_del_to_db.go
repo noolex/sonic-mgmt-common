@@ -165,7 +165,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				xfmrLogInfoAll("Current Uri - %v, CurrentTbl - %v, CurrentKey - %v", curUri, curTbl, curKey)
 
 				if isFirstCall {
-					if perr != nil && cerr != nil {
+					if perr == nil && cerr == nil {
 						if len(curTbl) > 0 && parentTbl != curTbl {
 							/* Non-inhertited table case */
 							xfmrLogInfoAll("Non-inhertaed table case, uri - %v", curUri)
