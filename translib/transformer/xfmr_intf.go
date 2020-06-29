@@ -1892,7 +1892,7 @@ func deleteVxlanIntf(inParams *XfmrParams, ifName *string) error {
     if err == nil {
 	    evpnNvoMap := make(map[string]db.Value)
 	    evpnDbV := db.Value{Field:map[string]string{}}
-	    evpnDbV.Field["source_vtep"] = *ifName
+	    //evpnDbV.Field["source_vtep"] = *ifName
 	    evpnNvoMap["nvo1"] = evpnDbV
 	    resMap["EVPN_NVO"] = evpnNvoMap
     }
