@@ -985,7 +985,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 				xfmrLogInfo("Invoked pre transformer: %v, dbDataMap: %v ", modSpecInfo.xfmrPre, dbDataMap)
 				if err != nil {
 					log.Errorf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
-					return jsonData, true, nil
+					return jsonData, true, err
 				}
 				inParamsForGet.dbDataMap = dbDataMap
 				inParamsForGet.ygRoot    = ygRoot
