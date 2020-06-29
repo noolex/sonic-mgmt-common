@@ -4,6 +4,7 @@ import (
     "errors"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "strings"
     "encoding/json"
     "strconv"
@@ -225,12 +226,14 @@ var DbToYang_bfd_shop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
         return get_err
     }
 
-
-
     bfdshop_key.RemoteAddress = pathInfo.Var("remote-address")
     bfdshop_key.Vrf = pathInfo.Var("vrf")
     bfdshop_key.Interface = pathInfo.Var("interface")
     bfdshop_key.LocalAddress = pathInfo.Var("local-address")
+
+    if (bfdshop_key.Interface != "null") {
+        bfdshop_key.Interface = *utils.GetNativeNameFromUIName(&(bfdshop_key.Interface))
+    }
 
     if (bfdshop_key.LocalAddress == "null") {
         vtysh_cmd = "show bfd vrf " + bfdshop_key.Vrf + " peer " + bfdshop_key.RemoteAddress + " interface " + bfdshop_key.Interface + " json"
@@ -297,6 +300,10 @@ var DbToYang_bfd_mhop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     bfdmhop_key.Vrf = pathInfo.Var("vrf")
     bfdmhop_key.LocalAddress = pathInfo.Var("local-address")
 
+    if (bfdmhop_key.Interface != "null") {
+        bfdmhop_key.Interface = *utils.GetNativeNameFromUIName(&(bfdmhop_key.Interface))
+    }
+
     if (bfdmhop_key.LocalAddress == "null") {
         vtysh_cmd = "show bfd vrf " + bfdmhop_key.Vrf + " peer " + bfdmhop_key.RemoteAddress + " multihop " + " local-address " + bfdmhop_key.LocalAddress + " json"
     } else {
@@ -338,86 +345,6 @@ var DbToYang_bfd_mhop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     return err;
 }
 
-/*
-func get_bfd_peers (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdState, inParams XfmrParams) error {
-    var err error
-    var cmd_err error
-    var output_peer []interface{}
-    var output_counter []interface{}
-
-    bfdMapJson := make(map[string]interface{})
-    bfdCounterMapJson := make(map[string]interface{})
-
-    pathInfo := NewPathInfo(inParams.uri)
-
-    targetUriPath, err := getYangPathFromUri(pathInfo.Path)
-    log.Info(targetUriPath)
-    if strings.HasPrefix(targetUriPath, "/openconfig-bfd:bfd/openconfig-bfd-ext:bfd-state/single-hop-state") {
-        cmd_err = get_bfd_shop_peers (bfd_obj, inParams)
-        return cmd_err
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-bfd:bfd//fill_bfd_mhop_dataopenconfig-bfd-ext:bfd-state/multi-hop-state") {
-        cmd_err = get_bfd_mhop_peers (bfd_obj, inParams)
-        return cmd_err
-    } else {
-        vtysh_cmd := "show bfd peers json"
-        output_peer, cmd_err = exec_vtysh_cmd_array (vtysh_cmd)
-        if cmd_err != nil {
-            log.Errorf("Failed to fetch bfd peers array:, err")
-            return cmd_err
-        }
-
-        vtysh_cmd = "show bfd peers counters json"
-        output_counter, cmd_err = exec_vtysh_cmd_array (vtysh_cmd)
-        if cmd_err != nil {
-            log.Errorf("Failed to fetch bfd peers counters array:, err")
-            return cmd_err
-        }
-    }
-
-    log.Info(output_peer)
-    bfdMapJson["output"] = output_peer
-
-    log.Info(output_counter)
-    bfdCounterMapJson["output"] = output_counter
-
-    sessions, _ := bfdMapJson["output"].([]interface{})
-    counters, _ := bfdCounterMapJson["output"].([]interface{})
-
-    for i, session := range sessions {
-        session_data, _ := session.(map[string]interface{})
-        counter_data, _ := counters[i].(map[string]interface{})
-        log.Info(session_data)
-        log.Info(counter_data)
-        if value, ok := session_data["multihop"].(bool) ; ok {
-            if !value {
-                if ok := fill_bfd_shop_data (bfd_obj, session_data, counter_data, nil) ; !ok {return err}
-            }else {
-                if ok := fill_bfd_mhop_data (bfd_obj, session_data, counter_data, nil) ; !ok {return err}
-            }
-        }
-    }
-
-    log.Info(bfd_obj)
-
-    return err
-}
-
-var DbToYang_bfd_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-
-    var err error
-    cmn_log := "GET: xfmr for BFD peers state"
-
-    bfd_obj, get_err := validate_bfd_get (inParams, cmn_log);
-    if get_err != nil {
-        return get_err
-    }
-
-    err = get_bfd_peers (bfd_obj, inParams)
-
-    return err;
-}
-*/
-
 func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, session_data map[string]interface{}, counter_data map[string]interface{}, bfdshop_Input_key *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions_SingleHop_Key) bool {
     var err error
     var bfdshop_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions_SingleHop
@@ -439,7 +366,7 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, ses
             }
 
             if value, ok := session_data["interface"].(string) ; ok {
-               bfdshopkey.Interface = value
+               bfdshopkey.Interface = *utils.GetUINameFromNativeName(&value)
             }
 
             if value, ok := session_data["vrf"].(string) ; ok {
@@ -702,7 +629,7 @@ func fill_bfd_mhop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdMhopSessions, ses
             }
 
             if value, ok := session_data["interface"].(string) ; ok {
-                bfdmhopkey.Interface = value
+                bfdmhopkey.Interface = *utils.GetUINameFromNativeName(&value)
             } else {
                  bfdmhopkey.Interface = "null"
             }
@@ -982,7 +909,7 @@ var bfd_mhop_session_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
                 }
 
                 if value, ok := session_data["interface"].(string) ; ok {
-                    key = key + "|" + value
+                    key = key + "|" + *utils.GetUINameFromNativeName(&value)
                 } else {
                     key = key + "|" + "null"
                 }
@@ -1053,7 +980,7 @@ var bfd_shop_session_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
                 }
 
                 if value, ok := session_data["interface"].(string) ; ok {
-                    key = key + "|" + value
+                    key = key + "|" + *utils.GetUINameFromNativeName(&value)
                 } else {
                     key = key + "|" + "null"
                 }

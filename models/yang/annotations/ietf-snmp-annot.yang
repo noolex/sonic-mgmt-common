@@ -407,6 +407,7 @@ module ietf-snmp-annot {
     deviation /snmp:snmp/snmp:vacm/snmp:group/snmp:access {
       deviate add {
         sonic-ext:table-name "SNMP_SERVER_GROUP_ACCESS";
+        sonic-ext:key-transformer "snmp_access_key_xfmr";
       }
     }
 

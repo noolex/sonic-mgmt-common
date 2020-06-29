@@ -44,6 +44,7 @@ module sonic-copp {
 						"Priority value";
 				}
 				leaf trap_action {
+					sonic-ext:custom-validation ValidateCoppTrapAction;
 					type string {
 						pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
 							error-message "Invalid value passed for trap_action";
@@ -128,6 +129,7 @@ module sonic-copp {
 					}
 				}
 				leaf mode {
+					sonic-ext:custom-validation ValidateCoppTrapBound;
 					type string {
 						pattern "(sr_tcm)|(tr_tcm)|(storm)" {
 							error-message "Invalid value passed for mode";
@@ -140,6 +142,7 @@ module sonic-copp {
 					}
 				}
 				leaf green_action {
+					sonic-ext:custom-validation ValidateCoppTrapBound;
 					type string {
 						pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
 							error-message "Invalid value passed for green_action";
@@ -149,6 +152,7 @@ module sonic-copp {
 						"Green action";
 				}
 				leaf red_action {
+					sonic-ext:custom-validation ValidateCoppTrapBound;
 					type string {
 						pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
 							error-message "Invalid value passed for red_action";
@@ -158,6 +162,7 @@ module sonic-copp {
 						"Red action";
 				}
 				leaf yellow_action {
+					sonic-ext:custom-validation ValidateCoppTrapBound;
 					type string {
 						pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
 							error-message "Invalid value passed for yellow_action";
@@ -178,11 +183,13 @@ module sonic-copp {
 						"Control plane policing classifier name";
 				}
 				leaf trap_ids {
+					sonic-ext:custom-validation ValidateCoppTrapIds;
 					type string;
 					description
 						"Comma separated string of trap_ids";
 				}
 				leaf trap_group {
+					sonic-ext:custom-validation ValidateCoppTrapGroup;
 					type string;
 					description
 						"reference to CoPP group";

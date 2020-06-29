@@ -1,0 +1,332 @@
+module openconfig-warm-restart {
+
+  yang-version "1.1";
+
+  // namespace
+  namespace "http://openconfig.net/models/yang/warm-restart/extension";
+
+  prefix "oc-wmr";
+
+  //import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization
+     "SONiC";
+
+  contact
+     "SONiC";
+
+  description
+    "Warm Boot is the process to restart the switch driver daemon 
+    without affecting data plane. Primary requirement of warm boot 
+    to avoid any data plane traffic disruption during the warm boot.  
+    Control plane traffic will be discarded by NPU since the CPU is
+    not ready to receive packet during warmboot.";
+
+  oc-ext:openconfig-version "1.0.0";
+
+  revision "2020-06-25" {
+    description
+      "OpenConfig initial version";
+
+    reference "1.0.0";
+  }
+
+  // OpenConfig specific extensions for module metadata.
+  oc-ext:regexp-posix;
+  oc-ext:catalog-organization "SONiC";
+  oc-ext:origin "SONiC";
+
+
+  typedef enable-module-name {
+
+    type enumeration {
+
+      enum BGP {
+       description
+         "BGP module";
+      }
+
+      enum TEAMD {
+       description
+         "Teamd module";
+      }
+
+      enum SWSS {
+       description
+        "Switch State Services module";
+      }
+    }
+    description
+      "The modules supported in warm-restart";
+  }
+
+  typedef timer-submodule-name {
+    
+    type enumeration {
+
+      enum BGP {
+       description
+         "The submodule of BGP module";
+      }
+
+      enum TEAMSYNCD {
+        description
+          "The submodule of teamd module";
+      }
+
+      enum NEIGHSYNCD {
+        description
+          "The submodule of SWSS module";
+      }
+    }
+    description
+      "The submodules of the corresponding to modules supports in warm-restart";
+  }
+
+  grouping warm-restart-enable-system-config {
+    description
+      "Warm-restart system enable/disable";
+
+    leaf enable {
+      type boolean;
+
+      description 
+        "Enable or disable the system level";
+    }
+  }
+
+  grouping warm-restart-enable-bgp-eoiu-config {
+    description
+      "Enable/Disable the End-of-Initial Update (EOIU) for BGP";
+
+    leaf bgp-eoiu {
+      type boolean;
+
+      description
+        "Enable/Disable the End-of-Initial Update (EOIU) for BGP";
+    }
+  }
+
+  grouping warm-restart-module-enable-config {
+
+    description
+      "Module level warm-restart enable/disable";
+
+    leaf module {
+      type enable-module-name;
+      description
+        "Name of the module";
+    }
+
+    leaf enable {
+      type boolean;
+
+      description
+        "Enable or disable a module in warm-restart";
+
+    }
+  }
+
+  grouping warm-restart-submodule-timer-value-config {
+    description 
+     "Timer value for submodule";
+
+    leaf value {
+     type uint32 {
+       range "1..9999";
+     }
+
+     description
+       "Timer value for the submodule";
+    } 
+  }
+
+  grouping warm-restart-config-system-eoiu-config {
+    description
+      "Enable the warm-restart for system level.";
+
+    container config {
+      description
+        "Configure the values for system warm-restart and bgp EOIU";
+
+      uses warm-restart-enable-system-config;
+      uses warm-restart-enable-bgp-eoiu-config;
+    }
+
+    container state {
+      config false;
+
+      description
+        "Get the values for system warm-restart and bgp EOIU.";
+
+      uses warm-restart-enable-system-config;
+      uses warm-restart-enable-bgp-eoiu-config;
+    }
+  }
+
+  grouping warm-restart-config-module-enable-config {
+    description 
+      "Enable warm-restart for the module";
+
+    container enable {
+      description
+        "Enclosing the container for the list of modules";
+
+      list modules {
+        key "module";
+
+        description
+           "The list of modules associated with the warm-restart";
+
+        leaf module {
+
+          type leafref {
+            path "../config/module";
+          }
+          description
+            "Name of the module";
+        }
+
+        container config {
+          description
+            "Configure the enable or disbale to the module";
+             
+          uses warm-restart-module-enable-config;
+
+        }
+
+        container state {
+          config false;
+          description
+            "Operational data of state of the module";
+
+          uses warm-restart-module-enable-config;
+        } 
+      }
+    }
+  }
+
+  grouping warm-restart-config-submodule-timer-config {
+    description 
+      "Warm-restart configure timer for submodule ";
+
+    container timers {
+      description
+        "Enclosing container for the list of submodule";
+
+      list timer {
+        key "submodule";
+
+        leaf submodule {
+          type leafref {
+            path "../config/submodule";
+          }
+          description
+            "Submodule name to config the timer";
+        }
+
+        container config {
+          description
+            "Configure the timer value of a submodule";
+
+          leaf submodule {
+            type timer-submodule-name;
+
+            description
+              "The submodule name of the module";
+          }
+
+          uses warm-restart-submodule-timer-value-config;
+        }
+
+        container state {
+          config false;
+          description
+            "Operatoinal data of timer value for submodule";
+
+          leaf submodule {
+            type timer-submodule-name;
+
+            description
+              "The submodule name of the module";
+          }
+
+          uses warm-restart-submodule-timer-value-config;
+        }
+
+        description
+          "List of the submodule to configure timer value";
+      }
+    }
+  }
+
+  grouping warm-restart-submodule-state-data-state {
+    description
+      "Submodule state and restore count";
+
+    leaf submodule {
+      type string;
+
+      description
+        "The submodule name";
+    }
+
+    leaf restore-count {
+      type uint16;
+
+      description
+        "The restore count value";
+    }
+
+    leaf state {
+      type string;
+
+      description
+        "The current state of warm-restart of the submodule";
+    }
+  }
+
+  grouping warm-restart-submodule-status-state {
+    description 
+      "Warm-restart submodule state data.";
+
+    container status {
+      description
+        "Enclosing the list of submodule for state and restore count";
+
+      list submodules {
+        config false;
+
+        description
+          "Enclosing the list of submodule for state and restore count";
+
+        container state {
+          description
+            "Get the state and restore count of  submodule";
+          uses warm-restart-submodule-state-data-state; 
+        }
+      }
+    }
+  }
+ 
+  grouping warm-restart-top {  
+    description
+      "Top level warm-restart data containers";
+
+    container warm-restart {
+      description
+        "Enclosing container for warm-restart related configuration and
+         operational state data";
+        
+      uses warm-restart-config-system-eoiu-config;
+      uses warm-restart-config-module-enable-config;
+      uses warm-restart-config-submodule-timer-config;
+      uses warm-restart-submodule-status-state;
+
+    }
+  }
+
+  uses warm-restart-top;
+}

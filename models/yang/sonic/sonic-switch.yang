@@ -1,0 +1,97 @@
+module sonic-switch {
+    namespace "http://github.com/Azure/sonic-switch";
+    prefix sonic-switch;
+    yang-version 1.1;
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "This module provides rest apis to fetch SWITCH_TABLE db entries.";
+
+    revision 2020-06-26 {
+        description
+            "Initial revision.";
+    }
+
+    container sonic-switch {
+
+	container SWITCH_TABLE {
+
+	     sonic-ext:db-name "APPL_DB";
+
+             config false;
+	     description
+		"Switch_table db entries.";
+
+	     list SWITCH_TABLE_LIST {
+                key "switch";
+
+		leaf switch {
+                      type enumeration {
+                           enum switch;
+                        }
+                      description
+                           "switch_table db key.";
+                }
+
+                leaf tam_int_ifa_ts_supported {
+                    type string {
+			pattern "True|False";
+                    }
+			description
+			"Tam int ifa ts feature support status check.";
+                }
+
+                leaf drop_monitor_supported {
+                    type string {
+			pattern "True|False";
+                    }
+			description
+			"Drop monitor feature support status check.";
+                }
+
+                leaf snapshot_supported {
+                    type string {
+			pattern "True|False";
+                    }
+			description
+			"Snapshot feature support status check.";
+                }
+
+                leaf threshold_supported {
+                    type string {
+			pattern "True|False";
+                    }
+			description
+			"Threshold feature support status check.";
+                }
+
+                leaf fdb_aging_time {
+                    type int32;
+			description
+			"fdb aging time interval.";
+                }
+
+                leaf ecmp_hash_seed {
+                    type int32;
+			description
+			"ecmp hash seed value.";
+                }
+
+                leaf lag_hash_seed {
+                    type int32;
+			description
+			"lag hash seed value.";
+                }
+            }
+	}
+    }
+}

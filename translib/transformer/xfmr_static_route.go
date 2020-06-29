@@ -10,6 +10,7 @@ import (
         "github.com/openconfig/ygot/ygot"
         "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
         "github.com/Azure/sonic-mgmt-common/translib/db"
+        "github.com/Azure/sonic-mgmt-common/translib/utils"
         "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
@@ -421,7 +422,11 @@ func nexthopFromStrList(srcVrf string, strList []string, isIpv4 bool) (*ipNextho
     if len(gwIp) == 0 {
         gwIp = zeroIp(isIpv4)
     }
-    return newNexthop(srcVrf, blackhole, gwIp, strList[2], uint32(distance), strList[4])
+    ifName := strList[2]
+    if len(ifName) > 0 {
+        ifName = *(utils.GetUINameFromNativeName(&ifName))
+    }
+    return newNexthop(srcVrf, blackhole, gwIp, ifName, uint32(distance), strList[4])
 }
 
 func getAllPrefixFromDB(d *db.DB, vrf string) []string {
@@ -931,9 +936,30 @@ var DbToYang_static_routes_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) 
     return rmap, nil
 }
 
+func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
+    if len(inParams.value) == 0 || !utils.IsAliasModeEnabled() {
+        return inParams.value, nil
+    }
+
+    ifNameList := strings.Split(inParams.value, ",")
+    log.Infof("alias_value_xfmr:- Operation Type - %d Interface list - %s", inParams.oper, ifNameList)
+    var aliasList []string
+    for _, ifName := range ifNameList {
+        var convertedName *string
+        if inParams.oper == GET {
+            convertedName = utils.GetUINameFromNativeName(&ifName)
+        } else {
+            convertedName = utils.GetNativeNameFromUIName(&ifName)
+        }
+        aliasList = append(aliasList, *convertedName)
+    }
+    return strings.Join(aliasList, ","), nil
+}
+
 func init() {
     XlateFuncBind("YangToDb_static_routes_nexthop_xfmr", YangToDb_static_routes_nexthop_xfmr)
     XlateFuncBind("DbToYang_static_routes_nexthop_xfmr", DbToYang_static_routes_nexthop_xfmr)
     XlateFuncBind("YangToDb_static_routes_key_xfmr", YangToDb_static_routes_key_xfmr)
     XlateFuncBind("DbToYang_static_routes_key_xfmr", DbToYang_static_routes_key_xfmr)
+    XlateFuncBind("static_routes_alias_xfmr", alias_list_value_xfmr)
 }

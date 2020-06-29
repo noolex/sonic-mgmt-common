@@ -1306,7 +1306,7 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             }
             return err
         }
-
+        psuEepromState.Empty = &empty
         psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
         if psuInfo.Status {
             psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE

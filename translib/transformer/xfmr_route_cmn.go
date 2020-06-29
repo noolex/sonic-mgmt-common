@@ -280,6 +280,10 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
         if value != "" {
             options = value + " "
         }
+    } else if value, ok := mapData["address"].(string) ; ok {
+        if value != "" {
+            options = value + " "
+        }
     } else if value, ok := mapData["summary"].(bool) ; ok {
         if value {
             options = "summary "

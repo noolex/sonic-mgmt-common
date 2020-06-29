@@ -156,6 +156,9 @@ module sonic-mirror-session {
                         enum RX;
                         enum TX;
                         enum BOTH;
+                        enum rx;
+                        enum tx;
+                        enum both;
                     }
                     description
                         "Direction configuration for mirroring. Can be configured for both SPAN/ERSPAN.

@@ -8,6 +8,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_intf_pfc_xfmr", YangToDb_qos_intf_pfc_xfmr)
@@ -77,7 +78,9 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
     log.Info("inParams: ", inParams)
 
     pathInfo := NewPathInfo(inParams.uri)
-    if_name := pathInfo.Var("interface-id")
+    ifname := pathInfo.Var("interface-id")
+    db_if_name := utils.GetNativeNameFromUIName(&ifname)
+    if_name := *db_if_name
     dbkey := if_name
     log.Info("qos_intf_pfc_delete_xfmr: ", if_name)
 
@@ -183,7 +186,9 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     log.Info("YangToDb_qos_intf_pfc_xfmr: ", inParams.ygRoot, inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
-    if_name := pathInfo.Var("interface-id")
+    ifname := pathInfo.Var("interface-id")
+    db_if_name := utils.GetNativeNameFromUIName(&ifname)
+    if_name := *db_if_name
 
     if inParams.oper == DELETE {
         return qos_intf_pfc_delete_xfmr(inParams)
@@ -194,7 +199,7 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         return res_map, err
     }
 
-    intfObj, ok := qosIntfsObj.Interface[if_name]
+    intfObj, ok := qosIntfsObj.Interface[ifname]
     if !ok {
         return res_map, err
     }
@@ -418,8 +423,9 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
     log.Info("DbToYang_qos_intf_pfc_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
-    if_name := pathInfo.Var("interface-id")
-
+    ifname := pathInfo.Var("interface-id")
+    dbIfName := utils.GetNativeNameFromUIName(&ifname)
+    if_name := *dbIfName
     log.Info("DbToYang_qos_intf_pfc_xfmr: ", if_name)
 
     qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
@@ -427,7 +433,7 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
         return nil
     }
 
-    intfObj, ok := qosIntfsObj.Interface[if_name]
+    intfObj, ok := qosIntfsObj.Interface[ifname]
     if !ok {
         return nil
     }

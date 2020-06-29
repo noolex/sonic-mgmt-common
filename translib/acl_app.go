@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/util"
 	"github.com/openconfig/ygot/ygot"
@@ -375,11 +376,12 @@ func (app *AclApp) translateCRUCommon(d *db.DB, opcode int) ([]db.WatchKeys, err
 	app.convertOCAclsToInternal()
 	err = app.convertOCAclRulesToInternal()
 	if err == nil {
-		app.convertOCAclInterfaceBindingsToInternal()
+		err = app.convertOCAclInterfaceBindingsToInternal()
+    }
+    if err == nil {
 		app.convertOCAclGlobalBindingsToInternal()
 		app.convertOCAclControlPlaneBindingsToInternal()
 	}
-
 	if err == nil {
 		for aclName, ports := range app.aclInterfacesMap {
 			aclData := app.aclTableMap[aclName]
@@ -1454,9 +1456,10 @@ func (app *AclApp) getAclBindingInfoForSwitch(dbs [db.MaxDB]*db.DB) error {
 	return nil
 }
 
-func (app *AclApp) findAndDeleteAclBindings(d *db.DB, intf string, stage string, aclname string,
+func (app *AclApp) findAndDeleteAclBindings(d *db.DB, intfIn string, stage string, aclname string,
 	acltype ocbinds.E_OpenconfigAcl_ACL_TYPE) error {
 
+    intf := *utils.GetNativeNameFromUIName(&intfIn)
 	log.Infof("Delete ACL bindings ACL:%s Stage:%s Type:%v Intf:%v", aclname, stage, acltype, intf)
 
 	aclKeys, _ := d.GetKeys(app.aclTs)
@@ -1721,49 +1724,52 @@ func (app *AclApp) convertOCAclRulesToInternal() error {
 	return nil
 }
 
-func (app *AclApp) convertOCAclInterfaceBindingsToInternal() {
+func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 	aclObj := app.getAppRootObject()
 
 	app.aclInterfacesMap = make(map[string][]string)
 	if aclObj.Interfaces != nil && len(aclObj.Interfaces.Interface) > 0 {
 		// Below code assumes that an ACL can be either INGRESS or EGRESS but not both.
-		for intfId := range aclObj.Interfaces.Interface {
-			intf := aclObj.Interfaces.Interface[intfId]
-			if intf != nil {
-				if intf.IngressAclSets != nil && len(intf.IngressAclSets.IngressAclSet) > 0 {
-					for inAclKey := range intf.IngressAclSets.IngressAclSet {
-						aclName := convertOCAclnameTypeToInternal(inAclKey.SetName, inAclKey.Type)
-						if intf.InterfaceRef != nil && intf.InterfaceRef.Config.Interface != nil {
-							app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.InterfaceRef.Config.Interface)
-						} else {
-							app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.Id)
-						}
-						if len(app.aclTableMap) == 0 {
-							app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
-						}
-						app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_INGRESS
-						app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(inAclKey.Type)
-					}
-				}
+		for intfId, intf := range aclObj.Interfaces.Interface {
 
-				if intf.EgressAclSets != nil && len(intf.EgressAclSets.EgressAclSet) > 0 {
-					for outAclKey := range intf.EgressAclSets.EgressAclSet {
-						aclName := convertOCAclnameTypeToInternal(outAclKey.SetName, outAclKey.Type)
-						if intf.InterfaceRef != nil && intf.InterfaceRef.Config.Interface != nil {
-							app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.InterfaceRef.Config.Interface)
-						} else {
-							app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.Id)
-						}
-						if len(app.aclTableMap) == 0 {
-							app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
-						}
-						app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_EGRESS
-						app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(outAclKey.Type)
-					}
-				}
-			}
+            if nil == intf.InterfaceRef || nil == intf.InterfaceRef.Config ||
+                nil == intf.InterfaceRef.Config.Interface {
+                goto SkipIntfCheck
+            }
+
+            if intfId != *intf.InterfaceRef.Config.Interface {
+                return tlerr.NotSupported("Different ID %s and Interface name %s not supported", intfId, *intf.InterfaceRef.Config.Interface)
+            }
+
+        SkipIntfCheck:
+
+            if intf.IngressAclSets != nil && len(intf.IngressAclSets.IngressAclSet) > 0 {
+                for inAclKey := range intf.IngressAclSets.IngressAclSet {
+                    aclName := convertOCAclnameTypeToInternal(inAclKey.SetName, inAclKey.Type)
+                    app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
+                    if len(app.aclTableMap) == 0 {
+                        app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
+                    }
+                    app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_INGRESS
+                    app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(inAclKey.Type)
+                }
+            }
+
+            if intf.EgressAclSets != nil && len(intf.EgressAclSets.EgressAclSet) > 0 {
+                for outAclKey := range intf.EgressAclSets.EgressAclSet {
+                    aclName := convertOCAclnameTypeToInternal(outAclKey.SetName, outAclKey.Type)
+                    app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
+                    if len(app.aclTableMap) == 0 {
+                        app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
+                    }
+                    app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_EGRESS
+                    app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(outAclKey.Type)
+                }
+            }
 		}
 	}
+
+    return nil
 }
 
 func (app *AclApp) convertOCAclGlobalBindingsToInternal() {
