@@ -6,6 +6,7 @@ module openconfig-system-ext {
 
     prefix "oc-sys-ext";
 
+    import openconfig-network-instance { prefix oc-ni; }
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
     import openconfig-kdump { prefix oc-kdump; }
@@ -252,35 +253,42 @@ module openconfig-system-ext {
     }
 
 	//syslog parameters
-    augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:config" {
-        description "Additional fields for remote server config";
+    grouping system-ext-logging-remote-config {
+        description 
+			"Grouping for remote server source-interface and vrf configuration";
+        leaf source-interface {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+                "Source interface ip to be used as source ip for sending syslog packets";
+        }
         leaf vrf-name {
-            type string {
-                pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
-                    error-message "Invalid VRF name for remote syslog server";
-                    error-app-tag vrf-name-syslog-invalid;
-                }
+            type leafref {
+                path "/oc-ni:network-instances/oc-ni:network-instance/oc-ni:name";
             }
             description
                 "VRF name";
         }
+    }
+
+    augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:config" {
+        description "Additional parameters for remote server config";
+        uses system-ext-logging-remote-config;
 	}
     augment "/oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:state" {
-        description "Additional fields for remote server state";
-        leaf vrf-name {
-            type string {
-                pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
-                    error-message "Invalid VRF name for remote syslog server";
-                    error-app-tag vrf-name-syslog-invalid;
-                }
-            }
-            description
-                "VRF name";
-        }
+        description "Additional parameters for remote server state";
+        uses system-ext-logging-remote-config;
 	}
     deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:selectors {
        deviate not-supported;
     }
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:config/oc-sys:source-address {
+        deviate not-supported;
+	}
+    deviation /oc-sys:system/oc-sys:logging/oc-sys:remote-servers/oc-sys:remote-server/oc-sys:state/oc-sys:source-address {
+        deviate not-supported;
+	}
 
     //infra paraemters
     augment /oc-sys:system {
