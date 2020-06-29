@@ -152,7 +152,11 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     if vrrp_rtr.Config != nil {
 
-                        t["vrid"] = strconv.Itoa(int(virtual_router_id))
+                        if inParams.oper != DELETE {
+                            t["vrid"] = strconv.Itoa(int(virtual_router_id))
+                        }
+
+                       // t["vrid"] = strconv.Itoa(int(virtual_router_id))
 
                         if vrrpEntry.IsPopulated() {
                             vips = vrrpEntry.Field["vip@"]
