@@ -8,6 +8,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_fwd_group_dot1p_xfmr", YangToDb_qos_fwd_group_dot1p_xfmr)
@@ -325,17 +326,19 @@ var DbToYang_qos_tc_to_dot1p_map_fld_xfmr FieldXfmrDbtoYang = func(inParams Xfmr
     pathInfo := NewPathInfo(inParams.uri)
 
     if_name := pathInfo.Var("interface-id")
+    dbIfName := utils.GetNativeNameFromUIName(&if_name)
 
     dbSpec := &db.TableSpec{Name: "PORT_QOS_MAP"}
 
-    key := db.Key{Comp: []string{if_name}}
+    key := db.Key{Comp: []string{*dbIfName}}
     ifCfg, _ := inParams.d.GetEntry(dbSpec, key) 
 
     log.Info("current entry: ", ifCfg)
-    value := ifCfg.Field["tc_to_dot1p_map"] 
-
-    log.Info("value = ", value)
-    res_map["forwarding-group-to-dot1p"] = DbLeafrefToString(value, "TC_TO_DOT1P_MAP")
+    value, ok := ifCfg.Field["tc_to_dot1p_map"] 
+    if  ok {
+        log.Info("value = ", value)
+        res_map["forwarding-group-to-dot1p"] = DbLeafrefToString(value, "TC_TO_DOT1P_MAP")
+    }
     return res_map, nil
 }
 

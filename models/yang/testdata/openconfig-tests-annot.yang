@@ -8,7 +8,7 @@ module openconfig-tests-annot {
     import openconfig-tests { prefix oc-tests; }
     import sonic-extensions {prefix sonic-ext; }
 
-    deviation /oc-tests:tests/oc-tests:TABLE_A {
+    deviation /oc-tests:openconfig-tests/oc-tests:TABLE_A {
         deviate add {
             sonic-ext:table-name "TABLE_A";
         }

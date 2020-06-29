@@ -6,6 +6,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_intf_sched_policy_xfmr", YangToDb_qos_intf_sched_policy_xfmr)
@@ -160,7 +161,9 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
     log.Info("YangToDb_qos_intf_sched_policy_xfmr: ", inParams.ygRoot, inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
-    if_name := pathInfo.Var("interface-id")
+    ifname := pathInfo.Var("interface-id")
+    db_if_name := utils.GetNativeNameFromUIName(&ifname)
+    if_name := *db_if_name
 
     // For "no scheduler-policy"
     if inParams.oper == DELETE {
@@ -172,7 +175,7 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
         return res_map, err
     }
 
-    intfObj, ok := qosIntfsObj.Interface[if_name]
+    intfObj, ok := qosIntfsObj.Interface[ifname]
     if !ok {
         return res_map, err
     }
@@ -379,7 +382,8 @@ var DbToYang_qos_intf_sched_policy_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 
     log.Info("inParams: ", inParams)
 
-    sp := doGetIntfSchedulerPolicy(inParams.d, intfName)
+    dbIfName := utils.GetNativeNameFromUIName(&intfName)
+    sp := doGetIntfSchedulerPolicy(inParams.d, *dbIfName)
 
     if strings.Compare(sp, "") == 0 {
         log.Info("No scheduler policy found on this interface")
