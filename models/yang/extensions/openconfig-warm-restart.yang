@@ -29,6 +29,7 @@ module openconfig-warm-restart {
   revision "2020-06-25" {
     description
       "OpenConfig initial version";
+
     reference "1.0.0";
   }
 
@@ -169,7 +170,7 @@ module openconfig-warm-restart {
     description 
       "Enable warm-restart for the module";
 
-    container enable-warm-restart {
+    container enable {
       description
         "Enclosing the container for the list of modules";
 
