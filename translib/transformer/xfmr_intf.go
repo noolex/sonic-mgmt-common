@@ -2336,19 +2336,108 @@ func getSpecificCounterAttr(targetUriPath string, entry *db.Value, entry_backup 
     "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/in-oversize-frames":
         e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_RX_OVERSIZE_PKTS", &eth_counter_val.InOversizeFrames)
         return true, e
+    case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-undersize-frames",
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/in-undersize-frames":
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_STATS_UNDERSIZE_PKTS", &eth_counter_val.InUndersizeFrames)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-jabber-frames",
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/in-jabber-frames":
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_STATS_JABBERS", &eth_counter_val.InJabberFrames)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-fragment-frames",
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/in-fragment-frames":
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_STATS_FRAGMENTS", &eth_counter_val.InFragmentFrames)
+        return true, e
 
     case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/out-oversize-frames",
     "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/out-oversize-frames":
         e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_TX_OVERSIZE_PKTS", &eth_counter_val.OutOversizeFrames)
         return true, e
-        
+
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-64-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_64_OCTETS", &eth_counter_val.EthInDistribution.InFrames_64Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-65-127-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_65_TO_127_OCTETS", &eth_counter_val.EthInDistribution.InFrames_65_127Octets)
+        return true, e
     case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-distribution/in-frames-128-255-octets",
     "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets",
-    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets":
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets",
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-128-255-octets":
         ygot.BuildEmptyTree(eth_counter_val)
-        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_128_TO_255_OCTETS", &eth_counter_val.InDistribution.InFrames_128_255Octets)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_128_TO_255_OCTETS", &eth_counter_val.EthInDistribution.InFrames_128_255Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-256-511-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_256_TO_511_OCTETS", &eth_counter_val.EthInDistribution.InFrames_256_511Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-512-1023-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_512_TO_1023_OCTETS", &eth_counter_val.EthInDistribution.InFrames_512_1023Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-1024-1518-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_1024_TO_1518_OCTETS", &eth_counter_val.EthInDistribution.InFrames_1024_1518Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-1519-2047-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_1519_TO_2047_OCTETS", &eth_counter_val.EthInDistribution.InFrames_1519_2047Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-2048-4095-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_2048_TO_4095_OCTETS", &eth_counter_val.EthInDistribution.InFrames_2048_4095Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-4096-9216-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_4096_TO_9216_OCTETS", &eth_counter_val.EthInDistribution.InFrames_4096_9216Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-9217-16383-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_9217_TO_16383_OCTETS", &eth_counter_val.EthInDistribution.InFrames_9217_16383Octets)
         return true, e
 
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-64-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_64_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_64Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-65-127-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_65_TO_127_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_65_127Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-128-255-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_128_TO_255_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_128_255Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-256-511-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_256_TO_511_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_256_511Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-512-1023-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_512_TO_1023_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_512_1023Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-1024-1518-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_1024_TO_1518_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_1024_1518Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-1519-2047-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_1519_TO_2047_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_1519_2047Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-2048-4095-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_2048_TO_4095_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_2048_4095Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-4096-9216-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_4096_TO_9216_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_4096_9216Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-9217-16383-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_9217_TO_16383_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_9217_16383Octets)
+        return true, e
     default:
         log.Infof(targetUriPath + " - Not an interface state counter attribute")
     }
@@ -2383,7 +2472,14 @@ var portCntList [] string = []string {"in-octets", "in-unicast-pkts", "in-broadc
 "out-broadcast-pkts", "out-multicast-pkts", "out-errors", "out-discards",
 "out-pkts","last-clear"}
 
-var etherCntList [] string = [] string {"in-oversize-frames", "out-oversize-frames", "openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets"}
+var etherCntList [] string = [] string {"in-oversize-frames", "out-oversize-frames", "in-undersize-frames", "in-jabber-frames",
+                        "in-fragment-frames", "openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets"}
+var etherCntOutList [] string = [] string {"out-frames-64-octets", "out-frames-65-127-octets", "out-frames-128-255-octets",
+                        "out-frames-256-511-octets", "out-frames-512-1023-octets", "out-frames-1024-1518-octets", "out-frames-1519-2047-octets",
+                        "out-frames-2048-4095-octets", "out-frames-4096-9216-octets", "out-frames-9217-16383-octets"}
+var etherCntInList [] string = [] string {"in-frames-64-octets", "in-frames-65-127-octets", "in-frames-128-255-octets",
+                        "in-frames-256-511-octets", "in-frames-512-1023-octets", "in-frames-1024-1518-octets", "in-frames-1519-2047-octets",
+                        "in-frames-2048-4095-octets", "in-frames-4096-9216-octets", "in-frames-9217-16383-octets"}
 
 var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, counter interface{}) (error) {
     pathInfo := NewPathInfo(inParams.uri)
@@ -2440,10 +2536,22 @@ var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, count
                 //err = errors.New("Get Ethernet Counter URI failed")
             }
         }
+        for _, attr := range etherCntOutList {
+            uri := targetUriPath + "/openconfig-if-ethernet-ext2:out-distribution/" + attr
+            if ok, err := getSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter); !ok || err != nil {
+                log.Info("Get Ethernet Counter URI failed :", uri)
+            }
+        }
+        targetUriPath = "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution"
+        fallthrough
     case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-distribution",
          "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext:in-distribution":
-         uri := targetUriPath + "/" + "in-frames-128-255-octets"
-         _, err = getSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter)
+        for _, attr := range etherCntInList {
+            uri := targetUriPath + "/" + attr
+            if ok, err := getSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter); !ok || err != nil {
+                log.Info("Get Ethernet Counter URI failed :", uri)
+            }
+        }
 
     default:
         _, err = getSpecificCounterAttr(targetUriPath, &CounterData, &CounterBackUpData, counter)

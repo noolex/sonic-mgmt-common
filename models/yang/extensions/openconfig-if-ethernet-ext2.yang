@@ -9,7 +9,9 @@ module openconfig-if-ethernet-ext2 {
 
   // import some basic types
   import openconfig-if-ethernet { prefix oc-eth; }
+  import openconfig-interfaces { prefix oc-if; }
   import openconfig-extensions { prefix oc-ext; }
+  import openconfig-yang-types { prefix oc-yang; }
 
   // meta
   organization "OpenConfig working group";
@@ -43,6 +45,192 @@ module openconfig-if-ethernet-ext2 {
   identity SPEED_400GB {
     base oc-eth:ETHERNET_SPEED;
     description "400 Gbps Ethernet";
+  }
+
+  grouping if-ethernet-ext2-frames-size-dist-state {
+    description
+      "Grouping for defining the size distribution of the frames
+      transmitted";
+
+    container eth-in-distribution {
+      description
+        "The size distribution of the received frames.";
+
+        leaf in-frames-64-octets {
+          type oc-yang:counter64;
+          description
+            "Number of packets (including bad packets) received that
+            were 64 bytes in length (excluding framing bits but
+            including FCS bytes).";
+        }
+
+        leaf in-frames-65-127-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 65 and 127 bytes in length (excluding framing bits
+            but including FCS bytes).";
+        }
+
+        leaf in-frames-128-255-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 128 and 255 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf in-frames-256-511-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 256 and 511 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf in-frames-512-1023-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 512 and 1023 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf in-frames-1024-1518-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 1024 and 1518 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf in-frames-1519-2047-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 1519 and 2047 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf in-frames-2048-4095-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 2048 and 4095 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf in-frames-4096-9216-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 4096 and 9216 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf in-frames-9217-16383-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets received that were
+            between 9217 and 16383 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+    }
+
+    container eth-out-distribution {
+      description
+        "The size distribution of the transmitted frames.";
+
+        leaf out-frames-64-octets {
+          type oc-yang:counter64;
+          description
+            "Number of packets (including bad packets) transmitted that
+            were 64 bytes in length (excluding framing bits but
+            including FCS bytes).";
+        }
+
+        leaf out-frames-65-127-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 65 and 127 bytes in length (excluding framing bits
+            but including FCS bytes).";
+        }
+
+        leaf out-frames-128-255-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 128 and 255 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf out-frames-256-511-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 256 and 511 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf out-frames-512-1023-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 512 and 1023 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf out-frames-1024-1518-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 1024 and 1518 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf out-frames-1519-2047-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 1519 and 2047 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf out-frames-2048-4095-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 2048 and 4095 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf out-frames-4096-9216-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 4096 and 9216 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+        leaf out-frames-9217-16383-octets {
+          type oc-yang:counter64;
+          description
+            "Number of good and bad packets transmitted that were
+            between 9217 and 16383 bytes in length inclusive
+            (excluding framing bits but including FCS bytes).";
+        }
+
+    }
+  }
+  // augment statements
+
+  augment "/oc-if:interfaces/oc-if:interface/oc-eth:ethernet/" +
+    "oc-eth:state/oc-eth:counters" {
+      description
+        "Adds size distribution to the ethernet counters.";
+
+      uses if-ethernet-ext2-frames-size-dist-state;
   }
 
 }
