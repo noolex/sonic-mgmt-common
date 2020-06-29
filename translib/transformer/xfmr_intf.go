@@ -253,6 +253,7 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
 
     requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
     retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("Entering intf_post_xfmr")
 
     if inParams.oper == DELETE {
 
@@ -274,8 +275,32 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
                 log.Info("intf_post_xfmr inParams.subOpDataMap :", inParams.subOpDataMap)
             }
         }
+        if requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/openconfig-if-ethernet-ext:storm-control/storm-control-list/config/kbps" {
+            log.Info("intf_post_xfmr: storm-control kbps")
+            pathInfo := NewPathInfo(inParams.uri)
+            tblName := "PORT_STORM_CONTROL"
+            intfName := pathInfo.Var("name")
+            stormType := pathInfo.Var("storm-type")
+            if (stormType == "BROADCAST") {
+                stormType = "broadcast"
+            } else if (stormType == "UNKNOWN_UNICAST") {
+                stormType = "unknown-unicast"
+            } else if (stormType == "UNKNOWN_MULTICAST") {
+                stormType = "unknown-multicast"
+            }
+            tblKeyStr := intfName+"|"+stormType
+            log.Infof("intfName:%s, stormType:%s tblKeyStr:%s",intfName,stormType,tblKeyStr)
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subIntfmap_del := make(map[string]map[string]db.Value)
+            subIntfmap_del[tblName] = make(map[string]db.Value)
+            subIntfmap_del[tblName][tblKeyStr] = db.Value{}
+            subOpMap[db.ConfigDB] = subIntfmap_del
+            inParams.subOpDataMap[DELETE] = &subOpMap
+            log.Info("Original retDbDataMap:",retDbDataMap)
+            retDbDataMap = subIntfmap_del
+            log.Info("Returning retDbDataMap:",retDbDataMap)
+        }
     }
-
     return retDbDataMap, nil
 }
 
