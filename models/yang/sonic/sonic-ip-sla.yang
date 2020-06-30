@@ -106,6 +106,20 @@ module sonic-ip-sla {
 
                 }
 
+                leaf tcp_source_interface {
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                    }
+                    description
+                      "tcp source interface of IP SLA";
+                }
+
+
                 leaf tcp_source_ip {
                     type inet:ip-address;
                     description
