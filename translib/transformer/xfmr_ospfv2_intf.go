@@ -601,14 +601,16 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
 
     if subIntfObj.Ipv4 == nil {
         errStr := "Subinterface doesnt have ipv4 object!"
-        log.Error("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+        log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+        subIntfObj.Ipv4 = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4)
         ygot.BuildEmptyTree(subIntfObj.Ipv4)
     }
     ipv4Obj := subIntfObj.Ipv4
 
     if ipv4Obj.Ospfv2 == nil {
         errStr := "Ipv4 doesnt have Ospfv2 object!"
-        log.Error("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+        log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+        ipv4Obj.Ospfv2 = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2)
         ygot.BuildEmptyTree(ipv4Obj.Ospfv2)
     }
     ospfObj := ipv4Obj.Ospfv2
