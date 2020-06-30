@@ -7,6 +7,10 @@ module sonic-route-map {
         prefix inet;
     }
 
+    import sonic-common {
+        prefix cmn;
+    }
+    
     import sonic-port {
         prefix prt;
     }
@@ -156,7 +160,7 @@ module sonic-route-map {
                     }
                     description
                         "IP addresse or interface for match operation.";
-                    must "(count(current()) = 1)" {
+                    must "(/cmn:operation/cmn:operation = 'DELETE') or (count(current()) = 1)" {
                         error-app-tag "max-allowed-neighbor-reached";
                         error-message "Only one neighbor or interface can be configured.";
                     }
@@ -166,7 +170,7 @@ module sonic-route-map {
                     type uint32;
                     description
                         "Value of the tag match member";
-                    must "(count(current()) = 1)" {
+                    must "(/cmn:operation/cmn:operation = 'DELETE') or (count(current()) = 1)" {
                         error-app-tag "max-allowed-tag-reached";
                         error-message "Only one tag value can be configured.";
                     }

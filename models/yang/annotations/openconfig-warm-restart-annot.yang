@@ -41,7 +41,7 @@ module openconfig-warm-restart-annot {
     }
   }
 
-  deviation /oc-wmr:warm-restart/oc-wmr:enable-warm-restart/oc-wmr:modules {
+  deviation /oc-wmr:warm-restart/oc-wmr:enable/oc-wmr:modules {
     deviate add {
       sonic-ext:table-name "WARM_RESTART_ENABLE";
       sonic-ext:key-transformer "wmr_module_key_xfmr";

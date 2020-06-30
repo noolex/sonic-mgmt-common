@@ -357,9 +357,11 @@ module sonic-acl {
                 leaf L2 {
                     type string;
                 }
+
                 leaf L3 {
                     type string;
                 }
+
                 leaf L3V6 {
                     type string;
                 }
