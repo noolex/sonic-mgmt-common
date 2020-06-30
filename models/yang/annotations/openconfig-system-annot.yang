@@ -220,6 +220,76 @@ module openconfig-system-annot {
       }
     }
 
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:state {
+      deviate add {
+          sonic-ext:table-name "AAA";
+          sonic-ext:key-transformer "auth_set_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:state/oc-sys:authentication-method {
+      deviate add {
+          sonic-ext:field-name "login";
+          sonic-ext:field-transformer "auth_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:authorization/oc-aaa-ext:login/oc-aaa-ext:state {
+      deviate add {
+          sonic-ext:table-name "AAA";
+          sonic-ext:key-transformer "authorization_set_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:authorization/oc-aaa-ext:login/oc-aaa-ext:state/oc-aaa-ext:authorization-method {
+      deviate add {
+          sonic-ext:field-name "login";
+          sonic-ext:field-transformer "authorization_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:state {
+      deviate add {
+          sonic-ext:table-name "AAA";
+          sonic-ext:key-transformer "name_service_set_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:state/oc-aaa-ext:passwd-method {
+      deviate add {
+          sonic-ext:field-name "passwd";
+          sonic-ext:field-transformer "passwd_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:state/oc-aaa-ext:shadow-method {
+      deviate add {
+          sonic-ext:field-name "shadow";
+          sonic-ext:field-transformer "shadow_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:state/oc-aaa-ext:group-method {
+      deviate add {
+          sonic-ext:field-name "group";
+          sonic-ext:field-transformer "group_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:state/oc-aaa-ext:netgroup-method {
+      deviate add {
+          sonic-ext:field-name "netgroup";
+          sonic-ext:field-transformer "netgroup_method_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-aaa-ext:name-service/oc-aaa-ext:state/oc-aaa-ext:sudoers-method {
+      deviate add {
+          sonic-ext:field-name "sudoers";
+          sonic-ext:field-transformer "sudoers_method_xfmr";
+      }
+    }
+
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group {
       deviate add {
           sonic-ext:key-transformer "global_sg_key_xfmr";
@@ -343,6 +413,24 @@ module openconfig-system-annot {
       }
     }
 
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:state/oc-aaa-radius-ext:nas-ip-address {
+      deviate add {
+          sonic-ext:field-name "nas_ip";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:state/oc-aaa-radius-ext:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retransmit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-radius-ext:radius/oc-aaa-radius-ext:state/oc-aaa-radius-ext:statistics {
+      deviate add {
+          sonic-ext:field-name "statistics";
+      }
+    }
+
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers {
       deviate add {
       }
@@ -404,6 +492,24 @@ module openconfig-system-annot {
       }
     }
 
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:auth-type {
+      deviate add {
+          sonic-ext:field-name "auth_type";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:priority {
+      deviate add {
+          sonic-ext:field-name "priority";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:vrf {
+      deviate add {
+        sonic-ext:field-transformer "server_vrf_name_xfmr";
+      }
+    }
+
 /*********************************************************/
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius {
@@ -444,16 +550,55 @@ module openconfig-system-annot {
         deviate not-supported;
     }
 
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:config/oc-aaa-radius-ext:source-interface {
+      deviate add {
+          sonic-ext:field-name "src_intf";
+      }
+    }
+
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state {
       deviate add {
-        sonic-ext:table-name "RADIUS_SERVER_STATS";
+        sonic-ext:table-name "RADIUS_SERVER";
         sonic-ext:key-transformer "server_key_xfmr";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:retransmit-attempts {
+      deviate add {
+          sonic-ext:field-name "retransmit";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:auth-port {
+      deviate add {
+          sonic-ext:field-name "auth_port";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:acct-port {
+        deviate not-supported;
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:secret-key {
+      deviate add {
+          sonic-ext:field-name "passkey";
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:source-address {
+        deviate not-supported;
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-aaa-radius-ext:source-interface {
+      deviate add {
+        sonic-ext:field-name "src_intf";
       }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters {
       deviate add {
           sonic-ext:db-name "COUNTERS_DB";
+          sonic-ext:table-name "RADIUS_SERVER_STATS";
       }
     }
 
