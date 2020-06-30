@@ -1200,6 +1200,7 @@ func leafListInstExists(leafListInDbVal string, checkLeafListInstVal string) boo
 	for idx := range(leafListItemLst) {
 		if leafListItemLst[idx] == checkLeafListInstVal {
 			exists = true
+			xfmrLogInfoAll("Leaf-list instance exists")
 			break
 		}
 	}
@@ -1223,12 +1224,14 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 		leafListNode := uriItemList[uriItemListLen-1]
 		leafListNodeData := strings.TrimSuffix(strings.SplitN(leafListNode, "[", 2)[1], "]")
 		leafListNodeDataLst := strings.SplitN(leafListNodeData, "=", 2)
-		leafListInstVal := leafListNodeDataLst[1]
+		leafListInstVal = leafListNodeDataLst[1]
 		if ((strings.Contains(leafListInstVal, ":")) && (strings.HasPrefix(leafListInstVal, OC_MDL_PFX) || strings.HasPrefix(leafListInstVal, IETF_MDL_PFX) || strings.HasPrefix(leafListInstVal, IANA_MDL_PFX))) {
 			// identity-ref/enum has module prefix
 			leafListInstVal = strings.SplitN(leafListInstVal, ":", 2)[1]
 			xfmrLogInfoAll("Leaf-list instance value after removing identityref prefix - %v", leafListInstVal)
 		}
+		xfmrLogInfoAll("Leaf-list instance value to be returned - %v", leafListInstVal)
+
 	} else {
 		err = fmt.Errorf("Uri split didn't happen - %v", uri)
 		xfmrLogInfoAll("%v", err)

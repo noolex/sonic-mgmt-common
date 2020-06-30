@@ -451,6 +451,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 								if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], leafListInstVal) {
 									dbData[cdb][tableName][keyStr].Field[fieldName] = leafListInstVal
 								} else {
+									xfmrLogInfoAll("Queried leaf-list instance does not exist - %v", uri)
 									return []byte(""), true, tlerr.NotFoundError{Format:"Resource not found"}
 								}
 							}
@@ -495,7 +496,7 @@ func extractFieldFromDb(tableName string, keyStr string, fieldName string, data 
 				dbVal.Field[fieldName] = fldVal
 				dbData[tableName][keyStr] = dbVal
 			} else {
-				log.Error("Field %v doesn't exist in table - %v, instance - %v", fieldName, tableName, keyStr)
+				log.Errorf("Field %v doesn't exist in table - %v, instance - %v", fieldName, tableName, keyStr)
 				err = tlerr.NotFoundError{Format: "Resource not found."}
 			}
 		}
@@ -717,8 +718,8 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                break
            }
 
-	   /*request uri is a key-leaf directly under the list 
-	     eg. /openconfig-xyz:xyz/listA[key=value]/key 
+	   /*request uri is a key-leaf directly under the list
+             eg. /openconfig-xyz:xyz/listA[key=value]/key
 	         /openconfig-xyz:xyz/listA[key_1=value][key_2=value]/key_1
            */
 	   if xpathData.isKey {

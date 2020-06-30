@@ -988,7 +988,23 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
         parentTblExists := true
         rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
         curUri := "/"
-        parentUriList := uriList[:len(uriList)-1]
+        yangType := ""
+	xpath, _ := XfmrRemoveXPATHPredicates(uri)
+	xpathInfo, ok := xYangSpecMap[xpath]
+        if !ok {
+		err = fmt.Errorf("No entry found in xYangSpecMap for uri - %v", uri)
+		log.Errorf("%v", err)
+		return false, err
+	}
+	yangType = yangTypeGet(xpathInfo.yangEntry)
+	if ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+		/*query is for leaf-list instance, hence remove that from uri to avoid list-key like processing*/
+		uriList[len(uriList)-1] = strings.SplitN(uriList[len(uriList)-1], "[", 2)[0]
+		xfmrLogInfoAll("Uri list after removing leaf-list instance portion - %v", uriList)
+	}
+
+	parentUriList := uriList[:len(uriList)-1]
+	xfmrLogInfoAll("Parent uri list - %v", parentUriList) 
 
 	// Loop for the parent uri to check parent table existence
         for idx, path := range parentUriList {
@@ -1067,19 +1083,17 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
                                                 existsInDbData = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
 					}
 					// Read the table entry from DB
-					exists := false
 					if !existsInDbData {
-						dexists, derr := dbTableExists(d, tableName, dbKey)
+						exists, derr := dbTableExists(d, tableName, dbKey)
 						if derr != nil {
 							return false, derr
 						}
-						exists = dexists
-					}
-					if !exists {
-						parentTblExists = false
-						log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
-						err = tlerr.NotFound("Resource not found")
-						break
+						if !exists {
+							parentTblExists = false
+							log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+							err = tlerr.NotFound("Resource not found")
+							break
+						}
 					}
 				}
 			}
@@ -1089,12 +1103,6 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
         if !parentTblExists {
                 // For all operations Parent Table has to exist
                 return false, err
-        }
-        yangType := ""
-	xpath, _ := XfmrRemoveXPATHPredicates(uri)
-	xpathInfo, ok := xYangSpecMap[xpath]
-        if ok {
-                yangType = yangTypeGet(xpathInfo.yangEntry)
         }
 
         if yangType == YANG_LIST && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) {
