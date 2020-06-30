@@ -1171,7 +1171,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			} else {
 				return true, nil
 			}
-		} else if ((xerr == nil) && !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {//uri points to entire list
+		} else if ((xerr == nil) && !((strings.HasSuffix(uri, "]")) && (strings.HasSuffix(uri, "]/")))) {//uri points to entire list
 			return true, nil
 		} else {
 			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, tableName, dbKey)
