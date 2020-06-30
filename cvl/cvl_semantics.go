@@ -1460,22 +1460,21 @@ func (c *CVL) checkDepDataCompatible(tblName, key, reftblName, refTblKey, leafRe
 	// Determine the leafref
 	leafRef := getLeafRefInfo(reftblName, leafRefField, tblName)
 
-	// If depEntry map is Entry, it means leafRefField is one of key of RefTable.
+	// If depEntry map is Empty, it means leafRefField is one of key of RefTable.
 	// So RefTblKey should equal to targetTbl key plus additional 1 or more key
 	// For ex. BGP_NEIGHBOR|Vrf1|2114::2 referred by BGP_NEIGHBOR_AF|Vrf1|2114::2|ipv4_unicast
 	if len(depEntry) == 0 {
+		// TODO Need to revisit. For now assumed that orderof keys are same.
 		return strings.Contains(refTblKey, key)
 	} else {
 		// leafRefField is NOT key but a normal leaf node
-		for depEntryKey := range depEntry {
-			if leafRefField != depEntryKey {
-				continue
-			}
+		if _, exists := depEntry[leafRefField]; exists {
 			// Compare keys of table and refTable
 			//LeafRef: /sonic-bgp-peergroup:sonic-bgp-peergroup/sonic-bgp-peergroup:BGP_PEER_GROUP/sonic-bgp-peergroup:BGP_PEER_GROUP_LIST[sonic-bgp-peergroup:vrf_name=current()/../vrf_name]/sonic-bgp-peergroup:peer_group_name
-			if leafRef.exprTree != nil {
+			if leafRef != nil && leafRef.exprTree != nil {
 				leafrefExpr := leafRef.exprTree.String()
 				if len(leafrefExpr) > 0 {
+					// TODO Assumed that predicate will have one expression without any 'and'/'or' operators
 					// predicate looks like [sonic-bgp-peergroup:vrf_name=current()/../vrf_name]
 					predicate := leafrefExpr[strings.Index(leafrefExpr, "[")+1 : strings.Index(leafrefExpr, "]")]
 					if strings.Contains(predicate, "=") {

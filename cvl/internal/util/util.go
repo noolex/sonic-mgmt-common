@@ -46,14 +46,15 @@ import (
 	"fmt"
 	"io"
 	"runtime"
-	 "encoding/json"
-        "io/ioutil"
-        "os/signal"
-        "syscall"
+	"encoding/json"
+    "io/ioutil"
+    "os/signal"
+    "syscall"
 	"strings"
 	"strconv"
 	"github.com/go-redis/redis/v7"
 	log "github.com/golang/glog"
+	set "github.com/Workiva/go-datastructures/set"
 	fileLog "log"
 	"sync"
 )
@@ -606,4 +607,42 @@ func NewDbClient(dbName string) *redis.Client {
 	}
 
 	return redisClient
+}
+
+// createStringSet This will create Set data-structure from a list of items
+func createStringSet(arr []string) *set.Set {
+	s := set.New()
+	for i := range arr {
+		s.Add(arr[i])
+	}
+	return s
+}
+
+// GetDifference This will determine items which are
+// missing in a-list if size of b-list is greater
+// missing in b-list if size of a-list is greater
+// missing in a-list if size of a-list, b-list are equal
+func GetDifference(a, b []string) []string {
+	var res []string
+
+	aSet := createStringSet(a)
+	bSet := createStringSet(b)
+
+	if aSet != nil && bSet != nil {
+		if aSet.Len() < bSet.Len() {
+			for _, item := range bSet.Flatten() {
+				if !aSet.Exists(item) {
+					res = append(res, item.(string))
+				}
+			}
+		} else {
+			for _, item := range aSet.Flatten() {
+				if !bSet.Exists(item) {
+					res = append(res, item.(string))
+				}
+			}
+		}
+	}
+
+	return res
 }
