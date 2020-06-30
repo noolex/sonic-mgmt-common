@@ -49,7 +49,7 @@ module sonic-scheduler {
 
                 leaf cir {
                   type uint64;
-                  units bps;
+                  units Bps;
                   description
                         "Committed information rate for the dual-rate token
                         bucket policer.  This value represents the rate at which
@@ -58,7 +58,7 @@ module sonic-scheduler {
 
                 leaf pir {
                   type uint64;
-                  units bps;
+                  units Bps;
                   description
                         "Peak information rate for the dual-rate token bucket
                         policer.  This value represents the rate at which tokens

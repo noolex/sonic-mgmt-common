@@ -20,5 +20,17 @@ module sonic-config-mgmt-annot {
         }
     }
 
+    deviation /cmgmt:sonic-default-config-profiles/cmgmt:DEFAULT_CONFIG_PROFILES/cmgmt:DEFAULT_CONFIG_PROFILES_LIST {
+      deviate add {
+        sonic-ext:db-name "STATE_DB";
+      }
+    }
+
+    deviation /cmgmt:factory-default-profile {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_factory_default_profile";
+        }
+    }
+
 }
 

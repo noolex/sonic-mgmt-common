@@ -144,15 +144,16 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     }
 
     tblList = append(tblList, "BGP_NEIGHBOR")
-    if _ , present := inParams.txCache.Load(vrf);!present {
-        inParams.txCache.Store(vrf, vrf)
-    } else {
-        if log.V(3) {
-            log.Info("bgp_nbr_tbl_xfmr: repetitive table update is avoided for target URI:", inParams.uri)
+    if inParams.dbDataMap != nil {
+        if _ , present := inParams.txCache.Load(vrf);!present {
+            inParams.txCache.Store(vrf, vrf)
+        } else {
+            if log.V(3) {
+                log.Info("bgp_nbr_tbl_xfmr: repetitive table update is avoided for target URI:", inParams.uri)
+            }
+            return tblList, nil
         }
-        return tblList, nil
     }
-
     if len(nbrAddr) != 0 {
         key := vrf + "|" + nbrAddr
         if (inParams.dbDataMap != nil) {
@@ -1847,6 +1848,25 @@ var DbToYang_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrDbToYang = func (inParam
     nbr_key.niName = niName
     nbr_key.nbrAddr = nbrAddr
     if cfgDbEntry, cfgdb_get_err := get_spec_nbr_cfg_tbl_entry (inParams.dbs[db.ConfigDB], &nbr_key) ; cfgdb_get_err == nil {
+    
+        if nbr_obj.AuthPassword == nil {
+            var auth ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Neighbors_Neighbor_AuthPassword
+            nbr_obj.AuthPassword = &auth
+            ygot.BuildEmptyTree(nbr_obj.AuthPassword)
+        }
+
+        if nbr_obj.AuthPassword.Config == nil {
+            var auth_config ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Neighbors_Neighbor_AuthPassword_Config
+            nbr_obj.AuthPassword.Config = &auth_config
+            ygot.BuildEmptyTree(nbr_obj.AuthPassword.Config)
+        }
+
+        if nbr_obj.AuthPassword.State == nil {
+            var auth_state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Neighbors_Neighbor_AuthPassword_State
+            nbr_obj.AuthPassword.State = &auth_state
+            ygot.BuildEmptyTree(nbr_obj.AuthPassword.State)
+        }
+
         if value, ok := cfgDbEntry["auth_password"] ; ok {
             nbr_obj.AuthPassword.Config.Password = &value
             nbr_obj.AuthPassword.State.Password = &value

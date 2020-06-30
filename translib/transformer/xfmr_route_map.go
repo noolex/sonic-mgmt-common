@@ -485,6 +485,8 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
                     std_community = "no-export"
                 case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED:
                     std_community = "local-AS"
+                case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_ADDITIVE:
+                    std_community = "additive"
                 }
             case reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union_Uint32{}):
                 v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union_Uint32)
@@ -501,7 +503,10 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
             }
         }
         if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD {
-            log.Info("YangToDb_route_map_bgp_action_set_ext_community : ADD")
+            log.Info("YangToDb_route_map_bgp_action_set_ext_community : ADD ", final_std_community)
+            if final_std_community == "additive" {
+                return res_map, errors.New("Routing policy community cant have just additive")
+            }
             stmtmap[entry_key].Field["set_community_inline@"] = final_std_community
         } else {
              subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
@@ -519,7 +524,11 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
                  subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
                  inParams.subOpDataMap[DELETE] = &subOpMap
              } else {
-                 log.Info("YangToDb_route_map_bgp_action_set_ext_community : REPLACE")
+                 log.Info("YangToDb_route_map_bgp_action_set_ext_community : REPLACE ", final_std_community)
+                 if final_std_community == "additive" {
+                     return res_map, errors.New("Routing policy community cant have just additive")
+                 }
+
                  rtMapInst, _ := inParams.d.GetEntry(&db.TableSpec{Name:"ROUTE_MAP"}, db.Key{Comp: []string{entry_key}})
                  subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = rtMapInst
                  subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
@@ -558,20 +567,21 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
 var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
 
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    log.Info("targetUriPath is ", targetUriPath)
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
-    if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
-        log.Info("YangToDb_route_map_bgp_action_set_community : Routing policy definitions list is empty.")
+    if rtPolDefsObj == nil {
+        log.Info("DbToYang_route_map_bgp_action_set_community: Routing policy definitions list is empty.")
         return errors.New("Routing policy definitions list is empty")
     }
+    ygot.BuildEmptyTree(rtPolDefsObj)
     data := (*inParams.dbDataMap)[inParams.curDb]
     log.Info("DbToYang_route_map_bgp_action_set_community: ", data, inParams.ygRoot)
 
-    pathInfo := NewPathInfo(inParams.uri)
     rtPolicyName := pathInfo.Var("name")
     rtStmtName := pathInfo.Var("name#2")
 
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    log.Info("targetUriPath is ", targetUriPath)
     if rtPolicyName == "" || rtStmtName == "" {
         return errors.New("Routing policy keys are not present")
     }
@@ -634,6 +644,12 @@ var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inPa
                     state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
                     CfgCommunities = append(CfgCommunities, cfg_val)
                     StateCommunities = append(StateCommunities, state_val)
+            } else if (comm_val == "additive") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_ADDITIVE)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_ADDITIVE)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+
             } else {
                 n, err := strconv.ParseInt(comm_val, 10, 32)
                 if err == nil {
@@ -750,6 +766,8 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
                             std_community = "no-export"
                         case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED:
                             std_community = "local-AS"
+                        case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_ADDITIVE:
+                            std_community = "additive"
                     }
                 case reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union_String{}):
                     v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union_String)
@@ -820,20 +838,21 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
 var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
 
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    log.Info("targetUriPath is ", targetUriPath)
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
-    if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
-        log.Info("YangToDb_route_map_bgp_action_set_ext_community : Routing policy definitions list is empty.")
+    if rtPolDefsObj == nil {
+        log.Info("DbToYang_route_map_bgp_action_set_ext_community: Routing policy definitions list is empty.")
         return errors.New("Routing policy definitions list is empty")
     }
+    ygot.BuildEmptyTree(rtPolDefsObj)
     data := (*inParams.dbDataMap)[inParams.curDb]
     log.Info("DbToYang_route_map_bgp_action_set_ext_community: ", data, inParams.ygRoot)
 
-    pathInfo := NewPathInfo(inParams.uri)
     rtPolicyName := pathInfo.Var("name")
     rtStmtName := pathInfo.Var("name#2")
 
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    log.Info("targetUriPath is ", targetUriPath)
     if rtPolicyName == "" || rtStmtName == "" {
         return errors.New("Routing policy keys are not present")
     }

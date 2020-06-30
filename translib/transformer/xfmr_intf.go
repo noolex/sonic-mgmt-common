@@ -176,6 +176,8 @@ var intfOCToSpeedMap = map[ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED] string
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_40GB: "40000",
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_50GB: "50000",
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_100GB: "100000",
+    ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_200GB: "200000",
+    ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_400GB: "400000",
 
 }
 
@@ -3415,22 +3417,23 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
        }
     }
     /* Handle PortSpeed config */
-    if isPortGroupMember(ifName) {
-        err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
-    } else if intfObj.Ethernet.Config.PortSpeed != 0 {
-        res_map := make(map[string]string)
-        value := db.Value{Field: res_map}
-        intTbl := IntfTypeTblMap[intfType]
+    if (strings.Contains(inParams.requestUri, "port-speed")) {
+        if isPortGroupMember(ifName) {
+            err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
+        } else if intfObj.Ethernet.Config.PortSpeed != 0 {
+            res_map := make(map[string]string)
+            value := db.Value{Field: res_map}
+            intTbl := IntfTypeTblMap[intfType]
 
-        portSpeed := intfObj.Ethernet.Config.PortSpeed
-        val, ok := intfOCToSpeedMap[portSpeed]
-        if ok {
-            if isValidSpeed(inParams.d, ifName, val) {
-                res_map[PORT_SPEED] = val
-            } else {
-                err = tlerr.InvalidArgs("Unsupported speed %s", val)
-            }
-        } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+            portSpeed := intfObj.Ethernet.Config.PortSpeed
+            val, ok := intfOCToSpeedMap[portSpeed]
+            if ok {
+                if isValidSpeed(inParams.d, ifName, val) {
+                    res_map[PORT_SPEED] = val
+                } else {
+                    err = tlerr.InvalidArgs("Unsupported speed %s", val)
+                }
+            } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
                 defSpeed := getDefaultSpeed(inParams.d, ifName)
                 log.Info(" defSpeed  ", defSpeed)
                 if defSpeed != 0 {
@@ -3439,15 +3442,16 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 } else {
                     err = tlerr.NotSupported("Default speed not available")
                 }
-        } else {
-            err = tlerr.InvalidArgs("Invalid speed %s", val)
-        }
+            } else {
+                err = tlerr.InvalidArgs("Invalid speed %s", val)
+            }
 
-        if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
-            memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
-        }
-        memMap[intTbl.cfgDb.portTN][ifName] = value
+            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
+                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+            }
+            memMap[intTbl.cfgDb.portTN][ifName] = value
 
+        }
     }
     /* Handle AutoNegotiate config */
     if intfObj.Ethernet.Config.AutoNegotiate != nil {
