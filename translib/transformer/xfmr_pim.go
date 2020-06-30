@@ -3,7 +3,6 @@ package transformer
 import (
     "errors"
     "strings"
-    "encoding/json"
     "strconv"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
@@ -36,14 +35,6 @@ func pim_exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
     if outError, ok := pimOutputJson["warning"] ; ok {
         log.Errorf ("PIM: VTYSH-cmd : \"%s\" execution failed with error-msg ==> %s", vtysh_cmd, outError);
         return nil, operErr
-    }
-
-    /* TODO: Need to remove once valid-json-format fixes for non-existing VRF is available in FRR */
-    jsonByteArray, err := json.Marshal(pimOutputJson) ; if err == nil {
-        if !json.Valid (jsonByteArray) {
-            log.Errorf ("PIM: VTYSH-cmd : \"%s\" execution output is in invalid JSON-format !!", vtysh_cmd);
-            return nil, operErr
-        }
     }
 
     return pimOutputJson, err

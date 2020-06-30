@@ -14,6 +14,7 @@ module openconfig-network-instance-annot {
     import openconfig-bfd { prefix oc-bfd; }
     import openconfig-ospfv2-ext { prefix "oc-ospfv2-ext"; }
     import openconfig-pim-ext { prefix "oc-pim-ext"; }
+    import openconfig-aft-ipv4-ext { prefix "oc-aft-ipv4-ext"; }
 	
     import ietf-yang-types { prefix yang; }
     import openconfig-vxlan {prefix oc-vxlan; }
@@ -2892,6 +2893,12 @@ module openconfig-network-instance-annot {
      deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast {
       deviate add {
         sonic-ext:subtree-transformer "ipv6_route_get_xfmr";
+      }
+     }
+
+     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-aft-ipv4-ext:ipv4-multicast {
+      deviate add {
+        sonic-ext:subtree-transformer "ipv4_mroute_get_xfmr";
       }
      }
 
