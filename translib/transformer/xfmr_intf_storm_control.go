@@ -57,9 +57,7 @@ func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{},
 var YangToDb_storm_type_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var stormKey string
     log.Info("Entering YangToDb_storm_type_key_xfmr")
-    pathInfo := NewPathInfo(inParams.requestUri)
-    log.Info(pathInfo)
-    pathInfo = NewPathInfo(inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
     log.Info(pathInfo)
     intfName := pathInfo.Var("name")
     stormType := pathInfo.Var("storm-type")
@@ -100,9 +98,8 @@ func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, er
 }
 
 var YangToDb_storm_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
-
     log.Info("Entering YangToDb_storm_value_xfmr")
-
+    res_map := make(map[string]string)
     return res_map, nil
 }
+

@@ -19,10 +19,6 @@ type xTblInfo struct {
     Parent  string `json:"parent"`
 }
 
-type tblDirGph struct {
-	node map[string]*gphNode
-}
-
 type gphNode struct {
     tableName string
 	childTbl  []*gphNode
@@ -47,24 +43,24 @@ func tblInfoAdd(tnMap map[string]*gphNode, tname, pname string) error {
 	return nil
 }
 
-func childtblListGet (tnode *gphNode, ordTblList map[string][]string) (error, []string){
+func childtblListGet (tnode *gphNode, ordTblList map[string][]string) ([]string, error){
 	var ctlist []string
 	if len(tnode.childTbl) <= 0 {
-		return nil, ctlist
+		return ctlist, nil
 	}
 
 	if _, ok := ordTblList[tnode.tableName]; ok {
-		return nil, ordTblList[tnode.tableName]
+		return ordTblList[tnode.tableName], nil
 	}
 
 	for _, ctnode := range tnode.childTbl {
-		if ctnode.visited == false {
+		if !ctnode.visited {
 			ctnode.visited = true
 
-			err, curTblList := childtblListGet(ctnode, ordTblList)
+			curTblList, err := childtblListGet(ctnode, ordTblList)
 			if err != nil {
 				ctlist = make([]string, 0)
-				return err, ctlist
+				return ctlist, err
 			}
 
 			ordTblList[ctnode.tableName] = curTblList
@@ -76,7 +72,7 @@ func childtblListGet (tnode *gphNode, ordTblList map[string][]string) (error, []
 		}
 	}
 
-	return nil, ctlist
+	return ctlist, nil
 }
 
 func ordTblListCreate(ordTblList map[string][]string, tnMap map[string]*gphNode) {
@@ -87,26 +83,24 @@ func ordTblListCreate(ordTblList map[string][]string, tnMap map[string]*gphNode)
 	}
 
 	for _, tnode := range tnodelist {
-		if tnode != nil && tnode.visited == false {
+		if ((tnode != nil) && (!tnode.visited)) {
 			tnode.visited = true
-			_, tlist := childtblListGet(tnode, ordTblList)
+			tlist, _ := childtblListGet(tnode, ordTblList)
 			ordTblList[tnode.tableName] = tlist
 		}
 	}
-	return
 }
 
  //sort transformer result table list based on dependenciesi(using CVL API) tables to be used for CRUD operations     
- //func sortPerTblDeps(tblList []string) ([]string, error) {
  func sortPerTblDeps(ordTblListMap map[string][]string) error {
 	 var err error
 
-	 errStr := fmt.Errorf("%v", "Failed to create cvl session")
+	 errStr := "Failed to create cvl session"
 	 cvSess, status := cvl.ValidationSessOpen()
 	 if status != cvl.CVL_SUCCESS {
 		 log.Errorf("CVL validation session creation failed(%v).", status)
 		 err = fmt.Errorf("%v", errStr)
-		 return errStr
+		 return err
 	 }
 
 	 for tname, tblList := range ordTblListMap {

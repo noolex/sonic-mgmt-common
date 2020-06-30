@@ -33,7 +33,7 @@ func init () {
 
 
 
-// InterfaceObj is the output record for get interface counters RPC
+// InterfaceObj is defined to use as RPC response for get interface counters 
 type InterfaceObj struct {
     Name string `json:"name"`
     State struct {

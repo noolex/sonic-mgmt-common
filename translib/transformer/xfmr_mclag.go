@@ -212,7 +212,10 @@ var YangToDb_mclag_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xf
 			if !ok {
 				mclagIntfTblMap[mclagIntfKey] = db.Value{Field: make(map[string]string)}
 			}
-			mclagIntfTblMap[mclagIntfKey].Field["if_type"] = "PortChannel"
+            //for DELETE operation dont fill individual fields
+	        if inParams.oper != DELETE {
+			    mclagIntfTblMap[mclagIntfKey].Field["if_type"] = "PortChannel"
+            }
 		}
 	}
 

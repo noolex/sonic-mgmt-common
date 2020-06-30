@@ -29,6 +29,7 @@ func init () {
     XlateFuncBind("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr", YangToDb_bgp_af_nbr_proto_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_af_nbr_proto_tbl_key_xfmr", DbToYang_bgp_af_nbr_proto_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_nbrs_nbr_state_xfmr", DbToYang_bgp_nbrs_nbr_state_xfmr)
+    XlateFuncBind("Subscribe_bgp_nbrs_nbr_state_xfmr", Subscribe_bgp_nbrs_nbr_state_xfmr)
     XlateFuncBind("DbToYang_bgp_nbrs_nbr_af_state_xfmr", DbToYang_bgp_nbrs_nbr_af_state_xfmr)
     XlateFuncBind("YangToDb_bgp_nbr_community_type_fld_xfmr", YangToDb_bgp_nbr_community_type_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_nbr_community_type_fld_xfmr", DbToYang_bgp_nbr_community_type_fld_xfmr)
@@ -143,13 +144,15 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     }
 
     tblList = append(tblList, "BGP_NEIGHBOR")
-    if _ , present := inParams.txCache.Load(vrf);!present {
-        inParams.txCache.Store(vrf, vrf)
-    } else {
-        if log.V(3) {
-            log.Info("bgp_nbr_tbl_xfmr: repetitive table update is avoided for target URI:", inParams.uri)
+    if inParams.dbDataMap != nil {
+        if _ , present := inParams.txCache.Load(vrf);!present {
+            inParams.txCache.Store(vrf, vrf)
+        } else {
+            if log.V(3) {
+                log.Info("bgp_nbr_tbl_xfmr: repetitive table update is avoided for target URI:", inParams.uri)
+            }
+            return tblList, nil
         }
-        return tblList, nil
     }
 
     if len(nbrAddr) != 0 {
@@ -1298,6 +1301,37 @@ const (
     E_bgp_nbr_state_get_req_uri_nbr_timers_state E_bgp_nbr_state_get_req_uri_t = "GET_REQ_URI_BGP_NBR_TIMERS_STATE"
     E_bgp_nbr_state_get_req_uri_nbr_transport_state E_bgp_nbr_state_get_req_uri_t = "GET_REQ_URI_BGP_NBR_TRANSPORT_STATE"
 )
+
+var Subscribe_bgp_nbrs_nbr_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    if targetUriPath != "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/state/session-state" {
+        log.Infof("Subscribe attempted on unsupported path:%s; template:%s targetUriPath:%s",
+                  pathInfo.Path, pathInfo.Template, targetUriPath)
+        return result, err
+    }
+
+    vrfName   :=  pathInfo.Var("name")
+    nbrAddr   := pathInfo.Var("neighbor-address")
+    util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
+    var pNbrKey string = vrfName + "|" + nbrAddr
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Infof("Subscribe_bgp_nbrs_nbr_state_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath, pNbrKey)
+
+    result.dbDataMap = RedisDbMap{db.StateDB:{"BGP_NEIGHBOR":{pNbrKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.needCache = true
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, err
+}
 
 var DbToYang_bgp_nbrs_nbr_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error

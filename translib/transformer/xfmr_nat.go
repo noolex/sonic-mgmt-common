@@ -1255,12 +1255,7 @@ var DbToYang_nat_ip_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
             fldOk := entry.Has("nat_ip")
             if fldOk {
                 ipStr := entry.Get("nat_ip")
-                ipRange := strings.Contains(ipStr, "-")
-                if ipRange {
-                    result["IP-ADDRESS-RANGE"] = ipStr
-                } else {
-                    result["IP-ADDRESS"] = ipStr
-                }
+                result["nat-ip"] = ipStr
             }
         }
     }

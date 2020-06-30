@@ -178,6 +178,8 @@ var intfOCToSpeedMap = map[ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED] string
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_40GB: "40000",
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_50GB: "50000",
     ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_100GB: "100000",
+    ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_200GB: "200000",
+    ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_400GB: "400000",
 
 }
 
@@ -255,6 +257,7 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
 
     requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
     retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("Entering intf_post_xfmr")
 
     if inParams.oper == DELETE {
 
@@ -276,8 +279,32 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
                 log.Info("intf_post_xfmr inParams.subOpDataMap :", inParams.subOpDataMap)
             }
         }
+        if requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/openconfig-if-ethernet-ext:storm-control/storm-control-list/config/kbps" {
+            log.Info("intf_post_xfmr: storm-control kbps")
+            pathInfo := NewPathInfo(inParams.uri)
+            tblName := "PORT_STORM_CONTROL"
+            intfName := pathInfo.Var("name")
+            stormType := pathInfo.Var("storm-type")
+            if (stormType == "BROADCAST") {
+                stormType = "broadcast"
+            } else if (stormType == "UNKNOWN_UNICAST") {
+                stormType = "unknown-unicast"
+            } else if (stormType == "UNKNOWN_MULTICAST") {
+                stormType = "unknown-multicast"
+            }
+            tblKeyStr := intfName+"|"+stormType
+            log.Infof("intfName:%s, stormType:%s tblKeyStr:%s",intfName,stormType,tblKeyStr)
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subIntfmap_del := make(map[string]map[string]db.Value)
+            subIntfmap_del[tblName] = make(map[string]db.Value)
+            subIntfmap_del[tblName][tblKeyStr] = db.Value{}
+            subOpMap[db.ConfigDB] = subIntfmap_del
+            inParams.subOpDataMap[DELETE] = &subOpMap
+            log.Info("Original retDbDataMap:",retDbDataMap)
+            retDbDataMap = subIntfmap_del
+            log.Info("Returning retDbDataMap:",retDbDataMap)
+        }
     }
-
     return retDbDataMap, nil
 }
 
@@ -557,10 +584,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
  		}
  	}	
     }
-
-	if  inParams.oper == DELETE && (targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4" ||
-        targetUriPath ==  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6") {
-            return tblList, tlerr.New("DELETE operation not allowed on  this container")
+    if  inParams.oper == DELETE && (targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4" ||
+                targetUriPath ==  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6") {
+        return tblList, tlerr.New("DELETE operation not allowed on  this container")
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") && IntfTypeVxlan == intfType  {
 		if inParams.oper == 5 {
@@ -642,9 +668,14 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     } else if strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/openconfig-interfaces-ext:nat-zone") ||
         strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/nat-zone") {
         tblList = append(tblList, intTbl.cfgDb.intfTN)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface" {
         tblList = append(tblList, intTbl.cfgDb.portTN)
-    } else {       err = errors.New("Invalid URI")
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
+        if inParams.oper != DELETE {
+            tblList = append(tblList, intTbl.cfgDb.portTN)
+        }
+    }else {
+        err = errors.New("Invalid URI")
     }
 
     log.Infof("TableXfmrFunc - uri(%v), tblList(%v)\r\n", inParams.uri, tblList);
@@ -1890,7 +1921,7 @@ func deleteVxlanIntf(inParams *XfmrParams, ifName *string) error {
     if err == nil {
 	    evpnNvoMap := make(map[string]db.Value)
 	    evpnDbV := db.Value{Field:map[string]string{}}
-	    evpnDbV.Field["source_vtep"] = *ifName
+	    //evpnDbV.Field["source_vtep"] = *ifName
 	    evpnNvoMap["nvo1"] = evpnDbV
 	    resMap["EVPN_NVO"] = evpnNvoMap
     }
@@ -2756,7 +2787,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     memMap := make(map[string]map[string]db.Value)
 
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    targetUriPath, err := getYangPathFromUri(inParams.requestUri)
     if err != nil {
         return memMap, err
     }
@@ -2979,9 +3010,9 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     var err error
     res_map := make(map[string]string)
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name");
+    ifUIName := pathInfo.Var("name");
 
-    if ifName == "" {
+    if ifUIName == "" {
         errStr := "Interface KEY not present"
         log.Info("YangToDb_ipv6_enabled_xfmr: " + errStr)
         return res_map, errors.New(errStr)
@@ -2999,14 +3030,16 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         log.Info("YangToDb_ipv6_enabled_xfmr, inParams.key: ", inParams.key)
     }
 
-    intfType, _, ierr := getIntfTypeByName(ifName)
+    intfType, _, ierr := getIntfTypeByName(ifUIName)
     if ierr != nil || intfType == IntfTypeUnset || intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {
-	return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Unsupported Interface: "+ifName )
+	return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Unsupported Interface: "+ifUIName )
     }
+
+    ifName := utils.GetNativeNameFromUIName(&ifUIName)
 
     intTbl := IntfTypeTblMap[intfType]
     tblName := intTbl.cfgDb.intfTN
-    ipMap, _ := getIntfIpByName(inParams.d, tblName, ifName, true, true, "")
+    ipMap, _ := getIntfIpByName(inParams.d, tblName, *ifName, true, true, "")
     var enStr string
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     subOpTblMap := make(map[string]map[string]db.Value)
@@ -3021,7 +3054,7 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         enStr = "disable"
     }
 
-    IntfMapObj, err := inParams.d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
+    IntfMapObj, err := inParams.d.GetMapAll(&db.TableSpec{Name:tblName+"|"+*ifName})
     if err == nil || IntfMapObj.IsPopulated() {
         IntfMap = IntfMapObj.Field
     }
@@ -3038,11 +3071,6 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
 
     if enStr == "disable" {
 
-        if _, ok := IntfMap["ipv6_use_link_local_only"]; !ok {
-            // Already disabled if field not present in DB
-            return nil, nil
-        }
-
         /* Update ipv6_use_link_local_only field's value if explicit IP configured and no other interface attribute */
         if len(ipMap) > 0 && len(IntfMap) == 1 {
             return res_map, nil
@@ -3054,14 +3082,14 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         }
         check_keys := []string{"NULL", "ipv6_use_link_local_only"}
         sort.Strings(keys)
-
         /* Delete interface from interface table if disabling IPv6 and no other interface attributes/ip 
            else remove ipv6_use_link_local_only field */
-        if !(reflect.DeepEqual(keys, check_keys) && len(ipMap) == 0 && intfType != IntfTypeLoopback) {
+        if !((reflect.DeepEqual(keys, check_keys) || reflect.DeepEqual(keys, check_keys[1:])) && len(ipMap) == 0 && intfType != IntfTypeLoopback) {
             log.Info("YangToDb_ipv6_enabled_xfmr, deleting ipv6_use_link_local_only field")
+            // Adding field to the map
             (&res_values).Set("ipv6_use_link_local_only", enStr)
         }
-        field_map[ifName] = res_values
+        field_map[*ifName] = res_values
         subOpTblMap[tblName]= field_map
         subOpMap[db.ConfigDB] = subOpTblMap
         inParams.subOpDataMap[DELETE] = &subOpMap
@@ -3086,7 +3114,9 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     }
     pathInfo := NewPathInfo(inParams.uri)
     ifName:= pathInfo.Var("name")
-    log.Info("Interface Name = ", ifName)
+
+    ifUIName := utils.GetUINameFromNativeName(&ifName)
+    log.Info("Interface Name = ", *ifUIName)
 
     intfType, _, _ := getIntfTypeByName(inParams.key)
     if intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {

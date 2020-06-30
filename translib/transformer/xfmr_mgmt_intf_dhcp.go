@@ -22,7 +22,6 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "net"
     log "github.com/golang/glog"
-    "fmt"
     "encoding/json"
 )
 
@@ -84,7 +83,7 @@ var rpc_renew_dhcp_lease RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) 
     intfType, _, ierr := getIntfTypeByName(ifName)
     if ierr != nil || intfType != IntfTypeMgmt {
         log.Errorf("Extracting Interface type for Interface: %s failed or not supported!", ifName)
-        result.Output.Status_detail = fmt.Sprintf("Error: Not supported interface: " + ifName)
+        result.Output.Status_detail = "Error: Not supported interface: " + ifName
         return json.Marshal(&result)
     }
 
@@ -96,7 +95,7 @@ var rpc_renew_dhcp_lease RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) 
     intfIPcountGet(tblName, dbs[db.ConfigDB], ifName, &ipv4Count, &ipv6Count)
     if (ipv4Count > 0) && (ipv6Count > 0) {
         log.Info("Static IP's configured for " + ifName)
-        result.Output.Status_detail = fmt.Sprintf("Error: Static IP's configured for " + ifName)
+        result.Output.Status_detail = "Error: Static IP's configured for " + ifName
         return json.Marshal(&result)
     }
     var options []string

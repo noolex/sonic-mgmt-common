@@ -63,6 +63,7 @@ $(STATIC_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) | $(YGOT_BINDS)
 		--notfail=transformer/platform_config.go \
 		--notfail=transformer/transformer.go \
 		--notfail=transformer/xfmr_fdb.go \
+		--notfail=transformer/xfmr_intf_unnumbered.go \
 		--notfail=transformer/xfmr_port_breakout.go \
 		--notfail=transformer/xfmr_vrf.go \
 		--notfail=transformer/xlate.go \

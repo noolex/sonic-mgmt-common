@@ -169,7 +169,7 @@ func updateAliasFromDB(key *db.Key, d *db.DB) {
         log.Infof("intf_naming_mode not present, disabling alias mode")
         return
     }
-    aliasMode = (aliasVal == "alias")
+    aliasMode = (aliasVal == "standard")
     log.Infof("aliasMode set to %v", aliasMode);
 }
 

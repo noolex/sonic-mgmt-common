@@ -27,7 +27,7 @@ module openconfig-platform-ext {
     }
 
 
-    grouping platform-ext-software {
+    grouping platform-ext-software-state {
         description "Platform software fields";
         leaf software-version {
             type string;
@@ -105,27 +105,28 @@ module openconfig-platform-ext {
                         description
                             "name of the docker";
                     }
-                }
-                leaf docker-tag-id{
-                    type string;
-                    description
-                        "version of the docker-image";
-                }
-                leaf docker-image-id {
-                    type string;
-                    description
-                        "Image ID of the docker";
-                }
-                leaf docker-size{
-                    type string;
-                    description
-                        "Size of the docker-image";
+
+                    leaf docker-tag-id{
+                        type string;
+                        description
+                            "version of the docker-image";
+                    }
+                    leaf docker-image-id {
+                        type string;
+                        description
+                            "Image ID of the docker";
+                    }
+                    leaf docker-size{
+                        type string;
+                        description
+                            "Size of the docker-image";
+                    }
                 }
             }
         }
     }
 
-    grouping platform-ext-extra-sensor-reading {
+    grouping platform-ext-extra-sensor-reading-state {
         description "group for sensor readings";
         list sensor-category {
             key "category";
@@ -184,13 +185,13 @@ module openconfig-platform-ext {
         container software {
             config false;
             description "Fields for software component";
-            uses platform-ext-software;
+            uses platform-ext-software-state;
         }
     }
 
     augment /oc-pf:components/oc-pf:component/oc-pf:subcomponents/oc-pf:subcomponent/oc-pf:state {
         description "subcomponent for sensor readings";
-        uses platform-ext-extra-sensor-reading;
+        uses platform-ext-extra-sensor-reading-state;
     }
 
     augment /oc-pf:components/oc-pf:component/oc-pf:state {

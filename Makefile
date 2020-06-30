@@ -84,20 +84,6 @@ $(GOYANG_BIN): $(GO_DEPS)
 		$(GO) build -o $@ *.go
 
 install:
-	# Scripts for host service
-	# TODO move to debian install file
-	$(INSTALL) -d $(DESTDIR)/usr/lib/sonic_host_service/host_modules
-	$(INSTALL) -D $(TOPDIR)/scripts/sonic_host_server.py $(DESTDIR)/usr/lib/sonic_host_service
-	$(INSTALL) -D $(TOPDIR)/scripts/host_modules/*.py $(DESTDIR)/usr/lib/sonic_host_service/host_modules
-ifneq ($(ENABLE_ZTP),y)
-	$(RM) -f $(DESTDIR)/usr/lib/sonic_host_service/host_modules/ztp_handler.py
-endif
-	$(INSTALL) -d $(DESTDIR)/etc/dbus-1/system.d
-	$(INSTALL) -D $(TOPDIR)/scripts/org.sonic.hostservice.conf $(DESTDIR)/etc/dbus-1/system.d
-	$(INSTALL) -d $(DESTDIR)/lib/systemd/system
-	$(INSTALL) -D $(TOPDIR)/scripts/sonic-hostservice.service $(DESTDIR)/lib/systemd/system
-	$(INSTALL) -d $(DESTDIR)/etc/sonic/
-	$(INSTALL) -D $(TOPDIR)/config/cfg_mgmt.json $(DESTDIR)/etc/sonic/
 
 clean: models-clean translib-clean cvl-clean
 	git check-ignore debian/* | xargs -r $(RM) -r
