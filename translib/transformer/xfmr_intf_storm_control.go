@@ -22,6 +22,8 @@ package transformer
 
 import (
     "strings"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
+    "strconv"
     log "github.com/golang/glog"
 )
 
@@ -92,6 +94,12 @@ func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, er
         result["storm-type"] = "UNKNOWN_MULTICAST"
     }
     result["ifname"] = stormVals[0]
+    
+    entry, err := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:"PORT_STORM_CONTROL"}, db.Key{Comp: []string{stormKey}})
+    if err == nil {
+        value := entry.Field["kbps"]
+        result["kbps"],_ = strconv.ParseFloat(value,64)
+    }
 
     log.Info(result)
     return result, nil
