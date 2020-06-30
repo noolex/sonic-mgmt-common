@@ -97,7 +97,7 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     for i := start_lane + 1; i < end_lane; i++ {
         dpb_lanes = dpb_lanes + "," + lanes[i]
     }
-    base_port,_ := strconv.Atoi(strings.TrimLeft(port_i, "Ethernt"))
+    base_port,_ := strconv.Atoi(strings.TrimLeft(port_i, "Ethern"))
     port_config.name = "Ethernet"+strconv.Itoa(base_port+(lane_speed[0]*subport))
     port_config.alias = strings.TrimSpace(strings.Split(entry["alias_at_lanes"], ",")[subport])
     port_config.index = dpb_index
@@ -249,8 +249,8 @@ func isPortGroupMember(ifName string) (bool) {
     }
     if pgs, ok := platDefStr["port-group"]; ok {
         for id, pg := range pgs {
-            memRange := strings.Split(strings.TrimLeft(pg["members"], "Ethernt"), "-")
-            ifNum,_ := strconv.Atoi(strings.TrimLeft(ifName, "Ethernt"))
+            memRange := strings.Split(strings.TrimLeft(pg["members"], "Ethern"), "-")
+            ifNum,_ := strconv.Atoi(strings.TrimLeft(ifName, "Ethern"))
             startNum,_ := strconv.Atoi(memRange[0])
             endNum,_ := strconv.Atoi(memRange[0])
             log.Info("PG ", id, pg["members"], " ", pg["valid_speeds"], " ==> ",
