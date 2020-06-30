@@ -199,4 +199,21 @@ module sonic-copp {
 			}
 		}
 	}
+
+	rpc get-match-protocols {
+		description
+			"RPC to allowed match protocols";
+
+		output {
+			list Match_protocols {
+				key "Protocol";
+
+				leaf Protocol {
+					type string;
+					description
+						"Protocol name";
+				}
+			}
+		}
+    }
 }
