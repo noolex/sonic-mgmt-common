@@ -405,6 +405,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	/* Check if the parent table exists for RFC compliance */
         var exists bool
         exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache)
+        xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
         if err != nil {
                 log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation GET", uri)
                 return []byte(""), true, err

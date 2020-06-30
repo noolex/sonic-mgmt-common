@@ -267,7 +267,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    if !tgtObjCastOk {
 		    /*For ygotTarget populated by tranlib, for query on leaf level and list(without instance) level, 
 		      casting to GoStruct fails so use the parent node of ygotTarget to Unmarshall the payload into*/
-		    log.Infof("Use GetParentNode() since casting ygotTarget to GoStruct failed(uri - %v", app.pathInfo.Path)
+		    log.Infof("Use GetParentNode() instead of casting ygotTarget to GoStruct, uri - %v", app.pathInfo.Path)
 		    targetUri := app.pathInfo.Path
 		    parentTargetObj, _, getParentNodeErr := getParentNode(&targetUri, (*app.ygotRoot).(*ocbinds.Device))
 		    if getParentNodeErr != nil {

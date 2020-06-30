@@ -498,6 +498,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	var exists bool
 	var dbs [db.MaxDB]*db.DB
 	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache)
+	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
 	if err != nil {
 		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
 		return err
@@ -1078,7 +1079,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					// Check for Table existence
 					xfmrLogInfoAll("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
 					existsInDbData := false
-					if ((oper == GET) && (idx == (len(parentUriList)-1))) {
+					if oper == GET {
                                                 // GET case - attempt to find in dbData before doing a dbGet in dbTableExists()
                                                 existsInDbData = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
 					}
@@ -1171,7 +1172,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			} else {
 				return true, nil
 			}
-		} else if ((xerr == nil) && !((strings.HasSuffix(uri, "]")) && (strings.HasSuffix(uri, "]/")))) {//uri points to entire list
+		} else if ((xerr == nil) && !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {//uri points to entire list
 			return true, nil
 		} else {
 			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, tableName, dbKey)
