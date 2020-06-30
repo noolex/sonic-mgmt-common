@@ -268,6 +268,17 @@ def chk_container(ctx,container):
                 if child.arg not in state_childs:
                     issues.append(str(child.pos) + " must have state counterpart (../state)")
 
+def isLeavesOnlyGrouping(grouping):
+    for child in grouping.substmts:
+        if child.keyword == "container" or \
+            child.keyword == "list" or \
+                child.keyword == "choice" or \
+                    child.keyword == "anyxml" or \
+                        child.keyword == "grouping" or \
+                            child.keyword == "uses": 
+                            return False
+    return True
+
 def chk_naming_for_grouping(ctx, module):
     global issues
     global warnings
@@ -279,9 +290,18 @@ def chk_naming_for_grouping(ctx, module):
             issues.append(str(grouping.pos) + " Grouping %s's name does not follow valid naming convention" %(name))
         if not name.startswith(grouping.i_module.i_modulename[11:]):
             issues.append(str(grouping.pos) + " Grouping %s's name should begin with module name" %(name))
-        last_part = name.split('-')[-1]
-        if last_part not in ["config", "state", "top"]:
-            warnings.append(str(grouping.pos) + " Grouping %s's name does not follow valid naming convention" %(name))
+
+        last_part = name.split('-')[-1]                
+        if isLeavesOnlyGrouping(grouping) and last_part not in ["config", "state", "statistics", "counters", "stats"]:
+            warnings.append(str(grouping.pos) + " Grouping %s's name must end with config|state|counters|stats|statistics" %(name))        
+        if not isLeavesOnlyGrouping(grouping) and last_part not in ["config", "state", "counters","stats","statistics","common","attributes","refs","structural","top"]:
+            warnings.append(str(grouping.pos) + " Grouping %s's name must end with config|state|counters|stats|statistics|common|attributes|refs|structural|top" %(name))
+    
+    for stmt in module.substmts:
+        if stmt.keyword == 'uses':
+            last_part = stmt.arg.split('-')[-1]
+            if last_part != "top":
+                warnings.append(str(stmt.pos) + " Grouping %s's name must end with top" %(stmt.arg))
 
 def find_node(stmt, arg, nodelist=[]):
     if stmt.keyword == arg:
