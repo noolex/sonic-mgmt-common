@@ -11,10 +11,6 @@ module sonic-ip-neighbor {
         prefix inet;
     }
 
-    import sonic-ospfv2-common { 
-        prefix "sonic-ospf-cmn"; 
-    }
-
     import sonic-port {
         prefix prt;
     }
