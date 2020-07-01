@@ -74,7 +74,7 @@ module openconfig-rib-bgp-ext {
   oc-ext:catalog-organization "openconfig";
   oc-ext:origin "openconfig";
 
-  grouping rib-bgp-ext-route-annotations {
+  grouping rib-bgp-ext-route-annotations-state {
     description
       "Extended annotations for routes in the routing tables";
 
@@ -101,7 +101,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to the Loc-RIB for IPv4";
 
-      uses rib-bgp-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -112,7 +112,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to the Loc-RIB for IPv6";
 
-      uses rib-bgp-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -125,7 +125,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv4";
 
-      uses rib-bgp-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations-state;
   }
 
   augment
@@ -139,7 +139,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv4";
 
-      uses rib-bgp-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -152,7 +152,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv4";
 
-      uses rib-bgp-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -165,7 +165,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv6";
 
-      uses rib-bgp-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -178,7 +178,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv6";
 
-      uses rib-bgp-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -191,7 +191,7 @@ module openconfig-rib-bgp-ext {
       description
         "Add extended annotations to Adj-RIB for IPv6";
 
-      uses rib-bgp-ext-route-annotations;
+      uses rib-bgp-ext-route-annotations-state;
   }
 
   grouping rib-bgp-ext-prefix-paths-top {
@@ -282,13 +282,13 @@ module openconfig-rib-bgp-ext {
                     "Current path was selected as the best path.";
             }
 
-            uses rib-bgp-ext-route-annotations;
+            uses rib-bgp-ext-route-annotations-state;
             uses oc-rib-bgp:bgp-loc-rib-attr-state;
             uses oc-rib-bgp:bgp-common-route-annotations-state;
             uses oc-rib-bgp:bgp-loc-rib-route-annotations-state;
           }
           uses oc-rib-bgp:bgp-unknown-attr-top;
-          uses oc-bgp-ext:bgp-ext-attr-sets;
+          uses oc-bgp-ext:bgp-ext-attr-sets-state;
         }
       }
     }
