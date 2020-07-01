@@ -95,6 +95,13 @@ module openconfig-ip-sla {
         "Tcp destination port of IP SLA";
     }
 
+    leaf tcp-source-interface {
+      type oc-if:base-interface-ref;
+      description
+        "Tcp source interface of IP SLA";
+    }
+
+
     leaf tcp-ttl {
       type uint16 {
         range "1..256" {

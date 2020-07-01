@@ -36,6 +36,12 @@ module openconfig-ip-sla-annot {
         }
     }
 
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-source-interface {
+        deviate add {
+            sonic-ext:field-name "tcp_source_interface";
+        }
+    }
+
     deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-dst-ip {
         deviate add {
             sonic-ext:field-name "tcp_dst_ip";
