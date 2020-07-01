@@ -286,6 +286,9 @@ func CVL_LEVEL_LOG(level CVLLogLevel, format string, args ...interface{}) {
 
 	if isLogToFile {
 		logToCvlFile(format, args...)
+		if level == FATAL {
+			log.Fatalf("[CVL] : " + format, args...)
+		}
 		return
 	}
 
