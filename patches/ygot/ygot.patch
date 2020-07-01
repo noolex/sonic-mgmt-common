@@ -1,26 +1,18 @@
 diff -ruN ygot-dir-orig/ygot/generator/generator.go ygot-dir/ygot/generator/generator.go
 --- ygot-dir-orig/ygot/generator/generator.go	2020-06-21 15:35:13.777667000 -0700
-+++ ygot-dir/ygot/generator/generator.go	2020-06-21 15:27:34.931674000 -0700
-@@ -109,7 +109,15 @@
++++ ygot-dir/ygot/generator/generator.go	2020-07-01 12:37:45.327603000 -0700
+@@ -109,7 +109,7 @@
  }
  
  // writeIfNotEmpty writes the string s to b if it has a non-zero length.
 -func writeIfNotEmpty(b io.StringWriter, s string) {
-+// commented out the below method, since "io.StringWriter" is introduced in go 1.12
-+//func writeIfNotEmpty(b io.StringWriter, s string) {
-+//	if len(s) != 0 {
-+//		b.WriteString(s)
-+//	}
-+//}
-+
-+// temp. - remove this method when we support go 1.12, and uncomment above method
 +func writeIfNotEmpty(b *strings.Builder, s string) {
  	if len(s) != 0 {
  		b.WriteString(s)
  	}
 diff -ruN ygot-dir-orig/ygot/genutil/common.go ygot-dir/ygot/genutil/common.go
 --- ygot-dir-orig/ygot/genutil/common.go	2020-06-21 15:35:13.763550000 -0700
-+++ ygot-dir/ygot/genutil/common.go	2020-06-21 15:27:34.925858000 -0700
++++ ygot-dir/ygot/genutil/common.go	2020-07-01 12:37:45.315870000 -0700
 @@ -18,9 +18,9 @@
  
  import (
@@ -33,26 +25,18 @@ diff -ruN ygot-dir-orig/ygot/genutil/common.go ygot-dir/ygot/genutil/common.go
  	"github.com/openconfig/goyang/pkg/yang"
  	"github.com/openconfig/ygot/util"
  	"github.com/openconfig/ygot/ygot"
-@@ -42,7 +42,15 @@
+@@ -42,7 +42,7 @@
  )
  
  // WriteIfNotEmpty writes the string s to b if it has a non-zero length.
 -func WriteIfNotEmpty(b io.StringWriter, s string) {
-+// commented out the below method, since we don't support go 1.12 currently
-+//func WriteIfNotEmpty(b io.StringWriter, s string) {
-+//	if len(s) != 0 {
-+//		b.WriteString(s)
-+//	}
-+//}
-+
-+// temp. - remove this method when we support go 1.12, and uncomment above method
 +func WriteIfNotEmpty(b *strings.Builder, s string) {
  	if len(s) != 0 {
  		b.WriteString(s)
  	}
 diff -ruN ygot-dir-orig/ygot/util/debug.go ygot-dir/ygot/util/debug.go
 --- ygot-dir-orig/ygot/util/debug.go	2020-06-21 15:35:13.562106000 -0700
-+++ ygot-dir/ygot/util/debug.go	2020-06-21 15:27:34.732928000 -0700
++++ ygot-dir/ygot/util/debug.go	2020-07-01 12:37:44.978418000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -90,7 +74,7 @@ diff -ruN ygot-dir-orig/ygot/util/debug.go ygot-dir/ygot/util/debug.go
  		out += fmt.Sprintf(", Pattern: %s", strings.Join(yt.Pattern, " or "))
 diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
 --- ygot-dir-orig/ygot/util/path.go	2020-06-21 15:35:13.572583000 -0700
-+++ ygot-dir/ygot/util/path.go	2020-06-21 15:27:34.736766000 -0700
++++ ygot-dir/ygot/util/path.go	2020-07-01 12:37:44.984586000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -172,7 +156,7 @@ diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
  
 diff -ruN ygot-dir-orig/ygot/util/reflect.go ygot-dir/ygot/util/reflect.go
 --- ygot-dir-orig/ygot/util/reflect.go	2020-06-21 15:35:13.578335000 -0700
-+++ ygot-dir/ygot/util/reflect.go	2020-06-21 15:27:34.740951000 -0700
++++ ygot-dir/ygot/util/reflect.go	2020-07-01 12:37:44.991239000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -266,7 +250,7 @@ diff -ruN ygot-dir-orig/ygot/util/reflect.go ygot-dir/ygot/util/reflect.go
  
 diff -ruN ygot-dir-orig/ygot/ygen/codegen.go ygot-dir/ygot/ygen/codegen.go
 --- ygot-dir-orig/ygot/ygen/codegen.go	2020-06-21 15:35:13.714871000 -0700
-+++ ygot-dir/ygot/ygen/codegen.go	2020-06-21 15:27:34.908325000 -0700
++++ ygot-dir/ygot/ygen/codegen.go	2020-07-01 12:37:45.290207000 -0700
 @@ -15,6 +15,10 @@
  // Package ygen contains a library to generate Go structs from a YANG model.
  // The Goyang parsing library is used to parse YANG. The output can consider
@@ -289,7 +273,7 @@ diff -ruN ygot-dir-orig/ygot/ygen/codegen.go ygot-dir/ygot/ygen/codegen.go
  			errs = util.AppendErr(errs, fmt.Errorf("unknown type of entry %v in findMappableEntities for %s", e.Kind, e.Path()))
 diff -ruN ygot-dir-orig/ygot/ygen/genstate.go ygot-dir/ygot/ygen/genstate.go
 --- ygot-dir-orig/ygot/ygen/genstate.go	2020-06-21 15:35:13.722530000 -0700
-+++ ygot-dir/ygot/ygen/genstate.go	2020-06-21 15:27:34.911877000 -0700
++++ ygot-dir/ygot/ygen/genstate.go	2020-07-01 12:37:45.295765000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -358,7 +342,7 @@ diff -ruN ygot-dir-orig/ygot/ygen/genstate.go ygot-dir/ygot/ygen/genstate.go
  
 diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/struct_validation_map.go
 --- ygot-dir-orig/ygot/ygot/struct_validation_map.go	2020-06-21 15:35:13.614961000 -0700
-+++ ygot-dir/ygot/ygot/struct_validation_map.go	2020-06-21 15:27:34.776361000 -0700
++++ ygot-dir/ygot/ygot/struct_validation_map.go	2020-07-01 12:37:45.053593000 -0700
 @@ -19,6 +19,10 @@
  //	  to return pointers to a type.
  //	- Renders structs to other output formats such as JSON, or gNMI
@@ -370,7 +354,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  package ygot
  
  import (
-@@ -336,19 +340,20 @@
+@@ -336,20 +340,6 @@
  // EmitJSON takes an input ValidatedGoStruct (produced by ygen with validation enabled)
  // and serialises it to a JSON string. By default, produces the Internal format JSON.
  func EmitJSON(s ValidatedGoStruct, opts *EmitJSONConfig) (string, error) {
@@ -387,24 +371,19 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
 -	if err := s.Validate(vopts...); !skipValidation && err != nil {
 -		return "", fmt.Errorf("validation err: %v", err)
 -	}
-+//	var (
-+//		vopts          []ValidationOption
-+//		skipValidation bool
-+//	)
-+//
-+//	if opts != nil {
-+//		vopts = opts.ValidationOpts
-+//		skipValidation = opts.SkipValidation
-+//	}
-+//
-+//   commenting out the validation block since its not needed, and also to improve the performance
-+//	if err := s.Validate(vopts...); !skipValidation && err != nil {
-+//		return "", fmt.Errorf("validation err: %v", err)
-+//	}
- 
+-
  	v, err := makeJSON(s, opts)
  	if err != nil {
-@@ -555,7 +560,13 @@
+ 		return "", err
+@@ -525,7 +515,6 @@
+ 	for i := 0; i < srcVal.NumField(); i++ {
+ 		srcField := srcVal.Field(i)
+ 		dstField := dstVal.Field(i)
+-
+ 		switch srcField.Kind() {
+ 		case reflect.Ptr:
+ 			if err := copyPtrField(dstField, srcField); err != nil {
+@@ -555,7 +544,13 @@
  				dstField.Set(srcField)
  			}
  		default:
@@ -419,9 +398,91 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  		}
  	}
  	return nil
+@@ -595,6 +590,7 @@
+ 			return err
+ 		}
+ 		dstField.Set(d)
++		
+ 		return nil
+ 	}
+ 
+@@ -608,6 +604,7 @@
+ 	p := reflect.New(srcField.Type().Elem())
+ 	p.Elem().Set(srcField.Elem())
+ 	dstField.Set(p)
++	
+ 	return nil
+ }
+ 
+@@ -636,6 +633,7 @@
+ 		return err
+ 	}
+ 	dstField.Set(d)
++
+ 	return nil
+ }
+ 
+@@ -645,6 +643,7 @@
+ // key is populated in srcField and dstField, their contents are merged if they
+ // do not overlap, otherwise an error is returned.
+ func copyMapField(dstField, srcField reflect.Value) error {
++
+ 	if !util.IsValueMap(srcField) {
+ 		return fmt.Errorf("received a non-map type in src map field: %v", srcField.Kind())
+ 	}
+@@ -664,8 +663,6 @@
+ 	}
+ 
+ 	srcKeys := srcField.MapKeys()
+-	dstKeys := dstField.MapKeys()
+-
+ 	nm := reflect.MakeMapWithSize(reflect.MapOf(m.key, m.value), srcField.Len())
+ 
+ 	mapsToMap := []struct {
+@@ -673,20 +670,24 @@
+ 		field reflect.Value
+ 	}{
+ 		{srcKeys, srcField},
+-		{dstKeys, dstField},
+ 	}
+ 	existingKeys := map[interface{}]reflect.Value{}
+ 
++	for _, dstKey := range dstField.MapKeys()  {
++		existingKeys[dstKey.Interface()] = dstField.MapIndex(dstKey)
++	}
++	
+ 	for _, m := range mapsToMap {
+ 		for _, k := range m.keys {
+ 			// If the key already exists, then determine the existing item to merge
+ 			// into.
+ 			v := m.field.MapIndex(k)
+ 			var d reflect.Value
+-			var ok bool
+-			if d, ok = existingKeys[k.Interface()]; !ok {
++			if tmpVal, keyErr := compareMapKeys(existingKeys, k.Interface()); keyErr != nil {
+ 				d = reflect.New(v.Elem().Type())
+ 				existingKeys[k.Interface()] = v
++			} else {
++				d = *tmpVal
+ 			}
+ 
+ 			if err := copyStruct(d.Elem(), v.Elem()); err != nil {
+@@ -804,3 +805,12 @@
+ 	}
+ 	return true, nil
+ }
++
++func compareMapKeys(existingKeys map[interface{}]reflect.Value, searchKey interface{}) (*reflect.Value, error) {
++	for tmpKey, tmpVal := range existingKeys  {
++		if cmp.Equal(tmpKey, searchKey) {
++			return &tmpVal, nil
++		}		
++	}
++	return nil, fmt.Errorf("No match found in the existingKeys map.")
++}
 diff -ruN ygot-dir-orig/ygot/ytypes/container.go ygot-dir/ygot/ytypes/container.go
 --- ygot-dir-orig/ygot/ytypes/container.go	2020-06-21 15:35:13.644909000 -0700
-+++ ygot-dir/ygot/ytypes/container.go	2020-06-21 15:27:34.835482000 -0700
++++ ygot-dir/ygot/ytypes/container.go	2020-07-01 12:37:45.147953000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -473,7 +534,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/container.go ygot-dir/ygot/ytypes/container.
  
 diff -ruN ygot-dir-orig/ygot/ytypes/leaf.go ygot-dir/ygot/ytypes/leaf.go
 --- ygot-dir-orig/ygot/ytypes/leaf.go	2020-06-21 15:35:13.659910000 -0700
-+++ ygot-dir/ygot/ytypes/leaf.go	2020-06-21 17:19:38.561565000 -0700
++++ ygot-dir/ygot/ytypes/leaf.go	2020-07-01 12:37:45.153609000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -691,7 +752,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/leaf.go ygot-dir/ygot/ytypes/leaf.go
 \ No newline at end of file
 diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
 --- ygot-dir-orig/ygot/ytypes/list.go	2020-06-21 15:35:13.671135000 -0700
-+++ ygot-dir/ygot/ytypes/list.go	2020-06-21 15:27:34.842669000 -0700
++++ ygot-dir/ygot/ytypes/list.go	2020-07-01 12:37:45.160677000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -837,7 +898,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  		return nil, fmt.Errorf("failed to create map value for insert, root %T, keys %v: %v", root, keys, err)
 diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
 --- ygot-dir-orig/ygot/ytypes/node.go	2020-06-21 15:35:13.674994000 -0700
-+++ ygot-dir/ygot/ytypes/node.go	2020-06-21 15:27:34.846733000 -0700
++++ ygot-dir/ygot/ytypes/node.go	2020-07-01 12:37:45.169026000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -879,7 +940,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
  			return nil, err
 diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_type.go
 --- ygot-dir-orig/ygot/ytypes/string_type.go	2020-06-21 15:35:13.679051000 -0700
-+++ ygot-dir/ygot/ytypes/string_type.go	2020-06-21 15:27:34.850341000 -0700
++++ ygot-dir/ygot/ytypes/string_type.go	2020-07-01 12:37:45.178903000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -957,7 +1018,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_t
  // fixYangRegexp takes a pattern regular expression from a YANG module and
 diff -ruN ygot-dir-orig/ygot/ytypes/unmarshal.go ygot-dir/ygot/ytypes/unmarshal.go
 --- ygot-dir-orig/ygot/ytypes/unmarshal.go	2020-06-21 15:35:13.685260000 -0700
-+++ ygot-dir/ygot/ytypes/unmarshal.go	2020-06-21 15:27:34.854241000 -0700
++++ ygot-dir/ygot/ytypes/unmarshal.go	2020-07-01 12:37:45.189539000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -982,7 +1043,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/unmarshal.go ygot-dir/ygot/ytypes/unmarshal.
  		return errors.New("unmarshalling a non leaf node isn't supported in GNMIEncoding mode")
 diff -ruN ygot-dir-orig/ygot/ytypes/validate.go ygot-dir/ygot/ytypes/validate.go
 --- ygot-dir-orig/ygot/ytypes/validate.go	2020-06-21 15:35:13.699446000 -0700
-+++ ygot-dir/ygot/ytypes/validate.go	2020-06-21 15:27:34.857802000 -0700
++++ ygot-dir/ygot/ytypes/validate.go	2020-07-01 12:37:45.198346000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
