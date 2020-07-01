@@ -4,6 +4,7 @@ import (
     "errors"
     "strings"
     "strconv"
+    "encoding/json"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
@@ -20,6 +21,7 @@ func init () {
     XlateFuncBind("DbToYang_pim_intf_mode_fld_xfmr", DbToYang_pim_intf_mode_fld_xfmr)
     XlateFuncBind("DbToYang_pim_intf_state_xfmr", DbToYang_pim_intf_state_xfmr)
     XlateFuncBind("DbToYang_pim_nbrs_state_xfmr", DbToYang_pim_nbrs_state_xfmr)
+    XlateFuncBind("DbToYang_pim_tib_state_xfmr", DbToYang_pim_tib_state_xfmr)
 }
 
 func pim_exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
@@ -38,6 +40,168 @@ func pim_exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
     }
 
     return pimOutputJson, err
+}
+
+func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, error) {
+    var err error
+    var outputJson map[string]interface{}
+    outJsonBlob :=
+					 `
+					 {
+						 "232.0.0.1":{
+							 "199.0.0.23":{
+								 "upTime":"00:01:42",
+								 "expire":"00:00:30",
+								 "flags":"SJT",
+								 "iif":{
+									 "Vlan202":{
+										 "RPF Neighbor":"172.22.0.1",
+										 "RPF Metric":0,
+										 "RPF Preference":109,
+										 "oil":{
+											 "Vlan602":{
+												 "source":"199.0.0.23",
+												 "group":"232.0.0.1",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan602",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 },
+											 "Vlan603":{
+												 "source":"199.0.0.23",
+												 "group":"232.0.0.1",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan603",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 }
+										 }
+									 }
+								 }
+							 },
+							 "199.0.0.24":{
+								 "upTime":"00:01:42",
+								 "expire":"00:00:30",
+								 "flags":"SJT",
+								 "iif":{
+									 "Vlan202":{
+										 "RPF Neighbor":"172.22.0.1",
+										 "RPF Metric":0,
+										 "RPF Preference":109,
+										 "oif":{
+											 "Vlan602":{
+												 "source":"199.0.0.24",
+												 "group":"232.0.0.1",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan602",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 },
+											 "Vlan642":{
+												 "source":"199.0.0.24",
+												 "group":"232.0.0.1",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan642",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 },
+											 "Vlan603":{
+												 "source":"199.0.0.24",
+												 "group":"232.0.0.1",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan603",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 }
+										 }
+									 }
+								 }
+							 }
+						 },
+						 "232.0.0.2":{
+							 "199.0.0.23":{
+								 "upTime":"00:01:42",
+								 "expire":"00:00:30",
+								 "flags":"SJT",
+								 "iif":{
+									 "Vlan202":{
+										 "RPF Neighbor":"172.22.0.1",
+										 "RPF Metric":0,
+										 "RPF Preference":109,
+										 "oif":{
+											 "Vlan602":{
+												 "source":"199.0.0.23",
+												 "group":"232.0.0.2",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan602",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 },
+											 "Vlan603":{
+												 "source":"199.0.0.23",
+												 "group":"232.0.0.2",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan603",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 }
+										 }
+									 }
+								 }
+							 },
+							 "199.0.0.24":{
+								 "upTime":"00:01:42",
+								 "expire":"00:00:30",
+								 "flags":"SJT",
+								 "iif":{
+									 "Vlan202":{
+										 "RPF Neighbor":"172.22.0.1",
+										 "RPF Metric":0,
+										 "RPF Preference":109,
+										 "oif":{
+											 "Vlan602":{
+												 "source":"199.0.0.24",
+												 "group":"232.0.0.2",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan602",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 }
+										 }
+									 }
+								 }
+							 }
+						 },
+						 "232.0.0.3":{
+							 "199.0.0.23":{
+								 "upTime":"00:01:42",
+								 "expire":"00:00:30",
+								 "flags":"SJT",
+								 "iif":{
+									 "Vlan202":{
+										 "RPF Neighbor":"172.22.0.1",
+										 "RPF Metric":0,
+										 "RPF Preference":109,
+										 "oif":{
+											 "Vlan603":{
+												 "source":"199.0.0.23",
+												 "group":"232.0.0.3",
+												 "inboundInterface":"Vlan202",
+												 "outboundInterface":"Vlan603",
+												 "upTime":"--:--:--",
+												 "expire":"--:--"
+											 }
+										 }
+									 }
+								 }
+							 }
+						 }
+					 }
+				 `
+    if err = json.Unmarshal([]byte(outJsonBlob), &outputJson) ; err != nil {
+        log.Errorf ("pim_exec_fake_vtysh_tib_cmd Error : %s", err)
+    }
+    return outputJson, err
 }
 
 func validatePimRoot (inParams XfmrParams) (string, error) {
@@ -502,6 +666,233 @@ var DbToYang_pim_nbrs_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
             nbrKey.nbrAddr = nbrAddr
 
             fill_pim_nbr_state_info (inParams, nbrKey, nbrData, intfData, nbrStateObj)
+        }
+    }
+
+    return err
+}
+
+type _xfmr_pim_tib_state_key struct {
+    niName string
+    grpAddr string
+    srcAddr string
+    routeType ocbinds.E_OpenconfigPimExt_RouteType
+    oifKey string
+}
+
+func fill_pim_tib_mroute_state_info (inParams XfmrParams, tibKey _xfmr_pim_tib_state_key, srcAddrData map[string]interface{},
+                                     srcEntryStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State) bool {
+    srcEntryStateObj.SourceAddress = &tibKey.srcAddr
+    srcEntryStateObj.RouteType = tibKey.routeType
+
+    if value, ok := srcAddrData["upTime"] ; ok {
+        _uptime := value.(string)
+        srcEntryStateObj.Uptime = &_uptime
+    }
+
+    if value, ok := srcAddrData["expire"] ; ok {
+        _expiry := value.(string)
+        srcEntryStateObj.Expiry = &_expiry
+    }
+
+    if value, ok := srcAddrData["flags"] ; ok {
+        _flags := value.(string)
+        srcEntryStateObj.Flags = &_flags
+    }
+
+    if iifListData, ok := srcAddrData["iif"].(map[string]interface{}) ; ok {
+        for iif := range iifListData {
+            iifData, ok := iifListData[iif].(map[string]interface{}) ; if !ok {continue}
+
+            var _uiIncomingIntfId string
+            util_pim_get_ui_ifname_from_native_ifname (&iif, &_uiIncomingIntfId)
+            srcEntryStateObj.IncomingInterface = &_uiIncomingIntfId
+
+            rpfInfoObj := srcEntryStateObj.RpfInfo ; if rpfInfoObj == nil {
+                var _rpfInfoObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_RpfInfo
+                srcEntryStateObj.RpfInfo = &_rpfInfoObj
+                rpfInfoObj = srcEntryStateObj.RpfInfo
+                ygot.BuildEmptyTree(rpfInfoObj)
+            }
+
+            rpfInfoStateObj := rpfInfoObj.State ; if rpfInfoStateObj == nil {
+                var _rpfInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_RpfInfo_State
+                rpfInfoObj.State = &_rpfInfoStateObj
+                rpfInfoStateObj = rpfInfoObj.State
+                ygot.BuildEmptyTree(rpfInfoStateObj)
+            }
+
+            if value, ok := iifData["RPF Neighbor"] ; ok {
+                _rpfNeighborAddress := value.(string)
+                rpfInfoStateObj.RpfNeighborAddress = &_rpfNeighborAddress
+            }
+
+            if value, ok := iifData["RPF Metric"] ; ok {
+                _metric := uint32(value.(float64))
+                rpfInfoStateObj.Metric = &_metric
+            }
+
+            if value, ok := iifData["RPF Preference"] ; ok {
+                _preference := uint32(value.(float64))
+                rpfInfoStateObj.Preference = &_preference
+            }
+
+            if oilData, ok := iifData["oil"].(map[string]interface{}) ; ok {
+                var nativeOifKey string
+                util_pim_get_native_ifname_from_ui_ifname (&tibKey.oifKey, &nativeOifKey)
+
+                for oif := range oilData {
+                    if ((nativeOifKey != "") && (oif != nativeOifKey)) {continue}
+                    oifData, ok := oilData[oif].(map[string]interface{}) ; if !ok {continue}
+
+                    oilInfoEntries := srcEntryStateObj.OilInfoEntries ; if oilInfoEntries == nil {
+                        var _oilInfoEntries ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_OilInfoEntries
+                        srcEntryStateObj.OilInfoEntries = &_oilInfoEntries
+                        oilInfoEntries = srcEntryStateObj.OilInfoEntries
+                        ygot.BuildEmptyTree(oilInfoEntries)
+                    }
+
+                    var _uiOifId string
+                    util_pim_get_ui_ifname_from_native_ifname (&oif, &_uiOifId)
+                    OifInfoObj, ok := oilInfoEntries.OilInfoEntry[_uiOifId] ; if !ok {
+                        OifInfoObj,_ = oilInfoEntries.NewOilInfoEntry(_uiOifId)
+                        ygot.BuildEmptyTree(OifInfoObj)
+                    }
+
+                    oilInfoStateObj := OifInfoObj.State ; if oilInfoStateObj == nil {
+                        var _oilInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_OilInfoEntries_OilInfoEntry_State
+                        OifInfoObj.State = &_oilInfoStateObj
+                        oilInfoStateObj = OifInfoObj.State
+                        ygot.BuildEmptyTree(oilInfoStateObj)
+                    }
+                    oilInfoStateObj.OutgoingInterface = &_uiOifId
+
+                    if value, ok := oifData["upTime"] ; ok {
+                        _uptime := value.(string)
+                        oilInfoStateObj.Uptime = &_uptime
+                    }
+
+                    if value, ok := oifData["expire"] ; ok {
+                        _expiry := value.(string)
+                        oilInfoStateObj.Expiry = &_expiry
+                    }
+                }
+            }
+        }
+	}
+
+    return true
+}
+
+var DbToYang_pim_tib_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+    var err error
+    operErr := errors.New("Opertational error")
+    cmnLog := "GET: xfmr for PIM-TIB-State"
+
+    pimObj, niName, getErr := getPimRoot (inParams)
+    if getErr != nil {
+        log.Errorf ("%s failed !! Error:%s", cmnLog, getErr);
+        return operErr
+    }
+
+    pathInfo := NewPathInfo(inParams.uri)
+    grpAddrKey := pathInfo.Var("group-address")
+    srcAddrKey := pathInfo.Var("source-address")
+    routeTypeKey := pathInfo.Var("route-type")
+    oifKey := pathInfo.Var("outgoing-interface")
+
+    log.Info("DbToYang_pim_tib_state_xfmr: ", cmnLog, " ==> URI: ",inParams.uri, " niName:", niName,
+             " grpAddrKey:", grpAddrKey, " srcAddrKey:", srcAddrKey, " routeTypeKey:", routeTypeKey, " oifKey:",oifKey)
+
+    if routeTypeKey != "" && routeTypeKey != "SG" {
+        log.Errorf ("%s failed !! route-type attribute value(current:%v) other than \"SG\" is not supported !!", cmnLog, routeTypeKey)
+        return operErr
+    }
+
+    cmd := "show ip pim vrf " + niName + " topology json"
+    pimTibOutputJson, cmdErr := pim_exec_fake_vtysh_tib_cmd (cmd)
+    if (cmdErr != nil) {
+        log.Errorf ("%s failed !! Error:%s", cmnLog, cmdErr);
+        return operErr
+    }
+
+    gblObj := pimObj.Global ; if gblObj == nil {
+        var _gblObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global
+        pimObj.Global = &_gblObj
+        gblObj = pimObj.Global
+        ygot.BuildEmptyTree(gblObj)
+    }
+
+    tibObj := gblObj.Tib ; if tibObj == nil {
+        var _tibObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib
+        gblObj.Tib = &_tibObj
+        tibObj = gblObj.Tib
+        ygot.BuildEmptyTree(tibObj)
+    }
+
+    var tibKey _xfmr_pim_tib_state_key
+    tibKey.niName = niName
+    tibKey.routeType = ocbinds.OpenconfigPimExt_RouteType_SG
+    tibKey.oifKey = oifKey
+
+    for grpAddr := range pimTibOutputJson {
+        if ((grpAddrKey != "") && (grpAddr != grpAddrKey)) {continue}
+        grpAddrData, ok := pimTibOutputJson[grpAddr].(map[string]interface{}) ; if !ok {continue}
+
+        ipv4EntriesObj := tibObj.Ipv4Entries ; if ipv4EntriesObj == nil {
+            var _ipv4EntriesObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries
+            tibObj.Ipv4Entries = &_ipv4EntriesObj
+            ipv4EntriesObj = tibObj.Ipv4Entries
+            ygot.BuildEmptyTree(ipv4EntriesObj)
+        }
+
+        ipv4EntryObj, ok := ipv4EntriesObj.Ipv4Entry[grpAddr] ; if !ok {
+            ipv4EntryObj,_ = ipv4EntriesObj.NewIpv4Entry(grpAddr)
+            ygot.BuildEmptyTree(ipv4EntryObj)
+        }
+
+        ipv4EntryStateObj := ipv4EntryObj.State ; if ipv4EntryStateObj == nil {
+            var _ipv4EntryStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State
+            ipv4EntryObj.State = &_ipv4EntryStateObj
+            ipv4EntryStateObj = ipv4EntryObj.State
+            ygot.BuildEmptyTree(ipv4EntryStateObj)
+        }
+
+        tibKey.grpAddr = grpAddr
+        _grpAddr := grpAddr
+        ipv4EntryStateObj.GroupAddress = &_grpAddr
+
+        for srcAddr := range grpAddrData {
+            if ((srcAddrKey != "") && (srcAddr != srcAddrKey)) {continue}
+            srcAddrData, ok := grpAddrData[srcAddr].(map[string]interface{}) ; if !ok {continue}
+
+            srcEntriesObj := ipv4EntryStateObj.SrcEntries ; if srcEntriesObj == nil {
+                var _srcEntriesObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries
+                ipv4EntryStateObj.SrcEntries = &_srcEntriesObj
+                srcEntriesObj = ipv4EntryStateObj.SrcEntries
+                ygot.BuildEmptyTree(srcEntriesObj)
+            }
+
+            key := ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_Key{
+                SourceAddress: srcAddr,
+                RouteType: tibKey.routeType,
+            }
+
+            srcEntryObj, ok := srcEntriesObj.SrcEntry[key] ; if !ok {
+                srcEntryObj,_ = srcEntriesObj.NewSrcEntry(key.SourceAddress, key.RouteType)
+                ygot.BuildEmptyTree(srcEntryObj)
+            }
+
+            srcEntryStateObj := srcEntryObj.State ; if srcEntryStateObj == nil {
+                var _srcEntryStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State
+                srcEntryObj.State = &_srcEntryStateObj
+                srcEntryStateObj = srcEntryObj.State
+                ygot.BuildEmptyTree(srcEntryStateObj)
+            }
+
+            tibKey.srcAddr = srcAddr
+
+            fill_pim_tib_mroute_state_info (inParams, tibKey, srcAddrData, srcEntryStateObj)
         }
     }
 

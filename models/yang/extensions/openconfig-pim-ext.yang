@@ -31,6 +31,22 @@ module openconfig-pim-ext {
         reference "0.1.0";
     }
 
+
+    typedef route-type {
+        type enumeration {
+            enum "SG" {
+                description
+                    "When this particular (S,G) multicast route entry is not a RPT entry";
+            }
+            enum "SG_RPT" {
+                description
+                    "When this particular (S,G) multicast route entry is a RPT entry";
+            }
+        }
+        description
+            "Multicast route-types";
+    }
+
     grouping pim-ext-global-config {
         description
             "Configuration data for PIM globals.";
@@ -170,6 +186,22 @@ module openconfig-pim-ext {
                 "Time when this particular multicast entry will expire.";
         }
 
+        leaf flags {
+            type string;
+            description
+                "To present the various other states of this entry and the information will be represented in a
+                concatenated string format. The following alphabets represents a state as explained below.
+
+                S - Sparse, C - Connected, L - Local, P - Pruned, R - RP-bit set,
+                F - Register Flag, T - SPT-bit set, J - Join SPT, K - Ack-Pending state
+
+                For e.g. This attribute can represent a state like this ==> SJT, which means these following flags are set
+                in this multicast entry as per PIM-TIB
+                * S - Sparse
+                * J - Join SPT
+                * T - SPT-bit set";
+        }
+
         container oil-info-entries {
             description
                 "Details about all outgoing interfaces of this multicast entry.";
@@ -242,12 +274,12 @@ module openconfig-pim-ext {
                 "Reference to the source-address key";
         }
 
-        leaf rpt {
+        leaf route-type {
             type leafref {
-                path "../state/rpt";
+                path "../state/route-type";
             }
             description
-                "Reference to the rpt key";
+                "Reference to the route-type key";
         }
     }
 
@@ -281,7 +313,7 @@ module openconfig-pim-ext {
                             "Details about all multicast-source information of this particular multicast group-address entry.";
 
                         list src-entry {
-                            key "source-address rpt";
+                            key "source-address route-type";
 
                             description
                                 "List of different source-address entries within this particular multicast group-address entry.";
@@ -299,10 +331,10 @@ module openconfig-pim-ext {
                                         This address can be 0.0.0.0 in case of *,G multicast group entry.";
                                 }
 
-                                leaf rpt {
-                                    type boolean;
+                                leaf route-type {
+                                    type route-type;
                                     description
-                                        "When set to TRUE, this is RPT multicast entry.";
+                                        "Route-type of multicast entry.";
                                 }
 
                                 uses pim-ext-gbl-tib-src-entry-cmn-info-state;

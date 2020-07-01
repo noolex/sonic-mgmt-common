@@ -3704,6 +3704,12 @@ module openconfig-network-instance-annot {
       }
   }
 
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-pim-ext:tib {
+      deviate add {
+          sonic-ext:subtree-transformer "pim_tib_state_xfmr";
+      }
+  }
+
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface {
       deviate add {
           sonic-ext:db-name "CONFIG_DB";

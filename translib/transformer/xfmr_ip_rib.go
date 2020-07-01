@@ -563,7 +563,8 @@ var DbToYang_ipv4_mroute_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
         }
 
         ipMrouteKey.grpAddr = grpAddr
-        ipv4EntryStateObj.GroupAddress = &grpAddr
+        _grpAddr := grpAddr
+        ipv4EntryStateObj.GroupAddress = &_grpAddr
 
         for srcAddr := range grpAddrData {
             if ((srcAddrKey != "") && (srcAddr != srcAddrKey)) {continue}
