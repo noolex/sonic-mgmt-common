@@ -3516,6 +3516,11 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     pathInfo := NewPathInfo(inParams.uri)
     ifUIName := pathInfo.Var("name");
 
+    intfType, _, ierr := getIntfTypeByName(ifUIName)
+    if ierr != nil || intfType == IntfTypeUnset || intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {
+	return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Unsupported Interface: "+ifUIName )
+    }
+
     if ifUIName == "" {
         errStr := "Interface KEY not present"
         log.Info("YangToDb_ipv6_enabled_xfmr: " + errStr)
@@ -3526,17 +3531,12 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         return res_map, err
     }
 
-    if len(pathInfo.Vars) < 2 {
+    if len(pathInfo.Vars) < 2 && intfType != IntfTypeVlan {
         return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Invalid Key length")
     }
 
     if log.V(3) {
         log.Info("YangToDb_ipv6_enabled_xfmr, inParams.key: ", inParams.key)
-    }
-
-    intfType, _, ierr := getIntfTypeByName(ifUIName)
-    if ierr != nil || intfType == IntfTypeUnset || intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {
-	return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Unsupported Interface: "+ifUIName )
     }
 
     ifName := utils.GetNativeNameFromUIName(&ifUIName)
