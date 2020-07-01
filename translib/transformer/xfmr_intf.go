@@ -3531,6 +3531,8 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         return res_map, err
     }
 
+    // Vlan Interface (routed-vlan) contains only one Key "ifname"
+    // For all other interfaces (subinterfaces/subintfaces) will have 2 keys "ifname" & "subintf-index"
     if len(pathInfo.Vars) < 2 && intfType != IntfTypeVlan {
         return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Invalid Key length")
     }
