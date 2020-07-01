@@ -22,6 +22,41 @@ module openconfig-system-annot {
     import openconfig-aaa-ext { prefix oc-aaa-ext; }
     import openconfig-aaa-radius-ext { prefix oc-aaa-radius-ext; }
     import openconfig-aaa-ldap-ext { prefix oc-aaa-ldap-ext; }
+    import openconfig-system-crm { prefix oc-sys-crm; }
+
+    /* CRM - Critical Resource Monitoring */
+
+    deviation /oc-sys:system/oc-sys-crm:crm/oc-sys-crm:config {
+         deviate add {
+            sonic-ext:subtree-transformer "crm_config_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys-crm:crm/oc-sys-crm:state {
+         deviate add {
+            sonic-ext:subtree-transformer "crm_config_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys-crm:crm/oc-sys-crm:threshold {
+        deviate add {
+            sonic-ext:subtree-transformer "crm_config_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys-crm:crm/oc-sys-crm:statistics {
+        deviate add {
+            sonic-ext:subtree-transformer "crm_stats_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys-crm:crm/oc-sys-crm:acl-statistics {
+        deviate add {
+            sonic-ext:subtree-transformer "crm_acl_stats_xfmr";
+        }
+    }
+
+/*********************************************************/
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:users/oc-sys:user {
         deviate add {
