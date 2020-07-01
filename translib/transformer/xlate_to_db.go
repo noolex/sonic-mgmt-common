@@ -1070,12 +1070,11 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					parentTblExists = false
 					break
 				}
-				virtualTbl := false
-				if curXpathInfo.virtualTbl != nil {
-					virtualTbl = *curXpathInfo.virtualTbl
+				if curXpathInfo.virtualTbl != nil && *curXpathInfo.virtualTbl {
+					continue
 				}
 
-				if !virtualTbl && len(tableName) > 0 && len(dbKey) > 0 {
+				if len(tableName) > 0 && len(dbKey) > 0 {
 					// Check for Table existence
 					xfmrLogInfoAll("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
 					existsInDbData := false
@@ -1096,6 +1095,12 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 							break
 						}
 					}
+				} else {
+					// We always expect a valid table and key to be returned. Else we cannot validate parent check
+					parentTblExists = false
+					log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+					err = tlerr.NotFound("Resource not found")
+					break
 				}
 			}
 		}
