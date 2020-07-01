@@ -31,31 +31,7 @@ import (
 )
 
 func init() {
-    XlateFuncBind("ports_alias_value_xfmr", acl_ports_alias_value_xfmr)
 	XlateFuncBind("rpc_clear_acl_counters", rpc_clear_acl_counters)
-}
-
-func acl_ports_alias_value_xfmr(inParams XfmrDbParams) (string, error) {
-    var err error
-
-    if !utils.IsAliasModeEnabled() {
-        log.Info("Alias mode is not enabled!")
-        return inParams.value, err
-    }
-    parts := strings.Split(inParams.value, ",")
-    converted := make([]string, len(parts))
-
-    for idx, part := range parts {
-        if inParams.oper == GET {
-            converted[idx] = *utils.GetUINameFromNativeName(&part)
-        } else {
-            converted[idx] = *utils.GetNativeNameFromUIName(&part)
-        }
-    }
-    ret := strings.Join(converted, ",")
-    log.Infof("%s => %s", inParams.value, ret)
-
-    return ret, err
 }
 
 /* RPC for clear counters */
@@ -158,16 +134,6 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 		}
 	} else {
 		aclname_str := fmt.Sprintf("%v", aclname)
-/*
-		if acl_type == "L2" {
-			aclname_str = aclname_str + "_ACL_L2"
-		} else if acl_type == "L3" {
-			aclname_str = aclname_str + "_ACL_IPV4"
-		} else if acl_type == "L3V6" {
-			aclname_str = aclname_str + "_ACL_IPV6"
-		}
-*/
-
 		ok, data := validateAclTypeAndNameMatch(aclname_str, acl_type_str, dbs)
 		if ok {
 			acls_list = append(acls_list, aclname_str)
@@ -197,7 +163,7 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 				bindings = data.GetList("PORTS@")
 			}
 			for _, port := range bindings {
-				if port == intf_str {
+				if port == *utils.GetNativeNameFromUIName(&intf_str) {
 					intf_list = append(intf_list, intf_str)
 				}
 			}
@@ -205,7 +171,7 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 				result.Output.Status = "ACL_BINDING_NOT_FOUND"
 				result.Output.Status_detail = "ACL not applied"
 				json, _ := json.Marshal(&result)
-				return json, tlerr.NotFound("ACL_BINDING_NOT_FOUND")
+				return json, tlerr.NotFound("ACL not applied to specified interface")
 			}
 		}
 	}
@@ -237,6 +203,9 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 		return json, tlerr.New("FAILED")
 	}
 
+    nativeNames := strings.Join(intf_list, ",")
+    nativeNames = *utils.GetNativeNameFromUIName(&nativeNames)
+    intf_list = strings.Split(nativeNames, ",")
 	log.Infof("ACLs to clear is %v", acls_list)
 	log.Infof("Intfs to clear is %v", intf_list)
 	//log.Infof("Lua is %v", lua_script_clear)
