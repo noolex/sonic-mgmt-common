@@ -1445,21 +1445,13 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
         }
         IntfMap := IntfMapObj.Field
-        // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>"
-        // Case-2: If deletion at at parent container(routedVlanIntf == NULL)
+        // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>" (or)
+        // Case-2: If deletion at parent container(routedVlanIntf)
         if len(IntfMap) == 1 || routedVlanIntf == nil {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
 	    }
-	    if _, ok := IntfMap["NULL"]; ok {
-	        vlanIntfmap[tblName][ifName] = data
-	    }
-	    if _, ok := IntfMap["ipv6_use_link_local_only"]; ok {
-	        vlanIntfmap[tblName][ifName] = data
-	    }
-	    if _, ok := IntfMap["vrf_name"]; ok {
-	        vlanIntfmap[tblName][ifName] = data
-	    }
+	    vlanIntfmap[tblName][ifName] = data
         }
     }
 
