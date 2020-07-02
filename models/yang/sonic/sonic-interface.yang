@@ -266,16 +266,11 @@ module sonic-interface {
                         error-app-tag intf-po-member;
                     }
 
-                    must "count(current()/../vrf_name) = 0"
+                    must "(count(current()/../vrf_name) = 0 and count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name) = 0) or " +
+                         "(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name = current()/../vrf_name)"
                     {
-                        error-message "Non default VRF binded to interface. Cannot configure IP Unnumbered";
-                        error-app-tag intf-non-def-vrf;
-                    }
-
-                    must "count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()/./unnumbered]/lointf:vrf_name) = 0"
-                    {
-                        error-message "Non default VRF binded to Donor interface. Cannot configure IP Unnumbered";
-                        error-app-tag donor-intf-non-def-vrf;
+                        error-message "Donor and Unnumbered interface should be in same VRF";
+                        error-app-tag donor-unnum-diff-vrf;
                     }
 
 					sonic-ext:custom-validation ValidateIpv4UnnumIntf;

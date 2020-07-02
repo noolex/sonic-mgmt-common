@@ -38,7 +38,7 @@ func init () {
 /* Validates whether Donor interface has multiple IPv4 Address configured on it */
 func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 
-	tables := [2]string{"INTERFACE", "PORTCHANNEL_INTERFACE"}
+	tables := []string{"INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_INTERFACE"}
 	donor_intf := false
 	log.Info("validateMultiIPForDonorIntf : intfName", ifName)
 	for _, table := range tables {
@@ -105,7 +105,7 @@ func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfac
 
 func validateUnnumIntfExistsForDonorIntf(d *db.DB, donorIfName *string) bool {
 
-	tables := [2]string{"INTERFACE", "PORTCHANNEL_INTERFACE"}
+	tables := []string{"INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_INTERFACE"}
 
 	for _, table := range tables {
 		intfTable, err := d.GetTable(&db.TableSpec{Name:table})
@@ -299,7 +299,7 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 
         var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
         if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-            subIntf, err = intfObj.Subinterfaces.NewSubinterface(0)
+            _, err = intfObj.Subinterfaces.NewSubinterface(0)
             if err != nil {
                 log.Error("Creation of subinterface subtree failed!")
                 return err
