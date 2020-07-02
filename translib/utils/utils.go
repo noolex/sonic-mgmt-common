@@ -23,7 +23,7 @@ package utils
 import (
     "sync"
     "github.com/Azure/sonic-mgmt-common/translib/db"
-
+	"strings"
     log "github.com/golang/glog"
 )
 
@@ -233,28 +233,46 @@ func SetAliasMode(enableMode bool) {
 
 // GetNativeNameFromUIName returns physical interface name for alias-name
 func GetNativeNameFromUIName(uiName *string) *string {
-    if !IsAliasModeEnabled() {
-        return uiName
-    }
-    ifName, ok := aliasIfNameMap.Load(*uiName)
-    if ok {
-        name := ifName.(string)
-        return &name
-    }
-    return uiName
+	if !IsAliasModeEnabled() {
+		return uiName
+	}
+
+	parts := strings.Split(*uiName, ",")
+	converted := make([]string, len(parts))
+	for idx, part := range parts {
+		ifName, ok := aliasIfNameMap.Load(*uiName)
+		if ok {
+			converted[idx] = ifName.(string)
+		} else {
+			converted[idx] = part
+		}
+	}
+	ret := strings.Join(converted, ",")
+	log.Infof("%s => %s", *uiName, ret)
+
+	return &ret
 }
 
 // GetUINameFromNativeName returns alias-name for physical interface Name
 func GetUINameFromNativeName(ifName *string) *string {
-    if !IsAliasModeEnabled() {
-        return ifName
-    }
-    aliasName, ok := ifNameAliasMap.Load(*ifName)
-    if ok {
-        alias := aliasName.(string)
-        return &alias
-    }
-    return ifName
+	if !IsAliasModeEnabled() {
+		return ifName
+	}
+
+	parts := strings.Split(*ifName, ",")
+	converted := make([]string, len(parts))
+	for idx, part := range parts {
+		aliasName, ok := ifNameAliasMap.Load(part)
+		if ok {
+			converted[idx] = aliasName.(string)
+		} else {
+			converted[idx] = part
+		}
+	}
+	ret := strings.Join(converted, ",")
+	log.Infof("%s => %s", *ifName, ret)
+
+	return &ret
 }
 
 func IsValidAliasName(ifName *string) bool {

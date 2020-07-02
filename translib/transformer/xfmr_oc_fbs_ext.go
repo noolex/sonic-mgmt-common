@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"github.com/kylelemons/godebug/pretty"
 	gnmipb "github.com/openconfig/gnmi/proto/gnmi"
@@ -1102,7 +1103,8 @@ func fillFbsPolicySectionDetails(inParams XfmrParams, policyName string, policyD
 				ygot.BuildEmptyTree(policySectionData.Forwarding.EgressInterfaces)
 				for i := range intfs {
 					intfSplits := strings.Split(intfs[i], "|")
-					egressIfName := intfSplits[0]
+                    convertedIfName := *(utils.GetUINameFromNativeName(&intfSplits[0]))
+					egressIfName := convertedIfName
 					egressIfData, _ := policySectionData.Forwarding.EgressInterfaces.NewEgressInterface(egressIfName)
 					ygot.BuildEmptyTree(egressIfData)
 					egressIfData.IntfName = &egressIfName
@@ -1435,7 +1437,9 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 								} else if policySectionVal.Forwarding.EgressInterfaces != nil {
 									if policySectionVal.Forwarding.EgressInterfaces.EgressInterface != nil {
 										egressIfsDbStr := ""
-										for egressIfName, egressIfVal := range policySectionVal.Forwarding.EgressInterfaces.EgressInterface {
+										for uiIfName, egressIfVal := range policySectionVal.Forwarding.EgressInterfaces.EgressInterface {
+                                            egressIfName := *(utils.GetNativeNameFromUIName(&uiIfName))
+			                                log.Infof("PolicySection Field EgressIf delete uiIfName:%v nativeIfName %v", uiIfName, egressIfName)
 											if egressIfsDbStr != "" {
 												egressIfsDbStr = egressIfsDbStr + ","
 											}
@@ -1647,7 +1651,9 @@ var YangToDb_fbs_policy_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 					if policySectionVal.Forwarding.EgressInterfaces != nil && policySectionVal.Forwarding.EgressInterfaces.EgressInterface != nil {
 						log.Infof("Processing Egress Interfaces")
 						egressIfsDbStr := ""
-						for egressIfName, egressIfVal := range policySectionVal.Forwarding.EgressInterfaces.EgressInterface {
+						for uiIfName, egressIfVal := range policySectionVal.Forwarding.EgressInterfaces.EgressInterface {
+                            egressIfName := *(utils.GetNativeNameFromUIName(&uiIfName))
+			                log.Infof("PolicySection Field EgressIf SET uiIfName:%v egressIfName %v", uiIfName, egressIfName)
 							if egressIfsDbStr != "" {
 								egressIfsDbStr = egressIfsDbStr + ","
 							}
@@ -1873,8 +1879,8 @@ func fillFbsQosStateEntry(inParams XfmrParams, polPbfKey db.Key, qosState *FbsFl
 	return err
 }
 
-func fillFbsIngressIfPolicyFwdSections(inParams XfmrParams, interfaceId string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_IngressPolicies_Forwarding_Sections) {
-	log.Infof("interfaceId:%v policyName:%v", interfaceId, policyName)
+func fillFbsIngressIfPolicyFwdSections(inParams XfmrParams, nativeIfName string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_IngressPolicies_Forwarding_Sections) {
+	log.Infof("nativeIfName:%v policyName:%v", nativeIfName, policyName)
 	pathInfo := NewPathInfo(inParams.uri)
 
 	policySectionTbl, _ := inParams.d.GetTable(POLICY_SECTION_TABLE_TS)
@@ -1913,7 +1919,7 @@ func fillFbsIngressIfPolicyFwdSections(inParams XfmrParams, interfaceId string, 
 
 			//fill forwarding selected egress interface and select nexhop details
 			var fwdState FbsFlowForwardingStateEntry
-			polPbfKey := db.Key{[]string{policyName, className, interfaceId, bindDir}}
+			polPbfKey := db.Key{[]string{policyName, className, nativeIfName, bindDir}}
 			fillFbsForwardingStateEntry(inParams, polPbfKey, &fwdState)
 			if fwdState.IntfName != nil {
 				policySectionData.EgressInterface.State.IntfName = fwdState.IntfName
@@ -1943,8 +1949,8 @@ func fillFbsIngressIfPolicyFwdSections(inParams XfmrParams, interfaceId string, 
 	}
 }
 
-func fillFbsIngressIfPolicyMonSections(inParams XfmrParams, interfaceId string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_IngressPolicies_Monitoring_Sections) {
-	log.Infof("interfaceId:%v policyName:%v", interfaceId, policyName)
+func fillFbsIngressIfPolicyMonSections(inParams XfmrParams, nativeIfName string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_IngressPolicies_Monitoring_Sections) {
+	log.Infof("nativeIfName:%v policyName:%v", nativeIfName, policyName)
 	pathInfo := NewPathInfo(inParams.uri)
 
 	policySectionTbl, _ := inParams.d.GetTable(POLICY_SECTION_TABLE_TS)
@@ -1976,7 +1982,7 @@ func fillFbsIngressIfPolicyMonSections(inParams XfmrParams, interfaceId string, 
 			log.Infof("Policy Get;Key:%v className:%v ", key, className)
 
 			var fbsFlowState FbsFwdCountersEntry
-			polPbfKey := db.Key{[]string{policyName, className, interfaceId, bindDir}}
+			polPbfKey := db.Key{[]string{policyName, className, nativeIfName, bindDir}}
 			fillFbsFwdCountersEntry(inParams, polPbfKey, &fbsFlowState)
 
 			policySectionData.State.Active = &(fbsFlowState.Active)
@@ -1989,8 +1995,8 @@ func fillFbsIngressIfPolicyMonSections(inParams XfmrParams, interfaceId string, 
 	}
 }
 
-func fillFbsIngressIfPolicyQosSections(inParams XfmrParams, interfaceId string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_IngressPolicies_Qos_Sections) {
-	log.Infof("interfaceId:%v policyName:%v", interfaceId, policyName)
+func fillFbsIngressIfPolicyQosSections(inParams XfmrParams, nativeIfName string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_IngressPolicies_Qos_Sections) {
+	log.Infof("nativeIfName:%v policyName:%v", nativeIfName, policyName)
 	pathInfo := NewPathInfo(inParams.uri)
 
 	if policySectionsData == nil {
@@ -2023,7 +2029,7 @@ func fillFbsIngressIfPolicyQosSections(inParams XfmrParams, interfaceId string, 
 			policySectionData.ClassName = &className
 			policySectionData.State.ClassName = &className
 			log.Infof("Policy Get;Key:%v className:%v ", key, className)
-			polPbfKey := db.Key{[]string{policyName, className, interfaceId, bindDir}}
+			polPbfKey := db.Key{[]string{policyName, className, nativeIfName, bindDir}}
 
 			var qosState FbsFlowQosStateEntry
 			fillFbsQosStateEntry(inParams, polPbfKey, &qosState)
@@ -2053,8 +2059,8 @@ func fillFbsIngressIfPolicyQosSections(inParams XfmrParams, interfaceId string, 
 	}
 }
 
-func fillFbsEgressIfPolicyMonSections(inParams XfmrParams, interfaceId string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_EgressPolicies_Monitoring_Sections) {
-	log.Infof("interfaceId:%v policyName:%v", interfaceId, policyName)
+func fillFbsEgressIfPolicyMonSections(inParams XfmrParams, nativeIfName string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_EgressPolicies_Monitoring_Sections) {
+	log.Infof("nativeIfName:%v policyName:%v", nativeIfName, policyName)
 	pathInfo := NewPathInfo(inParams.uri)
 
 	if policySectionsData == nil {
@@ -2090,7 +2096,7 @@ func fillFbsEgressIfPolicyMonSections(inParams XfmrParams, interfaceId string, p
 			log.Infof("Policy Get;Key:%v className:%v ", key, className)
 
 			var fbsFlowState FbsFwdCountersEntry
-			polPbfKey := db.Key{[]string{policyName, className, interfaceId, bindDir}}
+			polPbfKey := db.Key{[]string{policyName, className, nativeIfName, bindDir}}
 			fillFbsFwdCountersEntry(inParams, polPbfKey, &fbsFlowState)
 			policySectionData.State.Active = &(fbsFlowState.Active)
 			policySectionData.State.MatchedOctets = &(fbsFlowState.MatchedOctets)
@@ -2102,8 +2108,8 @@ func fillFbsEgressIfPolicyMonSections(inParams XfmrParams, interfaceId string, p
 	}
 }
 
-func fillFbsEgressIfPolicyQosSections(inParams XfmrParams, interfaceId string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_EgressPolicies_Qos_Sections) {
-	log.Infof("interfaceId:%v policyName:%v", interfaceId, policyName)
+func fillFbsEgressIfPolicyQosSections(inParams XfmrParams, nativeIfName string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface_EgressPolicies_Qos_Sections) {
+	log.Infof("nativeIfName:%v policyName:%v", nativeIfName, policyName)
 	pathInfo := NewPathInfo(inParams.uri)
 
 	policySectionTbl, _ := inParams.d.GetTable(POLICY_SECTION_TABLE_TS)
@@ -2135,7 +2141,7 @@ func fillFbsEgressIfPolicyQosSections(inParams XfmrParams, interfaceId string, p
 			log.Infof("Policy Get;Key:%v className:%v ", key, className)
 
 			var qosState FbsFlowQosStateEntry
-			polPbfKey := db.Key{[]string{policyName, className, interfaceId, bindDir}}
+			polPbfKey := db.Key{[]string{policyName, className, nativeIfName, bindDir}}
 			fillFbsQosStateEntry(inParams, polPbfKey, &qosState)
 			policySectionData.State.Cir = &(qosState.policerState.Cir)
 			policySectionData.State.Pir = &(qosState.policerState.Pir)
@@ -2163,9 +2169,9 @@ func fillFbsEgressIfPolicyQosSections(inParams XfmrParams, interfaceId string, p
 }
 
 //convert from DB to OCYang and fill to OcYang Datastructure for given policy Bind Interface
-func fillFbsInterfaceDetails(inParams XfmrParams, interfaceId string, policyBindTblVal db.Value, policyBindData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface) {
+func fillFbsInterfaceDetails(inParams XfmrParams, uiIfName string, nativeIfName string, policyBindTblVal db.Value, policyBindData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface) {
 	if policyBindData == nil {
-		log.Infof("fillFbsInterfaceDetails--> policyBindData empty ; interface:%v ", interfaceId)
+		log.Infof("fillFbsInterfaceDetails--> policyBindData empty ; interface:%v ", uiIfName)
 		return
 	}
 
@@ -2173,7 +2179,7 @@ func fillFbsInterfaceDetails(inParams XfmrParams, interfaceId string, policyBind
 
 	ygot.BuildEmptyTree(policyBindData)
 
-	policyBindData.Config.Id = &interfaceId
+	policyBindData.Config.Id = &uiIfName
 
 	for _, policyType := range policyTypes {
 		//Ingress Policies
@@ -2194,12 +2200,12 @@ func fillFbsInterfaceDetails(inParams XfmrParams, interfaceId string, policyBind
 						policyBindData.IngressPolicies.Forwarding.State.PolicyName = &str_val
 					}
 					policyName = str_val
-					log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v ", interfaceId)
-					fillFbsIngressIfPolicyFwdSections(inParams, interfaceId, policyName, policyBindData.IngressPolicies.Forwarding.Sections)
+					log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v ", uiIfName)
+					fillFbsIngressIfPolicyFwdSections(inParams, nativeIfName, policyName, policyBindData.IngressPolicies.Forwarding.Sections)
 				}
 			}
 			if policyType == SONIC_POLICY_TYPE_MONITORING {
-				log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v ", interfaceId)
+				log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v ", uiIfName)
 				ygot.BuildEmptyTree(policyBindData.IngressPolicies.Monitoring)
 				if str_val, found := policyBindTblVal.Field[dbFieldKey]; found {
 					if policyBindData.IngressPolicies.Monitoring.Config != nil {
@@ -2209,12 +2215,12 @@ func fillFbsInterfaceDetails(inParams XfmrParams, interfaceId string, policyBind
 						policyBindData.IngressPolicies.Monitoring.State.PolicyName = &str_val
 					}
 					policyName = str_val
-					fillFbsIngressIfPolicyMonSections(inParams, interfaceId, policyName, policyBindData.IngressPolicies.Monitoring.Sections)
+					fillFbsIngressIfPolicyMonSections(inParams, nativeIfName, policyName, policyBindData.IngressPolicies.Monitoring.Sections)
 				}
 			}
 			if policyType == SONIC_POLICY_TYPE_QOS {
 				ygot.BuildEmptyTree(policyBindData.IngressPolicies.Qos)
-				log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v ", interfaceId)
+				log.Infof("fbs Interface Get;Interface level request; Interface:%v ", uiIfName)
 				if str_val, found := policyBindTblVal.Field[dbFieldKey]; found {
 					if policyBindData.IngressPolicies.Qos.Config != nil {
 						policyBindData.IngressPolicies.Qos.Config.PolicyName = &str_val
@@ -2223,8 +2229,8 @@ func fillFbsInterfaceDetails(inParams XfmrParams, interfaceId string, policyBind
 						policyBindData.IngressPolicies.Qos.State.PolicyName = &str_val
 					}
 					policyName = str_val
-					log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v ", interfaceId)
-					fillFbsIngressIfPolicyQosSections(inParams, interfaceId, policyName, policyBindData.IngressPolicies.Qos.Sections)
+					log.Infof("fbs Interface Get;Interface level request; Interface:%v ", uiIfName)
+					fillFbsIngressIfPolicyQosSections(inParams, nativeIfName, policyName, policyBindData.IngressPolicies.Qos.Sections)
 				}
 			}
 		}
@@ -2243,7 +2249,7 @@ func fillFbsInterfaceDetails(inParams XfmrParams, interfaceId string, policyBind
 						policyBindData.EgressPolicies.Monitoring.State.PolicyName = &str_val
 					}
 					policyName = str_val
-					fillFbsEgressIfPolicyMonSections(inParams, interfaceId, policyName, policyBindData.EgressPolicies.Monitoring.Sections)
+					fillFbsEgressIfPolicyMonSections(inParams, nativeIfName, policyName, policyBindData.EgressPolicies.Monitoring.Sections)
 				}
 			}
 			if policyType == SONIC_POLICY_TYPE_QOS {
@@ -2256,7 +2262,7 @@ func fillFbsInterfaceDetails(inParams XfmrParams, interfaceId string, policyBind
 						policyBindData.EgressPolicies.Qos.State.PolicyName = &str_val
 					}
 					policyName = str_val
-					fillFbsEgressIfPolicyQosSections(inParams, interfaceId, policyName, policyBindData.EgressPolicies.Qos.Sections)
+					fillFbsEgressIfPolicyQosSections(inParams, nativeIfName, policyName, policyBindData.EgressPolicies.Qos.Sections)
 				}
 			}
 		}
@@ -2283,15 +2289,16 @@ var DbToYang_fbs_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 
 		interfaceKeys := reflect.ValueOf(fbsObj.Interfaces.Interface).MapKeys()
 		interfaceObj := fbsObj.Interfaces.Interface[interfaceKeys[0].Interface().(string)]
-		interfaceId := pathInfo.Var("id")
-		log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v interfaceKeys:%v ", interfaceId, interfaceKeys)
+		uiIfName := pathInfo.Var("id")
+        nativeIfName := *(utils.GetNativeNameFromUIName(&uiIfName))
+		log.Infof("fbs Interface Get;Interface level request; uiIfName:%v nativeName:%v interfaceKeys:%v ", uiIfName, nativeIfName, interfaceKeys)
 
 		ygot.BuildEmptyTree(interfaceObj)
 
 		policyBindTbl, _ := inParams.d.GetTable(POLICY_BINDING_TABLE_TS)
-		policyBindTblVal, _ := policyBindTbl.GetEntry(db.Key{[]string{interfaceKeys[0].Interface().(string)}})
-		fillFbsInterfaceDetails(inParams, interfaceId, policyBindTblVal, interfaceObj)
-		log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v interfaceObj:%v ", interfaceId, interfaceObj)
+		policyBindTblVal, _ := policyBindTbl.GetEntry(db.Key{[]string{nativeIfName}})
+		fillFbsInterfaceDetails(inParams, uiIfName,  nativeIfName, policyBindTblVal, interfaceObj)
+		log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v interfaceObj:%v ", uiIfName, interfaceObj)
 		pretty.Print(interfaceObj)
 	} else { //top level get
 		log.Infof("fbs Interface Get;top level Get")
@@ -2306,12 +2313,13 @@ var DbToYang_fbs_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 
 		if len(interfaceKeys) > 0 {
 			for _, key := range interfaceKeys {
-				interfaceId := key.Get(0)
-				log.Infof("Policy Bind interface Get;Key:%v interfaceId:%v ", key, interfaceId)
-				policyBindObj, _ := fbsObj.Interfaces.NewInterface(interfaceId)
+				nativeIfName := key.Get(0)
+                uiIfName := *(utils.GetUINameFromNativeName(&nativeIfName))
+				log.Infof("Policy Bind interface Get;nativeIfName:%v uiIfName:%v ", nativeIfName, uiIfName)
+				policyBindObj, _ := fbsObj.Interfaces.NewInterface(uiIfName)
 				policyBindTblVal, _ := policyBindTbl.GetEntry(key)
-				fillFbsInterfaceDetails(inParams, interfaceId, policyBindTblVal, policyBindObj)
-				log.Infof("Policy Bind Get;top level request; interfaceId:%v policyBindObj:%v ", interfaceId, policyBindObj)
+				fillFbsInterfaceDetails(inParams, uiIfName, nativeIfName, policyBindTblVal, policyBindObj)
+				log.Infof("Policy Bind Get;top level request; uiIfName:%v policyBindObj:%v ", uiIfName, policyBindObj)
 			}
 		}
 	}
@@ -2353,46 +2361,47 @@ var YangToDb_fbs_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 			return res_map, err
 		} else if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{id}") { //Fbs Interface level
 			for key, Val := range fbsObj.Interfaces.Interface {
-				log.Infof("Fbs Interface %v DELETE operation; Val ", key)
+                nativeIfName := *(utils.GetNativeNameFromUIName(&key))
+				log.Infof("Fbs Interface %v DELETE operation; uiIfName:%v nativeIfName:%v  ", key, nativeIfName)
 				if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{id}/ingress-policies") { //Fbs Interface ingress polcies level
 					if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{id}/ingress-policies/qos") {
 						log.Infof("Fbs Interface Ingress Qos policies %v DELETE operation;", key)
-						fbsPolicyBindTblMap[key] = db.Value{Field: make(map[string]string)}
-						fbsPolicyBindTblMap[key].Field["INGRESS_QOS_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
+						fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_QOS_POLICY"] = ""
 					} else if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{id}/ingress-policies/forwarding") {
 						log.Infof("Fbs Interface %v DELETE operation; ingress policies  Forwarding ; targetName:%v ", key, targetNode.Name)
-						fbsPolicyBindTblMap[key] = db.Value{Field: make(map[string]string)}
-						fbsPolicyBindTblMap[key].Field["INGRESS_FORWARDING_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
+						fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_FORWARDING_POLICY"] = ""
 					} else if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{id}/ingress-policies/monitoring") {
 						log.Infof("Fbs Interface Ingress Monitoring policies %v DELETE operation;  ", key)
-						fbsPolicyBindTblMap[key] = db.Value{Field: make(map[string]string)}
-						fbsPolicyBindTblMap[key].Field["INGRESS_MONITORING_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
+						fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_MONITORING_POLICY"] = ""
 					} else {
 						log.Infof("Fbs Interface %v Ingress Policies DELETE operation; Val ", key)
-						fbsPolicyBindTblMap[key] = db.Value{Field: make(map[string]string)}
-						fbsPolicyBindTblMap[key].Field["INGRESS_QOS_POLICY"] = ""
-						fbsPolicyBindTblMap[key].Field["INGRESS_FORWARDING_POLICY"] = ""
-						fbsPolicyBindTblMap[key].Field["INGRESS_MONITORING_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
+						fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_QOS_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_FORWARDING_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_MONITORING_POLICY"] = ""
 					}
 				} else if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{id}/egress-policies") { //Fbs Interface ingress polcies level
 					log.Infof("Fbs Interface %v Egress Policies DELETE operation; ", key)
 					if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{id}/egress-policies/qos") {
 						log.Infof("Fbs Interface %v Egress Qos Policies DELETE operation; Val ", key)
-						fbsPolicyBindTblMap[key] = db.Value{Field: make(map[string]string)}
-						fbsPolicyBindTblMap[key].Field["EGRESS_QOS_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
+						fbsPolicyBindTblMap[nativeIfName].Field["EGRESS_QOS_POLICY"] = ""
 					} else if isSubtreeRequest(pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{id}/egress-policies/monitoring") {
 						log.Infof("Fbs Interface %v Egress Monitoring Policies DELETE operation; Val ", key)
-						fbsPolicyBindTblMap[key] = db.Value{Field: make(map[string]string)}
-						fbsPolicyBindTblMap[key].Field["EGRESS_MONITORING_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
+						fbsPolicyBindTblMap[nativeIfName].Field["EGRESS_MONITORING_POLICY"] = ""
 					} else {
 						log.Infof("Fbs Interface %v Egress Policies DELETE operation; ", key)
-						fbsPolicyBindTblMap[key] = db.Value{Field: make(map[string]string)}
-						fbsPolicyBindTblMap[key].Field["EGRESS_QOS_POLICY"] = ""
-						fbsPolicyBindTblMap[key].Field["EGRESS_MONITORING_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
+						fbsPolicyBindTblMap[nativeIfName].Field["EGRESS_QOS_POLICY"] = ""
+						fbsPolicyBindTblMap[nativeIfName].Field["EGRESS_MONITORING_POLICY"] = ""
 					}
 				} else {
 					if Val.Config == nil { //interface level delete
-						//fbsPolicyBindTblMap[key] = db.Value{Field: make(map[string]string)}
+						fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
 						log.Infof("Fbs Interface %v delete", key)
 						break
 					} else {
@@ -2423,24 +2432,25 @@ var YangToDb_fbs_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 		}
 		log.Infof("Fbs Interface CRUD; --> key: %v policyBindVal", ifId)
 		pretty.Print(ifVal)
+        nativeIfName := *(utils.GetNativeNameFromUIName(&ifId))
 
-		_, found := fbsPolicyBindTblMap[ifId]
+		_, found := fbsPolicyBindTblMap[nativeIfName]
 		if !found {
-			fbsPolicyBindTblMap[ifId] = db.Value{Field: make(map[string]string)}
+			fbsPolicyBindTblMap[nativeIfName] = db.Value{Field: make(map[string]string)}
 		}
 
 		if ifVal.IngressPolicies != nil {
 			if ifVal.IngressPolicies.Forwarding != nil {
 				if ifVal.IngressPolicies.Forwarding.Config != nil {
-					fbsPolicyBindTblMap[ifId].Field["INGRESS_FORWARDING_POLICY"] = *(ifVal.IngressPolicies.Forwarding.Config.PolicyName)
+					fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_FORWARDING_POLICY"] = *(ifVal.IngressPolicies.Forwarding.Config.PolicyName)
 				}
 			} else if ifVal.IngressPolicies.Monitoring != nil {
 				if ifVal.IngressPolicies.Monitoring.Config != nil {
-					fbsPolicyBindTblMap[ifId].Field["INGRESS_MONITORING_POLICY"] = *(ifVal.IngressPolicies.Monitoring.Config.PolicyName)
+					fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_MONITORING_POLICY"] = *(ifVal.IngressPolicies.Monitoring.Config.PolicyName)
 				}
 			} else if ifVal.IngressPolicies.Qos != nil {
 				if ifVal.IngressPolicies.Qos.Config != nil {
-					fbsPolicyBindTblMap[ifId].Field["INGRESS_QOS_POLICY"] = *(ifVal.IngressPolicies.Qos.Config.PolicyName)
+					fbsPolicyBindTblMap[nativeIfName].Field["INGRESS_QOS_POLICY"] = *(ifVal.IngressPolicies.Qos.Config.PolicyName)
 				}
 			}
 		}
@@ -2448,11 +2458,11 @@ var YangToDb_fbs_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 		if ifVal.EgressPolicies != nil {
 			if ifVal.EgressPolicies.Monitoring != nil {
 				if ifVal.EgressPolicies.Monitoring.Config != nil {
-					fbsPolicyBindTblMap[ifId].Field["EGRESS_MONITORING_POLICY"] = *(ifVal.EgressPolicies.Monitoring.Config.PolicyName)
+					fbsPolicyBindTblMap[nativeIfName].Field["EGRESS_MONITORING_POLICY"] = *(ifVal.EgressPolicies.Monitoring.Config.PolicyName)
 				}
 			} else if ifVal.EgressPolicies.Qos != nil {
 				if ifVal.EgressPolicies.Qos.Config != nil {
-					fbsPolicyBindTblMap[ifId].Field["EGRESS_QOS_POLICY"] = *(ifVal.EgressPolicies.Qos.Config.PolicyName)
+					fbsPolicyBindTblMap[nativeIfName].Field["EGRESS_QOS_POLICY"] = *(ifVal.EgressPolicies.Qos.Config.PolicyName)
 				}
 			}
 		}

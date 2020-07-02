@@ -3,7 +3,7 @@ module openconfig-aggregate-ext {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/aggregate-ext";
+  namespace "http://openconfig.net/yang/aggregate-ext/extension";
 
   prefix "oc-aggregate-ext";
 
@@ -34,22 +34,13 @@ module openconfig-aggregate-ext {
   // typedef statements
 
   typedef mode {
-      type enumeration {
-          enum enable {
-            description
-              "The mode is enabled.";
-          }
-          enum disable {
-            description
-              "The mode is disabled.";
-          }
-      }
+      type string;
       description
         "Enable/Disable modes";
   }
 
   // grouping statements
-  grouping aggregate-global-config {
+  grouping aggregate-ext-global-config {
     description
       "LAG global config";
 
@@ -60,34 +51,37 @@ module openconfig-aggregate-ext {
     }
   }
 
-  grouping aggregate-top {
+  grouping aggregate-ext-top {
     description
       "Top level grouping for global LAG data";
-      
+
     container aggregate {
       description
-        "Top level enclosing container for global LAG 
+        "Top level enclosing container for global LAG
         config and operational state data";
 
       container config {
         description
           "Global config data for LAGs";
-        
-        uses aggregate-global-config;
+
+        uses aggregate-ext-global-config;
       }
-      
+
       container state {
+
+        config false;
+
         description
           "Global operational state data for LAG";
-          
-        uses aggregate-global-config;
+
+        uses aggregate-ext-global-config;
       }
 
     }
   }
 
   // data definition statements
-  uses aggregate-top;
+  uses aggregate-ext-top;
 
   // augment statements
 

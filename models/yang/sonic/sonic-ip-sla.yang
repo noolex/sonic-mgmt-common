@@ -106,6 +106,20 @@ module sonic-ip-sla {
 
                 }
 
+                leaf tcp_source_interface {
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                    }
+                    description
+                      "tcp source interface of IP SLA";
+                }
+
+
                 leaf tcp_source_ip {
                     type inet:ip-address;
                     description
@@ -137,10 +151,10 @@ module sonic-ip-sla {
                     description
                       "tcp tos of IP SLA";
                 }
-                leaf vrf {
+                leaf tcp_vrf {
                     type string;
                     description
-                      "vrf of IP SLA";
+                      "vrf for tcp connect of IP SLA";
                 }
 
                 leaf icmp_source_interface {
@@ -176,6 +190,32 @@ module sonic-ip-sla {
                     }
                     description
                       "icmp size of IP SLA";
+                }
+
+                leaf icmp_ttl {
+                    type uint16 {
+                        range "1..256" {
+                            error-message "icmp_ttl out of range";
+                        }
+                    }
+                    description
+                      "icmp TTL of IP SLA";
+                }
+
+                leaf icmp_tos {
+                    type uint16 {
+                        range "1..1000" {
+                            error-message "icmp_tos out of range";
+                        }
+                    }
+                    description
+                      "icmp tos of IP SLA";
+                }
+
+                leaf icmp_vrf {
+                    type string;
+                    description
+                      "vrf for icmp echo of IP SLA";
                 }
             }
         }

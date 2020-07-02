@@ -15,6 +15,11 @@ module sonic-tam {
     description
         "SONIC TAM";
 
+    revision 2020-07-01 {
+        description
+            "Added leaf string length correction changes for YANG module.";
+    }
+
     revision 2019-11-08 {
         description
             "Initial revision.";
@@ -61,7 +66,7 @@ module sonic-tam {
 
                 leaf name {
                     type string {
-                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
                         length 1..32;
                     }
 

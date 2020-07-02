@@ -125,37 +125,37 @@ module openconfig-udld-ext-annot {
 		}
     }
 
-	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:device-id {
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:device-id {
 		deviate add {
 			sonic-ext:field-name "device_id";
 		}
 	}
 
-	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:device-name {
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:device-name {
 		deviate add {
 			sonic-ext:field-name "device_name";
 		}
 	}
 
-	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:port-id {
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:port-id {
 		deviate add {
 			sonic-ext:field-name "port_id";
 		}
 	}
 
-	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:status {
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:status {
 		deviate add {
             sonic-ext:field-transformer "udld_port_nbr_status_xfmr";
 		}
 	}
 
-	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:msg-time {
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:msg-time {
 		deviate add {
 			sonic-ext:field-name "msg_time";
 		}
 	}
 
-	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:timeout-interval {
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:timeout-interval {
 		deviate add {
 			sonic-ext:field-name "timeout_interval";
 		}

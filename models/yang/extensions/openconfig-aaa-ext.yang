@@ -8,13 +8,10 @@ module openconfig-aaa-ext {
   prefix "oc-aaa-ldap-ext";
 
   // import some basic types
-  import openconfig-inet-types { prefix oc-inet; }
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-aaa-types { prefix oc-aaa-types; }
   import openconfig-system { prefix oc-sys; }  
   import openconfig-aaa { prefix oc-aaa; }  
-  import openconfig-aaa-ldap-ext { prefix oc-ldap-ext; }  
-  import openconfig-aaa-radius-ext { prefix oc-radius-ext; }  
 
   // meta
   organization "SONiC";
@@ -27,7 +24,13 @@ module openconfig-aaa-ext {
     related to authorization, authentication, and accounting (AAA)
     management.";
 
-  oc-ext:openconfig-version "0.1.0";
+  oc-ext:openconfig-version "0.2.0";
+
+  revision "2020-06-30" {
+    description
+      "OC-Yang Lint/Guidelines.";
+    reference "0.2.0";
+  }
 
   revision "2020-06-03" {
     description
@@ -95,81 +98,96 @@ module openconfig-aaa-ext {
       "Common definitions for name-service methods type";
 
     leaf-list passwd-method {
+
+      type union {
+        type identityref {
+          base oc-aaa-types:AAA_METHOD_TYPE;
+        }
+        type string;
+      }
+
+      ordered-by user;
+
       description
         "Source for providing name-service for passwd database.
         The list may contain a well-defined method such
         as the set of all LDAP, TACACS or RADIUS servers. The string \"login\"
         indicates to use the same method as used for AAA authentication";
 
+    }
+
+    leaf-list shadow-method {
+
       type union {
         type identityref {
           base oc-aaa-types:AAA_METHOD_TYPE;
         }
         type string;
       }
-      ordered-by user;
-    }
 
-    leaf-list shadow-method {
+      ordered-by user;
+
       description
         "Source for providing name-service for shadow database.
         The list may contain a well-defined method such
         as the set of all LDAP, TACACS or RADIUS servers. The string \"login\"
         indicates to use the same method as used for AAA authentication";
 
+    }
+
+    leaf-list group-method {
+
       type union {
         type identityref {
           base oc-aaa-types:AAA_METHOD_TYPE;
         }
         type string;
       }
-      ordered-by user;
-    }
 
-    leaf-list group-method {
+      ordered-by user;
+
       description
         "Source for providing name-service for group database.
         The list may contain a well-defined method such
         as the set of all LDAP, TACACS or RADIUS servers. The string \"login\"
         indicates to use the same method as used for AAA authentication";
 
+    }
+
+    leaf-list netgroup-method {
+
       type union {
         type identityref {
           base oc-aaa-types:AAA_METHOD_TYPE;
         }
         type string;
       }
-      ordered-by user;
-    }
 
-    leaf-list netgroup-method {
+      ordered-by user;
+
       description
         "Source for providing name-service for netgroup database.
         The list may contain a well-defined method such
         as the set of all LDAP servers or local files.";
 
+    }
+
+    leaf-list sudoers-method {
+
       type union {
         type identityref {
           base oc-aaa-types:AAA_METHOD_TYPE;
         }
         type string;
       }
-      ordered-by user;
-    }
 
-    leaf-list sudoers-method {
+      ordered-by user;
+
       description
         "Source for providing name-service for sudoers database.
         The list may contain a well-defined method such
         as the set of all LDAP servers or local files.";
 
-      type union {
-        type identityref {
-          base oc-aaa-types:AAA_METHOD_TYPE;
-        }
-        type string;
-      }
-      ordered-by user;
     }
   }
 

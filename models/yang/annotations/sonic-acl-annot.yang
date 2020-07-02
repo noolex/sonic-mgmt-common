@@ -6,18 +6,6 @@ module sonic-acl-annot {
     import sonic-acl { prefix sacl; }
     import sonic-extensions { prefix sonic-ext; }
 
-    deviation /sacl:sonic-acl/sacl:ACL_TABLE/sacl:ACL_TABLE_LIST/sacl:ports {
-        deviate add {
-            sonic-ext:value-transformer "ports_alias_value_xfmr";
-        }
-    }
-
-    deviation /sacl:sonic-acl/sacl:ACL_BINDING_TABLE/sacl:ACL_BINDING_TABLE_LIST/sacl:intfname {
-        deviate add {
-            sonic-ext:value-transformer "alias_value_xfmr";
-        }
-    }
-
     deviation /sacl:clear-acl-counters {
         deviate add {
             sonic-ext:rpc-callback "rpc_clear_acl_counters";

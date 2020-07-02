@@ -1,0 +1,436 @@
+module openconfig-system-crm {
+
+  yang-version "1";
+
+  namespace "http://openconfig.net/yang/system/crm/extension";
+
+  prefix "oc-sys-crm";
+
+  import openconfig-system { prefix oc-sys; }
+
+  organization
+    "Broadcom Inc.";
+  contact
+    "SONiC";
+  description
+    "SONIC CRM";
+
+  revision 2020-06-18 {
+    description
+      "Initial revision.";
+    reference
+      "0.1";
+  }
+
+  typedef system-crm-threshold-type {
+    type enumeration {
+      enum USED {
+        description
+          "Used";
+      }
+      enum FREE {
+        description
+          "Free";
+      }
+      enum PERCENTAGE {
+        description
+          "Percentage";
+      }
+    }
+    description
+      "CRM Threshold Type";
+  }
+
+  grouping system-crm-global-config
+  {
+    description
+      "CRM configuration container";
+    leaf polling-interval {
+      type uint32;
+      description
+        "CRM polling interval(Seconds)";
+    }
+  }
+
+  grouping system-crm-threshold-config
+  {
+    description
+      "CRM threshold attributes";
+    leaf type {
+      type system-crm-threshold-type;
+      description
+        "Threshold Type";
+    }
+    leaf high {
+      type uint32 {
+        range "0..4294967295" {
+          error-message "Invalid threshold";
+        }
+      }
+      description
+        "High Threshold";
+    }
+    leaf low {
+      type uint32 {
+        range "0..4294967295" {
+          error-message "Invalid threshold";
+        }
+      }
+      description
+        "Low Threshold";
+    }
+  }
+
+  grouping system-crm-threshold-top {
+    description
+      "Threshold resources grouping";
+    container config {
+      description
+        "Configuration parameters information for threshold grouping";
+      uses system-crm-threshold-config;
+    }
+    container state {
+      config false;
+      description
+        "State information for threshold grouping";
+      uses system-crm-threshold-config;
+    }
+  }
+
+  grouping system-crm-ip-resource-top {
+    description
+      "IPv4/IPv6 resources";
+    container neighbor {
+      description
+        "IPv4/IPv6 neighbor resources";
+      uses system-crm-threshold-top;
+    }
+    container nexthop {
+      description
+        "IPv4/IPv6 nexthop resources";
+      uses system-crm-threshold-top;
+    }
+    container route {
+      description
+        "IPv4/IPv6 route resources";
+      uses system-crm-threshold-top;
+    }
+  }
+
+  grouping system-crm-nexthop-resource-top {
+    description
+      "Nexthop threshold configuration";
+    container group-member {
+      description
+        "Nexthop Group-Member threshold configuration";
+      uses system-crm-threshold-top;
+    }
+    container group-object {
+      description
+        "Nexthop Group-Object threshold configuration";
+      uses system-crm-threshold-top;
+    }
+  }
+
+  grouping system-crm-acl-resource-top {
+    description
+      "ACL threshold configuration";
+    container table {
+      description
+        "ACL-Table threshold configuration";
+      uses system-crm-threshold-top;
+    }
+    container group {
+      description
+        "ACL-Group threshold configuration";
+      uses system-crm-threshold-top;
+
+      container counter {
+        description
+          "ACL-Group-Counter threshold configuration";
+        uses system-crm-threshold-top;
+      }
+
+      container entry {
+        description
+          "ACL-Group-Entry threshold configuration";
+        uses system-crm-threshold-top;
+      }
+    }
+  }
+
+  grouping system-crm-acl-resource-state {
+    description
+      "ACL resources";
+    leaf groups-used {
+      type uint32;
+      description
+        "Number of used entries for 'acl group' resource";
+    }
+    leaf groups-available {
+      type uint32;
+      description
+        "Number of available entries for 'acl group' resource";
+    }
+    leaf tables-used {
+      type uint32;
+      description
+        "Number of used entries for 'acl table' resource";
+    }
+    leaf tables-available {
+      type uint32;
+      description
+        "Number of available entries for 'acl table' resource";
+    }
+  }
+
+  grouping system-crm-resource-state {
+    description
+      "ACL group resources";
+    container switch {
+      description
+        "Number of entries for 'acl group switch' resource";
+      uses system-crm-acl-resource-state;
+    }
+    container vlan {
+      description
+        "Number of entries for 'acl group vlan' resource";
+      uses system-crm-acl-resource-state;
+    }
+    container port {
+      description
+        "Number of entries for 'acl group port' resource";
+      uses system-crm-acl-resource-state;
+    }
+    container rif {
+      description
+        "Number of entries for 'acl group rif' resource";
+      uses system-crm-acl-resource-state;
+    }
+    container lag {
+      description
+        "Number of entries for 'acl group lag' resource";
+      uses system-crm-acl-resource-state;
+    }
+  }
+
+  grouping system-crm-top
+  {
+    description
+      "Top level grouping for CRM";
+    container crm
+    {
+      description
+        "Top level container for CRM";
+      container config
+      {
+        description
+          "Configuration parameters for CRM";
+        uses system-crm-global-config;
+      }
+      container state
+      {
+        config false;
+        description
+          "State parameters for CRM";
+        uses system-crm-global-config;
+      }
+      container threshold
+      {
+        description
+          "Threshold configuration parameters for CRM";
+        container ipv4
+        {
+          description
+            "IPv4 threshold configuration";
+          uses system-crm-ip-resource-top;
+        }
+        container ipv6 {
+         description
+            "IPv6 threshold configuration";
+         uses system-crm-ip-resource-top;
+        }
+        container dnat {
+         description
+          "DNAT threshold configuration";
+         uses system-crm-threshold-top;
+        }
+        container snat {
+          description
+            "SNAT threshold configuration";
+         uses system-crm-threshold-top;
+        }
+        container fdb {
+          description
+            "FDB threshold configuration";
+         uses system-crm-threshold-top;
+        }
+        container ipmc {
+          description
+            "IPMC threshold configuration";
+         uses system-crm-threshold-top;
+        }
+        container nexthop
+        {
+          description
+            "Nexthop threshold configuration";
+          uses system-crm-nexthop-resource-top;
+        }
+        container acl
+        {
+          description
+            "ACL threshold configuration";
+          uses system-crm-acl-resource-top;
+        }
+      }
+
+      container statistics {
+        config false;
+        description
+          "Global statistics";
+        leaf dnat-entries-used {
+          type uint32;
+          description
+            "Number of used entries for 'DNAT' resource";
+        }
+        leaf dnat-entries-available {
+          type uint32;
+          description
+            "Number of available entries for 'DNAT' resource";
+        }
+        leaf snat-entries-used {
+          type uint32;
+          description
+            "Number of used entries for 'SNAT' resource";
+        }
+        leaf snat-entries-available {
+          type uint32;
+          description
+            "Number of available entries for 'SNAT' resource";
+        }
+        leaf fdb-entries-used {
+          type uint32;
+          description
+            "Number of used entries for 'FDB' resource";
+        }
+        leaf fdb-entries-available {
+          type uint32;
+          description
+            "Number of available entries for 'FDB' resource";
+        }
+        leaf ipmc-entries-used {
+          type uint32;
+          description
+            "Number of used entries for 'IPMC' resource";
+        }
+        leaf ipmc-entries-available {
+          type uint32;
+          description
+            "Number of available entries for 'IPMC' resource";
+        }
+        leaf ipv4-neighbors-used {
+          type uint32;
+          description
+            "Number of used entries for 'ipv4 neighbor' resource";
+        }
+        leaf ipv4-neighbors-available {
+          type uint32;
+          description
+            "Number of available entries for 'ipv4 neighbor' resource";
+        }
+        leaf ipv4-nexthops-used {
+          type uint32;
+          description
+            "Number of used entries for 'ipv4 nexthop' resource";
+        }
+        leaf ipv4-nexthops-available {
+          type uint32;
+          description
+            "Number of available entries for 'ipv4 nexthop' resource";
+        }
+        leaf ipv4-routes-used {
+          type uint32;
+          description
+            "Number of used entries for 'ipv4 route' resource";
+        }
+        leaf ipv4-routes-available {
+          type uint32;
+          description
+            "Number of available entries for 'ipv4 route' resource";
+        }
+        leaf ipv6-neighbors-used {
+          type uint32;
+          description
+            "Number of used entries for 'ipv6 neighbor' resource";
+        }
+        leaf ipv6-neighbors-available {
+          type uint32;
+          description
+            "Number of available entries for 'ipv6 neighbor' resource";
+        }
+        leaf ipv6-nexthops-used {
+          type uint32;
+          description
+            "Number of used entries for 'ipv6 nexthop' resource";
+        }
+        leaf ipv6-nexthops-available {
+          type uint32;
+          description
+            "Number of available entries for 'ipv6 nexthop' resource";
+        }
+        leaf ipv6-routes-used {
+          type uint32;
+          description
+            "Number of used entries for 'ipv6 route' resource";
+        }
+        leaf ipv6-routes-available {
+          type uint32;
+          description
+            "Number of available entries for 'ipv6 route' resource";
+        }
+        leaf nexthop-groups-used {
+          type uint32;
+          description
+            "Number of used entries for 'nexthop groups object' resource";
+        }
+        leaf nexthop-groups-available {
+          type uint32;
+          description
+            "Number of available entries for 'nexthop groups object' resource";
+        }
+        leaf nexthop-group-members-used {
+          type uint32;
+          description
+            "Number of used entries for 'nexthop groups member' resource";
+        }
+        leaf nexthop-group-members-available {
+          type uint32;
+          description
+            "Number of available entries for 'nexthop groups member' resource";
+        }
+      }
+      container acl-statistics {
+        config false;
+        description
+          "ACL statistics";
+        container ingress {
+          description
+            "ACL ingress statistics";
+          uses system-crm-resource-state;
+        }
+        container egress {
+          description
+            "ACL egress statistics";
+          uses system-crm-resource-state;
+        }
+      }
+    }
+  }
+
+  augment /oc-sys:system {
+    description
+      "Critical Resource Management (CRM). CRM monitors
+      utilization of ASIC resources by polling SAI attributes.";
+    uses system-crm-top;
+  }
+}
