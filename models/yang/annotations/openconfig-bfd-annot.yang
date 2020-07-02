@@ -49,4 +49,60 @@ module openconfig-bfd-annot {
         sonic-ext:subtree-transformer "bfd_mhop_state_xfmr";
       }
     }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:config/oc-bfd-ext:remote-address {
+        deviate add {
+            sonic-ext:field-name "remote-address";
+            sonic-ext:field-transformer "bfd_shop_remoteaddr_fld_xfmr";
+        }
+    }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:config/oc-bfd-ext:vrf {
+        deviate add {
+            sonic-ext:field-name "vrf";
+            sonic-ext:field-transformer "bfd_shop_vrf_fld_xfmr";
+        }
+    }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:config/oc-bfd-ext:interface {
+        deviate add {
+            sonic-ext:field-name "interface";
+            sonic-ext:field-transformer "bfd_shop_interface_fld_xfmr";
+        }
+    }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-shop-sessions/oc-bfd-ext:single-hop/oc-bfd-ext:config/oc-bfd-ext:local-address {
+        deviate add {
+            sonic-ext:field-name "local-address";
+            sonic-ext:field-transformer "bfd_mhop_localaddr_fld_xfmr";
+        }
+    }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:config/oc-bfd-ext:remote-address {
+        deviate add {
+            sonic-ext:field-name "remote-address";
+            sonic-ext:field-transformer "bfd_mhop_remoteaddr_fld_xfmr";
+        }
+    }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:config/oc-bfd-ext:vrf {
+        deviate add {
+            sonic-ext:field-name "vrf";
+            sonic-ext:field-transformer "bfd_mhop_vrf_fld_xfmr";
+        }
+    }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:config/oc-bfd-ext:interface {
+        deviate add {
+            sonic-ext:field-name "interface";
+            sonic-ext:field-transformer "bfd_mhop_interface_fld_xfmr";
+        }
+    }
+
+    deviation /oc-bfd:bfd/oc-bfd-ext:bfd-mhop-sessions/oc-bfd-ext:multi-hop/oc-bfd-ext:config/oc-bfd-ext:local-address {
+        deviate add {
+            sonic-ext:field-name "local-address";
+            sonic-ext:field-transformer "bfd_mhop_localaddr_fld_xfmr";
+        }
+    }
 }
