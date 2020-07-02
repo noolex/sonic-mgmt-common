@@ -191,7 +191,6 @@ module sonic-ip-sla {
                     description
                       "icmp size of IP SLA";
                 }
-
                 leaf icmp_ttl {
                     type uint16 {
                         range "1..256" {
@@ -220,5 +219,35 @@ module sonic-ip-sla {
             }
         }
     }
+
+
+    rpc get-ipsla-history {
+        description
+            "RPC to retrieve IP SLA history.";
+
+        input {
+            leaf ip_sla_id {
+                type uint16 {
+                    range "1..4095" {
+                        error-message "IP SLA ID out of range";
+                    }
+                }
+            }
+        }
+
+        output {
+            list IPSLA_HISTORY {
+
+                key "timestamp";
+
+                leaf timestamp {
+                    type string;
+                }
+
+                leaf event {
+                    type string;
+                }
+            }
+        }
+    }
 }
-   
