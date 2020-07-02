@@ -225,7 +225,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapBound YCur: %v", vc.YCur)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapBound Data: %v", vc.CurCfg.Data)
 
-	if vc.CurCfg.VOp == OP_DELETE {
+	if vc.CurCfg.VOp == OP_DELETE && len(vc.CurCfg.Data) == 0 {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -247,9 +247,21 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 		}
 	}
-	/* get all COPP_TRAP entries */
 
 	keys, err := vc.RClient.Keys("COPP_TRAP|*").Result()
+	if vc.CurCfg.VOp != OP_DELETE {
+		if vc.YNodeVal != "" {
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        keys[0],
+				Keys:             keys,
+				ConstraintErrMsg: "Mode/Red/Green/Yellow action update/settings are not supported in this release",
+				ErrAppTag:        "not-supported",
+			}
+		}
+	}
+
+	/* get all COPP_TRAP entries */
 	if err == nil {
 		for _, key := range keys {
 			/* for each COPP_TRAP entry found */
@@ -262,7 +274,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 							ErrCode:          CVL_SEMANTIC_ERROR,
 							TableName:        keys[0],
 							Keys:             keys,
-							ConstraintErrMsg: "Mode/Red/Green/Yellow action updates are not allowed when group is bound to this trap",
+							ConstraintErrMsg: "Mode/Red/Green/Yellow action updates/deletes are not allowed when group is bound to this trap",
 							ErrAppTag:        "not-supported",
 						}
 					}
@@ -493,6 +505,40 @@ func (t *CustomValidation) ValidateCoppTrapGroup(
 							ConstraintErrMsg: "trap_group does not exist",
 							ErrAppTag:        "invalid-value",
 						}
+					}
+				}
+			}
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func (t *CustomValidation) ValidateCoppNotSupported(
+	vc *CustValidationCtxt) CVLErrorInfo {
+
+	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateCoppNotSupported operation: %v", vc.CurCfg.VOp)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported key: %v", vc.CurCfg.Key)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YNodeName: %v", vc.YNodeName)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YNodeVal: %v", vc.YNodeVal)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YCur: %v", vc.YCur)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported Data: %v", vc.CurCfg.Data)
+
+	var attributes = []string{
+		"pir",
+		"pbs",
+	}
+
+	for _, attrib := range attributes {
+		if _, ok := vc.CurCfg.Data[attrib]; ok {
+			if vc.CurCfg.VOp != OP_DELETE {
+				if vc.YNodeVal != "" {
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						TableName:        "COPP_GROUP",
+						Keys:             strings.Split(vc.CurCfg.Key, "|"),
+						ConstraintErrMsg: "pir/pbs update/settings are not supported in this release",
+						ErrAppTag:        "not-supported",
 					}
 				}
 			}

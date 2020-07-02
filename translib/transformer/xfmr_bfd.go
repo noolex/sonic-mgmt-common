@@ -358,7 +358,6 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, ses
 
     if (nil != bfdshop_Input_key) {
         bfdshop_tempkey = *bfdshop_Input_key
-	log.Info("fill_bfd_shop_data1")
         bfdshop_obj = bfd_obj.SingleHop[bfdshop_tempkey]
         if (nil == bfdshop_obj) {
             if value, ok := session_data["peer"].(string) ; ok {
@@ -381,16 +380,15 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, ses
 
             bfdshop_obj, err = bfd_obj.NewSingleHop (bfdshopkey.RemoteAddress, bfdshopkey.Interface, bfdshopkey.Vrf, bfdshopkey.LocalAddress)
             if (err != nil) {
-                log.Info("fill_bfd_shop_data2")
+                log.Info("New Shop node created")
                 return false;
             }
         }
     }
  
     ygot.BuildEmptyTree(bfdshop_obj)
+    ygot.BuildEmptyTree(bfdshop_obj.State)
     bfdshop_obj_state = bfdshop_obj.State;
-
-    log.Info("fill_bfd_shop_data3")
 
     if value, ok := session_data["status"].(string) ; ok {
         if value == "down" {
@@ -648,6 +646,7 @@ func fill_bfd_mhop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdMhopSessions, ses
     }
 
     ygot.BuildEmptyTree(bfdmhop_obj)
+    ygot.BuildEmptyTree(bfdmhop_obj.State)
 
     bfdmhop_obj_state = bfdmhop_obj.State;
 

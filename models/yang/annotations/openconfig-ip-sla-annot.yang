@@ -36,6 +36,30 @@ module openconfig-ip-sla-annot {
         }
     }
 
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-source-interface {
+        deviate add {
+            sonic-ext:field-name "tcp_source_interface";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-dst-ip {
+        deviate add {
+            sonic-ext:field-name "tcp_dst_ip";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-source-ip {
+        deviate add {
+            sonic-ext:field-name "tcp_source_ip";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-vrf {
+        deviate add {
+            sonic-ext:field-name "tcp_vrf";
+        }
+    }
+
     deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:tcp-ttl {
         deviate add {
             sonic-ext:field-name "tcp_ttl";
@@ -79,6 +103,25 @@ module openconfig-ip-sla-annot {
             sonic-ext:subtree-transformer "ip_sla_state_xfmr";
         }
     }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:icmp-vrf {
+        deviate add {
+            sonic-ext:field-name "icmp_vrf";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:icmp-ttl {
+        deviate add {
+            sonic-ext:field-name "icmp_ttl";
+        }
+    }
+
+    deviation /oc-ip-sla:ip-slas/oc-ip-sla:ip-sla/oc-ip-sla:config/oc-ip-sla:icmp-tos {
+        deviate add {
+            sonic-ext:field-name "icmp_tos";
+        }
+    }
+
 
 
 }

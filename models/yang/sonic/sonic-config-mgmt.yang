@@ -2,6 +2,9 @@ module sonic-config-mgmt {
   namespace "http://github.com/Azure/sonic-config-mgmt";
   prefix scm;
 
+  import sonic-port {
+    prefix prt;
+  }
 
   organization
     "SONiC";
@@ -141,6 +144,34 @@ module sonic-config-mgmt {
       leaf status-detail {
         type string;
        description
+          "The detailed status of the operation execution request.";
+      }
+    }
+  }
+
+  rpc default-port-config {
+    description "This RPC is used to restore a selected port configuration to its
+      factory default configuration state. When an error happens, the output parameter
+      status returns a non-zero value and the the output parameter status-detail provides
+      additional information about the error.";
+    input {
+      leaf ifname {
+        type leafref {
+          path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+        }
+      }
+    }
+
+    output {
+      leaf status {
+        type int32;
+        description
+          "The status code of the operation execution request. A non-zero value
+          indicates a failure.";
+      }
+      leaf status-detail {
+        type string;
+        description
           "The detailed status of the operation execution request.";
       }
     }

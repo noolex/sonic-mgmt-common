@@ -1083,7 +1083,7 @@ func (app *AclApp) getOCInterfaceSubtree(dbs [db.MaxDB]*db.DB, intfSt *ocbinds.O
 			if intfId == ACL_GLOBAL_PORT || intfId == ACL_CTRL_PLANE_PORT {
 				continue
 			}
-			ptr, _ := intfSt.NewInterface(intfId)
+			ptr, _ := intfSt.NewInterface(*utils.GetUINameFromNativeName(&intfId))
 			ygot.BuildEmptyTree(ptr)
 		}
 	} else {
@@ -1092,7 +1092,7 @@ func (app *AclApp) getOCInterfaceSubtree(dbs [db.MaxDB]*db.DB, intfSt *ocbinds.O
 
 	// For each interface present, Process it. The interface present could be created as part of
 	// of the URI or created above
-	for _, ocIntfPtr := range intfSt.Interface {
+	for ifName, ocIntfPtr := range intfSt.Interface {
 		if !trustIntf {
 			// TODO. Check if the Interface is created.
 			if *app.ygotTarget == ocIntfPtr {
@@ -1116,12 +1116,13 @@ func (app *AclApp) getOCInterfaceSubtree(dbs [db.MaxDB]*db.DB, intfSt *ocbinds.O
 			ocIntfPtr.InterfaceRef.State.Interface = ocIntfPtr.Id
 		}
 
-		inFound, err := app.getOCIntfSubtreeIntfDataForStage(dbs, *ocIntfPtr.Id, "Ingress", ocIntfPtr)
+        nativeName := *utils.GetNativeNameFromUIName(&ifName)
+		inFound, err := app.getOCIntfSubtreeIntfDataForStage(dbs, nativeName, "Ingress", ocIntfPtr)
 		if err != nil {
 			return err
 		}
 
-		outFound, err := app.getOCIntfSubtreeIntfDataForStage(dbs, *ocIntfPtr.Id, "Egress", ocIntfPtr)
+		outFound, err := app.getOCIntfSubtreeIntfDataForStage(dbs, nativeName, "Egress", ocIntfPtr)
 		if err != nil {
 			return err
 		}

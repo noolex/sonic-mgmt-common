@@ -6,8 +6,10 @@ import (
     "strconv"
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/openconfig/ygot/ygot"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     log "github.com/golang/glog"
 )
 
@@ -139,7 +141,69 @@ func getOspfv2Root (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Net
     return protoInstObj.Ospfv2, ospfv2VrfName, err
 }
 
+func ospfGetNativeIntfName(ifName string) (string, error) {
+   var errStr string
 
+   if (ifName == "" ) {
+       errStr = "Empty interface name received"
+       log.Infof("ospfGetNativeIntfName: %s.", errStr)
+       return ifName, errors.New(errStr)
+   }
+
+   if (!utils.IsAliasModeEnabled()) {
+       if (strings.Contains(ifName,"/")) {
+           errStr = "Invalid portname " + ifName + ", standard interface naming not enabled"
+           log.Infof("ospfGetNativeIntfName: %s.", errStr)
+           return ifName, errors.New(errStr)
+       } else {
+           log.Infof("ospfGetNativeIntfName: alias mode disabled return same name %s", ifName)
+           return ifName, nil
+       }
+   }
+
+   nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel", 
+                                     "Vlan", "VLAN", "vlan", "VLINK" }
+
+   for _, intfPrefix := range nonPhyIntfPrefixes {
+       if (strings.HasPrefix(ifName, intfPrefix)) {
+           log.Infof("ospfGetNativeIntfName: non physical interface %s.", ifName)
+           return ifName, nil
+       }
+   }
+
+   nativeNamePtr := utils.GetNativeNameFromUIName(&ifName)
+   log.Infof("ospfGetNativeIntfName: ifName %s native %s.", ifName, *nativeNamePtr)
+   return *nativeNamePtr, nil
+}
+
+func ospfGetUIIntfName(ifName string) (string, error) {
+   var errStr string
+
+   if (ifName == "" ) {
+       errStr = "Empty interface name received"
+       log.Infof("ospfGetUIIntfName: %s.", errStr)
+       return ifName, errors.New(errStr)
+   }
+
+   if (!utils.IsAliasModeEnabled()) {
+       log.Infof("ospfGetUIIntfName: alias mode disabled return same name %s", ifName)
+       return ifName, nil 
+   }
+
+   nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel",
+                                     "Vlan", "VLAN", "vlan", "VLINK" }
+
+   for _, intfPrefix := range nonPhyIntfPrefixes {
+       if (strings.HasPrefix(ifName, intfPrefix)) {
+           log.Infof("ospfGetUIIntfName: non physical interface %s, return same name.", ifName)
+           return ifName, nil
+       }
+   }
+
+   uiNamePtr := utils.GetUINameFromNativeName(&ifName)
+   log.Infof("ospfGetUIIntfName: ifName %s uiName %s.", ifName, *uiNamePtr)
+   return *uiNamePtr, nil
+}
 
 var YangToDb_ospfv2_router_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
@@ -312,7 +376,6 @@ var YangToDb_ospfv2_router_area_tbl_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
     log.Info("YangToDb_ospfv2_router_area_tbl_key_xfmr: pAreaTableKey - ", pAreaTableKey)
     return pAreaTableKey, nil
 }
-
 
 
 var DbToYang_ospfv2_router_area_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -984,7 +1047,7 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
         log.Info("OSPF Route Distriburion protocol name Missing")
         return "", nil
     }
-
+    
     log.Info("URI VRF ", ospfv2VrfName)
     log.Info("URI route distribution passiveIfName ", passiveIfName)
     log.Info("URI route distribution passiveIfAddress ", passiveIfAddress)
@@ -993,6 +1056,11 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
     if len(tempkey1) > 1 {
         passiveIfName = tempkey1[1]
     }
+
+    passiveIfName, err = ospfGetNativeIntfName(passiveIfName)
+    if (err != nil) {
+        return "", tlerr.New("Invalid passive interface name.")
+    } 
 
     tempkey1 = strings.Split(passiveIfAddress, ":")
     if len(tempkey1) > 1 {
@@ -1013,7 +1081,8 @@ var DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrDbToYang = func
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
     if len(passiveIfTableKeys) >= 3 {
-        res_map["name"] = passiveIfTableKeys[1]
+        passiveIfName, _ := ospfGetUIIntfName(passiveIfTableKeys[1])
+        res_map["name"] = passiveIfName 
         res_map["address"] = passiveIfTableKeys[2]
     }
 
@@ -1038,7 +1107,8 @@ var DbToYang_ospfv2_router_passive_interface_name_fld_xfmr FieldXfmrDbtoYang = f
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
     if len(passiveIfTableKeys) >= 3 {
-        res_map["name"] = passiveIfTableKeys[1]
+        passiveIfName, _ := ospfGetUIIntfName(passiveIfTableKeys[1]) 
+        res_map["name"] = passiveIfName  
     }
     return res_map, err
 }
@@ -1105,6 +1175,11 @@ var YangToDb_ospfv2_interface_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
     log.Info("URI interface name ", ospfv2InterfaceName)
     log.Info("URI Sub interface Id ", ospfv2InterfaceId)
 
+    ospfv2InterfaceName, err = ospfGetNativeIntfName(ospfv2InterfaceName)
+    if (err != nil) {
+        return "", tlerr.New("Invalid OSPF interface name.")
+    }
+
     pInterfaceTableKey := ospfv2InterfaceName
 
     log.Info("YangToDb_ospfv2_interface_tbl_key_xfmr: pInterfaceTableKey - ", pInterfaceTableKey)
@@ -1160,3 +1235,166 @@ var DbToYang_ospfv2_interface_name_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
     return res_map, nil
 }
 
+
+
+func ospf_router_present(inParams *XfmrParams, vrfName string) (bool, error) {
+
+    log.Info("ospf_router_present: vrfName ", vrfName)
+    if (vrfName == "") {
+        errStr := "Empty vrfName name"
+        log.Info("ospf_router_present: ", errStr)
+        return false, errors.New(errStr)
+    }
+
+    ospfTblName := "OSPFV2_ROUTER"
+    var ospfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfTblName}
+    ospfTblData, err1 := configDbPtr.GetTable(ospfTblSpec)
+    if err1 != nil {
+        log.Info("ospf_router_present: get ospf router table failed ", err1)
+        return false, err1
+    }
+
+    ospfTblKeys, err2 := ospfTblData.GetKeys()
+    if err2 != nil {
+        log.Info("ospf_router_present: router table get keys failed ", err2)
+        return false, err2
+    }
+
+    for _, ospfTblKey := range ospfTblKeys {
+        keyVrfName := ospfTblKey.Get(0)
+        if keyVrfName == vrfName {
+            log.Info("ospf_router_present: ospf router present with key ", ospfTblKey)
+            return true, nil
+        }
+    }
+
+    log.Info("ospf_router_present: ospf router not present in vrf ", vrfName)
+    return false, nil
+}
+
+func ospf_router_area_present(inParams *XfmrParams, vrfName string, areaId string) (bool, error) {
+
+    log.Infof("ospf_router_area_present: vrfName %s areaId %s", vrfName, areaId)
+    if (vrfName == "") {
+        errStr := "Empty vrfName name"
+        log.Info("ospf_router_area_present: ", errStr)
+        return false, errors.New(errStr)
+    }
+
+    if (areaId == "") {
+        errStr := "Empty areaId"
+        log.Info("ospf_router_area_present: ", errStr)
+        return false, errors.New(errStr)
+    }
+
+    ospfTblName := "OSPFV2_ROUTER_AREA"
+    var ospfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfTblName}
+    ospfTblData, err1 := configDbPtr.GetTable(ospfTblSpec)
+    if err1 != nil {
+        log.Info("ospf_router_present: get ospf router area table failed ", err1)
+        return false, err1
+    }
+
+    ospfTblKeys, err2 := ospfTblData.GetKeys()
+    if err2 != nil {
+        log.Info("ospf_router_area_present: router area table get keys failed ", err2)
+        return false, err2
+    }
+
+    for _, ospfTblKey := range ospfTblKeys {
+        keyVrfName := ospfTblKey.Get(0)
+        keyAreaId := ospfTblKey.Get(1)
+        if (keyVrfName == vrfName && keyAreaId == areaId) {
+            log.Info("ospf_router_area_present: ospf router area present with key ", ospfTblKey)
+            return true, nil
+        }
+    }
+
+    log.Infof("ospf_router_area_present: ospf router area %s not present in vrf %s", areaId, vrfName)
+    return false, nil
+}
+
+
+
+func create_ospf_area_entry(inParams *XfmrParams, vrfName string, areaId string, ospfRespMap *map[string]map[string]db.Value) (error) {
+    log.Infof("create_ospf_area_entry: vrfName %s areaId %s", vrfName, areaId)
+    if (vrfName == "") {
+        errStr := "Empty vrf name"
+        log.Info("create_ospf_area_entry: ", errStr)
+        return errors.New(errStr)
+    }
+
+    if (areaId == "") {
+        errStr := "Empty area id"
+        log.Info("create_ospf_area_entry: ", errStr)
+        return errors.New(errStr)
+    }
+
+    routerPresent, _ := ospf_router_present(inParams, vrfName)
+    if !routerPresent {
+        errStr := "OSPF router not present in vrf " + vrfName
+        log.Info("create_ospf_area_entry: ", errStr)
+        return errors.New(errStr)
+    }
+
+    areaPresent, _ := ospf_router_area_present(inParams, vrfName, areaId)
+    if areaPresent {
+        log.Infof("create_ospf_area_entry: area id entry already present")
+        return nil
+    } 
+
+    ospfTblName := "OSPFV2_ROUTER_AREA"
+    ospfTblKey := vrfName + "|" + areaId
+
+    ospfOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    ospfOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+    ospfOpMap[db.ConfigDB][ospfTblName] = make(map[string]db.Value)
+    ospfOpMap[db.ConfigDB][ospfTblName][ospfTblKey] = db.Value{Field: make(map[string]string)}
+    ospfOpMap[db.ConfigDB][ospfTblName][ospfTblKey].Field["NULL"] = "NULL"
+    inParams.subOpDataMap[CREATE] = &ospfOpMap
+
+    ospfTblDbValue := db.Value{Field: make(map[string]string)}
+    ospfTblDbValue.Field["NULL"] = "NULL"
+
+    ospfTblMap := make(map[string]db.Value)
+    ospfTblMap[ospfTblKey] = ospfTblDbValue
+    (*ospfRespMap)[ospfTblName] = ospfTblMap 
+
+    return nil
+}
+
+func ospf_auto_create_ospf_router_area(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
+    log.Info("ospf_auto_create_ospf_router_area: ", inParams.uri)
+    rcvdUri, _ := getYangPathFromUri(inParams.uri)
+    autoCreate := false
+
+    log.Info("ospf_auto_create_ospf_router_area: rcvdUri ", rcvdUri)
+
+    if (strings.Contains(rcvdUri, "protocols/protocol/ospfv2")) {
+        if (strings.Contains(rcvdUri, "openconfig-ospfv2-ext:networks/network")) {
+            autoCreate = true
+        } else if (strings.Contains(rcvdUri, "virtual-links/virtual-link")) {
+            autoCreate = true
+        } else if (strings.Contains(rcvdUri, "inter-area-policy/ranges/range")) {
+            autoCreate = true
+        }
+    }
+
+    if (!autoCreate) {
+        log.Info("ospf_auto_create_ospf_router_area: uris dont match, no autocreate")
+        return nil
+    }
+
+    pathInfo := NewPathInfo(inParams.uri)
+    ospfVrfName :=  pathInfo.Var("name")
+    ospfAreaId := pathInfo.Var("identifier#2")
+
+    log.Infof("ospf_auto_create_ospf_router_area: ospfVrfName %s ospfAreaId %s", ospfVrfName, ospfAreaId)
+    if (ospfVrfName == "" || ospfAreaId == "") {
+        log.Info("ospf_auto_create_ospf_router_area: invalid vrf name or area Id")
+        return nil
+    }
+
+    log.Infof("ospf_auto_create_ospf_router_area: Auto create area %s in vrf %s", ospfAreaId, ospfVrfName)
+    return create_ospf_area_entry(inParams, ospfVrfName, ospfAreaId, ospfRespMap)
+}

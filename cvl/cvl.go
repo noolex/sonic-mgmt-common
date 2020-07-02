@@ -1043,25 +1043,17 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 
 // getLeafRefInfo This function returns leafrefInfo structure based on table name,
 // target table name and leaf node name where leafRef is present
-func getLeafRefInfo(tblName, fldName, targetTblName string) leafRefInfo {
-	var leafRef leafRefInfo
+func getLeafRefInfo(tblName, fldName, targetTblName string) *leafRefInfo {
 	for _, refTblLeafRef := range modelInfo.tableInfo[tblName].leafRef[fldName] {
 		if (refTblLeafRef.path == "non-leafref") {
 			continue
 		}
 
-		var leafRefFound bool
 		for k := range refTblLeafRef.yangListNames {
 			if refTblLeafRef.yangListNames[k] == targetTblName {
-				leafRef = *refTblLeafRef
-				leafRefFound = true
-				break
+				return refTblLeafRef
 			}
 		}
-
-		if leafRefFound {
-			break
-		}
 	}
-	return leafRef
+	return nil
 }

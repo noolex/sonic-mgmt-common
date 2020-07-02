@@ -99,8 +99,8 @@ module openconfig-ip-sla {
       type oc-if:base-interface-ref;
       description
         "Tcp source interface of IP SLA";
-
     }
+
 
     leaf tcp-ttl {
       type uint16 {
@@ -134,10 +134,10 @@ module openconfig-ip-sla {
         "Tcp destination ip of IP SLA";
     }
 
-    leaf vrf {
+    leaf tcp-vrf {
       type string;
       description
-        "Vrf of IP SLA";
+        "Vrf for tcp connect of IP SLA";
     }
 
     leaf icmp-source-interface {
@@ -168,6 +168,34 @@ module openconfig-ip-sla {
       description
         "Icmp size of IP SLA";
     }
+
+    leaf icmp-vrf {
+      type string;
+      description
+        "Vrf for icmp echo of IP SLA";
+    }
+
+    leaf icmp-ttl {
+      type uint16 {
+        range "1..256" {
+          error-message "icmp-ttl out of range";
+        }
+      }
+      description
+        "Icmp TTL of IP SLA";
+    }
+
+    leaf icmp-tos {
+      type uint16 {
+        range "0..7" {
+          error-message "icmp-tos out of range";
+        }
+      }
+      description
+        "Icmp tos of IP SLA";
+    }
+
+
   }
 
   grouping ip-sla-state {
