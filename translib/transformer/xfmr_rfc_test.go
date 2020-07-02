@@ -758,7 +758,7 @@ func Test_Rfc_Delete_Negative_Cases(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  DELETE uri container, data not present in DB  +++++++++++++")
-	url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
+        url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
         t.Run("RFC - Delete on container, data not present in DB", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify Delete on container, data not present in DB", verifyDbResult(rclient, "TACPLUS|global", prereq, false))
