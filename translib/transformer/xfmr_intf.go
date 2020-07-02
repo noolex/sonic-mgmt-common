@@ -267,7 +267,8 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
 
         /* For delete request and for fields with default value, transformer adds subOp map with update operation (to update with default value).
            So, adding code to clear the update SubOp map for delete operation to go through for the following requestUriPath */
-        if requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/config/enabled" {
+        if requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/config/enabled" || 
+           requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/config/enabled" {
             if len(inParams.subOpDataMap) > 0 {
                 dbMap := make(map[string]map[string]db.Value)
                 if inParams.subOpDataMap[4] != nil && inParams.subOpDataMap[5] != nil {
@@ -1444,16 +1445,13 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
         }
         IntfMap := IntfMapObj.Field
-        if len(IntfMap) == 1 {
+        // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>" (or)
+        // Case-2: If deletion at parent container(routedVlanIntf)
+        if len(IntfMap) == 1 || routedVlanIntf == nil {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
 	    }
-	    if _, ok := IntfMap["NULL"]; ok {
-	        vlanIntfmap[tblName][ifName] = data
-	    }
-	    if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-	        vlanIntfmap[tblName][ifName] = data
-	    }
+	    vlanIntfmap[tblName][ifName] = data
         }
     }
 
@@ -3516,6 +3514,11 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     pathInfo := NewPathInfo(inParams.uri)
     ifUIName := pathInfo.Var("name");
 
+    intfType, _, ierr := getIntfTypeByName(ifUIName)
+    if ierr != nil || intfType == IntfTypeUnset || intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {
+	return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Unsupported Interface: "+ifUIName )
+    }
+
     if ifUIName == "" {
         errStr := "Interface KEY not present"
         log.Info("YangToDb_ipv6_enabled_xfmr: " + errStr)
@@ -3526,17 +3529,14 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         return res_map, err
     }
 
-    if len(pathInfo.Vars) < 2 {
+    // Vlan Interface (routed-vlan) contains only one Key "ifname"
+    // For all other interfaces (subinterfaces/subintfaces) will have 2 keys "ifname" & "subintf-index"
+    if len(pathInfo.Vars) < 2 && intfType != IntfTypeVlan {
         return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Invalid Key length")
     }
 
     if log.V(3) {
         log.Info("YangToDb_ipv6_enabled_xfmr, inParams.key: ", inParams.key)
-    }
-
-    intfType, _, ierr := getIntfTypeByName(ifUIName)
-    if ierr != nil || intfType == IntfTypeUnset || intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {
-	return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Unsupported Interface: "+ifUIName )
     }
 
     ifName := utils.GetNativeNameFromUIName(&ifUIName)
