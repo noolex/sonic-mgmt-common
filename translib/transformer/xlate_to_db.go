@@ -121,27 +121,28 @@ func mapFillData(xlateParams xlateToParams) error {
 		    log.Warningf("No table name found for uri (\"%v\")", xlateParams.uri)
 		    return err
 	    }
-	    // tblXpathMap used for default value processing for a given request
-	    if tblUriMapVal, tblUriMapOk := xlateParams.tblXpathMap[tableName]; !tblUriMapOk {
-		    tblUriMapVal = map[string]bool{xlateParams.uri: true}
-		    xlateParams.tblXpathMap[tableName] = tblUriMapVal
-	    } else {
-		    if tblUriMapVal == nil {
-			    tblUriMapVal = map[string]bool{xlateParams.uri: true}
-		    } else {
-			    tblUriMapVal[xlateParams.uri] = true
-		    }
-		    xlateParams.tblXpathMap[tableName] = tblUriMapVal
-	    }
     } else {
 	    tableName = *xpathInfo.tableName
     }
 
-	curXlateParams := xlateParams
-	curXlateParams.tableName = tableName
-	curXlateParams.xpath = xpath
-	err = mapFillDataUtil(curXlateParams)
-	return err
+    // tblXpathMap used for default value processing for a given request
+    if tblUriMapVal, tblUriMapOk := xlateParams.tblXpathMap[tableName]; !tblUriMapOk {
+	    tblUriMapVal = map[string]bool{xlateParams.uri: true}
+	    xlateParams.tblXpathMap[tableName] = tblUriMapVal
+    } else {
+	    if tblUriMapVal == nil {
+		    tblUriMapVal = map[string]bool{xlateParams.uri: true}
+	    } else {
+		    tblUriMapVal[xlateParams.uri] = true
+	    }
+	    xlateParams.tblXpathMap[tableName] = tblUriMapVal
+    }
+
+    curXlateParams := xlateParams
+    curXlateParams.tableName = tableName
+    curXlateParams.xpath = xpath
+    err = mapFillDataUtil(curXlateParams)
+    return err
 }
 
 func mapFillDataUtil(xlateParams xlateToParams) error {
