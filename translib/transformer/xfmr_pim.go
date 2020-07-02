@@ -53,7 +53,7 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
 								 "flags":"SJT",
-								 "iif":{
+								 "iil":{
 									 "Vlan202":{
 										 "RPF Neighbor":"172.22.0.1",
 										 "RPF Metric":0,
@@ -83,12 +83,12 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
 								 "flags":"SJT",
-								 "iif":{
+								 "iil":{
 									 "Vlan202":{
 										 "RPF Neighbor":"172.22.0.1",
 										 "RPF Metric":0,
 										 "RPF Preference":109,
-										 "oif":{
+										 "oil":{
 											 "Vlan602":{
 												 "source":"199.0.0.24",
 												 "group":"232.0.0.1",
@@ -123,12 +123,12 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
 								 "flags":"SJT",
-								 "iif":{
+								 "iil":{
 									 "Vlan202":{
 										 "RPF Neighbor":"172.22.0.1",
 										 "RPF Metric":0,
 										 "RPF Preference":109,
-										 "oif":{
+										 "oil":{
 											 "Vlan602":{
 												 "source":"199.0.0.23",
 												 "group":"232.0.0.2",
@@ -153,12 +153,12 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
 								 "flags":"SJT",
-								 "iif":{
+								 "iil":{
 									 "Vlan202":{
 										 "RPF Neighbor":"172.22.0.1",
 										 "RPF Metric":0,
 										 "RPF Preference":109,
-										 "oif":{
+										 "oil":{
 											 "Vlan602":{
 												 "source":"199.0.0.24",
 												 "group":"232.0.0.2",
@@ -177,12 +177,12 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
 								 "flags":"SJT",
-								 "iif":{
+								 "iil":{
 									 "Vlan202":{
 										 "RPF Neighbor":"172.22.0.1",
 										 "RPF Metric":0,
 										 "RPF Preference":109,
-										 "oif":{
+										 "oil":{
 											 "Vlan603":{
 												 "source":"199.0.0.23",
 												 "group":"232.0.0.3",
@@ -700,9 +700,9 @@ func fill_pim_tib_mroute_state_info (inParams XfmrParams, tibKey _xfmr_pim_tib_s
         srcEntryStateObj.Flags = &_flags
     }
 
-    if iifListData, ok := srcAddrData["iif"].(map[string]interface{}) ; ok {
-        for iif := range iifListData {
-            iifData, ok := iifListData[iif].(map[string]interface{}) ; if !ok {continue}
+    if iilData, ok := srcAddrData["iil"].(map[string]interface{}) ; ok {
+        for iif := range iilData {
+            iifData, ok := iilData[iif].(map[string]interface{}) ; if !ok {continue}
 
             var _uiIncomingIntfId string
             util_pim_get_ui_ifname_from_native_ifname (&iif, &_uiIncomingIntfId)
