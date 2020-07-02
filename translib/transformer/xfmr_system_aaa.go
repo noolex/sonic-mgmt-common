@@ -464,14 +464,24 @@ var global_sg_tbl_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, erro
     tables := make([]string, 0, 2)
     if strings.Contains(servergroupname, "RADIUS") {
         tables = append(tables, "RADIUS")
+        // if the request is for specific server-group, get server list as well
+        if inParams.uri == "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]" {
+            tables = append(tables, "RADIUS_SERVER")
+        }
     } else if strings.Contains(servergroupname, "TACACS") {
         tables = append(tables, "TACPLUS")
+        // if the request is for specific server-group, get server list as well
+        if inParams.uri == "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]" {
+            tables = append(tables, "TACPLUS_SERVER")
+        }
     } else if servergroupname == "LDAP" || servergroupname == "LDAP_NSS" || servergroupname == "LDAP_PAM" || servergroupname == "LDAP_SUDO" {
         tables = append(tables, "LDAP")
     } else if inParams.oper == GET {
         tables = append(tables, "RADIUS")
+        tables = append(tables, "RADIUS_SERVER")
         tables = append(tables, "TACPLUS")
         tables = append(tables, "LDAP")
+        tables = append(tables, "TACPLUS_SERVER")
     } else {
         err = errors.New("Invalid server group name")
     }

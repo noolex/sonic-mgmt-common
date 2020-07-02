@@ -383,6 +383,23 @@ var DbToYang_bgp_pgrp_auth_password_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     if entryValue, err = inParams.dbs[db.ConfigDB].GetEntry(pgrpCfgTblTs, pgrpEntryKey) ; err != nil {
         return err
     }
+    if pgrp_obj.AuthPassword == nil {
+        var auth ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_AuthPassword 
+        pgrp_obj.AuthPassword = &auth
+        ygot.BuildEmptyTree(pgrp_obj.AuthPassword)
+    }
+
+    if pgrp_obj.AuthPassword.Config == nil {
+        var auth_config ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_AuthPassword_Config
+        pgrp_obj.AuthPassword.Config = &auth_config
+        ygot.BuildEmptyTree(pgrp_obj.AuthPassword.Config)
+    }
+
+    if pgrp_obj.AuthPassword.State == nil {
+        var auth_state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_AuthPassword_State
+        pgrp_obj.AuthPassword.State = &auth_state
+        ygot.BuildEmptyTree(pgrp_obj.AuthPassword.State)
+    }
 
     if value, ok := entryValue.Field["auth_password"] ; ok {
         pgrp_obj.AuthPassword.Config.Password = &value

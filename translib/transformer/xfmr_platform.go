@@ -1054,7 +1054,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
+                err = fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else if validFanName(&compName) {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1062,7 +1062,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+                err = fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else if validXcvrName(&compName){
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1070,15 +1070,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+                err = fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
             } else if validTempName(&compName) {
-              pf_comp := pf_cpts.Component[compName]
-              if pf_comp  == nil {
-                  log.Info("Invalid Component Name")
-                  return errors.New("Invalid component name")
-              }
-              ygot.BuildEmptyTree(pf_comp)
-              fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name")
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
             } else {
                 err = errors.New("Invalid component name")
             }
@@ -1114,21 +1114,21 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 err = errors.New("Invalid input component name")
             }
         } else if validPsuName(&compName) {
-          pf_comp := pf_cpts.Component[compName]
-          if pf_comp  == nil {
-              log.Info("Invalid Component Name")
-              return errors.New("Invalid component name")
-          }
-          ygot.BuildEmptyTree(pf_comp)
-          fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            err = fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
         } else if validFanName(&compName) {
-          pf_comp := pf_cpts.Component[compName]
-          if pf_comp  == nil {
-              log.Info("Invalid Component Name")
-              return errors.New("Invalid component name")
-          }
-          ygot.BuildEmptyTree(pf_comp)
-          fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            err = fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
         } else if validXcvrName(&compName){
             pf_comp := pf_cpts.Component[compName]
             if pf_comp  == nil {
@@ -1136,17 +1136,17 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 return errors.New("Invalid component name")
             }
             ygot.BuildEmptyTree(pf_comp)
-            fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+            err = fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
         } else if validTempName(&compName) {
-              pf_comp := pf_cpts.Component[compName]
-              if pf_comp  == nil {
-                  log.Info("Invalid Component Name")
-                  return errors.New("Invalid component name")
-              }
-              ygot.BuildEmptyTree(pf_comp)
-              ygot.BuildEmptyTree(pf_comp.State)
-              ygot.BuildEmptyTree(pf_comp.State.Temperature)
-              fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            ygot.BuildEmptyTree(pf_comp.State)
+            ygot.BuildEmptyTree(pf_comp.State.Temperature)
+            err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
         } else {
             err = errors.New("Invalid component name ")
         }
@@ -1198,7 +1198,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                   return errors.New("Invalid component name")
               }
               ygot.BuildEmptyTree(pf_comp)
-              fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+              err = fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else if validXcvrName(&compName){
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1206,7 +1206,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+                err = fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
             } else if validTempName(&compName) {
               pf_comp := pf_cpts.Component[compName]
               if pf_comp  == nil {
@@ -1214,7 +1214,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                   return errors.New("Invalid component name")
               }
               ygot.BuildEmptyTree(pf_comp)
-              fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
+              err = fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
             } else {
                 err = errors.New("Invalid input component name")
             }
@@ -1222,6 +1222,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             err = errors.New("Invalid Path")
         }
     }
+
     return err
 }
 
