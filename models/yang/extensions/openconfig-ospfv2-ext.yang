@@ -317,6 +317,11 @@ module openconfig-ospfv2-ext {
       "OSPF external route type 2";
   }
 
+  /*typedef ospf-sequence-number {
+    type int64;
+    description "OSPF sequence number";
+  }*/
+
   typedef ospf-cost-metric {
     type uint32 {
       range "0..16777215";
@@ -1471,6 +1476,11 @@ module openconfig-ospfv2-ext {
         "Options for an LSA(e.g. E bit (ExternalRoutingCapability) ";
     }
 
+    leaf option-expanded {
+      type string;
+      description
+        "Names for all flags present in option";
+    }
     leaf flags {
       type uint8;
       description
@@ -1551,6 +1561,18 @@ module openconfig-ospfv2-ext {
   grouping ospfv2-ext-lsdb-router-lsa-state {
     description
       "parameters related to router LSA state";
+
+    leaf flags {
+      type uint32;
+      description
+        "Flag information related to router lsa";
+    }
+
+    leaf flags-description {
+      type string;
+      description
+        "Description related to flags present in router lsa";
+    }
 
     list link-information {
       description
@@ -2880,6 +2902,15 @@ module openconfig-ospfv2-ext {
     }
   }
 
+ /* deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+        "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+        "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
+        "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:state/oc-netinst:sequence-number" {
+    deviate replace {
+      type ospf-sequence-number;
+    }
+  
+  }*/
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
             "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
             "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
