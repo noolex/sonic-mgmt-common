@@ -605,7 +605,9 @@ def chk_unique(old, new, ctx):
             err_def_added(u, ctx)
 
 def chk_leaf(old, new, ctx):
-    chk_type(old.search_one('type'), new.search_one('type'), ctx)
+    old_t = old.search_one('type')
+    new_t = new.search_one('type')
+    chk_type(old_t, new_t, ctx)
     chk_units(old, new, ctx)
     chk_default(old, new, ctx)
     chk_mandatory(old, new, ctx)
@@ -856,6 +858,9 @@ def err_add(ctx, pos, err_code, extra, data_node=None):
                 ignore_error = True
     if data_node != None and hasattr(data_node, 'deviation_list'):
         for deviation in data_node.deviation_list:
+            pyang_err_add(ctx, deviation.pos, err_code, extra, ignore_error)
+    elif current_data_node != None and hasattr(current_data_node, 'deviation_list'):
+        for deviation in current_data_node.deviation_list:
             pyang_err_add(ctx, deviation.pos, err_code, extra, ignore_error)
     else:
         pyang_err_add(ctx, pos, err_code, extra, ignore_error)
