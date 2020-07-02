@@ -6,8 +6,10 @@ import (
 	_"fmt"
 	"reflect"
 	"strconv"
+    "encoding/json"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
 	log "github.com/golang/glog"
 	    "github.com/openconfig/ygot/ygot"
     )
@@ -17,6 +19,7 @@ func init () {
 	XlateFuncBind("DbToYang_ipv4_route_get_xfmr", DbToYang_ipv4_route_get_xfmr)
 	XlateFuncBind("DbToYang_ipv6_route_get_xfmr", DbToYang_ipv6_route_get_xfmr)
 	XlateFuncBind("DbToYang_ipv4_mroute_get_xfmr", DbToYang_ipv4_mroute_get_xfmr)
+    XlateFuncBind("rpc_show_ipmroute", rpc_show_ipmroute)
 }
 
 func getIpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts, string, string, uint64, error) {
@@ -596,4 +599,88 @@ var DbToYang_ipv4_mroute_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
     }
 
     return err
+}
+
+func get_rpc_show_ipmroute_sub_cmd_for_summary_ (mapData map[string]interface{}) (bool, string, string) {
+    _summary, ok := mapData["summary"].(bool) ; if !ok {
+        return false, "summary mandatory attribute missing", ""
+    }
+
+    if !_summary {
+        return false, "summary attribute value should be true", ""
+    }
+
+    return true, "", "summary json"
+}
+
+func get_rpc_show_ipmroute_sub_cmd_ (mapData map[string]interface{}) (bool, string, string) {
+    queryType, ok := mapData["query-type"].(string) ; if !ok {
+        err := "Mandatory parameter query-type is not present"
+        log.Info ("In get_rpc_show_ipmroute_sub_cmd_ : ", err)
+        return false, err, ""
+    }
+
+    log.Info("In get_rpc_show_ipmroute_sub_cmd_ ==> queryType : ", queryType)
+    switch queryType {
+        case "SUMMARY":
+            return get_rpc_show_ipmroute_sub_cmd_for_summary_ (mapData)
+        default:
+            err := "Invalid value in query-type attribute : " + queryType
+            log.Info ("In get_rpc_show_ipmroute_sub_cmd_ : ", err)
+            return false, err, ""
+    }
+}
+
+var rpc_show_ipmroute RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_ipmroute")
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show ip ipmroute, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-ipmroute-show:output"`
+    }
+
+    log.Info("In rpc_show_ipmroute, RPC data:", mapData)
+
+    input := mapData["sonic-ipmroute-show:input"]
+    mapData = input.(map[string]interface{})
+
+    vrf_name := "default"
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = value
+    }
+
+    af_str := "ip"
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value != "IPV4_UNICAST" {
+            dbg_err_str := "show ip ipmroute RPC execution failed ==> Invalid value in address-family attribute"
+            log.Info("In rpc_show_ipmroute : ", dbg_err_str)
+            return nil, errors.New(dbg_err_str)
+        }
+    }
+
+    ok, err_str, subCmd := get_rpc_show_ipmroute_sub_cmd_ (mapData) ; if !ok {
+        dbg_err_str := "show ip ipmroute RPC execution failed ==> " + err_str
+        log.Info("In rpc_show_ipmroute, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
+
+    cmd := "show " + af_str + " mroute vrf " + vrf_name + " " + subCmd
+
+    ipmrouteOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        dbg_err_str := "FRR execution failed ==> " + err_str
+        log.Info("In rpc_show_ipmroute, ", dbg_err_str)
+        return nil, errors.New("Internal error!")
+    }
+
+    result.Output.Status = ipmrouteOutput
+    return json.Marshal(&result)
 }

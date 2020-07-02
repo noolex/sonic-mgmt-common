@@ -22,6 +22,7 @@ func init () {
     XlateFuncBind("DbToYang_pim_intf_state_xfmr", DbToYang_pim_intf_state_xfmr)
     XlateFuncBind("DbToYang_pim_nbrs_state_xfmr", DbToYang_pim_nbrs_state_xfmr)
     XlateFuncBind("DbToYang_pim_tib_state_xfmr", DbToYang_pim_tib_state_xfmr)
+    XlateFuncBind("rpc_show_pim", rpc_show_pim)
 }
 
 func pim_exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
@@ -897,4 +898,88 @@ var DbToYang_pim_tib_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     return err
+}
+
+func get_rpc_show_pim_sub_cmd_for_rpf_ (mapData map[string]interface{}) (bool, string, string) {
+    _rpf, ok := mapData["rpf"].(bool) ; if !ok {
+        return false, "rpf mandatory attribute missing", ""
+    }
+
+    if !_rpf {
+        return false, "rpf attribute value should be true", ""
+    }
+
+    return true, "", "rpf json"
+}
+
+func get_rpc_show_pim_sub_cmd_ (mapData map[string]interface{}) (bool, string, string) {
+    queryType, ok := mapData["query-type"].(string) ; if !ok {
+        err := "Mandatory parameter query-type is not present"
+        log.Info ("In get_rpc_show_pim_sub_cmd_ : ", err)
+        return false, err, ""
+    }
+
+    log.Info("In get_rpc_show_pim_sub_cmd_ ==> queryType : ", queryType)
+    switch queryType {
+        case "RPF":
+            return get_rpc_show_pim_sub_cmd_for_rpf_ (mapData)
+        default:
+            err := "Invalid value in query-type attribute : " + queryType
+            log.Info ("In get_rpc_show_pim_sub_cmd_ : ", err)
+            return false, err, ""
+    }
+}
+
+var rpc_show_pim RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_pim")
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show ip pim, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-pim-show:output"`
+    }
+
+    log.Info("In rpc_show_pim, RPC data:", mapData)
+
+    input := mapData["sonic-pim-show:input"]
+    mapData = input.(map[string]interface{})
+
+    vrf_name := "default"
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = value
+    }
+
+    af_str := "ip"
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value != "IPV4_UNICAST" {
+            dbg_err_str := "show ip pim RPC execution failed ==> Invalid value in address-family attribute"
+            log.Info("In rpc_show_pim : ", dbg_err_str)
+            return nil, errors.New(dbg_err_str)
+        }
+    }
+
+    ok, err_str, subCmd := get_rpc_show_pim_sub_cmd_ (mapData) ; if !ok {
+        dbg_err_str := "show ip pim RPC execution failed ==> " + err_str
+        log.Info("In rpc_show_pim, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
+
+    cmd := "show " + af_str + " pim vrf " + vrf_name + " " + subCmd
+
+    pimOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        dbg_err_str := "FRR execution failed ==> " + err_str
+        log.Info("In rpc_show_pim, ", dbg_err_str)
+        return nil, errors.New("Internal error!")
+    }
+
+    result.Output.Status = pimOutput
+    return json.Marshal(&result)
 }
