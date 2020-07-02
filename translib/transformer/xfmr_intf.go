@@ -1328,13 +1328,8 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                 return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
             }
             IntfMap := IntfMapObj.Field
-            if len(IntfMap) == 1 {
-                if _, ok := IntfMap["NULL"]; ok {
-                    subIntfmap[tblName][ifName] = data
-                }
-                if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-                    subIntfmap[tblName][ifName] = data
-                }
+            if len(IntfMap) == 1 || subIntf == nil {
+                subIntfmap[tblName][ifName] = data
             }
         }
     }
@@ -3632,6 +3627,15 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
 
     data := (*inParams.dbDataMap)[inParams.curDb]
+    if _, ok := data[tblName]; !ok {
+        log.Info("DbToYang_ipv6_enabled_xfmr table not found : ", tblName)
+        return res_map, errors.New("table not found : " + tblName)
+    }
+
+    if _, ok := data[tblName][inParams.key]; !ok {
+        log.Infof("DbToYang_ipv6_enabled_xfmr table %s with key %s not found ", tblName, inParams.key)
+        return res_map, errors.New("Entry not found: " + tblName)
+    }
 
     res_map["enabled"] = false
     ipv6_status, ok := data[tblName][inParams.key].Field["ipv6_use_link_local_only"]
