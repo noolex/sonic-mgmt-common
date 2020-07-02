@@ -173,7 +173,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
 
         // Put(modify) on container, parent table present, overriding timeout:10 with timeout:20
 
-        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","src_ip":"4.4.4.4","timeout":"10"}}}
+        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","timeout":"10"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
@@ -181,12 +181,50 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         fmt.Println("++++++++++++++  PUT(modify) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
         payload = "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
-        expected = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","src_ip":"4.4.4.4","timeout":"20"}}}
+        expected = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","timeout":"20"}}}
         t.Run("RFC - PUT(modify) on container", processSetRequest(url, payload, "PUT", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PUT(modify) on container", verifyDbResult(rclient, "TACPLUS|global", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
+
+
+        // Put(create) on container, parent table present, default value creation
+
+	prereq := map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+	cleanuptbl := map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  Put(create) on container, parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.1.1\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
+       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        t.Run("RFC - PUT on container(create default)", processSetRequest(url, payload, "PUT", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PUT(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+        // Put(create) on list , parent table present Create with default values
+
+        prereq = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        cleanuptbl = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  Put(create) on list parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol"
+        payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
+        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        t.Run("RFC - PUT on list(create default)", processSetRequest(url, payload, "PUT", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PUT(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
 
 
         // Put(create) on list, parent table present
@@ -229,6 +267,25 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
         unloadConfigDB(rclient, cleanuptbl2)
+
+        // Put(create) on list instance, parent table present Create with default values
+
+        prereq = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        cleanuptbl = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  Put(create) on list instance parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp"
+        payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
+        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        t.Run("RFC - PUT on list(create default)", processSetRequest(url, payload, "PUT", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PUT(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
 
 
         // Put(create) on list instance, parent table present
@@ -334,7 +391,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  PUT(modify) uri: leaf-list, message-body: leaf-list  +++++++++++++")
         url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
-        payload = "{ \"ietf-snmp:include\": [ \"1.2.3.5.*\",\"1.3.6.*\", \"1.4.6.*\"]}"
+        payload = "{ \"ietf-snmp:include\": [\"1.4.6.*\"]}"
         expected = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "1.2.3.5.*,1.3.6.*,1.4.6.*"}}}
         t.Run("RFC - PUT(modify) on leaf-list", processSetRequest(url, payload, "PUT", false))
         time.Sleep(1 * time.Second)
@@ -701,7 +758,7 @@ func Test_Rfc_Delete_Negative_Cases(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  DELETE uri container, data not present in DB  +++++++++++++")
-        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
+	url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
         t.Run("RFC - Delete on container, data not present in DB", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify Delete on container, data not present in DB", verifyDbResult(rclient, "TACPLUS|global", prereq, false))
