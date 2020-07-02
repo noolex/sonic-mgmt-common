@@ -3,12 +3,11 @@ module openconfig-network-instance-deviation {
   yang-version "1";
 
   // namespace
-  namespace "http://openconfig.net/yang/oc-netinst-deviation";
+  namespace "http://openconfig.net/yang/oc-netinst-deviation/extension";
 
   prefix "oc-netinst-deviation";
 
   // import some basic types/interfaces
-  import openconfig-types { prefix "oc-types"; }
   import ietf-inet-types { prefix "inet"; }
   import openconfig-extensions { prefix "oc-ext"; }
   import openconfig-policy-types { prefix "oc-pol-types"; }
@@ -79,12 +78,15 @@ module openconfig-network-instance-deviation {
 		  "IGMP Snooping Query Max Response Time.";
 	}  
 
-	grouping igmp-snooping-interface-attr {
-    leaf name {
-      type oc-if:base-interface-ref;
-      description
-        "Reference to the IGMP Snooping VLAN interface";
-    }
+	grouping network-instance-deviation-igmps-interface-base-config {
+    description
+     "Grouping IGMP Snooping configuration attributes";
+    
+        leaf name {
+            type oc-if:base-interface-ref;
+            description
+             "Reference to the IGMP Snooping VLAN interface";
+        }
 
 		leaf enabled {
 		    type boolean;
@@ -107,16 +109,16 @@ module openconfig-network-instance-deviation {
 		
 		leaf query-max-response-time {
 			type igmp-snooping-query-max-response-time-type;
+			default 10;
 			description
 		    "Max response time for the IGMP Snooping queries.";
-			default 10;
 		}
 		
 		leaf last-member-query-interval {
 			type igmp-snooping-last-member-query-interval-type;
+			default 1000;
 		  description	  	
 				"IGMP Snooping Last Member Query Interval";
-			default 1000;
 		}
 		
 		leaf querier {
@@ -142,48 +144,37 @@ module openconfig-network-instance-deviation {
 		}	
 	}
 	
-	grouping igmp-snooping-interface-config {
-	
-		uses igmp-snooping-interface-attr;
-		
-		list static-multicast-group {
-			key "group";
-      description
-        "A static multicast group";
-			
-      leaf group {
-        type inet:ipv4-address;
-        description
-          "Multicast address.";
-      }
+	grouping network-instance-deviation-igmps-interface-config {
+	description
+        "Grouping IGMP Snooping configuration per interface";
+        uses network-instance-deviation-igmps-interface-base-config;
 
-			leaf-list outgoing-interface {
-				type oc-if:base-interface-ref;		
-				description
-					"Outgoing interfaces.";	
-			}	
-		}	
-	}
-									
-  grouping igmp-snooping-interface-top {    	
-		container interfaces {
-			list interface {
-			  key "name";
-			  
-			  leaf name {
-			    type leafref {
-			      path "../config/name";
-			    }
+    }
+
+    grouping network-instance-deviation-igmps-interface-top {
+        description
+         "Grouping IGMP Snooping configuration and operation state";
+        container interfaces {
+            description
+             "Container for IGMP snooping interface list";
+            list interface {
+                key "name";
+                description
+                 "List of IGMP Snooping interfaces";
+                
+                leaf name {
+                    type leafref {
+                        path "../config/name";
+                    }
 			    description
 			      "A reference to an identifier for this interface which
 			      acts as a key for this list";
 			  }
-			
 				container config {
 				  description
 				    "Configuration parameters relating to the associated
 				    interface";
-				  uses igmp-snooping-interface-config;
+				  uses network-instance-deviation-igmps-interface-config;
 				}
 				
       	container state {
@@ -192,37 +183,84 @@ module openconfig-network-instance-deviation {
       	  description
       	    "Operational state data for IGMP Snooping on each interface";
 
-      	  uses igmp-snooping-interface-attr;
-      	  
-					list static-multicast-group {
-						key "group source-addr";
-			      description
-			        "A Static Multicast group.";
-						
-			      leaf group {
-			        type inet:ipv4-address;
-			        description
-			          "Multicast group IPv4 address.";
-			      }
+      	  uses network-instance-deviation-igmps-interface-base-config;
 
-			      leaf source-addr {
-			        type inet:ipv4-address;
-			        description
-			          "Multicast source IPv4 address.";
-			      }
-			      
-			      leaf-list outgoing-interface {
-			      	type oc-if:base-interface-ref;
-				    	description
-			      		"Outgoing interfaces.";
-			    	}
-					}
-      	}				
-			}        
+        }
+        container staticgrps {
+            description
+             "Container for groups";
+                  list static-multicast-group {
+              key "group source-addr";
+              description
+                  "A Static Multicast group.";
+
+              leaf group {
+                  type leafref {
+                      path "../config/group";
+                  }
+                  description
+                      "Multicast group IPv4 address.";
+              }
+
+              leaf source-addr {
+                  type leafref {
+                      path "../config/source-addr";
+                  }
+                  description
+                      "Multicast source IPv4 address.";
+              }
+
+              container config {
+                  description
+                   "Container for static groups";
+              leaf group {
+                  type inet:ipv4-address;
+                  description
+                      "Multicast group IPv4 address.";
+              }
+
+              leaf source-addr {
+                  type inet:ipv4-address;
+                  description
+                      "Multicast source IPv4 address.";
+              }
+
+              leaf-list outgoing-interface {
+                  type oc-if:base-interface-ref;
+                  description
+                      "Outgoing interfaces.";
+              }
+              }
+              container state {
+                  config false;
+                description
+                 " Container for multicast groups";
+              leaf group {
+                  type inet:ipv4-address;
+                  description
+                      "Multicast group IPv4 address.";
+              }
+
+              leaf source-addr {
+                  type inet:ipv4-address;
+                  description
+                      "Multicast source IPv4 address.";
+              }
+              leaf-list outgoing-interface {
+                  type oc-if:base-interface-ref;
+                  description
+                      "Outgoing interfaces.";
+              }
+
+              }
+          }
+        }
+
+            }        
 		}
 	}
 	
-	grouping igmp-snooping-top {
+	grouping network-instance-deviation-igmps-top {
 		description
       "Top-level grouping for IGMP Snooping.";
       
@@ -230,12 +268,14 @@ module openconfig-network-instance-deviation {
 			description
 				"Top-level IGMP Snooping configuration and operational state.";
 				
-			uses igmp-snooping-interface-top;
+			uses network-instance-deviation-igmps-interface-top;
 		}
 	}
 		
 	augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol" {
-    uses igmp-snooping-top {
+    description
+     "Adds top level IGMP Snooping container";
+    uses network-instance-deviation-igmps-top {
       when "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/config/identifier = 'IGMP_SNOOPING'" {
         description
           "Include IGMP Snooping parameters only when the
