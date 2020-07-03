@@ -76,7 +76,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
 	loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  POST(create) on container, parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:as\":100,\"openconfig-network-instance:router-id\":\"1.1.1.1\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}"
 
        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
@@ -97,7 +97,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  POST(modify) on container, parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:as\":100,\"openconfig-network-instance:router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}"
        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"30"}}}
         t.Run("RFC - POST on container(modify no default)", processSetRequest(url, payload, "POST", false))
@@ -159,7 +159,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  POST(create) on list instance, parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
         payload = "{\"openconfig-network-instance:config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"openconfig-network-instance:bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.1.1\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true,\"openconfig-bgp-ext:network-import-check\":true}}}}"
        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
         t.Run("RFC - POST on list instance(create default)", processSetRequest(url, payload, "POST", false))
@@ -178,7 +178,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  POST(modify) on list instance, parent table present, modify entries  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
         payload = "{\"openconfig-network-instance:config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"openconfig-network-instance:bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true,\"openconfig-bgp-ext:network-import-check\":true}}}}"
        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"30"}}}
         t.Run("RFC - POST on list instance(modify no default)", processSetRequest(url, payload, "POST", false))
@@ -271,7 +271,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  Put(create) on container, parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.1.1\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
         t.Run("RFC - PUT on container(create default)", processSetRequest(url, payload, "PUT", false))
@@ -282,7 +282,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
 
         // Put(create) on list , parent table present Create with default values
 
-        prereq = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        prereq = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
         cleanuptbl = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
 
         // Setup - Prerequisite
@@ -290,7 +290,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  Put(create) on list parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol"
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
         expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
         t.Run("RFC - PUT on list(create default)", processSetRequest(url, payload, "PUT", false))
@@ -343,7 +343,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
 
         // Put(create) on list instance, parent table present Create with default values
 
-        prereq = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        prereq = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
         cleanuptbl = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
 
         // Setup - Prerequisite
@@ -351,7 +351,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  Put(create) on list instance parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol=BGP,bgp"
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
         expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
         t.Run("RFC - PUT on list(create default)", processSetRequest(url, payload, "PUT", false))
@@ -578,7 +578,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  Patch(create) on container, parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.1.1\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
         t.Run("RFC - PATCH on container(create default)", processSetRequest(url, payload, "PATCH", false))
@@ -599,7 +599,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  Patch(create) on container, parent table present, DB entry already exists  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.2.3\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.3","holdtime":"100","network_import_check":"true","keepalive":"160"}}}
         t.Run("RFC - PATCH on container(modify no default)", processSetRequest(url, payload, "PATCH", false))
@@ -611,7 +611,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
 
         // PATCH(create) on list , parent table present Create with default values
 
-        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
         cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
 
         // Setup - Prerequisite
@@ -619,7 +619,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  PATCH(create) on list parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol"
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
         expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
         t.Run("RFC - PATCH on list(create default)", processSetRequest(url, payload, "PATCH", false))
@@ -632,7 +632,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         // PATCH(modify) on list , parent table present Modify table entries
 
 	cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
-        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
         prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
 
         // Setup - Prerequisite
@@ -641,7 +641,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  PATCH(modify) on list parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol"
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.4.5\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
         expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.4.5","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
         t.Run("RFC - PATCH on list(modify no default)", processSetRequest(url, payload, "PATCH", false))
@@ -695,7 +695,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
 
         // PATCH(create) on list instance , parent table present Create with default values
 
-        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
         cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
 
         // Setup - Prerequisite
@@ -703,7 +703,8 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  PATCH(create) on list instance parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
+
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
         expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
         t.Run("RFC - PATCH on list instance(create default)", processSetRequest(url, payload, "PATCH", false))
@@ -716,7 +717,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         // PATCH(modify) on list instance, parent table present Modify table entries
 
         cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
-        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
         prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
 
         // Setup - Prerequisite
@@ -725,7 +726,8 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  PATCH(modify) on list instance parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
+
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.4.5\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
         expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.4.5","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
         t.Run("RFC - PATCH on list instance(modify no default)", processSetRequest(url, payload, "PATCH", false))
@@ -1143,7 +1145,7 @@ func Test_Rfc_Delete_Negative_Cases(t *testing.T) {
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 }
-
+/*
 func Test_Rfc_Get_Operation(t *testing.T) {
 
         // Get on OC nonexistent container 
@@ -1370,5 +1372,4 @@ func Test_Rfc_Get_Negative_Cases(t *testing.T) {
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 }
-
-
+*/
