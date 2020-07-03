@@ -410,7 +410,7 @@ var DbToYang_ptp_network_transport_xfmr FieldXfmrDbtoYang = func(inParams XfmrPa
 
 	_, field := filepath.Split(inParams.uri)
 	log.Info("DbToYang_ptp_network_transport_xfmr field: ", field)
-	value := data["PTP_CLOCK"][inParams.key].Field[field]
+	value := data["PTP_CLOCK"][inParams.key].Field["network-transport"]
 	result[field] = value
 	log.Info("DbToYang_ptp_network_transport_xfmr value: ", value)
 	return result, err
@@ -558,7 +558,7 @@ var DbToYang_ptp_clock_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (
 
 	_, field := filepath.Split(inParams.uri)
 	log.Info("DbToYang_ptp_clock_type_xfmr field: ", field)
-	value := data["PTP_CLOCK"][inParams.key].Field[field]
+	value := data["PTP_CLOCK"][inParams.key].Field["clock-type"]
 	result[field] = value
 	log.Info("DbToYang_ptp_clock_type_xfmr value: ", value)
 	return result, err
@@ -656,7 +656,7 @@ var DbToYang_ptp_domain_profile_xfmr FieldXfmrDbtoYang = func(inParams XfmrParam
 
 	_, field := filepath.Split(inParams.uri)
 	log.Info("DbToYang_ptp_domain_profile_xfmr field: ", field)
-	value := data["PTP_CLOCK"][inParams.key].Field[field]
+	value := data["PTP_CLOCK"][inParams.key].Field["domain-profile"]
 	result[field] = value
 	log.Info("DbToYang_ptp_domain_profile_xfmr value: ", value)
 	return result, err
@@ -747,7 +747,7 @@ var DbToYang_ptp_unicast_multicast_xfmr FieldXfmrDbtoYang = func(inParams XfmrPa
 
 	_, field := filepath.Split(inParams.uri)
 	log.Info("DbToYang_ptp_unicast_multicast_xfmr field: ", field)
-	value := data["PTP_CLOCK"][inParams.key].Field[field]
+	value := data["PTP_CLOCK"][inParams.key].Field["unicast-multicast"]
 	result[field] = value
 	log.Info("DbToYang_ptp_unicast_multicast_xfmr value: ", value)
 	return result, err
@@ -794,8 +794,8 @@ var DbToYang_ptp_udp6_scope_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (
 
 	_, field := filepath.Split(inParams.uri)
 	log.Info("DbToYang_ptp_udp6_scope_xfmr field: ", field)
-	log.Info("DbToYang_ptp_udp6_scope_xfmr data: ", data["PTP_CLOCK"][inParams.key].Field[field])
-	value, _ := strconv.ParseInt(strings.Replace(data["PTP_CLOCK"][inParams.key].Field[field], "0x", "", -1), 16, 64)
+	log.Info("DbToYang_ptp_udp6_scope_xfmr data: ", data["PTP_CLOCK"][inParams.key].Field["udp6-scope"])
+	value, _ := strconv.ParseInt(strings.Replace(data["PTP_CLOCK"][inParams.key].Field["udp6-scope"], "0x", "", -1), 16, 64)
 	result[field] = uint8(value)
 	log.Info("DbToYang_ptp_udp6_scope_xfmr value: ", value)
 	return result, err
