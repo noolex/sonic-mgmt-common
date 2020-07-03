@@ -18,7 +18,7 @@ module sonic-pim-show {
 	}
 
 	typedef show-pim-query-type {
-		description "Query type that specifies the various different ways to fetch the PIM-protocol information based on the various filters";
+		description "Query type that specifies various different ways to fetch the PIM-protocol information based on various filters";
 
 		type enumeration {
 			enum RPF {
@@ -51,7 +51,7 @@ module sonic-pim-show {
 				type show-pim-query-type;
 				mandatory true;
 				description
-					"Query type that specifies the various ways to fetch the PIM Protocol information based on the various filters.
+					"Query type that specifies various ways to fetch the PIM Protocol information based on various filters.
 					It represent the choice mentioned below. And then relevant attributes should be filled to fetch the PIM protocol information.
 					This is a mandatory parameter.";
 			}

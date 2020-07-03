@@ -23,6 +23,7 @@ func init () {
     XlateFuncBind("DbToYang_pim_nbrs_state_xfmr", DbToYang_pim_nbrs_state_xfmr)
     XlateFuncBind("DbToYang_pim_tib_state_xfmr", DbToYang_pim_tib_state_xfmr)
     XlateFuncBind("rpc_show_pim", rpc_show_pim)
+    XlateFuncBind("rpc_clear_pim", rpc_clear_pim)
 }
 
 func pim_exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
@@ -981,5 +982,109 @@ var rpc_show_pim RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     }
 
     result.Output.Status = pimOutput
+    return json.Marshal(&result)
+}
+
+func get_rpc_clear_pim_sub_cmd_for_all_interfaces (mapData map[string]interface{}) (bool, string, string) {
+    _allInterfaces, ok := mapData["all-interfaces"].(bool) ; if !ok {
+        return false, "all-interfaces mandatory attribute missing", ""
+    }
+
+    if !_allInterfaces {
+        return false, "all-interfaces attribute value should be true", ""
+    }
+
+    return true, "", "interfaces"
+}
+
+func get_rpc_clear_pim_sub_cmd_for_all_oil (mapData map[string]interface{}) (bool, string, string) {
+    _allOil, ok := mapData["all-oil"].(bool) ; if !ok {
+        return false, "all-oil mandatory attribute missing", ""
+    }
+
+    if !_allOil {
+        return false, "all-oil attribute value should be true", ""
+    }
+
+    return true, "", "oil"
+}
+
+func get_rpc_clear_pim_sub_cmd_ (mapData map[string]interface{}) (bool, string, string) {
+    configType, ok := mapData["config-type"].(string) ; if !ok {
+        err := "Mandatory parameter config-type is not present"
+        log.Info ("In get_rpc_clear_pim_sub_cmd_ : ", err)
+        return false, err, ""
+    }
+
+    log.Info("In get_rpc_clear_pim_sub_cmd_ ==> configType : ", configType)
+    switch configType {
+        case "ALL-INTERFACES":
+            return get_rpc_clear_pim_sub_cmd_for_all_interfaces (mapData)
+        case "ALL-OIL":
+            return get_rpc_clear_pim_sub_cmd_for_all_oil (mapData)
+        default:
+            err := "Invalid value in config-type attribute : " + configType
+            log.Info ("In get_rpc_clear_pim_sub_cmd_ : ", err)
+            return false, err, ""
+    }
+}
+
+var rpc_clear_pim RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_clear_pim")
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC clear pim, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-pim-clear:output"`
+    }
+
+    log.Info("In rpc_clear_pim, RPC data:", mapData)
+
+    input := mapData["sonic-pim-clear:input"]
+    mapData = input.(map[string]interface{})
+
+    vrf_name := "default"
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = value
+    }
+
+    af_str := "ip"
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value != "IPV4_UNICAST" {
+            dbg_err_str := "clear pim RPC execution failed ==> Invalid value in address-family attribute"
+            log.Info("In rpc_clear_pim : ", dbg_err_str)
+            return nil, errors.New(dbg_err_str)
+        }
+    }
+
+    ok, err_str, subCmd := get_rpc_clear_pim_sub_cmd_ (mapData) ; if !ok {
+        dbg_err_str := "clear pim RPC execution failed ==> " + err_str
+        log.Info("In rpc_clear_pim, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
+
+    cmd := "clear " + af_str + " pim vrf " + vrf_name + " " + subCmd
+    cmd = strings.TrimSuffix(cmd, " ")
+
+    pimOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        dbg_err_str := "FRR execution failed ==> " + err_str
+        log.Info("In rpc_clear_pim, ", dbg_err_str)
+        return nil, errors.New("Internal error!")
+    }
+
+    if len(pimOutput) != 0 {
+        result.Output.Status = pimOutput
+    } else {
+        result.Output.Status = "Success"
+    }
+
     return json.Marshal(&result)
 }

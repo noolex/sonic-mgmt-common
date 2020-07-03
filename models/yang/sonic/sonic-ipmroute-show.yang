@@ -18,7 +18,7 @@ module sonic-ipmroute-show {
 	}
 
 	typedef show-ipmroute-query-type {
-		description "Query type that specifies the various different ways to fetch the IP Multicast routes information based on the various filters";
+		description "Query type that specifies various different ways to fetch the IP Multicast routes information based on various filters";
 
 		type enumeration {
 			enum SUMMARY {
@@ -51,7 +51,7 @@ module sonic-ipmroute-show {
 				type show-ipmroute-query-type;
 				mandatory true;
 				description
-					"Query type that specifies the various ways to fetch the IP Multicast routes information based on the various filters.
+					"Query type that specifies various ways to fetch the IP Multicast routes information based on various filters.
 					It represent the choice mentioned below. And then relevant attributes should be filled to fetch the IP Multicast routes.
 					This is a mandatory parameter.";
 			}
