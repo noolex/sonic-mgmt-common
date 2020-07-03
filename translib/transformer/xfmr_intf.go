@@ -1507,7 +1507,7 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                 return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
             }
             IntfMap := IntfMapObj.Field
-            // Case-1: If there is one last attribute present under "VLAN_INTERFACE|<Vlan>" (or)
+            // Case-1: If there is one last attribute present under "INTERFACE|<Interface>" (or)
             // Case-2: If deletion at parent container(subinterface)
             if len(IntfMap) == 1 || subIntf == nil {
                 subIntfmap[tblName][ifName] = data
