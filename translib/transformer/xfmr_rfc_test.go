@@ -67,16 +67,54 @@ func Test_Rfc_Post_Operation(t *testing.T) {
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
 
+        // POST(create) on container, parent table present, default value creation
 
-        // Post(create) on list instance, parent table present
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+        cleanuptbl := map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
 
-        cleanuptbl2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":""}}
-	prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
-        prereq2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"NULL":"NULL"}}}
+        // Setup - Prerequisite
+	loadConfigDB(rclient, prereq1)
+
+        fmt.Println("++++++++++++++  POST(create) on container, parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        payload = "{\"openconfig-network-instance:as\":100,\"openconfig-network-instance:router-id\":\"1.1.1.1\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}"
+
+       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        t.Run("RFC - POST on container(create default)", processSetRequest(url, payload, "POST", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify POST(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+
+       // POST(modify) on container, parent table present, default value creation
+
+       cleanuptbl = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+       prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+       prereq2 := map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"80","network_import_check":"true","keepalive":"30"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
-        loadConfigDB(rclient, prereq2)
+
+        fmt.Println("++++++++++++++  POST(modify) on container, parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        payload = "{\"openconfig-network-instance:as\":100,\"openconfig-network-instance:router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}"
+       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"30"}}}
+        t.Run("RFC - POST on container(modify no default)", processSetRequest(url, payload, "POST", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify POST(modify no default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+
+        // Post(create) on list instance, parent table present
+
+        cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+	cleanuptbl2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":""}}
+	prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
 
 	fmt.Println("++++++++++++++  POST(create) - uri: list instance, message-body: leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server[address=1.1.1.1]"
@@ -92,6 +130,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
 
         // Post(update) on list instance, parent table present, overriding "timeout":"40" with "timeout":"30""
 
+	prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
         prereq2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"NULL":"NULL", "timeout":"40"}}}
 
         // Setup - Prerequisite
@@ -110,45 +149,79 @@ func Test_Rfc_Post_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl2)
 
 
-/*
-        // Post(create) on container, parent table pressent, default value 
+        // POST(create) on list instance, parent table present, default value creation
 
-        cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"default":""}}
-        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"default":map[string]interface{}{"enabled":"true"}}}
-        prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"default":map[string]interface{}{"NULL":"NULL"}}}
+        cleanuptbl = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
+        loadConfigDB(rclient, prereq1)
+
+        fmt.Println("++++++++++++++  POST(create) on list instance, parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp"
+        payload = "{\"openconfig-network-instance:config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"openconfig-network-instance:bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.1.1\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true,\"openconfig-bgp-ext:network-import-check\":true}}}}"
+       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        t.Run("RFC - POST on list instance(create default)", processSetRequest(url, payload, "POST", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify POST(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+       // POST(modify) on list instance, parent table present, modify db entries, do not set default values
+
+       prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+       prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"80","network_import_check":"true","keepalive":"30"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
 
-        fmt.Println("++++++++++++++  POST - uri: container, default value   +++++++++++++")
-        url = ""
-        payload = ""
-        expected = 
-        t.Run("RFC - POST(create) on container, default value", processSetRequest(url, payload, "POST", false))
+        fmt.Println("++++++++++++++  POST(modify) on list instance, parent table present, modify entries  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp"
+        payload = "{\"openconfig-network-instance:config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"openconfig-network-instance:bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true,\"openconfig-bgp-ext:network-import-check\":true}}}}"
+       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"30"}}}
+        t.Run("RFC - POST on list instance(modify no default)", processSetRequest(url, payload, "POST", false))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify POST(create) on container, default value", verifyDbResult(rclient, "", expected, false))
+        t.Run("RFC - Verify POST(modify no default) on list instance", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
         // Teardown
-        unloadConfigDB(rclient, cleanuptbl1)
-
-
-        // Post(create) on list instance, parent table present, default value
-
-         // Setup - Prerequisite
-        loadConfigDB(rclient, prereq1)
-        loadConfigDB(rclient, prereq2)
-
-        fmt.Println("++++++++++++++  POST - uri: list instance, default value   +++++++++++++")
-        url = ""
-        payload = ""
-        expected =
-        t.Run("RFC - POST(create) on list instance, default value", processSetRequest(url, payload, "POST", false))
-        time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify POST(create) on list, default value", verifyDbResult(rclient, "", expected, false))
-        // Teardown
-        unloadConfigDB(rclient, cleanuptbl1)
-*/
+        unloadConfigDB(rclient, cleanuptbl)
 }
+
+func Test_Rfc_Post_Negative_Cases(t *testing.T) {
+
+        // Post(404 error) on container, parent table not present
+        cleanuptbl1 := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+        unloadConfigDB(rclient, cleanuptbl1)
+
+        fmt.Println("++++++++++++++  Post(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
+        url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
+        payload := "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 10, \"openconfig-syster-ext:retransmit-attempts\": 10}"
+        expected_err :=  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        t.Run("RFC - POST(404 error) on container", processSetRequest(url, payload, "POST", true, expected_err))
+
+        cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        unloadConfigDB(rclient, cleanuptbl1)
+        // Post(404 error) on list instance, parent table not present
+        fmt.Println("++++++++++++++  POST(404 error) - uri: list instance, message-body: leaf and leaf-list  +++++++++++++")
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server[address=1.1.1.1]"
+        payload = "{\"openconfig-system:config\":{\"timeout\":30}}"
+        t.Run("RFC - POST(404 error) on list instance", processSetRequest(url, payload, "POST", true, expected_err))
+
+
+        // Post(404 error) on list instance, list instance nonexistent
+
+        prereq := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":""}}
+        unloadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  POST with uri: list instance, but the list instance not existent, return 404 +++++++++++++")
+        url = "/openconfig-interfaces:interfaces/interface[name=Vlan1]/subinterfaces/subinterface[index=0]"
+        payload = "{\"openconfig-interfaces:config\":{\"index\":0},\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"config\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}}}"
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: VLAN|Vlan1"}
+        t.Run("RFC -  POST(no list instance) on list instance", processSetRequest(url, payload, "POST", true, expected_err))
+}
+
 
 func Test_Rfc_Put_Operation(t *testing.T) {
 
@@ -308,7 +381,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl2)
 
 
-        // Put(modify) on list instance, parent table and subscribe subtree present, overriding overriding "timeout":"40" with "timeout":"30"
+        // Put(modify) on list instance, parent table present, overriding overriding "timeout":"40" with "timeout":"30"
 
         prereq2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"timeout":"40"}}}
 
@@ -400,26 +473,59 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl1)
 
 
-   /*     // Put on container, parent table present, default value fill
+}
 
-        cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"default":""}}
-        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"default":map[string]interface{}{"NULL":"NULL"}}}
-        prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"default":map[string]interface{}{"":""}}}
 
-        // Setup - Prerequisite
-        unloadConfigDB(rclient, cleanuptbl1)
-        loadConfigDB(rclient, prereq1)
-        loadConfigDB(rclient, prereq2)
+func Test_Rfc_Put_Negative_Cases(t *testing.T) {
 
-        fmt.Println("++++++++++++++  PUT - uri: container, default value fill  +++++++++++++")
-        url = ""
-        payload = ""
-        expected =
-        t.Run("RFC - PUT on container, default value fill", processSetRequest(url, payload, "PUT", false))
-        time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify PUT on container, default value fill", verifyDbResult(rclient, "BGP_GLOBALS|default", expected, false))
-        // Teardown
-        unloadConfigDB(rclient, cleanuptbl1) */
+        // Put(404 error) on container parent table not present
+	cleanuptbl := map[string]interface{}{"TACACS":map[string]interface{}{"global":""}}
+        unloadConfigDB(rclient, cleanuptbl)
+
+        fmt.Println("++++++++++++++  PUT(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
+        url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
+        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+        expected_err :=  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        t.Run("RFC - PUT on container(404 error)", processSetRequest(url, payload, "PUT", true, expected_err))
+
+
+        // Put(404 error) on list, parent table not present
+
+        fmt.Println("++++++++++++++  PUT(404 error) uri: list, message-body: list, instance, leaf and leaf-list  +++++++++++++")
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server"
+        payload = "{\"openconfig-system:config\":{\"timeout\":40}}"
+        t.Run("RFC - PUT(404 error) on list", processSetRequest(url, payload, "PUT", true, expected_err))
+
+
+       // Put(404 error) on list instance, parent table not present
+
+        fmt.Println("++++++++++++++  PUT(404 error) uri: list instance, message-body: list, instance, leaf and leaf-list  +++++++++++++")
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server[address=1.1.1.1]"
+        payload = "{\"openconfig-system:config\":{\"timeout\":40}}"
+        t.Run("RFC - PUT(404 error) on list instance", processSetRequest(url, payload, "PUT", true, expected_err))
+
+
+        // Put(404 error) on leaf, parent table not present
+	cleanuptbl = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
+        unloadConfigDB(rclient, cleanuptbl)
+
+        fmt.Println("++++++++++++++  PUT(404 error) uri: leaf, message-body: leaf  +++++++++++++")
+        url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
+        payload = "{ \"openconfig-bgp-policy:set-local-pref\": 7}"
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: ROUTE_MAP_SET|MAP1"}
+        t.Run("RFC - PUT(404 error) on leaf", processSetRequest(url, payload, "PUT", true, expected_err))
+
+
+        // Put(404 error) on leaf-list, parent table not present
+	cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
+        unloadConfigDB(rclient, cleanuptbl)
+
+        fmt.Println("++++++++++++++  PUT(404 error) uri: leaf-list, message-body: leaf-list  +++++++++++++")
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
+        payload = "{ \"ietf-snmp:include\": [ \"1.2.3.5.*\",\"1.3.6.*\", \"1.4.6.*\"]}"
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: SNMP_SERVER_VIEW|TestVacmView1"}
+        t.Run("RFC - PUT(404 error) on leaf-list", processSetRequest(url, payload, "PUT", true, expected_err))
+
 }
 
 func Test_Rfc_Patch_Operation(t *testing.T) {
@@ -461,15 +567,98 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl1)
 
 
-        // Patch(create) on list, parent table present
+        // Patch(create) on container, parent table present, default value creation
 
-        cleanuptbl2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":""}}
-        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
-        prereq2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"NULL":"NULL"}}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+	prereq2 := map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+	cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
+
+        fmt.Println("++++++++++++++  Patch(create) on container, parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.1.1\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
+       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        t.Run("RFC - PATCH on container(create default)", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PATCH(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+
+
+        // Patch(modify) on container, parent table present, DB Instance already exists. Do not create defaults
+
+	cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"100","network_import_check":"true","keepalive":"160"}}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+
+        fmt.Println("++++++++++++++  Patch(create) on container, parent table present, DB entry already exists  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp/bgp/global/config"
+        payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.2.3\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
+       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.3","holdtime":"100","network_import_check":"true","keepalive":"160"}}}
+        t.Run("RFC - PATCH on container(modify no default)", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PATCH(modify no default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+
+
+        // PATCH(create) on list , parent table present Create with default values
+
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl1)
+        loadConfigDB(rclient, prereq1)
+
+        fmt.Println("++++++++++++++  PATCH(create) on list parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol"
+        payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
+        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        t.Run("RFC - PATCH on list(create default)", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PATCH(create default) on list", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+
+
+        // PATCH(modify) on list , parent table present Modify table entries
+
+	cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl1)
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+
+        fmt.Println("++++++++++++++  PATCH(modify) on list parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol"
+        payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.4.5\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
+        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.4.5","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
+        t.Run("RFC - PATCH on list(modify no default)", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PATCH(modify no default) on list", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+
+
+        // Patch(create) on list, parent table present
+
+        cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+	cleanuptbl2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":""}}
+        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  PATCH(create) uri: list, message-body: list, instance, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server"
@@ -485,6 +674,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
 
         // Patch(merge) on list, parent table and subscribe subtree present, overriding "timeout":"40" with "timeout":"30"
 
+        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
         prereq2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"timeout":"40"}}}
 
         // Setup - Prerequisite
@@ -503,13 +693,57 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl2)
 
 
-        // Patch(create) on list instance, parent table present       
+        // PATCH(create) on list instance , parent table present Create with default values
 
-        prereq2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"NULL":"NULL"}}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
 
         // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl1)
+        loadConfigDB(rclient, prereq1)
+
+        fmt.Println("++++++++++++++  PATCH(create) on list instance parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp"
+        payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
+        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        t.Run("RFC - PATCH on list instance(create default)", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PATCH(create default) on list instance", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+
+
+        // PATCH(modify) on list instance, parent table present Modify table entries
+
+        cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+        prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl1)
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
+
+        fmt.Println("++++++++++++++  PATCH(modify) on list instance parent table present, default value creation  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance=Vrf12/protocols/protocol=BGP,bgp"
+        payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.4.5\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
+        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.4.5","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
+        t.Run("RFC - PATCH on list instance(modify no default)", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PATCH(modify no default) on list instance", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+
+
+        // Patch(create) on list instance, parent table present       
+
+        cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+        cleanuptbl2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":""}}
+        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl2)
+        loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  PATCH(create) uri: list instance, message-body: list instance, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server[address=1.1.1.1]"
@@ -523,8 +757,11 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl2)
 
 
-        // Patch(merge) on list instance, parent table and subscribe subtree present, overriding "timeout":"40" with "timeout":"30"
+        // Patch(merge) on list instance, parent table, overriding "timeout":"40" with "timeout":"30"
 
+        cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+        cleanuptbl2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":""}}
+        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
         prereq2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"timeout":"40"}}}
 
         // Setup - Prerequisite
@@ -607,7 +844,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  PATCH(merge) uri: leaf-list, message-body: leaf-list  +++++++++++++")
         url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
-        payload = "{ \"ietf-snmp:include\": [ \"1.2.3.5.*\",\"1.3.6.*\", \"1.4.6.*\"]}"
+        payload = "{ \"ietf-snmp:include\": [ \"1.4.6.*\"]}"
         expected = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "1.2.3.5.*,1.3.6.*,1.4.6.*"}}}
         t.Run("RFC - PATCH(merge) on leaf-list", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
@@ -615,27 +852,66 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
 
+}
 
-       /*     // Patch on container, parent table present, default value fill
+func Test_Rfc_Patch_Negative_Cases(t *testing.T) {
 
-        cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"default":""}}
-        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"default":map[string]interface{}{"NULL":"NULL"}}}
-        prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"default":map[string]interface{}{"":""}}}
+        // Patch(404 error) on container parent table not present
+        cleanuptbl1 := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
 
-        // Setup - Prerequisite
         unloadConfigDB(rclient, cleanuptbl1)
-        loadConfigDB(rclient, prereq1)
-        loadConfigDB(rclient, prereq2)
 
-        fmt.Println("++++++++++++++  PATCH - uri: container, default value fill  +++++++++++++")
-        url = ""
-        payload = ""
-        expected =
-        t.Run("RFC - PATCH on container, default value fill", processSetRequest(url, payload, "PATCH", false))
-        time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify PATCH on container, default value fill", verifyDbResult(rclient, "BGP_GLOBALS|default", expected, false))
-        // Teardown
-        unloadConfigDB(rclient, cleanuptbl1) */
+        fmt.Println("++++++++++++++  PATCH(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
+        url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
+        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+        expected_err :=  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        t.Run("RFC - PATCH on container(404 error)", processSetRequest(url, payload, "PATCH", true, expected_err))
+
+
+        // Patch(404 error) on list, parent table not present
+
+        cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+        unloadConfigDB(rclient, cleanuptbl1)
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        fmt.Println("++++++++++++++  PATCH(404 error) uri: list, message-body: list, instance, leaf and leaf-list  +++++++++++++")
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server"
+        payload = "{\"openconfig-system:server\":[{\"address\":\"1.1.1.1\",\"config\":{\"timeout\":40}}]}"
+        t.Run("RFC - PATCH(404 error) on list", processSetRequest(url, payload, "PATCH", true, expected_err))
+
+
+       // Patch(404 error) on list instance, parent table not present
+
+        cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+        unloadConfigDB(rclient, cleanuptbl1)
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        fmt.Println("++++++++++++++  PATCH(404 error) uri: list instance, message-body: list, instance, leaf and leaf-list  +++++++++++++")
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server[address=1.1.1.1]"
+        payload = "{\"openconfig-system:server\":[{\"address\":\"1.1.1.1\",\"config\":{\"timeout\":40}}]}"
+        t.Run("RFC - PATCH(404 error) on list instance", processSetRequest(url, payload, "PATCH", true, expected_err))
+
+
+        // Patch(404 error) on leaf, parent table not present
+        cleanuptbl1 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
+        unloadConfigDB(rclient, cleanuptbl1)
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: ROUTE_MAP_SET|MAP1"}
+
+        fmt.Println("++++++++++++++  PATCH(404 error) uri: leaf, message-body: leaf  +++++++++++++")
+        url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
+        payload = "{ \"openconfig-bgp-policy:set-local-pref\": 7}"
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: ROUTE_MAP_SET|MAP1"}
+        t.Run("RFC - PATCH(404 error) on leaf", processSetRequest(url, payload, "PATCH", true, expected_err))
+
+
+        // Patch(404 error) on leaf-list, parent table not present
+
+        cleanuptbl1 = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
+        unloadConfigDB(rclient, cleanuptbl1)
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: SNMP_SERVER_VIEW|TestVacmView1"}
+        fmt.Println("++++++++++++++  PATCH(404 error) uri: leaf-list, message-body: leaf-list  +++++++++++++")
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
+        payload = "{ \"ietf-snmp:include\": [ \"1.2.3.5.*\",\"1.3.6.*\", \"1.4.6.*\"]}"
+        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: SNMP_SERVER_VIEW|TestVacmView1"}
+        t.Run("RFC - PATCH(404 error) on leaf-list", processSetRequest(url, payload, "PATCH", true, expected_err))
 }
 
 func Test_Rfc_Delete_Operation(t *testing.T) {
@@ -645,6 +921,7 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
         cleanuptbl1 := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
         prereq1 := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","src_ip":"4.4.4.4","timeout":"20"}}}
 
+	// TODO: Find container delete new case
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
 
@@ -733,6 +1010,7 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
 
         // Delete on leaf-list instance, data present in DB
 
+        prereq1 = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "1.2.3.4.*,1.3.4.*"}}}
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
 
@@ -749,6 +1027,19 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
 func Test_Rfc_Delete_Negative_Cases(t *testing.T) {
 
 
+       /* expected return code - 404(Not Found) */
+
+        // Delete on list instance, data not present in DB
+
+        fmt.Println("++++++++++++++  DELETE with uri: list instance not existent +++++++++++++")
+        url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server"
+        expected_err :=  tlerr.NotFoundError{Format:"Entry not found"}
+        t.Run("RFC - Delete on list",  processDeleteRequest(url, true, expected_err))
+        time.Sleep(1 * time.Second)
+
+
+        /* expected return code - 204(No Content), note we don't return 404 below cases. */
+
         // Delete on container, data not present in DB
 
         cleanuptbl := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
@@ -758,7 +1049,7 @@ func Test_Rfc_Delete_Negative_Cases(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  DELETE uri container, data not present in DB  +++++++++++++")
-        url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
         t.Run("RFC - Delete on container, data not present in DB", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify Delete on container, data not present in DB", verifyDbResult(rclient, "TACPLUS|global", prereq, false))
@@ -988,4 +1279,96 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         // Get on a leaf/field, parent list instance exists but field exist in DB (Sonic YANG)  
 
 }
+
+
+func Test_Rfc_Get_Negative_Cases(t *testing.T) {
+
+        // Get on list instance, parent list instance nonexistent
+
+        cleanuptbl := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":""}}
+        prereq := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":map[string]interface{}{"vlanid":"1"}}}
+
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  GET with uri list instance: parent list instance nonexistent +++++++++++++")
+        url := "/openconfig-network-instance:network-instances/network-instance[name=Vrfvrf]/protocols/protocol[identifier=IGMP_SNOOPING][name=IGMP-SNOOPING]/openconfig-network-instance-deviation:igmp-snooping/interfaces/interface[name=Vlan1]"
+        json_expected := "{}"
+        expected_err :=  tlerr.NotFoundError{Format:"Entry not found"}
+        t.Run("Verify Get on list instance parent list instance nonexistent", processGetRequest(url, json_expected, true, expected_err))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+
+        // Get on list instance, child list instance nonexistent
+
+        prereq = map[string]interface{}{"VRF":map[string]interface{}{"default":map[string]interface{}{"enabled":"true"}}}
+
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  GET with uri list instance: child list instance nonexistent +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance[name=default]/protocols/protocol[identifier=IGMP_SNOOPING][name=IGMP-SNOOPING]/openconfig-network-instance-deviation:igmp-snooping/interfaces/interface[name=Vlan1]"
+        json_expected = "{}"
+        expected_err =  tlerr.NotFoundError{Format:"Entry not found"}
+        t.Run("Verify Get on list instance child list instance nonexistent", processGetRequest(url, json_expected, true, expected_err))
+
+
+        loadConfigDB(rclient, cleanuptbl)
+
+
+        // Get on container, parent list instance nonexistent
+
+        fmt.Println("++++++++++++++  GET with uri container: parent list instance nonexistent +++++++++++++")
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]/config"
+        json_expected = "{}"
+        expected_err =  tlerr.NotFoundError{Format:"Entry not found"}
+        t.Run("Verify Get on container parent list instance nonexistent", processGetRequest(url, json_expected, true, expected_err))
+
+
+        // Get on leaf-list instance, leaf-list instance nonexistent
+
+        cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
+        prereq =  map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "1.2.3.5.*,1.3.6.*"}}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  GET with uri leaf-list, leaf-list instance nonexistent +++++++++++++")
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.3.4.*]"
+        json_expected = "{}"
+        t.Run("Verify Get on leaf-list instance nonexistent", processGetRequest(url, json_expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+
+        // Get on leaf-list instance, leaf-list field nonexistent
+
+        cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
+        prereq =  map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"NULL": "NULL"}}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  GET with uri leaf-list, leaf-list field nonexistent +++++++++++++")
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.3.4.*]"
+        json_expected = "{}"
+        t.Run("Verify Get on leaf-list, leaf-list field nonexistent ", processGetRequest(url, json_expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+
+        // Get on leaf, leaf field nonexistent
+        cleanuptbl = map[string]interface{}{"RADIUS":map[string]interface{}{"global":""}}
+        prereq = map[string]interface{}{"RADIUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  GET with uri leaf, leaf field nonexistent +++++++++++++")
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]/config/openconfig-system-ext:timeout"
+        json_expected = "{}"
+        t.Run("Verify Get on leaf, leaf field nonexistent", processGetRequest(url, json_expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
 
