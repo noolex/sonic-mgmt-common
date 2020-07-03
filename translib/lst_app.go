@@ -819,24 +819,50 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
 			if err != nil {
 				return err
 			}
+
+            /* Convert to UI names */
+            upPorts := []string{}
+            for _, upIntf := range grpData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
+                uiName := *utils.GetUINameFromNativeName(&upIntf)
+                upPorts = append(upPorts, uiName)
+                app.intfUpstreamCfgTblMap[uiName] = append(app.intfUpstreamCfgTblMap[upIntf], k.Comp[0])
+            }
+            grpData.SetList(INTF_TRACK_FIELD_UPSTREAM, upPorts)
+
+            downPorts := []string{}
+            for _, downIntf := range grpData.GetList(INTF_TRACK_FIELD_DOWNSTREAM) {
+                uiName := *utils.GetUINameFromNativeName(&downIntf)
+                downPorts = append(downPorts, uiName)
+            }
+            grpData.SetList(INTF_TRACK_FIELD_DOWNSTREAM, downPorts)
+
+            /* Convert State DB to UI names */
 			grpStateData, stErr := dbs[db.StateDB].GetEntry(app.intfTrackStTs, k)
 			if stErr != nil {
 				return stErr
 			}
 
+            upPorts = []string{}
+            for _, upIntf := range grpStateData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
+                uiName := *utils.GetUINameFromNativeName(&upIntf)
+                upPorts = append(upPorts, uiName)
+            }
+            grpStateData.SetList(INTF_TRACK_FIELD_UPSTREAM, upPorts)
+
+            downPorts = []string{}
+            for _, downIntf := range grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM) {
+                uiName := *utils.GetUINameFromNativeName(&downIntf)
+                downPorts = append(downPorts, uiName)
+                app.intfDownstreamCfgTblMap[uiName] = k.Comp[0]
+            }
+            grpStateData.SetList(INTF_TRACK_FIELD_DOWNSTREAM, downPorts)
+
 			app.intfTrackCfgTblMap[k.Comp[0]] = grpStateData
+            all_intf = append(all_intf, grpData.GetList(INTF_TRACK_FIELD_UPSTREAM)...)
+            all_intf = append(all_intf, grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM)...)
 
-			for _, upIntf := range grpData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
-				app.intfUpstreamCfgTblMap[upIntf] = append(app.intfUpstreamCfgTblMap[upIntf], k.Comp[0])
-				all_intf = append(all_intf, upIntf)
-			}
-
-			for _, dwnIntf := range grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM) {
-				app.intfDownstreamCfgTblMap[dwnIntf] = k.Comp[0]
-				all_intf = append(all_intf, dwnIntf)
-			}
-			log.Info(app.intfUpstreamCfgTblMap)
-			log.Info(app.intfDownstreamCfgTblMap)
+			log.Infof("Upstream:%v", app.intfUpstreamCfgTblMap)
+			log.Infof("Downstream:%v", app.intfDownstreamCfgTblMap)
 		}
 
 		if nil == root.Interfaces.Interface || len(root.Interfaces.Interface) == 0 {

@@ -23,6 +23,11 @@ module sonic-tam-drop-monitor {
     description
         "SONIC TAM DROP MONITOR YANG";
 
+    revision 2020-07-01 {
+        description
+            "Added leaf string length correction changes for YANG module.";
+    }
+
     revision 2019-11-28 {
         description
             "Initial revision.";
@@ -150,7 +155,10 @@ module sonic-tam-drop-monitor {
 
                 leaf acl-table-name {
 			mandatory true;
-			type string;
+			type string {
+				pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+				length 1..32;
+			}
 
 		        description
 			        "Parameter to map acl table to the flow.";
@@ -158,7 +166,10 @@ module sonic-tam-drop-monitor {
 
                 leaf acl-rule-name {
 			mandatory true;
-			type string;
+			type string {
+				pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+				length 1..32;
+			}
 
 		        description
 			        "Parameter to map acl rule to the flow.";
@@ -166,7 +177,7 @@ module sonic-tam-drop-monitor {
 
 		leaf sample {
 			type string {
-				pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+				pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
 				length 1..32;
 			}
 
@@ -176,7 +187,7 @@ module sonic-tam-drop-monitor {
 
 		leaf collector-name {
 			type string {
-				pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+				pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
 				length 1..32;
 			}
 

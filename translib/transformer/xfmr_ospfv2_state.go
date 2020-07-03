@@ -6,10 +6,9 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "fmt"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/openconfig/ygot/ygot"
-    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "encoding/json"
-    "net"
     log "github.com/golang/glog"
 )
 
@@ -40,6 +39,8 @@ func ospfv2_fill_only_global_state (output_state map[string]interface{},
     var ospfv2One bool = true
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Global State"
+
+    log.Infof("ospfv2_fill_only_global_state - start")
 
     ospfv2Gbl_obj = ospfv2_obj.Global
     if ospfv2Gbl_obj == nil {
@@ -151,6 +152,8 @@ func ospfv2_fill_global_timers_spf_state (output_state map[string]interface{},
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Global State"
 
+    log.Infof("ospfv2_fill_global_timers_spf_state - start")
+
     ospfv2Gbl_obj = ospfv2_obj.Global
     if ospfv2Gbl_obj == nil {
         log.Errorf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
@@ -220,6 +223,8 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
     var ospfv2One bool = true
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF Route Table"
+
+    log.Infof("ospfv2_fill_route_table - start")
 
     ospfv2RouteTables_obj = ospfv2_obj.RouteTables
     if ospfv2RouteTables_obj == nil {
@@ -380,6 +385,8 @@ func ospfv2_fill_global_timers_lsa_generation_state (output_state map[string]int
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Global State"
 
+    log.Infof("ospfv2_fill_neighbors_state - start")
+
     ospfv2Gbl_obj = ospfv2_obj.Global
     if ospfv2Gbl_obj == nil {
         log.Errorf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
@@ -516,6 +523,8 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Areas-Area State"
     var areaNameStr string
+
+    log.Infof("ospfv2_fill_area_state - start")
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
@@ -706,6 +715,8 @@ func ospfv2_fill_area_stub_state(ospfv2Area_obj *ocbinds.OpenconfigNetworkInstan
     cmn_log := "GET: Stub  State for area "
     var stubState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Stub_State
 
+    log.Infof("ospfv2_fill_area_stub_state - start")
+
     if (nil == ospfv2Area_obj.Stub) {
         log.Info("Stub information not present in area")
         ygot.BuildEmptyTree (ospfv2Area_obj.Stub)
@@ -757,6 +768,8 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
 
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Neighbors State"
+
+    log.Infof("ospfv2_fill_neighbors_state - start area %s intf %s vrf %v", area_id, intf_name, vrfName)
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
@@ -822,7 +835,8 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                         continue;
                     }
                 }
-                if _intf_name,ok := nbr_info["ifaceName"].(string); ok {
+                if _ntv_intf_name,ok := nbr_info["ifaceName"].(string); ok {
+                    _intf_name, _ := ospfGetUIIntfName(_ntv_intf_name)
                     if _intf_name != intf_name {
                         log.Infof("Neighbor interface Name %s does not match %s ,skipping this neighbor", _intf_name, intf_name)
                         continue;
@@ -849,6 +863,7 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                     ygot.BuildEmptyTree(ospfv2NeighborState_obj)
                     ospfv2Neighbor_obj.State = ospfv2NeighborState_obj
                 }    
+                
                 ospfv2NeighborState_obj.InterfaceName = &intf_name
 
                 if _area_id,ok := nbr_info["areaId"].(string); ok {
@@ -995,6 +1010,9 @@ func ospfv2_fill_interface_vlink_state(intf_info map[string]interface{},
     var ospfv2AreaId ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_AreaId_Union_String
     var interfaceName string = intf_name
     log.Infof("%s", cmn_log)
+
+    log.Infof("ospfv2_fill_interface_vlink_state - start intf_name %s vrfName %v", intf_name, vrfName)
+
     if (nil == ospfv2Area_obj.VirtualLinks) {
         log.Info("Virtual Links information not present in area")
         return oper_err
@@ -1196,6 +1214,8 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
     var ospfv2AreaId ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_State_AreaId_Union_String
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Interface State"
+
+    log.Infof("ospfv2_fill_interface_state - start area %s intf_name %s vrfName %v", area_id, intf_name, vrfName)
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
@@ -1407,6 +1427,9 @@ func ospfv2_fill_interface_message_stats (output_state map[string]interface{},
     var ospfv2IntfStats_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_MessageStatistics
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Interface Message Statistics"
+
+    log.Infof("ospfv2_fill_interface_message_stats - start ")
+
     ospfv2IntfStats_obj = ospfv2Interface_obj.MessageStatistics
     if ospfv2IntfStats_obj == nil {
         log.Infof("message statistics under Interface is  missing, add new Interface msg statistics for interface %s", intf_name)
@@ -1422,7 +1445,8 @@ func ospfv2_fill_interface_message_stats (output_state map[string]interface{},
     
     for _,value := range output_state {
         interfaces_info := value.(map[string]interface{})
-        for key, value := range interfaces_info {
+        for ntv_key, value := range interfaces_info {
+            key, _ := ospfGetUIIntfName(ntv_key)
             if(key != intf_name) {
                 log.Infof("skipping interface %s as stats needed for interface %s ", key, intf_name)
                 continue
@@ -1487,6 +1511,9 @@ func ospfv2_fill_interface_vlink_state_traffic (intf_info map[string]interface{}
     var ospfv2VlinkState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State
     var ospfv2VlinkStats_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_MessageStatistics
     log.Infof("%s", cmn_log)
+
+    log.Infof("ospfv2_fill_interface_vlink_state_traffic - start")
+
     if (nil == ospfv2Area_obj.VirtualLinks) {
         log.Info("Virtual Links information not present in area")
         return nil, oper_err
@@ -1524,7 +1551,8 @@ func ospfv2_fill_interface_vlink_state_traffic (intf_info map[string]interface{}
     }
     for _,value := range output_state {
         interfaces_info := value.(map[string]interface{})
-        for key, value := range interfaces_info {
+        for ntv_key, value := range interfaces_info {
+            key, _ := ospfGetUIIntfName(ntv_key)
             if(key != intf_name) {
                 log.Infof("skipping interface %s as stats needed for interface %s ", key, intf_name)
                 continue
@@ -1585,6 +1613,8 @@ func ospfv2_fill_interface_timers_state (intf_info map[string]interface{},
     var ospfv2InterfaceTimers_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_Timers
     var ospfv2InterfaceTimersState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_Timers_State
     var areaNameStr string
+
+    log.Infof("ospfv2_fill_interface_timers_state - start area %s intf %s vrf %v", area_id, intf_name, vrfName)
 
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Interface Timers State"
@@ -1876,6 +1906,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     var vtysh_cmd string
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
     var intf_name string
+    var ntv_intf_name string
     var temp interface{}
     var intf_area_id string
     var ospfv2Vlink_obj  *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink
@@ -1956,7 +1987,8 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     for _,value := range output_interfaces { 
         interfaces_info := value.(map[string]interface{})
         interface_map := interfaces_info["interfaces"].(map[string]interface{})
-        for intf_name, temp = range interface_map {
+        for ntv_intf_name, temp = range interface_map {
+            intf_name, _ = ospfGetUIIntfName(ntv_intf_name)
             if !strings.Contains(intf_name, "VLINK") {
                 log.Info("Skip non vlink interface ", intf_name)
                 continue
@@ -1981,6 +2013,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
                     continue
                 }
             }
+            
             ospfv2_fill_interface_vlink_state(intf_info, ospfv2Area_obj, intf_name, vrfName)
             ospfv2Vlink_obj, err = ospfv2_fill_interface_vlink_state_traffic(intf_info, output_interfaces_traffic, ospfv2Area_obj, intf_name)
             if nil != ospfv2Vlink_obj {
@@ -2006,6 +2039,8 @@ func  ospfv2_fill_vlink_neighbors_state (output_state map[string]interface{},  o
 
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Vlink Neighbors State"
+
+    log.Infof("ospfv2_fill_vlink_neighbors_state - area %s intf %s rtrid %s", area_id, intf_name, remote_rtr_id)
 
     ospfv2Neighbors_obj = ospfv2Vlink_obj.State.NeighborsList
     if ospfv2Neighbors_obj == nil {
@@ -2040,7 +2075,8 @@ func  ospfv2_fill_vlink_neighbors_state (output_state map[string]interface{},  o
                     log.Infof("Neighbor area-id not found in vlink ,skipping this neighbor")
                     continue
                 }
-                if _intf_name,ok := nbr_info["ifaceName"].(string); ok {
+                if _ntv_intf_name,ok := nbr_info["ifaceName"].(string); ok {
+                    _intf_name, _ := ospfGetUIIntfName(_ntv_intf_name) 
                     if _intf_name != intf_name {
                         log.Infof("Neighbor interface Name %s does not match %s ,skipping this neighbor", _intf_name, intf_name)
                         continue;
@@ -2256,7 +2292,7 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF- Neighbor State"
     var vtysh_cmd string
-    var area_id, intf_name string
+    var area_id, intf_name, ntv_intf_name string
     var temp interface{}
     var intf_area_id string
     var ospfv2Interface_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface
@@ -2312,8 +2348,10 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     for _,value := range output_interfaces { 
         interfaces_info := value.(map[string]interface{})
         interface_map := interfaces_info["interfaces"].(map[string]interface{})
-        for intf_name, temp = range interface_map {
-            log.Info("interface is ", intf_name)
+        for ntv_intf_name, temp = range interface_map {
+            log.Info("interface is ", ntv_intf_name)
+            intf_name, _ = ospfGetUIIntfName(ntv_intf_name)
+            
             intf_info := temp.(map[string]interface{})
             if intf_area_str,ok := intf_info["area"].(string); ok {
                 result := strings.Split(intf_area_str, " ") 
@@ -2481,18 +2519,6 @@ var ospfv2_router_area_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]s
     return tblList, nil
 }
 
-
-
-
-func util_ospfv2_get_native_ifname_from_ui_ifname (pIfname *string) {
-    if pIfname != nil && net.ParseIP(*pIfname) == nil {
-        pNativeIfname := utils.GetNativeNameFromUIName(pIfname)
-        if pNativeIfname != nil && len(*pNativeIfname) != 0 {
-            *pIfname = *pNativeIfname
-        }
-    }
-}
-
 var rpc_clear_ospfv2 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 
     var err error
@@ -2534,7 +2560,10 @@ var rpc_clear_ospfv2 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]b
 
     if value, ok := mapData["interface"].(string) ; ok {
         if value != "" {
-            util_ospfv2_get_native_ifname_from_ui_ifname (&value)
+            value, err = ospfGetNativeIntfName(value) 
+            if (err != nil) {
+                return nil, tlerr.New("Invalid OSPF interface name.")
+            }
             intfName = value 
         }
     }

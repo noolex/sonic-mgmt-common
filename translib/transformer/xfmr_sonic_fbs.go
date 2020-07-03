@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //  Copyright 2019 Broadcom. The term Broadcom refers to Broadcom Inc. and/or //
 //  its subsidiaries.                                                         //
@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"math"
 	"strconv"
@@ -489,7 +490,8 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 		for i := range intfs {
 			var fwdEntry ForwardingEgressEntry
 			intfSplits := strings.Split(intfs[i], "|")
-			fwdEntry.INTERFACE = &intfSplits[0]
+            convertedIfName := *(utils.GetUINameFromNativeName(&intfSplits[0]))
+			fwdEntry.INTERFACE = &convertedIfName
 			if len(intfSplits[1]) > 0 {
 				prio, _ := strconv.Atoi(intfSplits[1])
 				fwdEntry.PRIORITY = &prio
@@ -935,8 +937,9 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 	policyBindKeys, _ := policyBindTbl.GetKeys()
 	for index, key := range policyBindKeys {
 		if interface_name_found {
-			if key.Comp[0] != interface_name {
-				log.Infof("Interface:%s Needed:%s. Skip", key.Comp[0], interface_name)
+            convertedIfName := *(utils.GetNativeNameFromUIName(&interface_name))
+			if key.Comp[0] != convertedIfName {
+				log.Infof("Interface:%s Needed:%s. Skip", key.Comp[0], convertedIfName)
 				continue
 			}
 		}
@@ -986,7 +989,7 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 				log.Infof("Keys:%v", referingClassKeys[i])
 
 				var referingClassEntry PolicyFlowEntry
-				err = fill_policy_section_table_info(value, referingClassKeys[i].Comp[1], key.Comp[0], field_splits[0],
+				err = fill_policy_section_table_info(value, referingClassKeys[i].Comp[1], key.Comp[0], field_splits[0], 
 					field_splits[1], policySectionTblVal, dbs, true, &referingClassEntry)
 				if nil != err {
 					return nil, err
@@ -1081,8 +1084,9 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 	policyBindKeys, _ := policyBindTbl.GetKeys()
 	for index, key := range policyBindKeys {
 		if interface_name_found {
-			if key.Comp[0] != interface_name {
-				log.Infof("Interface:%s Needed:%s. Skip", key.Comp[0], interface_name)
+            convertedIfName := *(utils.GetNativeNameFromUIName(&interface_name))
+			if key.Comp[0] != convertedIfName {
+				log.Infof("Interface:%s Needed:%s. Skip", key.Comp[0], convertedIfName)
 				continue
 			}
 		}

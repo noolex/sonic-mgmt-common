@@ -13,7 +13,6 @@ module openconfig-igmp-ext {
   import openconfig-igmp { prefix "oc-igmp"; }
   import openconfig-if-ip {prefix oc-ip; }
   import openconfig-inet-types { prefix oc-inet; }
-  import openconfig-network-instance { prefix oc-netinst; }
   
   // meta
   organization
@@ -34,55 +33,72 @@ module openconfig-igmp-ext {
     reference "0.1.0";
   }
   
-    grouping interface-igmp-config {
+    grouping igmp-ext-config {
         description "IGMP interface configuration";
         container igmp {
             description "IGMP interface config container";
-            uses oc-igmp:igmp-interface-config;
 
             container joins {
-                description "IGMP join container";
+                description "IGMP joins container";
                 list join {
                     key "mcastgrpaddr srcaddr";
                     description "List of IGMP join config";
                     leaf mcastgrpaddr {
-                        type oc-inet:ipv4-address;
-                        description "Multicast Group Address";
+                        type leafref {
+                            path "../config/mcastgrpaddr";
+                        }
+                        description "Multicast group address";
                     }
                     leaf srcaddr {
-                        type oc-inet:ipv4-address;
-                        description "Source Address";
+                        type leafref {
+                            path "../config/srcaddr";
+                        }
+                        description "Source address";
                     }
                     container config {
-                        description "IGMP interface join config";
-                        uses interface-igmp-attr-config;
+                        description "Config container for join config";
+                        uses igmp-ext-attr-config;
                     }
                     container state {
                         config false;
-                        description "IGMP interface join state";
-                        uses interface-igmp-attr-config;
+                        description "State container for join state";
+                        uses igmp-ext-attr-config;
                     }
                 }
+            }
+            container config {
+                description "Config container for igmp config";
+                uses oc-igmp:igmp-interface-config;
+                uses oc-igmp-ext:igmp-ext-query-config;
+            }
+            container state {
+                config false;
+                description "State container for igmp state";
+                uses oc-igmp:igmp-interface-config;
+                uses oc-igmp-ext:igmp-ext-query-config;
             }
         }
     }
 
-    grouping interface-igmp-attr-config {
+    grouping igmp-ext-attr-config {
         description "IGMP interface join attribute group";
-        leaf enable {
-             type boolean;
-             description
-                 "Flag to enable or disable igmp feature.";
+        leaf mcastgrpaddr {
+            type oc-inet:ipv4-address;
+            description "Multicast group address";
+        }
+        leaf srcaddr {
+            type oc-inet:ipv4-address;
+            description "Source address";
         }
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
         description
             "IGMP";
-        uses oc-igmp-ext:interface-igmp-config;
+        uses oc-igmp-ext:igmp-ext-config;
     }
 
-    grouping interface-igmp-query-config {
+    grouping igmp-ext-query-config {
         description "IGMP interface query fields";
         leaf last-member-query-count {
             type uint16 {
@@ -113,12 +129,7 @@ module openconfig-igmp-ext {
         }
     }
 
-    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/igmp" {
-        description "Extended leaf last-member-query-count from standard igmp model";
-        uses oc-igmp-ext:interface-igmp-query-config;
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/igmp/filter-prefixes {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/igmp/config/filter-prefixes {
         deviate not-supported;
     }
 

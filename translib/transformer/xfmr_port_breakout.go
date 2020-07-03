@@ -274,12 +274,12 @@ var YangToDb_port_breakout_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         data := db.Value{Field: m}
         data.Set("brkout_mode", "")
         dpbMap[tblName][ifName] = data
-        dpb_entry, err := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
+        dpb_entry, err1 := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
         //Delete only when current config is non-default
-        if err == nil {
+        if err1 == nil {
             log.Info("CURRENT: ", dpb_entry)
-            ports, err1 := getPorts(ifName, dpb_entry.Get("brkout_mode"))
-            if err1 == nil {
+            ports, err2 := getPorts(ifName, dpb_entry.Get("brkout_mode"))
+            if err2 == nil {
                 log.Info("PORTS TO BE DELETED: ", ports)
             }
             err = breakout_action(ifName, dpb_entry.Get("brkout_mode"), "", inParams)
@@ -328,7 +328,6 @@ var rpc_breakout_capabilities RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
     }
     exec.Output.Caps = getCapabilities()
     result, err := json.Marshal(&exec)
-    log.Info("RPC Result: ", result, "Error: ", err)
     return result, err
 
 }

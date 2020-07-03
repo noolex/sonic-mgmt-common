@@ -8,6 +8,7 @@ module openconfig-aaa-radius-ext {
 
   // import some basic types
   import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-interfaces { prefix "oc-if"; }
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-yang-types { prefix oc-yang; }
   import openconfig-aaa-types { prefix oc-aaa-types; }
@@ -24,7 +25,13 @@ module openconfig-aaa-radius-ext {
     related to the RADIUS protocol for authentication,
     authorization, and accounting.";
 
-  oc-ext:openconfig-version "0.1.0";
+  oc-ext:openconfig-version "0.2.0";
+
+  revision "2020-06-30" {
+    description
+      "OC-Yang Lint/Guidelines. RADIUS source-interface.";
+    reference "0.2.0";
+  }
 
   revision "2020-06-02" {
     description
@@ -83,7 +90,7 @@ module openconfig-aaa-radius-ext {
     }
   }
 
-  grouping aaa-radius-ext-server-radius-state-counters {
+  grouping aaa-radius-ext-server-radius-counters-state {
     description
       "Grouping for RADIUS server state counters data extension.";
   
@@ -112,6 +119,19 @@ module openconfig-aaa-radius-ext {
     }
   }
 
+  grouping aaa-radius-ext-server-radius-config {
+    description
+      "Grouping for RADIUS server configuration data extension.";
+
+    leaf source-interface {
+      type leafref {
+        path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+      }
+      description
+        "Source interface whose IP to use as source ip for RADIUS conn.";
+    }
+  }
+
   // data definition statements
 
   // augment statements
@@ -128,7 +148,19 @@ module openconfig-aaa-radius-ext {
   augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters" {
     description
       "RADIUS server counters extension.";  
-    uses aaa-radius-ext-server-radius-state-counters;
+    uses aaa-radius-ext-server-radius-counters-state;
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:config" {
+    description
+      "RADIUS server configuration extension.";
+    uses aaa-radius-ext-server-radius-config;
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state" {
+    description
+      "RADIUS server state extension.";
+    uses aaa-radius-ext-server-radius-config;
   }
 
   // rpc statements

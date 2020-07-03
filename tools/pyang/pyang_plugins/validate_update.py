@@ -15,6 +15,7 @@ from pyang import types
 
 # Globals
 global_ctx = None
+current_data_node = None
 
 def pyang_plugin_init():
     plugin.register_plugin(CheckDeviationPlugin())
@@ -188,14 +189,12 @@ def mark_deviations(module):
         if not hasattr(deviation.i_target_node, "deviation_list"):
             deviation.i_target_node.deviation_list = []
         deviation.i_target_node.deviation_list.append(deviation)
-        for deviate in deviation.search('deviate'):
-            if get_lint_ignore(deviate) is not None:
-                for child in deviate.substmts:
-                    child.lint_ignore = True
+        if get_lint_ignore(deviation) is not None:
+            deviation.i_target_node.lint_ignore = True
 
 def check_update(ctx, oldfilename, newmod):
-    oldpath = os.pathsep.join(ctx.opts.yang_dir)
-    oldpath += os.pathsep + ctx.opts.path[0].split(':')[0] + os.pathsep + '.'
+    oldpath = ctx.opts.yang_dir
+    oldpath += os.pathsep + ctx.opts.path[0].split(':')[0] + os.pathsep
     oldrepo = pyang.FileRepository(oldpath, use_env=False)
     oldctx = pyang.Context(oldrepo)
     oldctx.opts = ctx.opts
@@ -382,6 +381,8 @@ def chk_i_children(old, new, ctx):
 
 def chk_child(oldch, newp, ctx):
 
+    global current_data_node
+
     newch = None
     for ch in newp.i_children:
         if ch.arg == oldch.arg:
@@ -395,6 +396,7 @@ def chk_child(oldch, newp, ctx):
         err_add(ctx.errors, newch.pos, 'CHK_CHILD_KEYWORD_CHANGED',
                 (oldch.keyword, newch.arg, newch.keyword), newch)
         return
+    current_data_node = newch
     chk_status(oldch, newch, ctx)
     chk_if_feature(oldch, newch, ctx)
     chk_config(oldch, newch, ctx)
@@ -417,6 +419,8 @@ def chk_child(oldch, newp, ctx):
         chk_input_output(oldch, newch, ctx)
     elif newch.keyword == 'output':
         chk_input_output(oldch, newch, ctx)
+
+    current_data_node = None #reset
 
 def chk_status(old, new, ctx):
     oldstatus = old.search_one('status')
@@ -840,11 +844,16 @@ def pyang_err_add(errors, pos, tag, args, ignore_error=False):
             return
     errors.append(error)
 
+def is_lint_ignore(node):
+    if node != None and hasattr(node, 'lint_ignore'):
+        return True
+    return False
+
 def err_add(ctx, pos, err_code, extra, data_node=None):
     ignore_error=False
-    if data_node != None and hasattr(data_node, 'lint_ignore') \
-        and global_ctx.opts.disable_lint is None:
-        ignore_error = True
+    if is_lint_ignore(current_data_node) \
+            and global_ctx.opts.disable_lint is None:
+                ignore_error = True
     if data_node != None and hasattr(data_node, 'deviation_list'):
         for deviation in data_node.deviation_list:
             pyang_err_add(ctx, deviation.pos, err_code, extra, ignore_error)

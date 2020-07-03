@@ -4,9 +4,7 @@ import (
     "fmt"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
     "strings"
-	"encoding/json"
     log "github.com/golang/glog"
-
  )
 
 //ValidateDpbConfigs Purpose: Check correct for correct agent_id
@@ -122,64 +120,8 @@ func (t *CustomValidation) ValidateDpbStatus(
 }
 
 func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCtxt) CVLErrorInfo {
-	/* Check STATE_DB if any DPB in progress */
-	rclient := util.NewDbClient("STATE_DB")
-	defer func() {
-		if (rclient != nil) {
-			rclient.Close()
-		}
-	}()
-
-	predicate := "return (h['status'] ~= nil and h['status'] == 'InProgress')"
-	entries, dbErr := util.FILTER_ENTRIES_LUASCRIPT.Run(rclient, []string{}, "PORT_BREAKOUT|*", "ifname", predicate, "status").Result()
-	if dbErr != nil {
-		return CVLErrorInfo {
-			ErrCode: CVL_FAILURE,
-			TableName: "PORT_BREAKOUT",
-			ConstraintErrMsg: "Failed to retrieve Port breakout status from Db",
-			CVLErrDetails: "Data retrievel Error",
-			ErrAppTag:  "dpb-progress-status",
-		}
-	}
-	entriesJson := string(entries.(string))
-
-	var v interface{}
-	b := []byte(entriesJson)
-	if err := json.Unmarshal(b, &v); err != nil {
-		log.Errorf("[DPB-CVL] DPB progress status retrieval failed")
-		return CVLErrorInfo{
-			ErrCode: CVL_INTERNAL_UNKNOWN,
-			TableName: "PORT_BREAKOUT",
-			ConstraintErrMsg: "Failed to retrieve Port breakout status from Db",
-			CVLErrDetails: "Data retrievel Error",
-			ErrAppTag:  "dpb-progress-status",
-		}
-	}
-
-	var entriesMap map[string]interface{} = v.(map[string]interface{})
-	if len(entriesMap) == 0 {
-		// No DPB operation in progress
-		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-	} else if len(entriesMap) > 1 {
-		// Assumption that there can be only one Port breakout in progress
-		return CVLErrorInfo {
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "PORT_BREAKOUT",
-			ConstraintErrMsg: "Multiple Ports breakout is in progress",
-			CVLErrDetails: "Config Validation Semantic Error",
-			ErrAppTag:  "operation-inprogress",
-		}
-	}
-
-	var brkIntfName string
-	for key := range entriesMap["PORT_BREAKOUT"].(map[string]interface{}) {
-		brkIntfName = key
-		util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: DPB in progress for interface: %s", brkIntfName)
-	}
-
 	// Skipping DELETE op as DELETE is already taken care during cascade delete
-	// Skipping if InProgress interface name is blank
-	if vc.CurCfg.VOp == OP_DELETE || len(brkIntfName) == 0 {
+	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -205,39 +147,108 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 	}
 	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: DPB check on table: %v|%v for node: %v[%v], isleaflist:%t\n", tableName, tableKey, yangNodeName, yangNodeVal, isNodeLeafList)
 
+	var intfNameToCheck string
+	// Determine the interface name on which operation is happening
 	if len(yangNodeVal) > 0 {
-		// If port name is available from context(vc) and equals to DPB in progress port
-		if yangNodeVal == brkIntfName {
-			log.Infof("[DPB-CVL] Operation failed on: %v|%v for node: %v[%v] as DPB in progress\n", tableName, tableKey, yangNodeName, yangNodeVal)
-			return CVLErrorInfo {
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: tableName,
-				Keys: strings.Split(tableKey, "|"),
-				ConstraintErrMsg: fmt.Sprintf("Breakout of port %s in progress", brkIntfName),
-				CVLErrDetails: "Config Validation Semantic Error",
-				ErrAppTag:  "operation-inprogress",
-			}
-		} else {
-			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-		}
-	} else if len(yangNodeVal) == 0 {
+		intfNameToCheck = yangNodeVal
+	} else {
 		// If port name from context(vc) is blank, check if it is leaf-list. So get from curCfg Data
 		if isNodeLeafList && len(vc.CurCfg.Data) > 0 {
-			util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: Checking leaf-list: %v", vc.CurCfg.Data)
+			correctNodeName := yangNodeName
 			fldVal, exists := vc.CurCfg.Data[yangNodeName]
 			if !exists {
 				fldVal, exists = vc.CurCfg.Data[yangNodeName + "@"]
-			}
-			if exists && strings.Contains(fldVal, brkIntfName) {
-				return CVLErrorInfo {
-					ErrCode: CVL_SEMANTIC_ERROR,
-					TableName: tableName,
-					Keys: strings.Split(tableKey, "|"),
-					ConstraintErrMsg: fmt.Sprintf("Breakout of port %s in progress", brkIntfName),
-					CVLErrDetails: "Config Validation Semantic Error",
-					ErrAppTag:  "operation-inprogress",
+				if exists {
+					correctNodeName = yangNodeName + "@"
 				}
 			}
+			util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: leaf-list data from Request: %v", fldVal)
+			if exists && (len(fldVal) > 0) {
+				// On adding or deleting element to leaf-list, always generates UPDATE request
+				// and yangNodeVal may be empty. So to determine the correct interface on which
+				// operation is going, we need to query all elements of leaf-list from DB and
+				// compare with leaf-list received in CurCfg.Data.
+				tblData, _ := vc.RClient.HGetAll(redisKey).Result()
+				dbNodeVal := tblData[correctNodeName]
+				util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: leaf-list data from DB: %v", dbNodeVal)
+
+				// Data in DB is not present, means new element getting added
+				if len(dbNodeVal) == 0 {
+					intfNameToCheck = fldVal
+				} else {
+					elemFromDb := strings.Split(dbNodeVal, ",")
+					elemfromReq := strings.Split(fldVal, ",")
+					// Adding interface to leaf-list have entry in request but not in DB
+					// Deleting interface from leaf-list have entry in DB but not in request
+					// So their difference will provide the interface under operation
+					elems := util.GetDifference(elemFromDb, elemfromReq)
+					if len(elems) > 0 {
+						// Only 1 interface under operation, so assuming that length is 1
+						intfNameToCheck = elems[0]
+					}
+				}
+			}
+		}
+	}
+	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: operation in progress for interface: %s", intfNameToCheck)
+
+	// Skipping if interface name could not be determined
+	if len(intfNameToCheck) == 0 {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+
+	// Some yang nodes have union type and so value can be PortChannel or Vlan also
+	// Check if the interface is from PORT table. Otherwise return success
+	portTblKey, _ := vc.RClient.Keys("PORT|" + intfNameToCheck).Result()
+	if len(portTblKey) == 0 {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	// Get Master port information from BREAKOUT_PORTS table in config Db.
+	mpdata, _ := vc.RClient.HGetAll("BREAKOUT_PORTS|" + intfNameToCheck).Result()
+	// If entry does not exists in BREAKOUT_PORTS it means breakout didn't happended
+	// so consider intfNameToCheck as master port
+	masterPortName, exists := mpdata["master"]
+	if !exists {
+		masterPortName = intfNameToCheck
+	}
+	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: DPB status check for Master port: %s", masterPortName)
+
+	/* Check STATE_DB if any DPB in progress */
+	rclient := util.NewDbClient("STATE_DB")
+	defer func() {
+		if (rclient != nil) {
+			rclient.Close()
+		}
+	}()
+
+	statusData, dbErr := rclient.HGetAll("PORT_BREAKOUT|" + masterPortName).Result()
+	if dbErr != nil {
+		return CVLErrorInfo {
+			ErrCode: CVL_FAILURE,
+			TableName: "PORT_BREAKOUT",
+			ConstraintErrMsg: "Failed to retrieve Port breakout status",
+			CVLErrDetails: "Data retrievel Error",
+			ErrAppTag:  "dpb-progress-status",
+		}
+	}
+
+	dpbStatus, exists := statusData["status"]
+	if !exists || len(dpbStatus) == 0 {
+		// DPB status is not in STATE_DB. No DPB in process
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+	// if DPB status is InProgress, return error
+	if dpbStatus == "InProgress" {
+		log.Errorf("[DPB-CVL] Operation failed on: %v|%v for node: %v[%v] as DPB in progress\n", tableName, tableKey, yangNodeName, yangNodeVal)
+		return CVLErrorInfo {
+			ErrCode: CVL_SEMANTIC_ERROR,
+			TableName: tableName,
+			Keys: strings.Split(tableKey, "|"),
+			ConstraintErrMsg: fmt.Sprintf("Breakout of port %s in progress", masterPortName),
+			CVLErrDetails: "Config Validation Semantic Error",
+			ErrAppTag:  "operation-inprogress",
 		}
 	}
 
