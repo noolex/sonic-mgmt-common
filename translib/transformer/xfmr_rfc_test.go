@@ -67,6 +67,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
 
+
         // POST(create) on container, parent table present, default value creation
 
         prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
@@ -1274,101 +1275,173 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl2)
 
 
-        // Get on a leaf/field, parent list instance exists but field exists in DB (OC YANG)  
+        // Get on a leaf/field, parent list instance exists but field exists in DB (OC YANG)
 
-        // Get on a leaf/field, parent list instance exists but field exist in DB (Sonic YANG)  
+        cleanuptbl = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
+        prereq = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":map[string]interface{}{"set_local_pref":"4294967294"}}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  GET on a leaf/field, parent list instance exists but field exists in DB (OC YANG) +++++++++++++")
+        url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition=MAP1/statements/statement=1/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
+        expected = "{\"openconfig-bgp-policy:set-local-pref\":4294967294}"
+        t.Run("Verify Get on a leaf/field, parent list instance exists but field exists in DB (OC YANG)", processGetRequest(url, expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+
+        // Get on a leaf/field, parent list instance exists but field exist in DB (Sonic YANG)
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        fmt.Println("++++++++++++++  GET on a leaf/field, parent list instance exists but field exists in DB (Sonic YANG) +++++++++++++")
+        url = "/sonic-route-map:sonic-route-map/ROUTE_MAP/ROUTE_MAP_LIST=MAP1,1/set_local_pref"
+        expected = "{\"sonic-route-map:set_local_pref\":4294967294}"
+        t.Run("Verify Get on a leaf/field, parent list instance exists but field exists in DB (Sonic YANG)", processGetRequest(url, expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
 
 }
 
 
 func Test_Rfc_Get_Negative_Cases(t *testing.T) {
 
-        // Get on list instance, parent list instance nonexistent
+// Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (OC Yang)
 
-        cleanuptbl := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":""}}
-        prereq := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":map[string]interface{}{"vlanid":"1"}}}
-
-        loadConfigDB(rclient, prereq)
-
-        fmt.Println("++++++++++++++  GET with uri list instance: parent list instance nonexistent +++++++++++++")
-        url := "/openconfig-network-instance:network-instances/network-instance[name=Vrfvrf]/protocols/protocol[identifier=IGMP_SNOOPING][name=IGMP-SNOOPING]/openconfig-network-instance-deviation:igmp-snooping/interfaces/interface[name=Vlan1]"
-        json_expected := "{}"
-        expected_err :=  tlerr.NotFoundError{Format:"Entry not found"}
-        t.Run("Verify Get on list instance parent list instance nonexistent", processGetRequest(url, json_expected, true, expected_err))
-        // Teardown
-        unloadConfigDB(rclient, cleanuptbl)
-
-
-        // Get on list instance, child list instance nonexistent
-
-        prereq = map[string]interface{}{"VRF":map[string]interface{}{"default":map[string]interface{}{"enabled":"true"}}}
-
-        loadConfigDB(rclient, prereq)
-
-        fmt.Println("++++++++++++++  GET with uri list instance: child list instance nonexistent +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance[name=default]/protocols/protocol[identifier=IGMP_SNOOPING][name=IGMP-SNOOPING]/openconfig-network-instance-deviation:igmp-snooping/interfaces/interface[name=Vlan1]"
-        json_expected = "{}"
-        expected_err =  tlerr.NotFoundError{Format:"Entry not found"}
-        t.Run("Verify Get on list instance child list instance nonexistent", processGetRequest(url, json_expected, true, expected_err))
-
-
-        loadConfigDB(rclient, cleanuptbl)
-
-
-        // Get on container, parent list instance nonexistent
-
-        fmt.Println("++++++++++++++  GET with uri container: parent list instance nonexistent +++++++++++++")
-        url = "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]/config"
-        json_expected = "{}"
-        expected_err =  tlerr.NotFoundError{Format:"Entry not found"}
-        t.Run("Verify Get on container parent list instance nonexistent", processGetRequest(url, json_expected, true, expected_err))
-
-
-        // Get on leaf-list instance, leaf-list instance nonexistent
-
-        cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
-        prereq =  map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "1.2.3.5.*,1.3.6.*"}}}
+        cleanuptbl := map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
+        prereq := map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"exclude@":"1.2.3.*"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        fmt.Println("++++++++++++++  GET with uri leaf-list, leaf-list instance nonexistent +++++++++++++")
-        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.3.4.*]"
-        json_expected = "{}"
-        t.Run("Verify Get on leaf-list instance nonexistent", processGetRequest(url, json_expected, false))
+        fmt.Println("++++++++++++++  Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (OC Yang)  +++++++++++++")
+        url := "/ietf-snmp:snmp/vacm/view=TestVacmView1/include=1.9.5.*"
+        expected := "{}"
+        expected_err := tlerr.InvalidArgsError{Format:" "}
+        t.Run("Verify Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (OC Yang)", processGetRequest(url, expected, true, expected_err))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 
 
-        // Get on leaf-list instance, leaf-list field nonexistent
-
-        cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
-        prereq =  map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"NULL": "NULL"}}}
+        // Get on an Entire leaf-list , when  leaf-list itself doesn't exist in DB instance (Sonic Yang)
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        fmt.Println("++++++++++++++  GET with uri leaf-list, leaf-list field nonexistent +++++++++++++")
-        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.3.4.*]"
-        json_expected = "{}"
-        t.Run("Verify Get on leaf-list, leaf-list field nonexistent ", processGetRequest(url, json_expected, false))
+        fmt.Println("++++++++++++++  Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (Sonic Yang)  +++++++++++++")
+        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST=TestVacmView1/include=1.9.5.*"
+        expected_err = tlerr.InvalidArgsError{Format:" "}
+        t.Run("Verify Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (Sonic Yang)", processGetRequest(url, expected, true, expected_err))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 
 
-        // Get on leaf, leaf field nonexistent
-        cleanuptbl = map[string]interface{}{"RADIUS":map[string]interface{}{"global":""}}
-        prereq = map[string]interface{}{"RADIUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+       // Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (OC Yang)
 
-        // Setup - Prerequisite
-        loadConfigDB(rclient, prereq)
+       prereq = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@":"1.2.3.*, 1.6.7*"}}}
 
-        fmt.Println("++++++++++++++  GET with uri leaf, leaf field nonexistent +++++++++++++")
-        url = "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]/config/openconfig-system-ext:timeout"
-        json_expected = "{}"
-        t.Run("Verify Get on leaf, leaf field nonexistent", processGetRequest(url, json_expected, false))
-        // Teardown
-        unloadConfigDB(rclient, cleanuptbl)
+       // Setup - Prerequisite
+       loadConfigDB(rclient, prereq)
+
+       fmt.Println("++++++++++++++  Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (OC Yang)  +++++++++++++")
+       url = "/ietf-snmp:snmp/vacm/view=TestVacmView1/include=1.9.5.*"
+       expected_err = tlerr.InvalidArgsError{Format:" "}
+       t.Run("Verify Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (OC Yang)", processGetRequest(url, expected, true, expected_err))
+       // Teardown
+       unloadConfigDB(rclient, cleanuptbl)
+
+
+       // Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (Sonic Yang)
+
+       // Setup - Prerequisite
+       loadConfigDB(rclient, prereq)
+
+       fmt.Println("++++++++++++++  Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (Sonic Yang)  +++++++++++++")
+       url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST=TestVacmView1/include=1.9.5.*"
+       expected_err = tlerr.InvalidArgsError{Format:" "}
+       t.Run("Verify Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (Sonic Yang)", processGetRequest(url, expected, true, expected_err))
+       // Teardown
+       unloadConfigDB(rclient, cleanuptbl)
+
+
+       // Get on an Entire leaf-list ,when  leaf-list’s Parent does not exist  (OC Yang)
+
+       fmt.Println("++++++++++++++  Get on an Entire leaf-list ,when  leaf-list’s Parent does not exist  (OC Yang)  +++++++++++++")
+       url = "/ietf-snmp:snmp/vacm/view=TestVacmView1/include"
+       expected_err = tlerr.InvalidArgsError{Format:" "}
+       t.Run("Verify Get on an Entire leaf-list ,when  leaf-list’s Parent does not exist  (OC Yang)", processGetRequest(url, expected, true, expected_err))
+       // Teardown
+       unloadConfigDB(rclient, cleanuptbl)
+
+
+      // Get on a leaf/field, parent list instance exists but field does NOT exist in DB (OC YANG)
+
+      cleanuptbl =  map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
+      prereq = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":map[string]interface{}{"NULL":"NULL"}}}
+
+      // Setup - Prerequisite
+      loadConfigDB(rclient, prereq)
+
+      fmt.Println("++++++++++++++  Get on a leaf/field, parent list instance exists but field does NOT exist in DB (OC YANG)  +++++++++++++")
+      url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition=MAP1/statements/statement=1/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
+      expected_err = tlerr.InvalidArgsError{Format:" "}
+      t.Run("Verify Get on a leaf/field, parent list instance exists but field does NOT exist in DB (OC YANG)", processGetRequest(url, expected, true, expected_err))
+      // Teardown
+      unloadConfigDB(rclient, cleanuptbl)
+
+
+      // Get on a leaf/field, parent list instance exists but field does NOT exist in DB (Sonic YANG)
+
+      cleanuptbl =  map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
+      prereq = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":map[string]interface{}{"NULL":"NULL"}}}
+
+      // Setup - Prerequisite
+      loadConfigDB(rclient, prereq)
+
+      fmt.Println("++++++++++++++  Get on a leaf/field, parent list instance exists but field does NOT exist in DB (Sonic YANG)  +++++++++++++")
+      url = "/sonic-route-map:sonic-route-map/ROUTE_MAP/ROUTE_MAP_LIST=MAP1,1/set_local_pref"
+      expected_err = tlerr.InvalidArgsError{Format:" "}
+      t.Run("Verify Get on a leaf/field, parent list instance exists but field does NOT exist in DB (Sonic YANG)", processGetRequest(url, expected, true, expected_err))
+      // Teardown
+      unloadConfigDB(rclient, cleanuptbl)
+
+
+      // Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB
+
+      cleanuptbl = map[string]interface{}{"PORTCHANNEL":map[string]interface{}{"PortChannel1":""}}
+      prereq = map[string]interface{}{"PORTCHANNEL":map[string]interface{}{"PortChannel1":map[string]interface{}{"NULL":"NULL"}}}
+
+      // Setup - Prerequisite
+      loadConfigDB(rclient, prereq)
+
+      fmt.Println("++++++++++++++  Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB  +++++++++++++")
+      url = "/openconfig-interfaces:interfaces/interface=PortChannel1/openconfig-if-aggregate:aggregation/config/openconfig-interfaces-ext:fallback"
+      expected_err = tlerr.InvalidArgsError{Format:" "}
+      t.Run("Verify Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB", processGetRequest(url, expected, true, expected_err))
+      // Teardown
+      unloadConfigDB(rclient, cleanuptbl)
+
+
+      // Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB
+
+      cleanuptbl1 := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":""}}
+      cleanuptbl2 := map[string]interface{}{"SAG":map[string]interface{}{"Vlan1|IPv4":""}}
+      prereq1 := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan1":map[string]interface{}{"vlanid":"1"}}}
+      prereq2 := map[string]interface{}{"SAG":map[string]interface{}{"Vlan1|IPv4":map[string]interface{}{"NULL":"NULL"}}}
+
+      // Setup - Prerequisite
+      loadConfigDB(rclient, prereq1)
+      loadConfigDB(rclient, prereq2)
+
+      fmt.Println("++++++++++++++  Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB  +++++++++++++")
+      url = "/openconfig-interfaces:interfaces/interface=Vlan1/subinterfaces/subinterface=0/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
+      expected_err = tlerr.InvalidArgsError{Format:" "}
+      t.Run("Verify Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB", processGetRequest(url, expected, true, expected_err))
+      // Teardown
+      unloadConfigDB(rclient, cleanuptbl1)
+      unloadConfigDB(rclient, cleanuptbl2)
 }
 
 
