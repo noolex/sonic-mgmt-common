@@ -506,7 +506,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	}
 	if !exists {
 		errStr := fmt.Sprintf("Parent table does not exist for uri(%v)", uri)
-		return tlerr.InternalError{Format: errStr}
+		return tlerr.NotFoundError{Format: errStr}
 	}
 
 	xlateToData := formXlateToDbParam(d, ygRoot, oper, root, uri, "", "", jsonData, resultMap, result, txCache, tblXpathMap, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")

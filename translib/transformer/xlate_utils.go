@@ -1178,7 +1178,8 @@ func dbTableExists(d *db.DB, tableName string, dbKey string) (bool, error) {
         existingEntry, derr := d.GetEntry(dbTblSpec, db.Key{Comp: []string{dbKey}})
         if derr != nil {
                 log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
-                return false, derr
+		err = tlerr.NotFound("Resource not found")
+                return false, err
         }
         return existingEntry.IsPopulated(), err
 }

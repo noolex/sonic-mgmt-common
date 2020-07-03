@@ -198,11 +198,11 @@ func Test_Rfc_Post_Negative_Cases(t *testing.T) {
         fmt.Println("++++++++++++++  Post(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
         payload := "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 10, \"openconfig-syster-ext:retransmit-attempts\": 10}"
-        expected_err :=  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        expected_err :=  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - POST(404 error) on container", processSetRequest(url, payload, "POST", true, expected_err))
 
         cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         unloadConfigDB(rclient, cleanuptbl1)
         // Post(404 error) on list instance, parent table not present
         fmt.Println("++++++++++++++  POST(404 error) - uri: list instance, message-body: leaf and leaf-list  +++++++++++++")
@@ -219,7 +219,7 @@ func Test_Rfc_Post_Negative_Cases(t *testing.T) {
         fmt.Println("++++++++++++++  POST with uri: list instance, but the list instance not existent, return 404 +++++++++++++")
         url = "/openconfig-interfaces:interfaces/interface[name=Vlan1]/subinterfaces/subinterface[index=0]"
         payload = "{\"openconfig-interfaces:config\":{\"index\":0},\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"config\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}}}"
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: VLAN|Vlan1"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC -  POST(no list instance) on list instance", processSetRequest(url, payload, "POST", true, expected_err))
 }
 
@@ -352,7 +352,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  Put(create) on list instance parent table present, default value creation  +++++++++++++")
-        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol=BGP,bgp"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
         expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
         t.Run("RFC - PUT on list(create default)", processSetRequest(url, payload, "PUT", false))
@@ -486,7 +486,7 @@ func Test_Rfc_Put_Negative_Cases(t *testing.T) {
         fmt.Println("++++++++++++++  PUT(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
         payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
-        expected_err :=  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        expected_err :=  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - PUT on container(404 error)", processSetRequest(url, payload, "PUT", true, expected_err))
 
 
@@ -513,7 +513,7 @@ func Test_Rfc_Put_Negative_Cases(t *testing.T) {
         fmt.Println("++++++++++++++  PUT(404 error) uri: leaf, message-body: leaf  +++++++++++++")
         url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
         payload = "{ \"openconfig-bgp-policy:set-local-pref\": 7}"
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: ROUTE_MAP_SET|MAP1"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - PUT(404 error) on leaf", processSetRequest(url, payload, "PUT", true, expected_err))
 
 
@@ -524,7 +524,7 @@ func Test_Rfc_Put_Negative_Cases(t *testing.T) {
         fmt.Println("++++++++++++++  PUT(404 error) uri: leaf-list, message-body: leaf-list  +++++++++++++")
         url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
         payload = "{ \"ietf-snmp:include\": [ \"1.2.3.5.*\",\"1.3.6.*\", \"1.4.6.*\"]}"
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: SNMP_SERVER_VIEW|TestVacmView1"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - PUT(404 error) on leaf-list", processSetRequest(url, payload, "PUT", true, expected_err))
 
 }
@@ -867,7 +867,7 @@ func Test_Rfc_Patch_Negative_Cases(t *testing.T) {
         fmt.Println("++++++++++++++  PATCH(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
         payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
-        expected_err :=  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        expected_err :=  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - PATCH on container(404 error)", processSetRequest(url, payload, "PATCH", true, expected_err))
 
 
@@ -875,7 +875,7 @@ func Test_Rfc_Patch_Negative_Cases(t *testing.T) {
 
         cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
         unloadConfigDB(rclient, cleanuptbl1)
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         fmt.Println("++++++++++++++  PATCH(404 error) uri: list, message-body: list, instance, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server"
         payload = "{\"openconfig-system:server\":[{\"address\":\"1.1.1.1\",\"config\":{\"timeout\":40}}]}"
@@ -886,7 +886,7 @@ func Test_Rfc_Patch_Negative_Cases(t *testing.T) {
 
         cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
         unloadConfigDB(rclient, cleanuptbl1)
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: TACPLUS|global"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         fmt.Println("++++++++++++++  PATCH(404 error) uri: list instance, message-body: list, instance, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server[address=1.1.1.1]"
         payload = "{\"openconfig-system:server\":[{\"address\":\"1.1.1.1\",\"config\":{\"timeout\":40}}]}"
@@ -896,12 +896,12 @@ func Test_Rfc_Patch_Negative_Cases(t *testing.T) {
         // Patch(404 error) on leaf, parent table not present
         cleanuptbl1 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
         unloadConfigDB(rclient, cleanuptbl1)
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: ROUTE_MAP_SET|MAP1"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
 
         fmt.Println("++++++++++++++  PATCH(404 error) uri: leaf, message-body: leaf  +++++++++++++")
         url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
         payload = "{ \"openconfig-bgp-policy:set-local-pref\": 7}"
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: ROUTE_MAP_SET|MAP1"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - PATCH(404 error) on leaf", processSetRequest(url, payload, "PATCH", true, expected_err))
 
 
@@ -909,11 +909,11 @@ func Test_Rfc_Patch_Negative_Cases(t *testing.T) {
 
         cleanuptbl1 = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
         unloadConfigDB(rclient, cleanuptbl1)
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: SNMP_SERVER_VIEW|TestVacmView1"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         fmt.Println("++++++++++++++  PATCH(404 error) uri: leaf-list, message-body: leaf-list  +++++++++++++")
         url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
         payload = "{ \"ietf-snmp:include\": [ \"1.2.3.5.*\",\"1.3.6.*\", \"1.4.6.*\"]}"
-        expected_err =  tlerr.NotFoundError{Format:"Entry does not exist: SNMP_SERVER_VIEW|TestVacmView1"}
+        expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - PATCH(404 error) on leaf-list", processSetRequest(url, payload, "PATCH", true, expected_err))
 }
 
