@@ -1146,7 +1146,7 @@ func Test_Rfc_Delete_Negative_Cases(t *testing.T) {
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 }
-/*
+
 func Test_Rfc_Get_Operation(t *testing.T) {
 
         // Get on OC nonexistent container 
@@ -1445,4 +1445,4 @@ func Test_Rfc_Get_Negative_Cases(t *testing.T) {
       unloadConfigDB(rclient, cleanuptbl1)
       unloadConfigDB(rclient, cleanuptbl2)
 }
-*/
+
