@@ -490,9 +490,7 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 	if (xlateParams.tableName != "") {
 		// Specific table entry case
 		xlateParams.result[xlateParams.tableName] = make(map[string]db.Value)
-		if tblSpecInfo, ok := xDbSpecMap[xlateParams.tableName]; ok && (tblSpecInfo.cascadeDel == XFMR_ENABLE) {
-			*xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, xlateParams.tableName)
-		}
+		isFieldReq := false
 		if (xlateParams.keyName != "") {
 			// Specific key case
 			var dbVal db.Value
@@ -504,6 +502,7 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 				}
 
 				if fieldName != "" {
+					isFieldReq   = true
 					dbSpecField := xlateParams.tableName + "/" + fieldName
 					_, ok := xDbSpecMap[dbSpecField]
 					if ok {
@@ -540,6 +539,11 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 				}
 			}
 			xlateParams.result[xlateParams.tableName][xlateParams.keyName] = dbVal
+		}
+		if !isFieldReq {
+			if tblSpecInfo, ok := xDbSpecMap[xlateParams.tableName]; ok && (tblSpecInfo.cascadeDel == XFMR_ENABLE) {
+				*xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, xlateParams.tableName)
+			}
 		}
 	} else {
 		// Get all table entries

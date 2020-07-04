@@ -51,6 +51,14 @@ module sonic-ip-show {
                   }
             }
 
+            case ADDRESS {
+                  leaf address {
+                          type inet:ip-address;
+                          description
+                              "show by address.";
+                  }
+            }
+
             case SUMMARY {
                 leaf summary {
                     type boolean;
