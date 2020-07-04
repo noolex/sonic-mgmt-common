@@ -73,6 +73,34 @@ func init () {
 
 }
 
+func getOspfUriPath(inParams *XfmrParams) (string, error) {
+
+    yangPath, err := getYangPathFromUri(inParams.uri)
+    if (err != nil) {
+        log.Info("getOspfUriPath: getYangPathFromUri failed ", err)
+        return "", err
+    }
+
+    log.Infof("getOspfUriPath: yangPath %s", yangPath)
+
+    uriPath := ""
+    uriBlockList := strings.Split(yangPath, "/")
+    for _, uriBlock := range uriBlockList {
+        if uriBlock == ""  {  
+            continue
+        } 
+            
+        uriSubBlockList := strings.Split(uriBlock, ":")
+        listLen := len(uriSubBlockList)
+        if (listLen != 0) {
+            uriPath = uriPath + "/" + uriSubBlockList[listLen - 1]
+        }
+    }
+     
+    log.Infof("getOspfUriPath: uriPath %s", uriPath)  
+    return uriPath, nil 
+}
+
 func getOspfv2Root (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, string, error) {
     pathInfo := NewPathInfo(inParams.uri)
     ospfv2VrfName := pathInfo.Var("name")
@@ -205,10 +233,58 @@ func ospfGetUIIntfName(ifName string) (string, error) {
    return *uiNamePtr, nil
 }
 
+
+func get_ospf_router_info_from_uri(inParams *XfmrParams) (string, string, string, error) {
+
+    log.Info("get_ospf_router_info_from_uri: inParams.uri ", inParams.uri)
+ 
+    rcvdUri, err := getOspfUriPath(inParams)
+    if err != nil {
+        errStr := "GetYangPathFromUri Failed " 
+        log.Info("get_ospf_router_info_from_uri: ", errStr)
+        return "", "", "", errors.New(errStr)
+    }
+
+    if (!strings.Contains(rcvdUri, "protocol/ospfv2")) {
+        errStr := "Not an OSPF URI " + rcvdUri
+        log.Info("get_ospf_router_info_from_uri: ", errStr)
+        return "", "", "", errors.New(errStr)
+    }
+
+    pathInfo := NewPathInfo(inParams.uri)
+    ospfVrfName :=  pathInfo.Var("name")
+    ospfIdentifier := pathInfo.Var("identifier")
+    ospfInstanceNumber := pathInfo.Var("name#2")
+
+    if (ospfVrfName == "") {
+        errStr := "Input URI doesnot contain ospf VRF name"
+        log.Info("get_ospf_router_info_from_uri: ", errStr)
+        return "", "", "", errors.New(errStr)
+    }
+
+    if (ospfIdentifier != "OSPF") {
+        errStr := "Input URI doesnot contain ospf identifier name"
+        log.Info("get_ospf_router_info_from_uri: ", errStr)
+        return "", "", "", errors.New(errStr)
+    }
+
+    if len(ospfInstanceNumber) == 0 {
+        errStr := "Input URI doesnot contain ospf instance number"
+        log.Info("get_ospf_router_info_from_uri: ", errStr)
+        return "", "", "", errors.New(errStr)
+    }
+
+    log.Infof("get_ospf_router_info_from_uri: vrf %s id %s instance %s.",
+                   ospfVrfName, ospfIdentifier, ospfInstanceNumber)
+
+    return ospfVrfName, ospfIdentifier, ospfInstanceNumber, nil
+}
+
+
 var YangToDb_ospfv2_router_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
 
-    log.Info("YangToDb_ospfv2_router_tbl_key_xfmr - URI: ", inParams.uri)
+    log.Info("YangToDb_ospfv2_router_tbl_key_xfmr: inParams.uri ", inParams.uri)
 
     pathInfo := NewPathInfo(inParams.uri)
 
@@ -629,7 +705,7 @@ var YangToDb_ospfv2_router_network_prefix_fld_xfmr FieldXfmrYangToDb = func(inPa
         return res_map, err
     }
 
-    intfAreaIdPresent, err := ospf_area_id_present_in_interfaces(&inParams, ospfv2VrfName)
+    intfAreaIdPresent, err := ospf_area_id_present_in_interfaces(&inParams, ospfv2VrfName, "*")
     if err != nil {
         log.Info("YangToDb_ospfv2_router_network_prefix_fld_xfmr: intfAreaIdPresent check Failed")
         return res_map, tlerr.New("Internal error: Interface area id config check failed")
@@ -1236,6 +1312,71 @@ var DbToYang_ospfv2_interface_name_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
 }
 
 
+func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
+
+    var err error
+
+    err = nil
+    rcvdUri, uriErr := getOspfUriPath(inParams)
+    if (uriErr != nil) {
+        log.Info("ospfv2_config_post_xfmr: getOspfUriPath failed ", uriErr)
+        return uriErr
+    }
+
+    if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
+        log.Info("ospfv2_config_post_xfmr for ADD/UPDATE operation")
+
+        autoCreateOspfArea := true
+        if (autoCreateOspfArea) {
+            if (strings.Contains(rcvdUri, "protocols/protocol/ospfv2")) {
+                if (strings.Contains(rcvdUri, "openconfig-ospfv2-ext:networks/network") ||
+                    strings.Contains(rcvdUri, "virtual-links/virtual-link") ||
+                    strings.Contains(rcvdUri, "inter-area-policy/ranges/range")) {
+                    err = ospf_auto_create_ospf_router_area(inParams, ospfRespMap)
+                    if (err != nil) {
+                        log.Info("ospfv2_config_post_xfmr: ospf_auto_create_ospf_router_area failed ", err)
+                        return err
+                    }
+                }
+            }
+        }
+    } else if inParams.oper == DELETE {
+        log.Info("ospfv2_config_post_xfmr: for DELETE operation")
+
+        if (strings.Contains(rcvdUri, "protocols/protocol/ospfv2")) {
+            /* OSPFv2 uri */
+            if (strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2") ||
+                strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2/global")) {
+                /* ospf router delete */
+                err = delete_ospf_interfaces_for_vrf(inParams, ospfRespMap)
+                if (err != nil) {
+                    log.Info("ospfv2_config_post_xfmr: delete_ospf_interfaces_for_vrf failed ", err)
+                    return err
+                }
+            } else {
+                if (strings.Contains(rcvdUri, "route-distribution-policies")) {
+                    /* ospf router redistribute delete */
+                    err = delete_ospf_router_redistribute_entry(inParams, ospfRespMap)
+                    if (err != nil) {
+                        log.Info("ospfv2_config_post_xfmr: delete_ospf_router_redistribute_entry failed ", err)
+                        return err
+                    }
+                }
+
+                if (strings.Contains(rcvdUri, "areas/area")) {
+                    err = validate_ospf_router_area_delete(inParams, ospfRespMap)
+                    if (err != nil) {
+                        log.Info("ospfv2_config_post_xfmr: validate_ospf_router_area_delete failed ", err)
+                        return err
+                    }
+                }
+            }
+        }
+    }
+
+    return err
+}
+
 
 func ospf_router_present(inParams *XfmrParams, vrfName string) (bool, error) {
 
@@ -1314,7 +1455,143 @@ func ospf_router_area_present(inParams *XfmrParams, vrfName string, areaId strin
     return false, nil
 }
 
+func ospf_router_area_network_present(inParams *XfmrParams, vrfName string, areaId string) (bool, error) {
 
+    log.Infof("ospf_router_area_network_present: vrfName %s areaId %s.", vrfName, areaId)
+    if (vrfName == "") {
+        errStr := "Empty vrf name"
+        log.Info("ospf_router_area_network_present: ", errStr)
+        return false, errors.New(errStr)
+    }
+
+    ospfTblName := "OSPFV2_ROUTER_AREA_NETWORK"
+    var ospfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfTblName}
+    ospfTblData, err1 := configDbPtr.GetTable(ospfTblSpec)
+    if err1 != nil {
+        errStr := "OSPF area network table Not Found"
+        log.Error("ospf_router_area_network_present: Area Table data not found ", errStr)
+        return false, nil
+    }
+
+    ospfTblKeys, err2 := ospfTblData.GetKeys()
+    if err2 != nil {
+        errStr := "Area network table get keys failed"
+        log.Error("ospf_router_area_network_present: get keys failed ", errStr)
+        return false, err2
+    }
+
+    for _, ospfTblKey := range ospfTblKeys {
+        keyVrfName := ospfTblKey.Get(0)
+        keyAreaId := ospfTblKey.Get(1)
+
+        if (keyVrfName == vrfName) {
+           if (areaId == "" || areaId == "*") {
+               log.Info("ospf_router_area_network_present: network config present with key ", ospfTblKey)
+               return true, nil
+           } else {
+               if (keyAreaId == areaId) {
+                   log.Info("ospf_router_area_network_present: network config present with key ", ospfTblKey)
+                   return true, nil
+               }    
+           } 
+        }
+    }
+
+    log.Info("ospf_router_area_network_present: area network config not present in vrf ", vrfName)
+    return false, nil
+}
+
+func ospf_router_area_virtual_link_present(inParams *XfmrParams, vrfName string, areaId string) (bool, error) {
+
+    log.Infof("ospf_router_area_virtual_link_present: vrfName %s areaId %s.", vrfName, areaId)
+    if (vrfName == "") {
+        errStr := "Empty vrf name"
+        log.Info("ospf_router_area_virtual_link_present: ", errStr)
+        return false, errors.New(errStr)
+    }
+
+    ospfTblName := "OSPFV2_ROUTER_AREA_VIRTUAL_LINK"
+    var ospfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfTblName}
+    ospfTblData, err1 := configDbPtr.GetTable(ospfTblSpec)
+    if err1 != nil {
+        errStr := "OSPF area network table Not Found"
+        log.Error("ospf_router_area_virtual_link_present: VL Table data not found ", errStr)
+        return false, nil
+    }
+
+    ospfTblKeys, err2 := ospfTblData.GetKeys()
+    if err2 != nil {
+        errStr := "Area network table get keys failed"
+        log.Error("ospf_router_area_virtual_link_present: get keys failed ", errStr)
+        return false, err2
+    }
+
+    for _, ospfTblKey := range ospfTblKeys {
+        keyVrfName := ospfTblKey.Get(0)
+        keyAreaId := ospfTblKey.Get(1)
+
+        if (keyVrfName == vrfName) {
+           if (areaId == "" || areaId == "*") {
+               log.Info("ospf_router_area_virtual_link_present: VL config present with key ", ospfTblKey)
+               return true, nil
+           } else {
+               if (keyAreaId == areaId) {
+                   log.Info("ospf_router_area_virtual_link_present: VL config present with key ", ospfTblKey)
+                   return true, nil
+               }
+           }
+        }
+    }
+
+    log.Info("ospf_router_area_virtual_link_present: area network config not present in vrf ", vrfName)
+    return false, nil
+}
+
+func ospf_router_area_address_range_present(inParams *XfmrParams, vrfName string, areaId string) (bool, error) {
+
+    log.Infof("ospf_router_area_address_range_present: vrfName %s areaId %s.", vrfName, areaId)
+    if (vrfName == "") {
+        errStr := "Empty vrf name"
+        log.Info("ospf_router_area_address_range_present: ", errStr)
+        return false, errors.New(errStr)
+    }
+
+    ospfTblName := "OSPFV2_ROUTER_AREA_POLICY_ADDRESS_RANGE"
+    var ospfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfTblName}
+    ospfTblData, err1 := configDbPtr.GetTable(ospfTblSpec)
+    if err1 != nil {
+        errStr := "OSPF area network table Not Found"
+        log.Error("ospf_router_area_address_range_present: AR Table data not found ", errStr)
+        return false, nil
+    }
+
+    ospfTblKeys, err2 := ospfTblData.GetKeys()
+    if err2 != nil {
+        errStr := "Area network table get keys failed"
+        log.Error("ospf_router_area_address_range_present: get keys failed ", errStr)
+        return false, err2
+    }
+
+    for _, ospfTblKey := range ospfTblKeys {
+        keyVrfName := ospfTblKey.Get(0)
+        keyAreaId := ospfTblKey.Get(1)
+
+        if (keyVrfName == vrfName) {
+           if (areaId == "" || areaId == "*") {
+               log.Info("ospf_router_area_address_range_present: AR config present with key ", ospfTblKey)
+               return true, nil
+           } else {
+               if (keyAreaId == areaId) {
+                   log.Info("ospf_router_area_address_range_present: AR config present with key ", ospfTblKey)
+                   return true, nil
+               }
+           }
+        }
+    }
+
+    log.Info("ospf_router_area_address_range_present: area network config not present in vrf ", vrfName)
+    return false, nil
+}
 
 func create_ospf_area_entry(inParams *XfmrParams, vrfName string, areaId string, ospfRespMap *map[string]map[string]db.Value) (error) {
     log.Infof("create_ospf_area_entry: vrfName %s areaId %s", vrfName, areaId)
@@ -1365,7 +1642,8 @@ func create_ospf_area_entry(inParams *XfmrParams, vrfName string, areaId string,
 
 func ospf_auto_create_ospf_router_area(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
     log.Info("ospf_auto_create_ospf_router_area: ", inParams.uri)
-    rcvdUri, _ := getYangPathFromUri(inParams.uri)
+
+    rcvdUri, _ := getOspfUriPath(inParams)
     autoCreate := false
 
     log.Info("ospf_auto_create_ospf_router_area: rcvdUri ", rcvdUri)
@@ -1398,3 +1676,194 @@ func ospf_auto_create_ospf_router_area(inParams *XfmrParams, ospfRespMap *map[st
     log.Infof("ospf_auto_create_ospf_router_area: Auto create area %s in vrf %s", ospfAreaId, ospfVrfName)
     return create_ospf_area_entry(inParams, ospfVrfName, ospfAreaId, ospfRespMap)
 }
+
+func validate_ospf_router_area_delete(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
+
+    if (inParams.oper != DELETE) {
+        log.Info("validate_ospf_router_area_delete: non delete operation")
+        return nil
+    }
+
+    pathInfo := NewPathInfo(inParams.uri)
+    rcvdUri, uriErr := getOspfUriPath(inParams)
+    if (uriErr != nil) {
+        log.Info("validate_ospf_router_area_delete: getOspfUriPath error ", uriErr)
+        return nil
+    }
+
+    areaDelete := false
+    if (strings.HasSuffix(rcvdUri, "areas") ||
+        strings.HasSuffix(rcvdUri, "areas/area") ||
+        strings.HasSuffix(rcvdUri, "areas/area/config")) {
+        areaDelete = true
+    }
+
+    if (!areaDelete) {
+        log.Info("validate_ospf_router_area_delete: rcvdUri not area delete ")
+        return nil
+    }
+
+    ospfVrfName, _, _, uerr := get_ospf_router_info_from_uri(inParams)
+    if uerr != nil {
+        log.Info("validate_ospf_router_area_delete: get ospf router info failed ", uerr)
+        return nil
+    }
+
+    ospfAreaId := pathInfo.Var("identifier#2")
+    if len(ospfAreaId) == 0 {
+        log.Info("OSPF area Id is Missing")
+        return nil
+    }
+    ospfAreaId = getAreaDotted(ospfAreaId)
+
+    errStr := "Delete interface area, network, address-range and virtual links in the area first"
+
+    ifAreaPresent, _ := ospf_area_id_present_in_interfaces(inParams, ospfVrfName, ospfAreaId)  
+    if (ifAreaPresent) {
+        log.Info("validate_ospf_router_area_delete: Area config present under interface")
+        return tlerr.New(errStr)
+    }
+
+    nwAreaPresent, _ := ospf_router_area_network_present(inParams, ospfVrfName, ospfAreaId)  
+    if (nwAreaPresent) {
+        log.Info("validate_ospf_router_area_delete: Area config present under network config")
+        return tlerr.New(errStr)
+    }
+
+    vlAreaPresent, _ := ospf_router_area_virtual_link_present(inParams, ospfVrfName, ospfAreaId)  
+    if (vlAreaPresent) {
+        log.Info("validate_ospf_router_area_delete: Area config present under virtual link config")
+        return tlerr.New(errStr)
+    }
+
+    arAreaPresent, _ := ospf_router_area_address_range_present(inParams, ospfVrfName, ospfAreaId)  
+    if (arAreaPresent) {
+        log.Info("validate_ospf_router_area_delete: Area config present under address range config")
+        return tlerr.New(errStr)
+    }
+
+    log.Info("validate_ospf_router_area_delete: dependent are configs not present ")
+    return nil
+}
+
+func delete_ospf_router_redistribute_entry(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
+    if (inParams.oper != DELETE) {
+        log.Info("delete_ospf_router_redistribute_entry: non delete operation")
+        return nil
+    }
+
+    log.Info("delete_ospf_router_redistribute_entry: inParams.uri ", inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+
+    rcvdUri, uriErr := getOspfUriPath(inParams)
+    if (uriErr != nil) {
+        log.Info("delete_ospf_router_redistribute_entry: getOspfUriPath error ", uriErr)
+        return nil
+    }
+
+    log.Info("delete_ospf_router_redistribute_entry: rcvdUri ", rcvdUri)
+    if (!strings.Contains(rcvdUri, "protocols/protocol/ospfv2/global")) {
+        log.Info("delete_ospf_router_redistribute_entry: rcvdUri not ospfv2/global")
+        return nil
+    }
+
+    if (!strings.Contains(rcvdUri, "route-distribution-policies")) {
+        log.Info("delete_ospf_router_redistribute_entry: rcvdUri not distribute-list")
+        return nil
+    }
+
+    ospfVrfName, _, _, uerr := get_ospf_router_info_from_uri(inParams)
+    if uerr != nil {
+         log.Info("delete_ospf_router_redistribute_entry: ", uerr)
+         return nil
+    }
+
+    redistProtocol  := pathInfo.Var("protocol")
+    redistDirection := pathInfo.Var("direction")
+
+    if len(redistProtocol) == 0 {
+        log.Info("delete_ospf_router_redistribute_entry: protocol name Missing")
+        return nil
+    }
+
+    if len(redistDirection) == 0 {
+        log.Info("delete_ospf_router_redistribute_entry: direction is Missing")
+        return nil
+    }
+
+    if (redistDirection != "IMPORT") {
+        log.Info("delete_ospf_router_redistribute_entry: not import direction")
+        return nil
+    }
+
+    fieldNameList := []string { "BGP", "STATIC", "KERNEL", "DIRECTLY_CONNECTED" }
+    validProtocol := false
+    for _, fieldName := range fieldNameList { 
+        if (redistProtocol == fieldName) {
+            validProtocol = true
+            break
+        }
+    }
+  
+    if (!validProtocol) {
+        log.Info("delete_ospf_router_redistribute_entry: not valid protocol")
+        return nil
+    }
+
+    redistTableKey := ospfVrfName + "|" + redistProtocol + "|" + redistDirection
+
+    ospfTblName := "OSPFV2_ROUTER_DISTRIBUTE_ROUTE"
+    var ospfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfTblName}
+    ospfTblData, err := configDbPtr.GetTable(ospfTblSpec)
+    if err != nil {
+        errStr := "Distribute table get failed"
+        log.Error("delete_ospf_router_redistribute_entry: OSPF Interface Table data not found ", errStr)
+        return nil
+    }
+
+    ospfTblKeys, err := ospfTblData.GetKeys()
+    if err != nil {
+        errStr := "Distribute table get keys failed"
+        log.Error("delete_ospf_router_redistribute_entry: get keys failed ", errStr)
+        return nil
+    }
+
+    ospfOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    ospfOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+    ospfOpMap[db.ConfigDB][ospfTblName] = make(map[string]db.Value)
+    ospfTblMap := make(map[string]db.Value)
+
+    entryDeleted := false
+    for _, ospfTblKey := range ospfTblKeys {
+        keyVrfName := ospfTblKey.Get(0)
+        keyProtocol := ospfTblKey.Get(1)
+        keyDirection := ospfTblKey.Get(2)
+
+        if (keyVrfName != ospfVrfName || 
+            keyProtocol != redistProtocol || 
+            keyDirection != redistDirection ) {
+            continue
+        }
+
+        log.Error("delete_ospf_router_redistribute_entry: delete entry ", redistTableKey)
+
+        ospfDbValue := db.Value{Field: make(map[string]string)}
+        ospfOpMap[db.ConfigDB][ospfTblName][redistTableKey] = db.Value{Field: make(map[string]string)}
+        ospfTblMap[redistTableKey] = ospfDbValue
+        entryDeleted = true
+    }
+
+    if entryDeleted {
+        inParams.subOpDataMap[inParams.oper] = &ospfOpMap
+        (*ospfRespMap)[ospfTblName] = ospfTblMap
+
+        log.Info("delete_ospf_router_redistribute_entry: ospfRespMap ", ospfRespMap)
+        return nil
+    }
+
+    log.Info("delete_ospf_router_redistribute_entry: no entries to delete for ", redistTableKey)
+    return nil
+}
+
+
+
