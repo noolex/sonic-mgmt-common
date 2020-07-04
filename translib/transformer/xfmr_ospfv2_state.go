@@ -1808,6 +1808,10 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     }
     
     log.Info(output_state)
+    if nil == output_state {
+        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        return oper_err
+    }
     log.Info(vrfName)
     ospf_info := output_state[vrfName].(map[string]interface{})
     err = ospfv2_fill_route_table (ospf_info, ospfv2_obj)
@@ -1951,6 +1955,10 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     }
     
     log.Info(output_state)
+    if nil == output_state {
+        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        return oper_err
+    }
     
     ospf_info := output_state[vrfName].(map[string]interface{})
     ospfv2Area_obj, _, err = ospfv2_get_or_create_area (ospf_info, ospfv2_obj, area_id, vrfName)
@@ -2270,6 +2278,10 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
     
     log.Info(output_state)
+    if nil == output_state {
+        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        return oper_err
+    }
     
     ospf_info := output_state[vrfName].(map[string]interface{})
     ospfv2Area_obj, area_info, err = ospfv2_get_or_create_area (ospf_info, ospfv2_obj, area_id, vrfName)
