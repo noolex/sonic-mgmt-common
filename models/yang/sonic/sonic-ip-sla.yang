@@ -144,7 +144,7 @@ module sonic-ip-sla {
 
                 leaf tcp_tos {
                     type uint16 {
-                        range "1..1000" {
+                        range "1..256" {
                             error-message "tcp_tos out of range";
                         }
                     }
@@ -203,7 +203,7 @@ module sonic-ip-sla {
 
                 leaf icmp_tos {
                     type uint16 {
-                        range "1..1000" {
+                        range "1..256" {
                             error-message "icmp_tos out of range";
                         }
                     }

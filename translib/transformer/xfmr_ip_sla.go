@@ -26,6 +26,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "strconv"
     "encoding/json"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "fmt"
 )
 
@@ -123,7 +124,22 @@ func IpSlaFillStaticState(inParams XfmrParams, ipSlaIdKey string, output *ocbind
         output.Frequency = &value
     }
 
-    // IpSlaId	*uint16	`path:"ip-sla-id" module:"openconfig-ip-sla"`?
+    if cfgDbEntry.Has("timeout") {
+        _value, _ := strconv.Atoi(cfgDbEntry.Get("timeout"))
+        value := uint16(_value)
+        output.Timeout = &value
+    }
+
+    if cfgDbEntry.Has("threshold") {
+        _value, _ := strconv.Atoi(cfgDbEntry.Get("threshold"))
+        value := uint16(_value)
+        output.Threshold = &value
+    }
+
+    if cfgDbEntry.Has("icmp_dst_ip") {
+        value := cfgDbEntry.Get("icmp_dst_ip")
+        output.IcmpDstIp = &value
+    }
 
     if cfgDbEntry.Has("icmp_size") {
         _value, _ := strconv.Atoi(cfgDbEntry.Get("icmp_size"))
@@ -131,32 +147,16 @@ func IpSlaFillStaticState(inParams XfmrParams, ipSlaIdKey string, output *ocbind
         output.IcmpSize = &value
     }
 
-    if cfgDbEntry.Has("timeout") {
-        _value, _ := strconv.Atoi(cfgDbEntry.Get("timeout"))
+    if cfgDbEntry.Has("icmp_tos") {
+        _value, _ := strconv.Atoi(cfgDbEntry.Get("icmp_tos"))
         value := uint16(_value)
-        output.Timeout = &value
+        output.IcmpTos = &value
     }
 
-    if cfgDbEntry.Has("icmp_dst_ip") {
-        value := cfgDbEntry.Get("icmp_dst_ip")
-        output.IcmpDstIp = &value
-
-        if cfgDbEntry.Has("vrf") {
-            value := cfgDbEntry.Get("vrf")
-            output.IcmpVrf = &value
-        }
-
-        if cfgDbEntry.Has("tcp_tos") {
-            _value, _ := strconv.Atoi(cfgDbEntry.Get("tcp_tos"))
-            value := uint16(_value)
-            output.IcmpTos = &value
-        }
-
-        if cfgDbEntry.Has("tcp_ttl") {
-            _value, _ := strconv.Atoi(cfgDbEntry.Get("tcp_ttl"))
-            value := uint16(_value)
-            output.IcmpTtl = &value
-        }
+    if cfgDbEntry.Has("icmp_ttl") {
+        _value, _ := strconv.Atoi(cfgDbEntry.Get("icmp_ttl"))
+        value := uint16(_value)
+        output.IcmpTtl = &value
     }
 
     if cfgDbEntry.Has("icmp_source_ip") {
@@ -165,8 +165,14 @@ func IpSlaFillStaticState(inParams XfmrParams, ipSlaIdKey string, output *ocbind
     }
 
     if cfgDbEntry.Has("icmp_source_interface") {
-        value := cfgDbEntry.Get("icmp_source_interface")
-        output.IcmpSourceInterface = &value
+        _value := cfgDbEntry.Get("icmp_source_interface")
+        value := utils.GetUINameFromNativeName(&_value)
+        output.IcmpSourceInterface = value
+    }
+
+    if cfgDbEntry.Has("icmp_vrf") {
+        value := cfgDbEntry.Get("icmp_vrf")
+        output.IcmpVrf = &value
     }
 
     if cfgDbEntry.Has("tcp_source_ip") {
@@ -178,12 +184,12 @@ func IpSlaFillStaticState(inParams XfmrParams, ipSlaIdKey string, output *ocbind
         value := cfgDbEntry.Get("tcp_dst_ip")
         output.TcpDstIp = &value
     }
-/*
+
     if cfgDbEntry.Has("tcp_source_interface") {
-        value := cfgDbEntry.Get("tcp_source_interface")
-        output.TcpSourceInterface = &value
+        _value := cfgDbEntry.Get("tcp_source_interface")
+        value := utils.GetUINameFromNativeName(&_value)
+        output.TcpSourceInterface = value
     }
-*/
 
     if cfgDbEntry.Has("tcp_source_port") {
         _value, _ := strconv.Atoi(cfgDbEntry.Get("tcp_source_port"))
@@ -195,29 +201,23 @@ func IpSlaFillStaticState(inParams XfmrParams, ipSlaIdKey string, output *ocbind
         _value, _ := strconv.Atoi(cfgDbEntry.Get("tcp_dst_port"))
         value := uint16(_value)
         output.TcpDstPort = &value
-
-        if cfgDbEntry.Has("vrf") {
-            value := cfgDbEntry.Get("vrf")
-            output.TcpVrf = &value
-        }
-
-        if cfgDbEntry.Has("tcp_tos") {
-            _value, _ := strconv.Atoi(cfgDbEntry.Get("tcp_tos"))
-            value := uint16(_value)
-            output.TcpTos = &value
-        }
-
-        if cfgDbEntry.Has("tcp_ttl") {
-            _value, _ := strconv.Atoi(cfgDbEntry.Get("tcp_ttl"))
-            value := uint16(_value)
-            output.TcpTtl = &value
-        }
     }
 
-    if cfgDbEntry.Has("threshold") {
-        _value, _ := strconv.Atoi(cfgDbEntry.Get("threshold"))
+    if cfgDbEntry.Has("tcp-vrf") {
+        value := cfgDbEntry.Get("tcp-vrf")
+        output.TcpVrf = &value
+    }
+
+    if cfgDbEntry.Has("tcp_tos") {
+        _value, _ := strconv.Atoi(cfgDbEntry.Get("tcp_tos"))
         value := uint16(_value)
-        output.Threshold = &value
+        output.TcpTos = &value
+    }
+
+    if cfgDbEntry.Has("tcp_ttl") {
+        _value, _ := strconv.Atoi(cfgDbEntry.Get("tcp_ttl"))
+        value := uint16(_value)
+        output.TcpTtl = &value
     }
 
 }
@@ -272,7 +272,7 @@ func IpSlaFillDynamicState(inParams XfmrParams, ipSlaIdKey string, State *ocbind
 
         if value, ok := ipSlaDataJson["icmp_echo_reply_counter"] ; ok {
             _value := uint16(value.(float64))
-            State.IcmpEchoReqCounter = &_value
+            State.IcmpEchoReplyCounter = &_value
         }
 
         if value, ok := ipSlaDataJson["icmp_echo_error_counter"] ; ok {
