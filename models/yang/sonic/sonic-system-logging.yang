@@ -70,8 +70,13 @@ module sonic-system-logging {
                 }
 
                 leaf vrf_name {
-                    type leafref {
-                        path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                    type union {
+                        type enumeration{
+                            enum mgmt;
+                        }
+                        type leafref {
+                            path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                       }
                     }
                 }
 
