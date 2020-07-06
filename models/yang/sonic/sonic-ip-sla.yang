@@ -250,4 +250,31 @@ module sonic-ip-sla {
             }
         }
     }
+
+
+    rpc clear-ipsla-counters {
+        description
+            "RPC to clear IP SLA counters.";
+
+        input {
+            leaf ip_sla_id {
+                type string;
+                description
+                    "Parameter for clearing IP SLA counters - all or IP SLA index";
+            }
+        }
+
+        output {
+            leaf status {
+                type int32;
+                description
+                    "The status of the operation execution request.";
+            }
+            leaf status-detail {
+                type string;
+                description
+                    "The detailed status of the operation execution request.";
+            }
+        }
+    }
 }

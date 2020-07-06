@@ -35,6 +35,7 @@ func init() {
     XlateFuncBind("DbToYang_ip_sla_id_fld_xfmr", DbToYang_ip_sla_id_fld_xfmr)
     XlateFuncBind("DbToYang_ip_sla_state_xfmr", DbToYang_ip_sla_state_xfmr)
     XlateFuncBind("rpc_show_ipsla_history", rpc_show_ipsla_history)
+    XlateFuncBind("rpc_clear_ipsla_counters", rpc_clear_ipsla_counters)
 }
 
 type IpslaHistoryEntry struct {
@@ -387,4 +388,59 @@ var rpc_show_ipsla_history RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
     result, err = ipsla_show_history(body, dbs, "IP_SLA")
     return result, err
 
+}
+
+
+var rpc_clear_ipsla_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var err error
+    var result struct {
+        Output struct {
+            Status int32 `json:"status"`
+            Status_detail string `json:"status-detail"`
+        } `json:"sonic-ipsla-clear:output"`
+    }
+
+    log.Infof("Enter rpc_clear_ipsla_counters")
+
+
+    /* Get input data */
+    var inputParams map[string]interface{}
+    err = json.Unmarshal(body, &inputParams)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        result.Output.Status = 1
+        result.Output.Status_detail = "Failed to unmarshall given input data"
+        return json.Marshal(&result)
+    }
+
+    if input, err := inputParams["sonic-ip-sla:input"]; err {
+        inputParams = input.(map[string]interface{})
+    } else {
+        result.Output.Status = 1
+        result.Output.Status_detail = "No input"
+        return json.Marshal(&result)
+    }
+
+    log.Info("Input=", inputParams)
+
+    ipSlaIdKey, found := inputParams["ip_sla_id"]
+    if !found {
+        result.Output.Status = 1
+        result.Output.Status_detail = "IPSLA SLA-ID missing"
+        return json.Marshal(&result)
+    }
+
+    ipSlaIdStr := fmt.Sprintf("%v", ipSlaIdKey)
+    vtysh_cmd := "clear ip sla " + ipSlaIdStr
+    _, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    if cmd_err != nil {
+        log.Errorf("Failed to clear IP SLA data for key:", ipSlaIdStr, " err: %s", cmd_err)
+        result.Output.Status = 1
+        result.Output.Status_detail = fmt.Sprintf("Error: %s.", cmd_err)
+    } else {
+        result.Output.Status = 0
+        result.Output.Status_detail = "Success: Cleared Counters"
+    }
+
+    return json.Marshal(&result)
 }
