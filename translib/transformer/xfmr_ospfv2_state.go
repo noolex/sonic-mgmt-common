@@ -22,6 +22,7 @@ func init () {
     XlateFuncBind("DbToYang_ospfv2_neighbors_state_xfmr", DbToYang_ospfv2_neighbors_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_vlink_state_xfmr", DbToYang_ospfv2_vlink_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_stub_state_xfmr", DbToYang_ospfv2_stub_state_xfmr)
+    XlateFuncBind("DbToYang_ospfv2_lsdb_state_xfmr", DbToYang_ospfv2_lsdb_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_route_table_xfmr", DbToYang_ospfv2_route_table_xfmr)
     XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
 
@@ -1807,6 +1808,10 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     }
     
     log.Info(output_state)
+    if nil == output_state {
+        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        return oper_err
+    }
     log.Info(vrfName)
     ospf_info := output_state[vrfName].(map[string]interface{})
     err = ospfv2_fill_route_table (ospf_info, ospfv2_obj)
@@ -1950,6 +1955,10 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     }
     
     log.Info(output_state)
+    if nil == output_state {
+        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        return oper_err
+    }
     
     ospf_info := output_state[vrfName].(map[string]interface{})
     ospfv2Area_obj, _, err = ospfv2_get_or_create_area (ospf_info, ospfv2_obj, area_id, vrfName)
@@ -2269,6 +2278,10 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
     
     log.Info(output_state)
+    if nil == output_state {
+        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        return oper_err
+    }
     
     ospf_info := output_state[vrfName].(map[string]interface{})
     ospfv2Area_obj, area_info, err = ospfv2_get_or_create_area (ospf_info, ospfv2_obj, area_id, vrfName)
@@ -2285,6 +2298,250 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
     
     return  err;
+}
+var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+    var err error
+    oper_err := errors.New("Operational error in  DbToYang_ospfv2_lsdb_state_xfmr")
+    cmn_log := "GET: xfmr for OSPF- Areas Area lsdb State"
+    var ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas
+    var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
+    var ospfv2AreaLsdb_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb
+    var ospfv2AreaLsdbState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_State
+    var lsdbAreaId ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_State_Identifier_Union_String
+    var ospfv2AreaLsaTypes_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes
+
+
+    log.Info("DbToYang_ospfv2_lsdb_state_xfmr ***", inParams.uri)
+    var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
+    ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
+    if err != nil {
+        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        return  oper_err
+    }
+    log.Info("vrfName=", vrfName)
+
+    // get the values from the backend
+    pathInfo := NewPathInfo(inParams.uri)
+    area_id :=pathInfo.Var("identifier#2")
+    if(len(area_id) == 0) {
+        log.Info("Area Id is not specified, key is missing")
+        log.Errorf ("%s failed !! Error", cmn_log);
+        return  oper_err
+    } else {
+        area_id = getAreaDotted(area_id)
+        log.Infof("Area Id %s", area_id)
+    }
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    log.Info(targetUriPath)
+    ospfv2Areas_obj = ospfv2_obj.Areas
+    if ospfv2Areas_obj == nil {
+        log.Errorf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
+        return  oper_err
+    }
+    areaNameStr := fmt.Sprintf("%v", area_id)
+    ospfv2Area_obj, err = ospfv2_find_area_by_key(ospfv2Areas_obj, areaNameStr)
+    if nil == ospfv2Area_obj {
+        log.Infof("Area object missing, add new area=%s", area_id)
+        ospfv2Area_obj, err = ospfv2_create_new_area(ospfv2Areas_obj, areaNameStr)
+        if (err != nil) {
+            log.Info("Failed to create a new area")
+            return  oper_err
+        }
+    }
+    ospfv2AreaLsdb_obj = ospfv2Area_obj.Lsdb
+    if nil == ospfv2AreaLsdb_obj {
+        log.Errorf("Lsdb missing for area %s", areaNameStr)
+        return  oper_err
+    }
+
+    ospfv2AreaLsdbState_obj = ospfv2AreaLsdb_obj.State
+    if nil == ospfv2AreaLsdbState_obj {
+        log.Errorf("Lsdb State missing for Lsdb in area %s", areaNameStr)
+        return  oper_err
+    }
+    lsdbAreaId.String = areaNameStr
+    ospfv2AreaLsdbState_obj.Identifier = &lsdbAreaId
+    ospfv2AreaLsaTypes_obj = ospfv2AreaLsdb_obj.LsaTypes
+    if nil == ospfv2AreaLsaTypes_obj {
+        log.Errorf("LsaTypes container missing for Lsdb in area %s", areaNameStr)
+        return  oper_err
+    }
+    ospfv2_fill_router_lsa_state(ospfv2AreaLsaTypes_obj, areaNameStr, vrfName)
+    return  err;
+}
+func ospfv2_fill_router_lsa_state(
+    ospfv2AreaLsaTypes_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes,
+    areaNameStr interface{}, vrfName string) error {
+    var err error
+    var ospfv2AreaLsaType_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType
+    var ospfv2Lsas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas
+    var ospfv2Lsa_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa
+    var ospfv2RouterLsa_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_RouterLsa
+    var ospfv2RouterLsaToss_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_RouterLsa_TypesOfService
+    var ospfv2RouterLsaTos_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_RouterLsa_TypesOfService_TypeOfService
+    var ospfv2RouterLsaState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_RouterLsa_State
+    var ospfv2LinksInfo_obj []*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_RouterLsa_State_LinkInformation
+    var vtysh_cmd string
+    var linkCount uint16
+    var ospfv2Zero uint16 = 0
+    var lsId string
+    var temp interface{}
+    var lsa_info map[string]interface{}
+    var cmd_err error
+
+    oper_err := errors.New("Operational error in ospfv2_fill_router_lsa_state")
+    ospfv2AreaLsaType_obj = ospfv2AreaLsaTypes_obj.LsaType[ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_ROUTER_LSA]
+    if nil == ospfv2AreaLsaType_obj {
+        ospfv2AreaLsaType_obj, _ = ospfv2AreaLsaTypes_obj.NewLsaType(ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_ROUTER_LSA)
+        if nil == ospfv2AreaLsaType_obj {
+            log.Errorf("Failed to create router Lsa for area %s", areaNameStr)
+            return oper_err
+        }
+        ygot.BuildEmptyTree(ospfv2AreaLsaType_obj)
+    }
+    ospfv2Lsas_obj = ospfv2AreaLsaType_obj.Lsas
+    if nil == ospfv2Lsas_obj {
+        log.Errorf("cannot find Lsas inside LsaType container")
+        return oper_err
+    }
+    vtysh_cmd = "show ip ospf vrf " + vrfName + " database router json"
+    output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    if cmd_err != nil {
+      log.Errorf("Failed to fetch ospf router database for vrf %s, err=%s", vrfName, cmd_err)
+      return  cmd_err
+    }
+
+    log.Info(output_state)
+
+    ospf_info := output_state[vrfName].(map[string]interface{})
+    if value, ok := ospf_info["areas"]; ok {
+        areas_map := value.(map[string]interface {})
+        for key, area := range areas_map {
+            if (key != areaNameStr) {
+                log.Infof("Skip filling area state information for area %s", key)
+                continue;
+            }
+            area_info := area.(map[string]interface{})
+            lsIds_info := area_info["Router Link States"].(map[string]interface{})
+            for lsId, temp = range lsIds_info {
+                lsa_info = temp.(map[string]interface{})
+                ospfv2Lsa_obj = ospfv2Lsas_obj.Lsa[lsId]
+                if nil == ospfv2Lsa_obj {
+                    ospfv2Lsa_obj, _  = ospfv2Lsas_obj.NewLsa(lsId)
+                    ygot.BuildEmptyTree(ospfv2Lsa_obj)
+                }
+                if nil == ospfv2Lsas_obj {
+                    log.Errorf("cannot create Lsa inside Lsas container")
+                    return oper_err
+                }
+                ospfv2_fill_lsa_header_information(lsa_info, ospfv2Lsa_obj.State)
+                ospfv2RouterLsa_obj = ospfv2Lsa_obj.RouterLsa
+                if nil == ospfv2RouterLsa_obj {
+                    log.Info("Router LSA is empty")
+                    ygot.BuildEmptyTree(ospfv2RouterLsa_obj)
+                }
+                ospfv2RouterLsaToss_obj = ospfv2RouterLsa_obj.TypesOfService
+                ospfv2RouterLsaTos_obj, _ = ospfv2RouterLsaToss_obj.NewTypeOfService(0)
+                if (nil != ospfv2RouterLsaTos_obj) {
+                    ygot.BuildEmptyTree(ospfv2RouterLsaTos_obj)
+                }
+                ospfv2RouterLsaState_obj = ospfv2RouterLsa_obj.State
+                if value,ok := lsa_info["noOfLinks"] ; ok {
+                    linkCount  = uint16(value.(float64))
+                    ospfv2RouterLsaState_obj.NumberLinks = &linkCount
+                }
+                if value,ok := lsa_info["routerLsaFlags"] ; ok {
+                    _flags  := uint32(value.(float64))
+                    ospfv2RouterLsaState_obj.Flags = &_flags
+                }
+                if _description, ok := lsa_info["routerLsaFlagsDescription"].(string); ok {
+                    ospfv2RouterLsaState_obj.FlagsDescription = &_description
+                }
+                ospfv2LinksInfo_obj = ospfv2RouterLsaState_obj.LinkInformation
+                if value,ok := lsa_info["links"] ; ok {
+                    links := value.([]interface{})
+                    for _, link := range links {
+                        link_info := link.(map[string]interface{})
+                        var link_node ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_RouterLsa_State_LinkInformation
+                        var link_state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_RouterLsa_State_LinkInformation_State
+                        if _linkId, ok := link_info["linkId"].(string); ok {
+                            link_state.LinkId = &_linkId
+                        }
+                        if _linkData, ok := link_info["linkData"].(string); ok {
+                            var tempStr ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_RouterLsa_State_LinkInformation_State_LinkData_Union_String
+                            tempStr.String = _linkData
+                            link_state.LinkData = &tempStr
+                        }
+                        if value,ok := link_info["linkTos0Metric"] ; ok {
+                            _linkTos0Metric  := uint16(value.(float64))
+                            link_state.Metric = &_linkTos0Metric
+                            ospfv2RouterLsaTos_obj.State.Metric = &_linkTos0Metric
+                        }
+                        link_state.NumberTosMetrics = &ospfv2Zero 
+                        link_state.Type = ocbinds.OpenconfigOspfTypes_ROUTER_LSA_TYPES_UNSET
+                        if _linktype, ok := link_info["connectedTo"].(string); ok {
+                            if _linktype == "a Transit Network" {
+                                link_state.Type = ocbinds.OpenconfigOspfTypes_ROUTER_LSA_TYPES_ROUTER_LSA_TRANSIT_NETWORK
+                            }
+                            if _linktype == "Stub Network" {
+                                link_state.Type = ocbinds.OpenconfigOspfTypes_ROUTER_LSA_TYPES_ROUTER_LSA_STUB_NETWORK
+                            }
+                            if _linktype == "a Virtual Link" {
+                                link_state.Type = ocbinds.OpenconfigOspfTypes_ROUTER_LSA_TYPES_ROUTER_LSA_VIRTUAL_LINK
+                            }
+                            if _linktype == "another Router (point-to-point)" {
+                                link_state.Type = ocbinds.OpenconfigOspfTypes_ROUTER_LSA_TYPES_ROUTER_LSA_P2P
+                            }
+                        }
+                        link_node.State = &link_state
+                        ospfv2LinksInfo_obj = append(ospfv2LinksInfo_obj, &link_node)
+                    }
+                    ospfv2RouterLsaState_obj.LinkInformation = ospfv2LinksInfo_obj
+                }
+                
+            }
+        }
+    }
+    return err
+}
+func ospfv2_fill_lsa_header_information(lsa_info map[string]interface{}, ospfv2LsaState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_State) error {
+    var err error
+    oper_err := errors.New("Operational error in ospfv2_fill_lsa_header_information")
+    if nil == ospfv2LsaState_obj {
+        log.Error("Lsa State is empty");
+        return oper_err
+    }
+    if _advRouter, ok := lsa_info["advRouter"].(string); ok {
+        ospfv2LsaState_obj.AdvertisingRouter = &_advRouter
+    }
+    if value,ok := lsa_info["age"] ; ok {
+        _age  := uint16(value.(float64))
+        ospfv2LsaState_obj.Age = &_age
+    }
+    if value,ok := lsa_info["checkSum"] ; ok {
+        _Checksum  := uint16(value.(float64))
+        ospfv2LsaState_obj.Checksum = &_Checksum
+    }
+    if value,ok := lsa_info["flags"] ; ok {
+        _flags  := uint8(value.(float64))
+        ospfv2LsaState_obj.Flags = &_flags
+    }
+    if value,ok := lsa_info["length"] ; ok {
+        _length  := uint16(value.(float64))
+        ospfv2LsaState_obj.Length = &_length
+    }
+    if value,ok := lsa_info["options"] ; ok {
+        _options  := uint8(value.(float64))
+        ospfv2LsaState_obj.Option = &_options
+    }
+    if _dataOptionsExpanded, ok := lsa_info["dataOptionsExpanded"].(string); ok {
+        ospfv2LsaState_obj.OptionExpanded = &_dataOptionsExpanded
+    }
+    if value,ok := lsa_info["sequenceNo"] ; ok {
+        _sequenceNo  := int32(value.(float64))
+        ospfv2LsaState_obj.SequenceNumber = &_sequenceNo
+    }
+    return err
 }
 var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error

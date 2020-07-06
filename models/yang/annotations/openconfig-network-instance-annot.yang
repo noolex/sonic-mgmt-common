@@ -13,6 +13,7 @@ module openconfig-network-instance-annot {
     import openconfig-bgp-evpn-ext { prefix oc-bgp-evpn-ext; }
     import openconfig-bfd { prefix oc-bfd; }
     import openconfig-ospfv2-ext { prefix "oc-ospfv2-ext"; }
+    import openconfig-igmp-ext { prefix "oc-igmp-ext"; }
 	
     import ietf-yang-types { prefix yang; }
     import openconfig-vxlan {prefix oc-vxlan; }
@@ -3640,11 +3641,37 @@ module openconfig-network-instance-annot {
       sonic-ext:subtree-transformer "ospfv2_stub_state_xfmr";
     }
   }
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+			"/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb" {
+    deviate add {
+      sonic-ext:subtree-transformer "ospfv2_lsdb_state_xfmr";
+    }
+  }
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-netinst:virtual-links/oc-netinst:virtual-link/oc-netinst:state" {
     deviate add {
       sonic-ext:subtree-transformer "ospfv2_vlink_state_xfmr";
     }
+  }
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/oc-igmp-ext:groups" {
+     deviate add {
+       sonic-ext:subtree-transformer "igmp_groups_get_xfmr";
+     }
+  }
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/oc-igmp-ext:statistics" {
+     deviate add {
+       sonic-ext:subtree-transformer "igmp_stats_get_xfmr";
+     }
+  }
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/oc-igmp-ext:interfaces/oc-igmp-ext:interface" {
+     deviate add {
+       sonic-ext:subtree-transformer "igmp_interface_get_xfmr";
+     }
+  }
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/oc-igmp-ext:sources" {
+     deviate add {
+       sonic-ext:subtree-transformer "igmp_sources_get_xfmr";
+     }
   }
 }
 

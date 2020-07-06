@@ -49,7 +49,7 @@ var reserved_names = []string{
 	"default",
 }
 
-var trap_id_valid = map[string][]string{
+var Copp_trap_id_valid = map[string][]string{
 	"ttl_error":       {"trap", "drop"},
 	"lacp":            {"trap", "drop"},
 	"bgp":             {"trap", "drop"},
@@ -189,7 +189,7 @@ func (t *CustomValidation) ValidateCoppTrapAction(
 							for _, trap_id := range trap_ids {
 								/* check if action is allowed */
 								found := false
-								for _, action := range trap_id_valid[trap_id] {
+								for _, action := range Copp_trap_id_valid[trap_id] {
 									if action == vc.YNodeVal {
 										found = true
 										break
@@ -249,15 +249,13 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 	}
 
 	keys, err := vc.RClient.Keys("COPP_TRAP|*").Result()
-	if vc.CurCfg.VOp != OP_DELETE {
-		if vc.YNodeVal != "" {
-			return CVLErrorInfo{
-				ErrCode:          CVL_SEMANTIC_ERROR,
-				TableName:        keys[0],
-				Keys:             keys,
-				ConstraintErrMsg: "Mode/Red/Green/Yellow action update/settings are not supported in this release",
-				ErrAppTag:        "not-supported",
-			}
+	if vc.YNodeVal != "" {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        keys[0],
+			Keys:             keys,
+			ConstraintErrMsg: "Mode/Red/Green/Yellow operations are not supported in this release",
+			ErrAppTag:        "not-supported",
 		}
 	}
 
@@ -287,7 +285,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 }
 
 func check_trap_id_valid(trap_id string) bool {
-	_, found := trap_id_valid[trap_id]
+	_, found := Copp_trap_id_valid[trap_id]
 	return found
 }
 
@@ -365,7 +363,7 @@ func (t *CustomValidation) ValidateCoppTrapIds(
 			}
 			if trap_action != "" {
 				found := false
-				for _, trap := range trap_id_valid[trap_id] {
+				for _, trap := range Copp_trap_id_valid[trap_id] {
 					if trap == trap_action {
 						found = true
 						break
@@ -478,7 +476,7 @@ func (t *CustomValidation) ValidateCoppTrapGroup(
 
 						for _, trap_id := range strings.Split(trap_ids, ",") {
 							found := false
-							for _, trap := range trap_id_valid[trap_id] {
+							for _, trap := range Copp_trap_id_valid[trap_id] {
 								if trap == trap_action {
 									found = true
 									break
@@ -531,16 +529,12 @@ func (t *CustomValidation) ValidateCoppNotSupported(
 
 	for _, attrib := range attributes {
 		if _, ok := vc.CurCfg.Data[attrib]; ok {
-			if vc.CurCfg.VOp != OP_DELETE {
-				if vc.YNodeVal != "" {
-					return CVLErrorInfo{
-						ErrCode:          CVL_SEMANTIC_ERROR,
-						TableName:        "COPP_GROUP",
-						Keys:             strings.Split(vc.CurCfg.Key, "|"),
-						ConstraintErrMsg: "pir/pbs update/settings are not supported in this release",
-						ErrAppTag:        "not-supported",
-					}
-				}
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "COPP_GROUP",
+				Keys:             strings.Split(vc.CurCfg.Key, "|"),
+				ConstraintErrMsg: "pir/pbs operations are not supported in this release",
+				ErrAppTag:        "not-supported",
 			}
 		}
 	}
