@@ -927,18 +927,18 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
 
 	// Delete on container, data present in DB
 
-        cleanuptbl1 := map[string]interface{}{"NAT_GLOBAL":map[string]interface{}{"Values":""}}
-        prereq1 := map[string]interface{}{"NAT_GLOBAL":map[string]interface{}{"Values":map[string]interface{}{"nat_udp_timeout":"280","admin_mode":"disabled","nat_tcp_timeout":"580","nat_timeout":"720"}}}
+        cleanuptbl1 := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+        prereq1 := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret1","src_ip":"1.1.1.1","timeout":"10"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
 
 	fmt.Println("++++++++++++++  DELETE uri container, data present in DB  +++++++++++++")
-        url := "/openconfig-nat:nat/instances/instance[id=1]/config"
+        url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
         expected := make(map[string]interface{})
         t.Run("RFC - Delete on container, data present in DB", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify Delete on container, data present in DB", verifyDbResult(rclient, "NAT_GLOBAL|Values", expected, false))
+        t.Run("RFC - Verify Delete on container, data present in DB", verifyDbResult(rclient, "TACPLUS|global", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
 
@@ -1313,7 +1313,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
 
 func Test_Rfc_Get_Error_Cases(t *testing.T) {
 
-        // Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (OC Yang)
+        // Get on an leaf-list instance , when leaf-list itself doesn't exist in DB instance (OC Yang)
 
         cleanuptbl := map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
         prereq := map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"exclude@":"1.2.3.*"}}}
@@ -1408,6 +1408,18 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
 
 
       // Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB
+
+      cleanuptbl = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+      prereq = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+
+      // Setup - Prerequisite
+      loadConfigDB(rclient, prereq)
+
+      fmt.Println("++++++++++++++  Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB  +++++++++++++")
+      url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/openconfig-aaa-ldap-ext:ldap/config/scope"
+      t.Run("Verify Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB", processGetRequest(url, expected, true, expected_err))
+      // Teardown
+      unloadConfigDB(rclient, cleanuptbl)
 
 
       // Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB
