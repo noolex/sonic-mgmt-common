@@ -96,6 +96,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  POST(modify) on container, parent table present, default value creation  +++++++++++++")
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
@@ -583,7 +584,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         fmt.Println("++++++++++++++  Patch(create) on container, parent table present, default value creation  +++++++++++++")
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.1.1\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
-       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL","local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1"}}}
         t.Run("RFC - PATCH on container(create default)", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PATCH(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -659,14 +660,15 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         cleanuptbl1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
 	cleanuptbl2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":""}}
         prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
-
+        prereq2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"NULL":"NULL"}}}
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  PATCH(create) uri: list, message-body: list, instance, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server"
         payload = "{\"openconfig-system:server\":[{\"address\":\"1.1.1.1\",\"config\":{\"timeout\":40}}]}"
-        expected = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"timeout":"40"}}}
+        expected = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"NULL":"NULL","timeout":"40"}}}
         t.Run("RFC - PATCH(create) on list", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PATCH(create) on list", verifyDbResult(rclient, "TACPLUS_SERVER|1.1.1.1", expected, false))
@@ -699,6 +701,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         // PATCH(create) on list instance , parent table present Create with default values
 
         prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
         cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
 
         // Setup - Prerequisite
@@ -710,7 +713,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
 
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
-        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL","local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2"}}}
         t.Run("RFC - PATCH on list instance(create default)", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PATCH(create default) on list instance", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -1211,10 +1214,11 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         prereq = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@":"1.2.3.*, 1.6.7.*"}}}
 
         // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  GET with uri OC leaf-list, but instances exists +++++++++++++")
-        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[1.2.3.*]"
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.2.3.*]"
         expected = "{\"ietf-snmp:include\":[\"1.2.3.*\"]}"
         t.Run("Verify Get on OC leaf-list instances exists", processGetRequest(url, expected, false))
         // Teardown
@@ -1230,7 +1234,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  GET with uri Sonic leaf-list, but no instances exist +++++++++++++")
-        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST=TestVacmView1/include"
+        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include"
         expected = "{}"
         t.Run("Verify Get on Sonic leaf-list no instances exist", processGetRequest(url, expected, false))
         // Teardown
@@ -1243,10 +1247,11 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         prereq = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@":"1.2.3.*, 1.6.7.*"}}}
 
         // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  GET with uri Sonic leaf-list, but  instances exists +++++++++++++")
-        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST=TestVacmView1/include[1.2.3.*]"
+        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include[include=1.2.3.*]"
         expected = "{\"sonic-snmp:include\":[\"1.2.3.*\"]}"
         t.Run("Verify Get on Sonic leaf-list  instances exists", processGetRequest(url, expected, false))
         // Teardown
@@ -1268,7 +1273,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  Get on list instance that does not map to any real table in DB, and yang children have data in DB +++++++++++++")
         url = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/subinterfaces/subinterface[index=0]"
-        expected = "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv4\":{\"addresses\":{\"address\":[{\"config\":{\"ip\":\"1.2.3.4\",\"prefix-length\":16},\"ip\":\"1.2.3.4\",\"state\":{\"ip\":\"1.2.3.4\",\"prefix-length\":16}}]}},\"openconfig-if-ip:ipv6\":{\"config\":{\"enabled\":false},\"state\":{\"enabled\":false}}}]}"
+        expected = "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv6\":{\"config\":{\"enabled\":false},\"state\":{\"enabled\":false}}}]}"
         t.Run("Verify Get on list instance that does not map to any real table in DB, and yang children have data in DB", processGetRequest(url, expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
@@ -1284,7 +1289,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  GET on a leaf/field, parent list instance exists but field exists in DB (OC YANG) +++++++++++++")
-        url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition=MAP1/statements/statement=1/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
+        url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
         expected = "{\"openconfig-bgp-policy:set-local-pref\":4294967294}"
         t.Run("Verify Get on a leaf/field, parent list instance exists but field exists in DB (OC YANG)", processGetRequest(url, expected, false))
         // Teardown
@@ -1297,7 +1302,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  GET on a leaf/field, parent list instance exists but field exists in DB (Sonic YANG) +++++++++++++")
-        url = "/sonic-route-map:sonic-route-map/ROUTE_MAP/ROUTE_MAP_LIST=MAP1,1/set_local_pref"
+        url = "/sonic-route-map:sonic-route-map/ROUTE_MAP/ROUTE_MAP_LIST[route_map_name=MAP1][stmt_name=1]/set_local_pref"
         expected = "{\"sonic-route-map:set_local_pref\":4294967294}"
         t.Run("Verify Get on a leaf/field, parent list instance exists but field exists in DB (Sonic YANG)", processGetRequest(url, expected, false))
         // Teardown
@@ -1317,7 +1322,7 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (OC Yang)  +++++++++++++")
-        url := "/ietf-snmp:snmp/vacm/view=TestVacmView1/include=1.9.5.*"
+        url := "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.9.5.*]"
         expected := "{}"
         expected_err := tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("Verify Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (OC Yang)", processGetRequest(url, expected, true, expected_err))
@@ -1331,7 +1336,7 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (Sonic Yang)  +++++++++++++")
-        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST=TestVacmView1/include=1.9.5.*"
+        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include[include=1.9.5.*]"
         t.Run("Verify Get on an leaf-list instance , when  leaf-list itself doesn't exist in DB instance (Sonic Yang)", processGetRequest(url, expected, true, expected_err))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
@@ -1345,7 +1350,7 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
        loadConfigDB(rclient, prereq)
 
        fmt.Println("++++++++++++++  Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (OC Yang)  +++++++++++++")
-       url = "/ietf-snmp:snmp/vacm/view=TestVacmView1/include=1.9.5.*"
+       url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.9.5.*]"
        t.Run("Verify Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (OC Yang)", processGetRequest(url, expected, true, expected_err))
        // Teardown
        unloadConfigDB(rclient, cleanuptbl)
@@ -1357,7 +1362,7 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
        loadConfigDB(rclient, prereq)
 
        fmt.Println("++++++++++++++  Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (Sonic Yang)  +++++++++++++")
-       url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST=TestVacmView1/include=1.9.5.*"
+       url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include[include=1.9.5.*]"
        t.Run("Verify Get on an leaf-list instance , when  leaf-list exists but queried leaf-list instance doesn’t exist in DB (Sonic Yang)", processGetRequest(url, expected, true, expected_err))
        // Teardown
        unloadConfigDB(rclient, cleanuptbl)
@@ -1366,7 +1371,7 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
        // Get on an Entire leaf-list ,when  leaf-list’s Parent does not exist  (OC Yang)
 
        fmt.Println("++++++++++++++  Get on an Entire leaf-list ,when  leaf-list’s Parent does not exist  (OC Yang)  +++++++++++++")
-       url = "/ietf-snmp:snmp/vacm/view=TestVacmView1/include"
+       url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
        t.Run("Verify Get on an Entire leaf-list ,when  leaf-list’s Parent does not exist  (OC Yang)", processGetRequest(url, expected, true, expected_err))
        // Teardown
        unloadConfigDB(rclient, cleanuptbl)
@@ -1381,7 +1386,7 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
       loadConfigDB(rclient, prereq)
 
       fmt.Println("++++++++++++++  Get on a leaf/field, parent list instance exists but field does NOT exist in DB (OC YANG)  +++++++++++++")
-      url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition=MAP1/statements/statement=1/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
+      url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
       t.Run("Verify Get on a leaf/field, parent list instance exists but field does NOT exist in DB (OC YANG)", processGetRequest(url, expected, true, expected_err))
       // Teardown
       unloadConfigDB(rclient, cleanuptbl)
@@ -1396,25 +1401,13 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
       loadConfigDB(rclient, prereq)
 
       fmt.Println("++++++++++++++  Get on a leaf/field, parent list instance exists but field does NOT exist in DB (Sonic YANG)  +++++++++++++")
-      url = "/sonic-route-map:sonic-route-map/ROUTE_MAP/ROUTE_MAP_LIST=MAP1,1/set_local_pref"
+      url = "/sonic-route-map:sonic-route-map/ROUTE_MAP/ROUTE_MAP_LIST[route_map_name=MAP1][stmt_name=1]/set_local_pref"
       t.Run("Verify Get on a leaf/field, parent list instance exists but field does NOT exist in DB (Sonic YANG)", processGetRequest(url, expected, true, expected_err))
       // Teardown
       unloadConfigDB(rclient, cleanuptbl)
 
 
       // Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB
-
-      cleanuptbl = map[string]interface{}{"PORTCHANNEL":map[string]interface{}{"PortChannel1":""}}
-      prereq = map[string]interface{}{"PORTCHANNEL":map[string]interface{}{"PortChannel1":map[string]interface{}{"NULL":"NULL"}}}
-
-      // Setup - Prerequisite
-      loadConfigDB(rclient, prereq)
-
-      fmt.Println("++++++++++++++  Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB  +++++++++++++")
-      url = "/openconfig-interfaces:interfaces/interface=PortChannel1/openconfig-if-aggregate:aggregation/config/openconfig-interfaces-ext:fallback"
-      t.Run("Verify Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB", processGetRequest(url, expected, true, expected_err))
-      // Teardown
-      unloadConfigDB(rclient, cleanuptbl)
 
 
       // Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB
@@ -1429,8 +1422,8 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
       loadConfigDB(rclient, prereq2)
 
       fmt.Println("++++++++++++++  Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB  +++++++++++++")
-      url = "/openconfig-interfaces:interfaces/interface=Vlan1/subinterfaces/subinterface=0/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
-      t.Run("Verify Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB", processGetRequest(url, expected, true, expected_err))
+      url = "/openconfig-interfaces:interfaces/interface[name=Vlan1]/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
+      t.Run("Verify Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB", processGetRequest(url, expected, false))
       // Teardown
       unloadConfigDB(rclient, cleanuptbl1)
       unloadConfigDB(rclient, cleanuptbl2)
