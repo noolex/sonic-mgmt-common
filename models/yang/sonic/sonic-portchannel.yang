@@ -114,6 +114,12 @@ module sonic-portchannel {
                         error-app-tag fast-rate-config;
                     }
                 }
+
+                leaf graceful_shutdown_mode {
+                    type mode;
+                    description
+                        "Enable/Disable graceful shutdown mode per portchannel";
+                }
             }
         }
 
