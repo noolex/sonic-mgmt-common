@@ -46,10 +46,10 @@ var reserved_names = []string{
 	"copp-system-nat",
 	"copp-system-mtu",
 	"copp-system-sflow",
-	"copp-system-default",
+	"default",
 }
 
-var trap_id_valid = map[string][]string{
+var Copp_trap_id_valid = map[string][]string{
 	"ttl_error":       {"trap", "drop"},
 	"lacp":            {"trap", "drop"},
 	"bgp":             {"trap", "drop"},
@@ -90,6 +90,7 @@ func (t *CustomValidation) ValidateCoppName(
 	vc *CustValidationCtxt) CVLErrorInfo {
 	var allowed_attributes = []string{
 		"trap_ids",
+		"trap_group",
 		"queue",
 		"trap_priority",
 		"cir",
@@ -138,13 +139,15 @@ func (t *CustomValidation) ValidateCoppName(
 		entry, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
 		if err == nil {
 			/* check if trap_group attribute is present */
-			if _, found_field := entry["trap_group"]; found_field {
-				return CVLErrorInfo{
-					ErrCode:          CVL_SEMANTIC_ERROR,
-					TableName:        keys[0],
-					Keys:             keys,
-					ConstraintErrMsg: "Delete of traps that are still bound is not allowed",
-					ErrAppTag:        "del-not-allowed",
+			if trap_group, found_field := entry["trap_group"]; found_field {
+				if trap_group != "NULL" {
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						TableName:        keys[0],
+						Keys:             keys,
+						ConstraintErrMsg: "Delete of traps that are still bound is not allowed",
+						ErrAppTag:        "del-not-allowed",
+					}
 				}
 			}
 		}
@@ -186,7 +189,7 @@ func (t *CustomValidation) ValidateCoppTrapAction(
 							for _, trap_id := range trap_ids {
 								/* check if action is allowed */
 								found := false
-								for _, action := range trap_id_valid[trap_id] {
+								for _, action := range Copp_trap_id_valid[trap_id] {
 									if action == vc.YNodeVal {
 										found = true
 										break
@@ -222,7 +225,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapBound YCur: %v", vc.YCur)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapBound Data: %v", vc.CurCfg.Data)
 
-	if vc.CurCfg.VOp == OP_DELETE {
+	if vc.CurCfg.VOp == OP_DELETE && len(vc.CurCfg.Data) == 0 {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -244,9 +247,19 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 		}
 	}
-	/* get all COPP_TRAP entries */
 
 	keys, err := vc.RClient.Keys("COPP_TRAP|*").Result()
+	if vc.YNodeVal != "" {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        keys[0],
+			Keys:             keys,
+			ConstraintErrMsg: "Mode/Red/Green/Yellow operations are not supported in this release",
+			ErrAppTag:        "not-supported",
+		}
+	}
+
+	/* get all COPP_TRAP entries */
 	if err == nil {
 		for _, key := range keys {
 			/* for each COPP_TRAP entry found */
@@ -259,7 +272,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 							ErrCode:          CVL_SEMANTIC_ERROR,
 							TableName:        keys[0],
 							Keys:             keys,
-							ConstraintErrMsg: "Mode/Red/Green/Yellow action updates are not allowed when group is bound to this trap",
+							ConstraintErrMsg: "Mode/Red/Green/Yellow action updates/deletes are not allowed when group is bound to this trap",
 							ErrAppTag:        "not-supported",
 						}
 					}
@@ -272,7 +285,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 }
 
 func check_trap_id_valid(trap_id string) bool {
-	_, found := trap_id_valid[trap_id]
+	_, found := Copp_trap_id_valid[trap_id]
 	return found
 }
 
@@ -286,8 +299,19 @@ func (t *CustomValidation) ValidateCoppTrapIds(
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapIds YCur: %v", vc.YCur)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapIds Data: %v", vc.CurCfg.Data)
 
+	var allowed_attributes = []string{
+		"name",
+		"trap_group",
+	}
+
+	for _, allowed := range allowed_attributes {
+		if _, ok := vc.CurCfg.Data[allowed]; ok {
+			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+		}
+	}
+
+	keys := strings.Split(vc.CurCfg.Key, "|")
 	if vc.CurCfg.VOp == OP_DELETE {
-		keys := strings.Split(vc.CurCfg.Key, "|")
 		for _, reserved := range reserved_names {
 			if keys[1] == reserved {
 				return CVLErrorInfo{
@@ -307,6 +331,7 @@ func (t *CustomValidation) ValidateCoppTrapIds(
 	if inval != "" {
 		trap_ids := strings.Split(inval, ",")
 		trap_action := ""
+		cfg_trap_ids := ""
 
 		/* retrieve trap_action from associated COPP_GROUP */
 		entry, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
@@ -324,20 +349,21 @@ func (t *CustomValidation) ValidateCoppTrapIds(
 					}
 				}
 			}
+			cfg_trap_ids = entry["trap_ids"]
 		}
 		for _, trap_id := range trap_ids {
 			if !check_trap_id_valid(trap_id) {
 				return CVLErrorInfo{
 					ErrCode:          CVL_SEMANTIC_ERROR,
-					TableName:        "COPP_TRAP",
-					Keys:             strings.Split(vc.CurCfg.Key, "|"),
+					TableName:        keys[0],
+					Keys:             keys,
 					ConstraintErrMsg: "Invalid value passed for trap-ids",
 					ErrAppTag:        "invalid-value",
 				}
 			}
 			if trap_action != "" {
 				found := false
-				for _, trap := range trap_id_valid[trap_id] {
+				for _, trap := range Copp_trap_id_valid[trap_id] {
 					if trap == trap_action {
 						found = true
 						break
@@ -347,10 +373,36 @@ func (t *CustomValidation) ValidateCoppTrapIds(
 					err_str := "Trap_id " + trap_id + " does not support trap_action " + trap_action
 					return CVLErrorInfo{
 						ErrCode:          CVL_SEMANTIC_ERROR,
-						TableName:        "COPP_TRAP",
-						Keys:             strings.Split(vc.CurCfg.Key, "|"),
+						TableName:        keys[0],
+						Keys:             keys,
 						ConstraintErrMsg: err_str,
 						ErrAppTag:        "invalid-value",
+					}
+				}
+			}
+		}
+		/* for reserved names, check if operation tries to remove trap_id from list */
+		if len(keys) > 1 {
+			for _, reserved := range reserved_names {
+				if keys[1] == reserved && cfg_trap_ids != "" {
+					for _, cfg := range strings.Split(cfg_trap_ids, ",") {
+						found := false
+						for _, trap_id := range trap_ids {
+							if cfg == trap_id {
+								found = true
+								break
+							}
+						}
+						if !found {
+							err_str := "Cannot remove trap-id " + cfg + " from reserved trap " + keys[1]
+							return CVLErrorInfo{
+								ErrCode:          CVL_SEMANTIC_ERROR,
+								TableName:        keys[0],
+								Keys:             keys,
+								ConstraintErrMsg: err_str,
+								ErrAppTag:        "del-not-allowed",
+							}
+						}
 					}
 				}
 			}
@@ -369,13 +421,46 @@ func (t *CustomValidation) ValidateCoppTrapGroup(
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapGroup YCur: %v", vc.YCur)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapGroup Data: %v", vc.CurCfg.Data)
 
+	var allowed_attributes = []string{
+		"name",
+		"trap_ids",
+	}
+
+	for _, allowed := range allowed_attributes {
+		if _, ok := vc.CurCfg.Data[allowed]; ok {
+			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+		}
+	}
+
 	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
+	keys := strings.Split(vc.CurCfg.Key, "|")
+	if keys[1] == "default" && vc.YNodeVal != "default" {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        keys[1],
+			Keys:             keys,
+			ConstraintErrMsg: "default group can only be bound to default trap",
+			ErrAppTag:        "invalid-value",
+		}
+	}
+
+	if vc.YNodeVal == "default" && keys[1] != "default" {
+		err_str := strings.Split(vc.CurCfg.Key, "|")[1] + " cannot be bound to default trap"
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        keys[1],
+			Keys:             keys,
+			ConstraintErrMsg: err_str,
+			ErrAppTag:        "invalid-value",
+		}
+	}
+
 	trap_group := vc.CurCfg.Data["trap_group"]
 
-	if trap_group != "" {
+	if trap_group != "" && trap_group != "NULL" {
 		entry, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
 		if err == nil {
 			util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapGroup found %v", vc.CurCfg.Key)
@@ -391,7 +476,7 @@ func (t *CustomValidation) ValidateCoppTrapGroup(
 
 						for _, trap_id := range strings.Split(trap_ids, ",") {
 							found := false
-							for _, trap := range trap_id_valid[trap_id] {
+							for _, trap := range Copp_trap_id_valid[trap_id] {
 								if trap == trap_action {
 									found = true
 									break
@@ -401,8 +486,8 @@ func (t *CustomValidation) ValidateCoppTrapGroup(
 								err_str := "The trap_group trap_action setting is not compatible with the trap_id entry " + trap_id
 								return CVLErrorInfo{
 									ErrCode:          CVL_SEMANTIC_ERROR,
-									TableName:        "COPP_TRAP",
-									Keys:             strings.Split(vc.CurCfg.Key, "|"),
+									TableName:        keys[1],
+									Keys:             keys,
 									ConstraintErrMsg: err_str,
 									ErrAppTag:        "invalid-value",
 								}
@@ -413,13 +498,43 @@ func (t *CustomValidation) ValidateCoppTrapGroup(
 					if len(entry2) == 0 {
 						return CVLErrorInfo{
 							ErrCode:          CVL_SEMANTIC_ERROR,
-							TableName:        "COPP_TRAP",
-							Keys:             strings.Split(vc.CurCfg.Key, "|"),
+							TableName:        keys[1],
+							Keys:             keys,
 							ConstraintErrMsg: "trap_group does not exist",
 							ErrAppTag:        "invalid-value",
 						}
 					}
 				}
+			}
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func (t *CustomValidation) ValidateCoppNotSupported(
+	vc *CustValidationCtxt) CVLErrorInfo {
+
+	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateCoppNotSupported operation: %v", vc.CurCfg.VOp)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported key: %v", vc.CurCfg.Key)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YNodeName: %v", vc.YNodeName)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YNodeVal: %v", vc.YNodeVal)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YCur: %v", vc.YCur)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported Data: %v", vc.CurCfg.Data)
+
+	var attributes = []string{
+		"pir",
+		"pbs",
+	}
+
+	for _, attrib := range attributes {
+		if _, ok := vc.CurCfg.Data[attrib]; ok {
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "COPP_GROUP",
+				Keys:             strings.Split(vc.CurCfg.Key, "|"),
+				ConstraintErrMsg: "pir/pbs operations are not supported in this release",
+				ErrAppTag:        "not-supported",
 			}
 		}
 	}

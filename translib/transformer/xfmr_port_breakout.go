@@ -67,14 +67,16 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
         log.Info("YangToDb_port_breakout_config_xfmr : ifName is empty")
         return tlerr.InvalidArgs("Invalid port")
     }
+    statusExist := false
     entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:"PORT_BREAKOUT"}, db.Key{Comp: []string{ifName}})
     if dbErr != nil {
             log.Info("Failed to read DB entry, PORT_BREAKOUT|", ifName)
-            return tlerr.NotFound("No port breakout configurations")
+    } else {
+        status := entry.Get("status")
+        log.Info("DPB STATUS:", status, " dbs: ", inParams.dbs[db.ConfigDB])
+        statusExist = true
+        platObj[pathInfo.Var("name")].Port.BreakoutMode.State.Status = &status
     }
-    status := entry.Get("status")
-    log.Info("DPB STATUS:", status, " dbs: ", inParams.dbs[db.ConfigDB])
-    platObj[pathInfo.Var("name")].Port.BreakoutMode.State.Status = &status
     configDb := inParams.dbs[db.ConfigDB]
     if configDb == nil {
         configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
@@ -104,9 +106,17 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
         for j, name := range members {
             members[j] = *(utils.GetUINameFromNativeName(&name))
         }
-    } else {
+        if (len(members) > 1) && !statusExist {
+            status := "Completed"
+            platObj[pathInfo.Var("name")].Port.BreakoutMode.State.Status = &status
+            log.Info("DPB only members for ", ifName)
+        }
+    } else if statusExist {
         members = append(members, ifName)
-        log.Info("DPB only member ", ifName)
+        log.Info("DPB mode is default for ", ifName)
+    } else {
+        log.Info("No port breakout configurations for ", ifName)
+        return tlerr.NotFound("No port breakout configurations")
     }
 
     platObj[pathInfo.Var("name")].Port.BreakoutMode.State.Members = members
@@ -274,12 +284,12 @@ var YangToDb_port_breakout_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         data := db.Value{Field: m}
         data.Set("brkout_mode", "")
         dpbMap[tblName][ifName] = data
-        dpb_entry, err := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
+        dpb_entry, err1 := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
         //Delete only when current config is non-default
-        if err == nil {
+        if err1 == nil {
             log.Info("CURRENT: ", dpb_entry)
-            ports, err1 := getPorts(ifName, dpb_entry.Get("brkout_mode"))
-            if err1 == nil {
+            ports, err2 := getPorts(ifName, dpb_entry.Get("brkout_mode"))
+            if err2 == nil {
                 log.Info("PORTS TO BE DELETED: ", ports)
             }
             err = breakout_action(ifName, dpb_entry.Get("brkout_mode"), "", inParams)
@@ -328,7 +338,6 @@ var rpc_breakout_capabilities RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
     }
     exec.Output.Caps = getCapabilities()
     result, err := json.Marshal(&exec)
-    log.Info("RPC Result: ", result, "Error: ", err)
     return result, err
 
 }

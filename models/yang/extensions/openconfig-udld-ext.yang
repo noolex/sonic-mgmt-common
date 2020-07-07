@@ -121,57 +121,72 @@ module openconfig-udld-ext {
       description
         "List of Neighbors";
       list neighbor {
-        key "index";
-        description
-          "Each Neighbor info";
+          key "index";
+          description
+              "Each Neighbor info";
 
-        leaf index {
-            type uint16;
-            description
-                "Index number of neighbor port";
-        }
+          leaf index {
+              type leafref {
+                  path "../state/index";
+              }
+              description
+                  "index of each neighbor data ";
+          }
 
-        leaf device-id {
-            type string;
-            description
-                "device id(MAC)";
-        }
+          container state {
+              config false;
 
-        leaf device-name {
-            type string;
-            description
-                "device name";
-        }
+              description
+                  "Neighbor data ";
 
-        leaf status {
-            type identityref {
-              base oc-udld-types:UDLD_PORT_STATUS;
-            }
-            description
-                "UDLD port status";
-        }
+              leaf index {
+                  type uint16;
+                  description
+                      "Index number of neighbor port";
+              }
 
-        leaf port-id {
-            type string;
-            description
-                "Neighbor port name";
-        }
+              leaf device-id {
+                  type string;
+                  description
+                      "device id(MAC)";
+              }
 
-        leaf msg-time {
-            type uint8;
-            units seconds;
-            default 1;
-            description
-                "Neighbor message time";
-        }
+              leaf device-name {
+                  type string;
+                  description
+                      "device name";
+              }
 
-        leaf timeout-interval {
-            type uint8;
-            units seconds;
-            default 1;
-            description
-                "Neighbor timeout interval";
-        }
+              leaf status {
+                  type identityref {
+                      base oc-udld-types:UDLD_PORT_STATUS;
+                  }
+                  description
+                      "UDLD port status";
+              }
+
+              leaf port-id {
+                  type string;
+                  description
+                      "Neighbor port name";
+              }
+
+              leaf msg-time {
+                  type uint8;
+                  units seconds;
+                  default 1;
+                  description
+                      "Neighbor message time";
+              }
+
+              leaf timeout-interval {
+                  type uint8;
+                  units seconds;
+                  default 1;
+                  description
+                      "Neighbor timeout interval";
+              }
+          }
 
       }
     }

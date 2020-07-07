@@ -64,7 +64,7 @@ module openconfig-routing-policy-ext {
             "Routing policy action type permit or deny";
     }
 
-    grouping routing-policy-ext-asn-list-val {
+    grouping routing-policy-ext-asn-list-val-config {
         description
             "Configuration data for ASN numbers";
          leaf asn-list{
@@ -75,7 +75,7 @@ module openconfig-routing-policy-ext {
       }
     }
 
-    grouping routing-policy-ext-action {
+    grouping routing-policy-ext-action-config {
         description
             "Configuration data for action type";
         leaf action {
@@ -117,7 +117,7 @@ module openconfig-routing-policy-ext {
         }
     }
 
-    grouping routing-policy-ext-match-network-instance {
+    grouping routing-policy-ext-match-network-instance-config {
         description
             "Configuration data for match network instance.";
 
@@ -131,7 +131,7 @@ module openconfig-routing-policy-ext {
         }
     }
 
-    grouping routing-policy-ext-match-src-network-instance-config {
+    grouping routing-policy-ext-match-src-network-instance-top {
         description
             "Configuration data for source VRF match definitions.";
 
@@ -141,13 +141,13 @@ module openconfig-routing-policy-ext {
             container config {
                 description
                     "Configuration parameters relating to source network instance";
-                uses routing-policy-ext-match-network-instance;
+                uses routing-policy-ext-match-network-instance-config;
             }
             container state {
                 config false;
                 description
                     "Operational state parameters relating to source network instance";
-                uses routing-policy-ext-match-network-instance;
+                uses routing-policy-ext-match-network-instance-config;
             }
         }
     }
@@ -155,19 +155,19 @@ module openconfig-routing-policy-ext {
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:set-as-path-prepend/oc-bgp-pol:config {
       description
           "Policy definition extensions for BGP AS-PATH prepend configs";
-        uses routing-policy-ext-asn-list-val;
+        uses routing-policy-ext-asn-list-val-config;
    }
  
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:set-as-path-prepend/oc-bgp-pol:state {
       description
           "Policy definition extensions for BGP AS-PATH prepend configs";
-        uses routing-policy-ext-asn-list-val;
+        uses routing-policy-ext-asn-list-val-config;
    }
 
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions {
       description
           "Policy definition extensions for conditions";
-        uses routing-policy-ext-match-src-network-instance-config;
+        uses routing-policy-ext-match-src-network-instance-top;
     }
 
     deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:community-count {
@@ -266,28 +266,16 @@ module openconfig-routing-policy-ext {
         deviate not-supported;
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol:set-med {
-	  deviate replace {
-          type uint32;
-	  }
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol:set-med {
-	  deviate replace {
-          type uint32;
-	  }
-    }
-
     augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:config {
       description
           "IP prefix set extensions";
-        uses routing-policy-ext-action;
+        uses routing-policy-ext-action-config;
     }
 
     augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:state {
       description
           "IP prefix set extensions";
-        uses routing-policy-ext-action;
+        uses routing-policy-ext-action-config;
     }
 }
 

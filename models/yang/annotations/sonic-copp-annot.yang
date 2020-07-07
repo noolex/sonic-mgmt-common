@@ -1,0 +1,17 @@
+module sonic-copp-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/sonic-copp-annot";
+    prefix "scopp-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-copp { prefix scopp; }
+
+	deviation /scopp:get-match-protocols {
+		deviate add {
+			sonic-ext:rpc-callback "rpc_show_match_protocols";
+		}
+	}
+}
+

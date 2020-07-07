@@ -25,6 +25,10 @@ module sonic-vrrp {
         prefix svlan;
     }
 
+    import sonic-extension {
+		    prefix sonic-ext;
+		}
+
     description
     "SONIC VRRP";
 
@@ -100,6 +104,7 @@ module sonic-vrrp {
                 leaf-list vip {
                     max-elements 4;
                     type inet:ipv4-address;
+                    sonic-ext:custom-validation ValidateVipSubnet;
                 }
             }
         }
@@ -204,6 +209,7 @@ module sonic-vrrp {
                 leaf-list vip {
                     max-elements 4;
                     type inet:ipv6-address;
+                    sonic-ext:custom-validation ValidateVipSubnet;
                 }
             }
         }

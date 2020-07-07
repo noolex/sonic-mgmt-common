@@ -37,6 +37,8 @@ func init () {
     XlateFuncBind("DbToYang_route_map_stmt_field_xfmr", DbToYang_route_map_stmt_field_xfmr)
     XlateFuncBind("YangToDb_route_map_set_ipv6_next_hop_xfmr", YangToDb_route_map_set_ipv6_next_hop_xfmr)
     XlateFuncBind("DbToYang_route_map_set_ipv6_next_hop_xfmr", DbToYang_route_map_set_ipv6_next_hop_xfmr)
+    XlateFuncBind("YangToDb_route_map_set_med_xfmr", YangToDb_route_map_set_med_xfmr)
+    XlateFuncBind("DbToYang_route_map_set_med_xfmr", DbToYang_route_map_set_med_xfmr)
 }
 
 var DbToYang_route_map_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -942,6 +944,56 @@ var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (
    rtStmtActionCommObj.State.Options = rtStmtActionCommObj.Config.Options
 
     return err
+}
+
+var DbToYang_route_map_set_med_xfmr FieldXfmrDbtoYang= func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_route_map_set_med_xfmr: ", data, "inParams : ", inParams)
+
+    pTbl := data["ROUTE_MAP"]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_route_map_set_med_xfmr table not found : ", inParams.key)
+        return result, errors.New("Policy definition table not found : " + inParams.key)
+    }
+    niInst := pTbl[inParams.key]
+    set_med, ok := niInst.Field["set_med"]
+    if ok {
+        result["set-med"] = set_med
+    } else {
+        log.Info("DbToYang_route_map_set_med_xfmr field not found in DB")
+    }
+    return result, nil 
+}
+
+var YangToDb_route_map_set_med_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+    if inParams.param == nil {
+        err = errors.New("No Params")
+        return res_map, err
+    }
+
+    if inParams.oper == DELETE {
+        res_map["set_med"] = ""
+        return res_map, nil
+    }
+    setMed := inParams.param.(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_Config_SetMed_Union)
+    setMedType := reflect.TypeOf(setMed).Elem()
+
+    if setMedType != reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_Config_SetMed_Union_Uint32{}) {
+        log.Info("YangToDb_route_map_set_med_xfmr invalid type ", setMedType)
+        return res_map, errors.New("Set MED value should be in uint32 format!")
+    }
+    var b bytes.Buffer
+    v := (setMed).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_Config_SetMed_Union_Uint32)
+    fmt.Fprintf(&b, "%d", v.Uint32)
+
+    res_map["set_med"] = b.String()
+    log.Info("YangToDb_route_map_set_med_xfmr DB write value ", res_map["set_med"])
+    return res_map, nil
 }
 
 

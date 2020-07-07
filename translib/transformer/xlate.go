@@ -498,7 +498,7 @@ func extractFieldFromDb(tableName string, keyStr string, fieldName string, data 
 				dbData[tableName][keyStr] = dbVal
 			} else {
 				log.Errorf("Field %v doesn't exist in table - %v, instance - %v", fieldName, tableName, keyStr)
-				err = tlerr.NotFoundError{Format: "Resource not found."}
+				err = tlerr.NotFoundError{Format: "Resource not found"}
 			}
 		}
 	}

@@ -53,6 +53,57 @@ submodule openconfig-fbs-classifiers-ext {
       fields must match for the flow classification.";
   }
 
+  identity TCP_NOT_SYN {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP SYN flag cleared";
+  }
+
+  identity TCP_NOT_FIN {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP FIN flag cleared";
+  }
+
+  identity TCP_NOT_RST {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP RST flag cleared";
+  }
+
+  identity TCP_NOT_PSH {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP push flag cleared";
+  }
+
+  identity TCP_NOT_ACK {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP ACK flag cleared";
+  }
+
+  identity TCP_NOT_URG {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP urgent flag cleared";
+  }
+
+  identity TCP_NOT_ECE {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP ECN-Echo flag cleared. If the SYN flag is set, indicates that
+      the TCP peer is ECN-capable, otherwise indicates that a
+      packet with Congestion Experienced flag in the IP header
+      is set";
+  }
+
+  identity TCP_NOT_CWR {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP Congestion Window Reduced flag cleared";
+  }
+
   // typedef statements
 
   // grouping statements
@@ -155,13 +206,6 @@ submodule openconfig-fbs-classifiers-ext {
       description "IEEE 802 Priority Code Point";
     }
 
-    leaf pcp-mask {
-      type uint8 {
-        range "0..7";
-      }
-      description "IEEE 802 Priority Code Point";
-    }
-
     leaf dei {
       type uint8 {
         range "0..1";
@@ -256,13 +300,35 @@ submodule openconfig-fbs-classifiers-ext {
       description
         "Destination IPv4 address prefix.";
     }
-
-    uses fbs-ext-ip-protocol-fields-common-config;
   }
 
   grouping fbs-ext-ipv4-protocol-fields-state {
     description
       "State information of IP header fields for IPv4";
+  }
+
+  grouping fbs-ext-ip-common-fields-top {
+    description
+      "Common IP Header fields";
+
+    container ip {
+      description
+        "Top level container for IP common header fields";
+
+      container config {
+        description
+          "Configuration data for IP common fields";
+
+        uses fbs-ext-ip-protocol-fields-common-config;
+      }
+
+      container state {
+        description
+          "State information for IP common fields";
+
+        uses fbs-ext-ip-protocol-fields-common-config;
+      }
+    }
   }
 
   grouping fbs-ext-ipv4-protocol-fields-top {
@@ -316,8 +382,6 @@ submodule openconfig-fbs-classifiers-ext {
       description
         "Destination IPv6 Flow label.";
     }
-
-    uses fbs-ext-ip-protocol-fields-common-config;
   }
 
   grouping fbs-ext-ipv6-protocol-fields-state {
@@ -444,6 +508,7 @@ submodule openconfig-fbs-classifiers-ext {
       }
 
       uses fbs-ext-ethernet-header-top;
+      uses fbs-ext-ip-common-fields-top;
       uses fbs-ext-ipv4-protocol-fields-top;
       uses fbs-ext-ipv6-protocol-fields-top;
       uses fbs-ext-transport-fields-top;
@@ -489,6 +554,13 @@ submodule openconfig-fbs-classifiers-ext {
 
       description
         "Classifier match type";
+    }
+
+    leaf description {
+        type string;
+
+        description
+            "Classifier description";
     }
   }
 

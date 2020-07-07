@@ -15,6 +15,11 @@ module sonic-ifa {
     description
         "SONIC TAM IFA";
 
+    revision 2020-07-01 {
+        description
+            "Added leaf string length correction changes for YANG module.";
+    }
+
     revision 2019-11-12 {
         description
             "Initial revision.";
@@ -52,7 +57,7 @@ module sonic-ifa {
 
                 leaf name {
                     type string {
-                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
                         length 1..32;
                     }
                     description
@@ -61,14 +66,20 @@ module sonic-ifa {
 
                 leaf acl-table-name {
                     mandatory true;
-                    type string;
+                    type string {
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+                        length 1..32;
+                    }
                     description
                         "ACL table name used in IFA flow configuration table.";
                 }
 
                 leaf acl-rule-name {
                     mandatory true;
-                    type string;
+                    type string {
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+                        length 1..32;
+                    }
                     description
                         "ACL rule name used in IFA flow configuration table.";
                 }
@@ -86,7 +97,7 @@ module sonic-ifa {
 
                 leaf collector-name {
                     type string {
-                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
                         length 1..32;
                     }
                     description

@@ -28,6 +28,14 @@ var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (in
                 (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"].Field["NULL"] = "NULL"
                 (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"] = db.Value{Field: make(map[string]string)}
                 (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"].Field["NULL"] = "NULL"
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"] = db.Value{Field: make(map[string]string)}
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"].Field["NULL"] = "NULL"
+                cfg_tbl_updated = true
+            }
+            if ((strings.HasPrefix(niName, "all"))) {
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"] = db.Value{Field: make(map[string]string)}
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"].Field["NULL"] = "NULL"
                 cfg_tbl_updated = true
             }
             if ((niName == "default") || (strings.HasPrefix(niName, "Vlan"))) {

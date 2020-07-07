@@ -16,6 +16,22 @@ import (
 func init () {
     XlateFuncBind("DbToYang_bfd_shop_state_xfmr", DbToYang_bfd_shop_state_xfmr)
     XlateFuncBind("DbToYang_bfd_mhop_state_xfmr", DbToYang_bfd_mhop_state_xfmr)
+    XlateFuncBind("YangToDb_bfd_shop_remoteaddr_fld_xfmr", YangToDb_bfd_shop_remoteaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_bfd_shop_vrf_fld_xfmr", YangToDb_bfd_shop_vrf_fld_xfmr)
+    XlateFuncBind("YangToDb_bfd_shop_interface_fld_xfmr", YangToDb_bfd_shop_interface_fld_xfmr)
+    XlateFuncBind("YangToDb_bfd_shop_localaddr_fld_xfmr", YangToDb_bfd_shop_localaddr_fld_xfmr)
+    XlateFuncBind("DbToYang_bfd_shop_remoteaddr_fld_xfmr", DbToYang_bfd_shop_remoteaddr_fld_xfmr)
+    XlateFuncBind("DbToYang_bfd_shop_vrf_fld_xfmr", DbToYang_bfd_shop_vrf_fld_xfmr)
+    XlateFuncBind("DbToYang_bfd_shop_interface_fld_xfmr", DbToYang_bfd_shop_interface_fld_xfmr)
+    XlateFuncBind("DbToYang_bfd_shop_localaddr_fld_xfmr", DbToYang_bfd_shop_localaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_bfd_mhop_remoteaddr_fld_xfmr", YangToDb_bfd_mhop_remoteaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_bfd_mhop_vrf_fld_xfmr", YangToDb_bfd_mhop_vrf_fld_xfmr)
+    XlateFuncBind("YangToDb_bfd_mhop_interface_fld_xfmr", YangToDb_bfd_mhop_interface_fld_xfmr)
+    XlateFuncBind("YangToDb_bfd_mhop_localaddr_fld_xfmr", YangToDb_bfd_mhop_localaddr_fld_xfmr)
+    XlateFuncBind("DbToYang_bfd_mhop_remoteaddr_fld_xfmr", DbToYang_bfd_mhop_remoteaddr_fld_xfmr)
+    XlateFuncBind("DbToYang_bfd_mhop_vrf_fld_xfmr", DbToYang_bfd_mhop_vrf_fld_xfmr)
+    XlateFuncBind("DbToYang_bfd_mhop_interface_fld_xfmr", DbToYang_bfd_mhop_interface_fld_xfmr)
+    XlateFuncBind("DbToYang_bfd_mhop_localaddr_fld_xfmr", DbToYang_bfd_mhop_localaddr_fld_xfmr)
     XlateFuncBind("YangToDb_bfd_shop_tbl_key_xfmr", YangToDb_bfd_shop_tbl_key_xfmr)
     XlateFuncBind("YangToDb_bfd_mhop_tbl_key_xfmr", YangToDb_bfd_mhop_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bfd_shop_tbl_key_xfmr", DbToYang_bfd_shop_tbl_key_xfmr)
@@ -88,6 +104,182 @@ var YangToDb_bfd_mhop_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     log.Info("YangToDb_bfd_mhop_tbl_key_xfmr: ", inParams.uri)
 
     return bfd_table_key_transformer(inParams)
+}
+
+var YangToDb_bfd_shop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    log.Info("YangToDb_bfd_shop_remoteaddr_fld_xfmr: ", inParams.key)
+
+    return res_map, err
+}
+
+var YangToDb_bfd_shop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    log.Info("YangToDb_bfd_shop_vrf_fld_xfmr: ", inParams.key)
+
+    return res_map, err
+}
+
+var YangToDb_bfd_shop_interface_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    log.Info("YangToDb_bfd_shop_interface_fld_xfmr: ", inParams.key)
+
+    return res_map, err
+}
+
+var YangToDb_bfd_shop_localaddr_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    log.Info("YangToDb_bfd_shop_localaddr_fld_xfmr: ", inParams.key)
+
+    return res_map, err
+}
+
+var DbToYang_bfd_shop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["remote-address"]     = TableKeys[0]
+    }
+
+    log.Info("DbToYang_bfd_shop_remoteaddr_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_shop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["vrf"]     = TableKeys[1]
+    }
+
+    log.Info("DbToYang_bfd_shop_vrf_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_shop_interface_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["interface"]     = TableKeys[2]
+    }
+
+    log.Info("DbToYang_bfd_shop_interface_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_shop_localaddr_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["local-address"]     = TableKeys[3]
+    }
+
+    log.Info("DbToYang_bfd_shop_localaddr_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var YangToDb_bfd_mhop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    log.Info("YangToDb_bfd_mhop_remoteaddr_fld_xfmr: ", inParams.key)
+
+    return res_map, err
+}
+
+var YangToDb_bfd_mhop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    log.Info("YangToDb_bfd_mhop_vrf_fld_xfmr: ", inParams.key)
+
+    return res_map, err
+}
+
+var YangToDb_bfd_mhop_interface_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    log.Info("YangToDb_bfd_mhop_interface_fld_xfmr: ", inParams.key)
+
+    return res_map, err
+}
+
+var YangToDb_bfd_mhop_localaddr_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    log.Info("YangToDb_bfd_mhop_localaddr_fld_xfmr: ", inParams.key)
+
+    return res_map, err
+}
+
+var DbToYang_bfd_mhop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["remote-address"]     = TableKeys[0]
+    }
+
+    log.Info("DbToYang_bfd_mhop_remoteaddr_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_mhop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["vrf"]     = TableKeys[1]
+    }
+
+    log.Info("DbToYang_bfd_mhop_vrf_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_mhop_interface_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["interface"]     = TableKeys[2]
+    }
+
+    log.Info("DbToYang_bfd_mhop_interface_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_mhop_localaddr_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["local-address"]     = TableKeys[3]
+    }
+
+    log.Info("DbToYang_bfd_mhop_localaddr_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
 }
 
 var DbToYang_bfd_shop_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -358,7 +550,6 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, ses
 
     if (nil != bfdshop_Input_key) {
         bfdshop_tempkey = *bfdshop_Input_key
-	log.Info("fill_bfd_shop_data1")
         bfdshop_obj = bfd_obj.SingleHop[bfdshop_tempkey]
         if (nil == bfdshop_obj) {
             if value, ok := session_data["peer"].(string) ; ok {
@@ -381,16 +572,15 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, ses
 
             bfdshop_obj, err = bfd_obj.NewSingleHop (bfdshopkey.RemoteAddress, bfdshopkey.Interface, bfdshopkey.Vrf, bfdshopkey.LocalAddress)
             if (err != nil) {
-                log.Info("fill_bfd_shop_data2")
+                log.Info("New Shop node created")
                 return false;
             }
         }
     }
  
     ygot.BuildEmptyTree(bfdshop_obj)
+    ygot.BuildEmptyTree(bfdshop_obj.State)
     bfdshop_obj_state = bfdshop_obj.State;
-
-    log.Info("fill_bfd_shop_data3")
 
     if value, ok := session_data["status"].(string) ; ok {
         if value == "down" {
@@ -648,6 +838,7 @@ func fill_bfd_mhop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdMhopSessions, ses
     }
 
     ygot.BuildEmptyTree(bfdmhop_obj)
+    ygot.BuildEmptyTree(bfdmhop_obj.State)
 
     bfdmhop_obj_state = bfdmhop_obj.State;
 

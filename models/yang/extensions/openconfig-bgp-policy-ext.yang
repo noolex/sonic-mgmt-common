@@ -38,7 +38,7 @@ module openconfig-bgp-policy-ext {
     reference "0.1.0";
   }
 
-  grouping bgp-policy-ext-action-next-hop-set {
+  grouping bgp-policy-ext-action-next-hop-set-config {
     description
         "Configuration data for IP nexthop under BGP policy conditions";
       leaf next-hop-set {
@@ -100,13 +100,13 @@ module openconfig-bgp-policy-ext {
   augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:config {
     description
         "Policy definition extensions for BGP conditions";
-      uses bgp-policy-ext-action-next-hop-set;
+      uses bgp-policy-ext-action-next-hop-set-config;
   }
 
   augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:state {
     description
         "Policy definition extensions for BGP conditions";
-      uses bgp-policy-ext-action-next-hop-set;
+      uses bgp-policy-ext-action-next-hop-set-config;
   }
 
   augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config {

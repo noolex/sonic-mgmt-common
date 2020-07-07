@@ -4,7 +4,7 @@ import (
     "strconv"
     "reflect"
     "github.com/Azure/sonic-mgmt-common/translib/db"
-    //"strings"
+    "strings"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
@@ -13,6 +13,7 @@ import (
 	//"github.com/golang/glog"
     //"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
+
 /*App specific constants */
 const (
     ZTP_STATUS_ADMIN_MODE              = "admin_mode"
@@ -304,10 +305,8 @@ var DbToYang_ztp_status_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
 	    log.Info("Error fetching target URI:",err)
 	    return err
     }
-    if targetUriPath == "/openconfig-ztp:ztp/state" {
+    if strings.Contains(targetUriPath, "/openconfig-ztp:ztp/state") {
 	log.Info("TARGET URI PATH ZTP:", targetUriPath)
-        log.Info("TableXfmrFunc - Uri ZTP: ", inParams.uri);
-        log.Info("type of ZTP-ROOT OBJECT:",reflect.TypeOf(ztpObj))
         err =  getZtpStatus(ztpObj)
 	return err
     } else {
@@ -317,7 +316,6 @@ var DbToYang_ztp_status_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
 
 var DbToYang_ztp_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     ztpObj := getZtpRoot(inParams.ygRoot)
-    log.Info("TableXfmrFunc - Uri ZTP: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
@@ -332,12 +330,13 @@ var DbToYang_ztp_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
     if err != nil {
 	    log.Info("Error from host service:",err)
     }
-    log.Info("Message from host:",mess)
+
     if ztpObj.Config == nil {
 	ygot.BuildEmptyTree(ztpObj)
     }
     configObj := ztpObj.Config
     ygot.BuildEmptyTree(configObj)
+
     var temp bool
     if mess == "disabled" {
 	    temp = false
@@ -352,25 +351,29 @@ var DbToYang_ztp_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
 
 var YangToDb_ztp_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
     var err error
+    var act string = "enable"
     log.Info("TableXfmrFunc - Uri ZTP: ", inParams.uri);
     if (inParams.oper == DELETE) {
-        _, err = ztpAction("enable")
+        _, err = ztpAction(act)
         return nil,err;
     }
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
     log.Info("TARGET URI PATH ZTP:", targetUriPath)
-    var act string = "disable"
+
     ztpObj := getZtpRoot(inParams.ygRoot)
+
     if ztpObj.Config.AdminMode == nil {
 		log.Info("Invalid Input")
 		return nil,err
     }
+
     b := * ztpObj.Config.AdminMode
-    if (b) {
-        act = "enable"
+    if (!b) {
+        act = "disable"
     }
+
     _, err = ztpAction(act)
     return nil,err;
 }

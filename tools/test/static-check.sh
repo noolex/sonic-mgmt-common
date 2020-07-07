@@ -165,12 +165,13 @@ if [[ ${#NOTFAIL[@]} != 0 ]]; then
         esac
     done
 
+    NOTFAIL_EXPR="${NOTFAIL_EXPR:0:$((${#NOTFAIL_EXPR}-2))}"  # remove "\|" suffix
     NUM_IGNORE=$(grep "^[^[:space:]].*\.go:[0-9]*:[0-9]*: " ${LOGFILE} | \
-                    grep -v " (compile)$" | grep -c "${NOTFAIL_EXPR::(-2)}" || true)
+                    grep -v " (compile)$" | grep -c "${NOTFAIL_EXPR}" || true)
     if [[ ${NUM_IGNORE} != 0 ]]; then
         IGNORE_MSG=", ${NUM_IGNORE} exempted"
         NON_IGNORE=( $(grep -o "^[^[:space:]].*\.go:[0-9]*:[0-9]*:" ${LOGFILE} | \
-            grep -v "${NOTFAIL_EXPR::(-2)}" | sed 's/:[0-9]*:[0-9]*:$//' | sort -u) )
+            grep -v "${NOTFAIL_EXPR}" | sed 's/:[0-9]*:[0-9]*:$//' | sort -u) )
     fi
 fi
 

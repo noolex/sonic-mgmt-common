@@ -1092,7 +1092,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						fldValMap, fldErr = terminalNodeProcess(inParamsForGet)
 						if ((fldErr != nil) || (len(fldValMap) == 0)) {
 							xfmrLogInfo("Empty terminal node (\"%v\").", uri)
-							if fldErr == nil {
+							if fldErr == nil && yangType != YANG_LEAF_LIST {
 								fldErr = tlerr.NotSupportedError{Format:"Resource Not found"}
 							}
 						}
