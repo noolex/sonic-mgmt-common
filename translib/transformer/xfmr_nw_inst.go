@@ -116,6 +116,9 @@ var nw_inst_del_not_allowed_map = map[string]bool {
     "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/peer-groups/peer-group/afi-safis/afi-safi/capability-orf/config": true,
     "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/peer-groups/peer-group/enable-bfd": true,
     "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/peer-groups/peer-group/enable-bfd/config": true,
+
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim/global/ssm": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim/global/ssm/config": true,
 }
 
 var network_instance_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
