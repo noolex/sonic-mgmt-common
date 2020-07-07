@@ -366,6 +366,11 @@ var YangToDb_qos_tc_to_dot1p_map_fld_xfmr FieldXfmrYangToDb = func(inParams Xfmr
 
     map_name := *(intfObj.InterfaceMaps.Config.ForwardingGroupToDot1P)
 
+    if (inParams.oper == DELETE) {
+        res_map["tc_to_dot1p_map"] = ""
+        return res_map, err
+    }
+
     if len(map_name) == 0 {
         log.Error("map name is Missing")
         return res_map, err
