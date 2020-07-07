@@ -28,6 +28,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"github.com/kylelemons/godebug/pretty"
 	gnmipb "github.com/openconfig/gnmi/proto/gnmi"
@@ -263,8 +264,9 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 						if igmpsKey != mrouterKeys[j].Comp[0] {
 							continue
 						}
-
-						igmpsMrouterKey := igmpsKey + "|" + mrouterKeys[j].Comp[1]
+                        mrtrIfName := *(utils.GetNativeNameFromUIName(&mrouterKeys[j].Comp[1]))
+                        log.Infof("handleDeleteReq Deleting Mrouter interface:%v mrIfName:%v", mrouterKeys[j].Comp[1], mrtrIfName)
+						igmpsMrouterKey := igmpsKey + "|" + mrtrIfName
 						igmpsMrouterTblMap[igmpsMrouterKey] = db.Value{Field: make(map[string]string)}
 					}
 					if len(igmpsMrouterTblMap) > 0 {
@@ -297,7 +299,10 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 							continue
 						}
 
-						igmpsGrpMemKey := igmpsKey + "|" + staticGrpKeys[k].Comp[1] + "|" + staticGrpKeys[k].Comp[2]
+                        sgrpIfName := *(utils.GetNativeNameFromUIName(&staticGrpKeys[k].Comp[3]))
+                        log.Infof("handleDeleteReq sgrp interface:%v <=> sgrpIfName:%v", staticGrpKeys[k].Comp[3], sgrpIfName)
+
+						igmpsGrpMemKey := igmpsKey + "|" + staticGrpKeys[k].Comp[1] + "|" + staticGrpKeys[k].Comp[2] + "|" + sgrpIfName
 						igmpsMcastGroupMemTblMap[igmpsGrpMemKey] = db.Value{Field: make(map[string]string)}
 					}
 
@@ -328,7 +333,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 							continue
 						}
 
-						igmpsGrpKey := igmpsKey + "|" + staticGrpKeys[k].Comp[1]
+						igmpsGrpKey := igmpsKey + "|" + staticGrpKeys[k].Comp[1] + "|" + staticGrpKeys[k].Comp[2]
 						igmpsMcastGroupTblMap[igmpsGrpKey] = db.Value{Field: make(map[string]string)}
 					}
 
@@ -378,8 +383,11 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 				} else if len(igmpsVal.Config.MrouterInterface) == 0 && reqP.isConfigTargetNode("mrouter-interface") {
 					res_map[CFG_L2MC_MROUTER_TABLE] = igmpsMrouterTblMap
 				} else if len(igmpsVal.Config.MrouterInterface) == 1 {
+                    fmt.Println("handleDeleteReq Del MrouterInterface ==> ")
 					for _, mrVal := range igmpsVal.Config.MrouterInterface {
-						igmpsMrouterKey := igmpsKey + "|" + mrVal
+                        mrIfName := *(utils.GetNativeNameFromUIName(&mrVal))
+                        log.Infof("Mrouter mrval:%v mrIfName:%v", mrVal, mrIfName)
+						igmpsMrouterKey := igmpsKey + "|" + mrIfName
 						igmpsMrouterTblMap[igmpsMrouterKey] = db.Value{Field: make(map[string]string)}
 					}
 					res_map[CFG_L2MC_MROUTER_TABLE] = igmpsMrouterTblMap
@@ -413,7 +421,9 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 									}
 									outIntfs := staticGrpDbV.GetList("out-intf")
 									for _, intf := range outIntfs {
-										igmpsGrpMemKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0" + "|" + intf
+                                        sgIfName := *(utils.GetNativeNameFromUIName(&intf))
+                                        log.Infof("handleDeleteReq - Static grp intf:%v <==> sgIfName:%v", intf, sgIfName)
+										igmpsGrpMemKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0" + "|" + sgIfName
 										igmpsMcastGroupMemTblMap[igmpsGrpMemKey] = db.Value{Field: make(map[string]string)}
 									}
 									break
@@ -425,7 +435,9 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 							igmpsGrpKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0"
 							igmpsMcastGroupTblMap[igmpsGrpKey] = dbV
 							for _, outIntf := range grpObj.Config.OutgoingInterface {
-								igmpsGrpMemKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0" + "|" + outIntf
+                                sgIfName := *(utils.GetNativeNameFromUIName(&outIntf))
+                                log.Infof("handleDeleteReq --> Static grp intf:%v <==> sgIfName:%v", outIntf, sgIfName)
+								igmpsGrpMemKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0" + "|" + sgIfName
 								igmpsMcastGroupMemTblMap[igmpsGrpMemKey] = db.Value{Field: make(map[string]string)}
 							}
 						}
@@ -457,7 +469,7 @@ func (reqP *reqProcessor) handleCRUReq() (*map[string]map[string]db.Value, error
 	var igmpsMrouterTblMap map[string]db.Value = make(map[string]db.Value)
 	var igmpsMcastGroupTblMap map[string]db.Value = make(map[string]db.Value)
 	var igmpsMcastGroupMemTblMap map[string]db.Value = make(map[string]db.Value)
-
+    var oif_list []string
 	igmpsObj := reqP.igmpsObj
 
 	for igmpsKey, igmpsVal := range igmpsObj.Interfaces.Interface {
@@ -516,10 +528,12 @@ func (reqP *reqProcessor) handleCRUReq() (*map[string]map[string]db.Value, error
 			fmt.Println(" handleCRUReq ============> setting igmpsVal.Config.MrouterInterface")
 
 			for _, mrVal := range igmpsVal.Config.MrouterInterface {
-				igmpsMrouterKey := igmpsKey + "|" + mrVal
+                mrIfName := *(utils.GetNativeNameFromUIName(&mrVal))
+				igmpsMrouterKey := igmpsKey + "|" + mrIfName
 				dbV := db.Value{Field: make(map[string]string)}
 				dbV.Field["NULL"] = "NULL" // to represent empty value
 				igmpsMrouterTblMap[igmpsMrouterKey] = dbV
+                log.Infof("Mrouter mrval:%v mrIfName:%v", mrVal, mrIfName)
 				fmt.Println(" handleCRUReq ============> setting igmpsMrouterKey => ", igmpsMrouterKey)
 			}
 
@@ -538,15 +552,25 @@ func (reqP *reqProcessor) handleCRUReq() (*map[string]map[string]db.Value, error
 					igmpsGrpKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0"
 					dbV := db.Value{Field: make(map[string]string)}
 					dbV.Field["NULL"] = "NULL" // since deleting the field "out-intf" from the db removes the key also, to avoid that insert the dummy field/value as NULL/NULL
-					dbV.SetList("out-intf", grpObj.Config.OutgoingInterface)
+					
+                    for _, oIf := range grpObj.Config.OutgoingInterface {
+                        oIfName := *(utils.GetNativeNameFromUIName(&oIf))
+                        oif_list = append(oif_list, oIfName)
+                    }
+                    //dbV.SetList("out-intf", grpObj.Config.OutgoingInterface)
+                    dbV.SetList("out-intf", oif_list)
 					igmpsMcastGroupTblMap[igmpsGrpKey] = dbV
+                    
 					for _, outIntf := range grpObj.Config.OutgoingInterface {
-						igmpsGrpMemKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0" + "|" + outIntf
+                        sgIfName := *(utils.GetNativeNameFromUIName(&outIntf))
+						igmpsGrpMemKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0" + "|" + sgIfName
 						dbV := db.Value{Field: make(map[string]string)}
 						dbV.Field["NULL"] = "NULL" // to represent empty value
 						igmpsMcastGroupMemTblMap[igmpsGrpMemKey] = dbV
+                        log.Infof("handleCRUReq ============> OIF outIntf:%v => sgIfName:%v", outIntf, sgIfName)
 						fmt.Println(" handleCRUReq ============> setting igmpsVal.Config.StaticMulticastGroup igmpsGrpMemKey => ", igmpsGrpMemKey)
 					}
+
 				} else {
 					igmpsGrpKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0"
 					dbV := db.Value{Field: make(map[string]string)}
@@ -658,20 +682,20 @@ var DbToYang_igmp_snooping_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 	if err != nil {
 		return err
 	} else if niName != "default" {
-		fmt.Println("YangToDb_igmp_snooping_subtree_xfmr - called with incorrect network-instance - name => ", niName, " and returning error..")
+		fmt.Println("DbToYang_igmp_snooping_subtree_xfmr - called with incorrect network-instance - name => ", niName, " and returning error..")
 		return tlerr.NotFound("Resource Not Found")
 	}
 
 	reqP := &reqProcessor{&inParams.uri, path, inParams.oper, (*inParams.ygRoot).(*ocbinds.Device), inParams.param, inParams.d, inParams.dbs, nil, nil, nil, nil, nil}
 
-	fmt.Println("YangToDb_igmp_snooping_subtree_xfmr => translateToDb == reqP.uri => ", *reqP.uri)
+	fmt.Println("DbToYang_igmp_snooping_subtree_xfmr => translateToDb == reqP.uri => ", *reqP.uri)
 
 	if err := reqP.setIGMPSnoopingObjFromReq(); err != nil {
 		return err
 	}
 
 	if reqP.igmpsObj != nil {
-		fmt.Println("YangToDb_igmp_snooping_subtree_xfmr ==> printing IGMPSnooping object request ==> ")
+		fmt.Println("DbToYang_igmp_snooping_subtree_xfmr ==> printing IGMPSnooping object request ==> ")
 		pretty.Print(*reqP.igmpsObj)
 	}
 
@@ -692,6 +716,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 			fmt.Println("unMarshalStaticGrpConfig - grpObj => ", staticGrpObj)
 			var err error
             var isOif bool = false
+            var isConfOif bool = false
 			var staticGrpDbTbl db.Table
 			var srcAddr string
 			if staticGrpDbTbl, err = reqP.db.GetTable(CFG_L2MC_STATIC_MEMBER_TABLE_TS); err != nil {
@@ -716,21 +741,35 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 				if *reqP.intfConfigObj.Name != staticGrpKeys[k].Comp[0] || grpKey.Group != staticGrpKeys[k].Comp[1] {
 					continue
 				}
-
-				if reqP.targetNode.Name == "group" {
+                oIfName := *(utils.GetUINameFromNativeName(&staticGrpKeys[k].Comp[3]))
+                log.Infof("unMarshalStaticGrpConfigObj:2 -  comp-oif:%v oIfName:%v", staticGrpKeys[k].Comp[3], oIfName)
+                fmt.Println("unMarshalStaticGrpConfigObj:2 - current OIF ", staticGrpObj.Config.OutgoingInterface)
+                
+                if len(staticGrpObj.Config.OutgoingInterface) > 0 {
+                   _, found := Find(staticGrpObj.Config.OutgoingInterface, oIfName)
+                   if (found) {
+                       isConfOif = true
+                   }
+                   fmt.Println("unMarshalStaticGrpConfObj:2.- Printing Conf-OIF ", isConfOif,staticGrpObj.Config.OutgoingInterface)
+                }
+                if reqP.targetNode.Name == "group" {
 					staticGrpObj.Config.Group = &grpKey.Group
 				} else if reqP.targetNode.Name == "outgoing-interface" {
 					if len(staticGrpObj.Config.OutgoingInterface) == 0 {
 
-						staticGrpObj.Config.OutgoingInterface = append(staticGrpObj.Config.OutgoingInterface, staticGrpKeys[k].Comp[2])
-					} else if staticGrpKeys[k].Comp[2] == staticGrpObj.Config.OutgoingInterface[0] {
-						staticGrpObj.Config.OutgoingInterface = append(staticGrpObj.Config.OutgoingInterface, staticGrpKeys[k].Comp[2])
+						staticGrpObj.Config.OutgoingInterface = append(staticGrpObj.Config.OutgoingInterface, oIfName)
+					} else if oIfName == staticGrpObj.Config.OutgoingInterface[0] {
+						if !isConfOif {
+                            staticGrpObj.Config.OutgoingInterface = append(staticGrpObj.Config.OutgoingInterface, oIfName)
+                        }
 					}
 				} else {
 					srcAddr = "0.0.0.0"
 					staticGrpObj.Config.Group = &grpKey.Group
 					staticGrpObj.Config.SourceAddr = &srcAddr
-					staticGrpObj.Config.OutgoingInterface = append(staticGrpObj.Config.OutgoingInterface, staticGrpKeys[k].Comp[2])
+                    if !isConfOif {
+                        staticGrpObj.Config.OutgoingInterface = append(staticGrpObj.Config.OutgoingInterface, oIfName)
+                    }
 				}
 			}
 
@@ -764,8 +803,10 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 						continue
 					}
                     
+                    grpIfName := *(utils.GetUINameFromNativeName(&staticGrpKeys[k].Comp[3]))
+                    log.Infof("unMarshalStaticGrpStateObj:2 -  comp-oif:%v oIfName:%v", staticGrpKeys[k].Comp[3], grpIfName)
                     if len(staticGrpObj.State.OutgoingInterface) > 0 {
-                        _, found := Find(staticGrpObj.State.OutgoingInterface, staticGrpKeys[k].Comp[3])
+                        _, found := Find(staticGrpObj.State.OutgoingInterface, grpIfName)
                         if (found) {
                             isOif = true
                         }
@@ -774,8 +815,8 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 					staticGrpObj.State.SourceAddr = &grpKey.SourceAddr
                     
                     if !isOif {
-                        fmt.Println("unMarshalStaticGrpStateObj:2.Adding new OIF ", staticGrpKeys[k].Comp[3])
-                        staticGrpObj.State.OutgoingInterface = append(staticGrpObj.State.OutgoingInterface, staticGrpKeys[k].Comp[3])
+                        fmt.Println("unMarshalStaticGrpStateObj:2.Adding new OIF ", grpIfName)
+                        staticGrpObj.State.OutgoingInterface = append(staticGrpObj.State.OutgoingInterface, grpIfName)
                     }
                     fmt.Println("unMarshalStaticGrpStateObj:2.State - Printing State-OIF ", isOif,staticGrpObj.State.OutgoingInterface)
 					break
@@ -825,10 +866,13 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 					return err
 				}
 			}
+    
+            oIfName := *(utils.GetUINameFromNativeName(&staticGrpKeys[k].Comp[3]))
+            log.Infof("unMarshalStaticGrpConfigObj:1 -  comp-oif:%v oIfName:%v", staticGrpKeys[k].Comp[3], oIfName)
 
 			srcAddr = "0.0.0.0"
 			ygot.BuildEmptyTree(staticGrpObj)
-			staticGrpObj.Config.OutgoingInterface = append(staticGrpObj.Config.OutgoingInterface, staticGrpKeys[k].Comp[3])
+			staticGrpObj.Config.OutgoingInterface = append(staticGrpObj.Config.OutgoingInterface, oIfName)
 			staticGrpObj.Config.Group = &staticGrpKeys[k].Comp[1]
 			staticGrpObj.Config.SourceAddr = &srcAddr
             fmt.Println("unMarshalStaticGrpConfigObj:1.1 - Printing Config-OIF ", staticGrpObj.Config.OutgoingInterface)
@@ -869,10 +913,13 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 			}
             ygot.BuildEmptyTree(staticGrpObj)
 
+            grpIfName := *(utils.GetUINameFromNativeName(&staticGrpKeys[k].Comp[3]))
+            log.Infof("unMarshalStaticGrpStateObj:1 -  comp-oif:%v oIfName:%v", staticGrpKeys[k].Comp[3], grpIfName)
+
 			staticGrpObj.State.Group = &staticGrpKeys[k].Comp[2]
 			staticGrpObj.State.SourceAddr = &staticGrpKeys[k].Comp[1]
                     fmt.Println("unMarshalStaticGrpStateObj:1.Prev State - Appending State-OIF 1 ", staticGrpObj.State.OutgoingInterface)
-			staticGrpObj.State.OutgoingInterface = append(staticGrpObj.State.OutgoingInterface, staticGrpKeys[k].Comp[3])
+			staticGrpObj.State.OutgoingInterface = append(staticGrpObj.State.OutgoingInterface, grpIfName)
 			fmt.Println("unMarshalStaticGrpStateObj - printing staticGrpObj => ", *staticGrpObj)
 		}
 	}
@@ -890,11 +937,11 @@ func (reqP *reqProcessor) unMarshalMrouterState() error {
 		fmt.Println("DB error in GetEntry => ", err)
 	}
 
-	fmt.Println("unMarshalMrouterConfig - printing db mRouterDbTbl data")
+	fmt.Println("unMarshalMrouterState - printing db mRouterDbTbl data")
 	pretty.Print(mRouterDbTbl)
 
 	mrouterKeys, _ := mRouterDbTbl.GetKeys()
-	fmt.Println("unMarshalMrouterConfig - printing db table mRouterDbTbl keys")
+	fmt.Println("unMarshalMrouterState - printing db table mRouterDbTbl keys")
 	pretty.Print(mrouterKeys)
 
 	for j := range mrouterKeys {
@@ -902,14 +949,15 @@ func (reqP *reqProcessor) unMarshalMrouterState() error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("unMarshalMrouterConfig - printing db table mrouterDbVEntry")
+		fmt.Println("unMarshalMrouterState - printing db table mrouterDbVEntry")
 		pretty.Print(mrouterDbV)
 
 		if *reqP.intfStateObj.Name != mrouterKeys[j].Comp[0] {
 			continue
 		}
-
-		reqP.intfStateObj.MrouterInterface = append(reqP.intfStateObj.MrouterInterface, mrouterKeys[j].Comp[1])
+        mrIfName := *(utils.GetUINameFromNativeName(&mrouterKeys[j].Comp[1]))
+        log.Infof("Mrouter mrcomp:%v mrIfName:%v", mrouterKeys[j].Comp[1], mrIfName)
+		reqP.intfStateObj.MrouterInterface = append(reqP.intfStateObj.MrouterInterface, mrIfName)
 	}
 
 	return nil
@@ -944,8 +992,9 @@ func (reqP *reqProcessor) unMarshalMrouterConfig() error {
 		if *reqP.intfConfigObj.Name != mrouterKeys[j].Comp[0] {
 			continue
 		}
-
-		reqP.intfConfigObj.MrouterInterface = append(reqP.intfConfigObj.MrouterInterface, mrouterKeys[j].Comp[1])
+        mrIfName := *(utils.GetUINameFromNativeName(&mrouterKeys[j].Comp[1]))
+        log.Infof("Mrouter mrcomp:%v mrIfName:%v", mrouterKeys[j].Comp[1], mrIfName)
+		reqP.intfConfigObj.MrouterInterface = append(reqP.intfConfigObj.MrouterInterface, mrIfName)
 	}
 
 	return nil
