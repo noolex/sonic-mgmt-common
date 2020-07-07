@@ -926,58 +926,57 @@ func Test_Rfc_Patch_Error_Cases(t *testing.T) {
 func Test_Rfc_Delete_Operation(t *testing.T) {
 
 	// Delete on container, data present in DB
-
-        cleanuptbl1 := map[string]interface{}{"NAT_GLOBAL":map[string]interface{}{"Values":""}}
-        prereq1 := map[string]interface{}{"NAT_GLOBAL":map[string]interface{}{"Values":map[string]interface{}{"nat_udp_timeout":"280","admin_mode":"disabled","nat_tcp_timeout":"580","nat_timeout":"720"}}}
+	cleanuptbl1 := map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+	prereq1 := map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+	prereq2 := map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
 	fmt.Println("++++++++++++++  DELETE uri container, data present in DB  +++++++++++++")
-        url := "/openconfig-nat:nat/instances/instance[id=1]/config"
+        url := "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global"
         expected := make(map[string]interface{})
         t.Run("RFC - Delete on container, data present in DB", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify Delete on container, data present in DB", verifyDbResult(rclient, "NAT_GLOBAL|Values", expected, false))
+        t.Run("RFC - Verify Delete on container, data present in DB", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
 
 
         // Delete on list, data present in DB
 
-        cleanuptbl2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":""}}
-        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
-        prereq2 := map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"timeout":"40"}}}
+        //cleanuptbl1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":""}}
+	prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 = map[string]interface{}{"BGP_PEER_GROUP":map[string]interface{}{"Vrf12|PG1":map[string]interface{}{"NULL":"NULL"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
-        loadConfigDB(rclient, prereq2)
 
 	fmt.Println("++++++++++++++  DELETE uri list, data present in DB  +++++++++++++")
-        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/peer-groups/peer-group"
         expected = make(map[string]interface{})
         t.Run("RFC - Delete on list, data present in DB",  processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify Delete on list, data present in DB", verifyDbResult(rclient, "TACPLUS_SERVER|1.1.1.1", expected, false))
+        t.Run("RFC - Verify Delete on list, data present in DB", verifyDbResult(rclient, "BGP_PEER_GROUP|Vrf12|PG1", expected, false))
         // Teardown
-        unloadConfigDB(rclient, cleanuptbl1)
-        unloadConfigDB(rclient, cleanuptbl2)
+        unloadConfigDB(rclient, prereq2)
 
-
-        // Delete on list instance, data present in DB
+	// Delete on list instance, data present in DB
+	prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 = map[string]interface{}{"BGP_PEER_GROUP":map[string]interface{}{"Vrf12|PG1":map[string]interface{}{"NULL":"NULL"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
 
 	fmt.Println("++++++++++++++  DELETE uri list instance, data present in DB  +++++++++++++")
-        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server[address=1.1.1.1]"
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/peer-groups/peer-group[peer-group-name=PG1]"
         t.Run("RFC - Delete on list instance, data present in DB",  processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify Delete on list instance, data present in DB", verifyDbResult(rclient, "TACPLUS_SERVER|1.1.1.1", expected, false))
+        t.Run("RFC - Verify Delete on list instance, data present in DB", verifyDbResult(rclient, "BGP_PEER_GROUP|Vrf12|PG1", expected, false))
         // Teardown
-        unloadConfigDB(rclient, cleanuptbl1)
-        unloadConfigDB(rclient, cleanuptbl2)
+        unloadConfigDB(rclient, prereq2)
 
 
         // Delete on leaf,  data present in DB, last leaf in container
@@ -1068,25 +1067,27 @@ func Test_Rfc_Delete_Error_Cases(t *testing.T) {
 
         // Delete on container, data not present in DB
 
-        cleanuptbl := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
-        prereq := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+	cleanuptbl1 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":""}}
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"80","network_import_check":"true","keepalive":"50"}}}
 
         // Setup - Prerequisite
-        loadConfigDB(rclient, prereq)
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  DELETE uri container, data not present in DB  +++++++++++++")
-        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        t.Run("RFC - Delete on container, data not present in DB", processDeleteRequest(url, false))
+        url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global"
+        expected_err = tlerr.NotFoundError{Format:"Resource not found"}
+        t.Run("RFC - Delete on container, data not present in DB", processDeleteRequest(url, true, expected_err))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify Delete on container, data not present in DB", verifyDbResult(rclient, "TACPLUS|global", prereq, false))
         // Teardown
-        unloadConfigDB(rclient, cleanuptbl)
+        unloadConfigDB(rclient, cleanuptbl1)
 
 
         // Delete on list, data present not in DB
 
-        cleanuptbl = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
-        prereq = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+	cleanuptbl := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
+	prereq := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)

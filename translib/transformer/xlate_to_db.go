@@ -1099,7 +1099,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				} else {
 					// We always expect a valid table and key to be returned. Else we cannot validate parent check
 					parentTblExists = false
-					log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+					log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, curUri)
 					err = tlerr.NotFound("Resource not found")
 					break
 				}
