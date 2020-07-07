@@ -3681,7 +3681,6 @@ module openconfig-network-instance-annot {
        sonic-ext:subtree-transformer "igmp_sources_get_xfmr";
      }
   }
-}
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
       deviate add {
