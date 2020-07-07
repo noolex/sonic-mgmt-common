@@ -163,6 +163,7 @@ module openconfig-network-instance-annot {
         deviate add {
             sonic-ext:table-transformer "network_instance_protocols_ptotocol_table_name_xfmr";
             sonic-ext:key-transformer "network_instance_protocol_key_xfmr";
+            sonic-ext:virtual-table "true";
         }
     }
 

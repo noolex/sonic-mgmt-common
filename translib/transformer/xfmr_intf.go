@@ -1507,13 +1507,10 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                 return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
             }
             IntfMap := IntfMapObj.Field
-            if len(IntfMap) == 1 {
-                if _, ok := IntfMap["NULL"]; ok {
-                    subIntfmap[tblName][ifName] = data
-                }
-                if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-                    subIntfmap[tblName][ifName] = data
-                }
+            // Case-1: If there is one last attribute present under "INTERFACE|<Interface>" (or)
+            // Case-2: If deletion at parent container(subinterface)
+            if len(IntfMap) == 1 || subIntf == nil {
+                subIntfmap[tblName][ifName] = data
             }
         }
     }

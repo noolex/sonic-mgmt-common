@@ -303,7 +303,7 @@ func fillSonicKeySpec(xpath string , tableName string, keyStr string) ( []KeySpe
 	return retdbFormat
 }
 
-func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interface{}, jsonPayload []byte, txCache interface{}, skipOrdTbl *bool) (map[int]RedisDbMap, error) {
+func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interface{}, jsonPayload []byte, txCache interface{}, skipOrdTbl *bool) (map[int]RedisDbMap, map[string]map[string]db.Value, error) {
 
 	var err error
 	requestUri := path
@@ -324,29 +324,30 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		errStr := "Error: failed to unmarshal json."
 		log.Error(errStr)
 		err = tlerr.InternalError{Format: errStr}
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Map contains table.key.fields
 	var result = make(map[int]RedisDbMap)
+	var yangDefValMap = make(map[string]map[string]db.Value)
 	switch opcode {
 	case CREATE:
 		xfmrLogInfo("CREATE case")
-		err = dbMapCreate(d, yg, opcode, path, requestUri, jsonData, result, txCache)
+		err = dbMapCreate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for create request.")
 		}
 
 	case UPDATE:
 		xfmrLogInfo("UPDATE case")
-		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, txCache)
+		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for update request.")
 		}
 
 	case REPLACE:
 		xfmrLogInfo("REPLACE case")
-		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, txCache)
+		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for replace request.")
 		}
@@ -358,7 +359,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 			log.Errorf("Error: Data translation from yang to db failed for delete request.")
 		}
 	}
-	return result, err
+	return result, yangDefValMap, err
 }
 
 func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, txCache interface{}) ([]byte, bool, error) {
@@ -401,6 +402,19 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 
 	dbData = data
 	requestUri := uri
+	/* Check if the parent table exists for RFC compliance */
+        var exists bool
+        exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache)
+        xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
+        if err != nil {
+                log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation GET", uri)
+                return []byte(""), true, err
+        }
+        if !exists {
+                err = tlerr.NotFoundError{Format:"Resource Not found"}
+                return []byte(""), true, err
+        }
+
 	if isSonicYang(uri) {
 		lxpath, keyStr, tableName := sonicXpathKeyExtract(uri)
 		xpath = lxpath
@@ -425,8 +439,23 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 							fieldName = fieldName + "@"
 						}
 						if ((yangNodeType == YANG_LEAF_LIST) || (yangNodeType == YANG_LEAF)) {
-							dbData[cdb] = extractFieldFromDb(tableName, keyStr, fieldName, data[cdb])
-
+							dbData[cdb], err = extractFieldFromDb(tableName, keyStr, fieldName, data[cdb])
+							// return resource not found when the leaf/leaf-list instance(not entire leaf-list GET) not found 
+							if ((err != nil) && ((yangNodeType == YANG_LEAF) || ((yangNodeType == YANG_LEAF_LIST) && (strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/"))))) {
+								return []byte(""), true, err
+							}
+							if ((yangNodeType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+								leafListInstVal, valErr := extractLeafListInstFromUri(uri)
+								if valErr != nil {
+									return []byte(""), true, valErr
+								}
+								if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], leafListInstVal) {
+									dbData[cdb][tableName][keyStr].Field[fieldName] = leafListInstVal
+								} else {
+									xfmrLogInfoAll("Queried leaf-list instance does not exist - %v", uri)
+									return []byte(""), true, tlerr.NotFoundError{Format:"Resource not found"}
+								}
+							}
 						}
 					}
 				}
@@ -453,10 +482,11 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 
 }
 
-func extractFieldFromDb(tableName string, keyStr string, fieldName string, data map[string]map[string]db.Value) (map[string]map[string]db.Value) {
+func extractFieldFromDb(tableName string, keyStr string, fieldName string, data map[string]map[string]db.Value) (map[string]map[string]db.Value, error) {
 
 	var dbVal db.Value
 	var dbData = make(map[string]map[string]db.Value)
+	var err error
 
 	if tableName != "" && keyStr != "" && fieldName != "" {
 		if data[tableName][keyStr].Field != nil {
@@ -466,10 +496,13 @@ func extractFieldFromDb(tableName string, keyStr string, fieldName string, data 
 				dbVal.Field = make(map[string]string)
 				dbVal.Field[fieldName] = fldVal
 				dbData[tableName][keyStr] = dbVal
+			} else {
+				log.Errorf("Field %v doesn't exist in table - %v, instance - %v", fieldName, tableName, keyStr)
+				err = tlerr.NotFoundError{Format: "Resource not found"}
 			}
 		}
 	}
-	return dbData
+	return dbData, err
 }
 
 func GetModuleNmFromPath(uri string) (string, error) {
@@ -686,8 +719,8 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                break
            }
 
-	   /*request uri is a key-leaf directly under the list 
-	     eg. /openconfig-xyz:xyz/listA[key=value]/key 
+	   /*request uri is a key-leaf directly under the list
+             eg. /openconfig-xyz:xyz/listA[key=value]/key
 	         /openconfig-xyz:xyz/listA[key_1=value][key_2=value]/key_1
            */
 	   if xpathData.isKey {

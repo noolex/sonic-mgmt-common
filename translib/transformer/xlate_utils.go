@@ -137,6 +137,19 @@ func parentXpathGet(xpath string) string {
     return path
 }
 
+func parentUriGet(uri string) string {
+	parentUri := ""
+	if len(uri) > 0 {
+		uriList := splitUri(uri)
+		if len(uriList) > 2 {
+			parentUriList := uriList[:len(uriList)-1]
+			parentUri = strings.Join(parentUriList, "/")
+			parentUri = "/" + parentUri
+		}
+	}
+	return parentUri
+}
+
 func yangTypeGet(entry *yang.Entry) string {
     if entry != nil && entry.Node != nil {
         return entry.Node.Statement().Keyword
@@ -725,7 +738,70 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 return pfxPath, keyStr, tableName, err
  }
 
- func sonicXpathKeyExtract(path string) (string, string, string) {
+func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, error) {
+	tableName := ""
+	var err error
+	cdb := db.ConfigDB
+	var dbs [db.MaxDB]*db.DB
+
+	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
+	 xpathInfo, ok := xYangSpecMap[xPath]
+	 if !ok {
+		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", xPath)
+		 return tableName, err
+	 }
+
+	 tblPtr := xpathInfo.tableName
+	 if tblPtr != nil && *tblPtr != XFMR_NONE_STRING {
+		 tableName = *tblPtr
+	 } else if xpathInfo.xfmrTbl != nil {
+		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
+		 tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams)
+	 }
+	return tableName, err
+}
+
+/* This function is used to get the DB Key using only the annotation at the given uri
+   This is not used to get the key if you need to derive the key from its parent lists. Use xpathKeyExtract in that case */
+/*
+func dbKeyFromAnnotGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, error) {
+	dbKey := ""
+	var err error
+	cdb := db.ConfigDB
+	var dbs [db.MaxDB]*db.DB
+
+	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
+	 xpathInfo, ok := xYangSpecMap[xPath]
+	 if !ok {
+		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", xPath)
+		 return dbKey, err
+	 }
+
+         if len(xpathInfo.xfmrKey) > 0  {
+		 xfmrFuncName := yangToDbXfmrFunc(xpathInfo.xfmrKey)
+		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
+		 if oper == GET {
+			 ret, err := XlateFuncCall(xfmrFuncName, inParams)
+			 if err != nil {
+				 return dbKey, err
+			 }
+			 if ret != nil {
+				 dbKey = ret[0].Interface().(string)
+			 }
+		 } else {
+			 ret, err := keyXfmrHandler(inParams, xpathInfo.xfmrKey)
+			 if (err != nil) {
+				 return dbKey, err
+			 }
+			 dbKey = ret
+		 }
+         } else if xpathInfo.keyName != nil {
+                 dbKey += *xpathInfo.keyName
+         }
+	return dbKey, err
+}
+*/
+func sonicXpathKeyExtract(path string) (string, string, string) {
 	 xfmrLogInfoAll("In uri(%v)", path)
 	 xpath, keyStr, tableName, fldNm := "", "", "", ""
 	 var err error
@@ -854,25 +930,6 @@ func unmarshalJsonToDbData(schema *yang.Entry, fieldXpath string, fieldName stri
 func copyYangXpathSpecData(dstNode *yangXpathInfo, srcNode *yangXpathInfo) {
 	if dstNode != nil && srcNode != nil {
 		*dstNode = *srcNode
-	}
-}
-
-func tblSchemaCopy(dst, src map[string]map[string]db.Value){
-	for tbl, tblData := range src {
-		_, ok := dst[tbl]
-		if !ok {
-			dst[tbl] = make(map[string]db.Value)
-		}
-		for k, data := range tblData {
-			if !ok {
-				dst[tbl][k] = db.Value{Field: make(map[string]string)}
-			}
-			for f := range data.Field {
-				if f != "NULL" {
-					dst[tbl][k].Field[f] = ""
-				}
-			}
-		}
 	}
 }
 
@@ -1104,14 +1161,83 @@ func splitUri(uri string) []string {
 	rgp := regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
 	pathList := rgp.FindAllString(uri, -1)
 	for i, kname := range pathList {
-		//log.Infof("uri path elems: %v", kname)
+		//xfmrLogInfoAll("uri path elems: %v", kname)
 		if strings.HasPrefix(kname, "/") {
 			pathList[i] = kname[1:]
 		}
 	}
-	log.Infof("uri: %v ", uri)
-	log.Infof("uri path elems: %v", pathList)
+	xfmrLogInfoAll("uri: %v ", uri)
+	xfmrLogInfoAll("uri path elems: %v", pathList)
 	return pathList
+}
+
+func dbTableExists(d *db.DB, tableName string, dbKey string) (bool, error) {
+        var err error
+        // Read the table entry from DB
+        dbTblSpec := &db.TableSpec{Name: tableName}
+        existingEntry, derr := d.GetEntry(dbTblSpec, db.Key{Comp: []string{dbKey}})
+        if derr != nil {
+                log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+		err = tlerr.NotFound("Resource not found")
+                return false, err
+        }
+        return existingEntry.IsPopulated(), err
+}
+
+func dbTableExistsInDbData(dbNo db.DBNum, table string, dbKey string, dbData RedisDbMap) bool {
+	xfmrLogInfoAll("received Db no - %v, table - %v, dbkey - %v", dbNo, table, dbKey)
+	if _, exists := dbData[dbNo][table][dbKey]; exists {
+		return true
+	} else {
+		return false
+	}
+}
+
+func leafListInstExists(leafListInDbVal string, checkLeafListInstVal string) bool {
+	/*function to check if leaf-list DB value contains the given instance*/
+	exists := false
+	xfmrLogInfoAll("received value of leaf-list in DB - %v,  Value to be checked if exists in leaf-list - %v", leafListInDbVal, checkLeafListInstVal)
+	leafListItemLst := strings.Split(leafListInDbVal, ",")
+	for idx := range(leafListItemLst) {
+		if leafListItemLst[idx] == checkLeafListInstVal {
+			exists = true
+			xfmrLogInfoAll("Leaf-list instance exists")
+			break
+		}
+	}
+	return exists
+}
+
+func extractLeafListInstFromUri(uri string) (string, error) {
+	/*function to extract leaf-list instance coming as part of uri*/
+	xfmrLogInfoAll("received uri - %v", uri)
+	var err error
+	var leafListInstVal string
+
+	if !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
+		err = fmt.Errorf("Uri - %v is not querying leaf-list instance", uri)
+		xfmrLogInfoAll("%v", err)
+		return leafListInstVal, err
+	}
+	uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
+	uriItemListLen := len(uriItemList)
+	if uriItemListLen > 0 {
+		leafListNode := uriItemList[uriItemListLen-1]
+		leafListNodeData := strings.TrimSuffix(strings.SplitN(leafListNode, "[", 2)[1], "]")
+		leafListNodeDataLst := strings.SplitN(leafListNodeData, "=", 2)
+		leafListInstVal = leafListNodeDataLst[1]
+		if ((strings.Contains(leafListInstVal, ":")) && (strings.HasPrefix(leafListInstVal, OC_MDL_PFX) || strings.HasPrefix(leafListInstVal, IETF_MDL_PFX) || strings.HasPrefix(leafListInstVal, IANA_MDL_PFX))) {
+			// identity-ref/enum has module prefix
+			leafListInstVal = strings.SplitN(leafListInstVal, ":", 2)[1]
+			xfmrLogInfoAll("Leaf-list instance value after removing identityref prefix - %v", leafListInstVal)
+		}
+		xfmrLogInfoAll("Leaf-list instance value to be returned - %v", leafListInstVal)
+
+	} else {
+		err = fmt.Errorf("Uri split didn't happen - %v", uri)
+		xfmrLogInfoAll("%v", err)
+	}
+	return leafListInstVal, err
 }
 
 /* FUNCTIONS RESERVED FOR FUTURE USE. DO ONT DELETE */
@@ -1254,4 +1380,24 @@ func isYangLeaf(uri string) (bool, error) {
 	}
 	return false, err
 }
+
+func tblSchemaCopy(dst, src map[string]map[string]db.Value){
+        for tbl, tblData := range src {
+                _, ok := dst[tbl]
+                if !ok {
+                        dst[tbl] = make(map[string]db.Value)
+                }
+                for k, data := range tblData {
+                        if !ok {
+                                dst[tbl][k] = db.Value{Field: make(map[string]string)}
+                        }
+                        for f := range data.Field {
+                                if f != "NULL" {
+                                        dst[tbl][k].Field[f] = ""
+                                }
+                        }
+                }
+        }
+}
+
 ****************************************************************************************************************/

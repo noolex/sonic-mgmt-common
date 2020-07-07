@@ -27,6 +27,7 @@ import (
     "errors"
     "sync"
     "github.com/openconfig/goyang/pkg/yang"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 
     log "github.com/golang/glog"
 )
@@ -732,12 +733,11 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 	cdb := xYangSpecMap[xpath].dbIndex
 	if len(xYangSpecMap[xpath].xfmrField) > 0 {
 		inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, tblKey, dbDataMap, nil, nil, txCache)
-		fldValMap, err := leafXfmrHandlerFunc(inParams)
+		fldValMap, err := leafXfmrHandlerFunc(inParams, xYangSpecMap[xpath].xfmrField)
 		inParamsForGet.ygRoot = ygRoot
 		inParamsForGet.dbDataMap = dbDataMap
 		if err != nil {
-			logStr := fmt.Sprintf("Failed to get data from overloaded function for %v: %v.", uri, err)
-			err = fmt.Errorf("%v", logStr)
+			xfmrLogInfoAll("No data from field transformer for %v: %v.", uri, err)
 			return resFldValMap, err
 		}
 		for lf, val := range fldValMap {
@@ -755,9 +755,30 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 			if yangType ==  YANG_LEAF_LIST {
 				dbFldName += "@"
 				val, ok := (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName]
+				leafLstInstGetReq := false
+				if ((strings.HasSuffix(requestUri, "]")) || (strings.HasSuffix(requestUri, "]/"))) {
+					xfmrLogInfoAll("Request URI is leaf-list instance GET - %v", requestUri)
+					leafLstInstGetReq = true
+				}
 				if ok {
+					if leafLstInstGetReq {
+						leafListInstVal, valErr := extractLeafListInstFromUri(requestUri)
+						if valErr != nil {
+							return resFldValMap, valErr
+						}
+						if !leafListInstExists((*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName], leafListInstVal) {
+							log.Errorf("Queried leaf-list instance does not exists, uri  - %v, dbData - %v", requestUri, (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName])
+							return resFldValMap, tlerr.NotFoundError{Format:"Resource not found"}
+						}
+						val = leafListInstVal
+					}
 					resLst := processLfLstDbToYang(xpath, val, yngTerminalNdDtType)
 					resFldValMap[xYangSpecMap[xpath].yangEntry.Name] = resLst
+				} else {
+					if leafLstInstGetReq {
+						log.Errorf("Queried leaf-list does not exist in DB, uri  - %v", requestUri)
+						err = tlerr.NotFoundError{Format:"Resource not found"}
+					}
 				}
 			} else {
 				val, ok := (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName]
@@ -768,6 +789,9 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 					} else {
 						resFldValMap[xYangSpecMap[xpath].yangEntry.Name] = resVal
 					}
+				} else {
+					xfmrLogInfoAll("Field value does not exist in DB for - %v" , uri)
+					err = tlerr.NotFoundError{Format:"Resource not found"}
 				}
 			}
 		}
@@ -954,6 +978,8 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 /* Traverse linear db-map data and add to nested json data */
 func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, error) {
 	var err error
+	var fldSbtErr error // used only when direct query on leaf/leaf-list having subtree
+	var fldErr error //used only when direct query on leaf/leaf-list having field transformer
 	jsonData := ""
 	resultMap := make(map[string]interface{})
         d := inParamsForGet.d
@@ -1037,6 +1063,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 			}
 
 			for {
+				done := true
 				if yangType ==  YANG_LEAF || yangType == YANG_LEAF_LIST {
 					yangName := xYangSpecMap[reqXpath].yangEntry.Name
 					if validateHandlerFlag || tableXfmrFlag {
@@ -1045,9 +1072,15 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 					}
 					if len(xYangSpecMap[reqXpath].xfmrFunc) > 0 {
 						inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
-						err := xfmrHandlerFunc(inParams)
-						if err != nil {
+						fldSbtErr = xfmrHandlerFunc(inParams)
+						if fldSbtErr != nil {
+							/*For request Uri pointing to leaf/leaf-list having subtree, error will be propagated
+							  to handle check of leaf/leaf-list-instance existence in Db , which will be performed 
+							  by subtree
+							 */
 							xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[reqXpath].xfmrFunc, err)
+							inParamsForGet.ygRoot = ygRoot
+							break
 						}
 						inParamsForGet.dbDataMap = dbDataMap
 						inParamsForGet.ygRoot = ygRoot
@@ -1055,9 +1088,13 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						tbl, key, _ := tableNameAndKeyFromDbMapGet((*dbDataMap)[cdb])
 						inParamsForGet.tbl = tbl
 						inParamsForGet.tblKey = key
-						fldValMap, err := terminalNodeProcess(inParamsForGet)
-						if err != nil {
+						var fldValMap map[string]interface{}
+						fldValMap, fldErr = terminalNodeProcess(inParamsForGet)
+						if ((fldErr != nil) || (len(fldValMap) == 0)) {
 							xfmrLogInfo("Empty terminal node (\"%v\").", uri)
+							if fldErr == nil && yangType != YANG_LEAF_LIST {
+								fldErr = tlerr.NotSupportedError{Format:"Resource Not found"}
+							}
 						}
 						resultMap = fldValMap
 					}
@@ -1114,6 +1151,9 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 					log.Warningf("Unknown yang object type for path %v", reqXpath)
 					break
 				}
+				if done {
+					break
+				}
 			} //end of for
 		}
 	}
@@ -1121,6 +1161,19 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 	jsonMapData, _ := json.Marshal(resultMap)
 	isEmptyPayload := isJsonDataEmpty(string(jsonMapData))
 	jsonData        = fmt.Sprintf("%v", string(jsonMapData))
+	if fldSbtErr != nil {
+		/*error should be propagated only when request Uri points to leaf/leaf-list-instance having subtree,
+		  This is to handle check of leaf/leaf-list-instance existence in Db , which will be performed 
+                  by subtree, and depending whether queried node exists or not subtree should return error
+		*/
+		return jsonData, isEmptyPayload, fldSbtErr
+	}
+	if fldErr != nil {
+		/* error should be propagated only when request Uri points to leaf/leaf-list-instance and the data 
+		   is not available(via field-xfmr or field name)
+		*/
+		return jsonData, isEmptyPayload, fldErr
+	}
 
 	return jsonData, isEmptyPayload, nil
 }
