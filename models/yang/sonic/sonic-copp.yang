@@ -86,6 +86,7 @@ module sonic-copp {
 				}
 
 				leaf pir {
+					sonic-ext:custom-validation ValidateCoppNotSupported;
 					type uint64;
 					description
 						"Peak information rate in bps or pps. If
@@ -100,6 +101,7 @@ module sonic-copp {
 					}
 				}
 				leaf pbs {
+					sonic-ext:custom-validation ValidateCoppNotSupported;
 					type uint64;
 					description
 						"Peak bucket size. The default value is 20% of
@@ -197,4 +199,21 @@ module sonic-copp {
 			}
 		}
 	}
+
+	rpc get-match-protocols {
+		description
+			"RPC to allowed match protocols";
+
+		output {
+			list Match_protocols {
+				key "Protocol";
+
+				leaf Protocol {
+					type string;
+					description
+						"Protocol name";
+				}
+			}
+		}
+    }
 }

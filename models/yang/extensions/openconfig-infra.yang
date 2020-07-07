@@ -40,6 +40,7 @@ module openconfig-infra {
           description
             "State parameters of infra ";
           uses infra-sys-time-state;
+          uses infra-sys-reboot-cause-state;
         }
     }
   }
@@ -60,5 +61,17 @@ module openconfig-infra {
 
            }
    }
+
+  grouping infra-sys-reboot-cause-state{
+          description
+               "Global reboot-cause for the system";
+          leaf reboot-cause {
+               type string;
+               description
+                     "Show cause of most recent reboot";
+           }
+
+   }
+
 
 }

@@ -83,13 +83,11 @@ $(GOYANG_BIN): $(GO_DEPS)
 	cd vendor/github.com/openconfig/goyang && \
 		$(GO) build -o $@ *.go
 
-install:
-
-clean: models-clean translib-clean cvl-clean
+clean: models-clean translib-clean cvl-clean go-deps-clean
 	git check-ignore debian/* | xargs -r $(RM) -r
 	$(RM) -r debian/.debhelper
 	$(RM) -r $(BUILD_DIR)
 
-cleanall: clean go-deps-clean
-	$(MAKE) -C cvl cleanall
+cleanall: clean
+	chmod -R u+w /tmp/go/pkg && $(RM) -r /tmp/go/pkg
 

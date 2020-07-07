@@ -202,6 +202,18 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6/oc-ip:config/oc-ip:enabled {
+        deviate add {
+            sonic-ext:field-transformer "ipv6_enabled_xfmr";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6/oc-ip:state/oc-ip:enabled {
+        deviate add {
+            sonic-ext:field-transformer "ipv6_enabled_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses {
         deviate add {
             sonic-ext:table-name "NONE";
@@ -318,6 +330,18 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-igmp-ext:igmp/oc-igmp-ext:joins/oc-igmp-ext:join/oc-igmp-ext:config/oc-igmp-ext:mcastgrpaddr {
+        deviate add {
+            sonic-ext:field-transformer "igmp_mcastgrpaddr_fld_xfmr";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-igmp-ext:igmp/oc-igmp-ext:joins/oc-igmp-ext:join/oc-igmp-ext:config/oc-igmp-ext:srcaddr {
+        deviate add {
+            sonic-ext:field-transformer "igmp_srcaddr_fld_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:sag-ipv4 {
       deviate add {
 		sonic-ext:subtree-transformer "intf_sag_ip_xfmr";
@@ -378,4 +402,11 @@ module openconfig-interfaces-annot {
             sonic-ext:field-transformer "storm_value_xfmr";
         }
     }
+
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:state/oc-eth-ext:ifname" {
+        deviate add {
+            sonic-ext:field-transformer "storm_value_xfmr";
+        }
+    }
+
 }

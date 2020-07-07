@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////r//////
 //                                                                            //
 //  Copyright 2020 Broadcom, Inc.                                             //
 //                                                                            //
@@ -19,6 +19,9 @@
 package transformer
 
 import (
+	"encoding/json"
+	"github.com/Azure/sonic-mgmt-common/cvl/custom_validation"
+	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	log "github.com/golang/glog"
@@ -43,6 +46,7 @@ func init() {
 	XlateFuncBind("DbToYang_copp_trap_ids_xfmr", DbToYang_copp_trap_ids_xfmr)
 	XlateFuncBind("YangToDb_copp_trap_group_xfmr", YangToDb_copp_trap_group_xfmr)
 	XlateFuncBind("DbToYang_copp_trap_group_xfmr", DbToYang_copp_trap_group_xfmr)
+	XlateFuncBind("rpc_show_match_protocols", rpc_show_match_protocols)
 }
 
 func getCoppRoot(s *ygot.GoStruct) *ocbinds.OpenconfigCoppExt_Copp {
@@ -454,6 +458,40 @@ var DbToYang_copp_trap_group_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) 
 	if inval != "" {
 		result["trap-group"] = inval
 	}
+
+	return result, err
+}
+
+type MatchProtocolsEntry struct {
+	Protocol string
+}
+
+var rpc_show_match_protocols RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (result []byte, err error) {
+	log.Infof("Enter")
+	var mapData map[string]interface{}
+	err = json.Unmarshal(body, &mapData)
+	if err != nil {
+		log.Infof("Error: %v", err)
+		log.Error("Failed to  marshal input data; err=%v", err)
+		return nil, tlerr.InvalidArgs("Invalid input %s", string(body))
+	}
+
+	var showOutput struct {
+		Output struct {
+			Match_protocols []MatchProtocolsEntry
+		} `json:"sonic-copp:output"`
+	}
+
+	showOutput.Output.Match_protocols = make([]MatchProtocolsEntry, 0)
+	for key, field := range custom_validation.Copp_trap_id_valid {
+		var entry MatchProtocolsEntry
+		log.Infof("RPC output data: %v %v", key, field)
+		entry.Protocol = key
+		showOutput.Output.Match_protocols = append(showOutput.Output.Match_protocols, entry)
+	}
+
+	result, err = json.Marshal(&showOutput)
+	log.Infof("Err:%v JSONOutput:%v", err, string(result))
 
 	return result, err
 }

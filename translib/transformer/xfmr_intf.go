@@ -71,7 +71,12 @@ func init () {
     XlateFuncBind("YangToDb_intf_name_empty_xfmr", YangToDb_intf_name_empty_xfmr)
     XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
     XlateFuncBind("YangToDb_igmp_tbl_key_xfmr", YangToDb_igmp_tbl_key_xfmr)
+    XlateFuncBind("DbToYang_igmp_mcastgrpaddr_fld_xfmr", DbToYang_igmp_mcastgrpaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_igmp_mcastgrpaddr_fld_xfmr", YangToDb_igmp_mcastgrpaddr_fld_xfmr)
+    XlateFuncBind("DbToYang_igmp_srcaddr_fld_xfmr", DbToYang_igmp_srcaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr)
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
+    XlateFuncBind("rpc_clear_ip", rpc_clear_ip)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_ip_addr_xfmr", YangToDb_routed_vlan_ip_addr_xfmr)
@@ -255,6 +260,7 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
 
     requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
     retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("Entering intf_post_xfmr")
 
     if inParams.oper == DELETE {
 
@@ -267,7 +273,8 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
 
         /* For delete request and for fields with default value, transformer adds subOp map with update operation (to update with default value).
            So, adding code to clear the update SubOp map for delete operation to go through for the following requestUriPath */
-        if requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/config/enabled" {
+        if requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/config/enabled" || 
+           requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/config/enabled" {
             if len(inParams.subOpDataMap) > 0 {
                 dbMap := make(map[string]map[string]db.Value)
                 if inParams.subOpDataMap[4] != nil && inParams.subOpDataMap[5] != nil {
@@ -276,8 +283,32 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
                 log.Info("intf_post_xfmr inParams.subOpDataMap :", inParams.subOpDataMap)
             }
         }
+        if requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/openconfig-if-ethernet-ext:storm-control/storm-control-list/config/kbps" {
+            log.Info("intf_post_xfmr: storm-control kbps")
+            pathInfo := NewPathInfo(inParams.uri)
+            tblName := "PORT_STORM_CONTROL"
+            intfName := pathInfo.Var("name")
+            stormType := pathInfo.Var("storm-type")
+            if (stormType == "BROADCAST") {
+                stormType = "broadcast"
+            } else if (stormType == "UNKNOWN_UNICAST") {
+                stormType = "unknown-unicast"
+            } else if (stormType == "UNKNOWN_MULTICAST") {
+                stormType = "unknown-multicast"
+            }
+            tblKeyStr := intfName+"|"+stormType
+            log.Infof("intfName:%s, stormType:%s tblKeyStr:%s",intfName,stormType,tblKeyStr)
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subIntfmap_del := make(map[string]map[string]db.Value)
+            subIntfmap_del[tblName] = make(map[string]db.Value)
+            subIntfmap_del[tblName][tblKeyStr] = db.Value{}
+            subOpMap[db.ConfigDB] = subIntfmap_del
+            inParams.subOpDataMap[DELETE] = &subOpMap
+            log.Info("Original retDbDataMap:",retDbDataMap)
+            retDbDataMap = subIntfmap_del
+            log.Info("Returning retDbDataMap:",retDbDataMap)
+        }
     }
-
     return retDbDataMap, nil
 }
 
@@ -362,6 +393,155 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
         }
     }
     return err
+}
+
+func rpc_get_resultTblList_for_intf_ip_delete(intfType E_InterfaceType) []string {
+    var resultTblList []string
+    switch intfType {
+    case IntfTypeEthernet:
+        resultTblList = append(resultTblList, "INTERFACE")
+    case IntfTypeVlan:
+        resultTblList = append(resultTblList, "VLAN_INTERFACE")
+    case IntfTypePortChannel:
+        resultTblList = append(resultTblList, "PORTCHANNEL_INTERFACE")
+    case IntfTypeMgmt:
+        resultTblList = append(resultTblList, "MGMT_INTERFACE")
+    case IntfTypeLoopback:
+        resultTblList = append(resultTblList, "LOOPBACK_INTERFACE")
+    }
+    log.Infof("Result Table List = %v", resultTblList)
+    return resultTblList
+}
+
+func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfTblData) error {
+    // Delete the INTERFACE | <ifName> | <IP address> entry from DB
+    err := d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, *ipPrefix}})
+    if err != nil {
+        return err
+    }
+
+    count := 0
+    _ = interfaceIPcount(intTbl.cfgDb.intfTN, d, ifName, &count)
+    log.Info("IP count retrieved  = ", count)
+
+    if (count == 2) && (intTbl.cfgDb.intfTN != LOOPBACK_INTERFACE_TN) {
+        intfEntry, err := d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName}})
+        if err != nil {
+            log.Error(err.Error())
+            return err
+        }
+        intfEntryMap := intfEntry.Field
+        _, nullValPresent := intfEntryMap["NULL"]
+        llVal, llValPresent := intfEntryMap["ipv6_use_link_local_only"]
+
+
+        /* Note: Unbinding shouldn't happen if VRF or link-local config is associated with interface.
+        Hence, we check for map length to be 1 and only if either NULL or ipv6_use_link_local_only with "disable" value is present */
+        if len(intfEntryMap) == 1 && (nullValPresent || (llValPresent && llVal == "disable")) {
+            // Deleting the INTERFACE|<ifName> entry from DB
+            err = d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName}})
+            if err != nil {
+                log.Error(err.Error())
+                return err
+            }
+        }
+    }
+    return err
+}
+
+var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var err error
+    var result struct {
+        Output struct {
+            Status uint32 `json:"status"`
+            Status_detail string `json:"status-detail"`
+        } `json:"sonic-interface:output"`
+    }
+    result.Output.Status = 1
+
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data for removing the IP address")
+        result.Output.Status_detail = "Error: Failed to unmarshall given input data"
+        return json.Marshal(&result)
+    }
+    input := mapData["sonic-interface:input"]
+    mapData = input.(map[string]interface{})
+
+    inputIfName, ok := mapData["ifName"]
+    if !ok {
+        result.Output.Status_detail = "ifName field not present in the input for clear_ip rpc!"
+        return json.Marshal(&result)
+    }
+    ipPrefixIntf, ok := mapData["ipPrefix"]
+    if !ok {
+        result.Output.Status_detail = "ipPrefix field not present in the input for clear_ip rpc!"
+        return json.Marshal(&result)
+    }
+    ipPrefix := ipPrefixIntf.(string)
+    ifNameStr := inputIfName.(string)
+    ifName := utils.GetNativeNameFromUIName(&ifNameStr)
+
+    intfType, _, ierr := getIntfTypeByName(*ifName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        log.Error("Invalid interface type IntfTypeUnset")
+        return json.Marshal(&result)
+    }
+    intTbl := IntfTypeTblMap[intfType]
+
+    log.Info("Interface type = ", intfType)
+    log.Infof("Deleting IP address: %s for interface: %s", ipPrefix, *ifName)
+
+    d, err := db.NewDB(getDBOptions(db.ConfigDB))
+    if err != nil {
+        result.Output.Status_detail = err.Error()
+        return json.Marshal(&result)
+    }
+    defer d.DeleteDB()
+
+    /* Checking whether entry exists in DB. If not, return from here */
+    _, err = d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, ipPrefix}})
+    if err != nil {
+        log.Errorf("IP address: %s doesn't exist for Interafce: %s", ipPrefix, *ifName)
+        return json.Marshal(&result)
+    }
+    moduleNm := "sonic-interface"
+    resultTblList := rpc_get_resultTblList_for_intf_ip_delete(intfType)
+    var tblsToWatch []*db.TableSpec
+
+    if len(resultTblList) > 0 {
+        depTbls := GetTablesToWatch(resultTblList, moduleNm)
+        if len(depTbls) == 0 {
+            log.Errorf("Failure to get Tables to watch for module %v", moduleNm)
+            return json.Marshal(&result)
+        }
+        log.Info("Dependent Tables = ", depTbls)
+        for _, tbl := range depTbls {
+            tblsToWatch = append(tblsToWatch, &db.TableSpec{Name: tbl})
+        }
+    }
+    err = d.StartTx(nil, tblsToWatch)
+    if err != nil {
+        log.Error("Transaction start failed")
+        result.Output.Status_detail = err.Error()
+        return json.Marshal(&result)
+    }
+
+    err = rpc_intf_ip_delete(d, ifName, &ipPrefix, intTbl)
+    if err != nil {
+        d.AbortTx()
+        result.Output.Status_detail = err.Error()
+        return json.Marshal(&result)
+    }
+    err = d.CommitTx()
+    if err != nil {
+        log.Error(err)
+        result.Output.Status_detail = err.Error()
+        return json.Marshal(&result)
+    }
+    log.Infof("Commit transaction succesful for IP address: %s delete", ipPrefix)
+    return  json.Marshal(&result)
 }
 
 /* RPC for clear counters */
@@ -1327,13 +1507,10 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                 return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
             }
             IntfMap := IntfMapObj.Field
-            if len(IntfMap) == 1 {
-                if _, ok := IntfMap["NULL"]; ok {
-                    subIntfmap[tblName][ifName] = data
-                }
-                if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-                    subIntfmap[tblName][ifName] = data
-                }
+            // Case-1: If there is one last attribute present under "INTERFACE|<Interface>" (or)
+            // Case-2: If deletion at parent container(subinterface)
+            if len(IntfMap) == 1 || subIntf == nil {
+                subIntfmap[tblName][ifName] = data
             }
         }
     }
@@ -1444,16 +1621,13 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
         }
         IntfMap := IntfMapObj.Field
-        if len(IntfMap) == 1 {
+        // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>" (or)
+        // Case-2: If deletion at parent container(routedVlanIntf)
+        if len(IntfMap) == 1 || routedVlanIntf == nil {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
 	    }
-	    if _, ok := IntfMap["NULL"]; ok {
-	        vlanIntfmap[tblName][ifName] = data
-	    }
-	    if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-	        vlanIntfmap[tblName][ifName] = data
-	    }
+	    vlanIntfmap[tblName][ifName] = data
         }
     }
 
@@ -2306,7 +2480,7 @@ func deleteVxlanIntf(inParams *XfmrParams, ifName *string) error {
     if err == nil {
 	    evpnNvoMap := make(map[string]db.Value)
 	    evpnDbV := db.Value{Field:map[string]string{}}
-	    evpnDbV.Field["source_vtep"] = *ifName
+	    //evpnDbV.Field["source_vtep"] = *ifName
 	    evpnNvoMap["nvo1"] = evpnDbV
 	    resMap["EVPN_NVO"] = evpnNvoMap
     }
@@ -2840,19 +3014,108 @@ func getSpecificCounterAttr(targetUriPath string, entry *db.Value, entry_backup 
     "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/in-oversize-frames":
         e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_RX_OVERSIZE_PKTS", &eth_counter_val.InOversizeFrames)
         return true, e
+    case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-undersize-frames",
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/in-undersize-frames":
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_STATS_UNDERSIZE_PKTS", &eth_counter_val.InUndersizeFrames)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-jabber-frames",
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/in-jabber-frames":
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_STATS_JABBERS", &eth_counter_val.InJabberFrames)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-fragment-frames",
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/in-fragment-frames":
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_STATS_FRAGMENTS", &eth_counter_val.InFragmentFrames)
+        return true, e
 
     case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/out-oversize-frames",
     "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/out-oversize-frames":
         e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_TX_OVERSIZE_PKTS", &eth_counter_val.OutOversizeFrames)
         return true, e
-        
+
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-64-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_64_OCTETS", &eth_counter_val.EthInDistribution.InFrames_64Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-65-127-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_65_TO_127_OCTETS", &eth_counter_val.EthInDistribution.InFrames_65_127Octets)
+        return true, e
     case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-distribution/in-frames-128-255-octets",
     "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets",
-    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets":
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets",
+    "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-128-255-octets":
         ygot.BuildEmptyTree(eth_counter_val)
-        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_128_TO_255_OCTETS", &eth_counter_val.InDistribution.InFrames_128_255Octets)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_128_TO_255_OCTETS", &eth_counter_val.EthInDistribution.InFrames_128_255Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-256-511-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_256_TO_511_OCTETS", &eth_counter_val.EthInDistribution.InFrames_256_511Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-512-1023-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_512_TO_1023_OCTETS", &eth_counter_val.EthInDistribution.InFrames_512_1023Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-1024-1518-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_1024_TO_1518_OCTETS", &eth_counter_val.EthInDistribution.InFrames_1024_1518Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-1519-2047-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_1519_TO_2047_OCTETS", &eth_counter_val.EthInDistribution.InFrames_1519_2047Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-2048-4095-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_2048_TO_4095_OCTETS", &eth_counter_val.EthInDistribution.InFrames_2048_4095Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-4096-9216-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_4096_TO_9216_OCTETS", &eth_counter_val.EthInDistribution.InFrames_4096_9216Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution/in-frames-9217-16383-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_IN_PKTS_9217_TO_16383_OCTETS", &eth_counter_val.EthInDistribution.InFrames_9217_16383Octets)
         return true, e
 
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-64-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_64_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_64Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-65-127-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_65_TO_127_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_65_127Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-128-255-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_128_TO_255_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_128_255Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-256-511-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_256_TO_511_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_256_511Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-512-1023-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_512_TO_1023_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_512_1023Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-1024-1518-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_1024_TO_1518_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_1024_1518Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-1519-2047-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_1519_TO_2047_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_1519_2047Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-2048-4095-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_2048_TO_4095_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_2048_4095Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-4096-9216-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_4096_TO_9216_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_4096_9216Octets)
+        return true, e
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:out-distribution/out-frames-9217-16383-octets":
+        ygot.BuildEmptyTree(eth_counter_val)
+        e = getCounters(entry, entry_backup, "SAI_PORT_STAT_ETHER_OUT_PKTS_9217_TO_16383_OCTETS", &eth_counter_val.EthOutDistribution.OutFrames_9217_16383Octets)
+        return true, e
     default:
         log.Infof(targetUriPath + " - Not an interface state counter attribute")
     }
@@ -2887,7 +3150,14 @@ var portCntList [] string = []string {"in-octets", "in-unicast-pkts", "in-broadc
 "out-broadcast-pkts", "out-multicast-pkts", "out-errors", "out-discards",
 "out-pkts","last-clear"}
 
-var etherCntList [] string = [] string {"in-oversize-frames", "out-oversize-frames", "openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets"}
+var etherCntList [] string = [] string {"in-oversize-frames", "out-oversize-frames", "in-undersize-frames", "in-jabber-frames",
+                        "in-fragment-frames", "openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets"}
+var etherCntOutList [] string = [] string {"out-frames-64-octets", "out-frames-65-127-octets", "out-frames-128-255-octets",
+                        "out-frames-256-511-octets", "out-frames-512-1023-octets", "out-frames-1024-1518-octets", "out-frames-1519-2047-octets",
+                        "out-frames-2048-4095-octets", "out-frames-4096-9216-octets", "out-frames-9217-16383-octets"}
+var etherCntInList [] string = [] string {"in-frames-64-octets", "in-frames-65-127-octets", "in-frames-128-255-octets",
+                        "in-frames-256-511-octets", "in-frames-512-1023-octets", "in-frames-1024-1518-octets", "in-frames-1519-2047-octets",
+                        "in-frames-2048-4095-octets", "in-frames-4096-9216-octets", "in-frames-9217-16383-octets"}
 
 var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, counter interface{}) (error) {
     pathInfo := NewPathInfo(inParams.uri)
@@ -2944,10 +3214,22 @@ var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, count
                 //err = errors.New("Get Ethernet Counter URI failed")
             }
         }
+        for _, attr := range etherCntOutList {
+            uri := targetUriPath + "/openconfig-if-ethernet-ext2:out-distribution/" + attr
+            if ok, err := getSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter); !ok || err != nil {
+                log.Info("Get Ethernet Counter URI failed :", uri)
+            }
+        }
+        targetUriPath = "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext2:in-distribution"
+        fallthrough
     case "/openconfig-interfaces:interfaces/interface/ethernet/state/counters/in-distribution",
          "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/counters/openconfig-if-ethernet-ext:in-distribution":
-         uri := targetUriPath + "/" + "in-frames-128-255-octets"
-         _, err = getSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter)
+        for _, attr := range etherCntInList {
+            uri := targetUriPath + "/" + attr
+            if ok, err := getSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter); !ok || err != nil {
+                log.Info("Get Ethernet Counter URI failed :", uri)
+            }
+        }
 
     default:
         _, err = getSpecificCounterAttr(targetUriPath, &CounterData, &CounterBackUpData, counter)
@@ -3417,22 +3699,23 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
        }
     }
     /* Handle PortSpeed config */
-    if isPortGroupMember(ifName) {
-        err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
-    } else if intfObj.Ethernet.Config.PortSpeed != 0 {
-        res_map := make(map[string]string)
-        value := db.Value{Field: res_map}
-        intTbl := IntfTypeTblMap[intfType]
+    if (strings.Contains(inParams.requestUri, "port-speed")) {
+        if isPortGroupMember(ifName) {
+            err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
+        } else if intfObj.Ethernet.Config.PortSpeed != 0 {
+            res_map := make(map[string]string)
+            value := db.Value{Field: res_map}
+            intTbl := IntfTypeTblMap[intfType]
 
-        portSpeed := intfObj.Ethernet.Config.PortSpeed
-        val, ok := intfOCToSpeedMap[portSpeed]
-        if ok {
-            if isValidSpeed(inParams.d, ifName, val) {
-                res_map[PORT_SPEED] = val
-            } else {
-                err = tlerr.InvalidArgs("Unsupported speed %s", val)
-            }
-        } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+            portSpeed := intfObj.Ethernet.Config.PortSpeed
+            val, ok := intfOCToSpeedMap[portSpeed]
+            if ok {
+                if isValidSpeed(inParams.d, ifName, val) {
+                    res_map[PORT_SPEED] = val
+                } else {
+                    err = tlerr.InvalidArgs("Unsupported speed %s", val)
+                }
+            } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
                 defSpeed := getDefaultSpeed(inParams.d, ifName)
                 log.Info(" defSpeed  ", defSpeed)
                 if defSpeed != 0 {
@@ -3441,15 +3724,16 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 } else {
                     err = tlerr.NotSupported("Default speed not available")
                 }
-        } else {
-            err = tlerr.InvalidArgs("Invalid speed %s", val)
-        }
+            } else {
+                err = tlerr.InvalidArgs("Invalid speed %s", val)
+            }
 
-        if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
-            memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
-        }
-        memMap[intTbl.cfgDb.portTN][ifName] = value
+            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
+                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+            }
+            memMap[intTbl.cfgDb.portTN][ifName] = value
 
+        }
     }
     /* Handle AutoNegotiate config */
     if intfObj.Ethernet.Config.AutoNegotiate != nil {
@@ -3514,6 +3798,11 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     pathInfo := NewPathInfo(inParams.uri)
     ifUIName := pathInfo.Var("name");
 
+    intfType, _, ierr := getIntfTypeByName(ifUIName)
+    if ierr != nil || intfType == IntfTypeUnset || intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {
+	return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Unsupported Interface: "+ifUIName )
+    }
+
     if ifUIName == "" {
         errStr := "Interface KEY not present"
         log.Info("YangToDb_ipv6_enabled_xfmr: " + errStr)
@@ -3524,17 +3813,14 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         return res_map, err
     }
 
-    if len(pathInfo.Vars) < 2 {
+    // Vlan Interface (routed-vlan) contains only one Key "ifname"
+    // For all other interfaces (subinterfaces/subintfaces) will have 2 keys "ifname" & "subintf-index"
+    if len(pathInfo.Vars) < 2 && intfType != IntfTypeVlan {
         return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Invalid Key length")
     }
 
     if log.V(3) {
         log.Info("YangToDb_ipv6_enabled_xfmr, inParams.key: ", inParams.key)
-    }
-
-    intfType, _, ierr := getIntfTypeByName(ifUIName)
-    if ierr != nil || intfType == IntfTypeUnset || intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {
-	return res_map, errors.New("YangToDb_ipv6_enabled_xfmr, Error: Unsupported Interface: "+ifUIName )
     }
 
     ifName := utils.GetNativeNameFromUIName(&ifUIName)
@@ -3638,6 +3924,49 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
         res_map["enabled"] = true
     }
     return res_map, nil
+}
+
+var YangToDb_igmp_mcastgrpaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	log.Info("YangToDb_igmp_mcastgrpaddr_xfmr: ", inParams.key)
+        res_map["enable"] = "true"
+	return res_map, nil
+}
+
+var DbToYang_igmp_mcastgrpaddr_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	log.Info("DbToYang_igmp_mcastgrpaddr_fld_xfmr: ", inParams.key)
+
+	cdb := inParams.dbs[db.ConfigDB]
+	igmpEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "IGMP_INTERFACE"}, db.Key{Comp: []string{inParams.key}})
+	mcastgrpaddr := igmpEntry.Get("mcastgrpaddr")
+
+	result["mcastgrpaddr"] = &mcastgrpaddr
+
+	return result, err
+}
+
+var YangToDb_igmp_srcaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	log.Info("YangToDb_igmp_srcaddr_xfmr: ", inParams.key)
+
+        res_map["enable"] = "true"
+	return res_map, nil
+}
+
+var DbToYang_igmp_srcaddr_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	log.Info("DbToYang_igmp_srcaddr_fld_xfmr: ", inParams.key)
+
+	cdb := inParams.dbs[db.ConfigDB]
+	igmpEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "IGMP_INTERFACE"}, db.Key{Comp: []string{inParams.key}})
+	srcaddr := igmpEntry.Get("srcaddr")
+
+	result["srcaddr"] = &srcaddr
+
+	return result, err
 }
 
 var YangToDb_igmp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {

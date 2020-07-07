@@ -1,7 +1,6 @@
 package transformer
 
 import (
-    "strings"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     log "github.com/golang/glog"
@@ -123,8 +122,12 @@ var network_instance_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[str
     var err error
     retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
 
-    if inParams.oper == DELETE {
-        xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+
+    if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
+        log.Info("In Network-instance Post transformer for ADD/UPDATE ==> URI : ", inParams.requestUri, " ; XPATH : ", xpath)
+
+    } else if inParams.oper == DELETE {
         log.Info("In Network-instance Post transformer for DELETE op ==> URI : ", inParams.requestUri, " ; XPATH : ", xpath)
 
         if del_not_allowed, found := nw_inst_del_not_allowed_map[xpath]; found && del_not_allowed {
@@ -132,12 +135,9 @@ var network_instance_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[str
             log.Info ("XPATH : ", xpath, " found !!! ", err_str)
             return retDbDataMap, tlerr.NotSupported(err_str)
         }
-
-        rcvdUri, uriErr := getYangPathFromUri(inParams.uri)
-        if (uriErr == nil && strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2/global")) {
-            err = delete_ospf_interfaces_for_vrf(&inParams, &retDbDataMap)
-        }
     }
+
+    err = ospfv2_config_post_xfmr(&inParams, &retDbDataMap)
 
     return retDbDataMap, err
 }

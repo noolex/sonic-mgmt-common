@@ -59,7 +59,7 @@ module sonic-igmp-snooping {
 		container CFG_L2MC_STATIC_GROUP_TABLE {
 			
 			list CFG_L2MC_STATIC_GROUP_TABLE_LIST {
-				key "vlan-name group-addr";
+				key "vlan-name group-addr source-addr";
 				
 				leaf vlan-name {
 					type leafref {
@@ -68,6 +68,10 @@ module sonic-igmp-snooping {
 				}
 				
 				leaf group-addr {
+					type inet:ipv4-address;
+				}
+
+				leaf source-addr {
 					type inet:ipv4-address;
 				}
 				
@@ -83,7 +87,7 @@ module sonic-igmp-snooping {
 		
 			list CFG_L2MC_STATIC_MEMBER_TABLE_LIST {
 			
-				key "vlan-name group-addr out-intf";
+				key "vlan-name group-addr source-addr out-intf";
 				
 				leaf vlan-name {
 					type leafref {
@@ -94,7 +98,11 @@ module sonic-igmp-snooping {
 				leaf group-addr {
 					type inet:ipv4-address;
 				}
-				
+
+				leaf source-addr {
+					type inet:ipv4-address;
+				}
+
 				leaf out-intf {
 					type leafref {
 						path "/svlan:sonic-vlan/svlan:VLAN_MEMBER/svlan:VLAN_MEMBER_LIST[svlan:name=current()/../sigmps:vlan-name]/svlan:ifname";
