@@ -1173,6 +1173,9 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         // Get on Sonic nonexistent container
 
         fmt.Println("++++++++++++++  GET with uri Sonic container(nonexistent)  +++++++++++++")
+        cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
+        unloadConfigDB(rclient, cleanuptbl)
+
         url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW"
         expected = "{}"
         t.Run("Verify Get on Sonic container(nonexistent)", processGetRequest(url, expected, false))

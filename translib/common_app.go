@@ -250,6 +250,10 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    // Keep a copy of the ygotRoot and let Transformer use this copy of ygotRoot
 	    origYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
 	    xfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
+
+	    // keep the copy of xfmrYgotRoot to get around the ygot.DeepCopy bug - not able to clone empty map
+	    origXfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
+
             isEmptyPayload  := false
 	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
 	    if err != nil {
@@ -300,7 +304,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		    if !strings.HasPrefix(app.pathInfo.Path, "/sonic") {
 			    // if payload is empty, no need to invoke merge-struct
 			    if isEmptyPayload {
-				    if areEqual(xfmrYgotRoot, resYgot.(ygot.GoStruct)) {
+				    if areEqual(xfmrYgotRoot, origXfmrYgotRoot) {
 					    // No data available in xfmrYgotRoot.
 					    resPayload = payload
 					    log.Error("No data available")
