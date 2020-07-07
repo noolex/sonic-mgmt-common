@@ -104,6 +104,37 @@ module sonic-interface {
             }
         }
 
+        rpc clear_ip {
+
+            description
+                "Clears IPv4/IPv6 address assigned to a specific interface";
+            input {
+                leaf ifName {
+                    type string;
+                    description
+                        "Interface with which IP address needs to be disassociated";
+                }
+                leaf ipPrefix {
+                    type inet:ip-prefix; 
+                    description
+                        "IP (v4/v6) address needs to be removed";
+                }
+            }
+            output {
+                leaf status {
+                    type uint32;
+                    description
+                        "Status of operation execution request";
+                }
+                leaf status-detail {
+                    type string;
+                    description
+                        "Detailed status of operation execution request";
+                }
+            }
+        }
+            
+
 	container sonic-interface {
 
 		container INTERFACE {
@@ -153,12 +184,6 @@ module sonic-interface {
 
                                 leaf dhcp_relay_link_select {
                                         type cmn:mode-enable;
-                                        must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                                               "(current()/../dhcp_servers and current()/../dhcp_relay_src_intf)"   
-                                              {
-                                                       error-message "DHCP server or src-intf not configured";
-                                                       error-app-tag dhcp-server-invalid-link-select-config;
-                                              }
                                 }
 
                                 leaf dhcp_relay_src_intf {
@@ -183,6 +208,26 @@ module sonic-interface {
 
                                 }
 
+                                leaf dhcp_server_vrf {
+                                        type string;
+                                        must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                               "(current()/../dhcp_servers)"   
+                                              {
+                                                       error-message "DHCP server not configured";
+                                                       error-app-tag dhcp-server-invalid-vrf-config;
+                                              }
+                                }
+
+                                leaf dhcp_relay_vrf_select {
+                                        type cmn:mode-enable;
+                                        default disable;
+                                }
+
+                                leaf dhcp_relay_policy_action {
+                                        type cmn:relay-policy-action;
+                                        default discard;
+                                }
+
                                 leaf dhcpv6_relay_src_intf {
                                         type string;
                                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
@@ -203,6 +248,21 @@ module sonic-interface {
                                                        error-app-tag dhcp-server-adress-config;
                                              }
 
+                                }
+
+                                leaf dhcpv6_server_vrf {
+                                        type string;
+                                        must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                               "(current()/../dhcpv6_servers)"   
+                                              {
+                                                       error-message "DHCP server or src-intf not configured";
+                                                       error-app-tag dhcp-server-invalid-vrf-config;
+                                              }
+                                }
+
+                                leaf dhcpv6_relay_vrf_select {
+                                        type cmn:mode-enable;
+                                        default disable;
                                 }
 
 				leaf ipv6_use_link_local_only {
@@ -231,29 +291,17 @@ module sonic-interface {
                         error-app-tag intf-ip-config;
                     }
 
-                    must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                         "(count(/sonic-interface/INTERFACE/INTERFACE_LIST[portname=current()/../portname]/unnumbered)  <= 1)"
-                    {
-                        error-message "IP Unnumbered interface configuration is already done on this interface";
-                        error-app-tag intf-unnum-config;
-                    }
-
                     must "count(/spc:sonic-portchannel/spc:PORTCHANNEL_MEMBER/spc:PORTCHANNEL_MEMBER_LIST[spc:ifname=current()/../portname]) = 0"
                     {
                         error-message "Interface configured as a member of portchannel. Cannot configure IP Unnumbered";
                         error-app-tag intf-po-member;
                     }
 
-                    must "count(current()/../vrf_name) = 0"
+                    must "(count(current()/../vrf_name) = 0 and count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name) = 0) or " +
+                         "(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name = current()/../vrf_name)"
                     {
-                        error-message "Non default VRF binded to interface. Cannot configure IP Unnumbered";
-                        error-app-tag intf-non-def-vrf;
-                    }
-
-                    must "count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()/./unnumbered]/lointf:vrf_name) = 0"
-                    {
-                        error-message "Non default VRF binded to Donor interface. Cannot configure IP Unnumbered";
-                        error-app-tag donor-intf-non-def-vrf;
+                        error-message "Donor and Unnumbered interface should be in same VRF";
+                        error-app-tag donor-unnum-diff-vrf;
                     }
 
 					sonic-ext:custom-validation ValidateIpv4UnnumIntf;
@@ -300,7 +348,9 @@ module sonic-interface {
                 key "ifName";
       
                 leaf ifName {
-                    type string;
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
                 }
 
                 leaf unnumbered {
@@ -317,7 +367,9 @@ module sonic-interface {
                 key "ifName ipPrefix";
 
                 leaf ifName {
-                   type string;
+                   type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
                 }
         
                 leaf ipPrefix {

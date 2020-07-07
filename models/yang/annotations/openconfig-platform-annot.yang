@@ -5,62 +5,57 @@ module openconfig-platform-annot {
     prefix "oc-platform-annot";
 
     import openconfig-platform { prefix oc-platform; }
-    import openconfig-platform-ext { prefix oc-platform-ext; }
-    import openconfig-interfaces { prefix oc-if; }
-    import openconfig-if-ethernet { prefix oc-eth; }
-    import openconfig-extensions { prefix oc-ext; }
     import openconfig-platform-port { prefix oc-port; }
+    import openconfig-port-breakout-ext { prefix oc-brk-ext; }
     import sonic-extensions { prefix sonic-ext; }
+    import openconfig-platform-transceiver { prefix oc-transceiver; }
 
-    deviation /oc-platform:components {
-        deviate add {
-            sonic-ext:subtree-transformer "pfm_components_xfmr";
-        }
-    }
-
-    deviation /oc-platform:components/oc-platform:component/oc-platform-ext:software {
-        deviate add {
-            sonic-ext:subtree-transformer "pfm_components_xfmr";
-        }
-    }
-
-    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode {
+    deviation /oc-platform:components/oc-platform:component {
       deviate add {
+        sonic-ext:subtree-transformer "pfm_components_xfmr";
+      }
+    }
+
+    deviation /oc-platform:components/oc-platform:component/oc-platform:power-supply {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_psu_xfmr";
+      }
+    }
+
+    deviation /oc-platform:components/oc-platform:component/oc-platform:fan {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_fan_xfmr";
       }
     }
 
     deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:config {
       deviate add {
-            sonic-ext:table-name "BREAKOUT_CFG";
-			sonic-ext:subtree-transformer "port_breakout_config_xfmr";
-      }
-    }
-
-    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:config/oc-port:num-channels {
-      deviate add {
-      }
-    }
-
-    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:config/oc-port:channel-speed {
-      deviate add {
+        sonic-ext:table-name "BREAKOUT_CFG";
+        sonic-ext:subtree-transformer "port_breakout_config_xfmr";
       }
     }
 
     deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:state {
       deviate add {
-            sonic-ext:table-name "BREAKOUT_CFG";
-            sonic-ext:subtree-transformer "port_breakout_state_xfmr";
+        sonic-ext:db-name "STATE_DB";
+        sonic-ext:subtree-transformer "port_breakout_state_xfmr";
       }
     }
 
-    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:state/oc-port:num-channels {
+    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:state/oc-brk-ext:status {
       deviate add {
+        sonic-ext:db-name "STATE_DB";
       }
     }
 
-    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:state/oc-port:channel-speed {
+    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:state/oc-brk-ext:members {
       deviate add {
+        sonic-ext:db-name "CONFIG_DB";
       }
     }
-
+    deviation /oc-platform:components/oc-platform:component/oc-transceiver:transceiver {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_transceiver_xfmr";
+      }
+    }
 }

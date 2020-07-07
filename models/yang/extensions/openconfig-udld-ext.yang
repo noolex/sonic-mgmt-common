@@ -1,0 +1,332 @@
+module openconfig-udld-ext {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/udld/extension";
+
+  prefix "oc-udld-ext";
+
+  import openconfig-interfaces { prefix oc-if; }
+  import ietf-yang-types { prefix yang; }
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-udld-types { prefix oc-udld-types; }
+
+
+  organization
+      "SONiC";
+
+  contact
+      "SONiC";
+
+  description
+    "This module defines configuration and operational state data
+    for the UDLD protocol.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-04" {
+    description
+      "Initial public revision";
+    reference "0.1.0";
+  }
+
+  // OpenConfig specific extensions for module metadata.
+  oc-ext:regexp-posix;
+  oc-ext:catalog-organization "openconfig";
+  oc-ext:origin "openconfig";
+
+  // identity statements
+
+
+  // grouping statements
+
+  grouping udld-ext-interface-counters {
+    description
+      "Definition of global and per-interface counters";
+
+    leaf pdu-sent {
+      type yang:counter64;
+      default 0;
+      description
+        "The number of frames transmitted out.";
+    }
+
+    leaf pdu-received {
+      type yang:counter64;
+      default 0;
+      description
+        "The number of udld frames received.";
+    }
+
+    leaf pdu-recv-error {
+      type yang:counter64;
+      default 0;
+      description
+        "The number of UDLD frames received with errors.";
+    }
+
+  }
+
+
+  grouping udld-ext-common-config {
+    description
+      "Groups UDLD enable and mode config common to both Global and interface level";
+
+    leaf admin-enable {
+        type boolean;
+        default false;
+        description
+            "Enable/Disable UDLD";
+    }
+
+    leaf aggressive {
+        type boolean;
+        default false;
+        description
+            "Enable/Disable aggressive mode of UDLD";
+    }
+  }
+
+
+  grouping udld-ext-interface-config {
+    description
+      "Configuration data for UDLD on each interface";
+
+    leaf name {
+      type oc-if:base-interface-ref;
+      description
+        "Reference to the UDLD Ethernet interface";
+    }
+    uses udld-ext-common-config;
+  }
+
+
+  grouping udld-ext-interface-state {
+    description
+      "Operational state data for UDLD on each interface";
+
+    container local-info {
+      description
+        "Local info";
+      leaf status {
+          type identityref {
+            base oc-udld-types:UDLD_PORT_STATUS;
+          }
+          description
+              "UDLD port status";
+      }
+    }
+    container neighbors-info {
+      description
+        "List of Neighbors";
+      list neighbor {
+          key "index";
+          description
+              "Each Neighbor info";
+
+          leaf index {
+              type leafref {
+                  path "../state/index";
+              }
+              description
+                  "index of each neighbor data ";
+          }
+
+          container state {
+              config false;
+
+              description
+                  "Neighbor data ";
+
+              leaf index {
+                  type uint16;
+                  description
+                      "Index number of neighbor port";
+              }
+
+              leaf device-id {
+                  type string;
+                  description
+                      "device id(MAC)";
+              }
+
+              leaf device-name {
+                  type string;
+                  description
+                      "device name";
+              }
+
+              leaf status {
+                  type identityref {
+                      base oc-udld-types:UDLD_PORT_STATUS;
+                  }
+                  description
+                      "UDLD port status";
+              }
+
+              leaf port-id {
+                  type string;
+                  description
+                      "Neighbor port name";
+              }
+
+              leaf msg-time {
+                  type uint8;
+                  units seconds;
+                  default 1;
+                  description
+                      "Neighbor message time";
+              }
+
+              leaf timeout-interval {
+                  type uint8;
+                  units seconds;
+                  default 1;
+                  description
+                      "Neighbor timeout interval";
+              }
+          }
+
+      }
+    }
+
+    container counters {
+      description
+        "UDLD counters on each interface";
+
+      uses udld-ext-interface-counters;
+    }
+  }
+
+
+  grouping udld-ext-interface-top {
+    description
+      "Top-level grouping ";
+
+    container interfaces {
+      description
+        "Enclosing container ";
+
+      list interface {
+        key "name";
+        description
+          "List of interfaces on which UDLD is enabled / available";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+          description
+            "Reference to the UDLD Ethernet interface";
+        }
+
+        container config {
+          description
+            "Configuration data for UDLD on each interface";
+
+          uses udld-ext-interface-config;
+        }
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state data ";
+
+          uses udld-ext-interface-config;
+          uses udld-ext-interface-state;
+        }
+
+      }
+    }
+  }
+
+
+  grouping udld-ext-global-config {
+    description
+      "Configuration data for global UDLD parameters";
+
+    uses udld-ext-common-config;
+
+    leaf msg-time {
+        type uint8 {
+            range "1..30" {
+                error-message "Invalid UDLD message time value.";
+            }
+        }
+        units seconds;
+        default 1;
+        description
+            "It is the time interval at which periodic hellos are
+            exchanged. Default is 1 second";
+    }
+
+    leaf multiplier {
+        type uint8 {
+            range "3..10" {
+                error-message "Invalid UDLD multiplier value.";
+            }
+        }
+        default 3;
+        description
+            "This multiplier value is used to determine the timeout
+            interval (i.e. message-time x multiplier value) after
+            which UDLD declares the state of the link.";
+    }
+
+  }
+
+
+  grouping udld-ext-top {
+    description
+      "Top-level grouping for UDLD model";
+
+    container udld {
+      description
+        "Top-level container for UDLD configuration and state data";
+
+      container config {
+        description
+          "Configuration data ";
+
+        uses udld-ext-global-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for UDLD";
+
+        uses udld-ext-global-config;
+
+        container local-device-info {
+            description
+                "Local Device info";
+            leaf device-id {
+                type string;
+                description
+                    "device id(MAC)";
+            }
+
+            leaf device-name {
+                type string;
+                description
+                    "device name";
+            }
+        }
+
+      }
+
+      uses udld-ext-interface-top;
+    }
+  }
+
+  // data definition statements
+
+  uses udld-ext-top;
+
+}

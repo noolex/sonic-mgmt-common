@@ -203,6 +203,19 @@ func Test_LeafList_Delete_OCYang(t *testing.T) {
         /*********************/
 
 
+       /** delete specific item from leaf-list . field-value has "/"  **/
+        prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "test1/1,test2/2"}}}
+	expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "test2/2"}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=test1/1]"
+        t.Run("Delete an item in leaf-list with field value having /.", processDeleteRequest(url, false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete an item in leaf-list with field value having /.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        /*********************/
+
+
+
 	fmt.Println("+++++++++++++ Done!!! Performing Leaf-list Deletion OC Yang Cases ++++++++++++")
 }
 
@@ -335,21 +348,21 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
                                                                                       "vlanid": "5"}},
                                                    "PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
 							                        "alias": "fortyGigE0/32",
-									"lanes": "9,10,11,12"}}}
+									"lanes": "13,14,15,16"}}}
         prereq_cfg_not_exist_map := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet32":map[string]interface{}{
                                                                                       "NULL": "NULL"}}}
         expected_map_vlan := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan5":map[string]interface{}{
 		                                                                      "vlanid": "5",
                                                                                       "members@": "Ethernet32"}}}
         expected_map_vlanmember := map[string]interface{}{"VLAN_MEMBER":map[string]interface{}{"Vlan5|Ethernet32":map[string]interface{}{					                                                             "tagging_mode": "tagged"}}}
-        expected_map_port := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
-							                        "alias": "fortyGigE0/32",
-									"lanes": "9,10,11,12"}}}
+//        expected_map_port := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
+//							                        "alias": "fortyGigE0/32",
+//									"lanes": "13,14,15,16"}}}
 
 
 	prepareDb()
         time.Sleep(6 * time.Second)
-	t.Run("Verify SubtreeXfmr leaf-list update/create - PORT table.", verifyDbResult(rclient, "PORT|Ethernet32", expected_map_port, false))
+	//t.Run("Verify SubtreeXfmr leaf-list update/create - PORT table.", verifyDbResult(rclient, "PORT|Ethernet32", expected_map_port, false))
 
 	loadConfigDB(rclient, prereq_cfg_exist_map)
 	unloadConfigDB(rclient, prereq_cfg_not_exist_map)
@@ -376,7 +389,7 @@ func Test_LeafList_SubtreeXfmr_OCYang(t *testing.T) {
                                                                                                      "tagging_mode": "tagged"}},
                                             "PORT":map[string]interface{}{"Ethernet32":map[string]interface{}{
 							                        "alias": "fortyGigE0/32",
-									"lanes": "9,10,11,12"}}}
+									"lanes": "13,14,15,16"}}}
         expected_map_vlan5 := map[string]interface{}{"VLAN":map[string]interface{}{"Vlan5":map[string]interface{}{
 		                                                                      "vlanid": "5",
                                                                                       "members@": "Ethernet32"}}}
@@ -739,6 +752,17 @@ func Test_LeafList_Delete_SonicYang(t *testing.T) {
         unloadConfigDB(rclient, prereq_map)
         /*************************/
 
+       /** delete specific item from leaf-list .Leaflist having / in the field value **/
+       prereq_snmp_vacm_view_map := map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "test1/1,test2/2"}}}
+       expected_snmp_vacm_view_map := map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "test2/2"}}}
+        loadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        url = "/sonic-snmp:sonic-snmp/SNMP_SERVER_VIEW/SNMP_SERVER_VIEW_LIST[name=TestVacmView1]/include[include=test1/1]"
+        t.Run("Delete an item in leaf-list having / in field value.", processDeleteRequest(url, false, nil))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete an item in leaf-list having / in field value.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+        unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
+        /*********************/
+
 
 
 
@@ -769,7 +793,7 @@ func Test_LeafList_Get_SonicYang(t *testing.T) {
                                                                                           "stage": "INGRESS",
                                                                                           "type": "L3"}}}
         url = "/sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL1_ACL_IPV4]/ports"
-        expected_get_json = "{}"
+        expected_get_json = "{\"sonic-acl:ports\":[\"\"]}"
         loadConfigDB(rclient, prereq_map)
         t.Run("Get leaf-list empty string in DB.", processGetRequest(url, expected_get_json, false))
         time.Sleep(1 * time.Second)

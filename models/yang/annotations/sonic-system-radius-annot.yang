@@ -1,0 +1,14 @@
+module sonic-system-radius-annot {
+    namespace "http://github.com/Azure/sonic-system-radius-annot";
+    prefix ssradius-annot;
+    yang-version 1.1;
+
+    import sonic-system-radius { prefix ssradius; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /ssradius:clear-radius {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_clear_radius";
+        }
+    }
+}

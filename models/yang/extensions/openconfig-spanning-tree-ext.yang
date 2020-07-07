@@ -10,7 +10,25 @@ module openconfig-spanning-tree-ext {
 	import openconfig-spanning-tree { prefix oc-stp; }
     import openconfig-spanning-tree-types { prefix oc-stp-types; }
     import openconfig-yang-types { prefix oc-yang; }
+    import openconfig-extensions { prefix oc-ext; }
 
+    organization 
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "This module defines extensions for configuration and operational state data
+        for the spanning tree protocol.";
+
+    oc-ext:openconfig-version "0.1.0";
+
+    revision "2020-06-01" {
+        description
+            "Initial revision";
+        reference "0.1.0";
+    }
 
     identity PVST {
         base oc-stp-types:STP_PROTOCOL;
@@ -24,13 +42,13 @@ module openconfig-spanning-tree-ext {
             "Equivalent of BLOCKING state in RSTP";
     }
     
-    identity BPDU-DIS {
+    identity BPDU_DIS {
         base oc-stp-types:STP_PORT_STATE;
         description
             "Port state when port is shutdown due to BPDU guard action";
     }
 
-    identity ROOT-INC {
+    identity ROOT_INC {
         base oc-stp-types:STP_PORT_STATE;
         description
             "Port state when port is in root inconsistent state due to guard root action";
@@ -56,7 +74,9 @@ module openconfig-spanning-tree-ext {
             "IEEE 802.1D 17.13.10 Port Identifier Priority";
     }
 
-    grouping stp-global-ext-config {
+    grouping spanning-tree-ext-global-config {
+        description
+            "Grouping of extended STP global configuration";
         leaf rootguard-timeout {
             type uint16 {
                 range 5..600;
@@ -72,7 +92,9 @@ module openconfig-spanning-tree-ext {
         uses oc-stp:bridge-priority-config;
     }
 
-    grouping spanning-tree-enable-config {
+    grouping spanning-tree-ext-enable-config {
+        description
+            "Grouping of extended STP enable configuration";
         leaf spanning-tree-enable {
             type boolean;
             description
@@ -80,7 +102,9 @@ module openconfig-spanning-tree-ext {
         }
     }
 
-    grouping stp-interface-common-ext-config {
+    grouping spanning-tree-ext-interface-common-config {
+        description
+            "Grouping of extended STP interface specific configuration";
         leaf portfast {
             type boolean;
             description
@@ -119,10 +143,12 @@ module openconfig-spanning-tree-ext {
                 "IEEE 802.1D 17.13.10 Port Identifier Priority";
         }
 
-        uses spanning-tree-enable-config;
+        uses spanning-tree-ext-enable-config;
     }
 
-    grouping stp-instance-state {
+    grouping spanning-tree-ext-instance-state {
+        description
+            "Grouping of extended STP operational data for bridge";
         leaf stp-instance {
             type uint16;
             description
@@ -160,7 +186,9 @@ module openconfig-spanning-tree-ext {
         }
     }
 
-    grouping vlan-interface-extra-state-field {
+    grouping spanning-tree-ext-vlan-interface-extra-state {
+        description
+            "Grouping of extended STP operational data for vlan";
         leaf root-guard-timer {
             type uint16;
             description
@@ -168,7 +196,9 @@ module openconfig-spanning-tree-ext {
         }
     }
 
-    grouping vlan-interface-extra-counters {
+    grouping spanning-tree-ext-vlan-interface-extra-counters-state {
+        description
+            "Grouping of extended STP counters data for vlan";
         leaf tcn-sent {
             type oc-yang:counter64;
             description
@@ -182,7 +212,9 @@ module openconfig-spanning-tree-ext {
         }
     }
 
-    grouping rpvst-vlan-interface-extra-counters {
+    grouping spanning-tree-ext-rpvst-vlan-interface-extra-counters-state {
+        description
+            "Grouping of extended STP counters for rpvst";
         leaf config-bpdu-sent {
             type oc-yang:counter64;
             description
@@ -196,7 +228,7 @@ module openconfig-spanning-tree-ext {
         }
     }
 
-    grouping stp-pvst-top {
+    grouping spanning-tree-ext-pvst-top {
         description
             "Top grouping for per vlan spanning tree configuration
             and operation data";
@@ -221,7 +253,7 @@ module openconfig-spanning-tree-ext {
                 uses oc-stp:stp-rapid-pvst-config;
                 uses oc-stp:stp-timer-config;
                 uses oc-stp:bridge-priority-config;
-                uses spanning-tree-enable-config;
+                uses spanning-tree-ext-enable-config;
             }
 
             container state {
@@ -233,8 +265,8 @@ module openconfig-spanning-tree-ext {
                 uses oc-stp:stp-timer-config;
                 uses oc-stp:bridge-priority-config;
                 uses oc-stp:stp-common-state;
-                uses spanning-tree-enable-config;
-                uses stp-instance-state;
+                uses spanning-tree-ext-enable-config;
+                uses spanning-tree-ext-instance-state;
             }
 
             uses oc-stp:stp-interfaces-top;
@@ -242,59 +274,81 @@ module openconfig-spanning-tree-ext {
     }
 
     augment /oc-stp:stp {
+        description
+            "Augment Per vlan Spanning-tree protocol configuration and operation data";
         container pvst {
             description
                 "Per vlan Spanning-tree protocol configuration and
                 operational data";
 
-            uses stp-pvst-top;
+            uses spanning-tree-ext-pvst-top;
         }
     }
 
     augment /oc-stp:stp/oc-stp:global/oc-stp:config {
-        uses stp-global-ext-config;
+        description
+            "Augment STP global configuration data";
+        uses spanning-tree-ext-global-config;
     }
 
     augment /oc-stp:stp/oc-stp:global/oc-stp:state {
-        uses stp-global-ext-config;
+        description
+            "Augment STP global operational data";
+        uses spanning-tree-ext-global-config;
     }
 
     augment /oc-stp:stp/oc-stp:rapid-pvst/oc-stp:vlan/oc-stp:config {
-        uses spanning-tree-enable-config;
+        description
+            "Augment Rapid-PVST configuration data";
+        uses spanning-tree-ext-enable-config;
     }
 
     augment /oc-stp:stp/oc-stp:rapid-pvst/oc-stp:vlan/oc-stp:state {
-        uses stp-instance-state;
+        description
+            "Augment Rapid-PVST operational data";
+        uses spanning-tree-ext-instance-state;
     }
 
     augment /oc-stp:stp/oc-stp:rapid-pvst/oc-stp:vlan/oc-stp:interfaces/oc-stp:interface/oc-stp:state {
-        uses vlan-interface-extra-state-field;
+        description
+            "Augment Rapid-PVST interface operational data";
+        uses spanning-tree-ext-vlan-interface-extra-state;
     }
 
     augment /oc-stp:stp/oc-stp:rapid-pvst/oc-stp:vlan/oc-stp:interfaces/oc-stp:interface/oc-stp:state/oc-stp:counters {
-        uses vlan-interface-extra-counters;
-        uses rpvst-vlan-interface-extra-counters;
+        description
+            "Augment Rapid-PVST interface counters data";
+        uses spanning-tree-ext-vlan-interface-extra-counters-state;
+        uses spanning-tree-ext-rpvst-vlan-interface-extra-counters-state;
     }
 
     augment /oc-stp:stp/oc-stp-ext:pvst/oc-stp-ext:vlan/oc-stp-ext:interfaces/oc-stp-ext:interface/oc-stp-ext:state {
-        uses vlan-interface-extra-state-field;
+        description
+            "Augment Per vlan Spanning-tree protocol interface operational data";
+        uses spanning-tree-ext-vlan-interface-extra-state;
     }
 
     augment /oc-stp:stp/oc-stp-ext:pvst/oc-stp-ext:vlan/oc-stp-ext:interfaces/oc-stp-ext:interface/oc-stp-ext:state/oc-stp-ext:counters {
-        uses vlan-interface-extra-counters;
+        description
+            "Augment Per vlan Spanning-tree protocol interface counters data";
+        uses spanning-tree-ext-vlan-interface-extra-counters-state;
     }
 
     augment /oc-stp:stp/oc-stp:interfaces/oc-stp:interface/oc-stp:config {
-        uses stp-interface-common-ext-config;
+        description
+            "Augment STP interface configuration data";
+        uses spanning-tree-ext-interface-common-config;
     }
 
     augment /oc-stp:stp/oc-stp:interfaces/oc-stp:interface/oc-stp:state {
+        description
+            "Augment STP interface operational data";
         leaf bpdu-guard-shutdown {
             type boolean;
             description
                 "Port disabled due to bpdu-guard";
         }
-        uses stp-interface-common-ext-config;
+        uses spanning-tree-ext-interface-common-config;
     }
 
     deviation /oc-stp:stp/oc-stp:global/oc-stp:config/oc-stp-ext:bridge-priority {

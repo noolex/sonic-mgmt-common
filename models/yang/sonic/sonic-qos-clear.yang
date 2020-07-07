@@ -3,14 +3,6 @@ module sonic-qos-clear {
     prefix sqosclear;
     yang-version 1.1;
 
-    import ietf-inet-types {
-        prefix inet;
-    }
-
-    import ietf-yang-types {
-        prefix yang;
-    }
-
     import sonic-port {
         prefix prt;
     }
@@ -73,6 +65,9 @@ module sonic-qos-clear {
                        type union {
                            type leafref {
                                path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                           }
+                           type string {
+                               pattern "CPU";
                            }
                        }
                        description
@@ -154,7 +149,11 @@ module sonic-qos-clear {
                             type leafref {
                                 path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                             }
+                            type string {
+                                pattern "CPU";
+                            }
                         }
+
                         description
                             "Interface name: Parameter for deleting all interface queues/pg
                             buffer watermarks on the given inteface name Valid inputs are:

@@ -38,6 +38,8 @@ func init() {
 	XlateFuncBind("DbToYang_mclag_domain_oper_status_fld_xfmr", DbToYang_mclag_domain_oper_status_fld_xfmr)
 	XlateFuncBind("DbToYang_mclag_domain_role_fld_xfmr", DbToYang_mclag_domain_role_fld_xfmr)
 	XlateFuncBind("DbToYang_mclag_domain_system_mac_fld_xfmr", DbToYang_mclag_domain_system_mac_fld_xfmr)
+	XlateFuncBind("YangToDb_mclag_unique_ip_enable_fld_xfmr", YangToDb_mclag_unique_ip_enable_fld_xfmr)
+	XlateFuncBind("DbToYang_mclag_unique_ip_enable_fld_xfmr", DbToYang_mclag_unique_ip_enable_fld_xfmr)
 }
 
 var YangToDb_mclag_domainid_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -121,6 +123,60 @@ var DbToYang_mclag_domain_system_mac_fld_xfmr FieldXfmrDbtoYang = func(inParams 
 	return result, err
 }
 
+var YangToDb_mclag_gw_mac_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	var err error
+	log.Info("YangToDb_mclag_gw_mac_fld_xfmr: ", inParams.key)
+
+	return res_map, err
+}
+
+var DbToYang_mclag_gw_mac_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	log.Info("DbToYang_mclag_gw_mac_fld_xfmr: ", inParams.key)
+
+	cdb := inParams.dbs[db.ConfigDB]
+	mclagGwEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "MCLAG_GW_MAC_TABLE"}, db.Key{Comp: []string{inParams.key}})
+	gwmac := mclagGwEntry.Get("gw_mac")
+	
+	result["gateway-mac"] = &gwmac
+
+	return result, err
+}
+
+var DbToYang_mclag_unique_ip_enable_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	log.Infof("DbToYang_mclag_unique_ip_enable_fld_xfmr --> key: %v", inParams.key)
+
+	configDb := inParams.dbs[db.ConfigDB]
+	mclagEntry, _ := configDb.GetEntry(&db.TableSpec{Name: "MCLAG_UNIQUE_IP"}, db.Key{Comp: []string{inParams.key}})
+	uniqueIpStatus := mclagEntry.Get("unique_ip")
+	if  uniqueIpStatus == "enable" {
+		result["unique-ip-enable"], _ = ygot.EnumName(ocbinds.OpenconfigMclag_Mclag_VlanInterfaces_VlanInterface_Config_UniqueIpEnable_ENABLE)
+    }
+	log.Infof("DbToYang_mclag_unique_ip_enable_fld_xfmr --> result: %v", result)
+
+	return result, err
+}
+
+var YangToDb_mclag_unique_ip_enable_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	var err error
+
+    uniqueIpEnable, _ := inParams.param.(ocbinds.E_OpenconfigMclag_Mclag_VlanInterfaces_VlanInterface_Config_UniqueIpEnable) 
+	log.Infof("YangToDb_mclag_unique_ip_enable_fld_xfmr: uniqueIpEnable:%v ", uniqueIpEnable)
+    if (uniqueIpEnable == ocbinds.OpenconfigMclag_Mclag_VlanInterfaces_VlanInterface_Config_UniqueIpEnable_ENABLE) {
+        res_map["unique_ip"] = "enable"
+    } else {
+        res_map["unique_ip"] = ""
+    }
+
+	log.Infof("DbToYang_mclag_unique_ip_enable_fld_xfmr --> result: %v", res_map)
+	return res_map, err
+}
+
 var YangToDb_mclag_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 	var err error
 	res_map := make(map[string]map[string]db.Value)
@@ -132,8 +188,7 @@ var YangToDb_mclag_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xf
 		return res_map, err
 	}
 
-	for intfId, _ := range mclagObj.Interfaces.Interface {
-		intf := mclagObj.Interfaces.Interface[intfId]
+	for _, intf := range mclagObj.Interfaces.Interface {
 		if intf != nil {
 			var mclagdomainId int
 			if intf.Config != nil {
@@ -157,7 +212,10 @@ var YangToDb_mclag_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xf
 			if !ok {
 				mclagIntfTblMap[mclagIntfKey] = db.Value{Field: make(map[string]string)}
 			}
-			mclagIntfTblMap[mclagIntfKey].Field["if_type"] = "PortChannel"
+            //for DELETE operation dont fill individual fields
+	        if inParams.oper != DELETE {
+			    mclagIntfTblMap[mclagIntfKey].Field["if_type"] = "PortChannel"
+            }
 		}
 	}
 
@@ -179,8 +237,7 @@ var DbToYang_mclag_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xf
 			for _, intfKey := range mclagIntfKeys {
 				ifname := intfKey.Get(1)
 				if ifname == pathInfo.Var("name") && mclagObj.Interfaces != nil {
-					for k, _ := range mclagObj.Interfaces.Interface {
-						intfData := mclagObj.Interfaces.Interface[k]
+					for _, intfData := range mclagObj.Interfaces.Interface {
 						fillMclagIntfDetails(inParams, ifname, intfKey.Get(0), intfData)
 					}
 				}
@@ -191,7 +248,7 @@ var DbToYang_mclag_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xf
 
 		mclagIntfTbl := data["MCLAG_INTERFACE"]
 		mclagIntfData = make(map[string]map[string]string)
-		for key, _ := range mclagIntfTbl {
+		for key := range mclagIntfTbl {
 			//split key into domain-id and if-name
 			tokens := strings.Split(key, "|")
 			ifname := tokens[1]
@@ -233,11 +290,21 @@ func fillMclagIntfDetails(inParams XfmrParams, ifname string, mclagdomainid stri
 	// Fetch operational data from StateDb and AppDb
 	stDb := inParams.dbs[db.StateDB]
 	mclagRemoteIntfEntry, _ := stDb.GetEntry(&db.TableSpec{Name: "MCLAG_REMOTE_INTF_TABLE"}, db.Key{Comp: []string{mclagdomainid + "|" + ifname}})
-	operStatus := mclagRemoteIntfEntry.Get("oper_status")
+	remoteOperStatus := mclagRemoteIntfEntry.Get("oper_status")
+
+    portIsolate := false
+    trafficDisable := false
+	mclagLocalIntfEntry, _ := stDb.GetEntry(&db.TableSpec{Name: "MCLAG_LOCAL_INTF_TABLE"}, db.Key{Comp: []string{mclagdomainid + "|" + ifname}})
+	portIsolate, _ = strconv.ParseBool(mclagLocalIntfEntry.Get("port_isolate_peer_link"))
 
 	appDb := inParams.dbs[db.ApplDB]
 	lagEntry, _ := appDb.GetEntry(&db.TableSpec{Name: "LAG_TABLE"}, db.Key{Comp: []string{ifname}})
-	trafficDisable, _ := strconv.ParseBool(lagEntry.Get("traffic_disable"))
+	trafficDisable, _ = strconv.ParseBool(lagEntry.Get("traffic_disable"))
+    localOperStatus  :=  lagEntry.Get("oper_status")
+    if (localOperStatus == "") {
+        localOperStatus =  "down"
+    }
+	log.Infof("fillMclagIntfDetails--> localOperStatus:%v portIsolate:%v trafficDisable:%v", localOperStatus, portIsolate, trafficDisable)
 
 	if intfData.State != nil {
 		ygot.BuildEmptyTree(intfData.State)
@@ -247,12 +314,20 @@ func fillMclagIntfDetails(inParams XfmrParams, ifname string, mclagdomainid stri
 
 		if intfData.State.Local != nil {
 			intfData.State.Local.TrafficDisable = &trafficDisable
+			intfData.State.Local.PortIsolate    = &portIsolate
+            if localOperStatus == "up" {
+                intfData.State.Local.OperStatus = ocbinds.OpenconfigMclag_Mclag_Interfaces_Interface_State_Local_OperStatus_OPER_UP
+	            log.Infof("fillMclagIntfDetails--> localOperStatus:%v ", localOperStatus)
+            } else if localOperStatus == "down" {
+                intfData.State.Local.OperStatus = ocbinds.OpenconfigMclag_Mclag_Interfaces_Interface_State_Local_OperStatus_OPER_DOWN
+	            log.Infof("fillMclagIntfDetails--> localOperStatus:%v ", localOperStatus)
+            }
 		}
 
 		if intfData.State.Remote != nil {
-			if operStatus == "up" {
+			if remoteOperStatus == "up" {
 				intfData.State.Remote.OperStatus = ocbinds.OpenconfigMclag_Mclag_Interfaces_Interface_State_Remote_OperStatus_OPER_UP
-			} else if operStatus == "down" {
+			} else if remoteOperStatus == "down" {
 				intfData.State.Remote.OperStatus = ocbinds.OpenconfigMclag_Mclag_Interfaces_Interface_State_Remote_OperStatus_OPER_DOWN
 			}
 		}

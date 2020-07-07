@@ -7,6 +7,7 @@ import (
     "strconv"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     log "github.com/golang/glog"
     "reflect"
     "fmt"
@@ -19,13 +20,11 @@ const (
     SONIC_MATCH_SET_ACTION_ALL = "ALL"
 )
 
-/* E_OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_PrefixSets_PrefixSet_Config_Mode */
 var PREFIX_SET_MODE_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_PrefixSets_PrefixSet_Config_Mode_IPV4), 10): SONIC_PREFIX_SET_MODE_IPV4,
     strconv.FormatInt(int64(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_PrefixSets_PrefixSet_Config_Mode_IPV6), 10): SONIC_PREFIX_SET_MODE_IPV6,
 }
 
-/* ocbinds.E_OpenconfigRoutingPolicy_MatchSetOptionsType */
 var MATCH_SET_ACTION_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigRoutingPolicy_MatchSetOptionsType_ALL), 10): SONIC_MATCH_SET_ACTION_ALL,
     strconv.FormatInt(int64(ocbinds.OpenconfigRoutingPolicy_MatchSetOptionsType_ANY), 10): SONIC_MATCH_SET_ACTION_ANY,
@@ -224,7 +223,7 @@ var YangToDb_prefix_set_mode_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPara
     prev_mode, _ := prefix_set_mode_get_by_set_name (inParams.d, setName, "PREFIX_SET")
 
     log.Info("YangToDb_prefix_set_mode_fld_xfmr: prev_mode ", prev_mode, "new mode ", res_map["mode"], "is_prefixes_exits ", is_prefixes_exits)
-    if ((is_prefixes_exits == true) && (prev_mode != new_mode)) {
+    if (is_prefixes_exits && (prev_mode != new_mode)) {
         err = errors.New("Prefixes Configured already, Mode Change not supported");
         log.Error("Prefixes Configured already, Mode Change not supported")
         return res_map, err
@@ -309,14 +308,9 @@ var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string
 
             log.Infof("YangToDb_prefix_key_xfmr: mask length %d ge %d le %d", length, ge, le)
 
-        /*    if (length < ge) != true {
-                err = errors.New("Invalid maskrange, len < ge-value")
+            if ((length > ge) || (ge > le)) {
+                err = errors.New("Invalid range, valid range is len < ge-value <= le-value")
                 log.Error("YangToDb_prefix_key_xfmr: Invalid maskrange, make len < ge-value <= ge-value")
-                return ipPrefix, err
-            } */
-            if (ge <= le) != true {
-                err = errors.New("Invalid maskrange, ge-value <= ge-value")
-                log.Error("YangToDb_prefix_key_xfmr: Invalid maskrange, make sure len < ge-value <= ge-value")
                 return ipPrefix, err
             }
         }
@@ -403,7 +397,6 @@ var DbToYang_prefix_masklength_range_fld_xfmr FieldXfmrDbtoYang = func(inParams 
     return res_map, err
 }
 
-/* COMMUNITY SET API's */
 var YangToDb_community_set_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
@@ -587,7 +580,7 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
         return res_map, err
     }
     is_member_exits, _ := community_set_is_community_members_exits (inParams.d, setName, "COMMUNITY_SET", "community_member@");
-    if is_member_exits == true {
+    if is_member_exits {
         prev_type, _ = community_set_type_get_by_set_name (inParams.d, setName, "COMMUNITY_SET");
 
         log.Info("YangToDb_community_member_fld_xfmr: prev_type ", prev_type)
@@ -606,41 +599,37 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
             switch v.E_OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY {
             case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER:
                 community_list += "no-peer" + ","
-                break
             case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE:
                 community_list += "no-advertise" + ","
-                break
             case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT:
                 community_list += "no-export" + ","
-                break
             case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED:
                 community_list += "local-AS" + ","
-                break
             }
             new_type = "STANDARD"
-            break
         case reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_BgpDefinedSets_CommunitySets_CommunitySet_Config_CommunityMember_Union_Uint32{}):
             v := (member).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_BgpDefinedSets_CommunitySets_CommunitySet_Config_CommunityMember_Union_Uint32)
             fmt.Fprintf(&b, "%d", v.Uint32)
             community_list += b.String() + ","
             new_type = "STANDARD"
-            break
         case reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_BgpDefinedSets_CommunitySets_CommunitySet_Config_CommunityMember_Union_String{}):
             v := (member).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_DefinedSets_BgpDefinedSets_CommunitySets_CommunitySet_Config_CommunityMember_Union_String)
 
             has_regex := strings.HasPrefix(v.String, "REGEX:")
-            if has_regex == true {
+            if has_regex {
                 new_type = "EXPANDED"
             } else {
                 new_type = "STANDARD"
             }
             community_list += strings.TrimPrefix(v.String, "REGEX:") + ","
-            break
         }
 
         log.Info("YangToDb_community_member_fld_xfmr: new_type: ", new_type, " prev_type ", prev_type)
         if ((len(prev_type) > 0) && (prev_type != new_type)){
             log.Error("YangToDb_community_member_fld_xfmr: Type Difference Error, previous", prev_type, " newType: ", new_type)
+            if inParams.oper == DELETE {
+                return res_map, tlerr.InvalidArgs("Can't find community-list") 
+            }
             err = errors.New("Type difference, Quit Operation");
             return res_map, err
         } else {
@@ -701,7 +690,6 @@ var DbToYang_community_member_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
     return result, err
 }
 
-/* EXTENDED COMMUNITY SET API's */
 var YangToDb_ext_community_set_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
@@ -819,7 +807,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
         return res_map, err
     }
     is_member_exits, _ := community_set_is_community_members_exits (inParams.d, setName, "EXTENDED_COMMUNITY_SET", "community_member@");
-    if is_member_exits == true {
+    if is_member_exits {
         prev_type, _ = community_set_type_get_by_set_name (inParams.d, setName, "EXTENDED_COMMUNITY_SET");
 
         log.Info("YangToDb_ext_community_member_fld_xfmr: prev_type ", prev_type)
@@ -831,7 +819,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
     for _, member := range members {
 
         has_regex := strings.HasPrefix(member, "REGEX:")
-        if has_regex == true {
+        if has_regex {
             new_type = "EXPANDED"
         } else {
             new_type = "STANDARD"
@@ -840,7 +828,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
 
         has_rt := strings.HasPrefix(member, "route-target")
         has_ro := strings.HasPrefix(member, "route-origin")
-        if ((new_type == "STANDARD") && (has_rt == false) && (has_ro == false)){
+        if ((new_type == "STANDARD") && !has_rt && !has_ro){
             err = errors.New("Community member is not of type route-target or route-origin");
             log.Error("Community member is not of type route-target or route-origin")
             return res_map, err
@@ -849,6 +837,9 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
         log.Info("YangToDb_ext_community_member_fld_xfmr: new_type: ", new_type, " prev_type ", prev_type)
         if ((len(prev_type) > 0) && (prev_type != new_type)){
             log.Error("YangToDb_ext_community_member_fld_xfmr: Type Difference Error, previous", prev_type, " newType: ", new_type)
+            if inParams.oper == DELETE {
+                return res_map, tlerr.InvalidArgs("Can't find extcommunity-list") 
+            }
             err = errors.New("Type difference, Quit Operation");
             return res_map, err
         } else {
@@ -897,7 +888,6 @@ var DbToYang_ext_community_member_fld_xfmr FieldXfmrDbtoYang = func(inParams Xfm
     return result, err
 }
 
-/* AS PATH SET API's */
 var YangToDb_as_path_set_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 

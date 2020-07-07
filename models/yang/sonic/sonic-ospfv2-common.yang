@@ -23,15 +23,9 @@ module sonic-ospfv2-common {
       prefix "sonic-lbk";
   }
 
-  /*
-  import sonic-routing-policy-sets {
-      prefix "sonic-pol";
+  import sonic-acl {
+      prefix sonic-acl;
   }
-
-  import sonic-route-map {
-      prefix "sonic-rmap";
-  }
-  */
 
   organization
       "SONiC";
@@ -131,7 +125,7 @@ module sonic-ospfv2-common {
         description 
           "OSPF policy protocol static";
       }
-      enum CONNECTED {
+      enum DIRECTLY_CONNECTED {
         description 
           "OSPF policy protocol connected";
       }
@@ -159,6 +153,10 @@ module sonic-ospfv2-common {
       enum STANDARD {
         description
           "OSPF ABR type Standard";
+      }
+      enum SHORTCUT {
+        description
+          "OSPF ABR type Shortcut";
       }
     }
   }
@@ -214,6 +212,12 @@ module sonic-ospfv2-common {
     }
   }
 
+  typedef ospf-import-export-policy {
+    type leafref {
+      path "/sonic-acl:sonic-acl/sonic-acl:ACL_TABLE" +
+           "/sonic-acl:ACL_TABLE_LIST/sonic-acl:aclname";
+      }
+  }
 
   typedef ospf-interface {
     type union {

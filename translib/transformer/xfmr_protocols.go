@@ -18,16 +18,37 @@ var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (in
 
     log.Info("network_instance_protocols_protocol_table_name_xfmr")
     if (inParams.oper == GET) {
-        if(inParams.dbDataMap != nil) {
-            (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
-            (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"] = db.Value{Field: make(map[string]string)}
-            (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"].Field["NULL"] = "NULL"
-            (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"] = db.Value{Field: make(map[string]string)}
-            (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"].Field["NULL"] = "NULL"
-            (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP_SNOOPING|IGMP-SNOOPING"] = db.Value{Field: make(map[string]string)}
-            (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP_SNOOPING|IGMP-SNOOPING"].Field["NULL"] = "NULL"
-
-            tblList = append(tblList, "CFG_PROTO_TBL")
+        pathInfo := NewPathInfo(inParams.uri)
+        niName := pathInfo.Var("name")
+        cfg_tbl_updated := false
+        if (inParams.dbDataMap != nil) {
+            if ((niName == "default") || (strings.HasPrefix(niName, "Vrf"))) {
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"] = db.Value{Field: make(map[string]string)}
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"].Field["NULL"] = "NULL"
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"] = db.Value{Field: make(map[string]string)}
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"].Field["NULL"] = "NULL"
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"] = db.Value{Field: make(map[string]string)}
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"].Field["NULL"] = "NULL"
+                cfg_tbl_updated = true
+            }
+            if ((strings.HasPrefix(niName, "all"))) {
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"] = db.Value{Field: make(map[string]string)}
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"].Field["NULL"] = "NULL"
+                cfg_tbl_updated = true
+            }
+            if ((niName == "default") || (strings.HasPrefix(niName, "Vlan"))) {
+                if !cfg_tbl_updated {
+                    (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
+                    cfg_tbl_updated = true
+                }
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP_SNOOPING|IGMP-SNOOPING"] = db.Value{Field: make(map[string]string)}
+                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP_SNOOPING|IGMP-SNOOPING"].Field["NULL"] = "NULL"
+            }
+            if cfg_tbl_updated {
+                tblList = append(tblList, "CFG_PROTO_TBL")
+            }
         }
     }
     return tblList, nil
@@ -35,15 +56,12 @@ var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (in
 
 var YangToDb_network_instance_protocol_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var key string
-    log.Info("YangToDb_network_instance_protocol_key_xfmr - Operation: ", inParams.oper)
-    log.Info("YangToDb_network_instance_protocol_key_xfmr - URI: ", inParams.uri)
     if (inParams.oper == GET) {
         pathInfo := NewPathInfo(inParams.uri)
         protoId := pathInfo.Var("identifier")
         protoName := pathInfo.Var("name#2")
         key = protoId+"|"+protoName
     }
-    log.Info("returned Key: ", key)
     return key, nil
 }
 

@@ -1,0 +1,189 @@
+module openconfig-udld-ext-annot {
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/openconfig-udld-ext-annot";
+    prefix "oc-udld-ext-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-udld-ext { prefix oc-udld-ext; }
+
+    // meta
+    organization
+       "SONiC";
+
+    contact
+       "SONiC";
+
+    description
+       "SONIC UDLD";
+
+    revision 2020-05-16 {
+       description
+          "Initial revision.";
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:config {
+		deviate add {
+			sonic-ext:table-name "UDLD";
+			sonic-ext:key-transformer "udld_global_key_xfmr";
+		}
+    }
+	
+	deviation /oc-udld-ext:udld/oc-udld-ext:config/oc-udld-ext:admin-enable {
+		deviate add {
+			sonic-ext:field-name "admin_enable";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:config/oc-udld-ext:msg-time {
+		deviate add {
+			sonic-ext:field-name "msg_time";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:state {
+		deviate add {
+			sonic-ext:table-name "UDLD";
+			sonic-ext:key-transformer "udld_global_key_xfmr";
+		}
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:state/oc-udld-ext:admin-enable {
+		deviate add {
+			sonic-ext:field-name "admin_enable";
+		}
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:state/oc-udld-ext:msg-time {
+		deviate add {
+			sonic-ext:field-name "msg_time";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:state/oc-udld-ext:local-device-info {
+		deviate add {
+            sonic-ext:db-name "APPL_DB";
+			sonic-ext:table-name "_UDLD_GLOBAL_TABLE";
+			sonic-ext:key-transformer "udld_global_key_xfmr";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:state/oc-udld-ext:local-device-info/oc-udld-ext:device-id {
+		deviate add {
+			sonic-ext:field-name "device_id";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:state/oc-udld-ext:local-device-info/oc-udld-ext:device-name {
+		deviate add {
+			sonic-ext:field-name "device_name";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface {
+		deviate add {
+			sonic-ext:table-name "UDLD_PORT";
+		}
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:config/oc-udld-ext:admin-enable {
+		deviate add {
+			sonic-ext:field-name "admin_enable";
+		}
+	}
+
+    deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:config/oc-udld-ext:name {
+        deviate add {
+            sonic-ext:field-transformer "udld_port_table_ifname_xfmr";
+        }
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:admin-enable {
+		deviate add {
+			sonic-ext:field-name "admin_enable";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:local-info {
+		deviate add {
+            sonic-ext:db-name "APPL_DB";
+			sonic-ext:table-name "_UDLD_PORT_TABLE";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:local-info/oc-udld-ext:status {
+		deviate add {
+            sonic-ext:field-transformer "udld_port_status_xfmr";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor {
+		deviate add {
+            sonic-ext:db-name "APPL_DB";
+			sonic-ext:table-name "_UDLD_PORT_NEIGH_TABLE";
+            sonic-ext:key-transformer "udld_nbr_key_xfmr";
+		}
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:device-id {
+		deviate add {
+			sonic-ext:field-name "device_id";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:device-name {
+		deviate add {
+			sonic-ext:field-name "device_name";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:port-id {
+		deviate add {
+			sonic-ext:field-name "port_id";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:status {
+		deviate add {
+            sonic-ext:field-transformer "udld_port_nbr_status_xfmr";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:msg-time {
+		deviate add {
+			sonic-ext:field-name "msg_time";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:neighbors-info/oc-udld-ext:neighbor/oc-udld-ext:state/oc-udld-ext:timeout-interval {
+		deviate add {
+			sonic-ext:field-name "timeout_interval";
+		}
+	}
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:counters {
+		deviate add {
+            sonic-ext:db-name "APPL_DB";
+			sonic-ext:table-name "_UDLD_PORT_TABLE";
+		}
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:counters/oc-udld-ext:pdu-sent {
+		deviate add {
+			sonic-ext:field-name "pdu_sent";
+        }
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:counters/oc-udld-ext:pdu-received {
+		deviate add {
+			sonic-ext:field-name "pdu_received";
+        }
+    }
+
+	deviation /oc-udld-ext:udld/oc-udld-ext:interfaces/oc-udld-ext:interface/oc-udld-ext:state/oc-udld-ext:counters/oc-udld-ext:pdu-recv-error {
+		deviate add {
+			sonic-ext:field-name "pdu_recv_error";
+        }
+    }
+}
+

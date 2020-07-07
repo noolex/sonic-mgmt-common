@@ -2,10 +2,6 @@ module sonic-tam-int-ifa-ts {
     namespace "http://github.com/Azure/sonic-tam-int-ifa-ts";
     prefix stam-ts;
 
-    import sonic-acl {
-        prefix sacl;
-    }
-
     import ietf-yang-types {
         prefix yang;
     }
@@ -23,6 +19,11 @@ module sonic-tam-int-ifa-ts {
     description
          "This module defines configuration and operational state
           data for IFA TailStamping Feature."; 
+
+    revision 2020-07-01 {
+        description
+            "Added leaf string length correction changes for YANG module.";
+    }
 
     revision 2019-11-14 {
         description
@@ -72,13 +73,20 @@ module sonic-tam-int-ifa-ts {
                 }
 
                 leaf acl-table-name {
-                    type string;
+                    type string {
+                                pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+                                length 1..32;
+                        }
+
                     description
                         "ACL table name used in IFA TailStamping flow configuration table.";
                 }
 
                 leaf acl-rule-name {
-                    type string;
+                    type string {
+                                pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+                                length 1..32;
+                        }
                     description
                         "ACL rule name used in IFA TailStamping flow configuration table.";
                 }

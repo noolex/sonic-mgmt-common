@@ -8,20 +8,29 @@ module openconfig-lldp-ext {
   prefix "oc-lldp-ext";
 
   import openconfig-lldp { prefix oc-lldp; }
+  import openconfig-extensions { prefix oc-ext; }
 
-  deviation /oc-lldp:lldp/oc-lldp:config {
+  // meta
+  organization "OpenConfig working group";
+
+  contact 
+		  "OpenConfig working group 
+		   www.openconfig.net";
+
+  description "This model describes the LLDP extensions";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-06-01" {
+      description "Initial revision";
+      reference "0.1.0";
+  }
+
+  deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:chassis-id{
       deviate not-supported;
   }
 
-  deviation /oc-lldp:lldp/oc-lldp:state {
-      deviate not-supported;
-  }
-
-  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:config/oc-lldp:enabled {
-      deviate not-supported;
-  }
-
-  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:state {
+  deviation /oc-lldp:lldp/oc-lldp:config/oc-lldp:chassis-id-type{
       deviate not-supported;
   }
 
@@ -37,12 +46,76 @@ module openconfig-lldp-ext {
       deviate not-supported;
   }
 
-  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:neighbors/oc-lldp:neighbor/oc-lldp:state/oc-lldp:ttl {
+  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:neighbors/oc-lldp:neighbor/oc-lldp:state/oc-lldp:management-address-type {
       deviate not-supported;
   }
 
-  deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:neighbors/oc-lldp:neighbor/oc-lldp:state/oc-lldp:management-address-type {
-      deviate not-supported;
+  typedef lldp-ext-mode-type {
+	  type enumeration {
+		enum RECEIVE {
+			description "Configure LLDP in Receive only mode";
+		}
+		enum TRANSMIT {
+			description "Configure LLDP in Transmit only mode";
+		}
+	  }
+
+      description "Enumeration for LLDP operation Mode";
+  }
+
+  grouping lldp-ext-mode-config {
+      description "LLDP operation Mode";
+
+	  leaf mode {
+		type lldp-ext-mode-type;
+		description
+			"RX/TX mode for LLDP frames";
+	  }
+  }
+
+  grouping lldp-ext-config {
+      description "Configuration data for global LLDP parameters";
+
+	  leaf multiplier {
+		type uint8 {
+			range "1..10";
+		}
+		description
+			"This multiplier value is used to determine the timeout
+			interval (i.e. hello-timer x multiplier value) after
+			which LLDP neighbor entry is deleted.";
+	  }
+	  
+	  uses lldp-ext-mode-config;
+  }
+
+  grouping lldp-ext-interface-config {
+      description "Configuration data for LLDP on each interface";
+	  uses lldp-ext-mode-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:config {
+      description "Adds extensions to Global Configuration"; 
+
+	  uses lldp-ext-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:state {
+      description "Adds extensions to Global State"; 
+
+	  uses lldp-ext-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:config {
+      description "Adds extensions to Interface Configuration"; 
+
+	  uses lldp-ext-interface-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:state {
+      description "Adds extensions to Interface State"; 
+
+	  uses lldp-ext-interface-config;
   }
 }
 

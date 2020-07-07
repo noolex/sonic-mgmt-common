@@ -73,6 +73,7 @@ func init() {
 	//state - vxlan: tunnel info
 	XlateFuncBind("YangToDb_vxlan_state_tunnel_info_key_xfmr", YangToDb_vxlan_state_tunnel_info_key_xfmr)
 	XlateFuncBind("DbToYang_vxlan_state_tunnel_info_key_xfmr", DbToYang_vxlan_state_tunnel_info_key_xfmr)
+	XlateFuncBind("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr", DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr)
 	XlateFuncBind("YangToDb_vxlan_state_tunnel_info_tunnel_type_xfmr", YangToDb_vxlan_state_tunnel_info_tunnel_type_xfmr)
 	XlateFuncBind("DbToYang_vxlan_state_tunnel_info_tunnel_type_xfmr", DbToYang_vxlan_state_tunnel_info_tunnel_type_xfmr)
 
@@ -203,6 +204,56 @@ var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams 
 	return "", nil
 }
 
+var DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+  var err error
+  var prtInst db.Value
+  result := make(map[string]interface{})
+
+  if log.V(3) {
+    log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==>inParams.uri => ", inParams.uri)
+    log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==>inParams.requestUri => ", inParams.requestUri)
+  }
+
+  pathInfo := NewPathInfo(inParams.uri)
+  peerIpStr := pathInfo.Var("peer-ip")
+  if log.V(3) {
+    log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> peerIpStr => ", peerIpStr)
+  }
+
+  pathOrigInfo := NewPathInfo(inParams.requestUri)
+  peerIpOrigStr := pathOrigInfo.Var("peer-ip")
+
+  if log.V(3) {
+    log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> peerIpOrigStr => ", peerIpOrigStr)
+  }
+
+  if peerIpStr != "" {
+    var VXLAN_TUNNEL_TABLE_STATE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_TABLE"}
+    evpnPeerkeyStr := "EVPN_" + peerIpStr
+    if log.V(3) {
+      log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> evpnPeerkeyStr ==> ", evpnPeerkeyStr)
+    }
+    entry, err := stateDbPtr.GetEntry(VXLAN_TUNNEL_TABLE_STATE_TS, db.Key{[]string{evpnPeerkeyStr}})
+    if err != nil {
+      log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr ==> returning error ==> ", err)
+      return result, err
+    }
+    prtInst = entry
+  }
+  operStatus, ok := prtInst.Field["operstatus"]
+  if ok {
+    if operStatus == "up" {
+      /* result["status"] = ocbinds.OpenconfigVxlan_TunnelStatus_UP */
+      result["status"] = "UP"
+    } else {
+      /* result["status"] = ocbinds.OpenconfigVxlan_TunnelStatus_DOWN */
+      result["status"] = "DOWN"
+    }
+  }
+  log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_status_xfmr result ---> err---->", result, err)
+  return result, err
+}
+
 var YangToDb_vxlan_state_tunnel_info_tunnel_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
@@ -214,7 +265,7 @@ var YangToDb_vxlan_state_tunnel_info_tunnel_type_xfmr FieldXfmrYangToDb = func(i
 
 var DbToYang_vxlan_state_tunnel_info_tunnel_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
 	rmap := make(map[string]interface{})
-	rmap["type"] = "dynamic"
+	rmap["type"] = "DYNAMIC"
 	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_tunnel_info_tunnel_type_xfmr ==> returning  type field ==> ", rmap)
 	}
@@ -233,7 +284,7 @@ var YangToDb_vxlan_state_peer_tunnel_type_xfmr FieldXfmrYangToDb = func(inParams
 var DbToYang_vxlan_state_peer_tunnel_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
 	rmap := make(map[string]interface{})
 	//	rmap["tunnel-type"] = ocbinds.OpenconfigVxlan_PeerType_dynamic
-	rmap["tunnel-type"] = "dynamic"
+	rmap["tunnel-type"] = "DYNAMIC"
 	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_peer_tunnel_type_xfmr ==> returning  tunnel-type field ==> ", rmap)
 	}
@@ -312,7 +363,7 @@ var DbToYang_vxlan_vni_state_peer_info_key_xfmr KeyXfmrDbToYang = func(inParams 
 //		}
 
 		if len(tblVxlanMapKeys) != 1 {
-			log.Error("DbToYang_vxlan_vni_state_peer_info_key_xfmr ==> returning ERROR")
+			log.Errorf("DbToYang_vxlan_vni_state_peer_info_key_xfmr ==> ERROR(%v)", err)
 			return rmap, tlerr.NotFound("Resource Not Found")
 		}
 
@@ -349,23 +400,23 @@ var DbToYang_vxlan_vni_state_peer_info_key_xfmr KeyXfmrDbToYang = func(inParams 
 }
 
 var YangToDb_vxlan_state_tunnel_info_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("YangToDb_vxlan_state_tunnel_info_key_xfmr ==>inParams.uri => ", inParams.uri)
 		log.Info("YangToDb_vxlan_state_tunnel_info_key_xfmr ==>inParams.requestUri => ", inParams.requestUri)
-//	}
+	}
 
 	pathInfo := NewPathInfo(inParams.uri)
 	peerIpStr := pathInfo.Var("peer-ip")
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("YangToDb_vxlan_state_tunnel_info_key_xfmr ==> peerIpStr => ", peerIpStr)
-//	}
+	}
 
 	pathOrigInfo := NewPathInfo(inParams.requestUri)
 	peerIpOrigStr := pathOrigInfo.Var("peer-ip")
 	
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("YangToDb_vxlan_state_tunnel_info_key_xfmr ==> peerIpOrigStr => ", peerIpOrigStr)
-//	}
+	}
 
 	if peerIpOrigStr != "" {
 		var VXLAN_TUNNEL_TABLE_STATE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_TABLE"}
@@ -392,16 +443,16 @@ var YangToDb_vxlan_state_tunnel_info_key_xfmr KeyXfmrYangToDb = func(inParams Xf
 }
 
 var DbToYang_vxlan_state_tunnel_info_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_tunnel_info_key_xfmr ==> inParams.key => ", inParams.key)
-//	}
+	}
 
 	pathOrigInfo := NewPathInfo(inParams.requestUri)
 	peerIpOrigStr := pathOrigInfo.Var("peer-ip")
 	
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_tunnel_info_key_xfmr ==> peerIpOrigStr => ", peerIpOrigStr)
-//	}
+	}
 
 	rmap := make(map[string]interface{})
 	if inParams.key != "" {
@@ -418,9 +469,9 @@ var DbToYang_vxlan_state_tunnel_info_key_xfmr KeyXfmrDbToYang = func(inParams Xf
 			rmap["peer-ip"] = keyListTmp[1]
 		}
 	}
-//	if log.V(3) {
+	if log.V(3) {
 		log.Info("DbToYang_vxlan_state_tunnel_info_key_xfmr ==> returning RESTULT map rmap => ", rmap)
-//	}
+	}
 	return rmap, nil
 }
 
@@ -601,26 +652,39 @@ func (reqP *vxlanReqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string
 					log.Error("handleDeleteReq ==> returning ERROR")
 					return &res_map, tlerr.New("source-vtep-ip cannot be deleted since tunnel map (VLAN-VNI) has reference to the vxlan interface \"%s\" of the source-vtep-ip %s", vxlanIntfName, tblValList.Field["src_ip"])
 				}
-
-				vxlanIntfdbV.Field["src_ip"] = tblValList.Field["src_ip"]
-				subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
-				subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-				subOpMap[db.ConfigDB]["VXLAN_TUNNEL"] = make(map[string]db.Value)
-				subOpMap[db.ConfigDB]["VXLAN_TUNNEL"][vxlanIntfName] = db.Value{Field: make(map[string]string)}
-				subOpMap[db.ConfigDB]["VXLAN_TUNNEL"][vxlanIntfName].Field["NULL"] = "NULL"
-				inParams.subOpDataMap[UPDATE] = &subOpMap
-				vxlanIntfConfTbl[vxlanIntfName] = vxlanIntfdbV
-				res_map["VXLAN_TUNNEL"] = vxlanIntfConfTbl
-				evpnNvodbV.Field["source_vtep"] = vxlanIntfName
-				evpnNvoTbl["nvo1"] = evpnNvodbV
-				res_map["EVPN_NVO"] = evpnNvoTbl
-			} // else {
-//				return &res_map, tlerr.NotFound("Resource Not Found")
-//			}
-		} else {
-			return &res_map, tlerr.NotFound("Resource Not Found")
-		}
-	}
+                if reqP.targetNode.Name == "qos-mode" {
+                    //vxlanIntfdbV.Field["qos-mode"] = tblValList.Field["qos-mode"]
+                    return &res_map, tlerr.New("qos-mode cannot be deleted.")
+                } else if reqP.targetNode.Name == "src_ip" {
+                    vxlanIntfdbV.Field["src_ip"] = tblValList.Field["src_ip"]
+                } else if reqP.targetNode.Name == "dscp" {
+                    //vxlanIntfdbV.Field["dscp"] = tblValList.Field["dscp"]
+                    return &res_map, tlerr.New("dscp cannot be deleted.")
+                } else {
+                    vxlanIntfdbV.Field["qos-mode"] = tblValList.Field["qos-mode"]
+                    vxlanIntfdbV.Field["src_ip"] = tblValList.Field["src_ip"]
+                    vxlanIntfdbV.Field["dscp"] = tblValList.Field["dscp"]
+                }
+                subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+                subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+                subOpMap[db.ConfigDB]["VXLAN_TUNNEL"] = make(map[string]db.Value)
+                subOpMap[db.ConfigDB]["VXLAN_TUNNEL"][vxlanIntfName] = db.Value{Field: make(map[string]string)}
+                subOpMap[db.ConfigDB]["VXLAN_TUNNEL"][vxlanIntfName].Field["NULL"] = "NULL"
+                inParams.subOpDataMap[UPDATE] = &subOpMap
+                vxlanIntfConfTbl[vxlanIntfName] = vxlanIntfdbV
+                res_map["VXLAN_TUNNEL"] = vxlanIntfConfTbl
+                if reqP.targetNode.Name != "qos-mode" && reqP.targetNode.Name != "dscp" {
+                    //evpnNvodbV.Field["source_vtep"] = vxlanIntfName
+                    evpnNvoTbl["nvo1"] = evpnNvodbV
+                    res_map["EVPN_NVO"] = evpnNvoTbl
+                }
+            } // else {
+            //				return &res_map, tlerr.NotFound("Resource Not Found")
+            //			}
+        } else {
+            return &res_map, tlerr.NotFound("Resource Not Found")
+        }
+    }
 
 	if log.V(3) {
 		log.Info(" =====> handleDeleteReq ==> handleDeleteReq - res_map => ", res_map)
@@ -655,9 +719,55 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 			return &res_map, tlerr.NotFound("Resource Not Found")
 		}
 
+        //Allow update when qos-mode / dscp values are different from the values in DB
 		if dbv.Field["src_ip"] != "" && (reqP.opcode == 3 || reqP.opcode == 4) {
-			log.Error("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> source-vtep-ip => ", dbv.Field["src_ip"])
-			return &res_map, tlerr.New("Source-vtep-ip %s is already exist; PUT/PATCH method not allowed on the source-vtep-ip ", dbv.Field["src_ip"])
+            src_ip_in := *(reqP.vxlanIntfConfigObj.SourceVtepIp)
+            log.Info("src_ip_in ==> ", src_ip_in)
+            src_ip_db := dbv.Field["src_ip"]
+            log.Info("src_ip_db ==> ", src_ip_db)
+
+            //QosMode is an enum with values 1 for "uniform" and 2 for "pipe"
+            qos_mode_in_int := (reqP.vxlanIntfConfigObj.QosMode)
+            qos_mode_in :=""
+            log.Info("qos_mode_in_int ==> ", qos_mode_in_int)
+            if qos_mode_in_int == 1 {
+                qos_mode_in = "uniform"
+            } else if qos_mode_in_int == 2 {
+                qos_mode_in = "pipe"
+            } else {
+                //Set default qos-mode to "pipe" when user doesn't input any value
+                qos_mode_in = "pipe"
+            }
+            log.Info("qos_mode_in ==> ", qos_mode_in)
+            qos_mode_db := dbv.Field["qos-mode"]
+            log.Info("qos_mode_db ==> ", qos_mode_db)
+
+            //set default DSCP value as 0
+            dscp_in := "0"
+            if reqP.vxlanIntfConfigObj.Dscp  != nil {
+                dscp_in = strconv.Itoa(int(*(reqP.vxlanIntfConfigObj.Dscp))) 
+            }
+            //Reset DSCP value to 0 for uniform mode
+            if qos_mode_in == "uniform" {
+                dscp_in = "0"
+            }
+            log.Info("dscp_in ==> ", dscp_in)
+            dscp_db := dbv.Field["dscp"]
+            log.Info("dscp_db ==> ", dscp_db)
+
+            //Allow update of qos-mode / dscp when src_ip is same
+            if (dbv.Field["src_ip"] == src_ip_in) {
+                //When all the values are same, return error
+                if qos_mode_in == qos_mode_db && dscp_in == dscp_db {
+                    log.Error("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> source-vtep-ip => ", dbv.Field["src_ip"])
+                    return &res_map, tlerr.New("Source-vtep-ip %s already exist; source-vtep-ip ", dbv.Field["src_ip"])
+                }
+            } else {
+                //When src_ip is different from the one in DB, return error
+                log.Info("src_ip_in ==> ",src_ip_in)
+                log.Error("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> source-vtep-ip => ", dbv.Field["src_ip"])
+                return &res_map, tlerr.New("Source-vtep-ip %s already exist; source-vtep-ip ", dbv.Field["src_ip"])
+            }
 		}
 	}
 
@@ -670,7 +780,23 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 	} else {
 		dbV1 := db.Value{Field: make(map[string]string)}
 		srcIp := *(reqP.vxlanIntfConfigObj.SourceVtepIp)
+        //QosMode is an enum with values 1 for "uniform" and 2 for "pipe"
+        //Default qosMode is "pipe"
+        qosMode := "pipe"
+        if reqP.vxlanIntfConfigObj.QosMode == 1 {
+            qosMode = "uniform"
+        } else if reqP.vxlanIntfConfigObj.QosMode == 2 {
+            qosMode = "pipe"
+        }
+        log.Info("qosMode ==> ", qosMode)
+
+        dscp := "0"
+        if reqP.vxlanIntfConfigObj.Dscp != nil {
+            dscp = strconv.Itoa(int(*(reqP.vxlanIntfConfigObj.Dscp)))
+        }
 		dbV1.Field["src_ip"] = srcIp
+		dbV1.Field["qos-mode"] = qosMode
+		dbV1.Field["dscp"] = dscp
 		vxlanTunnelTblMap[*(reqP.intfObject.Name)] = dbV1
 		dbV2 := db.Value{Field: make(map[string]string)}
 		dbV2.Field["source_vtep"] = *(reqP.intfObject.Name)
@@ -719,8 +845,8 @@ func (reqP *vxlanReqProcessor) translateToDb(inParams XfmrParams) (*map[string]m
 }
 
 func getIntfUriPath(uri string) (*gnmipb.Path, error) {
-	uriPath := strings.Replace(uri, "openconfig-interfaces:", "", -1)
-	uriPath = strings.Replace(uri, "openconfig-vxlan:", "", -1)
+	//uriPath := strings.Replace(uri, "openconfig-interfaces:", "", -1)
+	uriPath := strings.Replace(uri, "openconfig-vxlan:", "", -1)
 	path, err := ygot.StringToPath(uriPath, ygot.StructuredPath, ygot.StringSlicePath)
 	if err != nil {
 		return nil, tlerr.NotFound("Resource Not Found")
@@ -733,8 +859,8 @@ func getIntfUriPath(uri string) (*gnmipb.Path, error) {
 }
 
 func getVxlanNiUriPath(uri string) (*gnmipb.Path, error) {
-	uriPath := strings.Replace(uri, "openconfig-network-instance:", "", -1)
-	uriPath = strings.Replace(uri, "openconfig-vxlan:", "", -1)
+	//uriPath := strings.Replace(uri, "openconfig-network-instance:", "", -1)
+	uriPath := strings.Replace(uri, "openconfig-vxlan:", "", -1)
 	path, err := ygot.StringToPath(uriPath, ygot.StructuredPath, ygot.StringSlicePath)
 	if err != nil {
 		return nil, tlerr.NotFound("Resource Not Found")
@@ -785,7 +911,7 @@ var YangToDb_intf_vxlan_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
 		}
 	}
 	
-	if inParams.oper == DELETE && vxlanIfNodeFlag == false {
+	if inParams.oper == DELETE && !vxlanIfNodeFlag {
 		// need to return success abrubtly since this subtree call got initiated internally from the transformer
 		// infra for this request, otherwise the orignial given request will fail
 		log.Info("YangToDb_intf_vxlan_config_xfmr: returning success abrubtly since this subtree call got initiated internally from the transformer infra for this request => ", inParams.requestUri)
@@ -846,9 +972,13 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 			}
 
 			srcIpStr := dbv.Field["src_ip"]
+            qosModeStr := dbv.Field["qos-mode"]
+            dscpStr := dbv.Field["dscp"]
 
 			if log.V(3) {
 				log.Info("DbToYang_intf_vxlan_config_xfmr ========  srcIpStr ===> ", srcIpStr)
+				log.Info("DbToYang_intf_vxlan_config_xfmr ========  qosModeStr ===> ", qosModeStr)
+				log.Info("DbToYang_intf_vxlan_config_xfmr ========  dscpStr ===> ", dscpStr)
 			}
 
 			if srcIpStr != "" {
@@ -862,8 +992,24 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.intfObject.VxlanIf.Config => ", reqP.intfObject.VxlanIf.Config)
 					}
 					reqP.intfObject.VxlanIf.Config.SourceVtepIp = &srcIpStr
+
+                    //Return appropriate enum values based on the qos-mode set in DB
+                    if qosModeStr != "" {
+                        if qosModeStr == "pipe" {
+                            reqP.intfObject.VxlanIf.Config.QosMode = 2
+                        } else {
+                            reqP.intfObject.VxlanIf.Config.QosMode = 1
+                        }
+                    }
+                    if dscpStr != ""{
+                        dscp_conv_64,_ := strconv.ParseUint(dscpStr,10,8)
+                        dscp_conv := uint8(dscp_conv_64)
+                        reqP.intfObject.VxlanIf.Config.Dscp = &dscp_conv
+                    }
 					if log.V(3) {
 						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.SourceVtepIp ===> ", reqP.intfObject.VxlanIf.Config.SourceVtepIp)
+						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.QosMode ===> ", reqP.intfObject.VxlanIf.Config.QosMode)
+						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.Dscp ===> ", reqP.intfObject.VxlanIf.Config.Dscp)
 					}
 				} else {
 					log.Error("DbToYang_intf_vxlan_config_xfmr ========  reqP.intfObject.VxlanIf is nil")
@@ -1101,6 +1247,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	pathInfo := NewPathInfo(inParams.uri)
 	if log.V(3) {
 		log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: ", inParams.ygRoot, inParams.uri)
+	  log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: template => ", pathInfo.Template)
 	}
 
 	path, err := getVxlanNiUriPath(inParams.uri)
@@ -1112,6 +1259,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	if err := reqP.setVxlanNetInstObjFromReq(); err != nil {
 		return nil, err
 	}
+	log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: reqP=> ", reqP)
 
 	if reqP.opcode != DELETE && (reqP.vxlanNetInstObj.VxlanVniInstances == nil || len(reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance) == 0) {
 		return res_map, tlerr.NotFound("Resource Not Found")
@@ -1143,7 +1291,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 		isKeysInPaylod = false
 		if vniIdKeyStr == "" && srcNveKeyStr == "" {
 			if reqP.vxlanNetInstObj.VxlanVniInstances != nil && len(reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance) > 0 {
-				for vniKeyObj, _ := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
+				for vniKeyObj := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
 					vniIdKeyStr = strconv.Itoa(int(vniKeyObj.VniId))
 					srcNveKeyStr = vniKeyObj.SourceNve
 					log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: vniIdKeyStr in payload => ", vniIdKeyStr)
@@ -1170,7 +1318,8 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 			if log.V(3) {
 				log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: tblVxlanMapKeys => err => ", err)
 			}
-			if err != nil && inParams.oper != 3 && isKeysInPaylod == false {
+			log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: tblVxlanMapKeys => err => ", err)
+			if err != nil && inParams.oper != 3 && !isKeysInPaylod {
 				log.Error("YangToDb_vxlan_vni_instance_subtree_xfmr ==> returning ERROR, since the key doesn't exist")
 				return res_map, tlerr.NotFound("Resource Not Found")
 			} else if err == nil && (inParams.oper == 3 || inParams.oper == 4) {
@@ -1184,10 +1333,17 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	var vtepName string
 	var tblKeyStr string
 
-	if reqP.opcode == DELETE && (pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance" ||
-		pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances") {
+	log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: template => ", pathInfo.Template)
+	log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: reqP=> ", reqP)
+
+	if reqP.opcode == DELETE && 
+    (pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance{vni-id}{source-nve}" ||
+		 pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances" ||
+		 pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance" ||
+     pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/vxlan-vni-instances") {
 		dbKeys, err := inParams.d.GetKeys(&db.TableSpec{Name: tblName})
 		if err != nil {
+	    log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: res_map=> err => ", res_map, err)
 			return res_map, err
 		}
 		if len(dbKeys) > 0 {
@@ -1203,9 +1359,16 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 					if mapNameList[2] == niName {
 						tblKeyStr = vtepName + "|" + "map_" + strconv.Itoa(int(vniId)) + "_" + niName
 						log.Info ("tblKeyStr ==> ", tblKeyStr)
-						valueMap[tblKeyStr] = db.Value{Field: make(map[string]string)}
-						valueMap[tblKeyStr].Field["vlan"] = niName
-						valueMap[tblKeyStr].Field["vni"] = strconv.Itoa(int(vniId))
+						// valueMap[tblKeyStr] = db.Value{Field: make(map[string]string)}
+						// valueMap[tblKeyStr].Field["vlan"] = niName
+						// valueMap[tblKeyStr].Field["vni"] = strconv.Itoa(int(vniId))
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subIntfmap_del := make(map[string]map[string]db.Value)
+            subIntfmap_del[tblName] = make(map[string]db.Value)
+            subIntfmap_del[tblName][tblKeyStr] = db.Value{}
+            subOpMap[db.ConfigDB] = subIntfmap_del
+            inParams.subOpDataMap[DELETE] = &subOpMap
+				    log.Info("DELETE Request YangToDb_vxlan_vni_instance_subtree_xfmr: valueMap", valueMap)
 					}
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := inParams.d.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
@@ -1225,6 +1388,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 			if len(valueMap) > 0 {
 				log.Info("vniId ==> deleting ", vniId)
 				res_map[tblName] = valueMap
+				log.Info("DELETE Request Returning for Deletion YangToDb_vxlan_vni_instance_subtree_xfmr: valueMap", valueMap)
 				return res_map, err	
 			} else {
 				log.Info("vniId ==> NO delete ", vniId)
@@ -1233,7 +1397,7 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 		}
 		 
 	} else {
-		for vniKey, _ := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
+		for vniKey := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
 			vniId = vniKey.VniId
 			vtepName = vniKey.SourceNve
 			break
@@ -1441,7 +1605,7 @@ var YangToDb_vlan_nd_suppress_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 
 	if inParams.param != nil {
 		val, _ := inParams.param.(ocbinds.E_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress)
-		if val == ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_enable {
+		if val == ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_ENABLE {
 			res_map["suppress"] = "on"
 		}
 	}
@@ -1457,10 +1621,10 @@ var DbToYang_vlan_nd_suppress_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
 	data := (*inParams.dbDataMap)[inParams.curDb]
 
 	log.Infof("vlan_nd_suppress_fld_xfmr: key: %v, data: %v", vlanIdStr, data)
-	if data != nil && len(data) > 0 {
+	if len(data) > 0 {
 		val := data["SUPPRESS_VLAN_NEIGH"][vlanIdStr]
 		if val.Get("suppress") == "on" {
-			res_map["arp-and-nd-suppress"], _ = ygot.EnumName(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_enable)
+			res_map["arp-and-nd-suppress"], _ = ygot.EnumName(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_NeighbourSuppress_Config_ArpAndNdSuppress_ENABLE)
 		}
 	}
 

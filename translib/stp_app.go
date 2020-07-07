@@ -27,6 +27,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 
 	"github.com/facette/natsort"
 	log "github.com/golang/glog"
@@ -288,7 +289,7 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 	}
 
 	targetUriPath, _ := getYangPathFromUri(app.pathInfo.Path)
-	log.Infof("processCommon -- isTopmostPath: %t and Uri: %s", topmostPath, targetUriPath)
+	log.Infof("processCommon -- isTopmostPath: %t and Uri: %s Opcode: %d", topmostPath, targetUriPath, opcode)
 	if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/global") {
 		mode, _ := app.getStpModeFromConfigDB(d)
 		switch opcode {
@@ -338,13 +339,16 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 			return tlerr.InvalidArgs("STP mode is configured as %s", mode)
 		}
 		if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/openconfig-spanning-tree-ext:pvst/vlan{}") {
-			for vlanId, _ := range stp.Pvst.Vlan {
+			for vlanId := range stp.Pvst.Vlan {
 				pvstVlan := stp.Pvst.Vlan[vlanId]
 				vlanName := "Vlan" + strconv.Itoa(int(vlanId))
 				if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/openconfig-spanning-tree-ext:pvst/vlan{}/interfaces/interface{}") {
 					// Subtree of one interface under a vlan
-					for intfId, _ := range pvstVlan.Interfaces.Interface {
+					for intfId := range pvstVlan.Interfaces.Interface {
 						pvstVlanIntf := pvstVlan.Interfaces.Interface[intfId]
+						nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+						intfId = *nativeIntfName
+
 						switch opcode {
 						case CREATE, REPLACE, UPDATE, DELETE:
 							err = app.handleRpvstCRUDOperationsAtVlanInterfaceLevel(d, opcode, vlanName, intfId, pvstVlan, pvstVlanIntf)
@@ -401,13 +405,16 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 			return tlerr.InvalidArgs("STP mode is configured as %s", mode)
 		}
 		if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/rapid-pvst/vlan{}") {
-			for vlanId, _ := range stp.RapidPvst.Vlan {
+			for vlanId := range stp.RapidPvst.Vlan {
 				rpvstVlanConf := stp.RapidPvst.Vlan[vlanId]
 				vlanName := "Vlan" + strconv.Itoa(int(vlanId))
 				if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/rapid-pvst/vlan{}/interfaces/interface{}") {
 					// Subtree of one interface under a vlan
-					for intfId, _ := range rpvstVlanConf.Interfaces.Interface {
+					for intfId := range rpvstVlanConf.Interfaces.Interface {
 						rpvstVlanIntfConf := rpvstVlanConf.Interfaces.Interface[intfId]
+						nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+						intfId = *nativeIntfName
+
 						switch opcode {
 						case CREATE, REPLACE, UPDATE, DELETE:
 							err = app.handleRpvstCRUDOperationsAtVlanInterfaceLevel(d, opcode, vlanName, intfId, rpvstVlanConf, rpvstVlanIntfConf)
@@ -465,8 +472,11 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 		}
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/interfaces") {
 		if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/interfaces/interface{}") {
-			for intfId, _ := range stp.Interfaces.Interface {
+			for intfId := range stp.Interfaces.Interface {
 				intfData := stp.Interfaces.Interface[intfId]
+				nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+				intfId = *nativeIntfName
+
 				switch opcode {
 				case CREATE:
 					err = app.setStpInterfacesDataInDB(d, true)
@@ -598,20 +608,6 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 	return err
 }
 
-func (app *StpApp) processCommonRpvstVlanToplevelPath(d *db.DB, stp *ocbinds.OpenconfigSpanningTree_Stp, opcode int) error {
-	var err error
-
-	switch opcode {
-	case CREATE:
-	case REPLACE:
-	case UPDATE:
-	case DELETE:
-	case GET:
-	}
-
-	return err
-}
-
 func (app *StpApp) handleRpvstCRUDOperationsAtVlanLevel(d *db.DB, opcode int, vlanName string, isInterfacesSubtree bool, mode interface{}, vlan interface{}) error {
 	var err error
 
@@ -722,9 +718,7 @@ func (app *StpApp) handleRpvstCRUDOperationsAtVlanInterfaceLevel(d *db.DB, opcod
 
 /////////////////    STP GLOBAL   //////////////////////
 func (app *StpApp) setStpGlobalConfigInDB(d *db.DB) error {
-	var err error
-
-	err = d.CreateEntry(app.globalTable, asKey("GLOBAL"), app.globalInfo)
+	err := d.CreateEntry(app.globalTable, asKey("GLOBAL"), app.globalInfo)
 
 	return err
 }
@@ -765,7 +759,7 @@ func (app *StpApp) convertOCStpGlobalConfToInternal(opcode int) error {
 				(&app.globalInfo).Set("rootguard_timeout", STP_DEFAULT_ROOT_GUARD_TIMEOUT)
 			}
 			if stp.Global.Config.BpduFilter != nil {
-				if *stp.Global.Config.BpduFilter == true {
+				if *stp.Global.Config.BpduFilter {
 					(&app.globalInfo).Set("bpdu_filter", "true")
 				} else {
 					(&app.globalInfo).Set("bpdu_filter", "false")
@@ -850,7 +844,7 @@ func (app *StpApp) convertOCRpvstConfToInternal(opcode int) error {
 	stp := app.getAppRootObject()
 	setDefaultFlag := (opcode == CREATE || opcode == REPLACE)
 	if stp != nil && stp.RapidPvst != nil && len(stp.RapidPvst.Vlan) > 0 {
-		for vlanId, _ := range stp.RapidPvst.Vlan {
+		for vlanId := range stp.RapidPvst.Vlan {
 			vlanName := "Vlan" + strconv.Itoa(int(vlanId))
 			app.vlanTableMap[vlanName] = db.Value{Field: map[string]string{}}
 			rpvstVlanConf := stp.RapidPvst.Vlan[vlanId]
@@ -893,8 +887,11 @@ func (app *StpApp) convertOCRpvstConfToInternal(opcode int) error {
 			}
 			if rpvstVlanConf.Interfaces != nil && len(rpvstVlanConf.Interfaces.Interface) > 0 {
 				app.vlanIntfTableMap[vlanName] = make(map[string]db.Value)
-				for intfId, _ := range rpvstVlanConf.Interfaces.Interface {
+				for intfId := range rpvstVlanConf.Interfaces.Interface {
 					rpvstVlanIntfConf := rpvstVlanConf.Interfaces.Interface[intfId]
+					nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+					intfId = *nativeIntfName
+
 					app.vlanIntfTableMap[vlanName][intfId] = db.Value{Field: map[string]string{}}
 					if rpvstVlanIntfConf.Config != nil {
 						dbVal := app.vlanIntfTableMap[vlanName][intfId]
@@ -980,7 +977,7 @@ func (app *StpApp) convertDBRpvstVlanConfigToInternal(d *db.DB, vlanKey db.Key) 
 				return err
 			}
 			// Collect operational info from application DB
-			err = app.convertApplDBRpvstVlanToInternal(vlanName)
+			app.convertApplDBRpvstVlanToInternal(vlanName)
 		} else {
 			return tlerr.NotFound("Vlan %s is not configured", vlanName)
 		}
@@ -993,7 +990,7 @@ func (app *StpApp) convertDBRpvstVlanConfigToInternal(d *db.DB, vlanKey db.Key) 
 		if err != nil {
 			return err
 		}
-		for i, _ := range keys {
+		for i := range keys {
 			app.convertDBRpvstVlanConfigToInternal(d, keys[i])
 		}
 	}
@@ -1133,9 +1130,9 @@ func (app *StpApp) convertDBRpvstVlanInterfaceToInternal(d *db.DB, vlanName stri
 		if err != nil {
 			return err
 		}
-		for i, _ := range keys {
+		for i := range keys {
 			if vlanName == keys[i].Get(0) {
-				err = app.convertDBRpvstVlanInterfaceToInternal(d, vlanName, keys[i].Get(1), keys[i], doGetOperData)
+				app.convertDBRpvstVlanInterfaceToInternal(d, vlanName, keys[i].Get(1), keys[i], doGetOperData)
 			}
 		}
 	}
@@ -1146,7 +1143,7 @@ func (app *StpApp) convertInternalToOCRpvstVlanInterface(vlanName string, intfId
 	var num uint64
 
 	if len(intfId) == 0 {
-		for intf, _ := range app.vlanIntfTableMap[vlanName] {
+		for intf := range app.vlanIntfTableMap[vlanName] {
 			app.convertInternalToOCRpvstVlanInterface(vlanName, intf, rpvstVlanConf, rpvstVlanIntfConf)
 		}
 	} else {
@@ -1154,7 +1151,8 @@ func (app *StpApp) convertInternalToOCRpvstVlanInterface(vlanName string, intfId
 
 		if rpvstVlanIntfConf == nil {
 			if rpvstVlanConf != nil {
-				rpvstVlanIntfConf_, _ := rpvstVlanConf.Interfaces.NewInterface(intfId)
+				ifUIName := utils.GetUINameFromNativeName(&intfId)
+				rpvstVlanIntfConf_, _ := rpvstVlanConf.Interfaces.NewInterface(*ifUIName)
 				rpvstVlanIntfConf = rpvstVlanIntfConf_
 				ygot.BuildEmptyTree(rpvstVlanIntfConf)
 			}
@@ -1183,7 +1181,7 @@ func (app *StpApp) convertOCPvstToInternal(opcode int) error {
 	stp := app.getAppRootObject()
 	setDefaultFlag := (opcode == CREATE || opcode == REPLACE)
 	if stp != nil && stp.Pvst != nil && len(stp.Pvst.Vlan) > 0 {
-		for vlanId, _ := range stp.Pvst.Vlan {
+		for vlanId := range stp.Pvst.Vlan {
 			vlanName := "Vlan" + strconv.Itoa(int(vlanId))
 			app.vlanTableMap[vlanName] = db.Value{Field: map[string]string{}}
 			pvstVlan := stp.Pvst.Vlan[vlanId]
@@ -1226,8 +1224,11 @@ func (app *StpApp) convertOCPvstToInternal(opcode int) error {
 			}
 			if pvstVlan.Interfaces != nil && len(pvstVlan.Interfaces.Interface) > 0 {
 				app.vlanIntfTableMap[vlanName] = make(map[string]db.Value)
-				for intfId, _ := range pvstVlan.Interfaces.Interface {
+				for intfId := range pvstVlan.Interfaces.Interface {
 					pvstVlanIntf := pvstVlan.Interfaces.Interface[intfId]
+					nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+					intfId = *nativeIntfName
+
 					app.vlanIntfTableMap[vlanName][intfId] = db.Value{Field: map[string]string{}}
 					if pvstVlanIntf.Config != nil {
 						dbVal := app.vlanIntfTableMap[vlanName][intfId]
@@ -1362,11 +1363,14 @@ func (app *StpApp) convertInternalToOCPvstVlanInterface(vlanName string, intfId 
 	var num uint64
 
 	if len(intfId) == 0 {
-		for intf, _ := range app.vlanIntfTableMap[vlanName] {
+		for intf := range app.vlanIntfTableMap[vlanName] {
 			app.convertInternalToOCPvstVlanInterface(vlanName, intf, pvstVlan, pvstVlanIntf)
 		}
 	} else {
 		dbVal := app.vlanIntfTableMap[vlanName][intfId]
+
+		ifUIName := utils.GetUINameFromNativeName(&intfId)
+		intfId = *ifUIName
 
 		if pvstVlanIntf == nil {
 			if pvstVlan != nil {
@@ -1397,23 +1401,29 @@ func (app *StpApp) convertInternalToOCPvstVlanInterface(vlanName string, intfId 
 func (app *StpApp) convertOCStpInterfacesToInternal() {
 	stp := app.getAppRootObject()
 	if stp != nil && stp.Interfaces != nil && len(stp.Interfaces.Interface) > 0 {
-		for intfId, _ := range stp.Interfaces.Interface {
+		for intfId := range stp.Interfaces.Interface {
+			stpIntfConf := stp.Interfaces.Interface[intfId]
+
+			nativeIntfName := utils.GetNativeNameFromUIName(&intfId)
+			intfId = *nativeIntfName
+
 			app.intfTableMap[intfId] = db.Value{Field: map[string]string{}}
 
-			stpIntfConf := stp.Interfaces.Interface[intfId]
 			if stpIntfConf.Config != nil {
 				dbVal := app.intfTableMap[intfId]
 
 				if stpIntfConf.Config.BpduGuard != nil {
-					if *stpIntfConf.Config.BpduGuard == true {
+					if *stpIntfConf.Config.BpduGuard {
 						(&dbVal).Set("bpdu_guard", "true")
+						(&dbVal).Set("bpdu_guard_do_disable", "false")
 					} else {
 						(&dbVal).Set("bpdu_guard", "false")
+						(&dbVal).Set("bpdu_guard_do_disable", "false")
 					}
 				}
 
 				if stpIntfConf.Config.BpduFilter != nil {
-					if *stpIntfConf.Config.BpduFilter == true {
+					if *stpIntfConf.Config.BpduFilter {
 						(&dbVal).Set("bpdu_filter", "enable")
 					} else {
 						(&dbVal).Set("bpdu_filter", "disable")
@@ -1423,15 +1433,17 @@ func (app *StpApp) convertOCStpInterfacesToInternal() {
 				}
 
 				if stpIntfConf.Config.BpduGuardPortShutdown != nil {
-					if *stpIntfConf.Config.BpduGuardPortShutdown == true {
+					if *stpIntfConf.Config.BpduGuardPortShutdown {
+						(&dbVal).Set("bpdu_guard", "true")
 						(&dbVal).Set("bpdu_guard_do_disable", "true")
 					} else {
 						(&dbVal).Set("bpdu_guard_do_disable", "false")
+						(&dbVal).Set("bpdu_guard", "false")
 					}
 				}
 
 				if stpIntfConf.Config.Portfast != nil {
-					if *stpIntfConf.Config.Portfast == true {
+					if *stpIntfConf.Config.Portfast {
 						(&dbVal).Set("portfast", "true")
 					} else {
 						(&dbVal).Set("portfast", "false")
@@ -1439,7 +1451,7 @@ func (app *StpApp) convertOCStpInterfacesToInternal() {
 				}
 
 				if stpIntfConf.Config.UplinkFast != nil {
-					if *stpIntfConf.Config.UplinkFast == true {
+					if *stpIntfConf.Config.UplinkFast {
 						(&dbVal).Set("uplink_fast", "true")
 					} else {
 						(&dbVal).Set("uplink_fast", "false")
@@ -1447,7 +1459,7 @@ func (app *StpApp) convertOCStpInterfacesToInternal() {
 				}
 
 				if stpIntfConf.Config.SpanningTreeEnable != nil {
-					if *stpIntfConf.Config.SpanningTreeEnable == true {
+					if *stpIntfConf.Config.SpanningTreeEnable {
 						(&dbVal).Set("enabled", "true")
 					} else {
 						(&dbVal).Set("enabled", "false")
@@ -1456,13 +1468,10 @@ func (app *StpApp) convertOCStpInterfacesToInternal() {
 
 				if stpIntfConf.Config.Cost != nil {
 					(&dbVal).Set("path_cost", strconv.Itoa(int(*stpIntfConf.Config.Cost)))
-				} else {
-					//(&dbVal).Set("path_cost", "200")
 				}
+
 				if stpIntfConf.Config.PortPriority != nil {
 					(&dbVal).Set("priority", strconv.Itoa(int(*stpIntfConf.Config.PortPriority)))
-				} else {
-					//(&dbVal).Set("priority", "128")
 				}
 
 				if stpIntfConf.Config.Guard == ocbinds.OpenconfigSpanningTree_StpGuardType_ROOT {
@@ -1540,7 +1549,7 @@ func (app *StpApp) convertDBStpInterfacesToInternal(d *db.DB, intfKey db.Key) er
 		} else {
 			return tlerr.NotFound("STP interface %s is not configured", intfName)
 		}
-		err = app.convertApplDBStpInterfacesToInternal(intfName)
+		app.convertApplDBStpInterfacesToInternal(intfName)
 	} else {
 		tbl, err := d.GetTable(app.interfaceTable)
 		if err != nil {
@@ -1550,7 +1559,7 @@ func (app *StpApp) convertDBStpInterfacesToInternal(d *db.DB, intfKey db.Key) er
 		if err != nil {
 			return err
 		}
-		for i, _ := range keys {
+		for i := range keys {
 			app.convertDBStpInterfacesToInternal(d, keys[i])
 		}
 	}
@@ -1687,7 +1696,8 @@ func (app *StpApp) convertInternalToOCStpInterfaces(intfName string, interfaces 
 		}
 	} else {
 		for intfName := range app.intfTableMap {
-			intfPtr, _ := interfaces.NewInterface(intfName)
+			ifUIName := utils.GetUINameFromNativeName(&intfName)
+			intfPtr, _ := interfaces.NewInterface(*ifUIName)
 			ygot.BuildEmptyTree(intfPtr)
 			app.convertInternalToOCStpInterfaces(intfName, interfaces, intfPtr)
 		}
@@ -1702,13 +1712,15 @@ func (app *StpApp) convertOperInternalToOCVlanInterface(vlanName string, intfId 
 		var rpvstVlanIntf *ocbinds.OpenconfigSpanningTree_Stp_RapidPvst_Vlan_Interfaces_Interface
 		var num uint64
 
+		ifUIName := utils.GetUINameFromNativeName(&intfId)
+
 		switch reflect.TypeOf(vlan).Elem().Name() {
 		case "OpenconfigSpanningTree_Stp_Pvst_Vlan":
 			pvstVlan, _ = vlan.(*ocbinds.OpenconfigSpanningTree_Stp_Pvst_Vlan)
 			if vlanIntf == nil {
-				pvstVlanIntf = pvstVlan.Interfaces.Interface[intfId]
+				pvstVlanIntf = pvstVlan.Interfaces.Interface[*ifUIName]
 				if pvstVlanIntf == nil {
-					pvstVlanIntf, _ = pvstVlan.Interfaces.NewInterface(intfId)
+					pvstVlanIntf, _ = pvstVlan.Interfaces.NewInterface(*ifUIName)
 				}
 				ygot.BuildEmptyTree(pvstVlanIntf)
 			} else {
@@ -1718,9 +1730,9 @@ func (app *StpApp) convertOperInternalToOCVlanInterface(vlanName string, intfId 
 		case "OpenconfigSpanningTree_Stp_RapidPvst_Vlan":
 			rpvstVlan, _ = vlan.(*ocbinds.OpenconfigSpanningTree_Stp_RapidPvst_Vlan)
 			if vlanIntf == nil {
-				rpvstVlanIntf = rpvstVlan.Interfaces.Interface[intfId]
+				rpvstVlanIntf = rpvstVlan.Interfaces.Interface[*ifUIName]
 				if rpvstVlanIntf == nil {
-					rpvstVlanIntf, _ = rpvstVlan.Interfaces.NewInterface(intfId)
+					rpvstVlanIntf, _ = rpvstVlan.Interfaces.NewInterface(*ifUIName)
 				}
 				ygot.BuildEmptyTree(rpvstVlanIntf)
 			} else {
@@ -1877,7 +1889,7 @@ func (app *StpApp) convertOperInternalToOCVlanInterface(vlanName string, intfId 
 		}
 	} else {
 		vlanIntfOperKeys, _ := app.appDB.GetKeys(app.vlanIntfOperTable)
-		for i, _ := range vlanIntfOperKeys {
+		for i := range vlanIntfOperKeys {
 			entryKey := vlanIntfOperKeys[i]
 			if vlanName == (&entryKey).Get(0) {
 				app.convertOperInternalToOCVlanInterface(vlanName, (&entryKey).Get(1), vlan, vlanIntf)
@@ -1915,7 +1927,7 @@ func (app *StpApp) convertApplDBRpvstVlanInterfaceToInternal(vlanName string, in
 		app.vlanIntfOperTableMap[vlanName][intfId] = rpvstVlanIntfOperState
 	} else {
 		vlanIntfOperKeys, _ := app.appDB.GetKeys(app.vlanIntfOperTable)
-		for i, _ := range vlanIntfOperKeys {
+		for i := range vlanIntfOperKeys {
 			entryKey := vlanIntfOperKeys[i]
 			if vlanName == (&entryKey).Get(0) {
 				app.convertApplDBRpvstVlanInterfaceToInternal(vlanName, (&entryKey).Get(1))
@@ -1985,7 +1997,7 @@ func (app *StpApp) getAllInterfacesFromVlanMemberTable(d *db.DB) ([]string, erro
 	if err != nil {
 		return intfList, err
 	}
-	for i, _ := range keys {
+	for i := range keys {
 		key := keys[i]
 		if !contains(intfList, (&key).Get(1)) {
 			intfList = append(intfList, (&key).Get(1))
@@ -2001,7 +2013,7 @@ func (app *StpApp) getAllInterfacesFromPortChannelMemberTable(d *db.DB) ([]strin
 	if err != nil {
 		return intfList, err
 	}
-	for i, _ := range keys {
+	for i := range keys {
 		key := keys[i]
 		if !contains(intfList, (&key).Get(1)) {
 			intfList = append(intfList, (&key).Get(1))
@@ -2019,7 +2031,7 @@ func (app *StpApp) enableStpForInterfaces(d *db.DB) error {
 	(&defaultDBValues).Set("bpdu_guard_do_disable", "false")
 	(&defaultDBValues).Set("portfast", "true")
 	(&defaultDBValues).Set("uplink_fast", "false")
-	if "rpvst" == (&app.globalInfo).Get(STP_MODE) {
+	if (&app.globalInfo).Get(STP_MODE) == "rpvst" {
 		(&defaultDBValues).Set("link_type", "auto")
 	}
 
@@ -2032,7 +2044,7 @@ func (app *StpApp) enableStpForInterfaces(d *db.DB) error {
 	if err != nil {
 		return err
 	}
-	for i, _ := range portKeys {
+	for i := range portKeys {
 		portKey := portKeys[i]
 		if contains(intfList, (&portKey).Get(0)) {
 			err = d.CreateEntry(app.interfaceTable, portKey, defaultDBValues)
@@ -2047,7 +2059,7 @@ func (app *StpApp) enableStpForInterfaces(d *db.DB) error {
 	if err != nil {
 		return err
 	}
-	for i, _ := range portchKeys {
+	for i := range portchKeys {
 		portchKey := portchKeys[i]
 		if contains(intfList, (&portchKey).Get(0)) {
 			err = d.CreateEntry(app.interfaceTable, portchKey, defaultDBValues)
@@ -2072,7 +2084,7 @@ func (app *StpApp) enableStpForVlans(d *db.DB) error {
 	}
 
 	var vlanList []string
-	for i, _ := range vlanKeys {
+	for i := range vlanKeys {
 		vlanKey := vlanKeys[i]
 		vlanList = append(vlanList, (&vlanKey).Get(0))
 	}
@@ -2080,7 +2092,7 @@ func (app *StpApp) enableStpForVlans(d *db.DB) error {
 	// Sort vlanList in natural order such that 'Vlan2' < 'Vlan10'
 	natsort.Sort(vlanList)
 
-	for i, _ := range vlanList {
+	for i := range vlanList {
 		if i < PVST_MAX_INSTANCES {
 			defaultDBValues := db.Value{Field: map[string]string{}}
 			(&defaultDBValues).Set("enabled", "true")
@@ -2097,6 +2109,7 @@ func (app *StpApp) enableStpForVlans(d *db.DB) error {
 	return err
 }
 
+/*
 func enableStpOnVlanCreation(d *db.DB, vlanList []string) {
 	if len(vlanList) == 0 {
 		return
@@ -2117,7 +2130,7 @@ func enableStpOnVlanCreation(d *db.DB, vlanList []string) {
 		// Sort vlanList in natural order such that 'Vlan2' < 'Vlan10'
 		natsort.Sort(vlanList)
 
-		for i, _ := range vlanList {
+		for i := range vlanList {
 			if (existingEntriesCount + i) < PVST_MAX_INSTANCES {
 				defaultDBValues := db.Value{Field: map[string]string{}}
 				(&defaultDBValues).Set("enabled", "true")
@@ -2139,7 +2152,7 @@ func removeStpConfigOnVlanDeletion(d *db.DB, vlanList []string) {
 		return
 	}
 	log.Infof("removeStpConfigOnVlanDeletion --> Disable Stp on Vlans: %v", vlanList)
-	for i, _ := range vlanList {
+	for i := range vlanList {
 		err := d.DeleteEntry(&db.TableSpec{Name: STP_VLAN_PORT_TABLE}, asKey(vlanList[i], "*"))
 		if err != nil {
 			log.Error(err)
@@ -2170,7 +2183,7 @@ func enableStpOnInterfaceVlanMembership(d *db.DB, intfList []string) {
 	(&defaultDBValues).Set("bpdu_guard_do_disable", "false")
 	(&defaultDBValues).Set("portfast", "true")
 	(&defaultDBValues).Set("uplink_fast", "false")
-	if "rpvst" == (&stpGlobalDBEntry).Get(STP_MODE) {
+	if (&stpGlobalDBEntry).Get(STP_MODE) == "rpvst" {
 		(&defaultDBValues).Set("link_type", "auto")
 	}
 
@@ -2179,12 +2192,12 @@ func enableStpOnInterfaceVlanMembership(d *db.DB, intfList []string) {
 	if err != nil {
 		log.Error(err)
 	} else {
-		for i, _ := range intfKeys {
+		for i := range intfKeys {
 			dbKey := intfKeys[i]
 			stpEnabledIntfList = append(stpEnabledIntfList, (&dbKey).Get(0))
 		}
 
-		for i, _ := range intfList {
+		for i := range intfList {
 			if !contains(stpEnabledIntfList, intfList[i]) {
 				d.CreateEntry(&db.TableSpec{Name: STP_PORT_TABLE}, asKey(intfList[i]), defaultDBValues)
 			}
@@ -2199,7 +2212,7 @@ func removeStpOnInterfaceSwitchportDeletion(d *db.DB, intfList []string) {
 		return
 	}
 	log.Infof("removeStpOnInterfaceSwitchportDeletion --> Disable Stp on Interfaces: %v", intfList)
-	for i, _ := range intfList {
+	for i := range intfList {
 		err := d.DeleteEntry(&db.TableSpec{Name: STP_VLAN_PORT_TABLE}, asKey("*", intfList[i]))
 		if err != nil {
 			log.Error(err)
@@ -2210,13 +2223,14 @@ func removeStpOnInterfaceSwitchportDeletion(d *db.DB, intfList []string) {
 		}
 	}
 }
+*/
 
 func (app *StpApp) updateGlobalFieldsToStpVlanTable(d *db.DB, fldValuePair map[string]string, stpGlobalDbEntry db.Value) error {
 	vlanKeys, err := d.GetKeys(app.vlanTable)
 	if err != nil {
 		return err
 	}
-	for i, _ := range vlanKeys {
+	for i := range vlanKeys {
 		vlanEntry, _ := d.GetEntry(app.vlanTable, vlanKeys[i])
 
 		for fldName := range fldValuePair {

@@ -9,14 +9,14 @@ module sonic-sag {
     import ietf-yang-types {
 		prefix "yang";
     }
-	 
-    import sonic-interface {
-		prefix "sint";
-    }
 
 	import sonic-vlan {
         prefix "svlan";
     }
+
+		import sonic-extension {
+		    prefix sonic-ext;
+		}
 
     description
 		"SONIC SAG";
@@ -27,13 +27,13 @@ module sonic-sag {
 	}
 
 	container sonic-sag {
-	 
+
     container SAG {
         description
            "Configures Static Anycast Gateway for IPv4 and IPv6";
 
         list SAG_LIST {
-		    
+
 			key "ifname table_distinguisher";
 
 			leaf ifname {
@@ -41,34 +41,34 @@ module sonic-sag {
 					path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
 				}
 			}
-			
+
 			leaf table_distinguisher {
 				type string {
 					pattern "IPv4|IPv6";
 				}
 			}
-			
+
 		    leaf-list gwip {
 			    max-elements 16;
 				type inet:ip-prefix;
-			}			
+			}
         }
-    }	
+    }
 
     container SAG_GLOBAL {
         description
            "Configures MAC for SAG";
 
         list SAG_GLOBAL_LIST {
-		    
+
 			key "table_distinguisher";
-			
+
 			leaf table_distinguisher {
 				type string {
 					pattern 'IP';
 				}
-			}			
-			
+			}
+
 		    leaf IPv4 {
 				type string {
 					pattern 'disable|enable';
@@ -85,8 +85,9 @@ module sonic-sag {
 
 		    leaf gwmac {
 				type yang:mac-address;
-			}			
+				sonic-ext:custom-validation ValidateSagMac;
+			}
         }
     }
-}	
+}
 }

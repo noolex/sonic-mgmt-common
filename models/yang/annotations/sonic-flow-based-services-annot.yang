@@ -1,0 +1,55 @@
+module sonic-flow-based-services-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/sfbs-annot";
+    prefix "sfbs-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-flow-based-services { prefix sfbs; }
+
+    deviation /sfbs:get-classifier {
+        deviate add {
+	        sonic-ext:rpc-callback "rpc_show_classifier";
+        }
+    }
+
+    deviation /sfbs:get-policy {
+        deviate add {
+	        sonic-ext:rpc-callback "rpc_show_policy";
+        }
+    }
+
+    deviation /sfbs:get-service-policy {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_service_policy";
+        }
+    }
+
+    deviation /sfbs:clear-service-policy-counters {
+        deviate add {
+	        sonic-ext:rpc-callback "rpc_clear_service_policy";
+        }
+    }
+
+/*
+    deviation /sfbs:sonic-flow-based-services/sfbs:CLASSIFIER_TABLE/sfbs:CLASSIFIER_TABLE_LIST/sfbs:CLASSIFIER_NAME {
+        deviate add {
+            sonic-ext:cascade-delete "enable";
+        }
+    }
+
+    deviation /sfbs:sonic-flow-based-services/sfbs:POLICY_TABLE/sfbs:POLICY_TABLE_LIST/sfbs:POLICY_NAME {
+        deviate add {
+            sonic-ext:cascade-delete "enable";
+        }
+    }
+
+    deviation /sfbs:sonic-flow-based-services/sfbs:POLICY_BINDING_TABLE/sfbs:POLICY_BINDING_TABLE_LIST/sfbs:INTERFACE_NAME {
+        deviate add {
+            sonic-ext:value-transformer "alias_value_xfmr";
+        }
+    }
+*/
+}
+

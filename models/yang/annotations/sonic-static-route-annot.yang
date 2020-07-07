@@ -1,0 +1,15 @@
+module sonic-static-route-annot {
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/ssrt-annot";
+    prefix "ssrt-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-static-route { prefix ssrt; }
+
+    deviation /ssrt:sonic-static-route/ssrt:STATIC_ROUTE/ssrt:STATIC_ROUTE_LIST/ssrt:ifname {
+        deviate add {
+            sonic-ext:value-transformer "static_routes_alias_xfmr";
+        }
+    }
+}

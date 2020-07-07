@@ -8,10 +8,8 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
-    "io"
-    "bytes"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "net"
-    "encoding/binary"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
 )
@@ -31,7 +29,7 @@ func getBgpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Networ
     if len(niName) == 0 {
         return nil, "", errors.New("vrf name is missing")
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return nil, "", errors.New("BGP ID is missing")
     }
     if len(protoName) == 0 {
@@ -71,93 +69,26 @@ func getBgpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Networ
     return protoInstObj.Bgp, niName, err
 }
 
-func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
-    var err error
-    oper_err := errors.New("Operational error")
-    
-    log.Infof("Going to connect UDS socket call to reach BGP container  ==> \"%s\"", vtysh_cmd)
-    conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
-    if err != nil {
-        log.Infof("Failed to connect proxy server: %s\n", err)
-        return nil, oper_err
+func util_bgp_get_native_ifname_from_ui_ifname (pIfname *string) {
+    if pIfname != nil && net.ParseIP(*pIfname) == nil {
+        pNativeIfname := utils.GetNativeNameFromUIName(pIfname)
+        if pNativeIfname != nil && len(*pNativeIfname) != 0 {
+            *pIfname = *pNativeIfname
+        }
     }
-    defer conn.Close()
-    bs := make([]byte, 4)
-    binary.BigEndian.PutUint32(bs, uint32(len(vtysh_cmd)))
-    _, err = conn.Write(bs)
-    if err != nil {
-        log.Infof("Failed to write command length to server: %s\n", err)
-        return nil, oper_err
-    }
-    _, err = conn.Write([]byte(vtysh_cmd))
-    if err != nil {
-        log.Infof("Failed to write command length to server: %s\n", err)
-        return nil, oper_err
-    }
-    log.Infof("Reading data from server\n")
-
-    log.Infof("Data decoding started ==> \"%s\"", vtysh_cmd)
-    var outputJson map[string]interface{}
-    err = json.NewDecoder(conn).Decode(&outputJson)
-    if err != nil {
-        log.Infof("Not able to decode vtysh json output: %s\n", err)
-        return nil, oper_err
-    }
-
-    if outputJson == nil {
-        log.Infof("VTYSH output empty\n")
-        return nil, oper_err
-    }
-    log.Infof("Data decoding completed ==> \"%s\"", vtysh_cmd)
-
-    return outputJson, err
 }
 
-func exec_raw_vtysh_cmd (vtysh_cmd string) (string, error) {
-    var err error
-    oper_err := errors.New("Operational error")
-    
-    log.Infof("In exec_raw_vtysh_cmd going to connect UDS socket call to reach BGP container  ==> \"%s\"", vtysh_cmd)
-    conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
-    if err != nil {
-        log.Infof("Failed to connect proxy server: %s\n", err)
-        return "", oper_err
-    }
-    defer conn.Close()
-    bs := make([]byte, 4)
-    binary.BigEndian.PutUint32(bs, uint32(len(vtysh_cmd)))
-    _, err = conn.Write(bs)
-    if err != nil {
-        log.Infof("Failed to write command length to server: %s\n", err)
-        return "", oper_err
-    }
-    _, err = conn.Write([]byte(vtysh_cmd))
-    if err != nil {
-        log.Infof("Failed to write command length to server: %s\n", err)
-        return "", oper_err
-    }
-    log.Infof("In exec_raw_vtysh_cmd Reading data from server\n")
-    var buffer bytes.Buffer
-    data := make([]byte, 10240)
-    for {
-        count, err := conn.Read(data)
-        if err == io.EOF {
-            log.Infof("End reading\n")
-            break
+func util_bgp_get_ui_ifname_from_native_ifname (pIfname *string) {
+    if pIfname != nil && net.ParseIP(*pIfname) == nil {
+        pUiIfname := utils.GetUINameFromNativeName(pIfname)
+        if pUiIfname != nil && len(*pUiIfname) != 0 {
+            *pIfname = *pUiIfname
         }
-        if err != nil {
-            log.Infof("Failed to read from server: %s\n", err)
-            return "", oper_err
-        }
-        buffer.WriteString(string(data[:count]))
     }
-    log.Infof("In exec_raw_vtysh_cmd successfully got data from BGP container thru UDS socket ==> \"%s\"", vtysh_cmd)
-
-    return buffer.String(), err
 }
-
 
 func init () {
+    XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_tbl_key_xfmr", YangToDb_bgp_gbl_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_tbl_key_xfmr", DbToYang_bgp_gbl_tbl_key_xfmr)
     XlateFuncBind("YangToDb_bgp_local_asn_fld_xfmr", YangToDb_bgp_local_asn_fld_xfmr)
@@ -177,8 +108,45 @@ func init () {
 	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
-    XlateFuncBind("rpc_show_bgp", rpc_show_bgp)
 }
+
+var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
+    var tblList, nil_tblList []string
+
+    log.Info("bgp_gbl_tbl_xfmr: ", inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+
+    vrf := pathInfo.Var("name")
+    bgpId := pathInfo.Var("identifier")
+    protoName := pathInfo.Var("name#2")
+
+    if len(pathInfo.Vars) <  3 {
+        err := errors.New("Invalid Key length");
+        log.Info("Invalid Key length", len(pathInfo.Vars))
+        return nil_tblList, err
+    }
+
+    if len(vrf) == 0 {
+        err_str := "VRF name is missing"
+        err := errors.New(err_str); log.Info(err_str)
+        return nil_tblList, err
+    }
+    if !strings.Contains(bgpId,"BGP") {
+        err_str := "BGP ID is missing"
+        err := errors.New(err_str); log.Info(err_str)
+        return nil_tblList, err
+    }
+    if len(protoName) == 0 {
+        err_str := "Protocol Name is Missing"
+        err := errors.New(err_str); log.Info(err_str)
+        return nil_tblList, err
+    }
+
+    tblList = append(tblList, "BGP_GLOBALS")
+
+    return tblList, nil
+}
+
 
 func bgp_global_get_local_asn(d *db.DB , niName string, tblName string) (string, error) {
     var err error
@@ -467,7 +435,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_field_xfmr FieldXfmrYangToDb = func(inParams 
 var DbToYang_bgp_dyn_neigh_listen_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     rmap := make(map[string]interface{})
     var err error
-    
+
     entry_key := inParams.key
     log.Info("DbToYang_bgp_dyn_neigh_listen_key_xfmr: ", entry_key)
 
@@ -511,7 +479,7 @@ var YangToDb_bgp_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
         return "", errors.New("vrf name is missing")
     }
 
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return "", errors.New("BGP ID is missing")
     }
 
@@ -573,7 +541,7 @@ var YangToDb_bgp_dyn_neigh_listen_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
         return "", errors.New("vrf name is missing")
     }
 
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return "", errors.New("BGP ID is missing")
     }
     
@@ -621,7 +589,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
         return afi, errors.New("vrf name is missing")
     }
 
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return afi, errors.New("BGP ID is missing")
     }
     
@@ -733,7 +701,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
         return afi, errors.New("vrf name is missing")
     }
 
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         return afi, errors.New("BGP ID is missing")
     }
     
@@ -825,16 +793,16 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
         } `json:"sonic-bgp-clear:output"`
     }
 
-    log.Info("In rpc_clear_bgp", mapData)
+    log.Info("In rpc_clear_bgp ", mapData)
 
-    input, _ := mapData["sonic-bgp-clear:input"]
+    input := mapData["sonic-bgp-clear:input"]
     mapData = input.(map[string]interface{})
 
     log.Info("In rpc_clear_bgp", mapData)
 
     if value, ok := mapData["clear-all"].(bool) ; ok {
         log.Info("In clearall", value)
-        if value == true {
+        if value {
            clear_all = "* "
         }
     }
@@ -859,13 +827,13 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     }
 
     if value, ok := mapData["all"].(bool) ; ok {
-        if value == true {
+        if value {
            all = "* "
         }
     }
 
     if value, ok := mapData["external"].(bool) ; ok {
-        if value == true {
+        if value {
            external = "external "
         }
     }
@@ -878,6 +846,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     if value, ok := mapData["interface"].(string) ; ok {
         if value != "" {
+            util_bgp_get_native_ifname_from_ui_ifname (&value)
             intf = value + " "
         }
     }
@@ -896,31 +865,31 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     if value, ok := mapData["peer-group"].(string) ; ok {
         if value != "" {
-            peer_group = "peer_group " + value + " "
+            peer_group = "peer-group " + value + " "
         }
     }
 
     if value, ok := mapData["in"].(bool) ; ok {
-        if value == true {
+        if value {
            in = "in "
         }
     }
 
     if value, ok := mapData["out"].(bool) ; ok {
-        if value == true {
+        if value {
             out = "out "
         }
     }
 
     if value, ok := mapData["soft"].(bool) ; ok {
-        if value == true {
+        if value {
             soft = "soft "
         }
     }
 
-    log.Info("In rpc_clear_bgp", clear_all, vrf_name, af_str, all, neigh_address, intf, asn, prefix, peer_group, in, out, soft)
+    log.Info("In rpc_clear_bgp ", clear_all, vrf_name, af_str, all, neigh_address, intf, asn, prefix, peer_group, in, out, soft)
 
-    if is_evpn == false {
+    if !is_evpn {
         cmdbase = "clear ip bgp "
     } else {
         cmdbase = "clear bgp l2vpn "
@@ -984,50 +953,3 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     result.Output.Status = status
     return json.Marshal(&result)
 }
-
-var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-    log.Info("In rpc_show_bgp")
-    var cmd, vrf_name, af_str string
-    var err error
-    var mapData map[string]interface{}
-    err = json.Unmarshal(body, &mapData)
-    if err != nil {
-        log.Info("Failed to unmarshall given input data")
-        return nil,  errors.New("RPC show ip bgp, invalid input")
-    }
-
-    var result struct {
-        Output struct {
-              Status string `json:"response"`
-        } `json:"sonic-bgp-show:output"`
-    }
-
-    log.Info("In rpc_show_bgp, RPC data:", mapData)
-
-    input, _ := mapData["sonic-bgp-show:input"]
-    mapData = input.(map[string]interface{})
-
-    log.Info("In rpc_show_bgp, RPC Input data:", mapData)
-
-
-    if value, ok := mapData["vrf-name"].(string) ; ok {
-        vrf_name = " vrf " + value
-    }
-
-    if value, ok := mapData["address-family"].(string) ; ok {
-	if value == "IPV4_UNICAST" {
-            af_str = " ipv4 "
-        }else if value == "IPV6_UNICAST" {
-            af_str = " ipv6 "
-	}
-    }
-
-    cmd = "show ip bgp" + vrf_name + af_str + " json"
-
-    cmd = strings.TrimSuffix(cmd, " ")
-
-    bgpOutput, err := exec_raw_vtysh_cmd(cmd)
-    result.Output.Status = bgpOutput
-    return json.Marshal(&result)
-}
-

@@ -4,7 +4,7 @@ import (
     "strconv"
     "reflect"
     "github.com/Azure/sonic-mgmt-common/translib/db"
-    //"strings"
+    "strings"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
@@ -13,6 +13,7 @@ import (
 	//"github.com/golang/glog"
     //"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
+
 /*App specific constants */
 const (
     ZTP_STATUS_ADMIN_MODE              = "admin_mode"
@@ -143,7 +144,7 @@ func getConfigSection(sectionName string, dataMap map[string]interface{}, status
 
 func populateStatusYgotTree(statusObj *ocbinds.OpenconfigZtp_Ztp_State, statusCache *ztpStatusCache) {
 
-    if value,present :=statusCache.ztpStatusMap[ZTP_STATUS_ACTIVITY_STRING]; present { 
+    if value,present :=statusCache.ztpStatusMap[ZTP_STATUS_ACTIVITY_STRING]; present {
         act:= value
         statusObj.ActivityString = &act
     }
@@ -184,45 +185,46 @@ func populateStatusYgotTree(statusObj *ocbinds.OpenconfigZtp_Ztp_State, statusCa
 
 /* Populate config section ygot tree */
 
-func populateConfigSectionYgotTree(sectionName string, configObj *ocbinds.OpenconfigZtp_Ztp_State_CONFIG_SECTION_LIST, statusCache *ztpStatusCache) {
+func populateConfigSectionYgotTree(sectionName string, configObj *ocbinds.OpenconfigZtp_Ztp_State_ConfigSection_ConfigSectionList, statusCache *ztpStatusCache) {
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_IGNORE_RESULT]; present {
         ignr := new(bool)
         *ignr,_ = strconv.ParseBool(value)
-        configObj.Ignoreresult = ignr
+        configObj.State.Ignoreresult = ignr
     }
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_RUNTIME]; present {
         rt := value
-        configObj.Runtime = &rt
+        configObj.State.Runtime = &rt
     }
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_EXITCODE]; present {
         var  extc uint64
         extc,_ = strconv.ParseUint(value,10,64)
-        configObj.Exitcode = &extc
+        configObj.State.Exitcode = &extc
     }
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_NAME]; present {
         sec := value
         configObj.Sectionname = &sec
+        configObj.State.Sectionname = &sec
     }
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_STATUS]; present {
         st := value
-        configObj.Status = &st
+        configObj.State.Status = &st
     }
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_TIMESTAMP]; present {
         ts := value
-        configObj.Timestamp = &ts
+        configObj.State.Timestamp = &ts
     }
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_STATUS_ERROR]; present {
         er := value
-        configObj.Error = &er
+        configObj.State.Error = &er
     }
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_DESCRIPTION]; present {
         sec := value
-        configObj.Description = &sec
+        configObj.State.Description = &sec
     }
     if value,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_HALT_ON_FAILURE]; present {
         haltonfail := new(bool)
         *haltonfail,_ = strconv.ParseBool(value)
-        configObj.Haltonfailure = haltonfail
+        configObj.State.Haltonfailure = haltonfail
     }
 }
 
@@ -237,7 +239,7 @@ func getZtpStatusInfofromDb( statusObj *ocbinds.OpenconfigZtp_Ztp_State, statusC
 	log.Info("Error from sonic host service:",err)
     }
     log.Info(" message from ztp host service:",mess)
-    
+
     var empty map[string] interface{}
     err = json.Unmarshal([]byte (mess),&empty)
     if err != nil {
@@ -253,12 +255,13 @@ func getZtpStatusInfofromDb( statusObj *ocbinds.OpenconfigZtp_Ztp_State, statusC
     log.Info("Done populating status object")
     if allCfgList, present := empty[ZTP_CONFIG_SECTION_LIST]; present {
 	    for section, dataMap := range allCfgList.(map[string]interface{}) {
-                oneCfgList, err :=statusObj.NewCONFIG_SECTION_LIST(section)
+                oneCfgList, err :=statusObj.ConfigSection.NewConfigSectionList(section)
 	        if err != nil {
                     log.Info("Creation of subsectionlist subtree failed!")
                     return err
                 }
                 ygot.BuildEmptyTree(oneCfgList)
+                ygot.BuildEmptyTree(oneCfgList.State)
                 getConfigSection(section, dataMap.(map[string]interface{}), statusCache)
 	        log.Info("type of data map", reflect.TypeOf(dataMap))
                 populateConfigSectionYgotTree(section, oneCfgList, statusCache)
@@ -298,10 +301,12 @@ var DbToYang_ztp_status_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
     ztpObj := getZtpRoot(inParams.ygRoot)
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
-    if targetUriPath == "/openconfig-ztp:ztp/state" {
+    if err != nil {
+	    log.Info("Error fetching target URI:",err)
+	    return err
+    }
+    if strings.Contains(targetUriPath, "/openconfig-ztp:ztp/state") {
 	log.Info("TARGET URI PATH ZTP:", targetUriPath)
-        log.Info("TableXfmrFunc - Uri ZTP: ", inParams.uri);
-        log.Info("type of ZTP-ROOT OBJECT:",reflect.TypeOf(ztpObj))
         err =  getZtpStatus(ztpObj)
 	return err
     } else {
@@ -311,10 +316,13 @@ var DbToYang_ztp_status_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
 
 var DbToYang_ztp_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     ztpObj := getZtpRoot(inParams.ygRoot)
-    log.Info("TableXfmrFunc - Uri ZTP: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    if err != nil {
+	    log.Info("Error fetching target URI:",err)
+	    return err
+    }
     log.Info("TARGET URI PATH ZTP:", targetUriPath)
 
     act:= "getcfg"
@@ -322,12 +330,13 @@ var DbToYang_ztp_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
     if err != nil {
 	    log.Info("Error from host service:",err)
     }
-    log.Info("Message from host:",mess)
+
     if ztpObj.Config == nil {
 	ygot.BuildEmptyTree(ztpObj)
     }
     configObj := ztpObj.Config
     ygot.BuildEmptyTree(configObj)
+
     var temp bool
     if mess == "disabled" {
 	    temp = false
@@ -342,25 +351,29 @@ var DbToYang_ztp_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
 
 var YangToDb_ztp_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
     var err error
+    var act string = "enable"
     log.Info("TableXfmrFunc - Uri ZTP: ", inParams.uri);
     if (inParams.oper == DELETE) {
-        _, err = ztpAction("enable")
+        _, err = ztpAction(act)
         return nil,err;
     }
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
     log.Info("TARGET URI PATH ZTP:", targetUriPath)
-    var act string = "disable"
+
     ztpObj := getZtpRoot(inParams.ygRoot)
+
     if ztpObj.Config.AdminMode == nil {
 		log.Info("Invalid Input")
 		return nil,err
     }
+
     b := * ztpObj.Config.AdminMode
-    if (b) {
-        act = "enable"
+    if (!b) {
+        act = "disable"
     }
+
     _, err = ztpAction(act)
     return nil,err;
 }

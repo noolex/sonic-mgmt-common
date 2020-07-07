@@ -41,6 +41,14 @@ module openconfig-mclag-annot {
         }
     }
 
+    deviation /oc-mclag:mclag/oc-mclag:mclag-gateway-macs/oc-mclag:mclag-gateway-mac {
+        deviate add {
+            sonic-ext:table-name "MCLAG_GW_MAC";
+        }
+    }
+
+
+
     deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:config/oc-mclag:domain-id {
         deviate add {
             sonic-ext:field-name "domain_id";
@@ -78,6 +86,17 @@ module openconfig-mclag-annot {
         }
     }
 
+    deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:config/oc-mclag:delay-restore {
+        deviate add {
+            sonic-ext:field-name "delay_restore";
+        }
+    }
+
+    deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:config/oc-mclag:mclag-system-mac {
+        deviate add {
+            sonic-ext:field-name "mclag_system_mac";
+        }
+    }
 
     deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:state/oc-mclag:domain-id {
         deviate add {
@@ -116,6 +135,12 @@ module openconfig-mclag-annot {
         }
     }
 
+    deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:state/oc-mclag:delay-restore {
+        deviate add {
+            sonic-ext:field-name "delay_restore";
+        }
+    }
+
     deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:state/oc-mclag:oper-status {
         deviate add {
             sonic-ext:field-transformer "mclag_domain_oper_status_fld_xfmr";
@@ -133,7 +158,12 @@ module openconfig-mclag-annot {
             sonic-ext:field-transformer "mclag_domain_system_mac_fld_xfmr";
         }
     }
-
+    
+    deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:state/oc-mclag:mclag-system-mac {
+        deviate add {
+            sonic-ext:field-transformer "mclag_domain_mclag_system_mac";
+        }
+    }
 
     deviation /oc-mclag:mclag/oc-mclag:vlan-interfaces/oc-mclag:vlan-interface/oc-mclag:config/oc-mclag:name {
         deviate add {
@@ -145,6 +175,7 @@ module openconfig-mclag-annot {
     deviation /oc-mclag:mclag/oc-mclag:vlan-interfaces/oc-mclag:vlan-interface/oc-mclag:config/oc-mclag:unique-ip-enable {
         deviate add {
             sonic-ext:field-name "unique_ip";
+            sonic-ext:field-transformer "mclag_unique_ip_enable_fld_xfmr";
         }
     }
 
@@ -158,6 +189,15 @@ module openconfig-mclag-annot {
     deviation /oc-mclag:mclag/oc-mclag:vlan-interfaces/oc-mclag:vlan-interface/oc-mclag:state/oc-mclag:unique-ip-enable {
         deviate add {
             sonic-ext:field-name "unique_ip";
+            sonic-ext:field-transformer "mclag_unique_ip_enable_fld_xfmr";
         }
     }
+
+    deviation /oc-mclag:mclag/oc-mclag:mclag-gateway-macs/oc-mclag:mclag-gateway-mac/oc-mclag:config/oc-mclag:gateway-mac {
+        deviate add {
+            sonic-ext:field-name "gw_mac";
+            sonic-ext:field-transformer "mclag_gw_mac_fld_xfmr";
+        }
+    }
+
 }

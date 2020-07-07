@@ -130,7 +130,7 @@ var YangToDb_bgp_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
         log.Info("VRF Name is Missing")
         return vrfName, err
     }
-    if strings.Contains(bgpId,"BGP") == false {
+    if !strings.Contains(bgpId,"BGP") {
         err = errors.New("BGP ID is missing");
         log.Info("BGP ID is missing")
         return bgpId, err
@@ -146,12 +146,7 @@ var YangToDb_bgp_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
         return pGrpName, err
     }
 
-    log.Info("URI VRF", vrfName)
-    log.Info("URI Peer Group", pGrpName)
-
-    var pGrpKey string
-
-    pGrpKey = vrfName + "|" + pGrpName
+    var pGrpKey string = vrfName + "|" + pGrpName
 
     log.Info("YangToDb_bgp_pgrp_tbl_key_xfmr: pGrpKey:", pGrpKey)
     return pGrpKey, nil
@@ -208,7 +203,6 @@ func validate_pgrp_state_get (inParams XfmrParams, dbg_log string) (*ocbinds.Ope
 
     pgrp_obj, ok := pgrps_obj.PeerGroup[pgrp_key.pgrp]
     if !ok {
-        log.Info("%s Peer group object missing, add new", dbg_log)
         pgrp_obj,_ = pgrps_obj.NewPeerGroup(pgrp_key.pgrp)
     }
     ygot.BuildEmptyTree(pgrp_obj)
@@ -219,6 +213,7 @@ func fill_pgrp_state_info (pgrp_key *_xfmr_bgp_pgrp_state_key, frrPgrpDataValue 
                               pgrp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup) error {
     var err error
     var pMember ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_MembersState
+    var member_state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_MembersState_Member_State
     pgrp_obj.MembersState = &pMember
 
     frrPgrpDataJson := frrPgrpDataValue.(map[string]interface{})
@@ -229,20 +224,25 @@ func fill_pgrp_state_info (pgrp_key *_xfmr_bgp_pgrp_state_key, frrPgrpDataValue 
     }
 
     if peerGroupMembers,  ok := frrPgrpDataJson["peerGroupMembers"].(map[string]interface{}) ; ok {
-        for pgMem,_ := range peerGroupMembers {
+        for pgMem := range peerGroupMembers {
             member, ok := pMember.Member[pgMem]
             if !ok {
                 member, _ = pMember.NewMember(pgMem)
             }
+            if member.State == nil {
+                member.State = &member_state
+            }
+            ygot.BuildEmptyTree(pgrp_obj)
+            member.State.Neighbor = &pgMem
             temp, ok := peerGroupMembers[pgMem].(map[string]interface{})
             if  ok {
                 if value, ok := temp["peerStatus"].(string); ok {
-                    member.State = &value
-                    log.Info("peer group member status ", member.State)
+                    member.State.State = &value
+                    log.Info("peer group member status ", member.State.State)
                 }
                 if value, ok := temp["isDynamic"].(bool); ok {
-                    member.Dynamic = &value
-                    log.Info("peer group member Dynamic ", member.Dynamic)
+                    member.State.Dynamic = &value
+                    log.Info("peer group member Dynamic ", member.State.Dynamic)
                 }
             }
         }
@@ -306,7 +306,7 @@ var YangToDb_bgp_pgrp_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
     log.Infof("YangToDb_bgp_pgrp_auth_password_xfmr VRF:%s peer group:%s URI:%s", niName, pgrp, targetUriPath)
 
     pgrps_obj := bgp_obj.PeerGroups
-    if pgrps_obj == nil {
+    if pgrps_obj == nil || (pgrps_obj.PeerGroup == nil) {
         log.Errorf("Error: PeerGroups container missing")
         return res_map, err
     }
@@ -316,14 +316,16 @@ var YangToDb_bgp_pgrp_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
         log.Infof("%s Peer group object missing, add new", pgrp)
         return res_map, err
     }
+    if (inParams.oper == DELETE) && pgrp_obj.AuthPassword == nil {
+        return res_map, nil
+    }
     entry_key := niName + "|" + pgrp 
     if pgrp_obj.AuthPassword.Config != nil && pgrp_obj.AuthPassword.Config.Password != nil && (inParams.oper != DELETE){
         auth_password := pgrp_obj.AuthPassword.Config.Password
         encrypted := pgrp_obj.AuthPassword.Config.Encrypted
-        log.Infof("PeerGroup password:%d encrypted:%s", *auth_password, *encrypted)
 
         encrypted_password := *auth_password
-        if encrypted == nil || (encrypted != nil && *encrypted == false) {
+        if encrypted == nil || (encrypted != nil && !*encrypted) {
             cmd := "show bgp encrypt " + *auth_password + " json"
             bgpPgrpPasswordJson, cmd_err := exec_vtysh_cmd (cmd)
             if (cmd_err != nil) {
@@ -369,7 +371,6 @@ var DbToYang_bgp_pgrp_auth_password_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
     pgrp_obj, ok := pgrps_obj.PeerGroup[pgrp]
     if !ok {
-        log.Infof("%s PeerGroup object missing, add new", pgrp)
         pgrp_obj,_ = pgrps_obj.NewPeerGroup(pgrp)
     }
     ygot.BuildEmptyTree(pgrp_obj)
@@ -381,6 +382,23 @@ var DbToYang_bgp_pgrp_auth_password_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var entryValue db.Value
     if entryValue, err = inParams.dbs[db.ConfigDB].GetEntry(pgrpCfgTblTs, pgrpEntryKey) ; err != nil {
         return err
+    }
+    if pgrp_obj.AuthPassword == nil {
+        var auth ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_AuthPassword 
+        pgrp_obj.AuthPassword = &auth
+        ygot.BuildEmptyTree(pgrp_obj.AuthPassword)
+    }
+
+    if pgrp_obj.AuthPassword.Config == nil {
+        var auth_config ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_AuthPassword_Config
+        pgrp_obj.AuthPassword.Config = &auth_config
+        ygot.BuildEmptyTree(pgrp_obj.AuthPassword.Config)
+    }
+
+    if pgrp_obj.AuthPassword.State == nil {
+        var auth_state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_PeerGroups_PeerGroup_AuthPassword_State
+        pgrp_obj.AuthPassword.State = &auth_state
+        ygot.BuildEmptyTree(pgrp_obj.AuthPassword.State)
     }
 
     if value, ok := entryValue.Field["auth_password"] ; ok {

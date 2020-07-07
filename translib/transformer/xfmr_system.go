@@ -7,6 +7,8 @@ import (
     "syscall"
     "strconv"
     "fmt"
+    "strings"
+    "errors"
     log "github.com/golang/glog"
     ygot "github.com/openconfig/ygot/ygot"
 )
@@ -28,7 +30,12 @@ func init () {
     XlateFuncBind("YangToDb_sys_aaa_auth_xfmr", YangToDb_sys_aaa_auth_xfmr)
     XlateFuncBind("YangToDb_sys_config_key_xfmr", YangToDb_sys_config_key_xfmr)
     XlateFuncBind("DbToYang_sys_config_key_xfmr", DbToYang_sys_config_key_xfmr)
-
+    XlateFuncBind("YangToDb_global_dns_key_xfmr", YangToDb_global_dns_key_xfmr)
+    XlateFuncBind("DbToYang_global_dns_key_xfmr", DbToYang_global_dns_key_xfmr)
+    XlateFuncBind("YangToDb_server_dns_key_xfmr", YangToDb_server_dns_key_xfmr)
+    XlateFuncBind("DbToYang_server_dns_key_xfmr", DbToYang_server_dns_key_xfmr)
+    XlateFuncBind("YangToDb_server_dns_field_xfmr", YangToDb_server_dns_field_xfmr)
+    XlateFuncBind("DbToYang_server_dns_field_xfmr", DbToYang_server_dns_field_xfmr)
 }
 
 type SysMem struct {
@@ -253,7 +260,7 @@ func getCpusFromDb (d *db.DB) ([]Cpu, error) {
     }
 
     cpus = make([]Cpu, len(keys))
-    for idx, _ := range keys {
+    for idx := range keys {
         key := "CPU" + strconv.Itoa(idx)
         cpuEntry, err := cpuTbl.GetEntry(db.Key{Comp: []string{key}})
         if err != nil {
@@ -352,7 +359,6 @@ func getSystemProcesses (procs *map[string]Proc, sysprocs *ocbinds.OpenconfigSys
             getSystemProcess(&proc, sysproc, uint64 (idx))
         }
     }
-    return
 }
 
 func getProcsFromDb (d *db.DB) (map[string]Proc, error) {
@@ -468,3 +474,76 @@ var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
 	return nil,nil
 }
 
+var YangToDb_global_dns_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+    if log.V(3) {
+        log.Info( "YangToDb_global_dns_key_xfmr: root: ", inParams.ygRoot,
+            ", uri: ", inParams.uri)
+    }
+
+    return "global", nil
+}
+
+var DbToYang_global_dns_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+    var err error
+
+    log.Info("DbToYang_global_dns_key_xfmr: ", inParams.key)
+
+    return  res_map, err
+}
+
+var YangToDb_server_dns_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_server_dns_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_server_dns_field_xfmr : ", data, "inParams : ", inParams)
+
+    entry_key := inParams.key
+    key := strings.Split(entry_key, "|")
+    address := key[0]
+    result["address"] = address
+
+    return result, err
+}
+
+
+var YangToDb_server_dns_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+    var err error
+    var address string
+
+    log.Info("YangToDb_server_dns_key_xfmr ***", inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+
+    address =  pathInfo.Var("address")
+
+    if len(pathInfo.Vars) <  1 {
+        err = errors.New("Invalid Key length");
+        log.Info("Invalid Key length", len(pathInfo.Vars))
+        return address, err
+    }
+
+    return address, nil
+}
+
+
+var DbToYang_server_dns_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    rmap := make(map[string]interface{})
+    entry_key := inParams.key
+    log.Info("DbToYang_server_dns_key_xfmr: ", entry_key)
+
+    key := strings.Split(entry_key, "|")
+    address := key[0]
+
+    rmap["address"] = address
+
+    return rmap, nil
+}

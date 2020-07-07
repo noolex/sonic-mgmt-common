@@ -2,6 +2,9 @@ module sonic-config-mgmt {
   namespace "http://github.com/Azure/sonic-config-mgmt";
   prefix scm;
 
+  import sonic-port {
+    prefix prt;
+  }
 
   organization
     "SONiC";
@@ -27,6 +30,33 @@ module sonic-config-mgmt {
             pattern "running-configuration";
             pattern "startup-configuration";
        }
+  }
+
+  container sonic-default-config-profiles {
+    description "Switch default configuration profiles";
+
+    container DEFAULT_CONFIG_PROFILES {
+      description "STATE_DB table which provides the list of supported default configuration profiles";
+      list DEFAULT_CONFIG_PROFILES_LIST {
+         key "profile-name";
+         leaf profile-name {
+             description
+               "Name of factory default configuration profile name.";
+             type string;
+         }
+         leaf description {
+             description
+               "A textual description of the default configuration profile.";
+             type string;
+        }
+         leaf active {
+             description
+               "Indicates if the default configuration profile is being used as the
+               switch factory default configuration profile.";
+             type boolean;
+         }
+      }
+    }
   }
 
   rpc copy {
@@ -87,4 +117,63 @@ module sonic-config-mgmt {
     }
   }
 
+  rpc factory-default-profile {
+    description
+      "This RPC is used to modify the factory default configuration profile.
+       The user can specify a supported default configuration profile name as input
+       and the RPC takes action to clear the existing switch configuration and creating a
+       default configuration as per the input profile name. This operation can result
+       in the restart of the REST server, thus the return status may not be available. When
+       an error happens, the output parameter status returns a non-zero value and the
+       the output parameter status-detail provides additional information about the
+       error.";
+    input {
+      leaf profile-name {
+        type string;
+        description
+          "Name of factory default configuration profile name.";
+      }
+    }
+    output {
+      leaf status {
+        type int32;
+        description
+          "The status code of the operation execution request. A non-zero value
+           indicates a failure.";
+      }
+      leaf status-detail {
+        type string;
+       description
+          "The detailed status of the operation execution request.";
+      }
+    }
+  }
+
+  rpc default-port-config {
+    description "This RPC is used to restore a selected port configuration to its
+      factory default configuration state. When an error happens, the output parameter
+      status returns a non-zero value and the the output parameter status-detail provides
+      additional information about the error.";
+    input {
+      leaf ifname {
+        type leafref {
+          path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+        }
+      }
+    }
+
+    output {
+      leaf status {
+        type int32;
+        description
+          "The status code of the operation execution request. A non-zero value
+          indicates a failure.";
+      }
+      leaf status-detail {
+        type string;
+        description
+          "The detailed status of the operation execution request.";
+      }
+    }
+  }
 }

@@ -24,6 +24,7 @@ import (
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "os/exec"
 
     log "github.com/golang/glog"
@@ -71,7 +72,7 @@ func getLacpData(ifKey string) (map[string]interface{}, error) {
     return TeamdJson, nil
 }
 
-func fillLacpState(TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State) error {
+func fillLacpState(inParams XfmrParams, ifKey string, TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State) error {
     var runner_map map[string]interface{}
     var status bool
     if runner_map, status = TeamdJson["runner"].(map[string]interface{}); !status {
@@ -84,9 +85,10 @@ func fillLacpState(TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLa
     sys_prio := uint16(prio)
     state.SystemPriority = &sys_prio
 
-    fast_rate := runner_map["fast_rate"].(bool)
+    var fast_rate bool = false
+    _get_fast_rate_config(inParams, ifKey, &fast_rate)
     if fast_rate {
-    state.Interval = ocbinds.OpenconfigLacp_LacpPeriodType_FAST
+        state.Interval = ocbinds.OpenconfigLacp_LacpPeriodType_FAST
     } else {
         state.Interval = ocbinds.OpenconfigLacp_LacpPeriodType_SLOW
     }
@@ -122,6 +124,26 @@ func _getSelectedStatus(inParams XfmrParams, lag string, member string, selected
     if val, ok := dbEntry.Field["status"]; ok {
         if val == "enabled" {
             *selected = true
+        }
+    }
+    return nil
+}
+
+func _get_fast_rate_config(inParams XfmrParams, lag_name string, fast_rate *bool) error {
+    poTblTs := &db.TableSpec{Name: "PORTCHANNEL"}
+    cfgDb := inParams.dbs[db.ConfigDB]
+    dbEntry, err := cfgDb.GetEntry(poTblTs, db.Key{Comp: []string{lag_name}})
+
+    if err != nil {
+        errStr := "Failed to Get PortChannel Config details from DB"
+        log.Info(errStr)
+        return errors.New(errStr)
+    }
+
+    *fast_rate = false  // Default
+    if val, ok := dbEntry.Field["fast_rate"]; ok {
+        if val == "true" {
+            *fast_rate = true
         }
     }
     return nil
@@ -191,8 +213,10 @@ func fillLacpMembers(inParams XfmrParams, lag string, TeamdJson map[string]inter
 
     if ports_map,ok := TeamdJson["ports"].(map[string]interface{}); ok {
         for ifKey := range ports_map {
-            if lacpMemberObj, ok = members.Member[ifKey]; !ok {
-                lacpMemberObj, err = members.NewMember(ifKey)
+            ifName := utils.GetUINameFromNativeName(&ifKey)
+
+            if lacpMemberObj, ok = members.Member[*ifName]; !ok {
+                lacpMemberObj, err = members.NewMember(*ifName)
                 if err != nil {
                     log.Error("Creation of portchannel member subtree failed")
                     return err
@@ -214,7 +238,7 @@ func populateLacpData(inParams XfmrParams, ifKey string, state *ocbinds.Openconf
         return err
     }
 
-    e := fillLacpState(TeamdJson, state)
+    e := fillLacpState(inParams, ifKey, TeamdJson, state)
     if e != nil {
         log.Error("Failure in filling LACP state data ")
         return e
@@ -292,13 +316,15 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
 
         members = lacpintfObj.Members
         if members != nil && ifMemKey != "" {
+            ifName := utils.GetNativeNameFromUIName(&ifMemKey)
+
             if member, ok = members.Member[ifMemKey]; !ok {
                 errStr := "PortChannel Member Instance doesn't exist"
                 log.Info(errStr)
                 return errors.New(errStr)
             }
             ygot.BuildEmptyTree(member)
-            return populateLacpMember(inParams, ifKey, ifMemKey, member)
+            return populateLacpMember(inParams, ifKey, *ifName, member)
         }
     } else if isSubtreeRequest(targetUriPath, "/openconfig-lacp:lacp/interfaces/interface/members") {
         if lacpintfObj, ok = lacpIntfsObj.Interfaces.Interface[ifKey]; !ok {

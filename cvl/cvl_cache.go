@@ -21,6 +21,7 @@ package cvl
 import (
 	"encoding/json"
 	"github.com/go-redis/redis/v7"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
 	"time"
@@ -44,17 +45,17 @@ func (c *CVL) addTableEntryToCache(tableName string, redisKey string) {
 }
 
 //Add the data which are referring this key
-func (c *CVL) updateDeleteDataToCache(tableName string, redisKey string) {
-	if _, existing := c.tmpDbCache[tableName]; existing == false {
+/*func (c *CVL) updateDeleteDataToCache(tableName string, redisKey string) {
+	if _, existing := c.tmpDbCache[tableName]; !existing {
 		return
 	} else {
 		tblMap := c.tmpDbCache[tableName]
-		if _, existing := tblMap.(map[string]interface{})[redisKey]; existing == true {
+		if _, existing := tblMap.(map[string]interface{})[redisKey]; existing {
 			delete(tblMap.(map[string]interface{}), redisKey)
 			c.tmpDbCache[tableName] = tblMap
 		}
 	}
-}
+}*/
 
 // Fetch dependent data from validated data cache,
 // Returns the data and flag to indicate that if requested data 
@@ -70,14 +71,12 @@ func (c *CVL) fetchDataFromRequestCache(tableName string, key string) (d map[str
 	}()
 
 	cfgDataArr := c.requestCache[tableName][key]
-	if (cfgDataArr != nil) {
-		for _, cfgReqData := range cfgDataArr {
-			//Delete request doesn't have depedent data
-			if (cfgReqData.reqData.VOp == OP_CREATE) {
-				return cfgReqData.reqData.Data, false
-			} else	if (cfgReqData.reqData.VOp == OP_UPDATE) {
-				return cfgReqData.reqData.Data, true
-			}
+	for _, cfgReqData := range cfgDataArr {
+		//Delete request doesn't have depedent data
+		if (cfgReqData.reqData.VOp == OP_CREATE) {
+			return cfgReqData.reqData.Data, false
+		} else	if (cfgReqData.reqData.VOp == OP_UPDATE) {
+			return cfgReqData.reqData.Data, true
 		}
 	}
 
@@ -132,7 +131,7 @@ func (c *CVL) fetchTableDataToTmpCache(tableName string, dbKeys map[string]inter
 				entryFetched = entryFetched + 1
 				//Entry found in validated cache, so skip fetching from Redis
 				//if merging is not required with Redis DB
-				if (mergeNeeded == false) {
+				if !mergeNeeded {
 					fieldMap := c.checkFieldMap(&entry)
 					c.tmpDbCache[tableName].(map[string]interface{})[dbKey] = fieldMap
 					continue
@@ -222,7 +221,7 @@ func (c *CVL) fetchDataToTmpCache() *yparser.YParserNode {
 			break
 		}
 
-		if (Tracing == true) {
+		if Tracing {
 			jsonDataBytes, _ := json.Marshal(c.tmpDbCache)
 			jsonData := string(jsonDataBytes)
 			TRACE_LOG(TRACE_CACHE, "Top Node=%v\n", jsonData)
@@ -280,7 +279,7 @@ func (c *CVL) fetchDataToTmpCache() *yparser.YParserNode {
 		}
 	} // until all dependent data is fetched
 
-	if root != nil && Tracing == true {
+	if root != nil && Tracing {
 		dumpStr := c.yp.NodeDump(root)
 		TRACE_LOG(TRACE_CACHE, "Dependent Data = %v\n", dumpStr)
 	}
@@ -291,7 +290,7 @@ func (c *CVL) fetchDataToTmpCache() *yparser.YParserNode {
 
 
 func (c *CVL) clearTmpDbCache() {
-	for key, _ := range c.tmpDbCache {
+	for key := range c.tmpDbCache {
 		delete(c.tmpDbCache, key)
 	}
 }

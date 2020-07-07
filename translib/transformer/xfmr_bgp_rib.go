@@ -5,13 +5,17 @@ import (
     "fmt"
     "strconv"
     "strings"
+    "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
 )
 
 func init () {
     XlateFuncBind("DbToYang_bgp_routes_get_xfmr", DbToYang_bgp_routes_get_xfmr)
+    XlateFuncBind("rpc_show_bgp", rpc_show_bgp)
+    XlateFuncBind("rpc_show_bgp_stats", rpc_show_bgp_stats)
 }
 
 type _xfmr_bgp_rib_key struct {
@@ -230,14 +234,14 @@ func hdl_get_bgp_ipv4_local_rib (ribAfiSafi_obj *ocbinds.OpenconfigNetworkInstan
     routes, ok := bgpRibOutputJson["routes"].(map[string]interface{})
     if !ok {return err}
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         paths, ok := prefixData["paths"].([]interface {}) ; if !ok {continue}
         for _, _pathData := range paths {
             pathData := _pathData.(map[string]interface {})
             if value, ok := pathData["pathId"] ; ok {
                 pathId := uint32(value.(float64))
-                if ok := fill_ipv4_spec_pfx_path_loc_rib_data (ipv4LocRibRoutes_obj, rib_key, prefix, pathId, pathData) ; !ok {continue}
+                fill_ipv4_spec_pfx_path_loc_rib_data (ipv4LocRibRoutes_obj, rib_key, prefix, pathId, pathData)
             }
         }
     }
@@ -409,14 +413,14 @@ func hdl_get_bgp_ipv6_local_rib (ribAfiSafi_obj *ocbinds.OpenconfigNetworkInstan
     routes, ok := bgpRibOutputJson["routes"].(map[string]interface{})
     if !ok {return err}
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         paths, ok := prefixData["paths"].([]interface {}) ; if !ok {continue}
         for _, _pathData := range paths {
             pathData := _pathData.(map[string]interface {})
             if value, ok := pathData["pathId"] ; ok {
                 pathId := uint32(value.(float64))
-                if ok := fill_ipv6_spec_pfx_path_loc_rib_data (ipv6LocRibRoutes_obj, rib_key, prefix, pathId, pathData) ; !ok {continue}
+                fill_ipv6_spec_pfx_path_loc_rib_data (ipv6LocRibRoutes_obj, rib_key, prefix, pathId, pathData)
             }
         }
     }
@@ -448,7 +452,6 @@ func hdl_get_bgp_local_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance_Networ
         return nil
     }
 
-    log.Infof("==> Local-RIB data filling to YGOT started!")
     if outError, ok := bgpRibOutputJson["warning"] ; ok {
         log.Errorf ("%s failed !!, Error: %s", *dbg_log, outError)
         return oper_err
@@ -478,7 +481,6 @@ func hdl_get_bgp_local_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance_Networ
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
         err = hdl_get_bgp_ipv6_local_rib (ribAfiSafi_obj, rib_key, bgpRibOutputJson, dbg_log)
     }
-    log.Infof("==> Local-RIB data filling to YGOT completed!")
 
     return err
 }
@@ -794,8 +796,7 @@ func hdl_get_bgp_ipv4_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
 
     _prefix, ok := bgpRibOutputJson["prefix"]
 
-    var prefix string
-    prefix = _prefix.(string)
+    var prefix string = _prefix.(string)
 
     log.Info("Received Local-RIB Prefix -     ", prefix)
     if (!ok || prefix != rib_key.prefix) {
@@ -835,7 +836,7 @@ func hdl_get_bgp_ipv4_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
         pathData := _pathData.(map[string]interface {})
         if value, ok := pathData["pathId"] ; ok {
             pathId := uint32(value.(float64))
-            if ok := fill_ipv4_spec_pfx_path_loc_rib_prefix_data (ipv4LocRibPaths_obj, prefix, pathId, pathData) ; !ok {continue}
+            fill_ipv4_spec_pfx_path_loc_rib_prefix_data (ipv4LocRibPaths_obj, prefix, pathId, pathData)
         }
     }
 
@@ -870,8 +871,7 @@ func hdl_get_bgp_ipv6_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
 
     _prefix, ok := bgpRibOutputJson["prefix"]
 
-    var prefix string
-    prefix = _prefix.(string)
+    var prefix string = _prefix.(string)
 
     log.Info("Received Local-RIB Prefix -     ", prefix)
     if (!ok || prefix != rib_key.prefix) {
@@ -911,7 +911,7 @@ func hdl_get_bgp_ipv6_local_rib_prefix (ribAfiSafi_obj *ocbinds.OpenconfigNetwor
         pathData := _pathData.(map[string]interface {})
         if value, ok := pathData["pathId"] ; ok {
             pathId := uint32(value.(float64))
-            if ok := fill_ipv6_spec_pfx_path_loc_rib_prefix_data (ipv6LocRibPaths_obj, prefix, pathId, pathData) ; !ok {continue}
+            fill_ipv6_spec_pfx_path_loc_rib_prefix_data (ipv6LocRibPaths_obj, prefix, pathId, pathData)
         }
     }
 
@@ -924,7 +924,6 @@ func hdl_get_bgp_local_rib_prefix (bgpRib_obj *ocbinds.OpenconfigNetworkInstance
     oper_err := errors.New("Opertational error")
     var ok bool
 
-    log.Infof("%s ==> Local-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
     cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + rib_key.prefix + " " + "json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
@@ -1103,7 +1102,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_pre (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIns
         ipv4InPreRoutes_obj = ipv4NbrAdjRibInPre_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         value, ok := prefixData["pathId"] ; if !ok {continue}
         pathId := uint32(value.(float64))
@@ -1121,7 +1120,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_pre (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIns
             ipv4InPreRoute_obj, err = ipv4InPreRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv4InPreRoute_obj)
-        if ok := fill_ipv4_spec_pfx_nbr_in_pre_rib_data (ipv4InPreRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        fill_ipv4_spec_pfx_nbr_in_pre_rib_data (ipv4InPreRoute_obj, prefix, pathId, prefixData)
     }
 
     return err
@@ -1172,7 +1171,7 @@ func fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj *ocbinds.
         routeAttrSets.Weight = &_weight
     }
 
-    if value, ok := pathData["med"] ; ok {
+    if value, ok := pathData["metric"] ; ok {
         _med := uint32(value.(float64))
         routeAttrSets.Med = &_med
     }
@@ -1258,7 +1257,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_pre (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIns
         ipv6InPreRoutes_obj = ipv6NbrAdjRibInPre_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         value, ok := prefixData["pathId"] ; if !ok {continue}
         pathId := uint32(value.(float64))
@@ -1276,7 +1275,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_pre (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIns
             ipv6InPreRoute_obj, err = ipv6InPreRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv6InPreRoute_obj)
-        if ok := fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj, prefix, pathId, prefixData)
     }
     return err
 }
@@ -1419,7 +1418,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIn
         ipv4InPostRoutes_obj = ipv4NbrAdjRibInPost_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
 
         paths, ok := prefixData["paths"].([]interface {})
@@ -1446,7 +1445,7 @@ func fill_bgp_ipv4_nbr_adj_rib_in_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkIn
                 ipv4InPostRoute_obj, err = ipv4InPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
             }
             ygot.BuildEmptyTree(ipv4InPostRoute_obj)
-            if ok := fill_ipv4_spec_pfx_nbr_in_post_rib_data (ipv4InPostRoute_obj, prefix, pathId, pathData) ; !ok {continue}
+            fill_ipv4_spec_pfx_nbr_in_post_rib_data (ipv4InPostRoute_obj, prefix, pathId, pathData)
         }
     }
 
@@ -1596,7 +1595,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIn
         ipv6InPostRoutes_obj = ipv6NbrAdjRibInPost_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
 
         paths, ok := prefixData["paths"].([]interface {})
@@ -1623,7 +1622,7 @@ func fill_bgp_ipv6_nbr_adj_rib_in_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkIn
                 ipv6InPostRoute_obj, err = ipv6InPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
             }
             ygot.BuildEmptyTree(ipv6InPostRoute_obj)
-            if ok := fill_ipv6_spec_pfx_nbr_in_post_rib_data (ipv6InPostRoute_obj, prefix, pathId, pathData) ; !ok {continue}
+            fill_ipv6_spec_pfx_nbr_in_post_rib_data (ipv6InPostRoute_obj, prefix, pathId, pathData)
         }
     }
     return err
@@ -1660,7 +1659,7 @@ func fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj *ocbinds.
         ipv4OutPostRouteAttrSets.Weight = &_weight
     }
 
-    if value, ok := prefixData["med"] ; ok {
+    if value, ok := prefixData["metric"] ; ok {
         _med := uint32(value.(float64))
         ipv4OutPostRouteAttrSets.Med = &_med
     }
@@ -1746,7 +1745,7 @@ func fill_bgp_ipv4_nbr_adj_rib_out_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkI
         ipv4OutPostRoutes_obj = ipv4NbrAdjRibOutPost_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         value, ok := prefixData["pathId"] ; if !ok {continue}
         pathId := uint32(value.(float64))
@@ -1764,7 +1763,7 @@ func fill_bgp_ipv4_nbr_adj_rib_out_post (ipv4Nbr_obj *ocbinds.OpenconfigNetworkI
             ipv4OutPostRoute_obj, err = ipv4OutPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv4OutPostRoute_obj)
-        if ok := fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj, prefix, pathId, prefixData)
     }
 
     return err
@@ -1887,7 +1886,7 @@ func fill_bgp_ipv6_nbr_adj_rib_out_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkI
         ipv6OutPostRoutes_obj = ipv6NbrAdjRibOutPost_obj.Routes
     }
 
-    for prefix, _ := range routes {
+    for prefix := range routes {
         prefixData, ok := routes[prefix].(map[string]interface{}) ; if !ok {continue}
         value, ok := prefixData["pathId"] ; if !ok {continue}
         pathId := uint32(value.(float64))
@@ -1905,7 +1904,7 @@ func fill_bgp_ipv6_nbr_adj_rib_out_post (ipv6Nbr_obj *ocbinds.OpenconfigNetworkI
             ipv6OutPostRoute_obj, err = ipv6OutPostRoutes_obj.NewRoute (prefix, pathId) ; if err != nil {continue}
         }
         ygot.BuildEmptyTree(ipv6OutPostRoute_obj)
-        if ok := fill_ipv6_spec_pfx_nbr_out_post_rib_data (ipv6OutPostRoute_obj, prefix, pathId, prefixData) ; !ok {continue}
+        fill_ipv6_spec_pfx_nbr_out_post_rib_data (ipv6OutPostRoute_obj, prefix, pathId, prefixData)
     }
 
     return err
@@ -1918,9 +1917,11 @@ func hdl_get_bgp_nbrs_adj_rib_in_pre (bgpRib_obj *ocbinds.OpenconfigNetworkInsta
     var ok bool
     log.Infof("%s ==> NBRS-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "received-routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "received-routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "received-routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "received-routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)
@@ -1938,8 +1939,6 @@ func hdl_get_bgp_nbrs_adj_rib_in_pre (bgpRib_obj *ocbinds.OpenconfigNetworkInsta
         log.Errorf ("%s failed !!, %s", outError)
         return oper_err
     }
-
-    log.Infof("NBRS-RIB ==> Got FRR response ")
 
     if vrfName, ok := bgpRibOutputJson["vrfName"] ; (!ok || vrfName != rib_key.niName) {
         log.Errorf ("%s failed !! GET-req niName:%s not same as JSON-VRFname:%s", *dbg_log, rib_key.niName, vrfName)
@@ -1986,9 +1985,11 @@ func hdl_get_bgp_nbrs_adj_rib_in_post (bgpRib_obj *ocbinds.OpenconfigNetworkInst
     var ok bool
     log.Infof("%s ==> NBRS-RIB invoke with keys {%s} afiSafiType:%d", *dbg_log, print_rib_keys(rib_key), afiSafiType)
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)
@@ -2006,8 +2007,6 @@ func hdl_get_bgp_nbrs_adj_rib_in_post (bgpRib_obj *ocbinds.OpenconfigNetworkInst
         log.Errorf ("%s failed !!, %s", outError)
         return oper_err
     }
-
-    log.Infof("NBRS-RIB ==> Got FRR response ")
 
     if vrfName, ok := bgpRibOutputJson["vrfName"] ; (!ok || vrfName != rib_key.niName) {
         log.Errorf ("%s failed !! GET-req niName:%s not same as JSON-VRFname:%s", *dbg_log, rib_key.niName, vrfName)
@@ -2059,9 +2058,11 @@ func hdl_get_bgp_nbrs_adj_rib_out_post (bgpRib_obj *ocbinds.OpenconfigNetworkIns
         return oper_err
     }
 
-    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "advertised-routes verbose json"
+    nativeNbrAddr := rib_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbrAddr)
+    cmd := "show ip bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "advertised-routes verbose json"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + rib_key.nbrAddr + " " + "advertised-routes verbose json"
+        cmd = "show bgp vrf" + " " + rib_key.niName + " " + "neighbors" + " " + nativeNbrAddr + " " + "advertised-routes verbose json"
     }
 
     bgpRibOutputJson, cmd_err := exec_vtysh_cmd (cmd)
@@ -2075,7 +2076,6 @@ func hdl_get_bgp_nbrs_adj_rib_out_post (bgpRib_obj *ocbinds.OpenconfigNetworkIns
         return nil
     }
 
-    log.Infof("NBRS-RIB ==> Got FRR response ")
     if outError, ok := bgpRibOutputJson["warning"] ; ok {
         log.Errorf ("%s failed !!, %s", outError)
         return oper_err
@@ -2190,10 +2190,11 @@ func hdl_get_all_bgp_nbrs_adj_rib (bgpRib_obj *ocbinds.OpenconfigNetworkInstance
         }
     }
 
-    for nbrAddr, _ := range bgpRibOutputJson {
+    for nbrAddr := range bgpRibOutputJson {
         nbrData, ok := bgpRibOutputJson[nbrAddr].([]interface{}) ; if !ok {continue}
 
         rib_key.nbrAddr = nbrAddr
+        util_bgp_get_ui_ifname_from_native_ifname (&nbrAddr)
 
         var ipv4Nbr_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor
         if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV4_UNICAST {
@@ -2307,13 +2308,13 @@ var DbToYang_bgp_routes_get_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     }
 
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
     rib_key.afiSafiName = pathInfo.Var("afi-safi-name")
     rib_key.prefix = pathInfo.Var("prefix")
     rib_key.origin = pathInfo.Var("origin")
     rib_key.pathIdKey = pathInfo.Var("path-id")
-    _pathId, err := strconv.Atoi(pathInfo.Var("path-id"))
+    _pathId, _ := strconv.Atoi(pathInfo.Var("path-id"))
     rib_key.pathId = uint32(_pathId)
     rib_key.nbrAddr = pathInfo.Var("neighbor-address")
 
@@ -2467,4 +2468,209 @@ var DbToYang_bgp_routes_get_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     }
 
     return err;
+}
+
+func get_rpc_show_bgp_sub_cmd_for_ipaddr_ (mapData map[string]interface{}) (bool, string, string) {
+    ip, ok := mapData["ip-addr"].(string) ; if !ok {
+        return false, "ip-addr attribute missing for option IP-ADDR", ""
+    }
+    subCmd := ip
+
+    pathType, ok := mapData["path-type"].(string) ; if ok {
+        switch pathType {
+            case "BEST_PATH":
+                subCmd = subCmd + " bestpath"
+            case "MULTI_PATH":
+                subCmd = subCmd + " multipath"
+            default :
+                return false, "Invalid value in path-type attribute for option IP-ADDR", ""
+        }
+    }
+
+    subCmd = subCmd + " json"
+    return true, "", subCmd
+}
+
+func get_rpc_show_bgp_sub_cmd_for_community_string_ (mapData map[string]interface{}) (bool, string, string) {
+    communityStr, ok := mapData["community-string"].(string) ; if !ok {
+        return false, "community-string attribute missing for option COMMUNITY-STRING", ""
+    }
+    subCmd := "community " + communityStr
+
+    exactMatch, ok := mapData["community-str-exact-match"].(bool) ; if ok && exactMatch {
+        subCmd = subCmd + " exact-match"
+    }
+
+    subCmd = subCmd + " json"
+    return true, "", subCmd
+}
+
+func get_rpc_show_bgp_sub_cmd_for_community_local_as_ (mapData map[string]interface{}) (bool, string, string) {
+    exactMatch, ok := mapData["community-local-as-exact-match"].(bool) ; if ok && exactMatch {
+        return true, "", "community local-AS exact-match json"
+    }
+    return true, "", "community local-AS json"
+}
+
+func get_rpc_show_bgp_sub_cmd_for_community_no_advertise_ (mapData map[string]interface{}) (bool, string, string) {
+    exactMatch, ok := mapData["community-no-advertise-exact-match"].(bool) ; if ok && exactMatch {
+        return true, "", "community no-advertise exact-match json"
+    }
+    return true, "", "community no-advertise json"
+}
+
+func get_rpc_show_bgp_sub_cmd_for_community_no_export_ (mapData map[string]interface{}) (bool, string, string) {
+    exactMatch, ok := mapData["community-no-export-exact-match"].(bool) ; if ok && exactMatch {
+        return true, "", "community no-export exact-match json"
+    }
+    return true, "", "community no-export json"
+}
+
+func get_rpc_show_bgp_sub_cmd_for_community_no_peer_ (mapData map[string]interface{}) (bool, string, string) {
+    exactMatch, ok := mapData["community-no-peer-exact-match"].(bool) ; if ok && exactMatch {
+        return true, "", "community no-peer exact-match json"
+    }
+    return true, "", "community no-peer json"
+}
+
+func get_rpc_show_bgp_sub_cmd_for_route_map_ (mapData map[string]interface{}) (bool, string, string) {
+    routeMapName, ok := mapData["route-map-name"].(string) ; if !ok {
+        return false, "route-map-name attribute missing for option ROUTE-MAP", ""
+    }
+
+    subCmd := "route-map " + routeMapName + " json"
+    return true, "", subCmd
+}
+
+func get_rpc_show_bgp_sub_cmd_ (mapData map[string]interface{}) (bool, string, string) {
+    subCmd := "json" /* default value for "ALL" option as well" */
+
+    /* if query-type not present, treat it as ALL option */
+    queryType, ok := mapData["query-type"].(string) ; if !ok {
+        log.Info ("In get_rpc_show_bgp_sub_cmd_ : query-type not present. Using Default-op:\"ALL\"")
+        return true, "", subCmd
+    }
+
+    log.Info("In get_rpc_show_bgp_sub_cmd_ ==> queryType : ", queryType)
+    switch queryType {
+        case "ALL":
+            return true, "", subCmd
+        case "IP-ADDR":
+            return get_rpc_show_bgp_sub_cmd_for_ipaddr_ (mapData)
+        case "COMMUNITY-STRING":
+            return get_rpc_show_bgp_sub_cmd_for_community_string_ (mapData)
+        case "COMMUNITY-LOCAL-AS":
+            return get_rpc_show_bgp_sub_cmd_for_community_local_as_ (mapData)
+        case "COMMUNITY-NO-ADVERTISE":
+            return get_rpc_show_bgp_sub_cmd_for_community_no_advertise_ (mapData)
+        case "COMMUNITY-NO-EXPORT":
+            return get_rpc_show_bgp_sub_cmd_for_community_no_export_ (mapData)
+        case "COMMUNITY-NO-PEER":
+            return get_rpc_show_bgp_sub_cmd_for_community_no_peer_ (mapData)
+        case "ROUTE-MAP":
+            return get_rpc_show_bgp_sub_cmd_for_route_map_ (mapData)
+        default:
+            err := "Invalid value in query-type attribute : " + queryType
+            log.Info ("In get_rpc_show_bgp_sub_cmd_ : ", err)
+            return false, err, ""
+    }
+}
+
+var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_bgp")
+    var cmd, vrf_name, af_str string
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show ip bgp, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-bgp-show:output"`
+    }
+
+    log.Info("In rpc_show_bgp, RPC data:", mapData)
+
+    input := mapData["sonic-bgp-show:input"]
+    mapData = input.(map[string]interface{})
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = " vrf " + value
+    }
+
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value == "IPV4_UNICAST" {
+            af_str = " ipv4 "
+        }else if value == "IPV6_UNICAST" {
+            af_str = " ipv6 "
+        }
+    }
+
+    ok, err_str, subCmd := get_rpc_show_bgp_sub_cmd_ (mapData) ; if !ok {
+        dbg_err_str := "show ip bgp RPC execution failed ==> " + err_str
+        log.Info("In rpc_show_bgp, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
+
+    cmd = "show ip bgp" + vrf_name + af_str + subCmd
+
+    cmd = strings.TrimSuffix(cmd, " ")
+
+    bgpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        dbg_err_str := "FRR execution failed ==> " + err_str
+        log.Info("In rpc_show_bgp, ", dbg_err_str)
+        return nil, errors.New("Internal error!")
+    }
+    result.Output.Status = bgpOutput
+    return json.Marshal(&result)
+}
+
+var rpc_show_bgp_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_bgp_stats")
+    var cmd, vrf_name, af_str string
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show bgp ipv4/6 unicast statistics, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-bgp-show:output"`
+    }
+
+    log.Info("In rpc_show_bgp_stats, RPC data:", mapData)
+
+    input := mapData["sonic-bgp-show:input"]
+    mapData = input.(map[string]interface{})
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = " vrf " + value
+    }
+
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value == "IPV4_UNICAST" {
+            af_str = " ipv4 "
+        }else if value == "IPV6_UNICAST" {
+            af_str = " ipv6 "
+        }
+    }
+
+    cmd = "show ip bgp" + vrf_name + af_str + "statistics json"
+
+    bgpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Info("In rpc_show_bgp_stats, FRR execution failed")
+        return nil, errors.New("Internal error!")
+    }
+    result.Output.Status = bgpOutput
+    return json.Marshal(&result)
 }

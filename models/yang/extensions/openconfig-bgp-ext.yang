@@ -18,14 +18,25 @@ module openconfig-bgp-ext {
   import openconfig-rib-bgp { prefix oc-rib-bgp; }
   import openconfig-yang-types { prefix oc-yang; }
   import openconfig-bfd { prefix oc-bfd; }
+  import openconfig-extensions { prefix oc-ext; }
+  import sonic-codegen { prefix sonic-codegen; } 
+
+  organization
+      "SONiC";
+
+  contact
+      "SONiC";
 
   description
     "This module describes a YANG model for BGP protocol
     configuration extensions.";
 
+  oc-ext:openconfig-version "0.1.0";
+
   revision "2019-10-31" {
     description
       "BGP extensions.";
+    reference "0.1.0";
   }
 
   typedef bgp-direction {
@@ -181,6 +192,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-peer-group-config {
+    description
+      "Configuration data for peer group";
       leaf enabled {
           type boolean;
           default true;
@@ -196,6 +209,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-afi-safi-route-reflector-config {
+    description
+      "Configuration data for router reflector global address family";
       leaf route-reflector-cluster-id {
           type oc-bgp-types:rr-cluster-id-type;
           description
@@ -210,7 +225,7 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-global-route-reflector{
+  grouping bgp-ext-global-route-reflector-top{
       description
           "Configuration parameters determining whether the behaviour of
           the local system when acting as a route-reflector";
@@ -233,6 +248,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-afi-safi-config{
+    description
+      "Configuration data for global address family level";
       leaf table-map-name {
           type leafref {
               path "/oc-rpol:routing-policy/oc-rpol:policy-definitions/" +
@@ -246,6 +263,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-graceful-restart-config {
+    description
+      "Configuration data for graceful restart under global level";
       leaf preserve-fw-state {
           type boolean;
           description
@@ -254,6 +273,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-use-multiple-paths-config {
+    description
+      "Configuration data for multiple paths under global level";
       leaf as-set {
           type boolean;
           description
@@ -262,6 +283,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-route-selection-options-config {
+    description
+      "Configuration data for route selection options under global level";
       leaf med-confed {
           type boolean;
           description
@@ -282,6 +305,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-config{
+    description
+      "Configuration data for global level";
       leaf disable-ebgp-connected-route-check {
           type boolean;
           description
@@ -296,6 +321,7 @@ module openconfig-bgp-ext {
 
       leaf network-import-check {
           type boolean;
+          default true;
           description
               "This helps to advertise a BGP route not present in the routing table.";
       }
@@ -380,7 +406,9 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-global-route-flap-damping {
+  grouping bgp-ext-global-route-flap-damping-top {
+    description
+      "Configuration data for route flap damping under global level";
     container route-flap-damping {
           description
               "Parameters relating to BGP route flap damping";
@@ -399,6 +427,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-defaults-config {
+    description
+      "Configuration data for global defaults";
       leaf ipv4-unicast {
           type boolean;
           description
@@ -432,7 +462,9 @@ module openconfig-bgp-ext {
       }
   }
   
-  grouping bgp-ext-global-defaults {
+  grouping bgp-ext-global-defaults-top {
+    description
+      "Configuration data for global defaults";
     container global-defaults {
           description
               "Parameters relating to BGP defaults";
@@ -451,6 +483,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-update-delay-config {
+    description
+      "Configuration data for update delay under global level";
       leaf max-delay {
           type uint16 {
               range 0..3600;
@@ -467,7 +501,9 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-global-update-delay {
+  grouping bgp-ext-global-update-delay-top {
+    description
+      "Configuration data for update delay under global level";
       container update-delay {
           description
               "Parameters relating to force initial delay for best-path and updates.";
@@ -486,6 +522,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-max-med-config {
+    description
+      "Configuration data for max med under global level";
       leaf time {
           type uint32{
               range 5..86400;
@@ -510,7 +548,9 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-global-max-med {
+  grouping bgp-ext-global-max-med-top {
+    description
+      "Configuration data for max med under global level";
       container max-med {
           description
               "Parameters relating to advertise routes with max-med.";
@@ -528,7 +568,9 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-default-route-distance {
+  grouping bgp-ext-default-route-distance-config {
+    description
+      "Configuration data for default route distance";
       leaf local-route-distance {
           type uint8 {
               range "1..255";
@@ -538,7 +580,9 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-import-network-instance {
+  grouping bgp-ext-import-network-instance-config {
+    description
+      "Configuration data for import network instance";
       leaf name {
           type leafref {
               path "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:config/oc-netinst:name";
@@ -559,8 +603,10 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-global-afi-safi {
-        container aggregate-address-config {
+  grouping bgp-ext-global-afi-safi-top {
+    description
+      "Configuration data for global address family";
+      container aggregate-address-config {
           description
               "Parameters relating to BGP route aggregation.";
 
@@ -633,14 +679,14 @@ module openconfig-bgp-ext {
                   "Configuration parameters relating to the default route
                   distance";
               uses oc-bgp:bgp-global-default-route-distance-config;
-              uses bgp-ext-default-route-distance;
+              uses bgp-ext-default-route-distance-config;
           }
           container state {
               config false;
               description
                   "State information relating to the default route distance";
               uses oc-bgp:bgp-global-default-route-distance-config;
-              uses bgp-ext-default-route-distance;
+              uses bgp-ext-default-route-distance-config;
           }
       }
 
@@ -651,16 +697,20 @@ module openconfig-bgp-ext {
           container config {
               description
                   "Configuration parameters relating to route importing from network instance.";
-              uses bgp-ext-import-network-instance;
+              uses bgp-ext-import-network-instance-config;
           }
           container state {
               config false;
-              uses bgp-ext-import-network-instance;
+              description
+                  "Operational state parameters relating to route importing from network instance";
+              uses bgp-ext-import-network-instance-config;
           }
       }
   }
 
   grouping bgp-ext-auth-password-config {
+    description
+      "Configuration data for authentication password";
       leaf password {
           type oc-types:routing-password;
           description
@@ -679,7 +729,7 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-neighbor-group-auth-password {
+  grouping bgp-ext-neighbor-group-auth-password-top {
       description
           "Configuration parameters related to authentication password for neighbor group.";
 
@@ -702,6 +752,8 @@ module openconfig-bgp-ext {
 
 
   grouping bgp-ext-neighbor-group-config{
+    description
+      "Configuration data for neighbor group authentication password";
       leaf disable-ebgp-connected-route-check {
           type boolean;
           description
@@ -793,7 +845,8 @@ module openconfig-bgp-ext {
       }
   }
   grouping bgp-ext-neighbor-group-state { 
-
+    description
+      "State data for neighbor group";
   
       leaf connections-dropped {
           type oc-yang:counter64;
@@ -836,6 +889,8 @@ module openconfig-bgp-ext {
       }
   }
   grouping bgp-ext-neighbor-group-afi-safi-allow-own-as-config {
+    description
+      "Configuration data for allow own AS under neighbor group address family";
       leaf enabled {
           type boolean;
           description
@@ -858,6 +913,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-afi-safi-network-config {
+    description
+      "Configuration data for network address under global address family";
       leaf prefix {
           type oc-inet:ip-prefix;
           description
@@ -883,6 +940,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-afi-safi-aggregate-address-config {
+    description
+      "Configuration data for aggregate address under global address family";
       leaf prefix {
           type oc-inet:ip-prefix;
           description
@@ -913,6 +972,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-route-flap-damping-config {
+    description
+      "Configuration data for route flap damping under global level";
       leaf enabled {
           type boolean;
           description
@@ -954,6 +1015,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-neighbor-group-afi-safi-originate-default-config {
+    description
+      "Configuration data for default route origination under neighbor group address family level";
       leaf default-policy-name {
           type leafref {
               path "/oc-rpol:routing-policy/oc-rpol:policy-definitions/" +
@@ -965,6 +1028,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-attribute-unchanged-config {
+    description
+        "Configuration data for attribute unchanged to the neighbor";
       leaf as-path {
           type boolean;
           description "Propagate AS-path attribute unchanged to the neighbor.";
@@ -982,6 +1047,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-filter-list-config {
+    description
+        "Configuration data for filter list";
       leaf import-policy {
           type leafref {
               path "/oc-rpol:routing-policy/oc-rpol:defined-sets/" +
@@ -1002,6 +1069,8 @@ module openconfig-bgp-ext {
   }
   
   grouping bgp-ext-prefix-list-config {
+    description
+        "Configuration data for prefix list";
       leaf import-policy {
           type leafref {
               path "/oc-rpol:routing-policy/oc-rpol:defined-sets/" +
@@ -1020,6 +1089,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-next-hop-self-config {
+    description
+        "Configuration data for nexthop self for routes";
       leaf enabled {
           type boolean;
           description 
@@ -1033,6 +1104,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-remove-private-as-config {
+    description
+        "Configuration data for private AS in outbound updates";
       leaf enabled {
           type boolean;
           description
@@ -1053,6 +1126,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-neighbor-group-afi-safi-config{
+    description
+        "Configuration data for neighbor group address family";
 
       leaf soft-reconfiguration-in {
           type boolean;
@@ -1107,7 +1182,9 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-neighbor-group-add-paths {
+  grouping bgp-ext-neighbor-group-add-paths-config {
+    description
+        "Configuration data for neighbor group add paths";
       leaf tx-add-paths {
           type tx-add-paths-type;
           description
@@ -1119,6 +1196,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-capability-orf-config {
+    description
+        "Configuration data for outbound route filtering";
       leaf orf-type {
           type bgp-orf-type;
           description
@@ -1127,6 +1206,8 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-global-afi-safi-ibgp-config {
+    description
+        "Configuration data for iBGP under global address family";
       leaf equal-cluster-length {
           type boolean;
           description
@@ -1134,11 +1215,13 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-attr-sets {
+  grouping bgp-ext-attr-sets-state {
+    description
+        "Operational data for PATH attributes";
       container attr-sets {
+          config false;
           description
               "Various PATH attributes for a given prefix.";
-          config false;
           leaf weight {
               type uint32;
               description
@@ -1153,15 +1236,21 @@ module openconfig-bgp-ext {
       }
   }
 
-  grouping bgp-ext-neighbor-group-afi-safi{
+  grouping bgp-ext-neighbor-group-afi-safi-top {
+    description
+        "Configuration data for address family under neighbor group";
       container allow-own-as {
           description
               "This enables BGP to accept as-path update with local AS.";
           container config {
+              description
+                  "Configuration parameters relating to accept as-path update with local AS";
               uses bgp-ext-neighbor-group-afi-safi-allow-own-as-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to accept as-path update with local AS";
               uses bgp-ext-neighbor-group-afi-safi-allow-own-as-config; 
           }
       }
@@ -1170,10 +1259,14 @@ module openconfig-bgp-ext {
           description
               "BGP attribute is propagated unchanged to the neighbor.";
           container config {
+              description
+                  "Configuration parameters relating to propagate BGP attribute unchanged to the neighbor";
               uses bgp-ext-attribute-unchanged-config;
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to propagate BGP attribute unchanged to the neighbor";
               uses bgp-ext-attribute-unchanged-config;
           }
       }
@@ -1182,10 +1275,14 @@ module openconfig-bgp-ext {
           description
               "Apply AS-path filter list.";
           container config {
+              description
+                  "Configuration parameters relating to AS-Path filter list";
               uses bgp-ext-filter-list-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to AS-Path filter list";
               uses bgp-ext-filter-list-config; 
           }
       }
@@ -1194,10 +1291,14 @@ module openconfig-bgp-ext {
           description
               "Disable the next hop calculation for the neighbor group";
           container config {
+              description
+                  "Configuration parameters relating to disable the next hop calculation for the neighbor group";
               uses bgp-ext-next-hop-self-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to disable the next hop calculation for the neighbor group";
               uses bgp-ext-next-hop-self-config; 
           }
       }
@@ -1206,10 +1307,14 @@ module openconfig-bgp-ext {
           description
               "Apply prefix filter list.";
           container config {
+              description
+                  "Configuration parameters relating to prefix filter list";
               uses bgp-ext-prefix-list-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to prefix filter list";
               uses bgp-ext-prefix-list-config; 
           }
       }
@@ -1218,10 +1323,14 @@ module openconfig-bgp-ext {
           description
               "Remove private ASNs in outbound updates";
           container config {
+              description
+                  "Configuration parameters relating to remove private ASNs in outbound updates";
               uses bgp-ext-remove-private-as-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to remove private ASNs in outbound updates";
               uses bgp-ext-remove-private-as-config; 
           }
       }
@@ -1230,32 +1339,38 @@ module openconfig-bgp-ext {
           description
               "Advertise prefix-list outbound route filtering capability to this neighbor.";
           container config {
+              description
+                  "Configuration parameters relating to advertise prefix-list outbound route filtering capability to this neighbor";
               uses bgp-ext-capability-orf-config; 
           }
           container state {
               config false;
+              description
+                  "Operational state parameters relating to advertise prefix-list outbound route filtering capability to this neighbor";
               uses bgp-ext-capability-orf-config; 
           }
       }
   }
 
-  grouping bgp-ext-neighbor-state-msgs {
-      leaf OPEN {
+  grouping bgp-ext-neighbor-msgs-state {
+    description
+        "Operational data for neighbor messages";
+      leaf open {
           type uint64;
           description
               "Number of BGP OPEN messages.";
       }
-      leaf KEEPALIVE {
+      leaf keepalive {
           type uint64;
           description
               "Number of BGP KEEPALIVE messages.";
       }
-      leaf ROUTE-REFRESH {
+      leaf route-refresh {
           type uint64;
           description
               "Number of BGP ROUTE_REFRESH messages.";
       }
-      leaf CAPABILITY {
+      leaf capability {
           type uint64;
           description
               "Number of BGP CAPABILITY essages.";
@@ -1263,32 +1378,53 @@ module openconfig-bgp-ext {
   }
 
   grouping bgp-ext-peer-group-members-state {
+    description
+        "Operational data for neighbors of the peer group";
     container members-state {
         config false;
         description
             "Describes the members of the peer groups";
-        list member {
-            key "neighbor";
-            leaf neighbor {
-                type string;
+		list member {
+			key "neighbor";
+			description
+				"Neighbors in a peer group";
+			leaf neighbor {
+				type leafref {
+					path "../state/neighbor";
+				}
+				description
+					"Reference to the neighbor key";
+			}
+			container state {
                 description
-		    "Indicates neighbor address or interface.";
-            }
-            leaf dynamic {
-                type boolean;
-                description
-                    "Indicates neighbor is dynamic or not.";
-            }
-            leaf state {
-                type string;
-                description
-                    "Indicates neighbor current state.";
-           }
-        }
+                    "Operation state parameters relating to members of the peer group";
+				leaf neighbor {
+					type leafref {
+						path "/oc-netinst:network-instances/oc-netinst:network-instance/" +
+							"oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/" +
+							"oc-netinst:neighbor/oc-netinst:config/oc-netinst:neighbor-address";
+					}
+					description
+						"Indicates neighbor address or interface.";
+				}
+				leaf dynamic {
+					type boolean;
+					description
+						"Indicates neighbor is dynamic or not.";
+				}
+				leaf state {
+					type string;
+					description
+						"Indicates neighbor current state.";
+				}
+			}
+		}
      }
   }
   
   grouping bgp-ext-neighbor-group-bfd-config {
+    description
+        "Configuration data for BFD under neighbors group";
       leaf bfd-check-control-plane-failure {
           type boolean;
           description
@@ -1931,209 +2067,299 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
           // }
           type string;
       }
+      description
+          "BGP neighbor can be either IP or interface name";
   }
   
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:config/oc-netinst:neighbor-address {
+      sonic-codegen:lint-ignore "Deviated to support BGP unnumbered use-case"; 
 	  deviate replace {
           type bgp-neighbor;
 	  }
   }
  
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:neighbor-address {
+      sonic-codegen:lint-ignore "Deviated to support BGP unnumbered use-case"; 
 	  deviate replace {
           type bgp-neighbor;
 	  }
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:neighbor-address {
+      sonic-codegen:lint-ignore "Deviated to support BGP unnumbered use-case"; 
 	  deviate replace {
           type bgp-neighbor;
 	  }
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:neighbor-address {
+      sonic-codegen:lint-ignore "Deviated to support BGP unnumbered use-case"; 
 	  deviate replace {
           type bgp-neighbor;
 	  }
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global {
+      description
+          "BGP global extensions";
       uses oc-bgp:bgp-common-structure-neighbor-group-logging-options;
-      uses bgp-ext-global-route-reflector;
-      uses bgp-ext-global-defaults;
-      uses bgp-ext-global-update-delay;
-      uses bgp-ext-global-max-med;
+      uses bgp-ext-global-route-reflector-top;
+      uses bgp-ext-global-defaults-top;
+      uses bgp-ext-global-update-delay-top;
+      uses bgp-ext-global-max-med-top;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:config {
+      description
+          "BGP global extensions";
       uses bgp-ext-global-config;
   }
   
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:state {
+      description
+          "BGP global extensions";
       uses bgp-ext-global-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:graceful-restart/oc-netinst:config {
+      description
+          "BGP global extensions for graceful restart";
       uses bgp-ext-global-graceful-restart-config;
 }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:graceful-restart/oc-netinst:state {
+      description
+          "BGP global extensions for graceful restart";
       uses bgp-ext-global-graceful-restart-config;
 }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:route-selection-options/oc-netinst:config {
+      description
+          "BGP global extensions for route selection options";
       uses bgp-ext-global-route-selection-options-config;
 }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:route-selection-options/oc-netinst:state {
+      description
+          "BGP global extensions for route selection options";
       uses bgp-ext-global-route-selection-options-config;
 }
  
  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:use-multiple-paths/oc-netinst:ebgp/oc-netinst:config {
+      description
+          "BGP global extensions for multiple paths configuration";
       uses bgp-ext-global-use-multiple-paths-config;
 }
   
  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:use-multiple-paths/oc-netinst:ebgp/oc-netinst:state {
+      description
+          "BGP global extensions for multiple paths configuration";
       uses bgp-ext-global-use-multiple-paths-config;
 }
  
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi {
-      uses bgp-ext-global-afi-safi;
-      uses bgp-ext-global-route-flap-damping;
+      description
+          "BGP global extensions for address family";
+      uses bgp-ext-global-afi-safi-top;
+      uses bgp-ext-global-route-flap-damping-top;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:config  {
+      description
+          "BGP global extensions for address family configs";
       uses bgp-ext-global-afi-safi-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:state  {
+      description
+          "BGP global extensions for address family configs";
       uses bgp-ext-global-afi-safi-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths/oc-netinst:ibgp/oc-netinst:config  {
+      description
+          "BGP global extensions for address family multiple path configs";
 	  uses bgp-ext-global-afi-safi-ibgp-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths/oc-netinst:ibgp/oc-netinst:state  {
+      description
+          "BGP global extensions for address family multiple path configs";
 	  uses bgp-ext-global-afi-safi-ibgp-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor {
-      uses bgp-ext-neighbor-group-auth-password;
+      description
+          "BGP neighbor extensions";
+      uses bgp-ext-neighbor-group-auth-password-top;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:config {
+      description
+          "BGP neighbor extensions";
       uses bgp-ext-neighbor-group-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state {
+      description
+          "BGP neighbor extensions";
       uses bgp-ext-neighbor-group-config;
       uses bgp-ext-neighbor-group-state;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:messages/oc-netinst:sent {
-      uses bgp-ext-neighbor-state-msgs;
+      description
+          "BGP neighbor extensions for messages";
+      uses bgp-ext-neighbor-msgs-state;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:messages/oc-netinst:received {
-      uses bgp-ext-neighbor-state-msgs;
+      description
+          "BGP neighbor extensions for messages received from peer";
+      uses bgp-ext-neighbor-msgs-state;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group {
-      uses bgp-ext-neighbor-group-auth-password; 
+      description
+          "BGP peer group extensions";
+      uses bgp-ext-neighbor-group-auth-password-top; 
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:config {
+      description
+          "BGP peer group extensions for configs";
       uses bgp-ext-peer-group-config;
       uses bgp-ext-neighbor-group-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:state {
+      description
+          "BGP peer group extensions for configs";
       uses bgp-ext-peer-group-config;
       uses bgp-ext-neighbor-group-config;
       uses bgp-ext-neighbor-group-state;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:config {
+      description
+          "BGP neighbor address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:state {
+      description
+          "BGP neighbor address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config {
-      uses bgp-ext-neighbor-group-add-paths;
+      description
+          "BGP neighbor address family extensions for add paths";
+      uses bgp-ext-neighbor-group-add-paths-config;
   }
   
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state {
-      uses bgp-ext-neighbor-group-add-paths;
+      description
+          "BGP neighbor address family extensions for add paths";
+      uses bgp-ext-neighbor-group-add-paths-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config {
-      uses bgp-ext-neighbor-group-add-paths;
+      description
+          "BGP peer group address family extensions for add paths";
+      uses bgp-ext-neighbor-group-add-paths-config;
   }
   
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state {
-      uses bgp-ext-neighbor-group-add-paths;
+      description
+          "BGP peer group address family extensions for add paths";
+      uses bgp-ext-neighbor-group-add-paths-config;
   }
 
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:config {
+      description
+          "BGP peer group address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:state {
+      description
+          "BGP peer group address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi {
-      uses bgp-ext-neighbor-group-afi-safi;
+      description
+          "BGP neighbor address family extensions";
+      uses bgp-ext-neighbor-group-afi-safi-top;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi {
-      uses bgp-ext-neighbor-group-afi-safi;
+      description
+          "BGP neighbor address family extensions";
+      uses bgp-ext-neighbor-group-afi-safi-top;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:config {
+      description
+          "BGP neighbor ipv4 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:state {
+      description
+          "BGP neighbor ipv4 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:config {
+      description
+          "BGP neighbor ipv6 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
   
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:state {
+      description
+          "BGP neighbor ipv6 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:config {
+      description
+          "BGP peer group ipv4 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
   
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:state {
+      description
+          "BGP peer group ipv4 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:config {
+      description
+          "BGP peer group ipv6 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:state {
+      description
+          "BGP peer group ipv6 unicast address family extensions";
       uses bgp-ext-neighbor-group-afi-safi-originate-default-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group {
+      description
+          "BGP peer group extensions";
       uses bgp-ext-peer-group-members-state;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route {
-      uses bgp-ext-attr-sets;
+      description
+          "BGP local rib extensions for ipv4 address family";
+      uses bgp-ext-attr-sets-state;
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-ext:attr-sets/oc-bgp-ext:aigp {
@@ -2149,7 +2375,9 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route {
-      uses bgp-ext-attr-sets;
+      description
+          "BGP rib extensions for ipv4 address family specific to received routes pre-processing from neighbors";
+      uses bgp-ext-attr-sets-state;
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-ext:attr-sets/oc-bgp-ext:aigp {
@@ -2166,7 +2394,9 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
 
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route {
-      uses bgp-ext-attr-sets;
+      description
+          "BGP rib extensions for ipv4 address family specific to received routes post-processing from neighbors";
+      uses bgp-ext-attr-sets-state;
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-ext:attr-sets/oc-bgp-ext:aigp {
@@ -2182,7 +2412,9 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
 }
 
 augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route {
-      uses bgp-ext-attr-sets;
+      description
+          "BGP rib extensions for ipv4 address family specific to advertised routes to neighbors";
+      uses bgp-ext-attr-sets-state;
   }
 deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-ext:attr-sets/oc-bgp-ext:aigp {
 	  deviate not-supported;
@@ -2198,7 +2430,9 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
 }
 
 augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route {
-      uses bgp-ext-attr-sets;
+      description
+          "BGP local rib extensions";
+      uses bgp-ext-attr-sets-state;
   }
 
 deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-ext:attr-sets/oc-bgp-ext:aigp {
@@ -2213,7 +2447,9 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
 }
 
 augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route {
-      uses bgp-ext-attr-sets;
+      description
+          "BGP rib extensions for ipv6 address family specific to received routes pre-processing from neighbors";
+      uses bgp-ext-attr-sets-state;
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-ext:attr-sets/oc-bgp-ext:aigp {
@@ -2230,7 +2466,9 @@ augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:pro
 
 
 augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route {
-      uses bgp-ext-attr-sets;
+      description
+          "BGP rib extensions for ipv6 address family specific to received routes post-processing from neighbors";
+      uses bgp-ext-attr-sets-state;
   }
 
 deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-ext:attr-sets/oc-bgp-ext:aigp {
@@ -2247,7 +2485,9 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
 }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route {
-      uses bgp-ext-attr-sets;
+      description
+          "BGP rib extensions for ipv6 address family specific to advertised routes to neighbors";
+      uses bgp-ext-attr-sets-state;
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-ext:attr-sets/oc-bgp-ext:aigp {
@@ -2277,40 +2517,52 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
 	  deviate not-supported;
   }
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-bfd:enable-bfd/oc-bfd:config {
+      description
+          "BGP neighbor extensions for BFD configs";
       uses bgp-ext-neighbor-group-bfd-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-bfd:enable-bfd/oc-bfd:state {
+      description
+          "BGP neighbor extensions for BFD configs";
       uses bgp-ext-neighbor-group-bfd-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-bfd:enable-bfd/oc-bfd:config {
+      description
+          "BGP peer group extensions for BFD configs";
       uses bgp-ext-neighbor-group-bfd-config;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-bfd:enable-bfd/oc-bfd:state {
+      description
+          "BGP peer group extensions for BFD configs";
       uses bgp-ext-neighbor-group-bfd-config;
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:timers/oc-netinst:config/oc-netinst:hold-time {
+      sonic-codegen:lint-ignore "Deviated to be aligned with other vendors."; 
       deviate replace {
           default 180;
       }
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:timers/oc-netinst:config/oc-netinst:hold-time {
+      sonic-codegen:lint-ignore "Deviated to be aligned with other vendors."; 
       deviate replace {
           default 180;
       }
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:timers/oc-netinst:config/oc-netinst:keepalive-interval {
+      sonic-codegen:lint-ignore "Deviated to be aligned with other vendors."; 
       deviate replace {
           default 60;
       }
   }
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:timers/oc-netinst:config/oc-netinst:keepalive-interval {
+      sonic-codegen:lint-ignore "Deviated to be aligned with other vendors."; 
       deviate replace {
           default 60;
       }

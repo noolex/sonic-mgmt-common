@@ -22,9 +22,3 @@ Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}  
 Description: SONiC Management Infrastructure generated code
 
-Package: sonic-host-service
-Priority: extra
-Architecture: amd64
-Depends: python3-systemd, python3-dbus, python3-gi, ${shlibs:Depends}, ${misc:Depends}
-Description: SONiC Host Service
-

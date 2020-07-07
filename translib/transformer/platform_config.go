@@ -3,17 +3,18 @@ package transformer
 import (
     "strconv"
     "github.com/Azure/sonic-mgmt-common/translib/db"
-    "errors"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "strings"
-    "github.com/openconfig/ygot/ygot"
+    "sort"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     log "github.com/golang/glog"
-    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "io/ioutil"
     "encoding/json"
 )
 
 const (
     PLATFORM_JSON = "/usr/share/sonic/hwsku/platform.json"
+    PLATFORM_DEF_JSON = "/usr/share/sonic/hwsku/platform-def.json"
 )
 
 
@@ -24,22 +25,22 @@ type portProp struct {
     alias string
     valid_speeds string
     speed string
-    oid string
+}
+
+type portCaps struct {
+    Port string     `json:"port,omitempty"`
+    Name string     `json:"name,omitempty"`
+    Modes string    `json:"modes,omitempty"`
+    DefMode string `json:"defmode,omitempty"`
 }
 
 var platConfigStr map[string]map[string]string
-var portOidMap  map[string]string
+var platDefStr map[string]map[string]map[string]string
 
 /* Functions */
 
 func init () {
     parsePlatformJsonFile();
-}
-
-
-func getPlatRoot (s *ygot.GoStruct) *ocbinds.OpenconfigPlatform_Components {
-    deviceObj := (*s).(*ocbinds.Device)
-    return deviceObj.Components
 }
 
 
@@ -51,7 +52,8 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     // Check if mode is supported.
     supported_modes := strings.Split(entry["breakout_modes"], ",")
     for _, mode_iter := range supported_modes {
-        if strings.Contains(mode_iter, mode[2:len(mode)]) {
+        if strings.Contains(mode_iter, mode[2:])  && (strings.Compare(mode_iter[0:1], mode[0:1])==0) {
+            log.Info("[DEBUG] Matched mode: ", mode_iter)
             pos := strings.Index(mode_iter, "G")
             if pos != -1 {
                 speed,_ := strconv.Atoi(mode_iter[2:pos])
@@ -70,7 +72,7 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
 
     if len(port_config.valid_speeds) < 1 {
         log.Error("Invalid or unsupported breakout mode")
-        return port_config, errors.New("Invalid or unsupported breakout mode")
+        return port_config, tlerr.InvalidArgs("Invalid or unsupported breakout mode %s", mode)
     }
 
     lane_speed_map := map[string][]int{"1x100G":{4, 100000}, "1x40G":{4, 40000},"1x400G":{8, 400000},
@@ -81,23 +83,28 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     lane_speed, ok := lane_speed_map[mode]
     if !ok {
         log.Error("Invalid or unsupported breakout mode", mode)
-        return port_config, errors.New("Invalid or unsupported breakout mode")
+        return port_config, tlerr.InvalidArgs("Invalid or unsupported breakout mode %s", mode)
     }
     start_lane := subport*lane_speed[0]
     end_lane := start_lane + lane_speed[0]
+    if len(lanes) < end_lane {
+        log.Error("Invalid or unsupported breakout mode - lane count mismatch", len(lanes), " < ", end_lane)
+        return port_config, tlerr.InvalidArgs("Invalid or unsupported breakout mode")
+    }
+
     dpb_index = indeces[subport]
     dpb_lanes = lanes[start_lane]
     for i := start_lane + 1; i < end_lane; i++ {
         dpb_lanes = dpb_lanes + "," + lanes[i]
     }
-    base_port,_ := strconv.Atoi(strings.TrimLeft(port_i, "Ethernet"))
+    base_port,_ := strconv.Atoi(strings.TrimLeft(port_i, "Ethern"))
     port_config.name = "Ethernet"+strconv.Itoa(base_port+(lane_speed[0]*subport))
-    port_config.alias = strings.Split(entry["alias_at_lanes"], ",")[subport]
+    port_config.alias = strings.TrimSpace(strings.Split(entry["alias_at_lanes"], ",")[subport])
     port_config.index = dpb_index
     port_config.lanes = dpb_lanes
     port_config.speed = strconv.Itoa(lane_speed_map[mode][1])
     if strings.HasPrefix(mode, "1x") {
-        pos := strings.Index(port_config.alias, ":")
+        pos := strings.LastIndex(port_config.alias, "/")
         if pos != -1 {
            port_config.alias =  port_config.alias[0:pos]
         }
@@ -111,13 +118,13 @@ func getPorts (port_i string, mode string) ([]portProp, error) {
     var ports []portProp
 
     // This error will get updated in success case.
-    err = errors.New("Invalid breakout mode")
+    err = tlerr.InvalidArgs("Invalid or unsupported breakout mode %s", mode)
     if entry, ok := platConfigStr[port_i]; ok {
         // Default mode. DELETE/"no breakout" case
         if len(mode) == 0 {
             mode =  entry["default_brkout_mode"]
             if len(mode) == 0 {
-                err = errors.New("Invalid default breakout mode")
+                err = tlerr.InvalidArgs("Invalid default breakout mode")
                 return ports, err
             }
             if strings.Contains(mode, "[") {
@@ -130,15 +137,79 @@ func getPorts (port_i string, mode string) ([]portProp, error) {
         for i := 0; i < count; i++ {
             ports[i], err = decodePortParams(port_i, mode, i, entry )
         }
-
     } else {
             log.Info("Invalid interface/master port - ", mode)
-            err = errors.New("Invalid interface/master port.")
+            err = tlerr.NotSupported("Breakout not supported on %s", port_i)
     }
 
     return ports, err
 }
 
+func getCapabilities () ([]portCaps) {
+    var caps []portCaps
+    offset := 0
+    for _, entry := range  platConfigStr {
+        indeces := strings.Split(entry["index"], ",")
+        if indeces[0] == "0" {
+            offset = 1;
+            log.Info("Zero based SFP index")
+        }
+    }
+    for name, entry := range  platConfigStr {
+        if len(strings.Split(entry["breakout_modes"], ",")) >1 {
+            indeces := strings.Split(entry["index"], ",")
+            index,_ := strconv.Atoi(indeces[0])
+            port := "1/" + strconv.Itoa(index + offset)
+            modes := strings.ReplaceAll(strings.Trim(entry["breakout_modes"]," "), ",", ", ")
+            name = *(utils.GetUINameFromNativeName(&name))
+            if strings.Count(name,"/") > strings.Count(port, "/") {
+                name = name[0:strings.LastIndex(name, "/")]
+            }
+            caps = append(caps, portCaps {
+                        Name: name,
+                        Modes: modes,
+                        DefMode: entry["default_brkout_mode"],
+                        Port: port,
+                    })
+        }
+    }
+    sort.SliceStable(caps, func(i, j int) bool {
+            first,_ := strconv.Atoi(strings.ReplaceAll(caps[i].Port, "/", ""))
+            second,_ := strconv.Atoi(strings.ReplaceAll(caps[j].Port, "/", ""))
+            return first  < second
+        })
+    return caps
+}
+
+func getValidSpeeds(port_i string) ([]string, error) {
+    var valid_speeds []string
+    if len(platConfigStr) < 1 {
+        parsePlatformJsonFile()
+    }
+    if entry, ok := platConfigStr[port_i]; ok {
+        // Get the valid speed from default breakout mode.
+        mode :=  entry["default_brkout_mode"]
+        log.Info("[DEBUG] Default mode: ", mode)
+        pos := strings.Index(mode, "G")
+        if pos != -1 {
+            speed,_ := strconv.Atoi(mode[2:pos])
+            valid_speeds = append(valid_speeds, strconv.Itoa(speed*1000))
+        } else {
+            log.Error("Invalid mode: ", mode)
+        }
+        pos = strings.Index(mode, "[")
+        epos := strings.Index(mode, "]")
+        if pos != -1 && epos != -1 {
+            speed,_ := strconv.Atoi(mode[pos+1:epos-1])
+            valid_speeds = append(valid_speeds, strconv.Itoa(speed*1000))
+        }
+    }
+    if len(valid_speeds) < 1 {
+        log.Error("Could not get valid speeds from default breakout mode")
+        return valid_speeds, tlerr.InvalidArgs("Unable to determine valid speeds")
+    }
+    return valid_speeds, nil
+}
 
 func parsePlatformJsonFile () (error) {
 
@@ -152,6 +223,44 @@ func parsePlatformJsonFile () (error) {
     platConfigStr = make(map[string]map[string]string)
     err = json.Unmarshal([]byte(file), &platConfigStr)
     return err
+}
+
+func parsePlatformDefJsonFile () (error) {
+
+    file, err := ioutil.ReadFile(PLATFORM_DEF_JSON)
+
+    if nil != err {
+        log.Info("Platform specific properties not supported");
+        return err
+    }
+
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    return err
+}
+
+func isPortGroupMember(ifName string) (bool) {
+    if len(platDefStr) < 1 {
+        parsePlatformDefJsonFile()
+        if len(platDefStr) < 1 {
+            return false
+        }
+    }
+    if pgs, ok := platDefStr["port-group"]; ok {
+        for id, pg := range pgs {
+            memRange := strings.Split(strings.TrimLeft(pg["members"], "Ethern"), "-")
+            ifNum,_ := strconv.Atoi(strings.TrimLeft(ifName, "Ethern"))
+            startNum,_ := strconv.Atoi(memRange[0])
+            endNum,_ := strconv.Atoi(memRange[0])
+            log.Info("PG ", id, pg["members"], " ", pg["valid_speeds"], " ==> ",
+                        startNum, " - ", ifNum, " - ", endNum)
+            if (ifNum >= startNum) && (ifNum <= endNum) {
+                return true
+            }
+        }
+    }
+    return false
 }
 
 
@@ -169,6 +278,20 @@ func removePorts (ports_i []portProp) (map[db.DBNum]map[string]map[string]db.Val
     log.Info("DPB: DELETE Map", delMap)
     subOpMap[db.ConfigDB] = delMap
     return subOpMap;
+}
+
+func getLaneSet(ifName string) (map[string]db.Value) {
+    var brkoutMap map[string]db.Value
+    entry, ok := platConfigStr[ifName]
+    if ok {
+        brkoutMap = make(map[string]db.Value)
+        fv := make(map[string]string)
+        fvpairs := db.Value{Field: fv}
+        fvpairs.Set("lanes", entry["lanes"])
+        brkoutMap[ifName] = fvpairs
+    }
+    log.Info("DPB: UPDATE Lanes Map", brkoutMap)
+    return brkoutMap;
 }
 
 func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) {
@@ -195,4 +318,26 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
     return subOpMap;
 }
 
-
+func getIfName(port_i string) (string) {
+    offset := 0
+    var ifName string
+    for _, entry := range  platConfigStr {
+        indeces := strings.Split(entry["index"], ",")
+        if indeces[0] == "0" {
+            offset = 1;
+            log.Info("Zero based SFP index")
+        }
+    }
+    for key, entry := range  platConfigStr {
+        if len(strings.Split(entry["breakout_modes"], ",")) >1 {
+            indeces := strings.Split(entry["index"], ",")
+            index,_ := strconv.Atoi(indeces[0])
+            port := "1/" + strconv.Itoa(index + offset)
+            if (port == port_i) {
+                ifName = key
+                log.Info(port, " ", key)
+            }
+        }
+    }
+    return ifName
+}

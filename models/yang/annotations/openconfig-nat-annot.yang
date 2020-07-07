@@ -107,12 +107,7 @@ module openconfig-nat-annot {
             sonic-ext:key-transformer "nat_pool_key_xfmr";
         }
     }
-    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-pool/oc-nat:nat-pool-entry/oc-nat:config/oc-nat:nat-ip/oc-nat:ip-address/oc-nat:IP-ADDRESS {
-        deviate add {
-            sonic-ext:field-transformer "nat_ip_field_xfmr";
-        }
-    }
-    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-pool/oc-nat:nat-pool-entry/oc-nat:config/oc-nat:nat-ip/oc-nat:ip-address-range/oc-nat:IP-ADDRESS-RANGE {
+    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-pool/oc-nat:nat-pool-entry/oc-nat:config/oc-nat:nat-ip {
         deviate add {
             sonic-ext:field-transformer "nat_ip_field_xfmr";
         }
@@ -128,12 +123,7 @@ module openconfig-nat-annot {
             sonic-ext:key-transformer "nat_pool_key_xfmr";
         }
     }
-    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-pool/oc-nat:nat-pool-entry/oc-nat:state/oc-nat:nat-ip/oc-nat:ip-address/oc-nat:IP-ADDRESS {
-        deviate add {
-            sonic-ext:field-transformer "nat_ip_field_xfmr";
-        }
-    }
-    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-pool/oc-nat:nat-pool-entry/oc-nat:state/oc-nat:nat-ip/oc-nat:ip-address-range/oc-nat:IP-ADDRESS-RANGE {
+    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-pool/oc-nat:nat-pool-entry/oc-nat:state/oc-nat:nat-ip {
         deviate add {
             sonic-ext:field-transformer "nat_ip_field_xfmr";
         }
@@ -306,7 +296,7 @@ module openconfig-nat-annot {
     deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-twice-mapping-table/oc-nat:nat-twice-entry/oc-nat:state/oc-nat:counters {
         deviate add {
             sonic-ext:db-name "COUNTERS_DB";
-            sonic-ext:table-name "COUNTERS_NAT_TWICE";
+            sonic-ext:table-name "COUNTERS_TWICE_NAT";
             sonic-ext:key-transformer "nat_twice_mapping_key_xfmr";
         }
     }
@@ -373,7 +363,7 @@ module openconfig-nat-annot {
     deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:napt-twice-mapping-table/oc-nat:napt-twice-entry/oc-nat:state/oc-nat:counters {
         deviate add {
             sonic-ext:db-name "COUNTERS_DB";
-            sonic-ext:table-name "COUNTERS_NAPT_TWICE";
+            sonic-ext:table-name "COUNTERS_TWICE_NAPT";
             sonic-ext:key-transformer "napt_twice_mapping_key_xfmr";
         }
     }

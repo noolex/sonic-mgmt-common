@@ -6,7 +6,91 @@ import (
     log "github.com/golang/glog"
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "io"
+    "bytes"
+    "encoding/binary"
+    "net"
 )
+
+func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
+    var err error
+    oper_err := errors.New("Operational error")
+
+    log.Infof("Going to connect UDS socket call to reach FRR for VTYSH-cmd ==> \"%s\" execution", vtysh_cmd)
+    conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
+    if err != nil {
+        log.Infof("Failed to connect proxy server: %s\n", err)
+        return nil, oper_err
+    }
+    defer conn.Close()
+    bs := make([]byte, 4)
+    binary.BigEndian.PutUint32(bs, uint32(len(vtysh_cmd)))
+    _, err = conn.Write(bs)
+    if err != nil {
+        log.Infof("Failed to write command length to server: %s\n", err)
+        return nil, oper_err
+    }
+    _, err = conn.Write([]byte(vtysh_cmd))
+    if err != nil {
+        log.Infof("Failed to write command length to server: %s\n", err)
+        return nil, oper_err
+    }
+    var outputJson map[string]interface{}
+    err = json.NewDecoder(conn).Decode(&outputJson)
+    if err != nil {
+        log.Errorf("Not able to decode vtysh json output: %s\n", err)
+        return nil, oper_err
+    }
+
+    if outputJson == nil {
+        log.Infof("VTYSH output empty\n")
+        return nil, oper_err
+    }
+
+    return outputJson, err
+}
+
+func exec_raw_vtysh_cmd (vtysh_cmd string) (string, error) {
+    var err error
+    oper_err := errors.New("Operational error")
+
+    log.Infof("In exec_raw_vtysh_cmd going to connect UDS socket call to reach FRR for VTYSH-cmd ==> \"%s\" execution", vtysh_cmd)
+    conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
+    if err != nil {
+        log.Infof("Failed to connect proxy server: %s\n", err)
+        return "", oper_err
+    }
+    defer conn.Close()
+    bs := make([]byte, 4)
+    binary.BigEndian.PutUint32(bs, uint32(len(vtysh_cmd)))
+    _, err = conn.Write(bs)
+    if err != nil {
+        log.Infof("Failed to write command length to server: %s\n", err)
+        return "", oper_err
+    }
+    _, err = conn.Write([]byte(vtysh_cmd))
+    if err != nil {
+        log.Infof("Failed to write command length to server: %s\n", err)
+        return "", oper_err
+    }
+    var buffer bytes.Buffer
+    data := make([]byte, 10240)
+    for {
+        count, err := conn.Read(data)
+        if err == io.EOF {
+            log.Infof("End reading\n")
+            break
+        }
+        if err != nil {
+            log.Infof("Failed to read from server: %s\n", err)
+            return "", oper_err
+        }
+        buffer.WriteString(string(data[:count]))
+    }
+
+    return buffer.String(), err
+}
 
 
 func init () {
@@ -39,7 +123,7 @@ var DbToYang_route_table_addr_family_xfmr FieldXfmrDbtoYang = func(inParams Xfmr
     } else if family == "ipv6" {
         af = "IPV6"
     } else {
-		return result, errors.New("Unsupported family " + family)
+        return result, errors.New("Unsupported family " + family)
     }
 
     result["address-family"] = af
@@ -76,8 +160,8 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     } else if strings.Contains(afName, "IPV6") {
         family = "ipv6"
     } else {
-		log.Info("Unsupported address-family " + afName)
-		return family, errors.New("Unsupported address-family " + afName)
+        log.Info("Unsupported address-family " + afName)
+        return family, errors.New("Unsupported address-family " + afName)
     }
 
     if strings.Contains(srcProto, "DIRECTLY_CONNECTED") {
@@ -89,15 +173,15 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     } else if strings.Contains(srcProto, "STATIC") {
         source = "static"
     } else {
-		log.Info("Unsupported protocol " + srcProto)
-		return family, errors.New("Unsupported protocol " + srcProto)
+        log.Info("Unsupported protocol " + srcProto)
+        return family, errors.New("Unsupported protocol " + srcProto)
     }
 
     if strings.Contains(dstProto, "BGP") {
         destination = "bgp"
     } else {
-		log.Info("Unsupported protocol " + dstProto)
-		return family, errors.New("Unsupported protocol " + dstProto)
+        log.Info("Unsupported protocol " + dstProto)
+        return family, errors.New("Unsupported protocol " + dstProto)
     }
 
     key := niName + "|" + source + "|" + destination + "|" + family 
@@ -130,13 +214,13 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     } else if source == "ospf3" {
         src_proto = "OSPF3"
     } else {
-		return rmap, errors.New("Unsupported src protocol " + source)
+        return rmap, errors.New("Unsupported src protocol " + source)
     }
 
     if destination == "bgp" {
         dst_proto = "BGP"
     } else {
-		return rmap, errors.New("Unsupported dst protocol " + destination)
+        return rmap, errors.New("Unsupported dst protocol " + destination)
     }
 
     if family == "ipv4" {
@@ -144,7 +228,7 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     } else if family == "ipv6" {
         af = "IPV6"
     } else {
-		return rmap, errors.New("Unsupported family " + family)
+        return rmap, errors.New("Unsupported family " + family)
     }
     rmap["src-protocol"] = src_proto
     rmap["dst-protocol"] = dst_proto
@@ -156,7 +240,7 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
 var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     log.Info("In rpc_show_ip_route")
     var cmd string
-    var af_str, vrf_name, prefix string
+    var af_str, vrf_name, options string
     var err error
     var mapData map[string]interface{}
     err = json.Unmarshal(body, &mapData)
@@ -173,7 +257,7 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
 
     log.Info("In rpc_show_route, RPC data:", mapData)
 
-    input, _ := mapData["sonic-ip-show:input"]
+    input := mapData["sonic-ip-show:input"]
     mapData = input.(map[string]interface{})
 
     log.Info("In rpc_show_route, RPC Input data:", mapData)
@@ -194,7 +278,31 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
     }
     if value, ok := mapData["prefix"].(string) ; ok {
         if value != "" {
-            prefix = value + " "
+            options = value + " "
+        }
+    } else if value, ok := mapData["address"].(string) ; ok {
+        if value != "" {
+            options = value + " "
+        }
+    } else if value, ok := mapData["summary"].(bool) ; ok {
+        if value {
+            options = "summary "
+        }
+    } else if value, ok := mapData["static"].(bool) ; ok {
+        if value {
+            options = "static "
+        }
+    } else if value, ok := mapData["connected"].(bool) ; ok {
+        if value {
+            options = "connected "
+        }
+    } else if value, ok := mapData["bgp"].(bool) ; ok {
+        if value {
+            options = "bgp "
+        }
+    } else if value, ok := mapData["ospf"].(bool) ; ok {
+        if value {
+            options = "ospf "
         }
     }
 
@@ -209,13 +317,65 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
         cmd = cmd + vrf_name
     }
 
-    if prefix != "" {
-        cmd = cmd + prefix
+    if options != "" {
+        cmd = cmd + options
     }
 
     cmd = cmd + "json"
 
     bgpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Info("Failed to execute FRR command")
+        return nil,  errors.New("Internal error!")
+    }
+
     result.Output.Status = bgpOutput
+
+    if options == "summary " {
+         /* just rib and fib counts, no interface names */
+         return json.Marshal(&result)
+    }
+
+    var routeDict map[string]interface{}
+    if err := json.Unmarshal([]byte(bgpOutput), &routeDict); err != nil {
+        log.Infof("Error found in unmarshalling json output from vtysh - #show ip route json!")
+        return json.Marshal(&result)
+    }
+
+    if err, ok := routeDict["warning"] ; ok {
+        log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", cmd, err)
+        return nil, errors.New("Internal error!")
+    }
+
+    for ipAddr := range routeDict {
+        routeMapJson := routeDict[ipAddr]
+        routeMapSlice := routeMapJson.([]interface{})
+        for _, routeEntry := range routeMapSlice {
+            routeMap := routeEntry.(map[string]interface{})
+            nextHopInterface, ok := routeMap["nexthops"]
+            if !ok {
+                log.Errorf("nextHops not present in routeDictionary for IP: %s", ipAddr)
+                continue
+            }
+            nextHopSlice := nextHopInterface.([]interface{})
+            for _, nextHopEntry := range nextHopSlice {
+                nextHopMap := nextHopEntry.(map[string]interface{})
+                ifNameVal, ok := nextHopMap["interfaceName"]
+                if !ok {
+                    log.Errorf("interfaceName entry not present in nextHops for IP: %s", ipAddr)
+                    continue
+                }
+                ifName := ifNameVal.(string)
+                sonicName := utils.GetUINameFromNativeName(&ifName)
+                nextHopMap["interfaceName"] = *sonicName
+            }
+        }
+    }
+    modifiedBgpOp, err := json.Marshal(&routeDict)
+    if err != nil {
+      log.Error("Marshalling modified BGP output failed!")
+      return json.Marshal(&result)
+    }
+    result.Output.Status = string(modifiedBgpOp)
     return json.Marshal(&result)
 }

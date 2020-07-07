@@ -1,0 +1,76 @@
+module openconfig-sampling-ext {
+
+    yang-version "1.1";
+
+    // namespace
+    namespace "http://openconfig.net/yang/sampling/extension";
+
+    prefix "oc-sampling-ext";
+
+    import openconfig-extensions { prefix "oc-ext"; }
+    import openconfig-interfaces { prefix oc-if; }
+    import openconfig-sampling { prefix oc-sampling; }
+
+    organization "SONiC";
+    contact
+        "SONiC";
+    description
+        "This module is an extension that contains a collection of YANG definitions for
+           sFlow";
+
+    oc-ext:openconfig-version "0.1.0";
+
+    revision 2020-06-23 {
+        description
+            "Initial revision.";
+        reference "0.1.0";
+    }
+
+    grouping sampling-ext-global-config {
+        description "Additional fields for sFlow global config";
+        leaf polling-interval {
+            type uint16;
+            description "sFlow polling interval";
+        }
+
+        leaf agent {
+            type oc-if:base-interface-ref;
+            description "sFlow agent interface";
+        }
+    }
+
+    augment /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:config {
+        description "Additional sFlow configuration fields.";
+        uses sampling-ext-global-config;
+    }
+
+    augment /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:state {
+        description "Additional sFlow configuration fields.";
+        uses sampling-ext-global-config;
+    }
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:config/oc-sampling:source-address {
+         deviate not-supported;
+    }
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:config/oc-sampling:sample-size {
+         deviate not-supported;
+    }
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:config/oc-sampling:sampling-rate {
+         deviate not-supported;
+    }
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:interfaces/oc-sampling:interface/oc-sampling:state/oc-sampling:packets-sampled {
+         deviate not-supported;
+    }
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:state/oc-sampling:source-address {
+         deviate not-supported;
+    }
+
+    deviation /oc-sampling:sampling/oc-sampling:sflow/oc-sampling:state/oc-sampling:sample-size {
+         deviate not-supported;
+    }
+
+}

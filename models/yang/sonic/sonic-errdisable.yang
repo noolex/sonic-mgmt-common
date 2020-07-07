@@ -1,0 +1,78 @@
+module sonic-errdisable {
+    namespace "http://github.com/Azure/sonic-errdisable";
+    prefix serrdisable;
+    yang-version 1.1;
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    import sonic-port {
+        prefix prt;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC Err Disable Recovery yang model";
+
+    revision 2020-06-04 {
+        description
+            "Initial revision.";
+    }
+
+    typedef is_enabled {
+        type enumeration {
+            enum enabled;
+            enum disabled;
+        }
+    }
+
+    grouping errdisable_config {
+        leaf interval {
+            type uint32 {
+                range "30..65535" {
+                    error-message "Invalid Err-Disable Recovery interval value.";
+                }
+            }
+            units seconds;
+            default 300;
+            description
+                "Err-Disable Recovery interval value.";
+        }
+
+        leaf udld {
+            type is_enabled;
+            description
+                "Enable/Disable Err Disable Recovery for UDLD";
+        }
+
+        leaf bpduguard {
+            type is_enabled;
+            description
+                "Enable/Disable Err Disable Recovery for BPDUGUARD";
+        }
+    }
+
+    container sonic-errdisable {
+        container ERRDISABLE {
+            list ERRDISABLE_LIST {
+                key "id";
+
+                leaf id {
+                    type enumeration {
+                        enum RECOVERY;
+                    }
+                    description
+                        "It's value is always RECOVERY";
+                }
+
+                uses errdisable_config;
+            }
+        }
+    }
+}

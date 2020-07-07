@@ -1,0 +1,15 @@
+module sonic-ip-sla-annot {
+
+    namespace "http://github.com/Azure/sonic-ip-sla-annot";
+    prefix ssla-annot;
+    yang-version 1.1;
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-ip-sla { prefix ssla; }
+
+    deviation /ssla:get-ipsla-history {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_ipsla_history";
+        }
+    }
+}

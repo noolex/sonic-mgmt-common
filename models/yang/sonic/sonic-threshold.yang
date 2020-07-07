@@ -22,7 +22,7 @@ module sonic-threshold {
 	The feature tracks ingress and egress buffer threshold breaches and notify
 	network congestion event in real-time.";
 
-    revision 2020-04-27 {
+    revision 2020-05-28 {
         description
             "Initial revision.";
 
@@ -91,35 +91,35 @@ module sonic-threshold {
 			description
 			   "Threshold value for a specific buffer of an interface.";
 	         }
-		}
+	    }
+	}
 
-		list BUFFER_POOL_LIST {
-			key "bufferpoolprefix pool_name";
+	container THRESHOLD_BUFFERPOOL_TABLE {
 
-			leaf bufferpoolprefix {
-				type enumeration {
-					enum BUFFER_POOL;
-				}
-			}
+            description
+		"config db threshold bufferpool table";
 
-			leaf pool_name {
-				type string;
+	    list THRESHOLD_BUFFERPOOL_TABLE_LIST {
+                        key "pool_name";
 
-			description
-				"Configure buffer pool name.";
-			}
+                        leaf pool_name {
+                                type string;
 
-			leaf threshold {
-				type uint8 {
-					range "1..100" {
-						error-message "threshold value must be in range 1-100.";
-					}
-				}
+                        description
+                                "Configure buffer pool name.";
+                        }
 
-			description
-				"Buffer pool threshold value.";
-			}
-		}
+                        leaf threshold {
+                                type uint8 {
+                                        range "1..100" {
+                                                error-message "threshold value must be in range 1-100.";
+                                        }
+                                }
+
+                        description
+                                "Buffer pool threshold value.";
+                        }
+             }
 	}
 
 	container THRESHOLD_BREACH_TABLE {
@@ -211,6 +211,33 @@ module sonic-threshold {
 			    "time-stamp of the event when the threshold breach occurred.";
 		}
 	    }
+        }
+    }
+
+    rpc clear-threshold-breach {
+        input {
+            leaf breach_event_id {
+		type union {
+                     type enumeration {
+                          enum all;
+	             }
+			type uint64;
+                }
+                description
+                   "Input parameter breach event id - all or a evendId";
+            }
+        }
+        output {
+            leaf status {
+                type int32;
+                description
+                    "The status of the operation execution request.";
+            }
+            leaf status-detail {
+                    type string;
+                    description
+                        "The detailed status of the operation execution request.";
+            }
         }
     }
 }

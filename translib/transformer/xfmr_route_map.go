@@ -37,6 +37,8 @@ func init () {
     XlateFuncBind("DbToYang_route_map_stmt_field_xfmr", DbToYang_route_map_stmt_field_xfmr)
     XlateFuncBind("YangToDb_route_map_set_ipv6_next_hop_xfmr", YangToDb_route_map_set_ipv6_next_hop_xfmr)
     XlateFuncBind("DbToYang_route_map_set_ipv6_next_hop_xfmr", DbToYang_route_map_set_ipv6_next_hop_xfmr)
+    XlateFuncBind("YangToDb_route_map_set_med_xfmr", YangToDb_route_map_set_med_xfmr)
+    XlateFuncBind("DbToYang_route_map_set_med_xfmr", DbToYang_route_map_set_med_xfmr)
 }
 
 var DbToYang_route_map_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -479,27 +481,22 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
                 switch v.E_OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY {
                 case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER:
                     std_community = "no-peer"
-                    break
                 case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE:
                     std_community = "no-advertise"
-                    break
                 case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT:
                     std_community = "no-export"
-                    break
                 case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED:
                     std_community = "local-AS"
-                    break
+                case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_ADDITIVE:
+                    std_community = "additive"
                 }
-                break
             case reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union_Uint32{}):
                 v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union_Uint32)
                 fmt.Fprintf(&b, "0x%x", v.Uint32)
                 std_community = b.String()
-                break
             case reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union_String{}):
                 v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union_String)
                 std_community = v.String
-                break
             }
             if final_std_community == "" {
                 final_std_community = std_community
@@ -507,7 +504,13 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
                 final_std_community = final_std_community + "," + std_community
             }
         }
-         if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_REMOVE {
+        if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD {
+            log.Info("YangToDb_route_map_bgp_action_set_ext_community : ADD ", final_std_community)
+            if final_std_community == "additive" {
+                return res_map, errors.New("Routing policy community cant have just additive")
+            }
+            stmtmap[entry_key].Field["set_community_inline@"] = final_std_community
+        } else {
              subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
              if _, ok := subOpMap[db.ConfigDB]; !ok {
@@ -517,12 +520,24 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
                  subOpMap[db.ConfigDB]["ROUTE_MAP"] = make(map[string]db.Value)
              }
              subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = db.Value{Field: make(map[string]string)}
-             subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
 
-             inParams.subOpDataMap[DELETE] = &subOpMap
+             if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_REMOVE {
+                 log.Info("YangToDb_route_map_bgp_action_set_ext_community : REMOVE")
+                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
+                 inParams.subOpDataMap[DELETE] = &subOpMap
+             } else {
+                 log.Info("YangToDb_route_map_bgp_action_set_ext_community : REPLACE ", final_std_community)
+                 if final_std_community == "additive" {
+                     return res_map, errors.New("Routing policy community cant have just additive")
+                 }
+
+                 rtMapInst, _ := inParams.d.GetEntry(&db.TableSpec{Name:"ROUTE_MAP"}, db.Key{Comp: []string{entry_key}})
+                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = rtMapInst
+                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
+                 inParams.subOpDataMap[REPLACE] = &subOpMap
+             }
              return res_map, nil
          }
-         stmtmap[entry_key].Field["set_community_inline@"] = final_std_community
     } else if rtStmtActionCommObj.Config != nil && rtStmtActionCommObj.Config.Method == ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE {
         if rtStmtActionCommObj.Reference == nil {
             return res_map, errors.New("Routing policy invalid action parameters")
@@ -554,20 +569,21 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
 var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
 
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    log.Info("targetUriPath is ", targetUriPath)
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
-    if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
-        log.Info("YangToDb_route_map_bgp_action_set_community : Routing policy definitions list is empty.")
+    if rtPolDefsObj == nil {
+        log.Info("DbToYang_route_map_bgp_action_set_community: Routing policy definitions list is empty.")
         return errors.New("Routing policy definitions list is empty")
     }
+    ygot.BuildEmptyTree(rtPolDefsObj)
     data := (*inParams.dbDataMap)[inParams.curDb]
     log.Info("DbToYang_route_map_bgp_action_set_community: ", data, inParams.ygRoot)
 
-    pathInfo := NewPathInfo(inParams.uri)
     rtPolicyName := pathInfo.Var("name")
     rtStmtName := pathInfo.Var("name#2")
 
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    log.Info("targetUriPath is ", targetUriPath)
     if rtPolicyName == "" || rtStmtName == "" {
         return errors.New("Routing policy keys are not present")
     }
@@ -582,18 +598,19 @@ var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inPa
         rtStmtObj,_ = rtPolDefObj.Statements.NewStatement(rtStmtName)
     }
     ygot.BuildEmptyTree(rtStmtObj)
-
-    if rtStmtObj.Actions == nil || rtStmtObj.Actions.BgpActions == nil || rtStmtObj.Actions.BgpActions.SetCommunity == nil {
-        return errors.New("Routing policy invalid action parameters")
+    if rtStmtObj.Actions == nil {
+        var actions ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions
+        rtStmtObj.Actions = &actions
     }
-
+    ygot.BuildEmptyTree(rtStmtObj.Actions)
     rtStmtActionCommObj := rtStmtObj.Actions.BgpActions.SetCommunity
     if rtStmtActionCommObj == nil {
-        return errors.New("Routing policy invalid action parameters")
+        var set_comm ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity
+        rtStmtObj.Actions.BgpActions.SetCommunity =&set_comm
+        rtStmtActionCommObj = rtStmtObj.Actions.BgpActions.SetCommunity
     }
-
-    entry_key := rtPolicyName + "|" + rtStmtName
     ygot.BuildEmptyTree(rtStmtActionCommObj)
+    entry_key := rtPolicyName + "|" + rtStmtName
     pTbl := data["ROUTE_MAP"]
     if _, ok := pTbl[entry_key]; !ok {
         log.Info("DbToYang_intf_enabled_xfmr Interface not found : ")
@@ -601,66 +618,72 @@ var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inPa
     }
     rtMapInst := pTbl[entry_key]
 
-    if targetUriPath == "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition/statements/statement/actions/openconfig-bgp-policy:bgp-actions/set-community" {
-         communityInlineVal, ok := rtMapInst.Field["set_community_inline@"]
-         log.Info("DbToYang_route_map_bgp_action_set_community: ", communityInlineVal)
-         if ok {    
-            rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_INLINE
-                var CfgCommunities []ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union
-                var StateCommunities []ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union
-            for _, comm_val := range strings.Split(communityInlineVal, ",") {
-                log.Info("DbToYang_route_map_bgp_action_set_community individual community value: ", comm_val)
-                if (comm_val == "no-peer") {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                } else if (comm_val == "no-advertise") {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                } else if (comm_val == "no-export") {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                 } else if (comm_val == "local-AS") {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                 } else {
-                     n, err := strconv.ParseInt(comm_val, 10, 32)
-                     if err == nil {
-                         n := uint32(n)
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(n)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(n)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                     } else {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(comm_val)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(comm_val)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                     }
+    communityInlineVal, ok := rtMapInst.Field["set_community_inline@"]
+    log.Info("DbToYang_route_map_bgp_action_set_community: ", communityInlineVal)
+    if ok {    
+       rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_INLINE
+           var CfgCommunities []ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union
+           var StateCommunities []ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union
+       for _, comm_val := range strings.Split(communityInlineVal, ",") {
+           log.Info("DbToYang_route_map_bgp_action_set_community individual community value: ", comm_val)
+           if (comm_val == "no-peer") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+           } else if (comm_val == "no-advertise") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+           } else if (comm_val == "no-export") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+            } else if (comm_val == "local-AS") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+            } else if (comm_val == "additive") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_ADDITIVE)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_ADDITIVE)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+
+            } else {
+                n, err := strconv.ParseInt(comm_val, 10, 32)
+                if err == nil {
+                    n := uint32(n)
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(n)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(n)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+                } else {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_Config_Communities_Union(comm_val)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Inline_State_Communities_Union(comm_val)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
                 }
-            }
-            rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
-            rtStmtActionCommObj.Inline.State.Communities = StateCommunities
-         } else {
-            rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE
-            communityRef, ok := rtMapInst.Field["set_community_ref"]
-            log.Info("DbToYang_route_map_bgp_action_set_community reference: ", communityRef)
-            if ok {
-                rtStmtActionCommObj.Reference.Config.CommunitySetRef = &communityRef
-                rtStmtActionCommObj.Reference.State.CommunitySetRef = &communityRef
-            }
-        }
-        rtStmtActionCommObj.Config.Options = ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD
-        rtStmtActionCommObj.State.Method = rtStmtActionCommObj.Config.Method
-        rtStmtActionCommObj.State.Options = rtStmtActionCommObj.Config.Options
-   }
+           }
+       }
+       rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
+       rtStmtActionCommObj.Inline.State.Communities = StateCommunities
+    } else {
+       communityRef, ok := rtMapInst.Field["set_community_ref"]
+       log.Info("DbToYang_route_map_bgp_action_set_community reference: ", communityRef)
+       if ok {
+           rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE
+           rtStmtActionCommObj.Reference.Config.CommunitySetRef = &communityRef
+           rtStmtActionCommObj.Reference.State.CommunitySetRef = &communityRef
+       } else {
+           return err
+       }
+    }
+    rtStmtActionCommObj.Config.Options = ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD
+    rtStmtActionCommObj.State.Method = rtStmtActionCommObj.Config.Method
+    rtStmtActionCommObj.State.Options = rtStmtActionCommObj.Config.Options
 
     return err
 }
@@ -739,22 +762,18 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
                     switch v.E_OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY {
                         case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER:
                             std_community = "no-peer"
-                            break
                         case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE:
                             std_community = "no-advertise"
-                            break
                         case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT:
                             std_community = "no-export"
-                            break
                         case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED:
                             std_community = "local-AS"
-                            break
+                        case ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_ADDITIVE:
+                            std_community = "additive"
                     }
-                    break
                 case reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union_String{}):
                     v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union_String)
                     std_community = v.String
-                    break
             }
             if final_std_community == "" {
                 final_std_community = std_community
@@ -762,7 +781,9 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
                 final_std_community = final_std_community + "," + std_community
             }
           }
-          if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_REMOVE {
+          if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD {
+              stmtmap[entry_key].Field["set_ext_community_inline@"] = final_std_community
+          } else {
              subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
              if _, ok := subOpMap[db.ConfigDB]; !ok {
@@ -772,12 +793,20 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
                  subOpMap[db.ConfigDB]["ROUTE_MAP"] = make(map[string]db.Value)
              }
              subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = db.Value{Field: make(map[string]string)}
-             subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_ext_community_inline@"] = final_std_community
 
-             inParams.subOpDataMap[DELETE] = &subOpMap
+             if rtStmtActionCommObj.Config.Options == ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_REMOVE {
+                 log.Info("YangToDb_route_map_bgp_action_set_community : REMOVE")
+                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_ext_community_inline@"] = final_std_community
+                 inParams.subOpDataMap[DELETE] = &subOpMap
+             } else {
+                 log.Info("YangToDb_route_map_bgp_action_set_community : REPLACE")
+                 rtMapInst, _ := inParams.d.GetEntry(&db.TableSpec{Name:"ROUTE_MAP"}, db.Key{Comp: []string{entry_key}})
+                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key] = rtMapInst
+                 subOpMap[db.ConfigDB]["ROUTE_MAP"][entry_key].Field["set_community_inline@"] = final_std_community
+                 inParams.subOpDataMap[REPLACE] = &subOpMap
+             }
              return res_map, nil
          }
-         stmtmap[entry_key].Field["set_ext_community_inline@"] = final_std_community
     } else if rtStmtActionCommObj.Config != nil && rtStmtActionCommObj.Config.Method == ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE {
         if rtStmtActionCommObj.Reference == nil {
             return res_map, errors.New("Routing policy invalid action parameters")
@@ -811,20 +840,21 @@ v := (commUnion).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitio
 var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
 
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    log.Info("targetUriPath is ", targetUriPath)
     rtPolDefsObj := getRoutingPolicyRoot(inParams.ygRoot)
-    if rtPolDefsObj == nil || rtPolDefsObj.PolicyDefinitions == nil || len (rtPolDefsObj.PolicyDefinitions.PolicyDefinition) < 1 {
-        log.Info("YangToDb_route_map_bgp_action_set_community : Routing policy definitions list is empty.")
+    if rtPolDefsObj == nil {
+        log.Info("DbToYang_route_map_bgp_action_set_ext_community: Routing policy definitions list is empty.")
         return errors.New("Routing policy definitions list is empty")
     }
+    ygot.BuildEmptyTree(rtPolDefsObj)
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_route_map_bgp_action_set_community: ", data, inParams.ygRoot)
+    log.Info("DbToYang_route_map_bgp_action_set_ext_community: ", data, inParams.ygRoot)
 
-    pathInfo := NewPathInfo(inParams.uri)
     rtPolicyName := pathInfo.Var("name")
     rtStmtName := pathInfo.Var("name#2")
 
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    log.Info("targetUriPath is ", targetUriPath)
     if rtPolicyName == "" || rtStmtName == "" {
         return errors.New("Routing policy keys are not present")
     }
@@ -841,17 +871,20 @@ var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (
     }
     ygot.BuildEmptyTree(rtStmtObj)
 
-    if rtStmtObj.Actions == nil || rtStmtObj.Actions.BgpActions == nil || rtStmtObj.Actions.BgpActions.SetExtCommunity == nil {
-        return errors.New("Routing policy invalid action parameters")
+    if rtStmtObj.Actions == nil {
+        var actions ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions
+        rtStmtObj.Actions = &actions
     }
-
+    ygot.BuildEmptyTree(rtStmtObj.Actions)
     rtStmtActionCommObj := rtStmtObj.Actions.BgpActions.SetExtCommunity
     if rtStmtActionCommObj == nil {
-        return errors.New("Routing policy invalid action parameters")
+        var set_comm ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity
+        rtStmtObj.Actions.BgpActions.SetExtCommunity =&set_comm
+        rtStmtActionCommObj = rtStmtObj.Actions.BgpActions.SetExtCommunity
     }
+    ygot.BuildEmptyTree(rtStmtActionCommObj)
 
     entry_key := rtPolicyName + "|" + rtStmtName
-    ygot.BuildEmptyTree(rtStmtActionCommObj)
     pTbl := data["ROUTE_MAP"]
     if _, ok := pTbl[entry_key]; !ok {
         log.Info("DbToYang_intf_enabled_xfmr Interface not found : ")
@@ -859,58 +892,108 @@ var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (
     }
     rtMapInst := pTbl[entry_key]
 
-    if targetUriPath == "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition/statements/statement/actions/openconfig-bgp-policy:bgp-actions/set-ext-community" {
-         communityInlineVal, ok := rtMapInst.Field["set_ext_community_inline@"]
-         log.Info("DbToYang_route_map_bgp_action_set_ext_community inline value: ", communityInlineVal)
-         if ok {    
-            rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_INLINE
-                var CfgCommunities [] ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union
-                var StateCommunities [] ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union
-            for _, comm_val := range strings.Split(communityInlineVal, ",") {
-                if (comm_val == "no-peer") {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                } else if (comm_val == "no-advertise") {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                } else if (comm_val == "no-export") {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-              } else if (comm_val == "local-AS") {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-              } else {
-                         cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(comm_val)
-                         state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(comm_val)
-                         CfgCommunities = append(CfgCommunities, cfg_val)
-                         StateCommunities = append(StateCommunities, state_val)
-                }
-            }
-            rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
-            rtStmtActionCommObj.Inline.State.Communities = StateCommunities
+    communityInlineVal, ok := rtMapInst.Field["set_ext_community_inline@"]
+    log.Info("DbToYang_route_map_bgp_action_set_ext_community inline value: ", communityInlineVal)
+    if ok {    
+       rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_INLINE
+           var CfgCommunities [] ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union
+           var StateCommunities [] ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union
+       for _, comm_val := range strings.Split(communityInlineVal, ",") {
+           if (comm_val == "no-peer") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NOPEER)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+           } else if (comm_val == "no-advertise") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_ADVERTISE)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+           } else if (comm_val == "no-export") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+         } else if (comm_val == "local-AS") {
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(ocbinds.OpenconfigBgpTypes_BGP_WELL_KNOWN_STD_COMMUNITY_NO_EXPORT_SUBCONFED)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
          } else {
-            rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE
-            communityRef, ok := rtMapInst.Field["set_ext_community_ref"]
-            log.Info("DbToYang_route_map_bgp_action_set_ext_community reference value: ", communityRef)
-            if ok {
-                rtStmtActionCommObj.Reference.Config.ExtCommunitySetRef = &communityRef
-                rtStmtActionCommObj.Reference.State.ExtCommunitySetRef = &communityRef
-            }
-        }
-        rtStmtActionCommObj.Config.Options = ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD
-        rtStmtActionCommObj.State.Method = rtStmtActionCommObj.Config.Method
-        rtStmtActionCommObj.State.Options = rtStmtActionCommObj.Config.Options
+                    cfg_val, _ := rtStmtActionCommObj.Inline.Config.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_Config_Communities_Union(comm_val)
+                    state_val, _ := rtStmtActionCommObj.Inline.State.To_OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetExtCommunity_Inline_State_Communities_Union(comm_val)
+                    CfgCommunities = append(CfgCommunities, cfg_val)
+                    StateCommunities = append(StateCommunities, state_val)
+           }
+       }
+       rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
+       rtStmtActionCommObj.Inline.State.Communities = StateCommunities
+    } else {
+       communityRef, ok := rtMapInst.Field["set_ext_community_ref"]
+       log.Info("DbToYang_route_map_bgp_action_set_ext_community reference value: ", communityRef)
+       if ok {
+           rtStmtActionCommObj.Config.Method = ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_SetCommunity_Config_Method_REFERENCE
+           rtStmtActionCommObj.Reference.Config.ExtCommunitySetRef = &communityRef
+           rtStmtActionCommObj.Reference.State.ExtCommunitySetRef = &communityRef
+       } else {
+           return err
+       }
    }
+   rtStmtActionCommObj.Config.Options = ocbinds.OpenconfigBgpPolicy_BgpSetCommunityOptionType_ADD
+   rtStmtActionCommObj.State.Method = rtStmtActionCommObj.Config.Method
+   rtStmtActionCommObj.State.Options = rtStmtActionCommObj.Config.Options
 
     return err
+}
+
+var DbToYang_route_map_set_med_xfmr FieldXfmrDbtoYang= func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_route_map_set_med_xfmr: ", data, "inParams : ", inParams)
+
+    pTbl := data["ROUTE_MAP"]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_route_map_set_med_xfmr table not found : ", inParams.key)
+        return result, errors.New("Policy definition table not found : " + inParams.key)
+    }
+    niInst := pTbl[inParams.key]
+    set_med, ok := niInst.Field["set_med"]
+    if ok {
+        result["set-med"] = set_med
+    } else {
+        log.Info("DbToYang_route_map_set_med_xfmr field not found in DB")
+    }
+    return result, nil 
+}
+
+var YangToDb_route_map_set_med_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+    if inParams.param == nil {
+        err = errors.New("No Params")
+        return res_map, err
+    }
+
+    if inParams.oper == DELETE {
+        res_map["set_med"] = ""
+        return res_map, nil
+    }
+    setMed := inParams.param.(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_Config_SetMed_Union)
+    setMedType := reflect.TypeOf(setMed).Elem()
+
+    if setMedType != reflect.TypeOf(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_Config_SetMed_Union_Uint32{}) {
+        log.Info("YangToDb_route_map_set_med_xfmr invalid type ", setMedType)
+        return res_map, errors.New("Set MED value should be in uint32 format!")
+    }
+    var b bytes.Buffer
+    v := (setMed).(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_Config_SetMed_Union_Uint32)
+    fmt.Fprintf(&b, "%d", v.Uint32)
+
+    res_map["set_med"] = b.String()
+    log.Info("YangToDb_route_map_set_med_xfmr DB write value ", res_map["set_med"])
+    return res_map, nil
 }
 
 

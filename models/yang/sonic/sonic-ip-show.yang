@@ -42,10 +42,62 @@ module sonic-ip-show {
             description "Address family (IPv4/IPv6)";
         }
 
-        leaf prefix {
-                type inet:ip-prefix;
-                description
-                    "show by prefix.";
+        choice type {
+            case PREFIX {
+                  leaf prefix {
+                          type inet:ip-prefix;
+                          description
+                              "show by prefix.";
+                  }
+            }
+
+            case ADDRESS {
+                  leaf address {
+                          type inet:ip-address;
+                          description
+                              "show by address.";
+                  }
+            }
+
+            case SUMMARY {
+                leaf summary {
+                    type boolean;
+                    default false;
+                    description "True : to fetch counts of different types of routes";
+                }
+            }
+
+            case STATIC {
+                leaf static {
+                    type boolean;
+                    default false;
+                    description "True : to fetch static routes";
+                }
+            }
+
+            case CONNECTED {
+                leaf connected {
+                    type boolean;
+                    default false;
+                    description "True : to fetch connected routes";
+                }
+            }
+
+            case BGP {
+                leaf bgp {
+                    type boolean;
+                    default false;
+                    description "True : to fetch BGP routes";
+                }
+            }
+
+            case OSPF {
+                leaf ospf {
+                    type boolean;
+                    default false;
+                    description "True : to fetch OSPF routes";
+                }
+            }
         }
     }
 

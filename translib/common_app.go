@@ -126,14 +126,63 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 }
 
 func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-	err := errors.New("Not supported")
-	notifInfo := notificationInfo{dbno: db.ConfigDB}
-	return nil, &notifInfo, err
+    var err error
+    var subscDt transformer.XfmrTranslateSubscribeInfo
+    var notifInfo notificationInfo
+    var notifOpts notificationOpts
+    txCache := new(sync.Map)
+    err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+
+    log.Info("tranlateSubscribe:path", path)
+    subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
+    if subscDt.PType == transformer.OnChange {
+        notifOpts.pType = OnChange
+    } else {
+        notifOpts.pType = Sample
+    }
+    notifOpts.mInterval = subscDt.MinInterval
+    notifOpts.isOnChangeSupported = subscDt.OnChange
+    if err != nil {
+        log.Infof("returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
+        return &notifOpts, nil, err
+    }
+    if subscDt.DbDataMap == nil {
+        log.Infof("DB data is nil so returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
+        return &notifOpts, nil, err
+    } else {
+        for dbNo, dbDt := range(subscDt.DbDataMap) {
+            if (len(dbDt) == 0) { //ideally all tables for a given uri should be from same DB
+                continue
+            }
+            log.Infof("Adding to notifInfo, Db Data - %v for DB No - %v", dbDt, dbNo)
+            notifInfo.dbno = dbNo
+            // in future there will be, multi-table in a DB, support from translib, for now its just single table
+            for tblNm, tblDt := range(dbDt) {
+                notifInfo.table = db.TableSpec{Name:tblNm}
+                if (len(tblDt) == 1) {
+                    for tblKy := range(tblDt) {
+                        notifInfo.key = asKey(tblKy)
+                        notifInfo.needCache = subscDt.NeedCache
+                    }
+                } else {
+                    if (len(tblDt) >  1) {
+                        log.Errorf("More than one DB key found for subscription path - %v", path)
+                    } else {
+                        log.Errorf("No DB key found for subscription path - %v", path)
+                    }
+                    return &notifOpts, nil, err
+                }
+
+            }
+        }
+    }
+    log.Infof("For path - %v, returning: notifOpts - %v, notifInfo - %v, error - nil", path, notifOpts, notifInfo)
+    return &notifOpts, &notifInfo, nil
 }
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
     var err error
-    log.Info("translateAction:path =", app.pathInfo.Path, app.body)
+    log.Info("translateAction:path =", app.pathInfo.Path, string(app.body))
     return err
 }
 
@@ -201,7 +250,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    origYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
 	    xfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
             isEmptyPayload  := false
-	    payload, err, isEmptyPayload = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
+	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
 	    if err != nil {
 		    log.Error("transformer.transformer.GetAndXlateFromDB failure. error:", err)
 		    resPayload = payload
@@ -214,7 +263,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    }
 
 	    targetObj, tgtObjCastOk := (*app.ygotTarget).(ygot.GoStruct)
-	    if tgtObjCastOk == false {
+	    if !tgtObjCastOk {
 		    /*For ygotTarget populated by tranlib, for query on leaf level and list(without instance) level, 
 		      casting to GoStruct fails so use the parent node of ygotTarget to Unmarshall the payload into*/
 		    log.Infof("Use GetParentNode() since casting ygotTarget to GoStruct failed(uri - %v", app.pathInfo.Path)
@@ -227,7 +276,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		    }
 		    if parentTargetObj != nil {
 			    targetObj, tgtObjCastOk = (*parentTargetObj).(ygot.GoStruct)
-			    if tgtObjCastOk == false {
+			    if !tgtObjCastOk {
 				    log.Warningf("Casting of parent object returned from getParentNode() to GoStruct failed(uri - %v)", app.pathInfo.Path)
 				    resPayload = payload
 				    break
@@ -249,12 +298,11 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		    resYgot := (*app.ygotRoot)
 		    if !strings.HasPrefix(app.pathInfo.Path, "/sonic") {
 			    // if payload is empty, no need to invoke merge-struct
-			    if isEmptyPayload == true {
+			    if isEmptyPayload {
 				    if areEqual(xfmrYgotRoot, resYgot.(ygot.GoStruct)) {
 					    // No data available in xfmrYgotRoot.
 					    resPayload = payload
-					    errStr := fmt.Sprintf("No data available")
-					    log.Error(errStr)
+					    log.Error("No data available")
 					    //TODO: Return not found error
 					    //err = tlerr.NotFound("Resource not found")
 					    break
@@ -292,8 +340,8 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 }
 
 func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
-    var resp ActionResponse
-	err := errors.New("Not implemented")
+        var resp ActionResponse
+        var err error
 
 	resp.Payload, err = transformer.CallRpcMethod(app.pathInfo.Path, app.body, dbs)
 	log.Info("transformer.CallRpcMethod() returned")
@@ -335,7 +383,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	var resultTblList []string
         for _, dbMap := range result { //Get dependency list for all tables in result
 		for _, resMap := range dbMap { //Get dependency list for all tables in result
-		        for tblnm, _ := range resMap { //Get dependency list for all tables in result
+		        for tblnm := range resMap { //Get dependency list for all tables in result
 				resultTblList = append(resultTblList, tblnm)
 			}
 		}
@@ -449,7 +497,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 	var xfmrTblLst []string
 	var resultTblLst []string
 
-	for tblNm, _ := range(dbMap) {
+	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
 	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
@@ -478,15 +526,13 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 					tblRw.Field["NULL"] = "NULL"
 				}
 				if len(tblRw.Field) > 1 {
-					if _, ok := tblRw.Field["NULL"]; ok {
-						delete(tblRw.Field, "NULL")
-					}
+					delete(tblRw.Field, "NULL")
 				}
 				log.Info("Processing Table row ", tblRw)
 				existingEntry, _ := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
 				switch opcode {
 				case CREATE:
-					if existingEntry.IsPopulated() {
+					if existingEntry.IsPopulated() && !app.deleteMapContains(tblNm, tblKey) {
 						log.Info("Entry already exists hence return.")
 						return tlerr.AlreadyExists("Entry %s already exists", tblKey)
 					} else {
@@ -511,7 +557,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						}
 					} else {
 						// workaround to patch operation from CLI
-						log.Info("Create(pathc) an entry.")
+						log.Info("Create(patch) an entry.")
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
 							log.Error("UPDATE case - d.CreateEntry() failure")
@@ -549,7 +595,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 	var resultTblLst []string
 	var ordTblList []string
 
-	for tblNm, _ := range(dbMap) {
+	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
 	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
@@ -649,6 +695,23 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 					/* handle leaf-list merge if any leaf-list exists */
 					resTblRw := checkAndProcessLeafList(existingEntry, tblRw, DELETE, d, tblNm, tblKey)
 					if len(resTblRw.Field) > 0 {
+						/* add the NULL field if the last field gets deleted */
+						deleteCount := 0
+						for field := range existingEntry.Field {
+							if resTblRw.Has(field) {
+								deleteCount++
+							}
+						}
+						if deleteCount == len(existingEntry.Field) {
+							nullTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
+							log.Info("Last field gets deleted, add NULL field to keep an db entry")
+							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
+							if err != nil {
+								log.Error("UPDATE case - d.ModEntry() failure")
+								return err
+							}
+						}
+						/* deleted fields */
 						err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
 						if err != nil {
 							log.Error("DELETE case - d.DeleteEntryFields() failure")
@@ -656,7 +719,6 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 						}
 					}
 				}
-
 			}
 		}
 	} /* end of ordered table list for loop */
@@ -759,4 +821,15 @@ func areEqual(a, b interface{}) bool {
 
         return reflect.DeepEqual(a, b)
 }
+
+// This function checks whether an entry exists in the db map
+func (app *CommonApp) deleteMapContains(tblNm string, tblKey string) bool {
+        if dbMap, ok := app.cmnAppTableMap[DELETE][db.ConfigDB]; ok {
+                if _, ok := dbMap[tblNm][tblKey] ; ok {
+                        return true
+                }
+         }
+        return false
+}
+
 

@@ -1,0 +1,626 @@
+module openconfig-aaa-ldap-ext {
+
+  yang-version "1.1";
+
+  namespace "http://openconfig.net/yang/aaa/ldap/extension";
+
+  prefix "oc-aaa-ldap-ext";
+
+  // import some basic types
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-aaa-types { prefix oc-aaa-types; }
+  import openconfig-system { prefix oc-sys; }  
+  import openconfig-network-instance { prefix oc-ni; }
+  import openconfig-interfaces { prefix "oc-if"; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module defines configuration and operational state data
+    related to the LDAP protocol for authentication,
+    authorization, and accounting.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-09-12" {
+    description
+      "Initial revision.";
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  identity LDAP {
+    base oc-aaa-types:AAA_SERVER_TYPE;
+    description
+      "Lightweight Directory Access Protocol (LDAP) AAA
+      server";
+  }
+
+  identity LDAP_NSS {
+    base oc-aaa-types:AAA_SERVER_TYPE;
+    description
+      "Lightweight Directory Access Protocol Name Service (LDAP_NSS) AAA
+      server";
+  }
+
+  identity LDAP_PAM {
+    base oc-aaa-types:AAA_SERVER_TYPE;
+    description
+      "Lightweight Directory Access Protocol PAM (LDAP_PAM) AAA
+      server";
+  }
+
+  identity LDAP_SUDO {
+    base oc-aaa-types:AAA_SERVER_TYPE;
+    description
+      "Lightweight Directory Access Protocol SUDO (LDAP_SUDO) AAA
+      server";
+  }
+
+  identity LDAP_ALL {
+    base oc-aaa-types:AAA_METHOD_TYPE;
+    description
+      "The group of all LDAP servers.";
+  }
+
+  // typedef statements
+  typedef ldap-ssl-type {
+    type enumeration {
+      enum ON {
+        description
+          "LDAP over SSL/TLS";
+      }
+      enum OFF {
+        description
+          "No SSL/TLS";        
+      }
+      enum START_TLS {
+        description
+          "Use StartTLS instead of raw LDAP over SSL/TLS";
+      }        
+    }
+    description
+      "SSL/TLS configuration of the LDAP server";
+   }
+
+  // grouping statements
+
+  grouping aaa-ldap-ext-server-config {
+    description
+      "Configuration data for a LDAP server";
+
+    leaf port {
+      type oc-inet:port-number;
+      description
+        "LDAP server port";      
+    }
+    
+    leaf use-type {
+      type enumeration {
+        enum ALL {
+          description
+            "LDAP type - all";
+        }
+        enum NSS {
+          description
+            "LDAP type - nss";        
+        }
+        enum SUDO {
+          description
+            "LDAP type - sudo";                
+        }
+        enum PAM {
+          description
+            "LDAP type - pam";                
+        }                
+      }
+      
+      description
+        "LDAP server type";      
+    }
+    
+    leaf priority {
+      type uint8  {
+        range "1..99";
+      }
+      description
+        "LDAP server priority";      
+    }
+    
+    leaf ssl {
+      type ldap-ssl-type;
+       description
+        "LDAP server TLS configuration";      
+    }
+    
+    leaf retransmit-attempts {
+      type uint8  {
+        range "0..10";
+      }
+      description
+        "Number of retransmit attempts";      
+    }
+  }
+
+  grouping aaa-ldap-ext-server-top {
+    description
+      "Top-level grouping for LDAP server configuration data";
+
+    container ldap {
+      description
+        "Top-level container for LDAP server configuration data";
+
+      container config {
+        description
+          "Configuration data for LDAP servers";
+
+        uses aaa-ldap-ext-server-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for LDAP servers";
+
+        uses aaa-ldap-ext-server-config;
+      }
+    }
+  }
+  
+  grouping aaa-ldap-ext-server-group-top {
+    description
+      "Grouping for LDAP server-group configuration data";
+  
+  	container ldap {
+	    description
+	      "LDAP server-group";
+	      container config {
+          description
+            "Configuration data of the LDAP server-group";
+	      }
+	      
+	      container state {
+          config false;
+          description
+            "Operational state data of the LDAP server-group";	      
+	      }  	
+  	}
+  }
+
+  grouping aaa-ldap-ext-common-attributes {
+    description
+      "Grouping for LDAP server configuration data";
+  
+    leaf search-time-limit {
+      type uint32;
+      description
+        "Search time limit of the LDAP server";
+    }
+
+    leaf bind-time-limit {
+      type uint32;
+      description
+        "Connect time limit of the LDAP server";      
+    }
+    
+    leaf retransmit-attempts {
+      type uint8;
+      description
+        "Number of retransmit attempt by LDAP server";
+    }
+    
+    leaf port {
+      type oc-inet:port-number;
+      description
+        "LDAP server port";
+    }
+    
+    leaf version {
+      type uint8  {
+        range "2..3";
+      }
+      description
+        "LDAP server protocol version";
+    }
+    
+    leaf base {
+      type string;
+      description
+        "Base Distinguished Name to use for searches";
+    }
+    
+    leaf ssl {
+      type ldap-ssl-type;      
+      description
+        "TLS configuration of the LDAP server";
+    }
+    
+    leaf bind-dn {
+      type string;
+      description
+        "Distinguished name with which to bind to the LDAP server. The
+         default is to bind anonymously.";
+    }
+    
+    leaf bind-pw {
+      type string;
+      description
+        "Credentials with which to bind to the LDAP server. Only used with
+         bind-dn.";
+    }
+    
+  }
+  
+  grouping aaa-ldap-ext-global-attributes {
+    description
+      "Grouping for LDAP server global configuration data";
+
+        leaf source-interface {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+                "Source interface ip to be used as source ip for server connection";
+        }
+
+        leaf vrf-name {
+            type leafref {
+                path "/oc-ni:network-instances/oc-ni:network-instance/oc-ni:name";
+            }
+            description
+                "VRF name";
+        }
+  }
+
+  grouping aaa-ldap-ext-nss-pam-attributes {
+    description
+      "Grouping for LDAP NSS and PAM server configuration data";
+  
+    leaf scope {
+      type enumeration {
+        enum SUB {
+          description
+            "subtree";
+        }
+        enum ONE {
+          description
+            "one level";        
+        }
+        enum BASE {
+          description
+            "base object";                
+        }        
+      }
+      
+      description
+        "LDAP search scope";          
+    }
+    
+    leaf nss-base-passwd {
+      type string;
+      description
+        "LDAP NSS search base for passwd map";
+    }      
+  }
+  
+  grouping aaa-ldap-ext-nss-attributes {
+    description
+      "Grouping for LDAP NSS server configuration data";
+  
+    leaf idle-time-limit {
+      type uint32;
+      description
+        "LDAP NSS Idle Time Limit";      
+    }
+    
+    leaf nss-base-group {
+      type string;
+      description
+        "LDAP NSS search base for group map";
+    }
+    
+    leaf nss-base-shadow {
+      type string;
+      description
+        "LDAP NSS search base for shadow map";
+    }
+    
+    leaf nss-base-netgroup {
+      type string;
+      description
+        "LDAP NSS search base for netgroup map";
+    }
+    
+    leaf nss-base-sudoers {
+      type string;
+      description
+        "LDAP NSS search base for sudoers map";
+    }
+    
+    leaf nss-initgroups-ignoreusers {
+      type string;
+      description
+        "LDAP NSS init groups ignore users";
+    }
+  }
+
+  grouping aaa-ldap-ext-sudo-attributes {
+    description
+      "Grouping for LDAP Sudo server configuration data";
+  
+    leaf sudoers-base {
+      type string;
+      description
+        "Base DN to use when performing sudo LDAP queries";
+    }  
+  }
+
+  grouping aaa-ldap-ext-pam-attributes {
+    description
+      "Grouping for LDAP PAM server configuration data";
+
+    leaf pam-filter {
+      type string;
+      description
+        "LDAP PAM filter to use when retrieving user information.";
+    }
+    
+    leaf pam-login-attribute {
+      type string;
+      description
+        "LDAP PAM Login attribute to use when constructing the attribute
+         value assertion for retrieving a directory entry for user's
+         login name";
+    }
+    
+    leaf pam-group-dn {
+      type string;
+      description
+        "LDAP PAM Group Distinguished name of a group to which a user
+         must belong for logon authorization to succeed. Only used
+         when aaa authorization for ldap is configured.";
+    }
+    
+    leaf pam-member-attribute {
+      type string;
+      description
+        "LDAP PAM Member attribute to use when testing a user's
+         membership of a group specified in the ldap-pam-group-dn. Only
+         used when aaa authorization for ldap is configured.";
+    }    
+  }
+  
+  grouping aaa-ldap-ext-server-map-config {
+    description
+      "Grouping for LDAP maps mapping configuration data";
+  
+    leaf name {    
+      type enumeration {
+        enum ATTRIBUTE {
+          description
+            "LDAP server map: use 'to' attribute instead of RFC2307 'from'
+             attribute in all lookups";
+        }
+        enum OBJECTCLASS {
+          description
+            "LDAP server map: use 'to' object class instead of RFC2307 'from'
+             object class in all lookups";
+        }
+        enum DEFAULT_ATTRIBUTE_VALUE {
+          description
+            "LDAP server map: use 'to' as a default value to use for entries
+             that lack the specified 'from' attribute";
+        }        
+        enum OVERRIDE_ATTRIBUTE_VALUE {
+          description
+            "LDAP server map: use 'to' as an override value to use for entries
+             in preference to the value contained in the actual entry for the
+             'from' attribute";
+        }                
+      }
+      description
+        "LDAP server map name";
+    }
+    
+    leaf from {
+      type string;
+      description
+        "LDAP server map from name";
+    }
+    
+    leaf to {
+      type string;
+      description
+        "LDAP server map to name";      
+    }    
+  }
+  
+  grouping aaa-ldap-ext-server-map-top {
+    description
+      "Top level grouping for LDAP server map";
+      
+    container maps {
+      description
+        "LDAP server maps";
+
+      list map {
+        key "name from";
+        description
+          "LDAP server map";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+          description
+            "LDAP server map name";
+        }
+        
+        leaf from {
+          type leafref {
+            path "../config/from";
+          }
+          description
+            "LDAP server map from";        
+        }
+        
+        container config {
+          description
+            "Configuration data of the LDAP server map";
+
+          uses aaa-ldap-ext-server-map-config;
+        }
+
+        container state {
+          config false;
+
+          description
+            "Operational state data of the LDAP server map";
+
+          uses aaa-ldap-ext-server-map-config;
+        }
+      }
+    }  
+  }
+  
+  // data definition statements
+
+  // augment statements
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group" {
+  	description
+			"Adds top level container to LDAP, LDAP_NSS, LDAP_PAM, LDAP_SUDO server group.";  
+    uses aaa-ldap-ext-server-group-top {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_NSS' or ./type = 'oc-aaa-types:LDAP_SUDO' or ./type = 'oc-aaa-types:LDAP_PAM'";
+    }
+  }
+  
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/config" {
+  	description
+      "Adds LDAP global server-group attributes to a LDAP server group.";
+    uses aaa-ldap-ext-global-attributes {
+      when "./type = 'oc-aaa-types:LDAP'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/state" {
+  	description
+      "Adds LDAP global server-group attributes to a LDAP server group.";
+    uses aaa-ldap-ext-global-attributes {
+      when "./type = 'oc-aaa-types:LDAP'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/config" {
+  	description
+			"Adds LDAP common server-group attributes to a LDAP, LDAP_NSS, LDAP_PAM, LDAP_SUDO server group.";
+    uses aaa-ldap-ext-common-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_NSS' or ./type = 'oc-aaa-types:LDAP_SUDO' or ./type = 'oc-aaa-types:LDAP_PAM'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/state" {
+  	description
+			"Adds LDAP common server-group attributes to a LDAP, LDAP_NSS, LDAP_PAM, LDAP_SUDO server group.";
+    uses aaa-ldap-ext-common-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_NSS' or ./type = 'oc-aaa-types:LDAP_SUDO' or ./type = 'oc-aaa-types:LDAP_PAM'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/config" {
+  	description
+			"Adds LDAP NSS server-group attributes to a LDAP, LDAP_NSS server group.";
+    uses aaa-ldap-ext-nss-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_NSS'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/state" {
+  	description
+			"Adds LDAP NSS server-group attributes to a LDAP, LDAP_NSS server group.";
+    uses aaa-ldap-ext-nss-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_NSS'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/config" {
+  	description
+			"Adds LDAP PAM server-group attributes to a LDAP, LDAP_PAM server group.";
+    uses aaa-ldap-ext-pam-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_PAM'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/state" {
+  	description
+			"Adds LDAP PAM server-group attributes to a LDAP, LDAP_PAM server group.";
+    uses aaa-ldap-ext-pam-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_PAM'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/config" {
+  	description
+			"Adds LDAP sudo server-group attributes to a LDAP, LDAP_SUDO server group.";
+    uses aaa-ldap-ext-sudo-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_SUDO'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/state" {
+  	description
+			"Adds LDAP sudo server-group attributes to a LDAP, LDAP_SUDO server group.";
+    uses aaa-ldap-ext-sudo-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_SUDO'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/config" {
+  	description
+			"Adds LDAP NSS and PAM server-group attributes to a LDAP, LDAP_NSS, LDAP_PAM server group.";
+    uses aaa-ldap-ext-nss-pam-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_PAM' or ./type = 'oc-aaa-types:LDAP_NSS'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap/state" {
+  	description
+			"Adds LDAP NSS and PAM server-group attributes to a LDAP, LDAP_NSS, LDAP_PAM server group.";
+    uses aaa-ldap-ext-nss-pam-attributes {
+      when "./type = 'oc-aaa-types:LDAP' or ./type = 'oc-aaa-types:LDAP_PAM' or ./type = 'oc-aaa-types:LDAP_NSS'";
+    }
+  }
+  
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server" {
+  	description
+			"Adds server attributes to a LDAP server group.";
+    uses aaa-ldap-ext-server-top {
+      when "../../config/type = 'oc-aaa-types:LDAP'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/ldap" {
+  	description
+			"Adds top level maps container to a LDAP server group.";
+    uses aaa-ldap-ext-server-map-top {
+      when "./type = 'oc-aaa-types:LDAP'";
+    }
+  }
+
+  // rpc statements
+
+  // notification statements
+
+}

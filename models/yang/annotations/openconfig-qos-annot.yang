@@ -8,6 +8,7 @@ module openconfig-qos-annot {
     import sonic-extensions { prefix sonic-ext; }
     import openconfig-qos { prefix oc-qos; }
     import openconfig-qos-ext {prefix oc-qos-ext; }
+    import openconfig-qos-maps-ext {prefix oc-qos-maps-ext; }
 
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface {
       deviate add {
@@ -66,6 +67,12 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc {
+      deviate add {
+        sonic-ext:subtree-transformer "qos_intf_pfc_xfmr";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos-ext:threshold-breaches {
       deviate add {
         sonic-ext:db-name "COUNTERS_DB";
@@ -78,43 +85,43 @@ module openconfig-qos-annot {
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:breach-value {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:breach-value {
       deviate add {
         sonic-ext:field-name "breach_value";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:counter {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:counter {
       deviate add {
         sonic-ext:field-transformer "threshold_breach_counter_field_xfmr";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:buffer {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:buffer {
       deviate add {
         sonic-ext:field-name "buffer";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:type {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:type {
       deviate add {
         sonic-ext:field-name "type";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:port {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:port {
       deviate add {
         sonic-ext:field-name "port";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:index {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:index {
       deviate add {
         sonic-ext:field-name "index";
       }
     }
 
-    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:time-stamp {
+    deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach/oc-qos-ext:state/oc-qos-ext:time-stamp {
       deviate add {
         sonic-ext:field-name "time-stamp";
       }
@@ -142,27 +149,20 @@ module openconfig-qos-annot {
 
     deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:wred/oc-qos:config/oc-qos-ext:wred-profile {
       deviate add {
-        sonic-ext:field-name "wred_profile";
+        sonic-ext:field-transformer "qos_queue_wred_profile_fld_xfmr";
       }
     }
 
 
     deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:wred/oc-qos:state/oc-qos-ext:wred-profile {
       deviate add {
-        sonic-ext:field-name "wred_profile";
+        sonic-ext:field-transformer "qos_queue_wred_profile_fld_xfmr";
       }
     }
 
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy {
       deviate add {
         sonic-ext:subtree-transformer "qos_scheduler_xfmr";
-      }
-    }
-
-    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config/oc-qos:priority {
-      deviate add {
-        sonic-ext:field-name "type";
-        sonic-ext:field-transformer "qos_scheduler_priority_xfmr";
       }
     }
 
@@ -189,6 +189,199 @@ module openconfig-qos-annot {
         sonic-ext:field-transformer "wred_profile_name_fld_xfmr";
       }
     }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:ecn {
+      deviate add {
+        sonic-ext:field-transformer "wred_ecn_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:ecn {
+      deviate add {
+        sonic-ext:field-transformer "wred_ecn_fld_xfmr";
+      }
+    }
+   
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-min-threshold {
+      deviate add {
+        sonic-ext:field-name "green_min_threshold";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-max-threshold {
+      deviate add {
+        sonic-ext:field-name "green_max_threshold";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:wred-green-enable {
+      deviate add {
+        sonic-ext:field-name "wred_green_enable";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-drop-probability {
+      deviate add {
+        sonic-ext:field-name "green_drop_probability";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-min-threshold {
+      deviate add {
+        sonic-ext:field-name "green_min_threshold";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-max-threshold {
+      deviate add {
+        sonic-ext:field-name "green_max_threshold";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:wred-green-enable {
+      deviate add {
+        sonic-ext:field-name "wred_green_enable";
+      }
+    }
+ 
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-drop-probability {
+      deviate add {
+        sonic-ext:field-name "green_drop_probability";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos-maps-ext:dscp-maps/oc-qos-maps-ext:dscp-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_dscp_fwd_group_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:dot1p-maps/oc-qos-maps-ext:dot1p-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_dot1p_fwd_group_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-queue-maps/oc-qos-maps-ext:forwarding-group-queue-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_tc_queue_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-priority-group-maps/oc-qos-maps-ext:forwarding-group-priority-group-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_tc_pg_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:pfc-priority-queue-maps/oc-qos-maps-ext:pfc-priority-queue-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_pfc_priority_queue_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dscp-maps/oc-qos-maps-ext:forwarding-group-dscp-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_fwd_group_dscp_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dot1p-maps/oc-qos-maps-ext:forwarding-group-dot1p-map {
+        deviate add {
+            sonic-ext:subtree-transformer "qos_fwd_group_dot1p_xfmr";
+        }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps {
+      deviate add {
+		sonic-ext:table-name "PORT_QOS_MAP";
+	  }
+	}
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:dscp-to-forwarding-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_dscp_to_tc_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:dot1p-to-forwarding-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_dot1p_to_tc_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-queue {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_queue_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-priority-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_pg_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:pfc-priority-to-queue {
+      deviate add {
+        sonic-ext:field-transformer "qos_pfc_priority_to_queue_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-dscp {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_dscp_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:config/oc-qos-maps-ext:forwarding-group-to-dot1p {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_dot1p_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:dscp-to-forwarding-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_dscp_to_tc_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:dot1p-to-forwarding-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_dot1p_to_tc_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:forwarding-group-to-queue {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_queue_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:forwarding-group-to-priority-group {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_pg_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:pfc-priority-to-queue {
+      deviate add {
+        sonic-ext:field-transformer "qos_pfc_priority_to_queue_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:forwarding-group-to-dscp {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_dscp_map_fld_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-maps-ext:interface-maps/oc-qos-maps-ext:state/oc-qos-maps-ext:forwarding-group-to-dot1p {
+      deviate add {
+        sonic-ext:field-transformer "qos_tc_to_dot1p_map_fld_xfmr";
+      }
+    }
+
 
     deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group {
       deviate add {
@@ -208,6 +401,7 @@ module openconfig-qos-annot {
           sonic-ext:field-transformer "qos_fwdgrp_fld_xfmr";
       }
     }
+
 }
 
 

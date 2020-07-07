@@ -202,7 +202,7 @@ module sonic-bgp-common {
 
         leaf min_adv_interval {
             type uint16 {
-                range "1..600";
+                range "0..600";
             }
             description "minium advertisement interval";
         }
@@ -527,6 +527,14 @@ module sonic-bgp-common {
         }
 
         leaf route-distinguisher {
+            type string;
+        }
+
+        leaf-list import-rts {
+            type string;
+        }
+
+        leaf-list export-rts {
             type string;
         }
 

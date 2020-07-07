@@ -28,12 +28,41 @@ module sonic-portchannel {
             "Initial revision.";
     }
 
+    typedef mode {
+        type enumeration {
+            enum enable;
+            enum disable;
+        }
+    }
+
     container sonic-portchannel {
+
+        container PORTCHANNEL_GLOBAL {
+
+            list PORTCHANNEL_GLOBAL_LIST {
+                key "keyleaf";
+
+                leaf keyleaf {
+                    type enumeration {
+                        enum GLOBAL;
+                    }
+                    description
+                        "Key node identifier. It's value is always GLOBAL";
+                }
+
+                leaf graceful_shutdown_mode {
+                    type mode;
+                    description
+                        "Enable/Disable portchannel graceful shutdown mode";
+                }
+            }
+        }
 
         container PORTCHANNEL {
 
             list PORTCHANNEL_LIST {
                 key "name";
+                sonic-ext:custom-validation ValidatePortChannelCreationDeletion;
 
                 leaf name {
                     type string {
@@ -61,6 +90,7 @@ module sonic-portchannel {
                 
                 leaf static {
                     type boolean;
+                    default false;
                 }
 
                 leaf min_links {
@@ -74,6 +104,15 @@ module sonic-portchannel {
 
                 leaf fallback {
                     type boolean;
+                }
+
+                leaf fast_rate {
+                    type boolean;
+                    must "../static = 'false'"
+                    {
+                        error-message "Fast Rate interval configuration is not applicable for Static LAGs";
+                        error-app-tag fast-rate-config;
+                    }
                 }
             }
         }
@@ -136,6 +175,13 @@ module sonic-portchannel {
                 //control to disable traffic collection and distribution for all LAG member ports
                 leaf traffic_disable {
                     type boolean; 
+                }
+
+                leaf fallback_operational {
+                    type boolean;
+                }
+                leaf speed {
+                    type uint64;
                 }
             }
         }

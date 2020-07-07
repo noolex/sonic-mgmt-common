@@ -150,7 +150,7 @@ func Test_Leaf_Field_Name_UINT16_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"RADIUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Field Name UINT16", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -225,7 +225,7 @@ func Test_Leaf_Field_Name_UINT32_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Field Name UINT32", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -379,7 +379,7 @@ func Test_Leaf_Field_Xfmr_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"PORTCHANNEL":map[string]interface{}{"PortChannel1":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Field Xfmr", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -468,7 +468,7 @@ func Test_Leaf_Subtree_Xfmr_Delete(t *testing.T) {
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"SAG":map[string]interface{}{"Vlan1|IPv4":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Subtree Xfmr", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -549,7 +549,7 @@ func Test_Leaf_Sonic_Yang_UINT32_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"SFLOW_SESSION":map[string]interface{}{"Ethernet0":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Sonic Yang UINT32", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -661,7 +661,7 @@ func Test_Leaf_Ref_Sonic_Yang_Delete(t *testing.T) {
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"SAG":map[string]interface{}{"Vlan1|IPv4":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf Ref Sonic Yang", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -742,7 +742,7 @@ func Test_Leaf_OC_Yang_Choice_Case_Delete(t *testing.T) {
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        delete_expected_map := make(map[string]interface{})
+        delete_expected_map := map[string]interface{}{"NAT_POOL":map[string]interface{}{"pool1":map[string]interface{}{"NULL":"NULL"}}}
 
         t.Run("DELETE on Leaf OC Yang Choice Case", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
@@ -771,50 +771,50 @@ func Test_Leaf_OC_Yang_Choice_Case_Get(t *testing.T) {
 
 func Test_Leaf_Sonic_Yang_Choice_Case_Update(t *testing.T) {
 
-        cleanuptbl1 := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"acl1":""}}
-        cleanuptbl2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":""}}
-        prereq := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"acl1":map[string]interface{}{"ports@":"Ethernet0","stage":"INGRESS","type":"MIRROR","policy_desc":"descr"}}}
-        url := "/sonic-acl:sonic-acl/ACL_RULE/ACL_RULE_LIST[aclname=acl1][rulename=rule1]/SRC_IP"
+        cleanuptbl := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":""},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":""}}
+
+        prereq := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{"policy_desc":"Description for MyACL1","type":"L3"}},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"10.1.1.1/32","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
+
+        url := "/sonic-acl:sonic-acl/ACL_RULE/ACL_RULE_LIST[aclname=MyACL1_ACL_IPV4][rulename=RULE_1]/SRC_IP"
 
         fmt.Println("++++++++++++++  UPDATE Test_Leaf_Sonic_Yang_Choice_Case  +++++++++++++")
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
-        patch_payload := "{ \"sonic-acl:SRC_IP\": \"1.1.1.1/1\", \"sonic-acl:DST_IP\": \"2.2.2.2/2\"}"
-        patch_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":map[string]interface{}{"DST_IP":"2.2.2.2/2","SRC_IP":"1.1.1.1/1"}}}
+        patch_payload := "{ \"sonic-acl:SRC_IP\": \"1.1.1.1/1\"}"
+        patch_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"1.1.1.1/1","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
 
         t.Run("UPDATE on Leaf Sonic Yang Choice Case", processSetRequest(url, patch_payload, "PATCH", false))
         time.Sleep(1 * time.Second)
-        t.Run("Verify update on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|acl1|rule1", patch_expected, false))
+        t.Run("Verify update on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|MyACL1_ACL_IPV4|RULE_1", patch_expected, false))
 
-        unloadConfigDB(rclient, cleanuptbl1)
-        unloadConfigDB(rclient, cleanuptbl2)
+        unloadConfigDB(rclient, cleanuptbl)
 }
 
 func Test_Leaf_Sonic_Yang_Choice_Case_Replace(t *testing.T) {
 
-        cleanuptbl1 := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"acl1":""}}
-        cleanuptbl2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":""}}
-        prereq1 := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"acl1":map[string]interface{}{"ports@":"Ethernet0","stage":"INGRESS","type":"MIRROR","policy_desc":"descr"}}}
-        prereq2 := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":map[string]interface{}{"DST_IP":"2.2.2.2/2","SRC_IP":"1.1.1.1/1"}}}
-        url := "/sonic-acl:sonic-acl/ACL_RULE/ACL_RULE_LIST[aclname=acl1][rulename=rule1]/SRC_IP"
+        cleanuptbl := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":""},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":""}}
 
-        fmt.Println("++++++++++++++  Replace Test_Leaf_Sonic_Yang_Choice_Case  +++++++++++++")
+        prereq := map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{"policy_desc":"Description for MyACL1","type":"L3"}},"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"10.1.1.1/32","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
+
+        url := "/sonic-acl:sonic-acl/ACL_RULE/ACL_RULE_LIST[aclname=MyACL1_ACL_IPV4][rulename=RULE_1]/SRC_IP"
+
+        fmt.Println("++++++++++++++  REPLACE Test_Leaf_Sonic_Yang_Choice_Case  +++++++++++++")
 
         // Setup - Prerequisite
-        loadConfigDB(rclient, prereq1)
-        loadConfigDB(rclient, prereq2)
+        loadConfigDB(rclient, prereq)
 
-        put_payload := "{ \"sonic-acl:SRC_IP\": \"3.3.3.3/3\"}"
-        put_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"acl1|rule1":map[string]interface{}{"SRC_IP":"3.3.3.3/3"}}}
+        put_payload := "{ \"sonic-acl:SRC_IP\": \"1.1.1.1/1\"}"
+        //put_actual := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"SRC_IP":"1.1.1.1/1"}}}
+        put_expected := map[string]interface{}{"ACL_RULE":map[string]interface{}{"MyACL1_ACL_IPV4|RULE_1":map[string]interface{}{"PRIORITY":"65534","SRC_IP":"1.1.1.1/1","DST_IP":"20.2.2.2/32","IP_TYPE":"IPV4","RULE_DESCRIPTION":"Description for MyACL1","IP_PROTOCOL":"6","PACKET_ACTION":"FORWARD"}}}
 
-        t.Run("Replace on Leaf Sonic Yang Choice Case", processSetRequest(url, put_payload, "PUT", false))
+	/* Update on leaf not handled for SONIC Yet TODO */
+        t.Run("REPLACE on Leaf Sonic Yang Choice Case", processSetRequest(url, put_payload, "PUT", false))
         time.Sleep(1 * time.Second)
-        t.Run("Verify replace on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|acl1|rule1", put_expected, false))
+        t.Run("Verify replace on Leaf Sonic Yang Choice Case", verifyDbResult(rclient, "ACL_RULE|MyACL1_ACL_IPV4|RULE_1", put_expected, false))
 
-        unloadConfigDB(rclient, cleanuptbl1)
-        unloadConfigDB(rclient, cleanuptbl2)
+        unloadConfigDB(rclient, cleanuptbl)
 }
 
 func Test_Leaf_Sonic_Yang_Choice_Case_Delete(t *testing.T) {
@@ -862,3 +862,69 @@ func Test_Leaf_Sonic_Yang_Choice_Case_Get(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl1)
         unloadConfigDB(rclient, cleanuptbl2)
 }
+
+func Test_Leaf_Sonic_Yang_List_With_Multi_Key_Update(t *testing.T) {
+
+        cleanuptbl := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":""}}
+        prereq := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"threshold":7}}}
+        url := "/sonic-threshold:sonic-threshold/THRESHOLD_TABLE/THRESHOLD_TABLE_LIST[buffer=queue][threshold_buffer_type=unicast][interface_name=Ethernet0][buffer_index_per_port=7]/threshold"
+
+        fmt.Println("++++++++++++++  UPDATE Test_Leaf_Sonic_Yang_List_Multi_Key  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+	patch_payload := "{ \"sonic-threshold:threshold\":  5 }"
+        expected := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"threshold":"5"}}}
+
+        t.Run("UPDATE on Leaf Sonic Yang with multi Key list", processSetRequest(url, patch_payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("UPDATE on Leaf Sonic Yang with MultiKey List", verifyDbResult(rclient, "THRESHOLD_TABLE|queue|unicast|Ethernet0|7", expected, false))
+
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+
+func Test_Leaf_Sonic_Yang_List_With_Multi_Key_Delete(t *testing.T) {
+
+        cleanuptbl := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":""}}
+        prereq := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"threshold":"5"}}}
+        url := "/sonic-threshold:sonic-threshold/THRESHOLD_TABLE/THRESHOLD_TABLE_LIST[buffer=queue][threshold_buffer_type=unicast][interface_name=Ethernet0][buffer_index_per_port=7]/threshold"
+
+        fmt.Println("++++++++++++++  DELETE Test_Leaf_Sonic_Yang_List_Multi_Key  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        expected := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"NULL":"NULL"}}}
+
+        t.Run("DELETE on Leaf Sonic Yang with MultiKey List", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("DELETE on Leaf Sonic Yang with MultiKey List", verifyDbResult(rclient, "THRESHOLD_TABLE|queue|unicast|Ethernet0|7", expected, false))
+
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+func Test_Leaf_Add_Null_Field(t *testing.T) {
+
+	cleanuptbl1 := map[string]interface{}{"LOOPBACK_INTERFACE":map[string]interface{}{"Loopback1":""}}
+        cleanuptbl2 := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":""}}
+        prereq1 := map[string]interface{}{"LOOPBACK_INTERFACE":map[string]interface{}{"Loopback1":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":map[string]interface{}{"unnumbered":"Loopback1"}}}
+        url := "/sonic-interface:sonic-interface/INTERFACE/INTERFACE_LIST[portname=Ethernet4]/unnumbered"
+
+        fmt.Println("++++++++++++++  ADD a NULL field when a last field gets deleted  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+
+        delete_expected := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet4":map[string]interface{}{"NULL":"NULL"}}}
+
+        t.Run("DELETE a last field on a given entry", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify delete entry", verifyDbResult(rclient, "INTERFACE|Ethernet4", delete_expected, false))
+
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+}
+

@@ -3,20 +3,27 @@ module openconfig-qos-maps-ext {
     yang-version "1";
 
     // namespace
-    namespace "http://openconfig.net/yang/qos/maps-extension";
+    namespace "http://openconfig.net/yang/qos-maps/extension";
 
     prefix "oc-qos-maps-ext";
 
     import openconfig-qos { prefix oc-qos; }
-    import openconfig-qos-types { prefix oc-qos-types; }
-    import openconfig-yang-types { prefix oc-yang; }
+    import openconfig-extensions { prefix oc-ext; }
+  
+    organization "Dell";
+
+    contact
+      "Dell";
 
     description
       "This module defines YANG model for network quality-of-service maps extension.";
 
+    oc-ext:openconfig-version "0.1.0";
+
     revision "2020-04-30" {
       description
         "Initial version";
+      reference "0.1.0";
     }
 
     identity PACKET_COLOR {
@@ -42,7 +49,7 @@ module openconfig-qos-maps-ext {
             "Packet color RED.";
     }
     
-    grouping qos-dscp-map-entry-config {
+    grouping qos-maps-ext-dscp-map-entry-config {
 	    description "DSCP map entry config";
 		leaf dscp {
             type uint8 {
@@ -55,11 +62,11 @@ module openconfig-qos-maps-ext {
                  (DS Field) in the IPv4 and IPv6 Headers";
 		}
 
-		leaf fwd_group {
-            mandatory true;
+		leaf fwd-group {
 			type leafref {
 				path "../../../../../../oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:name";
 			}
+            mandatory true;
 			description
 				"Name of forwarding group map.";
 		}
@@ -74,33 +81,128 @@ module openconfig-qos-maps-ext {
         }
 	}
 	
-	grouping qos-dscp-map-entries-top {
+    grouping qos-maps-ext-dscp-map-entry-state {
+	    description "Operational state data for DSCP map entry";
+	}
+
+	grouping qos-maps-ext-dscp-map-entries-top {
 		description
-			"Configuration data for DSCP map entries";
+			"Top-level grouping for DSCP map entries";
 
 		container dscp-map-entries {
+    		description
+	     	    "Container for DSCP map entries";
+
 		    list dscp-map-entry {
 			    key "dscp";
 				
+    		    description
+	     	        "List of DSCP map entries";
+
 				leaf dscp {
 				    type leafref {
 					    path ../config/dscp;
 					}
-				}
+                    description
+                        "Reference to DSCP map entry key";
+                }
 				
 				container config {
-				    uses qos-dscp-map-entry-config;
+                    description
+                        "Configuration data for DSCP map entries";
+
+                    uses qos-maps-ext-dscp-map-entry-config;
 				}
 				
 				container state {
                     config false;
-				    uses qos-dscp-map-entry-config;
+                    description
+                        "Operational data for DSCP map entries";
+				    uses qos-maps-ext-dscp-map-entry-config;
+				    uses qos-maps-ext-dscp-map-entry-state;
+				}
+			}
+		}
+	}
+
+    grouping qos-maps-ext-forwarding-group-dscp-map-entry-config {
+	    description "Fwd-group DSCP map entry config";
+		leaf fwd-group {
+			type leafref {
+				path "../../../../../../oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:name";
+			}
+            mandatory true;
+			description
+				"Name of forwarding group map.";
+		}
+
+        leaf color {
+            type identityref {
+                base PACKET_COLOR;
+            }
+            default GREEN;
+            description
+                "Sets the color of packet.";
+        }
+
+		leaf dscp {
+            type uint8 {
+                range 0..63;
+            }
+            description
+                "The 6-bit DSCP (differentiated services code point) value in the IP packet header.";
+            reference
+                "RFC 2474 - Definition of the Differentiated Services Field
+                 (DS Field) in the IPv4 and IPv6 Headers";
+		}
+
+	}
+	
+    grouping qos-maps-ext-forwarding-group-dscp-map-entry-state {
+	    description "Operational state data for Fwd-group DSCP map entry";
+	}
+
+	grouping qos-maps-ext-forwarding-group-dscp-map-entries-top {
+		description
+			"Top-level grouping for Fwd-group to DSCP map entries";
+
+		container forwarding-group-dscp-map-entries {
+    		description
+	     	    "Container for Fwd-grup to DSCP map entries";
+
+		    list forwarding-group-dscp-map-entry {
+			    key "fwd-group";
+				
+    		    description
+	     	        "List of Fwd-group to DSCP map entries";
+
+				leaf fwd-group {
+				    type leafref {
+					    path ../config/fwd-group;
+					}
+                    description
+                        "Reference to fwd-group map entry key";
+                }
+				
+				container config {
+                    description
+                        "Configuration data for Fwd-group to DSCP map entries";
+
+                    uses qos-maps-ext-forwarding-group-dscp-map-entry-config;
+				}
+				
+				container state {
+                    config false;
+                    description
+                        "Operational data for Fwd-group to DSCP map entries";
+				    uses qos-maps-ext-forwarding-group-dscp-map-entry-config;
+				    uses qos-maps-ext-forwarding-group-dscp-map-entry-state;
 				}
 			}
 		}
 	}
  
-    grouping qos-dscp-map-config {
+    grouping qos-maps-ext-dscp-map-config {
 		description
 			"Configuration data for DSCP map";
 
@@ -111,7 +213,12 @@ module openconfig-qos-maps-ext {
 		}
 
 	}
-	grouping qos-dscp-maps-top {   
+    grouping qos-maps-ext-dscp-map-state {
+		description
+			"Operational data for DSCP map";
+	}
+
+	grouping qos-maps-ext-dscp-maps-top {   
 		description
 			" Top-level grouping for DSCP maps data";
 
@@ -121,6 +228,8 @@ module openconfig-qos-maps-ext {
 
 			list dscp-map {
 				key "name";
+    		    description
+	     	        "List of DSCP maps";
                 leaf name {
                   type leafref {
                     path "../config/name";
@@ -132,21 +241,76 @@ module openconfig-qos-maps-ext {
                 container config {
                     description
                         "Configuration parameters relating to dscp map.";
-					uses qos-dscp-map-config;
+					uses qos-maps-ext-dscp-map-config;
 				}
 
 				container state {
  					config false;
                     description
                         "Operational parameters relating to dscp map.";
-					uses qos-dscp-map-config;
+					uses qos-maps-ext-dscp-map-config;
+					uses qos-maps-ext-dscp-map-state;
 				}
-                uses qos-dscp-map-entries-top;
+                uses qos-maps-ext-dscp-map-entries-top;
 			}
 		}
 	}
 
-    grouping qos-dot1p-map-entry-config {
+    grouping qos-maps-ext-forwarding-group-dscp-map-config {
+		description
+			"Configuration data for Fwd-group DSCP map";
+
+		leaf name {
+			type string;
+			description
+				"Name of the fwd-group DSCP map";
+		}
+
+	}
+    grouping qos-maps-ext-forwarding-group-dscp-map-state {
+		description
+			"Operational data for fwd-group DSCP map";
+	}
+
+	grouping qos-maps-ext-forwarding-group-dscp-maps-top {   
+		description
+			" Top-level grouping for fwd-group DSCP maps data";
+
+		container forwarding-group-dscp-maps {
+			description
+				"Enclosing container for list of fwd-group dscp maps";
+
+			list forwarding-group-dscp-map {
+				key "name";
+    		    description
+	     	        "List of Fwd-group DSCP maps";
+                leaf name {
+                  type leafref {
+                    path "../config/name";
+                  }
+                  description
+                    "Reference to the name of the fwd-group dscp map.";
+                }
+				
+                container config {
+                    description
+                        "Configuration parameters relating to fwd-group dscp map.";
+					uses qos-maps-ext-forwarding-group-dscp-map-config;
+				}
+
+				container state {
+ 					config false;
+                    description
+                        "Operational parameters relating to dscp map.";
+					uses qos-maps-ext-forwarding-group-dscp-map-config;
+					uses qos-maps-ext-forwarding-group-dscp-map-state;
+				}
+                uses qos-maps-ext-forwarding-group-dscp-map-entries-top;
+			}
+		}
+	}
+
+    grouping qos-maps-ext-dot1p-map-entry-config {
 	    description "DOT1P to Forwarding group map entry config";
 		leaf dot1p {
             type uint8 {
@@ -161,11 +325,11 @@ module openconfig-qos-maps-ext {
                   area networks--Bridges and Bridged Networks";
 		}
 
-		leaf fwd_group {
-            mandatory true;
+		leaf fwd-group {
 			type leafref {
 				path "../../../../../../oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:name";
 			}
+            mandatory true;
 			description
 				"Name of forwarding group.";
 		}
@@ -180,33 +344,128 @@ module openconfig-qos-maps-ext {
         }
 	}
 	
-	grouping qos-dot1p-map-entries-top {
+    grouping qos-maps-ext-dot1p-map-entry-state {
+	    description "Operational data for DOT1P to Forwarding group map entry.";
+	}
+
+	grouping qos-maps-ext-dot1p-map-entries-top {
 		description
-			"Configuration data for DOT1P to Forwarding Group map entries";
+			"Top-level grouping for DOT1P map entries";
 
 		container dot1p-map-entries {
+        
+    		description
+	     	    "Container for DOT1P map entries";
 		    list dot1p-map-entry {
 			    key "dot1p";
-				
+				description
+	     	        "List of DOT1P map entries";
+
 				leaf dot1p {
 				    type leafref {
 					    path ../config/dot1p;
 					}
+                    description
+                        "Reference to DOT1P map entry key";
 				}
 				
 				container config {
-				    uses qos-dot1p-map-entry-config;
+                    description
+                        "Configuration data for DOT1P map entries";
+				    uses qos-maps-ext-dot1p-map-entry-config;
 				}
 				
 				container state {
                     config false;
-				    uses qos-dot1p-map-entry-config;
+                    description
+                        "Operational data for DOT1P map entries";
+				    uses qos-maps-ext-dot1p-map-entry-config;
+				    uses qos-maps-ext-dot1p-map-entry-state;
+				}
+			}
+		}
+	}
+
+    grouping qos-maps-ext-forwarding-group-dot1p-map-entry-config {
+	    description "Fwd-group DOT1P map entry config";
+		leaf fwd-group {
+			type leafref {
+				path "../../../../../../oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:name";
+			}
+            mandatory true;
+			description
+				"Name of forwarding group map.";
+		}
+
+        leaf color {
+            type identityref {
+                base PACKET_COLOR;
+            }
+            default GREEN;
+            description
+                "Sets the color of packet.";
+        }
+
+		leaf dot1p {
+            type uint8 {
+                range 0..7;
+            }
+            description
+                "3-bit class-of-service value in the
+                 Ethernet packet header for 802.1Q VLAN-tagged packets,
+                 also known as PCP (priority code point).";
+            reference
+                 "IEEE 802.1Q-2014 - IEEE Standard for Local and metropolitan
+                  area networks--Bridges and Bridged Networks";
+		}
+	}
+	
+    grouping qos-maps-ext-forwarding-group-dot1p-map-entry-state {
+	    description "Operational state data for Fwd-group DOT1P map entry";
+	}
+
+	grouping qos-maps-ext-forwarding-group-dot1p-map-entries-top {
+		description
+			"Top-level grouping for Fwd-group to DOT1P map entries";
+
+		container forwarding-group-dot1p-map-entries {
+    		description
+	     	    "Container for Fwd-grup to DOT1P map entries";
+
+		    list forwarding-group-dot1p-map-entry {
+			    key "fwd-group";
+				
+    		    description
+	     	        "List of Fwd-group to DOT1P map entries";
+
+				leaf fwd-group {
+				    type leafref {
+					    path ../config/fwd-group;
+					}
+                    description
+                        "Reference to fwd-group map entry key";
+                }
+				
+				container config {
+                    description
+                        "Configuration data for Fwd-group to DOT1P map entries";
+
+                    uses qos-maps-ext-forwarding-group-dot1p-map-entry-config;
+				}
+				
+				container state {
+                    config false;
+                    description
+                        "Operational data for Fwd-group to DOT1P map entries";
+				    uses qos-maps-ext-forwarding-group-dot1p-map-entry-config;
+				    uses qos-maps-ext-forwarding-group-dot1p-map-entry-state;
 				}
 			}
 		}
 	}
  
-    grouping qos-dot1p-map-config {
+ 
+    grouping qos-maps-ext-dot1p-map-config {
 		description
 			"Configuration data for DOT1P to Forwarding Group map";
 
@@ -215,9 +474,14 @@ module openconfig-qos-maps-ext {
 			description
 				"Name of the forwarding group";
 		}
-
 	}
-	grouping qos-dot1p-maps-top {   
+
+    grouping qos-maps-ext-dot1p-map-state {
+		description
+			"Operational data for DOT1P to Forwarding Group map";
+	}
+
+	grouping qos-maps-ext-dot1p-maps-top {   
 		description
 			" Top-level grouping for DOT1P to forwarding group maps data";
 
@@ -227,6 +491,8 @@ module openconfig-qos-maps-ext {
 
 			list dot1p-map {
 				key "name";
+    		    description
+	     	        "List of DSCP maps";
                 leaf name {
                   type leafref {
                     path "../config/name";
@@ -238,25 +504,80 @@ module openconfig-qos-maps-ext {
                 container config {
                     description
                         "Configuration parameters relating to dot1p to forwading group map.";
-					uses qos-dot1p-map-config;
+					uses qos-maps-ext-dot1p-map-config;
 				}
 
 				container state {
  					config false;
                     description
                         "Operational parameters relating to dot1p to forwading group map";
-					uses qos-dot1p-map-config;
+					uses qos-maps-ext-dot1p-map-config;
+					uses qos-maps-ext-dot1p-map-state;
 				}
-                uses qos-dot1p-map-entries-top;
+                uses qos-maps-ext-dot1p-map-entries-top;
 			}
 		}
 	}
 
-    grouping qos-forwarding-group-queue-map-entry-config {
+    grouping qos-maps-ext-forwarding-group-dot1p-map-config {
+		description
+			"Configuration data for Fwd-group DOT1P map";
+
+		leaf name {
+			type string;
+			description
+				"Name of the fwd-group DOT1P map";
+		}
+
+	}
+    grouping qos-maps-ext-forwarding-group-dot1p-map-state {
+		description
+			"Operational data for fwd-group DOT1P map";
+	}
+
+	grouping qos-maps-ext-forwarding-group-dot1p-maps-top {   
+		description
+			" Top-level grouping for fwd-group DOT1P maps data";
+
+		container forwarding-group-dot1p-maps {
+			description
+				"Enclosing container for list of fwd-group dot1p maps";
+
+			list forwarding-group-dot1p-map {
+				key "name";
+    		    description
+	     	        "List of Fwd-group DOT1P maps";
+                leaf name {
+                  type leafref {
+                    path "../config/name";
+                  }
+                  description
+                    "Reference to the name of the fwd-group dot1p map.";
+                }
+				
+                container config {
+                    description
+                        "Configuration parameters relating to fwd-group dot1p map.";
+					uses qos-maps-ext-forwarding-group-dot1p-map-config;
+				}
+
+				container state {
+ 					config false;
+                    description
+                        "Operational parameters relating to dot1p map.";
+					uses qos-maps-ext-forwarding-group-dot1p-map-config;
+					uses qos-maps-ext-forwarding-group-dot1p-map-state;
+				}
+                uses qos-maps-ext-forwarding-group-dot1p-map-entries-top;
+			}
+		}
+	}
+
+    grouping qos-maps-ext-forwarding-group-queue-map-entry-config {
 	    description
             "Forwarding group to queue index map entry config";
 
-		leaf fwd_group {
+		leaf fwd-group {
 			type leafref {
 				path "../../../../../../oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:name";
 			}
@@ -265,43 +586,59 @@ module openconfig-qos-maps-ext {
 		}
 
 		leaf output-queue-index {
-            mandatory true;
             type uint8 {
                 range 0..7;
             }
+            mandatory true;
             description
                 "Output queue index on interfaces.";
 		}
 
 	}
 	
-	grouping qos-forwarding-group-queue-map-entries-top {
+    grouping qos-maps-ext-forwarding-group-queue-map-entry-state {
+	    description
+            "Operational date for Forwarding group to queue index map entry";
+	}
+
+	grouping qos-maps-ext-forwarding-group-queue-map-entries-top {
 		description
-			"Configuration data for Forwarding Group to queue index map entries";
+			"Top-level grouping for Forwarding Group to queue index map entries";
 
 		container forwarding-group-queue-map-entries {
+    		description
+	     	    "Container for Forwarding Group to queue index map entries";
 		    list forwarding-group-queue-map-entry {
-			    key "fwd_group";
+			    key "fwd-group";
 				
-				leaf fwd_group {
+    		    description
+	     	        "List of Forwarding Group to queue index map entries";
+				leaf fwd-group {
 				    type leafref {
-					    path ../config/fwd_group;
+					    path ../config/fwd-group;
 					}
+                    description
+                        "Reference to Forwarding Group to queue index map entry key";
 				}
 				
 				container config {
-				    uses qos-forwarding-group-queue-map-entry-config;
+                    description
+                        "Configuration data for Forwarding Group to queue index map entries";
+				    uses qos-maps-ext-forwarding-group-queue-map-entry-config;
 				}
 				
 				container state {
                     config false;
-				    uses qos-forwarding-group-queue-map-entry-config;
+                    description
+                        "Operational data for Forwarding Group to queue index map entries";
+				    uses qos-maps-ext-forwarding-group-queue-map-entry-config;
+				    uses qos-maps-ext-forwarding-group-queue-map-entry-state;
 				}
 			}
 		}
 	}
  
-    grouping qos-forwarding-group-queue-map-config {
+    grouping qos-maps-ext-forwarding-group-queue-map-config {
 		description
 			"Configuration data for Forwarding Group to queue index map";
 
@@ -312,7 +649,12 @@ module openconfig-qos-maps-ext {
 		}
 
 	}
-	grouping qos-forwarding-group-queue-maps-top {   
+
+    grouping qos-maps-ext-forwarding-group-queue-map-state {
+		description
+			"Operational data for Forwarding Group to queue index map";
+	}
+	grouping qos-maps-ext-forwarding-group-queue-maps-top {   
 		description
 			" Top-level grouping for Forwarding group to queue maps data";
 
@@ -322,6 +664,8 @@ module openconfig-qos-maps-ext {
 
 			list forwarding-group-queue-map {
 				key "name";
+    		    description
+	     	        "List of forwading group to queue maps";
                 leaf name {
                   type leafref {
                     path "../config/name";
@@ -333,25 +677,26 @@ module openconfig-qos-maps-ext {
                 container config {
                     description
                         "Configuration parameters relating to forwading groups to queue map.";
-					uses qos-forwarding-group-queue-map-config;
+					uses qos-maps-ext-forwarding-group-queue-map-config;
 				}
 
 				container state {
  					config false;
                     description
                         "Operational parameters relating to forwading group to queue map.";
-					uses qos-forwarding-group-queue-map-config;
+					uses qos-maps-ext-forwarding-group-queue-map-config;
+					uses qos-maps-ext-forwarding-group-queue-map-state;
 				}
-                uses qos-forwarding-group-queue-map-entries-top;
+                uses qos-maps-ext-forwarding-group-queue-map-entries-top;
 			}
 		}
 	}
 
-    grouping qos-forwarding-group-priority-group-map-entry-config {
+    grouping qos-maps-ext-forwarding-group-priority-group-map-entry-config {
 	    description
             "Forwarding group to priority group index map entry config";
 
-		leaf fwd_group {
+		leaf fwd-group {
 			type leafref {
 				path "../../../../../../oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:name";
 			}
@@ -360,42 +705,58 @@ module openconfig-qos-maps-ext {
 		}
 
 		leaf priority-group-index {
-            mandatory true;
             type uint8 {
                 range 0..7;
             }
+            mandatory true;
             description
                 "priority group index on interfaces.";
 		}
 	}
 	
-	grouping qos-forwarding-group-priority-group-map-entries-top {
+    grouping qos-maps-ext-forwarding-group-priority-group-map-entry-state {
+	    description
+            "Operational data for Forwarding group to priority group index map entry";
+    }
+
+	grouping qos-maps-ext-forwarding-group-priority-group-map-entries-top {
 		description
-			"Configuration data for Forwarding Group to priority group index map entries";
+			"Top-level grouping for Forwarding Group to priority group index map entries";
 
 		container forwarding-group-priority-group-map-entries {
+    		description
+	     	    "Container for Forwarding Group to priority group index map entries";
 		    list forwarding-group-priority-group-map-entry {
-			    key "fwd_group";
+			    key "fwd-group";
 				
-				leaf fwd_group {
+    		    description
+	     	        "List of Forwarding Group map entries";
+				leaf fwd-group {
 				    type leafref {
-					    path ../config/fwd_group;
+					    path ../config/fwd-group;
 					}
+                    description
+                        "Reference to Forwarding Group map entry key";
 				}
 				
 				container config {
-				    uses qos-forwarding-group-priority-group-map-entry-config;
+                    description
+                        "Configuration data for Forwarding Group map entries";
+				    uses qos-maps-ext-forwarding-group-priority-group-map-entry-config;
 				}
 				
 				container state {
                     config false;
-				    uses qos-forwarding-group-priority-group-map-entry-config;
+                    description
+                        "Operational data for Forwarding Group map entries";
+				    uses qos-maps-ext-forwarding-group-priority-group-map-entry-config;
+				    uses qos-maps-ext-forwarding-group-priority-group-map-entry-state;
 				}
 			}
 		}
 	}
  
-    grouping qos-forwarding-group-priority-group-map-config {
+    grouping qos-maps-ext-forwarding-group-priority-group-map-config {
 		description
 			"Configuration data for Forwarding Group to priority group index map";
 
@@ -406,8 +767,14 @@ module openconfig-qos-maps-ext {
 		}
 
 	}
+ 
+    grouping qos-maps-ext-forwarding-group-priority-group-map-state {
+		description
+			"Operational data for Forwarding Group to priority group index map";
+	}
 
-	grouping qos-forwarding-group-priority-group-maps-top {   
+
+	grouping qos-maps-ext-forwarding-group-priority-group-maps-top {   
 		description
 			" Top-level grouping for Forwarding group to priority group maps data";
 
@@ -417,6 +784,8 @@ module openconfig-qos-maps-ext {
 
 			list forwarding-group-priority-group-map {
 				key "name";
+    		    description
+	     	        "List of forwarding group to priority group maps";
                 leaf name {
                   type leafref {
                     path "../config/name";
@@ -428,21 +797,22 @@ module openconfig-qos-maps-ext {
                 container config {
                     description
                         "Configuration parameters relating to forwading groups to queue map.";
-					uses qos-forwarding-group-priority-group-map-config;
+					uses qos-maps-ext-forwarding-group-priority-group-map-config;
 				}
 
 				container state {
  					config false;
                     description
                         "Operational parameters relating to forwading group to priority group map.";
-					uses qos-forwarding-group-priority-group-map-config;
+					uses qos-maps-ext-forwarding-group-priority-group-map-config;
+					uses qos-maps-ext-forwarding-group-priority-group-map-state;
 				}
-                uses qos-forwarding-group-priority-group-map-entries-top;
+                uses qos-maps-ext-forwarding-group-priority-group-map-entries-top;
 			}
 		}
 	}
 
-    grouping qos-pfc-priority-queue-map-entry-config {
+    grouping qos-maps-ext-pfc-priority-queue-map-entry-config {
 	    description
             "PFC priroity to queue index map entry config";
      	leaf dot1p {
@@ -459,42 +829,57 @@ module openconfig-qos-maps-ext {
 		}
 
 		leaf output-queue-index {
-            mandatory true;
             type uint8 {
                 range 0..7;
             }
+            mandatory true;
             description
                 "Output queue index on interfaces.";
 		}
 	}
 	
-	grouping qos-pfc-priority-queue-map-entries-top {
+    grouping qos-maps-ext-pfc-priority-queue-map-entry-state {
+	    description
+            "Operational date for PFC priroity to queue index map entry";
+    }
+	grouping qos-maps-ext-pfc-priority-queue-map-entries-top {
 		description
-			"Configuration data for PFC priroity to queue index map entries";
+			"Top-level grouping for PFC priroity to queue index map entries";
 
 		container pfc-priority-queue-map-entries {
+    		description
+	     	    "Container for PFC priroity to queue index map entries";
 		    list pfc-priority-queue-map-entry {
 			    key "dot1p";
 				
+    		    description
+	     	        "List of PFC priroity to queue index map entries";
 				leaf dot1p {
 				    type leafref {
 					    path ../config/dot1p;
 					}
+                    description
+                        "Reference to PFC priroity to queue index map entry key";
 				}
 				
 				container config {
-				    uses qos-pfc-priority-queue-map-entry-config;
+                    description
+                        "Configuration data for PFC priroity to queue index map entries";
+				    uses qos-maps-ext-pfc-priority-queue-map-entry-config;
 				}
 				
 				container state {
                     config false;
-				    uses qos-pfc-priority-queue-map-entry-config;
+                    description
+                        "Operational data for PFC priroity to queue index map entries";
+				    uses qos-maps-ext-pfc-priority-queue-map-entry-config;
+				    uses qos-maps-ext-pfc-priority-queue-map-entry-state;
 				}
 			}
 		}
 	}
  
-    grouping qos-pfc-priority-queue-map-config {
+    grouping qos-maps-ext-pfc-priority-queue-map-config {
 		description
 			"Configuration data for PFC priority to queue index map";
 
@@ -505,7 +890,13 @@ module openconfig-qos-maps-ext {
 		}
 
 	}
-	grouping qos-pfc-priority-queue-maps-top {   
+ 
+    grouping qos-maps-ext-pfc-priority-queue-map-state {
+		description
+			"Operational data for PFC priority to queue index map";
+	}
+
+	grouping qos-maps-ext-pfc-priority-queue-maps-top {   
 		description
 			" Top-level grouping for PFC priority to queue maps data";
 
@@ -515,6 +906,8 @@ module openconfig-qos-maps-ext {
 
 			list pfc-priority-queue-map {
 				key "name";
+    		    description
+	     	        "List of PFC priority to queue maps";
                 leaf name {
                   type leafref {
                     path "../config/name";
@@ -526,21 +919,22 @@ module openconfig-qos-maps-ext {
                 container config {
                     description
                         "Configuration parameters relating to PFC priority to queue map.";
-		  			uses qos-pfc-priority-queue-map-config;
+		  			uses qos-maps-ext-pfc-priority-queue-map-config;
 				}
 
 				container state {
  					config false;
                     description
                         "Operational parameters relating to PFC priority to queue map.";
-					uses qos-pfc-priority-queue-map-config;
+					uses qos-maps-ext-pfc-priority-queue-map-config;
+					uses qos-maps-ext-pfc-priority-queue-map-state;
 				}
-                uses qos-pfc-priority-queue-map-entries-top;
+                uses qos-maps-ext-pfc-priority-queue-map-entries-top;
 			}
 		}
 	}
 
-   	grouping qos-interface-maps-config {
+   	grouping qos-maps-ext-interface-maps-config {
 		description
 			"Configuration data for the maps with the interface";
 
@@ -550,6 +944,8 @@ module openconfig-qos-maps-ext {
 				// /qos/interfaces/interface/interface-maps/config/dscp-to-forwarding-group
 				path "../../../../../dscp-maps/dscp-map/config/name";
 			}
+    		description
+	    		"Reference to DSCP to forwarding group map associated with the interface";
 		}
 
 		leaf dot1p-to-forwarding-group {
@@ -558,6 +954,28 @@ module openconfig-qos-maps-ext {
 				// /qos/interfaces/interface/interface-maps/config/dot1p-to-forwarding-group
 				path "../../../../../dot1p-maps/dot1p-map/config/name";
 			}
+    		description
+	    		"Reference to DOT1P to forwarding group map associated with the interface";
+		}
+
+        leaf forwarding-group-to-dscp {
+			type leafref {
+				// current loc:
+				// /qos/interfaces/interface/interface-maps/config/forwarding-group-to-dscp
+				path "../../../../../forwarding-group-dscp-maps/forwarding-group-dscp-map/config/name";
+			}
+    		description
+	    		"Reference to forwarding group to dscp map associated with the interface";
+		}
+
+        leaf forwarding-group-to-dot1p {
+			type leafref {
+				// current loc:
+				// /qos/interfaces/interface/interface-maps/config/forwarding-group-to-dot1p
+				path "../../../../../forwarding-group-dot1p-maps/forwarding-group-dot1p-map/config/name";
+			}
+    		description
+	    		"Reference to forwarding group to dot1p map associated with the interface";
 		}
 
         leaf forwarding-group-to-queue {
@@ -566,6 +984,8 @@ module openconfig-qos-maps-ext {
 				// /qos/interfaces/interface/interface-maps/config/forwarding-group-to-queue
 				path "../../../../../forwarding-group-queue-maps/forwarding-group-queue-map/config/name";
 			}
+    		description
+	    		"Reference to forwarding group to queue map associated with the interface";
 		}
 
         leaf pfc-priority-to-queue {
@@ -574,6 +994,8 @@ module openconfig-qos-maps-ext {
 				// /qos/interfaces/interface/interface-maps/config/dscp-to-forwarding-group
 				path "../../../../../pfc-priority-queue-maps/pfc-priority-queue-map/config/name";
 			}
+    		description
+	    		"Reference to PFC priority to queue map associated with the interface";
 		}
 
         leaf forwarding-group-to-priority-group {
@@ -582,11 +1004,18 @@ module openconfig-qos-maps-ext {
 				// /qos/interfaces/interface/interface-maps/config/dscp-to-forwarding-group
 				path "../../../../../forwarding-group-priority-group-maps/forwarding-group-priority-group-map/config/name";
 			}
+    		description
+	    		"Reference to Forwading group to priority group map associated with the interface";
 		}
 
 	}
 
-    grouping qos-interface-maps-top {
+   	grouping qos-maps-ext-interface-maps-state {
+		description
+			"Operational data for the maps with the interface";
+    }
+
+    grouping qos-maps-ext-interface-maps-top {
         description
             "Top-level grouping for the QOS maps associated with the interface";
 
@@ -598,7 +1027,7 @@ module openconfig-qos-maps-ext {
                 description
                     "Configuration parameters relating to a maps on
                     an interface.";
-                uses qos-interface-maps-config;
+                uses qos-maps-ext-interface-maps-config;
             }
 
             container state {
@@ -606,21 +1035,28 @@ module openconfig-qos-maps-ext {
                 description
                     "Operational state parameters relating to a maps
                     on an interface.";
-                uses qos-interface-maps-config;
+                uses qos-maps-ext-interface-maps-config;
+                uses qos-maps-ext-interface-maps-state;
             }
         }
     }
         
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface {
-        uses qos-interface-maps-top;
+       description
+           "Configuration data for maps associated to interface.";
+        uses qos-maps-ext-interface-maps-top;
     }
 
 	augment /oc-qos:qos {
-		uses qos-dscp-maps-top;
-		uses qos-dot1p-maps-top;
-		uses qos-forwarding-group-queue-maps-top;
-		uses qos-forwarding-group-priority-group-maps-top;
-		uses qos-pfc-priority-queue-maps-top;
+       description
+           "Containers for qos maps.";
+		uses qos-maps-ext-dscp-maps-top;
+		uses qos-maps-ext-dot1p-maps-top;
+		uses qos-maps-ext-forwarding-group-queue-maps-top;
+		uses qos-maps-ext-forwarding-group-dscp-maps-top;
+		uses qos-maps-ext-forwarding-group-dot1p-maps-top;
+		uses qos-maps-ext-forwarding-group-priority-group-maps-top;
+		uses qos-maps-ext-pfc-priority-queue-maps-top;
 	}
 
     deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group/oc-qos:config/oc-qos:output-queue {
@@ -652,6 +1088,26 @@ module openconfig-qos-maps-ext {
     }
 
     deviation /oc-qos:qos/oc-qos-maps-ext:dot1p-maps/oc-qos-maps-ext:dot1p-map/oc-qos-maps-ext:dot1p-map-entries/oc-qos-maps-ext:dot1p-map-entry/state/color {
+        deviate not-supported;
+    }
+
+    deviation
+    /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dscp-maps/oc-qos-maps-ext:forwarding-group-dscp-map/oc-qos-maps-ext:forwarding-group-dscp-map-entries/oc-qos-maps-ext:forwarding-group-dscp-map-entry/config/color {
+        deviate not-supported;
+    }
+
+    deviation
+    /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dscp-maps/oc-qos-maps-ext:forwarding-group-dscp-map/oc-qos-maps-ext:forwarding-group-dscp-map-entries/oc-qos-maps-ext:forwarding-group-dscp-map-entry/state/color {
+        deviate not-supported;
+    }
+
+    deviation
+    /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dot1p-maps/oc-qos-maps-ext:forwarding-group-dot1p-map/oc-qos-maps-ext:forwarding-group-dot1p-map-entries/oc-qos-maps-ext:forwarding-group-dot1p-map-entry/config/color {
+        deviate not-supported;
+    }
+
+    deviation
+    /oc-qos:qos/oc-qos-maps-ext:forwarding-group-dot1p-maps/oc-qos-maps-ext:forwarding-group-dot1p-map/oc-qos-maps-ext:forwarding-group-dot1p-map-entries/oc-qos-maps-ext:forwarding-group-dot1p-map-entry/state/color {
         deviate not-supported;
     }
 }

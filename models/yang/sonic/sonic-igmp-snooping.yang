@@ -3,24 +3,12 @@ module sonic-igmp-snooping {
 	prefix sigmps;
 	yang-version 1.1;
 
-	import ietf-yang-types {
-		prefix yang;
-	}
-
 	import ietf-inet-types {
 		prefix inet;
 	}
 	
 	import sonic-vlan {
 		prefix svlan;
-	}
-	
-	import sonic-port {
-		prefix prt;
-	}
-
-	import sonic-portchannel {
-	    prefix spc;
 	}
 
 	organization
@@ -71,7 +59,7 @@ module sonic-igmp-snooping {
 		container CFG_L2MC_STATIC_GROUP_TABLE {
 			
 			list CFG_L2MC_STATIC_GROUP_TABLE_LIST {
-				key "vlan-name group-addr";
+				key "vlan-name group-addr source-addr";
 				
 				leaf vlan-name {
 					type leafref {
@@ -80,6 +68,10 @@ module sonic-igmp-snooping {
 				}
 				
 				leaf group-addr {
+					type inet:ipv4-address;
+				}
+
+				leaf source-addr {
 					type inet:ipv4-address;
 				}
 				
@@ -95,7 +87,7 @@ module sonic-igmp-snooping {
 		
 			list CFG_L2MC_STATIC_MEMBER_TABLE_LIST {
 			
-				key "vlan-name group-addr out-intf";
+				key "vlan-name group-addr source-addr out-intf";
 				
 				leaf vlan-name {
 					type leafref {
@@ -106,7 +98,11 @@ module sonic-igmp-snooping {
 				leaf group-addr {
 					type inet:ipv4-address;
 				}
-				
+
+				leaf source-addr {
+					type inet:ipv4-address;
+				}
+
 				leaf out-intf {
 					type leafref {
 						path "/svlan:sonic-vlan/svlan:VLAN_MEMBER/svlan:VLAN_MEMBER_LIST[svlan:name=current()/../sigmps:vlan-name]/svlan:ifname";
@@ -192,7 +188,7 @@ module sonic-igmp-snooping {
 				}
 	
 				leaf query-interval {
-          must "current() > ../query-max-response-time" {
+          must "not(../query-max-response-time) or current() > ../query-max-response-time" {
               error-message "Invalid IGMP Snooping query interval value.";
           }
 				
@@ -214,9 +210,6 @@ module sonic-igmp-snooping {
 				}
 				
 				leaf query-max-response-time {
-          must "current() < ../query-interval" {
-              error-message "Invalid IGMP Snooping query interval value.";
-          }				
 					type uint16 {
 						range "1..25"{
 							error-message "Invalid IGMP Snooping Query Max Response Time.";

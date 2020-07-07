@@ -7,10 +7,6 @@ module sonic-bgp-clear {
         prefix inet;
     }
 
-    import ietf-yang-types {
-        prefix yang;
-    }
-
     import sonic-port {
         prefix prt;
     }
@@ -21,10 +17,6 @@ module sonic-bgp-clear {
 
     import sonic-vlan {
         prefix svlan;
-    }
-
-    import sonic-mgmt-port {
-        prefix smt;
     }
 
     organization

@@ -7,8 +7,33 @@ module ietf-ptp-ext {
 
 	prefix ptp-ext;
 
-
 	import ietf-ptp {prefix ptp; }
+
+	// meta
+	organization "Broadcom";
+
+	contact "Broadcom";
+
+	description
+		"Copyright (c) 2020 IETF Trust and the persons identified as
+		authors of the code.  All rights reserved.
+
+		Redistribution and use in source and binary forms, with or
+		without modification, is permitted pursuant to, and subject to
+		the license terms contained in, the Simplified BSD License set
+		forth in Section 4.c of the IETF Trust's Legal Provisions
+		Relating to IETF Documents
+		(https://trustee.ietf.org/license-info).
+
+		This version of this YANG module is part of RFC XXXX
+		(https://www.rfc-editor.org/info/rfcXXXX); see the RFC itself
+		for full legal notices.";
+
+	revision 2019-12-29 {
+		description
+			"Initial extension file.";
+		reference "0.0.1";
+	}
 
 	typedef ptp-clock-type {
 		type enumeration {
@@ -204,196 +229,6 @@ module ietf-ptp-ext {
 					error-message "Invalid value passed for domain-number";
 				}
 			}
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:default-ds/ptp:number-ports" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:default-ds/ptp:clock-quality" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:default-ds/ptp:clock-quality/ptp:clock-class" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:default-ds/ptp:clock-quality/ptp:clock-accuracy" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:default-ds/ptp:clock-quality/ptp:offset-scaled-log-variance" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:current-ds" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:current-ds/ptp:steps-removed" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:current-ds/ptp:offset-from-master" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:current-ds/ptp:mean-path-delay" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:parent-port-identity" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:parent-port-identity/ptp:clock-identity" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:parent-port-identity/ptp:port-number" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:parent-stats" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:observed-parent-offset-scaled-log-variance" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:observed-parent-clock-phase-change-rate" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:grandmaster-identity" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:grandmaster-clock-quality" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:grandmaster-clock-quality/ptp:clock-class" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:grandmaster-clock-quality/ptp:clock-accuracy" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:grandmaster-clock-quality/ptp:offset-scaled-log-variance" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:grandmaster-priority1" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:parent-ds/ptp:grandmaster-priority2" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds/ptp:current-utc-offset-valid" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds/ptp:current-utc-offset" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds/ptp:leap59" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds/ptp:leap61" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds/ptp:time-traceable" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds/ptp:frequency-traceable" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds/ptp:ptp-timescale" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:time-properties-ds/ptp:time-source" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:log-min-delay-req-interval" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:peer-mean-path-delay" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:log-announce-interval" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:delay-mechanism" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:log-min-pdelay-req-interval" {
-		deviate replace {
-			config false;
-		}
-	}
-	deviation "/ptp:ptp/ptp:instance-list/ptp:port-ds-list/ptp:version-number" {
-		deviate replace {
-			config false;
 		}
 	}
 	deviation "/ptp:ptp/ptp:transparent-clock-default-ds" {

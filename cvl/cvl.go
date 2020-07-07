@@ -29,9 +29,9 @@ import (
 	"github.com/antchfx/xpath"
 	"github.com/antchfx/jsonquery"
 	"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
+	//lint:ignore ST1001 This is safe to dot import for util package
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"sync"
-	"flag"
 	"io/ioutil"
 	"path/filepath"
 	custv "github.com/Azure/sonic-mgmt-common/cvl/custom_validation"
@@ -57,10 +57,10 @@ const MAX_BULK_ENTRIES_IN_PIPELINE int = 50
 const MAX_DEVICE_METADATA_FETCH_RETRY = 60
 const PLATFORM_SCHEMA_PATH = "platform/"
 
-var reLeafRef *regexp.Regexp = nil
+//var reLeafRef *regexp.Regexp = nil
 var reHashRef *regexp.Regexp = nil
-var reSelKeyVal *regexp.Regexp = nil
-var reLeafInXpath *regexp.Regexp = nil
+//var reSelKeyVal *regexp.Regexp = nil
+//var reLeafInXpath *regexp.Regexp = nil
 
 var cvlInitialized bool
 var dbNameToDbNum map[string]uint8
@@ -116,7 +116,7 @@ type modelTableInfo struct {
 }
 
 
-/* CVL Error Structure. */
+// CVLErrorInfo Struct for CVL Error Info
 type CVLErrorInfo struct {
 	TableName string      /* Table having error */
 	ErrCode  CVLRetCode   /* CVL Error return Code. */
@@ -135,16 +135,16 @@ type requestCacheType struct {
 	yangData *xmlquery.Node
 }
 
-// Struct for CVL session 
+// CVL Struct for CVL session 
 type CVL struct {
-	redisClient *redis.Client
+	//redisClient *redis.Client
 	yp *yparser.YParser
 	tmpDbCache map[string]interface{} //map of table storing map of key-value pair
 	requestCache map[string]map[string][]*requestCacheType//Cache of validated data,
 				//per table, per key. Can be used as dependent data in next request
 	maxTableElem map[string]int //max element count per table
 	batchLeaf []*yparser.YParserLeafValue //field name and value
-	chkLeafRefWithOthCache bool
+	//chkLeafRefWithOthCache bool
 	yv *YValidator //Custom YANG validator for validating external dependencies
 	custvCache custv.CustValidationCache //Custom validation cache per session
 }
@@ -164,16 +164,16 @@ type modelDataInfo struct {
 }
 
 //Struct for storing global DB cache to store DB which are needed frequently like PORT
-type dbCachedData struct {
+/*type dbCachedData struct {
 	root *yparser.YParserNode //Root of the cached data
 	startTime time.Time  //When cache started
 	expiry uint16    //How long cache should be maintained in sec
-}
+}*/
 
 //Global data cache for redis table
 type cvlGlobalSessionType struct {
-	db map[string]dbCachedData
-	pubsub *redis.PubSub
+	//db map[string]dbCachedData
+	//pubsub *redis.PubSub
 	stopChan chan int //stop channel to stop notification listener
 	cv *CVL
 	mutex *sync.Mutex
@@ -203,9 +203,6 @@ func CVL_LOG(level CVLLogLevel, fmtStr string, args ...interface{}) {
 
 //package init function 
 func init() {
-    // Added this to avoid display of error log starting with "ERROR: logging before flag.Parse:"
-    flag.CommandLine.Parse([]string{"-logtostderr",})
-
 	if (os.Getenv("CVL_SCHEMA_PATH") != "") {
 		CVL_SCHEMA = os.Getenv("CVL_SCHEMA_PATH") + "/"
 	}
@@ -228,28 +225,22 @@ func init() {
 	cvlCfgMap := ReadConfFile()
 
 	if (cvlCfgMap != nil) {
-		flag.Set("v", cvlCfgMap["VERBOSITY"])
-		if (strings.Compare(cvlCfgMap["LOGTOSTDERR"], "true") == 0) {
-			flag.Set("logtostderr", "true")
-			flag.Set("stderrthreshold", cvlCfgMap["STDERRTHRESHOLD"])
-		}
-
 		CVL_LOG(INFO ,"Current Values of CVL Configuration File %v", cvlCfgMap)
 	}
 
 	//regular expression for leafref and hashref finding
-	reLeafRef = regexp.MustCompile(`.*[/]([-_a-zA-Z]*:)?(.*)[/]([-_a-zA-Z]*:)?(.*)`)
+	//reLeafRef = regexp.MustCompile(`.*[/]([-_a-zA-Z]*:)?(.*)[/]([-_a-zA-Z]*:)?(.*)`)
 	reHashRef = regexp.MustCompile(`\[(.*)\|(.*)\]`)
 	//Regular expression to select key value
-	reSelKeyVal = regexp.MustCompile("=[ ]*['\"]?([0-9_a-zA-Z]+)['\"]?|(current[(][)])")
+	//reSelKeyVal = regexp.MustCompile("=[ ]*['\"]?([0-9_a-zA-Z]+)['\"]?|(current[(][)])")
 	//Regular expression to find leafref in xpath
-	reLeafInXpath = regexp.MustCompile("(.*[:/]{1})([a-zA-Z0-9_-]+)([^a-zA-Z0-9_-]*)")
+	//reLeafInXpath = regexp.MustCompile("(.*[:/]{1})([a-zA-Z0-9_-]+)([^a-zA-Z0-9_-]*)")
 
 	if Initialize() != CVL_SUCCESS {
 		CVL_LOG(FATAL, "CVL initialization failed")
 	}
 
-	cvg.db = make(map[string]dbCachedData)
+	//cvg.db = make(map[string]dbCachedData)
 
 	//Global session keeps the global cache
 	cvg.cv, _ = ValidationSessOpen()
@@ -266,7 +257,7 @@ func init() {
 	}
 
 	xpath.SetLogCallback(func(fmt string, args ...interface{}) {
-		if (IsTraceLevelSet(TRACE_SEMANTIC) == false) {
+		if !IsTraceLevelSet(TRACE_SEMANTIC) {
 			return
 		}
 
@@ -279,7 +270,7 @@ func Debug(on bool) {
 }
 
 //Get attribute value of xml node
-func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
+/*func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
 	for _, attr := range node.Attr {
 		if (attrName == attr.Name.Local) {
 			return attr.Value
@@ -287,6 +278,19 @@ func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
 	}
 
 	return ""
+}*/
+
+// isLeafListNode checks if the xml node represents a leaf-list field
+func isLeafListNode(node *xmlquery.Node) bool {
+	return len(node.Attr) != 0 && node.Attr[0].Name.Local == "leaf-list"
+}
+
+// getNodeName returns database field name for the xml node.
+func getNodeName(node *xmlquery.Node) string {
+	if isLeafListNode(node) {
+		return node.Data + "@"
+	}
+	return node.Data
 }
 
 // Load all YIN schema files, apply deviation files 
@@ -313,7 +317,7 @@ func loadSchemaFiles() CVLRetCode {
 		deviceMetaData, err := redisClient.HGetAll("DEVICE_METADATA|localhost").Result()
 		var exists bool
 		platformName, exists = deviceMetaData["platform"]
-		if (err != nil) || (exists == false) || (platformName == "") {
+		if !exists || (err != nil) || (platformName == "") {
 			CVL_LOG(WARNING, "Could not fetch 'platform' details from CONFIG_DB")
 		}
 	}
@@ -365,7 +369,7 @@ func loadSchemaFiles() CVLRetCode {
 
 			sDirName := sDir.Name()
 			//Check which directory matches
-			if (strings.Contains(platformName, sDirName) == false) {
+			if !(strings.Contains(platformName, sDirName)) {
 				continue
 			}
 
@@ -414,12 +418,11 @@ func getYangListNamesInExpr(expr string) []string {
 	tbl := []string{}
 
 	//Check with all table names
-	for tblName, _ := range modelInfo.tableInfo {
+	for tblName := range modelInfo.tableInfo {
 
 		//Match 1 - Prefix is used in path
 		//Match 2 - Prefix is not used in path, it is in same YANG model
-		if (strings.Contains(expr, ":" + tblName + "_LIST") == true) ||
-		(strings.Contains(expr, "/" + tblName + "_LIST") == true) {
+		if strings.Contains(expr, ":" + tblName + "_LIST") || strings.Contains(expr, "/" + tblName + "_LIST") {
 			tbl = append(tbl, tblName)
 		}
 	}
@@ -540,7 +543,7 @@ func getYangListToRedisTbl(yangListName string) string {
 	}
 	tInfo, exists := modelInfo.tableInfo[yangListName]
 
-	if (exists == true) && (tInfo.redisTableName != "") {
+	if exists && (tInfo.redisTableName != "") {
 		return tInfo.redisTableName
 	}
 
@@ -599,14 +602,13 @@ func buildRefTableInfo() {
 			for j :=0; j < len(tblInfo.refFromTables); j++ {
 				if (sortedTableList[i] == tblInfo.refFromTables[j].tableName) {
 					fieldName =  tblInfo.refFromTables[j].field
-					break
+					newRefFromTables = append(newRefFromTables, tblFieldPair{sortedTableList[i], fieldName})
 				}
 			}
-			newRefFromTables = append(newRefFromTables, tblFieldPair{sortedTableList[i], fieldName})
 		}
 		//Update sorted refFromTables
 		tblInfo.refFromTables = newRefFromTables
-		modelInfo.tableInfo[tblName] = tblInfo 
+		modelInfo.tableInfo[tblName] = tblInfo
 	}
 
 }
@@ -626,22 +628,19 @@ func addTableNamesForMustExp() {
 			for _, mustExp := range mustExpArr {
 				var op CVLOperation = OP_NONE
 				//Check if 'must' expression should be executed for a particular operation
-				if (strings.Contains(mustExp.expr,
-				":operation != 'CREATE'") == true) {
+				if strings.Contains(mustExp.expr, ":operation != 'CREATE'") {
 					op = op | OP_CREATE
 				}
-				if (strings.Contains(mustExp.expr,
-				":operation != 'UPDATE'") == true) {
+				if strings.Contains(mustExp.expr, ":operation != 'UPDATE'") {
 					op = op | OP_UPDATE
 				}
-				if (strings.Contains(mustExp.expr,
-				":operation != 'DELETE'") == true) {
+				if strings.Contains(mustExp.expr, ":operation != 'DELETE'") {
 					op = op | OP_DELETE
 				}
 
 				//store the current table if aggregate function like count() is used
 				//check which table name is present in the must expression
-				for tblNameSrch, _ := range modelInfo.tableInfo {
+				for tblNameSrch := range modelInfo.tableInfo {
 					if (tblNameSrch == tblName) {
 						continue
 					}
@@ -667,7 +666,7 @@ func splitRedisKey(key string) (string, string) {
 
 	var foundIdx int = -1
 	//Check with all key delim
-	for keyDelim, _ := range modelInfo.allKeyDelims {
+	for keyDelim := range modelInfo.allKeyDelims {
 		foundIdx = strings.Index(key, keyDelim)
 		if (foundIdx >= 0) {
 			//Matched with key delim
@@ -684,7 +683,7 @@ func splitRedisKey(key string) (string, string) {
 
 	tblName := key[:foundIdx]
 
-	if _, exists := modelInfo.tableInfo[tblName]; exists == false {
+	if _, exists := modelInfo.tableInfo[tblName]; !exists {
 		//Wrong table name
 		CVL_LOG(ERROR, "Could not find table '%s' in schema", tblName)
 		return "", ""
@@ -714,7 +713,7 @@ func getRedisTblToYangList(tableName, key string) (yangList string) {
 
 	mapArr, exists := modelInfo.redisTableToYangList[tableName]
 
-	if (exists == false) || (len(mapArr) == 1) { //no map or only one
+	if !exists || (len(mapArr) == 1) { //no map or only one
 		//1:1 mapping case
 		return tableName
 	}
@@ -722,7 +721,7 @@ func getRedisTblToYangList(tableName, key string) (yangList string) {
 	//As of now determine the mapping based on number of keys
 	var foundIdx int = -1
 	numOfKeys := 1 //Assume only one key initially
-	for keyDelim, _ := range modelInfo.allKeyDelims {
+	for keyDelim := range modelInfo.allKeyDelims {
 		foundIdx = strings.Index(key, keyDelim)
 		if (foundIdx >= 0) {
 			//Matched with key delim
@@ -735,7 +734,7 @@ func getRedisTblToYangList(tableName, key string) (yangList string) {
 	//Check which list has number of keys as 'numOfKeys' 
 	for i := 0; i < len(mapArr); i++ {
 		tblInfo, exists := modelInfo.tableInfo[mapArr[i]]
-		if exists == true {
+		if exists {
 			if (len(tblInfo.keys) == numOfKeys) {
 				//Found the YANG list matching the number of keys
 				return mapArr[i]
@@ -961,8 +960,7 @@ func (c *CVL) validateSyntax(data *yparser.YParserNode) (CVLErrorInfo, CVLRetCod
 //Add config data item to accumulate per table
 func (c *CVL) addCfgDataItem(configData *map[string]interface{},
 			cfgDataItem CVLEditConfigData) (string, string){
-	var cfgData map[string]interface{}
-	cfgData = *configData
+	var cfgData map[string]interface{} = *configData
 
 	tblName, key := splitRedisKey(cfgDataItem.Key)
 	if (tblName == "" || key == "") {
@@ -1001,7 +999,7 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 		//find the node value
 		//node value is empty for custom validation function at list level
 		nodeVal := ""
-		if (strings.HasSuffix(nodeName, "_LIST") == false) {
+		if !strings.HasSuffix(nodeName, "_LIST") {
 			for nodeLeaf := node.FirstChild; nodeLeaf != nil;
 			nodeLeaf = nodeLeaf.NextSibling {
 				if (nodeName != nodeLeaf.Data) {
@@ -1043,3 +1041,19 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 	return cvlErrObj
 }
 
+// getLeafRefInfo This function returns leafrefInfo structure based on table name,
+// target table name and leaf node name where leafRef is present
+func getLeafRefInfo(tblName, fldName, targetTblName string) *leafRefInfo {
+	for _, refTblLeafRef := range modelInfo.tableInfo[tblName].leafRef[fldName] {
+		if (refTblLeafRef.path == "non-leafref") {
+			continue
+		}
+
+		for k := range refTblLeafRef.yangListNames {
+			if refTblLeafRef.yangListNames[k] == targetTblName {
+				return refTblLeafRef
+			}
+		}
+	}
+	return nil
+}

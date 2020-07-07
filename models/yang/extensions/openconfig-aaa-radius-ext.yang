@@ -1,0 +1,170 @@
+module openconfig-aaa-radius-ext {
+
+  yang-version "1.1";
+
+  namespace "http://openconfig.net/yang/aaa/radius/extension";
+
+  prefix "oc-aaa-radius-ext";
+
+  // import some basic types
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-interfaces { prefix "oc-if"; }
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-yang-types { prefix oc-yang; }
+  import openconfig-aaa-types { prefix oc-aaa-types; }
+  import openconfig-system { prefix oc-sys; }  
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module defines configuration and operational state data
+    related to the RADIUS protocol for authentication,
+    authorization, and accounting.";
+
+  oc-ext:openconfig-version "0.2.0";
+
+  revision "2020-06-30" {
+    description
+      "OC-Yang Lint/Guidelines. RADIUS source-interface.";
+    reference "0.2.0";
+  }
+
+  revision "2020-06-02" {
+    description
+      "Initial revision.";
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  // grouping statements
+
+  grouping aaa-radius-ext-server-group-config {
+    description "Grouping for RADIUS server configuration data";
+
+    leaf  nas-ip-address {
+      type oc-inet:ip-address;
+      description "The RADIUS NAS IP|IPv6 address attribute";
+    }
+    leaf retransmit-attempts {
+      type uint8;
+      description
+        "Number of times the system may resend a request to the
+         RADIUS server when it is unresponsive";
+    }
+    leaf statistics {
+      type boolean;
+      description "Should statistics collection be enabled/disabled";
+    }
+  }
+
+  grouping aaa-radius-ext-server-group-top {
+    description
+      "Grouping for RADIUS server-group configuration data";
+  
+    container radius {
+      description
+        "LDAP server-group";
+      container config {
+        description
+          "Configuration data of the RADIUS server-group";
+
+        uses aaa-radius-ext-server-group-config;
+      }
+          
+      container state {
+        config false;
+        description
+          "Operational state data of the RADIUS server-group";          
+
+        uses aaa-radius-ext-server-group-config;
+      }      
+    }
+  }
+
+  grouping aaa-radius-ext-server-radius-counters-state {
+    description
+      "Grouping for RADIUS server state counters data extension.";
+  
+    leaf access-requests {
+      type oc-yang:counter64;
+      description
+        "Sent Access-Request messages.";
+    }
+
+    leaf access-challenges {
+      type oc-yang:counter64;
+      description
+        "Received Access-Challenge messages.";
+    }
+
+    leaf bad-authenticators {
+      type oc-yang:counter64;
+      description
+        "Received RADIUS messages with a bad authenticator.";
+    }
+
+    leaf invalid-packets {
+      type oc-yang:counter64;
+      description
+        "Received Invalid RADIUS messages.";
+    }
+  }
+
+  grouping aaa-radius-ext-server-radius-config {
+    description
+      "Grouping for RADIUS server configuration data extension.";
+
+    leaf source-interface {
+      type leafref {
+        path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+      }
+      description
+        "Source interface whose IP to use as source ip for RADIUS conn.";
+    }
+  }
+
+  // data definition statements
+
+  // augment statements
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group" {
+    description
+      "RADIUS server-group extension.";
+  
+    uses aaa-radius-ext-server-group-top {
+      when "./type = 'oc-aaa-types:RADIUS'";
+    }
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:counters" {
+    description
+      "RADIUS server counters extension.";  
+    uses aaa-radius-ext-server-radius-counters-state;
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:config" {
+    description
+      "RADIUS server configuration extension.";
+    uses aaa-radius-ext-server-radius-config;
+  }
+
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state" {
+    description
+      "RADIUS server state extension.";
+    uses aaa-radius-ext-server-radius-config;
+  }
+
+  // rpc statements
+
+  // notification statements
+
+}

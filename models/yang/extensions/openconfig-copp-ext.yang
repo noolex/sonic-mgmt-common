@@ -1,0 +1,325 @@
+module openconfig-copp-ext {
+
+	yang-version "1";
+
+	// namespace
+	namespace "http://openconfig.net/yang/copp/extension";
+
+	prefix "oc-copp";
+
+	import openconfig-extensions { prefix oc-ext; }
+
+	// meta
+	organization "OpenConfig working group";
+
+	contact
+		"OpenConfig working group
+		www.openconfig.net";
+
+	description
+		"This module defines configuration and operational state
+		data for control plane policing lists";
+
+	oc-ext:openconfig-version "1.0.2";
+
+	revision "2019-05-06" {
+		description
+			"Initial revision";
+		reference "TBD";
+	}
+
+	// OpenConfig specific extensions for module metadata.
+	oc-ext:regexp-posix;
+	oc-ext:catalog-organization "openconfig";
+	oc-ext:origin "openconfig";
+
+	// typedef statements
+	typedef copp-trap-action {
+		type enumeration {
+			enum DROP {
+				description
+					"Packet gets drop";
+			}
+			enum FORWARD {
+				description
+					"Packet is forwarded";
+			}
+			enum COPY {
+				description
+					"Packet is copied";
+			}
+			enum COPY_CANCEL {
+				description
+					"Packet is copied then canceled";
+			}
+			enum TRAP {
+				description
+					"Packet is trapped";
+			}
+			enum LOG {
+				description
+					"Packet is logged";
+			}
+			enum DENY {
+				description
+					"Packet is denied";
+			}
+			enum TRANSIT {
+				description
+					"Packet is in transit";
+			}
+		}
+		description
+			"The action taken by the CoPP for the packet";
+	}
+
+	typedef copp-meter-type {
+		type enumeration {
+			enum PACKETS {
+				description
+					"Packets are metered";
+			}
+			enum BYTES {
+				description
+					"Bytes are metered";
+			}
+		}
+		description
+			"Identifies the metering method used by CoPP entry";
+	}
+
+	typedef copp-mode {
+		type enumeration {
+			enum SR_TCM {
+				description
+					"RFC 2697, Single Rate Three color marker, CIR, CBS and PBS, G, Y and R";
+			}
+			enum TR_TCM {
+				description
+					"RFC 2698, Two Rate Three color marker, CIR, CBS, PIR and PBS, G, Y and R";
+			}
+			enum STORM {
+				description
+					"Storm control mode. Single Rate Two color CIR, CBS, G and R";
+			}
+		}
+		description
+			"Identifies the mode used by CoPP entry";
+	}
+
+	// grouping statements
+	grouping copp-ext-trap-config {
+		description
+			"Grouping of copp trap ";
+		leaf name {
+			type string;
+			description
+				"Control plane policing classifier trap name";
+		}
+		leaf trap-ids {
+			type string;
+			description
+				"Comma separated string of trap-ids";
+		}
+		leaf trap-group {
+			type string;
+			description
+				"reference to CoPP group";
+		}
+	}
+	grouping copp-ext-group-config {
+		description
+			"Grouping of copp group ";
+		leaf name {
+			type string;
+			description
+				"Control plane policing classifier group name";
+		}
+		leaf trap-priority {
+			type uint16;
+			description
+				"Priority value";
+		}
+		leaf trap-action {
+			type copp-trap-action;
+			description
+				"Trap action";
+		}
+		leaf queue {
+			type uint8;
+			description
+				"CPU queue id";
+		}
+		leaf cir {
+			type uint64;
+			description
+				"Committed information rate in bps or pps
+				(packets per second) depending on meter-type. CIR
+				is mandatory";
+		}
+		leaf cbs {
+			type uint64;
+			description
+				"Committed bucket size in packets or bytes. The
+				default value is 20% of the CIR. If configured by
+				the user, it must be greater than or equal to CIR
+				in packets or bytes.";
+		}
+
+		leaf pir {
+			type uint64;
+			description
+				"Peak information rate in bps or pps. If
+				configured by the user, it must be greater than
+				CIR.";
+		}
+		leaf pbs {
+			type uint64;
+			description
+				"Peak bucket size. The default value is 20% of the
+				PIR value. If configured by the user, it must be
+				greater than PIR and CBS value.";
+		}
+		leaf meter-type {
+			type copp-meter-type;
+			description
+				"Meter type";
+		}
+		leaf mode {
+			type copp-mode;
+			description
+				"Mode";
+		}
+		leaf green-action {
+			type copp-trap-action;
+			description
+				"Green action";
+		}
+		leaf red-action {
+			type copp-trap-action;
+			description
+				"Red action";
+		}
+		leaf yellow-action {
+			type copp-trap-action;
+			description
+				"Yellow action";
+		}
+		leaf enable {
+			type boolean;
+			description
+				"enable/disable classifier";
+		}
+	}
+	grouping copp-ext-main-config {
+		description
+			"Grouping for main control plane policer settings";
+
+		container copp-groups {
+			description
+				"Control plane policer group settings";
+
+			list copp-group {
+				key "name";
+				description
+					"List of CoPP entries comprising an CoPP group";
+
+				leaf name {
+					type leafref {
+						path ../config/name;
+					}
+
+					description
+						"Control plane policing classifier group name";
+				}
+				container config {
+					description
+						"Group config";
+
+					uses copp-ext-group-config;
+				}
+				container state {
+					config false;
+					description
+						"Group state";
+
+					uses copp-ext-group-config;
+				}
+			}
+		}
+		container copp-traps {
+			description
+				"Control plane policer trap settings";
+
+			list copp-trap {
+				key "name";
+				description
+					"List of CoPP entries comprising an CoPP trap";
+
+				leaf name {
+					type leafref {
+						path ../config/name;
+					}
+					description
+						"Control plane policing classifier trap name";
+				}
+				container config {
+					description
+						"Trap config";
+					uses copp-ext-trap-config;
+				}
+				container state {
+					config false;
+					description
+						"Trap state";
+
+					uses copp-ext-trap-config;
+				}
+			}
+		}
+	}
+
+	grouping copp-ext-config {
+		description
+			"Global configuration data for control plane policer model";
+	}
+
+	grouping copp-ext-state {
+		description
+			"Global State information for control plane policer model";
+	}
+
+	grouping copp-ext-top {
+		description
+			"Top level container for control plane policer model
+			config and operational state data";
+
+		container copp {
+			description
+				"Top level enclosing container for control plane
+				policer model config and operational state data";
+
+			container config {
+				description
+					"Global configuration data for control plane policer";
+
+				uses copp-ext-config;
+			}
+
+			container state {
+				config false;
+				description
+					"Global state information for control plane policer";
+				uses copp-ext-config;
+				uses copp-ext-state;
+			}
+
+			uses copp-ext-main-config;
+		}
+	}
+
+	// data definition statements
+	uses copp-ext-top;
+
+	// augment statements
+}

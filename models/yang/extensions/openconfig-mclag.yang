@@ -69,11 +69,18 @@ module openconfig-mclag {
       description
         "peer link of MCLAG Domain";
     }
+    
+    leaf mclag-system-mac {
+      type oc-yang:mac-address;
+      description
+        "MCLAG System MAC";
+    }
 
     leaf keepalive-interval {
       type uint32 {
           range 1..60;
       }
+      default 1;
 
       description
         "Keepalive interval for ICCP MCLAG session";
@@ -83,12 +90,34 @@ module openconfig-mclag {
       type uint32 {
           range 1..3600;
       }
+      default 30;
 
       description
         "Session Timeout for ICCP MCLAG session";
     }
 
+    leaf delay-restore {
+      type uint16 {
+          range 1..3600;
+      }
+      units "seconds";
+      default 300;
+      description
+        "Time to wait for protocol to converge before bringing up
+        all MCLAG and orphan interfaces";
+    }
   }
+
+  grouping mclag-gateway-mac-config {
+    description
+      "MCLAG Domain config";
+    leaf gateway-mac {
+        type oc-yang:mac-address;
+      description
+        "Gateway Mac for MCLAG";
+    }
+}
+
 
   grouping mclag-domain-state {
     description
@@ -171,6 +200,42 @@ module openconfig-mclag {
     }
   }
 
+
+  grouping mclag-gateway-mac-top {
+    description
+      "MCLAG Gateway mac top level container";
+
+    container mclag-gateway-macs {
+      description
+        "MCLAG Gateway MAC entries varaibles enclosing container";
+      list mclag-gateway-mac {
+        key "gateway-mac";
+        max-elements 1;
+        description 
+          "Gateway Mac for MCLAG";
+        leaf gateway-mac {
+            type leafref {
+              path "../config/gateway-mac";
+            }
+            description
+              "Reference to the gateway-mac list  key";
+        }
+        container config {
+          description
+            "MCLAG gw-mac config";
+          uses mclag-gateway-mac-config;
+        }
+        container state {
+          config false;
+          description
+            "MCLAG gw-mac config";
+          uses mclag-gateway-mac-config;
+        }
+      }
+    }
+  }
+
+
   grouping mclag-interface-config {
     description
       "Configuration data for mclag interfaces";
@@ -197,18 +262,36 @@ module openconfig-mclag {
     container  local {
       description
          "Operational state for local interfaces";
-      leaf traffic_disable {
+      leaf traffic-disable {
         type boolean;
+        default false;
         description
           "MCLAG local interface traffic disable value to indicate whether Tx/Rx traffic
           is disabled or enabled on this MCLAG interface";
       }
       
-      leaf port_isolate {
+      leaf port-isolate {
         type boolean;
+        default false;
         description
           "MCLAG local interface port isolation state to indicate whether BUM
           traffic incoming on ISL is blocked on MCLAG Interface";
+      }
+
+      leaf oper-status {
+          type enumeration {
+              enum OPER_UP {
+                  description
+                      "Local Interface operational status up";
+              }
+              enum OPER_DOWN {
+                  description
+                      "Local Interface operational status down";
+              }
+          }
+          default OPER_DOWN;
+          description
+              "MCLAG Local Interface Operational status";
       }
     }
   }
@@ -231,6 +314,7 @@ module openconfig-mclag {
               "Remote Interface operational status down";
           }
        }
+       default OPER_DOWN;
        description
          "MCLAG Remote Interface Operational status";
       }
@@ -295,7 +379,7 @@ module openconfig-mclag {
 
     leaf unique-ip-enable {
         type enumeration {
-            enum enable {
+            enum ENABLE {
                 description
                     "Enable MCLAG Unique-ip";
             }
@@ -388,6 +472,7 @@ module openconfig-mclag {
       uses mclag-domain-top;
       uses mclag-interfaces-top;
       uses mclag-unique-ip-top;
+      uses mclag-gateway-mac-top;
     }
   }
 
@@ -395,11 +480,4 @@ module openconfig-mclag {
   uses mclag-top;
 
   // augment statements
-
-
-  // port-isolate is not supported now
-  deviation /oc-mclag:mclag/oc-mclag:interfaces/oc-mclag:interface/oc-mclag:state/oc-mclag:local/oc-mclag:port_isolate {
-      deviate not-supported;
-  }
-
 }

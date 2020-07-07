@@ -27,6 +27,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"reflect"
+	"sort"
 	"strings"
 	//"syscall"
 	"testing"
@@ -288,11 +290,12 @@ func clearDb() {
 		"VXLAN_TUNNEL",
 		"VXLAN_TUNNEL_MAP",
 		"WRED_PROFILE",
+		"DSCP_TO_TC_MAP",
 	}
 
 	for _, tbl := range tblList {
 		_, err := exec.Command("/bin/sh", "-c",
-		"redis-cli -n 4 del `redis-cli -n 4 keys '" +
+		"sonic-db-cli CONFIG_DB del `sonic-db-cli CONFIG_DB keys '" +
 		tbl + "|*' | cut -d ' ' -f 2`").Output()
 
 		if err != nil {
@@ -325,7 +328,7 @@ func  WriteToFile(message string) {
 func TestMain(m *testing.M) {
 
 	redisAlreadyRunning := false
-	pidOfRedis, err := exec.Command("/bin/pidof", "redis-server").Output()
+	pidOfRedis, err := exec.Command("pidof", "redis-server").Output()
 	if err == nil &&  string(pidOfRedis) != "\n" {
 		redisAlreadyRunning = true
 	}
@@ -715,7 +718,7 @@ func TestValidateEditConfig_Create_Syntax_CableLength(t *testing.T) {
 			map[string]string{
 			  "Ethernet8": "5m",
 			  "Ethernet12": "5m",
-			  "Ethernet16": "5m",
+			  "PortChannel16": "5m",
 			},
 		},
 	 }
@@ -2527,6 +2530,28 @@ func TestValidateEditConfig_Delete_Single_Field_Positive(t *testing.T) {
 	unloadConfigDB(rclient, depDataMap)
 }
 
+func TestValidateEditConfig_Create_Dscp_To_Tc_Map(t *testing.T) {
+	cfgData := []cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData {
+			cvl.VALIDATE_ALL,
+			cvl.OP_CREATE,
+			"DSCP_TO_TC_MAP|AZURE",
+			map[string]string {
+				"1": "7",
+				"2": "8",
+				"3": "9",
+			},
+		},
+	}
+
+	cvSess, _ := cvl.ValidationSessOpen()
+	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
+	cvl.ValidationSessClose(cvSess)
+	if err != cvl.CVL_SUCCESS {
+		t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
+	}
+}
+
 func TestValidateConfig_Repeated_Keys_Positive(t *testing.T) {
 	jsonData := `{
 		"WRED_PROFILE": {
@@ -3322,19 +3347,12 @@ func TestGetDepTables(t *testing.T) {
 
 	result, _ := cvSess.GetDepTables("sonic-acl", "ACL_RULE")
 
-	expectedResult := []string{"ACL_RULE", "ACL_TABLE", "MIRROR_SESSION", "PORT"}
-	expectedResult1 := []string{"ACL_RULE", "MIRROR_SESSION", "ACL_TABLE", "PORT"} //2nd possible result
+	expectedResult := []string{"ACL_RULE", "ACL_TABLE", "MIRROR_SESSION", "PORT", "PORTCHANNEL"}
 
-	if len(expectedResult) != len(result) {
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
 		t.Errorf("Validation failed, returned value = %v", result)
-		return 
-	}
-
-	for i := 0; i < len(expectedResult) ; i++ {
-		if result[i] != expectedResult[i] && result[i] != expectedResult1[i] {
-			t.Errorf("Validation failed, returned value = %v", result)
-			break
-		}
 	}
 
 	cvl.ValidationSessClose(cvSess)
@@ -3377,6 +3395,11 @@ func TestGetDepDataForDelete(t *testing.T) {
 				"NULL": "NULL",
 			},
 		},
+		"CFG_L2MC_MROUTER_TABLE" : map[string]interface{} {
+			"Vlan21|Ethernet7": map[string] interface{} {
+				"NULL": "NULL",
+			},
+		},
 		"MIRROR_SESSION": map[string]interface{}{
 			"sess1": map[string]interface{}{
 				"src_ip": "10.1.0.32",
@@ -3391,7 +3414,7 @@ func TestGetDepDataForDelete(t *testing.T) {
 		},
 		"INTERFACE" : map[string]interface{} {
 			"Ethernet7": map[string] interface{} {
-				"vrf-name": "Vrf1",
+				"vrf_name": "Vrf1",
 			},
 			"Ethernet7|10.2.1.1/16": map[string] interface{} {
 				"NULL": "NULL",
@@ -3408,7 +3431,7 @@ func TestGetDepDataForDelete(t *testing.T) {
 
 	depEntries := cvSess.GetDepDataForDelete("PORT|Ethernet7")
 
-        if (len(depEntries) != 8) { //8 entries to be deleted
+        if (len(depEntries) != 9) { //9 entries to be deleted
                 t.Errorf("GetDepDataForDelete() failed")
         }
 

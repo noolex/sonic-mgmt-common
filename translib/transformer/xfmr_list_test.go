@@ -37,7 +37,9 @@ func Test_List_Custom_DB_Update_Get(t *testing.T) {
         loadConfigDB(rclient, prereq1)
         loadConfigDB(rclient, prereq2)
 
-        get_expected := "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"state\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}}}]}"
+//        get_expected := "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"state\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}}}]}"
+
+	 get_expected := "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"config\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}},\"openconfig-if-ip:ipv6\":{\"config\":{\"enabled\":false},\"state\":{\"enabled\":false}}}]}"
 
         t.Run("GET on List Custom DB Update", processGetRequest(url, get_expected, false))
 
@@ -51,7 +53,7 @@ func Test_List_Ygot_Merge_Xfmr_Infra_Subtree_Xfmr_Get(t *testing.T) {
 
         fmt.Println("++++++++++++++  Get Test_List_Ygot_Merge_Xfmr_Infra_Subtree_Xfmr  +++++++++++++")
 
-        get_expected := "{\"openconfig-interfaces:interface\":[{\"config\":{\"enabled\":true,\"mtu\":9100,\"name\":\"Ethernet0\"},\"name\":\"Ethernet0\",\"openconfig-if-ethernet:ethernet\":{\"state\":{\"counters\":{\"in-oversize-frames\":\"0\",\"openconfig-if-ethernet-ext:in-distribution\":{\"in-frames-128-255-octets\":\"0\"},\"openconfig-interfaces-ext:out-oversize-frames\":\"0\"},\"port-speed\":\"openconfig-if-ethernet:SPEED_40GB\"}},\"state\":{\"admin-status\":\"UP\",\"counters\":{\"in-broadcast-pkts\":\"0\",\"in-discards\":\"0\",\"in-errors\":\"0\",\"in-multicast-pkts\":\"0\",\"in-octets\":\"0\",\"in-pkts\":\"0\",\"in-unicast-pkts\":\"0\",\"last-clear\":\"0\",\"out-broadcast-pkts\":\"0\",\"out-discards\":\"0\",\"out-errors\":\"0\",\"out-multicast-pkts\":\"0\",\"out-octets\":\"0\",\"out-pkts\":\"0\",\"out-unicast-pkts\":\"0\"},\"description\":\"\",\"enabled\":true,\"mtu\":9100,\"name\":\"Ethernet0\",\"oper-status\":\"DOWN\"},\"subinterfaces\":{\"subinterface\":[{\"index\":0}]}}]}"
+	get_expected := "{\"openconfig-interfaces:interface\":[{\"config\":{\"enabled\":false,\"mtu\":9100,\"name\":\"Ethernet0\",\"type\":\"iana-if-type:ethernetCsmacd\"},\"name\":\"Ethernet0\",\"openconfig-if-ethernet:ethernet\":{\"state\":{\"counters\":{\"in-oversize-frames\":\"0\",\"openconfig-if-ethernet-ext:in-distribution\":{\"in-frames-128-255-octets\":\"0\"},\"openconfig-interfaces-ext:out-oversize-frames\":\"0\"},\"port-speed\":\"openconfig-if-ethernet:SPEED_40GB\"}},\"state\":{\"admin-status\":\"DOWN\",\"counters\":{\"in-broadcast-pkts\":\"0\",\"in-discards\":\"0\",\"in-errors\":\"0\",\"in-multicast-pkts\":\"0\",\"in-octets\":\"0\",\"in-pkts\":\"0\",\"in-unicast-pkts\":\"0\",\"last-clear\":\"0\",\"out-broadcast-pkts\":\"0\",\"out-discards\":\"0\",\"out-errors\":\"0\",\"out-multicast-pkts\":\"0\",\"out-octets\":\"0\",\"out-pkts\":\"0\",\"out-unicast-pkts\":\"0\"},\"description\":\"\",\"enabled\":false,\"mtu\":9100,\"name\":\"Ethernet0\",\"oper-status\":\"DOWN\"},\"subinterfaces\":{\"subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv6\":{\"config\":{\"enabled\":false},\"state\":{\"enabled\":false}}}]}}]}"
 
         t.Run("GET on List Ygot Merge Xfmr Infra Subtree Xfmr", processGetRequest(url, get_expected, false))
 
@@ -70,6 +72,24 @@ func Test_List_Ygot_Merge_None_Get(t *testing.T) {
         get_expected := "{\"openconfig-if-ip:address\":[{\"ip\":\"1.1.1.1\"}]}"
 
         t.Run("GET on List Ygot Merge None", processGetRequest(url, get_expected, false))
+
+        unloadConfigDB(rclient, prereq)
+}
+
+
+func Test_List_Sonic_Key_Split_Get(t *testing.T) {
+
+        prereq := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet0|10.11.12.13/16":map[string]interface{}{"NULL":"NULL"}}}
+        url := "/sonic-interface:sonic-interface/INTERFACE/INTERFACE_IPADDR_LIST[portname=Ethernet0][ip_prefix=10.11.12.13/16]/"
+
+        fmt.Println("++++++++++++++  GET Test_List_Sonic_Key_Split +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        get_expected := "{\"sonic-interface:INTERFACE_IPADDR_LIST\":[{\"ip_prefix\":\"10.11.12.13/16\",\"portname\":\"Ethernet0\"}]}"
+
+        t.Run("GET on List for Sonic Yang with / in key", processGetRequest(url, get_expected, false))
 
         unloadConfigDB(rclient, prereq)
 }

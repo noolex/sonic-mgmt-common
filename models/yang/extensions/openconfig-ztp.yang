@@ -1,0 +1,196 @@
+module openconfig-ztp {
+    yang-version "1";
+    namespace "http://openconfig.net/yang/ztp/extension";
+    prefix "oc-ztp";
+    import openconfig-extensions { prefix "oc-ext"; }
+    import ietf-yang-types {
+        prefix yang;
+    }
+
+    organization "SONiC";
+    contact
+        "SONiC";
+    description
+        "This module contains a collection of YANG definitions for
+           Zero Touch Provisioning";
+
+    oc-ext:openconfig-version "0.1.0";
+
+    revision 2019-10-11 {
+        description
+            "Initial revision.";
+        reference "0.1.0";
+    }
+
+    grouping ztp-state {
+        description "ztp configuration state";
+
+        leaf error {
+            type string;
+            description
+              "If any executed program defined in the configuration section has failed, this capture the output of this program.
+               An empty string indicates that all configuration section have succeeded to execute successfully.";
+        }
+
+        leaf service {
+            type string;
+            description
+              "Indicates the ZTP service status. The following are the possible values for this field:
+                 - Active Discovery: ZTP service is operational and is performing DHCP discovery to learn switch provisioning information
+                 - Processing: ZTP service has discovered switch provisioning information and is processing it.";
+        }
+
+        leaf status {
+            type string;
+            description
+              "Indicates the current state and result of ZTP session. The following are possible values this field can display:
+                 - IN-PROGRESS: ZTP session is currently in progress. ZTP service is processing switch provisioning information.
+                 - SUCCESS: ZTP service has successfully processed the switch provisioning information.
+                 - FAILED: ZTP service has failed to process the switch provisioning information.
+                 - Not Started: ZTP service has not started processing the discovered switch provisioning information.";
+        }
+
+        leaf source {
+            type string;
+            description
+              "ZTP Source - Displays the DHCP option and then interface name from which switch provisioning information has been discovered.";
+        }
+
+        leaf runtime {
+            type string;
+            description
+              "Displays the time taken for ZTP process to complete from start to finish.";
+        }
+
+        leaf timestamp {
+            type yang:date-and-time;
+            description
+              "Timestamp - Displays the date/time stamp when the status field was last changed.";
+        }
+
+        leaf jsonversion {
+            type string;
+            description
+              "ZTP JSON Version - Version of ZTP JSON file used for describing switch provisioning information.";
+        }
+
+        leaf activity-string {
+            type string;
+            description
+              "Activity String - In addition to above information an activity string is displayed indicating the current action being performed
+               by the ZTP service and how much time it has been performing the mentioned activity.
+
+               Below is an example:
+                 (04m 12s) Discovering provisioning data";
+        }
+
+        container config-section {
+            description "configuration section";
+            list config-section-list {
+                key "sectionname";
+                description "configuration list";
+
+                leaf sectionname {
+                    type leafref {
+                        path "../state/sectionname";
+                    }
+                    description
+                      "Name of the ZTP configuration section.";
+                }
+
+                container state {
+                    description "ztp config-section state";
+
+                    leaf sectionname {
+                        type string;
+                        description
+                          "Name of the ZTP configuration section.";
+                    }
+                    leaf error {
+                        type string;
+                        description
+                          "If the executed program defined in the configuration section has failed, this capture the output of this program.
+                           An empty string indicates that the configuration section has succeeded to execute successfully.";
+                    }
+
+                    leaf status {
+                        type string;
+                        description
+                          "Displays the current state and result of a configuration section. The following are possible values this field can display:
+                           - IN-PROGRESS: Corresponding configuration section is currently being processed.
+                           - SUCCESS: Corresponding configuration section was processed successfully.
+                           - FAILED: Corresponding configuration section failed to execute successfully.
+                           - Not Started: ZTP service has not started processing the corresponding configuration section.
+                           - DISABLED: Corresponding configuration section has been marked as disabled and will not be processed.";
+                    }
+
+                    leaf runtime {
+                        type string;
+                        description
+                          "Indicates the time taken to process the associated configuration section.";
+                    }
+
+                    leaf timestamp {
+                        type yang:date-and-time;
+                        description
+                          "Displays the date/time stamp when the status field was last changed.";
+                    }
+
+                    leaf exitcode {
+                        type uint64;
+                        description
+                          "Indicates the program exit code of the configuration section executed.
+                           Non-zero exit code indicates that the configuration section has failed to execute successfully.";
+                    }
+
+                    leaf ignoreresult {
+                        type boolean;
+                        description
+                          "If this value is True, the result of the corresponding configuration section is ignored and not used to evaluate the overall ZTP result.";
+                    }
+
+                    leaf description {
+                        type string;
+                        description
+                          "Description of the ZTP configuration section.";
+                    }
+
+                    leaf haltonfailure {
+                        type boolean;
+                        description
+                          "Any configuration section failing will abort the ZTP operation.";
+                    }
+                }
+            }
+        }
+    }
+
+    grouping ztp-config {
+        description "ztp configuration";
+        leaf admin-mode {
+            type boolean;
+            description
+              "Enable or Disable ZTP administrative mode. The Disable command can also be used to abort a current ZTP session and load the factory default switch configuration.";
+        }
+    }
+
+    container ztp {
+
+      description
+        "ZTP configuration and status commands.";
+
+        container state{
+            config false;
+            description
+              "ZTP status commands.";
+            uses ztp-config;
+            uses ztp-state;
+        }
+
+        container config {
+            description
+                "ZTP configuration commands.";
+            uses ztp-config;
+        }
+    }
+}

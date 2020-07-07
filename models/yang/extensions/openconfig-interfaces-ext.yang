@@ -17,22 +17,62 @@ module openconfig-interfaces-ext {
     import openconfig-if-poe {prefix oc-poe; }
     import openconfig-if-tunnel {prefix oc-tun; }
     import openconfig-if-aggregate {prefix oc-lag; }
-    import ietf-inet-types { prefix ietf-inet; }
     import openconfig-yang-types { prefix oc-yang; }
+    import openconfig-extensions { prefix oc-ext; }
+    import ietf-yang-types { prefix yang; }
+    import ietf-inet-types { prefix "ietf-inet"; }
+    import openconfig-if-types-ext { prefix oc-if-types-ext; }
+ 
+    organization "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "This module contains collection of yang definitions for extensions to
+         openconfig-interfaces yang";
+
+    oc-ext:openconfig-version "1.0.0";
+
+    revision "2020-06-02" {
+        description
+            "Updating the YANG with respect to RFC compliance";
+        reference "1.0.0";
+    }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config" {
+        description "Additional fallback attribute for LAG configuration";
         leaf fallback {
             type boolean;
             description "Indicating whether lacp fallback is enabled or not";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state" {
+        description "Additional fallback attribute for LAG state";
         leaf fallback {
             type boolean;
             description "Fallback status on this interface";
         }
     }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config" {
+        description "Additional fast-rate attribute for LAG configuration";
+        leaf fast-rate {
+            type boolean;
+            default false;
+            description "If true, send LACP packets every second; Else every 30 secs";
+        }
+    }
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state" {
+        description "Additional fast-rate attribute for LAG state";
+        leaf fast-rate {
+            type boolean;
+            description "Fast Rate status on this PortChannel";
+        }
+    }
+
     augment "/oc-lacp:lacp/oc-lacp:interfaces/oc-lacp:interface/oc-lacp:members/oc-lacp:member/oc-lacp:state" {
+        description "Additional selected attribute for LACP state";
         leaf selected {
             type boolean;
             description "Selected status on this interface";
@@ -40,24 +80,28 @@ module openconfig-interfaces-ext {
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:config" {
+        description "Additional gatway-address attribute for IPv4 address config container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv4-address;
             description "IPv4 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:state" {
+        description "Additional gatway-address attribute for IPv4 address state container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv4-address;
             description "IPv4 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:config" {
+        description "Additional gatway-address attribute for IPv6 address config container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv6-address;
             description "IPv6 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:state" {
+        description "Additional gatway-address attribute for IPv6 address state container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv6-address;
             description "IPv6 Gateway address";
@@ -65,6 +109,7 @@ module openconfig-interfaces-ext {
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state/oc-eth:counters" {
+        description "Additional out-oversize-frames attribute associated with counters container for physical interface";
         leaf out-oversize-frames {
             type oc-yang:counter64;
             description
@@ -75,96 +120,259 @@ module openconfig-interfaces-ext {
         }
     }
 
-    grouping interface-nat-zone-config {
+    grouping interfaces-ext-interface-nat-zone-config {
+        description "Config level grouping associated with nat-zone";
+
         leaf nat-zone {
-            description
-                "NAT zone id.";
             type uint8 {
                 range "0..3";
             }
+            description
+                "NAT zone id.";
         }
     }
-    grouping interface-nat-zone-top {
+    grouping interfaces-ext-interface-nat-zone-top {
+        description "Top level grouping associated with nat-zone";
+
         container nat-zone {
+            description "Config and operational parameters associated with nat-zone";
+
             container config {
-                uses interface-nat-zone-config;
+                description "Config parameters for nat-zone";
+
+                uses interfaces-ext-interface-nat-zone-config;
             }
             container state {
                 config false;
-                uses interface-nat-zone-config;
+                description "State parameters for nat-zone";
+
+                uses interfaces-ext-interface-nat-zone-config;
             }
         }
     }
 
-	grouping interface-sag-ipv4-config {
+	  grouping interface-sag-ipv4-config {
+        description
+            "IPv4 static anycast gateway config";
+
         leaf-list static-anycast-gateway {
+			      type ietf-inet:ipv4-prefix;
+            max-elements 16;
+
             description
-                "Static Anycast Gateway addresses";
-			max-elements 16;
-			type ietf-inet:ipv4-prefix;
+                "IPv4 static anycast gateway addresses";
         }
     }
 	
     grouping interface-sag-ipv4-top {
-        container sag-ipv4 {
-            container config {
-                uses interface-sag-ipv4-config;
-            }
-            container state {
-                config false;
-                uses interface-sag-ipv4-config;
-            }
-        }
-    }	
+        description
+            "IPv4 static anycast gateway";
 
-	grouping interface-sag-ipv6-config {
-        leaf-list static-anycast-gateway {
-            description
-                "Static Anycast Gateway addresses";
-			max-elements 16;
-			type ietf-inet:ipv6-prefix;
+        container sag-ipv4 {
+            description "Config and state parameters associated with sag-ipv4";
+
+            container config {
+                uses interface-sag-ipv4-config;
+
+                description
+                    "IPv4 static anycast gateway config";
+            }
+            container state {
+                config false;
+                uses interface-sag-ipv4-config;
+
+                description
+                    "IPv4 static anycast gateway state";
+            }
+
         }
     }
-	
+
+    grouping interface-sag-ipv6-config {
+        description
+        "IPv6 static anycast gateway config";
+
+        leaf-list static-anycast-gateway {
+
+			      type ietf-inet:ipv6-prefix;
+			      max-elements 16;
+
+            description
+                "IPv6 static anycast gateway addresses";
+
+        }
+    }
+
     grouping interface-sag-ipv6-top {
+    description
+        "IPv6 static anycast gateway";
+
         container sag-ipv6 {
+            description "Config and state parameters associated with sag-ipv6";
+
             container config {
                 uses interface-sag-ipv6-config;
+
+                description
+                    "IPv6 static anycast gateway config";
             }
             container state {
                 config false;
                 uses interface-sag-ipv6-config;
+
+                description
+                    "IPv6 static anycast gateway state";
             }
+
         }
     }
-	
+
+    grouping interfaces-ext-vrrp-track-interface-priority-increment {
+
+        description
+            "List of track interfaces for VRRP";
+
+        list vrrp-track-interface {
+            key "track-intf";
+            description
+                "List of track interface";
+
+            leaf track-intf {
+                type leafref {
+                    path "/oc-intf:interfaces/oc-intf:interface/oc-intf:name";
+                }
+                description
+                    "Reference to the list of interfaces";
+            }
+
+            container config {
+                description
+                    "Configuration data for each track interface";
+
+                leaf priority-increment {
+                    type uint8 {
+                        range "0..254";
+                    }
+                    description
+                        "priority increment upon interface up";
+                }
+            }
+
+            container state {
+                config false;
+                description
+                    "Operational data for each track interface";
+
+                leaf priority-increment {
+                    type uint8 {
+                        range "0..254";
+                    }
+                    description
+                        "priority increment upon interface up";
+                }
+            }
+
+        }
+
+    }
+
     augment "/oc-intf:interfaces/oc-intf:interface" {
         description
             "NAT zone config and state data.";
-        uses interface-nat-zone-top;
+        uses interfaces-ext-interface-nat-zone-top;
     }
-	
+
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
         description
             "SAG config and state data.";
         uses interface-sag-ipv4-top {
-			when "oc-intf:config/oc-intf:type = 'oc-intf-types-ext:IF_NVE'";
+      when "oc-intf:config/oc-intf:type = 'oc-if-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
-		}		  
+		}
 	}
 
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
         description
             "SAG config and state data.";
         uses interface-sag-ipv6-top {
-			when "oc-intf:config/oc-intf:type = 'oc-intf-types-ext:IF_NVE'";
+      when "oc-intf:config/oc-intf:type = 'oc-if-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
-		}		  
+		}
 	}
 
-	
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config" {
+        description
+            "VRRP IPv4 config version";
+        leaf version {
+            type uint8 {
+                range "2..3";
+            }
+            description
+                "version";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv4 state version";
+        leaf version {
+            type uint8 {
+                range "2..3";
+            }
+            description
+                "version";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv4 MASTER state";
+        leaf state {
+            type uint8 {
+                range "0..2";
+            }
+            description
+                "state";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv6 state version";
+        leaf version {
+            type uint8 {
+                range "2..3";
+            }
+            description
+                "version";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv6 MASTER state";
+        leaf state {
+            type uint8 {
+                range "0..2";
+            }
+            description
+                "state";
+        }
+    }
+
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
+        description "Track interface priority for IPv4 VRRP instance";
+        uses interfaces-ext-vrrp-track-interface-priority-increment;
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
+        description "Track interface priority for IPv6 VRRP instance";
+        uses interfaces-ext-vrrp-track-interface-priority-increment;
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:hold-time {
         deviate not-supported;
     }
@@ -185,9 +393,38 @@ module openconfig-interfaces-ext {
         deviate not-supported;
     }
 
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:preempt-delay {
         deviate not-supported;
     }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:accept-mode {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:preempt-delay {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:accept-mode {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking/oc-ip:config/oc-ip:track-interface {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking/oc-ip:config/oc-ip:priority-decrement {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking/oc-ip:state/oc-ip:track-interface {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking/oc-ip:state/oc-ip:priority-decrement {
+        deviate not-supported;
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:proxy-arp {
         deviate not-supported;
     }
@@ -212,7 +449,35 @@ module openconfig-interfaces-ext {
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:config/oc-ip:dhcp-client {
         deviate not-supported;
     }
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:preempt-delay {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:accept-mode {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:preempt-delay {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:accept-mode {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:interface-tracking {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config/oc-ip:virtual-link-local {
+        deviate not-supported;
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state/oc-ip:virtual-link-local {
         deviate not-supported;
     }
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:router-advertisement {
@@ -228,9 +493,7 @@ module openconfig-interfaces-ext {
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-poe:poe {
         deviate not-supported;
     }
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan {
-        deviate not-supported;
-    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-tun:tunnel {
         deviate not-supported;
     }

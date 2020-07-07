@@ -60,7 +60,8 @@ module sonic-mclag {
 
                     leaf gw_mac {
                         type yang:mac-address;
-	            }
+                        sonic-ext:custom-validation ValidateMclagMac;
+	                }
 
                     leaf gw_mac_en {
                         type enumeration {
@@ -100,6 +101,12 @@ module sonic-mclag {
                         }
                     }
                 }
+                leaf mclag_system_mac {
+                    type yang:mac-address;
+                    description
+                        "MCLAG system MAC";
+                    sonic-ext:custom-validation ValidateMclagMac;
+                }
                 leaf keepalive_interval {
                     type uint16 {
                         range "1..60" {
@@ -121,6 +128,19 @@ module sonic-mclag {
                 must "(keepalive_interval * 3) <= session_timeout" {
                         error-message "(keepalive interval * 3) <= session_timeout value";
                         error-app-tag keepalive_interval-invalid;
+                }
+                leaf delay_restore {
+                    type uint16 {
+                        range "1..3600" {
+                            error-message "MCLAG delay restore time is out of range";
+                            error-app-tag delay_restore-invalid;
+                        }
+                    }
+                    units seconds;
+                    default 300;
+                    description
+                        "Time to wait for protocol to converge before bringing up
+                         all MCLAG and orphan interfaces";
                 }
             }
         }
@@ -158,7 +178,7 @@ module sonic-mclag {
                 }
 
                 must "count(/svlan-intf:sonic-vlan-interface/svlan-intf:VLAN_INTERFACE/svlan-intf:VLAN_INTERFACE_IPADDR_LIST[svlan-intf:vlanName=current()/if_name]) = 0" {
-                    error-message "remove configured ip/v6 address and reconfigure after seperate ip configuration";
+                    error-message "remove configured ip/v6 address and reconfigure after separate ip configuration";
                     error-app-tag vlan-intf-ip-invalid;
                 }
 
