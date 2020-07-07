@@ -982,6 +982,22 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
         unloadConfigDB(rclient, prereq2)
 
 
+        prereq1 = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 = map[string]interface{}{"TACPLUS_SERVER":map[string]interface{}{"1.1.1.1":map[string]interface{}{"timeout":"40"}}}
+
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+
+	fmt.Println("++++++++++++++  DELETE uri list instance, data present in DB  +++++++++++++")
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server[address=1.1.1.1]"
+        t.Run("RFC - 2 Delete on list instance, data present in DB",  processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - 2 Verify Delete on list instance, data present in DB", verifyDbResult(rclient, "TACPLUS_SERVER|1.1.1.1", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, prereq1)
+        unloadConfigDB(rclient, prereq2)
+
+
         // Delete on leaf,  data present in DB, last leaf in container
 
         cleanuptbl1 = map[string]interface{}{"RADIUS":map[string]interface{}{"global":""}}

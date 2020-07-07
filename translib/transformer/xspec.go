@@ -182,8 +182,8 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathData, ok := xYangSpecMap[curXpathFull]
 		if !ok {
 			curXpathData = new(yangXpathInfo)
-			xYangSpecMap[curXpathFull] = curXpathData
 			curXpathData.dbIndex = db.ConfigDB // default value
+			xYangSpecMap[curXpathFull] = curXpathData
 		}
 		curXpathData.yangDataType = strings.ToLower(yang.EntryKindToName[entry.Kind])
 		curXpathData.yangEntry    = entry
@@ -209,6 +209,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathFull = xpathFull + "/" + entry.Name
 		if annotNode, ok := xYangSpecMap[curXpathFull]; ok {
 			xpathData := new(yangXpathInfo)
+			xpathData.dbIndex = db.ConfigDB // default value
 			xYangSpecMap[xpath] = xpathData
 			copyYangXpathSpecData(xYangSpecMap[xpath], annotNode)
 			updateChoiceCaseXpath = true
@@ -347,6 +348,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 			keyXpath[id] = xpath + "/" + keyName
 			if _, ok := xYangSpecMap[xpath + "/" + keyName]; !ok {
 				keyXpathData := new(yangXpathInfo)
+				keyXpathData.dbIndex = db.ConfigDB // default value
 				xYangSpecMap[xpath + "/" + keyName] = keyXpathData
 			}
 			xYangSpecMap[xpath + "/" + keyName].isKey = true
@@ -651,6 +653,7 @@ func childToUpdateParent( xpath string, tableName string) {
 	_, ok := xYangSpecMap[parent]
 	if !ok {
 		xpathData = new(yangXpathInfo)
+		xpathData.dbIndex = db.ConfigDB // default value
 		xYangSpecMap[parent] = xpathData
 	}
 
