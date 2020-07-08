@@ -154,5 +154,35 @@ module openconfig-fbs-ext {
   // rpc statements
 
   // notification statements
+
+  // deviations
+  deviation /oc-fbs-ext:fbs/interfaces/interface/egress-policies/monitoring {
+    deviate not-supported;
+  }
+
+  deviation /oc-fbs-ext:fbs/classifiers/classifier/match-hdr-fields/ipv6/config/source-flow-label {
+    deviate not-supported;
+  }
+
+  deviation /oc-fbs-ext:fbs/classifiers/classifier/match-hdr-fields/ipv6/state/source-flow-label {
+    deviate not-supported;
+  }
+
+  deviation /oc-fbs-ext:fbs/classifiers/classifier/match-hdr-fields/ipv6/config/destination-flow-label {
+    deviate not-supported;
+  }
+
+  deviation /oc-fbs-ext:fbs/classifiers/classifier/match-hdr-fields/ipv6/state/destination-flow-label {
+    deviate not-supported;
+  }
+
+  deviation /oc-fbs-ext:fbs/classifiers/classifier/match-hdr-fields/ip/config/hop-limit {
+    deviate not-supported;
+  }
+
+  deviation /oc-fbs-ext:fbs/classifiers/classifier/match-hdr-fields/ip/state/hop-limit {
+    deviate not-supported;
+  }
+
 }
 
