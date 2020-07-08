@@ -26,7 +26,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "github.com/Azure/sonic-mgmt-common/translib/utils"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/util"
 	"github.com/openconfig/ygot/ygot"
@@ -377,8 +377,8 @@ func (app *AclApp) translateCRUCommon(d *db.DB, opcode int) ([]db.WatchKeys, err
 	err = app.convertOCAclRulesToInternal()
 	if err == nil {
 		err = app.convertOCAclInterfaceBindingsToInternal()
-    }
-    if err == nil {
+	}
+	if err == nil {
 		app.convertOCAclGlobalBindingsToInternal()
 		app.convertOCAclControlPlaneBindingsToInternal()
 	}
@@ -823,15 +823,15 @@ func (app *AclApp) convertInternalToOCAcl(aclName string, aclSets *ocbinds.Openc
 	} else {
 		for acln := range app.aclTableMap {
 			acldata := app.aclTableMap[acln]
-            aclNameStr, aclType := convertInternalAclnameTypeToOC(acln, acldata.Get(ACL_FIELD_TYPE))
-            if aclType != ocbinds.OpenconfigAcl_ACL_TYPE_UNSET {
+			aclNameStr, aclType := convertInternalAclnameTypeToOC(acln, acldata.Get(ACL_FIELD_TYPE))
+			if aclType != ocbinds.OpenconfigAcl_ACL_TYPE_UNSET {
 				aclSetPtr, aclErr := aclSets.NewAclSet(aclNameStr, aclType)
 				if aclErr != nil {
 					fmt.Println("Error handling: ", aclErr)
-			    }
+				}
 				ygot.BuildEmptyTree(aclSetPtr)
 				app.convertInternalToOCAcl(acln, nil, aclSetPtr)
-            }
+			}
 		}
 	}
 }
@@ -1116,7 +1116,7 @@ func (app *AclApp) getOCInterfaceSubtree(dbs [db.MaxDB]*db.DB, intfSt *ocbinds.O
 			ocIntfPtr.InterfaceRef.State.Interface = ocIntfPtr.Id
 		}
 
-        nativeName := *utils.GetNativeNameFromUIName(&ifName)
+		nativeName := *utils.GetNativeNameFromUIName(&ifName)
 		inFound, err := app.getOCIntfSubtreeIntfDataForStage(dbs, nativeName, "Ingress", ocIntfPtr)
 		if err != nil {
 			return err
@@ -1460,7 +1460,7 @@ func (app *AclApp) getAclBindingInfoForSwitch(dbs [db.MaxDB]*db.DB) error {
 func (app *AclApp) findAndDeleteAclBindings(d *db.DB, intfIn string, stage string, aclname string,
 	acltype ocbinds.E_OpenconfigAcl_ACL_TYPE) error {
 
-    intf := *utils.GetNativeNameFromUIName(&intfIn)
+	intf := *utils.GetNativeNameFromUIName(&intfIn)
 	log.Infof("Delete ACL bindings ACL:%s Stage:%s Type:%v Intf:%v", aclname, stage, acltype, intf)
 
 	aclKeys, _ := d.GetKeys(app.aclTs)
@@ -1733,44 +1733,44 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 		// Below code assumes that an ACL can be either INGRESS or EGRESS but not both.
 		for intfId, intf := range aclObj.Interfaces.Interface {
 
-            if nil == intf.InterfaceRef || nil == intf.InterfaceRef.Config ||
-                nil == intf.InterfaceRef.Config.Interface {
-                goto SkipIntfCheck
-            }
+			if nil == intf.InterfaceRef || nil == intf.InterfaceRef.Config ||
+				nil == intf.InterfaceRef.Config.Interface {
+				goto SkipIntfCheck
+			}
 
-            if intfId != *intf.InterfaceRef.Config.Interface {
-                return tlerr.NotSupported("Different ID %s and Interface name %s not supported", intfId, *intf.InterfaceRef.Config.Interface)
-            }
+			if intfId != *intf.InterfaceRef.Config.Interface {
+				return tlerr.NotSupported("Different ID %s and Interface name %s not supported", intfId, *intf.InterfaceRef.Config.Interface)
+			}
 
-        SkipIntfCheck:
+		SkipIntfCheck:
 
-            if intf.IngressAclSets != nil && len(intf.IngressAclSets.IngressAclSet) > 0 {
-                for inAclKey := range intf.IngressAclSets.IngressAclSet {
-                    aclName := convertOCAclnameTypeToInternal(inAclKey.SetName, inAclKey.Type)
-                    app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
-                    if len(app.aclTableMap) == 0 {
-                        app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
-                    }
-                    app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_INGRESS
-                    app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(inAclKey.Type)
-                }
-            }
+			if intf.IngressAclSets != nil && len(intf.IngressAclSets.IngressAclSet) > 0 {
+				for inAclKey := range intf.IngressAclSets.IngressAclSet {
+					aclName := convertOCAclnameTypeToInternal(inAclKey.SetName, inAclKey.Type)
+					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
+					if len(app.aclTableMap) == 0 {
+						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
+					}
+					app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_INGRESS
+					app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(inAclKey.Type)
+				}
+			}
 
-            if intf.EgressAclSets != nil && len(intf.EgressAclSets.EgressAclSet) > 0 {
-                for outAclKey := range intf.EgressAclSets.EgressAclSet {
-                    aclName := convertOCAclnameTypeToInternal(outAclKey.SetName, outAclKey.Type)
-                    app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
-                    if len(app.aclTableMap) == 0 {
-                        app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
-                    }
-                    app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_EGRESS
-                    app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(outAclKey.Type)
-                }
-            }
+			if intf.EgressAclSets != nil && len(intf.EgressAclSets.EgressAclSet) > 0 {
+				for outAclKey := range intf.EgressAclSets.EgressAclSet {
+					aclName := convertOCAclnameTypeToInternal(outAclKey.SetName, outAclKey.Type)
+					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
+					if len(app.aclTableMap) == 0 {
+						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
+					}
+					app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_EGRESS
+					app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(outAclKey.Type)
+				}
+			}
 		}
 	}
 
-    return nil
+	return nil
 }
 
 func (app *AclApp) convertOCAclGlobalBindingsToInternal() {
@@ -1979,31 +1979,8 @@ func convertOCToInternalTransport(ruleData db.Value, aclName string, aclType ocb
 		}
 	}
 
-	var tcpFlags uint32 = 0x00
 	if len(rule.Transport.Config.TcpFlags) > 0 {
-		for _, flag := range rule.Transport.Config.TcpFlags {
-			switch flag {
-			case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_FIN:
-				tcpFlags |= 0x01
-			case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_SYN:
-				tcpFlags |= 0x02
-			case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_RST:
-				tcpFlags |= 0x04
-			case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_PSH:
-				tcpFlags |= 0x08
-			case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ACK:
-				tcpFlags |= 0x10
-			case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_URG:
-				tcpFlags |= 0x20
-			case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ECE:
-				tcpFlags |= 0x40
-			case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_CWR:
-				tcpFlags |= 0x80
-			}
-		}
-		var b bytes.Buffer
-		fmt.Fprintf(&b, "0x%0.2x/0x%0.2x", tcpFlags, tcpFlags)
-		ruleData.Field[ACL_RULE_FIELD_TCP_FLAGS] = b.String()
+		ruleData.Field[ACL_RULE_FIELD_TCP_FLAGS] = convertOCTcpFlagsToDbFormat(rule.Transport.Config.TcpFlags)
 	}
 
 	if rule.Transport.Config.IcmpType != nil {
@@ -2392,26 +2369,26 @@ func (app *AclApp) setAclBindDataInConfigDb(d *db.DB, opcode int) error {
 }
 
 func (app *AclApp) getAclKeyByCheckingDbForNameWithoutType(d *db.DB, aclname string, acltype ocbinds.E_OpenconfigAcl_ACL_TYPE) string {
-//	var aclKey string
-//	aclT := acltype.ΛMap()["E_OpenconfigAcl_ACL_TYPE"][int64(acltype)].Name
-//	aclKey = aclname + "_" + aclT
-//
-//	// For ACLs created by Config json directly, ACL name may not appended with its type
-//	patternKeys, err := d.GetKeysByPattern(app.aclTs, aclname+"*")
-//	if err != nil {
-//		return aclKey
-//	}
-//	for i := range patternKeys {
-//		// Find entry which does not ends with Acl type and its name matches with name given in url
-//		patternKeyFromDb := patternKeys[i].Get(0)
-//		if !strings.HasSuffix(patternKeyFromDb, aclT) && patternKeyFromDb == aclname {
-//			aclKey = aclname
-//			log.Infof("getAclKeyByCheckingDbForNameWithoutType: Modified aclKey to: %s", aclKey)
-//		}
-//	}
-//
-//	return aclKey
-    return aclname
+	//	var aclKey string
+	//	aclT := acltype.ΛMap()["E_OpenconfigAcl_ACL_TYPE"][int64(acltype)].Name
+	//	aclKey = aclname + "_" + aclT
+	//
+	//	// For ACLs created by Config json directly, ACL name may not appended with its type
+	//	patternKeys, err := d.GetKeysByPattern(app.aclTs, aclname+"*")
+	//	if err != nil {
+	//		return aclKey
+	//	}
+	//	for i := range patternKeys {
+	//		// Find entry which does not ends with Acl type and its name matches with name given in url
+	//		patternKeyFromDb := patternKeys[i].Get(0)
+	//		if !strings.HasSuffix(patternKeyFromDb, aclT) && patternKeyFromDb == aclname {
+	//			aclKey = aclname
+	//			log.Infof("getAclKeyByCheckingDbForNameWithoutType: Modified aclKey to: %s", aclKey)
+	//		}
+	//	}
+	//
+	//	return aclKey
+	return aclname
 }
 
 func (app *AclApp) getAclRuleByCheckingDbForNameWithoutRule(d *db.DB, aclname string, ruleId string) string {
@@ -2464,33 +2441,119 @@ func getTransportSrcDestPorts(portVal string, portType string) interface{} {
 	return nil
 }
 
+func convertOCTcpFlagsToDbFormat(flags []ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS) string {
+	var tcpFlags uint32 = 0x00
+	var tcpFlagsMask uint32 = 0x00
+	for _, flag := range flags {
+		switch flag {
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_FIN:
+			tcpFlags |= 0x01
+			tcpFlagsMask |= 0x1
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_FIN:
+			tcpFlagsMask |= 0x1
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_SYN:
+			tcpFlags |= 0x02
+			tcpFlagsMask |= 0x2
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_SYN:
+			tcpFlagsMask |= 0x2
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_RST:
+			tcpFlags |= 0x04
+			tcpFlagsMask |= 0x4
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_RST:
+			tcpFlagsMask |= 0x4
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_PSH:
+			tcpFlags |= 0x08
+			tcpFlagsMask |= 0x8
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_PSH:
+			tcpFlagsMask |= 0x8
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ACK:
+			tcpFlags |= 0x10
+			tcpFlagsMask |= 0x10
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_ACK:
+			tcpFlagsMask |= 0x10
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_URG:
+			tcpFlags |= 0x20
+			tcpFlagsMask |= 0x20
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_URG:
+			tcpFlagsMask |= 0x20
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ECE:
+			tcpFlags |= 0x40
+			tcpFlagsMask |= 0x40
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_ECE:
+			tcpFlagsMask |= 0x40
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_CWR:
+			tcpFlags |= 0x80
+			tcpFlagsMask |= 0x80
+		case ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_CWR:
+			tcpFlagsMask |= 0x80
+		}
+	}
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "0x%x/0x%x", tcpFlags, tcpFlagsMask)
+
+	return b.String()
+}
+
 func getTransportConfigTcpFlags(tcpFlags string) []ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS {
 	var flags []ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS
-	if len(tcpFlags) > 0 {
-		flagStr := strings.Split(tcpFlags, "/")[0]
-		flagNumber, _ := strconv.ParseUint(strings.Replace(flagStr, "0x", "", -1), 16, 32)
-		for i := 0; i < 8; i++ {
-			mask := 1 << uint(i)
-			if (int(flagNumber) & mask) > 0 {
-				switch int(flagNumber) & mask {
-				case 0x01:
+	flagParts := strings.Split(tcpFlags, "/")
+	valueStr := flagParts[0]
+	maskStr := flagParts[1]
+	flagValue, _ := strconv.ParseUint(valueStr, 0, 8)
+	flagMask, _ := strconv.ParseUint(maskStr, 0, 8)
+	for i := 0; i < 8; i++ {
+		mask := uint64(1 << i)
+		if (flagValue&mask) > 0 || (flagMask&mask) > 0 {
+			switch mask {
+			case 0x01:
+				if (flagValue & mask) > 0 {
 					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_FIN)
-				case 0x02:
-					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_SYN)
-				case 0x04:
-					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_RST)
-				case 0x08:
-					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_PSH)
-				case 0x10:
-					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ACK)
-				case 0x20:
-					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_URG)
-				case 0x40:
-					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ECE)
-				case 0x80:
-					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_CWR)
-				default:
+				} else {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_FIN)
 				}
+			case 0x02:
+				if (flagValue & mask) > 0 {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_SYN)
+				} else {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_SYN)
+				}
+			case 0x04:
+				if (flagValue & mask) > 0 {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_RST)
+				} else {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_RST)
+				}
+			case 0x08:
+				if (flagValue & mask) > 0 {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_PSH)
+				} else {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_PSH)
+				}
+			case 0x10:
+				if (flagValue & mask) > 0 {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ACK)
+				} else {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_ACK)
+				}
+			case 0x20:
+				if (flagValue & mask) > 0 {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_URG)
+				} else {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_URG)
+				}
+			case 0x40:
+				if (flagValue & mask) > 0 {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ECE)
+				} else {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_ECE)
+				}
+			case 0x80:
+				if (flagValue & mask) > 0 {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_CWR)
+				} else {
+					flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_NOT_CWR)
+				}
+			default:
 			}
 		}
 	}
@@ -2541,8 +2604,7 @@ func getAclTypeOCEnumFromName(val string) (ocbinds.E_OpenconfigAcl_ACL_TYPE, err
 }
 
 func convertOCAclnameTypeToInternal(aclname string, acltype ocbinds.E_OpenconfigAcl_ACL_TYPE) string {
-//	aclT := acltype.ΛMap()["E_OpenconfigAcl_ACL_TYPE"][int64(acltype)].Name
-//	return aclname + "_" + aclT
-    return aclname
+	//	aclT := acltype.ΛMap()["E_OpenconfigAcl_ACL_TYPE"][int64(acltype)].Name
+	//	return aclname + "_" + aclT
+	return aclname
 }
-
