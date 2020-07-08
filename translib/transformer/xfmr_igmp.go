@@ -1,7 +1,7 @@
 
 /////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2019 Dell, Inc.
+// Copyright 2020 Dell, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,12 +102,12 @@ func getIgmpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Netwo
     return protoInstObj.Igmp, igmpVrfName, err
 }
 
-func fill_igmp_groups_xfmr (igmp_map map[string]interface{}, igmpGroups_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Groups) error {
+func fillIgmpGroupsXfmr (igmp_map map[string]interface{}, igmpGroups_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Groups) error {
     var err error
     var igmpIgmpGroup_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Groups_Group
     var igmpGroupState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Groups_Group_State
     var igmpGroupKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Groups_Group_Key
-    log.Info("fill_igmp_groups_xfmr igmp_map %s ",igmp_map)
+    log.Info("fillIgmpGroupsXfmr igmp_map %s ",igmp_map)
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for IGMP IGMP Groups"
     var interfaceId string
@@ -169,12 +169,12 @@ func fill_igmp_groups_xfmr (igmp_map map[string]interface{}, igmpGroups_obj *ocb
     return err
 }
 
-func fill_igmp_sources_xfmr (igmp_map map[string]interface{},igmpSources_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Sources) error {
+func fillIgmpSourcesXfmr (igmp_map map[string]interface{},igmpSources_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Sources) error {
     var err error
     var igmpIgmpSource_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Sources_Source
     var igmpSourceState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Sources_Source_State
     var igmpSourceKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Sources_Source_Key
-    log.Info("fill_igmp__xfmr igmp_map %s ",igmp_map)
+    log.Info("fillIgmpSourcesXfmr igmp_map %s ",igmp_map)
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for IGMP IGMP Sources"
     var interfaceId string
@@ -182,12 +182,9 @@ func fill_igmp_sources_xfmr (igmp_map map[string]interface{},igmpSources_obj *oc
     var grpAddr string
     for key, value := range igmp_map {
         interfaceId = key
-            log.Info("0 ", key)
         group_map := value.(map[string]interface {})
-            log.Info("1 ", group_map)
         for src_addr, value := range group_map {
             srcAddr = src_addr
-            log.Info("2 ", srcAddr)
             switch v := value.(type) {
                 case map[string]interface{}:
                     if _srcaddr,ok := v["source"].(string) ; ok {
@@ -204,8 +201,8 @@ func fill_igmp_sources_xfmr (igmp_map map[string]interface{},igmpSources_obj *oc
                     igmpSourceKey.SrcAddr = srcAddr
                     igmpIgmpSource_obj = igmpSources_obj.Source[igmpSourceKey]
                     if (nil == igmpIgmpSource_obj) {
-            log.Info("3 source obj nil creating new")
-                        igmpIgmpSource_obj, err = igmpSources_obj.NewSource(interfaceId,grpAddr,srcAddr)
+                        log.Info("Igmp source obj nil creating new")
+                        igmpIgmpSource_obj, err = igmpSources_obj.NewSource(interfaceId,srcAddr,grpAddr)
                         if err  != nil {
                             log.Errorf("%s failed !! Error: Failed to create Source under Sources", cmn_log)
                             return  oper_err
@@ -237,7 +234,7 @@ func fill_igmp_sources_xfmr (igmp_map map[string]interface{},igmpSources_obj *oc
      return err
 }
 
-func fill_igmp_stats_xfmr (output_state map[string]interface{}, igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp) error { 
+func fillIgmpStatsXfmr (output_state map[string]interface{}, igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp) error { 
     var err error
     var igmpStats_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Statistics
     var igmpCounters_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Statistics_Counters
@@ -255,7 +252,7 @@ func fill_igmp_stats_xfmr (output_state map[string]interface{}, igmp_obj *ocbind
 
     oper_err = errors.New("Operational error")
     cmn_log = "GET: xfmr for IGMP IGMP Groups"
-    log.Info("fill_igmp_stats_xfmr output_state %s",output_state)
+    log.Info("fillIgmpStatsXfmr output_state %s",output_state)
 
     igmpStats_obj = igmp_obj.Statistics
     if igmpStats_obj == nil {
@@ -412,7 +409,7 @@ func fill_igmp_stats_xfmr (output_state map[string]interface{}, igmp_obj *ocbind
     return err
 }
 
-func fill_igmp_interface_xfmr (interface_info map[string]interface{}, interfaceId string, igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp) error {
+func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId string, igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp) error {
     var err error
     var igmpInterfaces_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces
     var igmpInterfacesInterface_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface
@@ -429,7 +426,7 @@ func fill_igmp_interface_xfmr (interface_info map[string]interface{}, interfaceI
 
     oper_err = errors.New("Operational error")
     cmn_log = "GET: xfmr for IGMP Interface"
-    log.Info("fill_igmp_interface_xfmr interface_info %s ",interface_info)
+    log.Info("fillIgmpInterfaceXfmr interface_info %s ",interface_info)
 
     igmpInterfaces_obj = igmp_obj.Interfaces
     if igmpInterfaces_obj == nil {
@@ -504,22 +501,10 @@ func fill_igmp_interface_xfmr (interface_info map[string]interface{}, interfaceI
     if value,ok := interface_info["upTime"].(string) ; ok {
         igmpInterfacesInterface_obj.State.InterfaceId  = &value
     }
-/*
-    if value,ok := interface_info["upTime"] ; ok {
-        _mtracereq := uint32(value.(float64))
-        igmpInterfacesInterface_obj.State.Enabled  = &_mtracereq
-    }
-*/
     if value,ok := interface_info["version"] ; ok {
         _version := uint8(value.(float64))
         igmpInterfacesInterface_obj.State.Version  = &_version
     }
-/*
-    if value,ok := interface_info["upTime"] ; ok {
-        _mtracereq := uint32(value.(float64))
-        igmpInterfacesInterface_obj.State.QueryInterval  = &_mtracereq
-    }
-*/
     if value,ok := interface_info["address"].(string) ; ok {
         igmpInterfacesInterface_obj.State.Querier.IpAddr  = &value
     }
@@ -672,7 +657,7 @@ var DbToYang_igmp_groups_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
         igmp_obj.Groups = igmpGroups_obj
     }
 
-    err = fill_igmp_groups_xfmr (output_state, igmpGroups_obj)
+    err = fillIgmpGroupsXfmr (output_state, igmpGroups_obj)
     return  err;
 }
 
@@ -715,7 +700,7 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
         interface_info := value.(map[string]interface{})
         log.Info(key)
         log.Info(interface_info)
-        err = fill_igmp_interface_xfmr (interface_info,key,igmp_obj)
+        err = fillIgmpInterfaceXfmr (interface_info,key,igmp_obj)
     }
     return err;
 }
@@ -754,7 +739,7 @@ var DbToYang_igmp_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
         stats_info := value.(map[string]interface{})
         log.Info(key)
         log.Info(stats_info)
-        err = fill_igmp_stats_xfmr (stats_info, igmp_obj)
+        err = fillIgmpStatsXfmr (stats_info, igmp_obj)
     }
     return  err;
 }
@@ -806,7 +791,7 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
         igmp_obj.Sources = igmpSources_obj
     }
 
-    err = fill_igmp_sources_xfmr (output_state, igmpSources_obj)
+    err = fillIgmpSourcesXfmr (output_state, igmpSources_obj)
     return  err;
 }
 
