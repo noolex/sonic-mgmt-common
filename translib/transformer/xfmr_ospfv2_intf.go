@@ -212,7 +212,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                   ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field["NULL"] = "NULL"
                   newEntry = true
                   addDeletePresent = true
-                  log.Error("YangToDb_ospfv2_interface_subtree_xfmr: Create new entry for ", intfTblKey)
+                  log.Error("YangToDb_ospfv2_interface_subtree_xfmr: Get entry err for ", intfTblKey)
              }
 
              if (intfAddrObj.Config != nil) {
@@ -504,6 +504,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
              if (ospfCfgObj != nil && !strings.HasSuffix(rcvdUri, "config")) {
                  log.Info("YangToDb_ospfv2_interface_subtree_xfmr: config individual field deletes")
                  fieldDeleted := false
+                 fieldMatchCount := 0
 
                  for _, fieldName := range fieldNameList {
                      if (strings.HasSuffix(rcvdUri,  fieldName)) {
@@ -511,6 +512,10 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
                          if (!fieldDeleted) {
                              ospfOpMap[db.ConfigDB][intfTblName][intfTblKey] = db.Value{Field: make(map[string]string)}
+                         }
+
+                         if ((&ospfIfEntry).Get(fieldName) != "") {
+                             fieldMatchCount = fieldMatchCount + 1
                          }
 
                          ospfOpMap[db.ConfigDB][intfTblName][intfTblKey].Field[fieldName] = "NULL"
@@ -521,7 +526,12 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
                  log.Info("YangToDb_ospfv2_interface_subtree_xfmr: Atleast one field deleted ", fieldDeleted)
                  if (fieldDeleted) {
-                     ospfIntfTblMap[intfTblKey] = ospfIntfDbValue
+                     if (len(ospfIfEntry.Field) == fieldMatchCount) {
+                         ospfOpMap[db.ConfigDB][intfTblName][intfTblKey] = db.Value{Field: make(map[string]string)}
+                         ospfIntfTblMap[intfTblKey] = db.Value{Field: make(map[string]string)}
+                     } else {
+                         ospfIntfTblMap[intfTblKey] = ospfIntfDbValue
+                     }
                      addDeletePresent = true
                      log.Info("YangToDb_ospfv2_interface_subtree_xfmr: delete field ospfIntfTblMap ", ospfIntfTblMap)
                  }
@@ -668,7 +678,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
 
         ospfIfEntry, err2 := ospfTblData.GetEntry(intfTblKey)
         if err2 != nil || len(ospfIfEntry.Field) == 0 {
-            log.Error("YangToDb_ospfv2_interface_subtree_xfmr: Create new entry for ", intfTblKey)
+            log.Error("YangToDb_ospfv2_interface_subtree_xfmr: get entry err for ", intfTblKey)
             continue
         }
 
@@ -900,7 +910,6 @@ func delete_ospf_interface_config_all(inParams *XfmrParams, ospfRespMap *map[str
 
 
 func get_interface_vrf(inParams *XfmrParams, ifName string) (string, error) {
-    log.Info("get_interface_vrf: ifName ", ifName)
     if (ifName == "") {
         errStr := "Empty interface name"
         log.Info("get_interface_vrf: ", errStr)
@@ -915,18 +924,23 @@ func get_interface_vrf(inParams *XfmrParams, ifName string) (string, error) {
 
     intfTbl := IntfTypeTblMap[intfType]
     intfEntry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:intfTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
-    if dbErr != nil || !intfEntry.IsPopulated() {
-        log.Info("get_interface_vrf: intf db get entry fail err ", dbErr);
+    if dbErr != nil {
+        log.Infof("get_interface_vrf: intf %s db get entry fail err %v", ifName, dbErr);
+        return "default", nil
+    }
+
+    if !intfEntry.IsPopulated() {
+        log.Infof("get_interface_vrf: intf %s entry not populated", ifName);
         return "default", nil
     }
 
     ifVrfName := (&intfEntry).Get("vrf_name")
     if (ifVrfName == "") {
-        ifVrfName = "default"
-        log.Info("get_interface_vrf: intf vrfs name set to ", ifVrfName)
+        log.Infof("get_interface_vrf: intf %s vrfs name set to default", ifName)
+        return "default", nil
     }
 
-    log.Info("get_interface_vrf: intf vrfs name is ", ifVrfName)
+    log.Infof("get_interface_vrf: intf %s vrfs name is %s", ifName, ifVrfName)
     return ifVrfName, nil
 }
 
@@ -996,7 +1010,7 @@ func ospf_area_id_present_in_interfaces(inParams *XfmrParams, vrfName string, ar
 
         ospfIfEntry, err2 := ospfIntfTblData.GetEntry(ospfIntfTblKey)
         if err2 != nil || len(ospfIfEntry.Field) == 0 {
-            log.Error("ospf_area_id_present_in_interfaces: Create new entry for ", ospfIntfTblKey)
+            log.Error("ospf_area_id_present_in_interfaces: get entry err for ", ospfIntfTblKey)
             continue
         }
 
@@ -1069,36 +1083,70 @@ func delete_ospf_interface_area_ids(inParams *XfmrParams, vrfName string, areaId
 
         ifVrfName, ifErr := get_interface_vrf(inParams, ifName)
         if (ifErr != nil) {
-            log.Info("delete_ospf_interface_area_ids: intf vrfs ger err ", ifErr)
             continue
         }
 
         if ifVrfName != vrfName {
+            log.Infof("delete_ospf_interface_area_ids: vrf name %s %s dont match", ifVrfName, vrfName)
             continue
         }
 
-        if (areaId != "" && areaId != "*") {
-            ospfIfEntry, err2 := ospfIntfTblData.GetEntry(ospfIntfTblKey)
-            if err2 != nil || len(ospfIfEntry.Field) == 0 {
-                log.Error("ospf_area_id_present_in_interfaces: Create new entry for ", ospfIntfTblKey)
-                continue
+        ospfIfEntry, err2 := ospfIntfTblData.GetEntry(ospfIntfTblKey)
+        if (err2 != nil) {
+            log.Error("delete_ospf_interface_area_ids: Get entry err for ", ospfIntfTblKey)
+            continue
+        }
+
+        log.Info("delete_ospf_interface_area_ids: ospf record ", ospfIfEntry)
+
+        ifAreaId := ""
+        lastField := true
+
+        ospfIfEntryLen := len(ospfIfEntry.Field)
+        if (ospfIfEntryLen > 0) {
+
+            ifAreaId = (&ospfIfEntry).Get("area-id")
+            if (ifAreaId == "") {
+                log.Info("delete_ospf_interface_area_ids: area-id field not present in ", ospfIntfTblKey)
+                if (ospfIfEntryLen == 1) {
+                    if ((&ospfIfEntry).Get("NULL") == "") {
+                        log.Info("delete_ospf_interface_area_ids: last null field in record ", ospfIntfTblKey)
+                        continue
+                    }
+                }
+            } else {
+                //input area id match request present
+                if (areaId != "" && areaId != "*") {
+                    if (ifAreaId != areaId) {
+                        log.Info("delete_ospf_interface_area_ids: area-ids do not match in ", ospfIntfTblKey)
+                        continue
+                    }
+                }
             }
 
-            ifAreaId := (&ospfIfEntry).Get("area-id")
-            if (ifAreaId != areaId) {
-                continue
+            if (ospfIfEntryLen > 1) {
+                log.Info("delete_ospf_interface_area_ids: area-id isnot last field in ", ospfIntfTblKey)
+                lastField = false
             }
         }
 
         ospfIntfTblKey2 := ospfIntfTblKey.Get(0) + "|" + ospfIntfTblKey.Get(1)
-       
-        log.Infof("delete_ospf_interface_area_ids: delete %s field %s", ospfIntfTblKey2, fieldName)
-        ospfOpMap[db.ConfigDB][ospfIntfTblName][ospfIntfTblKey2] = db.Value{Field: make(map[string]string)}
 
-        ospfOpMap[db.ConfigDB][ospfIntfTblName][ospfIntfTblKey2].Field[fieldName] = "NULL"
+        if (lastField) {
+            log.Infof("delete_ospf_interface_area_ids: last field, delete %s entire record", ospfIntfTblKey2)
+        } else {
+            log.Infof("delete_ospf_interface_area_ids: delete %s field %s", ospfIntfTblKey2, fieldName)
+        }
+
+        ospfOpMap[db.ConfigDB][ospfIntfTblName][ospfIntfTblKey2] = db.Value{Field: make(map[string]string)}
+        if (!lastField) {
+            ospfOpMap[db.ConfigDB][ospfIntfTblName][ospfIntfTblKey2].Field[fieldName] = "NULL"
+        }
 
         ospfIntfDbValue := db.Value{Field: make(map[string]string)}
-        ospfIntfDbValue.Field[fieldName] = "NULL"
+        if (!lastField) {
+             ospfIntfDbValue.Field[fieldName] = "NULL"
+        }
         ospfIntfTblMap[ospfIntfTblKey2] = ospfIntfDbValue
         entryDeleted = true
     }
