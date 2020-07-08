@@ -288,17 +288,31 @@ func getYgotStaticRoutesObj(s *ygot.GoStruct, vrf string) (
     if !ok {
         return nil, errors.New("Invalid root object type")
     }
-    vrfInstObj := deviceObj.NetworkInstances.NetworkInstance[vrf]
-    if  vrfInstObj == nil {
-        return nil, errors.New("Invalid VRF name")
+    if deviceObj.NetworkInstances == nil {
+        deviceObj.NetworkInstances = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances)
+    }
+    var err error
+    vrfInstObj, ok := deviceObj.NetworkInstances.NetworkInstance[vrf]
+    if !ok {
+        if vrfInstObj, err = deviceObj.NetworkInstances.NewNetworkInstance(vrf); err != nil {
+            return nil, errors.New("Failed to allocate new network instance object")
+        }
+    }
+    if vrfInstObj.Protocols == nil {
+        vrfInstObj.Protocols = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols)
     }
     protoKey := ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Key{
                             Identifier: ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_STATIC,
                             Name: "static",
               }
-    protoInstObj := vrfInstObj.Protocols.Protocol[protoKey]
-    if protoInstObj == nil || protoInstObj.StaticRoutes == nil {
-        return nil, errors.New("Network-instance Static-Protocol obj missing")
+    protoInstObj, ok := vrfInstObj.Protocols.Protocol[protoKey]
+    if !ok {
+        if protoInstObj, err = vrfInstObj.Protocols.NewProtocol(ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_STATIC, "static"); err != nil {
+            return nil, errors.New("Failed to allocate new static protocol object")
+        }
+    }
+    if protoInstObj.StaticRoutes == nil {
+        protoInstObj.StaticRoutes = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes)
     }
 
     return protoInstObj.StaticRoutes, nil
@@ -936,6 +950,13 @@ var DbToYang_static_routes_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) 
     return rmap, nil
 }
 
+func validate_static_protocol(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    proto := pathInfo.Var("name#2")
+    protoId := pathInfo.Var("identifier")
+    return protoId == "STATIC" && proto == "static"
+}
+
 func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
     if len(inParams.value) == 0 || !utils.IsAliasModeEnabled() {
         return inParams.value, nil
@@ -961,5 +982,6 @@ func init() {
     XlateFuncBind("DbToYang_static_routes_nexthop_xfmr", DbToYang_static_routes_nexthop_xfmr)
     XlateFuncBind("YangToDb_static_routes_key_xfmr", YangToDb_static_routes_key_xfmr)
     XlateFuncBind("DbToYang_static_routes_key_xfmr", DbToYang_static_routes_key_xfmr)
+    XlateFuncBind("static_routes_validate_proto", validate_static_protocol)
     XlateFuncBind("static_routes_alias_xfmr", alias_list_value_xfmr)
 }
