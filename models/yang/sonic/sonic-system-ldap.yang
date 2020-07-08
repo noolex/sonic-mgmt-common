@@ -337,8 +337,19 @@ module sonic-system-ldap {
 		          description
 		            "sudo";                
 		        }                
-		      }
-		      
+		        enum nss_sudo {
+		          description
+		            "nss, sudo";                
+		        }
+		        enum nss_pam {
+		          description
+		            "nss, pam";                
+		        }
+		        enum sudo_pam {
+		          description
+		            "sudo, pam";                
+		        }	        
+		      }		      
 					description
 						"Server type";			
 				}
