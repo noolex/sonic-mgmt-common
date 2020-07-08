@@ -12,4 +12,10 @@ module sonic-ip-sla-annot {
             sonic-ext:rpc-callback "rpc_show_ipsla_history";
         }
     }
+
+    deviation /ssla:clear-ipsla-counters {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_clear_ipsla_counters";
+        }
+    }
 }

@@ -66,6 +66,7 @@ type SetRequest struct {
 	User    UserRoles
 	AuthEnabled bool
 	ClientVersion Version
+	DeleteEmptyEntry bool
 }
 
 type SetResponse struct {
@@ -439,7 +440,8 @@ func Delete(req SetRequest) (SetResponse, error) {
 		return resp, err
 	}
 
-	err = appInitialize(app, appInfo, path, nil, nil, DELETE)
+	opts := appOptions{deleteEmptyEntry: req.DeleteEmptyEntry}
+	err = appInitialize(app, appInfo, path, nil, &opts, DELETE)
 
 	if err != nil {
 		resp.ErrSrc = AppErr
@@ -639,6 +641,7 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 
 	for i := range req.DeleteRequest {
 		path := req.DeleteRequest[i].Path
+		opts := appOptions{deleteEmptyEntry: req.DeleteRequest[i].DeleteEmptyEntry}
 
 		log.Info("Delete request received with path =", path)
 
@@ -649,7 +652,7 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 			goto BulkDeleteError
 		}
 
-		err = appInitialize(app, appInfo, path, nil, nil, DELETE)
+		err = appInitialize(app, appInfo, path, nil, &opts, DELETE)
 
 		if err != nil {
 			errSrc = AppErr

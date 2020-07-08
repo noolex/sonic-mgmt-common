@@ -587,6 +587,19 @@ module openconfig-bgp-evpn-ext {
     }
   }
 
+  grouping bgp-evpn-ext-loc-rib-attr-state {
+
+    description
+      "EVPN Specific local RIB attributes";
+
+    leaf tag {
+      type string;
+      description
+        "EVPN Route tag";
+    }
+
+  }
+
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol"
   +"/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi" {
 
@@ -660,6 +673,12 @@ module openconfig-bgp-evpn-ext {
       description
         "BGP rib extensions for l2vpn evpn address family specific to received routes post-processing from neighbors";
       uses oc-bgp-ext:bgp-ext-attr-sets-state;
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-bgp-evpn-ext:l2vpn-evpn/oc-bgp-evpn-ext:loc-rib/oc-bgp-evpn-ext:routes/oc-bgp-evpn-ext:route/oc-bgp-evpn-ext:attr-sets {
+      description
+        "BGP local rib attr-sets extensions for l2vpn evpn address family";
+      uses bgp-evpn-ext-loc-rib-attr-state;
   }
 
   /*deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vpn-target/oc-bgp-evpn-ext:route-target {
