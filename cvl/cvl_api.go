@@ -775,6 +775,10 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 	}
 
 	tableName, key := splitRedisKey(redisKey)
+	// Determine the correct redis table name
+	// For ex. LOOPBACK_INTERFACE_LIST and LOOPBACK_INTERFACE_IPADDR_LIST are
+	// present in same container LOOPBACK_INTERFACE
+	tableName = getRedisTblToYangList(tableName, key)
 
 	if (tableName == "") || (key == "") {
 		CVL_LOG(INFO_DEBUG, "GetDepDataForDelete(): Unknown or invalid table %s\n",

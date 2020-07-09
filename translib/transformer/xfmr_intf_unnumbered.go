@@ -90,12 +90,17 @@ func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfac
     var err error
 	log.Info("DELETE Unnum Intf:=", *tblName, *ifName)
 
-	intfIPKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:*tblName})
-	if len(intfIPKeys) > 0 {
-		for i := range intfIPKeys {
-			if len(intfIPKeys[i].Comp) > 1 {
-				ifdb[UNNUMBERED] = ""
-				break;
+	entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:*tblName}, db.Key{Comp: []string{*ifName}})
+	if len(entry.Field) > 1 {
+		ifdb[UNNUMBERED] = ""
+	} else {
+		intfIPKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:*tblName})
+		if len(intfIPKeys) > 0 {
+			for i := range intfIPKeys {
+				if len(intfIPKeys[i].Comp) > 1 {
+					ifdb[UNNUMBERED] = ""
+					break;
+				}
 			}
 		}
 	}
