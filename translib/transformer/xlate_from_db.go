@@ -740,6 +740,13 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 			xfmrLogInfoAll("No data from field transformer for %v: %v.", uri, err)
 			return resFldValMap, err
 		}
+		if ((uri == requestUri) && (len(fldValMap) == 0)) {
+			yangType := yangTypeGet(xYangSpecMap[xpath].yangEntry)
+			if yangType != YANG_LEAF_LIST {
+				log.Errorf("Field transformer returned empty data , uri  - %v", requestUri)
+				err = tlerr.NotFoundError{Format:"Resource not found"}
+			}
+		}
 		for lf, val := range fldValMap {
 			resFldValMap[lf] = val
 		}
@@ -768,12 +775,18 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 						}
 						if !leafListInstExists((*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName], leafListInstVal) {
 							log.Errorf("Queried leaf-list instance does not exists, uri  - %v, dbData - %v", requestUri, (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName])
-							return resFldValMap, tlerr.NotFoundError{Format:"Resource not found"}
+							err = tlerr.NotFoundError{Format:"Resource not found"}
 						}
-						val = leafListInstVal
+						/* Since translib already fills in ygRoot with queried leaf-list instance, do not
+						   fill in resFldValMap or else Unmarshall of payload(resFldValMap) into ygotTgt in
+						   app layer will create duplicate instances in result.
+						*/
+						log.Info("Queried leaf-list instance exists but Since translib already fills in ygRoot with queried leaf-list instance do not populate payload.")
+						return resFldValMap, err
+					} else {
+						resLst := processLfLstDbToYang(xpath, val, yngTerminalNdDtType)
+						resFldValMap[xYangSpecMap[xpath].yangEntry.Name] = resLst
 					}
-					resLst := processLfLstDbToYang(xpath, val, yngTerminalNdDtType)
-					resFldValMap[xYangSpecMap[xpath].yangEntry.Name] = resLst
 				} else {
 					if leafLstInstGetReq {
 						log.Errorf("Queried leaf-list does not exist in DB, uri  - %v", requestUri)
@@ -1091,9 +1104,15 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						var fldValMap map[string]interface{}
 						fldValMap, fldErr = terminalNodeProcess(inParamsForGet)
 						if ((fldErr != nil) || (len(fldValMap) == 0)) {
-							xfmrLogInfo("Empty terminal node (\"%v\").", uri)
-							if fldErr == nil && yangType != YANG_LEAF_LIST {
-								fldErr = tlerr.NotSupportedError{Format:"Resource Not found"}
+							if fldErr == nil {
+								if yangType == YANG_LEAF {
+									xfmrLogInfo("Empty terminal node (\"%v\").", uri)
+									fldErr = tlerr.NotSupportedError{Format:"Resource Not found"}
+								} else if ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+									jsonMapData, _ := json.Marshal(resultMap)
+									jsonData        = fmt.Sprintf("%v", string(jsonMapData))
+									return jsonData, false, nil
+								}
 							}
 						}
 						resultMap = fldValMap

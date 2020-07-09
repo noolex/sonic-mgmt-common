@@ -450,7 +450,12 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 									return []byte(""), true, valErr
 								}
 								if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], leafListInstVal) {
-									dbData[cdb][tableName][keyStr].Field[fieldName] = leafListInstVal
+									/* Since translib already fills in ygRoot with queried leaf-list instance, do not
+									   fill in resFldValMap or else Unmarshall of payload(resFldValMap) into ygotTgt in
+									   app layer will create duplicate instances in result.
+									 */
+									 log.Info("Queried leaf-list instance exists.")
+									 return []byte("{}"), false, nil
 								} else {
 									xfmrLogInfoAll("Queried leaf-list instance does not exist - %v", uri)
 									return []byte(""), true, tlerr.NotFoundError{Format:"Resource not found"}
