@@ -1010,7 +1010,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 
 	// Loop for the parent uri to check parent table existence
         for idx, path := range parentUriList {
-                curUri += uriList[idx]
+		curUri += uriList[idx]
 
 		/* Check for parent table for oc- yang lists*/
                 keyList := rgp.FindAllString(path, -1)
@@ -1072,6 +1072,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					break
 				}
 				if curXpathInfo.virtualTbl != nil && *curXpathInfo.virtualTbl {
+					curUri += "/"
 					continue
 				}
 
@@ -1105,7 +1106,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				}
 			}
 		}
-                curUri += "/"
+		curUri += "/"
         }
         if !parentTblExists {
                 // For all operations Parent Table has to exist
