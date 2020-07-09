@@ -308,6 +308,17 @@ func util_pim_get_ui_ifname_from_native_ifname (pNativeIfname *string, pUiIfname
     }
 }
 
+func checkPimCfgExistOnIntf(d *db.DB, ifName string) (bool) {
+    pimIntfCfgTblTs := &db.TableSpec{Name: "PIM_INTERFACE"}
+    keys, tblErr := d.GetKeysPattern(pimIntfCfgTblTs, db.Key {[]string{"*", "*", ifName}})
+    if ((tblErr == nil) && (len(keys) > 0)) {
+        log.Info ("checkPimCfgExistOnIntf for ifName:", ifName, " ==> Keys : ",keys)
+        return true
+    }
+
+    return false
+}
+
 var YangToDb_pim_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     niName, err := validatePimRoot (inParams); if err != nil {
         return "", err
