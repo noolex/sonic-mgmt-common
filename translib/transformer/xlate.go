@@ -231,6 +231,9 @@ func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]K
 				dbFormat.Key.Comp = append(dbFormat.Key.Comp, keyStr)
 			}
 			for _, child := range xpathInfo.childTable {
+				if child == dbFormat.Ts.Name {
+					continue
+				}
 				if xDbSpecMap != nil {
 					if _, ok := xDbSpecMap[child]; ok {
 						chlen := len(xDbSpecMap[child].yangXpath)
