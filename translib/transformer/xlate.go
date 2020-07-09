@@ -407,8 +407,8 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
         exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache)
         xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
         if err != nil {
-                log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation GET", uri)
-                return []byte(""), true, err
+		log.Errorf("Cannot perform GET Operation on uri %v due to - %v", uri, err)
+		return []byte(""), true, err
         }
         if !exists {
                 err = tlerr.NotFoundError{Format:"Resource Not found"}
