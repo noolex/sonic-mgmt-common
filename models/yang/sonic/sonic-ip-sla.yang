@@ -15,6 +15,15 @@ module sonic-ip-sla {
         prefix scommon;
     }
 
+    import sonic-vrf {
+        prefix vrf;
+    }
+
+    import sonic-vlan {
+        prefix svlan;
+    }
+
+
     import sonic-extension {
         prefix sonic-ext;
     }
@@ -114,6 +123,9 @@ module sonic-ip-sla {
                         type leafref {
                             path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
                         }
+                        type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
                     }
                     description
                       "tcp source interface of IP SLA";
@@ -144,7 +156,7 @@ module sonic-ip-sla {
 
                 leaf tcp_tos {
                     type uint16 {
-                        range "1..1000" {
+                        range "1..256" {
                             error-message "tcp_tos out of range";
                         }
                     }
@@ -152,7 +164,10 @@ module sonic-ip-sla {
                       "tcp tos of IP SLA";
                 }
                 leaf tcp_vrf {
-                    type string;
+                    type leafref {
+                        path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                        }
+        
                     description
                       "vrf for tcp connect of IP SLA";
                 }
@@ -164,6 +179,9 @@ module sonic-ip-sla {
                         }
                         type leafref {
                             path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                        type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                         }
                     }
                     description
@@ -203,7 +221,7 @@ module sonic-ip-sla {
 
                 leaf icmp_tos {
                     type uint16 {
-                        range "1..1000" {
+                        range "1..256" {
                             error-message "icmp_tos out of range";
                         }
                     }
@@ -212,7 +230,9 @@ module sonic-ip-sla {
                 }
 
                 leaf icmp_vrf {
-                    type string;
+                    type leafref {
+                        path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                        }
                     description
                       "vrf for icmp echo of IP SLA";
                 }
@@ -247,6 +267,33 @@ module sonic-ip-sla {
                 leaf event {
                     type string;
                 }
+            }
+        }
+    }
+
+
+    rpc clear-ipsla-counters {
+        description
+            "RPC to clear IP SLA counters.";
+
+        input {
+            leaf ip_sla_id {
+                type string;
+                description
+                    "Parameter for clearing IP SLA counters - all or IP SLA index";
+            }
+        }
+
+        output {
+            leaf status {
+                type int32;
+                description
+                    "The status of the operation execution request.";
+            }
+            leaf status-detail {
+                type string;
+                description
+                    "The detailed status of the operation execution request.";
             }
         }
     }

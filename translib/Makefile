@@ -59,20 +59,6 @@ $(YGOT_BINDS): $(YANG_FILES)
 $(STATIC_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) | $(YGOT_BINDS)
 	$(TOPDIR)/tools/test/static-check.sh \
 		--log=$(TRANSLIB_BLD)/staticcheck.log \
-		--notfail=common_app.go \
-		--notfail=transformer/platform_config.go \
-		--notfail=transformer/transformer.go \
-		--notfail=transformer/xfmr_fdb.go \
-		--notfail=transformer/xfmr_intf_unnumbered.go \
-		--notfail=transformer/xfmr_port_breakout.go \
-		--notfail=transformer/xfmr_vrf.go \
-		--notfail=transformer/xlate.go \
-		--notfail=transformer/xlate_from_db.go \
-		--notfail=transformer/xlate_map_del.go \
-		--notfail=transformer/xlate_tbl_info.go \
-		--notfail=transformer/xlate_to_db.go \
-		--notfail=transformer/xlate_utils.go \
-		--notfail=transformer/xspec.go \
 		--exclude=ocbinds
 	touch $@
 

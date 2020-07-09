@@ -891,7 +891,7 @@ func getCrmStats (d *db.DB, stats *ocbinds.OpenconfigSystem_System_Crm_Statistic
         info.snatUsed, _ = getUint32(val, "crm_stats_snat_entry_used")
         info.fdbFree , _ = getUint32(val, "crm_stats_fdb_entry_available")
         info.fdbUsed , _ = getUint32(val, "crm_stats_fdb_entry_used")
-        info.ipmcFree, _ = getUint32(val, "crm_stats_ipmc_entry_used")
+        info.ipmcFree, _ = getUint32(val, "crm_stats_ipmc_entry_available")
         info.ipmcUsed, _ = getUint32(val, "crm_stats_ipmc_entry_used")
         info.ipv4NeighborFree, _ = getUint32(val, "crm_stats_ipv4_neighbor_available")
         info.ipv4NeighborUsed, _ = getUint32(val, "crm_stats_ipv4_neighbor_used")
