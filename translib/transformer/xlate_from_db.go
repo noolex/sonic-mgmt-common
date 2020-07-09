@@ -777,11 +777,13 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 							log.Errorf("Queried leaf-list instance does not exists, uri  - %v, dbData - %v", requestUri, (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName])
 							err = tlerr.NotFoundError{Format:"Resource not found"}
 						}
-						/* Since translib already fills in ygRoot with queried leaf-list instance, do not
-						   fill in resFldValMap or else Unmarshall of payload(resFldValMap) into ygotTgt in
-						   app layer will create duplicate instances in result.
-						*/
-						log.Info("Queried leaf-list instance exists but Since translib already fills in ygRoot with queried leaf-list instance do not populate payload.")
+						if err == nil {
+							/* Since translib already fills in ygRoot with queried leaf-list instance, do not
+							   fill in resFldValMap or else Unmarshall of payload(resFldValMap) into ygotTgt in
+							   app layer will create duplicate instances in result.
+							 */
+							 log.Info("Queried leaf-list instance exists but Since translib already fills in ygRoot with queried leaf-list instance do not populate payload.")
+						 }
 						return resFldValMap, err
 					} else {
 						resLst := processLfLstDbToYang(xpath, val, yngTerminalNdDtType)
