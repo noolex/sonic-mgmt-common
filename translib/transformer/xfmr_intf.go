@@ -76,6 +76,7 @@ func init () {
     XlateFuncBind("DbToYang_igmp_srcaddr_fld_xfmr", DbToYang_igmp_srcaddr_fld_xfmr)
     XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr)
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
+    XlateFuncBind("rpc_clear_ip", rpc_clear_ip)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_ip_addr_xfmr", YangToDb_routed_vlan_ip_addr_xfmr)
@@ -392,6 +393,155 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
         }
     }
     return err
+}
+
+func rpc_get_resultTblList_for_intf_ip_delete(intfType E_InterfaceType) []string {
+    var resultTblList []string
+    switch intfType {
+    case IntfTypeEthernet:
+        resultTblList = append(resultTblList, "INTERFACE")
+    case IntfTypeVlan:
+        resultTblList = append(resultTblList, "VLAN_INTERFACE")
+    case IntfTypePortChannel:
+        resultTblList = append(resultTblList, "PORTCHANNEL_INTERFACE")
+    case IntfTypeMgmt:
+        resultTblList = append(resultTblList, "MGMT_INTERFACE")
+    case IntfTypeLoopback:
+        resultTblList = append(resultTblList, "LOOPBACK_INTERFACE")
+    }
+    log.Infof("Result Table List = %v", resultTblList)
+    return resultTblList
+}
+
+func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfTblData) error {
+    // Delete the INTERFACE | <ifName> | <IP address> entry from DB
+    err := d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, *ipPrefix}})
+    if err != nil {
+        return err
+    }
+
+    count := 0
+    _ = interfaceIPcount(intTbl.cfgDb.intfTN, d, ifName, &count)
+    log.Info("IP count retrieved  = ", count)
+
+    if (count == 2) && (intTbl.cfgDb.intfTN != LOOPBACK_INTERFACE_TN) {
+        intfEntry, err := d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName}})
+        if err != nil {
+            log.Error(err.Error())
+            return err
+        }
+        intfEntryMap := intfEntry.Field
+        _, nullValPresent := intfEntryMap["NULL"]
+        llVal, llValPresent := intfEntryMap["ipv6_use_link_local_only"]
+
+
+        /* Note: Unbinding shouldn't happen if VRF or link-local config is associated with interface.
+        Hence, we check for map length to be 1 and only if either NULL or ipv6_use_link_local_only with "disable" value is present */
+        if len(intfEntryMap) == 1 && (nullValPresent || (llValPresent && llVal == "disable")) {
+            // Deleting the INTERFACE|<ifName> entry from DB
+            err = d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName}})
+            if err != nil {
+                log.Error(err.Error())
+                return err
+            }
+        }
+    }
+    return err
+}
+
+var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var err error
+    var result struct {
+        Output struct {
+            Status uint32 `json:"status"`
+            Status_detail string `json:"status-detail"`
+        } `json:"sonic-interface:output"`
+    }
+    result.Output.Status = 1
+
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data for removing the IP address")
+        result.Output.Status_detail = "Error: Failed to unmarshall given input data"
+        return json.Marshal(&result)
+    }
+    input := mapData["sonic-interface:input"]
+    mapData = input.(map[string]interface{})
+
+    inputIfName, ok := mapData["ifName"]
+    if !ok {
+        result.Output.Status_detail = "ifName field not present in the input for clear_ip rpc!"
+        return json.Marshal(&result)
+    }
+    ipPrefixIntf, ok := mapData["ipPrefix"]
+    if !ok {
+        result.Output.Status_detail = "ipPrefix field not present in the input for clear_ip rpc!"
+        return json.Marshal(&result)
+    }
+    ipPrefix := ipPrefixIntf.(string)
+    ifNameStr := inputIfName.(string)
+    ifName := utils.GetNativeNameFromUIName(&ifNameStr)
+
+    intfType, _, ierr := getIntfTypeByName(*ifName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        log.Error("Invalid interface type IntfTypeUnset")
+        return json.Marshal(&result)
+    }
+    intTbl := IntfTypeTblMap[intfType]
+
+    log.Info("Interface type = ", intfType)
+    log.Infof("Deleting IP address: %s for interface: %s", ipPrefix, *ifName)
+
+    d, err := db.NewDB(getDBOptions(db.ConfigDB))
+    if err != nil {
+        result.Output.Status_detail = err.Error()
+        return json.Marshal(&result)
+    }
+    defer d.DeleteDB()
+
+    /* Checking whether entry exists in DB. If not, return from here */
+    _, err = d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, ipPrefix}})
+    if err != nil {
+        log.Errorf("IP address: %s doesn't exist for Interafce: %s", ipPrefix, *ifName)
+        return json.Marshal(&result)
+    }
+    moduleNm := "sonic-interface"
+    resultTblList := rpc_get_resultTblList_for_intf_ip_delete(intfType)
+    var tblsToWatch []*db.TableSpec
+
+    if len(resultTblList) > 0 {
+        depTbls := GetTablesToWatch(resultTblList, moduleNm)
+        if len(depTbls) == 0 {
+            log.Errorf("Failure to get Tables to watch for module %v", moduleNm)
+            return json.Marshal(&result)
+        }
+        log.Info("Dependent Tables = ", depTbls)
+        for _, tbl := range depTbls {
+            tblsToWatch = append(tblsToWatch, &db.TableSpec{Name: tbl})
+        }
+    }
+    err = d.StartTx(nil, tblsToWatch)
+    if err != nil {
+        log.Error("Transaction start failed")
+        result.Output.Status_detail = err.Error()
+        return json.Marshal(&result)
+    }
+
+    err = rpc_intf_ip_delete(d, ifName, &ipPrefix, intTbl)
+    if err != nil {
+        d.AbortTx()
+        result.Output.Status_detail = err.Error()
+        return json.Marshal(&result)
+    }
+    err = d.CommitTx()
+    if err != nil {
+        log.Error(err)
+        result.Output.Status_detail = err.Error()
+        return json.Marshal(&result)
+    }
+    log.Infof("Commit transaction succesful for IP address: %s delete", ipPrefix)
+    return  json.Marshal(&result)
 }
 
 /* RPC for clear counters */
@@ -1357,13 +1507,10 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                 return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
             }
             IntfMap := IntfMapObj.Field
-            if len(IntfMap) == 1 {
-                if _, ok := IntfMap["NULL"]; ok {
-                    subIntfmap[tblName][ifName] = data
-                }
-                if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "disable" {
-                    subIntfmap[tblName][ifName] = data
-                }
+            // Case-1: If there is one last attribute present under "INTERFACE|<Interface>" (or)
+            // Case-2: If deletion at parent container(subinterface)
+            if len(IntfMap) == 1 || subIntf == nil {
+                subIntfmap[tblName][ifName] = data
             }
         }
     }
