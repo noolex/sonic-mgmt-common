@@ -44,6 +44,7 @@ type CommonApp struct {
 	skipOrdTableChk bool
 	cmnAppTableMap map[int]map[db.DBNum]map[string]map[string]db.Value
 	cmnAppYangDefValMap map[string]map[string]db.Value
+	appOptions
 }
 
 var cmnAppInfo = appInfo{appType: reflect.TypeOf(CommonApp{}),
@@ -78,6 +79,7 @@ func (app *CommonApp) initialize(data appData) {
 	log.Info("initialize:path =", data.path)
 	pathInfo := NewPathInfo(data.path)
 	*app = CommonApp{pathInfo: pathInfo, body: data.payload, ygotRoot: data.ygotRoot, ygotTarget: data.ygotTarget, skipOrdTableChk: false}
+	app.appOptions = data.appOptions
 
 }
 
@@ -229,7 +231,7 @@ func (app *CommonApp) processDelete(d *db.DB) (SetResponse, error) {
 	var err error
 	var resp SetResponse
 
-	log.Info("processDelete:path =", app.pathInfo.Path)
+	log.Infof("processDelete:path = %s, deleteEmptyEntry = %v", app.pathInfo.Path, app.deleteEmptyEntry)
 
 	if err = app.processCommon(d, DELETE); err != nil {
 		log.Error(err)

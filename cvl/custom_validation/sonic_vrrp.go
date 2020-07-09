@@ -96,6 +96,10 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 			continue
 		}
 
+		if ipNetLL.Contains(ipB) {
+			continue
+		}
+
 	  var found bool = false
 
 		for _, dbKey := range tableKeys {
@@ -107,7 +111,7 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 					continue
 			}
 
-			if ipNetA.Contains(ipB) || ipNetLL.Contains(ipB) {
+			if ipNetA.Contains(ipB) {
 				found = true
 				break
 			}

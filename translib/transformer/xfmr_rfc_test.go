@@ -1231,7 +1231,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl)
 
 
-       /* // Get on OC leaf-list, instance exists
+        // Get on OC leaf-list, instance exists
 
         cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
         prereq = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@":"1.2.3.*, 1.6.7.*"}}}
@@ -1245,7 +1245,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         expected = "{\"ietf-snmp:include\":[\"1.2.3.*\"]}"
         t.Run("Verify Get on OC leaf-list instances exists", processGetRequest(url, expected, false))
         // Teardown
-        unloadConfigDB(rclient, cleanuptbl)*/
+        unloadConfigDB(rclient, cleanuptbl)
 
 
         // Get on Sonic leaf-list, no instances exist
@@ -1264,7 +1264,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl)
 
 
-      /*  // Get on Sonic leaf-list, instances exist
+        // Get on Sonic leaf-list, instances exist
 
         cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
         prereq = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@":"1.2.3.*, 1.6.7.*"}}}
@@ -1278,7 +1278,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         expected = "{\"sonic-snmp:include\":[\"1.2.3.*\"]}"
         t.Run("Verify Get on Sonic leaf-list  instances exists", processGetRequest(url, expected, false))
         // Teardown
-        unloadConfigDB(rclient, cleanuptbl)*/
+        unloadConfigDB(rclient, cleanuptbl)
 
 
         // Get on list instance that does not map to any real table in DB, and yang children have data in DB 
