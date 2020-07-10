@@ -18,4 +18,10 @@ module sonic-system-infra-annot {
             sonic-ext:rpc-callback "rpc_infra_config_cb";
         }
     }
+    deviation /sonic-sinfra:show-sys-log{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_show_sys_log_cb";
+        }
+    }
+
 }

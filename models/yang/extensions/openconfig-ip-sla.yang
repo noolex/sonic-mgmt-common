@@ -42,6 +42,12 @@ module openconfig-ip-sla {
 
     }
 
+    leaf enabled {
+      type boolean;
+      description
+        "Ip sla enabled or not for the sla-id";
+    }
+
     leaf frequency {
       type uint16 {
         range "1..300" {

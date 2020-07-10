@@ -109,20 +109,32 @@ module openconfig-aaa-ldap-ext {
       type enumeration {
         enum ALL {
           description
-            "LDAP type - all";
-        }
+						"LDAP type - all";
+				}
         enum NSS {
           description
-            "LDAP type - nss";        
+            "LDAP type - NSS";        
         }
         enum SUDO {
           description
-            "LDAP type - sudo";                
+            "LDAP type - SUDO";                
         }
         enum PAM {
           description
-            "LDAP type - pam";                
-        }                
+            "LDAP type - PAM";                
+        }
+        enum NSS_SUDO {
+          description
+            "LDAP types - NSS, SUDO";                
+        }
+        enum NSS_PAM {
+          description
+            "LDAP types - NSS, PAM";                
+        }
+        enum SUDO_PAM {
+          description
+            "LDAP types - SUDO, PAM";                
+        }            
       }
       
       description

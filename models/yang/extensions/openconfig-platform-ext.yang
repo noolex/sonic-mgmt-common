@@ -312,7 +312,7 @@ module openconfig-platform-ext {
             }
             units celsius;
             description
-              "The current temperature";
+              "The high threshold temperature for the sensor";
         }
 
         leaf critical-high-threshold {
@@ -321,7 +321,7 @@ module openconfig-platform-ext {
             }
             units celsius;
             description
-              "The current temperature";
+              "The critical high threshold temperature for the sensor";
         }
 
         leaf low-threshold {
@@ -330,7 +330,7 @@ module openconfig-platform-ext {
             }
             units celsius;
             description
-              "The current temperature";
+              "The low threshold temperature for the sensor";
         }
 
         leaf critical-low-threshold {
@@ -339,7 +339,18 @@ module openconfig-platform-ext {
             }
             units celsius;
             description
-              "The current temperature";
+              "The critical low threshold temperature for the sensor";
+        }
+
+        leaf warning-status {
+            type boolean;
+            description
+                "Indication for temperature warning status";
+        }
+
+        leaf timestamp {
+            type string;
+            description "The timestamp for the fetched temperature";
         }
     }
 }
