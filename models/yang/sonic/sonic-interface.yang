@@ -104,6 +104,37 @@ module sonic-interface {
             }
         }
 
+        rpc clear_ip {
+
+            description
+                "Clears IPv4/IPv6 address assigned to a specific interface";
+            input {
+                leaf ifName {
+                    type string;
+                    description
+                        "Interface with which IP address needs to be disassociated";
+                }
+                leaf ipPrefix {
+                    type inet:ip-prefix; 
+                    description
+                        "IP (v4/v6) address needs to be removed";
+                }
+            }
+            output {
+                leaf status {
+                    type uint32;
+                    description
+                        "Status of operation execution request";
+                }
+                leaf status-detail {
+                    type string;
+                    description
+                        "Detailed status of operation execution request";
+                }
+            }
+        }
+            
+
 	container sonic-interface {
 
 		container INTERFACE {

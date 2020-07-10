@@ -186,6 +186,9 @@ module sonic-portchannel {
                 leaf fallback_operational {
                     type boolean;
                 }
+                leaf speed {
+                    type uint64;
+                }
             }
         }
 
