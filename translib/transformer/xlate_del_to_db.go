@@ -487,7 +487,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache)
 	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
 	if err != nil {
-		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
+		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
 		return err
 	}
 	if !exists {

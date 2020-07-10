@@ -501,7 +501,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache)
 	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
 	if err != nil {
-		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
+		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
 		return err
 	}
 	if !exists {
@@ -994,7 +994,8 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 	xpath, _ := XfmrRemoveXPATHPredicates(uri)
 	xpathInfo, ok := xYangSpecMap[xpath]
         if !ok {
-		err = fmt.Errorf("No entry found in xYangSpecMap for uri - %v", uri)
+		errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", uri)
+		err = tlerr.InternalError{Format:errStr}
 		log.Errorf("%v", err)
 		return false, err
 	}
@@ -1019,13 +1020,19 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			//Check for subtree existence
 			curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
 			curXpathInfo, ok := xYangSpecMap[curXpath]
+			if !ok {
+				errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", curUri)
+				err = tlerr.InternalError{Format:errStr}
+				parentTblExists = false
+				break
+			}
 			if oper == GET {
 				cdb = curXpathInfo.dbIndex
 				xfmrLogInfoAll("db index for curXpath - %v is %v", curXpath, cdb)
 				d = dbs[cdb]
 			}
 			// Check for subtree case and invoke subscribe xfmr
-			if ok && (len(curXpathInfo.xfmrFunc) > 0) {
+			if len(curXpathInfo.xfmrFunc) > 0 {
 				var dbs [db.MaxDB]*db.DB
 				var inParams XfmrSubscInParams
 				inParams.uri = uri
