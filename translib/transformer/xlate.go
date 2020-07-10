@@ -407,7 +407,8 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	requestUri := uri
 	/* Check if the parent table exists for RFC compliance */
         var exists bool
-        exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache)
+	subOpMapDiscard := make(map[int]*RedisDbMap)
+        exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache, subOpMapDiscard)
         xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
         if err != nil {
 		log.Errorf("Cannot perform GET Operation on uri %v due to - %v", uri, err)

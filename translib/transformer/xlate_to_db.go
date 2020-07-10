@@ -498,7 +498,8 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	/* Check if the parent table exists for RFC compliance */
 	var exists bool
 	var dbs [db.MaxDB]*db.DB
-	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache)
+	subOpMapDiscard := make(map[int]*RedisDbMap)
+	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache, subOpMapDiscard)
 	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
 	if err != nil {
 		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
@@ -912,12 +913,12 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 
 /* This function checks the existence of Parent tables in DB for the given URI request
    and returns a boolean indicating if the operation is permitted based on the operation type*/
-func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
+func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}, subOpDataMap map[int]*RedisDbMap) (bool, error) {
 	xfmrLogInfoAll("Checking for Parent table existence for uri: %v", uri)
         if isSonicYang(uri) {
                 return verifyParentTableSonic(d, dbs, oper, uri, dbData)
         } else {
-                return verifyParentTableOc(d, dbs, ygRoot, oper, uri, dbData, txCache)
+                return verifyParentTableOc(d, dbs, ygRoot, oper, uri, dbData, txCache, subOpDataMap)
         }
 }
 
@@ -983,7 +984,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 	return parentTblExists, err
 }
 
-func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
+func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}, subOpDataMap map[int]*RedisDbMap) (bool, error) {
 	var err error
 	var cdb db.DBNum
         uriList := splitUri(uri)
@@ -1007,7 +1008,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 	}
 
 	parentUriList := uriList[:len(uriList)-1]
-	xfmrLogInfoAll("Parent uri list - %v", parentUriList) 
+	xfmrLogInfoAll("Parent uri list - %v", parentUriList)
 
 	// Loop for the parent uri to check parent table existence
         for idx, path := range parentUriList {
@@ -1070,7 +1071,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 
 				xfmrLogInfoAll("Check parent table for uri: %v", curUri)
 				// Get Table and Key only for yang list instances
-				_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, nil, txCache)
+				_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache)
 				if xerr != nil {
 					log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
 					err = xerr
@@ -1159,7 +1160,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			return true, nil
 		}
 
-		 _, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, txCache)
+		 _, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
 		if xerr == nil && len(tableName) > 0 && len(dbKey) > 0 {
 			// Read the table entry from DB
 			exists := false
@@ -1205,7 +1206,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		// Get table for parent xpath
 		parentTable, perr := dbTableFromUriGet(d, ygRoot, oper, parentUri, uri, nil, txCache)
 		// Get table for current xpath
-		_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, txCache)
+		_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
 		if perr == nil && cerr == nil && (curTable != parentTable) {
 			exists, _ := dbTableExists(d, curTable, curKey)
 			if !exists {
