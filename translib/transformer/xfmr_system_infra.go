@@ -9,6 +9,9 @@ import (
     "time"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "io/ioutil"
+    "os"
+
 )
 
 func init () {
@@ -17,6 +20,7 @@ func init () {
     XlateFuncBind("DbToYang_sys_infra_state_reboot_cause_xfmr", DbToYang_sys_infra_state_reboot_cause_xfmr)
     XlateFuncBind("rpc_infra_reboot_cb",  rpc_infra_reboot_cb)
     XlateFuncBind("rpc_infra_config_cb",  rpc_infra_config_cb)
+    XlateFuncBind("rpc_infra_show_sys_log_cb",  rpc_infra_show_sys_log_cb)
 }
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -178,4 +182,65 @@ var rpc_infra_config_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
         return result, err
 }
+
+var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_show_sys_log body:", string(body))
+
+        var err error
+        var MGM_DIR="/host/cli-ca/"
+        var MGM_SYSLOG="/host/cli-ca/syslog"
+        var MGM_SYSLOG1="/host/cli-ca/syslog.1"
+        var HOST_SYSLOG="/var/log/syslog"
+        var HOST_SYSLOG1="/var/log/syslog.1"
+
+        var exec struct {
+                Output struct {
+                        Result string `json:"result"`
+                } `json:"sonic-system-infra:output"`
+        }
+        if _, err := os.Stat(MGM_SYSLOG1); err == nil {
+            log.Info("rpc_infra_show_sys_log delete syslog")
+            os.Remove(MGM_SYSLOG1)
+            os.Remove(MGM_SYSLOG)
+        }
+
+        cmd := "cp -f " + HOST_SYSLOG + " " + HOST_SYSLOG1 +" " + MGM_DIR
+        log.Info("rpc_infra_show_sys_log cmd: ", cmd)
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              log.Errorf("rpc_infra_show_sys_log: host Query failed: err=%v", host_output.Err)
+              exec.Output.Result = "[FAILED] host query"
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        if _, err := os.Stat(MGM_SYSLOG); err == nil {
+           syslog, err := ioutil.ReadFile(MGM_SYSLOG)
+           if err != nil {
+                log.Errorf("rpc_infra_show_sys_log: Failed to read %v err: %v", MGM_SYSLOG, err)
+                exec.Output.Result = "[FAILED] to read syslog"
+                result, err := json.Marshal(&exec)
+                return result, err
+           } else {
+              if _, err := os.Stat(MGM_SYSLOG1); err == nil {
+                   syslog1, err := ioutil.ReadFile(MGM_SYSLOG1)
+                   if err != nil {
+                        log.Errorf("rpc_infra_show_sys_log: Failed to read %v err: %v", MGM_SYSLOG1, err)
+                        exec.Output.Result = string(syslog)
+                   } else {
+                        exec.Output.Result = string(syslog1) + string(syslog)
+                   }
+              }
+           }
+        } else {
+             exec.Output.Result = "[FAILED] to get syslog"
+             result, err := json.Marshal(&exec)
+             return result, err
+        }
+        result, err := json.Marshal(&exec)
+        return result, err
+}
+
+
 
