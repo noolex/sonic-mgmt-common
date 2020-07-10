@@ -1414,7 +1414,6 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 		 
 	} else {
 		for vniKey := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
-                        log.Infof("bingbing vniKey %v ", vniKey)
 			vniId = vniKey.VniId
 			vtepName = vniKey.SourceNve
 			break
