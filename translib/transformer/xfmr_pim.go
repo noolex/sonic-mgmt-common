@@ -54,6 +54,8 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 							 "199.0.0.23":{
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
+                                 "upTimeEpoch":1594336710,
+                                 "expireEpoch":4294967210,
 								 "flags":"SJT",
 								 "iil":{
 									 "Vlan202":{
@@ -67,7 +69,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan602",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336711,
+												 "expireEpoch":4294967211
 											 },
 											 "Vlan603":{
 												 "source":"199.0.0.23",
@@ -75,7 +79,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan603",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336712,
+												 "expireEpoch":4294967212
 											 }
 										 }
 									 }
@@ -84,6 +90,8 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 							 "199.0.0.24":{
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
+                                 "upTimeEpoch":1594336720,
+                                 "expireEpoch":4294967220,
 								 "flags":"SJT",
 								 "iil":{
 									 "Vlan202":{
@@ -97,7 +105,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan602",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336721,
+												 "expireEpoch":4294967221
 											 },
 											 "Vlan642":{
 												 "source":"199.0.0.24",
@@ -105,7 +115,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan642",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336722,
+												 "expireEpoch":4294967222
 											 },
 											 "Vlan603":{
 												 "source":"199.0.0.24",
@@ -113,7 +125,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan603",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336723,
+												 "expireEpoch":4294967223
 											 }
 										 }
 									 }
@@ -124,6 +138,8 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 							 "199.0.0.23":{
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
+                                 "upTimeEpoch":1594336730,
+                                 "expireEpoch":4294967230,
 								 "flags":"SJT",
 								 "iil":{
 									 "Vlan202":{
@@ -137,7 +153,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan602",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336731,
+												 "expireEpoch":4294967231
 											 },
 											 "Vlan603":{
 												 "source":"199.0.0.23",
@@ -145,7 +163,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan603",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336732,
+												 "expireEpoch":4294967232
 											 }
 										 }
 									 }
@@ -154,6 +174,8 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 							 "199.0.0.24":{
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
+                                 "upTimeEpoch":1594336740,
+                                 "expireEpoch":4294967240,
 								 "flags":"SJT",
 								 "iil":{
 									 "Vlan202":{
@@ -167,7 +189,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan602",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336741,
+												 "expireEpoch":4294967241
 											 }
 										 }
 									 }
@@ -178,6 +202,8 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 							 "199.0.0.23":{
 								 "upTime":"00:01:42",
 								 "expire":"00:00:30",
+                                 "upTimeEpoch":1594336750,
+                                 "expireEpoch":4294967250,
 								 "flags":"SJT",
 								 "iil":{
 									 "Vlan202":{
@@ -191,7 +217,9 @@ func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, err
 												 "inboundInterface":"Vlan202",
 												 "outboundInterface":"Vlan603",
 												 "upTime":"--:--:--",
-												 "expire":"--:--"
+												 "expire":"--:--",
+												 "upTimeEpoch":1594336751,
+												 "expireEpoch":4294967251
 											 }
 										 }
 									 }
@@ -566,13 +594,13 @@ func fill_pim_nbr_state_info (inParams XfmrParams, nbrKey _xfmr_pim_nbr_state_ke
         nbrStateObj.DrPriority = &_drPriority
     }
 
-    if value, ok := nbrData["upTime"] ; ok {
-        _neighborEstablished := value.(string)
+    if value, ok := nbrData["upTimeEpoch"] ; ok {
+        _neighborEstablished := uint64(value.(float64))
         nbrStateObj.NeighborEstablished = &_neighborEstablished
     }
 
-    if value, ok := nbrData["holdTime"] ; ok {
-        _neighborExpires := value.(string)
+    if value, ok := nbrData["holdTimeEpoch"] ; ok {
+        _neighborExpires := uint64(value.(float64))
         nbrStateObj.NeighborExpires = &_neighborExpires
     }
 
@@ -698,13 +726,13 @@ func fill_pim_tib_mroute_state_info (inParams XfmrParams, tibKey _xfmr_pim_tib_s
     srcEntryStateObj.SourceAddress = &tibKey.srcAddr
     srcEntryStateObj.RouteType = tibKey.routeType
 
-    if value, ok := srcAddrData["upTime"] ; ok {
-        _uptime := value.(string)
+    if value, ok := srcAddrData["upTimeEpoch"] ; ok {
+        _uptime := uint64(value.(float64))
         srcEntryStateObj.Uptime = &_uptime
     }
 
-    if value, ok := srcAddrData["expire"] ; ok {
-        _expiry := value.(string)
+    if value, ok := srcAddrData["expireEpoch"] ; ok {
+        _expiry := uint64(value.(float64))
         srcEntryStateObj.Expiry = &_expiry
     }
 
@@ -780,13 +808,13 @@ func fill_pim_tib_mroute_state_info (inParams XfmrParams, tibKey _xfmr_pim_tib_s
                     }
                     oilInfoStateObj.OutgoingInterface = &_uiOifId
 
-                    if value, ok := oifData["upTime"] ; ok {
-                        _uptime := value.(string)
+                    if value, ok := oifData["upTimeEpoch"] ; ok {
+                        _uptime := uint64(value.(float64))
                         oilInfoStateObj.Uptime = &_uptime
                     }
 
-                    if value, ok := oifData["expire"] ; ok {
-                        _expiry := value.(string)
+                    if value, ok := oifData["expireEpoch"] ; ok {
+                        _expiry := uint64(value.(float64))
                         oilInfoStateObj.Expiry = &_expiry
                     }
                 }
