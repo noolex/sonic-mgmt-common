@@ -225,6 +225,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 	var igmpsMrouterTblMap map[string]db.Value = make(map[string]db.Value)
 	var igmpsMcastGroupTblMap map[string]db.Value = make(map[string]db.Value)
 	var igmpsMcastGroupMemTblMap map[string]db.Value = make(map[string]db.Value)
+    var oif_list []string
 
 	igmpsObj := reqP.igmpsObj
 
@@ -236,7 +237,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 	} else {
 		if len(igmpsObj.Interfaces.Interface) == 1 {
 			for igmpsKey, igmpsVal := range igmpsObj.Interfaces.Interface {
-				if igmpsVal.Config == nil {
+				if igmpsVal.Config == nil && igmpsVal.Staticgrps == nil {
 					igmpsTblMap[igmpsKey] = db.Value{Field: make(map[string]string)}
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					var mRouterDbTbl db.Table
@@ -380,9 +381,9 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 					igmpsTblMap[igmpsKey] = dbV
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					fmt.Println("handleDeleteReq enabled res_map ==> ", res_map)
-				} else if len(igmpsVal.Config.MrouterInterface) == 0 && reqP.isConfigTargetNode("mrouter-interface") {
+				} else if igmpsVal.Config != nil && len(igmpsVal.Config.MrouterInterface) == 0 && reqP.isConfigTargetNode("mrouter-interface") {
 					res_map[CFG_L2MC_MROUTER_TABLE] = igmpsMrouterTblMap
-				} else if len(igmpsVal.Config.MrouterInterface) == 1 {
+				} else if igmpsVal.Config != nil && len(igmpsVal.Config.MrouterInterface) == 1 {
                     fmt.Println("handleDeleteReq Del MrouterInterface ==> ")
 					for _, mrVal := range igmpsVal.Config.MrouterInterface {
                         mrIfName := *(utils.GetNativeNameFromUIName(&mrVal))
@@ -431,7 +432,11 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 							}
 						} else {
 							dbV := db.Value{Field: make(map[string]string)}
-							dbV.SetList("out-intf", grpObj.Config.OutgoingInterface)
+                            for _, oIf := range grpObj.Config.OutgoingInterface {
+                                    oIfName := *(utils.GetNativeNameFromUIName(&oIf))
+                                        oif_list = append(oif_list, oIfName)
+                            }
+							dbV.SetList("out-intf", oif_list)
 							igmpsGrpKey := igmpsKey + "|" + grpKey.Group + "|" + "0.0.0.0"
 							igmpsMcastGroupTblMap[igmpsGrpKey] = dbV
 							for _, outIntf := range grpObj.Config.OutgoingInterface {
