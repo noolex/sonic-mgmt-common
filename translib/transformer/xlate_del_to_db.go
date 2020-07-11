@@ -114,6 +114,11 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 
 	if !isFirstCall {
 		_, keyName, tbl, err = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
+		switch err.(type) {
+		case tlerr.TranslibXfmrRetError:
+			xfmrLogInfoAll("Error received (\"%v\")", err)
+			return err
+		}
 		if err != nil {
 			log.Warningf("Received error from xpathKeyExtract for uri : %v, error: %v", xlateParams.uri, err)
 		}
@@ -336,6 +341,11 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 
 		if cerr != nil {
 			log.Warningf("Received xpathKeyExtract error for uri: %v : err %v", xlateParams.uri, cerr)
+			switch cerr.(type) {
+				case tlerr.TranslibXfmrRetError:
+					xfmrLogInfoAll("Error received (\"%v\")", cerr)
+					return cerr
+			}
 		}
 
 		if isFirstCall {
