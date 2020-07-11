@@ -1,0 +1,113 @@
+module openconfig-ip-helper-annot {
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/openconfig-ip-helper-annot";
+    prefix "oc-ip-helper-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-ip-helper { prefix oc-ip-helper; }
+    import sonic-ip-helper { prefix sonic-ip-helper; }
+
+    // meta
+    organization
+       "SONiC";
+
+    contact
+       "SONiC";
+
+    description
+       "SONIC ip-helper";
+
+    revision 2020-06-04 {
+       description
+          "Initial revision";
+    }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config {
+    deviate add {
+      sonic-ext:table-name "UDP_BROADCAST_FORWARDING";
+      sonic-ext:key-transformer "ip_helper_global_key_xfmr";
+    }
+  }
+  
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config/oc-ip-helper:enable {
+    deviate add {
+      sonic-ext:field-transformer "ip_helper_enable_xfmr";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config/oc-ip-helper:incoming-rate-limit {
+    deviate add {
+      sonic-ext:field-name "rate_limit_pps";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config/oc-ip-helper:ports {
+    deviate add {
+      sonic-ext:field-name "include_ports";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config/oc-ip-helper:include-custom-ports {
+    deviate add {
+      sonic-ext:field-name "include_ports";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config/oc-ip-helper:exclude-default-ports {
+    deviate add {
+      sonic-ext:field-name "exclude_default_ports";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state {
+    deviate add {
+      sonic-ext:table-name "UDP_BROADCAST_FORWARDING";
+      sonic-ext:key-transformer "ip_helper_global_key_xfmr";
+    }
+    }
+  
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:enable {
+    deviate add {
+      sonic-ext:field-transformer "ip_helper_enable_xfmr";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:incoming-rate-limit {
+    deviate add {
+      sonic-ext:field-name "rate_limit_pps";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config/oc-ip-helper:ports {
+    deviate add {
+      sonic-ext:field-transformer "ip_helper_ports_xfmr";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:include-custom-ports {
+    deviate add {
+      sonic-ext:field-name "include_ports";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:exclude-default-ports {
+    deviate add {
+      sonic-ext:field-name "exclude_default_ports";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:default-enabled-ports {
+    deviate add {
+      sonic-ext:field-transformer "ip_helper_default_ports_xfmr";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper {
+    deviate add {
+      sonic-ext:post-transformer "ip_helper_post_xfmr";
+    }
+  }
+
+}
+

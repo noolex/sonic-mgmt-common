@@ -108,7 +108,12 @@ var YangToDb_lldp_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 	}
 
 	pathInfo := NewPathInfo(inParams.uri)
-	ifName := pathInfo.Var("name")
+	uriIfName := pathInfo.Var("name")
+	ifName := uriIfName
+
+	sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+	log.Infof("YangToDb_lldp_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+	ifName = *sonicIfName
 
 	if ifName == "" {
 		errStr := "Interface KEY not present"
@@ -116,13 +121,13 @@ var YangToDb_lldp_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 		return resMap, errors.New(errStr)
 	}
 
-	if _, ok := lldpObj.Interfaces.Interface[ifName]; !ok {
-		errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
+	if _, ok := lldpObj.Interfaces.Interface[uriIfName]; !ok {
+		errStr := "Interface entry not found in Ygot tree, ifname: " + uriIfName
 		log.Info("YangToDb_lldp_intf_xfmr : " + errStr)
 		return resMap, errors.New(errStr)
 	}
 
-	lldpIntfObj := lldpObj.Interfaces.Interface[ifName]
+	lldpIntfObj := lldpObj.Interfaces.Interface[uriIfName]
 	if lldpIntfObj.Config != nil {
 		dataMap := make(map[string]string)
 		var value db.Value
@@ -161,7 +166,12 @@ var DbToYang_lldp_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (err
 	targetUriPath, err := getYangPathFromUri(inParams.uri)
 
 	pathInfo := NewPathInfo(inParams.uri)
-	ifName := pathInfo.Var("name")
+	uriIfName := pathInfo.Var("name")
+	ifName := uriIfName
+
+	sonicIfName := utils.GetNativeNameFromUIName(&ifName)
+	log.Infof("DbToYang_lldp_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+	ifName = *sonicIfName
 
 	log.Info("targetUriPath is ", targetUriPath)
 	log.Info("ifName ", ifName)
@@ -178,10 +188,10 @@ var DbToYang_lldp_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (err
 	}
 	intfsObj := lldpObj.Interfaces
 
-	intfObj, ok := intfsObj.Interface[ifName]
+	intfObj, ok := intfsObj.Interface[uriIfName]
 	if !ok {
 		log.Info("create new interface")
-		intfObj, err = intfsObj.NewInterface(ifName)
+		intfObj, err = intfsObj.NewInterface(uriIfName)
 		if err != nil {
 			log.Info("Creation of interface subtree failed!")
 			return err
