@@ -125,7 +125,6 @@ func (e AuthorizationError) Error() string {
 	return p.Sprintf(e.Format, e.Args...)
 }
 
-//  TranslibXfmrRetErr creates a tlerr.TranslibXfmrRetError instance.
 func TranslibXfmrRetErr(fail bool) TranslibXfmrRetError {
 	return TranslibXfmrRetError{xlateFailDelReq: fail}
 }
