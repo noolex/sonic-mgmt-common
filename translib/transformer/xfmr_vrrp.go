@@ -216,11 +216,11 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     track_exist := false
 
-                    if (vrrp_rtr.VrrpTrackInterface != nil) {
+                    if (vrrp_rtr.VrrpTrack != nil && vrrp_rtr.VrrpTrack.VrrpTrackInterface != nil) {
 
 
-                        for track_if := range vrrp_rtr.VrrpTrackInterface {
-                            vrrp_track_data := vrrp_rtr.VrrpTrackInterface[track_if]
+                        for track_if := range vrrp_rtr.VrrpTrack.VrrpTrackInterface {
+                            vrrp_track_data := vrrp_rtr.VrrpTrack.VrrpTrackInterface[track_if]
 
                             log.Info("track if name:", track_if)
 
@@ -359,10 +359,10 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     track_exist := false
 
-                    if (vrrp_rtr.VrrpTrackInterface != nil) {
+                    if (vrrp_rtr.VrrpTrack != nil && vrrp_rtr.VrrpTrack.VrrpTrackInterface != nil) {
 
-                        for track_if := range vrrp_rtr.VrrpTrackInterface {
-                            vrrp_track_data := vrrp_rtr.VrrpTrackInterface[track_if]
+                        for track_if := range vrrp_rtr.VrrpTrack.VrrpTrackInterface {
+                            vrrp_track_data := vrrp_rtr.VrrpTrack.VrrpTrackInterface[track_if]
 
                             log.Info("track if name:", track_if)
 
@@ -904,13 +904,13 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                     log.Info("trackIfname: ", trackIfname)
                     log.Info("trackIfUIname: ", trackIfUIName)
 
-                    if _, ok := vrrp4.VrrpTrackInterface[trackIfUIName]; !ok {
-                        vrrp4.NewVrrpTrackInterface(trackIfUIName)
+                    if _, ok := vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName]; !ok {
+                        vrrp4.VrrpTrack.NewVrrpTrackInterface(trackIfUIName)
                     }
 
                     if vrrpTrackData.Has("priority_increment") {
 
-                        ygot.BuildEmptyTree(vrrp4.VrrpTrackInterface[trackIfUIName])
+                        ygot.BuildEmptyTree(vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName])
 
 
                         ppriority_increment := new(uint8)
@@ -920,7 +920,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         *ppriority_incr_state  = uint8(priority_increment)
 
                         if (isTrackConfig) {
-                            vrrp4.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
                         }
 
                         if (isTrackState) {
@@ -930,11 +930,11 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                                 *ppriority_incr_state = 0
                             }
 
-                            vrrp4.VrrpTrackInterface[trackIfUIName].State.PriorityIncrement = ppriority_incr_state
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].State.PriorityIncrement = ppriority_incr_state
                         }
 
                         if (isTrackConfig) {
-                            vrrp4.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
                         }
 
                         log.Info("PriorityIncrement: ", ppriority_incr_state)
@@ -1073,13 +1073,13 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                     log.Info("trackIfname: ", trackIfname)
                     log.Info("trackIfUIName: ", trackIfUIName)
 
-                    if _, ok := vrrp6.VrrpTrackInterface[trackIfUIName]; !ok {
-                        vrrp6.NewVrrpTrackInterface(trackIfUIName)
+                    if _, ok := vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName]; !ok {
+                        vrrp6.VrrpTrack.NewVrrpTrackInterface(trackIfUIName)
                     }
 
                     if vrrpTrackData.Has("priority_increment") {
 
-                        ygot.BuildEmptyTree(vrrp6.VrrpTrackInterface[trackIfUIName])
+                        ygot.BuildEmptyTree(vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName])
 
 
                         ppriority_increment := new(uint8)
@@ -1089,7 +1089,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         *ppriority_incr_state  = uint8(priority_increment)
 
                         if (isTrackConfig) {
-                            vrrp6.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
+                            vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
                         }
 
                         if (isTrackState) {
@@ -1099,7 +1099,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                                 *ppriority_incr_state = 0
                             }
 
-                            vrrp6.VrrpTrackInterface[trackIfUIName].State.PriorityIncrement = ppriority_incr_state
+                            vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName].State.PriorityIncrement = ppriority_incr_state
                         }
 
                         log.Info("PriorityIncrement: ", priority_increment)
