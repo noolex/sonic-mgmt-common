@@ -11,6 +11,7 @@ module openconfig-mclag {
   import openconfig-inet-types { prefix oc-inet; }
   import openconfig-interfaces { prefix oc-if; }
   import openconfig-extensions { prefix oc-ext; }
+  import openconfig-types { prefix oc-types; }
 
   // meta
   organization "OpenConfig working group";
@@ -159,6 +160,12 @@ module openconfig-mclag {
        "System MAC Address used for MCLAG Interface";
    }
 
+   leaf delay-restore-start-time {
+     type oc-types:timeticks64;
+     units "seconds";
+     description
+       "Delay restore start time in seconds since the Epoch";
+   }
  }
 
  grouping mclag-domain-top {
