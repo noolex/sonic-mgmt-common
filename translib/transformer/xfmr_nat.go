@@ -32,6 +32,7 @@ import (
 func init() {
     XlateFuncBind("YangToDb_nat_instance_key_xfmr", YangToDb_nat_instance_key_xfmr)
     XlateFuncBind("DbToYang_nat_instance_key_xfmr", DbToYang_nat_instance_key_xfmr)
+    XlateFuncBind("YangToDb_nat_instance_id_field_xfmr", YangToDb_nat_instance_id_field_xfmr)
     XlateFuncBind("YangToDb_nat_global_key_xfmr", YangToDb_nat_global_key_xfmr)
     XlateFuncBind("DbToYang_nat_global_key_xfmr", DbToYang_nat_global_key_xfmr)
     XlateFuncBind("YangToDb_nat_enable_xfmr", YangToDb_nat_enable_xfmr)
@@ -42,6 +43,10 @@ func init() {
     XlateFuncBind("DbToYang_nat_mapping_subtree_xfmr", DbToYang_nat_mapping_subtree_xfmr)
     XlateFuncBind("YangToDb_nat_pool_key_xfmr", YangToDb_nat_pool_key_xfmr)
     XlateFuncBind("DbToYang_nat_pool_key_xfmr", DbToYang_nat_pool_key_xfmr)
+    XlateFuncBind("YangToDb_nat_pool_name_field_xfmr", YangToDb_nat_pool_name_field_xfmr)
+    XlateFuncBind("DbToYang_nat_pool_name_field_xfmr", DbToYang_nat_pool_name_field_xfmr)
+    XlateFuncBind("YangToDb_nat_binding_name_field_xfmr", YangToDb_nat_binding_name_field_xfmr)
+    XlateFuncBind("DbToYang_nat_binding_name_field_xfmr", DbToYang_nat_binding_name_field_xfmr)
     XlateFuncBind("YangToDb_nat_ip_field_xfmr", YangToDb_nat_ip_field_xfmr)
     XlateFuncBind("DbToYang_nat_ip_field_xfmr", DbToYang_nat_ip_field_xfmr)
     XlateFuncBind("YangToDb_nat_binding_key_xfmr", YangToDb_nat_binding_key_xfmr)
@@ -98,6 +103,14 @@ var YangToDb_nat_instance_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     var err error
     nat_inst_key = "0"
     return nat_inst_key, err
+}
+
+var YangToDb_nat_instance_id_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    // There is no mapping field for nat instance id in config db
+    res_map := make(map[string]string)
+    var err error
+
+    return res_map, err
 }
 
 var DbToYang_nat_instance_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -1217,6 +1230,7 @@ var YangToDb_nat_pool_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     name := pathInfo.Var("pool-name")
 
     key = name
+
     log.Info("YangToDb_nat_pool_key_xfmr: Key : ", key)
     return key, err
 }
@@ -1227,8 +1241,25 @@ var DbToYang_nat_pool_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[
 
     key := inParams.key
     rmap["pool-name"] = key
-    log.Info("YangToDb_nat_pool_key_xfmr : - ", rmap)
+    log.Info("DbToYang_nat_pool_key_xfmr : - ", rmap)
     return rmap, err
+}
+
+var YangToDb_nat_pool_name_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    return res_map, err
+}
+
+var DbToYang_nat_pool_name_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    key := inParams.key
+    result["pool-name"] = key
+    log.Info("DbToYang_nat_pool_field_xfmr : - ", result)
+    return result, err
 }
 
 var YangToDb_nat_ip_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -1285,6 +1316,22 @@ var DbToYang_nat_binding_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (m
     return rmap, err
 }
 
+var YangToDb_nat_binding_name_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    return res_map, err
+}
+
+var DbToYang_nat_binding_name_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    key := inParams.key
+    result["name"] = key
+    log.Info("DbToYang_nat_binding_field_xfmr : - ", result)
+    return result, err
+}
 
 var YangToDb_nat_zone_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var key string
