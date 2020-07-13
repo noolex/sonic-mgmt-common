@@ -24,6 +24,7 @@ import (
    "strings"
 	 "encoding/json"
 	 "github.com/Azure/sonic-mgmt-common/translib/db"
+         "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	 log "github.com/golang/glog"
 )
 
@@ -59,7 +60,8 @@ func image_mgmt_operation(command string, body []byte) ([]byte, error) {
     var mapData map[string]interface{}
 
     err:= json.Unmarshal(body, &mapData)
-    var imagename, url string
+    var imagename  string
+     
     if err == nil || command == "remove" {
 
       input, image_present := mapData["sonic-image-management:input"]
@@ -70,6 +72,7 @@ func image_mgmt_operation(command string, body []byte) ([]byte, error) {
             v, image_present = mapData["imagename"]
             if (image_present) {
               imagename = v.(string)
+	       
             }
         }
       }
@@ -88,12 +91,12 @@ func image_mgmt_operation(command string, body []byte) ([]byte, error) {
         var options []string
 
         if (command == "install") {
-          url = imagename
           if strings.HasPrefix(imagename, "file://") {
             imagename = strings.TrimPrefix(imagename, "file:")
           } else if (!strings.HasPrefix(imagename, "http:") &&
             !strings.HasPrefix(imagename, "https:")) {
-            err = errors.New("ERROR:Invalid image url.")
+	    errStr :=  "Invalid image url " +  imagename
+            err = errors.New(errStr)
           }
 
           if (err == nil) {
@@ -148,20 +151,22 @@ func image_mgmt_operation(command string, body []byte) ([]byte, error) {
     if err != nil {
         result.Output.Status_detail  =  err.Error()
     } else if query_result.Err != nil {
-        result.Output.Status_detail = "ERROR:Internal SONiC Hostservice communication failure."
+        result.Output.Status_detail = "Internal SONiC Hostservice communication failure."
     } else if query_result.Body[0].(int32) == 1 {
-        if command == "install" {
-          result.Output.Status_detail = fmt.Sprintf("ERROR:Invalid image URL %s.", url)
-        } else {
-          result.Output.Status_detail = fmt.Sprintf("ERROR:Invalid image name %s.", imagename)
-        }
+          result.Output.Status_detail = fmt.Sprintf("Invalid image URL %s.", imagename)
     } else if query_result.Body[0].(int32) != 0 {
-         result.Output.Status_detail = "ERROR:Command Failed."
+         result.Output.Status_detail = "Command Failed."
     } else {
         result.Output.Status = 0
         result.Output.Status_detail = "SUCCESS" 
     }
-    return json.Marshal(&result)
+
+    json_m, _ := json.Marshal(&result)
+    
+    if result.Output.Status > 0 {
+	    err=  tlerr.InvalidArgsError{Format: result.Output.Status_detail}
+    } 
+    return json_m, err
 }
 
 
