@@ -351,30 +351,41 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		if isFirstCall {
 			parentUri := parentUriGet(xlateParams.uri)
 			parentTbl, perr := dbTableFromUriGet(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-			if perr == nil && cerr == nil && len(curTbl) > 0 && len(curKey) > 0 {
-				xfmrLogInfoAll("DELETE handling at Container parentTbl %v, curTbl %v, curKey %v", parentTbl, curTbl, curKey)
-				if parentTbl != curTbl {
-					// Non inhertited table
-					if (spec.tblOwner != nil) && !(*spec.tblOwner) {
-						// Fill fields only
-						xfmrLogInfoAll("DELETE handling at Container Non inhertited table and not table Owner")
-						fillFields = true
-					} else if (spec.keyName != nil && len(*spec.keyName) > 0) || len(spec.xfmrKey) > 0  {
-						// Table owner && Key transformer present. Fill table instance
-						xfmrLogInfoAll("DELETE handling at Container Non inhertited table & table Owner")
-						dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
+			if perr == nil && cerr == nil && len(curTbl) > 0 {
+				if len(curKey) > 0 {
+					xfmrLogInfoAll("DELETE handling at Container parentTbl %v, curTbl %v, curKey %v", parentTbl, curTbl, curKey)
+					if parentTbl != curTbl {
+						// Non inhertited table
+						if (spec.tblOwner != nil) && !(*spec.tblOwner) {
+							// Fill fields only
+							xfmrLogInfoAll("DELETE handling at Container Non inhertited table and not table Owner")
+							fillFields = true
+						} else if (spec.keyName != nil && len(*spec.keyName) > 0) || len(spec.xfmrKey) > 0  {
+							// Table owner && Key transformer present. Fill table instance
+							xfmrLogInfoAll("DELETE handling at Container Non inhertited table & table Owner")
+							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
+						} else {
+							// Fallback case. Ideally should not enter here
+							fillFields = true
+						}
 					} else {
-						// Fallback case. Ideally should not enter here
-						fillFields = true
+						// Inherited Table. We always expect the curTbl entry in xlateParams.result
+						// if Instance already filled do not fill fields
+						xfmrLogInfoAll("DELETE handling at Container Inherited table")
+						//Fill fields only
+						if len(curTbl) > 0 && len(curKey) > 0 {
+							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
+							fillFields = true
+						}
 					}
 				} else {
-					// Inherited Table. We always expect the curTbl entry in xlateParams.result
-					// if Instance already filled do not fill fields
-					xfmrLogInfoAll("DELETE handling at Container Inherited table")
-					//Fill fields only
-					if len(curTbl) > 0 && len(curKey) > 0 {
+					if (spec.tblOwner != nil) && !(*spec.tblOwner) {
+						// Fill fields only
+						xfmrLogInfoAll("DELETE handling at Container Non inhertited table and not table Owner No Key available. table: %v, key: %v", curTbl, curKey)
+					} else {
+						// Table owner && Key transformer present. Fill table instance
+						xfmrLogInfoAll("DELETE handling at Container Non inhertited table & table Owner. No Key Delete complete TABLE : %v", curTbl)
 						dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
-						fillFields = true
 					}
 				}
 			} else {
