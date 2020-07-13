@@ -114,8 +114,13 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 
 	if !isFirstCall {
 		_, keyName, tbl, err = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-		if err != nil {
+		switch err.(type) {
+		case tlerr.TranslibXfmrRetError:
+			xfmrLogInfoAll("Error received (\"%v\")", err)
 			return err
+		}
+		if err != nil {
+			log.Warningf("Received error from xpathKeyExtract for uri : %v, error: %v", xlateParams.uri, err)
 		}
 		xlateParams.tableName = tbl
 		xlateParams.keyName = keyName
@@ -335,8 +340,12 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		_, curKey, curTbl, cerr = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 
 		if cerr != nil {
-			log.Errorf("Received xpathKeyExtract error for uri: %v : err %v", xlateParams.uri, cerr)
-			return cerr
+			log.Warningf("Received xpathKeyExtract error for uri: %v : err %v", xlateParams.uri, cerr)
+			switch cerr.(type) {
+				case tlerr.TranslibXfmrRetError:
+					xfmrLogInfoAll("Error received (\"%v\")", cerr)
+					return cerr
+			}
 		}
 
 		if isFirstCall {
@@ -484,10 +493,11 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	/* Check if the parent table exists for RFC compliance */
 	var exists bool
 	var dbs [db.MaxDB]*db.DB
-	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache)
+	subOpMapDiscard := make(map[int]*RedisDbMap)
+	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache, subOpMapDiscard)
 	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
 	if err != nil {
-		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
+		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
 		return err
 	}
 	if !exists {

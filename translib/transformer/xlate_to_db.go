@@ -420,7 +420,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 								childYangType := childNode.yangEntry.Type.Kind
 								_, defValPtr, err := DbToYangType(childYangType, childXpath, childNode.defVal)
 								if err == nil && defValPtr != nil {
-									inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, childXpath, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, defValPtr, xlateParams.txCache)
+									inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, tblUri+"/"+childName, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, defValPtr, xlateParams.txCache)
 									retData, err := leafXfmrHandler(inParams, childNode.xfmrField)
 									if err != nil {
 										return err
@@ -498,10 +498,11 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	/* Check if the parent table exists for RFC compliance */
 	var exists bool
 	var dbs [db.MaxDB]*db.DB
-	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache)
+	subOpMapDiscard := make(map[int]*RedisDbMap)
+	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache, subOpMapDiscard)
 	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
 	if err != nil {
-		log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation %v", uri, oper)
+		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
 		return err
 	}
 	if !exists {
@@ -552,9 +553,10 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		if !isSonicYang(uri) {
 			xpath, _ := XfmrRemoveXPATHPredicates(uri)
 			yangNode, ok := xYangSpecMap[xpath]
+			defSubOpDataMap := make(map[int]*RedisDbMap)
 			if ok && yangNode.yangDataType != YANG_LEAF && yangNode.yangDataType != YANG_LEAF_LIST {
 				xfmrLogInfo("Fill default value for %v, oper(%v)\r\n", uri, oper)
-				curXlateToParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpath, "", jsonData, resultMap, result, txCache, tblXpathMap, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
+				curXlateToParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpath, "", jsonData, resultMap, result, txCache, tblXpathMap, defSubOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
 				curXlateToParams.yangDefValMap = yangDefValMap
 				err = dbMapDefaultValFill(curXlateToParams)
 				if err != nil {
@@ -912,12 +914,12 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 
 /* This function checks the existence of Parent tables in DB for the given URI request
    and returns a boolean indicating if the operation is permitted based on the operation type*/
-func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
+func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}, subOpDataMap map[int]*RedisDbMap) (bool, error) {
 	xfmrLogInfoAll("Checking for Parent table existence for uri: %v", uri)
         if isSonicYang(uri) {
                 return verifyParentTableSonic(d, dbs, oper, uri, dbData)
         } else {
-                return verifyParentTableOc(d, dbs, ygRoot, oper, uri, dbData, txCache)
+                return verifyParentTableOc(d, dbs, ygRoot, oper, uri, dbData, txCache, subOpDataMap)
         }
 }
 
@@ -983,7 +985,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 	return parentTblExists, err
 }
 
-func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}) (bool, error) {
+func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}, subOpDataMap map[int]*RedisDbMap) (bool, error) {
 	var err error
 	var cdb db.DBNum
         uriList := splitUri(uri)
@@ -994,7 +996,8 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 	xpath, _ := XfmrRemoveXPATHPredicates(uri)
 	xpathInfo, ok := xYangSpecMap[xpath]
         if !ok {
-		err = fmt.Errorf("No entry found in xYangSpecMap for uri - %v", uri)
+		errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", uri)
+		err = tlerr.InternalError{Format:errStr}
 		log.Errorf("%v", err)
 		return false, err
 	}
@@ -1006,7 +1009,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 	}
 
 	parentUriList := uriList[:len(uriList)-1]
-	xfmrLogInfoAll("Parent uri list - %v", parentUriList) 
+	xfmrLogInfoAll("Parent uri list - %v", parentUriList)
 
 	// Loop for the parent uri to check parent table existence
         for idx, path := range parentUriList {
@@ -1019,13 +1022,19 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			//Check for subtree existence
 			curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
 			curXpathInfo, ok := xYangSpecMap[curXpath]
+			if !ok {
+				errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", curUri)
+				err = tlerr.InternalError{Format:errStr}
+				parentTblExists = false
+				break
+			}
 			if oper == GET {
 				cdb = curXpathInfo.dbIndex
 				xfmrLogInfoAll("db index for curXpath - %v is %v", curXpath, cdb)
 				d = dbs[cdb]
 			}
 			// Check for subtree case and invoke subscribe xfmr
-			if ok && (len(curXpathInfo.xfmrFunc) > 0) {
+			if len(curXpathInfo.xfmrFunc) > 0 {
 				var dbs [db.MaxDB]*db.DB
 				var inParams XfmrSubscInParams
 				inParams.uri = uri
@@ -1063,7 +1072,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 
 				xfmrLogInfoAll("Check parent table for uri: %v", curUri)
 				// Get Table and Key only for yang list instances
-				_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, nil, txCache)
+				_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache)
 				if xerr != nil {
 					log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
 					err = xerr
@@ -1152,7 +1161,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			return true, nil
 		}
 
-		 _, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, txCache)
+		 _, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
 		if xerr == nil && len(tableName) > 0 && len(dbKey) > 0 {
 			// Read the table entry from DB
 			exists := false
@@ -1185,7 +1194,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, tableName, dbKey)
 			return false, xerr
 		}
-        } else if (yangType == YANG_CONTAINER && oper == DELETE && ((xpathInfo.keyName != nil && len(*xpathInfo.keyName) > 0) || len(xpathInfo.xfmrKey) > 0)) {
+        /*} else if (yangType == YANG_CONTAINER && oper == DELETE && ((xpathInfo.keyName != nil && len(*xpathInfo.keyName) > 0) || len(xpathInfo.xfmrKey) > 0)) {
         //} else if (yangType == YANG_CONTAINER && oper = DELETE && (!xpathInfo.tableName = nil && len(*xpathInfo.tableName) > 0)
 	//	&& ((xpathInfo.keyName != nil && len(xpathInfo.keyName)) || len(xpathInfo.xfmrKey) > 0)) {
 
@@ -1198,7 +1207,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		// Get table for parent xpath
 		parentTable, perr := dbTableFromUriGet(d, ygRoot, oper, parentUri, uri, nil, txCache)
 		// Get table for current xpath
-		_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, txCache)
+		_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
 		if perr == nil && cerr == nil && (curTable != parentTable) {
 			exists, _ := dbTableExists(d, curTable, curKey)
 			if !exists {
@@ -1208,7 +1217,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			}
 		} else {
 			return true, err
-		}
+		}*/
 	} else {
                 // PUT at list is allowed to do a create if table does not exist else replace OR
                 // This is a container or leaf at the end of the URI. Parent check already done and hence all operations are allowed
