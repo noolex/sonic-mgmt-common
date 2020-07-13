@@ -1236,6 +1236,7 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 						} else {
 							return tlerr.NotSupported("Delete not supported for this URI")
 						}
+						app.policySectionTable[sectionDbKeyStr] = &sectionDbV
 					} else if policySectionVal.Qos != nil { //policy section Qos
 						delRemark := false
 						delPolicer := false
@@ -1297,6 +1298,7 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 						if delQueue {
 							delete(sectionDbV.Field, "SET_TC")
 						}
+						app.policySectionTable[sectionDbKeyStr] = &sectionDbV
 					} else if policySectionVal.Monitoring != nil { //monitoring
 						// TODO Handle specific session delete
 						if policySectionVal.Monitoring.MirrorSessions != nil && len(policySectionVal.Monitoring.MirrorSessions.MirrorSession) > 0 {
@@ -1308,6 +1310,7 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 						} else {
 							delete(sectionDbV.Field, "SET_MIRROR_SESSION")
 						}
+						app.policySectionTable[sectionDbKeyStr] = &sectionDbV
 					} else if policySectionVal.Forwarding != nil { //forwarding
 						if policySectionVal.Forwarding.Config != nil {
 							// As of now only 1 leaf exists. Just delete it blindly
@@ -1413,12 +1416,10 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 							delete(sectionDbV.Field, "SET_IP_NEXTHOP@")
 							delete(sectionDbV.Field, "SET_IPV6_NEXTHOP@")
 						}
+						app.policySectionTable[sectionDbKeyStr] = &sectionDbV
 					} else { //Forwarding
 						log.Infof("Delete section %v", sectionDbKeyStr)
 						app.policySectionTable[sectionDbKeyStr] = nil
-					}
-					if len(sectionDbV.Field) != 0 {
-						app.policySectionTable[sectionDbKeyStr] = &sectionDbV
 					}
 				} // END section loop
 			} else {
@@ -1780,7 +1781,7 @@ func (app *FbsApp) getPolicyBindingEntryFromDB(d *db.DB, intfName string) (db.Va
 		return dbVal, err
 	}
 
-	app.classMapCache[intfName] = dbVal
+	app.policyBindingCache[intfName] = dbVal
 	log.Infof("Return from DB %v", dbVal)
 
 	return dbVal, err
