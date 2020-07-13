@@ -434,16 +434,18 @@ func ospfv2_fill_global_timers_lsa_generation_state (output_state map[string]int
 func ospfv2_find_area_by_key(ospfv2Areas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas, 
 areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area, error) {
     var err error
-    var ospfv2AreaKey1 *string
+    var ospfv2AreaKey  ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
     log.Infof("Entered ospfv2_find_area_by_key %s", areaNameStr)
     if ((nil == ospfv2Areas_obj) || (nil == ospfv2Areas_obj.Area)) {
         return nil, err
     }
     for _, ospfv2Area_obj = range ospfv2Areas_obj.Area {
-        ospfv2AreaKey1 = ospfv2Area_obj.Identifier  
-        log.Info("Key are ", ospfv2AreaKey1, areaNameStr)
-        if(*ospfv2AreaKey1 == areaNameStr) {
+        ospfv2AreaKey = ospfv2Area_obj.Identifier
+        log.Info("Key are ", ospfv2AreaKey, areaNameStr)
+        newAreaStr :=
+            ospfv2AreaKey.(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String)
+        if( newAreaStr.String == areaNameStr) {
             log.Info("Match found")
             return ospfv2Area_obj, nil
         }
@@ -456,12 +458,17 @@ areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_Network
     var ok   bool
     oper_err := errors.New("Operational error")
     var ospfv2Area_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
+    var ospfv2AreaKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union
+    var areaStr *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String
     log.Infof("Entered ospfv2_create_new_area %s", areaNameStr)
     if (nil == ospfv2Areas_obj) {
         return nil, oper_err
     }    
-    if  ospfv2Area_obj, ok = ospfv2Areas_obj.Area[areaNameStr]; !ok {
-        ospfv2Area_obj, err = ospfv2Areas_obj.NewArea(areaNameStr)
+    areaStr = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String)
+    areaStr.String = areaNameStr
+    ospfv2AreaKey = areaStr
+    if  ospfv2Area_obj, ok = ospfv2Areas_obj.Area[ospfv2AreaKey]; !ok {
+        ospfv2Area_obj, err = ospfv2Areas_obj.NewArea(ospfv2AreaKey)
         if (err != nil) {
             log.Info("Failed to create a new area")
             return  nil, err
@@ -469,7 +476,6 @@ areaNameStr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_Network
         ygot.BuildEmptyTree(ospfv2Area_obj)
     }
         
-    ospfv2Area_obj.Config.Identifier = &areaNameStr
     return ospfv2Area_obj, err
 } 
 func ospfv2_get_or_create_area (output_state map[string]interface{}, 
@@ -1023,7 +1029,7 @@ func ospfv2_fill_interface_vlink_state(intf_info map[string]interface{},
     if _vlinkPeer, ok = intf_info["vlinkRemoteRouterId"].(string); ok {
         ospfv2Vlink_obj = ospfv2Vlinks_obj.VirtualLink[_vlinkPeer]
         if nil == ospfv2Vlink_obj {
-            log.Infof("Vlink interface missing for %s, peer %s, add new vlink", *area_id, _vlinkPeer)
+            log.Infof("Vlink interface missing for %s, peer %s, add new vlink", area_id, _vlinkPeer)
             ospfv2Vlink_obj, err = ospfv2Vlinks_obj.NewVirtualLink(_vlinkPeer)
             if (err != nil) {
                 log.Info("Failed to create a new vlink under vlink tree")
