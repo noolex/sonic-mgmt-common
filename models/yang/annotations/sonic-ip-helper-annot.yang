@@ -1,0 +1,23 @@
+module sonic-ip-helper-annot {
+
+  yang-version "1.1";
+
+  namespace "http://openconfig.net/yang/annotation/sonic-ip-helper-annot";
+  prefix "sonic-ip-helper-annot";
+
+  import sonic-extensions { prefix sonic-ext; }
+  import sonic-ip-helper { prefix sonic-ip-helper; }
+
+  deviation /sonic-ip-helper:clear-ip-helper {
+    deviate add {
+      sonic-ext:rpc-callback "rpc_clear_ip_helper";
+    }
+  }
+
+  deviation /sonic-ip-helper:sonic-ip-helper/sonic-ip-helper:COUNTERS_IP_HELPER/sonic-ip-helper:COUNTERS_IP_HELPER_LIST/sonic-ip-helper:interface {
+      deviate add {
+          sonic-ext:value-transformer "alias_value_xfmr";
+      }
+  }
+
+}
