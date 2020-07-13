@@ -955,6 +955,10 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 						}
 					} else {
 						d = dbs[dbNo]
+						if dbKey == "*" { //dbKey is "*" for GET on entire list
+							xfmrLogInfoAll("Found table instance in dbData")
+							goto Exit
+						}
 						// GET case - attempt to find in dbData before doing a dbGet in dbTableExists()
 						exists = dbTableExistsInDbData(dbNo, table, dbKey, dbData)
 						if exists {
@@ -1031,6 +1035,10 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				xfmrLogInfoAll("db index for curXpath - %v is %v", curXpath, cdb)
 				d = dbs[cdb]
 			}
+			if curXpathInfo.virtualTbl != nil && *curXpathInfo.virtualTbl {
+				curUri += "/"
+				continue
+			}
 			// Check for subtree case and invoke subscribe xfmr
 			if len(curXpathInfo.xfmrFunc) > 0 {
 				var dbs [db.MaxDB]*db.DB
@@ -1077,10 +1085,6 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					log.Errorf("err: %v", err)
 					parentTblExists = false
 					break
-				}
-				if curXpathInfo.virtualTbl != nil && *curXpathInfo.virtualTbl {
-					curUri += "/"
-					continue
 				}
 
 				if len(tableName) > 0 && len(dbKey) > 0 {
@@ -1136,8 +1140,20 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			log.Error("%v", err)
 			return false, err
 		}
+		virtualTbl := false
+		if xpathInfo.virtualTbl != nil {
+			virtualTbl = *xpathInfo.virtualTbl
+		}
+		if virtualTbl {
+			xfmrLogInfoAll("Virtual table at uri - %v", uri)
+			return true, nil
+		}
 		// Check for subtree case and invoke subscribe xfmr
 		if len(xpathInfo.xfmrFunc) > 0 {
+			if !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {//uri points to entire list
+			        xfmrLogInfoAll("subtree , whole list case for uri - %v", uri)
+				return true, nil
+			}
 			xfmrLogInfoAll("Found subtree for uri - %v", uri)
 			parentTblExists, err = verifyParentTblSubtree(dbs, uri, xpathInfo.xfmrFunc, oper, dbData)
 			if err != nil {
@@ -1148,14 +1164,6 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				log.Errorf("%v", err)
 				return false, err
 			}
-			return true, nil
-		}
-		virtualTbl := false
-		if xpathInfo.virtualTbl != nil {
-			virtualTbl = *xpathInfo.virtualTbl
-		}
-		if virtualTbl {
-			xfmrLogInfoAll("Virtual table at uri - %v", uri)
 			return true, nil
 		}
 
