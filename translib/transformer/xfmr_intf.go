@@ -1862,6 +1862,78 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
     return "", nil
 }
 
+func checkLocalIpExist(d *db.DB, nbrAddr string) (bool, error) {
+    var allIntfKeys []db.Key
+    var err error
+
+    nbrIp := net.ParseIP(nbrAddr)
+    if nbrIp == nil {
+        err = errors.New("Failed to parse IP address")
+        log.Info("Failed to parse IP address: ", nbrAddr)
+        return false, err
+    }
+
+    for key := range IntfTypeTblMap {
+        intTbl := IntfTypeTblMap[key]
+        keys, err := d.GetKeys(&db.TableSpec{Name:intTbl.cfgDb.intfTN})
+        if err == nil {
+            allIntfKeys = append(allIntfKeys, keys...)
+        }
+    }
+
+    sagKeys, err := d.GetKeys(&db.TableSpec{Name:"SAG"})
+    if nil == err {
+
+        for _, sagIf := range sagKeys {
+            sagEntry, err := d.GetEntry(&db.TableSpec{Name: "SAG"}, sagIf)
+            if(err != nil) {
+                continue
+            }
+
+            sagIpList, ok := sagEntry.Field["gwip@"]
+
+            if (!ok) {
+                continue;
+            }
+
+            sagIpMap := strings.Split(sagIpList, ",")
+
+            if (sagIpMap[0] == "") {
+                continue
+            }
+
+            for _, sagIp := range sagIpMap {
+                prekey := make([]string, 3)
+                prekey[0] = sagIf.Get(0)
+                prekey[1] = sagIp
+                prekey[2] = "SAG"
+                appendKey := db.Key{ Comp: prekey}
+                allIntfKeys = append(allIntfKeys, appendKey)
+            }
+        }
+    }
+
+    if len(allIntfKeys) > 0 {
+        for _, key := range allIntfKeys {
+            if len(key.Comp) < 2 {
+                continue
+            }
+            localIp, localNetIp, perr := net.ParseCIDR(key.Get(1))
+            //Check if key has IP, if not continue
+            if localIp == nil || perr != nil {
+                continue
+            }
+            if localNetIp.Contains(nbrIp) {
+                if log.V(3) {
+                    log.Info("Neighbor address: ", nbrAddr, " exist in local address ")
+                }
+                return true, nil
+            }
+        }
+    }
+    return false, nil
+}
+
 var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err, oerr error
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
