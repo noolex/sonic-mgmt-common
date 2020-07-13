@@ -304,6 +304,7 @@ func init() {
         XlateFuncBind("DbToYang_network_instance_enabled_addr_family_field_xfmr", DbToYang_network_instance_enabled_addr_family_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_interface_binding_subtree_xfmr", YangToDb_network_instance_interface_binding_subtree_xfmr)
         XlateFuncBind("DbToYang_network_instance_interface_binding_subtree_xfmr", DbToYang_network_instance_interface_binding_subtree_xfmr)
+        XlateFuncBind("Subscribe_network_instance_interface_binding_subtree_xfmr", Subscribe_network_instance_interface_binding_subtree_xfmr)
 }
 
 func getNwInstRoot(s *ygot.GoStruct) *ocbinds.OpenconfigNetworkInstance_NetworkInstances  {
@@ -1108,3 +1109,43 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 
         return err
 }
+
+var Subscribe_network_instance_interface_binding_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+        var err error
+        var result XfmrSubscOutParams
+        result.dbDataMap = make(RedisDbMap)
+
+        pathInfo := NewPathInfo(inParams.uri)
+
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+        /* get the name at the top network-instance table level, this is the key */
+        keyName := pathInfo.Var("name")
+        intfId := pathInfo.Var("id")
+
+        log.Infof("Subscribe_network_instance_interface_binding_subtree_xfmr: targetUri %v key %v intfId %v", targetUriPath, keyName, intfId)
+
+        if (intfId != "") {
+                intf_type, _, err := getIntfTypeByName(intfId)
+                if err != nil {
+                        log.Info("Subscribe_network_instance_interface_binding_subtree_xfmr: unknown intf type for  ", intfId)
+                }
+
+                intTbl := IntfTypeTblMap[intf_type]
+
+                port_tbl_name, _ := getPortTableNameByDBId(intTbl, 4)
+
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{port_tbl_name:{intfId:{}}}}   // tablename & table-idx for the inParams.uri
+        } else {
+                /* for GET at VRF level, interface name is not given */
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{"VRF":{keyName:{}}}}
+        }
+
+        result.needCache = true
+        result.nOpts = new(notificationOpts)
+        result.nOpts.mInterval = 15
+        result.nOpts.pType = OnChange
+        log.Info("Returning Subscribe_network_instance_interface_binding_subtree_xfmr")
+        return result, err
+}
+
