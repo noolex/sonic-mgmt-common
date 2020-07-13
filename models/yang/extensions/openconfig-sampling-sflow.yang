@@ -9,6 +9,7 @@ submodule openconfig-sampling-sflow {
   import openconfig-inet-types { prefix oc-inet; }
   import openconfig-interfaces { prefix oc-if; }
   import openconfig-yang-types { prefix oc-yang; }
+  import openconfig-network-instance { prefix oc-netinst; }
 
 
   // meta
@@ -25,7 +26,13 @@ submodule openconfig-sampling-sflow {
     RFC 3176 - InMon Corporation's sFlow: A Method for
     Monitoring Traffic in Switched and Routed Networks";
 
-  oc-ext:openconfig-version "0.1.0";
+  oc-ext:openconfig-version "0.1.1";
+
+  revision "2020-07-07" {
+    description
+      "Add VRF key";
+    reference "0.1.1";
+  }
 
   revision "2018-07-20" {
     description
@@ -143,6 +150,15 @@ submodule openconfig-sampling-sflow {
       description
         "UDP port number for the sFlow collector.";
     }
+
+    leaf vrf {
+      type leafref {
+          path "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:name";
+      }
+      default "default";
+      description
+        "VRF name for the sFlow collector.";
+    }
   }
 
   grouping sflow-collectors-state {
@@ -166,7 +182,7 @@ submodule openconfig-sampling-sflow {
         "Enclosing container for list of sFlow collectors.";
 
       list collector {
-        key "address port";
+        key "address port vrf";
         description
           "List of sFlow collectors to send sampling data.  Packet
           samples are sent to all collectors specified.";
@@ -185,6 +201,14 @@ submodule openconfig-sampling-sflow {
           }
           description
             "Reference to port list key.";
+        }
+
+        leaf vrf {
+          type leafref {
+            path "../config/vrf";
+          }
+          description
+            "Reference to VRF list key.";
         }
 
         container config {
