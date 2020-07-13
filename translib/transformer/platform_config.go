@@ -211,6 +211,51 @@ func getValidSpeeds(port_i string) ([]string, error) {
     return valid_speeds, nil
 }
 
+// getDefaultBreakoutModeSpeed - Returns default speed of a port or error 
+func getDefaultBreakoutModeSpeed(port_i string) (string, error) {
+    var err error
+    var mode string
+    var default_speed string
+
+    mode, err = getDefaultBreakoutMode(port_i)
+    if err == nil {
+        pos := strings.Index(mode, "G")
+        if pos != -1 {
+            speed, err := strconv.Atoi(mode[2:pos])
+            if err == nil {
+                default_speed = strconv.Itoa(speed*1000)
+            }
+        } else {
+            err = tlerr.InvalidArgs("Unable to determine default port speed")
+        }
+    }
+    return default_speed, err
+}
+
+// getDefaultBreakoutMode - Returns default breakout mode of a port
+func getDefaultBreakoutMode(port_i string) (string, error) {
+    var def_breakout_mode string
+    var err error
+    if len(platConfigStr) < 1 {
+        if parsePlatformJsonFile() != nil {
+            err = tlerr.InvalidArgs("Dynamic breakout mode is not supported for this platform")
+            return def_breakout_mode, err
+        }
+    }
+    err = nil
+    if entry, ok := platConfigStr[port_i]; ok {
+        // Get the valid speed from default breakout mode.
+        if mode, ok := entry["default_brkout_mode"]; ok {
+            def_breakout_mode = strings.Split(mode, "[")[0]
+        } else {
+            err = tlerr.InvalidArgs("Default breakout mode not found in the platform JSON file")
+        }
+    } else {
+        err = tlerr.InvalidArgs("Port information not found in the platform JSON file")
+    }
+    return def_breakout_mode, err
+}
+
 func parsePlatformJsonFile () (error) {
 
     file, err := ioutil.ReadFile(PLATFORM_JSON)
