@@ -38,6 +38,7 @@ module openconfig-ip-helper {
 
     leaf enable {
       type boolean;
+      default false;
       description
         "It indicates if IP helper feature is enabled";
     }
