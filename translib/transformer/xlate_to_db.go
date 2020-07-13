@@ -1202,10 +1202,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, tableName, dbKey)
 			return false, xerr
 		}
-        /*} else if (yangType == YANG_CONTAINER && oper == DELETE && ((xpathInfo.keyName != nil && len(*xpathInfo.keyName) > 0) || len(xpathInfo.xfmrKey) > 0)) {
-        //} else if (yangType == YANG_CONTAINER && oper = DELETE && (!xpathInfo.tableName = nil && len(*xpathInfo.tableName) > 0)
-	//	&& ((xpathInfo.keyName != nil && len(xpathInfo.keyName)) || len(xpathInfo.xfmrKey) > 0)) {
-
+        } else if (yangType == YANG_CONTAINER && oper == DELETE && ((xpathInfo.keyName != nil && len(*xpathInfo.keyName) > 0) || len(xpathInfo.xfmrKey) > 0)) {
 		// If the delete is at container level and the container is mapped to a unique table, then check for table existence to avoid CVL throwing error
 		parentUri := ""
 		if len(parentUriList) > 0 {
@@ -1216,16 +1213,20 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		parentTable, perr := dbTableFromUriGet(d, ygRoot, oper, parentUri, uri, nil, txCache)
 		// Get table for current xpath
 		_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
-		if perr == nil && cerr == nil && (curTable != parentTable) {
-			exists, _ := dbTableExists(d, curTable, curKey)
-			if !exists {
-				return false, nil
+		if len(curTable) > 0 {
+			if perr == nil && cerr == nil && (curTable != parentTable) && len(curKey) > 0 {
+				exists, derr := dbTableExists(d, curTable, curKey)
+				if !exists {
+					return true, derr
+				} else {
+					return true, nil
+				}
 			} else {
-				return true, err
+				return true, nil
 			}
 		} else {
-			return true, err
-		}*/
+			return true, nil
+		}
 	} else {
                 // PUT at list is allowed to do a create if table does not exist else replace OR
                 // This is a container or leaf at the end of the URI. Parent check already done and hence all operations are allowed
