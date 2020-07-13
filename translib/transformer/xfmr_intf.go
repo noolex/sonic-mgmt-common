@@ -81,6 +81,7 @@ func init () {
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_ip_addr_xfmr", YangToDb_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("DbToYang_routed_vlan_ip_addr_xfmr", DbToYang_routed_vlan_ip_addr_xfmr)
+    XlateFuncBind("Subscribe_intf_ip_addr_xfmr", Subscribe_intf_ip_addr_xfmr)
 }
 
 const (
@@ -1362,6 +1363,27 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]strin
     }
 
     return tblList, nil
+}
+
+var Subscribe_intf_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    fmt.Println("Entering Subscribe_intf_ip_addr_xfmr")
+    var err error
+    var result XfmrSubscOutParams
+    result.dbDataMap = make(RedisDbMap)
+    pathInfo := NewPathInfo(inParams.uri)
+    keyName := pathInfo.Var("name")
+    if (keyName != "") {
+        intfType, _, _ := getIntfTypeByName(keyName)
+        intTbl := IntfTypeTblMap[intfType]
+        tblName := intTbl.appDb.intfTN
+        result.dbDataMap = RedisDbMap{db.ApplDB:{tblName:{keyName:{}}}}
+    }
+    result.needCache = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 15
+    result.nOpts.pType = OnChange
+    log.Info("Returning Subscribe_intf_ip_addr_xfmr, result:", result)
+    return result, err
 }
 
 var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
