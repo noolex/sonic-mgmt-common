@@ -17,6 +17,7 @@ module openconfig-nat-annot {
 
     deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance {
         deviate add {
+            sonic-ext:virtual-table "true";
             sonic-ext:key-transformer "nat_instance_key_xfmr";
         }
     }
@@ -25,6 +26,12 @@ module openconfig-nat-annot {
         deviate add {
             sonic-ext:table-name "NAT_GLOBAL";
             sonic-ext:key-transformer "nat_global_key_xfmr";
+        }
+    }
+
+    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:config/oc-nat:id {
+        deviate add {
+            sonic-ext:field-transformer "nat_instance_id_field_xfmr";
         }
     }
 
@@ -105,6 +112,11 @@ module openconfig-nat-annot {
         deviate add {
             sonic-ext:table-name "NAT_POOL";
             sonic-ext:key-transformer "nat_pool_key_xfmr";
+        }
+    }
+    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-pool/oc-nat:nat-pool-entry/oc-nat:config/oc-nat:pool-name {
+        deviate add {
+            sonic-ext:field-transformer "nat_pool_name_field_xfmr";
         }
     }
     deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-pool/oc-nat:nat-pool-entry/oc-nat:config/oc-nat:nat-ip {
