@@ -45,6 +45,8 @@ func init() {
     XlateFuncBind("DbToYang_nat_pool_key_xfmr", DbToYang_nat_pool_key_xfmr)
     XlateFuncBind("YangToDb_nat_pool_name_field_xfmr", YangToDb_nat_pool_name_field_xfmr)
     XlateFuncBind("DbToYang_nat_pool_name_field_xfmr", DbToYang_nat_pool_name_field_xfmr)
+    XlateFuncBind("YangToDb_nat_binding_name_field_xfmr", YangToDb_nat_binding_name_field_xfmr)
+    XlateFuncBind("DbToYang_nat_binding_name_field_xfmr", DbToYang_nat_binding_name_field_xfmr)
     XlateFuncBind("YangToDb_nat_ip_field_xfmr", YangToDb_nat_ip_field_xfmr)
     XlateFuncBind("DbToYang_nat_ip_field_xfmr", DbToYang_nat_ip_field_xfmr)
     XlateFuncBind("YangToDb_nat_binding_key_xfmr", YangToDb_nat_binding_key_xfmr)
@@ -1314,6 +1316,22 @@ var DbToYang_nat_binding_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (m
     return rmap, err
 }
 
+var YangToDb_nat_binding_name_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    return res_map, err
+}
+
+var DbToYang_nat_binding_name_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    key := inParams.key
+    result["name"] = key
+    log.Info("DbToYang_nat_binding_field_xfmr : - ", result)
+    return result, err
+}
 
 var YangToDb_nat_zone_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var key string

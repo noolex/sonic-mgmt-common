@@ -164,6 +164,11 @@ module openconfig-nat-annot {
             sonic-ext:key-transformer "nat_binding_key_xfmr";
         }
     }
+    deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-acl-pool-binding/oc-nat:nat-acl-pool-binding-entry/oc-nat:config/oc-nat:name {
+        deviate add {
+            sonic-ext:field-transformer "nat_binding_name_field_xfmr";
+        }
+    }
     deviation /oc-nat:nat/oc-nat:instances/oc-nat:instance/oc-nat:nat-acl-pool-binding/oc-nat:nat-acl-pool-binding-entry/oc-nat:config/oc-nat:access-list {
         deviate add {
             sonic-ext:field-name "access_list";
