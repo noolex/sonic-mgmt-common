@@ -92,7 +92,7 @@ func Find(slice []string, val string) (int, bool) {
     return -1, false
 }
 
-// ProcessGetNtpServer is a function to run "ntpq -p" from the mgmt framework docker and populate the NTP peer config/states based on requestUri
+// ProcessGetNtpServer is a function to run "ntpq -pn" cmd from the mgmt framework docker and populate the NTP peer config/states based on requestUri
 func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled bool)  error {
         var err error
         var errStr string
@@ -217,11 +217,11 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 }
         }
 
-        cmd := exec.Command("ntpq", "-p")
+        cmd := exec.Command("ntpq", "-pn")
         if ((isMgmtVrfEnabled) &&
             ((vrfName == "mgmt") ||
              (vrfName == ""))) {
-                cmd = exec.Command("cgexec", "-g", "l3mdev:mgmt", "ntpq", "-p")
+                cmd = exec.Command("cgexec", "-g", "l3mdev:mgmt", "ntpq", "-pn")
         }
 
         output, err := cmd.StdoutPipe()
@@ -308,7 +308,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 if (!getServConfigOnly) {
 
                         if (keyName == "") {
-                                /* it's possible in some error condition remote is not in config DB but in the ntpq -p */
+                                /* it's possible in some error condition remote is not in config DB but in the ntpq -pn */
                                 currNtpServer = ntpServers.Server[remote] 
                                 if (currNtpServer == nil)  {
                                         currNtpServer, _ = ntpServers.NewServer(remote)
@@ -383,9 +383,9 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         /*
          * Get MGMT VRF config from configDB
          * To get NTP server state
-         *    - for NTP running in default VRF, use "ntpq -p"
+         *    - for NTP running in default VRF, use "ntpq -pn"
          *    - for pre-Buster image, only mgmt is supported for non-default VRF
-         *      use "cgexec -g l3mdev:mgmt ntpq -p"
+         *      use "cgexec -g l3mdev:mgmt ntpq -pn"
          */
 
         d, err := db.NewDB(getDBOptions(db.ConfigDB))
