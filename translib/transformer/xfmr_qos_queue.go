@@ -15,7 +15,6 @@ func init () {
 
 var YangToDb_qos_queue_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var entry_key string
-    var err error
     log.Info("YangToDb_qos_queue_key_xfmr: ", inParams.ygRoot, inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
@@ -27,16 +26,6 @@ var YangToDb_qos_queue_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     }
 
     qKey := strings.Replace(strings.Replace(qname, " ", "_", -1), "-", "_", -1)
-
-    dbQKey, err := getDbQueueName(qKey)
-    if err != nil {
-        return entry_key, err
-    }
-
-    err = validateQosConfigQueue(inParams, dbQKey)
-    if err != nil {
-        return entry_key, err
-    }
 
     entry_key = strings.Replace(qKey, ":", "|", -1)
     log.Info("YangToDb_qos_queue_key_xfmr - entry_key : ", entry_key)
@@ -76,6 +65,11 @@ var YangToDb_qos_queue_wred_profile_fld_xfmr FieldXfmrYangToDb = func(inParams X
 
 	wred_name := *(queueObj.Wred.Config.WredProfile)
 
+    if (inParams.oper == DELETE) {
+        res_map["wred_profile"] = ""
+        return res_map, err
+    }
+
 	if wred_name == "" {
         log.Error("wred name is Missing")
         return res_map, err
@@ -99,6 +93,7 @@ var DbToYang_qos_queue_wred_profile_fld_xfmr FieldXfmrDbtoYang = func(inParams X
     if err != nil {
         return res_map, nil
     }
+
     dbSpec := &db.TableSpec{Name: "QUEUE"}
 
 	s := strings.Split(db_q_name, ":")

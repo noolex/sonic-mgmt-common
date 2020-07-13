@@ -104,6 +104,37 @@ module sonic-interface {
             }
         }
 
+        rpc clear_ip {
+
+            description
+                "Clears IPv4/IPv6 address assigned to a specific interface";
+            input {
+                leaf ifName {
+                    type string;
+                    description
+                        "Interface with which IP address needs to be disassociated";
+                }
+                leaf ipPrefix {
+                    type inet:ip-prefix; 
+                    description
+                        "IP (v4/v6) address needs to be removed";
+                }
+            }
+            output {
+                leaf status {
+                    type uint32;
+                    description
+                        "Status of operation execution request";
+                }
+                leaf status-detail {
+                    type string;
+                    description
+                        "Detailed status of operation execution request";
+                }
+            }
+        }
+            
+
 	container sonic-interface {
 
 		container INTERFACE {
@@ -266,16 +297,11 @@ module sonic-interface {
                         error-app-tag intf-po-member;
                     }
 
-                    must "count(current()/../vrf_name) = 0"
+                    must "(count(current()/../vrf_name) = 0 and count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name) = 0) or " +
+                         "(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name = current()/../vrf_name)"
                     {
-                        error-message "Non default VRF binded to interface. Cannot configure IP Unnumbered";
-                        error-app-tag intf-non-def-vrf;
-                    }
-
-                    must "count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()/./unnumbered]/lointf:vrf_name) = 0"
-                    {
-                        error-message "Non default VRF binded to Donor interface. Cannot configure IP Unnumbered";
-                        error-app-tag donor-intf-non-def-vrf;
+                        error-message "Donor and Unnumbered interface should be in same VRF";
+                        error-app-tag donor-unnum-diff-vrf;
                     }
 
 					sonic-ext:custom-validation ValidateIpv4UnnumIntf;
@@ -284,8 +310,9 @@ module sonic-interface {
                     }
                 }
 
-                leaf-list helper_address {
+                leaf-list helper_addresses {
                     type sonic-if-cmn:vrf-ip;
+                    max-elements 4;
                     description
                         "List of destination addresses with each being a combination of Vrf and IP address";
                 }

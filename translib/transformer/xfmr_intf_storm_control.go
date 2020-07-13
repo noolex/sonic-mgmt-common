@@ -22,6 +22,8 @@ package transformer
 
 import (
     "strings"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
+    "strconv"
     log "github.com/golang/glog"
 )
 
@@ -57,9 +59,7 @@ func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{},
 var YangToDb_storm_type_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var stormKey string
     log.Info("Entering YangToDb_storm_type_key_xfmr")
-    pathInfo := NewPathInfo(inParams.requestUri)
-    log.Info(pathInfo)
-    pathInfo = NewPathInfo(inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
     log.Info(pathInfo)
     intfName := pathInfo.Var("name")
     stormType := pathInfo.Var("storm-type")
@@ -94,15 +94,20 @@ func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, er
         result["storm-type"] = "UNKNOWN_MULTICAST"
     }
     result["ifname"] = stormVals[0]
+    
+    entry, err := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:"PORT_STORM_CONTROL"}, db.Key{Comp: []string{stormKey}})
+    if err == nil {
+        value := entry.Field["kbps"]
+        result["kbps"],_ = strconv.ParseFloat(value,64)
+    }
 
     log.Info(result)
     return result, nil
 }
 
 var YangToDb_storm_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
-
     log.Info("Entering YangToDb_storm_value_xfmr")
-
+    res_map := make(map[string]string)
     return res_map, nil
 }
+

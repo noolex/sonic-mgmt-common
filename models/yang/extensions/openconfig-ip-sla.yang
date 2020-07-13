@@ -42,6 +42,12 @@ module openconfig-ip-sla {
 
     }
 
+    leaf enabled {
+      type boolean;
+      description
+        "Ip sla enabled or not for the sla-id";
+    }
+
     leaf frequency {
       type uint16 {
         range "1..300" {
@@ -99,8 +105,8 @@ module openconfig-ip-sla {
       type oc-if:base-interface-ref;
       description
         "Tcp source interface of IP SLA";
-
     }
+
 
     leaf tcp-ttl {
       type uint16 {
@@ -114,7 +120,7 @@ module openconfig-ip-sla {
 
     leaf tcp-tos {
       type uint16 {
-        range "0..7" {
+        range "1..256" {
           error-message "tcp-tos out of range";
         }
       }
@@ -134,10 +140,10 @@ module openconfig-ip-sla {
         "Tcp destination ip of IP SLA";
     }
 
-    leaf vrf {
+    leaf tcp-vrf {
       type string;
       description
-        "Vrf of IP SLA";
+        "Vrf for tcp connect of IP SLA";
     }
 
     leaf icmp-source-interface {
@@ -168,6 +174,34 @@ module openconfig-ip-sla {
       description
         "Icmp size of IP SLA";
     }
+
+    leaf icmp-vrf {
+      type string;
+      description
+        "Vrf for icmp echo of IP SLA";
+    }
+
+    leaf icmp-ttl {
+      type uint16 {
+        range "1..256" {
+          error-message "icmp-ttl out of range";
+        }
+      }
+      description
+        "Icmp TTL of IP SLA";
+    }
+
+    leaf icmp-tos {
+      type uint16 {
+        range "1..256" {
+          error-message "icmp-tos out of range";
+        }
+      }
+      description
+        "Icmp tos of IP SLA";
+    }
+
+
   }
 
   grouping ip-sla-state {
@@ -202,7 +236,7 @@ module openconfig-ip-sla {
     }
 
     leaf transition-count {
-      type uint16; 
+      type uint16;
       description
         "Transition count of state of IP SLA";
     }
@@ -214,43 +248,43 @@ module openconfig-ip-sla {
     }
 
     leaf icmp-success-counter {
-      type uint16; 
+      type uint16;
       description
         "Icmp success counter of IP SLA";
     }
 
     leaf icmp-fail-counter {
-      type uint16; 
+      type uint16;
       description
         "Icmp failure counter of IP SLA";
     }
 
     leaf icmp-echo-req-counter {
-      type uint16; 
+      type uint16;
       description
         "Icmp echo request counter of IP SLA";
     }
 
     leaf icmp-echo-reply-counter {
-      type uint16; 
+      type uint16;
       description
         "Icmp echo reply counter of IP SLA";
     }
 
     leaf icmp-error-counter {
-      type uint16; 
+      type uint16;
       description
         "Icmp error counter of IP SLA";
     }
 
     leaf tcp-operation-frequency {
-      type uint16; 
+      type uint16;
       description
         "Tcp operation frequency of IP SLA";
     }
 
     leaf tcp-operation-timeout {
-      type uint16; 
+      type uint16;
       description
         "Tcp operational timeout of IP SLA";
     }
@@ -262,31 +296,31 @@ module openconfig-ip-sla {
     }
 
     leaf tcp-operation-success-counter {
-      type uint16; 
+      type uint16;
       description
         "Tcp operational succes counter of IP SLA";
     }
 
     leaf tcp-operation-fail-counter {
-      type uint16; 
+      type uint16;
       description
         "tcp operational failure counter of IP SLA";
     }
- 
+
     leaf tcp-connect-req-counter {
-      type uint16; 
+      type uint16;
       description
         "Tcp connect request counter of IP SLA";
     }
 
     leaf tcp-connect-success-counter {
-      type uint16; 
+      type uint16;
       description
         "Tcp connect success counter of IP SLA";
     }
 
     leaf tcp-connect-fail-counter {
-      type uint16; 
+      type uint16;
       description
         "tcp connect failure counter of IP SLA";
     }

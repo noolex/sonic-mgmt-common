@@ -778,6 +778,10 @@ func fill_evpn_spec_pfx_path_loc_rib_data (ipv4LocRibRoutes_obj *ocbinds.Opencon
     if value, ok := pathData["origin"].(string) ; ok {
         parse_origin_type_data (value, &ipv4LocRibRouteAttrSets.Origin)
     }
+
+    if value, ok := pathData["tag"].(string) ; ok {
+        ipv4LocRibRouteAttrSets.Tag = &value
+    }
     
     if value, ok := pathData["nexthops"].([]interface{}) ; ok {
         if nhop, ok := value[0].(map[string]interface{}) ; ok {
@@ -1014,6 +1018,10 @@ func fill_evpn_spec_pfx_nbr_in_pre_rib_data (evpnInPreRoute_obj *ocbinds.
         parse_origin_type_data (value, &routeAttrSets.Origin)
     }
 
+    /*if value, ok := pathData["tag"].(string) ; ok {
+        routeAttrSets.Tag = &value
+    }*/
+
     /* Attr Sets Aggregator */
     routeAggState := routeAttrSets.Aggregator.State
 
@@ -1154,6 +1162,10 @@ func fill_evpn_spec_pfx_nbr_out_post_rib_data (evpnOutPostRoute_obj *ocbinds.
     if value, ok := prefixData["origin"].(string) ; ok {
         parse_origin_type_data (value, &evpnOutPostRouteAttrSets.Origin)
     }
+
+    /*if value, ok := prefixData["tag"].(string) ; ok {
+        evpnOutPostRouteAttrSets.Tag = &value
+    }*/
 
     evpnOutPostRouteAggState := evpnOutPostRouteAttrSets.Aggregator.State
 

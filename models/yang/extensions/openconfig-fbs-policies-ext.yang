@@ -6,8 +6,6 @@ submodule openconfig-fbs-policies-ext {
   // import some basic types
   import openconfig-inet-types { prefix "oc-inet"; }
   import openconfig-extensions { prefix oc-ext; }
-  import openconfig-qos { prefix oc-qos; }
-  import openconfig-network-instance { prefix oc-netinst; }
   import openconfig-interfaces { prefix oc-if; }
 
   include openconfig-fbs-classifiers-ext;
@@ -60,7 +58,30 @@ submodule openconfig-fbs-policies-ext {
       "Policy with monitoring actions like SPAN.";
   }
 
+  identity NEXT_HOP_NETWORK_INSTANCE {
+    description
+      "Base identify for next-hop nextwork instance";
+  }
+
+  identity INTERFACE_NETWORK_INSTANCE {
+    base NEXT_HOP_NETWORK_INSTANCE;
+    description
+      "Network instance is same as the network instance of the interface
+      on which the policy is applied";
+  }
+
   // typedef statements
+  typedef next-hop-nextwork-instance-type {
+    type union {
+      type string;
+      type identityref {
+        base NEXT_HOP_NETWORK_INSTANCE;
+      }
+    }
+
+    description
+      "Typedef for Network instance string value or identity";
+  }
 
   // grouping statements
   grouping fbs-ext-qos-action-config {
@@ -383,8 +404,7 @@ submodule openconfig-fbs-policies-ext {
     }
 
     leaf network-instance {
-      type string;
-      default "";
+      type next-hop-nextwork-instance-type;
 
       description
         "When this leaf is set, packets matching the match criteria

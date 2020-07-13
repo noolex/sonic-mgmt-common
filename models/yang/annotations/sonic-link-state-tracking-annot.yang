@@ -5,25 +5,4 @@ module sonic-link-state-tracking-annot {
 
     import sonic-link-state-tracking { prefix slst; }
     import sonic-extensions { prefix sonic-ext; }
-
-    deviation /slst:sonic-link-state-tracking/slst:INTF_TRACKING/slst:INTF_TRACKING_LIST/slst:upstream {
-        deviate add {
-            sonic-ext:value-transformer "ports_alias_value_xfmr";
-        }
-    }
-    deviation /slst:sonic-link-state-tracking/slst:INTF_TRACKING/slst:INTF_TRACKING_LIST/slst:downstream {
-        deviate add {
-            sonic-ext:value-transformer "ports_alias_value_xfmr";
-        }
-    }
-    deviation /slst:sonic-link-state-tracking/slst:INTF_TRACKING_TABLE/slst:INTF_TRACKING_TABLE_LIST/slst:upstream {
-        deviate add {
-            sonic-ext:value-transformer "ports_alias_value_xfmr";
-        }
-    }
-    deviation /slst:sonic-link-state-tracking/slst:INTF_TRACKING_TABLE/slst:INTF_TRACKING_TABLE_LIST/slst:downstream {
-        deviate add {
-            sonic-ext:value-transformer "ports_alias_value_xfmr";
-        }
-    }
 }

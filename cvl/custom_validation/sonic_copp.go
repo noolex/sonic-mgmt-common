@@ -49,7 +49,7 @@ var reserved_names = []string{
 	"default",
 }
 
-var trap_id_valid = map[string][]string{
+var Copp_trap_id_valid = map[string][]string{
 	"ttl_error":       {"trap", "drop"},
 	"lacp":            {"trap", "drop"},
 	"bgp":             {"trap", "drop"},
@@ -189,7 +189,7 @@ func (t *CustomValidation) ValidateCoppTrapAction(
 							for _, trap_id := range trap_ids {
 								/* check if action is allowed */
 								found := false
-								for _, action := range trap_id_valid[trap_id] {
+								for _, action := range Copp_trap_id_valid[trap_id] {
 									if action == vc.YNodeVal {
 										found = true
 										break
@@ -225,7 +225,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapBound YCur: %v", vc.YCur)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapBound Data: %v", vc.CurCfg.Data)
 
-	if vc.CurCfg.VOp == OP_DELETE {
+	if vc.CurCfg.VOp == OP_DELETE && len(vc.CurCfg.Data) == 0 {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -247,9 +247,19 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 		}
 	}
-	/* get all COPP_TRAP entries */
 
 	keys, err := vc.RClient.Keys("COPP_TRAP|*").Result()
+	if vc.YNodeVal != "" {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        keys[0],
+			Keys:             keys,
+			ConstraintErrMsg: "Mode/Red/Green/Yellow operations are not supported in this release",
+			ErrAppTag:        "not-supported",
+		}
+	}
+
+	/* get all COPP_TRAP entries */
 	if err == nil {
 		for _, key := range keys {
 			/* for each COPP_TRAP entry found */
@@ -262,7 +272,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 							ErrCode:          CVL_SEMANTIC_ERROR,
 							TableName:        keys[0],
 							Keys:             keys,
-							ConstraintErrMsg: "Mode/Red/Green/Yellow action updates are not allowed when group is bound to this trap",
+							ConstraintErrMsg: "Mode/Red/Green/Yellow action updates/deletes are not allowed when group is bound to this trap",
 							ErrAppTag:        "not-supported",
 						}
 					}
@@ -275,7 +285,7 @@ func (t *CustomValidation) ValidateCoppTrapBound(
 }
 
 func check_trap_id_valid(trap_id string) bool {
-	_, found := trap_id_valid[trap_id]
+	_, found := Copp_trap_id_valid[trap_id]
 	return found
 }
 
@@ -353,7 +363,7 @@ func (t *CustomValidation) ValidateCoppTrapIds(
 			}
 			if trap_action != "" {
 				found := false
-				for _, trap := range trap_id_valid[trap_id] {
+				for _, trap := range Copp_trap_id_valid[trap_id] {
 					if trap == trap_action {
 						found = true
 						break
@@ -466,7 +476,7 @@ func (t *CustomValidation) ValidateCoppTrapGroup(
 
 						for _, trap_id := range strings.Split(trap_ids, ",") {
 							found := false
-							for _, trap := range trap_id_valid[trap_id] {
+							for _, trap := range Copp_trap_id_valid[trap_id] {
 								if trap == trap_action {
 									found = true
 									break
@@ -495,6 +505,36 @@ func (t *CustomValidation) ValidateCoppTrapGroup(
 						}
 					}
 				}
+			}
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func (t *CustomValidation) ValidateCoppNotSupported(
+	vc *CustValidationCtxt) CVLErrorInfo {
+
+	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateCoppNotSupported operation: %v", vc.CurCfg.VOp)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported key: %v", vc.CurCfg.Key)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YNodeName: %v", vc.YNodeName)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YNodeVal: %v", vc.YNodeVal)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported YCur: %v", vc.YCur)
+	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppNotSupported Data: %v", vc.CurCfg.Data)
+
+	var attributes = []string{
+		"pir",
+		"pbs",
+	}
+
+	for _, attrib := range attributes {
+		if _, ok := vc.CurCfg.Data[attrib]; ok {
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "COPP_GROUP",
+				Keys:             strings.Split(vc.CurCfg.Key, "|"),
+				ConstraintErrMsg: "pir/pbs operations are not supported in this release",
+				ErrAppTag:        "not-supported",
 			}
 		}
 	}

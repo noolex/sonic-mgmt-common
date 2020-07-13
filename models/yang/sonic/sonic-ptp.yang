@@ -305,6 +305,7 @@ module sonic-ptp {
 						"Current state associated with the port.";
 				}
 				leaf underlying-interface {
+					sonic-ext:custom-validation CheckDpbInProgressForPortConfig;
 					type union {
 						type leafref {
 							path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";

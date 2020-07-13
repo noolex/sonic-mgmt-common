@@ -510,7 +510,14 @@ var YangToDb_ldap_use_type_field_xfmr FieldXfmrYangToDb = func(inParams XfmrPara
     		useTypeVal = "sudo"
     	} else if useTypeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_PAM {
     		useTypeVal = "pam"
-    	}
+		} else if useTypeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_NSS_SUDO {
+		    useTypeVal = "nss_sudo"
+		} else if useTypeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_NSS_PAM {
+			useTypeVal = "nss_pam"
+		} else if useTypeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Servers_Server_Ldap_Config_UseType_SUDO_PAM {
+			useTypeVal = "sudo_pam"
+		}
+
    	    res_map["use_type"] = useTypeVal
     }
     log.Info("YangToDb_ldap_use_type_field_xfmr: res_map: ", res_map)

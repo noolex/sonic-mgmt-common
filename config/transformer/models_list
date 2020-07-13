@@ -88,6 +88,7 @@ openconfig-platform-port.yang
 openconfig-platform-annot.yang
 openconfig-copp-ext.yang
 openconfig-copp-ext-annot.yang
+sonic-copp-annot.yang
 openconfig-lldp.yang
 openconfig-lldp-ext.yang
 openconfig-lldp-annot.yang
@@ -109,3 +110,7 @@ openconfig-sampling-sflow.yang
 openconfig-sampling.yang
 openconfig-sampling-ext.yang
 openconfig-sampling-annot.yang
+openconfig-ip-helper.yang
+openconfig-ip-helper-annot.yang
+sonic-ip-helper.yang
+sonic-ip-helper-annot.yang

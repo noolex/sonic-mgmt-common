@@ -22,6 +22,14 @@ module sonic-vlan-interface {
         prefix sonic-if-cmn;
     }
 
+    import sonic-loopback-interface {
+        prefix lointf;
+    }
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -107,8 +115,32 @@ module sonic-vlan-interface {
 						"Enable IPv6 link local address on interface";
 				}
 
-				leaf-list helper_address {
+                leaf unnumbered {
+                    must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                         "not(contains(/sonic-vlan-interface/VLAN_INTERFACE/VLAN_INTERFACE_IPADDR_LIST[vlanName=current()/../vlanName]/ip_prefix, '.'))"
+                    {
+                        error-message "Cannot configure IP address and IP Unnumbered interface configurations on the same interface";
+                        error-app-tag vlanintf-ip-config;
+                    }
+
+                    must "(count(current()/../vrf_name) = 0 and count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name) = 0) or " +
+                         "(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name = current()/../vrf_name)"
+                    {
+                        error-message "Donor and Unnumbered interface should be in same VRF";
+                        error-app-tag donor-unnum-diff-vrf;
+                    }
+					
+                    sonic-ext:custom-validation ValidateIpv4UnnumIntf;
+
+                    type leafref {
+                        path "/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST/lointf:loIfName";
+                    }
+                }
+
+
+				leaf-list helper_addresses {
 					type sonic-if-cmn:vrf-ip;
+					max-elements 4;
 					description
 						"List of destination addresses with each being a combination of Vrf and IP address";
 				}

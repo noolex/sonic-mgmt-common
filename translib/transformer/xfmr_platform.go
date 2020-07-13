@@ -158,6 +158,8 @@ const (
    TEMP_CURRENT               = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:current"
    TEMP_HIGH_THRES            = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:high-threshold"
    TEMP_LOW_THRES             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:low-threshold"
+   WARNING_STATUS             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:warning-status"
+   TIMESTAMP                  = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:timestamp"
 )
 
 /**
@@ -249,6 +251,8 @@ type TempSensor struct {
     Current              string
     High_Threshold       string
     Low_Threshold        string
+    Warning_Status       string
+    Timestamp            string
     Name                 string
 }
 
@@ -1054,7 +1058,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
+                err = fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else if validFanName(&compName) {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1062,7 +1066,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+                err = fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else if validXcvrName(&compName){
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1070,15 +1074,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+                err = fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
             } else if validTempName(&compName) {
-              pf_comp := pf_cpts.Component[compName]
-              if pf_comp  == nil {
-                  log.Info("Invalid Component Name")
-                  return errors.New("Invalid component name")
-              }
-              ygot.BuildEmptyTree(pf_comp)
-              fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name")
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
             } else {
                 err = errors.New("Invalid component name")
             }
@@ -1114,21 +1118,21 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 err = errors.New("Invalid input component name")
             }
         } else if validPsuName(&compName) {
-          pf_comp := pf_cpts.Component[compName]
-          if pf_comp  == nil {
-              log.Info("Invalid Component Name")
-              return errors.New("Invalid component name")
-          }
-          ygot.BuildEmptyTree(pf_comp)
-          fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            err = fillSysPsuInfo(pf_comp, compName, true, false, targetUriPath, d)
         } else if validFanName(&compName) {
-          pf_comp := pf_cpts.Component[compName]
-          if pf_comp  == nil {
-              log.Info("Invalid Component Name")
-              return errors.New("Invalid component name")
-          }
-          ygot.BuildEmptyTree(pf_comp)
-          fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            err = fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
         } else if validXcvrName(&compName){
             pf_comp := pf_cpts.Component[compName]
             if pf_comp  == nil {
@@ -1136,17 +1140,17 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 return errors.New("Invalid component name")
             }
             ygot.BuildEmptyTree(pf_comp)
-            fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+            err = fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
         } else if validTempName(&compName) {
-              pf_comp := pf_cpts.Component[compName]
-              if pf_comp  == nil {
-                  log.Info("Invalid Component Name")
-                  return errors.New("Invalid component name")
-              }
-              ygot.BuildEmptyTree(pf_comp)
-              ygot.BuildEmptyTree(pf_comp.State)
-              ygot.BuildEmptyTree(pf_comp.State.Temperature)
-              fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            ygot.BuildEmptyTree(pf_comp.State)
+            ygot.BuildEmptyTree(pf_comp.State.Temperature)
+            err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
         } else {
             err = errors.New("Invalid component name ")
         }
@@ -1198,7 +1202,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                   return errors.New("Invalid component name")
               }
               ygot.BuildEmptyTree(pf_comp)
-              fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
+              err = fillSysFanInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else if validXcvrName(&compName){
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1206,7 +1210,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
+                err = fillSysXcvrInfo(pf_comp, compName, true, targetUriPath, d)
             } else if validTempName(&compName) {
               pf_comp := pf_cpts.Component[compName]
               if pf_comp  == nil {
@@ -1214,7 +1218,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                   return errors.New("Invalid component name")
               }
               ygot.BuildEmptyTree(pf_comp)
-              fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
+              err = fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
             } else {
                 err = errors.New("Invalid input component name")
             }
@@ -1222,6 +1226,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             err = errors.New("Invalid Path")
         }
     }
+
     return err
 }
 
@@ -2065,6 +2070,8 @@ func getSysTempFromDb(name string, d *db.DB) (TempSensor, error) {
     tempInfo.Crit_Low_Threshold = tempEntry.Get("critical_low_threshold")
     tempInfo.High_Threshold = tempEntry.Get("high_threshold")
     tempInfo.Low_Threshold = tempEntry.Get("low_threshold")
+    tempInfo.Warning_Status = tempEntry.Get("warning_status")
+    tempInfo.Timestamp = tempEntry.Get("timestamp")
 
     return tempInfo, err
 }
@@ -2118,6 +2125,16 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
             }
             tempCom.LowThreshold = &lt
         }
+        if tempInfo.Warning_Status != "" {
+            ws, terr := strconv.ParseBool(tempInfo.Warning_Status)
+            if terr != nil {
+                return terr
+            }
+            tempCom.WarningStatus = &ws
+        }
+        if tempInfo.Timestamp != "" {
+            tempCom.Timestamp = &tempInfo.Timestamp
+        }
         return err
     }
 
@@ -2165,6 +2182,18 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
                 return terr
             }
             tempCom.LowThreshold = &lt
+        }
+    case WARNING_STATUS:
+        if tempInfo.Warning_Status != "" {
+            ws, terr := strconv.ParseBool(tempInfo.Warning_Status)
+            if terr != nil {
+                return terr
+            }
+            tempCom.WarningStatus = &ws
+        }
+    case TIMESTAMP:
+        if tempInfo.Timestamp != "" {
+            tempCom.Timestamp = &tempInfo.Timestamp
         }
     }
 

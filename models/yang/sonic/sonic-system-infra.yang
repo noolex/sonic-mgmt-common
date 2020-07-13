@@ -40,4 +40,38 @@ module sonic-system-infra {
             }
         }
     }
+
+    rpc config {
+        description
+            "Switch config operations:
+                - reload: Clear current configuration and import a..."; 
+        input {
+            leaf param {
+                type string {
+                    pattern "reload";
+                }
+            }
+        }
+        output {
+            leaf result {
+                type string;
+                description
+                    "String showing the result of the last requested command (reload).";
+            }
+        }
+    }
+
+    rpc show-sys-log {
+        description
+            "show system log";
+        output {
+            leaf result{
+               type string;
+               description
+                    "The detailed status of the operation execution request.";
+           }
+        }
+    }
+
+
 }

@@ -42,7 +42,7 @@ module sonic-sflow {
 
                 leaf collector_name {
                     type string {
-                        length 1..32;
+                        length 1..64;
                     }
                 }
 
@@ -58,7 +58,7 @@ module sonic-sflow {
 
                 leaf collector_vrf {
                     type string {
-                            pattern "default";
+                            pattern "default|mgmt";
                     }
                     description "Network-instance/VRF name";
                 }
