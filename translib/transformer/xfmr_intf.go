@@ -1532,10 +1532,10 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                 return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
             }
             IntfMap := IntfMapObj.Field
-            // Case-1: If there is one last attribute present under "INTERFACE|<Interface>" (or)
-            // Case-2: If deletion at parent container(subinterface)
-            if len(IntfMap) == 1 || subIntf == nil {
-                subIntfmap[tblName][ifName] = data
+            if len(IntfMap) == 1 {
+                if _, ok := IntfMap["NULL"]; ok {
+                    subIntfmap[tblName][ifName] = data
+                }
             }
         }
     }
@@ -1640,19 +1640,27 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
 
     // Case-1: Last IP Address getting deleted on Vlan Interface
     // Case-2: Interface Vlan getting deleted with no IP addresses configured
-    if (vlanIntfcount - len(intfIpMap)) == 1 ||  (len(intfIpMap) == 0 && vlanIntfcount == 1) {
+    if (vlanIntfcount - len(intfIpMap)) == 1 {
         IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
         if err != nil {
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
         }
         IntfMap := IntfMapObj.Field
         // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>" (or)
-        // Case-2: If deletion at parent container(routedVlanIntf)
-        if len(IntfMap) == 1 || routedVlanIntf == nil {
+        if len(IntfMap) == 1 {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
 	    }
-	    vlanIntfmap[tblName][ifName] = data
+            if _, ok := IntfMap["NULL"]; ok {
+                vlanIntfmap[tblName][ifName] = data
+            }
+        }
+        // Case-2: If deletion at parent container(routedVlanIntf)
+        if routedVlanIntf == nil {
+            if _, ok := vlanIntfmap[tblName]; !ok {
+                vlanIntfmap[tblName] = make (map[string]db.Value)
+	    }
+            vlanIntfmap[tblName][ifName] = data
         }
     }
 
@@ -3955,11 +3963,6 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     }
 
     if enStr == "disable" {
-
-        /* Update ipv6_use_link_local_only field's value if explicit IP configured and no other interface attribute */
-        if len(ipMap) > 0 && len(IntfMap) == 1 {
-            return res_map, nil
-        }
 
         keys := make([]string, 0, len(IntfMap))
         for k := range IntfMap {
