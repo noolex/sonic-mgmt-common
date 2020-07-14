@@ -87,9 +87,11 @@ class CheckOcStylePlugin(plugin.PyangPlugin):
         if ctx.opts.outfile is not None:
             fd = open(ctx.opts.outfile, "w")
 
+        error_seen = False
         for issue in issues:
             if "/extensions/" not in str(issue):
                 continue
+            error_seen = True
             issue = "Error: " + issue
             fd.write(issue +"\n")
         
@@ -101,7 +103,7 @@ class CheckOcStylePlugin(plugin.PyangPlugin):
 
         if ctx.opts.outfile is not None:
             fd.close()
-        if len(issues) > 0:
+        if error_seen:
             sys.exit(1)
         else:
             sys.exit(0)
