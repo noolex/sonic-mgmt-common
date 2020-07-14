@@ -79,6 +79,7 @@ func init () {
     XlateFuncBind("rpc_clear_ip", rpc_clear_ip)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
+    XlateFuncBind("intf_pre_xfmr", intf_pre_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_ip_addr_xfmr", YangToDb_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("DbToYang_routed_vlan_ip_addr_xfmr", DbToYang_routed_vlan_ip_addr_xfmr)
 }
@@ -310,6 +311,30 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
         }
     }
     return retDbDataMap, nil
+}
+
+var intf_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
+    var err error
+    if inParams.oper == DELETE {
+        requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
+        if log.V(3) {
+            log.Info("intf_pre_xfmr:- Request URI path = ", requestUriPath)
+        }
+        errStr := "Delete operation not supported for this path - "
+
+        switch requestUriPath {
+            case "/openconfig-interfaces:interfaces":
+                errStr += requestUriPath
+                return tlerr.InvalidArgsError{Format: errStr}
+            case "/openconfig-interfaces:interfaces/interface":
+                pathInfo := NewPathInfo(inParams.uri)
+                if len(pathInfo.Vars) == 0 {
+                    errStr += requestUriPath
+                    return tlerr.InvalidArgsError{Format:errStr}
+                }
+        }
+    }
+    return err
 }
 
 func getIntfTypeByName (name string) (E_InterfaceType, E_InterfaceSubType, error) {
