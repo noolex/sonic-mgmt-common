@@ -8,7 +8,7 @@ module sonic-ip-helper-annot {
   import sonic-extensions { prefix sonic-ext; }
   import sonic-ip-helper { prefix sonic-ip-helper; }
 
-  deviation /sonic-ip-helper:clear-ip-helper {
+  deviation /sonic-ip-helper:clear-ip-helper-statistics {
     deviate add {
       sonic-ext:rpc-callback "rpc_clear_ip_helper";
     }
