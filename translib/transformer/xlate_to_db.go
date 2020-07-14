@@ -933,6 +933,10 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 	var err error
 
 	st_result, st_err := xfmrSubscSubtreeHandler(inParams, xfmrFuncNm)
+	if st_result.isVirtualTbl {
+		xfmrLogInfoAll("Subtree returned Virtual table true.")
+		goto Exit
+	}
 	if st_err != nil {
 		log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
 		err = st_err
@@ -1043,36 +1047,16 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			}
 			// Check for subtree case and invoke subscribe xfmr
 			if len(curXpathInfo.xfmrFunc) > 0 {
-				var dbs [db.MaxDB]*db.DB
-				var inParams XfmrSubscInParams
-				inParams.uri = uri
-				inParams.dbDataMap = make(RedisDbMap)
-				inParams.dbs = dbs
-				inParams.subscProc = TRANSLATE_SUBSCRIBE
-				st_result, st_err := xfmrSubscSubtreeHandler(inParams, curXpathInfo.xfmrFunc)
-				if st_err != nil {
-					log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
-					err = st_err
+				xfmrLogInfoAll("Found subtree for uri - %v", curUri)
+				stParentTblExists := false
+				stParentTblExists, err = verifyParentTblSubtree(dbs, curUri, curXpathInfo.xfmrFunc, oper, dbData)
+				if err != nil {
 					parentTblExists = false
 					break
 				}
-				if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
-					xfmrLogInfoAll("Subtree subcribe dbData %v", st_result.dbDataMap)
-					for _, dbMap := range st_result.dbDataMap {
-						for table, keyInstance := range dbMap {
-							for dbKey := range keyInstance {
-								exists, derr := dbTableExists(d, table, dbKey)
-								if !exists || derr != nil {
-									log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
-									err = tlerr.NotFound("Resource not found")
-									parentTblExists = false
-									break
-								}
-							}
-						}
-					}
-				} else {
-					err = fmt.Errorf("No Table information retrieved for uri %v", uri)
+				if !stParentTblExists {
+					err = fmt.Errorf("Parent Table does not exist for uri %v", uri)
+					log.Errorf("%v", err)
 					parentTblExists = false
 					break
 				}
