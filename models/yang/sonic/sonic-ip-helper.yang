@@ -26,6 +26,7 @@ module sonic-ip-helper {
       type string {
         pattern 'disable|enable';
       }
+      default 'disable';
     }
     leaf rate_limit_pps {
       type uint16 {
