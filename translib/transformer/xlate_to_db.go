@@ -1180,7 +1180,15 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				xfmrLogInfoAll("db index for xpath - %v is %v", xpath, cdb)
 				exists = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
 				if !exists {
-					derr = tlerr.NotFoundError{Format:"Resource Not found"}
+					exists, derr = dbTableExists(dbs[cdb], tableName, dbKey)
+					if derr != nil {
+						return false, derr
+					}
+					if !exists {
+						parentTblExists = false
+						log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+						err = tlerr.NotFound("Resource not found")
+					}
 				}
 			} else {
 				exists, derr = dbTableExists(d, tableName, dbKey)
