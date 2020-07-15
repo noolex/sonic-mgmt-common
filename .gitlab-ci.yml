@@ -12,11 +12,6 @@ submodule:
   tags:
     - sonic
   script:
-    - date
-    - hostname
-    - cat /etc/issue
-    - id
-    - pwd
     - env
     - du -hs .
     - rm -rf *
