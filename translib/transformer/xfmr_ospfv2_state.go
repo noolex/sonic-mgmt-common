@@ -29,7 +29,22 @@ func init () {
     XlateFuncBind("rpc_clear_ospfv2", rpc_clear_ospfv2)
 }
 
+func ospfv2_display_output_state(inParams XfmrParams) {
 
+    deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
+    jsonStr, _ := ygot.EmitJSON(deviceObj, &ygot.EmitJSONConfig{
+           Format:         ygot.RFC7951,
+           Indent:         "  ",
+           SkipValidation: true,
+           RFC7951Config: &ygot.RFC7951JSONConfig{
+                   AppendModuleName: true,
+           },
+    })
+    log.Info("################################")
+    log.Infof(" ospfv2_display_output_state App ygot jsonStr: %v", jsonStr)
+    log.Info("################################")
+
+}
 func ospfv2_fill_only_global_state (output_state map[string]interface{}, 
         ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2) error {
     var err error
@@ -2362,18 +2377,119 @@ var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 
     ospfv2AreaLsdbState_obj = ospfv2AreaLsdb_obj.State
     if nil == ospfv2AreaLsdbState_obj {
-        log.Errorf("Lsdb State missing for Lsdb in area %s", areaNameStr)
-        return  oper_err
+        log.Errorf("Lsdb State missing for Lsdb in area %s, adding now", areaNameStr)
+        ospfv2AreaLsdbState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_State)
+        if nil == ospfv2AreaLsdbState_obj {
+            log.Errorf("Lsdb State missing for Lsdb in area %s", areaNameStr)
+            return  oper_err
+        }
+        ygot.BuildEmptyTree(ospfv2AreaLsdbState_obj)
+        ospfv2AreaLsdb_obj.State = ospfv2AreaLsdbState_obj
     }
     lsdbAreaId.String = areaNameStr
     ospfv2AreaLsdbState_obj.Identifier = &lsdbAreaId
     ospfv2AreaLsaTypes_obj = ospfv2AreaLsdb_obj.LsaTypes
     if nil == ospfv2AreaLsaTypes_obj {
-        log.Errorf("LsaTypes container missing for Lsdb in area %s", areaNameStr)
-        return  oper_err
+        log.Errorf("LsaTypes container missing for Lsdb in area %s, adding", areaNameStr)
+        ospfv2AreaLsaTypes_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes) 
+        if nil == ospfv2AreaLsaTypes_obj {
+            log.Errorf("LsaTypes container missing for Lsdb in area %s, returning", areaNameStr)
+            return  oper_err
+        }
+        ospfv2AreaLsdb_obj.LsaTypes = ospfv2AreaLsaTypes_obj
     }
     ospfv2_fill_router_lsa_state(ospfv2AreaLsaTypes_obj, areaNameStr, vrfName)
+    ospfv2_fill_network_lsa_state(ospfv2AreaLsaTypes_obj, areaNameStr, vrfName)
+    ospfv2_display_output_state(inParams)
     return  err;
+}
+func ospfv2_fill_network_lsa_state(
+    ospfv2AreaLsaTypes_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes,
+    areaNameStr interface{}, vrfName string) error {
+    var err error
+    var ospfv2AreaLsaType_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType
+    var ospfv2Lsas_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas
+    var ospfv2Lsa_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa
+    var ospfv2NetworkLsa_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_NetworkLsa
+    var ospfv2NetworkLsaState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_Lsa_NetworkLsa_State
+    var vtysh_cmd string
+    var lsId string
+    var temp interface{}
+    var lsa_info map[string]interface{}
+    var cmd_err error
+
+    oper_err := errors.New("Operational error in ospfv2_fill_network_lsa_state")
+    ospfv2AreaLsaType_obj = ospfv2AreaLsaTypes_obj.LsaType[ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_NETWORK_LSA]
+    if nil == ospfv2AreaLsaType_obj {
+        ospfv2AreaLsaType_obj, _ = ospfv2AreaLsaTypes_obj.NewLsaType(ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_NETWORK_LSA)
+        if nil == ospfv2AreaLsaType_obj {
+            log.Errorf("Failed to create router Lsa for area %s", areaNameStr)
+            return oper_err
+        }
+        ygot.BuildEmptyTree(ospfv2AreaLsaType_obj)
+    }
+    ospfv2Lsas_obj = ospfv2AreaLsaType_obj.Lsas
+    if nil == ospfv2Lsas_obj {
+        log.Errorf("cannot find Lsas inside LsaType container")
+        return oper_err
+    }
+    vtysh_cmd = "show ip ospf vrf " + vrfName + " database network json"
+    output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    if cmd_err != nil {
+      log.Errorf("Failed to fetch ospf network database for vrf %s, err=%s", vrfName, cmd_err)
+      return  cmd_err
+    }
+
+    log.Info(output_state)
+    if nil == output_state {
+        log.Errorf("Network LSA database fetched from backend is empty")
+        return oper_err
+    }
+
+    ospf_info := output_state[vrfName].(map[string]interface{})
+    if value, ok := ospf_info["areas"]; ok {
+        areas_map := value.(map[string]interface {})
+        for key, area := range areas_map {
+            if (key != areaNameStr) {
+                log.Infof("Skip filling area state information for area %s", key)
+                continue;
+            }
+            area_info := area.(map[string]interface{})
+            lsIds_info := area_info["Net Link States"].(map[string]interface{})
+            for lsId, temp = range lsIds_info {
+                lsa_info = temp.(map[string]interface{})
+                ospfv2Lsa_obj = ospfv2Lsas_obj.Lsa[lsId]
+                if nil == ospfv2Lsa_obj {
+                    ospfv2Lsa_obj, _  = ospfv2Lsas_obj.NewLsa(lsId)
+                    ygot.BuildEmptyTree(ospfv2Lsa_obj)
+                }
+                if nil == ospfv2Lsas_obj {
+                    log.Errorf("cannot create Lsa inside Lsas container")
+                    return oper_err
+                }
+                ospfv2_fill_lsa_header_information(lsa_info, ospfv2Lsa_obj.State)
+                ospfv2NetworkLsa_obj = ospfv2Lsa_obj.NetworkLsa
+                if nil == ospfv2NetworkLsa_obj {
+                    log.Info("Network LSA is empty")
+                    ygot.BuildEmptyTree(ospfv2NetworkLsa_obj)
+                }
+                ospfv2NetworkLsaState_obj = ospfv2NetworkLsa_obj.State
+                if value,ok := lsa_info["networkMask"] ; ok {
+                    _networkMask  := uint8(value.(float64))
+                    ospfv2NetworkLsaState_obj.NetworkMask = &_networkMask
+                }
+                if value,ok := lsa_info["attachedRouters"] ; ok {
+                    attachedRouters := value.([]interface{})
+                    for _, attachedRouter := range attachedRouters {
+                        attachedRouter_info := attachedRouter.(string)
+                        ospfv2NetworkLsaState_obj.AttachedRouter = append(ospfv2NetworkLsaState_obj.AttachedRouter, attachedRouter_info)
+                    }
+                }
+                
+            }
+        }
+    }
+    return err
 }
 func ospfv2_fill_router_lsa_state(
     ospfv2AreaLsaTypes_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes,
@@ -2418,6 +2534,10 @@ func ospfv2_fill_router_lsa_state(
     }
 
     log.Info(output_state)
+    if nil == output_state {
+        log.Errorf("Router LSA database fetched from backend is empty")
+        return oper_err
+    }
 
     ospf_info := output_state[vrfName].(map[string]interface{})
     if value, ok := ospf_info["areas"]; ok {
@@ -2544,8 +2664,8 @@ func ospfv2_fill_lsa_header_information(lsa_info map[string]interface{}, ospfv2L
         ospfv2LsaState_obj.OptionExpanded = &_dataOptionsExpanded
     }
     if value,ok := lsa_info["sequenceNo"] ; ok {
-        _sequenceNo  := int32(value.(float64))
-        ospfv2LsaState_obj.SequenceNumber = &_sequenceNo
+        _sequenceNo  := uint64(value.(float64))
+        ospfv2LsaState_obj.DisplaySequenceNumber = &_sequenceNo
     }
     return err
 }

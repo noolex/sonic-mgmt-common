@@ -125,18 +125,6 @@ func getOspfv2Root (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Net
     }
 
     deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
-    jsonStr, err := ygot.EmitJSON(deviceObj, &ygot.EmitJSONConfig{
-           Format:         ygot.RFC7951,
-           Indent:         "  ",
-           SkipValidation: true,
-           RFC7951Config: &ygot.RFC7951JSONConfig{
-                   AppendModuleName: true,
-           },
-    })
-    log.Info("################################")
-    log.Infof(" getOspfv2Root App ygot jsonStr: %v", jsonStr)
-    log.Info("################################")  
-
     netInstsObj := deviceObj.NetworkInstances
 
     if netInstsObj.NetworkInstance == nil {
