@@ -154,4 +154,25 @@ module sonic-igmp {
              }
         }
    }
+
+   rpc get-igmp-join {
+        description "RPC to fetch the IGMP join";
+
+        input {
+            leaf vrf-name {
+                type string;
+                default "default";
+                description
+                    "Fetches igmp join for  given VRF name. if VRF name is not present, the default VRF is used";
+            }
+        }
+
+        output {
+            leaf status {
+                type string;
+                description
+                    "On success, returns vtysh JSON string format output of all IGMP join.";
+            }
+        }
+    }
 }
