@@ -105,7 +105,7 @@ module sonic-ip-helper {
 
   }
 
-  rpc clear-ip-helper{
+  rpc clear-ip-helper-statistics{
     input {
       leaf interface {
         type string;

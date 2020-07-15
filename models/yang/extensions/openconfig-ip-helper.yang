@@ -61,11 +61,11 @@ module openconfig-ip-helper {
         "This is the list of UDP ports for which forwarding is enabled";
     }
 
-    leaf-list include-custom-ports {
-      type uint16;
-      description
-        "This is the list of custom UDP ports for which forwarding is enabled";
-    }
+  }
+
+  grouping ip-helper-global-state {
+    description
+      "Grouing for operational state data for IP helper global state";
 
     leaf-list exclude-default-ports {
       type uint16;
@@ -73,17 +73,6 @@ module openconfig-ip-helper {
         "This is the list of default UDP ports for which forwarding is disabled explicitly";
     }
 
-  }
-
-  grouping ip-helper-global-state {
-    description
-      "Grouing for operational state data for IP helper global state";
-
-    leaf-list default-enabled-ports {
-      type uint16;
-      description
-        "List of UDP ports for which relay will be enabled by default";
-    }
   }
 
   grouping ip-helper-top {
@@ -120,7 +109,7 @@ module openconfig-ip-helper {
 
   uses ip-helper-top;
 
-  rpc clear-ip-helper{
+  rpc clear-ip-helper-statistics{
     description
       "Operation for clearing IP helper statistics on interface";
 
