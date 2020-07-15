@@ -98,7 +98,71 @@ func init () {
     XlateFuncBind("DbToYang_route_table_conn_key_xfmr", DbToYang_route_table_conn_key_xfmr)
     XlateFuncBind("YangToDb_route_table_addr_family_xfmr", YangToDb_route_table_addr_family_xfmr)
     XlateFuncBind("DbToYang_route_table_addr_family_xfmr", DbToYang_route_table_addr_family_xfmr)
+    XlateFuncBind("YangToDb_route_table_src_protocol_xfmr", YangToDb_route_table_src_protocol_xfmr)
+    XlateFuncBind("DbToYang_route_table_src_protocol_xfmr", DbToYang_route_table_src_protocol_xfmr)
+    XlateFuncBind("YangToDb_route_table_dst_protocol_xfmr", YangToDb_route_table_dst_protocol_xfmr)
+    XlateFuncBind("DbToYang_route_table_dst_protocol_xfmr", DbToYang_route_table_dst_protocol_xfmr)
     XlateFuncBind("rpc_show_ip_route", rpc_show_ip_route)
+}
+
+var YangToDb_route_table_src_protocol_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+
+    return res_map, nil
+}
+
+var DbToYang_route_table_src_protocol_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    var err error
+    result := make(map[string]interface{})
+
+    entry_key := inParams.key
+    key := strings.Split(entry_key, "|")
+    source := key[1]
+    var src_proto string
+
+    if source == "connected" {
+        src_proto = "DIRECTLY_CONNECTED"
+    } else if source == "static" {
+        src_proto = "STATIC"
+    } else if source == "ospf" {
+        src_proto = "OSPF"
+    } else if source == "ospf3" {
+        src_proto = "OSPF3"
+    } else {
+        return result, errors.New("Unsupported src protocol " + source)
+    }
+
+    result["src-protocol"] = src_proto
+
+    return result, err
+}
+
+var YangToDb_route_table_dst_protocol_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+
+    return res_map, nil
+}
+
+var DbToYang_route_table_dst_protocol_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    var err error
+    result := make(map[string]interface{})
+
+    entry_key := inParams.key
+    key := strings.Split(entry_key, "|")
+    destination := key[2]
+    var dst_proto string
+
+    if destination == "bgp" {
+        dst_proto = "BGP"
+    } else {
+        return result, errors.New("Unsupported dst protocol " + destination)
+    }
+
+    result["dst-protocol"] = dst_proto
+
+    return result, err
 }
 
 var YangToDb_route_table_addr_family_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
