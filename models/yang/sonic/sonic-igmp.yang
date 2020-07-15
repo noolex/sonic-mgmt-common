@@ -19,6 +19,10 @@ module sonic-igmp {
         prefix spc;
     }
 
+    import sonic-vrf {
+        prefix vrf;
+    }
+    
     import sonic-vlan {
         prefix svlan;
     }
@@ -175,4 +179,56 @@ module sonic-igmp {
             }
         }
     }
+
+   rpc clear-igmp {
+
+    description "RPC for clearing IGMP sessions. Input can be :
+        1. All IGMP sessions in an Interface in default VRF
+        2. All IGMP sessions in an Interface within a VRF  ";
+
+    input {
+        leaf vrf-name {
+            type union {
+                type string {
+                    pattern "default";
+                }
+                type leafref {
+                    path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                }
+            }
+            description
+                "IGMP VRF name.";
+        }
+
+        leaf interface {
+            type union {
+                type leafref {
+                    path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                }
+                type leafref {
+                    path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                }
+                type leafref {
+                    path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                }
+            }
+            description
+                "Interface name on which the Igmp sessions have to be cleared";
+        }
+
+        leaf interface-all {
+            type boolean; 
+            description
+                "Igmp have to be cleared for all interfaces";
+        }
+    }
+
+    output {
+        leaf status {
+            type string;
+            description
+                "Success / failure in clearing IGMP operation execution request.";
+        }
+    }
+  }
 }
