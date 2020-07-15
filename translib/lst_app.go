@@ -26,7 +26,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "github.com/Azure/sonic-mgmt-common/translib/utils"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"reflect"
 	"strconv"
@@ -305,7 +305,7 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 				}
 				for upstr := range intfPtr.UpstreamGroups.UpstreamGroup {
 					// Check group is part of request
-                    ifName := *utils.GetNativeNameFromUIName(&id)
+					ifName := *utils.GetNativeNameFromUIName(&id)
 					upstreams := app.intfUpstreamCfgTblMap[ifName]
 					upstreams = append(upstreams, upstr)
 					app.intfUpstreamCfgTblMap[ifName] = upstreams
@@ -317,7 +317,7 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 				if !isInterfaceNameValid(id, true) {
 					return tlerr.InvalidArgs("Interface %s is invalid for downstream", id)
 				}
-                ifName := *utils.GetNativeNameFromUIName(&id)
+				ifName := *utils.GetNativeNameFromUIName(&id)
 				app.intfDownstreamCfgTblMap[ifName] = *intfPtr.DownstreamGroup.Config.GroupName
 			}
 		}
@@ -749,7 +749,7 @@ func (app *LstApp) applyData(d *db.DB) error {
 	}
 
 	for name, grpData := range app.intfTrackCfgTblMap {
-        grpData.Field["NULL"] = "NULL"
+		grpData.Field["NULL"] = "NULL"
 		if _, found := app.intfTrackCfgTblCache[name]; !found {
 			err := d.CreateEntry(app.intfTrackCfgTs, db.Key{Comp: []string{name}}, grpData)
 			if err != nil {
@@ -820,46 +820,46 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
 				return err
 			}
 
-            /* Convert to UI names */
-            upPorts := []string{}
-            for _, upIntf := range grpData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
-                uiName := *utils.GetUINameFromNativeName(&upIntf)
-                upPorts = append(upPorts, uiName)
-                app.intfUpstreamCfgTblMap[uiName] = append(app.intfUpstreamCfgTblMap[upIntf], k.Comp[0])
-            }
-            grpData.SetList(INTF_TRACK_FIELD_UPSTREAM, upPorts)
+			/* Convert to UI names */
+			upPorts := []string{}
+			for _, upIntf := range grpData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
+				uiName := *utils.GetUINameFromNativeName(&upIntf)
+				upPorts = append(upPorts, uiName)
+				app.intfUpstreamCfgTblMap[uiName] = append(app.intfUpstreamCfgTblMap[uiName], k.Comp[0])
+			}
+			grpData.SetList(INTF_TRACK_FIELD_UPSTREAM, upPorts)
 
-            downPorts := []string{}
-            for _, downIntf := range grpData.GetList(INTF_TRACK_FIELD_DOWNSTREAM) {
-                uiName := *utils.GetUINameFromNativeName(&downIntf)
-                downPorts = append(downPorts, uiName)
-            }
-            grpData.SetList(INTF_TRACK_FIELD_DOWNSTREAM, downPorts)
+			downPorts := []string{}
+			for _, downIntf := range grpData.GetList(INTF_TRACK_FIELD_DOWNSTREAM) {
+				uiName := *utils.GetUINameFromNativeName(&downIntf)
+				downPorts = append(downPorts, uiName)
+			}
+			grpData.SetList(INTF_TRACK_FIELD_DOWNSTREAM, downPorts)
 
-            /* Convert State DB to UI names */
+			/* Convert State DB to UI names */
 			grpStateData, stErr := dbs[db.StateDB].GetEntry(app.intfTrackStTs, k)
 			if stErr != nil {
 				return stErr
 			}
 
-            upPorts = []string{}
-            for _, upIntf := range grpStateData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
-                uiName := *utils.GetUINameFromNativeName(&upIntf)
-                upPorts = append(upPorts, uiName)
-            }
-            grpStateData.SetList(INTF_TRACK_FIELD_UPSTREAM, upPorts)
+			upPorts = []string{}
+			for _, upIntf := range grpStateData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
+				uiName := *utils.GetUINameFromNativeName(&upIntf)
+				upPorts = append(upPorts, uiName)
+			}
+			grpStateData.SetList(INTF_TRACK_FIELD_UPSTREAM, upPorts)
 
-            downPorts = []string{}
-            for _, downIntf := range grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM) {
-                uiName := *utils.GetUINameFromNativeName(&downIntf)
-                downPorts = append(downPorts, uiName)
-                app.intfDownstreamCfgTblMap[uiName] = k.Comp[0]
-            }
-            grpStateData.SetList(INTF_TRACK_FIELD_DOWNSTREAM, downPorts)
+			downPorts = []string{}
+			for _, downIntf := range grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM) {
+				uiName := *utils.GetUINameFromNativeName(&downIntf)
+				downPorts = append(downPorts, uiName)
+				app.intfDownstreamCfgTblMap[uiName] = k.Comp[0]
+			}
+			grpStateData.SetList(INTF_TRACK_FIELD_DOWNSTREAM, downPorts)
 
 			app.intfTrackCfgTblMap[k.Comp[0]] = grpStateData
-            all_intf = append(all_intf, grpData.GetList(INTF_TRACK_FIELD_UPSTREAM)...)
-            all_intf = append(all_intf, grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM)...)
+			all_intf = append(all_intf, grpData.GetList(INTF_TRACK_FIELD_UPSTREAM)...)
+			all_intf = append(all_intf, grpStateData.GetList(INTF_TRACK_FIELD_DOWNSTREAM)...)
 
 			log.Infof("Upstream:%v", app.intfUpstreamCfgTblMap)
 			log.Infof("Downstream:%v", app.intfDownstreamCfgTblMap)
@@ -958,24 +958,22 @@ func (app *LstApp) processLstInterfaceGet(dbs [db.MaxDB]*db.DB, intfPtr *ocbinds
 	intfPtr.InterfaceRef.State.Interface = intfPtr.Id
 
 	if upFound {
-		log.Info("Filling upstream info")
 		err := app.processLstInterfaceUpstreamGet(dbs, *intfPtr.Id, intfPtr.UpstreamGroups)
 		if err != nil {
 			return err
 		}
 	} else {
-        intfPtr.UpstreamGroups = nil
-    }
+		intfPtr.UpstreamGroups = nil
+	}
 
 	if downFound {
-		log.Info("Filling Downstream info")
 		err := app.processLstInterfaceDownstreamGet(dbs, *intfPtr.Id, intfPtr.DownstreamGroup)
 		if err != nil {
 			return err
 		}
 	} else {
-        intfPtr.DownstreamGroup = nil
-    }
+		intfPtr.DownstreamGroup = nil
+	}
 
 	return nil
 }
@@ -983,13 +981,15 @@ func (app *LstApp) processLstInterfaceGet(dbs [db.MaxDB]*db.DB, intfPtr *ocbinds
 func (app *LstApp) processLstInterfaceUpstreamGet(dbs [db.MaxDB]*db.DB, intf string,
 	upIntfPtr *ocbinds.OpenconfigLstExt_Lst_Interfaces_Interface_UpstreamGroups) error {
 
+	log.Infof("Filling upstream info for %v", intf)
+
 	if nil == upIntfPtr.UpstreamGroup || len(upIntfPtr.UpstreamGroup) == 0 {
 		upGrps, found := app.intfUpstreamCfgTblMap[intf]
 		if !found {
 			return tlerr.NotFound("Intf %s is not configured as upstream for any groups", intf)
 		}
 
-		log.Info(upGrps)
+		log.Infof("Groups are %v", upGrps)
 		for _, upgrp := range upGrps {
 			upGrpPtr, err := upIntfPtr.NewUpstreamGroup(upgrp)
 			if nil != err {
@@ -1018,14 +1018,22 @@ func (app *LstApp) processLstInterfaceUpstreamGet(dbs [db.MaxDB]*db.DB, intf str
 func (app *LstApp) processLstInterfaceDownstreamGet(dbs [db.MaxDB]*db.DB, intf string,
 	downIntfPtr *ocbinds.OpenconfigLstExt_Lst_Interfaces_Interface_DownstreamGroup) error {
 
+	log.Infof("Filling Downstream info for %v", intf)
+
 	grpName, found := app.intfDownstreamCfgTblMap[intf]
 	if !found {
 		return tlerr.NotFound("Intf %s is not configured as downstream of any groups", intf)
 	}
 
-	log.Infof("Fill downstream data for %s", intf)
+	cfgGrpData := app.intfTrackCfgTblCache[grpName]
+	cfgDownPorts := cfgGrpData.GetList(INTF_TRACK_FIELD_DOWNSTREAM)
+
 	ygot.BuildEmptyTree(downIntfPtr)
-	downIntfPtr.Config.GroupName = &grpName
+	if contains(cfgDownPorts, intf) {
+		downIntfPtr.Config.GroupName = &grpName
+	} else {
+		log.Infof("Intf %v not present in config %v. Populate only state info", &intf, cfgDownPorts)
+	}
 	downIntfPtr.State.GroupName = &grpName
 
 	grpStateData := app.intfTrackCfgTblMap[grpName]
