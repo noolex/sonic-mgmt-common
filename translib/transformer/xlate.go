@@ -652,6 +652,7 @@ func xfmrSubscSubtreeHandler(inParams XfmrSubscInParams, xfmrFuncNm string) (Xfm
     retVal.needCache = false
     retVal.onChange = false
     retVal.nOpts = nil
+    retVal.isVirtualTbl = false
 
     xfmrLogInfo("Received inParams %v Subscribe Subtree function name %v", inParams, xfmrFuncNm)
     ret, err := XlateFuncCall("Subscribe_"  + xfmrFuncNm, inParams)

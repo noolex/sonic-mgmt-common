@@ -20,6 +20,7 @@ func init() {
         XlateFuncBind("YangToDb_ntp_global_key_xfmr", YangToDb_ntp_global_key_xfmr)
         XlateFuncBind("YangToDb_ntp_server_subtree_xfmr", YangToDb_ntp_server_subtree_xfmr)
         XlateFuncBind("DbToYang_ntp_server_subtree_xfmr", DbToYang_ntp_server_subtree_xfmr)
+        XlateFuncBind("Subscribe_ntp_server_subtree_xfmr", Subscribe_ntp_server_subtree_xfmr)
 }
 
 func getSystemRootObject(inParams XfmrParams) (*ocbinds.OpenconfigSystem_System) {
@@ -417,4 +418,32 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         err = ProcessGetNtpServer(inParams, vrfName, isMgmtVrfEnabled)
 
         return err
+}
+
+var Subscribe_ntp_server_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+        var err error
+        var result XfmrSubscOutParams
+        result.dbDataMap = make(RedisDbMap)
+
+        pathInfo := NewPathInfo(inParams.uri)
+
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+        keyName := pathInfo.Var("address")
+
+        log.Infof("Subscribe_ntp_server_subtree_xfmr path %v key %v ", targetUriPath, keyName)
+
+        if (keyName != "") {
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{NTP_SERVER_TABLE_NAME:{keyName:{}}}}
+                log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+        } else {
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{NTP_SERVER_TABLE_NAME:{"*":{}}}}
+                log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+        }
+        result.needCache = true
+        result.nOpts = new(notificationOpts)
+        result.nOpts.mInterval = 15
+        result.nOpts.pType = OnChange
+        log.Info("Returning Subscribe_ntp_server_subtree_xfmr")
+        return result, err
 }
