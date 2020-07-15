@@ -20,7 +20,6 @@ package translib
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
