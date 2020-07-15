@@ -39,8 +39,10 @@ func init() {
     XlateFuncBind("DbToYang_nat_enable_xfmr", DbToYang_nat_enable_xfmr)
     XlateFuncBind("YangToDb_napt_mapping_subtree_xfmr", YangToDb_napt_mapping_subtree_xfmr)
     XlateFuncBind("DbToYang_napt_mapping_subtree_xfmr", DbToYang_napt_mapping_subtree_xfmr)
+    XlateFuncBind("Subscribe_napt_mapping_subtree_xfmr", Subscribe_napt_mapping_subtree_xfmr)
     XlateFuncBind("YangToDb_nat_mapping_subtree_xfmr", YangToDb_nat_mapping_subtree_xfmr)
     XlateFuncBind("DbToYang_nat_mapping_subtree_xfmr", DbToYang_nat_mapping_subtree_xfmr)
+    XlateFuncBind("Subscribe_nat_mapping_subtree_xfmr", Subscribe_nat_mapping_subtree_xfmr)
     XlateFuncBind("YangToDb_nat_pool_key_xfmr", YangToDb_nat_pool_key_xfmr)
     XlateFuncBind("DbToYang_nat_pool_key_xfmr", DbToYang_nat_pool_key_xfmr)
     XlateFuncBind("YangToDb_nat_pool_name_field_xfmr", YangToDb_nat_pool_name_field_xfmr)
@@ -350,6 +352,30 @@ var YangToDb_nat_mapping_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
 
     return natMap, err
 }
+
+var Subscribe_nat_mapping_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+        var err error
+        var result XfmrSubscOutParams
+        result.dbDataMap = make(RedisDbMap)
+
+        pathInfo := NewPathInfo(inParams.uri)
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+        keyName := pathInfo.Var("external-address")
+
+        log.Infof("Subscribe_nat_mapping_subtree_xfmr path %v key %v ", targetUriPath, keyName)
+        if (keyName != "") {
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAT:{keyName:{}}}}
+        } else {
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAT:{"*":{}}}}
+        }
+        result.needCache = true
+        result.nOpts = new(notificationOpts)
+        result.nOpts.mInterval = 15
+        result.nOpts.pType = OnChange
+        return result, err
+}
+
 
 func nat_mapping_Cfg_attr_get (attrUri string, natKey string, natCfgObj *ocbinds.OpenconfigNat_Nat_Instances_Instance_NatMappingTable_NatMappingEntry_Config, entry *db.Value) error {
 
@@ -755,6 +781,37 @@ var YangToDb_napt_mapping_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
     return naptMap, err
 }
+
+var Subscribe_napt_mapping_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+        var err error
+        var result XfmrSubscOutParams
+        result.dbDataMap = make(RedisDbMap)
+
+        pathInfo := NewPathInfo(inParams.uri)
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+        externalAddress := pathInfo.Var("external-address")
+
+        protocol := pathInfo.Var("protocol")
+        protoValInt, _ := strconv.Atoi(protocol)
+
+        externalPort := pathInfo.Var("external-port")
+
+        dbkey := externalAddress + "|" + protocol_map[uint8(protoValInt)] + "|" + externalPort
+
+        log.Infof("Subscribe_napt_mapping_subtree_xfmr path %v key %v ", targetUriPath, dbkey)
+        if (externalAddress == "" && protocol == "" && externalPort == "") {
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAPT:{"*":{}}}}
+        } else {
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAPT:{dbkey:{}}}}
+        }
+        result.needCache = true
+        result.nOpts = new(notificationOpts)
+        result.nOpts.mInterval = 15
+        result.nOpts.pType = OnChange
+        return result, err
+}
+
 
 func napt_mapping_Cfg_attr_get (attrUri string, naptKey ocbinds.OpenconfigNat_Nat_Instances_Instance_NaptMappingTable_NaptMappingEntry_Key, naptCfgObj *ocbinds.OpenconfigNat_Nat_Instances_Instance_NaptMappingTable_NaptMappingEntry_Config, entry *db.Value) error {
 
