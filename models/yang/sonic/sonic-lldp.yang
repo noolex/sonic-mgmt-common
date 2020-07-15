@@ -7,6 +7,10 @@ module sonic-lldp {
         prefix prt;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -121,5 +125,21 @@ module sonic-lldp {
             }
         }
 
+        container LLDP_PORT_TABLE {
+            config false;
+
+            list LLDP_PORT_TABLE_LIST {
+                sonic-ext:db-name "APPL_DB";
+                key "ifname";
+
+                leaf ifname {
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
+                    description
+                        "Reference of port on which LLDP is configured.";
+                }
+            }
+        }
     }
 }

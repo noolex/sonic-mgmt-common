@@ -37,16 +37,6 @@ module openconfig-if-ethernet-ext2 {
   oc-ext:catalog-organization "openconfig";
   oc-ext:origin "openconfig";
 
- identity SPEED_200GB {
-    base oc-eth:ETHERNET_SPEED;
-    description "200 Gbps Ethernet";
-  }
-
-  identity SPEED_400GB {
-    base oc-eth:ETHERNET_SPEED;
-    description "400 Gbps Ethernet";
-  }
-
   grouping if-ethernet-ext2-frames-size-dist-state {
     description
       "Grouping for defining the size distribution of the frames

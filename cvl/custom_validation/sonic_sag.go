@@ -90,3 +90,53 @@ func (t *CustomValidation) ValidateSagMac(vc *CustValidationCtxt) CVLErrorInfo {
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
+
+
+func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
+	gwipData :=  vc.CurCfg.Data["gwip@"]
+	keyName := vc.CurCfg.Key
+	keyNameSplit := strings.Split(keyName, "|")
+	ifName := keyNameSplit[1]
+
+	log.Info("ValidateSagIp op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
+
+	if vc.CurCfg.VOp == OP_DELETE || len(gwipData) == 0 {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	tblNameExt := "VLAN_INTERFACE" + "|" + ifName + "|" + "*"
+
+	tableKeys, err:= vc.RClient.Keys(tblNameExt).Result()
+
+	if (err != nil) || (vc.SessCache == nil) {
+		log.Info("ValidateSagIp interface IP is empty")
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+
+	gwips := strings.Split(gwipData, ",")
+	for _, gwip := range(gwips)	{
+
+		gwIpSplit := strings.Split(gwip, "/")
+
+		for _, dbKey := range tableKeys {
+			ifKeySplit := strings.Split(dbKey, "|")
+
+			ifIpSplit := strings.Split(ifKeySplit[2], "/")
+
+			if ((gwIpSplit[0] == ifIpSplit[0]) && (gwIpSplit[1] == ifIpSplit[1])) {
+
+				log.Info("Anycast address cannot be same as interface address")
+				errStr := "Anycast address cannot be same as interface address"
+				return CVLErrorInfo {
+					ErrCode: CVL_SEMANTIC_ERROR,
+					TableName: keyNameSplit[0],
+					CVLErrDetails: errStr,
+					ConstraintErrMsg: errStr,
+				}
+			}
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}

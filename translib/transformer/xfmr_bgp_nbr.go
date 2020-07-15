@@ -4,6 +4,7 @@ import (
     "errors"
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "strconv"
     "github.com/openconfig/ygot/ygot"
@@ -202,8 +203,9 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
 }
 
 var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    var err error
+    var err, oerr error
     var vrfName string
+    var isLocalIpExist bool
 
     pathInfo := NewPathInfo(inParams.uri)
 
@@ -237,6 +239,15 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     }
     if len(nbrAddr) == 0 {
         return "", nil
+    }
+    if (inParams.oper != GET) {
+        isLocalIpExist, oerr = checkLocalIpExist (inParams.d, nbrAddr);
+        if oerr == nil && isLocalIpExist {
+            errStr := "Can not configure the local system IP as neighbor"
+            err = tlerr.InvalidArgsError{Format: errStr}
+            log.Error(errStr)
+            return nbrAddr, err
+        }
     }
     util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
 
@@ -739,7 +750,6 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
         log.Info("Neighbo Missing")
         return pNbr, err
     }
-
     if len(afName) == 0 {
         err = errors.New("AFI SAFI is missing")
         return afName, err

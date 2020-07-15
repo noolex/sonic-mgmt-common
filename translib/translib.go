@@ -415,24 +415,6 @@ func Delete(req SetRequest) (SetResponse, error) {
 
 	log.Info("Delete request received with path =", path)
 
-	requestPathInfo := NewPathInfo(path)
-    requestUriPath, _ := getYangPathFromUri(requestPathInfo.Path)
-	log.Info("requestUriPath : ", requestUriPath)
-    ifName := requestPathInfo.Var("name")
-
-    switch requestUriPath {
-        case "/openconfig-interfaces:interfaces": 
-        {
-            log.Info("delete on this container not allowed")
-            resp.ErrSrc = AppErr
-            return resp, tlerr.New("DELETE operation not supported on this container")
-        }
-    }
-
-    // Differentiate the same uri based on ifName key
-    if requestUriPath == "/openconfig-interfaces:interfaces/interface" && len(ifName) == 0 {
-        return resp, tlerr.New("Delete operation not supported!")
-    }
 	app, appInfo, err := getAppModule(path, req.ClientVersion)
 
 	if err != nil {

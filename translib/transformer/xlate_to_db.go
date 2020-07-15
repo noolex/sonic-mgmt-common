@@ -512,6 +512,9 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 
 	xlateToData := formXlateToDbParam(d, ygRoot, oper, root, uri, "", "", jsonData, resultMap, result, txCache, tblXpathMap, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
 
+	moduleNm := "/" + strings.Split(uri, "/")[1]
+	xfmrLogInfo("Module name for uri %s is %s", uri, moduleNm)
+
 	if isSonicYang(uri) {
 		err = sonicYangReqToDbMapCreate(xlateToData)
 		xpathPrefix, keyName, tableName := sonicXpathKeyExtract(uri)
@@ -541,6 +544,19 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			resultMap[oper][db.ConfigDB] = result
 		}
 	} else {
+		/* Invoke pre-xfmr is present for the yang module */
+		if modSpecInfo, specOk := xYangSpecMap[moduleNm]; specOk && (len(modSpecInfo.xfmrPre) > 0) {
+			var dbs [db.MaxDB]*db.DB
+			inParams := formXfmrInputRequest(d, dbs, db.ConfigDB, ygRoot, uri, requestUri, oper, "", nil, xlateToData.subOpDataMap, nil, txCache)
+			err = preXfmrHandlerFunc(modSpecInfo.xfmrPre, inParams)
+			xfmrLogInfo("Invoked pre-transformer: %v, oper: %v, subOpDataMap: %v ",
+			modSpecInfo.xfmrPre, oper, subOpDataMap)
+			if err != nil {
+				log.Errorf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
+				return err
+			}
+		}
+
 		err = yangReqToDbMapCreate(xlateToData)
 		if xfmrErr != nil {
 			return xfmrErr

@@ -58,7 +58,7 @@ module sonic-sflow {
 
                 leaf collector_vrf {
                     type string {
-                            pattern "default";
+                            pattern "default|mgmt";
                     }
                     description "Network-instance/VRF name";
                 }

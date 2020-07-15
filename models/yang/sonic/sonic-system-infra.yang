@@ -61,4 +61,17 @@ module sonic-system-infra {
         }
     }
 
+    rpc show-sys-log {
+        description
+            "show system log";
+        output {
+            leaf result{
+               type string;
+               description
+                    "The detailed status of the operation execution request.";
+           }
+        }
+    }
+
+
 }

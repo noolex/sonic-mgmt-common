@@ -544,6 +544,18 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			specYangType := yangTypeGet(spec.yangEntry)
 			moduleNm := "/" + strings.Split(uri, "/")[1]
 			xfmrLogInfo("Module name for uri %s is %s", uri, moduleNm)
+			if modSpecInfo, specOk := xYangSpecMap[moduleNm]; specOk && (len(modSpecInfo.xfmrPre) > 0) {
+				var dbs [db.MaxDB]*db.DB
+				inParams := formXfmrInputRequest(d, dbs, db.ConfigDB, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
+				err = preXfmrHandlerFunc(modSpecInfo.xfmrPre, inParams)
+				xfmrLogInfo("Invoked pre-transformer: %v, oper: %v, subOpDataMap: %v ",
+				modSpecInfo.xfmrPre, oper, subOpDataMap)
+				if err != nil {
+					log.Errorf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
+					return err
+				}
+			}
+
 			if spec.cascadeDel == XFMR_ENABLE && tableName != "" && tableName != XFMR_NONE_STRING {
 				if !contains(cascadeDelTbl, tableName) {
 					cascadeDelTbl = append(cascadeDelTbl, tableName)

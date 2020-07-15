@@ -30,7 +30,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/transformer"
-	"github.com/Azure/sonic-mgmt-common/cvl"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	"sync"
 )
 
@@ -470,34 +470,6 @@ func (app *CommonApp) processCommon(d *db.DB, opcode int) error {
 	return err
 }
 
-//sort transformer result table list based on dependenciesi(using CVL API) tables to be used for CRUD operations
-func sortAsPerTblDeps(tblLst []string) ([]string, error) {
-	var resultTblLst []string
-	var err error
-	logStr := "Failure in CVL API to sort table list as per dependencies."
-
-	cvSess, cvlRetSess := cvl.ValidationSessOpen()
-	if cvlRetSess != cvl.CVL_SUCCESS {
-
-		log.Errorf("Failure in creating CVL validation session object required to use CVl API(sort table list as per dependencies) - %v", cvlRetSess)
-		err = fmt.Errorf("%v", logStr)
-		return resultTblLst, err
-	}
-	cvlSortDepTblList, cvlRetDepTbl := cvSess.SortDepTables(tblLst)
-	if cvlRetDepTbl != cvl.CVL_SUCCESS {
-		log.Warningf("Failure in cvlSess.SortDepTables: %v", cvlRetDepTbl)
-		cvl.ValidationSessClose(cvSess)
-		err = fmt.Errorf("%v", logStr)
-		return resultTblLst, err
-	}
-	log.Info("cvlSortDepTblList = ", cvlSortDepTblList)
-	resultTblLst = cvlSortDepTblList
-
-	cvl.ValidationSessClose(cvSess)
-	return resultTblLst, err
-
-}
-
 func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[string]map[string]db.Value) error {
 	var err error
 	var cmnAppTs *db.TableSpec
@@ -507,7 +479,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
-	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
+	resultTblLst, err = utils.SortAsPerTblDeps(xfmrTblLst)
 	if err != nil {
 		return err
 	}
@@ -635,7 +607,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
-	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
+	resultTblLst, err = utils.SortAsPerTblDeps(xfmrTblLst)
 	if err != nil {
 		return err
 	}
@@ -795,7 +767,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 						}
 					} else {
 						if opcode == DELETE {
-                                                        exstLst = removeElement(exstLst, item)
+                                                        exstLst = utils.RemoveElement(exstLst, item)
                                                 }
 
 					}

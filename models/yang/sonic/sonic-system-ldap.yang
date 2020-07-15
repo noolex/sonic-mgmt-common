@@ -305,12 +305,9 @@ module sonic-system-ldap {
         key "name";
 
         leaf name {
-        		type union {
-              type inet:ip-address;
-              type string;
-        		}
+        		type inet:host;
             description
-              "Server host name";
+							"LDAP server's Domain name or IP address (IPv4 or IPv6)";            
         }
 
         leaf port {
@@ -337,8 +334,19 @@ module sonic-system-ldap {
 		          description
 		            "sudo";                
 		        }                
-		      }
-		      
+		        enum nss_sudo {
+		          description
+		            "nss, sudo";                
+		        }
+		        enum nss_pam {
+		          description
+		            "nss, pam";                
+		        }
+		        enum sudo_pam {
+		          description
+		            "sudo, pam";                
+		        }	        
+		      }		      
 					description
 						"Server type";			
 				}
