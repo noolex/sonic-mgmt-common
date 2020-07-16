@@ -265,20 +265,6 @@ func fill_pim_intf_cfg_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_s
             intfStateObj.BfdEnabled = &_bfdEnabled
         }
 
-        if value, ok := cfgDbEntry["dr-priority"] ; ok {
-            if _drPriorityU64, err := strconv.ParseUint(value, 10, 32) ; err == nil {
-                _drPriorityU32 := uint32(_drPriorityU64)
-                intfStateObj.DrPriority = &_drPriorityU32
-            }
-        }
-
-        if value, ok := cfgDbEntry["hello-interval"] ; ok {
-            if _helloIntervalU64, err := strconv.ParseUint(value, 10, 8) ; err == nil {
-                _helloIntervalU8 := uint8(_helloIntervalU64)
-                intfStateObj.HelloInterval = &_helloIntervalU8
-            }
-        }
-
         if value, ok := cfgDbEntry["mode"] ; ok {
             switch value {
                 case "sm":
@@ -290,9 +276,9 @@ func fill_pim_intf_cfg_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_s
     return true
 }
 
-func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state_key, intfData map[string]interface{},
+func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state_key, intfDtlData map[string]interface{},
                                intfStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces_Interface_State) bool {
-    if value, ok := intfData["state"] ; ok {
+    if value, ok := intfDtlData["state"] ; ok {
         _enabled := false
         switch value {
             case "up":
@@ -301,19 +287,30 @@ func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state
         intfStateObj.Enabled = &_enabled
     }
 
-    if value, ok := intfData["pimDesignatedRouter"] ; ok {
+    if value, ok := intfDtlData["drAddress"] ; ok {
         _drAddress := value.(string)
         intfStateObj.DrAddress = &_drAddress
     }
 
-    if value, ok := intfData["address"] ; ok {
+    if value, ok := intfDtlData["address"] ; ok {
         _localAddress := value.(string)
         intfStateObj.LocalAddress = &_localAddress
     }
 
-    if value, ok := intfData["pimNeighbors"] ; ok {
-        _nbrsCount := uint16(value.(float64))
-        intfStateObj.NbrsCount = &_nbrsCount
+    var _nbrsCount uint16
+    if value, ok := intfDtlData["neighbors"] ; ok {
+        _nbrsCount = uint16(len(value.(map[string]interface{})))
+    }
+    intfStateObj.NbrsCount = &_nbrsCount
+
+    if value, ok := intfDtlData["drPriority"] ; ok {
+        _drPriority := uint32(value.(float64))
+        intfStateObj.DrPriority = &_drPriority
+    }
+
+    if value, ok := intfDtlData["helloPeriod"] ; ok {
+        _helloInterval := uint8(value.(float64))
+        intfStateObj.HelloInterval = &_helloInterval
     }
 
     return true
@@ -349,8 +346,8 @@ var DbToYang_pim_intf_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
         ygot.BuildEmptyTree(intfsObj)
     }
 
-    cmd := "show ip pim vrf " + niName + " interface json"
-    pimIntfOutputJson, cmdErr := pim_exec_vtysh_cmd (cmd)
+    cmd := "show ip pim vrf " + niName + " interface detail json"
+    pimIntfDtlOutputJson, cmdErr := pim_exec_vtysh_cmd (cmd)
     if (cmdErr != nil) {
         log.Errorf ("%s failed !! Error:%s", cmnLog, cmdErr)
         return operErr
@@ -374,10 +371,10 @@ var DbToYang_pim_intf_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     intfKey.intfId = nativeIntfIdKey
 
     fill_pim_intf_cfg_state_info (inParams, intfKey, intfStateObj)
-    for intfId := range pimIntfOutputJson {
+    for intfId := range pimIntfDtlOutputJson {
         if (nativeIntfIdKey != "" && (intfId != nativeIntfIdKey)) {continue}
-        intfData, ok := pimIntfOutputJson[intfId].(map[string]interface{}) ; if !ok {continue}
-        fill_pim_intf_state_info (inParams, intfKey, intfData, intfStateObj)
+        intfDtlData, ok := pimIntfDtlOutputJson[intfId].(map[string]interface{}) ; if !ok {continue}
+        fill_pim_intf_state_info (inParams, intfKey, intfDtlData, intfStateObj)
     }
 
     return err
