@@ -884,6 +884,9 @@ func (app *AclApp) convertInternalToOCAclRuleProperties(ruleData db.Value, aclTy
 			if strings.ToUpper(ruleData.Get(ruleKey)) == "FORWARD" {
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_ACCEPT
 				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_ACCEPT
+			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "DO_NOT_NAT" {
+				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT
+				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT
 			} else {
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
 				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
@@ -1998,6 +2001,8 @@ func convertOCToInternalInputAction(ruleData db.Value, aclName string, ruleIndex
 			ruleData.Field[ACL_RULE_PACKET_ACTION] = "FORWARD"
 		case ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP:
 			ruleData.Field[ACL_RULE_PACKET_ACTION] = "DROP"
+		case ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT:
+			ruleData.Field[ACL_RULE_PACKET_ACTION] = "DO_NOT_NAT"
 		default:
 			return tlerr.NotSupported("input-interface not supported")
 		}
