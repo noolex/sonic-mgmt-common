@@ -90,12 +90,17 @@ func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfac
     var err error
 	log.Info("DELETE Unnum Intf:=", *tblName, *ifName)
 
-	intfIPKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:*tblName})
-	if len(intfIPKeys) > 0 {
-		for i := range intfIPKeys {
-			if len(intfIPKeys[i].Comp) > 1 {
-				ifdb[UNNUMBERED] = ""
-				break;
+	entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:*tblName}, db.Key{Comp: []string{*ifName}})
+	if len(entry.Field) > 1 {
+		ifdb[UNNUMBERED] = ""
+	} else {
+		intfIPKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:*tblName})
+		if len(intfIPKeys) > 0 {
+			for i := range intfIPKeys {
+				if len(intfIPKeys[i].Comp) > 1 {
+					ifdb[UNNUMBERED] = ""
+					break;
+				}
 			}
 		}
 	}
@@ -341,7 +346,7 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
                 log.Info("Config Unnum Intf: " + value)
             }
         } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref") ||
-                strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref") {
+                strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-interfaces:unnumbered/interface-ref") {
             entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
 
             if dbErr != nil {

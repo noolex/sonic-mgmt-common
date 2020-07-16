@@ -231,6 +231,9 @@ func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]K
 				dbFormat.Key.Comp = append(dbFormat.Key.Comp, keyStr)
 			}
 			for _, child := range xpathInfo.childTable {
+				if child == dbFormat.Ts.Name {
+					continue
+				}
 				if xDbSpecMap != nil {
 					if _, ok := xDbSpecMap[child]; ok {
 						chlen := len(xDbSpecMap[child].yangXpath)
@@ -404,11 +407,12 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	requestUri := uri
 	/* Check if the parent table exists for RFC compliance */
         var exists bool
-        exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache)
+	subOpMapDiscard := make(map[int]*RedisDbMap)
+        exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache, subOpMapDiscard)
         xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
         if err != nil {
-                log.Errorf("Parent table does not exist for uri %v. Cannot perform Operation GET", uri)
-                return []byte(""), true, err
+		log.Errorf("Cannot perform GET Operation on uri %v due to - %v", uri, err)
+		return []byte(""), true, err
         }
         if !exists {
                 err = tlerr.NotFoundError{Format:"Resource Not found"}
@@ -450,7 +454,12 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 									return []byte(""), true, valErr
 								}
 								if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], leafListInstVal) {
-									dbData[cdb][tableName][keyStr].Field[fieldName] = leafListInstVal
+									/* Since translib already fills in ygRoot with queried leaf-list instance, do not
+									   fill in resFldValMap or else Unmarshall of payload(resFldValMap) into ygotTgt in
+									   app layer will create duplicate instances in result.
+									 */
+									 log.Info("Queried leaf-list instance exists.")
+									 return []byte("{}"), false, nil
 								} else {
 									xfmrLogInfoAll("Queried leaf-list instance does not exist - %v", uri)
 									return []byte(""), true, tlerr.NotFoundError{Format:"Resource not found"}
@@ -643,6 +652,7 @@ func xfmrSubscSubtreeHandler(inParams XfmrSubscInParams, xfmrFuncNm string) (Xfm
     retVal.needCache = false
     retVal.onChange = false
     retVal.nOpts = nil
+    retVal.isVirtualTbl = false
 
     xfmrLogInfo("Received inParams %v Subscribe Subtree function name %v", inParams, xfmrFuncNm)
     ret, err := XlateFuncCall("Subscribe_"  + xfmrFuncNm, inParams)

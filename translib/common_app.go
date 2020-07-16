@@ -20,7 +20,6 @@ package translib
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
@@ -30,7 +29,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/transformer"
-	"github.com/Azure/sonic-mgmt-common/cvl"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	"sync"
 )
 
@@ -44,6 +43,7 @@ type CommonApp struct {
 	skipOrdTableChk bool
 	cmnAppTableMap map[int]map[db.DBNum]map[string]map[string]db.Value
 	cmnAppYangDefValMap map[string]map[string]db.Value
+	appOptions
 }
 
 var cmnAppInfo = appInfo{appType: reflect.TypeOf(CommonApp{}),
@@ -78,6 +78,7 @@ func (app *CommonApp) initialize(data appData) {
 	log.Info("initialize:path =", data.path)
 	pathInfo := NewPathInfo(data.path)
 	*app = CommonApp{pathInfo: pathInfo, body: data.payload, ygotRoot: data.ygotRoot, ygotTarget: data.ygotTarget, skipOrdTableChk: false}
+	app.appOptions = data.appOptions
 
 }
 
@@ -229,7 +230,7 @@ func (app *CommonApp) processDelete(d *db.DB) (SetResponse, error) {
 	var err error
 	var resp SetResponse
 
-	log.Info("processDelete:path =", app.pathInfo.Path)
+	log.Infof("processDelete:path = %s, deleteEmptyEntry = %v", app.pathInfo.Path, app.deleteEmptyEntry)
 
 	if err = app.processCommon(d, DELETE); err != nil {
 		log.Error(err)
@@ -468,34 +469,6 @@ func (app *CommonApp) processCommon(d *db.DB, opcode int) error {
 	return err
 }
 
-//sort transformer result table list based on dependenciesi(using CVL API) tables to be used for CRUD operations
-func sortAsPerTblDeps(tblLst []string) ([]string, error) {
-	var resultTblLst []string
-	var err error
-	logStr := "Failure in CVL API to sort table list as per dependencies."
-
-	cvSess, cvlRetSess := cvl.ValidationSessOpen()
-	if cvlRetSess != cvl.CVL_SUCCESS {
-
-		log.Errorf("Failure in creating CVL validation session object required to use CVl API(sort table list as per dependencies) - %v", cvlRetSess)
-		err = fmt.Errorf("%v", logStr)
-		return resultTblLst, err
-	}
-	cvlSortDepTblList, cvlRetDepTbl := cvSess.SortDepTables(tblLst)
-	if cvlRetDepTbl != cvl.CVL_SUCCESS {
-		log.Warningf("Failure in cvlSess.SortDepTables: %v", cvlRetDepTbl)
-		cvl.ValidationSessClose(cvSess)
-		err = fmt.Errorf("%v", logStr)
-		return resultTblLst, err
-	}
-	log.Info("cvlSortDepTblList = ", cvlSortDepTblList)
-	resultTblLst = cvlSortDepTblList
-
-	cvl.ValidationSessClose(cvSess)
-	return resultTblLst, err
-
-}
-
 func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[string]map[string]db.Value) error {
 	var err error
 	var cmnAppTs *db.TableSpec
@@ -505,7 +478,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
-	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
+	resultTblLst, err = utils.SortAsPerTblDeps(xfmrTblLst)
 	if err != nil {
 		return err
 	}
@@ -633,7 +606,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
-	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
+	resultTblLst, err = utils.SortAsPerTblDeps(xfmrTblLst)
 	if err != nil {
 		return err
 	}
@@ -732,20 +705,22 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 					resTblRw := checkAndProcessLeafList(existingEntry, tblRw, DELETE, d, tblNm, tblKey)
 					log.Info("DELETE case - checkAndProcessLeafList() returned table row ", resTblRw)
 					if len(resTblRw.Field) > 0 {
-						/* add the NULL field if the last field gets deleted */
-						deleteCount := 0
-						for field := range existingEntry.Field {
-							if resTblRw.Has(field) {
-								deleteCount++
+						if !app.deleteEmptyEntry {
+							/* add the NULL field if the last field gets deleted && deleteEmpyEntry is false */
+							deleteCount := 0
+							for field := range existingEntry.Field {
+								if resTblRw.Has(field) {
+									deleteCount++
+								}
 							}
-						}
-						if deleteCount == len(existingEntry.Field) {
-							nullTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
-							log.Info("Last field gets deleted, add NULL field to keep an db entry")
-							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
-							if err != nil {
-								log.Error("UPDATE case - d.ModEntry() failure")
-								return err
+							if deleteCount == len(existingEntry.Field) {
+								nullTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
+								log.Info("Last field gets deleted, add NULL field to keep an db entry")
+								err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
+								if err != nil {
+									log.Error("UPDATE case - d.ModEntry() failure")
+									return err
+								}
 							}
 						}
 						/* deleted fields */
@@ -791,7 +766,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 						}
 					} else {
 						if opcode == DELETE {
-                                                        exstLst = removeElement(exstLst, item)
+                                                        exstLst = utils.RemoveElement(exstLst, item)
                                                 }
 
 					}

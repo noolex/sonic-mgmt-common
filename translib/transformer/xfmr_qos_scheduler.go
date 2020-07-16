@@ -15,8 +15,12 @@ func init () {
  
 }
 
-const SCHEDULER_PORT_SEQUENCE string = "255"
-
+const (
+    SCHEDULER_PORT_SEQUENCE string = "255"
+    SCHEDULER_MIN_RATE_BPS uint64 =  4000
+    SCHEDULER_MIN_BURST_BYTES int =  256
+    SCHEDULER_MAX_BURST_BYTES int =  128000000
+)
 
 func getQueuesBySchedulerName(scheduler string) ([]string) {
     var s []string
@@ -596,36 +600,146 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
     if ((inParams.oper == CREATE) ||
         (inParams.oper == REPLACE) ||
         (inParams.oper == UPDATE)) {
+        var cir uint64 = 0
+        var pir uint64 = 0
+        var prev_pir_exist bool = false
+        var prev_cir_exist bool = false
+        var val string
+        var prev_pir uint64 = 0
+        var prev_cir uint64 = 0
+        var prev_type_exist bool = false
+        var prev_weight_exist bool = false
+        var prev_type string 
+        var prev_weight uint64 = 0
+
+        log.Info("key: ", sched_key)
+        ts := &db.TableSpec{Name: "SCHEDULER"}
+        prev_entry, entry_err := inParams.d.GetEntry(ts, db.Key{Comp: []string{sched_key}})
+        if entry_err == nil {
+           log.Info("current entry: ", prev_entry)
+           if val, prev_cir_exist = prev_entry.Field["cir"]; prev_cir_exist {
+              prev_cir, _ = strconv.ParseUint(val, 10, 32)
+           }
+
+           if val, prev_pir_exist = prev_entry.Field["pir"]; prev_pir_exist {
+              prev_pir, _ = strconv.ParseUint(val, 10, 32)
+           }
+           if val, prev_type_exist = prev_entry.Field["type"]; prev_type_exist {
+               prev_type = val
+           }
+
+           if val, prev_weight_exist = prev_entry.Field["weight"]; prev_weight_exist {
+               prev_weight, _ = strconv.ParseUint(val, 10, 32)
+           }
+       }
+
         if schedObj.TwoRateThreeColor != nil && schedObj.TwoRateThreeColor.Config != nil {
             if schedObj.TwoRateThreeColor.Config.Bc != nil  {
-                sched_entry[sched_key].Field["cbs"] = strconv.Itoa((int)(*schedObj.TwoRateThreeColor.Config.Bc))
+                cbs := (int)(*schedObj.TwoRateThreeColor.Config.Bc)
+                if cbs < SCHEDULER_MIN_BURST_BYTES || cbs > SCHEDULER_MAX_BURST_BYTES {
+                    err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
+                    log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
+                    return res_map, err
+                }
+
+                sched_entry[sched_key].Field["cbs"] = strconv.Itoa(cbs)
             }
 
             if schedObj.TwoRateThreeColor.Config.Be != nil  {
-                sched_entry[sched_key].Field["pbs"] = strconv.Itoa((int)(*schedObj.TwoRateThreeColor.Config.Be))
+                pbs := (int)(*schedObj.TwoRateThreeColor.Config.Be)
+                if pbs < SCHEDULER_MIN_BURST_BYTES || pbs > SCHEDULER_MAX_BURST_BYTES {
+                    err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
+                    log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
+                    return res_map, err
+                }
+                sched_entry[sched_key].Field["pbs"] = strconv.Itoa(pbs)
             }
 
             if schedObj.TwoRateThreeColor.Config.Cir != nil  {
-                cir := (int)(*schedObj.TwoRateThreeColor.Config.Cir)/8
-                sched_entry[sched_key].Field["cir"] = strconv.Itoa(cir)
+                cir = (uint64)(*schedObj.TwoRateThreeColor.Config.Cir)/8
+                // Min 32 Kbps  ==  4 KBps == 4000 Bps
+                if cir < SCHEDULER_MIN_RATE_BPS {
+                    err = tlerr.InternalError{Format:"CIR must be greater than 32Kbp/4KBps/4000Bps"}
+                    log.Info("CIR must be greater than 32Kbps/4KBps/4000Bps")
+                    return res_map, err
+                }
+                if schedObj.TwoRateThreeColor.Config.Pir == nil {
+                   if prev_pir_exist && (cir > prev_pir) {
+                       err = tlerr.InternalError{Format:"PIR must be greater than or equal to CIR"}
+                       log.Info("PIR must be greater than or equal to CIR")
+                       return res_map, err
+                   }
+                }
+                sched_entry[sched_key].Field["cir"] = strconv.FormatUint(cir, 10)
             }
 
             if schedObj.TwoRateThreeColor.Config.Pir != nil  {
-                pir := (int)(*schedObj.TwoRateThreeColor.Config.Pir)/8
-                sched_entry[sched_key].Field["pir"] = strconv.Itoa(pir)
+                pir = (uint64)(*schedObj.TwoRateThreeColor.Config.Pir)/8
+                if pir < SCHEDULER_MIN_RATE_BPS {
+                    err = tlerr.InternalError{Format:"PIR must be greater than 32Kbp/4KBps/4000Bps"}
+                    log.Info("CIR must be greater than 32Kbps/4KBps/4000Bps")
+                    return res_map, err
+                }
+
+                if schedObj.TwoRateThreeColor.Config.Cir == nil {
+                    if prev_cir_exist && (prev_cir > pir) {
+                        err = tlerr.InternalError{Format:"PIR must be greater than or equal to CIR"}
+                        log.Info("PIR must be greater than or equal to CIR")
+                        return res_map, err
+                    }
+                } else {
+                    if cir > pir {
+                        err = tlerr.InternalError{Format:"PIR must be greater than or equal to CIR"}
+                        log.Info("PIR must be greater than or equal to CIR")
+                        return res_map, err
+                    }
+                }
+                sched_entry[sched_key].Field["pir"] = strconv.FormatUint(pir,10)
+            }
+
+            intfs := getIntfsBySPName(sp_name)
+            if  len(intfs) > 0 {
+                dbSpec := &db.TableSpec{Name: "PORT"}
+                for _, intf := range intfs {
+                    log.Info("intf: ", intf)
+                    portCfg, _ := inParams.d.GetEntry(dbSpec, db.Key{Comp: []string{intf}})
+                    speed, ok := portCfg.Field["speed"]
+                    if !ok {
+                        continue
+                    }
+                    speed_Mbps, _ := strconv.ParseUint(speed, 10, 32)
+                    speed_Bps := speed_Mbps * 1000 * 1000/8
+                    if (cir > speed_Bps ||  pir > speed_Bps) {
+                        err = tlerr.InternalError{Format:"PIR/CIR must be less than or equal to port speed"}
+                        log.Info("PIR/CIR must be less than or equal to port speed")
+                        return res_map, err
+                    }
+                }
             }
         }
 
         if schedObj.Config != nil  {
+
             if schedObj.Config.Priority == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_STRICT {
                 sched_entry[sched_key].Field["type"] = "STRICT"
+                prev_type = sched_entry[sched_key].Field["type"]
             } else if schedObj.Config.Priority == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_DWRR {
                 sched_entry[sched_key].Field["type"] = "DWRR"
+                prev_type = sched_entry[sched_key].Field["type"]
             } else if schedObj.Config.Priority == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_Priority_WRR {
                 sched_entry[sched_key].Field["type"] = "WRR"
+                prev_type = sched_entry[sched_key].Field["type"]
             }
+           
             if schedObj.Config.Weight != nil  {
                 sched_entry[sched_key].Field["weight"] = strconv.Itoa((int)(*schedObj.Config.Weight))
+                prev_weight = (uint64)(*schedObj.Config.Weight)
+            }
+
+            if prev_type == "STRICT" && prev_weight != 0 {
+                err = tlerr.InternalError{Format:"Strict priority scheduling can not be configured with weight"}
+                log.Info("Strict priority scheduling can not be configured with weight")
+                return res_map, err
             }
         }
     }

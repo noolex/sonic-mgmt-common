@@ -306,6 +306,7 @@ module openconfig-spanning-tree-ext {
     augment /oc-stp:stp/oc-stp:rapid-pvst/oc-stp:vlan/oc-stp:state {
         description
             "Augment Rapid-PVST operational data";
+        uses spanning-tree-ext-enable-config;
         uses spanning-tree-ext-instance-state;
     }
 

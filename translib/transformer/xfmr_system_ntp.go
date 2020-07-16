@@ -20,6 +20,7 @@ func init() {
         XlateFuncBind("YangToDb_ntp_global_key_xfmr", YangToDb_ntp_global_key_xfmr)
         XlateFuncBind("YangToDb_ntp_server_subtree_xfmr", YangToDb_ntp_server_subtree_xfmr)
         XlateFuncBind("DbToYang_ntp_server_subtree_xfmr", DbToYang_ntp_server_subtree_xfmr)
+        XlateFuncBind("Subscribe_ntp_server_subtree_xfmr", Subscribe_ntp_server_subtree_xfmr)
 }
 
 func getSystemRootObject(inParams XfmrParams) (*ocbinds.OpenconfigSystem_System) {
@@ -92,7 +93,7 @@ func Find(slice []string, val string) (int, bool) {
     return -1, false
 }
 
-// ProcessGetNtpServer is a function to run "ntpq -p" from the mgmt framework docker and populate the NTP peer config/states based on requestUri
+// ProcessGetNtpServer is a function to run "ntpq -pn" cmd from the mgmt framework docker and populate the NTP peer config/states based on requestUri
 func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled bool)  error {
         var err error
         var errStr string
@@ -217,11 +218,11 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 }
         }
 
-        cmd := exec.Command("ntpq", "-p")
+        cmd := exec.Command("ntpq", "-pn")
         if ((isMgmtVrfEnabled) &&
             ((vrfName == "mgmt") ||
              (vrfName == ""))) {
-                cmd = exec.Command("cgexec", "-g", "l3mdev:mgmt", "ntpq", "-p")
+                cmd = exec.Command("cgexec", "-g", "l3mdev:mgmt", "ntpq", "-pn")
         }
 
         output, err := cmd.StdoutPipe()
@@ -308,7 +309,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 if (!getServConfigOnly) {
 
                         if (keyName == "") {
-                                /* it's possible in some error condition remote is not in config DB but in the ntpq -p */
+                                /* it's possible in some error condition remote is not in config DB but in the ntpq -pn */
                                 currNtpServer = ntpServers.Server[remote] 
                                 if (currNtpServer == nil)  {
                                         currNtpServer, _ = ntpServers.NewServer(remote)
@@ -383,9 +384,9 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         /*
          * Get MGMT VRF config from configDB
          * To get NTP server state
-         *    - for NTP running in default VRF, use "ntpq -p"
+         *    - for NTP running in default VRF, use "ntpq -pn"
          *    - for pre-Buster image, only mgmt is supported for non-default VRF
-         *      use "cgexec -g l3mdev:mgmt ntpq -p"
+         *      use "cgexec -g l3mdev:mgmt ntpq -pn"
          */
 
         d, err := db.NewDB(getDBOptions(db.ConfigDB))
@@ -417,4 +418,32 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         err = ProcessGetNtpServer(inParams, vrfName, isMgmtVrfEnabled)
 
         return err
+}
+
+var Subscribe_ntp_server_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+        var err error
+        var result XfmrSubscOutParams
+        result.dbDataMap = make(RedisDbMap)
+
+        pathInfo := NewPathInfo(inParams.uri)
+
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+        keyName := pathInfo.Var("address")
+
+        log.Infof("Subscribe_ntp_server_subtree_xfmr path %v key %v ", targetUriPath, keyName)
+
+        if (keyName != "") {
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{NTP_SERVER_TABLE_NAME:{keyName:{}}}}
+                log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+        } else {
+                result.dbDataMap = RedisDbMap{db.ConfigDB:{NTP_SERVER_TABLE_NAME:{"*":{}}}}
+                log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+        }
+        result.needCache = true
+        result.nOpts = new(notificationOpts)
+        result.nOpts.mInterval = 15
+        result.nOpts.pType = OnChange
+        log.Info("Returning Subscribe_ntp_server_subtree_xfmr")
+        return result, err
 }

@@ -75,18 +75,28 @@ func checkAttrAlignment(vc *CustValidationCtxt) (string, error) {
 
 type checkNHAttrHdlr func(string, string, ...interface{}) error
 
+func parseIP(ipStr string) (net.IP, bool) {
+    ip := net.ParseIP(ipStr)
+    if ip == nil {
+        return nil, false
+    }
+    ipv4 := ip.To4()
+    if ipv4 == nil {
+        return ip, false
+    }
+    return ipv4, !strings.Contains(ipStr, ":")
+}
+
 func checkNexthopGateway(prefix string, gwIP string, args ...interface{}) error {
     pfxIpStr := strings.Split(prefix, "/")[0]
-    pfxIp := net.ParseIP(pfxIpStr)
+    pfxIp, pfxIpv4 := parseIP(pfxIpStr)
     if pfxIp == nil {
         return fmt.Errorf("Invalid static route IP prefix: %s", prefix)
     }
-    pfxIpv4 := pfxIp.To4() != nil
-    ip := net.ParseIP(gwIP)
+    ip, gwIpv4 := parseIP(gwIP)
     if ip == nil {
         return fmt.Errorf("Invalid gateway IP format %s", gwIP)
     }
-    gwIpv4 := ip.To4() != nil
     if gwIpv4 != pfxIpv4 {
         return fmt.Errorf("Address family of NH gateway %s not same as prefix %s", gwIP, pfxIpStr)
     }

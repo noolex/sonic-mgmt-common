@@ -49,7 +49,7 @@ module openconfig-network-instance-ext {
       }
   }
 
-  grouping global-sag-config {
+  grouping network-instance-ext-global-sag-config {
 
     description
       "Global static anycast gateway config";
@@ -79,19 +79,19 @@ module openconfig-network-instance-ext {
     }
   }
 
-  grouping global-sag-top {
+  grouping network-instance-ext-global-sag-top {
     description
       "Global static anycast gateway";
 	  container global-sag {
 		  container config {
-			  uses global-sag-config;
+			  uses network-instance-ext-global-sag-config;
 
         description
           "Global static anycast gateway config";
 		  }
 		  container state {
 			  config false;
-			  uses global-sag-config;
+			  uses network-instance-ext-global-sag-config;
 
         description
           "Global static anycast gateway state";
@@ -118,7 +118,7 @@ module openconfig-network-instance-ext {
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" {
       description
           "Global Anycast Gateway";
-      uses global-sag-top;
+      uses network-instance-ext-global-sag-top;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config {
@@ -126,7 +126,7 @@ module openconfig-network-instance-ext {
           "Extension for table connection";
       uses network-instance-ext-table-connection-config;
   }
- 
+
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state {
       description
           "Extension for table connection";

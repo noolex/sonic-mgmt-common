@@ -275,4 +275,23 @@ func postXfmrHandlerFunc(xfmrPost string, inParams XfmrParams) (map[string]map[s
 	return retData, err
 }
 
+/* Invoke the pre tansformer */
+func preXfmrHandlerFunc(xfmrPre string, inParams XfmrParams) error {
+	xfmrLogInfoAll("Received inParams %v, pre transformer function name %v", inParams, xfmrPre)
+	ret, err := XlateFuncCall(xfmrPre, inParams)
+	if err != nil {
+		log.Warningf("Pre-transformer function(\"%v\") returned error - %v.", xfmrPre, err)
+		return err
+	}
+	if ((ret != nil) && (len(ret)>0)) {
+		if ret[PRE_XFMR_RET_ERR_INDX].Interface() != nil {
+			err = ret[PRE_XFMR_RET_ERR_INDX].Interface().(error)
+			if err != nil {
+				log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrPre, err)
+				return err
+			}
+		}
+	}
+	return err
+}
 

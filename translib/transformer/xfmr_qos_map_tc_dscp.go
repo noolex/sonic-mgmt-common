@@ -369,6 +369,10 @@ var YangToDb_qos_tc_to_dscp_map_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrP
     }
 
     map_name := *(intfObj.InterfaceMaps.Config.ForwardingGroupToDscp)
+    if (inParams.oper == DELETE) {
+        res_map["tc_to_dscp_map"] = ""
+        return res_map, err
+    }
 
     if len(map_name) == 0 {
         log.Error("map name is Missing")

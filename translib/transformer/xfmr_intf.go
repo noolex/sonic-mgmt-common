@@ -68,6 +68,8 @@ func init () {
     XlateFuncBind("DbToYang_intf_tbl_key_xfmr", DbToYang_intf_tbl_key_xfmr)
     XlateFuncBind("YangToDb_subintf_ipv6_tbl_key_xfmr", YangToDb_subintf_ipv6_tbl_key_xfmr)
     XlateFuncBind("DbToYang_subintf_ipv6_tbl_key_xfmr", DbToYang_subintf_ipv6_tbl_key_xfmr)
+    XlateFuncBind("YangToDb_subintf_ip_addr_key_xfmr", YangToDb_subintf_ip_addr_key_xfmr)
+    XlateFuncBind("DbToYang_subintf_ip_addr_key_xfmr", DbToYang_subintf_ip_addr_key_xfmr)
     XlateFuncBind("YangToDb_intf_name_empty_xfmr", YangToDb_intf_name_empty_xfmr)
     XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
     XlateFuncBind("YangToDb_igmp_tbl_key_xfmr", YangToDb_igmp_tbl_key_xfmr)
@@ -79,8 +81,10 @@ func init () {
     XlateFuncBind("rpc_clear_ip", rpc_clear_ip)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
+    XlateFuncBind("intf_pre_xfmr", intf_pre_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_ip_addr_xfmr", YangToDb_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("DbToYang_routed_vlan_ip_addr_xfmr", DbToYang_routed_vlan_ip_addr_xfmr)
+    XlateFuncBind("Subscribe_intf_ip_addr_xfmr", Subscribe_intf_ip_addr_xfmr)
 }
 
 const (
@@ -310,6 +314,30 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
         }
     }
     return retDbDataMap, nil
+}
+
+var intf_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
+    var err error
+    if inParams.oper == DELETE {
+        requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
+        if log.V(3) {
+            log.Info("intf_pre_xfmr:- Request URI path = ", requestUriPath)
+        }
+        errStr := "Delete operation not supported for this path - "
+
+        switch requestUriPath {
+            case "/openconfig-interfaces:interfaces":
+                errStr += requestUriPath
+                return tlerr.InvalidArgsError{Format: errStr}
+            case "/openconfig-interfaces:interfaces/interface":
+                pathInfo := NewPathInfo(inParams.uri)
+                if len(pathInfo.Vars) == 0 {
+                    errStr += requestUriPath
+                    return tlerr.InvalidArgsError{Format:errStr}
+                }
+        }
+    }
+    return err
 }
 
 func getIntfTypeByName (name string) (E_InterfaceType, E_InterfaceSubType, error) {
@@ -1364,6 +1392,34 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]strin
     return tblList, nil
 }
 
+var Subscribe_intf_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    log.Info("Entering Subscribe_intf_ip_addr_xfmr")
+    var err error
+    var result XfmrSubscOutParams
+    result.dbDataMap = make(RedisDbMap)
+    result.isVirtualTbl = false
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    uriIfName := pathInfo.Var("name")
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+    keyName := *sonicIfName
+
+    log.Infof("Subscribe_intf_ip_addr_xfmr path:%s; template:%s targetUriPath:%s key:%s",pathInfo.Path, pathInfo.Template, targetUriPath, keyName)
+
+    if (keyName != "") {
+        intfType, _, _ := getIntfTypeByName(keyName)
+        intTbl := IntfTypeTblMap[intfType]
+        tblName := intTbl.cfgDb.intfTN
+        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+    }
+    result.needCache = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 15
+    result.nOpts.pType = OnChange
+    log.Info("Returning Subscribe_intf_ip_addr_xfmr, result:", result)
+    return result, err
+}
+
 var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var subintf_key string
     var err error
@@ -1408,6 +1464,22 @@ var DbToYang_intf_subintfs_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map
 
     log.Info("DbToYang_intf_subintfs_xfmr rmap ", rmap) 
     return rmap, err
+}
+
+var YangToDb_subintf_ip_addr_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+    log.Info("Entering YangToDb_subintf_ip_addr_key_xfmr")
+    var err error
+    var inst_key string
+    pathInfo := NewPathInfo(inParams.uri)
+    inst_key = pathInfo.Var("ip")
+    log.Info("Interface IP: ", inst_key)
+    return inst_key, err
+}
+
+var DbToYang_subintf_ip_addr_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    log.Info("Entering DbToYang_subintf_ip_addr_key_xfmr")
+    rmap := make(map[string]interface{})
+    return rmap, nil
 }
 
 func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface) (map[string]map[string]db.Value, error) {
@@ -1507,10 +1579,10 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                 return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
             }
             IntfMap := IntfMapObj.Field
-            // Case-1: If there is one last attribute present under "INTERFACE|<Interface>" (or)
-            // Case-2: If deletion at parent container(subinterface)
-            if len(IntfMap) == 1 || subIntf == nil {
-                subIntfmap[tblName][ifName] = data
+            if len(IntfMap) == 1 {
+                if _, ok := IntfMap["NULL"]; ok {
+                    subIntfmap[tblName][ifName] = data
+                }
             }
         }
     }
@@ -1615,19 +1687,27 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
 
     // Case-1: Last IP Address getting deleted on Vlan Interface
     // Case-2: Interface Vlan getting deleted with no IP addresses configured
-    if (vlanIntfcount - len(intfIpMap)) == 1 ||  (len(intfIpMap) == 0 && vlanIntfcount == 1) {
+    if (vlanIntfcount - len(intfIpMap)) == 1 {
         IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
         if err != nil {
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
         }
         IntfMap := IntfMapObj.Field
         // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>" (or)
-        // Case-2: If deletion at parent container(routedVlanIntf)
-        if len(IntfMap) == 1 || routedVlanIntf == nil {
+        if len(IntfMap) == 1 {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
 	    }
-	    vlanIntfmap[tblName][ifName] = data
+            if _, ok := IntfMap["NULL"]; ok {
+                vlanIntfmap[tblName][ifName] = data
+            }
+        }
+        // Case-2: If deletion at parent container(routedVlanIntf)
+        if routedVlanIntf == nil {
+            if _, ok := vlanIntfmap[tblName]; !ok {
+                vlanIntfmap[tblName] = make (map[string]db.Value)
+	    }
+            vlanIntfmap[tblName][ifName] = data
         }
     }
 
@@ -1860,6 +1940,78 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
         }
     }
     return "", nil
+}
+
+func checkLocalIpExist(d *db.DB, nbrAddr string) (bool, error) {
+    var allIntfKeys []db.Key
+    var err error
+
+    nbrIp := net.ParseIP(nbrAddr)
+    if nbrIp == nil {
+        err = errors.New("Failed to parse IP address")
+        log.Info("Failed to parse IP address: ", nbrAddr)
+        return false, err
+    }
+
+    for key := range IntfTypeTblMap {
+        intTbl := IntfTypeTblMap[key]
+        keys, err := d.GetKeys(&db.TableSpec{Name:intTbl.cfgDb.intfTN})
+        if err == nil {
+            allIntfKeys = append(allIntfKeys, keys...)
+        }
+    }
+
+    sagKeys, err := d.GetKeys(&db.TableSpec{Name:"SAG"})
+    if nil == err {
+
+        for _, sagIf := range sagKeys {
+            sagEntry, err := d.GetEntry(&db.TableSpec{Name: "SAG"}, sagIf)
+            if(err != nil) {
+                continue
+            }
+
+            sagIpList, ok := sagEntry.Field["gwip@"]
+
+            if (!ok) {
+                continue;
+            }
+
+            sagIpMap := strings.Split(sagIpList, ",")
+
+            if (sagIpMap[0] == "") {
+                continue
+            }
+
+            for _, sagIp := range sagIpMap {
+                prekey := make([]string, 3)
+                prekey[0] = sagIf.Get(0)
+                prekey[1] = sagIp
+                prekey[2] = "SAG"
+                appendKey := db.Key{ Comp: prekey}
+                allIntfKeys = append(allIntfKeys, appendKey)
+            }
+        }
+    }
+
+    if len(allIntfKeys) > 0 {
+        for _, key := range allIntfKeys {
+            if len(key.Comp) < 2 {
+                continue
+            }
+            localIp, localNetIp, perr := net.ParseCIDR(key.Get(1))
+            //Check if key has IP, if not continue
+            if localIp == nil || perr != nil {
+                continue
+            }
+            if localNetIp.Contains(nbrIp) {
+                if log.V(3) {
+                    log.Info("Neighbor address: ", nbrAddr, " exist in local address ")
+                }
+                return true, nil
+            }
+        }
+    }
+    return false, nil
 }
 
 var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -3763,9 +3915,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
 // YangToDb_subintf_ipv6_tbl_key_xfmr is a YangToDB Key transformer for IPv6 config.
 var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    if log.V(3) {
-        log.Info("Entering YangToDb_subintf_ipv6_tbl_key_xfmr")
-    }
+    log.Info("Entering YangToDb_subintf_ipv6_tbl_key_xfmr")
+
     var err error
     var inst_key string
     pathInfo := NewPathInfo(inParams.uri)
@@ -3781,9 +3932,8 @@ var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 
 // DbToYang_subintf_ipv6_tbl_key_xfmr is a DbToYang key transformer for IPv6 config.
 var DbToYang_subintf_ipv6_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    if log.V(3) {
-        log.Info("Entering DbToYang_subintf_ipv6_tbl_key_xfmr")
-    }
+    log.Info("Entering DbToYang_subintf_ipv6_tbl_key_xfmr")
+
     rmap := make(map[string]interface{})
     return rmap, nil
 }
@@ -3858,11 +4008,6 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     }
 
     if enStr == "disable" {
-
-        /* Update ipv6_use_link_local_only field's value if explicit IP configured and no other interface attribute */
-        if len(ipMap) > 0 && len(IntfMap) == 1 {
-            return res_map, nil
-        }
 
         keys := make([]string, 0, len(IntfMap))
         for k := range IntfMap {

@@ -111,3 +111,11 @@ type TranslibUnsupportedClientVersion struct {
 func (e TranslibUnsupportedClientVersion) Error() string {
 	return p.Sprintf("Unsupported client version %s", e.ClientVersion)
 }
+
+type TranslibXfmrRetError struct {
+     XlateFailDelReq bool
+}
+
+func (e TranslibXfmrRetError) Error() string {
+     return p.Sprintf("Translib transformer return %s", e.XlateFailDelReq)
+}

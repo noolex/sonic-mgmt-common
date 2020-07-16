@@ -1172,16 +1172,40 @@ func splitUri(uri string) []string {
 }
 
 func dbTableExists(d *db.DB, tableName string, dbKey string) (bool, error) {
-        var err error
-        // Read the table entry from DB
-        dbTblSpec := &db.TableSpec{Name: tableName}
-        existingEntry, derr := d.GetEntry(dbTblSpec, db.Key{Comp: []string{dbKey}})
-        if derr != nil {
-                log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
-		err = tlerr.NotFound("Resource not found")
-                return false, err
-        }
-        return existingEntry.IsPopulated(), err
+	var err error
+	// Read the table entry from DB
+	if len(tableName) > 0 {
+		dbTblSpec := &db.TableSpec{Name: tableName}
+
+		if strings.Contains(dbKey, "*") {
+			keys, derr := d.GetKeysByPattern(dbTblSpec, dbKey)
+			if derr != nil {
+				log.Warningf("Failed to get keys for tbl(%v) dbKey pattern %v error: %v", tableName, dbKey, derr)
+				err = tlerr.NotFound("Resource not found")
+				return false, err
+			}
+			xfmrLogInfoAll("keys for table %v are %v", tableName, keys)
+			if len(keys) > 0 {
+				return true, nil
+			} else {
+				log.Errorf("dbKey %v does not exist in DB for table %v", dbKey, tableName)
+				err = tlerr.NotFound("Resource not found")
+				return false, err
+			}
+		} else {
+
+			existingEntry, derr := d.GetEntry(dbTblSpec, db.Key{Comp: []string{dbKey}})
+			if derr != nil {
+				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				err = tlerr.NotFound("Resource not found")
+				return false, err
+			}
+			return existingEntry.IsPopulated(), err
+		}
+	} else {
+		log.Error("Empty table name received")
+		return false, nil
+	}
 }
 
 func dbTableExistsInDbData(dbNo db.DBNum, table string, dbKey string, dbData RedisDbMap) bool {

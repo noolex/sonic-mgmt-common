@@ -378,6 +378,7 @@ module openconfig-network-instance-annot {
       deviate add {
           sonic-ext:table-name "STATIC_ROUTE";
           sonic-ext:key-transformer "static_routes_key_xfmr";
+          sonic-ext:get-validate "static_routes_validate_proto";
       }
     }
 
@@ -974,13 +975,13 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config/oc-netinst:src-protocol {
       deviate add {
-        sonic-ext:field-name "src_protocol";
+        sonic-ext:field-transformer "route_table_src_protocol_xfmr";
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config/oc-netinst:dst-protocol {
       deviate add {
-        sonic-ext:field-name "dst_protocol";
+        sonic-ext:field-transformer "route_table_dst_protocol_xfmr";
       }
     }
  
@@ -1004,13 +1005,13 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst:src-protocol {
       deviate add {
-        sonic-ext:field-name "src_protocol";
+        sonic-ext:field-transformer "route_table_src_protocol_xfmr";
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst:dst-protocol {
       deviate add {
-        sonic-ext:field-name "dst_protocol";
+        sonic-ext:field-transformer "route_table_dst_protocol_xfmr";
       }
     }
  
@@ -1022,7 +1023,7 @@ module openconfig-network-instance-annot {
    
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst:address-family {
       deviate add {
-        sonic-ext:field-name "addr_family";
+        sonic-ext:field-transformer "route_table_addr_family_xfmr";
       }
     }
 

@@ -27,6 +27,7 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 	  "encoding/json"
 )
 
@@ -55,7 +56,9 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
     subIntfmap := make(map[string]map[string]db.Value)
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+    _ifName := utils.GetNativeNameFromUIName(&uriIfName)
+    ifName := *_ifName
 	  intfType, _, ierr := getIntfTypeByName(ifName)
 
     if IntfTypeVxlan == intfType {
@@ -96,13 +99,13 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
         }
     }
 
-    if _, ok := intfsObj.Interface[ifName]; !ok {
+    if _, ok := intfsObj.Interface[uriIfName]; !ok {
         errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
         log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
         return subIntfmap, errors.New(errStr)
     }
 
-    intfObj := intfsObj.Interface[ifName]
+    intfObj := intfsObj.Interface[uriIfName]
 
     if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
         errStr := "SubInterface node is not set"
@@ -213,21 +216,26 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     track_exist := false
 
-                    if (vrrp_rtr.VrrpTrackInterface != nil) {
+                    if (vrrp_rtr.VrrpTrack != nil && vrrp_rtr.VrrpTrack.VrrpTrackInterface != nil) {
 
 
-                        for track_if := range vrrp_rtr.VrrpTrackInterface {
-                            vrrp_track_data := vrrp_rtr.VrrpTrackInterface[track_if]
+                        for track_if := range vrrp_rtr.VrrpTrack.VrrpTrackInterface {
+                            vrrp_track_data := vrrp_rtr.VrrpTrack.VrrpTrackInterface[track_if]
 
                             log.Info("track if name:", track_if)
 
+                            _trackifNativeName := utils.GetNativeNameFromUIName(&track_if)
+                            trackifNativeName := *_trackifNativeName
+
+                            log.Info("track if native name:", trackifNativeName)
+
                             track_table := make(map[string]string)
-                            track_key := ifName + "|" + strconv.Itoa(int(virtual_router_id)) + "|" + track_if
+                            track_key := ifName + "|" + strconv.Itoa(int(virtual_router_id)) + "|" + trackifNativeName
 
                             if vrrp_track_data.Config != nil {
 
                                 if vrrp_track_data.Config.PriorityIncrement != nil {
-                                    if ifName == track_if {
+                                    if ifName == trackifNativeName {
                                         errStr := "VRRP track interface cannot be same as VRRP instance interface"
                                         log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
                                         return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
@@ -238,7 +246,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                         base_priority, _ = strconv.Atoi(vrrpEntry.Get("priority"))
                                     }
                                     new_priority := int(*vrrp_track_data.Config.PriorityIncrement)
-                                    track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), track_if, true, true))
+                                    track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), trackifNativeName, true, true))
 
                                     if (base_priority + track_priority + new_priority) > 254 {
                                         errStr := "VRRP instance priority and track priority exceeds 254"
@@ -351,21 +359,26 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                     track_exist := false
 
-                    if (vrrp_rtr.VrrpTrackInterface != nil) {
+                    if (vrrp_rtr.VrrpTrack != nil && vrrp_rtr.VrrpTrack.VrrpTrackInterface != nil) {
 
-                        for track_if := range vrrp_rtr.VrrpTrackInterface {
-                            vrrp_track_data := vrrp_rtr.VrrpTrackInterface[track_if]
+                        for track_if := range vrrp_rtr.VrrpTrack.VrrpTrackInterface {
+                            vrrp_track_data := vrrp_rtr.VrrpTrack.VrrpTrackInterface[track_if]
 
                             log.Info("track if name:", track_if)
 
+                            _trackifNativeName := utils.GetNativeNameFromUIName(&track_if)
+                            trackifNativeName := *_trackifNativeName
+
+                            log.Info("track if native name:", trackifNativeName)
+
                             track_table := make(map[string]string)
-                            track_key := ifName + "|" + strconv.Itoa(int(virtual_router_id)) + "|" + track_if
+                            track_key := ifName + "|" + strconv.Itoa(int(virtual_router_id)) + "|" + trackifNativeName
 
                             if vrrp_track_data.Config != nil {
 
                                 if vrrp_track_data.Config.PriorityIncrement != nil {
 
-                                    if ifName == track_if {
+                                    if ifName == trackifNativeName {
                                         errStr := "VRRP track interface cannot be same as VRRP instance interface"
                                         log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
                                         return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
@@ -376,7 +389,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                         base_priority, _ = strconv.Atoi(vrrpEntry.Get("priority"))
                                     }
                                     new_priority := int(*vrrp_track_data.Config.PriorityIncrement)
-                                    track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP6_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), track_if, true, true))
+                                    track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP6_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), trackifNativeName, true, true))
 
                                     if (base_priority + track_priority + new_priority) > 254 {
                                         errStr := "VRRP instance priority and track priority exceeds 254"
@@ -885,15 +898,19 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         trackIfname = vrrpTrackKeySplit[2]
                     }
 
-                    log.Info("trackIfname: ", trackIfname)
+                    _trackIfUIName := utils.GetUINameFromNativeName(&trackIfname)
+                    trackIfUIName := *_trackIfUIName
 
-                    if _, ok := vrrp4.VrrpTrackInterface[trackIfname]; !ok {
-                        vrrp4.NewVrrpTrackInterface(trackIfname)
+                    log.Info("trackIfname: ", trackIfname)
+                    log.Info("trackIfUIname: ", trackIfUIName)
+
+                    if _, ok := vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName]; !ok {
+                        vrrp4.VrrpTrack.NewVrrpTrackInterface(trackIfUIName)
                     }
 
                     if vrrpTrackData.Has("priority_increment") {
 
-                        ygot.BuildEmptyTree(vrrp4.VrrpTrackInterface[trackIfname])
+                        ygot.BuildEmptyTree(vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName])
 
 
                         ppriority_increment := new(uint8)
@@ -903,7 +920,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         *ppriority_incr_state  = uint8(priority_increment)
 
                         if (isTrackConfig) {
-                            vrrp4.VrrpTrackInterface[trackIfname].Config.PriorityIncrement = ppriority_increment
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
                         }
 
                         if (isTrackState) {
@@ -913,11 +930,11 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                                 *ppriority_incr_state = 0
                             }
 
-                            vrrp4.VrrpTrackInterface[trackIfname].State.PriorityIncrement = ppriority_incr_state
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].State.PriorityIncrement = ppriority_incr_state
                         }
 
                         if (isTrackConfig) {
-                            vrrp4.VrrpTrackInterface[trackIfname].Config.PriorityIncrement = ppriority_increment
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
                         }
 
                         log.Info("PriorityIncrement: ", ppriority_incr_state)
@@ -1050,15 +1067,19 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         trackIfname = vrrpTrackKeySplit[2]
                     }
 
-                    log.Info("trackIfname: ", trackIfname)
+                    _trackIfUIName := utils.GetUINameFromNativeName(&trackIfname)
+                    trackIfUIName := *_trackIfUIName
 
-                    if _, ok := vrrp6.VrrpTrackInterface[trackIfname]; !ok {
-                        vrrp6.NewVrrpTrackInterface(trackIfname)
+                    log.Info("trackIfname: ", trackIfname)
+                    log.Info("trackIfUIName: ", trackIfUIName)
+
+                    if _, ok := vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName]; !ok {
+                        vrrp6.VrrpTrack.NewVrrpTrackInterface(trackIfUIName)
                     }
 
                     if vrrpTrackData.Has("priority_increment") {
 
-                        ygot.BuildEmptyTree(vrrp6.VrrpTrackInterface[trackIfname])
+                        ygot.BuildEmptyTree(vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName])
 
 
                         ppriority_increment := new(uint8)
@@ -1068,7 +1089,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                         *ppriority_incr_state  = uint8(priority_increment)
 
                         if (isTrackConfig) {
-                            vrrp6.VrrpTrackInterface[trackIfname].Config.PriorityIncrement = ppriority_increment
+                            vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
                         }
 
                         if (isTrackState) {
@@ -1078,7 +1099,7 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                                 *ppriority_incr_state = 0
                             }
 
-                            vrrp6.VrrpTrackInterface[trackIfname].State.PriorityIncrement = ppriority_incr_state
+                            vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName].State.PriorityIncrement = ppriority_incr_state
                         }
 
                         log.Info("PriorityIncrement: ", priority_increment)
@@ -1123,7 +1144,10 @@ var DbToYang_intf_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (er
 
     }
 
-    err = handleVrrpGetByTargetURI(inParams, targetUriPath, intfName, intfObj)
+    _ifName := utils.GetNativeNameFromUIName(&intfName)
+    ifName := *_ifName
+
+    err = handleVrrpGetByTargetURI(inParams, targetUriPath, ifName, intfObj)
 
     log.Info("err:", err)
 
@@ -1170,7 +1194,10 @@ func vrrp_show_summary (body []byte, dbs [db.MaxDB]*db.DB, tableName string, tra
         state = 0
         priority := 100
 
-        vrrpsummaryentry.Ifname = key.Get(0)
+        ifName :=  key.Get(0)
+        ifUIName := utils.GetUINameFromNativeName(&ifName)
+
+        vrrpsummaryentry.Ifname = *ifUIName
         vrrpsummaryentry.Vrid, _ = strconv.Atoi(key.Get(1))
 
         if vrrpData.Has("priority") {

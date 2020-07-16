@@ -22,6 +22,8 @@ module openconfig-interfaces-ext {
     import ietf-yang-types { prefix yang; }
     import ietf-inet-types { prefix "ietf-inet"; }
     import openconfig-if-types-ext { prefix oc-if-types-ext; }
+
+    include openconfig-ip-helper-interface-ext;
  
     organization "SONiC";
 
@@ -151,7 +153,7 @@ module openconfig-interfaces-ext {
         }
     }
 
-	  grouping interface-sag-ipv4-config {
+	  grouping interfaces-ext-interface-sag-ipv4-config {
         description
             "IPv4 static anycast gateway config";
 
@@ -163,8 +165,8 @@ module openconfig-interfaces-ext {
                 "IPv4 static anycast gateway addresses";
         }
     }
-	
-    grouping interface-sag-ipv4-top {
+
+    grouping interfaces-ext-interface-sag-ipv4-top {
         description
             "IPv4 static anycast gateway";
 
@@ -172,14 +174,14 @@ module openconfig-interfaces-ext {
             description "Config and state parameters associated with sag-ipv4";
 
             container config {
-                uses interface-sag-ipv4-config;
+                uses interfaces-ext-interface-sag-ipv4-config;
 
                 description
                     "IPv4 static anycast gateway config";
             }
             container state {
                 config false;
-                uses interface-sag-ipv4-config;
+                uses interfaces-ext-interface-sag-ipv4-config;
 
                 description
                     "IPv4 static anycast gateway state";
@@ -188,7 +190,7 @@ module openconfig-interfaces-ext {
         }
     }
 
-    grouping interface-sag-ipv6-config {
+    grouping interfaces-ext-interface-sag-ipv6-config {
         description
         "IPv6 static anycast gateway config";
 
@@ -203,7 +205,7 @@ module openconfig-interfaces-ext {
         }
     }
 
-    grouping interface-sag-ipv6-top {
+    grouping interfaces-ext-interface-sag-ipv6-top {
     description
         "IPv6 static anycast gateway";
 
@@ -211,14 +213,14 @@ module openconfig-interfaces-ext {
             description "Config and state parameters associated with sag-ipv6";
 
             container config {
-                uses interface-sag-ipv6-config;
+                uses interfaces-ext-interface-sag-ipv6-config;
 
                 description
                     "IPv6 static anycast gateway config";
             }
             container state {
                 config false;
-                uses interface-sag-ipv6-config;
+                uses interfaces-ext-interface-sag-ipv6-config;
 
                 description
                     "IPv6 static anycast gateway state";
@@ -227,10 +229,14 @@ module openconfig-interfaces-ext {
         }
     }
 
-    grouping interfaces-ext-vrrp-track-interface-priority-increment {
+    grouping interfaces-ext-interface-vrrp-track-increment {
 
         description
             "List of track interfaces for VRRP";
+
+        container vrrp-track {
+            description
+                "Configuration and state parameters relating to VRRP track interface";
 
         list vrrp-track-interface {
             key "track-intf";
@@ -238,8 +244,9 @@ module openconfig-interfaces-ext {
                 "List of track interface";
 
             leaf track-intf {
+
                 type leafref {
-                    path "/oc-intf:interfaces/oc-intf:interface/oc-intf:name";
+				            path "../config/track-intf";
                 }
                 description
                     "Reference to the list of interfaces";
@@ -248,6 +255,12 @@ module openconfig-interfaces-ext {
             container config {
                 description
                     "Configuration data for each track interface";
+
+                leaf track-intf {
+        				    type string;
+        				    description
+        						"Reference to the list of interfaces";
+        				}
 
                 leaf priority-increment {
                     type uint8 {
@@ -263,6 +276,12 @@ module openconfig-interfaces-ext {
                 description
                     "Operational data for each track interface";
 
+                leaf track-intf {
+        				    type string;
+        				    description
+        						"Reference to the list of interfaces";
+        				}
+
                 leaf priority-increment {
                     type uint8 {
                         range "0..254";
@@ -272,6 +291,7 @@ module openconfig-interfaces-ext {
                 }
             }
 
+        }
         }
 
     }
@@ -285,7 +305,7 @@ module openconfig-interfaces-ext {
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
         description
             "SAG config and state data.";
-        uses interface-sag-ipv4-top {
+        uses interfaces-ext-interface-sag-ipv4-top {
       when "oc-intf:config/oc-intf:type = 'oc-if-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
@@ -295,7 +315,7 @@ module openconfig-interfaces-ext {
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
         description
             "SAG config and state data.";
-        uses interface-sag-ipv6-top {
+        uses interfaces-ext-interface-sag-ipv6-top {
       when "oc-intf:config/oc-intf:type = 'oc-if-types-ext:IF_NVE'";
 			description
 			  "SAG interface config/state";
@@ -365,12 +385,12 @@ module openconfig-interfaces-ext {
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
         description "Track interface priority for IPv4 VRRP instance";
-        uses interfaces-ext-vrrp-track-interface-priority-increment;
+        uses interfaces-ext-interface-vrrp-track-increment;
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
         description "Track interface priority for IPv6 VRRP instance";
-        uses interfaces-ext-vrrp-track-interface-priority-increment;
+        uses interfaces-ext-interface-vrrp-track-increment;
     }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:hold-time {
@@ -544,5 +564,5 @@ module openconfig-interfaces-ext {
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state/oc-eth:negotiated-port-speed {
         deviate not-supported;
-    }
+    }  
 }

@@ -323,6 +323,8 @@ submodule openconfig-fbs-classifiers-ext {
       }
 
       container state {
+        config false;
+
         description
           "State information for IP common fields";
 

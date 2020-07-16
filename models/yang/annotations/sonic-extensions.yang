@@ -18,6 +18,10 @@ module sonic-extensions {
     "This module provides extensions to the YANG language to allow
     Sonic specific functionality and meta-data to be defined.";
 
+  revision "2020-07-13" {
+	  description
+		  "Added extension for pre transformer support.";
+  }
   revision "2020-05-06" {
     description
       "Add extensions for subscription support.";
@@ -134,6 +138,11 @@ module sonic-extensions {
   extension virtual-table {
     argument "virtual-table-flag";
     description "Table not present in redis-db.";
+  }
+
+  extension pre-transformer {
+	  argument "pre-transformer-name";
+	  description "Transformer name that will perform pre-translation tasks.";
   }
 
 }

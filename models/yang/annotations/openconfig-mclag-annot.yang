@@ -141,6 +141,12 @@ module openconfig-mclag-annot {
         }
     }
 
+    deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:state/oc-mclag:delay-restore-start-time {
+        deviate add {
+            sonic-ext:field-transformer "mclag_domain_delay_restore_start_time_fld_xfmr";
+        }
+    }
+
     deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:state/oc-mclag:oper-status {
         deviate add {
             sonic-ext:field-transformer "mclag_domain_oper_status_fld_xfmr";

@@ -15,6 +15,7 @@ module openconfig-system-ext {
     import openconfig-tpcm { prefix "oc-tpcm"; }
     import openconfig-systemd-coredump { prefix oc-systemd-coredump; }
     import openconfig-extensions { prefix "oc-ext"; }
+    import sonic-codegen { prefix sonic-codegen; }
 
     // meta
     organization "OpenConfig working group";
@@ -248,12 +249,14 @@ module openconfig-system-ext {
     }
 
     deviation "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address" {
+        sonic-codegen:lint-ignore "Deviated to support both IPaddr or DNS name";
         deviate replace {
             type server-address;
         }
     }
 
     deviation "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address" {
+        sonic-codegen:lint-ignore "Deviated to support both IPaddr or DNS name";
         deviate replace {
             type server-address;
         }
