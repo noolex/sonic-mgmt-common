@@ -240,7 +240,7 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     if len(nbrAddr) == 0 {
         return "", nil
     }
-    if (inParams.oper != GET) {
+    if ((inParams.oper == CREATE) || (inParams.oper == REPLACE) || (inParams.oper == UPDATE)) {
         isLocalIpExist, oerr = checkLocalIpExist (inParams.d, nbrAddr);
         if oerr == nil && isLocalIpExist {
             errStr := "Can not configure the local system IP as neighbor"
