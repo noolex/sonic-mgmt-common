@@ -341,10 +341,13 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 
 		if cerr != nil {
 			log.Warningf("Received xpathKeyExtract error for uri: %v : err %v", xlateParams.uri, cerr)
-			switch cerr.(type) {
+			switch e := err.(type) {
 				case tlerr.TranslibXfmrRetError:
-					xfmrLogInfoAll("Error received (\"%v\")", cerr)
-					return cerr
+					ecode := e.XlateFailDelReq
+					xfmrLogInfoAll("Error received (\"%v\"), ecode :%v", cerr, ecode)
+					if ecode {
+						return cerr
+					}
 			}
 		}
 

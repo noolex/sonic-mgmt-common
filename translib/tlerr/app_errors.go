@@ -126,5 +126,5 @@ func (e AuthorizationError) Error() string {
 }
 
 func TranslibXfmrRetErr(fail bool) TranslibXfmrRetError {
-	return TranslibXfmrRetError{xlateFailDelReq: fail}
+	return TranslibXfmrRetError{XlateFailDelReq: fail}
 }
