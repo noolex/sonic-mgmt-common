@@ -44,168 +44,6 @@ func pim_exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
     return pimOutputJson, err
 }
 
-func pim_exec_fake_vtysh_tib_cmd (vtysh_cmd string) (map[string]interface{}, error) {
-    var err error
-    var outputJson map[string]interface{}
-    outJsonBlob :=
-					 `
-					 {
-						 "232.0.0.1":{
-							 "199.0.0.23":{
-								 "upTime":"00:01:42",
-								 "expire":"00:00:30",
-								 "flags":"SJT",
-								 "iil":{
-									 "Vlan202":{
-										 "RPF Neighbor":"172.22.0.1",
-										 "RPF Metric":0,
-										 "RPF Preference":109,
-										 "oil":{
-											 "Vlan602":{
-												 "source":"199.0.0.23",
-												 "group":"232.0.0.1",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan602",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 },
-											 "Vlan603":{
-												 "source":"199.0.0.23",
-												 "group":"232.0.0.1",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan603",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 }
-										 }
-									 }
-								 }
-							 },
-							 "199.0.0.24":{
-								 "upTime":"00:01:42",
-								 "expire":"00:00:30",
-								 "flags":"SJT",
-								 "iil":{
-									 "Vlan202":{
-										 "RPF Neighbor":"172.22.0.1",
-										 "RPF Metric":0,
-										 "RPF Preference":109,
-										 "oil":{
-											 "Vlan602":{
-												 "source":"199.0.0.24",
-												 "group":"232.0.0.1",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan602",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 },
-											 "Vlan642":{
-												 "source":"199.0.0.24",
-												 "group":"232.0.0.1",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan642",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 },
-											 "Vlan603":{
-												 "source":"199.0.0.24",
-												 "group":"232.0.0.1",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan603",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 }
-										 }
-									 }
-								 }
-							 }
-						 },
-						 "232.0.0.2":{
-							 "199.0.0.23":{
-								 "upTime":"00:01:42",
-								 "expire":"00:00:30",
-								 "flags":"SJT",
-								 "iil":{
-									 "Vlan202":{
-										 "RPF Neighbor":"172.22.0.1",
-										 "RPF Metric":0,
-										 "RPF Preference":109,
-										 "oil":{
-											 "Vlan602":{
-												 "source":"199.0.0.23",
-												 "group":"232.0.0.2",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan602",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 },
-											 "Vlan603":{
-												 "source":"199.0.0.23",
-												 "group":"232.0.0.2",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan603",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 }
-										 }
-									 }
-								 }
-							 },
-							 "199.0.0.24":{
-								 "upTime":"00:01:42",
-								 "expire":"00:00:30",
-								 "flags":"SJT",
-								 "iil":{
-									 "Vlan202":{
-										 "RPF Neighbor":"172.22.0.1",
-										 "RPF Metric":0,
-										 "RPF Preference":109,
-										 "oil":{
-											 "Vlan602":{
-												 "source":"199.0.0.24",
-												 "group":"232.0.0.2",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan602",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 }
-										 }
-									 }
-								 }
-							 }
-						 },
-						 "232.0.0.3":{
-							 "199.0.0.23":{
-								 "upTime":"00:01:42",
-								 "expire":"00:00:30",
-								 "flags":"SJT",
-								 "iil":{
-									 "Vlan202":{
-										 "RPF Neighbor":"172.22.0.1",
-										 "RPF Metric":0,
-										 "RPF Preference":109,
-										 "oil":{
-											 "Vlan603":{
-												 "source":"199.0.0.23",
-												 "group":"232.0.0.3",
-												 "inboundInterface":"Vlan202",
-												 "outboundInterface":"Vlan603",
-												 "upTime":"--:--:--",
-												 "expire":"--:--"
-											 }
-										 }
-									 }
-								 }
-							 }
-						 }
-					 }
-				 `
-    if err = json.Unmarshal([]byte(outJsonBlob), &outputJson) ; err != nil {
-        log.Errorf ("pim_exec_fake_vtysh_tib_cmd Error : %s", err)
-    }
-    return outputJson, err
-}
-
 func validatePimRoot (inParams XfmrParams) (string, error) {
     var err error
 
@@ -306,6 +144,17 @@ func util_pim_get_ui_ifname_from_native_ifname (pNativeIfname *string, pUiIfname
     if _pUiIfname != nil && len(*_pUiIfname) != 0 {
         *pUiIfname = *_pUiIfname
     }
+}
+
+func checkPimCfgExistOnIntf(d *db.DB, ifName string) (bool) {
+    pimIntfCfgTblTs := &db.TableSpec{Name: "PIM_INTERFACE"}
+    keys, tblErr := d.GetKeysPattern(pimIntfCfgTblTs, db.Key {[]string{"*", "*", ifName}})
+    if ((tblErr == nil) && (len(keys) > 0)) {
+        log.Info ("checkPimCfgExistOnIntf for ifName:", ifName, " ==> Keys : ",keys)
+        return true
+    }
+
+    return false
 }
 
 var YangToDb_pim_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
@@ -416,20 +265,6 @@ func fill_pim_intf_cfg_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_s
             intfStateObj.BfdEnabled = &_bfdEnabled
         }
 
-        if value, ok := cfgDbEntry["dr-priority"] ; ok {
-            if _drPriorityU64, err := strconv.ParseUint(value, 10, 32) ; err == nil {
-                _drPriorityU32 := uint32(_drPriorityU64)
-                intfStateObj.DrPriority = &_drPriorityU32
-            }
-        }
-
-        if value, ok := cfgDbEntry["hello-interval"] ; ok {
-            if _helloIntervalU64, err := strconv.ParseUint(value, 10, 8) ; err == nil {
-                _helloIntervalU8 := uint8(_helloIntervalU64)
-                intfStateObj.HelloInterval = &_helloIntervalU8
-            }
-        }
-
         if value, ok := cfgDbEntry["mode"] ; ok {
             switch value {
                 case "sm":
@@ -441,9 +276,9 @@ func fill_pim_intf_cfg_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_s
     return true
 }
 
-func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state_key, intfData map[string]interface{},
+func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state_key, intfDtlData map[string]interface{},
                                intfStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces_Interface_State) bool {
-    if value, ok := intfData["state"] ; ok {
+    if value, ok := intfDtlData["state"] ; ok {
         _enabled := false
         switch value {
             case "up":
@@ -452,19 +287,30 @@ func fill_pim_intf_state_info (inParams XfmrParams, intfKey _xfmr_pim_intf_state
         intfStateObj.Enabled = &_enabled
     }
 
-    if value, ok := intfData["pimDesignatedRouter"] ; ok {
+    if value, ok := intfDtlData["drAddress"] ; ok {
         _drAddress := value.(string)
         intfStateObj.DrAddress = &_drAddress
     }
 
-    if value, ok := intfData["address"] ; ok {
+    if value, ok := intfDtlData["address"] ; ok {
         _localAddress := value.(string)
         intfStateObj.LocalAddress = &_localAddress
     }
 
-    if value, ok := intfData["pimNeighbors"] ; ok {
-        _nbrsCount := uint16(value.(float64))
-        intfStateObj.NbrsCount = &_nbrsCount
+    var _nbrsCount uint16
+    if value, ok := intfDtlData["neighbors"] ; ok {
+        _nbrsCount = uint16(len(value.(map[string]interface{})))
+    }
+    intfStateObj.NbrsCount = &_nbrsCount
+
+    if value, ok := intfDtlData["drPriority"] ; ok {
+        _drPriority := uint32(value.(float64))
+        intfStateObj.DrPriority = &_drPriority
+    }
+
+    if value, ok := intfDtlData["helloPeriod"] ; ok {
+        _helloInterval := uint8(value.(float64))
+        intfStateObj.HelloInterval = &_helloInterval
     }
 
     return true
@@ -500,8 +346,8 @@ var DbToYang_pim_intf_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
         ygot.BuildEmptyTree(intfsObj)
     }
 
-    cmd := "show ip pim vrf " + niName + " interface json"
-    pimIntfOutputJson, cmdErr := pim_exec_vtysh_cmd (cmd)
+    cmd := "show ip pim vrf " + niName + " interface detail json"
+    pimIntfDtlOutputJson, cmdErr := pim_exec_vtysh_cmd (cmd)
     if (cmdErr != nil) {
         log.Errorf ("%s failed !! Error:%s", cmnLog, cmdErr)
         return operErr
@@ -525,10 +371,10 @@ var DbToYang_pim_intf_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     intfKey.intfId = nativeIntfIdKey
 
     fill_pim_intf_cfg_state_info (inParams, intfKey, intfStateObj)
-    for intfId := range pimIntfOutputJson {
+    for intfId := range pimIntfDtlOutputJson {
         if (nativeIntfIdKey != "" && (intfId != nativeIntfIdKey)) {continue}
-        intfData, ok := pimIntfOutputJson[intfId].(map[string]interface{}) ; if !ok {continue}
-        fill_pim_intf_state_info (inParams, intfKey, intfData, intfStateObj)
+        intfDtlData, ok := pimIntfDtlOutputJson[intfId].(map[string]interface{}) ; if !ok {continue}
+        fill_pim_intf_state_info (inParams, intfKey, intfDtlData, intfStateObj)
     }
 
     return err
@@ -555,13 +401,13 @@ func fill_pim_nbr_state_info (inParams XfmrParams, nbrKey _xfmr_pim_nbr_state_ke
         nbrStateObj.DrPriority = &_drPriority
     }
 
-    if value, ok := nbrData["upTime"] ; ok {
-        _neighborEstablished := value.(string)
+    if value, ok := nbrData["upTimeEpoch"] ; ok {
+        _neighborEstablished := uint64(value.(float64))
         nbrStateObj.NeighborEstablished = &_neighborEstablished
     }
 
-    if value, ok := nbrData["holdTime"] ; ok {
-        _neighborExpires := value.(string)
+    if value, ok := nbrData["holdTimeEpoch"] ; ok {
+        _neighborExpires := uint64(value.(float64))
         nbrStateObj.NeighborExpires = &_neighborExpires
     }
 
@@ -687,13 +533,13 @@ func fill_pim_tib_mroute_state_info (inParams XfmrParams, tibKey _xfmr_pim_tib_s
     srcEntryStateObj.SourceAddress = &tibKey.srcAddr
     srcEntryStateObj.RouteType = tibKey.routeType
 
-    if value, ok := srcAddrData["upTime"] ; ok {
-        _uptime := value.(string)
+    if value, ok := srcAddrData["upTimeEpoch"] ; ok {
+        _uptime := uint64(value.(float64))
         srcEntryStateObj.Uptime = &_uptime
     }
 
-    if value, ok := srcAddrData["expire"] ; ok {
-        _expiry := value.(string)
+    if value, ok := srcAddrData["expireEpoch"] ; ok {
+        _expiry := uint64(value.(float64))
         srcEntryStateObj.Expiry = &_expiry
     }
 
@@ -769,13 +615,13 @@ func fill_pim_tib_mroute_state_info (inParams XfmrParams, tibKey _xfmr_pim_tib_s
                     }
                     oilInfoStateObj.OutgoingInterface = &_uiOifId
 
-                    if value, ok := oifData["upTime"] ; ok {
-                        _uptime := value.(string)
+                    if value, ok := oifData["upTimeEpoch"] ; ok {
+                        _uptime := uint64(value.(float64))
                         oilInfoStateObj.Uptime = &_uptime
                     }
 
-                    if value, ok := oifData["expire"] ; ok {
-                        _expiry := value.(string)
+                    if value, ok := oifData["expireEpoch"] ; ok {
+                        _expiry := uint64(value.(float64))
                         oilInfoStateObj.Expiry = &_expiry
                     }
                 }
@@ -812,7 +658,7 @@ var DbToYang_pim_tib_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     cmd := "show ip pim vrf " + niName + " topology json"
-    pimTibOutputJson, cmdErr := pim_exec_fake_vtysh_tib_cmd (cmd)
+    pimTibOutputJson, cmdErr := pim_exec_vtysh_cmd (cmd)
     if (cmdErr != nil) {
         log.Errorf ("%s failed !! Error:%s", cmnLog, cmdErr);
         return operErr

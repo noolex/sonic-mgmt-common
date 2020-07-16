@@ -1,81 +1,81 @@
 module sonic-ipmroute-show {
-	namespace "http://github.com/Azure/sonic-ipmroute-show";
-	prefix sipmrouteshow;
-	yang-version 1.1;
+    namespace "http://github.com/Azure/sonic-ipmroute-show";
+    prefix sipmrouteshow;
+    yang-version 1.1;
 
-	organization
-		"SONiC";
+    organization
+        "SONiC";
 
-	contact
-		"SONiC";
+    contact
+        "SONiC";
 
-	description
-		"SONiC yang for RPC based IP-MROUTE show.";
+    description
+        "SONiC yang for RPC based IP-MROUTE show.";
 
-	revision 2020-01-20 {
-		description
-			"Initial revision.";
-	}
+    revision 2020-01-20 {
+        description
+            "Initial revision.";
+    }
 
-	typedef show-ipmroute-query-type {
-		description "Query type that specifies various different ways to fetch the IP Multicast routes information based on various filters";
+    typedef show-ipmroute-query-type {
+        description "Query type that specifies various different ways to fetch the IP Multicast routes information based on various filters";
 
-		type enumeration {
-			enum SUMMARY {
-				description "To fetch IP multicast routes summary";
-			}
-		}
-	}
+        type enumeration {
+            enum SUMMARY {
+                description "To fetch IP multicast routes summary";
+            }
+        }
+    }
 
-	rpc show-ipmroute {
-		description "RPC for fetch IP Multicast routes information based on various different options";
+    rpc show-ipmroute {
+        description "RPC for fetch IP Multicast routes information based on various different options";
 
-		input {
-			leaf vrf-name {
-				type string;
-				default "default";
-				description
-					"Fetches IP Multicast routes information for a given VRF name. If VRF name is not present, the default VRF is used";
-			}
+        input {
+            leaf vrf-name {
+                type string;
+                default "default";
+                description
+                    "Fetches IP Multicast routes information for a given VRF name. If VRF name is not present, the default VRF is used";
+            }
 
-			leaf address-family {
-				type enumeration {
-					enum IPV4_UNICAST;
-				}
-				default "IPV4_UNICAST";
-				description
-					"IP Address family";
-			}
+            leaf address-family {
+                type enumeration {
+                    enum IPV4_UNICAST;
+                }
+                default "IPV4_UNICAST";
+                description
+                    "IP Address family";
+            }
 
-			leaf query-type {
-				type show-ipmroute-query-type;
-				mandatory true;
-				description
-					"Query type that specifies various ways to fetch the IP Multicast routes information based on various filters.
-					It represent the choice mentioned below. And then relevant attributes should be filled to fetch the IP Multicast routes.
-					This is a mandatory parameter.";
-			}
+            leaf query-type {
+                type show-ipmroute-query-type;
+                mandatory true;
+                description
+                    "Query type that specifies various ways to fetch the IP Multicast routes information based on various filters.
+                    It represent the choice mentioned below. And then relevant attributes should be filled to fetch the IP Multicast routes.
+                    This is a mandatory parameter.";
+            }
 
-			choice type {
-				case SUMMARY {
-					description
-						"query-type attribute should be SUMMARY. Fetch the summary of IP Multicast routes.";
+            choice type {
+                case SUMMARY {
+                    description
+                        "query-type attribute should be SUMMARY. Fetch the summary of IP Multicast routes.";
 
-					leaf summary {
-						type boolean;
-						default false;
-						description "True : to fetch the summary of IP Multicast routes.";
-					}
-				}
-			}
-		}
+                    leaf summary {
+                        type boolean;
+                        default false;
+                        description "True : to fetch the summary of IP Multicast routes.";
+                    }
+                }
+            }
+        }
 
-		output {
-			leaf status {
-				type string;
-				description
-					"On success, returns IP Multicast routes information in JSON string format.";
-			}
-		}
-	}
+        output {
+            leaf status {
+                type string;
+                description
+                    "On success, returns IP Multicast routes information in JSON string format.";
+            }
+        }
+    }
 }

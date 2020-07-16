@@ -10,6 +10,7 @@ module openconfig-aft-ext {
     import openconfig-policy-types { prefix "oc-pol-types"; }
     import openconfig-interfaces { prefix oc-if; }
     import openconfig-extensions { prefix oc-ext; }
+    import openconfig-types { prefix "oc-types"; }
 
     organization
         "SONiC";
@@ -115,9 +116,11 @@ module openconfig-aft-ext {
                     }
 
                     leaf uptime {
-                        type string;
+                        type oc-types:timeticks64;
                         description
-                            "Time since this particular outgoing interface is present in this multicast entry.";
+                            "This timestamp indicates the time, since this particular outgoing interface is present in this multicast entry.
+                            The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                            It can be computed by clients as the difference between this value and the current time in UTC.";
                     }
                 }
             }

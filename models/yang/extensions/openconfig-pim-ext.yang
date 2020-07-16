@@ -13,6 +13,7 @@ module openconfig-pim-ext {
     import openconfig-routing-policy {prefix oc-rpol; }
     import openconfig-interfaces { prefix oc-if; }
     import openconfig-extensions { prefix oc-ext; }
+    import openconfig-types { prefix "oc-types"; }
 
     organization
         "SONiC";
@@ -151,15 +152,19 @@ module openconfig-pim-ext {
             }
 
             leaf uptime {
-                type string;
+                type oc-types:timeticks64;
                 description
-                    "Time since this particular outgoing interface is present in this multicast entry.";
+                    "This timestamp indicates the time, since this particular outgoing interface is present in this multicast entry.
+                    The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                    It can be computed by clients as the difference between this value and the current time in UTC.";
             }
 
             leaf expiry {
-                type string;
+                type oc-types:timeticks64;
                 description
-                    "Time when this particular outgoing interface will expire from this multicast entry.";
+                    "This timestamp indicates the time, when this particular outgoing interface will expire from this multicast entry.
+                    The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                    It can be computed by clients as the difference between this value and the current time in UTC.";
             }
         }
     }
@@ -175,15 +180,20 @@ module openconfig-pim-ext {
         }
 
         leaf uptime {
-            type string;
+            type oc-types:timeticks64;
             description
-                "Time since this particular multicast entry is learnt.";
+                "This timestamp indicates the time, since this particular multicast entry is learnt.
+                The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                It can be computed by clients as the difference between this value and the current time in UTC.";
         }
 
         leaf expiry {
-            type string;
+            type oc-types:timeticks64;
             description
-                "Time when this particular multicast entry will expire.";
+                "This timestamp indicates the time, when this particular multicast entry will expire.
+                The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                It can be computed by clients as the difference between this value and the current time in UTC.";
+
         }
 
         leaf flags {
@@ -515,17 +525,5 @@ module openconfig-pim-ext {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:interface-ref {
         deviate not-supported;
-    }
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:neighbor-established {
-        deviate replace {
-            type string;
-        }
-    }
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:neighbor-expires {
-        deviate replace {
-            type string;
-        }
     }
 }

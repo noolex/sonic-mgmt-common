@@ -492,8 +492,8 @@ func fill_ipv4_mroute_state_info (inParams XfmrParams, ipv4MrouteStateKey _xfmr_
             }
             oilInfoStateObj.OutgoingInterface = &_uiOifId
 
-            if value, ok := oifData["upTime"] ; ok {
-                _uptime := value.(string)
+            if value, ok := oifData["upTimeEpoch"] ; ok {
+                _uptime := uint64(value.(float64))
                 oilInfoStateObj.Uptime = &_uptime
             }
         }
