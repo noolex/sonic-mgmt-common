@@ -240,12 +240,14 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     if len(nbrAddr) == 0 {
         return "", nil
     }
-    isLocalIpExist, oerr = checkLocalIpExist (inParams.d, nbrAddr);
-    if oerr == nil && isLocalIpExist {
-        errStr := "Can not configure the local system IP as neighbor"
-        err = tlerr.InvalidArgsError{Format: errStr}
-        log.Error(errStr)
-        return nbrAddr, err
+    if (inParams.oper != GET) {
+        isLocalIpExist, oerr = checkLocalIpExist (inParams.d, nbrAddr);
+        if oerr == nil && isLocalIpExist {
+            errStr := "Can not configure the local system IP as neighbor"
+            err = tlerr.InvalidArgsError{Format: errStr}
+            log.Error(errStr)
+            return nbrAddr, err
+        }
     }
     util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
 

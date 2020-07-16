@@ -305,12 +305,9 @@ module sonic-system-ldap {
         key "name";
 
         leaf name {
-        		type union {
-              type inet:ip-address;
-              type string;
-        		}
+        		type inet:host;
             description
-              "Server host name";
+							"LDAP server's Domain name or IP address (IPv4 or IPv6)";            
         }
 
         leaf port {
