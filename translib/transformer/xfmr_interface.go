@@ -154,6 +154,11 @@ type TableXfmrFunc func (inParams XfmrParams) ([]string, error)
 // Return: value string, error
 type ValueXfmrFunc func (inParams XfmrDbParams)  (string, error)
 
+ // PreXfmrFunc type is defined to use for handling any default handling operations required as part of the CREATE, UPDATE, REPLACE, DELETE & GET
+ // Transformer function definition.
+ // Param: XfmrParams structure having database pointers, current db, operation, DB data in multidimensional map, YgotRoot, uri
+ // Return: error
+type PreXfmrFunc func (inParams XfmrParams) (error)
 
 // XfmrInterface is a validation interface for validating the callback registration of app modules 
 // transformer methods.
