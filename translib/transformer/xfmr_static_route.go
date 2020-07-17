@@ -631,22 +631,18 @@ func (data *vrfRouteInfo)isDataValid(scope uriScopeType, oper int, vrf string) b
         return false
     }
     if oper == CREATE {
-        // check if route or nexthop already created
+        // check if route already created
         for pfx, route := range vrfRoute {
             if route.dbNh != nil && len(route.dbNh.nhList.nhList) > 0 {
-                if scope != STATIC_ROUTES_NEXTHOP {
-                    log.Infof("route prefix %s was already in DB", pfx)
-                    return false
-                }
                 for key := range route.ygotNhList.nhList {
                     if _, ok := route.dbNh.nhList.nhList[key]; ok {
-                        log.Infof("route prefix %s nexthop %s was already in DB", pfx, key)
+                        log.Infof("route prefix %s with nexthop %s was already in DB", pfx, key)
                         return false
                     }
                 }
             }
         }
-    } else if oper == DELETE || (oper == REPLACE && scope != STATIC_ROUTES) {
+    } else if scope != STATIC_ROUTES {
         // check if route or nexthop in DB
         for pfx, route := range vrfRoute {
             if route.dbNh == nil || len(route.dbNh.nhList.nhList) == 0 {
@@ -796,7 +792,7 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
                     }
                 } else {
                     // udpate nexthop
-                    if inParams.oper != REPLACE {
+                    if inParams.oper != REPLACE || uriScope == STATIC_ROUTES_NEXTHOP {
                         for k, v := range routeInfo.dbNh.nhList.nhList {
                             if _, ok := routeInfo.ygotNhList.nhList[k]; !ok {
                                 routeInfo.ygotNhList.updateNH(v, CREATE)
@@ -995,9 +991,38 @@ func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
     return strings.Join(aliasList, ","), nil
 }
 
+func Subscribe_static_routes_nexthop_xfmr(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    var routeKey string
+    if pathInfo.HasVar("name") {
+        var prefix string
+        vrf := pathInfo.Var("name")
+        if pathInfo.HasVar("prefix") {
+            prefix = pathInfo.Var("prefix")
+        } else {
+            prefix = "*"
+        }
+        routeKey = vrf + "|" + prefix
+    } else {
+        routeKey = "*"
+    }
+
+    log.Infof("Subscribe_static_routes_nexthop_xfmr: URI %s", inParams.uri)
+    result.dbDataMap = RedisDbMap{db.ConfigDB: {STATIC_ROUTE_TABLE: {routeKey: {}}}}
+    result.needCache = true
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, nil
+}
+
 func init() {
     XlateFuncBind("YangToDb_static_routes_nexthop_xfmr", YangToDb_static_routes_nexthop_xfmr)
     XlateFuncBind("DbToYang_static_routes_nexthop_xfmr", DbToYang_static_routes_nexthop_xfmr)
+    XlateFuncBind("Subscribe_static_routes_nexthop_xfmr", Subscribe_static_routes_nexthop_xfmr)
     XlateFuncBind("YangToDb_static_routes_key_xfmr", YangToDb_static_routes_key_xfmr)
     XlateFuncBind("DbToYang_static_routes_key_xfmr", DbToYang_static_routes_key_xfmr)
     XlateFuncBind("static_routes_validate_proto", validate_static_protocol)
