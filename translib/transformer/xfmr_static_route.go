@@ -631,22 +631,18 @@ func (data *vrfRouteInfo)isDataValid(scope uriScopeType, oper int, vrf string) b
         return false
     }
     if oper == CREATE {
-        // check if route or nexthop already created
+        // check if route already created
         for pfx, route := range vrfRoute {
             if route.dbNh != nil && len(route.dbNh.nhList.nhList) > 0 {
-                if scope != STATIC_ROUTES_NEXTHOP {
-                    log.Infof("route prefix %s was already in DB", pfx)
-                    return false
-                }
                 for key := range route.ygotNhList.nhList {
                     if _, ok := route.dbNh.nhList.nhList[key]; ok {
-                        log.Infof("route prefix %s nexthop %s was already in DB", pfx, key)
+                        log.Infof("route prefix %s with nexthop %s was already in DB", pfx, key)
                         return false
                     }
                 }
             }
         }
-    } else if oper == DELETE || (oper == REPLACE && scope != STATIC_ROUTES) {
+    } else if scope != STATIC_ROUTES {
         // check if route or nexthop in DB
         for pfx, route := range vrfRoute {
             if route.dbNh == nil || len(route.dbNh.nhList.nhList) == 0 {
@@ -999,9 +995,19 @@ func Subscribe_static_routes_nexthop_xfmr(inParams XfmrSubscInParams) (XfmrSubsc
     var result XfmrSubscOutParams
 
     pathInfo := NewPathInfo(inParams.uri)
-    vrf := pathInfo.Var("name")
-    prefix := pathInfo.Var("prefix")
-    routeKey := vrf + "|" + prefix
+    var routeKey string
+    if pathInfo.HasVar("name") {
+        var prefix string
+        vrf := pathInfo.Var("name")
+        if pathInfo.HasVar("prefix") {
+            prefix = pathInfo.Var("prefix")
+        } else {
+            prefix = "*"
+        }
+        routeKey = vrf + "|" + prefix
+    } else {
+        routeKey = "*"
+    }
 
     log.Infof("Subscribe_static_routes_nexthop_xfmr: URI %s", inParams.uri)
     result.dbDataMap = RedisDbMap{db.ConfigDB: {STATIC_ROUTE_TABLE: {routeKey: {}}}}
