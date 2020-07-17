@@ -11,6 +11,10 @@ module sonic-vlan {
         prefix scommon;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     import sonic-port {
         prefix prt;
     }
@@ -68,19 +72,7 @@ module sonic-vlan {
                 }
 
                 leaf-list members {
-                    must "count(current()/../members[text()=/spc:sonic-portchannel/spc:PORTCHANNEL_MEMBER/" +
-                        "spc:PORTCHANNEL_MEMBER_LIST[spc:ifname=current()]/spc:name]) = 0 and " +
-                        "count(current()/../members[text()=/spc:sonic-portchannel/spc:PORTCHANNEL_MEMBER/" +
-                        "spc:PORTCHANNEL_MEMBER_LIST[spc:name=current()]/spc:ifname]) = 0 " {
-                            error-message "A vlan interface member cannot be part of portchannel which is already a vlan member";
-                        }
-                    must "((/scommon:operation/scommon:operation != 'CREATE') and (/scommon:operation/scommon:operation != 'UPDATE')) or " +
-                        "count(/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:MIRROR_SESSION_LIST[sms:dst_port=current()]) = 0" {
-                        error-message "Port has mirror session config";
-                        error-app-tag portlist-configured-as-dst-port-in-mirror-session;
-                    }
-
-
+                    sonic-ext:custom-validation ValidateVlanMember;
                     type union {
                         type leafref {
                             path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
@@ -170,11 +162,7 @@ module sonic-vlan {
                 }
 
                 leaf ifname {
-                    must "((/scommon:operation/scommon:operation != 'CREATE') and (/scommon:operation/scommon:operation != 'UPDATE')) or " +
-                        "count(/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:MIRROR_SESSION_LIST[sms:dst_port=current()]) = 0" {
-                        error-message "Port has mirror session config";
-                        error-app-tag port-configured-as-dst-port-in-mirror-session;
-                    }
+                    sonic-ext:custom-validation ValidateVlanMember;
                     type union {
                         type leafref {
                             path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";

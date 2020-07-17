@@ -995,7 +995,9 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 
 	cvlErrObj := CVLErrorInfo{ErrCode : CVL_SUCCESS}
 
-	for nodeName, custFunc := range modelInfo.tableInfo[tbl].custValidation {
+	// yangListName provides the correct table name defined in sonic-yang
+	// For ex. VLAN_INTERFACE_LIST and VLAN_INTERFACE_IPADDR_LIST are in same container
+	for nodeName, custFunc := range modelInfo.tableInfo[yangListName].custValidation {
 		//find the node value
 		//node value is empty for custom validation function at list level
 		nodeVal := ""
