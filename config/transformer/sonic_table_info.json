@@ -38,7 +38,7 @@
     },
     {
         "tablename": "BGP_NEIGHBOR",
-        "parent": "BGP_GLOBALS"
+        "parent": "BGP_PEER_GROUP"
     },
     {
         "tablename": "BGP_PEER_GROUP",
