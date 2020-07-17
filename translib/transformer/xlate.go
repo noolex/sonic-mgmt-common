@@ -783,3 +783,20 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
        return subscribe_result, err
 
 }
+
+func IsTerminalNode(uri string) (bool, error) {
+	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	if xpathData, ok := xYangSpecMap[xpath]; ok {
+		if !xpathData.hasNonTerminalNode {
+			return true, nil
+		}
+	} else {
+		log.Errorf("xYangSpecMap data not found for xpath : %v", xpath)
+		errStr := "xYangSpecMap data not found for xpath."
+		log.Error(errStr)
+		err = tlerr.InternalError{Format: errStr}
+	}
+
+	log.Errorf("xYangSpecMap data not found for xpath : %v", xpath)
+	return false, err
+}
