@@ -44,8 +44,6 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     var result []byte
     var configDB *db.DB
     var mapData map[string]interface{}
-    var delTblLst []string
-    var sortedDelTblLst []string
     var active_profile string
     var default_cfg_port_speed string
     var cfg_port string
@@ -76,7 +74,7 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     opts.IsWriteDisabled = false
     configDB, err = db.NewDB(opts)
     if err != nil {
-       log.Infof("Failed to create a DB object. Error %v\n", err)
+       errStr = fmt.Sprintf("Failed to create a DB object. Error %v\n", err)
        return errResponse(errStr)
     }
     defer configDB.DeleteDB()
@@ -126,7 +124,6 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
         errStr = fmt.Sprintf("Failed to read default configuration file. Error=%v", cfg_err)
         return errResponse(errStr)
     }
-    log.Infof("rpc_default_port_config : Restoring the port %v to its factory default configuration", port_str)
 
     /* Determine if the port is a broken out port */
     is_broken_port := false
@@ -315,7 +312,8 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     /* Do not delete PORT as the same port needs to be updated with default configuration */
     delete(dbDataMap[DELETE][db.ConfigDB], "PORT")
 
-    /* TBD Obtain the list of dependent tables and keys to watch while performing the config operations */
+    /* Obtain the list of dependent tables and keys to watch while performing the config operations */
+    var tblsToWatch []*db.TableSpec
     cvlSess, cvlRes := cvl.ValidationSessOpen()
     if cvlRes != cvl.CVL_SUCCESS {
         errStr = fmt.Sprintf("rpc_default_port_config : Failed to start a CVL validation session. Result %v.", cvlRes)
@@ -323,45 +321,33 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     }
     defer cvl.ValidationSessClose(cvlSess)
 
-    fullDepTblList, cvlRes := cvlSess.GetDepTables("sonic-port", "PORT")
-    if cvlRes != cvl.CVL_SUCCESS {
-        errStr = fmt.Sprintf("rpc_default_port_config : Failed to get dependent tables for the PORT table. Result %v.", cvlRes)
-        return errResponse(errStr)
+    fullDepTblList := cvlSess.GetAllReferringTables("PORT")
+    if len(fullDepTblList) != 0 {
+        for tbl := range fullDepTblList {
+            tblsToWatch = append(tblsToWatch, &db.TableSpec{Name: tbl})
+        }
     }
-    log.Infof("rpc_default_port_config : PORT dependent table list %v.", fullDepTblList)
-    /* End of TBD */
+
+    log.Infof("rpc_default_port_config : Configuration of port %v is being restored. dbDataMap: %v. tblsToWatch: %v", port_str, dbDataMap, fullDepTblList)
 
     /* Start applying updates to the DB  */
-    err = configDB.StartTx(nil, nil)
+    err = configDB.StartTx(nil, tblsToWatch)
     if err != nil {
         errStr = fmt.Sprintf("rpc_default_port_config : Failed to start ConfigDB transaction %v.", err)
         return errResponse(errStr)
     }
 
-    /* Distill the list of tables to be deleted */
-    for tblNm := range(dbDataMap[DELETE][db.ConfigDB]) {
-        delTblLst = append(delTblLst, tblNm)
-    }
-
-    /* sort the tables to be deleted  */
-    sortedDelTblLst, err = utils.SortAsPerTblDeps(delTblLst)
-    if err != nil {
-        errStr = fmt.Sprintf("rpc_default_port_config : Failed to sort table dependencies %v.", err)
-        return errResponse(errStr)
-    }
-    log.Infof("rpc_default_port_config : Delete table list %v, sorted %v.", delTblLst, sortedDelTblLst)
-
     /* Perform DELETE operations */
     err = delDbOpn(configDB, dbDataMap[DELETE][db.ConfigDB], true, "openconfig-platform")
     if err != nil {
-        errStr = fmt.Sprintf("rpc_default_port_config : Failed to perform delete operations. Error %v.", err)
+        errStr = fmt.Sprintf("rpc_default_port_config : Failed to perform delete operations. Error %v. dbDataMap %v.", err, dbDataMap[DELETE][db.ConfigDB])
         return errResponse(errStr)
     }
 
     /* Perform UPDATE operations */
     err = cruDbOpn(configDB, UPDATE, dbDataMap[UPDATE][db.ConfigDB], nil)
     if err != nil {
-        errStr = fmt.Sprintf("rpc_default_port_config : Failed to perform update operations. Error %v.", err)
+        errStr = fmt.Sprintf("rpc_default_port_config : Failed to perform update operations. Error %v. dbDataMap %v.", err, dbDataMap[UPDATE][db.ConfigDB])
         return errResponse(errStr)
     }
 
@@ -427,7 +413,7 @@ func delDbOpn(d *db.DB, dbMap map[string]map[string]db.Value, skipOrdTableChk bo
 					err = errors.New("GetOrdTblList returned empty slice. Insufficient information to process request")
 					return err
 				}
-				log.Infof("GetOrdTblList for table - %v, module %v returns %v", tblNm, moduleNm, ordTblList)
+				//log.Infof("GetOrdTblList for table - %v, module %v returns %v", tblNm, moduleNm, ordTblList)
 			}
 			if len(tblVal) == 0 {
 				log.Info("DELETE case - No table instances/rows found hence delete entire table = ", tblNm)
@@ -532,14 +518,14 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 	for field, value := range tblRw.Field {
 		if strings.HasSuffix(field, "@") {
 			exstLst := existingEntry.GetList(field)
-			log.Infof("Existing DB value for field %v - %v", field, exstLst)
+			//log.Infof("Existing DB value for field %v - %v", field, exstLst)
 			var valueLst []string
 			if value != "" { //zero len string as leaf-list value is treated as delete entire leaf-list
 				valueLst = strings.Split(value, ",")
 			}
-			log.Infof("Incoming value for field %v - %v", field, valueLst)
+			//log.Infof("Incoming value for field %v - %v", field, valueLst)
 			if len(exstLst) != 0 {
-				log.Infof("Existing list is not empty for field %v", field)
+				//log.Infof("Existing list is not empty for field %v", field)
 				for _, item := range valueLst {
 					if !contains(exstLst, item) {
 						if opcode == UPDATE {
@@ -552,7 +538,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 
 					}
 				}
-				log.Infof("For field %v value after merging incoming with existing %v", field, exstLst)
+				//log.Infof("For field %v value after merging incoming with existing %v", field, exstLst)
 				if opcode == DELETE {
 					if len(valueLst) > 0 {
 						mergeTblRw.SetList(field, exstLst)
@@ -566,7 +552,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 					tblRw.SetList(field, exstLst)
 				}
 			} else { //when existing list is empty(either empty string val in field or no field at all n entry)
-				log.Infof("Existing list is empty for field %v", field)
+				//log.Infof("Existing list is empty for field %v", field)
 				if opcode == UPDATE {
 					if len(valueLst) > 0 {
 						exstLst = valueLst
@@ -588,7 +574,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 	/* delete specific item from leaf-list */
 	if opcode == DELETE {
 		if len(mergeTblRw.Field) == 0 {
-			log.Infof("mergeTblRow is empty - Returning Table Row %v", tblRw)
+			//log.Infof("mergeTblRow is empty - Returning Table Row %v", tblRw)
 			return tblRw
 		}
 		err := d.ModEntry(dbTblSpec, db.Key{Comp: []string{tblKey}}, mergeTblRw)
@@ -596,7 +582,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 			log.Warning("DELETE case(merge leaf-list) - d.ModEntry() failure")
 		}
 	}
-	log.Infof("Returning Table Row %v", tblRw)
+	//log.Infof("Returning Table Row %v", tblRw)
 	return tblRw
 }
 
