@@ -132,7 +132,10 @@ var DbToYang_mclag_domain_delay_restore_start_time_fld_xfmr FieldXfmrDbtoYang = 
 
     stDb := inParams.dbs[db.StateDB]
     mclagEntry, _ := stDb.GetEntry(&db.TableSpec{Name: "MCLAG_TABLE"}, db.Key{Comp: []string{inParams.key}})
-    result["delay-restore-start-time"] = mclagEntry.Get("delay_restore_start_time")
+    if dbval, found := mclagEntry.Field["delay_restore_start_time"]; found {
+        ocval, _ := strconv.ParseUint(dbval, 10, 64)
+        result["delay-restore-start-time"] = &ocval
+    } 
 
     return result, err
 }
