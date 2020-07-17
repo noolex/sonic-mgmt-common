@@ -190,7 +190,7 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
             return errResponse(errStr)
         }
     } else {
-        errStr = "Port configuration table not found for"
+        errStr = "Port configuration table not found"
         return errResponse(errStr)
     }
 
@@ -233,23 +233,14 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
                     continue
                 }
 
-                updateVlanMemberMap := make(map[string]db.Value)
-                vlanMemberData := make(map[string]string)
-                vlanMemberValue := db.Value{Field: vlanMemberData}
-
-                // Fill in vlan member table data
-                for f,v := range vdata {
-                    vlanMemberValue.Set(f, v)
-                }
-                updateVlanMemberMap[default_vlan + "|" + port_str] = vlanMemberValue
-                dbDataMap[UPDATE][db.ConfigDB]["VLAN_MEMBER"] = updateVlanMemberMap
-
                 // VLAN table updates
                 updateVlanMap := make(map[string]db.Value)
                 vlanData := make(map[string]string)
                 vlanValue := db.Value{Field: vlanData}
                 if vlan_entry.Has("members@") {
-                    if !strings.Contains(vlan_entry.Field["members@"], port_str) {
+                    port_list := strings.Split(vlan_entry.Field["members@"], ",")
+                    _, member_found := Find(port_list, port_str)
+                    if !member_found {
                         /* Append only if existing VLAN doesn't have the port as its member */
                         vlanValue.Set("members@", vlan_entry.Field["members@"] + "," + port_str)
                     } else {
@@ -261,6 +252,19 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
                 }
                 updateVlanMap[default_vlan] = vlanValue
                 dbDataMap[UPDATE][db.ConfigDB]["VLAN"] = updateVlanMap
+
+                // VLAN_MEMBER table updates
+                updateVlanMemberMap := make(map[string]db.Value)
+                vlanMemberData := make(map[string]string)
+                vlanMemberValue := db.Value{Field: vlanMemberData}
+
+                // Fill in vlan member table data
+                for f,v := range vdata {
+                    vlanMemberValue.Set(f, v)
+                }
+                updateVlanMemberMap[default_vlan + "|" + port_str] = vlanMemberValue
+                dbDataMap[UPDATE][db.ConfigDB]["VLAN_MEMBER"] = updateVlanMemberMap
+
             }
         }
     }
