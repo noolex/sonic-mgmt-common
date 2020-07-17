@@ -43,6 +43,7 @@ type CommonApp struct {
 	skipOrdTableChk bool
 	cmnAppTableMap map[int]map[db.DBNum]map[string]map[string]db.Value
 	cmnAppYangDefValMap map[string]map[string]db.Value
+	cmnAppYangAuxMap map[string]map[string]db.Value
 	appOptions
 }
 
@@ -363,7 +364,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	log.Info("translateCRUDCommon:path =", app.pathInfo.Path)
 
 	// translate yang to db
-	result, auxMap, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget, (*app).body, txCache, &app.skipOrdTableChk)
+	result, defValMap, auxMap, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget, (*app).body, txCache, &app.skipOrdTableChk)
 	log.Info("transformer.XlateToDb() returned result DB map - ", result, "\nDefault value Db Map - ", auxMap)
 
 
@@ -372,7 +373,8 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 		return keys, err
 	}
 	app.cmnAppTableMap = result
-	app.cmnAppYangDefValMap = auxMap
+	app.cmnAppYangDefValMap = defValMap
+	app.cmnAppYangAuxMap = auxMap
 	if len(result) == 0 {
 		log.Error("XlatetoDB() returned empty map")
 		//Note: Get around for no redis ABNF Schema for set(temporary)
