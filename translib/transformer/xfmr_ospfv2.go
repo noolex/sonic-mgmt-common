@@ -1329,7 +1329,7 @@ func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[s
         autoCreateOspfArea := true
         if (autoCreateOspfArea) {
             if (strings.Contains(rcvdUri, "protocols/protocol/ospfv2")) {
-                if (strings.Contains(rcvdUri, "openconfig-ospfv2-ext:networks/network") ||
+                if (strings.Contains(rcvdUri, "networks/network") ||
                     strings.Contains(rcvdUri, "virtual-links/virtual-link") ||
                     strings.Contains(rcvdUri, "inter-area-policy/ranges/range")) {
                     err = ospf_auto_create_ospf_router_area(inParams, ospfRespMap)
@@ -1649,7 +1649,7 @@ func ospf_auto_create_ospf_router_area(inParams *XfmrParams, ospfRespMap *map[st
     log.Info("ospf_auto_create_ospf_router_area: rcvdUri ", rcvdUri)
 
     if (strings.Contains(rcvdUri, "protocols/protocol/ospfv2")) {
-        if (strings.Contains(rcvdUri, "openconfig-ospfv2-ext:networks/network")) {
+        if (strings.Contains(rcvdUri, "networks/network")) {
             autoCreate = true
         } else if (strings.Contains(rcvdUri, "virtual-links/virtual-link")) {
             autoCreate = true
