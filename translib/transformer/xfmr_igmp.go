@@ -35,6 +35,7 @@ func init () {
     XlateFuncBind("DbToYang_igmp_stats_get_xfmr", DbToYang_igmp_stats_get_xfmr)
     XlateFuncBind("DbToYang_igmp_interface_get_xfmr", DbToYang_igmp_interface_get_xfmr)
     XlateFuncBind("rpc_show_igmp_join", rpc_show_igmp_join)
+    XlateFuncBind("rpc_clear_igmp", rpc_clear_igmp)
 }
 
 func getIgmpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp, string, error) {
@@ -835,4 +836,55 @@ var rpc_show_igmp_join RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
     return json.Marshal(&result)
 }
 
+var rpc_clear_igmp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 
+    var err error
+    var status string
+    var mapData map[string]interface{}
+
+    log.Info("rpc_clear_igmp Enter")
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, err
+    }
+
+    var result struct {
+        Output struct {
+            Status string `json:"response"`
+        } `json:"sonic-igmp-clear:output"`
+    }
+
+    input := mapData["sonic-igmp:input"]
+    mapData = input.(map[string]interface{})
+
+    log.Info("rpc_clear_igmp: mapData ", mapData)
+
+    vrfName := "default" 
+    intfAll := true 
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        if (value != "") {
+            vrfName = value
+        }
+    }
+
+    cmdStr := ""
+    if (intfAll) {
+        cmdStr = "clear ip igmp vrf " + vrfName + " interfaces"
+    }
+
+    log.Infof("rpc_clear_igmp: vrf-%s all-%v.", vrfName, intfAll)
+
+    if cmdStr != "" {
+        exec_vtysh_cmd(cmdStr)
+        status = "Success"
+    } else {
+        log.Error("rpc_clear_igmp: Invalid input received mapData ", mapData)
+        status = "Failed"
+    }
+
+    log.Infof("rpc_clear_igmp: %s", status)
+    result.Output.Status = status
+    return json.Marshal(&result)
+}
