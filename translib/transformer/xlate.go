@@ -758,20 +758,24 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                    err = st_err
                    break
                }
-               if st_result.dbDataMap != nil {
-                   subscribe_result.DbDataMap = st_result.dbDataMap
-                   xfmrLogInfo("Subtree subcribe dbData %v", subscribe_result.DbDataMap)
-               }
+	       subscribe_result.OnChange = st_result.onChange
+	       xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
+	       if subscribe_result.OnChange {
+		       if st_result.dbDataMap != nil {
+			       subscribe_result.DbDataMap = st_result.dbDataMap
+			       xfmrLogInfo("Subtree subcribe dbData %v", subscribe_result.DbDataMap)
+		       }
+		       subscribe_result.NeedCache = st_result.needCache
+		       xfmrLogInfo("Subtree subcribe need Cache %v", subscribe_result.NeedCache)
+	       } else {
+		       subscribe_result.DbDataMap = nil
+	       }
                if st_result.nOpts != nil {
                    subscribe_result.PType = st_result.nOpts.pType
                    xfmrLogInfo("Subtree subcribe pType %v", subscribe_result.PType)
                    subscribe_result.MinInterval = st_result.nOpts.mInterval
                    xfmrLogInfo("Subtree subcribe min interval %v", subscribe_result.MinInterval)
                }
-               subscribe_result.OnChange = st_result.onChange
-               xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
-               subscribe_result.NeedCache = st_result.needCache
-               xfmrLogInfo("Subtree subcribe need Cache %v", subscribe_result.NeedCache)
            } else {
 		   subscribe_result.OnChange = true
 		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{dbTbl: {dbKey: {}}}

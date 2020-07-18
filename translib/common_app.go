@@ -887,7 +887,7 @@ func isPartialReplace(exstRw db.Value, replTblRw db.Value, auxRw db.Value) bool 
 			break
 		}
 	}
-	log.Info("returninf partialReplace - ", partialReplace)
+	log.Info("returning partialReplace - ", partialReplace)
 	return partialReplace
 }
 
