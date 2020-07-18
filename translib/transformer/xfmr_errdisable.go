@@ -92,9 +92,15 @@ var YangToDb_errdisable_cause_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
             log.Error("getEntry FAiled")
             return res_map, err
         }
-        subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["interval"] = errdisable_entry.Field["interval"]
-        subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["udld"] = errdisable_entry.Field["udld"]
-        subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["bpduguard"] = errdisable_entry.Field["bpduguard"]
+        if val, ok := errdisable_entry.Field["interval"]; ok {
+            subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["interval"] = val
+        }
+        if val, ok := errdisable_entry.Field["udld"]; ok {
+            subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["udld"] = val
+        }
+        if val, ok := errdisable_entry.Field["bpduguard"]; ok {
+            subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["bpduguard"] = val
+        }
 
         if len(cause) == 0 {
             subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["udld"] = is_enabled
