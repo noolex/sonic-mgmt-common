@@ -574,7 +574,10 @@ func stripAugmentedModuleNames(xpath string) string {
         return path
 }
 
-func XfmrRemoveXPATHPredicates(xpath string) (string, error) {
+func XfmrRemoveXPATHPredicates(inPath string) (string, error) {
+	uriList := splitUri(inPath)
+	xpath := "/" + strings.Join(uriList, "/")
+
 	// Strip keys from xpath
 	for {
 		si, ei := strings.IndexAny(xpath, "["), strings.Index(xpath, "]")
