@@ -1541,7 +1541,14 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
     ifName := pathInfo.Var("interface-id");
 
     log.Info(" TableXfmrFunc - Uri ifName: ", ifName);
-    tblList = append(tblList, "QOS_PORT")
+    log.Info("inParams.requestUri: ", inParams.requestUri)
+
+    tbl_name := "QOS_PORT"
+    if strings.HasPrefix(inParams.requestUri, "/openconfig-qos:qos/interfaces/interface[interface-id=Ethernet0]/openconfig-qos-maps-ext:interface-maps") {
+        tbl_name = "PORT_QOS_MAP"
+    }
+
+    tblList = append(tblList, tbl_name)
     if len(ifName) != 0 {
         dbifName := utils.GetNativeNameFromUIName(&ifName)
         key = ifName
@@ -1554,12 +1561,12 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         }
 
         if (inParams.dbDataMap != nil) {
-            if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"]; !ok {
-                (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"] = make(map[string]db.Value)
+            if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
+                (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
             }
-            if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"][key]; !ok {
-                (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"][key] = db.Value{Field: make(map[string]string)}
-                (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"][key].Field["NULL"] = "NULL"
+            if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key]; !ok {
+                (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key] = db.Value{Field: make(map[string]string)}
+                (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key].Field["NULL"] = "NULL"
             }
         }
     } else {
@@ -1567,27 +1574,27 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         if(inParams.dbDataMap != nil) {
             intfKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PORT"})
             if len(intfKeys) > 0 {
-                if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"]; !ok {
-                    (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"] = make(map[string]db.Value)
+                if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
+                    (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
                 }
                 for _, intfKey := range intfKeys {
 
                     ifName = intfKey.Get(0)
                     if_name := utils.GetUINameFromNativeName(&ifName)
                     key := *if_name
-                    if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"][key]; !ok {
-                        (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"][key] = db.Value{Field: make(map[string]string)}
-                        (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"][key].Field["NULL"] = "NULL"
+                    if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key]; !ok {
+                        (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key] = db.Value{Field: make(map[string]string)}
+                        (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key].Field["NULL"] = "NULL"
                     }
                 }
             }
 
-            if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"]; !ok {
-                (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"] = make(map[string]db.Value)
+            if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
+                (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
             }
             key = "CPU"
-            if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"][key]; !ok {
-                (*inParams.dbDataMap)[db.ConfigDB]["QOS_PORT"][key] = db.Value{Field: make(map[string]string)}
+            if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key]; !ok {
+                (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key] = db.Value{Field: make(map[string]string)}
             }
         }
     }

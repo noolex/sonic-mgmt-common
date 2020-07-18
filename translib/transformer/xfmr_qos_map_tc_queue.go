@@ -12,10 +12,17 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_tc_queue_xfmr", YangToDb_qos_tc_queue_xfmr)
     XlateFuncBind("DbToYang_qos_tc_queue_xfmr", DbToYang_qos_tc_queue_xfmr)
+    XlateFuncBind("Subscribe_qos_tc_queue_xfmr", Subscribe_qos_tc_queue_xfmr)
     XlateFuncBind("YangToDb_qos_tc_to_queue_map_fld_xfmr", YangToDb_qos_tc_to_queue_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_tc_to_queue_map_fld_xfmr", DbToYang_qos_tc_to_queue_map_fld_xfmr)
 
 }
+
+var Subscribe_qos_tc_queue_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    map_type := "TC_TO_QUEUE_MAP"
+    return Subscribe_qos_map_xfmr(inParams, map_type)
+}
+
 
 
 
@@ -64,7 +71,9 @@ var YangToDb_qos_tc_queue_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-queue-maps/forwarding-group-queue-map/forwarding-group-queue-map-entries/forwarding-group-queue-map-entry")   &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-queue-maps/forwarding-group-queue-map/forwarding-group-queue-map-entries/forwarding-group-queue-map-entry")  {
-        log.Info("YangToDb: map entry unspecified, stop here")
+        log.Info("YangToDb: map entry unspecified, return the map")
+
+        res_map[map_type] = map_entry
         return res_map, err
     }
 
@@ -142,6 +151,10 @@ func fill_tc_map_info_by_name(inParams XfmrParams, forwardingGroupQueueMaps * oc
     var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupQueueMaps_ForwardingGroupQueueMap_ForwardingGroupQueueMapEntries_ForwardingGroupQueueMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
+        if k == "NULL" {
+            continue
+        }
+
         if entry_key != "" && k!= entry_key {
             continue
         }
