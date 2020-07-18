@@ -995,7 +995,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 	var err error
 	var fldSbtErr error // used only when direct query on leaf/leaf-list having subtree
 	var fldErr error //used only when direct query on leaf/leaf-list having field transformer
-	jsonData := ""
+	jsonData := "{}"
 	resultMap := make(map[string]interface{})
         d := inParamsForGet.d
         dbs := inParamsForGet.dbs
@@ -1017,6 +1017,21 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 		inParamsForGet.ygRoot = ygRoot
 		yangNode, ok := xYangSpecMap[reqXpath]
 		if ok {
+			/* Invoke pre-xfmr is present for the yang module */
+			moduleName := "/" + strings.Split(uri, "/")[1]
+			xfmrLogInfo("Module name for uri %s is %s", uri, moduleName)
+			if modSpecInfo, specOk := xYangSpecMap[moduleName]; specOk && (len(modSpecInfo.xfmrPre) > 0) {
+				inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
+				err = preXfmrHandlerFunc(modSpecInfo.xfmrPre, inParams)
+				xfmrLogInfo("Invoked pre transformer: %v, dbDataMap: %v ", modSpecInfo.xfmrPre, dbDataMap)
+				if err != nil {
+					log.Errorf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
+					return jsonData, true, err
+				}
+				inParamsForGet.dbDataMap = dbDataMap
+				inParamsForGet.ygRoot    = ygRoot
+			}
+
 			yangType := yangTypeGet(yangNode.yangEntry)
 			validateHandlerFlag := false
 			tableXfmrFlag := false

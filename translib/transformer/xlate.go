@@ -306,7 +306,7 @@ func fillSonicKeySpec(xpath string , tableName string, keyStr string) ( []KeySpe
 	return retdbFormat
 }
 
-func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interface{}, jsonPayload []byte, txCache interface{}, skipOrdTbl *bool) (map[int]RedisDbMap, map[string]map[string]db.Value, error) {
+func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interface{}, jsonPayload []byte, txCache interface{}, skipOrdTbl *bool) (map[int]RedisDbMap, map[string]map[string]db.Value, map[string]map[string]db.Value, error) {
 
 	var err error
 	requestUri := path
@@ -327,30 +327,31 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		errStr := "Error: failed to unmarshal json."
 		log.Error(errStr)
 		err = tlerr.InternalError{Format: errStr}
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Map contains table.key.fields
 	var result = make(map[int]RedisDbMap)
 	var yangDefValMap = make(map[string]map[string]db.Value)
+	var yangAuxValMap = make(map[string]map[string]db.Value)
 	switch opcode {
 	case CREATE:
 		xfmrLogInfo("CREATE case")
-		err = dbMapCreate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
+		err = dbMapCreate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, yangAuxValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for create request.")
 		}
 
 	case UPDATE:
 		xfmrLogInfo("UPDATE case")
-		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
+		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, yangAuxValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for update request.")
 		}
 
 	case REPLACE:
 		xfmrLogInfo("REPLACE case")
-		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, txCache)
+		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, yangAuxValMap, txCache)
 		if err != nil {
 			log.Errorf("Error: Data translation from yang to db failed for replace request.")
 		}
@@ -362,7 +363,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 			log.Errorf("Error: Data translation from yang to db failed for delete request.")
 		}
 	}
-	return result, yangDefValMap, err
+	return result, yangDefValMap, yangAuxValMap, err
 }
 
 func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, txCache interface{}) ([]byte, bool, error) {
@@ -757,20 +758,24 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                    err = st_err
                    break
                }
-               if st_result.dbDataMap != nil {
-                   subscribe_result.DbDataMap = st_result.dbDataMap
-                   xfmrLogInfo("Subtree subcribe dbData %v", subscribe_result.DbDataMap)
-               }
+	       subscribe_result.OnChange = st_result.onChange
+	       xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
+	       if subscribe_result.OnChange {
+		       if st_result.dbDataMap != nil {
+			       subscribe_result.DbDataMap = st_result.dbDataMap
+			       xfmrLogInfo("Subtree subcribe dbData %v", subscribe_result.DbDataMap)
+		       }
+		       subscribe_result.NeedCache = st_result.needCache
+		       xfmrLogInfo("Subtree subcribe need Cache %v", subscribe_result.NeedCache)
+	       } else {
+		       subscribe_result.DbDataMap = nil
+	       }
                if st_result.nOpts != nil {
                    subscribe_result.PType = st_result.nOpts.pType
                    xfmrLogInfo("Subtree subcribe pType %v", subscribe_result.PType)
                    subscribe_result.MinInterval = st_result.nOpts.mInterval
                    xfmrLogInfo("Subtree subcribe min interval %v", subscribe_result.MinInterval)
                }
-               subscribe_result.OnChange = st_result.onChange
-               xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
-               subscribe_result.NeedCache = st_result.needCache
-               xfmrLogInfo("Subtree subcribe need Cache %v", subscribe_result.NeedCache)
            } else {
 		   subscribe_result.OnChange = true
 		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{dbTbl: {dbKey: {}}}
@@ -782,4 +787,21 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 
        return subscribe_result, err
 
+}
+
+func IsTerminalNode(uri string) (bool, error) {
+	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	if xpathData, ok := xYangSpecMap[xpath]; ok {
+		if !xpathData.hasNonTerminalNode {
+			return true, nil
+		}
+	} else {
+		log.Errorf("xYangSpecMap data not found for xpath : %v", xpath)
+		errStr := "xYangSpecMap data not found for xpath."
+		log.Error(errStr)
+		err = tlerr.InternalError{Format: errStr}
+	}
+
+	log.Errorf("xYangSpecMap data not found for xpath : %v", xpath)
+	return false, err
 }

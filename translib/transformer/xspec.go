@@ -60,6 +60,7 @@ type yangXpathInfo  struct {
     cascadeDel     int
     virtualTbl     *bool
     nameWithMod    *string
+	xfmrPre        string
 }
 
 type dbInfo  struct {
@@ -736,6 +737,8 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				xpathData.xfmrField  = ext.NName()
 			case "post-transformer" :
 				xpathData.xfmrPost  = ext.NName()
+			case "pre-transformer" :
+				xpathData.xfmrPre  = ext.NName()
 			case "get-validate" :
 				xpathData.validateFunc  = ext.NName()
 			case "rpc-callback" :
@@ -972,7 +975,7 @@ func mapPrint(inMap map[string]*yangXpathInfo, fileName string) {
         if d.tableName != nil {
             fmt.Fprintf(fp, "%v", *d.tableName)
         }
-		fmt.Fprintf(fp, "\r\n    postXfmr : %v", d.xfmrPost)
+	fmt.Fprintf(fp, "\r\n    postXfmr : %v", d.xfmrPost)
         fmt.Fprintf(fp, "\r\n    tblOwner: ")
         if d.tblOwner != nil {
             fmt.Fprintf(fp, "%v", *d.tblOwner)
@@ -981,6 +984,7 @@ func mapPrint(inMap map[string]*yangXpathInfo, fileName string) {
 		if d.virtualTbl != nil {
 			fmt.Fprintf(fp, "%v", *d.virtualTbl)
         }
+        fmt.Fprintf(fp, "\r\n    preXfmr  : %v", d.xfmrPre)
         fmt.Fprintf(fp, "\r\n    xfmrTbl  : ")
         if d.xfmrTbl != nil {
             fmt.Fprintf(fp, "%v", *d.xfmrTbl)

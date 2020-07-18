@@ -135,7 +135,7 @@ module openconfig-igmp-ext {
         deviate not-supported;
     }
 
-    grouping igmp-interface-timers {
+    grouping igmp-ext-timers-config {
         description "IGMP interface timer fields";
         container timers {
             description
@@ -203,7 +203,7 @@ module openconfig-igmp-ext {
         }
     }
 
-    grouping igmp-interface-querier {
+    grouping igmp-ext-querier-config {
         description "IGMP interface querier fields";
         container querier {
             description
@@ -242,7 +242,7 @@ module openconfig-igmp-ext {
         }
     }
 
-    grouping igmp-interface-counters-ext {
+    grouping igmp-ext-counters-config {
         description "IGMP interface mtrace counters fields";
         container mtrace-counters {
             description
@@ -271,7 +271,7 @@ module openconfig-igmp-ext {
         }
     }
 
-    grouping igmp-interface-flags {
+    grouping igmp-ext-flags-config {
        description "IGMP interface flags fields";
        container flags {
            description
@@ -322,7 +322,7 @@ module openconfig-igmp-ext {
        }
     }
 
-    grouping igmp-attr-sources {
+    grouping igmp-ext-sources-config {
        description "IGMP sources information";
        container sources {
            config false;
@@ -381,7 +381,7 @@ module openconfig-igmp-ext {
        }
     }
 
-    grouping igmp-attr-groups {
+    grouping igmp-ext-groups-config {
        description "IGMP groups information";
        container groups {
            config false;
@@ -442,28 +442,28 @@ module openconfig-igmp-ext {
        }
     }
 
-    grouping igmp-attr-state {
+    grouping igmp-ext-state-config {
        description "IGMP state information";
        container statistics {
           description "IGMP statistics information";
           uses oc-igmp:igmp-interface-counters;
-          uses igmp-interface-counters-ext;
+          uses igmp-ext-counters-config;
        }
-       uses igmp-attr-sources;
-       uses igmp-attr-groups;
+       uses igmp-ext-sources-config;
+       uses igmp-ext-groups-config;
        uses oc-igmp:igmp-interface-top;
     }
 
     augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp" {
        description "Extended IGMP state information from standard IGMP model";
-       uses oc-igmp-ext:igmp-attr-state;
+       uses oc-igmp-ext:igmp-ext-state-config;
     }
 
     augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/interfaces/interface/state" {
        description "Extended IGMP interface state information from standard IGMP model";
-       uses oc-igmp-ext:igmp-interface-flags;
-       uses oc-igmp-ext:igmp-interface-querier;
-       uses oc-igmp-ext:igmp-interface-timers;
+       uses oc-igmp-ext:igmp-ext-flags-config;
+       uses oc-igmp-ext:igmp-ext-querier-config;
+       uses oc-igmp-ext:igmp-ext-timers-config;
     }
 
     deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/interfaces/interface/interface-ref" {

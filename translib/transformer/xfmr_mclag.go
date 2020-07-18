@@ -38,6 +38,8 @@ func init() {
 	XlateFuncBind("DbToYang_mclag_domain_oper_status_fld_xfmr", DbToYang_mclag_domain_oper_status_fld_xfmr)
 	XlateFuncBind("DbToYang_mclag_domain_role_fld_xfmr", DbToYang_mclag_domain_role_fld_xfmr)
 	XlateFuncBind("DbToYang_mclag_domain_system_mac_fld_xfmr", DbToYang_mclag_domain_system_mac_fld_xfmr)
+        XlateFuncBind("DbToYang_mclag_domain_delay_restore_start_time_fld_xfmr",
+                      DbToYang_mclag_domain_delay_restore_start_time_fld_xfmr)
 	XlateFuncBind("YangToDb_mclag_unique_ip_enable_fld_xfmr", YangToDb_mclag_unique_ip_enable_fld_xfmr)
 	XlateFuncBind("DbToYang_mclag_unique_ip_enable_fld_xfmr", DbToYang_mclag_unique_ip_enable_fld_xfmr)
 }
@@ -121,6 +123,18 @@ var DbToYang_mclag_domain_system_mac_fld_xfmr FieldXfmrDbtoYang = func(inParams 
 	result["system-mac"] = &sysmac
 
 	return result, err
+}
+
+var DbToYang_mclag_domain_delay_restore_start_time_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+    log.Infof("DbToYang_mclag_domain_delay_restore_start_time_fld_xfmr --> key: %v", inParams.key)
+
+    stDb := inParams.dbs[db.StateDB]
+    mclagEntry, _ := stDb.GetEntry(&db.TableSpec{Name: "MCLAG_TABLE"}, db.Key{Comp: []string{inParams.key}})
+    result["delay-restore-start-time"] = mclagEntry.Get("delay_restore_start_time")
+
+    return result, err
 }
 
 var YangToDb_mclag_gw_mac_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {

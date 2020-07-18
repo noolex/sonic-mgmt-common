@@ -226,6 +226,12 @@ module sonic-mclag {
                     description
                      "System MAC Address used for ICCPD";
                 }
+
+                leaf delay_restore_start_time {
+                     type uint64;
+                     description
+                         "Delay Restore start time in seconds since the Epoch";
+                }
             }
         }
 

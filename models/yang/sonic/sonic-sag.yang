@@ -50,7 +50,8 @@ module sonic-sag {
 
 		    leaf-list gwip {
 			    max-elements 16;
-				type inet:ip-prefix;
+						type inet:ip-prefix;
+						sonic-ext:custom-validation ValidateSagIp;
 			}
         }
     }

@@ -227,8 +227,9 @@ module sonic-portchannel-interface {
                     }
                 }
 
-                leaf-list helper_address {
+                leaf-list helper_addresses {
                     type sonic-if-cmn:vrf-ip;
+                    max-elements 4;
                     description
                         "List of destination addresses with each being a combination of Vrf and IP address";
                 }

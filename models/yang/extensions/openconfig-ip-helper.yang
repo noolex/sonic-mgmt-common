@@ -1,0 +1,145 @@
+module openconfig-ip-helper {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/ip-helper/extension";
+
+  prefix "oc-ip-helper";
+
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
+
+  description
+    "This module defines configuration and operational state data
+    for the IP helper.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-06-04" {
+    description
+      "Initial public revision";
+    reference "0.1.0";
+  }
+
+  // identity statements
+
+  // grouping statements
+
+  grouping ip-helper-global-config {
+    description
+      "Configuration data for global IP helper parameters";
+
+    leaf enable {
+      type boolean;
+      default false;
+      description
+        "It indicates if IP helper feature is enabled";
+    }
+
+    leaf incoming-rate-limit {
+      type uint16 {
+        range "600..10000" {
+          error-message "Value must be within 600 and 10000 pps";
+        }
+      }
+      default 600;
+      description
+        "It is the maximum rate at which broadcast packets
+        may be sent to CPU. Default is 1000 packets per second";
+    }
+
+    leaf-list ports {
+      type uint16;
+      description
+        "This is the list of UDP ports for which forwarding is enabled";
+    }
+
+    leaf-list include-custom-ports {
+      type uint16;
+      description
+        "This is the list of custom UDP ports for which forwarding is enabled";
+    }
+
+    leaf-list exclude-default-ports {
+      type uint16;
+      description
+        "This is the list of default UDP ports for which forwarding is disabled explicitly";
+    }
+
+  }
+
+  grouping ip-helper-global-state {
+    description
+      "Grouing for operational state data for IP helper global state";
+
+    leaf-list default-enabled-ports {
+      type uint16;
+      description
+        "List of UDP ports for which relay will be enabled by default";
+    }
+  }
+
+  grouping ip-helper-top {
+    description
+      "Top-level grouping for IP Helper model";
+
+    container ip-helper {
+      description
+        "Top-level container for IP helper configuration and state data";
+
+      container config {
+        description
+          "Configuration data ";
+
+        uses ip-helper-global-config;
+      }
+
+      container state {
+
+        config false;
+
+        description
+          "Operational state data for IP helper";
+
+        uses ip-helper-global-config;
+
+        uses ip-helper-global-state;
+
+      }
+    }
+  }
+
+  // data definition statements
+
+  uses ip-helper-top;
+
+  rpc clear-ip-helper{
+    description
+      "Operation for clearing IP helper statistics on interface";
+
+    input {
+      leaf interface {
+        type string;
+        description 
+          "Interface for which clear operation needs to be performed";
+      }
+    }
+
+    output {
+      leaf error {
+        type string;
+        description
+          "Result of RPC Operation";
+      }
+    }
+    
+  }
+
+}

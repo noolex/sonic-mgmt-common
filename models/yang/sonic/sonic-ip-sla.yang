@@ -65,6 +65,13 @@ module sonic-ip-sla {
                       "ip sla id of IP SLA";
                 }
 
+                leaf enabled {
+                    type boolean;
+                    description
+                      "Ip sla enabled or not on the sla-id";
+                }
+
+
                 leaf frequency {
                     type uint16 {
                         range "1..300" {

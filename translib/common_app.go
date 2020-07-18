@@ -20,7 +20,6 @@ package translib
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
@@ -30,7 +29,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/transformer"
-	"github.com/Azure/sonic-mgmt-common/cvl"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	"sync"
 )
 
@@ -44,6 +43,7 @@ type CommonApp struct {
 	skipOrdTableChk bool
 	cmnAppTableMap map[int]map[db.DBNum]map[string]map[string]db.Value
 	cmnAppYangDefValMap map[string]map[string]db.Value
+	cmnAppYangAuxMap map[string]map[string]db.Value
 	appOptions
 }
 
@@ -364,8 +364,8 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	log.Info("translateCRUDCommon:path =", app.pathInfo.Path)
 
 	// translate yang to db
-	result, auxMap, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget, (*app).body, txCache, &app.skipOrdTableChk)
-	log.Info("transformer.XlateToDb() returned result DB map - ", result, "\nDefault value Db Map - ", auxMap)
+	result, defValMap, auxMap, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget, (*app).body, txCache, &app.skipOrdTableChk)
+	log.Info("transformer.XlateToDb() returned result DB map - ", result, "\nDefault value Db Map - ", defValMap, "\nAux Db Map - ", auxMap)
 
 
 	if err != nil {
@@ -373,7 +373,8 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 		return keys, err
 	}
 	app.cmnAppTableMap = result
-	app.cmnAppYangDefValMap = auxMap
+	app.cmnAppYangDefValMap = defValMap
+	app.cmnAppYangAuxMap = auxMap //used for Replace case
 	if len(result) == 0 {
 		log.Error("XlatetoDB() returned empty map")
 		//Note: Get around for no redis ABNF Schema for set(temporary)
@@ -470,34 +471,6 @@ func (app *CommonApp) processCommon(d *db.DB, opcode int) error {
 	return err
 }
 
-//sort transformer result table list based on dependenciesi(using CVL API) tables to be used for CRUD operations
-func sortAsPerTblDeps(tblLst []string) ([]string, error) {
-	var resultTblLst []string
-	var err error
-	logStr := "Failure in CVL API to sort table list as per dependencies."
-
-	cvSess, cvlRetSess := cvl.ValidationSessOpen()
-	if cvlRetSess != cvl.CVL_SUCCESS {
-
-		log.Errorf("Failure in creating CVL validation session object required to use CVl API(sort table list as per dependencies) - %v", cvlRetSess)
-		err = fmt.Errorf("%v", logStr)
-		return resultTblLst, err
-	}
-	cvlSortDepTblList, cvlRetDepTbl := cvSess.SortDepTables(tblLst)
-	if cvlRetDepTbl != cvl.CVL_SUCCESS {
-		log.Warningf("Failure in cvlSess.SortDepTables: %v", cvlRetDepTbl)
-		cvl.ValidationSessClose(cvSess)
-		err = fmt.Errorf("%v", logStr)
-		return resultTblLst, err
-	}
-	log.Info("cvlSortDepTblList = ", cvlSortDepTblList)
-	resultTblLst = cvlSortDepTblList
-
-	cvl.ValidationSessClose(cvSess)
-	return resultTblLst, err
-
-}
-
 func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[string]map[string]db.Value) error {
 	var err error
 	var cmnAppTs *db.TableSpec
@@ -507,7 +480,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
-	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
+	resultTblLst, err = utils.SortAsPerTblDeps(xfmrTblLst)
 	if err != nil {
 		return err
 	}
@@ -603,11 +576,40 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 					}
 					log.Info("Processing Table row ", tblRw)
 					if existingEntry.IsPopulated() {
-						log.Info("Entry already exists hence execute db.SetEntry")
-						err := d.SetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+						log.Info("Entry already exists.")
+						auxRwOk := false
+						auxRw := db.Value{Field: map[string]string{}}
+						auxRw, auxRwOk = app.cmnAppYangAuxMap[tblNm][tblKey]
+						log.Info("Process Aux row ", auxRw)
+						isTlNd := false
+						isTlNd, err = transformer.IsTerminalNode(app.pathInfo.Path)
+						log.Info("transformer.IsTerminalNode() returned - ", isTlNd, " error ", err)
 						if err != nil {
-							log.Error("REPLACE case - d.SetEntry() failure")
 							return err
+						}
+						if isTlNd && isPartialReplace(existingEntry, tblRw, auxRw) {
+							log.Info("Since its partial replace modifying fields - ", tblRw)
+							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+							if err != nil {
+								log.Error("REPLACE case - d.ModEntry() failure")
+								return err
+							}
+							if auxRwOk {
+								if len(auxRw.Field) > 0 {
+									log.Info("Since its partial replace delete aux fields - ", auxRw)
+									err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, auxRw)
+									if err != nil {
+										log.Error("REPLACE case - d.DeleteEntryFields() failure")
+										return err
+									}
+								}
+							}
+						} else {
+							err := d.SetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+							if err != nil {
+								log.Error("REPLACE case - d.SetEntry() failure")
+								return err
+							}
 						}
 					} else {
 						log.Info("Entry doesn't exist hence create it.")
@@ -635,7 +637,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 	for tblNm := range(dbMap) {
 		xfmrTblLst = append(xfmrTblLst, tblNm)
 	}
-	resultTblLst, err = sortAsPerTblDeps(xfmrTblLst)
+	resultTblLst, err = utils.SortAsPerTblDeps(xfmrTblLst)
 	if err != nil {
 		return err
 	}
@@ -795,7 +797,7 @@ func checkAndProcessLeafList(existingEntry db.Value, tblRw db.Value, opcode int,
 						}
 					} else {
 						if opcode == DELETE {
-                                                        exstLst = removeElement(exstLst, item)
+                                                        exstLst = utils.RemoveElement(exstLst, item)
                                                 }
 
 					}
@@ -861,6 +863,32 @@ func areEqual(a, b interface{}) bool {
         }
 
         return reflect.DeepEqual(a, b)
+}
+
+func isPartialReplace(exstRw db.Value, replTblRw db.Value, auxRw db.Value) bool {
+	/* if existing entry contains field thats not present in result,
+           default and auxillary map then its a partial replace
+         */
+	partialReplace := false
+	for exstFld := range exstRw.Field {
+		if exstFld == "NULL" {
+			continue
+		}
+		isIncomingFld := false
+		if replTblRw.Has(exstFld) {
+			continue
+		}
+		if auxRw.Has(exstFld) {
+			continue
+		}
+		if !isIncomingFld {
+			log.Info("Entry contains field ", exstFld, " not found in result, default and aux fields hence its partial replace.")
+			partialReplace = true
+			break
+		}
+	}
+	log.Info("returning partialReplace - ", partialReplace)
+	return partialReplace
 }
 
 
