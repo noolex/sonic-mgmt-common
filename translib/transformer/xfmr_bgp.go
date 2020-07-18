@@ -13,7 +13,6 @@ import (
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
 )
-const sock_addr = "/etc/sonic/frr/bgpd_client_sock"
 
 func getBgpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp, string, error) {
     pathInfo := NewPathInfo(inParams.uri)

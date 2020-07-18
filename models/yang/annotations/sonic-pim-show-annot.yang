@@ -1,0 +1,16 @@
+module sonic-pim-show-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/spimshow-annot";
+    prefix "spimshow-annot";
+
+    import sonic-pim-show { prefix spimshow; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /spimshow:show-pim {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_pim";
+        }
+    }
+}
