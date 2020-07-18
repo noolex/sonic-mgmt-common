@@ -23,10 +23,11 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "fmt"
     "os"
-    "bytes"
-    "io/ioutil"
+    "bufio"
     log "github.com/golang/glog"
 )
+
+const BRIEF_AUDIT_SIZE = 20
 
 func init() {
     XlateFuncBind("rpc_showauditlog_cb", rpc_showauditlog_cb)
@@ -37,7 +38,7 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
     var showaudit struct {
         Output struct {
-        Result string `json:"audit-content"`
+        Result []string `json:"audit-content"`
         } `json:"sonic-show-auditlog:output"`
     }
 
@@ -56,47 +57,44 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         v = inputData["content-type"]
     }
 
+    // open audit.log
+    f, err := os.Open("/host_var/log/audit.log")
+    if err != nil {
+        fmt.Println("File reading error", err)
+        return nil, err
+    }
+    defer f.Close()
+
+    // if input is 'all', read audit.log.1 first and then audit.log
     if v == "all" {
-        data1, _ := ioutil.ReadFile("/host_var/log/audit.log.1")
-        data, err := ioutil.ReadFile("/host_var/log/audit.log")
-        if err != nil {
-            fmt.Println("File reading error", err)
-            return nil,err
+        f1, err := os.Open("/host_var/log/audit.log.1")
+        if err == nil {
+            scanner := bufio.NewScanner(f1)
+            for scanner.Scan() {
+                showaudit.Output.Result = append(showaudit.Output.Result, string(scanner.Text()))
+            }
         }
-        showaudit.Output.Result = string(data1) + string(data)
+        defer f1.Close()
+
+        // read audit.log
+        scanner := bufio.NewScanner(f)
+        for scanner.Scan() {
+            showaudit.Output.Result = append(showaudit.Output.Result, string(scanner.Text()))
+        }
     } else {
-        var buffer []byte
-        f, err := os.Open("/host_var/log/audit.log")
-        if err != nil {
-            fmt.Println("File reading error", err)
-            return nil, err
+        // brief output - get last 20 lines
+        var tmpResult []string
+        scanner := bufio.NewScanner(f)
+        for scanner.Scan() {
+            tmpResult = append(tmpResult, string(scanner.Text()))
         }
-        defer f.Close()
-
-        fileinfo, err := f.Stat()
-        if err != nil {
-            fmt.Println(err)
-            return nil, err
+        lenx := len(tmpResult)
+        j := BRIEF_AUDIT_SIZE
+        if lenx < BRIEF_AUDIT_SIZE {
+            j = lenx
         }
-        filesize := fileinfo.Size()
-        if filesize > 4096 {
-            buffer = make([]byte, 4096)
-            _, err = f.ReadAt(buffer, (filesize-4096))
-        } else {
-            buffer = make([]byte, filesize)
-            _, err = f.Read(buffer)
-        }
-        if err != nil {
-           fmt.Println(err)
-           return nil, err
-        }
-
-        res1 := bytes.Index(buffer, []byte("\n"))
-
-        if (res1 != -1) {
-            showaudit.Output.Result = string(buffer[res1:])
-        } else {
-            showaudit.Output.Result = string(buffer)
+        for i := 0; i < j; i++ {
+            showaudit.Output.Result = append(showaudit.Output.Result, tmpResult[lenx-i-1])
         }
     }
 

@@ -30,9 +30,11 @@ module sonic-auditlog {
        }
 
        output {
-           leaf audit-content {
-               type string;
-               description "First 100 lines of audit log";
+           list audit-content {
+               leaf content {
+                   type string;
+                   description "First 100 lines of audit log";
+               }
            }
        }
     }
