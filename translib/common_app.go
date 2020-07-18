@@ -365,7 +365,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 
 	// translate yang to db
 	result, defValMap, auxMap, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget, (*app).body, txCache, &app.skipOrdTableChk)
-	log.Info("transformer.XlateToDb() returned result DB map - ", result, "\nDefault value Db Map - ", auxMap)
+	log.Info("transformer.XlateToDb() returned result DB map - ", result, "\nDefault value Db Map - ", defValMap, "\nAux Db Map - ", auxMap)
 
 
 	if err != nil {
@@ -374,7 +374,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	}
 	app.cmnAppTableMap = result
 	app.cmnAppYangDefValMap = defValMap
-	app.cmnAppYangAuxMap = auxMap
+	app.cmnAppYangAuxMap = auxMap //used for Replace case
 	if len(result) == 0 {
 		log.Error("XlatetoDB() returned empty map")
 		//Note: Get around for no redis ABNF Schema for set(temporary)
@@ -576,11 +576,40 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 					}
 					log.Info("Processing Table row ", tblRw)
 					if existingEntry.IsPopulated() {
-						log.Info("Entry already exists hence execute db.SetEntry")
-						err := d.SetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+						log.Info("Entry already exists.")
+						auxRwOk := false
+						auxRw := db.Value{Field: map[string]string{}}
+						auxRw, auxRwOk = app.cmnAppYangAuxMap[tblNm][tblKey]
+						log.Info("Process Aux row ", auxRw)
+						isTlNd := false
+						isTlNd, err = transformer.IsTerminalNode(app.pathInfo.Path)
+						log.Info("transformer.IsTerminalNode() returned - ", isTlNd, " error ", err)
 						if err != nil {
-							log.Error("REPLACE case - d.SetEntry() failure")
 							return err
+						}
+						if isTlNd && isPartialReplace(existingEntry, tblRw, auxRw) {
+							log.Info("Since its partial replace modifying fields - ", tblRw)
+							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+							if err != nil {
+								log.Error("REPLACE case - d.ModEntry() failure")
+								return err
+							}
+							if auxRwOk {
+								if len(auxRw.Field) > 0 {
+									log.Info("Since its partial replace delete aux fields - ", auxRw)
+									err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, auxRw)
+									if err != nil {
+										log.Error("REPLACE case - d.DeleteEntryFields() failure")
+										return err
+									}
+								}
+							}
+						} else {
+							err := d.SetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+							if err != nil {
+								log.Error("REPLACE case - d.SetEntry() failure")
+								return err
+							}
 						}
 					} else {
 						log.Info("Entry doesn't exist hence create it.")
@@ -834,6 +863,32 @@ func areEqual(a, b interface{}) bool {
         }
 
         return reflect.DeepEqual(a, b)
+}
+
+func isPartialReplace(exstRw db.Value, replTblRw db.Value, auxRw db.Value) bool {
+	/* if existing entry contains field thats not present in result,
+           default and auxillary map then its a partial replace
+         */
+	partialReplace := false
+	for exstFld := range exstRw.Field {
+		if exstFld == "NULL" {
+			continue
+		}
+		isIncomingFld := false
+		if replTblRw.Has(exstFld) {
+			continue
+		}
+		if auxRw.Has(exstFld) {
+			continue
+		}
+		if !isIncomingFld {
+			log.Info("Entry contains field ", exstFld, " not found in result, default and aux fields hence its partial replace.")
+			partialReplace = true
+			break
+		}
+	}
+	log.Info("returninf partialReplace - ", partialReplace)
+	return partialReplace
 }
 
 
