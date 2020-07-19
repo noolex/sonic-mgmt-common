@@ -64,6 +64,52 @@ module openconfig-routing-policy-ext {
             "Routing policy action type permit or deny";
     }
 
+    identity ROUTEMAP_SET_METRIC_TYPE {
+        description
+            "Type used to specify route metric value to be set in
+             a policy chain.";
+    }
+
+    identity METRIC_SET_VALUE {
+        base "ROUTEMAP_SET_METRIC_TYPE";
+        description
+          "Set a specified metric value.";
+    }
+
+    identity METRIC_ADD_VALUE {
+        base "ROUTEMAP_SET_METRIC_TYPE";
+         description
+            "Add a specified metric value from current
+             set value of metric.";
+    }
+
+    identity METRIC_SUBTRACT_VALUE {
+        base "ROUTEMAP_SET_METRIC_TYPE";
+        description
+            "Subtract a specified metric value from current
+             set value of metric.";
+    }
+
+    identity METRIC_SET_RTT {
+        base "ROUTEMAP_SET_METRIC_TYPE";
+        description
+            "Add round trip time value as metric.";
+    }
+
+    identity METRIC_ADD_RTT {
+        base "ROUTEMAP_SET_METRIC_TYPE";
+        description
+            "Add round trip time value from current
+             set value of metric.";
+    }
+
+    identity METRIC_SUBTRACT_RTT {
+        base "ROUTEMAP_SET_METRIC_TYPE";
+        description
+            "Subtract round trip time value from current
+             set value of metric.";
+    }
+
     grouping routing-policy-ext-asn-list-val-config {
         description
             "Configuration data for ASN numbers";
@@ -84,6 +130,59 @@ module openconfig-routing-policy-ext {
                 "Select the action, accept or reject.";
         }
     }
+
+    grouping routing-policy-ext-metric-action-config {
+        description
+            "Metric action to be set for the policy.";
+
+        leaf action {
+            type identityref {
+                base "ROUTEMAP_SET_METRIC_TYPE";
+            }
+            description
+                "Metric set action type for the the policy.";
+        }
+
+        leaf metric {
+             when "../action = 'METRIC_SET_VALUE' " +
+                  "or ../action = 'METRIC_ADD_VALUE' " +
+                  "or ../action = 'METRIC_SUBTRACT_VALUE'";
+
+             type uint32 {
+                 range "0..4294967295";
+             }
+             description
+                 "Metric value to be set for the policy.
+                  Specified only when action is for set metric or
+                  add metric or subtract metric.";
+        }
+    }
+
+    grouping routing-policy-ext-metric-action {
+        description
+            "Definitions for metric set";
+
+        container metric-action {
+            description
+                "Set metric actions for the routing policy";
+
+            container config {
+                description
+                    "Configuration data for metric set policy actions";
+
+                uses routing-policy-ext-metric-action-config;
+            }
+
+            container state {
+                config false;
+                description
+                    "Operational state data for metric set policy actions";
+
+                uses routing-policy-ext-metric-action-config;
+            }
+        }
+    }
+
 
     grouping routing-policy-ext-neighbor-set-config {
         description
@@ -150,6 +249,13 @@ module openconfig-routing-policy-ext {
                 uses routing-policy-ext-match-network-instance-config;
             }
         }
+    }
+
+
+    augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions{
+      description
+          "Policy definition extensions for setting metric actions";
+        uses routing-policy-ext-metric-action;
     }
 
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:set-as-path-prepend/oc-bgp-pol:config {
