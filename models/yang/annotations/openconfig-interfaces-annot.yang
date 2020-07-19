@@ -24,6 +24,7 @@ module openconfig-interfaces-annot {
 
     deviation /oc-intf:interfaces {
       deviate add {
+        sonic-ext:pre-transformer "intf_pre_xfmr";
         sonic-ext:post-transformer "intf_post_xfmr";
       }
     }

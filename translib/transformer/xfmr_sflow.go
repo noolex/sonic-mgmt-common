@@ -64,10 +64,9 @@ const (
     SAMPLING_SFLOW_STATE_POLLING_INT = "/openconfig-sampling:sampling/sflow/state/openconfig-sampling-ext:polling-interval"
     SAMPLING_SFLOW_STATE_AGENT = "/openconfig-sampling:sampling/sflow/state/openconfig-sampling-ext:agent"
     SAMPLING_SFLOW_COLS = "/openconfig-sampling:sampling/sflow/collectors"
-    SAMPLING_SFLOW_COLS_COL = "/openconfig-sampling:sampling/sflow/collectors/openconfig-sampling-ext:collector-ext"
-    SAMPLING_SFLOW_COLS_COL_EXT = "/openconfig-sampling:sampling/sflow/collectors/collector-ext"
-    SAMPLING_SFLOW_COLS_COL_CONFIG = "/openconfig-sampling:sampling/sflow/collectors/openconfig-sampling-ext:collector-ext/config"
-    SAMPLING_SFLOW_COLS_COL_STATE = "/openconfig-sampling:sampling/sflow/collectors/openconfig-sampling-ext:collector-ext/state"
+    SAMPLING_SFLOW_COLS_COL = "/openconfig-sampling:sampling/sflow/collectors/collector"
+    SAMPLING_SFLOW_COLS_COL_CONFIG = "/openconfig-sampling:sampling/sflow/collectors/collector/config"
+    SAMPLING_SFLOW_COLS_COL_STATE = "/openconfig-sampling:sampling/sflow/collectors/collector/state"
     SAMPLING_SFLOW_INTFS = "/openconfig-sampling:sampling/sflow/interfaces"
     SAMPLING_SFLOW_INTFS_INTF = "/openconfig-sampling:sampling/sflow/interfaces/interface"
     SAMPLING_SFLOW_INTFS_INTF_CONFIG = "/openconfig-sampling:sampling/sflow/interfaces/interface/config"
@@ -187,7 +186,7 @@ var DbToYang_sflow_collector_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
 func makeColKey(uri string) (string) {
     ip := NewPathInfo(uri).Var("address")
     port := NewPathInfo(uri).Var("port")
-    vrf := DEFAULT_VRF_NAME
+    vrf := NewPathInfo(uri).Var("vrf")
     name := ""
     if ip != "" {
         name = ip + "_" + port + "_" + vrf
@@ -215,7 +214,7 @@ var YangToDb_sflow_collector_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     if key != "" {
         ip := NewPathInfo(inParams.uri).Var("address")
         port := NewPathInfo(inParams.uri).Var("port")
-        vrf := DEFAULT_VRF_NAME
+        vrf := NewPathInfo(inParams.uri).Var("vrf")
         col_map[key] = db.Value{Field: make(map[string]string)}
         col_map[key].Field[SFLOW_COL_IP_KEY] = ip
         col_map[key].Field[SFLOW_COL_PORT_KEY] = port
@@ -223,7 +222,7 @@ var YangToDb_sflow_collector_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     } else {
         for col := range sflowObj.Sflow.Collectors.Collector {
             port := strconv.FormatUint(uint64(col.Port), 10)
-            key = col.Address +  "_" + port +  "_" + DEFAULT_VRF_NAME
+            key = col.Address +  "_" + port +  "_" + col.Vrf
             col_map[key] = db.Value{Field: make(map[string]string)}
             col_map[key].Field[SFLOW_COL_IP_KEY] = col.Address
             col_map[key].Field[SFLOW_COL_PORT_KEY] = port
@@ -411,13 +410,13 @@ func getSflowColInfoFromDb (d *db.DB) (map[string]SflowCol, error) {
 }
 
 func appendColToYang(sflowCols *ocbinds.OpenconfigSampling_Sampling_Sflow_Collectors,
-    ip string, port uint16) (error) {
+    ip string, port uint16, vrf string) (error) {
     var err error
-    colKey := ocbinds.OpenconfigSampling_Sampling_Sflow_Collectors_Collector_Key{ip, port}
+    colKey := ocbinds.OpenconfigSampling_Sampling_Sflow_Collectors_Collector_Key{ip, port, vrf}
 
     sfc, found := sflowCols.Collector[colKey]
     if !found {
-        sfc, err = sflowCols.NewCollector(ip, port)
+        sfc, err = sflowCols.NewCollector(ip, port, vrf)
         if err != nil {
             log.Errorf("Error creating Collector component")
             return err
@@ -429,9 +428,11 @@ func appendColToYang(sflowCols *ocbinds.OpenconfigSampling_Sampling_Sflow_Collec
     ygot.BuildEmptyTree(sfc.State)
     sfc.Config.Address = &ip
     sfc.Config.Port = &port
+    sfc.Config.Vrf = &vrf
 
     sfc.State.Address = &ip
     sfc.State.Port = &port
+    sfc.State.Vrf = &vrf
 
     return err
 }
@@ -455,9 +456,12 @@ func fillSflowCollectorInfo (sflowCols *ocbinds.OpenconfigSampling_Sampling_Sflo
             if v.Port == "" {
                 v.Port = DEFAULT_COL_PORT
             }
+            if v.Vrf == "" {
+                v.Vrf = DEFAULT_VRF_NAME
+            }
             tmp, _:= strconv.ParseUint(v.Port, 10, 16)
             port = uint16(tmp)
-            err = appendColToYang(sflowCols, v.Ip, port)
+            err = appendColToYang(sflowCols, v.Ip, port, v.Vrf)
         }
         return err
     }
@@ -470,9 +474,12 @@ func fillSflowCollectorInfo (sflowCols *ocbinds.OpenconfigSampling_Sampling_Sflo
         if v.Port == "" {
             v.Port = DEFAULT_COL_PORT
         }
+        if v.Vrf == "" {
+            v.Vrf = DEFAULT_VRF_NAME
+        }
         tmp, _:= strconv.ParseUint(v.Port, 10, 16)
         port = uint16(tmp)
-        err = appendColToYang(sflowCols, v.Ip, port)
+        err = appendColToYang(sflowCols, v.Ip, port, v.Vrf)
         return err
     }
 

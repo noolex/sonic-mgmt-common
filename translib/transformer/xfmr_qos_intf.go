@@ -7,6 +7,7 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_intf_sched_policy_xfmr", YangToDb_qos_intf_sched_policy_xfmr)
@@ -210,7 +211,12 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 
     // read scheduler policy and its schedulers (seq).
     scheduler_ids, _ := getSchedulerIds(sp_name_str)
-
+    if len(scheduler_ids) == 0 {
+        errStr := "No instance found for " + *sp_name
+        err = tlerr.InternalError{Format: errStr}
+        log.Info("No instance found for ", sp_name)
+        return res_map, err
+    }
     // Use "if_name:seq" to form DB key for QUEUE or "if_name" as key for PORT, write "if_name@seq" as its scheduler profile
     for _, seq := range scheduler_ids {
         key := if_name

@@ -31,27 +31,57 @@ func zeroIp(ipv4 bool) string {
     return gwIp
 }
 
-func isZeroIp(ipAddr *net.IP) bool {
-    ipv4 := ipAddr.To4()
-    if ipv4 != nil {
-        ipAddr = &ipv4
+type IPExt struct {
+    ipAddr net.IP
+    isIpv4 bool
+    origIpStr string
+}
+
+func parseIPExt(ipStr string) *IPExt {
+    ip := net.ParseIP(ipStr)
+    if ip == nil {
+        return nil
     }
-    byteLen := len(*ipAddr)
-    for i := 0; i < byteLen; i ++ {
-        if (*ipAddr)[i] != 0 {
+    retVal := new(IPExt)
+    retVal.origIpStr = ipStr
+    ipv4 := ip.To4()
+    if ipv4 != nil {
+        retVal.ipAddr = ipv4
+        if strings.Contains(ipStr, ":") {
+            // IPv4 in IPv6
+            retVal.isIpv4 = false
+        } else {
+            retVal.isIpv4 = true
+        }
+    } else {
+        retVal.ipAddr = ip
+        retVal.isIpv4 = false
+    }
+    return retVal
+}
+
+func (ip *IPExt) isZeros() bool {
+    for _, b := range ip.ipAddr {
+        if b != 0 {
             return false
         }
     }
     return true
 }
 
+func (ip *IPExt) String() string {
+    if len(ip.ipAddr) == net.IPv4len && !ip.isIpv4 {
+        return fmt.Sprintf("::ffff:%v", ip.ipAddr)
+    }
+    return ip.ipAddr.String()
+}
+
 func isPrefixIpv4(prefix string) bool {
-    ip := net.ParseIP(strings.Split(prefix, "/")[0])
+    ip := parseIPExt(strings.Split(prefix, "/")[0])
     if ip == nil {
         return false
     }
-    ipv4 := ip.To4()
-    return ipv4 != nil
+    return ip.isIpv4
 }
 
 func getNexthopIndex(blackhole bool, ip string, intf string, vrf string) string {
@@ -62,8 +92,8 @@ func getNexthopIndex(blackhole bool, ip string, intf string, vrf string) string 
         if len(intf) > 0 {
             nhIndex = intf
         }
-        nhIp := net.ParseIP(ip)
-        if nhIp != nil && !isZeroIp(&nhIp) {
+        nhIp := parseIPExt(ip)
+        if nhIp != nil && !nhIp.isZeros() {
             if len(nhIndex) > 0 {
                 nhIndex += "_"
             }
@@ -82,7 +112,7 @@ func getNexthopIndex(blackhole bool, ip string, intf string, vrf string) string 
 
 type ipNexthop struct {
     blackhole bool
-    gwIp net.IP
+    gwIp *IPExt
     ifName string
     distance uint32
     vrf string
@@ -97,8 +127,8 @@ func (nh ipNexthop) String() string {
     if nh.blackhole {
         str += " blackhole"
     }
-    if !isZeroIp(&nh.gwIp) {
-        str += fmt.Sprintf(" GW %s", nh.gwIp.String())
+    if !nh.gwIp.isZeros() {
+        str += fmt.Sprintf(" GW %s", nh.gwIp)
     }
     if len(nh.ifName) > 0 {
         str += fmt.Sprintf(" INTF %s", nh.ifName)
@@ -124,7 +154,7 @@ func newNexthop(srcVrf string, bkh bool, gw string, intf string, dist uint32, vr
         return nh, nil
     }
     nh.blackhole = bkh
-    nh.gwIp = net.ParseIP(gw)
+    nh.gwIp = parseIPExt(gw)
     if nh.gwIp == nil {
         return nil, tlerr.InvalidArgs("Invalid Nexthop IP format: %v", gw)
     }
@@ -144,9 +174,9 @@ type ipNexthopSet struct {
 
 func (nhs *ipNexthopSet)updateNH(nh ipNexthop, oper int) (bool, error) {
     if !nh.empty {
-        nhIsIpv4 := (nh.gwIp.To4() != nil)
-        if nhs.isIpv4 != nhIsIpv4 {
-            return false, tlerr.InvalidArgs("IP type mismatch: route_ipv4 %v nh_ipv4 %v", nhs.isIpv4, nhIsIpv4)
+        if nhs.isIpv4 != nh.gwIp.isIpv4 {
+            return false, tlerr.InvalidArgs("IP type mismatch: route_ipv4 %v nh_ipv4 %v",
+                                            nhs.isIpv4, nh.gwIp.isIpv4)
         }
     }
     var changed bool
@@ -184,10 +214,10 @@ func (nhs *ipNexthopSet)toAttrMap() db.Value {
         } else {
             attrList[0].value = append(attrList[0].value, "false")
         }
-        if !isZeroIp(&nh.gwIp) {
+        if !nh.gwIp.isZeros() {
             attrList[1].haveData = true
         }
-        attrList[1].value = append(attrList[1].value, nh.gwIp.String())
+        attrList[1].value = append(attrList[1].value, nh.gwIp.origIpStr)
 
         if len(nh.ifName) > 0 {
             attrList[2].haveData = true
@@ -230,11 +260,11 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
             }
         }
     }
-    prefixIp := strings.Split(prefix, "/")[0]
-    nhs.isIpv4 = true
-    if net.ParseIP(prefixIp).To4() == nil {
-        nhs.isIpv4 = false
+    prefixIp := parseIPExt(strings.Split(prefix, "/")[0])
+    if prefixIp == nil {
+        return tlerr.InvalidArgs("Invalid IP address in prefix: %s", prefix)
     }
+    nhs.isIpv4 = prefixIp.isIpv4
     if nhs.nhList == nil {
         nhs.nhList = make(map[string]ipNexthop)
     }
@@ -267,9 +297,8 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
             trackNum, _ := strconv.ParseUint(fieldValues[5][idx], 10, 32)
             track = uint16(trackNum)
         }
-        nhIndex := getNexthopIndex(blackhole, gateway, intf, vrf)
         if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, distance, vrf, track); err == nil {
-            nhs.nhList[nhIndex] = *nh
+            nhs.nhList[nh.index] = *nh
         }
     }
 
@@ -302,17 +331,31 @@ func getYgotStaticRoutesObj(s *ygot.GoStruct, vrf string) (
     if !ok {
         return nil, errors.New("Invalid root object type")
     }
-    vrfInstObj := deviceObj.NetworkInstances.NetworkInstance[vrf]
-    if  vrfInstObj == nil {
-        return nil, errors.New("Invalid VRF name")
+    if deviceObj.NetworkInstances == nil {
+        deviceObj.NetworkInstances = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances)
+    }
+    var err error
+    vrfInstObj, ok := deviceObj.NetworkInstances.NetworkInstance[vrf]
+    if !ok {
+        if vrfInstObj, err = deviceObj.NetworkInstances.NewNetworkInstance(vrf); err != nil {
+            return nil, errors.New("Failed to allocate new network instance object")
+        }
+    }
+    if vrfInstObj.Protocols == nil {
+        vrfInstObj.Protocols = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols)
     }
     protoKey := ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Key{
                             Identifier: ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_STATIC,
                             Name: "static",
               }
-    protoInstObj := vrfInstObj.Protocols.Protocol[protoKey]
-    if protoInstObj == nil || protoInstObj.StaticRoutes == nil {
-        return nil, errors.New("Network-instance Static-Protocol obj missing")
+    protoInstObj, ok := vrfInstObj.Protocols.Protocol[protoKey]
+    if !ok {
+        if protoInstObj, err = vrfInstObj.Protocols.NewProtocol(ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_STATIC, "static"); err != nil {
+            return nil, errors.New("Failed to allocate new static protocol object")
+        }
+    }
+    if protoInstObj.StaticRoutes == nil {
+        protoInstObj.StaticRoutes = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes)
     }
 
     return protoInstObj.StaticRoutes, nil
@@ -332,27 +375,16 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
         if routeObj == nil || routeObj.NextHops == nil {
             continue
         }
-        ipAndPrefix := strings.Split(ipPrefix, "/")
-        if len(ipAndPrefix) != 2 {
-            return nil, tlerr.InvalidArgs("Invalid route IP with prefix format: %s", ipPrefix)
-        }
-        prefixNum, err := strconv.ParseInt(ipAndPrefix[1], 10, 32)
+        _, _, err := net.ParseCIDR(ipPrefix)
         if err != nil {
-            return nil, tlerr.InvalidArgs("Invalid route prefix format: %s", ipPrefix)
+            return nil, tlerr.InvalidArgs("Failed to parse IP with prefix: %s", ipPrefix)
         }
-        ipAddr := net.ParseIP(ipAndPrefix[0])
-        if ipAddr == nil {
-            return nil, tlerr.InvalidArgs("Invalid route target IP format: %s", ipAndPrefix[0])
-        }
-        var isIpv4 bool = true
-        if ipAddr.To4() == nil {
-            isIpv4 = false
-        }
-        if (isIpv4 && prefixNum > 32) || (!isIpv4 && prefixNum > 128) {
-            return nil, tlerr.InvalidArgs("Invalid route prefix number: %d", prefixNum)
+        pfxIp := parseIPExt(strings.Split(ipPrefix, "/")[0])
+        if pfxIp == nil {
+            return nil, tlerr.InvalidArgs("Failed to parse prefix IP address: %s", ipPrefix)
         }
 
-        resMap[ipPrefix] = &ipNexthopSet{isIpv4, make(map[string]ipNexthop)}
+        resMap[ipPrefix] = &ipNexthopSet{pfxIp.isIpv4, make(map[string]ipNexthop)}
         for nhIndex, nexthopObj := range routeObj.NextHops.NextHop {
             if nexthopObj == nil {
                 continue
@@ -384,7 +416,7 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
                     }
                 }
                 if len(gwIp) == 0 {
-                    gwIp = zeroIp(isIpv4)
+                    gwIp = zeroIp(pfxIp.isIpv4)
                 }
                 if nexthopObj.Config.Track != nil {
                     track = *nexthopObj.Config.Track
@@ -889,9 +921,9 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhI
                 }
                 *nhObj.Config.Blackhole = nh.blackhole
             }
-            if !isZeroIp(&nh.gwIp) {
+            if !nh.gwIp.isZeros() {
                 gwObj, err :=
-                    nhObj.Config.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_Config_NextHop_Union(nh.gwIp.String())
+                    nhObj.Config.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_Config_NextHop_Union(nh.gwIp.origIpStr)
                 if err != nil {
                     log.Infof("Failed to get gateway IP object: %v", err)
                     return err
@@ -967,6 +999,13 @@ var DbToYang_static_routes_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) 
     return rmap, nil
 }
 
+func validate_static_protocol(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    proto := pathInfo.Var("name#2")
+    protoId := pathInfo.Var("identifier")
+    return protoId == "STATIC" && proto == "static"
+}
+
 func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
     if len(inParams.value) == 0 || !utils.IsAliasModeEnabled() {
         return inParams.value, nil
@@ -992,5 +1031,6 @@ func init() {
     XlateFuncBind("DbToYang_static_routes_nexthop_xfmr", DbToYang_static_routes_nexthop_xfmr)
     XlateFuncBind("YangToDb_static_routes_key_xfmr", YangToDb_static_routes_key_xfmr)
     XlateFuncBind("DbToYang_static_routes_key_xfmr", DbToYang_static_routes_key_xfmr)
+    XlateFuncBind("static_routes_validate_proto", validate_static_protocol)
     XlateFuncBind("static_routes_alias_xfmr", alias_list_value_xfmr)
 }
