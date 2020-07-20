@@ -34,6 +34,21 @@ func init() {
     XlateFuncBind("rpc_clearauditlog_cb", rpc_clearauditlog_cb)
 }
 
+func _read_file(fname string, data *[]string) (error) {
+    f, err := os.Open(fname)
+    if err != nil {
+        fmt.Println("File reading error", err)
+        return err
+    }
+    defer f.Close()
+
+    scanner := bufio.NewScanner(f)
+    for scanner.Scan() {
+        *data = append(*data, string(scanner.Text()))
+    }
+    return nil
+}
+
 var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 
     var showaudit struct {
@@ -45,7 +60,6 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     var inputData map[string]interface{}
     err := json.Unmarshal(body, &inputData)
     if err != nil {
-        fmt.Println("%Error: Failed to parse rpc input; err=%v", err)
         return nil,err
     }
 
@@ -57,37 +71,16 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         v = inputData["content-type"]
     }
 
-    // open audit.log
-    f, err := os.Open("/host_var/log/audit.log")
-    if err != nil {
-        fmt.Println("File reading error", err)
-        return nil, err
-    }
-    defer f.Close()
-
     // if input is 'all', read audit.log.1 first and then audit.log
     if v == "all" {
-        f1, err := os.Open("/host_var/log/audit.log.1")
-        if err == nil {
-            scanner := bufio.NewScanner(f1)
-            for scanner.Scan() {
-                showaudit.Output.Result = append(showaudit.Output.Result, string(scanner.Text()))
-            }
-        }
-        defer f1.Close()
-
-        // read audit.log
-        scanner := bufio.NewScanner(f)
-        for scanner.Scan() {
-            showaudit.Output.Result = append(showaudit.Output.Result, string(scanner.Text()))
-        }
+        _read_file("/host_var/log/audit.log.1", &showaudit.Output.Result)
+        _read_file("/host_var/log/audit.log", &showaudit.Output.Result)
     } else {
         // brief output - get last 20 lines
         var tmpResult []string
-        scanner := bufio.NewScanner(f)
-        for scanner.Scan() {
-            tmpResult = append(tmpResult, string(scanner.Text()))
-        }
+
+        _read_file("/host_var/log/audit.log", &tmpResult)
+
         lenx := len(tmpResult)
         j := BRIEF_AUDIT_SIZE
         if lenx < BRIEF_AUDIT_SIZE {
@@ -106,7 +99,6 @@ var rpc_clearauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) 
 
     host_output := HostQuery("clearaudit.action")
     if host_output.Err != nil {
-        log.Errorf("%Error: ClearAudit host exec failed: err=%v", host_output.Err)
         log.Flush()
         return nil, host_output.Err
     }
