@@ -19,7 +19,7 @@ const (
         DEFAULT_VRF = "default"
       )
 
-var tableFieldNames [5]string = [5]string{"blackhole", "nexthop", "ifname", "distance", "nexthop-vrf"}
+var tableFieldNames [6]string = [6]string{"blackhole", "nexthop", "ifname", "distance", "nexthop-vrf", "track"}
 
 func zeroIp(ipv4 bool) string {
     var gwIp string
@@ -116,6 +116,7 @@ type ipNexthop struct {
     ifName string
     distance uint32
     vrf string
+    track uint16
 
     index string
     empty bool
@@ -138,11 +139,14 @@ func (nh ipNexthop) String() string {
     if len(nh.vrf) > 0 {
         str += fmt.Sprintf(" NH_VRF %s", nh.vrf)
     }
+    if nh.track != 0 {
+        str += fmt.Sprintf(" TRACK %d", nh.track)
+    }
     str += "}"
     return str
 }
 
-func newNexthop(srcVrf string, bkh bool, gw string, intf string, dist uint32, vrf string) (*ipNexthop, error) {
+func newNexthop(srcVrf string, bkh bool, gw string, intf string, dist uint32, vrf string, track uint16) (*ipNexthop, error) {
     nh := new(ipNexthop)
     nh.index = getNexthopIndex(bkh, gw, intf, vrf)
     if len(nh.index) == 0 {
@@ -159,6 +163,7 @@ func newNexthop(srcVrf string, bkh bool, gw string, intf string, dist uint32, vr
     if vrf != srcVrf {
         nh.vrf = vrf
     }
+    nh.track = track
     return nh, nil
 }
 
@@ -226,6 +231,10 @@ func (nhs *ipNexthopSet)toAttrMap() db.Value {
             attrList[4].haveData = true
         }
         attrList[4].value = append(attrList[4].value, nh.vrf)
+        if nh.track != 0 {
+            attrList[5].haveData = true
+        }
+        attrList[5].value = append(attrList[5].value, strconv.FormatUint(uint64(nh.track), 10))
     }
     for idx, attr := range attrList {
         if attr.haveData {
@@ -283,8 +292,19 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
         if fieldValues[4] != nil {
             vrf = fieldValues[4][idx]
         }
+<<<<<<< HEAD
         if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, distance, vrf); err == nil {
             nhs.nhList[nh.index] = *nh
+=======
+        var track uint16
+        if fieldValues[5] != nil {
+            trackNum, _ := strconv.ParseUint(fieldValues[5][idx], 10, 32)
+            track = uint16(trackNum)
+        }
+        nhIndex := getNexthopIndex(blackhole, gateway, intf, vrf)
+        if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, distance, vrf, track); err == nil {
+            nhs.nhList[nhIndex] = *nh
+>>>>>>> origin/broadcom_sonic_3.x_share
         }
     }
 
@@ -379,6 +399,7 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
             var intfName, nhVrf string
             var distance uint32
             var gwIp string
+            var track uint16
             if nexthopObj.Config != nil {
                 if nexthopObj.Config.Blackhole != nil {
                     blackhole = *nexthopObj.Config.Blackhole
@@ -403,12 +424,15 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
                 if len(gwIp) == 0 {
                     gwIp = zeroIp(pfxIp.isIpv4)
                 }
+                if nexthopObj.Config.Track != nil {
+                    track = *nexthopObj.Config.Track
+                }
             }
             if nexthopObj.InterfaceRef != nil && nexthopObj.InterfaceRef.Config != nil && nexthopObj.InterfaceRef.Config.Interface != nil {
                 intfName = *nexthopObj.InterfaceRef.Config.Interface
             }
-            log.Infof("NH[%v]: blackhole %v IP %v interface %v distance %v VRF %v", nhIndex, blackhole, gwIp, intfName, distance, nhVrf)
-            nhObj, err := newNexthop(vrf, blackhole, gwIp, intfName, distance, nhVrf)
+            log.Infof("NH[%v]: blackhole %v IP %v interface %v distance %v VRF %v track %v", nhIndex, blackhole, gwIp, intfName, distance, nhVrf, track)
+            nhObj, err := newNexthop(vrf, blackhole, gwIp, intfName, distance, nhVrf, track)
             if err != nil {
                 log.Infof("Failed to create nexthop object: %v", err)
                 return nil, err
@@ -432,8 +456,8 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
 
 func nexthopFromStrList(srcVrf string, strList []string, isIpv4 bool) (*ipNexthop, error) {
     argCnt := len(strList)
-    if argCnt < 5 {
-        addArgs := 5 - argCnt
+    if argCnt < 6 {
+        addArgs := 6 - argCnt
         for idx := 0; idx < addArgs; idx ++ {
             strList = append(strList, "")
         }
@@ -458,7 +482,14 @@ func nexthopFromStrList(srcVrf string, strList []string, isIpv4 bool) (*ipNextho
     if len(ifName) > 0 {
         ifName = *(utils.GetUINameFromNativeName(&ifName))
     }
-    return newNexthop(srcVrf, blackhole, gwIp, ifName, uint32(distance), strList[4])
+    var track uint64
+    if len(strList[5]) > 0 {
+        track, err = strconv.ParseUint(strList[5], 10, 32)
+        if err != nil {
+            return nil, err
+        }
+    }
+    return newNexthop(srcVrf, blackhole, gwIp, ifName, uint32(distance), strList[4], uint16(track))
 }
 
 func getAllPrefixFromDB(d *db.DB, vrf string) []string {
@@ -929,6 +960,12 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhI
                     nhObj.InterfaceRef.Config.Interface = new(string)
                 }
                 *nhObj.InterfaceRef.Config.Interface = nh.ifName
+            }
+            if nh.track != 0 {
+                if nhObj.Config.Track == nil {
+                    nhObj.Config.Track = new(uint16)
+                }
+                *nhObj.Config.Track = nh.track
             }
         }
     }
