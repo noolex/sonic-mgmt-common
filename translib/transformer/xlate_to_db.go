@@ -430,6 +430,9 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 										childXpath, tblName, dbKey, childNode.fieldName, childNode.defVal)
 									}
 								} else {
+									if xlateParams.oper != REPLACE {
+										continue
+									}
 									oper = DELETE
 								}
 								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, tblUri+"/"+childName, xlateParams.requestUri, oper, "", nil, xlateParams.subOpDataMap, param, xlateParams.txCache)
