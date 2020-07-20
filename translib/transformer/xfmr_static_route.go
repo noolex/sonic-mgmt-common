@@ -297,9 +297,8 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
             trackNum, _ := strconv.ParseUint(fieldValues[5][idx], 10, 32)
             track = uint16(trackNum)
         }
-        nhIndex := getNexthopIndex(blackhole, gateway, intf, vrf)
         if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, distance, vrf, track); err == nil {
-            nhs.nhList[nhIndex] = *nh
+            nhs.nhList[nh.index] = *nh
         }
     }
 
