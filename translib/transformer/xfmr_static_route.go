@@ -292,10 +292,6 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
         if fieldValues[4] != nil {
             vrf = fieldValues[4][idx]
         }
-<<<<<<< HEAD
-        if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, distance, vrf); err == nil {
-            nhs.nhList[nh.index] = *nh
-=======
         var track uint16
         if fieldValues[5] != nil {
             trackNum, _ := strconv.ParseUint(fieldValues[5][idx], 10, 32)
@@ -304,7 +300,6 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
         nhIndex := getNexthopIndex(blackhole, gateway, intf, vrf)
         if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, distance, vrf, track); err == nil {
             nhs.nhList[nhIndex] = *nh
->>>>>>> origin/broadcom_sonic_3.x_share
         }
     }
 
