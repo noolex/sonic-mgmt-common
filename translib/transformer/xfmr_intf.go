@@ -1105,22 +1105,20 @@ var DbToYang_intf_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[s
 }
 
 var YangToDb_intf_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-	res_map := make(map[string]string)
-	var ifName string
+    res_map := make(map[string]string)
+    var ifName string
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
         return res_map, nil
     } else {
-    	for infK := range intfsObj.Interface {
-    		ifName = infK
-    	}
+	for infK := range intfsObj.Interface {
+		ifName = infK
+	}
     }
-
     intfType, _, _ := getIntfTypeByName(ifName)
-    if IntfTypeVxlan == intfType {
-	    return res_map, nil	
+    if IntfTypeVxlan == intfType || IntfTypeLoopback == intfType {
+	    return res_map, nil
     }
-    
     enabled, _ := inParams.param.(*bool)
     var enStr string
     if *enabled {
