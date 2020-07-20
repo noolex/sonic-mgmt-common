@@ -576,6 +576,9 @@ module sonic-bgp-common {
         }*/
 
         leaf dad-enabled {
+            must "((../advertise-all-vni='true') or (current()='false'))" { 
+                error-message "This command is only supported under the EVPN VRF"; 
+            }
             type boolean;
         } 
 
