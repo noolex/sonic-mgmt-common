@@ -337,6 +337,50 @@ var intf_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
     return err
 }
 
+// ValidateIntfProvisionedForRelay helper function to validate IP address deletion if DHCP relay is provisioned
+func ValidateIntfProvisionedForRelay(d *db.DB, ifName string, prefixIp string) (bool, error) {
+   var tblList string
+
+   intfType, _, ierr := getIntfTypeByName(ifName)
+   if intfType == IntfTypeUnset || ierr != nil {
+       log.Info("getRelayAgentIntfTblByType - Invalid interface type IntfTypeUnset");
+       return false, errors.New("Invalid InterfaceType");
+   }
+
+   intTbl := IntfTypeTblMap[intfType]
+
+   if (intfType == IntfTypeEthernet) || intfType == IntfTypePortChannel {
+       tblList = intTbl.cfgDb.intfTN
+   } else if intfType == IntfTypeVlan {
+       tblList = intTbl.cfgDb.portTN
+   }
+   entry, dbErr := d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
+   if dbErr != nil {
+     log.Warning("Failed to read mgmt port status from config DB, " + tblList + " " + ifName)
+     return false, errors.New("Failed to read from Config DB")
+   }
+
+   //check if dhcp_sever is provisioned for ipv4
+   if strings.Contains(prefixIp, ".") || strings.Contains(prefixIp, "ipv4") {
+       log.V(2).Info("ValidateIntfProvisionedForRelay  - IPv4Check")
+       log.V(2).Info(entry)
+       if len(entry.Field["dhcp_servers@"]) > 0 {
+           return true, nil
+       } 
+   } else if strings.Contains(prefixIp, ":") || strings.Contains(prefixIp, "ipv6"){ 
+   //check if dhcpv6_sever is provisioned for ipv6
+       log.V(2).Info("ValidateIntfProvisionedForRelay  - IPv6Check")
+       log.V(2).Info(entry)
+       if len(entry.Field["dhcpv6_servers@"]) > 0 {
+           return true, nil
+       } 
+   }else {
+     log.Error("invalid prefix " + prefixIp)
+     return false, errors.New("invalid IP type")
+   }   
+   return false, nil
+}
+
 func getIntfTypeByName (name string) (E_InterfaceType, E_InterfaceSubType, error) {
 
     var err error
@@ -2022,6 +2066,24 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         }
     }
 
+    /* Validate if DHCP_Relay is provisioned on the interface */
+    prefixType := ""
+    if (strings.Contains(inParams.uri, "ipv4")) {
+       prefixType = "ipv4"
+    }else if (strings.Contains(inParams.uri, "ipv6")) {
+       prefixType = "ipv6"
+    }
+ 
+    if inParams.oper == DELETE {
+       dhcpProv, dhcpErr :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
+       if dhcpProv {
+           errStr := "IP address cannot be deleted. DHCP Relay is configured on the interface."
+           return subIntfmap, errors.New(errStr)
+       } else if dhcpErr !=nil {
+           return subIntfmap, dhcpErr
+       }
+    }
+
     if _, ok := intfsObj.Interface[uriIfName]; !ok {
         errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
         log.Info("YangToDb_intf_subintf_ip_xfmr : " + errStr)
@@ -2252,9 +2314,24 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     log.Info("YangToDb_routed_vlan_ip_addr_xfmr: tblName: ", tblName)
     intfObj := intfsObj.Interface[ifName]
 
+    // Validate if DHCP_Relay is provisioned on the interface 
+    prefixType := ""
+    if (strings.Contains(inParams.uri, "ipv4")) {
+       prefixType = "ipv4"
+    }else if (strings.Contains(inParams.uri, "ipv6")) {
+       prefixType = "ipv6"
+    }
+   
     if intfObj.RoutedVlan == nil {
         // Handling the scenario for Interface instance delete at interfaces/interface[name] level or subinterfaces container level
         if inParams.oper == DELETE {
+           dhcpProv, dhcpErr :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
+           if dhcpProv {
+               errStr := "IP address cannot be deleted. DHCP Relay is configured on the interface"
+               return vlanIntfmap, errors.New(errStr)
+            } else if dhcpErr !=nil {
+               return vlanIntfmap, dhcpErr
+            }
             log.Info("YangToDb_routed_vlan_ip_addr_xfmr: Top level Interface instance delete or routed-vlan container delete for Interface: ", ifName)
             return routed_vlan_ip_addr_del(inParams.d, ifName, tblName, nil)
         }
@@ -2266,6 +2343,13 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
 
     vlanIntfObj := intfObj.RoutedVlan
     if inParams.oper == DELETE {
+        dhcpProv, dhcpErr :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
+        if dhcpProv {
+            errStr := "IP address cannot be deleted. DHCP Relay is configured on the interface."
+            return vlanIntfmap, errors.New(errStr)
+        } else if dhcpErr !=nil {
+            return vlanIntfmap, dhcpErr
+        }
         return routed_vlan_ip_addr_del(inParams.d, ifName, tblName, vlanIntfObj)
     }
 
