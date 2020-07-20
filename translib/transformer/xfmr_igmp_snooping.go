@@ -218,7 +218,7 @@ func (reqP *reqProcessor) setIGMPSnoopingObjFromReq() error {
 	return nil
 }
 
-func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, error) {
+func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[string]db.Value, error) {
 	var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
 
 	var igmpsTblMap map[string]db.Value = make(map[string]db.Value)
@@ -465,7 +465,7 @@ func (reqP *reqProcessor) handleDeleteReq() (*map[string]map[string]db.Value, er
 }
 
 // handle create/replace/update request
-func (reqP *reqProcessor) handleCRUReq() (*map[string]map[string]db.Value, error) {
+func (reqP *reqProcessor) handleCRUReq(inParams XfmrParams) (*map[string]map[string]db.Value, error) {
 
 	fmt.Println(" handleCRUReq entering ============> ")
 
@@ -476,6 +476,7 @@ func (reqP *reqProcessor) handleCRUReq() (*map[string]map[string]db.Value, error
 	var igmpsMcastGroupMemTblMap map[string]db.Value = make(map[string]db.Value)
     var oif_list []string
 	igmpsObj := reqP.igmpsObj
+    var enabled bool
 
 	for igmpsKey, igmpsVal := range igmpsObj.Interfaces.Interface {
 
@@ -522,8 +523,24 @@ func (reqP *reqProcessor) handleCRUReq() (*map[string]map[string]db.Value, error
 		}
 
 		if len(dbV.Field) > 0 {
-			igmpsTblMap[igmpsKey] = dbV
-			res_map[CFG_L2MC_TABLE] = igmpsTblMap
+            if igmpsVal.Config.Enabled != nil {
+                enabled = *igmpsVal.Config.Enabled
+                if enabled {
+                    igmpsTblMap[igmpsKey] = dbV
+                    res_map[CFG_L2MC_TABLE] = igmpsTblMap
+                } else {
+                    subOpMap:= make(map[db.DBNum]map[string]map[string]db.Value)
+                    submap_del := make(map[string]map[string]db.Value)
+                    submap_del[CFG_L2MC_TABLE] = make(map[string]db.Value)
+                    submap_del[CFG_L2MC_TABLE][igmpsKey] = db.Value{}
+                    subOpMap[db.ConfigDB] = submap_del
+                    inParams.subOpDataMap[DELETE] = &subOpMap
+                    log.Infof(" handleCRUReq ============> Initiating DELETE key:%s val:%s",igmpsKey,igmpsVal)
+                }
+            } else {
+                igmpsTblMap[igmpsKey] = dbV
+                res_map[CFG_L2MC_TABLE] = igmpsTblMap
+            }
 		}
 
 		fmt.Println(" handleCRUReq ============> igmpsVal", igmpsVal)
@@ -603,7 +620,7 @@ func (reqP *reqProcessor) handleCRUReq() (*map[string]map[string]db.Value, error
 	return &res_map, nil
 }
 
-func (reqP *reqProcessor) translateToDb() (*map[string]map[string]db.Value, error) {
+func (reqP *reqProcessor) translateToDb(inParams XfmrParams) (*map[string]map[string]db.Value, error) {
 	//DELETE
 	if reqP.opcode == 5 {
 		// get the target node
@@ -614,7 +631,7 @@ func (reqP *reqProcessor) translateToDb() (*map[string]map[string]db.Value, erro
 
 		fmt.Println("translateToDb param reqP.targetNode.Name ==> ", reqP.targetNode.Name)
 
-		res_map, err := reqP.handleDeleteReq()
+		res_map, err := reqP.handleDeleteReq(inParams)
 
 		if err != nil {
 			return nil, tlerr.InvalidArgs("Invlaid IGMP Snooing delete: %s", *reqP.uri)
@@ -623,7 +640,7 @@ func (reqP *reqProcessor) translateToDb() (*map[string]map[string]db.Value, erro
 		return res_map, err
 
 	} else if reqP.igmpsObj != nil && reqP.igmpsObj.Interfaces != nil {
-		res_map, err := reqP.handleCRUReq()
+		res_map, err := reqP.handleCRUReq(inParams)
 		if err != nil {
 			return nil, tlerr.InvalidArgs("Invlaid IGMP Snooing request: %s", *reqP.uri)
 		}
@@ -663,7 +680,7 @@ var YangToDb_igmp_snooping_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 	fmt.Println("YangToDb_igmp_snooping_subtree_xfmr ==> printing IGMPSnooping object request ==> ")
 	pretty.Print(*reqP.igmpsObj)
 
-	res_map, err := reqP.translateToDb()
+	res_map, err := reqP.translateToDb(inParams)
 
 	if err == nil {
 		return *res_map, nil
