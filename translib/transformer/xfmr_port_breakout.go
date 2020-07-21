@@ -52,11 +52,6 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
     var members []string
 
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, err := getYangPathFromUri(pathInfo.Path)
-    log.Info("TARGET URI PATH DPB:", targetUriPath)
-    log.Warningf("===== DPB STATE %v =====", inParams)
-    log.Info("TableXfmrFunc - Uri DPB-1: ", inParams.uri);
-    log.Info("DPB PATH:", pathInfo.Path)
     platObj := getDpbRoot(inParams.ygRoot)
     if platObj == nil || len(platObj) < 1 {
         log.Info("DbToYang_port_breakout_config_xfmr: Empty component.")
@@ -81,23 +76,17 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
     if configDb == nil {
         configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
     }
-    dpbPorts, dbErr := configDb.GetKeys(&db.TableSpec{Name: "BREAKOUT_PORTS"})
-    if dbErr != nil {
-            log.Info("Failed to get DB keys, BREAKOUT_PORTS")
-            return tlerr.NotFound("No port breakout configurations")
+    brkout_mode := ""
+    entry, dbErr = configDb.GetEntry(&db.TableSpec{Name:"BREAKOUT_CFG"}, db.Key{Comp: []string{ifName}})
+    if dbErr == nil {
+        brkout_mode = entry.Get("brkout_mode")
     }
-    if len(dpbPorts) > 0 {
-        for i, member := range dpbPorts {
-            log.Info("MEMBER[",i,"]: ", member)
-            entry, dbErr = configDb.GetEntry(&db.TableSpec{Name:"BREAKOUT_PORTS"}, member)
-            if dbErr != nil {
-                log.Info("Failed to read DB entry, BREAKOUT_PORTS|", member.Comp, " ", dbErr)
-            }
-            if entry.Get("master") == ifName {
-                members = append(members, member.Comp[0])
-                log.Info("DPB MEMBER ", member.Comp[0])
-            }
-        }
+
+    ports, err := getPorts(ifName, brkout_mode)
+    for _, member := range ports {
+        members = append(members, member.name)
+    }
+    if len(brkout_mode) > 0 {
         sort.SliceStable(members, func(i, j int) bool {
             first,_ := strconv.Atoi(strings.ReplaceAll(members[i], "Ethernet", ""))
             second,_ := strconv.Atoi(strings.ReplaceAll(members[j], "Ethernet", ""))
@@ -106,7 +95,7 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
         for j, name := range members {
             members[j] = *(utils.GetUINameFromNativeName(&name))
         }
-        if (len(members) > 1) && !statusExist {
+        if !statusExist {
             status := "Completed"
             platObj[pathInfo.Var("name")].Port.BreakoutMode.State.Status = &status
             log.Info("DPB only members for ", ifName)
@@ -125,11 +114,8 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
 }
 
 var DbToYang_port_breakout_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
-    log.Info("TableXfmrFunc - Uri DPB-1: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
 
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    log.Info("TARGET URI PATH DPBO:", targetUriPath)
     log.Info("DPB PATH:", pathInfo.Path)
     log.Warningf("DPB  %v", inParams)
     platObj := getDpbRoot(inParams.ygRoot)
@@ -235,13 +221,8 @@ func breakout_action (ifName string, from_mode string, to_mode string, inParams 
 var YangToDb_port_breakout_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
     var err error
     dpbMap := make(map[string]map[string]db.Value)
-    log.Info("TableXfmrFunc - inParams DPB: ", inParams);
     log.Warningf("DPB  %v", inParams)
-    log.Info(" DPB URI: ", inParams.uri);
-    log.Info(" DPB REQ URI: ", inParams.requestUri);
-    log.Info(" DPB OPER: ", inParams.oper);
     log.Info(" DPB KEY: ", inParams.key);
-    log.Info(" DPB PARAM: ", inParams.param);
 
     if len(inParams.key) > 0 {
         return dpbMap, nil
