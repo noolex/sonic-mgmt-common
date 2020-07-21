@@ -917,7 +917,7 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 			derr = tlerr.NotFoundError{Format:"Resource not found"}
 		} else {
 			// Valid table mapping exists. Read the table entry from DB
-			tableExists, derr = dbTableExists(d, table, dbKey)
+			tableExists, derr = dbTableExists(d, table, dbKey, oper)
 			if derr != nil {
 				log.Errorf("%v", derr)
 				return false, derr
@@ -1009,7 +1009,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 							goto Exit
 						}
 					}
-					exists, err = dbTableExists(d, table, dbKey)
+					exists, err = dbTableExists(d, table, dbKey, oper)
 					if !exists || err != nil {
 						err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
 						log.Errorf("%v", err)
@@ -1120,7 +1120,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					}
 					// Read the table entry from DB
 					if !existsInDbData {
-						exists, derr := dbTableExists(d, tableName, dbKey)
+						exists, derr := dbTableExists(d, tableName, dbKey, oper)
 						if derr != nil {
 							return false, derr
 						}
@@ -1201,7 +1201,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				xfmrLogInfoAll("db index for xpath - %v is %v", xpath, cdb)
 				exists = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
 				if !exists {
-					exists, derr = dbTableExists(dbs[cdb], tableName, dbKey)
+					exists, derr = dbTableExists(dbs[cdb], tableName, dbKey, oper)
 					if derr != nil {
 						return false, derr
 					}
@@ -1212,7 +1212,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					}
 				}
 			} else {
-				exists, derr = dbTableExists(d, tableName, dbKey)
+				exists, derr = dbTableExists(d, tableName, dbKey, oper)
 			}
 			if derr != nil {
 				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
@@ -1244,7 +1244,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
 		if len(curTable) > 0 {
 			if perr == nil && cerr == nil && (curTable != parentTable) && len(curKey) > 0 {
-				exists, derr := dbTableExists(d, curTable, curKey)
+				exists, derr := dbTableExists(d, curTable, curKey, oper)
 				if !exists {
 					return true, derr
 				} else {
