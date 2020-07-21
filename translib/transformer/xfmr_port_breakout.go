@@ -308,6 +308,7 @@ var YangToDb_port_breakout_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         log.Info("inParams.oper: ", inParams.oper)
         log.Info("inParams: ", inParams)
         data.Set("brkout_mode", brkout_mode)
+        data.Set("port", pathInfo.Var("name"))
         if _, ok := dpbMap[tblName]; !ok {
             dpbMap[tblName] = make (map[string]db.Value)
         } else {
