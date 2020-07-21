@@ -11,6 +11,7 @@ module openconfig-qos-ext {
     import openconfig-yang-types { prefix oc-yang; }
     import openconfig-extensions { prefix oc-ext; }
     import openconfig-types { prefix "oc-types"; }
+    import openconfig-qos-pfc { prefix oc-qos-pfc; }
 
     organization "Dell";
 
@@ -246,6 +247,13 @@ module openconfig-qos-ext {
 
     grouping qos-ext-pfc-priority-state {
         description "PFC Operational data per priority.";
+
+        container statistics {
+            description
+                "Container for pause frame statistics per prioity for an interface.";
+
+            uses oc-qos-pfc:qos-pfc-if-priority-state;
+        }
     }
 
     grouping qos-ext-pfc-priorities-top {
@@ -338,6 +346,8 @@ module openconfig-qos-ext {
                 }
             }
             uses qos-ext-pfc-priorities-top;
+            uses oc-qos-pfc:qos-pfc-if-watchdog-top;
+            uses oc-qos-pfc:qos-pfc-if-queue-top;
         }
     }
 
@@ -354,6 +364,13 @@ module openconfig-qos-ext {
         uses qos-ext-interface-pfc-top;
     }
     
+    augment /oc-qos:qos {
+      description 
+        "Priority-based Flow Control watchdog";
+
+      uses oc-qos-pfc:qos-pfc-watchdog-top;
+    }
+
     grouping qos-ext-threshold-breach-top {
         description 
             "Top-level grouping for QoS threshold breach information";
