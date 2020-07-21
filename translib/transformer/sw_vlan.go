@@ -304,6 +304,7 @@ func validateVlanExists(d *db.DB, vlanName *string) error {
 /* Validates whether physical interface or port-channel interface configured as member of any VLAN */
 func validateIntfAssociatedWithVlan(d *db.DB, ifName *string) error {
     var err error
+    ifUIName := utils.GetUINameFromNativeName(ifName)
 
     if len(*ifName) == 0 {
         return errors.New("Interface name is empty!")
@@ -333,7 +334,7 @@ func validateIntfAssociatedWithVlan(d *db.DB, ifName *string) error {
             }
             for _, memberName := range memberPortsList {
                 if memberName == *ifName {
-                    errStr := *ifName + " is part of : " + vlan.Get(0)
+                    errStr := "Vlan configuration exists on interface: " + *ifUIName
                     log.Error(errStr)
                     return tlerr.InvalidArgsError{Format:errStr}
                 }
