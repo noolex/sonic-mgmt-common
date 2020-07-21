@@ -437,7 +437,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 				if len(tokens) > SONIC_FIELD_INDEX {
 					fieldName = tokens[SONIC_FIELD_INDEX]
 					dbSpecField := tableName + "/" + fieldName
-					_, ok := xDbSpecMap[dbSpecField]
+					dbSpecFieldInfo, ok := xDbSpecMap[dbSpecField]
 					if ok  && fieldName != "" {
 						yangNodeType := yangTypeGet(xDbSpecMap[dbSpecField].dbEntry)
 						if yangNodeType == YANG_LEAF_LIST {
@@ -453,6 +453,16 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 								leafListInstVal, valErr := extractLeafListInstFromUri(uri)
 								if valErr != nil {
 									return []byte(""), true, valErr
+								}
+								if dbSpecFieldInfo.xfmrValue != nil {
+									inParams := formXfmrDbInputRequest(CREATE, cdb, tableName, keyStr, fieldName, leafListInstVal)
+									retVal, err := valueXfmrHandler(inParams, *dbSpecFieldInfo.xfmrValue)
+									if err != nil {
+										log.Errorf("Failed in value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").", dbSpecField, leafListInstVal, err)
+										return []byte(""), true, err
+									}
+									log.Info("valueXfmrHandler() retuned ", retVal)
+									leafListInstVal = retVal
 								}
 								if leafListInstExists(dbData[cdb][tableName][keyStr].Field[fieldName], leafListInstVal) {
 									/* Since translib already fills in ygRoot with queried leaf-list instance, do not
