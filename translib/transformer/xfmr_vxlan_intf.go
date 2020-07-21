@@ -715,11 +715,24 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 		log.Info(" =====> vxlanReqProcessor ==> handleCRUReq - vxlanIntfName => ", vxlanIntfName)
 	}
 
+    if reqP.vxlanIntfConfigObj.SourceVtepIp != nil {
+        src_ip_in = *(reqP.vxlanIntfConfigObj.SourceVtepIp)
+    }
+    //QosMode is an enum with values 1 for "uniform" and 2 for "pipe"
+    qos_mode_in_int := (reqP.vxlanIntfConfigObj.QosMode)
+    if qos_mode_in_int == 1 {
+        qos_mode_in = "uniform"
+    } else if qos_mode_in_int == 2 {
+        qos_mode_in = "pipe"
+    } 
+    if reqP.vxlanIntfConfigObj.Dscp  != nil {
+        //dscp_in can get set to 0 below. Hence dscp_configured is used.
+        dscp_in = strconv.Itoa(int(*(reqP.vxlanIntfConfigObj.Dscp))) 
+        dscp_configured = true
+    }
+
 	if vxlanIntfName != "" {
 		var VXLAN_TUNNEL_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL"}
-        if reqP.vxlanIntfConfigObj.SourceVtepIp != nil {
-            src_ip_in = *(reqP.vxlanIntfConfigObj.SourceVtepIp)
-        }
 		dbv, err := reqP.db.GetEntry(VXLAN_TUNNEL_TABLE_TS, db.Key{[]string{vxlanIntfName}})
 		if log.V(3) {
 			log.Info("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> dbv => ", dbv)
@@ -736,13 +749,6 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
                 log.Infof("src_ip_in: %s src_ip_db: %s",src_ip_in, src_ip_db)
             }
 
-            //QosMode is an enum with values 1 for "uniform" and 2 for "pipe"
-            qos_mode_in_int := (reqP.vxlanIntfConfigObj.QosMode)
-            if qos_mode_in_int == 1 {
-                qos_mode_in = "uniform"
-            } else if qos_mode_in_int == 2 {
-                qos_mode_in = "pipe"
-            } 
             if dbv.Field["qos-mode"] != "" {
                 qos_mode_db = dbv.Field["qos-mode"]
             }
@@ -750,11 +756,6 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
                 log.Infof("qos_mode_in_int:%d qos_mode_in:%s qos_mode_db:%s ", qos_mode_in_int, qos_mode_in, qos_mode_db)
             }
 
-            if reqP.vxlanIntfConfigObj.Dscp  != nil {
-                //dscp_in can get set to 0 below. Hence dscp_configured is used.
-                dscp_in = strconv.Itoa(int(*(reqP.vxlanIntfConfigObj.Dscp))) 
-                dscp_configured = true
-            }
             if qos_mode_in != "" {
                 if (qos_mode_in == "uniform") || (qos_mode_in == "pipe" && !dscp_configured) {
                     dscp_in = "0"
