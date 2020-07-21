@@ -763,7 +763,14 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 				dbFldName += "@"
 				val, ok := (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName]
 				leafLstInstGetReq := false
-				if ((strings.HasSuffix(requestUri, "]")) || (strings.HasSuffix(requestUri, "]/"))) {
+
+				ruriXpath, _ := XfmrRemoveXPATHPredicates(inParamsForGet.requestUri)
+				rYangType := ""
+				if rSpecInfo, rok := xYangSpecMap[ruriXpath]; rok {
+					rYangType = yangTypeGet(rSpecInfo.yangEntry)
+				}
+
+				if ((strings.HasSuffix(requestUri, "]")) || (strings.HasSuffix(requestUri, "]/"))) && (rYangType == YANG_LEAF_LIST) {
 					xfmrLogInfoAll("Request URI is leaf-list instance GET - %v", requestUri)
 					leafLstInstGetReq = true
 				}
