@@ -709,6 +709,7 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
     qos_mode_db := ""
     dscp_in := ""
     dscp_db := ""
+    dscp_configured := false
 
 	if log.V(3) {
 		log.Info(" =====> vxlanReqProcessor ==> handleCRUReq - vxlanIntfName => ", vxlanIntfName)
@@ -716,7 +717,9 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 
 	if vxlanIntfName != "" {
 		var VXLAN_TUNNEL_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL"}
-        src_ip_in = *(reqP.vxlanIntfConfigObj.SourceVtepIp)
+        if reqP.vxlanIntfConfigObj.SourceVtepIp != nil {
+            src_ip_in = *(reqP.vxlanIntfConfigObj.SourceVtepIp)
+        }
 		dbv, err := reqP.db.GetEntry(VXLAN_TUNNEL_TABLE_TS, db.Key{[]string{vxlanIntfName}})
 		if log.V(3) {
 			log.Info("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> dbv => ", dbv)
@@ -727,7 +730,7 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 		}
 
         //Allow update when qos-mode / dscp values are different from the values in DB
-		if dbv.Field["src_ip"] != "" && (reqP.opcode == 3 || reqP.opcode == 4) {
+        if (reqP.opcode == REPLACE || reqP.opcode == UPDATE) {
             src_ip_db = dbv.Field["src_ip"]
             if log.V(3) {
                 log.Infof("src_ip_in: %s src_ip_db: %s",src_ip_in, src_ip_db)
@@ -748,10 +751,12 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
             }
 
             if reqP.vxlanIntfConfigObj.Dscp  != nil {
+                //dscp_in can get set to 0 below. Hence dscp_configured is used.
                 dscp_in = strconv.Itoa(int(*(reqP.vxlanIntfConfigObj.Dscp))) 
+                dscp_configured = true
             }
             if qos_mode_in != "" {
-                if (qos_mode_in == "uniform") || (qos_mode_in == "pipe" && dscp_in == "") {
+                if (qos_mode_in == "uniform") || (qos_mode_in == "pipe" && !dscp_configured) {
                     dscp_in = "0"
                     if log.V(3) {
                         log.Info("Reset DSCP value to 0")
@@ -764,30 +769,71 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
             if log.V(3) {
                 log.Infof("dscp_in:%s dscp_db:%s ", dscp_in, dscp_db)
             }
-            if (qos_mode_in == "") && dscp_in != "" {
-                if qos_mode_db == "uniform" {
+            //Disallow dscp input if qos-mode is "uniform"
+            if dscp_configured {
+                if (qos_mode_in == "" && qos_mode_db == "uniform") || (qos_mode_in == "uniform") {
                     log.Error("Existing qos-mode is uniform. DSCP input not allowed")
                     return &res_map, tlerr.New("Existing QoS Mode is uniform. DSCP input not allowed")
                 }
             }
 
-            //Allow update of qos-mode / dscp when src_ip is same
-            if (dbv.Field["src_ip"] == src_ip_in) {
-                //When all the values are same, return error
-                if qos_mode_in == qos_mode_db {
+            var duplicate_sip bool
+            duplicate_sip = false
+            if (src_ip_in != "") {
+                if (src_ip_in == src_ip_db) {
+                    duplicate_sip = true
+                } else if (src_ip_db != "") {
+                    //Modification of SIP is not allowed
+                    log.Errorf("source-vtep-ip %s already exists", src_ip_db)
+                    return &res_map, tlerr.New("Source-vtep-ip %s already exists", src_ip_db)
+                }
+            }
+            var duplicate_qm bool
+            duplicate_qm = false
+            if (qos_mode_in != "") {
+                if (qos_mode_in == qos_mode_db) {
                     if (qos_mode_in == "uniform") {
-                        log.Errorf("QoS Mode %s already configured",qos_mode_in)
-                        return &res_map, tlerr.New("QoS Mode uniform already configured")
-                    } else if (qos_mode_in == "pipe" && dscp_in == dscp_db) {
-                        log.Errorf("QoS Mode %s and DSCP %s already configured",qos_mode_in, dscp_in)
-                        return &res_map, tlerr.New("Qos Mode %s and DSCP %s already configured", qos_mode_in, dscp_in)
+                        duplicate_qm = true
+                    } else if (qos_mode_in == "pipe") {
+                        if ((dscp_configured) && (dscp_in == dscp_db)) || (!dscp_configured) {
+                            duplicate_qm = true
+                        }
                     }
                 }
-            } else {
-                //When src_ip is different from the one in DB, return error
-                log.Info("src_ip_in ==> ",src_ip_in)
-                log.Error("VXLAN testing vxlanReqProcessor ========  handleCRUReq ===========> source-vtep-ip => ", dbv.Field["src_ip"])
-                return &res_map, tlerr.New("Source-vtep-ip %s already exist; source-vtep-ip ", dbv.Field["src_ip"])
+            }
+            var duplicate_dscp bool
+            duplicate_dscp = false
+            if (dscp_configured) {
+                if ((qos_mode_in == "" && (qos_mode_db == "pipe" && (dscp_in == dscp_db))) || 
+                    (qos_mode_in == "pipe" && (dscp_in == dscp_db))) {
+                        duplicate_dscp = true
+                }
+            }
+            //If SIP is duplicate OR SIP isn't configured, check qos-mode and dscp values
+            if (duplicate_sip || (!duplicate_sip && src_ip_in == "")) {
+                //qos-mode and dscp are configured and are duplicates
+                if (duplicate_qm && duplicate_dscp) {
+                    if (duplicate_sip) {
+                        //duplicate sip,qos-mode and dscp
+                        log.Errorf("source-vtep-ip:%s qos-mode:%s dscp:%s already configured",src_ip_in,qos_mode_in,dscp_in)
+                        return &res_map, tlerr.New("source-vtep-ip:%s qos-mode:%s dscp:%s already configured",src_ip_in,qos_mode_in,dscp_in)
+                    } else {
+                        //duplicate qos-mode and dscp. sip isn't configured
+                        log.Errorf("qos-mode:%s dscp:%s already configured",qos_mode_in,dscp_in)
+                        return &res_map, tlerr.New("qos-mode:%s dscp:%s already configured",src_ip_in,qos_mode_in,dscp_in)
+                    }
+                } else if ((!duplicate_qm && qos_mode_in == "") && duplicate_dscp) {
+                    //qos-mode isn't configured and duplicate dscp is configured
+                    log.Errorf("dscp:%s already configured",dscp_in)
+                    return &res_map, tlerr.New("dscp:%s already configured",dscp_in)
+                } else if (duplicate_qm && (!duplicate_dscp && !dscp_configured)) {
+                    //duplicate qos-mode is configured and dscp isn't configured
+                    log.Errorf("qos-mode:%s already configured",qos_mode_in)
+                    return &res_map, tlerr.New("qos-mode:%s already configured",qos_mode_in)
+                } else if (duplicate_sip) {
+                    log.Errorf("source-vtep-ip:%s already configured",src_ip_in)
+                    return &res_map, tlerr.New("source_vtep-ip:%s already configured",src_ip_in)
+                }
             }
 		}
 	}
@@ -795,15 +841,17 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 	var vxlanTunnelTblMap map[string]db.Value = make(map[string]db.Value)
 	var evpnNvoTblMap map[string]db.Value = make(map[string]db.Value)
 
-	if reqP.vxlanIntfConfigObj.SourceVtepIp == nil {
+	if src_ip_in == "" && qos_mode_in == "" && !dscp_configured {
 		log.Error(" =====> vxlanReqProcessor ==> handleCRUReq - ERROR ")
-		return &res_map, tlerr.InvalidArgs("Cannot configure the vxlan interface without source-vtep-ip; Please proivde the source-vtep-ip - /openconfig-interfaces:interfaces/interface/openconfig-vxlan:vxlan-if/config/source-vtep-ip")
+		return &res_map, tlerr.InvalidArgs("Cannot configure the vxlan interface without source-vtep-ip/qos-mode/dscp; Please provide atleast one input /openconfig-interfaces:interfaces/interface/openconfig-vxlan:vxlan-if/config/{source-vtep-ip | qos-mode | dscp}")
 	} else {
 		dbV1 := db.Value{Field: make(map[string]string)}
-		dbV1.Field["src_ip"] = src_ip_in
+        if src_ip_in != "" {
+		    dbV1.Field["src_ip"] = src_ip_in
+        }
         if qos_mode_in != "" {
             dbV1.Field["qos-mode"] = qos_mode_in
-            if dscp_in == "" {
+            if !dscp_configured {
                 dscp_in = "0"
             }
         }

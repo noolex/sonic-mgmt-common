@@ -1492,6 +1492,12 @@ module openconfig-ospfv2-ext {
       description
         "Length of the LSA";
     }
+
+    leaf display-sequence-number {
+      type uint64;
+      description
+        "Sequence number in display format";
+    }
   }
 
   grouping ospfv2-ext-passive-interface-config {
