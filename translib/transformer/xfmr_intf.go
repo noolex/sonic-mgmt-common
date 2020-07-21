@@ -166,7 +166,7 @@ var IntfTypeTblMap = map[E_InterfaceType]IntfTblData {
 }
 
 var dbIdToTblMap = map[db.DBNum][]string {
-    db.ConfigDB: {"PORT", "MGMT_PORT", "VLAN", "PORTCHANNEL", "LOOPBACK_INTERFACE"},
+    db.ConfigDB: {"PORT", "MGMT_PORT", "VLAN", "PORTCHANNEL", "LOOPBACK_INTERFACE", "VXLAN_TUNNEL"},
     db.ApplDB  : {"PORT_TABLE", "MGMT_PORT_TABLE", "VLAN_TABLE", "LAG_TABLE"},
     db.StateDB : {"PORT_TABLE", "MGMT_PORT_TABLE", "LAG_TABLE"},
 }
