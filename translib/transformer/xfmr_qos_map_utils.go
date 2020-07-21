@@ -380,7 +380,7 @@ func Subscribe_qos_map_xfmr(inParams XfmrSubscInParams, map_type string) (XfmrSu
     name   :=  pathInfo.Var("name")
 
     result.dbDataMap = make(RedisDbMap)
-    log.Info("XfmrSubscribe_qos_map_xfmr: ", map_type)
+    log.Info("XfmrSubscribe_qos_map_xfmr map_type (DB name): ", map_type, " name (key): ", name)
     result.dbDataMap = RedisDbMap{db.ConfigDB:{map_type: {name:{}}}}  // tablename & table-idx for the inParams.uri
     result.needCache = true
     result.nOpts = new(notificationOpts)
