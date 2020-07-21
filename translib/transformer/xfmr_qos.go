@@ -1544,6 +1544,10 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
     log.Info("inParams.requestUri: ", inParams.requestUri)
 
     tbl_name := "QOS_PORT"
+    if strings.HasPrefix(inParams.requestUri, "/openconfig-qos:qos/interfaces/interface[interface-id=Ethernet0]/openconfig-qos-maps-ext:interface-maps") {
+        tbl_name = "PORT_QOS_MAP"
+    }
+
     tblList = append(tblList, tbl_name)
     if len(ifName) != 0 {
         dbifName := utils.GetNativeNameFromUIName(&ifName)
