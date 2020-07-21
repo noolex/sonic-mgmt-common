@@ -110,7 +110,7 @@ module sonic-portchannel-interface {
 				      error-app-tag dhcp-server-invalid-portchannel-routing-interface;
 			      }
 		}
-          
+
                 leaf dhcp_relay_link_select {
                       type cmn:mode-enable;
                  }
@@ -139,7 +139,7 @@ module sonic-portchannel-interface {
                  leaf dhcp_server_vrf {
                          type string;
                          must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                               "(current()/../dhcp_servers)"   
+                               "(current()/../dhcp_servers)"
                                 {
                                       error-message "DHCP server not configured";
                                       error-app-tag dhcp-server-invalid-vrf-config;
@@ -180,7 +180,7 @@ module sonic-portchannel-interface {
                  leaf dhcpv6_server_vrf {
                          type string;
                          must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                                "(current()/../dhcpv6_servers)"   
+                                "(current()/../dhcpv6_servers)"
                                {
                                         error-message "DHCP server or src-intf not configured";
                                         error-app-tag dhcp-server-invalid-vrf-config;
@@ -194,7 +194,7 @@ module sonic-portchannel-interface {
 
                 leaf ipv6_use_link_local_only {
                     type cmn:mode-enable;
-                    default disable; 
+                    default disable;
                     description
                         "Enable IPv6 link local address on interface";
                     must "count(/svlan:sonic-vlan/svlan:VLAN_MEMBER/svlan:VLAN_MEMBER_LIST[svlan:ifname=current()/../pch_name]) = 0"
@@ -255,6 +255,7 @@ module sonic-portchannel-interface {
 
                 leaf ip_prefix {
                     type inet:ip-prefix;
+                    sonic-ext:custom-validation ValidateIntfIp;
 
                 }
             }
