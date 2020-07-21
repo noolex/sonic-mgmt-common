@@ -1248,7 +1248,51 @@ func leafListInstExists(leafListInDbVal string, checkLeafListInstVal string) boo
 }
 
 func extractLeafListInstFromUri(uri string) (string, error) {
-	/*function to extract leaf-list instance coming as part of uri*/
+	/*function to extract leaf-list instance value coming as part of uri
+	Handling [ ] in value*/
+	xfmrLogInfoAll("received uri - %v", uri)
+	var leafListInstVal string
+	yangType := ""
+	err := fmt.Errorf("Unable to extract leaf-list instance value for uri - %v", uri)
+
+	xpath, xerr := XfmrRemoveXPATHPredicates(uri)
+	specInfo, ok := xYangSpecMap[xpath]
+	if !ok {
+		return leafListInstVal, xerr
+	}
+
+	yangType = yangTypeGet(specInfo.yangEntry)
+	if !(yangType == YANG_LEAF_LIST) {
+		return leafListInstVal, err
+	}
+
+	//Check if uri has Leaf-list value
+	if ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
+		xpathList := strings.Split(xpath, "/")
+		ll_name := xpathList[len(xpathList)-1]
+		ll_inx := strings.LastIndex(uri,ll_name)
+		if ll_inx != -1 {
+			ll_value := uri[ll_inx:]
+			ll_value = strings.TrimSuffix(ll_value, "]")
+			valueLst := strings.SplitN(ll_value, "=", 2)
+			leafListInstVal = valueLst[1]
+
+			if ((strings.Contains(leafListInstVal, ":")) && (strings.HasPrefix(leafListInstVal, OC_MDL_PFX) || strings.HasPrefix(leafListInstVal, IETF_MDL_PFX) || strings.HasPrefix(leafListInstVal, IANA_MDL_PFX))) {
+				// identity-ref/enum has module prefix
+				leafListInstVal = strings.SplitN(leafListInstVal, ":", 2)[1]
+				xfmrLogInfoAll("Leaf-list instance value after removing identityref prefix - %v", leafListInstVal)
+			}
+			xfmrLogInfoAll("Leaf-list instance value to be returned - %v", leafListInstVal)
+
+			return leafListInstVal, nil
+		}
+	}
+	return leafListInstVal, err
+}
+
+/*
+func extractLeafListInstFromUri(uri string) (string, error) {
+	//function to extract leaf-list instance coming as part of uri
 	xfmrLogInfoAll("received uri - %v", uri)
 	var err error
 	var leafListInstVal string
@@ -1277,7 +1321,7 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 		xfmrLogInfoAll("%v", err)
 	}
 	return leafListInstVal, err
-}
+}*/
 
 /* FUNCTIONS RESERVED FOR FUTURE USE. DO ONT DELETE */
 /***************************************************************************************************
