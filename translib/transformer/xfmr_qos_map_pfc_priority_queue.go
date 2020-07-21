@@ -12,10 +12,17 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_pfc_priority_queue_xfmr", YangToDb_qos_pfc_priority_queue_xfmr)
     XlateFuncBind("DbToYang_qos_pfc_priority_queue_xfmr", DbToYang_qos_pfc_priority_queue_xfmr)
+    XlateFuncBind("Subscribe_qos_pfc_priority_queue_xfmr", Subscribe_qos_pfc_priority_queue_xfmr)
     XlateFuncBind("YangToDb_qos_pfc_priority_to_queue_map_fld_xfmr", YangToDb_qos_pfc_priority_to_queue_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_pfc_priority_to_queue_map_fld_xfmr", DbToYang_qos_pfc_priority_to_queue_map_fld_xfmr)
 
 }
+
+var Subscribe_qos_pfc_priority_queue_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    map_type := "MAP_PFC_PRIORITY_TO_QUEUE"
+    return Subscribe_qos_map_xfmr(inParams, map_type)
+}
+
 
 
 
@@ -64,7 +71,9 @@ var YangToDb_qos_pfc_priority_queue_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/pfc-priority-queue-maps/pfc-priority-queue-map/pfc-priority-queue-map-entries/pfc-priority-queue-map-entry") &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:pfc-priority-queue-maps/pfc-priority-queue-map/pfc-priority-queue-map-entries/pfc-priority-queue-map-entry") {
-        log.Info("YangToDb: map entry unspecified, stop here")
+        log.Info("YangToDb: map entry unspecified, return the map")
+
+        res_map[map_type] = map_entry
         return res_map, err
     }
 
@@ -149,6 +158,10 @@ func fill_pfc_queue_map_info_by_name(inParams XfmrParams, pfcPriorityQueueMaps *
     var tmp_sta ocbinds.OpenconfigQos_Qos_PfcPriorityQueueMaps_PfcPriorityQueueMap_PfcPriorityQueueMapEntries_PfcPriorityQueueMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
+        if k == "NULL" {
+            continue
+        }
+
         if entry_key != "" && k!= entry_key {
             continue
         }

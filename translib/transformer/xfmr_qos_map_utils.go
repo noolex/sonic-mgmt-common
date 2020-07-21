@@ -368,3 +368,24 @@ func YangToDb_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string)  (map[
 }
 
 
+func Subscribe_qos_map_xfmr(inParams XfmrSubscInParams, map_type string) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    print ("targetUriPath:", targetUriPath)
+
+    name   :=  pathInfo.Var("name")
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Info("XfmrSubscribe_qos_map_xfmr map_type (DB name): ", map_type, " name (key): ", name)
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{map_type: {name:{}}}}  // tablename & table-idx for the inParams.uri
+    result.needCache = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0 
+    result.nOpts.pType = OnChange
+    log.Info("Returning XfmrSubscribe_qos_map_xfmr")
+    return result, err
+}
