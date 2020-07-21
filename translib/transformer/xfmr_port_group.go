@@ -69,6 +69,8 @@ var YangToDb_port_group_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
             for _, ifName := range ports {
                 pgMap["PORT"][ifName] = data
             }
+            pgMap["PORT_GROUP"] = make (map[string]db.Value)
+            pgMap["PORT_GROUP"][inParams.key] = data
         } else {
             log.Info("Could not get the member ports for ", inParams.key)
             err = tlerr.InvalidArgs("Invalid port-group")
@@ -79,8 +81,8 @@ var YangToDb_port_group_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
         portMap := make(map[db.DBNum]map[string]map[string]db.Value)
         portMap[db.ConfigDB] = pgMap
         inParams.subOpDataMap[UPDATE] = &portMap
-        return make(map[string]map[string]db.Value), err
-    } else {
-        return pgMap, err
+        pgMap["PORT_GROUP"] = make (map[string]db.Value)
+        pgMap["PORT_GROUP"][inParams.key] = db.Value{}
     }
+    return pgMap, err
 }
