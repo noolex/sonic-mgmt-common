@@ -4,8 +4,6 @@ import (
     "errors"
     "strings"
     "strconv"
-    gnmipb "github.com/openconfig/gnmi/proto/gnmi"
-    "github.com/openconfig/goyang/pkg/yang"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
@@ -34,18 +32,6 @@ var FDB_ENTRY_TYPE_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_State_EntryType_DYNAMIC), 10): SONIC_ENTRY_TYPE_DYNAMIC,
 }
 
-type reqProcessor_fdb struct {
-	uri        *string
-	uriPath    *gnmipb.Path
-	opcode     int
-	rootObj    *ocbinds.Device
-	targetObj  interface{}
-	db         *db.DB
-	dbs        [db.MaxDB]*db.DB
-	intfConfigObj   *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Interface
-	intfStateObj    *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Interface
-	targetNode *yang.Entry
-}
 var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     var err error
     var  valLst [2]string
