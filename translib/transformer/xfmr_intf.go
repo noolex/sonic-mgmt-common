@@ -1951,12 +1951,12 @@ func checkLocalIpExist(d *db.DB, nbrAddr string) (bool, error) {
             if len(key.Comp) < 2 {
                 continue
             }
-            localIp, localNetIp, perr := net.ParseCIDR(key.Get(1))
+            localIp, _, perr := net.ParseCIDR(key.Get(1))
             //Check if key has IP, if not continue
             if localIp == nil || perr != nil {
                 continue
             }
-            if localNetIp.Contains(nbrIp) {
+            if localIp.Equal(nbrIp) {
                 if log.V(3) {
                     log.Info("Neighbor address: ", nbrAddr, " exist in local address ")
                 }
