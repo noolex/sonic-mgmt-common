@@ -1177,10 +1177,19 @@ func splitUri(uri string) []string {
 	return pathList
 }
 
-func dbTableExists(d *db.DB, tableName string, dbKey string) (bool, error) {
+func dbTableExists(d *db.DB, tableName string, dbKey string, oper int) (bool, error) {
 	var err error
 	// Read the table entry from DB
 	if len(tableName) > 0 {
+		if hasKeyValueXfmr(tableName) {
+                        retKey, err := dbKeyValueXfmrHandler(oper, d.Opts.DBNo, tableName, dbKey)
+                        if err != nil {
+                                return false, err
+                        }
+                        xfmrLogInfoAll("dbKeyValueXfmrHandler() returned db key %v", retKey)
+                        dbKey = retKey
+                }
+
 		dbTblSpec := &db.TableSpec{Name: tableName}
 
 		if strings.Contains(dbKey, "*") {
