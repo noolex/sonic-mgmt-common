@@ -10,6 +10,7 @@ import (
     log "github.com/golang/glog"
     "io/ioutil"
     "encoding/json"
+    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 )
 
 const (
@@ -285,6 +286,52 @@ func parsePlatformDefJsonFile () (error) {
     return err
 }
 
+func getPgData (pgObj *ocbinds.OpenconfigPortGroup_PortGroups) (error) {
+
+    var speedMap = map[string] ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED {
+        "1000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_1GB,
+        "10000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_10GB,
+        "25000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_25GB,
+        "40000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_40GB,
+        "50000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_50GB,
+        "100000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_100GB,
+        "200000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_200GB,
+        "400000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_400GB,
+    }
+
+    if len(platDefStr) < 1 {
+        log.Info("Platform does not support port-group");
+        return tlerr.NotSupported("Platform does not support port-group")
+    }
+
+    if pgs, ok := platDefStr["port-group"]; ok {
+        for id, pg := range pgs {
+            var entry ocbinds.OpenconfigPortGroup_PortGroups_PortGroup_State
+            var pgInstance *ocbinds.OpenconfigPortGroup_PortGroups_PortGroup
+            entry.Id = &id
+            ifRange := strings.Split(pg["members"],"-")
+            entry.MemberIfStart = utils.GetUINameFromNativeName(&ifRange[0])
+            ifRange[1] = "Ethernet" + ifRange[1]
+            entry.MemberIfEnd = utils.GetUINameFromNativeName(&ifRange[1])
+            vspeeds := strings.Split(strings.TrimSpace(pg["valid_speeds"]),",")
+            var val_speeds []ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED
+            for _, spd := range vspeeds{
+                val_speeds = append(val_speeds, speedMap[spd])
+            }
+            entry.Speed = val_speeds[0]
+            entry.ValidSpeeds = val_speeds
+            if _, ok := pgObj.PortGroup[id]; ok {
+                pgInstance = pgObj.PortGroup[id]
+                pgInstance.State = &entry
+                log.Info("Entry ", id, " ", entry)
+            }
+        }
+    }
+
+    log.Info("PG Data: ", pgObj.PortGroup)
+    return nil
+}
+
 func isPortGroupMember(ifName string) (bool) {
     if len(platDefStr) < 1 {
         parsePlatformDefJsonFile()
@@ -306,6 +353,51 @@ func isPortGroupMember(ifName string) (bool) {
         }
     }
     return false
+}
+
+func getPortGroupMembersAfterSpeedCheck(pgid string, speed *string) ([]string, error) {
+   var  members []string
+
+    if len(platDefStr) < 1 {
+        parsePlatformDefJsonFile()
+        if len(platDefStr) < 1 {
+            return members, tlerr.NotSupported("Port-group is not supported")
+        }
+    }
+    if pgs, ok := platDefStr["port-group"]; ok {
+        for id, pg := range pgs {
+            if id == pgid {
+                vspeeds := strings.Split(strings.Trim(strings.TrimSpace(pg["valid_speeds"]), "[]"),",")
+                isSpeedValid := false
+                for _, spd := range vspeeds {
+                    if *speed == spd {
+                        isSpeedValid = true
+                        break
+                    } else if *speed == "" {
+                        *speed = vspeeds[0]
+                        isSpeedValid = true
+                        log.Info("Setting default speed to ", *speed)
+                        break
+                    }
+                }
+                if !isSpeedValid {
+                    log.Info("speed ", *speed, " is not supported for PG#", pgid)
+                    return members, tlerr.NotSupported("Speed not supported")
+                }
+                memRange := strings.Split(strings.TrimLeft(pg["members"], "Ethern"), "-")
+                startNum,_ := strconv.Atoi(memRange[0])
+                endNum,_ := strconv.Atoi(memRange[1])
+                log.Info("PG ", id, pg["members"], " ", pg["valid_speeds"], " ==> ",
+                            startNum, " - ", endNum)
+                for i := startNum; i <= endNum; i++ {
+                    members = append(members, "Ethernet"+strconv.Itoa(i))
+                }
+            }
+        }
+    } else {
+        return members, tlerr.NotSupported("Port-group is not supported")
+    }
+    return members, nil
 }
 
 
