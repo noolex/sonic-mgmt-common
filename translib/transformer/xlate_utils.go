@@ -574,7 +574,13 @@ func stripAugmentedModuleNames(xpath string) string {
         return path
 }
 
-func XfmrRemoveXPATHPredicates(xpath string) (string, error) {
+func XfmrRemoveXPATHPredicates(inPath string) (string, error) {
+	xpath := inPath
+	if !strings.HasPrefix(inPath, "..") {
+		uriList := splitUri(inPath)
+		xpath = "/" + strings.Join(uriList, "/")
+	}
+
 	// Strip keys from xpath
 	for {
 		si, ei := strings.IndexAny(xpath, "["), strings.Index(xpath, "]")
@@ -1171,10 +1177,22 @@ func splitUri(uri string) []string {
 	return pathList
 }
 
-func dbTableExists(d *db.DB, tableName string, dbKey string) (bool, error) {
+func dbTableExists(d *db.DB, tableName string, dbKey string, oper int) (bool, error) {
 	var err error
 	// Read the table entry from DB
 	if len(tableName) > 0 {
+		if hasKeyValueXfmr(tableName) {
+			if oper == GET { //value tranformer callback decides based on oper type
+				oper = CREATE
+			}
+                        retKey, err := dbKeyValueXfmrHandler(oper, d.Opts.DBNo, tableName, dbKey)
+                        if err != nil {
+                                return false, err
+                        }
+                        xfmrLogInfoAll("dbKeyValueXfmrHandler() returned db key %v", retKey)
+                        dbKey = retKey
+                }
+
 		dbTblSpec := &db.TableSpec{Name: tableName}
 
 		if strings.Contains(dbKey, "*") {
@@ -1233,33 +1251,44 @@ func leafListInstExists(leafListInDbVal string, checkLeafListInstVal string) boo
 }
 
 func extractLeafListInstFromUri(uri string) (string, error) {
-	/*function to extract leaf-list instance coming as part of uri*/
+	/*function to extract leaf-list instance value coming as part of uri
+	Handling [ ] in value*/
 	xfmrLogInfoAll("received uri - %v", uri)
-	var err error
 	var leafListInstVal string
+	yangType := ""
+	err := fmt.Errorf("Unable to extract leaf-list instance value for uri - %v", uri)
 
-	if !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
-		err = fmt.Errorf("Uri - %v is not querying leaf-list instance", uri)
-		xfmrLogInfoAll("%v", err)
+	xpath, xerr := XfmrRemoveXPATHPredicates(uri)
+	specInfo, ok := xYangSpecMap[xpath]
+	if !ok {
+		return leafListInstVal, xerr
+	}
+
+	yangType = yangTypeGet(specInfo.yangEntry)
+	if !(yangType == YANG_LEAF_LIST) {
 		return leafListInstVal, err
 	}
-	uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
-	uriItemListLen := len(uriItemList)
-	if uriItemListLen > 0 {
-		leafListNode := uriItemList[uriItemListLen-1]
-		leafListNodeData := strings.TrimSuffix(strings.SplitN(leafListNode, "[", 2)[1], "]")
-		leafListNodeDataLst := strings.SplitN(leafListNodeData, "=", 2)
-		leafListInstVal = leafListNodeDataLst[1]
-		if ((strings.Contains(leafListInstVal, ":")) && (strings.HasPrefix(leafListInstVal, OC_MDL_PFX) || strings.HasPrefix(leafListInstVal, IETF_MDL_PFX) || strings.HasPrefix(leafListInstVal, IANA_MDL_PFX))) {
-			// identity-ref/enum has module prefix
-			leafListInstVal = strings.SplitN(leafListInstVal, ":", 2)[1]
-			xfmrLogInfoAll("Leaf-list instance value after removing identityref prefix - %v", leafListInstVal)
-		}
-		xfmrLogInfoAll("Leaf-list instance value to be returned - %v", leafListInstVal)
 
-	} else {
-		err = fmt.Errorf("Uri split didn't happen - %v", uri)
-		xfmrLogInfoAll("%v", err)
+	//Check if uri has Leaf-list value
+	if ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
+		xpathList := strings.Split(xpath, "/")
+		ll_name := xpathList[len(xpathList)-1]
+		ll_inx := strings.LastIndex(uri,ll_name)
+		if ll_inx != -1 {
+			ll_value := uri[ll_inx:]
+			ll_value = strings.TrimSuffix(ll_value, "]")
+			valueLst := strings.SplitN(ll_value, "=", 2)
+			leafListInstVal = valueLst[1]
+
+			if ((strings.Contains(leafListInstVal, ":")) && (strings.HasPrefix(leafListInstVal, OC_MDL_PFX) || strings.HasPrefix(leafListInstVal, IETF_MDL_PFX) || strings.HasPrefix(leafListInstVal, IANA_MDL_PFX))) {
+				// identity-ref/enum has module prefix
+				leafListInstVal = strings.SplitN(leafListInstVal, ":", 2)[1]
+				xfmrLogInfoAll("Leaf-list instance value after removing identityref prefix - %v", leafListInstVal)
+			}
+			xfmrLogInfoAll("Leaf-list instance value to be returned - %v", leafListInstVal)
+
+			return leafListInstVal, nil
+		}
 	}
 	return leafListInstVal, err
 }

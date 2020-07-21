@@ -763,7 +763,14 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 				dbFldName += "@"
 				val, ok := (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName]
 				leafLstInstGetReq := false
-				if ((strings.HasSuffix(requestUri, "]")) || (strings.HasSuffix(requestUri, "]/"))) {
+
+				ruriXpath, _ := XfmrRemoveXPATHPredicates(inParamsForGet.requestUri)
+				rYangType := ""
+				if rSpecInfo, rok := xYangSpecMap[ruriXpath]; rok {
+					rYangType = yangTypeGet(rSpecInfo.yangEntry)
+				}
+
+				if ((strings.HasSuffix(requestUri, "]")) || (strings.HasSuffix(requestUri, "]/"))) && (rYangType == YANG_LEAF_LIST) {
 					xfmrLogInfoAll("Request URI is leaf-list instance GET - %v", requestUri)
 					leafLstInstGetReq = true
 				}
@@ -772,6 +779,18 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 						leafListInstVal, valErr := extractLeafListInstFromUri(requestUri)
 						if valErr != nil {
 							return resFldValMap, valErr
+						}
+						dbSpecField := tbl + "/" + strings.TrimSuffix(dbFldName, "@")
+						dbSpecFieldInfo, dbSpecOk := xDbSpecMap[dbSpecField]
+						if dbSpecOk && dbSpecFieldInfo.xfmrValue != nil {
+							inParams := formXfmrDbInputRequest(CREATE, cdb, tbl, tblKey, dbFldName, leafListInstVal)
+							retVal, valXfmrErr := valueXfmrHandler(inParams, *dbSpecFieldInfo.xfmrValue)
+							if valXfmrErr != nil {
+								log.Errorf("Failed in value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").", dbSpecField, leafListInstVal, valXfmrErr)
+								return resFldValMap, valXfmrErr
+							}
+							log.Info("valueXfmrHandler() retuned ", retVal)
+							leafListInstVal = retVal
 						}
 						if !leafListInstExists((*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName], leafListInstVal) {
 							log.Errorf("Queried leaf-list instance does not exists, uri  - %v, dbData - %v", requestUri, (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName])

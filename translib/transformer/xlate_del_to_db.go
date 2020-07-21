@@ -596,9 +596,8 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					xpath := xpathPrefix
 					uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
 					uriItemListLen := len(uriItemList)
-					var terminalNode, luri string
+					var luri string
 					if uriItemListLen > 0 {
-						terminalNode = uriItemList[uriItemListLen-1]
 						luri = strings.Join(uriItemList[:uriItemListLen-1], "/") //strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
 
 					}
@@ -647,11 +646,9 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 						}
 					} else if specYangType == YANG_LEAF_LIST {
 						var fieldVal []interface{}
-						if strings.Contains(terminalNode, "[") {
-							leafListInstVal, valErr := extractLeafListInstFromUri(uri)
-							if valErr == nil {
-								fieldVal = append(fieldVal, leafListInstVal)
-							}
+						leafListInstVal, valErr := extractLeafListInstFromUri(uri)
+						if valErr == nil && leafListInstVal != "" {
+							fieldVal = append(fieldVal, leafListInstVal)
 						}
 						curXlateParams.uri = luri
 						curXlateParams.name = spec.yangEntry.Name
