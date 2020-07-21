@@ -1182,6 +1182,9 @@ func dbTableExists(d *db.DB, tableName string, dbKey string, oper int) (bool, er
 	// Read the table entry from DB
 	if len(tableName) > 0 {
 		if hasKeyValueXfmr(tableName) {
+			if oper == GET { //value tranformer callback decides based on oper type
+				oper = CREATE
+			}
                         retKey, err := dbKeyValueXfmrHandler(oper, d.Opts.DBNo, tableName, dbKey)
                         if err != nil {
                                 return false, err
