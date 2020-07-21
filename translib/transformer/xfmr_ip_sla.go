@@ -204,8 +204,8 @@ func IpSlaFillStaticState(inParams XfmrParams, ipSlaIdKey string, output *ocbind
         output.TcpDstPort = &value
     }
 
-    if cfgDbEntry.Has("tcp-vrf") {
-        value := cfgDbEntry.Get("tcp-vrf")
+    if cfgDbEntry.Has("tcp_vrf") {
+        value := cfgDbEntry.Get("tcp_vrf")
         output.TcpVrf = &value
     }
 
