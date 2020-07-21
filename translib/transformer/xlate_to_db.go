@@ -1047,10 +1047,12 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		return false, err
 	}
 	yangType = yangTypeGet(xpathInfo.yangEntry)
-	if ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
-		/*query is for leaf-list instance, hence remove that from uri to avoid list-key like processing*/
-		uriList[len(uriList)-1] = strings.SplitN(uriList[len(uriList)-1], "[", 2)[0]
-		xfmrLogInfoAll("Uri list after removing leaf-list instance portion - %v", uriList)
+	if yangType == YANG_LEAF_LIST {
+		/*query is for leaf-list instance, hence remove that from uriList to avoid list-key like processing*/
+		if ((strings.HasSuffix(uriList[len(uriList)-1], "]")) || (strings.HasSuffix(uriList[len(uriList)-1], "]/"))) { //splitUri chops off the leaf-list value having square brackets
+			uriList[len(uriList)-1] = strings.SplitN(uriList[len(uriList)-1], "[", 2)[0]
+			xfmrLogInfoAll("Uri list after removing leaf-list instance portion - %v", uriList)
+		}
 	}
 
 	parentUriList := uriList[:len(uriList)-1]
