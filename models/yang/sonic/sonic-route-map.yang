@@ -85,6 +85,40 @@ module sonic-route-map {
               Sec 4.3";
     }
 
+    typedef metric-action-type {
+        type enumeration {
+            enum METRIC_SET_VALUE {
+                description "Set a specified metric value.";
+            }
+            enum METRIC_ADD_VALUE {
+                description
+                  "Add a specified metric value from current
+                   set value of metric.";
+            }
+            enum METRIC_SUBTRACT_VALUE {
+               description
+                   "Subtract a specified metric value from current
+                   set value of metric.";
+            }
+            enum METRIC_SET_RTT {
+                description "Add round trip time value as metric." ;
+            }
+            enum METRIC_ADD_RTT {
+                description
+                    "Add round trip time value from current
+                     set value of metric.";
+            }
+            enum METRIC_SUBTRACT_RTT {
+                description
+                    "Subtract round trip time value from current
+                    set value of metric.";
+            }
+        }
+        description
+            "Type used to specify type of route metric value
+             to be set in a policy chain.";
+    }
+
     container sonic-route-map {
         container ROUTE_MAP_SET {
             list ROUTE_MAP_SET_LIST {
@@ -220,6 +254,19 @@ module sonic-route-map {
                 }
 
                 leaf set_med {
+                    type uint32;
+                }
+
+                leaf set_metric_action {
+                    type metric-action-type;
+                }
+
+                leaf set_metric {
+                    /*
+                    when "../set_metric_action = 'METRIC_SET_VALUE' " +
+                         "or ../set_metric_action = 'METRIC_ADD_VALUE' " +
+                         "or ../set_metric_action = 'METRIC_SUBTRACT_VALUE'";
+                    */
                     type uint32;
                 }
 
