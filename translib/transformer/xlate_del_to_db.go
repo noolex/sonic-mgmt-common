@@ -114,13 +114,16 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 
 	if !isFirstCall {
 		_, keyName, tbl, err = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-		switch err.(type) {
-		case tlerr.TranslibXfmrRetError:
-			xfmrLogInfoAll("Error received (\"%v\")", err)
-			return err
-		}
 		if err != nil {
-			log.Warningf("Received error from xpathKeyExtract for uri : %v, error: %v", xlateParams.uri, err)
+			xfmrLogInfoAll("Received error from xpathKeyExtract for uri : %v, error: %v", xlateParams.uri, err)
+			switch e := err.(type) {
+			case tlerr.TranslibXfmrRetError:
+				ecode := e.XlateFailDelReq
+				log.Warningf("Error received (\"%v\"), ecode :%v", err, ecode)
+				if ecode {
+					return err
+				}
+			}
 		}
 		xlateParams.tableName = tbl
 		xlateParams.keyName = keyName
@@ -288,7 +291,15 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 								curXlateParams.keyName = curKey
 								err = mapFillDataUtil(curXlateParams)
 								if err != nil {
-									return err
+									xfmrLogInfoAll("Error received (\"%v\")", err)
+									switch e := err.(type) {
+									case tlerr.TranslibXfmrRetError:
+										ecode := e.XlateFailDelReq
+										log.Warningf("Error received (\"%v\"), ecode :%v", err, ecode)
+										if ecode {
+											return err
+										}
+									}
 								}
 								if !removedFillFields {
 									if fieldMap, ok := curXlateParams.result[curTbl][curKey]; ok {
@@ -319,6 +330,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 	spec, ok := xYangSpecMap[xlateParams.xpath]
 	cdb     := spec.dbIndex
 	dbs[cdb] = xlateParams.d
+	removedFillFields := false
 	var curTbl, curKey string
 	var cerr error
 
@@ -362,6 +374,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 						if (spec.tblOwner != nil) && !(*spec.tblOwner) {
 							// Fill fields only
 							xfmrLogInfoAll("DELETE handling at Container Non inhertited table and not table Owner")
+							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "FillFields", "true")
 							fillFields = true
 						} else if (spec.keyName != nil && len(*spec.keyName) > 0) || len(spec.xfmrKey) > 0  {
 							// Table owner && Key transformer present. Fill table instance
@@ -372,12 +385,11 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 							fillFields = true
 						}
 					} else {
-						// Inherited Table. We always expect the curTbl entry in xlateParams.result
 						// if Instance already filled do not fill fields
 						xfmrLogInfoAll("DELETE handling at Container Inherited table")
 						//Fill fields only
 						if len(curTbl) > 0 && len(curKey) > 0 {
-							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
+							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "FillFields", "true")
 							fillFields = true
 						}
 					}
@@ -448,7 +460,27 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 					curXlateParams.name = chldSpec.yangEntry.Name
 					err = mapFillDataUtil(curXlateParams)
 					if err != nil {
-						return err
+						xfmrLogInfoAll("Error received during leaf fill (\"%v\")", err)
+						switch e := err.(type) {
+						case tlerr.TranslibXfmrRetError:
+							ecode := e.XlateFailDelReq
+							log.Warningf("Error received (\"%v\"), ecode :%v", cerr, ecode)
+							if ecode {
+								return err
+							}
+						}
+					}
+					if !removedFillFields {
+						if fieldMap, ok := curXlateParams.result[curTbl][curKey]; ok {
+							if len(fieldMap.Field) > 1 {
+								delete(curXlateParams.result[curTbl][curKey].Field, "FillFields")
+								removedFillFields = true
+							} else if len(fieldMap.Field) == 1 {
+								if _, ok := curXlateParams.result[curTbl][curKey].Field["FillFields"]; !ok {
+									removedFillFields = true
+								}
+							}
+						}
 					}
 				} else {
 					xfmrLogInfoAll("%v", "Instance Fill case. Have filled the result table with table and key")
