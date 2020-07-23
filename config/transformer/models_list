@@ -87,6 +87,8 @@ openconfig-platform.yang
 openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
+openconfig-port-group.yang
+openconfig-port-group-annot.yang
 openconfig-copp-ext.yang
 openconfig-copp-ext-annot.yang
 sonic-copp-annot.yang
