@@ -356,8 +356,8 @@ func ValidateIntfProvisionedForRelay(d *db.DB, ifName string, prefixIp string) (
    }
    entry, dbErr := d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
    if dbErr != nil {
-     log.Warning("Failed to read mgmt port status from config DB, " + tblList + " " + ifName)
-     return false, errors.New("Failed to read from Config DB")
+     log.Warning("Failed to read entry from config DB, " + tblList + " " + ifName)
+     return false, nil
    }
 
    //check if dhcp_sever is provisioned for ipv4
@@ -374,9 +374,6 @@ func ValidateIntfProvisionedForRelay(d *db.DB, ifName string, prefixIp string) (
        if len(entry.Field["dhcpv6_servers@"]) > 0 {
            return true, nil
        } 
-   }else {
-     log.Error("invalid prefix " + prefixIp)
-     return false, errors.New("invalid IP type")
    }   
    return false, nil
 }
