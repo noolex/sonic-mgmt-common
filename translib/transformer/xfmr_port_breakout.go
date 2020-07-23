@@ -345,6 +345,9 @@ var rpc_breakout_dependencies RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
 
     cvSess, _ := cvl.ValidationSessOpen()
     ifName := getIfName(fmt.Sprintf("%v",key["ifname"]))
+    if len(ifName) < 1 {
+        return nil, tlerr.InvalidArgs("Invalid port")
+    }
     entry, dbErr := dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:"BREAKOUT_CFG"}, db.Key{Comp: []string{ifName}})
 
     if dbErr != nil {
