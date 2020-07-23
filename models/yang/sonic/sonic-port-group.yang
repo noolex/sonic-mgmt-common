@@ -1,0 +1,40 @@
+module sonic-port-group {
+    namespace "http://github.com/Azure/sonic-port-group";
+    prefix port-group;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC port-group";
+
+    revision 2020-07-20 {
+        description
+            "Initial revision.";
+    }
+
+    container sonic-port-group {
+        container PORT_GROUP {
+            description "Management vrf configuration.";            
+
+            list PORT_GROUP_LIST {
+                key "id";
+
+                leaf id {
+                    type string;
+                    description
+                        "Port-group id";
+                }
+
+                leaf speed {
+                    type string;
+                    description
+                        "Port-group member ports speed";
+                }
+            }
+        }
+    }
+}
