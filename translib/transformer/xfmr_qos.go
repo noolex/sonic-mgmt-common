@@ -1536,24 +1536,44 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
     var key string
     var err error
 
-    log.Info("qos_intf_table_xfmr - Uri: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     ifName := pathInfo.Var("interface-id");
 
+    log.Info("qos_intf_table_xfmr - Uri: ", inParams.uri, " requestUri ", inParams.requestUri, " targetUriPath ", targetUriPath);
     log.Info(" TableXfmrFunc - Uri ifName: ", ifName);
-    log.Info("inParams.requestUri: ", inParams.requestUri)
 
     tbl_name := "QOS_PORT"
-    if strings.HasPrefix(inParams.requestUri, "/openconfig-qos:qos/interfaces/interface[interface-id=Ethernet0]/openconfig-qos-maps-ext:interface-maps") {
-        tbl_name = "PORT_QOS_MAP"
-    }
-
-    tblList = append(tblList, tbl_name)
     if len(ifName) != 0 {
         dbifName := utils.GetNativeNameFromUIName(&ifName)
         key = ifName
         log.Info("TableXfmrFunc - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
-
+        if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-maps-ext:interface-maps") {
+            tbl_name = "PORT_QOS_MAP"
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/output/scheduler-policy") {
+            tbl_name = "PORT_QOS_MAP"
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/oc-qos-ext:pfc/oc-qos-ext:pfc-priorities") {
+            tbl_name = "PORT_QOS_MAP"
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/oc-qos-ext:pfc") {
+            tbl_name = "PORT"
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/input") {
+            tbl_name = "PORT"
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/output") {
+            tbl_name = "PORT"
+        } else {
+            if strings.HasPrefix(*dbifName, "Eth") {
+                tbl_name = "PORT"
+            } else if strings.HasPrefix(*dbifName, "CPU") {
+                tbl_name = "QOS_PORT"
+            } else if strings.HasPrefix(*dbifName, "Vlan") {
+                tbl_name = "PORT_QOS_MAP"
+            } else if strings.HasPrefix(*dbifName, "PortChannel") {
+                tbl_name = "PORT_QOS_MAP"
+            } else {
+                log.Info("qos_intf_table_xfmr - Invalid interface type");
+                return tblList, errors.New("Invalid interface type");
+            }
+        }
         err = validateQosIntf(nil, inParams.dbs, *dbifName)
         if err != nil {
             log.Info("qos_intf_table_xfmr - invalid interface ", *dbifName)
@@ -1570,13 +1590,15 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
             }
         }
     } else {
+        tbl_name := "QOS_PORT"
         log.Info("TableXfmrFunc - intf_table_xfmr Intf key is not present, curr DB ", inParams.curDb)
         if(inParams.dbDataMap != nil) {
+            if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
+                (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
+            }
+
             intfKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PORT"})
             if len(intfKeys) > 0 {
-                if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
-                    (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
-                }
                 for _, intfKey := range intfKeys {
 
                     ifName = intfKey.Get(0)
@@ -1589,15 +1611,30 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
                 }
             }
 
-            if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
-                (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
-            }
             key = "CPU"
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key]; !ok {
                 (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key] = db.Value{Field: make(map[string]string)}
             }
+
+            mapIntfKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PORT_QOS_MAP"})
+            if len(mapIntfKeys) > 0 {
+                if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
+                    (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
+                }
+                for _, mapIntfKey := range mapIntfKeys {
+
+                    ifName = mapIntfKey.Get(0)
+                    if_name := utils.GetUINameFromNativeName(&ifName)
+                    key := *if_name
+                    if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key]; !ok {
+                        (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key] = db.Value{Field: make(map[string]string)}
+                        (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key].Field["NULL"] = "NULL"
+                    }
+                }
+            }
         }
     }
+    tblList = append(tblList, tbl_name)
     return tblList, nil
 }
 var YangToDb_qos_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
