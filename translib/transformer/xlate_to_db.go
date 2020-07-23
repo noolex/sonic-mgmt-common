@@ -1103,10 +1103,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 
 				xfmrLogInfoAll("Check parent table for uri: %v", curUri)
 				// Get Table and Key only for yang list instances
-				//_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache)
-				retData, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache)
-				dbKey := retData.dbKey
-				tableName := retData.tableName
+				xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache)
 				if xerr != nil {
 					log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
 					err = xerr
@@ -1114,28 +1111,28 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					parentTblExists = false
 					break
 				}
-				if (retData.isVirtualTbl) {
+				if (xpathKeyExtRet.isVirtualTbl) {
 					curUri += "/"
 					continue
 				}
 
-				if len(tableName) > 0 && len(dbKey) > 0 {
+				if len(xpathKeyExtRet.tableName) > 0 && len(xpathKeyExtRet.dbKey) > 0 {
 					// Check for Table existence
-					xfmrLogInfoAll("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
+					xfmrLogInfoAll("DB Entry Check for uri: %v table: %v, key: %v", uri, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 					existsInDbData := false
 					if oper == GET {
                                                 // GET case - attempt to find in dbData before doing a dbGet in dbTableExists()
-                                                existsInDbData = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
+                                                existsInDbData = dbTableExistsInDbData(cdb, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, dbData)
 					}
 					// Read the table entry from DB
 					if !existsInDbData {
-						exists, derr := dbTableExists(d, tableName, dbKey, oper)
+						exists, derr := dbTableExists(d, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, oper)
 						if derr != nil {
 							return false, derr
 						}
 						if !exists {
 							parentTblExists = false
-							log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+							log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, uri)
 							err = tlerr.NotFound("Resource not found")
 							break
 						}
@@ -1143,7 +1140,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				} else {
 					// We always expect a valid table and key to be returned. Else we cannot validate parent check
 					parentTblExists = false
-					log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, curUri)
+					log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, curUri)
 					err = tlerr.NotFound("Resource not found")
 					break
 				}
@@ -1199,18 +1196,15 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			return true, nil
 		}
 
-		//_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
-		retData, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
-		dbKey := retData.dbKey
-		tableName := retData.tableName
+		xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
 		if xerr != nil {
-			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, tableName, dbKey)
+			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 			return false, xerr
 		}
-		if retData.isVirtualTbl {
+		if xpathKeyExtRet.isVirtualTbl {
 			return true, nil
 		}
-		if len(tableName) > 0 && len(dbKey) > 0 {
+		if len(xpathKeyExtRet.tableName) > 0 && len(xpathKeyExtRet.dbKey) > 0 {
 			// Read the table entry from DB
 			exists := false
 			var derr error
@@ -1218,27 +1212,27 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				// GET case - find in dbData instead of doing a dbGet in dbTableExists()
 				cdb = xpathInfo.dbIndex
 				xfmrLogInfoAll("db index for xpath - %v is %v", xpath, cdb)
-				exists = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
+				exists = dbTableExistsInDbData(cdb, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, dbData)
 				if !exists {
-					exists, derr = dbTableExists(dbs[cdb], tableName, dbKey, oper)
+					exists, derr = dbTableExists(dbs[cdb], xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, oper)
 					if derr != nil {
 						return false, derr
 					}
 					if !exists {
 						parentTblExists = false
-						log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+						log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, uri)
 						err = tlerr.NotFound("Resource not found")
 					}
 				}
 			} else {
-				exists, derr = dbTableExists(d, tableName, dbKey, oper)
+				exists, derr = dbTableExists(d, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, oper)
 			}
 			if derr != nil {
-				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, derr)
 				return false, derr
 			}
 			if !exists {
-				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, derr)
 				err = tlerr.NotFound("Resource not found")
 				return false, err
 			} else {
@@ -1247,7 +1241,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		} else if !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {//uri points to entire list
 			return true, nil
 		} else {
-			log.Errorf("Unable to get valid table and key err: %v, table %v, key %v", xerr, tableName, dbKey)
+			log.Errorf("Unable to get valid table and key err: %v, table %v, key %v", xerr, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 			return false, xerr
 		}
 	} else if (yangType == YANG_CONTAINER && oper == DELETE && ((xpathInfo.keyName != nil && len(*xpathInfo.keyName) > 0) || len(xpathInfo.xfmrKey) > 0)) {
@@ -1260,10 +1254,9 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		// Get table for parent xpath
 		parentTable, perr := dbTableFromUriGet(d, ygRoot, oper, parentUri, uri, nil, txCache)
 		// Get table for current xpath
-		//_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
-		retData, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
-		curKey := retData.dbKey
-		curTable := retData.tableName
+		xpathKeyExtRet, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
+		curKey := xpathKeyExtRet.dbKey
+		curTable := xpathKeyExtRet.tableName
 		if len(curTable) > 0 {
 			if perr == nil && cerr == nil && (curTable != parentTable) && len(curKey) > 0 {
 				exists, derr := dbTableExists(d, curTable, curKey, oper)
