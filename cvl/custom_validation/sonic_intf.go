@@ -195,54 +195,63 @@ func (t *CustomValidation) ValidateVlanMember (vc *CustValidationCtxt) CVLErrorI
 			tblData, _ := vc.RClient.HGetAll(redisKey).Result()
 			membersInDb := tblData["members@"]
 
-			var memberName string
+			var membersNames []string
 			// Data in DB is not present, means new element getting added
 			if len(membersInDb) == 0 {
-				memberName = membersInReq
+				membersNames = strings.Split(membersInReq, ",")
 			} else {
 				elemFromDb := strings.Split(membersInDb, ",")
 				elemFromReq := strings.Split(membersInReq, ",")
 				// Adding interface to leaf-list have entry in request but not in DB
 				// Deleting interface from leaf-list have entry in DB but not in request
 				// So their difference will provide the interface under operation
-				elems := util.GetDifference(elemFromDb, elemFromReq)
-				if len(elems) > 0 {
-					// Only 1 element under operation, so assuming that length is 1
-					memberName = elems[0]
-				}
+				membersNames = util.GetDifference(elemFromDb, elemFromReq)
 			}
-			util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateVlanMember: validating for member: %s\n", memberName)
+			util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateVlanMember: validating for member(s): %v\n", membersNames)
 
-			if strings.HasPrefix(memberName, "PortChannel") {
-				// Verify whether Portchannel and its members both are applied for switchport
-				pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + memberName + "|*").Result()
-				for _, ky := range pomemberKeys {
-					pomemberName := ky[strings.LastIndex(ky, "|")+1:]
-					if strings.Contains(membersInReq, pomemberName+",") || strings.HasSuffix(membersInReq, pomemberName) {
+			// No Vlan member provided. Skip further validation.
+			if len(membersNames) == 0 {
+				return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+			}
+
+			for _, memberName := range membersNames {
+				if len(memberName) == 0 {
+					continue
+				}
+				if strings.HasPrefix(memberName, "PortChannel") {
+					// Verify whether Portchannel and its members both are applied for switchport
+					pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + memberName + "|*").Result()
+					for _, ky := range pomemberKeys {
+						pomemberName := ky[strings.LastIndex(ky, "|")+1:]
+						if strings.Contains(membersInReq, pomemberName+",") || strings.HasSuffix(membersInReq, pomemberName) {
+							return CVLErrorInfo {
+								ErrCode: CVL_SEMANTIC_ERROR,
+								TableName: tableName,
+								Keys: strings.Split(tableKey, "|"),
+								ConstraintErrMsg: "A vlan interface member cannot be part of portchannel which is already a vlan member",
+								CVLErrDetails: "Config Validation Semantic Error",
+							}
+						}
+					}
+				} else if strings.HasPrefix(memberName, "Ethernet") {
+					// Verify if port is already member of any portchannel
+					pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + memberName).Result()
+					if len(pomemberKeys) > 0 {
 						return CVLErrorInfo {
 							ErrCode: CVL_SEMANTIC_ERROR,
 							TableName: tableName,
 							Keys: strings.Split(tableKey, "|"),
-							ConstraintErrMsg: "A vlan interface member cannot be part of portchannel which is already a vlan member",
+							ConstraintErrMsg: "A Portchannel member cannot be added as vlan member",
 							CVLErrDetails: "Config Validation Semantic Error",
 						}
 					}
 				}
-			} else if strings.HasPrefix(memberName, "Ethernet") {
-				// Verify if port is already member of any portchannel
-				pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + memberName).Result()
-				if len(pomemberKeys) > 0 {
-					return CVLErrorInfo {
-						ErrCode: CVL_SEMANTIC_ERROR,
-						TableName: tableName,
-						Keys: strings.Split(tableKey, "|"),
-						ConstraintErrMsg: "A Portchannel member cannot be added as vlan member",
-						CVLErrDetails: "Config Validation Semantic Error",
-					}
+				// Check for mirror session
+				errInf := validateDstPortOfMirrorSession(vc, tableName, tableKey, memberName)
+				if errInf.ErrCode != CVL_SUCCESS {
+					return errInf
 				}
 			}
-			// Check for mirror session
-			return validateDstPortOfMirrorSession(vc, tableName, tableKey, memberName)
 		}
 	} else if tableName == "VLAN_MEMBER" && yangNodeName == "ifname" {
 		return validateDstPortOfMirrorSession(vc, tableName, tableKey, yangNodeVal)
@@ -252,6 +261,9 @@ func (t *CustomValidation) ValidateVlanMember (vc *CustValidationCtxt) CVLErrorI
 }
 
 func validateDstPortOfMirrorSession(vc *CustValidationCtxt, tableName, tableKey, portName string) CVLErrorInfo {
+	if len(portName) == 0 {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
 	predicate := fmt.Sprintf("return (h['dst_port'] ~= nil and h['dst_port'] == '%s')", portName)
 	entries, _ := util.FILTER_ENTRIES_LUASCRIPT.Run(vc.RClient, []string{}, "MIRROR_SESSION|*", "name", predicate, "dst_port").Result()
 	if entries != nil {
