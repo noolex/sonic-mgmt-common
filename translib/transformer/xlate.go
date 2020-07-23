@@ -196,7 +196,6 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 		retdbFormat = fillSonicKeySpec(xpath, tableName, keyStr)
 	} else {
 		/* Extract the xpath and key from input xpath */
-		//xpath, keyStr, _, _ := xpathKeyExtract(nil, ygRoot, GET, uri, requestUri, nil, txCache)
 		retData, _ := xpathKeyExtract(nil, ygRoot, GET, uri, requestUri, nil, txCache)
 		retdbFormat = FillKeySpecs(retData.xpath, retData.dbKey, &retdbFormat)
 	}
@@ -752,11 +751,8 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 	   }
 
            xpath_dbno := xpathData.dbIndex
-           //_, dbKey, dbTbl, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, txCache)
            retData, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, txCache)
-	   dbKey := retData.dbKey
-	   dbTbl := retData.tableName
-           if ((len(xpathData.xfmrFunc) == 0) && ((xPathKeyExtractErr != nil) || ((len(strings.TrimSpace(dbKey)) == 0) || (len(strings.TrimSpace(dbTbl)) == 0)))) {
+           if ((len(xpathData.xfmrFunc) == 0) && ((xPathKeyExtractErr != nil) || ((len(strings.TrimSpace(retData.dbKey)) == 0) || (len(strings.TrimSpace(retData.tableName)) == 0)))) {
                log.Error("Error while extracting DB table/key for uri", path, "error - ", xPathKeyExtractErr)
                err = xPathKeyExtractErr
                break
@@ -792,7 +788,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                }
            } else {
 		   subscribe_result.OnChange = true
-		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{dbTbl: {dbKey: {}}}
+		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{retData.tableName: {retData.dbKey: {}}}
 	   }
            if done {
                    break

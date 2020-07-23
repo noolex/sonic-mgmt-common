@@ -113,7 +113,6 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 	separator := dbOpts.KeySeparator
 
 	if !isFirstCall {
-		//_, keyName, tbl, err = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 		retData, err := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 		if err != nil {
 			xfmrLogInfoAll("Received error from xpathKeyExtract for uri : %v, error: %v", xlateParams.uri, err)
@@ -149,7 +148,6 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
         // We only need to traverse nested subtrees here
 	if isFirstCall && len(spec.xfmrFunc) == 0 {
 		parentUri := parentUriGet(xlateParams.uri)
-		//_, parentKey, parentTbl, perr = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 		retData	, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 		parentTbl = retData.tableName
 		parentKey = retData.dbKey
@@ -176,7 +174,6 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
                                // We only need to traverse nested subtrees here
 				if len(spec.xfmrFunc) == 0 {
 
-				//_, curKey, curTbl, cerr = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, curUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 				retData, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, curUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 				curKey = retData.dbKey
 				curTbl = retData.tableName
@@ -343,7 +340,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 	dbs[cdb] = xlateParams.d
 	removedFillFields := false
 	var curTbl, curKey string
-	var cerr error
+//	var cerr error
 
 	if !ok {
 		return err
@@ -360,11 +357,9 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 	// Not required to process parent and current table as subtree is already invoked before we get here
 	// We only need to traverse nested subtrees here
 	if len(spec.xfmrFunc) == 0 {
-		//_, curKey, curTbl, cerr = xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-		retData, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
+		retData, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
 		curKey := retData.dbKey
 		curTbl := retData.tableName
-		cerr = xerr
 		if cerr != nil {
 			log.Warningf("Received xpathKeyExtract error for uri: %v : err %v", xlateParams.uri, cerr)
 			switch e := err.(type) {
@@ -478,7 +473,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 						switch e := err.(type) {
 						case tlerr.TranslibXfmrRetError:
 							ecode := e.XlateFailDelReq
-							log.Warningf("Error received (\"%v\"), ecode :%v", cerr, ecode)
+							log.Warningf("Error received (\"%v\"), ecode :%v", err, ecode)
 							if ecode {
 								return err
 							}
@@ -583,16 +578,12 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			return err
 		}
 	} else {
-		//xpathPrefix, keyName, tableName, err := xpathKeyExtract(d, ygRoot, oper, uri, requestUri, subOpDataMap, txCache)
 		retData, err := xpathKeyExtract(d, ygRoot, oper, uri, requestUri, subOpDataMap, txCache)
-		xpathPrefix := retData.xpath
-		keyName := retData.dbKey
-		tableName := retData.tableName
 		if err != nil {
 			return err
 		}
-		xfmrLogInfo("Delete req: uri(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", uri, keyName, xpathPrefix, tableName)
-		spec, ok := xYangSpecMap[xpathPrefix]
+		xfmrLogInfo("Delete req: uri(\"%v\"), key(\"%v\"), xpath(\"%v\"), tableName(\"%v\").", uri, retData.dbKey, retData.xpath, retData.tableName)
+		spec, ok := xYangSpecMap[retData.xpath]
 		if ok {
 			specYangType := yangTypeGet(spec.yangEntry)
 			moduleNm := "/" + strings.Split(uri, "/")[1]
@@ -609,12 +600,12 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				}
 			}
 
-			if spec.cascadeDel == XFMR_ENABLE && tableName != "" && tableName != XFMR_NONE_STRING {
-				if !contains(cascadeDelTbl, tableName) {
-					cascadeDelTbl = append(cascadeDelTbl, tableName)
+			if spec.cascadeDel == XFMR_ENABLE && retData.tableName != "" && retData.tableName != XFMR_NONE_STRING {
+				if !contains(cascadeDelTbl, retData.tableName) {
+					cascadeDelTbl = append(cascadeDelTbl, retData.tableName)
 				}
 			}
-			curXlateParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpathPrefix, keyName, jsonData, resultMap, result, txCache, nil, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", tableName)
+			curXlateParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, retData.xpath, retData.dbKey, jsonData, resultMap, result, txCache, nil, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", retData.tableName)
 			if len(spec.xfmrFunc) > 0 {
 				var dbs [db.MaxDB]*db.DB
 				cdb := spec.dbIndex
@@ -641,9 +632,9 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					}
 				}
 			} else if specYangType == YANG_LEAF || specYangType == YANG_LEAF_LIST {
-				if len(tableName) > 0 && len(keyName) > 0 {
-					dataToDBMapAdd(tableName, keyName, result, "", "")
-					xpath := xpathPrefix
+				if len(retData.tableName) > 0 && len(retData.dbKey) > 0 {
+					dataToDBMapAdd(retData.tableName, retData.dbKey, result, "", "")
+					xpath := retData.xpath
 					uriItemList := splitUri(strings.TrimSuffix(uri, "/"))
 					uriItemListLen := len(uriItemList)
 					var luri string
@@ -655,7 +646,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 						_, ok := xYangSpecMap[xpath]
 						if ok && len(xYangSpecMap[xpath].defVal) > 0 {
 							// Do not fill def value if leaf does not map to any redis field
-							dbSpecXpath := tableName + "/" + xYangSpecMap[xpath].fieldName
+							dbSpecXpath := retData.tableName + "/" + xYangSpecMap[xpath].fieldName
 							_, mapped := xDbSpecMap[dbSpecXpath]
 							if mapped || len(xYangSpecMap[xpath].xfmrField) > 0 {
 								curXlateParams.uri = luri
@@ -713,7 +704,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 						}
 					}
 				}  else {
-					log.Errorf("No proper table and key information to fill result map for uri %v, table: %v, key %v", uri, tableName, keyName)
+					log.Errorf("No proper table and key information to fill result map for uri %v, table: %v, key %v", uri, retData.tableName, retData.dbKey)
 				}
 			} else {
 				xfmrLogInfoAll("Before calling allChildTblGetToDelete result: %v", curXlateParams.result)
@@ -727,7 +718,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				xfmrLogInfoAll("allChildTblGetToDelete result: %v  subtree curResult: %v", result, curResult)
 				// Add the child tables to delete when table at request URI is not available or its complete table delete request (not specific instance)
 				chResult := make(map[string]map[string]db.Value)
-				if (len(tableName) == 0 || (len(tableName) > 0 && len(keyName) == 0)) && len(spec.childTable) > 0 {
+				if (len(retData.tableName) == 0 || (len(retData.tableName) > 0 && len(retData.dbKey) == 0)) && len(spec.childTable) > 0 {
 					for _, child := range spec.childTable {
 						chResult[child] = make(map[string]db.Value)
 					}
