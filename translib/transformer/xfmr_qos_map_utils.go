@@ -32,6 +32,8 @@ var qos_map_oc_yang_key_map = map[string]string {
     "TC_TO_QUEUE_MAP":  "fwd-group",
     "TC_TO_PRIORITY_GROUP_MAP":  "fwd-group",
     "MAP_PFC_PRIORITY_TO_QUEUE": "dot1p",
+    "TC_TO_DOT1P_MAP":  "fwd-group",
+    "TC_TO_DSCP_MAP":   "fwd-group",
 }
 
 func targetUriPathContainsMapName (uri string, map_type string) bool {
@@ -57,6 +59,16 @@ func targetUriPathContainsMapName (uri string, map_type string) bool {
 
     if map_type == "MAP_PFC_PRIORITY_TO_QUEUE" &&
         !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:pfc-priority-queue-maps/pfc-priority-queue-map")  {
+        return true
+    }
+
+    if map_type == "TC_TO_DOT1P_MAP" &&
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map")  {
+        return true
+    }
+
+    if map_type == "TC_TO_DSCP_MAP" &&
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map")  {
         return true
     }
 
@@ -258,6 +270,8 @@ var map_type_name_in_oc_yang = map[string]string {
     "TC_TO_QUEUE_MAP":          "forwarding-group-to-queue",
     "TC_TO_PRIORITY_GROUP_MAP": "forwarding-group-to-priority-group",
     "MAP_PFC_PRIORITY_TO_QUEUE":"pfc-priority-to-queue",
+    "TC_TO_DOT1P_MAP":          "forwarding-group-to-dot1p",
+    "TC_TO_DSCP_MAP":           "forwarding-group-to-dscp",
 }
 
 var map_type_name_in_db = map[string]string {
@@ -266,6 +280,8 @@ var map_type_name_in_db = map[string]string {
     "TC_TO_QUEUE_MAP":          "tc_to_queue_map",
     "TC_TO_PRIORITY_GROUP_MAP": "tc_to_pg_map",
     "MAP_PFC_PRIORITY_TO_QUEUE":"pfc_to_queue_map",
+    "TC_TO_DOT1P_MAP":          "tc_to_dot1p_map",
+    "TC_TO_DSCP_MAP":           "tc_to_dscp_map",
 }
 
 func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[string]interface{}, error) {
@@ -338,6 +354,10 @@ func YangToDb_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string)  (map[
         map_name = *(intfObj.InterfaceMaps.Config.ForwardingGroupToPriorityGroup)
     } else if map_type == "MAP_PFC_PRIORITY_TO_QUEUE" {
         map_name = *(intfObj.InterfaceMaps.Config.PfcPriorityToQueue)
+    } else if map_type == "TC_TO_DOT1P_MAP" {
+        map_name = *(intfObj.InterfaceMaps.Config.ForwardingGroupToDot1P)
+    } else if map_type == "TC_TO_DSCP_MAP" {
+        map_name = *(intfObj.InterfaceMaps.Config.ForwardingGroupToDscp)
     }
 
     if inParams.oper == DELETE {
