@@ -23,6 +23,8 @@ import (
     "errors"
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
+    "encoding/json"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
 )
@@ -32,6 +34,8 @@ func init () {
     XlateFuncBind("DbToYang_igmp_sources_get_xfmr", DbToYang_igmp_sources_get_xfmr)
     XlateFuncBind("DbToYang_igmp_stats_get_xfmr", DbToYang_igmp_stats_get_xfmr)
     XlateFuncBind("DbToYang_igmp_interface_get_xfmr", DbToYang_igmp_interface_get_xfmr)
+    XlateFuncBind("rpc_show_igmp_join", rpc_show_igmp_join)
+    XlateFuncBind("rpc_clear_igmp", rpc_clear_igmp)
 }
 
 func getIgmpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp, string, error) {
@@ -748,7 +752,7 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
     var err error
     var cmd_err error
     oper_err := errors.New("Operational error")
-    cmn_log := "GET: xfmr for Igmp Groups "
+    cmn_log := "GET: xfmr for Igmp Sources "
     var vtysh_cmd string
 
     log.Info("DbToYang_igmp_sources_get_xfmr ***", inParams.uri)
@@ -795,3 +799,92 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
     return  err;
 }
 
+var rpc_show_igmp_join RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var cmd, vrf_name string
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Errorf("Failed to unmarshall given input data err %s",err)
+        return nil, errors.New("Invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-igmp:output"`
+    }
+
+    log.Info("In rpc_show_igmp_join, RPC data:", mapData)
+
+    input := mapData["sonic-igmp:input"]
+    mapData = input.(map[string]interface{})
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = " vrf " + value
+    }
+
+    cmd = "show ip igmp" + vrf_name + " join json"
+
+    igmpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Errorf("FRR execution failed err %s",err)
+        return nil, errors.New("Internal error!")
+    }
+    log.V(1).Info(igmpOutput)
+    result.Output.Status = igmpOutput
+    return json.Marshal(&result)
+}
+
+var rpc_clear_igmp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+
+    var err error
+    var status string
+    var mapData map[string]interface{}
+
+    log.Info("rpc_clear_igmp Enter")
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, err
+    }
+
+    var result struct {
+        Output struct {
+            Status string `json:"response"`
+        } `json:"sonic-igmp-clear:output"`
+    }
+
+    input := mapData["sonic-igmp:input"]
+    mapData = input.(map[string]interface{})
+
+    log.Info("rpc_clear_igmp: mapData ", mapData)
+
+    vrfName := "default" 
+    intfAll := true 
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        if (value != "") {
+            vrfName = value
+        }
+    }
+
+    cmdStr := ""
+    if (intfAll) {
+        cmdStr = "clear ip igmp vrf " + vrfName + " interfaces"
+    }
+
+    log.Infof("rpc_clear_igmp: vrf-%s all-%v.", vrfName, intfAll)
+
+    if cmdStr != "" {
+        exec_vtysh_cmd(cmdStr)
+        status = "Success"
+    } else {
+        log.Error("rpc_clear_igmp: Invalid input received mapData ", mapData)
+        status = "Failed"
+    }
+
+    log.Infof("rpc_clear_igmp: %s", status)
+    result.Output.Status = status
+    return json.Marshal(&result)
+}

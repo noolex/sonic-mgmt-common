@@ -52,9 +52,19 @@ module openconfig-local-routing-ext {
               "True if route is blackholed. Only metric is relevant in a blackholed nexthop, no other parameter should be supplied for a nexthop set as blackhole.";
       }
 
+      leaf track {
+        type uint16 {
+          range "1..255" {
+            error-message "Track ID out of range";
+          }
+        }
+        description
+          "Ip sla track id for static route";
+      }
+
   }
 
-	
+
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:config/oc-netinst:set-tag {
 
       deviate not-supported;

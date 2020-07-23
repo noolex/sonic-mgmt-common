@@ -1,0 +1,16 @@
+module sonic-ipmroute-clear-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/sipmrouteclear-annot";
+    prefix "sipmrouteclear-annot";
+
+    import sonic-ipmroute-clear { prefix sipmrouteclear; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sipmrouteclear:clear-ipmroute {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_clear_ipmroute";
+        }
+    }
+}

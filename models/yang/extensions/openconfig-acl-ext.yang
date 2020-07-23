@@ -137,6 +137,12 @@ module openconfig-acl-ext {
             IP_PROTOCOL identity";
     }
 
+    identity DO_NOT_NAT {
+       base oc-acl:FORWARDING_ACTION;
+       description
+         "Do not do NAT on the incoming packet";
+    }
+
     deviation /oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:ipv4/oc-acl:config/oc-acl:protocol {
         deviate replace {
             type ip-protocol-type-ext;

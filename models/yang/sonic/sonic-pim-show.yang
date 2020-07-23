@@ -1,0 +1,81 @@
+module sonic-pim-show {
+    namespace "http://github.com/Azure/sonic-pim-show";
+    prefix spimshow;
+    yang-version 1.1;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC yang for RPC based PIM show.";
+
+    revision 2020-01-20 {
+        description
+            "Initial revision.";
+    }
+
+    typedef show-pim-query-type {
+        description "Query type that specifies various different ways to fetch the PIM-protocol information based on various filters";
+
+        type enumeration {
+            enum RPF {
+                description "To fetch all RPF information from PIM Protocol TIB";
+            }
+        }
+    }
+
+    rpc show-pim {
+        description "RPC for fetch PIM Protocol information based on various different options";
+
+        input {
+            leaf vrf-name {
+                type string;
+                default "default";
+                description
+                    "Fetches PIM Protocol information for a given VRF name. If VRF name is not present, the default VRF is used";
+            }
+
+            leaf address-family {
+                type enumeration {
+                    enum IPV4_UNICAST;
+                }
+                default "IPV4_UNICAST";
+                description
+                    "IP Address family";
+            }
+
+            leaf query-type {
+                type show-pim-query-type;
+                mandatory true;
+                description
+                    "Query type that specifies various ways to fetch the PIM Protocol information based on various filters.
+                    It represent the choice mentioned below. And then relevant attributes should be filled to fetch the PIM protocol information.
+                    This is a mandatory parameter.";
+            }
+
+            choice type {
+                case RPF {
+                    description
+                        "query-type attribute should be RPF. Fetch the RPF information from PIM Protocol TIB";
+
+                    leaf rpf {
+                        type boolean;
+                        default false;
+                        description "True : to fetch RPF information from PIM Protocol TIB";
+                    }
+                }
+            }
+        }
+
+        output {
+            leaf status {
+                type string;
+                description
+                    "On success, returns PIM Protocol information in JSON string format.";
+            }
+        }
+    }
+}

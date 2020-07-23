@@ -784,6 +784,13 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                                         return res_map, err
                                 }
 
+                                if checkPimCfgExistOnIntf(inParams.d, intfName[0]) {
+                                    errStr = "Interface " + *convUIName + " has PIM configurations"
+                                    log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                                    err = tlerr.InvalidArgsError{Format: errStr}
+                                    return res_map, err
+                                }
+
                                 /* Now add this interface to res_map */
                                 _, ok := res_map[tblName]
                                 if !ok {
@@ -918,6 +925,13 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         fieldOtherThanVrf = false
         err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, intf_tbl_name, *ifName, &fieldOtherThanVrf)
         if err != nil {
+            return res_map, err
+        }
+
+        if checkPimCfgExistOnIntf(inParams.d, *ifName) {
+            errStr = "Interface " + intfId + " has PIM configurations"
+            log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+            err = tlerr.InvalidArgsError{Format: errStr}
             return res_map, err
         }
 
