@@ -590,7 +590,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			xpath, _ := XfmrRemoveXPATHPredicates(uri)
 			yangNode, ok := xYangSpecMap[xpath]
 			defSubOpDataMap := make(map[int]*RedisDbMap)
-			if ok && yangNode.yangDataType != YANG_LEAF && yangNode.yangDataType != YANG_LEAF_LIST {
+			if ok {
 				xfmrLogInfo("Fill default value for %v, oper(%v)\r\n", uri, oper)
 				curXlateToParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpath, "", jsonData, resultMap, result, txCache, tblXpathMap, defSubOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
 				curXlateToParams.yangDefValMap = yangDefValMap

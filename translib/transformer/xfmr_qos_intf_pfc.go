@@ -13,6 +13,7 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_intf_pfc_xfmr", YangToDb_qos_intf_pfc_xfmr)
     XlateFuncBind("DbToYang_qos_intf_pfc_xfmr", DbToYang_qos_intf_pfc_xfmr)
+    XlateFuncBind("Subscribe_qos_intf_pfc_xfmr", Subscribe_qos_intf_pfc_xfmr)
 }
 
 func doGetIntfPfcPriority(d *db.DB, if_name string) (string) {
@@ -500,3 +501,28 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
    return nil
 }
 
+var Subscribe_qos_intf_pfc_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    log.Info("Subscribe_qos_intf_pfc_xfmr: ", inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    ifname := pathInfo.Var("interface-id")
+    dbIfName := utils.GetNativeNameFromUIName(&ifname)
+    if_name := *dbIfName
+    log.Info("Subscribe_qos_intf_pfc_xfmr: ", if_name)
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Infof("Subscribe_qos_intf_pfc_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
+
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{"PORT_QOS_MAP":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
+    result.needCache = true
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, err
+}

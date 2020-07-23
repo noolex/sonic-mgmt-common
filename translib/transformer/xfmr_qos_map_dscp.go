@@ -85,7 +85,6 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     str := qos_map_oc_yang_key_map[map_type]
     log.Info("key string: " , str)
     entry_key := pathInfo.Var(str)
-    //entry_key := pathInfo.Var("dscp")
     log.Info("entry_key : ", entry_key)
     if entry_key == "" {
         return res_map, err
