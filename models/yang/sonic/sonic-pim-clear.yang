@@ -1,0 +1,94 @@
+module sonic-pim-clear {
+    namespace "http://github.com/Azure/sonic-pim-clear";
+    prefix spimclear;
+    yang-version 1.1;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC yang for RPC based PIM clear.";
+
+    revision 2020-01-20 {
+        description
+            "Initial revision.";
+    }
+
+    typedef clear-pim-config-type {
+        description "Config type that specifies various different ways to clear PIM protocol information based on various filters";
+
+        type enumeration {
+            enum ALL-INTERFACES {
+                description "To clear PIM protocol information in all interfaces";
+            }
+            enum ALL-OIL {
+                description "To clear all outgoing interfaces list from PIM protocol information";
+            }
+        }
+    }
+
+    rpc clear-pim {
+        description "RPC to clear PIM protocol information based on various different options";
+
+        input {
+            leaf vrf-name {
+                type string;
+                default "default";
+                description
+                    "Clear PIM protocol information for a given VRF name. If VRF name is not present, the default VRF is used";
+            }
+
+            leaf address-family {
+                type enumeration {
+                    enum IPV4_UNICAST;
+                }
+                default "IPV4_UNICAST";
+                description
+                    "IP Address family";
+            }
+
+            leaf config-type {
+                type clear-pim-config-type;
+                mandatory true;
+                description
+                    "Config type that specifies various ways to clear PIM protocol information based on various filters.
+                    It represent the choice mentioned below. And then relevant attributes should be filled to clear PIM protocol information.
+                    This is a mandatory parameter.";
+            }
+
+            choice type {
+                case ALL-INTERFACES {
+                    description
+                        "config-type attribute should be ALL-INTERFACES. To clear PIM protocol information in all interfaces.";
+
+                    leaf all-interfaces {
+                        type boolean;
+                        default false;
+                        description "True : to clear PIM protocol information in all interfaces.";
+                    }
+                }
+                case ALL-OIL {
+                    description
+                        "config-type attribute should be ALL-OIL. To clear all outgoing interfaces list from PIM protocol information.";
+
+                    leaf all-oil {
+                        type boolean;
+                        default false;
+                        description "True : to clear all outgoing interfaces list from PIM protocol information.";
+                    }
+                }
+            }
+        }
+
+        output {
+            leaf status {
+                type string;
+                description
+                    "Success/failure of PIM protocol information clear operation execution request.";
+            }
+        }
+    }
+}

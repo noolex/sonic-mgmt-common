@@ -21,6 +21,7 @@ func init () {
     XlateFuncBind("rpc_infra_reboot_cb",  rpc_infra_reboot_cb)
     XlateFuncBind("rpc_infra_config_cb",  rpc_infra_config_cb)
     XlateFuncBind("rpc_infra_show_sys_log_cb",  rpc_infra_show_sys_log_cb)
+    XlateFuncBind("rpc_infra_clear_sys_log_cb",  rpc_infra_clear_sys_log_cb)
 }
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -241,6 +242,35 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
         result, err := json.Marshal(&exec)
         return result, err
 }
+
+var rpc_infra_clear_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_clear_sys_log body:", string(body))
+        var err error
+        var exec struct {
+                Output struct {
+                        Result string `json:"result"`
+                } `json:"sonic-system-infra:output"`
+        }
+
+        cmd := "sonic-clear logging"
+        log.Info("rpc_infra_clear_sys_log cmd: ", cmd)
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              log.Errorf("rpc_infra_clear_sys_log: host Query failed: err=%v", host_output.Err)
+              exec.Output.Result = "[FAILED] host query"
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        var output string
+        output, _ = host_output.Body[1].(string)
+
+        exec.Output.Result = output
+        result, err := json.Marshal(&exec)
+        return result, err
+}
+
 
 
 

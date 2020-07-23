@@ -404,6 +404,104 @@ module openconfig-qos-annot {
       }
     }
 
+///////////////////////// PFC Watchdog Interface //////////////////////////////////////////////////////// 
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:pfc-priorities/oc-qos-ext:pfc-priority/oc-qos-ext:state/oc-qos-ext:statistics {
+      deviate add {
+        sonic-ext:subtree-transformer "qos_intf_pfc_counters_st_xfmr";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog {
+      deviate add {
+        sonic-ext:table-name "PFC_WD";
+        sonic-ext:subtree-transformer "qos_intf_pfcwd_st_xfmr";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:config/oc-qos-ext:action {
+      deviate add {
+        sonic-ext:field-name "action";
+        sonic-ext:field-transformer "qos_intf_pfcwd_action_fld_xfmr";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:config/oc-qos-ext:detection-time {
+      deviate add {
+        sonic-ext:field-name "detection_time";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:config/oc-qos-ext:restoration-time {
+      deviate add {
+        sonic-ext:field-name "restoration_time";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:state/oc-qos-ext:action {
+      deviate add {
+        sonic-ext:field-name "action";
+        sonic-ext:field-transformer "qos_intf_pfcwd_action_fld_xfmr";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:state/oc-qos-ext:detection-time {
+      deviate add {
+        sonic-ext:field-name "detection_time";
+      }
+    }
+  
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:state/oc-qos-ext:restoration-time {
+      deviate add {
+        sonic-ext:field-name "restoration_time";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:pfc-queue/oc-qos-ext:pfc-queue/oc-qos-ext:statistics {
+      deviate add {
+        sonic-ext:db-name "COUNTERS_DB";
+        sonic-ext:subtree-transformer "qos_intf_pfc_queue_counters_st_xfmr";
+      }
+    }
+
+///////////////////////// PFC Watchdog Global //////////////////////////////////////////////////////// 
+  deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog/oc-qos-ext:flex {
+    deviate add {
+      sonic-ext:table-name "FLEX_COUNTER_TABLE";
+      sonic-ext:key-transformer "flex_counter_key_xfmr";
+
+    }
+  }
+
+  deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog/oc-qos-ext:flex/oc-qos-ext:config/oc-qos-ext:counter-poll {
+    deviate add {
+      sonic-ext:field-name "FLEX_COUNTER_STATUS";
+      sonic-ext:field-transformer "counter_poll_fld_xfmr";
+    }
+  }
+
+  deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog/oc-qos-ext:flex/oc-qos-ext:state/oc-qos-ext:counter-poll {
+    deviate add {
+      sonic-ext:field-name "FLEX_COUNTER_STATUS";
+      sonic-ext:field-transformer "counter_poll_fld_xfmr";
+    }
+  }
+
+  deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog/oc-qos-ext:poll {
+    deviate add {
+      sonic-ext:table-name "PFC_WD";
+      sonic-ext:key-transformer "poll_interval_key_xfmr";
+    }
+  }
+
+  deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog/oc-qos-ext:poll/oc-qos-ext:config/oc-qos-ext:poll-interval {
+    deviate add {
+      sonic-ext:field-name "POLL_INTERVAL";
+    }
+  }
+
+  deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog/oc-qos-ext:poll/oc-qos-ext:state/oc-qos-ext:poll-interval {
+    deviate add {
+      sonic-ext:field-name "POLL_INTERVAL";
+    }
+  }
 }
-
-

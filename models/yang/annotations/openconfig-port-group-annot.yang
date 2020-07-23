@@ -1,0 +1,37 @@
+module openconfig-port-group-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/oc-port-group-annot";
+    prefix "oc-port-group-annot";
+
+    //import openconfig-interfaces { prefix oc-if; }
+    //import openconfig-if-ethernet { prefix oc-eth; }
+    import openconfig-port-group { prefix oc-port-group; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /oc-port-group:port-groups {
+      deviate add {
+      }
+    }
+
+    deviation /oc-port-group:port-groups/oc-port-group:port-group {
+      deviate add {
+        sonic-ext:subtree-transformer "port_group_state_xfmr";
+      }
+    }
+
+    deviation /oc-port-group:port-groups/oc-port-group:port-group/oc-port-group:state {
+      deviate add {
+        sonic-ext:subtree-transformer "port_group_state_xfmr";
+      }
+    }
+
+    deviation /oc-port-group:port-groups/oc-port-group:port-group/oc-port-group:config {
+      deviate add {
+        sonic-ext:subtree-transformer "port_group_config_xfmr";
+      }
+    }
+
+}
+

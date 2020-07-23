@@ -48,24 +48,12 @@ module openconfig-ip-helper-annot {
     }
   }
 
-  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config/oc-ip-helper:include-custom-ports {
-    deviate add {
-      sonic-ext:field-name "include_ports";
-    }
-  }
-
-  deviation /oc-ip-helper:ip-helper/oc-ip-helper:config/oc-ip-helper:exclude-default-ports {
-    deviate add {
-      sonic-ext:field-name "exclude_default_ports";
-    }
-  }
-
   deviation /oc-ip-helper:ip-helper/oc-ip-helper:state {
     deviate add {
       sonic-ext:table-name "UDP_BROADCAST_FORWARDING";
       sonic-ext:key-transformer "ip_helper_global_key_xfmr";
     }
-    }
+  }
   
   deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:enable {
     deviate add {
@@ -85,7 +73,7 @@ module openconfig-ip-helper-annot {
     }
   }
 
-  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:include-custom-ports {
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:ports {
     deviate add {
       sonic-ext:field-name "include_ports";
     }
@@ -94,12 +82,6 @@ module openconfig-ip-helper-annot {
   deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:exclude-default-ports {
     deviate add {
       sonic-ext:field-name "exclude_default_ports";
-    }
-  }
-
-  deviation /oc-ip-helper:ip-helper/oc-ip-helper:state/oc-ip-helper:default-enabled-ports {
-    deviate add {
-      sonic-ext:field-transformer "ip_helper_default_ports_xfmr";
     }
   }
 

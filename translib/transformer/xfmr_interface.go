@@ -42,6 +42,7 @@ type XfmrParams struct {
 	param interface{}
 	txCache *sync.Map
 	skipOrdTblChk *bool
+	isVirtualTbl *bool
         pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
 }
 

@@ -1003,3 +1003,19 @@ func CreateFindKeyExpression(tableName string, keyFldValPair map[string]string) 
 
 	return expr
 }
+
+// GetAllReferringTables Returns list of all tables and fields which has leaf-ref
+// to given table. For ex. tableName="PORT" will return all tables and fields
+// which has leaf-ref to "PORT" table.
+func (c *CVL) GetAllReferringTables(tableName string) (map[string][]string) {
+	var refTbls = make(map[string][]string)
+	if tblInfo, exists := modelInfo.tableInfo[tableName]; exists {
+		for _, refTbl := range tblInfo.refFromTables {
+			fldArr := refTbls[refTbl.tableName]
+			fldArr = append(fldArr, refTbl.field)
+			refTbls[refTbl.tableName] = fldArr
+		}
+	}
+
+	return refTbls
+}
