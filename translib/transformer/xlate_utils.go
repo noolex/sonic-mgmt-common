@@ -483,6 +483,7 @@ func formXfmrInputRequest(d *db.DB, dbs [db.MaxDB]*db.DB, cdb db.DBNum, ygRoot *
 	inParams.param = param // generic param
 	inParams.txCache = txCache.(*sync.Map)
 	inParams.skipOrdTblChk = new(bool)
+	inParams.isVirtualTbl = new(bool)
         inParams.pCascadeDelTbl = new([]string)
 
 	return inParams
@@ -617,8 +618,10 @@ func replacePrefixWithModuleName(xpath string) (string) {
 
 
 /* Extract key vars, create db key and xpath */
-func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, string, string, error) {
+//func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, string, string, error) {
+func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (xpathTblKeyExtractRet, error) {
 	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)
+	 var retData xpathTblKeyExtractRet
 	 keyStr    := ""
 	 tableName := ""
 	 pfxPath := ""
@@ -629,12 +632,18 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 var err error
 	 var isUriForListInstance bool
 
+	 retData.xpath = ""
+	 retData.tableName = ""
+	 retData.dbKey = ""
+	 retData.isVirtualTbl = false
+
 	 isUriForListInstance = false
 	 pfxPath, _ = XfmrRemoveXPATHPredicates(path)
 	 xpathInfo, ok := xYangSpecMap[pfxPath]
 	 if !ok {
 		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", pfxPath)
-		 return pfxPath, keyStr, tableName, err
+		 //return pfxPath, keyStr, tableName, err
+		return retData, err
 	 }
 	 // for SUBSCRIBE reuestUri = path
 	 requestUriYangType := yangTypeGet(xpathInfo.yangEntry)
@@ -675,7 +684,8 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 if oper == GET {
 						 ret, err := XlateFuncCall(xfmrFuncName, inParams)
 						 if err != nil {
-							 return "", "", "", err
+							 //return "", "", "", err
+							 return retData, err
 						 }
 						 if ret != nil {
 							 keyStr = ret[0].Interface().(string)
@@ -683,7 +693,8 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 } else {
 						 ret, err := keyXfmrHandler(inParams, xYangSpecMap[yangXpath].xfmrKey)
 						 if err != nil {
-							 return "", "", "", err
+							 //return "", "", "", err
+							 return retData, err
 						 }
 						 keyStr = ret
 					 }
@@ -707,7 +718,8 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 				 if oper == GET {
 					 ret, err := XlateFuncCall(xfmrFuncName, inParams)
 					 if err != nil {
-						 return "", "", "", err
+						// return "", "", "", err
+						return retData, err
 					 }
 					 if ret != nil {
 						 keyStr = ret[0].Interface().(string)
@@ -715,7 +727,8 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 				 } else {
 					 ret, err := keyXfmrHandler(inParams, xYangSpecMap[yangXpath].xfmrKey)
 					 if ((yangType != YANG_LIST) && (err != nil)) {
-						 return "", "", "", err
+						return retData, err
+						//return "", "", "", err
 					 }
 					 keyStr = ret
 				 }
@@ -726,22 +739,32 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 		 curPathWithKey += "/"
 	 }
 	 curPathWithKey = strings.TrimSuffix(curPathWithKey, "/")
+	 retData.xpath = pfxPath
+	 retData.dbKey = keyStr
 	 tblPtr     := xpathInfo.tableName
 	 if tblPtr != nil && *tblPtr != XFMR_NONE_STRING {
 		 tableName = *tblPtr
 	 } else if xpathInfo.xfmrTbl != nil {
 		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 		 tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams)
+		 retData.tableName = tableName
+		 if inParams.isVirtualTbl != nil {
+			retData.isVirtualTbl = *(inParams.isVirtualTbl)
+		 }
 		 if err != nil && oper != GET {
-			 return pfxPath, keyStr, tableName, err
-
+//			 return pfxPath, keyStr, tableName, err
+			 return retData, err
 		 }
 	 }
 	 if ((oper == SUBSCRIBE) && (strings.TrimSpace(keyStr) == "") && (requestUriYangType == YANG_LIST) && (!isUriForListInstance)) {
 		 keyStr="*"
 	 }
-	 xfmrLogInfoAll("Return uri(%v), xpath(%v), key(%v), tableName(%v)", path, pfxPath, keyStr, tableName)
-	 return pfxPath, keyStr, tableName, err
+	 retData.xpath = pfxPath
+	 retData.tableName = tableName
+	 retData.dbKey = keyStr
+	 xfmrLogInfoAll("Return uri(%v), xpath(%v), key(%v), tableName(%v), isVirtualTbl:%v", path, pfxPath, keyStr, tableName, retData.isVirtualTbl)
+	// return pfxPath, keyStr, tableName, err
+	return retData, err
  }
 
 func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, error) {
