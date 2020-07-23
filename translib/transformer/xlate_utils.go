@@ -680,6 +680,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 if oper == GET {
 						 ret, err := XlateFuncCall(xfmrFuncName, inParams)
 						 if err != nil {
+							 retData.dbKey,retData.tableName,retData.xpath = "","",""
 							 return retData, err
 						 }
 						 if ret != nil {
@@ -688,6 +689,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 } else {
 						 ret, err := keyXfmrHandler(inParams, xYangSpecMap[yangXpath].xfmrKey)
 						 if err != nil {
+							 retData.dbKey,retData.tableName,retData.xpath = "","",""
 							 return retData, err
 						 }
 						 keyStr = ret
@@ -712,6 +714,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 				 if oper == GET {
 					 ret, err := XlateFuncCall(xfmrFuncName, inParams)
 					 if err != nil {
+						retData.dbKey,retData.tableName,retData.xpath = "","",""
 						return retData, err
 					 }
 					 if ret != nil {
@@ -720,6 +723,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 				 } else {
 					 ret, err := keyXfmrHandler(inParams, xYangSpecMap[yangXpath].xfmrKey)
 					 if ((yangType != YANG_LIST) && (err != nil)) {
+						retData.dbKey,retData.tableName,retData.xpath = "","",""
 						return retData, err
 					 }
 					 keyStr = ret
