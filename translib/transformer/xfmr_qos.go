@@ -1565,6 +1565,7 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
                 tbl_name = "PORT"
             } else if strings.HasPrefix(*dbifName, "CPU") {
                 tbl_name = "QOS_PORT"
+                inParams.isVirtualTable = true
             } else if strings.HasPrefix(*dbifName, "Vlan") {
                 tbl_name = "PORT_QOS_MAP"
             } else if strings.HasPrefix(*dbifName, "PortChannel") {
@@ -1591,6 +1592,7 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         }
     } else {
         tbl_name := "QOS_PORT"
+        inParams.isVirtualTable = true
         log.Info("TableXfmrFunc - intf_table_xfmr Intf key is not present, curr DB ", inParams.curDb)
         if(inParams.dbDataMap != nil) {
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
