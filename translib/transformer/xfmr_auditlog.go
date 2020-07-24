@@ -19,12 +19,12 @@
 package transformer
 
 import (
+    "errors"
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "fmt"
     "os"
     "bufio"
-    log "github.com/golang/glog"
 )
 
 const BRIEF_AUDIT_SIZE = 20
@@ -99,8 +99,7 @@ var rpc_clearauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) 
 
     host_output := HostQuery("clearaudit.action")
     if host_output.Err != nil {
-        log.Flush()
-        return nil, host_output.Err
+        return nil, errors.New("Operation failed")
     }
 
     return nil, nil
