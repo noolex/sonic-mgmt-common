@@ -282,16 +282,15 @@ def isLeavesOnlyGrouping(grouping):
     return True
 
 def chk_naming_for_grouping(ctx, module):
-    global issues
     global warnings
     groupingList = []
     find_node(module,"grouping", groupingList)
     for grouping in groupingList:
         name = grouping.arg
         if '-' not in name:
-            issues.append(str(grouping.pos) + " Grouping %s's name does not follow valid naming convention" %(name))
+            warnings.append(str(grouping.pos) + " Grouping %s's name does not follow valid naming convention" %(name))
         if not name.startswith(grouping.i_module.i_modulename[11:]):
-            issues.append(str(grouping.pos) + " Grouping %s's name should begin with module name" %(name))
+            warnings.append(str(grouping.pos) + " Grouping %s's name should begin with module name" %(name))
 
         last_part = name.split('-')[-1]                
         if isLeavesOnlyGrouping(grouping) and last_part not in ["config", "state", "statistics", "counters", "stats"]:
