@@ -373,11 +373,13 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 
 		if isFirstCall {
 			parentUri := parentUriGet(xlateParams.uri)
-			parentTbl, perr := dbTableFromUriGet(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
+			parentXpathKeyExtRet, perr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
+			parentTbl := parentXpathKeyExtRet.tableName
+			parentKey := parentXpathKeyExtRet.dbKey
 			if perr == nil && cerr == nil && len(curTbl) > 0 {
 				if len(curKey) > 0 {
 					xfmrLogInfoAll("DELETE handling at Container parentTbl %v, curTbl %v, curKey %v", parentTbl, curTbl, curKey)
-					if parentTbl != curTbl {
+					if (parentTbl != curTbl) {
 						// Non inhertited table
 						if (spec.tblOwner != nil) && !(*spec.tblOwner) {
 							// Fill fields only
@@ -393,12 +395,24 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 							fillFields = true
 						}
 					} else {
-						// if Instance already filled do not fill fields
-						xfmrLogInfoAll("DELETE handling at Container Inherited table")
-						//Fill fields only
-						if len(curTbl) > 0 && len(curKey) > 0 {
-							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "FillFields", "true")
-							fillFields = true
+						if curKey != parentKey {
+							if (spec.tblOwner != nil) && !(*spec.tblOwner) {
+								xfmrLogInfoAll("DELETE handling at Container inhertited table and not table Owner")
+								dataToDBMapAdd(curTbl, curKey, xlateParams.result, "FillFields", "true")
+								fillFields = true
+							} else {
+								// Instance delete
+								xfmrLogInfoAll("DELETE handling at Container Non inhertited table & table Owner")
+								dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
+							}
+						} else {
+							// if Instance already filled do not fill fields
+							xfmrLogInfoAll("DELETE handling at Container Inherited table")
+							//Fill fields only
+							if len(curTbl) > 0 && len(curKey) > 0 {
+								dataToDBMapAdd(curTbl, curKey, xlateParams.result, "FillFields", "true")
+								fillFields = true
+							}
 						}
 					}
 				} else {
