@@ -229,7 +229,7 @@ index 54bd7af..7267e5e 100644
 +func SetupSysLog() {
 +	// Connect to syslog
 +	sysLogL, err := syslog.Dial("", "",
-+		syslog.LOG_WARNING|syslog.LOG_DAEMON, "")
++		syslog.LOG_WARNING|syslog.LOG_LOCAL4, "")
 +	if err != nil {
 +		os.Stderr.WriteString("Unable to connect to syslogD\n")
 +	} else {
@@ -297,8 +297,8 @@ index 54bd7af..7267e5e 100644
 +		// because GLOG will anyways forward if threshold satifies
 +		if logging.alsoToSyslog && glogSev < logging.syslogThreshold.get() {
 +			file, line := getLineHeader(0)
-+			msg = addFileLineToMessage(file, line, msg)
-+			sendToSyslog(sev, msg)
++			syslogMsg := addFileLineToMessage(file, line, msg)
++			sendToSyslog(sev, syslogMsg)
 +		}
 +		switch glogSev {
 +		case fatalLog:
