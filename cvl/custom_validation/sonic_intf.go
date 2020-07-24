@@ -23,6 +23,8 @@ import (
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"fmt"
 	"strings"
+	log "github.com/golang/glog"
+	"net"
 )
 
 //ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
@@ -276,6 +278,96 @@ func validateDstPortOfMirrorSession(vc *CustValidationCtxt, tableName, tableKey,
 				ConstraintErrMsg: "Port has mirror session config",
 				CVLErrDetails: "Config Validation Semantic Error",
 				ErrAppTag:  "portlist-configured-as-dst-port-in-mirror-session",
+			}
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+
+func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
+	var vrrp_table string
+	var vip_suffix string
+
+	log.Info("ValidateIntfIp op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
+
+	key := vc.CurCfg.Key
+	key_split := strings.Split(key, "|")
+	table_name := key_split[0]
+	if_name := key_split[1]
+	if_ip := key_split[2]
+
+	log.Info("talbe_name:", table_name)
+
+	if len(if_ip) == 0 || vc.CurCfg.VOp != OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	if strings.Contains(if_ip, ":") {
+		vrrp_table = "VRRP6"
+		vip_suffix = "/128"
+	} else {
+		vrrp_table = "VRRP"
+		vip_suffix = "/32"
+	}
+
+	tbl_name_ext := vrrp_table + "|" + if_name + "|" + "*"
+
+	vrrp_keys, err:= vc.RClient.Keys(tbl_name_ext).Result()
+
+	if (err != nil) || (vc.SessCache == nil) {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	if_ip_prefix, if_ip_net, perr := net.ParseCIDR(if_ip)
+	if if_ip_prefix == nil || perr != nil {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	ip_ll := "fe80::/10"
+	_, ip_net_ll, _ := net.ParseCIDR(ip_ll)
+
+	// Interface IP delete is not allowed as long as VRRP with VIP exist in same subnet
+
+	// Interface IP add and delete is not allowed if VRRP has to transition from/to owner
+	// VRRP checks ensure that interface IP is configured before VIP, hence check just delete
+
+	for _, db_key := range vrrp_keys {
+
+		vrrp_data, err:= vc.RClient.HGetAll(db_key).Result()
+
+		log.Info("vrrp_data: ", vrrp_data)
+
+		if (err != nil) || (vc.SessCache == nil) {
+			continue
+		}
+
+		vip_string := vrrp_data["vip@"]
+
+		vips := strings.Split(vip_string, ",")
+		for _, vip := range(vips)	{
+
+			vip = vip + vip_suffix
+			vip_prefix, _, perr := net.ParseCIDR(vip)
+
+			if vip_prefix == nil || perr != nil {
+					continue
+			}
+
+			if ip_net_ll.Contains(vip_prefix) {
+				continue
+			}
+
+			if if_ip_net.Contains(vip_prefix) {
+				log.Info("ValidateIp deleting last IP overlapping VIP")
+				errStr := "Interface IP is being used by VRRP instance, please delete VRRP virtual IP before deleting/changing interface IP"
+				return CVLErrorInfo {
+					ErrCode: CVL_SEMANTIC_ERROR,
+					TableName: vrrp_table,
+					CVLErrDetails: errStr,
+					ConstraintErrMsg: errStr,
+				}
 			}
 		}
 	}
