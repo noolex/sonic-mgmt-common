@@ -3,7 +3,6 @@ package transformer
 import (
     "fmt"
     "strconv"
-    "time"
     "encoding/json"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/db"
@@ -25,7 +24,7 @@ var rpc_get_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]
     var showOutput struct {
                 Output struct {
                         Buffer_pool_list []BufferPoolStatsEntry
-			Status string `json:"response"`
+			Status string `json:"status"`
                 } `json:"sonic-buffer-pool:output"`
         }
     showOutput.Output.Buffer_pool_list = make([]BufferPoolStatsEntry, 0)
@@ -34,7 +33,7 @@ var rpc_get_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]
     var mapData map[string]interface{}
     err = json.Unmarshal(body, &mapData)
     if err != nil {
-        log.Errorf("Failed to unmarshall given input data, error=%v", err)
+        log.Errorf("Failed to unmarshall given input data: %v, error=%v", mapData, err)
         return json.Marshal(&result)
     }
     input := mapData["sonic-buffer-pool:input"]
@@ -54,7 +53,13 @@ var rpc_get_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]
 	watermark_stats_type = "SAI_BUFFER_POOL_STAT_WATERMARK_BYTES"
     }
 
-    bufferpoolOidMap, _ := doGetAllBufferpoolOidMap(dbs[db.CountersDB]);
+    bufferpoolOidMap, erroid  := doGetAllBufferpoolOidMap(dbs[db.CountersDB]);
+
+    if erroid != nil {
+        showOutput.Output.Status = "Buffer pool configuration missing on the system! Please configure buffer pools"
+        return json.Marshal(&result)
+    }
+
     bufferpoolOidMapFields := bufferpoolOidMap.Field
 
     for poolName, oid := range bufferpoolOidMapFields {
@@ -66,8 +71,8 @@ var rpc_get_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]
 	}
 
 	if err != nil {
-		log.Info("Failed to get buffer pool watermark counters.")
-		showOutput.Output.Status = fmt.Sprintf("Error: Failed to get %s watermark counters from PERSISTENT_WATERMARKS/USER_WATERMARKS table.", poolName)
+		log.Warning("Couldn't get buffer pool watermark counters.")
+		showOutput.Output.Status = fmt.Sprintf("Couldn't get %s watermark counters from PERSISTENT_WATERMARKS/USER_WATERMARKS table.", poolName)
                 return json.Marshal(&result)
 	}
 
@@ -85,24 +90,24 @@ var rpc_get_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]
 
 /* RPC for clear buffer pool counters */
 var rpc_clear_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-    log.Info("In rpc_clear_buffer_pool_wm_stats.")
-    var err, cerr error
-    var watermark_type string
+
+    var err error
+    var watermark_type, status string
     var mapData map[string]interface{}
+    var varList [2]string
+    var watermarkReqdata []byte
 
     err = json.Unmarshal(body, &mapData)
     if err != nil {
-        log.Info("Failed to unmarshall given input data")
+        log.Warning("Failed to unmarshall given input data: %v, error=%v", mapData, err)
         return nil, err
     }
 
     var result struct {
         Output struct {
-              Status string `json:"response"`
+              Status string `json:"status"`
         } `json:"sonic-buffer-pool:output"`
     }
-
-    log.Info("In rpc_clear_buffer_pool_wm_stats: ", mapData)
 
     input := mapData["sonic-buffer-pool:input"]
     mapData = input.(map[string]interface{})
@@ -111,25 +116,29 @@ var rpc_clear_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxD
         watermark_type = value
     }
 
-    bufferpoolOidMap, _ := doGetAllBufferpoolOidMap(dbs[db.CountersDB]);
-    bufferpoolOidMapFields := bufferpoolOidMap.Field
-
-    for poolName, oid := range bufferpoolOidMapFields {
-
-	if watermark_type == "persistant-watermark" {
-		cerr = resetPersistentWatermarkCounters(dbs[db.CountersDB], oid)
-	} else {
-		cerr = resetUserWatermarkCounters(dbs[db.CountersDB], oid)
-	}
-
-	if cerr != nil {
-		log.Info("Failed to reset counters for ", poolName)
-		result.Output.Status = fmt.Sprintf("Error: OID info not found in PERSISTENT_WATERMARKS/USER_WATERMARKS table for buffer pool %s ", poolName)
-		return json.Marshal(&result)
-	}
+    if watermark_type == "persistant-watermark" {
+	varList[0] = "PERSISTENT"
+    } else {
+	varList[0] = "USER"
     }
 
-    result.Output.Status = "Success: Cleared Buffer pool watermark Counters"
+    varList[1] = "BUFFER_POOL"
+
+    watermarkReqdata, err = json.Marshal(varList)
+
+    if err != nil {
+        log.Warningf("Failed to marshal varList; err=%v", err)
+        return nil, err
+    }
+
+    err = dbs[db.ApplDB].Publish("WATERMARK_CLEAR_REQUEST", watermarkReqdata)
+
+    if err != nil {
+	status = "Couldn't publish Bufferpool watermark stats clear notification message"
+    }
+	status = "Success: Cleared Buffer pool watermark Counters"
+
+    result.Output.Status = status
     return json.Marshal(&result)
 }
 
@@ -137,11 +146,14 @@ func getBufferPoolPersistentWatermark(d *db.DB, oid string, stat_key string, cou
     ts := &db.TableSpec{Name: "PERSISTENT_WATERMARKS"}
     entry, err := d.GetEntry(ts, db.Key{Comp: []string{oid}})
     if err != nil {
-        log.Info("getBufferPoolPersistentWatermark: not able to find the oid entry in DB ")
+        log.Warning("getBufferPoolPersistentWatermark: Couldn't find oid %v in PERSISTENT_WATERMARKS table", oid)
         return err
     }
 
     err = getBufferPoolStats(&entry, stat_key, count)
+    if err != nil {
+	log.Warning("getBufferPoolStats: Couldn't find attribute %v in PERSISTENT_WATERMARKS table", stat_key)
+    }
 
     return err
 }
@@ -150,11 +162,14 @@ func getBufferPoolUserWatermark(d *db.DB, oid string, stat_key string, count **u
     ts := &db.TableSpec{Name: "USER_WATERMARKS"}
     entry, err := d.GetEntry(ts, db.Key{Comp: []string{oid}})
     if err != nil {
-        log.Info("getBufferPoolUserWatermark: not able to find the oid entry in DB ")
+        log.Warning("getBufferPoolUserWatermark: Couldn't find oid %v in USER_WATERMARKS table", oid)
         return err
     }
 
     err = getBufferPoolStats(&entry, stat_key, count)
+    if err != nil {
+	log.Warning("getBufferPoolStats: Couldn't find attribute %v in USER_WATERMARKS table", stat_key)
+    }
 
     return err
 }
@@ -170,24 +185,9 @@ func getBufferPoolStats(entry *db.Value, attr string, counter_val **uint64 ) err
         *counter_val = &v
         return nil
     } else {
-        log.Info("getBufferPoolStats: ", "Attr " + attr + "doesn't exist in table Map!")
+        log.Warning("getBufferPoolStats: ", "Attr " + attr + "doesn't exist in table Map!")
     }
     return err
-}
-
-func resetPersistentWatermarkCounters(d *db.DB, oid string)  (error) {
-    var cerr error
-    ts := &db.TableSpec{Name: "PERSISTENT_WATERMARKS"}
-    value, verr := d.GetEntry(ts, db.Key{Comp: []string{oid}})
-    if verr == nil {
-	secs := time.Now().Unix()
-        timeStamp := strconv.FormatInt(secs, 10)
-        value.Field["LAST_CLEAR_TIMESTAMP"] = timeStamp
-        value.Field["SAI_BUFFER_POOL_PERCENT_STAT_WATERMARK"] = "0"
-        value.Field["SAI_BUFFER_POOL_STAT_WATERMARK_BYTES"] = "0"
-        cerr = d.CreateEntry(ts, db.Key{Comp: []string{oid}}, value)
-    }
-    return cerr
 }
 
 func doGetAllBufferpoolOidMap(d *db.DB) (db.Value, error) {
@@ -196,23 +196,8 @@ func doGetAllBufferpoolOidMap(d *db.DB) (db.Value, error) {
     dbSpec := &db.TableSpec{Name: "COUNTERS_BUFFER_POOL_NAME_MAP"}
     bufferpoolOidMap, err := d.GetMapAll(dbSpec)
     if err != nil {
-        log.Info("Error: BufferpoolOidMap failed")
+        log.Warning("Couldn't get BufferPoolOidMap")
     }
 
     return bufferpoolOidMap, err
-}
-
-func resetUserWatermarkCounters(d *db.DB, oid string)  (error) {
-    var cerr error
-    ts := &db.TableSpec{Name: "USER_WATERMARKS"}
-    value, verr := d.GetEntry(ts, db.Key{Comp: []string{oid}})
-    if verr == nil {
-	secs := time.Now().Unix()
-        timeStamp := strconv.FormatInt(secs, 10)
-        value.Field["LAST_CLEAR_TIMESTAMP"] = timeStamp
-        value.Field["SAI_BUFFER_POOL_PERCENT_STAT_WATERMARK"] = "0"
-        value.Field["SAI_BUFFER_POOL_STAT_WATERMARK_BYTES"] = "0"
-        cerr = d.CreateEntry(ts, db.Key{Comp: []string{oid}}, value)
-    }
-    return cerr
 }

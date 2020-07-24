@@ -41,6 +41,8 @@ func init () {
 var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     subIntfmap := make(map[string]map[string]db.Value)
+    var last_sag4 bool = false
+    var last_sag6 bool = false
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
@@ -117,7 +119,7 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
                 err = tlerr.InvalidArgsError{Format: errStr}
                 return subIntfmap, err
             }
-	    
+
 
       tlen, _ := strconv.Atoi(tempIP[1])
       templen = uint8(tlen)
@@ -151,9 +153,18 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 								subIntfmap[tblName] = vlanIntfMap
 							}
 						}
+
+            last_sag4 = true
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subIntfmap_del := make(map[string]map[string]db.Value)
+            subIntfmap_del["SAG"] = make(map[string]db.Value)
+            subIntfmap_del["SAG"][sagIPv4Key] = db.Value{}
+            subOpMap[db.ConfigDB] = subIntfmap_del
+            inParams.subOpDataMap[DELETE] = &subOpMap
+
 					}
 				}
-        	} else {
+      } else {
 				if !vlanEntry.IsPopulated() {
 					vlanIntfMap[ifName].Field["NULL"] = "NULL"
 					subIntfmap[tblName] = vlanIntfMap
@@ -165,12 +176,14 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 				} else {
 					gwIPListStr = sagIpv4Obj.Config.StaticAnycastGateway[0]
 				}
-            }
+      }
 
-			sagIPMap[sagIPv4Key] = db.Value{Field:make(map[string]string)}
-			sagIPMap[sagIPv4Key].Field["gwip@"] = gwIPListStr
+      if (!last_sag4) {
+  			sagIPMap[sagIPv4Key] = db.Value{Field:make(map[string]string)}
+  			sagIPMap[sagIPv4Key].Field["gwip@"] = gwIPListStr
 
-			subIntfmap["SAG"] = sagIPMap
+  			subIntfmap["SAG"] = sagIPMap
+      }
     }
     }
 
@@ -220,9 +233,17 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 								subIntfmap[tblName] = vlanIntfMap
 							}
 						}
+
+            last_sag6 = true
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subIntfmap_del := make(map[string]map[string]db.Value)
+            subIntfmap_del["SAG"] = make(map[string]db.Value)
+            subIntfmap_del["SAG"][sagIPv6Key] = db.Value{}
+            subOpMap[db.ConfigDB] = subIntfmap_del
+            inParams.subOpDataMap[DELETE] = &subOpMap
 					}
 				}
-        	} else {
+      } else {
 				if !vlanEntry.IsPopulated() {
 					vlanIntfMap[ifName].Field["NULL"] = "NULL"
 					subIntfmap[tblName] = vlanIntfMap
@@ -234,19 +255,21 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 				} else {
 					gwIPListStr = sagIpv6Obj.Config.StaticAnycastGateway[0]
 				}
-            }
+      }
 
-			sagIPMap[sagIPv6Key] = db.Value{Field:make(map[string]string)}
-			sagIPMap[sagIPv6Key].Field["gwip@"] = gwIPListStr
+      if (!last_sag6) {
+  			sagIPMap[sagIPv6Key] = db.Value{Field:make(map[string]string)}
+  			sagIPMap[sagIPv6Key].Field["gwip@"] = gwIPListStr
 
-			subIntfmap["SAG"] = sagIPMap
-        }
+  			subIntfmap["SAG"] = sagIPMap
+      }
     }
+  }
 
-    log.Info("YangToDb_intf_sag_ip_xfmr : subIntfmap : ", subIntfmap)
+  log.Info("YangToDb_intf_sag_ip_xfmr : subIntfmap : ", subIntfmap)
 
-    return subIntfmap, err
-} 
+  return subIntfmap, err
+}
 
 var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (error) {
     var err error
@@ -268,12 +291,12 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 	ipv6_req := false
 	var sagIPKey string
 
-	if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/sag-ipv4") || 
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/sag-ipv4") || 
+	if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/sag-ipv4") ||
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/sag-ipv4") ||
 		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4")) {
 		ipv4_req = true
 		sagIPKey = ifName + "|IPv4"
-	} else if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/sag-ipv6") || 
+	} else if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/sag-ipv6") ||
 		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/sag-ipv6") ||
 		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:sag-ipv6")) {
 		ipv6_req = true

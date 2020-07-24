@@ -115,7 +115,7 @@ module sonic-interface {
                         "Interface with which IP address needs to be disassociated";
                 }
                 leaf ipPrefix {
-                    type inet:ip-prefix; 
+                    type inet:ip-prefix;
                     description
                         "IP (v4/v6) address needs to be removed";
                 }
@@ -133,7 +133,7 @@ module sonic-interface {
                 }
             }
         }
-            
+
 
 	container sonic-interface {
 
@@ -189,7 +189,7 @@ module sonic-interface {
                                 leaf dhcp_relay_src_intf {
                                         type string;
                                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                                             "(current()/../dhcp_servers)"  
+                                             "(current()/../dhcp_servers)"
                                              {
                                                        error-message "DHCP relay address not configured or invalid operation";
                                                        error-app-tag dhcp-server-adress-config;
@@ -211,7 +211,7 @@ module sonic-interface {
                                 leaf dhcp_server_vrf {
                                         type string;
                                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                                               "(current()/../dhcp_servers)"   
+                                               "(current()/../dhcp_servers)"
                                               {
                                                        error-message "DHCP server not configured";
                                                        error-app-tag dhcp-server-invalid-vrf-config;
@@ -253,7 +253,7 @@ module sonic-interface {
                                 leaf dhcpv6_server_vrf {
                                         type string;
                                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
-                                               "(current()/../dhcpv6_servers)"   
+                                               "(current()/../dhcpv6_servers)"
                                               {
                                                        error-message "DHCP server or src-intf not configured";
                                                        error-app-tag dhcp-server-invalid-vrf-config;
@@ -267,7 +267,7 @@ module sonic-interface {
 
 				leaf ipv6_use_link_local_only {
                                     type cmn:mode-enable;
-                                    default disable; 
+                                    default disable;
                                     description
                                         "Enable IPv6 link local address on interface";
                                     must "count(/spc:sonic-portchannel/spc:PORTCHANNEL_MEMBER/spc:PORTCHANNEL_MEMBER_LIST[spc:ifname=current()/../portname]) = 0"
@@ -338,16 +338,16 @@ module sonic-interface {
 
 				leaf ip_prefix {
 					type inet:ip-prefix;
-
+					sonic-ext:custom-validation ValidateIntfIp;
 				}
 			}
-		} 
+		}
 
         container INTF_TABLE {
             config false;
             list INTF_TABLE_LIST {
                 key "ifName";
-      
+
                 leaf ifName {
                     type leafref {
                         path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
@@ -372,7 +372,7 @@ module sonic-interface {
                         path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                     }
                 }
-        
+
                 leaf ipPrefix {
                     type inet:ip-prefix;
                 }
