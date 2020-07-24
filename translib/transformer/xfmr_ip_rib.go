@@ -6,7 +6,10 @@ import (
 	_"fmt"
 	"reflect"
 	"strconv"
+    "encoding/json"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
 	log "github.com/golang/glog"
 	    "github.com/openconfig/ygot/ygot"
     )
@@ -15,8 +18,10 @@ import (
 func init () {
 	XlateFuncBind("DbToYang_ipv4_route_get_xfmr", DbToYang_ipv4_route_get_xfmr)
 	XlateFuncBind("DbToYang_ipv6_route_get_xfmr", DbToYang_ipv6_route_get_xfmr)
+	XlateFuncBind("DbToYang_ipv4_mroute_get_xfmr", DbToYang_ipv4_mroute_get_xfmr)
+    XlateFuncBind("rpc_show_ipmroute", rpc_show_ipmroute)
+    XlateFuncBind("rpc_clear_ipmroute", rpc_clear_ipmroute)
 }
-
 
 func getIpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts, string, string, uint64, error) {
 	pathInfo := NewPathInfo(inParams.uri)
@@ -56,6 +61,25 @@ func getIpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Network
 	return netInstAftsObj, niName, prefix, nhindex, err
 }
 
+func util_iprib_get_native_ifname_from_ui_ifname (pUiIfname *string, pNativeIfname *string) {
+    if pUiIfname == nil || pNativeIfname == nil {return}
+    if len(*pUiIfname) == 0 {return}
+    *pNativeIfname = *pUiIfname
+    _pNativeIfname := utils.GetNativeNameFromUIName(pUiIfname)
+    if _pNativeIfname != nil && len(*_pNativeIfname) != 0 {
+        *pNativeIfname = *_pNativeIfname
+    }
+}
+
+func util_iprib_get_ui_ifname_from_native_ifname (pNativeIfname *string, pUiIfname *string) {
+    if pUiIfname == nil || pNativeIfname == nil {return}
+    if len(*pNativeIfname) == 0 {return}
+    *pUiIfname = *pNativeIfname
+    _pUiIfname := utils.GetUINameFromNativeName(pNativeIfname)
+    if _pUiIfname != nil && len(*_pUiIfname) != 0 {
+        *pUiIfname = *_pUiIfname
+    }
+}
 
 func parse_protocol_type (jsonProtocolType string, originType *ocbinds.E_OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE) {
 
@@ -411,4 +435,343 @@ var DbToYang_ipv6_route_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
    		}
    	}
    	return err
+}
+
+type _xfmr_ipv4_mroute_state_key struct {
+    niName string
+    grpAddr string
+    srcAddr string
+    oifKey string
+}
+
+func fill_ipv4_mroute_state_info (inParams XfmrParams, ipv4MrouteStateKey _xfmr_ipv4_mroute_state_key, srcAddrData map[string]interface{},
+                                  srcEntryStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State) bool {
+    srcEntryStateObj.SourceAddress = &ipv4MrouteStateKey.srcAddr
+
+    if value, ok := srcAddrData["iif"] ; ok {
+        _nativeIncomingIntfId := value.(string)
+        var _uiIncomingIntfId string
+        util_iprib_get_ui_ifname_from_native_ifname (&_nativeIncomingIntfId, &_uiIncomingIntfId)
+        srcEntryStateObj.IncomingInterface = &_uiIncomingIntfId
+    }
+
+    if value, ok := srcAddrData["installed"] ; ok {
+        _installed32 := uint32(value.(float64))
+        _installedBool := false
+        if _installed32 == 1 {_installedBool = true}
+        srcEntryStateObj.Installed = &_installedBool
+    }
+
+    if oilData, ok := srcAddrData["oil"].(map[string]interface{}) ; ok {
+        var nativeOifKey string
+        util_iprib_get_native_ifname_from_ui_ifname (&ipv4MrouteStateKey.oifKey, &nativeOifKey)
+
+        for oif := range oilData {
+            if ((nativeOifKey != "") && (oif != nativeOifKey)) {continue}
+            oifData, ok := oilData[oif].(map[string]interface{}) ; if !ok {continue}
+
+            oilInfoEntries := srcEntryStateObj.OilInfoEntries ; if oilInfoEntries == nil {
+                var _oilInfoEntries ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_OilInfoEntries
+                srcEntryStateObj.OilInfoEntries = &_oilInfoEntries
+                oilInfoEntries = srcEntryStateObj.OilInfoEntries
+                ygot.BuildEmptyTree(oilInfoEntries)
+            }
+
+            var _uiOifId string
+            util_iprib_get_ui_ifname_from_native_ifname (&oif, &_uiOifId)
+            OifInfoObj, ok := oilInfoEntries.OifInfo[_uiOifId] ; if !ok {
+                OifInfoObj,_ = oilInfoEntries.NewOifInfo(_uiOifId)
+                ygot.BuildEmptyTree(OifInfoObj)
+            }
+
+            oilInfoStateObj := OifInfoObj.State ; if oilInfoStateObj == nil {
+                var _oilInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_OilInfoEntries_OifInfo_State
+                OifInfoObj.State = &_oilInfoStateObj
+                oilInfoStateObj = OifInfoObj.State
+                ygot.BuildEmptyTree(oilInfoStateObj)
+            }
+            oilInfoStateObj.OutgoingInterface = &_uiOifId
+
+            if value, ok := oifData["upTimeEpoch"] ; ok {
+                _uptime := uint64(value.(float64))
+                oilInfoStateObj.Uptime = &_uptime
+            }
+        }
+    }
+
+    return true
+}
+
+var DbToYang_ipv4_mroute_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) error {
+	var err error
+    operErr := errors.New("Opertational error")
+    cmnLog := "GET: xfmr for IP-Mroute (IPv4-Multicast) State"
+
+    aftsObj, niName, _, _, getErr := getIpRoot(inParams) ; if (getErr != nil) {
+        log.Errorf ("%s failed !! Error:%s", cmnLog, getErr);
+        return operErr
+    }
+
+    cmd := "show ip mroute vrf " + niName + " json"
+    ipMrouteOutputJson, cmdErr := exec_vtysh_cmd (cmd);  if (cmdErr != nil) {
+        log.Errorf ("%s failed !! VTYSH-cmd : \"%s\" execution failed !! Error:%s", cmnLog, cmd, cmdErr);
+        return operErr
+    }
+
+    if outError, ok := ipMrouteOutputJson["warning"] ; ok {
+        log.Errorf ("%s failed !! VTYSH-cmd : \"%s\" execution failed !! Error:%s", cmnLog, cmd, outError);
+        return operErr
+    }
+
+    aftsIpv4McastObj := aftsObj.Ipv4Multicast
+    if aftsIpv4McastObj  == nil {
+        var _aftsIpv4McastObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast
+        aftsObj.Ipv4Multicast = &_aftsIpv4McastObj
+        aftsIpv4McastObj = aftsObj.Ipv4Multicast
+        ygot.BuildEmptyTree(aftsIpv4McastObj)
+    }
+
+    pathInfo := NewPathInfo(inParams.uri)
+    grpAddrKey := pathInfo.Var("group-address")
+    srcAddrKey := pathInfo.Var("source-address")
+    oifKey := pathInfo.Var("outgoing-interface")
+
+    log.Info("DbToYang_ipv4_mroute_get_xfmr: ", cmnLog, " ==> URI: ",inParams.uri,
+             " niName:", niName, " grpAddrKey:", grpAddrKey, " srcAddrKey:", srcAddrKey)
+
+    var ipMrouteKey _xfmr_ipv4_mroute_state_key
+    ipMrouteKey.niName = niName
+    ipMrouteKey.oifKey = oifKey
+
+    for grpAddr := range ipMrouteOutputJson {
+        if ((grpAddrKey != "") && (grpAddr != grpAddrKey)) {continue}
+        grpAddrData, ok := ipMrouteOutputJson[grpAddr].(map[string]interface{}) ; if !ok {continue}
+
+        ipv4EntriesObj := aftsIpv4McastObj.Ipv4Entries ; if ipv4EntriesObj == nil {
+            var _ipv4EntriesObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries
+            aftsIpv4McastObj.Ipv4Entries = &_ipv4EntriesObj
+            ipv4EntriesObj = aftsIpv4McastObj.Ipv4Entries
+            ygot.BuildEmptyTree(ipv4EntriesObj)
+        }
+
+        ipv4EntryObj, ok := ipv4EntriesObj.Ipv4Entry[grpAddr] ; if !ok {
+            ipv4EntryObj,_ = ipv4EntriesObj.NewIpv4Entry(grpAddr)
+            ygot.BuildEmptyTree(ipv4EntryObj)
+        }
+
+        ipv4EntryStateObj := ipv4EntryObj.State ; if ipv4EntryStateObj == nil {
+            var _ipv4EntryStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State
+            ipv4EntryObj.State = &_ipv4EntryStateObj
+            ipv4EntryStateObj = ipv4EntryObj.State
+            ygot.BuildEmptyTree(ipv4EntryStateObj)
+        }
+
+        ipMrouteKey.grpAddr = grpAddr
+        _grpAddr := grpAddr
+        ipv4EntryStateObj.GroupAddress = &_grpAddr
+
+        for srcAddr := range grpAddrData {
+            if ((srcAddrKey != "") && (srcAddr != srcAddrKey)) {continue}
+            srcAddrData, ok := grpAddrData[srcAddr].(map[string]interface{}) ; if !ok {continue}
+
+            srcEntriesObj := ipv4EntryStateObj.SrcEntries ; if srcEntriesObj == nil {
+                var _srcEntriesObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries
+                ipv4EntryStateObj.SrcEntries = &_srcEntriesObj
+                srcEntriesObj = ipv4EntryStateObj.SrcEntries
+                ygot.BuildEmptyTree(srcEntriesObj)
+            }
+
+            srcEntryObj, ok := srcEntriesObj.SrcEntry[srcAddr] ; if !ok {
+                srcEntryObj,_ = srcEntriesObj.NewSrcEntry(srcAddr)
+                ygot.BuildEmptyTree(srcEntryObj)
+            }
+
+            srcEntryStateObj := srcEntryObj.State ; if srcEntryStateObj == nil {
+                var _srcEntryStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State
+                srcEntryObj.State = &_srcEntryStateObj
+                srcEntryStateObj = srcEntryObj.State
+                ygot.BuildEmptyTree(srcEntryStateObj)
+            }
+
+            ipMrouteKey.srcAddr = srcAddr
+
+            fill_ipv4_mroute_state_info (inParams, ipMrouteKey, srcAddrData, srcEntryStateObj)
+        }
+    }
+
+    return err
+}
+
+func get_rpc_show_ipmroute_sub_cmd_for_summary_ (mapData map[string]interface{}) (bool, string, string) {
+    _summary, ok := mapData["summary"].(bool) ; if !ok {
+        return false, "summary mandatory attribute missing", ""
+    }
+
+    if !_summary {
+        return false, "summary attribute value should be true", ""
+    }
+
+    return true, "", "summary json"
+}
+
+func get_rpc_show_ipmroute_sub_cmd_ (mapData map[string]interface{}) (bool, string, string) {
+    queryType, ok := mapData["query-type"].(string) ; if !ok {
+        err := "Mandatory parameter query-type is not present"
+        log.Info ("In get_rpc_show_ipmroute_sub_cmd_ : ", err)
+        return false, err, ""
+    }
+
+    log.Info("In get_rpc_show_ipmroute_sub_cmd_ ==> queryType : ", queryType)
+    switch queryType {
+        case "SUMMARY":
+            return get_rpc_show_ipmroute_sub_cmd_for_summary_ (mapData)
+        default:
+            err := "Invalid value in query-type attribute : " + queryType
+            log.Info ("In get_rpc_show_ipmroute_sub_cmd_ : ", err)
+            return false, err, ""
+    }
+}
+
+var rpc_show_ipmroute RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_ipmroute")
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show ipmroute, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-ipmroute-show:output"`
+    }
+
+    log.Info("In rpc_show_ipmroute, RPC data:", mapData)
+
+    input := mapData["sonic-ipmroute-show:input"]
+    mapData = input.(map[string]interface{})
+
+    vrf_name := "default"
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = value
+    }
+
+    af_str := "ip"
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value != "IPV4_UNICAST" {
+            dbg_err_str := "show ipmroute RPC execution failed ==> Invalid value in address-family attribute"
+            log.Info("In rpc_show_ipmroute : ", dbg_err_str)
+            return nil, errors.New(dbg_err_str)
+        }
+    }
+
+    ok, err_str, subCmd := get_rpc_show_ipmroute_sub_cmd_ (mapData) ; if !ok {
+        dbg_err_str := "show ipmroute RPC execution failed ==> " + err_str
+        log.Info("In rpc_show_ipmroute, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
+
+    cmd := "show " + af_str + " mroute vrf " + vrf_name + " " + subCmd
+
+    ipmrouteOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        dbg_err_str := "FRR execution failed ==> " + err_str
+        log.Info("In rpc_show_ipmroute, ", dbg_err_str)
+        return nil, errors.New("Internal error!")
+    }
+
+    result.Output.Status = ipmrouteOutput
+    return json.Marshal(&result)
+}
+
+func get_rpc_clear_ipmroute_sub_cmd_for_all_mroutes (mapData map[string]interface{}) (bool, string, string) {
+    _allMroutes, ok := mapData["all-mroutes"].(bool) ; if !ok {
+        return false, "all-mroutes mandatory attribute missing", ""
+    }
+
+    if !_allMroutes {
+        return false, "all-mroutes attribute value should be true", ""
+    }
+
+    return true, "", ""
+}
+
+func get_rpc_clear_ipmroute_sub_cmd_ (mapData map[string]interface{}) (bool, string, string) {
+    configType, ok := mapData["config-type"].(string) ; if !ok {
+        err := "Mandatory parameter config-type is not present"
+        log.Info ("In get_rpc_clear_ipmroute_sub_cmd_ : ", err)
+        return false, err, ""
+    }
+
+    log.Info("In get_rpc_clear_ipmroute_sub_cmd_ ==> configType : ", configType)
+    switch configType {
+        case "ALL-MROUTES":
+            return get_rpc_clear_ipmroute_sub_cmd_for_all_mroutes (mapData)
+        default:
+            err := "Invalid value in config-type attribute : " + configType
+            log.Info ("In get_rpc_clear_ipmroute_sub_cmd_ : ", err)
+            return false, err, ""
+    }
+}
+
+var rpc_clear_ipmroute RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_clear_ipmroute")
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC clear ipmroute, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-ipmroute-clear:output"`
+    }
+
+    log.Info("In rpc_clear_ipmroute, RPC data:", mapData)
+
+    input := mapData["sonic-ipmroute-clear:input"]
+    mapData = input.(map[string]interface{})
+
+    vrf_name := "default"
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = value
+    }
+
+    af_str := "ip"
+    if value, ok := mapData["address-family"].(string) ; ok {
+        if value != "IPV4_UNICAST" {
+            dbg_err_str := "clear ipmroute RPC execution failed ==> Invalid value in address-family attribute"
+            log.Info("In rpc_clear_ipmroute : ", dbg_err_str)
+            return nil, errors.New(dbg_err_str)
+        }
+    }
+
+    ok, err_str, subCmd := get_rpc_clear_ipmroute_sub_cmd_ (mapData) ; if !ok {
+        dbg_err_str := "clear ipmroute RPC execution failed ==> " + err_str
+        log.Info("In rpc_clear_ipmroute, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
+
+    cmd := "clear " + af_str + " mroute vrf " + vrf_name + " " + subCmd
+    cmd = strings.TrimSuffix(cmd, " ")
+
+    ipmrouteOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        dbg_err_str := "FRR execution failed ==> " + err_str
+        log.Info("In rpc_clear_ipmroute, ", dbg_err_str)
+        return nil, errors.New("Internal error!")
+    }
+
+    if len(ipmrouteOutput) != 0 {
+        result.Output.Status = ipmrouteOutput
+    } else {
+        result.Output.Status = "Success"
+    }
+
+    return json.Marshal(&result)
 }

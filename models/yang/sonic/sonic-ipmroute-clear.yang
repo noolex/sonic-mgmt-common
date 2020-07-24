@@ -1,0 +1,81 @@
+module sonic-ipmroute-clear {
+    namespace "http://github.com/Azure/sonic-ipmroute-clear";
+    prefix sipmrouteclear;
+    yang-version 1.1;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC yang for RPC based IP-MROUTE clear.";
+
+    revision 2020-01-20 {
+        description
+            "Initial revision.";
+    }
+
+    typedef clear-ipmroute-config-type {
+        description "Config type that specifies various different ways to clear the IP Multicast routes based on various filters";
+
+        type enumeration {
+            enum ALL-MROUTES {
+                description "To clear all IP multicast routes";
+            }
+        }
+    }
+
+    rpc clear-ipmroute {
+        description "RPC to clear IP Multicast routes based on various different options";
+
+        input {
+            leaf vrf-name {
+                type string;
+                default "default";
+                description
+                    "Clear IP Multicast routes for a given VRF name. If VRF name is not present, the default VRF is used";
+            }
+
+            leaf address-family {
+                type enumeration {
+                    enum IPV4_UNICAST;
+                }
+                default "IPV4_UNICAST";
+                description
+                    "IP Address family";
+            }
+
+            leaf config-type {
+                type clear-ipmroute-config-type;
+                mandatory true;
+                description
+                    "Config type that specifies various ways to clear the IP Multicast routes based on various filters.
+                    It represent the choice mentioned below. And then relevant attributes should be filled to clear the IP Multicast routes.
+                    This is a mandatory parameter.";
+            }
+
+            choice type {
+                case ALL-MROUTES {
+                    description
+                        "config-type attribute should be ALL-MROUTES. To clear all IP Multicast routes.";
+
+                    leaf all-mroutes {
+                        type boolean;
+                        default false;
+                        description "True : to clear the summary of IP Multicast routes.";
+                    }
+                }
+            }
+        }
+
+        output {
+            leaf status {
+                type string;
+                description
+                    "Success/failure of IP Multicast routes clear operation execution request.";
+            }
+        }
+    }
+}
