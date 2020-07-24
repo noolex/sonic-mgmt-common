@@ -15,7 +15,7 @@ module openconfig-qos-pfc {
   contact
     "SONiC";
   description
-    "This module defines YANG model for network quality-of-service 
+    "This module defines YANG model for network quality-of-service
      Prioity-based Flow Control (PFC).";
 
   oc-ext:openconfig-version "0.1.0";
@@ -29,7 +29,7 @@ module openconfig-qos-pfc {
 
   //////////////// Interface configuration and status for PFC per queue
   grouping qos-pfc-if-queue-config {
-    description 
+    description
       "PFC configuration per queue per interface";
 
     leaf queue {
@@ -42,12 +42,12 @@ module openconfig-qos-pfc {
   }
 
   grouping qos-pfc-if-queue-state {
-    description 
+    description
       "PFC state per queue per interface";
   }
 
   grouping qos-pfc-if-queue-statistics {
-    description 
+    description
       "PFC statistics per queue per interface";
 
     leaf storm-detected {
@@ -116,7 +116,7 @@ module openconfig-qos-pfc {
         key "queue";
         description
           "List of PFC queues";
-      
+
         leaf queue {
           type leafref {
             path "../config/queue";
@@ -130,7 +130,7 @@ module openconfig-qos-pfc {
             "Configuration data for the PFC per queue configuration";
           uses qos-pfc-if-queue-config;
         }
-      
+
         container state {
           config false;
           description
@@ -151,7 +151,7 @@ module openconfig-qos-pfc {
 
   //////////////// Interface configuration and status for PFC
   grouping qos-pfc-if-priority-state {
-    description 
+    description
       "PFC state data per priority";
 
     leaf pause-frames-rx {
@@ -241,7 +241,7 @@ module openconfig-qos-pfc {
     }
   }
 
-  /////////////////////// Global configuration for PFC Watchdog 
+  /////////////////////// Global configuration for PFC Watchdog
   grouping qos-pfc-watchdog-flex-config {
     description
       "Priority-based Flow Control (PFC) global watchdog configuration";
@@ -258,7 +258,7 @@ module openconfig-qos-pfc {
         }
       }
       description
-        "Enable or disable counter polling"; 
+        "Enable or disable counter polling";
     }
   }
 
@@ -276,7 +276,7 @@ module openconfig-qos-pfc {
         range 100..3000;
       }
       description
-        "Counter polling interval"; 
+        "Counter polling interval";
     }
   }
 

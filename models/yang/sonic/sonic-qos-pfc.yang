@@ -22,6 +22,33 @@ module sonic-qos-pfc {
           "Initial revision.";
   }
 
+/*
+ * RPCs
+*/
+    rpc rpc_clear_qos_pfc {
+        description "RPC for clearing interface PFC watchdog counters.";
+
+        input {
+            leaf interface-param {
+                type string;
+                    description
+                        "parameter for clearing counters - all or interface type(Ethernet/PortChannel) or interface name";
+                }
+        }
+        output {
+            leaf status {
+                type int32;
+                description
+                    "The status of the operation execution request.";
+            }
+            leaf status-detail {
+                type string;
+                description
+                    "The detailed status of the operation execution request.";
+            }
+        }
+    }
+
   container sonic-qos-pfc {
 
     container FLEX_COUNTER_TABLE {
@@ -97,7 +124,7 @@ module sonic-qos-pfc {
             range 100..3000;
           }
           description
-            "Priority-based Flow Control global watchdog polling 
+            "Priority-based Flow Control global watchdog polling
              interval.";
         }
       }
