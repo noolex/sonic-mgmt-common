@@ -357,8 +357,8 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 	// We only need to traverse nested subtrees here
 	if len(spec.xfmrFunc) == 0 {
 		xpathKeyExtRet, cerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-		curKey := xpathKeyExtRet.dbKey
-		curTbl := xpathKeyExtRet.tableName
+		curKey = xpathKeyExtRet.dbKey
+		curTbl = xpathKeyExtRet.tableName
 		if cerr != nil {
 			log.Warningf("Received xpathKeyExtract error for uri: %v : err %v", xlateParams.uri, cerr)
 			switch e := err.(type) {
