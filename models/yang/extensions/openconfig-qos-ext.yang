@@ -36,13 +36,13 @@ module openconfig-qos-ext {
             description
                "Type of traffic (Unicast/Multicast/Anycast) to be queued";
         }
-            
+
         leaf dropped-octets {
             type oc-yang:counter64;
             description
                 "Number of octets dropped by the queue due to overrun";
         }
-    
+
         leaf watermark {
             type oc-yang:counter64;
             description
@@ -110,12 +110,12 @@ module openconfig-qos-ext {
 
     grouping qos-ext-interface-priority-group-config {
         description
-            "Configuration data for the priority group associated with the 
+            "Configuration data for the priority group associated with the
             interface";
-    
+
         leaf name {
             type string;
-            description 
+            description
                 "Name of the priority group";
         }
     }
@@ -173,7 +173,7 @@ module openconfig-qos-ext {
                 "occupancy watermark in shared buffer in percentage since system up";
         }
     }
-    
+
     grouping qos-ext-interface-priority-group-top {
         description
         "Top-level grouping for the priority group associated with the
@@ -323,10 +323,10 @@ module openconfig-qos-ext {
                     type boolean;
                     default false;
                     description
-                        "Set to True Enables the asymmetric PFC on interface and 
+                        "Set to True Enables the asymmetric PFC on interface and
                         set to false disables Asymmetric behaviour. When asymmetric
-                        PFC enabled interface should handle all incoming pause frames on all priorities, 
-                            not just on PFC enabled priorities."; 
+                        PFC enabled interface should handle all incoming pause frames on all priorities,
+                            not just on PFC enabled priorities.";
                 }
             }
 
@@ -339,10 +339,10 @@ module openconfig-qos-ext {
                     type boolean;
                     default false;
                     description
-                        "Set to True Enables the asymmetric PFC on interface and 
+                        "Set to True Enables the asymmetric PFC on interface and
                         set to false disables Asymmetric behaviour. When asymmetric
-                        PFC enabled interface should handle all incoming pause frames on all priorities, 
-                            not just on PFC enabled priorities."; 
+                        PFC enabled interface should handle all incoming pause frames on all priorities,
+                            not just on PFC enabled priorities.";
                 }
             }
             uses qos-ext-pfc-priorities-top;
@@ -352,27 +352,27 @@ module openconfig-qos-ext {
     }
 
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input {
-        description 
+        description
             "Priority groups at interface input";
         uses qos-ext-interface-priority-group-top;
     }
-        
+
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface{
-        description 
+        description
             "IEEE Std 802.3 Priority-based PAUSE frame
              based flow control at interface";
         uses qos-ext-interface-pfc-top;
     }
-    
+
     augment /oc-qos:qos {
-      description 
+      description
         "Priority-based Flow Control watchdog";
 
       uses oc-qos-pfc:qos-pfc-watchdog-top;
     }
 
     grouping qos-ext-threshold-breach-top {
-        description 
+        description
             "Top-level grouping for QoS threshold breach information";
 
         container threshold-breaches {
@@ -416,7 +416,7 @@ module openconfig-qos-ext {
                         description
                             "For Queue breach, the type of queue: unicast or multicast;
                         for Priority Group breach, the shared buffer or headroom buffer";
-                    } 
+                    }
 
                     leaf port {
                         type string;
@@ -453,7 +453,7 @@ module openconfig-qos-ext {
     }
 
     augment /oc-qos:qos {
-        description 
+        description
             "Qos extensions containers";
         uses qos-ext-threshold-breach-top;
         uses qos-ext-wred-profile-top;
@@ -461,25 +461,25 @@ module openconfig-qos-ext {
 
 
     augment /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config {
-        description 
+        description
             "Scheduler policy configs";
         leaf weight {
             type uint8 {
                 range "1..100";
             }
-            description 
+            description
                 "DWRR weight";
         }
     }
 
     augment /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:state {
-        description 
+        description
             "Scheduler policy configs state";
         leaf weight {
             type uint8 {
                 range "1..100";
             }
-            description 
+            description
                 "DWRR weight";
         }
     }
@@ -511,13 +511,13 @@ module openconfig-qos-ext {
                 }
                 enum DWRR {
                     description
-                        "This scheduler term is considered as a deficit weighted 
+                        "This scheduler term is considered as a deficit weighted
                         round robin term - such that packets that arrive in the queue are
                         serviced based on deficit counter with weighted round robin fashion.";
                 }
                 enum WRR {
                     description
-                        "This scheduler term is considered as a deficit weighted 
+                        "This scheduler term is considered as a deficit weighted
                         round robin term - such that packets that arrive in the queue are
                         serviced based on weighted round robin fashion.";
                 }
@@ -536,13 +536,13 @@ module openconfig-qos-ext {
                 }
                 enum DWRR {
                     description
-                        "This scheduler term is considered as a deficit weighted 
+                        "This scheduler term is considered as a deficit weighted
                         round robin term - such that packets that arrive in the queue are
                         serviced based on deficit counter with weighted round robin fashion.";
                 }
                 enum WRR {
                     description
-                        "This scheduler term is considered as a deficit weighted 
+                        "This scheduler term is considered as a deficit weighted
                         round robin term - such that packets that arrive in the queue are
                         serviced based on weighted round robin fashion.";
                 }
@@ -754,7 +754,7 @@ module openconfig-qos-ext {
 
             list wred-profile {
                 key "name";
-               
+
                 description
                     "List of WRED profiles";
                 leaf name {
@@ -764,7 +764,7 @@ module openconfig-qos-ext {
                   description
                     "Reference to the name of the WRED profile";
                 }
-                
+
                 container config {
                   description
                     "Configuration parameters relating to a WRED profile.";
