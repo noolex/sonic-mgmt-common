@@ -34,8 +34,6 @@ func init() {
     XlateFuncBind("YangToDb_ip_helper_ports_xfmr", YangToDb_ip_helper_ports_xfmr)
     XlateFuncBind("DbToYang_ip_helper_ports_xfmr", DbToYang_ip_helper_ports_xfmr)
 
-    XlateFuncBind("DbToYang_ip_helper_default_ports_xfmr", DbToYang_ip_helper_default_ports_xfmr)
-
     XlateFuncBind("rpc_clear_ip_helper", clear_ip_helper)
 
     XlateFuncBind("ip_helper_post_xfmr", ip_helper_post_xfmr)
@@ -80,22 +78,18 @@ var YangToDb_ip_helper_global_key_xfmr = func(inParams XfmrParams) (string, erro
 var YangToDb_ip_helper_interface_counter_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     log.Info("YangToDb_ip_helper_interface_counter_key_xfmr: ", inParams.ygRoot, inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
-    log.Info("YangToDb_intf_tbl_key_xfmr: pathInfo ", pathInfo)
     ifName := pathInfo.Var("name")
     log.Info("YangToDb_intf_tbl_key_xfmr: ifName ", ifName)
     return ifName, nil
 }
 
 var YangToDb_ip_helper_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    log.Info("YangToDb_ip_helper_enable_xfmr: Entered")
     res_map := make(map[string]string)
 
     if inParams.oper == DELETE {
         res_map["admin_mode"] = "disable"
-        /*var delSubDataMap = make(RedisDbMap)
-        delSubDataMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-        //dbDataMap[DELETE][db.ConfigDB][depEntkeyList[0]][depEntkeyList[1]].Field[depEntAttr] = ""
-        delSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"]["Ports"].Field["admin_mode"] = ""
-        inParams.subOpDataMap[DELETE] = &delSubDataMap*/
+        log.Info("YangToDb_ip_helper_enable_xfmr: Exiting ", res_map)
         return res_map, nil
     }
 
@@ -107,6 +101,7 @@ var YangToDb_ip_helper_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
         enStr = "disable"
     }
     res_map["admin_mode"] = enStr
+    log.Info("YangToDb_ip_helper_enable_xfmr: Exiting ", res_map)
 
     return res_map, nil
 }
@@ -114,6 +109,7 @@ var YangToDb_ip_helper_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
 var DbToYang_ip_helper_enable_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     var err error
     result := make(map[string]interface{})
+    log.Info("DbToYang_ip_helper_enable_xfmr: Entered ")
 
     data := (*inParams.dbDataMap)[inParams.curDb]
 
@@ -138,6 +134,7 @@ var DbToYang_ip_helper_enable_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
         }
     } 
 
+    log.Info("DbToYang_ip_helper_enable_xfmr: Exiting ", result)
     return result, err
 }
 
@@ -148,10 +145,9 @@ func getIpHelperRoot (s *ygot.GoStruct) *ocbinds.OpenconfigIpHelper_IpHelper {
 
 var YangToDb_ip_helper_ports_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
-
     var new_list []uint16
     var exclude_list []uint16
-
+    log.Info("YangToDb_ip_helper_ports_xfmr: Entered")
     ipHelperRoot := getIpHelperRoot(inParams.ygRoot)
 
     if ipHelperRoot == nil {
@@ -160,107 +156,78 @@ var YangToDb_ip_helper_ports_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     }
 
     inPorts := ipHelperRoot.Config.Ports
-
-    log.Info("ygot ports", inPorts)
+    log.Info("YangToDb_ip_helper_ports_xfmr: ports in request", inPorts)
 
     ipHelperDBEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"UDP_BROADCAST_FORWARDING"}, db.Key{Comp: []string{"Ports"}})
     if (ipHelperDBEntry.Has("include_ports@")) {
-        log.Info("include_ports present in db")
         dbvalue := strings.Split(ipHelperDBEntry.Field["include_ports@"], ",")
-        log.Info(dbvalue)
+        log.Info("YangToDb_ip_helper_ports_xfmr: include_ports present in db ", dbvalue)
         dbvalueint := make([]uint16, len(dbvalue))
         for i := range dbvalue {
             s, _ := strconv.ParseUint(dbvalue[i], 10, 16)
-            log.Info(s)
             dbvalueint[i] = uint16(s)
         }
-        log.Info(dbvalueint)
         switch inParams.oper {
             case CREATE:
                 fallthrough
             case REPLACE:
                 log.Info("Not supported")
             case UPDATE:
-                log.Info("Update")
-                log.Info(inPorts)
                 new_list = append(dbvalueint,inPorts...)
                 exclude_list = []uint16{}
                 for _, p := range getDefaultPortList() {
-                    //found := false
                     for _, q := range inPorts {
                         if p == q {
-                            //found = true 
-                            exclude_list = append(exclude_list,p)       
+                            exclude_list = append(exclude_list,p)
+                            //any default port in the new list need to be removed from exclude list       
                         }
                     }
-                    /*if !found {
-                        exclude_list = append(exclude_list,p)
-                    }
-                    found = false*/
                 }
-                log.Info(exclude_list)
+                log.Info("Ports to be removed from exclude list ", exclude_list)
                 if len(exclude_list) > 0 {
-
                     s2, _ := json.Marshal(exclude_list)
                     excludeString := strings.Trim(string(s2),"[]")
-
-                    log.Info(excludeString)
-
                     var updSubDataMap = make(RedisDbMap)
                     updSubDataMap[db.ConfigDB] = make(map[string]map[string]db.Value)
                     updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"] = make(map[string]db.Value)
                     updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"]["Ports"] = db.Value{Field: make(map[string]string)}
                     updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"]["Ports"].Field["exclude_default_ports@"] = excludeString
+                    //remove default ports in new list from exclude list
                     inParams.subOpDataMap[DELETE] = &updSubDataMap
                 }
             case DELETE:
-                log.Info("Delete")
                 new_list = inPorts
                 exclude_list = []uint16{}
                 for _, p := range getDefaultPortList() {
-                    //found := false
                     for _, q := range inPorts {
                         if p == q {
-                            //found = true
                             exclude_list = append(exclude_list,p)
+                            //any default port in the delete request need to be added to exclude list
                         }
                     }
-                    /*if !found {
-                        new_list = append(new_list,p)
-                    }*/
-                    //found = false
                 }
-                log.Info(exclude_list)
-
+                log.Info("Ports to be added to exclude list ", exclude_list)
                 s2, _ := json.Marshal(exclude_list)
                 excludeString := strings.Trim(string(s2),"[]")
-
-                log.Info(excludeString)
-
                 var updSubDataMap = make(RedisDbMap)
                 updSubDataMap[db.ConfigDB] = make(map[string]map[string]db.Value)
                 updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"] = make(map[string]db.Value)
                 updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"]["Ports"] = db.Value{Field: make(map[string]string)}
                 updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"]["Ports"].Field["exclude_default_ports@"] = excludeString
+                //add default ports deleted from include_ports to exclude list
                 inParams.subOpDataMap[UPDATE] = &updSubDataMap
         }
-        log.Info(new_list)
     } else {
-        log.Info("include_ports not present in db")
+        log.Info("YangToDb_ip_helper_ports_xfmr: include_ports not present in db ")
         dbvalueint := getDefaultPortList()
-        log.Info(dbvalueint)
         switch inParams.oper {
             case CREATE:
                 fallthrough
             case REPLACE:
                 log.Info("Not supported")
             case UPDATE:
-                log.Info("Update")
-                log.Info(inPorts)
                 new_list = append(dbvalueint,inPorts...)
-                log.Info(new_list)
             case DELETE:
-                log.Info("Delete")
                 defaultList := getDefaultPortList()
                 new_list = []uint16{}
                 exclude_list = []uint16{}
@@ -270,6 +237,7 @@ var YangToDb_ip_helper_ports_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
                         if p == q {
                             found = true
                             exclude_list = append(exclude_list,p)
+                            //add default ports deleted from include_ports to exclude list
                         }
                     }
                     if !found {
@@ -277,11 +245,9 @@ var YangToDb_ip_helper_ports_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
                     }
                     found = false
                 }
-                log.Info(new_list)
-                log.Info(exclude_list)
+                log.Info("Ports to be added to exclude list ", exclude_list)
                 s, _ := json.Marshal(new_list)
                 defaultString := strings.Trim(string(s),"[]")
-
                 s2, _ := json.Marshal(exclude_list)
                 excludeString := strings.Trim(string(s2),"[]")
 
@@ -291,29 +257,23 @@ var YangToDb_ip_helper_ports_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
                 updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"]["Ports"] = db.Value{Field: make(map[string]string)}
                 updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"]["Ports"].Field["include_ports@"] = defaultString
                 updSubDataMap[db.ConfigDB]["UDP_BROADCAST_FORWARDING"]["Ports"].Field["exclude_default_ports@"] = excludeString
+                //add default ports deleted from include_ports to exclude list
                 inParams.subOpDataMap[UPDATE] = &updSubDataMap
         }
     }
-
-    log.Info(new_list)
 
     var newString string
     s, _ := json.Marshal(new_list)
     newString = strings.Trim(string(s),"[]")
     res_map["include_ports@"] = newString
-
-    /*var excludeString string
-    s2, _ := json.Marshal(exclude_list)
-    excludeString = strings.Trim(string(s2),"[]")
-    res_map["exclude_ports@"] = excludeString*/
-
+    log.Info("YangToDb_ip_helper_ports_xfmr: Exiting ", res_map)
     return res_map, nil
 }
 
 var DbToYang_ip_helper_ports_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     var err error
     result := make(map[string]interface{})
-
+    log.Info("DbToYang_ip_helper_enable_xfmr: Entered")
     data := (*inParams.dbDataMap)[inParams.curDb]
 
     tblName := "UDP_BROADCAST_FORWARDING"
@@ -330,23 +290,18 @@ var DbToYang_ip_helper_ports_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) 
     prtInst := pTbl[inParams.key]
     dbports, ok := prtInst.Field["include_ports@"]
     if ok {
-        log.Info("DB ports exist")
-        log.Info(dbports)
-    } 
-    result["ports"] = getDefaultPortList()
+        dbvalue := strings.Split(dbports, ",")
+        dbvalueint := make([]uint16, len(dbvalue))
+        for i := range dbvalue {
+            s, _ := strconv.ParseUint(dbvalue[i], 10, 16)
+            dbvalueint[i] = uint16(s)
+        }
+        result["ports"] = dbvalueint
+    } else {
+        result["ports"] = getDefaultPortList()
+    }
 
-    return result, err
-}
-
-var DbToYang_ip_helper_default_ports_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    var err error
-    result := make(map[string]interface{})
-    //list := make([]interface{}, 2)
-    //list[0] = 23
-    //list[1] = 24
-
-    result["default-enabled-ports"] = getDefaultPortList()
-
+    log.Info("DbToYang_ip_helper_enable_xfmr: Exiting ", result)
     return result, err
 }
 
@@ -354,35 +309,25 @@ var ip_helper_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map
     var err error
     retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
     DEFAULT_UDP_PORTS := getDefaultPortList()
-
     log.Info("ip_helper_post_xfmr called. oper ", inParams.oper)
 
     ipHelperDBEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"UDP_BROADCAST_FORWARDING"}, db.Key{Comp: []string{"Ports"}})
     if (ipHelperDBEntry.Has("include_ports@")) {
         log.Info("ip_helper_post_xfmr include_ports present in db, do nothing")
-        dbvalue := ipHelperDBEntry.Field["include_ports@"]
-        log.Info(dbvalue)
         return retDbDataMap, err
     } else {
         log.Info("ip_helper_post_xfmr include_ports not present in db")
-        //var addPorts string
         var defaultPortString string
         s, _ := json.Marshal(DEFAULT_UDP_PORTS)
         defaultPortString = strings.Trim(string(s),"[]")
-        log.Info("Fill default value ", defaultPortString)
         tbl := retDbDataMap["UDP_BROADCAST_FORWARDING"]
         entry := tbl["Ports"]
-        log.Info(entry, DEFAULT_UDP_PORTS)
         if _, ok := entry.Field["include_ports@"] ; ok {
             log.Info("request has include ports, do nothing")
-            /*if (inParams.oper == UPDATE) {
-                addPorts = entry.Field["include_ports@"] 
-            }*/
         } else {
             log.Info("request does not have ports, add default ports")
             entry.Field["include_ports@"] = defaultPortString
         }
-        //entry.Field["include_ports@"] = defaultPortString + "," + addPorts
     }
 
     return retDbDataMap, err

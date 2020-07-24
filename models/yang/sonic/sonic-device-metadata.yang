@@ -108,7 +108,11 @@ module sonic-device-metadata {
 					}
 					default "native";
 				}
-   
+
+                                leaf default_config_profile {
+                                        type string;
+                                        description "Configuration profile being used as the factory default configuration";
+                                }
 			}
 		}
 	}

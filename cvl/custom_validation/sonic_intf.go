@@ -21,6 +21,7 @@ package custom_validation
 
 import (
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	"fmt"
 	"strings"
 )
 
@@ -167,6 +168,105 @@ func (t *CustomValidation) ValidatePortChannelCreationDeletion(vc *CustValidatio
                        }
                 }
         }
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func (t *CustomValidation) ValidateVlanMember (vc *CustValidationCtxt) CVLErrorInfo {
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	yangNodeVal := vc.YNodeVal
+	yangNodeName := vc.YNodeName
+	redisKey := vc.CurCfg.Key
+	rediskeyList := strings.SplitN(redisKey, "|", 2)
+	tableName := rediskeyList[0]
+	tableKey := rediskeyList[1]
+	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateVlanMember: validating table: %v|%v for node: %v[%v]\n", tableName, tableKey, yangNodeName, yangNodeVal)
+
+	if tableName == "VLAN" && yangNodeName == "members" {
+		if len(vc.CurCfg.Data) > 0 {
+			// On adding or deleting element to leaf-list, always generates UPDATE request
+			// and yangNodeVal may be empty. So to determine the correct element on which
+			// operation is going, we need to query all elements of leaf-list from DB and
+			// compare with leaf-list received in CurCfg.Data.
+			membersInReq := vc.CurCfg.Data["members@"]
+			tblData, _ := vc.RClient.HGetAll(redisKey).Result()
+			membersInDb := tblData["members@"]
+
+			var memberName string
+			// Data in DB is not present, means new element getting added
+			if len(membersInDb) == 0 {
+				memberName = membersInReq
+			} else {
+				elemFromDb := strings.Split(membersInDb, ",")
+				elemFromReq := strings.Split(membersInReq, ",")
+				// Adding interface to leaf-list have entry in request but not in DB
+				// Deleting interface from leaf-list have entry in DB but not in request
+				// So their difference will provide the interface under operation
+				elems := util.GetDifference(elemFromDb, elemFromReq)
+				if len(elems) > 0 {
+					// Only 1 element under operation, so assuming that length is 1
+					memberName = elems[0]
+				}
+			}
+			util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateVlanMember: validating for member: %s\n", memberName)
+
+			if strings.HasPrefix(memberName, "PortChannel") {
+				// Verify whether Portchannel and its members both are applied for switchport
+				pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + memberName + "|*").Result()
+				for _, ky := range pomemberKeys {
+					pomemberName := ky[strings.LastIndex(ky, "|")+1:]
+					if strings.Contains(membersInReq, pomemberName+",") || strings.HasSuffix(membersInReq, pomemberName) {
+						return CVLErrorInfo {
+							ErrCode: CVL_SEMANTIC_ERROR,
+							TableName: tableName,
+							Keys: strings.Split(tableKey, "|"),
+							ConstraintErrMsg: "A vlan interface member cannot be part of portchannel which is already a vlan member",
+							CVLErrDetails: "Config Validation Semantic Error",
+						}
+					}
+				}
+			} else if strings.HasPrefix(memberName, "Ethernet") {
+				// Verify if port is already member of any portchannel
+				pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + memberName).Result()
+				if len(pomemberKeys) > 0 {
+					return CVLErrorInfo {
+						ErrCode: CVL_SEMANTIC_ERROR,
+						TableName: tableName,
+						Keys: strings.Split(tableKey, "|"),
+						ConstraintErrMsg: "A Portchannel member cannot be added as vlan member",
+						CVLErrDetails: "Config Validation Semantic Error",
+					}
+				}
+			}
+			// Check for mirror session
+			return validateDstPortOfMirrorSession(vc, tableName, tableKey, memberName)
+		}
+	} else if tableName == "VLAN_MEMBER" && yangNodeName == "ifname" {
+		return validateDstPortOfMirrorSession(vc, tableName, tableKey, yangNodeVal)
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func validateDstPortOfMirrorSession(vc *CustValidationCtxt, tableName, tableKey, portName string) CVLErrorInfo {
+	predicate := fmt.Sprintf("return (h['dst_port'] ~= nil and h['dst_port'] == '%s')", portName)
+	entries, _ := util.FILTER_ENTRIES_LUASCRIPT.Run(vc.RClient, []string{}, "MIRROR_SESSION|*", "name", predicate, "dst_port").Result()
+	if entries != nil {
+		entriesJson := string(entries.(string))
+		if strings.Contains(entriesJson, portName) {
+			return CVLErrorInfo {
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: tableName,
+				Keys: strings.Split(tableKey, "|"),
+				ConstraintErrMsg: "Port has mirror session config",
+				CVLErrDetails: "Config Validation Semantic Error",
+				ErrAppTag:  "portlist-configured-as-dst-port-in-mirror-session",
+			}
+		}
+	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

@@ -39,6 +39,10 @@ module sonic-port-breakout {
                     }
                 }
 
+                leaf port {
+                    type string;
+                }
+
                 leaf brkout_mode {
                     type enumeration {
                         enum 1x400G { value 1; }

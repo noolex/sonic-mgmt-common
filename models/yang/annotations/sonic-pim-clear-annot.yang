@@ -1,0 +1,16 @@
+module sonic-pim-clear-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/spimclear-annot";
+    prefix "spimclear-annot";
+
+    import sonic-pim-clear { prefix spimclear; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /spimclear:clear-pim {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_clear_pim";
+        }
+    }
+}

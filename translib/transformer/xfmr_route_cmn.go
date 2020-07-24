@@ -13,6 +13,8 @@ import (
     "net"
 )
 
+const sock_addr = "/etc/sonic/frr/bgpd_client_sock"
+
 func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
     var err error
     oper_err := errors.New("Operational error")
