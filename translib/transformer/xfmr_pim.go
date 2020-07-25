@@ -17,6 +17,8 @@ func init () {
     XlateFuncBind("YangToDb_pim_gbl_tbl_key_xfmr", YangToDb_pim_gbl_tbl_key_xfmr)
     XlateFuncBind("DbToYang_pim_intf_tbl_key_xfmr", DbToYang_pim_intf_tbl_key_xfmr)
     XlateFuncBind("YangToDb_pim_intf_tbl_key_xfmr", YangToDb_pim_intf_tbl_key_xfmr)
+    XlateFuncBind("YangToDb_pim_intf_id_fld_xfmr", YangToDb_pim_intf_id_fld_xfmr)
+    XlateFuncBind("DbToYang_pim_intf_id_fld_xfmr", DbToYang_pim_intf_id_fld_xfmr)
     XlateFuncBind("YangToDb_pim_intf_mode_fld_xfmr", YangToDb_pim_intf_mode_fld_xfmr)
     XlateFuncBind("DbToYang_pim_intf_mode_fld_xfmr", DbToYang_pim_intf_mode_fld_xfmr)
     XlateFuncBind("DbToYang_pim_intf_state_xfmr", DbToYang_pim_intf_state_xfmr)
@@ -185,7 +187,25 @@ var YangToDb_pim_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
 
 var DbToYang_pim_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     rmap := make(map[string]interface{})
-    log.Info("DbToYang_pim_intf_tbl_key_xfmr: Key:", inParams.key)
+    log.Info("DbToYang_pim_intf_tbl_key_xfmr: URI:", inParams.uri, " Key:", inParams.key)
+
+    intfKey := strings.Split(inParams.key, "|")
+    if len(intfKey) < 3 {return rmap, nil}
+
+    rmap["interface-id"] = intfKey[2]
+    return rmap, nil
+}
+
+var YangToDb_pim_intf_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    log.Info("YangToDb_pim_intf_id_fld_xfmr : URI:", inParams.uri, " key:", inParams.key)
+    res_map := make(map[string]string)
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_pim_intf_id_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    rmap := make(map[string]interface{})
+    log.Info("DbToYang_pim_intf_id_fld_xfmr: URI:", inParams.uri, " Key:", inParams.key)
 
     intfKey := strings.Split(inParams.key, "|")
     if len(intfKey) < 3 {return rmap, nil}

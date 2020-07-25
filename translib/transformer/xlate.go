@@ -632,24 +632,34 @@ func CallRpcMethod(path string, body []byte, dbs [db.MaxDB]*db.DB) ([]byte, erro
 	var err error
 	var ret []byte
 	var data []reflect.Value
+	var rpcFunc = ""
 
 	// TODO - check module name
-	rpcName := strings.Split(path, ":")
-	if dbXpathData, ok := xDbSpecMap[rpcName[1]]; ok {
-		xfmrLogInfo("RPC callback invoked (%v) \r\n", rpcName)
-		data, err = XlateFuncCall(dbXpathData.rpcFunc, body, dbs)
+	if isSonicYang(path) {
+		rpcName := strings.Split(path, ":")
+		if dbXpathData, ok := xDbSpecMap[rpcName[1]]; ok {
+			rpcFunc = dbXpathData.rpcFunc
+		}
+	} else {
+		if xpathData, ok := xYangSpecMap[path]; ok {
+			rpcFunc = xpathData.rpcFunc
+		}
+	}
+
+	if rpcFunc != "" {
+		xfmrLogInfo("RPC callback invoked (%v) \r\n", rpcFunc)
+		data, err = XlateFuncCall(rpcFunc, body, dbs)
 		if err != nil {
 			return nil, err
 		}
 		ret = data[0].Interface().([]byte)
 		if !data[1].IsNil() {
-            err = data[1].Interface().(error)
-        }
+			err = data[1].Interface().(error)
+		}
 	} else {
 		log.Error("No tsupported RPC", path)
 		err = tlerr.NotSupported("Not supported RPC")
 	}
-
 	return ret, err
 }
 
