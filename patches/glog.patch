@@ -1,13 +1,343 @@
 diff --git a/glog.go b/glog.go
-index 54bd7af..dccc3c7 100644
+index 54bd7af..7267e5e 100644
 --- a/glog.go
 +++ b/glog.go
-@@ -677,7 +677,7 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
+@@ -41,11 +41,18 @@
+ //
+ //	-logtostderr=false
+ //		Logs are written to standard error instead of to files.
++//	-logtostdout=false
++//		Logs are written to standard output instead of to files.
+ //	-alsologtostderr=false
+ //		Logs are written to standard error as well as to files.
++//	-alsologtosyslog=false
++//		Logs are written to syslog as well as to other destinations
+ //	-stderrthreshold=ERROR
+ //		Log events at or above this severity are logged to standard
+ //		error as well as to files.
++//	-syslogthreshold=ERROR
++//		Log events at or above this severity are logged to standard
++//		error as well as to files.
+ //	-log_dir=""
+ //		Log files will be written to this directory instead of the
+ //		default temporary directory.
+@@ -78,6 +85,7 @@ import (
+ 	"fmt"
+ 	"io"
+ 	stdLog "log"
++	syslog "log/syslog"
+ 	"os"
+ 	"path/filepath"
+ 	"runtime"
+@@ -92,7 +100,8 @@ import (
+ // the flag.Value interface. The -stderrthreshold flag is of type severity and
+ // should be modified only through the flag.Value interface. The values match
+ // the corresponding constants in C++.
+-type severity int32 // sync/atomic int32
++type severity int32       // sync/atomic int32
++type syslogSeverity int32 // sync/atomic int32
+ 
+ // These constants identify the log levels in order of increasing severity.
+ // A message written to a high-severity log file is also written to each
+@@ -147,7 +156,7 @@ func (s *severity) Set(value string) error {
+ 		}
+ 		threshold = severity(v)
+ 	}
+-	logging.stderrThreshold.set(threshold)
++	s.set(threshold)
+ 	return nil
+ }
+ 
+@@ -161,6 +170,25 @@ func severityByName(s string) (severity, bool) {
+ 	return 0, false
+ }
+ 
++const (
++	// EmergSyslog corresponds to EMERG_LOG
++	EmergSyslog syslogSeverity = iota
++	// AlertSyslog corresponds to ALERT_LOG
++	AlertSyslog
++	// CritSyslog corresponds to CRIT_LOG
++	CritSyslog
++	// ErrSyslog corresponds to ERR_LOG
++	ErrSyslog
++	// WarningSyslog corresponds to WARNING_LOG
++	WarningSyslog
++	// NoticeSyslog corresponds to NOTICE_LOG
++	NoticeSyslog
++	// InfoSyslog corresponds to INFO_LOG
++	InfoSyslog
++	// DebugSyslog corresponds to DEBUG_LOG
++	DebugSyslog
++)
++
+ // OutputStats tracks the number of output lines and bytes written.
+ type OutputStats struct {
+ 	lines int64
+@@ -402,9 +430,17 @@ func init() {
+ 	flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this threshold go to stderr")
+ 	flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
+ 	flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
++	flag.BoolVar(&logging.toStdout, "logtostdout", false, "log to standard output instead of files")
++	flag.BoolVar(&logging.alsoToSyslog, "alsologtosyslog", false, "log to syslog")
++	flag.Var(&logging.syslogThreshold, "syslogthreshold", "logs at or above this threshold go to syslog")
+ 
+ 	// Default stderrThreshold is ERROR.
+ 	logging.stderrThreshold = errorLog
++	// Default syslogThreshold is ERROR.
++	logging.syslogThreshold = errorLog
++	logging.connectedToSyslog = false
++	// Setup Syslog
++	SetupSysLog()
+ 
+ 	logging.setVState(0, nil, false)
+ 	go logging.flushDaemon()
+@@ -422,9 +458,14 @@ type loggingT struct {
+ 	// compatibility. TODO: does this matter enough to fix? Seems unlikely.
+ 	toStderr     bool // The -logtostderr flag.
+ 	alsoToStderr bool // The -alsologtostderr flag.
++	alsoToSyslog bool // The -alsologtosyslog flag.
++	toStdout     bool // The -tostdout
+ 
+ 	// Level flag. Handled atomically.
+-	stderrThreshold severity // The -stderrthreshold flag.
++	stderrThreshold   severity       // The -stderrthreshold flag.
++	syslogThreshold   severity       // The -syslogthreshold flag.
++	connectedToSyslog bool           // Flag which stores syslog connection status
++	sysLogWriter      *syslog.Writer // Writer to syslog
+ 
+ 	// freeList is a list of byte buffers, maintained under freeListMu.
+ 	freeList *buffer
+@@ -630,7 +671,7 @@ func (buf *buffer) someDigits(i, d int) int {
+ func (l *loggingT) println(s severity, args ...interface{}) {
+ 	buf, file, line := l.header(s, 0)
+ 	fmt.Fprintln(buf, args...)
+-	l.output(s, buf, file, line, false)
++	l.output(s, buf, file, line, false, nil, args...)
+ }
+ 
+ func (l *loggingT) print(s severity, args ...interface{}) {
+@@ -643,7 +684,7 @@ func (l *loggingT) printDepth(s severity, depth int, args ...interface{}) {
+ 	if buf.Bytes()[buf.Len()-1] != '\n' {
+ 		buf.WriteByte('\n')
+ 	}
+-	l.output(s, buf, file, line, false)
++	l.output(s, buf, file, line, false, nil, args...)
+ }
+ 
+ func (l *loggingT) printf(s severity, format string, args ...interface{}) {
+@@ -652,7 +693,7 @@ func (l *loggingT) printf(s severity, format string, args ...interface{}) {
+ 	if buf.Bytes()[buf.Len()-1] != '\n' {
+ 		buf.WriteByte('\n')
+ 	}
+-	l.output(s, buf, file, line, false)
++	l.output(s, buf, file, line, false, format, args...)
+ }
+ 
+ // printWithFileLine behaves like print but uses the provided file and line number.  If
+@@ -664,11 +705,12 @@ func (l *loggingT) printWithFileLine(s severity, file string, line int, alsoToSt
+ 	if buf.Bytes()[buf.Len()-1] != '\n' {
+ 		buf.WriteByte('\n')
+ 	}
+-	l.output(s, buf, file, line, alsoToStderr)
++	l.output(s, buf, file, line, alsoToStderr, nil, args...)
+ }
+ 
+ // output writes the data to the log files and releases the buffer.
+-func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoToStderr bool) {
++func (l *loggingT) output(s severity, buf *buffer, file string,
++	line int, alsoToStderr bool, format interface{}, args ...interface{}) {
+ 	l.mu.Lock()
+ 	if l.traceLocation.isSet() {
+ 		if l.traceLocation.match(file, line) {
+@@ -676,9 +718,10 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
+ 		}
  	}
  	data := buf.Bytes()
- 	if !flag.Parsed() {
+-	if !flag.Parsed() {
 -		os.Stderr.Write([]byte("ERROR: logging before flag.Parse: "))
+-		os.Stderr.Write(data)
++	if !flag.Parsed() || l.toStdout {
 +		//os.Stderr.Write([]byte("ERROR: logging before flag.Parse: "))
- 		os.Stderr.Write(data)
++		//os.Stderr.Write(data)
++		os.Stdout.Write(data)
  	} else if l.toStderr {
  		os.Stderr.Write(data)
+ 	} else {
+@@ -705,6 +748,25 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
+ 			l.file[infoLog].Write(data)
+ 		}
+ 	}
++	if l.alsoToSyslog && s >= l.syslogThreshold.get() {
++		msg := ""
++		if format != nil {
++			msg = fmt.Sprintf(format.(string), args...)
++		} else {
++			msg = fmt.Sprint(args...)
++		}
++		msg = addFileLineToMessage(file, line, msg)
++		switch s {
++		case fatalLog:
++			sendToSyslog(CritSyslog, msg)
++		case errorLog:
++			sendToSyslog(ErrSyslog, msg)
++		case warningLog:
++			sendToSyslog(WarningSyslog, msg)
++		case infoLog:
++			sendToSyslog(InfoSyslog, msg)
++		}
++	}
+ 	if s == fatalLog {
+ 		// If we got here via Exit rather than Fatal, print no stacks.
+ 		if atomic.LoadUint32(&fatalNoStacks) > 0 {
+@@ -716,7 +778,9 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
+ 		// First, make sure we see the trace for the current goroutine on standard error.
+ 		// If -logtostderr has been specified, the loop below will do that anyway
+ 		// as the first stack in the full dump.
+-		if !l.toStderr {
++		if l.toStdout {
++			os.Stdout.Write(stacks(true))
++		} else if !l.toStderr {
+ 			os.Stderr.Write(stacks(false))
+ 		}
+ 		// Write the stack trace for all goroutines to the files.
+@@ -1178,3 +1242,125 @@ func Exitf(format string, args ...interface{}) {
+ 	atomic.StoreUint32(&fatalNoStacks, 1)
+ 	logging.printf(fatalLog, format, args...)
+ }
++
++func addFileLineToMessage(file string, line int, msg string) string {
++	pattern := "%s:%d %s" //file:line msg
++	return fmt.Sprintf(pattern, file, line, msg)
++}
++
++func getLineHeader(depth int) (string, int) {
++	_, file, line, ok := runtime.Caller(3 + depth)
++	if !ok {
++		file = "???"
++		line = 1
++	} else {
++		slash := strings.LastIndex(file, "/")
++		if slash >= 0 {
++			file = file[slash+1:]
++		}
++	}
++	return file, line
++}
++
++// SetupSysLog connects to local rsyslogd
++func SetupSysLog() {
++	// Connect to syslog
++	sysLogL, err := syslog.Dial("", "",
++		syslog.LOG_WARNING|syslog.LOG_DAEMON, "")
++	if err != nil {
++		os.Stderr.WriteString("Unable to connect to syslogD\n")
++	} else {
++		logging.connectedToSyslog = true
++		logging.sysLogWriter = sysLogL
++	}
++}
++
++// IsConnectedToSyslogD returns Syslog connection status
++func IsConnectedToSyslogD() bool {
++	return logging.connectedToSyslog
++}
++
++// sendToSyslog sends a syslog message
++func sendToSyslog(sev syslogSeverity, msg string) {
++	if IsConnectedToSyslogD() {
++		if sev == AlertSyslog {
++			logging.sysLogWriter.Alert(msg)
++		} else if sev == CritSyslog {
++			logging.sysLogWriter.Crit(msg)
++		} else if sev == DebugSyslog {
++			logging.sysLogWriter.Debug(msg)
++		} else if sev == EmergSyslog {
++			logging.sysLogWriter.Emerg(msg)
++		} else if sev == ErrSyslog {
++			logging.sysLogWriter.Err(msg)
++		} else if sev == InfoSyslog {
++			logging.sysLogWriter.Info(msg)
++		} else if sev == NoticeSyslog {
++			logging.sysLogWriter.Notice(msg)
++		} else if sev == WarningSyslog {
++			logging.sysLogWriter.Warning(msg)
++		} else {
++			msg = fmt.Sprintf("Invalid severity: %d, Message: %s\n", sev, msg)
++			os.Stderr.WriteString(msg)
++		}
++	} else {
++		// send it to stdout instead
++		os.Stdout.WriteString(msg)
++		os.Stdout.WriteString("\n")
++	}
++}
++
++// getGlogSevForSyslog returns a GLOG severity
++func getGlogSevForSyslog(sev syslogSeverity) (severity, error) {
++	switch sev {
++	case EmergSyslog, AlertSyslog, CritSyslog, ErrSyslog:
++		return errorLog, nil
++	case WarningSyslog:
++		return warningLog, nil
++	case NoticeSyslog, InfoSyslog, DebugSyslog:
++		return infoLog, nil
++	default:
++		err := errors.New("Invalid Syslog Severity")
++		return -1, err
++	}
++}
++
++// sendLog sends to GLOG/SYSLOG
++func sendLog(sev syslogSeverity, msg string) {
++	glogSev, err := getGlogSevForSyslog(sev)
++	if err == nil {
++		// Decide whether forward to syslog or not
++		// we need to forward only when threshold is not satisfied
++		// because GLOG will anyways forward if threshold satifies
++		if logging.alsoToSyslog && glogSev < logging.syslogThreshold.get() {
++			file, line := getLineHeader(0)
++			msg = addFileLineToMessage(file, line, msg)
++			sendToSyslog(sev, msg)
++		}
++		switch glogSev {
++		case fatalLog:
++			FatalDepth(2, msg)
++		case errorLog:
++			ErrorDepth(2, msg)
++		case warningLog:
++			WarningDepth(2, msg)
++		case infoLog:
++			InfoDepth(2, msg)
++		}
++	} else {
++		msg = fmt.Sprintf("Invalid severity: %d, Message: %s\n", sev, msg)
++		os.Stderr.WriteString(msg)
++	}
++}
++
++// Syslogf sends a message to local syslogD
++func Syslogf(sev syslogSeverity, format string, args ...interface{}) {
++	msg := fmt.Sprintf(format, args...)
++	sendLog(sev, msg)
++}
++
++// Syslog sends a message to local syslogD
++func Syslog(sev syslogSeverity, args ...interface{}) {
++	msg := fmt.Sprint(args...)
++	sendLog(sev, msg)
++}
+diff --git a/glog_defaults.go b/glog_defaults.go
+new file mode 100644
+index 0000000..67968c1
+--- /dev/null
++++ b/glog_defaults.go
+@@ -0,0 +1,7 @@
++// +build glog_defaults
++
++package glog
++
++func init() {
++	logging.alsoToSyslog = true
++}
+

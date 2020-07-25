@@ -1075,6 +1075,18 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
 	     }
 	  }
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_servers@"] = helperAddress
+       log.V(2).Info("entry:", entry)
+       if entry.IsPopulated() {
+          dhcpAddrMap := strings.Split(entry.Field["dhcpv6_servers@"], ",")
+          inputAddrMap := strings.Split(intf.Config.HelperAddress[0], ",")
+          if len(inputAddrMap) == len(dhcpAddrMap) {
+               //This means we are deleting all provisioned addresses, clean up the entry
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = ""
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_max_hop_count"] = ""
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_server_vrf"] = ""
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_vrf_select"] = "disable"
+          }
+       }
       } else {
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_servers@"] = ""
       }
@@ -1098,11 +1110,24 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
 	     }
 	  }
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_servers@"] = helperAddress
+       log.V(2).Info("entry:", entry)
+       if entry.IsPopulated() {
+          dhcpAddrMap := strings.Split(entry.Field["dhcp_servers@"], ",")
+          inputAddrMap := strings.Split(intf.Config.HelperAddress[0], ",")
+          if len(inputAddrMap) == len(dhcpAddrMap) {
+               //This means we are deleting all provisioned addresses, clean up the entry
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_src_intf"] = ""
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_server_vrf"] = ""
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_link_select"] = "disable"
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_vrf_select"] = "disable"
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_max_hop_count"] = ""
+               deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_policy_action"] = ""
+          }
+       }
       } else {
        deleteMap[db.ConfigDB][tblList][ifName].Field["dhcp_servers@"] = ""
       }
    } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "src-intf"){
-       entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
        log.V(2).Info("entry:", entry)
        if entry.IsPopulated() {
           if (entry.Field["dhcp_relay_link_select"]) == "enable" {
