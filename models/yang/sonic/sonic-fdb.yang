@@ -1,6 +1,7 @@
 module sonic-fdb {
     namespace "http://github.com/Azure/sonic-fdb";
     prefix sfdb;
+    yang-version 1.1;
 
     import ietf-yang-types {
         prefix yang;
@@ -8,6 +9,10 @@ module sonic-fdb {
 
     import sonic-port {
         prefix prt;
+    }
+
+    import sonic-portchannel {
+        prefix spc;
     }
 
     organization
@@ -18,6 +23,11 @@ module sonic-fdb {
 
     description
         "SONIC FDB";
+
+    revision 2020-07-15 {
+        description
+            "Adding union for leaf port.";
+    }
 
     revision 2019-11-07 {
         description
@@ -68,12 +78,15 @@ module sonic-fdb {
                         "MAC address for the dynamic or static MAC table entry";
                 }
 
-                leaf port {
-                    type leafref {
-                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                leaf port{
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
                     }
-                    description
-                        "Reference to the base and/or subinterface for the MAC table entry";
                 }
 
                 leaf type {
