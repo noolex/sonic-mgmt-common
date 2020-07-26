@@ -16,10 +16,11 @@ func init() {
 
 var YangToDb_intf_ip_helper_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
+    ifMap := make(map[string]db.Value)
     subIntfmap := make(map[string]map[string]db.Value)
     log.Info("YangToDb_intf_ip_helper_xfmr. Entered" )
 
-    //Validate and get to the Servers object. Start
+    //Validate and get to the Subintf object. Start
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
         log.Info("YangToDb_intf_ip_helper_xfmr: IntfsObj/interface list is empty.")
@@ -54,13 +55,43 @@ var YangToDb_intf_ip_helper_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
     }
 
     if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+        if inParams.oper == DELETE {
+            return nil, nil
+        }
         errStr := "SubInterface[0] node is not set"
         log.Info("YangToDb_intf_ip_helper_xfmr : " + errStr)
         return subIntfmap, errors.New(errStr)
     }
 
     subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+    //Validate and get to the Servers object. End
 
+    //Get correct interface table to be modified. Start
+    intfType, _, ierr := getIntfTypeByName(ifName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        errStr := "Invalid interface type IntfTypeUnset"
+        log.Info("YangToDb_intf_ip_helper_xfmr: " + errStr)
+        return subIntfmap, errors.New(errStr)
+    }
+
+    intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
+    log.Info("YangToDb_intf_ip_helper_xfmr: table name- " + tblName)
+    //Get correct interface table to be modified. End
+
+    //Handle delete when req uri is less specific
+    requestUri, _ := getYangPathFromUri(inParams.requestUri)
+    if !strings.Contains(requestUri, "openconfig-interfaces-ext:ip-helper/servers") {
+        if inParams.oper == DELETE {
+            ifMap[ifName] = db.Value{Field:make(map[string]string)}
+            ifMap[ifName].Field["helper_addresses@"] = ""
+            subIntfmap[tblName] = ifMap
+            log.Info("YangToDb_intf_ip_helper_xfmr : subIntfmap : ", subIntfmap)
+            return subIntfmap, nil
+        }
+    }
+
+    //Validate and get to the Servers object. Start
     if subIntfObj.Ipv4 == nil {
         errStr := "subintf.Ipv4 is not set"
         log.Info("YangToDb_intf_ip_helper_xfmr : " + errStr)
@@ -82,21 +113,9 @@ var YangToDb_intf_ip_helper_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
     serversObj := subIntfObj.Ipv4.IpHelper.Servers
     //Validate and get to the Servers object. End
 
-    //Get correct interface table to be modified. Start
-    intfType, _, ierr := getIntfTypeByName(ifName)
-    if intfType == IntfTypeUnset || ierr != nil {
-        errStr := "Invalid interface type IntfTypeUnset"
-        log.Info("YangToDb_intf_ip_helper_xfmr: " + errStr)
-        return subIntfmap, errors.New(errStr)
-    }
-
-    intTbl := IntfTypeTblMap[intfType]
-    tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
-    log.Info("YangToDb_intf_ip_helper_xfmr: table name- " + tblName)
-    //Get correct interface table to be modified. End
+    
 
     var finalServerListStr string
-    ifMap := make(map[string]db.Value)
     ifEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
     newserverList := ""
 
