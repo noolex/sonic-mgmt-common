@@ -117,18 +117,6 @@ var YangToDb_qos_fwd_group_dot1p_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     map_entry[map_key] = db.Value{Field: make(map[string]string)}
     log.Info("YangToDb_qos_fwd_group_dot1p_xfmr - entry_key : ", map_key)
 
-    if targetUriPath == "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map" ||
-       targetUriPath == "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map" {
-        if inParams.oper == DELETE {
-
-            res_map["TC_TO_DOT1P_MAP"] = map_entry
-            return res_map, err
-        }
-
-        // no op at this level
-        return res_map, err
-    }
-
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") {
@@ -366,7 +354,7 @@ var YangToDb_qos_tc_to_dot1p_map_fld_xfmr FieldXfmrYangToDb = func(inParams Xfmr
 
     map_name := *(intfObj.InterfaceMaps.Config.ForwardingGroupToDot1P)
 
-    if (inParams.oper == DELETE) {
+    if inParams.oper == DELETE {
         res_map["tc_to_dot1p_map"] = ""
         return res_map, err
     }
