@@ -1,5 +1,5 @@
 diff --git a/glog.go b/glog.go
-index 54bd7af..7267e5e 100644
+index 54bd7af..3e696cc 100644
 --- a/glog.go
 +++ b/glog.go
 @@ -41,11 +41,18 @@
@@ -53,22 +53,22 @@ index 54bd7af..7267e5e 100644
  }
  
 +const (
-+	// EmergSyslog corresponds to EMERG_LOG
-+	EmergSyslog syslogSeverity = iota
-+	// AlertSyslog corresponds to ALERT_LOG
-+	AlertSyslog
-+	// CritSyslog corresponds to CRIT_LOG
-+	CritSyslog
-+	// ErrSyslog corresponds to ERR_LOG
-+	ErrSyslog
-+	// WarningSyslog corresponds to WARNING_LOG
-+	WarningSyslog
-+	// NoticeSyslog corresponds to NOTICE_LOG
-+	NoticeSyslog
-+	// InfoSyslog corresponds to INFO_LOG
-+	InfoSyslog
-+	// DebugSyslog corresponds to DEBUG_LOG
-+	DebugSyslog
++	// emergSyslog corresponds to EMERG_LOG
++	emergSyslog syslogSeverity = iota
++	// alertSyslog corresponds to ALERT_LOG
++	alertSyslog
++	// critSyslog corresponds to CRIT_LOG
++	critSyslog
++	// errSyslog corresponds to ERR_LOG
++	errSyslog
++	// warningSyslog corresponds to WARNING_LOG
++	warningSyslog
++	// noticeSyslog corresponds to NOTICE_LOG
++	noticeSyslog
++	// infoSyslog corresponds to INFO_LOG
++	infoSyslog
++	// debugSyslog corresponds to DEBUG_LOG
++	debugSyslog
 +)
 +
  // OutputStats tracks the number of output lines and bytes written.
@@ -178,13 +178,13 @@ index 54bd7af..7267e5e 100644
 +		msg = addFileLineToMessage(file, line, msg)
 +		switch s {
 +		case fatalLog:
-+			sendToSyslog(CritSyslog, msg)
++			sendToSyslog(critSyslog, msg)
 +		case errorLog:
-+			sendToSyslog(ErrSyslog, msg)
++			sendToSyslog(errSyslog, msg)
 +		case warningLog:
-+			sendToSyslog(WarningSyslog, msg)
++			sendToSyslog(warningSyslog, msg)
 +		case infoLog:
-+			sendToSyslog(InfoSyslog, msg)
++			sendToSyslog(infoSyslog, msg)
 +		}
 +	}
  	if s == fatalLog {
@@ -201,7 +201,7 @@ index 54bd7af..7267e5e 100644
  			os.Stderr.Write(stacks(false))
  		}
  		// Write the stack trace for all goroutines to the files.
-@@ -1178,3 +1242,125 @@ func Exitf(format string, args ...interface{}) {
+@@ -1178,3 +1242,56 @@ func Exitf(format string, args ...interface{}) {
  	atomic.StoreUint32(&fatalNoStacks, 1)
  	logging.printf(fatalLog, format, args...)
  }
@@ -211,25 +211,11 @@ index 54bd7af..7267e5e 100644
 +	return fmt.Sprintf(pattern, file, line, msg)
 +}
 +
-+func getLineHeader(depth int) (string, int) {
-+	_, file, line, ok := runtime.Caller(3 + depth)
-+	if !ok {
-+		file = "???"
-+		line = 1
-+	} else {
-+		slash := strings.LastIndex(file, "/")
-+		if slash >= 0 {
-+			file = file[slash+1:]
-+		}
-+	}
-+	return file, line
-+}
-+
 +// SetupSysLog connects to local rsyslogd
 +func SetupSysLog() {
 +	// Connect to syslog
 +	sysLogL, err := syslog.Dial("", "",
-+		syslog.LOG_WARNING|syslog.LOG_LOCAL4, "")
++		syslog.LOG_WARNING|syslog.LOG_USER, "")
 +	if err != nil {
 +		os.Stderr.WriteString("Unable to connect to syslogD\n")
 +	} else {
@@ -246,21 +232,21 @@ index 54bd7af..7267e5e 100644
 +// sendToSyslog sends a syslog message
 +func sendToSyslog(sev syslogSeverity, msg string) {
 +	if IsConnectedToSyslogD() {
-+		if sev == AlertSyslog {
++		if sev == alertSyslog {
 +			logging.sysLogWriter.Alert(msg)
-+		} else if sev == CritSyslog {
++		} else if sev == critSyslog {
 +			logging.sysLogWriter.Crit(msg)
-+		} else if sev == DebugSyslog {
++		} else if sev == debugSyslog {
 +			logging.sysLogWriter.Debug(msg)
-+		} else if sev == EmergSyslog {
++		} else if sev == emergSyslog {
 +			logging.sysLogWriter.Emerg(msg)
-+		} else if sev == ErrSyslog {
++		} else if sev == errSyslog {
 +			logging.sysLogWriter.Err(msg)
-+		} else if sev == InfoSyslog {
++		} else if sev == infoSyslog {
 +			logging.sysLogWriter.Info(msg)
-+		} else if sev == NoticeSyslog {
++		} else if sev == noticeSyslog {
 +			logging.sysLogWriter.Notice(msg)
-+		} else if sev == WarningSyslog {
++		} else if sev == warningSyslog {
 +			logging.sysLogWriter.Warning(msg)
 +		} else {
 +			msg = fmt.Sprintf("Invalid severity: %d, Message: %s\n", sev, msg)
@@ -271,61 +257,6 @@ index 54bd7af..7267e5e 100644
 +		os.Stdout.WriteString(msg)
 +		os.Stdout.WriteString("\n")
 +	}
-+}
-+
-+// getGlogSevForSyslog returns a GLOG severity
-+func getGlogSevForSyslog(sev syslogSeverity) (severity, error) {
-+	switch sev {
-+	case EmergSyslog, AlertSyslog, CritSyslog, ErrSyslog:
-+		return errorLog, nil
-+	case WarningSyslog:
-+		return warningLog, nil
-+	case NoticeSyslog, InfoSyslog, DebugSyslog:
-+		return infoLog, nil
-+	default:
-+		err := errors.New("Invalid Syslog Severity")
-+		return -1, err
-+	}
-+}
-+
-+// sendLog sends to GLOG/SYSLOG
-+func sendLog(sev syslogSeverity, msg string) {
-+	glogSev, err := getGlogSevForSyslog(sev)
-+	if err == nil {
-+		// Decide whether forward to syslog or not
-+		// we need to forward only when threshold is not satisfied
-+		// because GLOG will anyways forward if threshold satifies
-+		if logging.alsoToSyslog && glogSev < logging.syslogThreshold.get() {
-+			file, line := getLineHeader(0)
-+			syslogMsg := addFileLineToMessage(file, line, msg)
-+			sendToSyslog(sev, syslogMsg)
-+		}
-+		switch glogSev {
-+		case fatalLog:
-+			FatalDepth(2, msg)
-+		case errorLog:
-+			ErrorDepth(2, msg)
-+		case warningLog:
-+			WarningDepth(2, msg)
-+		case infoLog:
-+			InfoDepth(2, msg)
-+		}
-+	} else {
-+		msg = fmt.Sprintf("Invalid severity: %d, Message: %s\n", sev, msg)
-+		os.Stderr.WriteString(msg)
-+	}
-+}
-+
-+// Syslogf sends a message to local syslogD
-+func Syslogf(sev syslogSeverity, format string, args ...interface{}) {
-+	msg := fmt.Sprintf(format, args...)
-+	sendLog(sev, msg)
-+}
-+
-+// Syslog sends a message to local syslogD
-+func Syslog(sev syslogSeverity, args ...interface{}) {
-+	msg := fmt.Sprint(args...)
-+	sendLog(sev, msg)
 +}
 diff --git a/glog_defaults.go b/glog_defaults.go
 new file mode 100644
