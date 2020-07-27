@@ -20,7 +20,6 @@ package translib
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
@@ -43,6 +42,8 @@ type CommonApp struct {
 	ygotTarget     *interface{}
 	skipOrdTableChk bool
 	cmnAppTableMap map[int]map[db.DBNum]map[string]map[string]db.Value
+	cmnAppYangDefValMap map[string]map[string]db.Value
+	cmnAppYangAuxMap map[string]map[string]db.Value
 	appOptions
 }
 
@@ -184,7 +185,7 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
     var err error
-    log.Info("translateAction:path =", app.pathInfo.Path, string(app.body))
+    log.Info("translateAction:path =", app.pathInfo.Path, app.body)
     return err
 }
 
@@ -251,6 +252,10 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    // Keep a copy of the ygotRoot and let Transformer use this copy of ygotRoot
 	    origYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
 	    xfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
+
+	    // keep the copy of xfmrYgotRoot to get around the ygot.DeepCopy bug - not able to clone empty map
+	    origXfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
+
             isEmptyPayload  := false
 	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
 	    if err != nil {
@@ -268,7 +273,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    if !tgtObjCastOk {
 		    /*For ygotTarget populated by tranlib, for query on leaf level and list(without instance) level, 
 		      casting to GoStruct fails so use the parent node of ygotTarget to Unmarshall the payload into*/
-		    log.Infof("Use GetParentNode() since casting ygotTarget to GoStruct failed(uri - %v", app.pathInfo.Path)
+		    log.Infof("Use GetParentNode() instead of casting ygotTarget to GoStruct, uri - %v", app.pathInfo.Path)
 		    targetUri := app.pathInfo.Path
 		    parentTargetObj, _, getParentNodeErr := getParentNode(&targetUri, (*app.ygotRoot).(*ocbinds.Device))
 		    if getParentNodeErr != nil {
@@ -301,7 +306,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		    if !strings.HasPrefix(app.pathInfo.Path, "/sonic") {
 			    // if payload is empty, no need to invoke merge-struct
 			    if isEmptyPayload {
-				    if areEqual(xfmrYgotRoot, resYgot.(ygot.GoStruct)) {
+				    if areEqual(xfmrYgotRoot, origXfmrYgotRoot) {
 					    // No data available in xfmrYgotRoot.
 					    resPayload = payload
 					    log.Error("No data available")
@@ -359,9 +364,8 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	log.Info("translateCRUDCommon:path =", app.pathInfo.Path)
 
 	// translate yang to db
-	result, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget, (*app).body, txCache, &app.skipOrdTableChk)
-	fmt.Println(result)
-	log.Info("transformer.XlateToDb() returned", result)
+	result, defValMap, auxMap, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget, (*app).body, txCache, &app.skipOrdTableChk)
+	log.Info("transformer.XlateToDb() returned result DB map - ", result, "\nDefault value Db Map - ", defValMap, "\nAux Db Map - ", auxMap)
 
 
 	if err != nil {
@@ -369,6 +373,8 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 		return keys, err
 	}
 	app.cmnAppTableMap = result
+	app.cmnAppYangDefValMap = defValMap
+	app.cmnAppYangAuxMap = auxMap //used for Replace case
 	if len(result) == 0 {
 		log.Error("XlatetoDB() returned empty map")
 		//Note: Get around for no redis ABNF Schema for set(temporary)
@@ -502,14 +508,30 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 				if len(tblRw.Field) > 1 {
 					delete(tblRw.Field, "NULL")
 				}
-				log.Info("Processing Table row ", tblRw)
 				existingEntry, _ := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
 				switch opcode {
 				case CREATE:
-					if existingEntry.IsPopulated() && !app.deleteMapContains(tblNm, tblKey) {
-						log.Info("Entry already exists hence return.")
-						return tlerr.AlreadyExists("Entry %s already exists", tblKey)
+					if existingEntry.IsPopulated() {
+						log.Info("Create case - Entry ", tblKey, " already exists hence modifying it.")
+						/* Handle leaf-list merge if any leaf-list exists 
+						A leaf-list field in redis has "@" suffix as per swsssdk convention.
+						*/
+						resTblRw := db.Value{Field: map[string]string{}}
+						resTblRw = checkAndProcessLeafList(existingEntry, tblRw, UPDATE, d, tblNm, tblKey)
+						log.Info("Processing Table row ", resTblRw)
+						err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
+						if err != nil {
+							log.Error("CREATE case - d.ModEntry() failure")
+							return err
+						}
 					} else {
+						if tblRwDefaults, defaultOk := app.cmnAppYangDefValMap[tblNm][tblKey]; defaultOk {
+							log.Info("Entry ", tblKey, " doesn't exist so fill defaults - ", tblRwDefaults)
+							for fld, val := range tblRwDefaults.Field {
+								tblRw.Field[fld] = val
+							}
+						}
+						log.Info("Processing Table row ", tblRw)
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
 							log.Error("CREATE case - d.CreateEntry() failure")
@@ -531,7 +553,14 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						}
 					} else {
 						// workaround to patch operation from CLI
-						log.Info("Create(patch) an entry.")
+						log.Info("Create(pathc) an entry.")
+						if tblRwDefaults, defaultOk := app.cmnAppYangDefValMap[tblNm][tblKey]; defaultOk {
+							log.Info("Entry ", tblKey, " doesn't exist so fill defaults - ", tblRwDefaults)
+                                                        for fld, val := range tblRwDefaults.Field {
+                                                                tblRw.Field[fld] = val
+                                                        }
+                                                }
+						log.Info("Processing Table row ", tblRw)
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
 							log.Error("UPDATE case - d.CreateEntry() failure")
@@ -539,12 +568,48 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						}
 					}
 				case REPLACE:
+					if tblRwDefaults, defaultOk := app.cmnAppYangDefValMap[tblNm][tblKey]; defaultOk {
+						log.Info("For entry ", tblKey, ", being replaced, fill defaults - ", tblRwDefaults)
+						for fld, val := range tblRwDefaults.Field {
+							tblRw.Field[fld] = val
+						}
+					}
+					log.Info("Processing Table row ", tblRw)
 					if existingEntry.IsPopulated() {
-						log.Info("Entry already exists hence execute db.SetEntry")
-						err := d.SetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+						log.Info("Entry already exists.")
+						auxRwOk := false
+						auxRw := db.Value{Field: map[string]string{}}
+						auxRw, auxRwOk = app.cmnAppYangAuxMap[tblNm][tblKey]
+						log.Info("Process Aux row ", auxRw)
+						isTlNd := false
+						isTlNd, err = transformer.IsTerminalNode(app.pathInfo.Path)
+						log.Info("transformer.IsTerminalNode() returned - ", isTlNd, " error ", err)
 						if err != nil {
-							log.Error("REPLACE case - d.SetEntry() failure")
 							return err
+						}
+						if isTlNd && isPartialReplace(existingEntry, tblRw, auxRw) {
+							log.Info("Since its partial replace modifying fields - ", tblRw)
+							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+							if err != nil {
+								log.Error("REPLACE case - d.ModEntry() failure")
+								return err
+							}
+							if auxRwOk {
+								if len(auxRw.Field) > 0 {
+									log.Info("Since its partial replace delete aux fields - ", auxRw)
+									err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, auxRw)
+									if err != nil {
+										log.Error("REPLACE case - d.DeleteEntryFields() failure")
+										return err
+									}
+								}
+							}
+						} else {
+							err := d.SetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
+							if err != nil {
+								log.Error("REPLACE case - d.SetEntry() failure")
+								return err
+							}
 						}
 					} else {
 						log.Info("Entry doesn't exist hence create it.")
@@ -661,28 +726,32 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 					log.Info("Finally deleted the parent table row with key = ", tblKey)
 				} else {
 					log.Info("DELETE case - fields/cols to delete hence delete only those fields.")
-					existingEntry, _ := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
-					if !existingEntry.IsPopulated() {
+					existingEntry, exstErr := d.GetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}})
+					if exstErr != nil {
 						log.Info("Table Entry from which the fields are to be deleted does not exist")
+						err = exstErr
 						return err
 					}
 					/* handle leaf-list merge if any leaf-list exists */
 					resTblRw := checkAndProcessLeafList(existingEntry, tblRw, DELETE, d, tblNm, tblKey)
+					log.Info("DELETE case - checkAndProcessLeafList() returned table row ", resTblRw)
 					if len(resTblRw.Field) > 0 {
-						/* add the NULL field if the last field gets deleted */
-						deleteCount := 0
-						for field := range existingEntry.Field {
-							if resTblRw.Has(field) {
-								deleteCount++
+						if !app.deleteEmptyEntry {
+							/* add the NULL field if the last field gets deleted && deleteEmpyEntry is false */
+							deleteCount := 0
+							for field := range existingEntry.Field {
+								if resTblRw.Has(field) {
+									deleteCount++
+								}
 							}
-						}
-						if deleteCount == len(existingEntry.Field) {
-							nullTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
-							log.Info("Last field gets deleted, add NULL field to keep an db entry")
-							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
-							if err != nil {
-								log.Error("UPDATE case - d.ModEntry() failure")
-								return err
+							if deleteCount == len(existingEntry.Field) {
+								nullTblRw := db.Value{Field: map[string]string{"NULL": "NULL"}}
+								log.Info("Last field gets deleted, add NULL field to keep an db entry")
+								err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
+								if err != nil {
+									log.Error("UPDATE case - d.ModEntry() failure")
+									return err
+								}
 							}
 						}
 						/* deleted fields */
@@ -796,14 +865,31 @@ func areEqual(a, b interface{}) bool {
         return reflect.DeepEqual(a, b)
 }
 
-// This function checks whether an entry exists in the db map
-func (app *CommonApp) deleteMapContains(tblNm string, tblKey string) bool {
-        if dbMap, ok := app.cmnAppTableMap[DELETE][db.ConfigDB]; ok {
-                if _, ok := dbMap[tblNm][tblKey] ; ok {
-                        return true
-                }
-         }
-        return false
+func isPartialReplace(exstRw db.Value, replTblRw db.Value, auxRw db.Value) bool {
+	/* if existing entry contains field thats not present in result,
+           default and auxillary map then its a partial replace
+         */
+	partialReplace := false
+	for exstFld := range exstRw.Field {
+		if exstFld == "NULL" {
+			continue
+		}
+		isIncomingFld := false
+		if replTblRw.Has(exstFld) {
+			continue
+		}
+		if auxRw.Has(exstFld) {
+			continue
+		}
+		if !isIncomingFld {
+			log.Info("Entry contains field ", exstFld, " not found in result, default and aux fields hence its partial replace.")
+			partialReplace = true
+			break
+		}
+	}
+	log.Info("returning partialReplace - ", partialReplace)
+	return partialReplace
 }
+
 
 

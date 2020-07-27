@@ -13,10 +13,17 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_fwd_group_dscp_xfmr", YangToDb_qos_fwd_group_dscp_xfmr)
     XlateFuncBind("DbToYang_qos_fwd_group_dscp_xfmr", DbToYang_qos_fwd_group_dscp_xfmr)
+    XlateFuncBind("Subscribe_qos_fwd_group_dscp_xfmr", Subscribe_qos_fwd_group_dscp_xfmr)
     XlateFuncBind("YangToDb_qos_tc_to_dscp_map_fld_xfmr", YangToDb_qos_tc_to_dscp_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_tc_to_dscp_map_fld_xfmr", DbToYang_qos_tc_to_dscp_map_fld_xfmr)
  
 }
+
+var Subscribe_qos_fwd_group_dscp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    map_type := "TC_TO_DSCP_MAP"
+    return Subscribe_qos_map_xfmr(inParams, map_type)
+}
+
 
 
 func qos_fwd_group_dscp_map_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -121,6 +128,7 @@ var YangToDb_qos_fwd_group_dscp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") {
         log.Info("YangToDb: map entry unspecified, stop here")
+        res_map["TC_TO_DSCP_MAP"] = map_entry
         return res_map, err
     }
 
@@ -208,6 +216,10 @@ func fill_fwd_group_dscp_map_info_by_name(inParams XfmrParams, fwdGrpDscpMaps * 
     var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_ForwardingGroupDscpMapEntries_ForwardingGroupDscpMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
+        if k == "NULL" {
+            continue
+        }
+
         if tc != "" && k!= tc {
             continue
         }

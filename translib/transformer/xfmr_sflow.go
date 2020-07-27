@@ -71,6 +71,7 @@ const (
     SAMPLING_SFLOW_INTFS_INTF = "/openconfig-sampling:sampling/sflow/interfaces/interface"
     SAMPLING_SFLOW_INTFS_INTF_CONFIG = "/openconfig-sampling:sampling/sflow/interfaces/interface/config"
     SAMPLING_SFLOW_INTFS_INTF_CONFIG_SAMPL_RATE = "/openconfig-sampling:sampling/sflow/interfaces/interface/config/sampling-rate"
+    SAMPLING_SFLOW_INTFS_INTF_CONFIG_ENABLED = "/openconfig-sampling:sampling/sflow/interfaces/interface/config/enabled"
     SAMPLING_SFLOW_INTFS_INTF_STATE = "/openconfig-sampling:sampling/sflow/interfaces/interface/state"
 
     /* Unsupported Sampling URIs */
@@ -99,8 +100,10 @@ func init() {
     XlateFuncBind("YangToDb_sflow_xfmr", YangToDb_sflow_xfmr)
     XlateFuncBind("DbToYang_sflow_collector_xfmr", DbToYang_sflow_collector_xfmr)
     XlateFuncBind("YangToDb_sflow_collector_xfmr", YangToDb_sflow_collector_xfmr)
+    XlateFuncBind("Subscribe_sflow_collector_xfmr", Subscribe_sflow_collector_xfmr)
     XlateFuncBind("DbToYang_sflow_interface_xfmr", DbToYang_sflow_interface_xfmr)
     XlateFuncBind("YangToDb_sflow_interface_xfmr", YangToDb_sflow_interface_xfmr)
+    XlateFuncBind("Subscribe_sflow_interface_xfmr", Subscribe_sflow_interface_xfmr)
 }
 
 func getSflowRootObject (s *ygot.GoStruct) (*ocbinds.OpenconfigSampling_Sampling) {
@@ -234,6 +237,18 @@ var YangToDb_sflow_collector_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     return res_map, err
 }
 
+var Subscribe_sflow_collector_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    result.dbDataMap = make(RedisDbMap)
+    key := makeColKey(inParams.uri)
+
+    log.Infof("XfmrSubscribe_sflow_collector_xfmr")
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{SFLOW_COL_TBL:{key:{}}}}
+    log.Infof("Returning XfmrSubscribe_sflow_collector_xfmr")
+    return result, err
+}
+
 var DbToYang_sflow_interface_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     pathInfo := NewPathInfo(inParams.uri)
     log.Infof("Received GET for sFlow Interface Template: %s ,path: %s, vars: %v",
@@ -241,6 +256,22 @@ var DbToYang_sflow_interface_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
     log.Info("inParams.Uri:",inParams.requestUri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     return getSflowIntf(getSflowRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.ApplDB])
+}
+
+var Subscribe_sflow_interface_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    key := NewPathInfo(inParams.uri).Var("name")
+
+    if key == "" {
+        return result, errors.New("No interface key")
+    }
+
+    log.Infof("XfmrSubscribe_sflow_interface_xfmr")
+    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{SFLOW_INTF_TBL:{key:{}}}}
+    log.Infof("Returning XfmrSubscribe_sflow_interface_xfmr")
+    return result, err
 }
 
 var YangToDb_sflow_interface_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
@@ -254,11 +285,12 @@ var YangToDb_sflow_interface_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
     key := NewPathInfo(inParams.uri).Var("name")
-    if key == "" {
-        return res_map, errors.New("Missing interface name")
-    }
 
     if inParams.oper == DELETE {
+        if key == "" {
+            return res_map, errors.New("Interface name required for DELETE operation")
+        }
+        intf_map[key] = db.Value{Field: make(map[string]string)}
         switch (targetUriPath) {
         case SAMPLING_SFLOW_INTFS_INTF_CONFIG_SAMPL_RATE:
             intf_map[key].Field[SFLOW_SAMPL_RATE_KEY] = ""
@@ -269,6 +301,23 @@ var YangToDb_sflow_interface_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
         return res_map, err
     }
 
+    if key == "" {
+        for _, intf := range sflowObj.Sflow.Interfaces.Interface {
+            intf_map[*(intf.Name)] = db.Value{Field: make(map[string]string)}
+            if intf.Config.Enabled != nil {
+                if *(intf.Config.Enabled) {
+                    intf_map[*(intf.Name)].Field[SFLOW_ADMIN_KEY] = "up"
+                } else {
+                    intf_map[*(intf.Name)].Field[SFLOW_ADMIN_KEY] = "down"
+                }
+            }
+            if intf.Config.SamplingRate != nil {
+                intf_map[*(intf.Name)].Field[SFLOW_SAMPL_RATE_KEY] = strconv.FormatUint(uint64(*(intf.Config.SamplingRate)), 10)
+            }
+        }
+        res_map[SFLOW_INTF_TBL] = intf_map
+        return res_map, err
+    }
 
     if intf, found := sflowObj.Sflow.Interfaces.Interface[key]; found {
         intf_map[key] = db.Value{Field: make(map[string]string)}

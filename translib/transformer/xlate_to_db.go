@@ -24,6 +24,7 @@ import (
     "os"
     "reflect"
     "strings"
+    "regexp"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -36,24 +37,30 @@ var ocbSch, _ = ocbinds.Schema()
 
 /* Fill redis-db map with field & value info */
 func dataToDBMapAdd(tableName string, dbKey string, result map[string]map[string]db.Value, field string, value string) {
-    _, ok := result[tableName]
-    if !ok {
-        result[tableName] = make(map[string]db.Value)
-    }
-
-    _, ok = result[tableName][dbKey]
-    if !ok {
-        result[tableName][dbKey] = db.Value{Field: make(map[string]string)}
-    }
-
-	if field == XFMR_NONE_STRING {
-		if len(result[tableName][dbKey].Field) == 0 {
-			result[tableName][dbKey].Field["NULL"] = "NULL"
+	if len(tableName) > 0 {
+		_, ok := result[tableName]
+		if !ok {
+			result[tableName] = make(map[string]db.Value)
 		}
-		return
-	}
 
-    result[tableName][dbKey].Field[field] = value
+		if len(dbKey) > 0 {
+			_, ok = result[tableName][dbKey]
+			if !ok {
+				result[tableName][dbKey] = db.Value{Field: make(map[string]string)}
+			}
+
+			if field == XFMR_NONE_STRING {
+				if len(result[tableName][dbKey].Field) == 0 {
+					result[tableName][dbKey].Field["NULL"] = "NULL"
+				}
+				return
+			}
+
+			if len(field) > 0 {
+				result[tableName][dbKey].Field[field] = value
+			}
+		}
+	}
 }
 
 /*use when single table name is expected*/
@@ -114,27 +121,28 @@ func mapFillData(xlateParams xlateToParams) error {
 		    log.Warningf("No table name found for uri (\"%v\")", xlateParams.uri)
 		    return err
 	    }
-	    // tblXpathMap used for default value processing for a given request
-	    if tblUriMapVal, tblUriMapOk := xlateParams.tblXpathMap[tableName]; !tblUriMapOk {
-		    tblUriMapVal = map[string]bool{xlateParams.uri: true}
-		    xlateParams.tblXpathMap[tableName] = tblUriMapVal
-	    } else {
-		    if tblUriMapVal == nil {
-			    tblUriMapVal = map[string]bool{xlateParams.uri: true}
-		    } else {
-			    tblUriMapVal[xlateParams.uri] = true
-		    }
-		    xlateParams.tblXpathMap[tableName] = tblUriMapVal
-	    }
     } else {
 	    tableName = *xpathInfo.tableName
     }
 
-	curXlateParams := xlateParams
-	curXlateParams.tableName = tableName
-	curXlateParams.xpath = xpath
-	err = mapFillDataUtil(curXlateParams)
-	return err
+    // tblXpathMap used for default value processing for a given request
+    if tblUriMapVal, tblUriMapOk := xlateParams.tblXpathMap[tableName]; !tblUriMapOk {
+	    tblUriMapVal = map[string]bool{xlateParams.uri: true}
+	    xlateParams.tblXpathMap[tableName] = tblUriMapVal
+    } else {
+	    if tblUriMapVal == nil {
+		    tblUriMapVal = map[string]bool{xlateParams.uri: true}
+	    } else {
+		    tblUriMapVal[xlateParams.uri] = true
+	    }
+	    xlateParams.tblXpathMap[tableName] = tblUriMapVal
+    }
+
+    curXlateParams := xlateParams
+    curXlateParams.tableName = tableName
+    curXlateParams.xpath = xpath
+    err = mapFillDataUtil(curXlateParams)
+    return err
 }
 
 func mapFillDataUtil(xlateParams xlateToParams) error {
@@ -355,11 +363,11 @@ func directDbMapData(uri string, tableName string, jsonData interface{}, result 
 }
 
 /* Get the data from incoming update/replace request, create map and fill with dbValue(ie. field:value to write into redis-db */
-func dbMapUpdate(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, jsonData interface{}, result map[int]map[db.DBNum]map[string]map[string]db.Value, txCache interface{}) error {
+func dbMapUpdate(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, jsonData interface{}, result map[int]map[db.DBNum]map[string]map[string]db.Value, yangDefValMap map[string]map[string]db.Value, yangAuxValMap map[string]map[string]db.Value, txCache interface{}) error {
     xfmrLogInfo("Update/replace req: path(\"%v\").", path)
-    err := dbMapCreate(d, ygRoot, oper, path, requestUri, jsonData, result, txCache)
+    err := dbMapCreate(d, ygRoot, oper, path, requestUri, jsonData, result, yangDefValMap, yangAuxValMap, txCache)
     xfmrLogInfo("Update/replace req: path(\"%v\") result(\"%v\").", path, result)
-    printDbData(result, "/tmp/yangToDbDataUpRe.txt")
+    printDbData(result, nil, "/tmp/yangToDbDataUpRe.txt")
     return err
 }
 
@@ -384,6 +392,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 						xfmrLogInfoAll("Skip default filling since a subtree Xfmr found for path - %v", childXpath)
 						continue
 					}
+
 					if childNode.yangDataType == YANG_LIST || childNode.yangDataType == YANG_CONTAINER {
 						var tblList []string
 						tblList = append(tblList, childXpath)
@@ -405,45 +414,63 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 							}
 						}
 						_, ok := tblData[dbKey].Field[childName]
-						if !ok && len(childNode.defVal) > 0  && len(childNode.fieldName) > 0 {
-							xfmrLogInfoAll("Update(\"%v\") default: tbl[\"%v\"]key[\"%v\"]fld[\"%v\"] = val(\"%v\").",
-							childXpath, tblName, dbKey, childNode.fieldName, childNode.defVal)
+						if !ok {
 							if len(childNode.xfmrField) > 0 {
 								childYangType := childNode.yangEntry.Type.Kind
-								_, defValPtr, err := DbToYangType(childYangType, childXpath, childNode.defVal)
-								if err == nil && defValPtr != nil {
-									inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, childXpath, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, defValPtr, xlateParams.txCache)
-									retData, err := leafXfmrHandler(inParams, childNode.xfmrField)
-									if err != nil {
-										return err
+								var param interface{}
+								oper := xlateParams.oper
+								if len(childNode.defVal) > 0 {
+									xfmrLogInfoAll("Update(\"%v\") default: tbl[\"%v\"]key[\"%v\"]fld[\"%v\"] = val(\"%v\").",
+									childXpath, tblName, dbKey, childNode.fieldName, childNode.defVal)
+									_, defValPtr, err := DbToYangType(childYangType, childXpath, childNode.defVal)
+									if err == nil && defValPtr != nil {
+										param = defValPtr
+									} else {
+										xfmrLogInfoAll("Failed to update(\"%v\") default: tbl[\"%v\"]key[\"%v\"]fld[\"%v\"] = val(\"%v\").",
+										childXpath, tblName, dbKey, childNode.fieldName, childNode.defVal)
 									}
-									if retData != nil {
-										xfmrLogInfoAll("Transformer function : %v Xpath: %v retData: %v", childNode.xfmrField, childXpath, retData)
-										for f, v := range retData {
-											// Fill default value only if value is not available in result Map
-											// else we overwrite the value filled in resultMap with default value
-											_, ok := xlateParams.result[tblName][dbKey].Field[f]
-											if !ok {
-												dataToDBMapAdd(tblName, dbKey, xlateParams.result, f, v)
+								} else {
+									if xlateParams.oper != REPLACE {
+										continue
+									}
+									oper = DELETE
+								}
+								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, tblUri+"/"+childName, xlateParams.requestUri, oper, "", nil, xlateParams.subOpDataMap, param, xlateParams.txCache)
+								retData, err := leafXfmrHandler(inParams, childNode.xfmrField)
+								if err != nil {
+									log.Errorf("Default/AuxMap Value filling. Received error %v from %v", err, childNode.xfmrField)
+								}
+								if retData != nil {
+									xfmrLogInfoAll("Transformer function : %v Xpath: %v retData: %v", childNode.xfmrField, childXpath, retData)
+									for f, v := range retData {
+										// Fill default value only if value is not available in result Map
+										// else we overwrite the value filled in resultMap with default value
+										_, ok := xlateParams.result[tblName][dbKey].Field[f]
+										if !ok {
+											if len(childNode.defVal) > 0 {
+												dataToDBMapAdd(tblName, dbKey, xlateParams.yangDefValMap, f, v)
+											} else {
+												// Fill the yangAuxValMap with all fields that are not in either resultMap or defaultValue Map
+												dataToDBMapAdd(tblName, dbKey, xlateParams.yangAuxValMap, f, "")
 											}
 										}
 									}
-
-								} else {
-									xfmrLogInfoAll("Failed to update(\"%v\") default: tbl[\"%v\"]key[\"%v\"]fld[\"%v\"] = val(\"%v\").",
-									childXpath, tblName, dbKey, childNode.fieldName, childNode.defVal)
 								}
-							} else {
+							} else if len(childNode.fieldName) > 0 {
 								var xfmrErr error
 								if _, ok := xDbSpecMap[tblName+"/"+childNode.fieldName]; ok {
 									// Fill default value only if value is not available in result Map
 									// else we overwrite the value filled in resultMap with default value
 									_, ok = xlateParams.result[tblName][dbKey].Field[childNode.fieldName]
 									if !ok {
-										curXlateParams := formXlateToDbParam(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, childXpath, dbKey, xlateParams.jsonData, xlateParams.resultMap, xlateParams.result, xlateParams.txCache, xlateParams.tblXpathMap, xlateParams.subOpDataMap, xlateParams.pCascadeDelTbl, &xfmrErr, childName, childNode.defVal, tblName)
-										err := mapFillDataUtil(curXlateParams)
-										if err != nil {
-											return err
+										if len(childNode.defVal) > 0 {
+											curXlateParams := formXlateToDbParam(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, childXpath, dbKey, xlateParams.jsonData, xlateParams.resultMap, xlateParams.yangDefValMap, xlateParams.txCache, xlateParams.tblXpathMap, xlateParams.subOpDataMap, xlateParams.pCascadeDelTbl, &xfmrErr, childName, childNode.defVal, tblName)
+											err := mapFillDataUtil(curXlateParams)
+											if err != nil {
+												log.Errorf("Default/AuxMap Value filling. Received error %v from %v", err, childNode.fieldName)
+											}
+										} else {
+											dataToDBMapAdd(tblName, dbKey, xlateParams.yangAuxValMap, childNode.fieldName, "")
 										}
 									}
 								}
@@ -478,15 +505,30 @@ func dbMapDefaultValFill(xlateParams xlateToParams) error {
 	return nil
 }
 
+
 /* Get the data from incoming create request, create map and fill with dbValue(ie. field:value to write into redis-db */
-func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, jsonData interface{}, resultMap map[int]RedisDbMap, txCache interface{}) error {
-	var err error
-	tblXpathMap := make(map[string]map[string]bool)
-	var result = make(map[string]map[string]db.Value)
+func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, jsonData interface{}, resultMap map[int]RedisDbMap, yangDefValMap map[string]map[string]db.Value, yangAuxValMap map[string]map[string]db.Value, txCache interface{}) error {
+	var err, xfmrErr error
+    var cascadeDelTbl []string
+	var result        = make(map[string]map[string]db.Value)
+	tblXpathMap  := make(map[string]map[string]bool)
 	subOpDataMap := make(map[int]*RedisDbMap)
-        var cascadeDelTbl []string
-	root := xpathRootNameGet(uri)
-	var xfmrErr error
+	root         := xpathRootNameGet(uri)
+
+	/* Check if the parent table exists for RFC compliance */
+	var exists bool
+	var dbs [db.MaxDB]*db.DB
+	subOpMapDiscard := make(map[int]*RedisDbMap)
+	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache, subOpMapDiscard)
+	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
+	if err != nil {
+		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
+		return err
+	}
+	if !exists {
+		errStr := fmt.Sprintf("Parent table does not exist for uri(%v)", uri)
+		return tlerr.NotFoundError{Format: errStr}
+	}
 
 	xlateToData := formXlateToDbParam(d, ygRoot, oper, root, uri, "", "", jsonData, resultMap, result, txCache, tblXpathMap, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
 
@@ -495,8 +537,32 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 
 	if isSonicYang(uri) {
 		err = sonicYangReqToDbMapCreate(xlateToData)
-		resultMap[oper] = make(RedisDbMap)
-		resultMap[oper][db.ConfigDB] = result
+		xpathPrefix, keyName, tableName := sonicXpathKeyExtract(uri)
+		xfmrLogInfoAll("xpath - %v, keyName - %v, tableName - %v , for uri - %v", xpathPrefix, keyName, tableName, uri)
+		fldPth := strings.Split(xpathPrefix, "/")
+		if len(fldPth) > SONIC_FIELD_INDEX {
+			fldNm := fldPth[SONIC_FIELD_INDEX]
+			xfmrLogInfoAll("Field Name : %v", fldNm)
+			if fldNm != "" {
+				_, ok := xDbSpecMap[tableName]
+				if ok {
+					dbSpecField := tableName + "/" + fldNm
+					_, dbFldok := xDbSpecMap[dbSpecField]
+					if dbFldok {
+						/* RFC compliance - REPLACE on leaf/leaf-list becomes UPDATE/merge */
+						resultMap[UPDATE] = make(RedisDbMap)
+						resultMap[UPDATE][db.ConfigDB] = result
+					} else {
+						log.Errorf("For uri - %v, no entry found in xDbSpecMap for table(%v)/field(%v)", uri, tableName, fldNm)
+					}
+				} else {
+					log.Errorf("For uri - %v, no entry found in xDbSpecMap with tableName - %v", uri, tableName)
+				}
+			}
+		} else {
+			resultMap[oper] = make(RedisDbMap)
+			resultMap[oper][db.ConfigDB] = result
+		}
 	} else {
 		/* Invoke pre-xfmr is present for the yang module */
 		if modSpecInfo, specOk := xYangSpecMap[moduleNm]; specOk && (len(modSpecInfo.xfmrPre) > 0) {
@@ -523,10 +589,12 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		if !isSonicYang(uri) {
 			xpath, _ := XfmrRemoveXPATHPredicates(uri)
 			yangNode, ok := xYangSpecMap[xpath]
-			if ok && yangNode.yangDataType != YANG_LEAF && yangNode.yangDataType != YANG_LEAF_LIST &&
-			   (oper == CREATE || oper == REPLACE) {
+			defSubOpDataMap := make(map[int]*RedisDbMap)
+			if ok && yangNode.yangDataType != YANG_LEAF && yangNode.yangDataType != YANG_LEAF_LIST {
 				xfmrLogInfo("Fill default value for %v, oper(%v)\r\n", uri, oper)
-				curXlateToParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpath, "", jsonData, resultMap, result, txCache, tblXpathMap, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
+				curXlateToParams := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpath, "", jsonData, resultMap, result, txCache, tblXpathMap, defSubOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", "")
+				curXlateToParams.yangDefValMap = yangDefValMap
+				curXlateToParams.yangAuxValMap = yangAuxValMap
 				err = dbMapDefaultValFill(curXlateToParams)
 				if err != nil {
 					return err
@@ -540,11 +608,8 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					resultMap[UPDATE][db.ConfigDB] = result
 					result = make(map[string]map[string]db.Value)
 				} else if yangNode.yangDataType == YANG_LEAF_LIST {
+					/* RFC compliance - REPLACE on leaf-list becomes UPDATE/merge */
 					xfmrLogInfo("Change leaflist oper to UPDATE for %v, oper(%v)\r\n", uri, oper)
-					delMap := make(map[string]map[string]db.Value)
-					resultMap[DELETE] = make(RedisDbMap)
-					tblSchemaCopy(delMap, result)
-					resultMap[DELETE][db.ConfigDB] = delMap
 					resultMap[UPDATE] = make(RedisDbMap)
 					resultMap[UPDATE][db.ConfigDB] = result
 					result = make(map[string]map[string]db.Value)
@@ -608,7 +673,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		    }
                 }
 
-		printDbData(resultMap, "/tmp/yangToDbDataCreate.txt")
+		printDbData(resultMap, yangDefValMap, "/tmp/yangToDbDataCreate.txt")
 	} else {
 		log.Errorf("DBMapCreate req failed for oper (\"%v\") uri(\"%v\") error (\"%v\").", oper, uri, err)
 	}
@@ -830,15 +895,385 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 	return retErr
 }
 
+func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string, dbData RedisDbMap) (bool, error) {
+        var err error
+        pathList := splitUri(uri)
+
+        xpath, dbKey, table := sonicXpathKeyExtract(uri)
+        xfmrLogInfoAll("uri: %v xpath: %v table: %v, key: %v", uri, xpath, table, dbKey)
+
+        if (len(table) > 0) && (len(dbKey) > 0) {
+		tableExists := false
+		var derr error
+		if oper == GET {
+			var cdb db.DBNum = db.ConfigDB
+			dbInfo, ok := xDbSpecMap[table]
+			if !ok {
+				log.Warningf("No entry in xDbSpecMap for xpath %v, for uri - %v", table, uri)
+			} else {
+				cdb =  dbInfo.dbIndex
+			}
+			tableExists = dbTableExistsInDbData(cdb, table, dbKey, dbData)
+			derr = tlerr.NotFoundError{Format:"Resource not found"}
+		} else {
+			// Valid table mapping exists. Read the table entry from DB
+			tableExists, derr = dbTableExists(d, table, dbKey, oper)
+			if derr != nil {
+				log.Errorf("%v", derr)
+				return false, derr
+			}
+		}
+		if len(pathList) == SONIC_LIST_INDEX && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) && !tableExists {
+                        // Uri is at /sonic-module:sonic-module/container-table/list
+                        // PATCH opertion permitted only if table exists in DB.
+                        // POST case since the uri is the parent, the parent needs to exist
+                        // PUT case allow operation(Irrespective of table existence update the DB either through CREATE or REPLACE)
+                        // DELETE case Table instance should be available to perform delete else, CVL may throw error
+                        log.Errorf("Parent table %v with key %v does not exist for oper %v in DB", table, dbKey, oper)
+                        err = tlerr.NotFound("Resource not found")
+                        return false, err
+                } else if len(pathList) > SONIC_LIST_INDEX  && !tableExists {
+                        // Uri is at /sonic-module/container-table/list or /sonic-module/container-table/list/leaf
+                        // Parent table should exist for all CRUD cases
+                        log.Errorf("Parent table %v with key %v does not exist in DB", table, dbKey)
+                        err = tlerr.NotFound("Resource not found")
+                        return false, err
+                } else {
+                        // Allow all other operations
+                        return true, err
+                }
+        } else {
+                // Request is at module level. No need to check for parent table. Hence return true always or 
+                // Request at /sonic-module:sonic-module/container-table level
+                return true, err
+        }
+}
+
+/* This function checks the existence of Parent tables in DB for the given URI request
+   and returns a boolean indicating if the operation is permitted based on the operation type*/
+func verifyParentTable(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}, subOpDataMap map[int]*RedisDbMap) (bool, error) {
+	xfmrLogInfoAll("Checking for Parent table existence for uri: %v", uri)
+        if isSonicYang(uri) {
+                return verifyParentTableSonic(d, dbs, oper, uri, dbData)
+        } else {
+                return verifyParentTableOc(d, dbs, ygRoot, oper, uri, dbData, txCache, subOpDataMap)
+        }
+}
+
+func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string, oper int, dbData RedisDbMap) (bool, error) {
+	var inParams XfmrSubscInParams
+	inParams.uri = uri
+	inParams.dbDataMap = make(RedisDbMap)
+	inParams.dbs = dbs
+	inParams.subscProc = TRANSLATE_SUBSCRIBE
+	parentTblExists := true
+	var err error
+
+	st_result, st_err := xfmrSubscSubtreeHandler(inParams, xfmrFuncNm)
+	if st_result.isVirtualTbl {
+		xfmrLogInfoAll("Subtree returned Virtual table true.")
+		goto Exit
+	}
+	if st_err != nil {
+		log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
+		err = st_err
+		parentTblExists = false
+		goto Exit
+	} else if st_result.dbDataMap != nil && len(st_result.dbDataMap) > 0 {
+		xfmrLogInfoAll("Subtree subcribe dbData %v", st_result.dbDataMap)
+		for dbNo, dbMap := range st_result.dbDataMap {
+			xfmrLogInfoAll("processing Db no - %v", dbNo)
+			for table, keyInstance := range dbMap {
+				xfmrLogInfoAll("processing Db table - %v", table)
+				for dbKey := range keyInstance {
+					xfmrLogInfoAll("processing Db key - %v", dbKey)
+					var d *db.DB
+					exists := false
+					if oper != GET {
+						d, err = db.NewDB(getDBOptions(dbNo))
+						if err != nil {
+							log.Error("Couldn't allocate NewDb/DbOptions for db - %v, while processing uri - %v", dbNo, uri)
+							parentTblExists = false
+							goto Exit
+						}
+					} else {
+						d = dbs[dbNo]
+						if dbKey == "*" { //dbKey is "*" for GET on entire list
+							xfmrLogInfoAll("Found table instance in dbData")
+							goto Exit
+						}
+						// GET case - attempt to find in dbData before doing a dbGet in dbTableExists()
+						exists = dbTableExistsInDbData(dbNo, table, dbKey, dbData)
+						if exists {
+							xfmrLogInfoAll("Found table instance in dbData")
+							goto Exit
+						}
+					}
+					exists, err = dbTableExists(d, table, dbKey, oper)
+					if !exists || err != nil {
+						err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
+						log.Errorf("%v", err)
+						parentTblExists = false
+						goto Exit
+					}
+				}
+			}
+
+		}
+	} else {
+		err = fmt.Errorf("No Table information retrieved from subtree for uri %v", uri)
+		parentTblExists = false
+		goto Exit
+	}
+	Exit:
+	xfmrLogInfoAll("For subtree at uri - %v, returning ,parentTblExists - %v, err - %v", parentTblExists, err)
+	return parentTblExists, err
+}
+
+func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbData RedisDbMap, txCache interface{}, subOpDataMap map[int]*RedisDbMap) (bool, error) {
+	var err error
+	var cdb db.DBNum
+        uriList := splitUri(uri)
+        parentTblExists := true
+        rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
+        curUri := "/"
+        yangType := ""
+	xpath, _ := XfmrRemoveXPATHPredicates(uri)
+	xpathInfo, ok := xYangSpecMap[xpath]
+        if !ok {
+		errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", uri)
+		err = tlerr.InternalError{Format:errStr}
+		log.Errorf("%v", err)
+		return false, err
+	}
+	yangType = yangTypeGet(xpathInfo.yangEntry)
+	if yangType == YANG_LEAF_LIST {
+		/*query is for leaf-list instance, hence remove that from uriList to avoid list-key like processing*/
+		if ((strings.HasSuffix(uriList[len(uriList)-1], "]")) || (strings.HasSuffix(uriList[len(uriList)-1], "]/"))) { //splitUri chops off the leaf-list value having square brackets
+			uriList[len(uriList)-1] = strings.SplitN(uriList[len(uriList)-1], "[", 2)[0]
+			xfmrLogInfoAll("Uri list after removing leaf-list instance portion - %v", uriList)
+		}
+	}
+
+	parentUriList := uriList[:len(uriList)-1]
+	xfmrLogInfoAll("Parent uri list - %v", parentUriList)
+
+	// Loop for the parent uri to check parent table existence
+        for idx, path := range parentUriList {
+		curUri += uriList[idx]
+
+		/* Check for parent table for oc- yang lists*/
+                keyList := rgp.FindAllString(path, -1)
+		if len(keyList) > 0 {
+
+			//Check for subtree existence
+			curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
+			curXpathInfo, ok := xYangSpecMap[curXpath]
+			if !ok {
+				errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", curUri)
+				err = tlerr.InternalError{Format:errStr}
+				parentTblExists = false
+				break
+			}
+			if oper == GET {
+				cdb = curXpathInfo.dbIndex
+				xfmrLogInfoAll("db index for curXpath - %v is %v", curXpath, cdb)
+				d = dbs[cdb]
+			}
+			if curXpathInfo.virtualTbl != nil && *curXpathInfo.virtualTbl {
+				curUri += "/"
+				continue
+			}
+			// Check for subtree case and invoke subscribe xfmr
+			if len(curXpathInfo.xfmrFunc) > 0 {
+				xfmrLogInfoAll("Found subtree for uri - %v", curUri)
+				stParentTblExists := false
+				stParentTblExists, err = verifyParentTblSubtree(dbs, curUri, curXpathInfo.xfmrFunc, oper, dbData)
+				if err != nil {
+					parentTblExists = false
+					break
+				}
+				if !stParentTblExists {
+					err = fmt.Errorf("Parent Table does not exist for uri %v", uri)
+					log.Errorf("%v", err)
+					parentTblExists = false
+					break
+				}
+			} else {
+
+				xfmrLogInfoAll("Check parent table for uri: %v", curUri)
+				// Get Table and Key only for yang list instances
+				_, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache)
+				if xerr != nil {
+					log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
+					err = xerr
+					log.Errorf("err: %v", err)
+					parentTblExists = false
+					break
+				}
+
+				if len(tableName) > 0 && len(dbKey) > 0 {
+					// Check for Table existence
+					xfmrLogInfoAll("DB Entry Check for uri: %v table: %v, key: %v", uri, tableName, dbKey)
+					existsInDbData := false
+					if oper == GET {
+                                                // GET case - attempt to find in dbData before doing a dbGet in dbTableExists()
+                                                existsInDbData = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
+					}
+					// Read the table entry from DB
+					if !existsInDbData {
+						exists, derr := dbTableExists(d, tableName, dbKey, oper)
+						if derr != nil {
+							return false, derr
+						}
+						if !exists {
+							parentTblExists = false
+							log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+							err = tlerr.NotFound("Resource not found")
+							break
+						}
+					}
+				} else {
+					// We always expect a valid table and key to be returned. Else we cannot validate parent check
+					parentTblExists = false
+					log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, curUri)
+					err = tlerr.NotFound("Resource not found")
+					break
+				}
+			}
+		}
+		curUri += "/"
+        }
+        if !parentTblExists {
+                // For all operations Parent Table has to exist
+                return false, err
+        }
+
+        if yangType == YANG_LIST && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) {
+                // For PATCH request the current table instance should exist for the operation to go through
+                // For POST since the target URI is the parent URI, it should exist.
+                // For DELETE we handle the table verification here to avoid any CVL error thrown for delete on non existent table
+		xfmrLogInfoAll("Check last parent table for uri: %v", uri)
+		xpath, xpathErr := XfmrRemoveXPATHPredicates(uri)
+		if xpathErr != nil {
+			log.Errorf("Xpath conversion didn't happen for Uri - %v, due to - %v", uri, xpathErr)
+			return false, xpathErr
+		}
+		xpathInfo, ok := xYangSpecMap[xpath]
+		if !ok {
+			err = fmt.Errorf("xYangSpecMap does not contain xpath - %v", xpath)
+			log.Error("%v", err)
+			return false, err
+		}
+		virtualTbl := false
+		if xpathInfo.virtualTbl != nil {
+			virtualTbl = *xpathInfo.virtualTbl
+		}
+		if virtualTbl {
+			xfmrLogInfoAll("Virtual table at uri - %v", uri)
+			return true, nil
+		}
+		// Check for subtree case and invoke subscribe xfmr
+		if len(xpathInfo.xfmrFunc) > 0 {
+			if !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {//uri points to entire list
+			        xfmrLogInfoAll("subtree , whole list case for uri - %v", uri)
+				return true, nil
+			}
+			xfmrLogInfoAll("Found subtree for uri - %v", uri)
+			parentTblExists, err = verifyParentTblSubtree(dbs, uri, xpathInfo.xfmrFunc, oper, dbData)
+			if err != nil {
+				return false, err
+			}
+			if !parentTblExists {
+				err = fmt.Errorf("Parent Table does not exist for uri %v", uri)
+				log.Errorf("%v", err)
+				return false, err
+			}
+			return true, nil
+		}
+
+		 _, dbKey, tableName, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
+		if xerr == nil && len(tableName) > 0 && len(dbKey) > 0 {
+			// Read the table entry from DB
+			exists := false
+			var derr error
+			if oper == GET {
+				// GET case - find in dbData instead of doing a dbGet in dbTableExists()
+				cdb = xpathInfo.dbIndex
+				xfmrLogInfoAll("db index for xpath - %v is %v", xpath, cdb)
+				exists = dbTableExistsInDbData(cdb, tableName, dbKey, dbData)
+				if !exists {
+					exists, derr = dbTableExists(dbs[cdb], tableName, dbKey, oper)
+					if derr != nil {
+						return false, derr
+					}
+					if !exists {
+						parentTblExists = false
+						log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", tableName, dbKey, uri)
+						err = tlerr.NotFound("Resource not found")
+					}
+				}
+			} else {
+				exists, derr = dbTableExists(d, tableName, dbKey, oper)
+			}
+			if derr != nil {
+				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				return false, derr
+			}
+			if !exists {
+				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				err = tlerr.NotFound("Resource not found")
+				return false, err
+			} else {
+				return true, nil
+			}
+		} else if ((xerr == nil) && !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {//uri points to entire list
+			return true, nil
+		} else {
+			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, tableName, dbKey)
+			return false, xerr
+		}
+        } else if (yangType == YANG_CONTAINER && oper == DELETE && ((xpathInfo.keyName != nil && len(*xpathInfo.keyName) > 0) || len(xpathInfo.xfmrKey) > 0)) {
+		// If the delete is at container level and the container is mapped to a unique table, then check for table existence to avoid CVL throwing error
+		parentUri := ""
+		if len(parentUriList) > 0 {
+			parentUri = strings.Join(parentUriList, "/")
+			parentUri = "/" + parentUri
+		}
+		// Get table for parent xpath
+		parentTable, perr := dbTableFromUriGet(d, ygRoot, oper, parentUri, uri, nil, txCache)
+		// Get table for current xpath
+		_, curKey, curTable, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
+		if len(curTable) > 0 {
+			if perr == nil && cerr == nil && (curTable != parentTable) && len(curKey) > 0 {
+				exists, derr := dbTableExists(d, curTable, curKey, oper)
+				if !exists {
+					return true, derr
+				} else {
+					return true, nil
+				}
+			} else {
+				return true, nil
+			}
+		} else {
+			return true, nil
+		}
+	} else {
+                // PUT at list is allowed to do a create if table does not exist else replace OR
+                // This is a container or leaf at the end of the URI. Parent check already done and hence all operations are allowed
+                return true, err
+        }
+}
+
 /* Debug function to print the map data into file */
-func printDbData(resMap map[int]map[db.DBNum]map[string]map[string]db.Value, fileName string) {
+func printDbData(resMap map[int]map[db.DBNum]map[string]map[string]db.Value, yangDefValMap map[string]map[string]db.Value, fileName string) {
 	fp, err := os.Create(fileName)
 	if err != nil {
 		return
 	}
 	defer fp.Close()
 	for oper, dbRes := range resMap {
-		fmt.Fprintf(fp, "-----------------------------------------------------------------\r\n")
+		fmt.Fprintf(fp, "-------------------------- REQ DATA -----------------------------\r\n")
 		fmt.Fprintf(fp, "Oper Type : %v\r\n", oper)
 		for d, dbMap := range dbRes {
 			fmt.Fprintf(fp, "DB num : %v\r\n", d)
@@ -850,6 +1285,17 @@ func printDbData(resMap map[int]map[db.DBNum]map[string]map[string]db.Value, fil
 						fmt.Fprintf(fp, "    %v :%v\r\n", k, d)
 					}
 				}
+			}
+		}
+	}
+	fmt.Fprintf(fp, "-----------------------------------------------------------------\r\n")
+	fmt.Fprintf(fp, "-------------------------- YANG DEFAULT DATA --------------------\r\n")
+	for k, v := range yangDefValMap {
+		fmt.Fprintf(fp, "table name : %v\r\n", k)
+		for ik, iv := range v {
+			fmt.Fprintf(fp, "  key : %v\r\n", ik)
+			for k, d := range iv.Field {
+				fmt.Fprintf(fp, "    %v :%v\r\n", k, d)
 			}
 		}
 	}

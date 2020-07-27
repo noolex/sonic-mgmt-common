@@ -85,5 +85,7 @@ type xlateToParams struct {
         name string
         value interface{}
         tableName string
+        yangDefValMap map[string]map[string]db.Value
+        yangAuxValMap map[string]map[string]db.Value
 }
 

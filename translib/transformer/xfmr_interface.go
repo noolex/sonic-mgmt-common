@@ -72,6 +72,7 @@ type XfmrSubscOutParams struct {
     needCache bool
     onChange bool
     nOpts *notificationOpts  //these can be set regardless of error 
+    isVirtualTbl bool //used for RFC parent table check, set to true when no Redis Mapping
 }
 
 // XfmrDbParams represents input paraDeters for value-transformer

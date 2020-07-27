@@ -13,10 +13,17 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_fwd_group_dot1p_xfmr", YangToDb_qos_fwd_group_dot1p_xfmr)
     XlateFuncBind("DbToYang_qos_fwd_group_dot1p_xfmr", DbToYang_qos_fwd_group_dot1p_xfmr)
+    XlateFuncBind("Subscribe_qos_fwd_group_dot1p_xfmr", Subscribe_qos_fwd_group_dot1p_xfmr)
     XlateFuncBind("YangToDb_qos_tc_to_dot1p_map_fld_xfmr", YangToDb_qos_tc_to_dot1p_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_tc_to_dot1p_map_fld_xfmr", DbToYang_qos_tc_to_dot1p_map_fld_xfmr)
  
 }
+
+var Subscribe_qos_fwd_group_dot1p_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    map_type := "TC_TO_DOT1P_MAP"
+    return Subscribe_qos_map_xfmr(inParams, map_type)
+}
+
 
 
 func qos_fwd_group_dot1p_map_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -117,10 +124,22 @@ var YangToDb_qos_fwd_group_dot1p_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     map_entry[map_key] = db.Value{Field: make(map[string]string)}
     log.Info("YangToDb_qos_fwd_group_dot1p_xfmr - entry_key : ", map_key)
 
+    if targetUriPath == "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map" ||
+       targetUriPath == "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map" {
+        if inParams.oper == DELETE {
+
+            res_map["TC_TO_DOT1P_MAP"] = map_entry
+            return res_map, err
+        }
+
+        return res_map, err
+    }
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") {
-        log.Info("YangToDb: map entry unspecified, stop here")
+        log.Info("YangToDb: map entry unspecified, return the map")
+
+        res_map["TC_TO_DOT1P_MAP"] = map_entry
         return res_map, err
     }
 
@@ -208,6 +227,10 @@ func fill_fwd_group_dot1p_map_info_by_name(inParams XfmrParams, fwdGrpDot1PMaps 
     var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupDot1PMaps_ForwardingGroupDot1PMap_ForwardingGroupDot1PMapEntries_ForwardingGroupDot1PMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
+        if k == "NULL" {
+            continue
+        }
+
         if tc != "" && k!= tc {
             continue
         }
