@@ -1011,8 +1011,8 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 					}
 					exists, err = dbTableExists(d, table, dbKey, oper)
 					if !exists || err != nil {
-						err = fmt.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
-						log.Errorf("%v", err)
+						log.Warningf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
+						err = tlerr.NotFound("Resource not found")
 						parentTblExists = false
 						goto Exit
 					}
@@ -1021,7 +1021,8 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 
 		}
 	} else {
-		err = fmt.Errorf("No Table information retrieved from subtree for uri %v", uri)
+		log.Warningf("No Table information retrieved from subtree for uri %v", uri)
+		err = tlerr.NotFound("Resource not found")
 		parentTblExists = false
 		goto Exit
 	}
@@ -1094,8 +1095,8 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					break
 				}
 				if !stParentTblExists {
-					err = fmt.Errorf("Parent Table does not exist for uri %v", uri)
-					log.Errorf("%v", err)
+					log.Warningf("Parent Table does not exist for uri %v", uri)
+                                        err = tlerr.NotFound("Resource not found")
 					parentTblExists = false
 					break
 				}
@@ -1107,7 +1108,6 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				if xerr != nil {
 					log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
 					err = xerr
-					log.Errorf("err: %v", err)
 					parentTblExists = false
 					break
 				}
@@ -1189,8 +1189,8 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				return false, err
 			}
 			if !parentTblExists {
-				err = fmt.Errorf("Parent Table does not exist for uri %v", uri)
-				log.Errorf("%v", err)
+				log.Warningf("Parent Table does not exist for uri %v", uri)
+				err = tlerr.NotFound("Resource not found")
 				return false, err
 			}
 			return true, nil
