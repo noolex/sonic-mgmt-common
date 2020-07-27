@@ -1,0 +1,46 @@
+module sonic-auditlog {
+    namespace "http://github.com/Azure/sonic-auditlog";
+    prefix auditshow;
+    yang-version 1.1;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC yang for RPC based show audit log.";
+
+    revision 2020-05-29 {
+        description
+            "Initial revision.";
+    }
+
+    rpc show-auditlog {
+       description "RPC for showing audit log.";
+
+       input {
+           leaf content-type {
+               type string {
+                   pattern "all";
+               }
+               description "Indicates if user wants to display all or subset of audit log";
+           }
+       }
+
+       output {
+           list audit-content {
+               leaf content {
+                   type string;
+                   description "Audit message";
+               }
+           }
+       }
+    }
+
+    rpc clear-auditlog {
+       description "RPC for clearing audit log.";
+    }
+}
+
