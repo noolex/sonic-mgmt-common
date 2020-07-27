@@ -1147,7 +1147,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 							if fldErr == nil {
 								if yangType == YANG_LEAF {
 									xfmrLogInfo("Empty terminal node (\"%v\").", uri)
-									fldErr = tlerr.NotSupportedError{Format:"Resource Not found"}
+									fldErr = tlerr.NotFoundError{Format:"Resource Not found"}
 								} else if ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
 									jsonMapData, _ := json.Marshal(resultMap)
 									jsonData        = fmt.Sprintf("%v", string(jsonMapData))
