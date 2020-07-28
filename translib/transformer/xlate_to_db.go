@@ -386,6 +386,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 		if ok {
 			for childName  := range yangNode.yangEntry.Dir {
 				childXpath := yangXpath + "/" + childName
+				childUri := yangXpath + "/" + childName
 				childNode, ok := xYangSpecMap[childXpath]
 				if ok {
 					if (len(childNode.xfmrFunc) > 0) {
@@ -395,7 +396,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 
 					if childNode.yangDataType == YANG_LIST || childNode.yangDataType == YANG_CONTAINER {
 						var tblList []string
-						tblList = append(tblList, childXpath)
+						tblList = append(tblList, childUri)
 						err := dbMapDefaultFieldValFill(xlateParams, tblList)
 						if err != nil {
 							return err
