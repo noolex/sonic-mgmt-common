@@ -42,8 +42,10 @@ func init () {
 
     XlateFuncBind("YangToDb_qos_get_one_intf_all_q_counters_xfmr", YangToDb_qos_get_one_intf_all_q_counters_xfmr)
     XlateFuncBind("DbToYang_qos_get_one_intf_all_q_counters_xfmr", DbToYang_qos_get_one_intf_all_q_counters_xfmr)
+    XlateFuncBind("Subscribe_qos_get_one_intf_all_q_counters_xfmr", Subscribe_qos_get_one_intf_all_q_counters_xfmr)
     XlateFuncBind("YangToDb_qos_get_one_intf_all_pg_counters_xfmr", YangToDb_qos_get_one_intf_all_pg_counters_xfmr)
     XlateFuncBind("DbToYang_qos_get_one_intf_all_pg_counters_xfmr", DbToYang_qos_get_one_intf_all_pg_counters_xfmr)
+    XlateFuncBind("Subscribe_qos_get_one_intf_all_pg_counters_xfmr", Subscribe_qos_get_one_intf_all_pg_counters_xfmr)
     XlateFuncBind("DbToYang_threshold_breach_counter_field_xfmr", DbToYang_threshold_breach_counter_field_xfmr)
     XlateFuncBind("rpc_clear_qos", rpc_clear_qos)
 
@@ -958,6 +960,31 @@ var DbToYang_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
     return err
 }
 
+var Subscribe_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    log.Info("Subscribe_qos_get_one_intf_all_q_counters_xfmr: ", inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    ifname := pathInfo.Var("interface-id")
+    dbIfName := utils.GetNativeNameFromUIName(&ifname)
+    if_name := *dbIfName
+    log.Info("Subscribe_qos_get_one_intf_all_q_counters_xfmr: ", if_name)
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Infof("Subscribe_qos_get_one_intf_all_q_counters_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
+
+    result.isVirtualTbl = true
+    result.needCache = true
+    result.onChange = false
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, err
+}
 var DbToYang_qos_get_one_intf_one_pg_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
 
@@ -1188,6 +1215,32 @@ var DbToYang_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
     log.Info("DbToYang_qos_get_one_intf_all_pg_counters_xfmr - finished ")
 
     return err
+}
+
+var Subscribe_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    log.Info("Subscribe_qos_get_one_intf_all_pg_counters_xfmr: ", inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    ifname := pathInfo.Var("interface-id")
+    dbIfName := utils.GetNativeNameFromUIName(&ifname)
+    if_name := *dbIfName
+    log.Info("Subscribe_qos_get_one_intf_all_pg_counters_xfmr: ", if_name)
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Infof("Subscribe_qos_get_one_intf_all_pg_counters_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
+
+    result.isVirtualTbl = true
+    result.needCache = true
+    result.onChange = false
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, err
 }
 
 /* RPC for clear counters */
@@ -1555,16 +1608,14 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/oc-qos-ext:pfc/oc-qos-ext:pfc-priorities") {
             tbl_name = "PORT_QOS_MAP"
         } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/oc-qos-ext:pfc") {
-            tbl_name = "PORT"
-        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/input") {
-            tbl_name = "PORT"
-        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/output") {
-            tbl_name = "PORT"
+            tbl_name = "PORT_QOS_MAP"
         } else {
             if strings.HasPrefix(*dbifName, "Eth") {
                 tbl_name = "PORT"
             } else if strings.HasPrefix(*dbifName, "CPU") {
                 tbl_name = "QOS_PORT"
+                *inParams.isVirtualTbl = true
+                log.Info(" TableXfmrFunc - *inParams.isVirtualTbl ", *inParams.isVirtualTbl);
             } else if strings.HasPrefix(*dbifName, "Vlan") {
                 tbl_name = "PORT_QOS_MAP"
             } else if strings.HasPrefix(*dbifName, "PortChannel") {
@@ -1591,6 +1642,7 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         }
     } else {
         tbl_name := "QOS_PORT"
+        *inParams.isVirtualTbl = true
         log.Info("TableXfmrFunc - intf_table_xfmr Intf key is not present, curr DB ", inParams.curDb)
         if(inParams.dbDataMap != nil) {
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {

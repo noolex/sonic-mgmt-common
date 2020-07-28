@@ -32,14 +32,6 @@ var Subscribe_qos_scheduler_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubsc
 
     print ("targetUriPath:", targetUriPath)
 
-    /*
-    if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler")  {
-        log.Info("Subscribe: URI:", targetUriPath)
-        log.Info("Subscribe: scheduler sequence unspecified, stop")
-        return result, err
-    }
-    */
-
     seq := pathInfo.Var("sequence")
     if seq == "" {
         seq = "*"

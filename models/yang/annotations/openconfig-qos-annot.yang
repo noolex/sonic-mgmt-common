@@ -14,7 +14,6 @@ module openconfig-qos-annot {
       deviate add {
           sonic-ext:key-transformer "qos_intf_tbl_key_xfmr";
           sonic-ext:table-transformer "qos_intf_table_xfmr"; 
-          sonic-ext:virtual-table "true";
       }
     }
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:interface-id {
@@ -51,6 +50,7 @@ module openconfig-qos-annot {
       deviate add {
         sonic-ext:subtree-transformer "qos_get_one_intf_all_q_counters_xfmr";
         sonic-ext:db-name "COUNTERS_DB";
+        sonic-ext:virtual-table "true";
       }
     }
 
@@ -65,6 +65,7 @@ module openconfig-qos-annot {
       deviate add {
         sonic-ext:subtree-transformer "qos_get_one_intf_all_pg_counters_xfmr";
         sonic-ext:db-name "COUNTERS_DB";
+        sonic-ext:virtual-table "true";
       }
     }
 
@@ -138,13 +139,13 @@ module openconfig-qos-annot {
 
     deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:config/oc-qos:name {
       deviate add {
-        sonic-ext:field-transformer "qos_queue_key_xfmr";
+        sonic-ext:field-transformer "qos_queue_fld_xfmr";
       }
     }
 
     deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue/oc-qos:state/oc-qos:name {
       deviate add {
-        sonic-ext:field-transformer "qos_queue_key_xfmr";
+        sonic-ext:field-transformer "qos_queue_fld_xfmr";
       }
     }
 
