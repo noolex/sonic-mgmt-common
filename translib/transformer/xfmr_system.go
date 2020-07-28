@@ -36,6 +36,7 @@ func init () {
     XlateFuncBind("DbToYang_server_dns_key_xfmr", DbToYang_server_dns_key_xfmr)
     XlateFuncBind("YangToDb_server_dns_field_xfmr", YangToDb_server_dns_field_xfmr)
     XlateFuncBind("DbToYang_server_dns_field_xfmr", DbToYang_server_dns_field_xfmr)
+    XlateFuncBind("Subscribe_sys_aaa_auth_xfmr", Subscribe_sys_aaa_auth_xfmr)
 }
 
 type SysMem struct {
@@ -429,6 +430,13 @@ var DbToYang_sys_procs_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
     return err;
 }
 
+var Subscribe_sys_aaa_auth_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    result.isVirtualTbl = true
+    return result, err
+}
 
 var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error){
     log.Info("SubtreeXfmrFunc - Uri SYS AUTH: ", inParams.uri);
