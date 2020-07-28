@@ -56,6 +56,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_eth_auto_neg_xfmr", DbToYang_intf_eth_auto_neg_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
     XlateFuncBind("YangToDb_intf_eth_port_config_xfmr", YangToDb_intf_eth_port_config_xfmr)
+    XlateFuncBind("DbToYang_intf_eth_port_config_xfmr", DbToYang_intf_eth_port_config_xfmr)
     XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
     XlateFuncBind("DbToYang_intf_ip_addr_xfmr", DbToYang_intf_ip_addr_xfmr)
     XlateFuncBind("YangToDb_ipv6_enabled_xfmr", YangToDb_ipv6_enabled_xfmr)
@@ -3945,6 +3946,109 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         memMap[intTbl.cfgDb.portTN][ifName] = value
     }
     return memMap, err
+}
+
+// DbToYang_intf_eth_port_config_xfmr is to handle DB to yang translation of port-speed, auto-neg and aggregate-id config.
+var DbToYang_intf_eth_port_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    pathInfo := NewPathInfo(inParams.uri)
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+    log.Infof("DbToYang_intf_eth_port_config_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
+
+    intfType, _, err := getIntfTypeByName(ifName)
+    if err != nil {
+        errStr := "Invalid Interface"
+        err = tlerr.InvalidArgsError{Format: errStr}
+        return err
+    }
+    if IntfTypeVxlan == intfType {
+        return nil
+    }
+    intTbl := IntfTypeTblMap[intfType]
+    tblName := intTbl.cfgDb.portTN
+    entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
+    if (dbErr != nil){
+        errStr := "Invalid Interface"
+        err = tlerr.InvalidArgsError{Format: errStr}
+        return err
+    }
+    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
+        get_cfg_obj := false
+        var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
+        if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
+            var ok bool = false
+            if intfObj, ok = intfsObj.Interface[uriIfName]; !ok {
+                intfObj, _ = intfsObj.NewInterface(uriIfName)
+            }
+            ygot.BuildEmptyTree(intfObj)
+        } else {
+            ygot.BuildEmptyTree(intfsObj)
+            intfObj, _ = intfsObj.NewInterface(uriIfName)
+            ygot.BuildEmptyTree(intfObj)
+        }
+        ygot.BuildEmptyTree(intfObj.Ethernet)
+        ygot.BuildEmptyTree(intfObj.Ethernet.Config)
+
+        if (targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
+            get_cfg_obj = true;
+        }
+        var errStr string
+        if (get_cfg_obj || targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id"){
+            is_id_populated := false
+            intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
+            if intf_lagId != nil {
+                lagPrefix := "PortChannel"
+                if strings.HasPrefix(*intf_lagId, lagPrefix) {
+                    aggrId := strings.TrimPrefix(*intf_lagId, lagPrefix)
+                    intfObj.Ethernet.Config.AggregateId = &aggrId
+                    is_id_populated = true
+                }
+            }
+            if (!is_id_populated) {
+                errStr = "aggregate-id not set"
+            }
+        }
+
+        if (entry.IsPopulated()) {
+            if (get_cfg_obj || targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/auto-negotiate") {
+                autoNeg, ok := entry.Field[PORT_AUTONEG]
+                if ok {
+                    var oc_auto_neg bool
+                    if autoNeg == "true" {
+                        oc_auto_neg = true
+                    } else {
+                        oc_auto_neg = false
+                    }
+                    intfObj.Ethernet.Config.AutoNegotiate = &oc_auto_neg
+                } else {
+                    errStr = "auto-negotiate not set"
+                }
+            }
+            if (get_cfg_obj || targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/port-speed") {
+                speed, ok := entry.Field[PORT_SPEED]
+                portSpeed := ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_UNSET
+                if ok {
+                    portSpeed, err = getDbToYangSpeed(speed)
+                    intfObj.Ethernet.Config.PortSpeed = portSpeed
+                } else {
+                    errStr = "port-speed not set"
+                }
+            }
+        } else {
+            errStr = "Attribute not set"
+        }
+        if (!get_cfg_obj) {
+            err = tlerr.InvalidArgsError{Format: errStr}
+        }
+    }
+
+    return err
 }
 
 // YangToDb_subintf_ipv6_tbl_key_xfmr is a YangToDB Key transformer for IPv6 config.
