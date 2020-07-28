@@ -317,11 +317,6 @@ module openconfig-ospfv2-ext {
       "OSPF external route type 2";
   }
 
-  /*typedef ospf-sequence-number {
-    type int64;
-    description "OSPF sequence number";
-  }*/
-
   typedef ospf-cost-metric {
     type uint32 {
       range "0..16777215";
@@ -1494,7 +1489,7 @@ module openconfig-ospfv2-ext {
     }
 
     leaf display-sequence-number {
-      type uint64;
+      type string;
       description
         "Sequence number in display format";
     }
@@ -2890,6 +2885,28 @@ module openconfig-ospfv2-ext {
     uses ospfv2-ext-lsdb-area-lsa-state;
   }
 
+  /*augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
+          "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+          "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
+          "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa" {
+    description
+      "extra parameters related to ospfv2 areas area lsdb lsa-types lsa-type lsas lsa";
+
+    leaf advertising-router {
+      type leafref {
+        path "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:state/advertising-router";
+      }
+      description
+        "The router-id of the router which advertised this LSA";
+    }
+  }*/
+
+  /*deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+          "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+          "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
+          "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:link-state-id" {
+    deviate not-supported;    
+  }*/
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
             "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
             "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
@@ -2900,15 +2917,6 @@ module openconfig-ospfv2-ext {
     uses ospfv2-ext-lsdb-router-lsa-state;
   }
 
- /* deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
-        "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
-        "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
-        "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:state/oc-netinst:sequence-number" {
-    deviate replace {
-      type ospf-sequence-number;
-    }
-  
-  }*/
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
             "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
             "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
