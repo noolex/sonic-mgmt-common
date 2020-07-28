@@ -64,7 +64,7 @@ var rpc_get_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]
 
     for poolName, oid := range bufferpoolOidMapFields {
 
-	if watermark_type ==  "persistant-watermark" {
+	if watermark_type ==  "persistent-watermark" {
 		err = getBufferPoolPersistentWatermark(dbs[db.CountersDB], oid, watermark_stats_type, &count)
 	} else {
 		err = getBufferPoolUserWatermark(dbs[db.CountersDB], oid, watermark_stats_type, &count)
@@ -116,7 +116,7 @@ var rpc_clear_buffer_pool_wm_stats RpcCallpoint = func(body []byte, dbs [db.MaxD
         watermark_type = value
     }
 
-    if watermark_type == "persistant-watermark" {
+    if watermark_type == "persistent-watermark" {
 	varList[0] = "PERSISTENT"
     } else {
 	varList[0] = "USER"
