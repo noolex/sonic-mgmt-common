@@ -1223,4 +1223,42 @@ module openconfig-system-annot {
       }
     }
 
+
+    deviation /oc-sys:system/oc-sys-ext:swresource/oc-sys-ext:resource {
+	    deviate add {
+		    sonic-ext:table-name "SWITCH_RESOURCE_TABLE";
+	    }
+    }
+
+
+    deviation /oc-sys:system/oc-sys-ext:swresource/oc-sys-ext:resource/oc-sys-ext:config/oc-sys-ext:name {
+	    deviate add {
+		    sonic-ext:field-transformer "swresource_name_fld_xfmr";
+	    }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:swresource/oc-sys-ext:resource/oc-sys-ext:state/oc-sys-ext:name {
+	    deviate add {
+		    sonic-ext:field-transformer "swresource_name_fld_xfmr";
+	    }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:swresource/oc-sys-ext:resource/oc-sys-ext:config/oc-sys-ext:flows {
+	    deviate add {
+		    sonic-ext:field-name "flows";
+	    }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:swresource/oc-sys-ext:resource/oc-sys-ext:state {
+	    deviate add {
+		    sonic-ext:db-name "COUNTERS_DB";
+		    sonic-ext:table-name "SWITCH_RESOURCE_STATE_TABLE";
+	    }
+    }
+
+    deviation /oc-sys:system/oc-sys-ext:swresource/oc-sys-ext:resource/oc-sys-ext:state/oc-sys-ext:flows {
+	    deviate add {
+		    sonic-ext:field-name "flows";
+	    }
+    }
 }
