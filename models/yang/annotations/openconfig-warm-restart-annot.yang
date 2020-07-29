@@ -48,6 +48,18 @@ module openconfig-warm-restart-annot {
     }
   }
 
+  deviation /oc-wmr:warm-restart/oc-wmr:enable/oc-wmr:modules/oc-wmr:config/oc-wmr:module {
+    deviate add {
+      sonic-ext:field-transformer "wmr_module_field_xfmr";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:enable/oc-wmr:modules/oc-wmr:state/oc-wmr:module {
+    deviate add {
+      sonic-ext:field-transformer "wmr_module_field_xfmr";
+    }
+  }
+
   deviation /oc-wmr:warm-restart/oc-wmr:timers {
     deviate add {
       sonic-ext:table-name "WARM_RESTART";
@@ -57,6 +69,24 @@ module openconfig-warm-restart-annot {
   deviation /oc-wmr:warm-restart/oc-wmr:timers/oc-wmr:timer {
     deviate add {
       sonic-ext:key-transformer "wmr_timer_key_xfmr";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:timers/oc-wmr:timer/oc-wmr:config/oc-wmr:submodule {
+    deviate add {
+      sonic-ext:field-transformer "wmr_timer_submodule_field_xfmr";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:timers/oc-wmr:timer/oc-wmr:state/oc-wmr:submodule {
+    deviate add {
+      sonic-ext:field-transformer "wmr_timer_submodule_field_xfmr";
+    }
+  }
+
+  deviation /oc-wmr:warm-restart/oc-wmr:timers/oc-wmr:timer/oc-wmr:state/oc-wmr:value {
+    deviate add {
+      sonic-ext:field-transformer "wmr_timer_value_field_xfmr";
     }
   }
 
