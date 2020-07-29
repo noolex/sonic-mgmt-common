@@ -251,7 +251,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 					chldXpath    := xlateParams.xpath+"/"+yangChldName
 					chldUri      := curUri+"/"+yangChldName
 					chldSpec, ok := xYangSpecMap[chldXpath]
-					if (ok && ((spec.yangEntry != nil) && (!spec.yangEntry.ReadOnly()))) {
+					if (ok && ((chldSpec.yangEntry != nil) && (!chldSpec.yangEntry.ReadOnly()))) {
 						chldYangType := chldSpec.yangDataType
 						curXlateParams := xlateParams
 						curXlateParams.uri = chldUri
@@ -452,7 +452,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 			chldXpath    := xlateParams.xpath+"/"+yangChldName
 			chldUri      := xlateParams.uri+"/"+yangChldName
 			chldSpec, ok := xYangSpecMap[chldXpath]
-			if (ok && (chldSpec.yangEntry != nil)) {
+			if (ok && ((chldSpec.yangEntry != nil) && (!chldSpec.yangEntry.ReadOnly()))) {
 				chldYangType := chldSpec.yangDataType
 				curXlateParams := xlateParams
 				curXlateParams.uri = chldUri
