@@ -994,17 +994,19 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 				xfmrLogInfoAll("processing Db table - %v", table)
 				for dbKey := range keyInstance {
 					xfmrLogInfoAll("processing Db key - %v", dbKey)
-					var d *db.DB
 					exists := false
 					if oper != GET {
-						d, err = db.NewDB(getDBOptions(dbNo))
-						if err != nil {
+						dptr, derr := db.NewDB(getDBOptions(dbNo))
+						if derr != nil {
 							log.Error("Couldn't allocate NewDb/DbOptions for db - %v, while processing uri - %v", dbNo, uri)
+							err = derr
 							parentTblExists = false
 							goto Exit
 						}
+						defer dptr.DeleteDB()
+						exists, err = dbTableExists(dptr, table, dbKey, oper)
 					} else {
-						d = dbs[dbNo]
+						d := dbs[dbNo]
 						if dbKey == "*" { //dbKey is "*" for GET on entire list
 							xfmrLogInfoAll("Found table instance in dbData")
 							goto Exit
@@ -1015,8 +1017,8 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 							xfmrLogInfoAll("Found table instance in dbData")
 							goto Exit
 						}
+						exists, err = dbTableExists(d, table, dbKey, oper)
 					}
-					exists, err = dbTableExists(d, table, dbKey, oper)
 					if !exists || err != nil {
 						log.Warningf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
 						err = tlerr.NotFound("Resource not found")
