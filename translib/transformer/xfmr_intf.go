@@ -3150,6 +3150,64 @@ func getSpecificCounterAttr(targetUriPath string, entry *db.Value, entry_backup 
             return true, e
         }
 
+    case "/openconfig-interfaces:interfaces/interface/state/counters/in-octets-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_IN_OCTETS_PER_SECOND")
+        if e == nil {
+            counter_val.InOctetsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/in-pkts-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_IN_PKTS_PER_SECOND")
+        if e == nil {
+            counter_val.InPktsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/in-bits-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_IN_BITS_PER_SECOND")
+        if e == nil {
+            counter_val.InBitsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/in-utilization":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_IN_UTILIZATION")
+        if e == nil {
+            tmp := uint8(value)
+            counter_val.InUtilization = &tmp
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/out-octets-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_OUT_OCTETS_PER_SECOND")
+        if e == nil {
+            counter_val.OutOctetsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/out-pkts-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_OUT_PKTS_PER_SECOND")
+        if e == nil {
+            counter_val.OutPktsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/out-bits-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_OUT_BITS_PER_SECOND")
+        if e == nil {
+            counter_val.OutBitsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/out-utilization":
+        value, e := getIntfCounterValue(entry, "SAI_PORT_STAT_IF_OUT_UTILIZATION")
+        if e == nil {
+            tmp := uint8(value)
+            counter_val.OutUtilization = &tmp
+        }
+        return true, e
+
     case "/openconfig-interfaces:interfaces/interface/state/counters/out-octets":
         e = getCounters(entry, entry_backup, "SAI_PORT_STAT_IF_OUT_OCTETS", &counter_val.OutOctets)
         return true, e
@@ -3309,6 +3367,20 @@ func getSpecificCounterAttr(targetUriPath string, entry *db.Value, entry_backup 
     return false, nil
 }
 
+func getIntfCounterValue(entry *db.Value, attr string) (float64, error) {
+    var err error
+    var value float64
+    val, ok := entry.Field[attr]
+    if !ok {
+        return value, errors.New("Attr " + attr + " doesn't exist in counters entry Map!")
+    }
+    value, err = strconv.ParseFloat(val, 64)
+    if err != nil {
+        log.Infof("Attr " + attr + " parse failed: " + err.Error())
+    }
+    return value, err
+}
+
 func getCounters(entry *db.Value, entry_backup *db.Value, attr string, counter_val **uint64 ) error {
 
     var ok bool = false
@@ -3335,7 +3407,8 @@ func getCounters(entry *db.Value, entry_backup *db.Value, attr string, counter_v
 var portCntList [] string = []string {"in-octets", "in-unicast-pkts", "in-broadcast-pkts", "in-multicast-pkts",
 "in-errors", "in-discards", "in-pkts", "out-octets", "out-unicast-pkts",
 "out-broadcast-pkts", "out-multicast-pkts", "out-errors", "out-discards",
-"out-pkts","last-clear"}
+"out-pkts", "in-octets-per-second", "in-pkts-per-second", "in-bits-per-second", "in-utilization",
+"out-octets-per-second", "out-pkts-per-second", "out-bits-per-second", "out-utilization", "last-clear"}
 
 var etherCntList [] string = [] string {"in-oversize-frames", "out-oversize-frames", "in-undersize-frames", "in-jabber-frames",
                         "in-fragment-frames", "openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets"}

@@ -18,6 +18,7 @@ module openconfig-interfaces-ext {
     import openconfig-if-tunnel {prefix oc-tun; }
     import openconfig-if-aggregate {prefix oc-lag; }
     import openconfig-yang-types { prefix oc-yang; }
+    import openconfig-types { prefix oc-types; }
     import openconfig-extensions { prefix oc-ext; }
     import ietf-yang-types { prefix yang; }
     import ietf-inet-types { prefix "ietf-inet"; }
@@ -119,6 +120,70 @@ module openconfig-interfaces-ext {
                 longer than 1518 octets (excluding framing bits,
                 but including FCS octets) and were otherwise
                 well formed.";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf:counters" {
+        description "Interface counters and statistics extensions.";
+        leaf in-octets-per-second {
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description
+                "The total number of octets received per second on the interface";
+        }
+        leaf in-pkts-per-second {
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description
+                "The total number of packets received per second on the interface";
+        }
+        leaf in-bits-per-second {
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description
+                "The total number of bits received per second on the interface";
+        }
+        leaf in-utilization {
+            type oc-types:percentage;
+            description
+                "RX utilization of the interface";
+        }
+        leaf out-octets-per-second {
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description
+                "The total number of octets transmitted per second on the interface";
+        }
+        leaf out-pkts-per-second {
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description
+                "The total number of packets transmitted per second on the interface";
+        }
+        leaf out-bits-per-second {
+            type decimal64 {
+                fraction-digits 2;
+            }
+            description
+                "The total number of bits transmitted per second on the interface";
+        }
+        leaf out-utilization {
+            type oc-types:percentage;
+            description
+                "TX utilization of the interface";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:state" {
+        description "Interface state object extension";
+        leaf rate-interval {
+            type uint16;
+            description "Rate interval of an interface";
         }
     }
 
