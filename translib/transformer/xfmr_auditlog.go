@@ -30,7 +30,7 @@ import (
 const BRIEF_AUDIT_SIZE = 20
 
 func init() {
-    XlateFuncBind("rpc_showauditlog_cb", rpc_showauditlog_cb)
+    XlateFuncBind("rpc_getauditlog_cb", rpc_getauditlog_cb)
     XlateFuncBind("rpc_clearauditlog_cb", rpc_clearauditlog_cb)
 }
 
@@ -49,12 +49,12 @@ func _read_file(fname string, data *[]string) (error) {
     return nil
 }
 
-var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+var rpc_getauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 
-    var showaudit struct {
+    var getaudit struct {
         Output struct {
         Result []string `json:"audit-content"`
-        } `json:"sonic-show-auditlog:output"`
+        } `json:"sonic-get-auditlog:output"`
     }
 
     var inputData map[string]interface{}
@@ -73,8 +73,8 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
     // if input is 'all', read audit.log.1 first and then audit.log
     if v == "all" {
-        _read_file("/host_var/log/audit.log.1", &showaudit.Output.Result)
-        _read_file("/host_var/log/audit.log", &showaudit.Output.Result)
+        _read_file("/host_var/log/audit.log.1", &getaudit.Output.Result)
+        _read_file("/host_var/log/audit.log", &getaudit.Output.Result)
     } else {
         // brief output - get last 20 lines
         var tmpResult []string
@@ -87,11 +87,11 @@ var rpc_showauditlog_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
             j = lenx
         }
         for i := 0; i < j; i++ {
-            showaudit.Output.Result = append(showaudit.Output.Result, tmpResult[lenx-i-1])
+            getaudit.Output.Result = append(getaudit.Output.Result, tmpResult[lenx-i-1])
         }
     }
 
-    result, _ := json.Marshal(&showaudit)
+    result, _ := json.Marshal(&getaudit)
     return result, nil
 }
 
