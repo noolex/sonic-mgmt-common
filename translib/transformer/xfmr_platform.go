@@ -65,6 +65,7 @@ const (
    TRANSCEIVER_TBL  = "TRANSCEIVER_INFO"
    TRANSCEIVER_DOM  = "TRANSCEIVER_DOM_SENSOR"
    PORT_TBL         = "PORT_TABLE"
+   BREAKOUT_TBL     = "BREAKOUT_CFG"
 
    PORT_IF_NAME_PREFIX   = "Ethernet"
    ALIAS_IN_NAME_PREFIX  = "Eth"
@@ -474,7 +475,12 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     } else if validXcvrName(&key) {
         result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{key:{}}}}
     } else {
-        return result, errors.New("Invalid component name")
+        ifName := getIfName(key);
+        if len(ifName) > 1 {
+            result.dbDataMap = RedisDbMap{db.ConfigDB:{BREAKOUT_TBL:{ifName:{}}}}
+        } else {
+            return result, errors.New("Invalid component name")
+        }
     }
 
     return result, err
