@@ -386,7 +386,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 		if ok {
 			for childName  := range yangNode.yangEntry.Dir {
 				childXpath := yangXpath + "/" + childName
-				childUri := yangXpath + "/" + childName
+				childUri :=  tblUri + "/" + childName
 				childNode, ok := xYangSpecMap[childXpath]
 				if ok {
 					if (len(childNode.xfmrFunc) > 0) {
@@ -405,7 +405,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 					if (childNode.tableName != nil && *childNode.tableName == tblName) || (childNode.xfmrTbl != nil) {
 						if childNode.xfmrTbl != nil {
 							if len(*childNode.xfmrTbl) > 0 {
-								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, tblUri, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, "", xlateParams.txCache)
+								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, childUri, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, "", xlateParams.txCache)
 								chldTblNm, _ := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParams)
 								xfmrLogInfoAll("Table transformer %v for xpath %v returned table %v", *childNode.xfmrTbl, childXpath, chldTblNm)
 								if chldTblNm != tblName {
@@ -491,7 +491,13 @@ func dbMapDefaultValFill(xlateParams xlateToParams) error {
 			var yxpathList []string //contains all uris(with keys) that were traversed for a table while processing the incoming request
 			if tblUriMapVal, ok := xlateParams.tblXpathMap[tbl]; ok {
 				for tblUri := range tblUriMapVal {
-					yxpathList = append(yxpathList, tblUri)
+					xpathKeyExtRet, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, tblUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
+					if xerr != nil {
+						xfmrLogInfoAll("dbMapDefaultValFill: Unable to get table and key for uri: %v err: %v", tblUri, xerr)
+					}
+					if xpathKeyExtRet.dbKey == dbKey {
+						yxpathList = append(yxpathList, tblUri)
+					}
 				}
 			}
 			curXlateParams := xlateParams
