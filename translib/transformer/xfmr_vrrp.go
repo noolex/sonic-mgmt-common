@@ -29,6 +29,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
 	  "encoding/json"
+    "net"
 )
 
 func init () {
@@ -599,6 +600,78 @@ func getVrrpTrackPriority(cfg *db.DB, app *db.DB, tblName string, ifName string,
     return track_priority
 }
 
+func getVrrpOwnerPriority(d *db.DB, vrrpData db.Value, ifName string, isIpv6 bool) (priority uint8) {
+    priority = 100
+    var allIntfKeys []db.Key
+    var vip_suffix string
+
+    if vrrpData.Has("priority") {
+        _priority, _ := strconv.Atoi(vrrpData.Get("priority"))
+        priority = uint8(_priority)
+    }
+
+    if (!vrrpData.Has("vip@")) {
+        return priority
+    }
+
+    vipStr := vrrpData.Get("vip@")
+    vipMap := strings.Split(vipStr, ",")
+
+    if isIpv6 {
+        vip_suffix = "/128"
+    } else {
+        vip_suffix = "/32"
+    }
+
+    vip := vipMap[0] + vip_suffix
+
+    intfType, _, ierr := getIntfTypeByName(ifName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        return priority
+    }
+
+    ipA, _, perr := net.ParseCIDR(vip)
+    if ipA == nil || perr != nil {
+        return priority
+    }
+
+    for key := range IntfTypeTblMap {
+        intTbl := IntfTypeTblMap[key]
+        keys, err := d.GetKeys(&db.TableSpec{Name:intTbl.cfgDb.intfTN})
+        if err != nil {
+            log.Info("Failed to get keys; err=%v", err)
+            return priority
+        }
+        allIntfKeys = append(allIntfKeys, keys...)
+    }
+
+    if len(allIntfKeys) > 0 {
+        for _, key := range allIntfKeys {
+
+            if len(key.Comp) < 2 {
+                continue
+            }
+
+            if ifName != key.Get(0) {
+                continue
+            }
+
+            ipB, _, perr := net.ParseCIDR(key.Get(1))
+            //Check if key has IP, if not continue
+            if ipB == nil || perr != nil {
+                continue
+            }
+
+            if ipA.Equal(ipB) {
+              priority = 255
+              break
+            }
+        }
+    }
+
+    return priority
+}
+
 func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName string, intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
     vrrpMap := make(map[string]db.Value)
     var err error
@@ -785,13 +858,8 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
             if isState {
 
-              priority := 100
-              if vrrpData.Has("priority") {
-                  priority, _ = strconv.Atoi(vrrpData.Get("priority"))
-              }
-              ppriority := new(uint8)
-              *ppriority  = uint8(priority)
-              vrrp4.State.Priority = ppriority
+              priority := getVrrpOwnerPriority(inParams.d, vrrpData, ifName, false)
+              vrrp4.State.Priority = &priority
 
               advintv := 1
               if vrrpData.Has("adv_interval") {
@@ -836,13 +904,8 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
             }
             if isConfig {
-                priority := 100
-                if vrrpData.Has("priority") {
-                    priority, _ = strconv.Atoi(vrrpData.Get("priority"))
-                }
-                ppriority := new(uint8)
-                *ppriority  = uint8(priority)
-                vrrp4.Config.Priority = ppriority
+                priority := getVrrpOwnerPriority(inParams.d, vrrpData, ifName, false)
+                vrrp4.Config.Priority = &priority
 
                 advintv := 1
                 if vrrpData.Has("advert_int") {
@@ -963,13 +1026,8 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
             if isState {
 
-              priority := 100
-              if vrrpData.Has("priority") {
-                  priority, _ = strconv.Atoi(vrrpData.Get("priority"))
-              }
-              ppriority := new(uint8)
-              *ppriority  = uint8(priority)
-              vrrp6.State.Priority = ppriority
+              priority := getVrrpOwnerPriority(inParams.d, vrrpData, ifName, false)
+              vrrp6.State.Priority = &priority
 
               advintv := 1
               if vrrpData.Has("adv_interval") {
@@ -1014,13 +1072,8 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
             }
             if isConfig {
-              priority := 100
-              if vrrpData.Has("priority") {
-                  priority, _ = strconv.Atoi(vrrpData.Get("priority"))
-              }
-              ppriority := new(uint8)
-              *ppriority  = uint8(priority)
-              vrrp6.Config.Priority = ppriority
+              priority := getVrrpOwnerPriority(inParams.d, vrrpData, ifName, false)
+              vrrp6.Config.Priority = &priority
 
               advintv := 1
               if vrrpData.Has("advert_int") {
@@ -1160,14 +1213,17 @@ var DbToYang_intf_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (er
 
 func vrrp_show_summary (body []byte, dbs [db.MaxDB]*db.DB, tableName string, trackTableName string) (result []byte, err error) {
     var vip_suffix string
+    var isIpv6 bool
 
     log.Infof("Enter rpc_show_vrrp")
 
 	  var VRRP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: tableName}
     if tableName == "VRRP" {
         vip_suffix = "/32"
+        isIpv6 = false
     } else {
         vip_suffix = "/128"
+        isIpv6 = true
     }
 
     var showOutput struct {
@@ -1192,7 +1248,6 @@ func vrrp_show_summary (body []byte, dbs [db.MaxDB]*db.DB, tableName string, tra
         var vrrpsummaryentry VrrpSummaryEntry
         var state uint8
         state = 0
-        priority := 100
 
         ifName :=  key.Get(0)
         ifUIName := utils.GetUINameFromNativeName(&ifName)
@@ -1200,11 +1255,10 @@ func vrrp_show_summary (body []byte, dbs [db.MaxDB]*db.DB, tableName string, tra
         vrrpsummaryentry.Ifname = *ifUIName
         vrrpsummaryentry.Vrid, _ = strconv.Atoi(key.Get(1))
 
-        if vrrpData.Has("priority") {
-            priority, _ = strconv.Atoi(vrrpData.Get("priority"))
-        }
-        vrrpsummaryentry.ConfPrio = priority
-        vrrpsummaryentry.CurrPrio = priority
+        priority := getVrrpOwnerPriority(dbs[db.ConfigDB], vrrpData, ifName, isIpv6)
+
+        vrrpsummaryentry.ConfPrio = int(priority)
+        vrrpsummaryentry.CurrPrio = int(priority)
         vrrpsummaryentry.CurrPrio += int(getVrrpTrackPriority(dbs[db.ConfigDB], dbs[db.ApplDB], trackTableName, key.Get(0), key.Get(1), "", false, false))
 
         if vrrpData.Has("vip@") {
