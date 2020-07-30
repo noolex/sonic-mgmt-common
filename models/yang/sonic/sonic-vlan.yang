@@ -231,11 +231,6 @@ module sonic-vlan {
                 }
 
                 leaf ifname {
-                    must "((/scommon:operation/scommon:operation != 'CREATE') and (/scommon:operation/scommon:operation != 'UPDATE')) or " +
-                        "count(/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:MIRROR_SESSION_LIST[sms:dst_port=current()]) = 0" {
-                        error-message "Port has mirror session config";
-                        error-app-tag port-configured-in-mirror-session;
-                    }
                     type leafref {
                         path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                     }
