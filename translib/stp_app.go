@@ -1888,11 +1888,11 @@ func (app *StpApp) convertOperInternalToOCVlanInterface(vlanName string, intfId 
 			}
 		}
 	} else {
-		vlanIntfOperKeys, _ := app.appDB.GetKeys(app.vlanIntfOperTable)
-		for i := range vlanIntfOperKeys {
-			entryKey := vlanIntfOperKeys[i]
-			if vlanName == (&entryKey).Get(0) {
-				app.convertOperInternalToOCVlanInterface(vlanName, (&entryKey).Get(1), vlan, vlanIntf)
+		for vlanNameIdx := range app.vlanIntfOperTableMap {
+			if vlanName == vlanNameIdx {
+				for intf := range app.vlanIntfOperTableMap[vlanNameIdx] {
+					app.convertOperInternalToOCVlanInterface(vlanName, intf, vlan, vlanIntf)
+				}
 			}
 		}
 	}
