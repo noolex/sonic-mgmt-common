@@ -117,3 +117,4 @@ openconfig-ip-helper.yang
 openconfig-ip-helper-annot.yang
 sonic-ip-helper.yang
 sonic-ip-helper-annot.yang
+openconfig-switch-resource.yang
