@@ -15,8 +15,7 @@ module openconfig-platform-ext {
     contact
         "SONiC";
     description
-        "This module contains a collection of YANG definitions for
-           Zero Touch Provisioning";
+        "An OpenConfig model extension of platform configuration and operational state.";
 
     oc-ext:openconfig-version "0.12.2";
 
@@ -352,5 +351,265 @@ module openconfig-platform-ext {
             type string;
             description "The timestamp for the fetched temperature";
         }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-transceiver:transceiver/oc-transceiver:config {
+      description "Additional fields for transceiver diagnostics.";
+      leaf lb-media-side-output-enable {
+        type string;
+        description "Loopback at TP2.";
+      }
+      leaf lb-media-side-input-enable {
+        type string;
+        description "Loopback from TP3 to TP2.";
+      }
+      leaf lb-host-side-output-enable {
+        type string;
+        description "Loopback from TP1a to TP4.";
+      }
+      leaf lb-host-side-input-enable {
+        type string;
+        description "Loopback at TP1a.";
+      }
+      leaf lb-per-lane-host-side-enable {
+        type string;
+        description "Per-lane Host Side Loopback.";
+      }
+      leaf lb-per-lane-media-side-enable {
+        type string;
+        description "Per-lane Media Side Loopback.";
+      }
+      leaf lb-simul-host-media-side-enable {
+        type string;
+        description "Simultaneous Host-side and Media-side Loopback.";
+      }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-transceiver:transceiver/oc-transceiver:state {
+      description "Additional fields for transceiver diagnostics and operational parameters";
+      leaf lb-media-side-output-enable {
+        type string;
+        description "Loopback at TP2.";
+      }
+      leaf lb-media-side-input-enable {
+        type string;
+        description "Loopback from TP3 to TP2.";
+      }
+      leaf lb-host-side-output-enable {
+        type string;
+        description "Loopback from TP1a to TP4.";
+      }
+      leaf lb-host-side-input-enable {
+        type string;
+        description "Loopback at TP1a.";
+      }
+      leaf lb-per-lane-host-side-enable {
+        type string;
+        description "Per-lane Host Side Loopback.";
+      }
+      leaf lb-per-lane-media-side-enable {
+        type string;
+        description "Per-lane Media Side Loopback.";
+      }
+      leaf lb-simul-host-media-side-enable {
+        type string;
+        description "Simultaneous Host-side and Media-side Loopback.";
+      }
+      leaf lb-media-side-output-support {
+        type string;
+        description "Is loopback at TP2 supported.";
+      }
+      leaf lb-media-side-input-support {
+        type string;
+        description "Is loopback from TP3 to TP2 supported.";
+      }
+      leaf lb-host-side-output-support {
+        type string;
+        description "Is loopback from TP1a to TP4 supported.";
+      }
+      leaf lb-host-side-input-support {
+        type string;
+        description "Is loopback at TP1a supported.";
+      }
+      leaf lb-per-lane-host-side-support {
+        type string;
+        description "Is per-lane Host Side Loopback supported.";
+      }
+      leaf lb-per-lane-media-side-support {
+        type string;
+        description "Is per-lane Media Side Loopback supported.";
+      }
+      leaf lb-simul-host-media-side-support {
+        type string;
+        description "Is simultaneous Host-side and Media-side Loopback supported.";
+      }
+      leaf voltage {
+          type string;
+          description "Instantaneous transceiver voltage.";
+      }
+      leaf temperature {
+          type string;
+          description "Instantaneous transceiver temperature.";
+      }
+      leaf lol-lane-1 {
+        type string;
+        description "LOL";
+      }
+      leaf lol-lane-2 {
+        type string;
+        description "LOL";
+      }
+      leaf lol-lane-3 {
+        type string;
+        description "LOL";
+      }
+      leaf lol-lane-4 {
+        type string;
+        description "LOL";
+      }
+      leaf lol-lane-5 {
+        type string;
+        description "LOL";
+      }
+      leaf lol-lane-6 {
+        type string;
+        description "LOL";
+      }
+      leaf lol-lane-7 {
+        type string;
+        description "LOL";
+      }
+      leaf lol-lane-8 {
+        type string;
+        description "LOL";
+      }
+      leaf los-lane-1 {
+        type string;
+        description "LOS";
+      }
+      leaf los-lane-2 {
+        type string;
+        description "LOS";
+      }
+      leaf los-lane-3 {
+        type string;
+        description "LOS";
+      }
+      leaf los-lane-4 {
+        type string;
+        description "LOS";
+      }
+      leaf los-lane-5 {
+        type string;
+        description "LOS";
+      }
+      leaf los-lane-6 {
+        type string;
+        description "LOS";
+      }
+      leaf los-lane-7 {
+        type string;
+        description "LOS";
+      }
+      leaf los-lane-8 {
+        type string;
+        description "LOS";
+      }
+      leaf tx-power-lane-1 {
+        type string;
+        description "Tx Power in dBm.";
+      }
+      leaf tx-power-lane-2 {
+        type string;
+        description "Tx Power in dBm.";
+      }
+      leaf tx-power-lane-3 {
+        type string;
+        description "Tx Power in dBm.";
+      }
+      leaf tx-power-lane-4 {
+        type string;
+        description "Tx Power in dBm.";
+      }
+      leaf tx-power-lane-5 {
+        type string;
+        description "Tx Power in dBm.";
+      }
+      leaf tx-power-lane-6 {
+        type string;
+        description "Tx Power in dBm.";
+      }
+      leaf tx-power-lane-7 {
+        type string;
+        description "Tx Power in dBm.";
+      }
+      leaf tx-power-lane-8 {
+        type string;
+        description "Tx Power in dBm.";
+      }
+      leaf rx-power-lane-1 {
+        type string;
+        description "Rx power in dBm.";
+      }
+      leaf rx-power-lane-2 {
+        type string;
+        description "Rx power in dBm.";
+      }
+      leaf rx-power-lane-3 {
+        type string;
+        description "Rx power in dBm.";
+      }
+      leaf rx-power-lane-4 {
+        type string;
+        description "Rx power in dBm.";
+      }
+      leaf rx-power-lane-5 {
+        type string;
+        description "Rx power in dBm.";
+      }
+      leaf rx-power-lane-6 {
+        type string;
+        description "Rx power in dBm.";
+      }
+      leaf rx-power-lane-7 {
+        type string;
+        description "Rx power in dBm.";
+      }
+      leaf rx-power-lane-8 {
+        type string;
+        description "Rx power in dBm.";
+      }
+      leaf tx-bias-lane-1 {
+        type string;
+        description "Tx bias current in 2 uA.";
+      }
+      leaf tx-bias-lane-2 {
+        type string;
+        description "Tx bias current in 2 uA.";
+      }
+      leaf tx-bias-lane-3 {
+        type string;
+        description "Tx bias current in 2 uA.";
+      }
+      leaf tx-bias-lane-4 {
+        type string;
+        description "Tx bias current in 2 uA.";
+      }
+      leaf tx-bias-lane-5 {
+        type string;
+        description "Tx bias current in 2 uA.";
+      }
+      leaf tx-bias-lane-6 {
+        type string;
+        description "Tx bias current in 2 uA.";
+      }
+      leaf tx-bias-lane-7 {
+        type string;
+        description "Tx bias current in 2 uA.";
+      }
+      leaf tx-bias-lane-8 {
+        type string;
+        description "Tx bias current in 2 uA.";
+      }
     }
 }

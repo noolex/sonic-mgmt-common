@@ -1,5 +1,5 @@
 package transformer
- 
+
 import (
     log "github.com/golang/glog"
     "strings"
@@ -10,8 +10,11 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "encoding/json"
+    "time"
 )
- 
+
 func init() {
   XlateFuncBind("YangToDb_flex_counter_key_xfmr",               YangToDb_flex_counter_key_xfmr)
   XlateFuncBind("DbToYang_flex_counter_key_xfmr",               DbToYang_flex_counter_key_xfmr)
@@ -30,8 +33,10 @@ func init() {
   XlateFuncBind("DbToYang_qos_intf_pfc_counters_st_xfmr",       DbToYang_qos_intf_pfc_counters_st_xfmr)
 
   XlateFuncBind("DbToYang_qos_intf_pfc_queue_counters_st_xfmr", DbToYang_qos_intf_pfc_queue_counters_st_xfmr)
+
+  XlateFuncBind("rpc_clear_qos_pfc", rpc_clear_qos_pfc)
 }
- 
+
 var YangToDb_flex_counter_key_xfmr = func(inParams XfmrParams) (string, error) {
     log.Info("YangToDb_flex_counter_key_xfmr            uri: ", inParams.uri)
 
@@ -100,7 +105,7 @@ var DbToYang_counter_poll_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
 
     if ok {
         if (able == "enable") {
-            result["counter-poll"] = "ENABLE" 
+            result["counter-poll"] = "ENABLE"
         } else if (able == "disable") {
             result["counter-poll"] = "DISABLE"
         }
@@ -160,7 +165,7 @@ var DbToYang_qos_intf_pfcwd_action_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
 
     if ok {
         if (action == "drop") {
-            result["action"] = "DROP" 
+            result["action"] = "DROP"
         } else if (action == "forward") {
             result["action"] = "FORWARD"
         } else if (action == "alert") {
@@ -215,22 +220,22 @@ var YangToDb_qos_intf_pfcwd_st_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
         if wdConfig.DetectionTime != nil {
             detectTime := strconv.FormatInt(int64(*wdConfig.DetectionTime), 10)
             log.Info("YangToDb_qos_intf_pfcwd_st_xfmr    detectTime :", detectTime)
-            entry.Set("detection_time", detectTime)            
+            entry.Set("detection_time", detectTime)
         }
         if wdConfig.RestorationTime != nil {
             restoreTime := strconv.FormatInt(int64(*wdConfig.RestorationTime), 10)
             log.Info("YangToDb_qos_intf_pfcwd_st_xfmr    restoreTime :", restoreTime)
-            entry.Set("restoration_time", restoreTime)            
+            entry.Set("restoration_time", restoreTime)
         }
         action := wdConfig.Action
         if action != 0 {
             log.Info("YangToDb_qos_intf_pfcwd_st_xfmr         action :", action)
             if         (action == ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_Watchdog_Config_Action_DROP) {
-                entry.Set("action", "drop")            
+                entry.Set("action", "drop")
             }  else if (action == ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_Watchdog_Config_Action_FORWARD) {
-                entry.Set("action", "forward")            
+                entry.Set("action", "forward")
             }  else if (action == ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_Watchdog_Config_Action_ALERT) {
-                entry.Set("action", "alert")            
+                entry.Set("action", "alert")
             }
         }
         pfcwdTblMap[dbkey] = entry
@@ -447,6 +452,8 @@ func getPfcStats (ifName string, cos uint8, d *db.DB, stats *ocbinds.OpenconfigQ
     var txCntr uint64;
     counters := &db.TableSpec{Name: "COUNTERS"}
     oid := ifCountInfo.Field[ifName]
+    log.Infof("getPfcStats      oid: ", oid)
+
     entry, err := d.GetEntry(counters, db.Key{Comp: []string{oid}})
     if err != nil {
         log.Info("getPfcStats    err: ", err)
@@ -457,6 +464,21 @@ func getPfcStats (ifName string, cos uint8, d *db.DB, stats *ocbinds.OpenconfigQ
     getTheCounter(&entry, field, &txCntr)
     field = fmt.Sprintf("SAI_PORT_STAT_PFC_%1d_RX_PKTS", cos)
     getTheCounter(&entry, field, &rxCntr)
+
+    counters = &db.TableSpec{Name: "COUNTERS_BACKUP"}
+    entry, err = d.GetEntry(counters, db.Key{Comp: []string{oid}})
+    if err == nil {
+        var backupCntr uint64;
+        field = fmt.Sprintf("SAI_PORT_STAT_PFC_%1d_TX_PKTS", cos)
+        getTheCounter(&entry, field, &backupCntr)
+        txCntr = txCntr - backupCntr
+        field = fmt.Sprintf("SAI_PORT_STAT_PFC_%1d_RX_PKTS", cos)
+        getTheCounter(&entry, field, &backupCntr)
+        rxCntr = rxCntr - backupCntr
+    } else {
+        // it is OK that a snapshot does not exist. Just means the counters have not been "cleared"
+        log.Info("getPfcStats      counter snapshot does not exist.")
+    }
 
     stats.PauseFramesRx = &rxCntr
     stats.PauseFramesTx = &txCntr
@@ -499,14 +521,47 @@ func getPfcQueueStats (ifName string, queue uint8, d *db.DB, stats *ocbinds.Open
 
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_DEADLOCK_DETECTED", &stormDetectCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_DEADLOCK_RESTORED", &stormRestoreCntr)
+
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_DROPPED_PACKETS", &rxDropsCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_DROPPED_PACKETS_LAST", &rxDropsLastCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_PACKETS", &rxPacketsCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_PACKETS_LAST", &rxPacketsLastCntr)
+
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_DROPPED_PACKETS", &txDropsCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_DROPPED_PACKETS_LAST", &txDropsLastCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_PACKETS", &txPacketsCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_PACKETS_LAST", &txPacketsLastCntr)
+
+    counters = &db.TableSpec{Name: "COUNTERS_BACKUP"}
+    entry, err = d.GetEntry(counters, db.Key{Comp: []string{oid}})
+    if err == nil {
+        var backupCntr uint64;
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_DEADLOCK_DETECTED", &backupCntr)
+        stormDetectCntr = stormDetectCntr - backupCntr
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_DEADLOCK_RESTORED", &backupCntr)
+        stormRestoreCntr = stormRestoreCntr - backupCntr
+
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_DROPPED_PACKETS", &backupCntr)
+        rxDropsCntr = rxDropsCntr - backupCntr
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_DROPPED_PACKETS_LAST", &backupCntr)
+        rxDropsLastCntr = rxDropsLastCntr - backupCntr
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_PACKETS", &backupCntr)
+        rxPacketsCntr = rxPacketsCntr - backupCntr
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_PACKETS_LAST", &backupCntr)
+        rxPacketsLastCntr = rxPacketsLastCntr - backupCntr
+
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_DROPPED_PACKETS", &backupCntr)
+        txDropsCntr = txDropsCntr - backupCntr
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_DROPPED_PACKETS_LAST", &backupCntr)
+        txDropsLastCntr = txDropsLastCntr - backupCntr
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_PACKETS", &backupCntr)
+        txPacketsCntr = txPacketsCntr - backupCntr
+        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_PACKETS_LAST", &backupCntr)
+        txPacketsLastCntr = txPacketsLastCntr - backupCntr
+    } else {
+        // it is OK that a snapshot does not exist. Just means the counters have not been "cleared"
+        log.Info("getPfcQueue      counter snapshot does not exist.")
+    }
 
     stats.RxDrop = &rxDropsCntr
     stats.RxDropLast = &rxDropsLastCntr
@@ -596,4 +651,122 @@ var DbToYang_qos_intf_pfc_queue_counters_st_xfmr SubTreeXfmrDbToYang = func(inPa
   err = getPfcQueueStats(ifname, que, inParams.dbs[db.CountersDB], statsObj)
 
   return err
+}
+
+/* Reset counter values in COUNTERS_BACKUP table for given OID */
+func resetPfcQueueCounters(d *db.DB, oid string) (error,error) {
+    var verr,cerr error
+    CountrTblTs := db.TableSpec {Name: "COUNTERS"}
+    CountrTblTsCp := db.TableSpec { Name: "COUNTERS_BACKUP" }
+    value, verr := d.GetEntry(&CountrTblTs, db.Key{Comp: []string{oid}})
+    if verr == nil {
+        secs := time.Now().Unix()
+        timeStamp := strconv.FormatInt(secs, 10)
+        value.Field["LAST_CLEAR_TIMESTAMP"] = timeStamp
+        cerr = d.CreateEntry(&CountrTblTsCp, db.Key{Comp: []string{oid}}, value)
+    }
+    return verr, cerr
+}
+
+func resetPfcInterfaceQueueCounters(inputStr string, dbs [db.MaxDB]*db.DB) (string, error) {
+    var     err  error
+    var     errString   string
+    log.Info("resetPfcInterfaceQueueCounters - Clear counters for given interface name: ", inputStr)
+
+    queueOidMapTs := &db.TableSpec{Name: "COUNTERS_QUEUE_NAME_MAP"}
+    queueCountInfo, err := dbs[db.CountersDB].GetMapAll(queueOidMapTs)
+    if err != nil {
+        log.Info("resetPfcInterfaceQueueCounters    err: ", err)
+        errString = fmt.Sprintf("Error: Could not retreive queue counter names for %s", inputStr)
+        return errString, err
+    }
+
+    id := getIdFromIntfName(&inputStr)
+    if strings.HasPrefix(inputStr, "Ethernet") {
+        inputStr = "Ethernet" + id
+    } else {
+        log.Info("resetPfcInterfaceQueueCounters    Invalid Interface")
+        err = tlerr.InvalidArgsError{Format:"Invalid Interface"}
+        errString = fmt.Sprintf("Error: Clear PFC Counters not supported for %s", inputStr)
+        return errString, err
+    }
+
+    for queue, oid := range queueCountInfo.Field {
+        if strings.HasPrefix(queue, inputStr) {
+            verr, cerr := resetPfcQueueCounters(dbs[db.CountersDB], oid)
+                    
+            if verr != nil {
+                errString = fmt.Sprintf("Error: Failed to get counter values from COUNTERS table for %s", inputStr)
+                return errString, verr
+            }
+            if cerr != nil {
+                log.Info("Failed to reset counters values")
+                errString = fmt.Sprintf("Error: Failed to reset counters values for %s.", inputStr)
+                return errString, cerr
+            }
+        }
+    }
+
+    return "No Error", err
+}
+
+var rpc_clear_qos_pfc RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var     err         error
+    var     errString   string
+    var result struct {
+        Output struct {
+            Status int32 `json:"status"`
+            Status_detail string`json:"status-detail"`
+        } `json:"sonic-qos-pfc:output"`
+    }
+    log.Info("rpc_clear_qos_pfc:")
+
+    result.Output.Status = 1
+    /* Get input data */
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        result.Output.Status_detail = "Error: Failed to unmarshall given input data"
+        return json.Marshal(&result)
+    }
+
+    input := mapData["sonic-qos-pfc:input"]
+    mapData = input.(map[string]interface{})
+    input = mapData["interface-param"]
+    input_str := fmt.Sprintf("%v", input)
+    sonicName := utils.GetNativeNameFromUIName(&input_str)
+    input_str = *sonicName
+
+    portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
+    ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
+    if err != nil {
+        result.Output.Status_detail = "Error: Port-OID (Counters) get for all the interfaces failed!"
+        return json.Marshal(&result)
+    }
+
+    if (input_str == "all") || (input_str == "Ethernet") {
+        log.Info("rpc_clear_qos_pfc : Reset counters for Ethernet interface type")
+        for  intf := range ifCountInfo.Field {
+            if strings.HasPrefix(intf, "Ethernet") {
+                errString, err = resetPfcInterfaceQueueCounters(intf, dbs)
+                if err != nil {
+                    log.Info(errString)
+                    result.Output.Status_detail = errString
+                    return json.Marshal(&result)
+                }
+            }
+        }
+    } else {
+        errString, err = resetPfcInterfaceQueueCounters(input_str, dbs)
+        if err != nil {
+            log.Info(errString)
+            result.Output.Status_detail = errString
+            return json.Marshal(&result)
+        }
+    }
+
+    result.Output.Status = 0
+    result.Output.Status_detail = "Success: PFC Watchdog Counters Cleared"
+    return json.Marshal(&result)
 }

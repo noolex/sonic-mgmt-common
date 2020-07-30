@@ -3,7 +3,7 @@ module openconfig-qos-annot {
     yang-version "1.1";
 
     namespace "http://openconfig.net/yang/qos-annot";
-    prefix "oc-qos-annot"; 
+    prefix "oc-qos-annot";
 
     import sonic-extensions { prefix sonic-ext; }
     import openconfig-qos { prefix oc-qos; }
@@ -13,7 +13,7 @@ module openconfig-qos-annot {
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface {
       deviate add {
           sonic-ext:key-transformer "qos_intf_tbl_key_xfmr";
-          sonic-ext:table-transformer "qos_intf_table_xfmr"; 
+          sonic-ext:table-transformer "qos_intf_table_xfmr";
       }
     }
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:interface-id {
@@ -173,7 +173,7 @@ module openconfig-qos-annot {
         sonic-ext:table-name "WRED_PROFILE";
       }
     }
-    
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:name {
       deviate add {
         sonic-ext:field-transformer "wred_profile_name_empty_fld_xfmr";
@@ -191,7 +191,7 @@ module openconfig-qos-annot {
         sonic-ext:field-transformer "wred_profile_name_fld_xfmr";
       }
     }
- 
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:ecn {
       deviate add {
         sonic-ext:field-transformer "wred_ecn_fld_xfmr";
@@ -203,55 +203,55 @@ module openconfig-qos-annot {
         sonic-ext:field-transformer "wred_ecn_fld_xfmr";
       }
     }
-   
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-min-threshold {
       deviate add {
         sonic-ext:field-name "green_min_threshold";
       }
     }
- 
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-max-threshold {
       deviate add {
         sonic-ext:field-name "green_max_threshold";
       }
     }
- 
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:wred-green-enable {
       deviate add {
         sonic-ext:field-name "wred_green_enable";
       }
     }
- 
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:config/oc-qos-ext:green-drop-probability {
       deviate add {
         sonic-ext:field-name "green_drop_probability";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-min-threshold {
       deviate add {
         sonic-ext:field-name "green_min_threshold";
       }
     }
- 
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-max-threshold {
       deviate add {
         sonic-ext:field-name "green_max_threshold";
       }
     }
- 
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:wred-green-enable {
       deviate add {
         sonic-ext:field-name "wred_green_enable";
       }
     }
- 
+
     deviation /oc-qos:qos/oc-qos-ext:wred-profiles/oc-qos-ext:wred-profile/oc-qos-ext:state/oc-qos-ext:green-drop-probability {
       deviate add {
         sonic-ext:field-name "green_drop_probability";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos-maps-ext:dscp-maps/oc-qos-maps-ext:dscp-map {
         deviate add {
             sonic-ext:subtree-transformer "qos_dscp_fwd_group_xfmr";
@@ -388,7 +388,7 @@ module openconfig-qos-annot {
     deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group {
       deviate add {
           sonic-ext:key-transformer "qos_fwdgrp_tbl_key_xfmr";
-          sonic-ext:table-transformer "qos_fwdgrp_table_xfmr"; 
+          sonic-ext:table-transformer "qos_fwdgrp_table_xfmr";
       }
     }
 
@@ -404,52 +404,52 @@ module openconfig-qos-annot {
       }
     }
 
-///////////////////////// PFC Watchdog Interface //////////////////////////////////////////////////////// 
+///////////////////////// PFC Watchdog Interface ////////////////////////////////////////////////////////
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:pfc-priorities/oc-qos-ext:pfc-priority/oc-qos-ext:state/oc-qos-ext:statistics {
       deviate add {
         sonic-ext:subtree-transformer "qos_intf_pfc_counters_st_xfmr";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog {
       deviate add {
         sonic-ext:table-name "PFC_WD";
         sonic-ext:subtree-transformer "qos_intf_pfcwd_st_xfmr";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:config/oc-qos-ext:action {
       deviate add {
         sonic-ext:field-name "action";
         sonic-ext:field-transformer "qos_intf_pfcwd_action_fld_xfmr";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:config/oc-qos-ext:detection-time {
       deviate add {
         sonic-ext:field-name "detection_time";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:config/oc-qos-ext:restoration-time {
       deviate add {
         sonic-ext:field-name "restoration_time";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:state/oc-qos-ext:action {
       deviate add {
         sonic-ext:field-name "action";
         sonic-ext:field-transformer "qos_intf_pfcwd_action_fld_xfmr";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:state/oc-qos-ext:detection-time {
       deviate add {
         sonic-ext:field-name "detection_time";
       }
     }
-  
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc/oc-qos-ext:watchdog/oc-qos-ext:state/oc-qos-ext:restoration-time {
       deviate add {
         sonic-ext:field-name "restoration_time";
@@ -463,7 +463,7 @@ module openconfig-qos-annot {
       }
     }
 
-///////////////////////// PFC Watchdog Global //////////////////////////////////////////////////////// 
+///////////////////////// PFC Watchdog Global ////////////////////////////////////////////////////////
   deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog/oc-qos-ext:flex {
     deviate add {
       sonic-ext:table-name "FLEX_COUNTER_TABLE";

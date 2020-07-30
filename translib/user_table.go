@@ -9,20 +9,7 @@ import (
 	"github.com/golang/glog"
 )
 
-var userDb *db.DB
-
 const userTable = "USER"
-
-func init() {
-	userDb, _ = db.NewDB(db.Options{
-		DBNo:               db.ConfigDB,
-		InitIndicator:      "CONFIG_DB_INITIALIZED",
-		TableNameSeparator: "|",
-		KeySeparator:       "|",
-		IsWriteDisabled:    true,
-		DisableCVLCheck:    true,
-	})
-}
 
 type User struct {
 	Name     string
@@ -74,6 +61,16 @@ func deleteUserFromCache(name string) {
 }
 
 func getUserFromDB(akey db.Key) (User, error) {
+	userDb, _ := db.NewDB(db.Options{
+		DBNo:               db.ConfigDB,
+		InitIndicator:      "CONFIG_DB_INITIALIZED",
+		TableNameSeparator: "|",
+		KeySeparator:       "|",
+		IsWriteDisabled:    true,
+		DisableCVLCheck:    true,
+	})
+	defer userDb.DeleteDB()
+
 	tsa := db.TableSpec{Name: userTable}
 	avalue, err := userDb.GetEntry(&tsa, akey)
 

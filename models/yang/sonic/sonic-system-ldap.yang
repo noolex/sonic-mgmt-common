@@ -15,6 +15,10 @@ module sonic-system-ldap {
       prefix sport;
   }
 
+	import sonic-common {
+	    prefix cmn;
+	}
+
   import sonic-portchannel {
       prefix spc;
   }
@@ -396,7 +400,11 @@ module sonic-system-ldap {
 				}
 				
 				leaf to {
+          must "(/cmn:operation/cmn:operation != 'DELETE')" {
+						error-message "Map value is not allowed to be deleted";
+          }
 					type string;
+					mandatory true;
 					description
 						"LDAP map value";
 				}    

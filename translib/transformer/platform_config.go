@@ -344,7 +344,7 @@ func isPortGroupMember(ifName string) (bool) {
             memRange := strings.Split(strings.TrimLeft(pg["members"], "Ethern"), "-")
             ifNum,_ := strconv.Atoi(strings.TrimLeft(ifName, "Ethern"))
             startNum,_ := strconv.Atoi(memRange[0])
-            endNum,_ := strconv.Atoi(memRange[0])
+            endNum,_ := strconv.Atoi(memRange[1])
             log.Info("PG ", id, pg["members"], " ", pg["valid_speeds"], " ==> ",
                         startNum, " - ", ifNum, " - ", endNum)
             if (ifNum >= startNum) && (ifNum <= endNum) {

@@ -54,6 +54,9 @@ module sonic-counters {
                         leaf oper-status {
                             type string;
                         }
+                        leaf rate-interval {
+                            type uint16;
+                        }
                         container counters {
                             leaf in-octets {
                                 type uint64;
@@ -70,6 +73,24 @@ module sonic-counters {
                             leaf in-oversize-frames {
                                 type uint64;
                             }
+                            leaf in-octets-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf in-pkts-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf in-bits-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf in-utilization {
+                                type scommon:percentage;
+                            }
                             leaf out-octets {
                                 type uint64;
                             }
@@ -84,6 +105,24 @@ module sonic-counters {
                             }
                             leaf out-oversize-frames {
                                 type uint64;
+                            }
+                            leaf out-octets-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf out-pkts-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf out-bits-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf out-utilization {
+                                type scommon:percentage;
                             }
                         }
                     }
