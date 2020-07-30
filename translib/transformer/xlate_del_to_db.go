@@ -93,7 +93,6 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 	removedFillFields := false
 	virtualTbl := false
 	tblOwner := true
-	tbl := xlateParams.tableName
 	keyName := xlateParams.keyName
 	parentTbl := ""
 	parentKey := ""
@@ -124,9 +123,8 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				}
 			}
 		}
-		tbl = xpathKeyExtRet.tableName
 		keyName = xpathKeyExtRet.dbKey
-		xlateParams.tableName = tbl
+		xlateParams.tableName = xpathKeyExtRet.tableName
 		xlateParams.keyName = keyName
 	}
 
