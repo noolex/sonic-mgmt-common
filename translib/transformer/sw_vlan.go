@@ -310,36 +310,15 @@ func validateIntfAssociatedWithVlan(d *db.DB, ifName *string) error {
         return errors.New("Interface name is empty!")
     }
     var vlanKeys []db.Key
-    vlanTable, err := d.GetTable(&db.TableSpec{Name:VLAN_TN})
+    vlanKeys, err = d.GetKeysByPattern(&db.TableSpec{Name: VLAN_MEMBER_TN}, "*"+*ifName)
     if err != nil {
-        return err
+        return errors.New("Failed to get keys from table: " + VLAN_MEMBER_TN)
     }
-
-    vlanKeys, err = vlanTable.GetKeys()
-    if err != nil {
-        return errors.New("Failed to get keys from table: " + VLAN_TN)
-    }
-    log.Infof("Found %d Vlan Table keys", len(vlanKeys))
-
-    for _, vlan := range vlanKeys {
-        vlanEntry, err := d.GetEntry(&db.TableSpec{Name: VLAN_TN}, vlan)
-        if(err != nil) {
-            return err
-        }
-        members, ok := vlanEntry.Field["members@"]
-        if ok {
-            memberPortsList := generateMemberPortsSliceFromString(&members)
-            if memberPortsList == nil {
-                return nil
-            }
-            for _, memberName := range memberPortsList {
-                if memberName == *ifName {
-                    errStr := "Vlan configuration exists on interface: " + *ifUIName
-                    log.Error(errStr)
-                    return tlerr.InvalidArgsError{Format:errStr}
-                }
-            }
-        }
+    log.Infof("Interface member of %d Vlan(s)", len(vlanKeys))
+    if len(vlanKeys) > 0 {
+        errStr := "Vlan configuration exists on interface: " + *ifUIName
+        log.Error(errStr)
+        return tlerr.InvalidArgsError{Format:errStr}
     }
     return err
 }
