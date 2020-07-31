@@ -208,6 +208,24 @@ func translateSubscribeRequest(path string, expectedTrSubInfo transformer.XfmrTr
 
 }
 
+func processActionRequest(url string, jsonPayload string, oper string, errorCase bool, expErr ...error) func(*testing.T) {
+	return func(t *testing.T) {
+		var err error
+		switch oper {
+		case "POST":
+			_, err = Action(ActionRequest{Path: url, Payload: []byte(jsonPayload)})
+		default:
+			t.Errorf("Operation not supported")
+		}
+		if err != nil {
+			if !errorCase {
+				t.Errorf("Error %v received for Url: %s", err, url)
+			} else if expErr != nil {
+				checkErr(t, err, expErr[0])
+			}
+		}
+	}
+}
 
 func getConfigDb() *db.DB {
 	configDb, _ := db.NewDB(db.Options{

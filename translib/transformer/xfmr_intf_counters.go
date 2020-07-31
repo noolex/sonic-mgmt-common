@@ -24,6 +24,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/utils"
     log "github.com/golang/glog"
     "encoding/json"
+    "strconv"
 )
 
 func init () {
@@ -31,6 +32,9 @@ func init () {
     XlateFuncBind("rpc_clear_relay_counters", rpc_clear_relay_counters)
 }
 
+const (
+    PORT_RATE_INTERVAL = "port_load_interval"
+)
 
 
 // InterfaceObj is defined to use as RPC response for get interface counters 
@@ -38,14 +42,23 @@ type InterfaceObj struct {
     Name string `json:"name"`
     State struct {
         Oper_Status string `json:"oper-status"`
+        Rate_Interval uint16 `json:"rate-interval"`
         Counters struct {
             In_Octets              uint64 `json:"in-octets"`
             In_Pkts                uint64 `json:"in-pkts"`
+            In_Octets_Per_Second   float64 `json:"in-octets-per-second"`
+            In_Bits_Per_Second     float64 `json:"in-bits-per-second"`
+            In_Pkts_Per_Second     float64 `json:"in-pkts-per-second"`
+            In_Utilization         uint8  `json:"in-utilization"`
             In_Discards            uint64 `json:"in-discards"`
             In_Errors              uint64 `json:"in-errors"`
             In_Oversize_Frames     uint64 `json:"in-oversize-frames"`
             Out_Octets             uint64 `json:"out-octets"`
             Out_Pkts               uint64 `json:"out-pkts"`
+            Out_Bits_Per_Second    float64 `json:"out-bits-per-second"`
+            Out_Octets_Per_Second  float64 `json:"out-octets-per-second"`
+            Out_Pkts_Per_Second    float64 `json:"out-pkts-per-second"`
+            Out_Utilization        uint8  `json:"out-utilization"`
             Out_Discards           uint64 `json:"out-discards"`
             Out_Errors             uint64 `json:"out-errors"`
             Out_Oversize_Frames    uint64 `json:"out-oversize-frames"`
@@ -64,6 +77,16 @@ var rpcCountersMap = map[string][]string {
     "out-discards"        : {"SAI_PORT_STAT_IF_OUT_DISCARDS"},
     "out-errors"          : {"SAI_PORT_STAT_IF_OUT_ERRORS"},
     "out-oversize-frames" : {"SAI_PORT_STAT_ETHER_TX_OVERSIZE_PKTS"},
+}
+var rpcRateCountersMap = map[string]string{
+    "in-octets-per-second"         : "PORT_STAT_IF_IN_OCTETS_PER_SECOND",
+    "in-bits-per-second"           : "PORT_STAT_IF_IN_BITS_PER_SECOND",
+    "in-pkts-per-second"           : "PORT_STAT_IF_IN_PKTS_PER_SECOND",
+    "in-utilization"               : "PORT_STAT_IF_IN_UTILIZATION",
+    "out-bits-per-second"          : "PORT_STAT_IF_OUT_BITS_PER_SECOND",
+    "out-octets-per-second"        : "PORT_STAT_IF_OUT_OCTETS_PER_SECOND",
+    "out-pkts-per-second"          : "PORT_STAT_IF_OUT_PKTS_PER_SECOND",
+    "out-utilization"              : "PORT_STAT_IF_OUT_UTILIZATION",
 }
 
 func checkPrefixMatch(pList []string, str string) bool {
@@ -134,6 +157,13 @@ var rpc_get_interface_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
                     intfObj.State.Oper_Status = "UP"
                 }
             }
+            interval, ok := prtEntry.Field[PORT_RATE_INTERVAL]
+            if ok {
+                tmp, err := strconv.ParseUint(interval, 10, 16)
+                if err == nil {
+                    intfObj.State.Rate_Interval = uint16(tmp)
+                }
+            }
 
             var e error
             for attr, dbAttrList := range rpcCountersMap  {
@@ -168,6 +198,29 @@ var rpc_get_interface_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
                     intfObj.State.Counters.Out_Errors = cnt_val
                 case "out-oversize-frames":
                     intfObj.State.Counters.Out_Oversize_Frames = cnt_val
+                }
+            }
+            for attr, dbAttr := range rpcRateCountersMap {
+                value, err := getIntfCounterValue(&entry, dbAttr)
+                if err == nil {
+                    switch attr {
+                    case "in-octets-per-second":
+                        intfObj.State.Counters.In_Octets_Per_Second = value
+                    case "in-bits-per-second":
+                        intfObj.State.Counters.In_Bits_Per_Second = value
+                    case "in-pkts-per-second":
+                        intfObj.State.Counters.In_Pkts_Per_Second = value
+                    case "in-utilization":
+                        intfObj.State.Counters.In_Utilization = uint8(value)
+                    case "out-bits-per-second":
+                        intfObj.State.Counters.Out_Bits_Per_Second = value
+                    case "out-octets-per-second":
+                        intfObj.State.Counters.Out_Octets_Per_Second = value
+                    case "out-pkts-per-second":
+                        intfObj.State.Counters.Out_Pkts_Per_Second = value
+                    case "out-utilization":
+                        intfObj.State.Counters.Out_Utilization = uint8(value)
+                    }
                 }
             }
             result.Output.Interfaces.Interface[uiName] = intfObj
