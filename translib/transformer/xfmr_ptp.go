@@ -40,6 +40,7 @@ func init() {
 	XlateFuncBind("DbToYang_ptp_entry_key_xfmr", DbToYang_ptp_entry_key_xfmr)
 	XlateFuncBind("YangToDb_ptp_port_ds_xfmr", YangToDb_ptp_port_ds_xfmr)
 	XlateFuncBind("DbToYang_ptp_port_ds_xfmr", DbToYang_ptp_port_ds_xfmr)
+	XlateFuncBind("Subscribe_ptp_port_ds_xfmr", Subscribe_ptp_port_ds_xfmr)
 	XlateFuncBind("YangToDb_ptp_global_key_xfmr", YangToDb_ptp_global_key_xfmr)
 	XlateFuncBind("DbToYang_ptp_global_key_xfmr", DbToYang_ptp_global_key_xfmr)
 
@@ -125,8 +126,7 @@ var YangToDb_ptp_entry_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 
 	inkey, _ := strconv.ParseUint(pathInfo.Var("instance-number"), 10, 64)
 	if inkey > 0 {
-		err = errors.New("Invalid input instance-number")
-		return entry_key, err
+		return entry_key, tlerr.InvalidArgsError{Format: "Resource not found"}
 	}
 
 	entry_key = "GLOBAL"
@@ -149,6 +149,16 @@ var YangToDb_ptp_global_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (st
 	var err error
 	log.Info("YangToDb_ptp_global_key_xfmr: ", inParams.ygRoot, inParams.uri)
 
+	pathInfo := NewPathInfo(inParams.uri)
+	log.Info("YangToDb_ptp_entry_key_xfmr len(pathInfo.Vars): ", len(pathInfo.Vars))
+	if len(pathInfo.Vars) < 1 {
+		err = errors.New("Invalid xpath, key attributes not found")
+		return entry_key, err
+	}
+	inkey, _ := strconv.ParseUint(pathInfo.Var("instance-number"), 10, 64)
+	if inkey > 0 {
+		return entry_key, tlerr.InvalidArgsError{Format: "Resource not found"}
+	}
 	entry_key = "GLOBAL"
 
 	log.Info("YangToDb_ptp_global_key_xfmr - entry_key : ", entry_key)
@@ -821,119 +831,124 @@ var YangToDb_ptp_port_ds_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 	pathInfo := NewPathInfo(inParams.uri)
 	log.Info("len(pathInfo.Vars): ", len(pathInfo.Vars))
 	log.Info("pathInfo.Vars: ", pathInfo.Vars)
-	if len(pathInfo.Vars) < 2 {
-		err = errors.New("Invalid xpath, key attributes not found")
-		return res_map, err
-	}
-	instance_id, _ := strconv.ParseUint(pathInfo.Var("instance-number"), 10, 64)
-	port_number_str := pathInfo.Var("port-number")
-	log.Info(" port_number_str: ", port_number_str)
-	port_number, _ := strconv.ParseUint(port_number_str, 10, 64)
-	log.Info(" port_number: ", port_number)
-	pDsList := ptpObj.InstanceList[uint32(instance_id)].PortDsList
-	var underlying_interface string
-	log.Info(" len(pDsList): ", len(pDsList))
-	if inParams.oper == DELETE {
-		keys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{Name: "PTP_PORT"}, db.Key{[]string{"GLOBAL", "*"}})
-		if tblErr == nil {
-			matched := false
-			for _, key := range keys {
-				entry, err2 := inParams.d.GetEntry(&db.TableSpec{Name: "PTP_PORT"}, key)
-				if err2 == nil {
-					if entry.Has("port-number") {
-						var port_number_db string
-						if entry.Get("port-number") != "" {
-							port_number_db = entry.Get("port-number")
-						}
-						log.Info("port-number : ", port_number_db)
 
-						if port_number_db == port_number_str {
-							log.Info("port-number matches input")
-							tblName := key.Comp[0] + "|" + key.Comp[1]
+	for instance_id, value := range ptpObj.InstanceList {
+		log.Info("YangToDb_ptp_port_ds_xfmr key: ", instance_id)
+		log.Info("YangToDb_ptp_port_ds_xfmr value: ", value)
+		for port_number, value := range ptpObj.InstanceList[instance_id].PortDsList {
+			log.Info("YangToDb_ptp_port_ds_xfmr key: ", port_number)
+			log.Info("YangToDb_ptp_port_ds_xfmr value: ", value)
 
-							port_ds_map[tblName] = db.Value{Field: make(map[string]string)}
-							// port_ds_map[tblName].Field["port-number"] = port_number_str
-							matched = true
-						}
-					}
-				}
-			}
-			if !matched {
-				return res_map, tlerr.InvalidArgsError{Format: "Input key does not match any entry "}
-			}
-		}
-	} else {
-		if len(pDsList) == 0 || pDsList[uint16(port_number)].UnderlyingInterface == nil ||
-			*pDsList[uint16(port_number)].UnderlyingInterface == "" {
-			keys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{Name: "PTP_PORT"}, db.Key{[]string{"GLOBAL", "*"}})
-			if tblErr == nil {
-				matched := false
-				for _, key := range keys {
-					entry, err2 := inParams.d.GetEntry(&db.TableSpec{Name: "PTP_PORT"}, key)
-					if err2 == nil {
-						if entry.Has("port-number") {
-							var port_number_db string
-							if entry.Get("port-number") != "" {
-								port_number_db = entry.Get("port-number")
-							}
-							log.Info("port-number : ", port_number_db)
+			port_number_str := strconv.FormatInt(int64(port_number), 10)
+			log.Info(" port_number_str: ", port_number_str)
+			log.Info(" port_number: ", port_number)
+			pDsList := ptpObj.InstanceList[instance_id].PortDsList
+			var underlying_interface string
+			log.Info(" len(pDsList): ", len(pDsList))
+			if inParams.oper == DELETE {
+				keys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{Name: "PTP_PORT"}, db.Key{[]string{"GLOBAL", "*"}})
+				if tblErr == nil {
+					matched := false
+					for _, key := range keys {
+						entry, err2 := inParams.d.GetEntry(&db.TableSpec{Name: "PTP_PORT"}, key)
+						if err2 == nil {
+							if entry.Has("port-number") {
+								var port_number_db string
+								if entry.Get("port-number") != "" {
+									port_number_db = entry.Get("port-number")
+								}
+								log.Info("port-number : ", port_number_db)
 
-							if port_number_db == port_number_str {
-								underlying_interface = key.Comp[1]
-								matched = true
-								break
+								if port_number_db == port_number_str {
+									log.Info("port-number matches input")
+									tblName := key.Comp[0] + "|" + key.Comp[1]
+
+									port_ds_map[tblName] = db.Value{Field: make(map[string]string)}
+									// port_ds_map[tblName].Field["port-number"] = port_number_str
+									matched = true
+								}
 							}
 						}
 					}
-				}
-				if !matched {
-					return res_map, tlerr.InvalidArgsError{Format: "underlying-interface is needed"}
-				}
-			}
-
-		} else {
-			underlying_interface = *pDsList[uint16(port_number)].UnderlyingInterface
-		}
-		tblName := "GLOBAL|" + underlying_interface
-
-		port_ds_map[tblName] = db.Value{Field: make(map[string]string)}
-		//		port_ds_map[tblName].Field["underlying-interface"] = underlying_interface
-		port_ds_map[tblName].Field["port-number"] = port_number_str
-		if pDsList[uint16(port_number)].UnicastTable != nil {
-			outval := *pDsList[uint16(port_number)].UnicastTable
-
-			unicast_multicast := ""
-
-			entry, _ := inParams.d.GetEntry(&db.TableSpec{Name: "PTP_CLOCK"}, db.Key{[]string{"GLOBAL"}})
-			if entry.Has("unicast-multicast") {
-				unicast_multicast = entry.Get("unicast-multicast")
-			}
-
-			if unicast_multicast == "multicast" {
-				return res_map, tlerr.InvalidArgsError{Format: "master-table is not needed in with multicast transport"}
-			}
-
-			if outval != "" {
-				addresses := strings.Split(outval, ",")
-				var prev_tmp E_Ptp_AddressTypeEnumeration
-				var tmp E_Ptp_AddressTypeEnumeration
-				var first bool
-				first = true
-				for _, address := range addresses {
-					tmp = check_address(address)
-					if PTP_ADDRESSTYPE_UNKNOWN == tmp {
-						return res_map, tlerr.InvalidArgsError{Format: "Invalid value passed for unicast-table"}
+					if !matched {
+						return res_map, tlerr.InvalidArgsError{Format: "Input key does not match any entry "}
 					}
-					if !first && tmp != prev_tmp {
-						return res_map, tlerr.InvalidArgsError{Format: "Mismatched addresses passed in unicast-table"}
+				}
+			} else {
+				if len(pDsList) == 0 || pDsList[uint16(port_number)].UnderlyingInterface == nil ||
+					*pDsList[uint16(port_number)].UnderlyingInterface == "" {
+					keys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{Name: "PTP_PORT"}, db.Key{[]string{"GLOBAL", "*"}})
+					if tblErr == nil {
+						matched := false
+						for _, key := range keys {
+							entry, err2 := inParams.d.GetEntry(&db.TableSpec{Name: "PTP_PORT"}, key)
+							if err2 == nil {
+								if entry.Has("port-number") {
+									var port_number_db string
+									if entry.Get("port-number") != "" {
+										port_number_db = entry.Get("port-number")
+									}
+									log.Info("port-number : ", port_number_db)
+
+									if port_number_db == port_number_str {
+										underlying_interface = key.Comp[1]
+										matched = true
+										break
+									}
+								}
+							}
+						}
+						if !matched {
+							return res_map, tlerr.InvalidArgsError{Format: "underlying-interface is needed"}
+						}
 					}
-					prev_tmp = tmp
-					first = false
+
+				} else {
+					underlying_interface = *pDsList[uint16(port_number)].UnderlyingInterface
+				}
+				tblName := "GLOBAL|" + underlying_interface
+
+				port_ds_map[tblName] = db.Value{Field: make(map[string]string)}
+				//		port_ds_map[tblName].Field["underlying-interface"] = underlying_interface
+				port_ds_map[tblName].Field["port-number"] = port_number_str
+				if pDsList[uint16(port_number)].UnicastTable != nil {
+					outval := *pDsList[uint16(port_number)].UnicastTable
+
+					unicast_multicast := ""
+
+					entry, _ := inParams.d.GetEntry(&db.TableSpec{Name: "PTP_CLOCK"}, db.Key{[]string{"GLOBAL"}})
+					if entry.Has("unicast-multicast") {
+						unicast_multicast = entry.Get("unicast-multicast")
+					}
+
+					if unicast_multicast == "multicast" {
+						return res_map, tlerr.InvalidArgsError{Format: "master-table is not needed in with multicast transport"}
+					}
+
+					if outval != "" {
+						addresses := strings.Split(outval, ",")
+						var prev_tmp E_Ptp_AddressTypeEnumeration
+						var tmp E_Ptp_AddressTypeEnumeration
+						var first bool
+						first = true
+						for _, address := range addresses {
+							tmp = check_address(address)
+							if PTP_ADDRESSTYPE_UNKNOWN == tmp {
+								return res_map, tlerr.InvalidArgsError{Format: "Invalid value passed for unicast-table"}
+							}
+							if !first && tmp != prev_tmp {
+								return res_map, tlerr.InvalidArgsError{Format: "Mismatched addresses passed in unicast-table"}
+							}
+							prev_tmp = tmp
+							first = false
+						}
+					}
+					port_ds_map[tblName].Field["unicast-table"] = outval
 				}
 			}
-			port_ds_map[tblName].Field["unicast-table"] = outval
 		}
 	}
+
 	res_map["PTP_PORT"] = port_ds_map
 	log.Info("map ==>", res_map)
 	return res_map, err
@@ -1088,4 +1103,67 @@ var DbToYang_ptp_port_ds_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) er
 		}
 	}
 	return err
+}
+
+var Subscribe_ptp_port_ds_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	var err error
+	var result XfmrSubscOutParams
+	pathInfo := NewPathInfo(inParams.uri)
+	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+	if targetUriPath != "/ietf-ptp:ptp/instance-list/port-ds-list" {
+		log.Infof("Subscribe attempted on unsupported path:%s; template:%s targetUriPath:%s",
+			pathInfo.Path, pathInfo.Template, targetUriPath)
+		return result, err
+	}
+
+	// instance_id, _ := strconv.ParseUint(pathInfo.Var("instance-number"), 10, 64)
+	port_number_str := pathInfo.Var("port-number")
+
+	d, err := db.NewDB(getDBOptions(db.StateDB))
+	if err != nil {
+		log.Infof("Subscribe_ptp_port_ds_xfm , unable to get StateDB, error %v", err)
+		return result, err
+	}
+
+	underlying_interface := "UnknownKey"
+	log.Infof("Subscribe_ptp_port_ds_xfmr calling")
+	keys, tblErr := d.GetKeysPattern(&db.TableSpec{Name: "PTP_PORT"}, db.Key{[]string{"GLOBAL", "*"}})
+	log.Infof("Subscribe_ptp_port_ds_xfmr done calling")
+	if tblErr == nil {
+		matched := false
+		for _, key := range keys {
+			entry, err2 := d.GetEntry(&db.TableSpec{Name: "PTP_PORT"}, key)
+			if err2 == nil {
+				if entry.Has("port-number") {
+					var port_number_db string
+					if entry.Get("port-number") != "" {
+						port_number_db = entry.Get("port-number")
+					}
+					log.Info("port-number : ", port_number_db)
+					if port_number_db == port_number_str {
+						underlying_interface = key.Comp[1]
+						matched = true
+					}
+				}
+			}
+		}
+		if !matched {
+			return result, tlerr.NotFoundError{Format: "Resource not found"}
+		}
+	}
+	defer d.DeleteDB()
+
+	var key string = "GLOBAL" + "|" + underlying_interface
+	result.dbDataMap = make(RedisDbMap)
+
+	log.Infof("Subscribe_ptp_port_ds_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+		pathInfo.Path, pathInfo.Template, targetUriPath, key)
+	result.dbDataMap = RedisDbMap{db.StateDB: {"PTP_PORT": {key: {}}}} // tablename & table-idx for the inParams.uri
+	result.needCache = true
+	result.onChange = true
+	result.nOpts = new(notificationOpts)
+	result.nOpts.mInterval = 0
+	result.nOpts.pType = OnChange
+	return result, err
 }
