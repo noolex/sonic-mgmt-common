@@ -959,13 +959,15 @@ var rpc_clear_pim RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
 func hdl_post_xfmr_pim_globals_del_ (inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {
     log.Info ("In PIM Post-Transformer to fill PIM_GLOBALS keys, while handling DELETE-OP for URI : ",
-              inParams.requestUri, " ; VRF : ", niName)
+              inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
 
     gblTblKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PIM_GLOBALS"})
 
+    matchingKeyFound := false
     for _, gblTblKey := range gblTblKeys {
         if gblTblKey.Len() < 2 {continue}
         if !((gblTblKey.Get(0) == niName) && (gblTblKey.Get(1) == "ipv4")) {continue}
+        matchingKeyFound = true
 
         if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; !ok {
             (*retDbDataMap)["PIM_GLOBALS"] = make(map[string]db.Value)
@@ -975,18 +977,26 @@ func hdl_post_xfmr_pim_globals_del_ (inParams *XfmrParams, niName string, retDbD
         (*retDbDataMap)["PIM_GLOBALS"][key] = db.Value{}
     }
 
-    log.Info ("PIM Post-Transformer PIM_GLOBALS retDbDataMap : ", (*retDbDataMap)["PIM_GLOBALS"])
+    if !matchingKeyFound {
+        if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; ok && len((*retDbDataMap)["PIM_GLOBALS"]) == 0 {
+            delete ((*retDbDataMap), "PIM_GLOBALS")
+        }
+    }
+
+    log.Info ("After PIM Post-Transformer PIM_GLOBALS handler ==> retDbDataMap : ", (*retDbDataMap))
 }
 
 func hdl_post_xfmr_pim_intfs_del_ (inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {
     log.Info ("In PIM Post-Transformer to fill PIM_INTERFACE keys, while handling DELETE-OP for URI : ",
-              inParams.requestUri, " ; VRF : ", niName)
+              inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
 
     intfTblKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PIM_INTERFACE"})
 
+    matchingKeyFound := false
     for _, intfTblKey := range intfTblKeys {
         if intfTblKey.Len() < 3 {continue}
         if !((intfTblKey.Get(0) == niName) && (intfTblKey.Get(1) == "ipv4")) {continue}
+        matchingKeyFound = true
 
         if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; !ok {
             (*retDbDataMap)["PIM_INTERFACE"] = make(map[string]db.Value)
@@ -996,7 +1006,13 @@ func hdl_post_xfmr_pim_intfs_del_ (inParams *XfmrParams, niName string, retDbDat
         (*retDbDataMap)["PIM_INTERFACE"][key] = db.Value{}
     }
 
-    log.Info ("PIM Post-Transformer PIM_INTERFACE retDbDataMap : ", (*retDbDataMap)["PIM_INTERFACE"])
+    if !matchingKeyFound {
+        if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; ok && len((*retDbDataMap)["PIM_INTERFACE"]) == 0 {
+            delete ((*retDbDataMap), "PIM_INTERFACE")
+        }
+    }
+
+    log.Info ("After PIM Post-Transformer PIM_INTERFACE handler ==> retDbDataMap : ", (*retDbDataMap))
 }
 
 func pim_hdl_post_xfmr (inParams *XfmrParams, retDbDataMap *map[string]map[string]db.Value) (error) {
