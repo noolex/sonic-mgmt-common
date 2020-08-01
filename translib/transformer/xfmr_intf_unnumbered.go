@@ -133,12 +133,17 @@ func validateUnnumIntfExistsForDonorIntf(d *db.DB, donorIfName *string) bool {
 	return false
 }
 
-func validateEntryExists(d *db.DB, tblName *string, ifName *string) bool {
+func validateUnnumEntryExists(d *db.DB, tblName *string, ifName *string) bool {
     entry, err := d.GetEntry(&db.TableSpec{Name:*tblName}, db.Key{Comp: []string{*ifName}})
     if err != nil {
         return false
     }
-    return entry.IsPopulated()
+
+    if entry.Get("unnumbered") != "" {
+        return true
+    } else {
+        return false
+    }
 }
 
 var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -184,14 +189,7 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
         // Delete is for Interface instance / sub-interfaces container level
         if inParams.oper == DELETE {
-            if validateEntryExists(inParams.d, &tblName, &ifName) {
-                if _, ok := subIntfmap[tblName]; !ok {
-                    subIntfmap[tblName] = make(map[string]db.Value)
-                }
-                var value db.Value
-                subIntfmap[tblName][ifName] = value
-            }
-            return subIntfmap, err
+            return nil, nil
         } 
         errStr := "SubInterface node is not set"
         log.Info("YangToDb_unnumbered_intf_xfmr : " + errStr)
@@ -204,17 +202,26 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     }
     subIntfObj := intfObj.Subinterfaces.Subinterface[0]
 
+    ifdb := make(map[string]string)
+    if _, ok := subIntfmap[tblName]; !ok {
+        subIntfmap[tblName] = make(map[string]db.Value)
+    }
+
     if subIntfObj.Ipv4 == nil || subIntfObj.Ipv4.Unnumbered == nil || subIntfObj.Ipv4.Unnumbered.InterfaceRef == nil {
         //Delete is for IPv4 container
         if inParams.oper == DELETE {
-            if validateEntryExists(inParams.d, &tblName, &ifName) {
-                if _, ok := subIntfmap[tblName]; !ok {
-                    subIntfmap[tblName] = make(map[string]db.Value)
+            if validateUnnumEntryExists(inParams.d, &tblName, &ifName) {
+                err = intf_unnumbered_del(&tblName, subIntfObj, &inParams, ifdb, &ifName)
+                if err != nil {
+                    return subIntfmap, err
                 }
-                var value db.Value
+                value := db.Value{Field: ifdb}
                 subIntfmap[tblName][ifName] = value
+                log.Info("subIntfmap", subIntfmap)
+                return subIntfmap, err
+            } else {
+                return nil, nil
             }
-            return subIntfmap, err
         }
         errStr := "IPv4 ygot structure missing"
         log.Info("YangToDb_unnumbered_intf_xfmr : " + errStr)
@@ -223,11 +230,6 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
 
     log.Info("subIntfObj:=", subIntfObj)
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.Unnumbered != nil && subIntfObj.Ipv4.Unnumbered.InterfaceRef != nil {
-        if _, ok := subIntfmap[tblName]; !ok {
-            subIntfmap[tblName] = make(map[string]db.Value)
-        }
-
-        ifdb := make(map[string]string)
         if inParams.oper == DELETE {
             err = intf_unnumbered_del(&tblName, subIntfObj, &inParams, ifdb, &ifName)
             if err != nil {

@@ -51,6 +51,7 @@ func util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams XfmrParams, vrf st
                                                      peerData map[string]interface {}) {
     afiSafiDbType := "ipv4_unicast"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {afiSafiDbType = "ipv6_unicast"}
+    if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_L2VPN_EVPN {afiSafiDbType = "l2vpn_evpn"}
 
     key := vrf + "|" + nbrAddr + "|" + afiSafiDbType
     nbrAfCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR_AF"}
@@ -100,9 +101,37 @@ func util_fill_bgp_nbr_info_per_af_from_frr_info (inParams XfmrParams, vrf strin
     }
 }
 
+func util_fill_bgp_nbr_info_for_evpn_from_frr_info (inParams XfmrParams, vrf string, nbrAddr string) {
+    cmd := "show bgp vrf all l2vpn evpn summary json"
+    evpnSummaryOutputJson, _:= exec_vtysh_cmd (cmd)
+
+    if _, ok := evpnSummaryOutputJson["warning"] ; ok {return}
+
+    evpnVrfSummary, ok := evpnSummaryOutputJson[vrf].(map[string]interface{}) ; if !ok {return}
+
+    peers, ok := evpnVrfSummary["peers"].(map[string]interface{}) ; if !ok {return}
+
+    if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"]; !ok {
+        (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"] = make(map[string]db.Value)
+    }
+    if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"]; !ok {
+        (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"] = make(map[string]db.Value)
+    }
+
+    if len(nbrAddr) != 0 {
+        peerData, ok := peers[nbrAddr].(map[string]interface{}) ; if !ok {return}
+        util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams, vrf, nbrAddr, ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_L2VPN_EVPN, peerData)
+    } else {
+        for peer, peerData := range peers {
+            util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams, vrf, peer, ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_L2VPN_EVPN, peerData.(map[string]interface{}))
+        }
+    }
+}
+
 func fill_bgp_nbr_details_from_frr_info (inParams XfmrParams, vrf string, nbrAddr string) {
     util_fill_bgp_nbr_info_per_af_from_frr_info (inParams, vrf, nbrAddr, ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV4_UNICAST)
     util_fill_bgp_nbr_info_per_af_from_frr_info (inParams, vrf, nbrAddr, ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST)
+    util_fill_bgp_nbr_info_for_evpn_from_frr_info (inParams, vrf, nbrAddr)
 }
 
 var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
@@ -1588,6 +1617,19 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
                     _prefixes.Received = &_activeRcvdPrefixes
                 }
                 if value, ok := ipv6UnicastMap["sentPrefixCounter"] ; ok {
+                    _activeSentPrefixes = uint32(value.(float64))
+                    _prefixes.Sent = &_activeSentPrefixes
+                }
+           }
+        } else if nbrs_af_state_obj.AfiSafiName == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_L2VPN_EVPN {
+            if l2vpnEvpnMap, ok := AddrFamilyMap["l2VpnEvpn"].(map[string]interface{}) ; ok {
+                _active = true
+                _enabled = true
+                if value, ok := l2vpnEvpnMap["acceptedPrefixCounter"] ; ok {
+                    _activeRcvdPrefixes = uint32(value.(float64))
+                    _prefixes.Received = &_activeRcvdPrefixes
+                }
+                if value, ok := l2vpnEvpnMap["sentPrefixCounter"] ; ok {
                     _activeSentPrefixes = uint32(value.(float64))
                     _prefixes.Sent = &_activeSentPrefixes
                 }

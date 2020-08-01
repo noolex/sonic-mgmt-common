@@ -1,0 +1,23 @@
+module sonic-auditlog-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/Azure/sonic-auditlog-annot";
+    prefix "auditlog-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-auditlog { prefix sal; }
+
+    deviation /sal:get-auditlog {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_getauditlog_cb";
+        }
+    }
+
+    deviation /sal:clear-auditlog {
+      deviate add {
+        sonic-ext:rpc-callback "rpc_clearauditlog_cb";
+      }
+    }
+
+}

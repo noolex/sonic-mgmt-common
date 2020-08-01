@@ -93,11 +93,9 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 	removedFillFields := false
 	virtualTbl := false
 	tblOwner := true
-	tbl := ""
-	keyName := ""
+	keyName := xlateParams.keyName
 	parentTbl := ""
 	parentKey := ""
-
 
 	spec, xpathOk := xYangSpecMap[xlateParams.xpath]
 	if !xpathOk {
@@ -125,9 +123,8 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				}
 			}
 		}
-		tbl = xpathKeyExtRet.tableName
 		keyName = xpathKeyExtRet.dbKey
-		xlateParams.tableName = tbl
+		xlateParams.tableName = xpathKeyExtRet.tableName
 		xlateParams.keyName = keyName
 	}
 
@@ -170,6 +167,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				if spec.virtualTbl != nil && *spec.virtualTbl {
 					virtualTbl = true
 				}
+
 				// Not required to check for table inheritence case here as we have a subtree and subtree is already processed before we get here
                                // We only need to traverse nested subtrees here
 				if len(spec.xfmrFunc) == 0 {
@@ -180,6 +178,9 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				cerr = xerr
 				xfmrLogInfoAll("Current Uri - %v, CurrentTbl - %v, CurrentKey - %v", curUri, curTbl, curKey)
 
+				if dbKey != curKey {
+					continue
+				}
 				if isFirstCall {
 					if perr == nil && cerr == nil {
 						if len(curTbl) > 0 && parentTbl != curTbl {
@@ -251,7 +252,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 					chldXpath    := xlateParams.xpath+"/"+yangChldName
 					chldUri      := curUri+"/"+yangChldName
 					chldSpec, ok := xYangSpecMap[chldXpath]
-					if (ok && ((spec.yangEntry != nil) && (!spec.yangEntry.ReadOnly()))) {
+					if (ok && ((chldSpec.yangEntry != nil) && (!chldSpec.yangEntry.ReadOnly()))) {
 						chldYangType := chldSpec.yangDataType
 						curXlateParams := xlateParams
 						curXlateParams.uri = chldUri
@@ -452,7 +453,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 			chldXpath    := xlateParams.xpath+"/"+yangChldName
 			chldUri      := xlateParams.uri+"/"+yangChldName
 			chldSpec, ok := xYangSpecMap[chldXpath]
-			if (ok && (chldSpec.yangEntry != nil)) {
+			if (ok && ((chldSpec.yangEntry != nil) && (!chldSpec.yangEntry.ReadOnly()))) {
 				chldYangType := chldSpec.yangDataType
 				curXlateParams := xlateParams
 				curXlateParams.uri = chldUri

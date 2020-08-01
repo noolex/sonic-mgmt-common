@@ -46,7 +46,7 @@ var Subscribe_qos_scheduler_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubsc
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0 
     result.nOpts.pType = OnChange
-    log.Info("Returning XfmrSubscribe_qos_dscp_fwd_group_xfmr")
+    log.Info("Returning Subscribe_qos_scheduler_xfmr")
     return result, err
 }
 
@@ -458,7 +458,8 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         sched_entry[sched_key].Field["type"] = "STRICT"
     }
 
-    if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" {
+    if (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" ||
+       targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/weight") {
         log.Info("Handling No Weight ")
 
         if isLastSchedulerInActivePolicy(sched_key) &&
@@ -529,7 +530,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
 
     if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler" ||
        (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/priority" && isLastSchedulerField(sched_key, "type")) ||
-       (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" && isLastSchedulerField(sched_key, "weight")) ||
+       ((targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" || targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/weight") && isLastSchedulerField(sched_key, "weight")) ||
        (strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color") && isLastSchedulerFields(sched_key, attrs)) {
 
         // one specific scheduler is deleted

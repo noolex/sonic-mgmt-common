@@ -386,7 +386,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 		if ok {
 			for childName  := range yangNode.yangEntry.Dir {
 				childXpath := yangXpath + "/" + childName
-				childUri := yangXpath + "/" + childName
+				childUri :=  tblUri + "/" + childName
 				childNode, ok := xYangSpecMap[childXpath]
 				if ok {
 					if (len(childNode.xfmrFunc) > 0) {
@@ -405,7 +405,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 					if (childNode.tableName != nil && *childNode.tableName == tblName) || (childNode.xfmrTbl != nil) {
 						if childNode.xfmrTbl != nil {
 							if len(*childNode.xfmrTbl) > 0 {
-								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, tblUri, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, "", xlateParams.txCache)
+								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, childUri, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, "", xlateParams.txCache)
 								chldTblNm, _ := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParams)
 								xfmrLogInfoAll("Table transformer %v for xpath %v returned table %v", *childNode.xfmrTbl, childXpath, chldTblNm)
 								if chldTblNm != tblName {
@@ -491,7 +491,13 @@ func dbMapDefaultValFill(xlateParams xlateToParams) error {
 			var yxpathList []string //contains all uris(with keys) that were traversed for a table while processing the incoming request
 			if tblUriMapVal, ok := xlateParams.tblXpathMap[tbl]; ok {
 				for tblUri := range tblUriMapVal {
-					yxpathList = append(yxpathList, tblUri)
+					xpathKeyExtRet, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, tblUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
+					if xerr != nil {
+						xfmrLogInfoAll("dbMapDefaultValFill: Unable to get table and key for uri: %v err: %v", tblUri, xerr)
+					}
+					if xpathKeyExtRet.dbKey == dbKey {
+						yxpathList = append(yxpathList, tblUri)
+					}
 				}
 			}
 			curXlateParams := xlateParams
@@ -988,17 +994,19 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 				xfmrLogInfoAll("processing Db table - %v", table)
 				for dbKey := range keyInstance {
 					xfmrLogInfoAll("processing Db key - %v", dbKey)
-					var d *db.DB
 					exists := false
 					if oper != GET {
-						d, err = db.NewDB(getDBOptions(dbNo))
-						if err != nil {
+						dptr, derr := db.NewDB(getDBOptions(dbNo))
+						if derr != nil {
 							log.Error("Couldn't allocate NewDb/DbOptions for db - %v, while processing uri - %v", dbNo, uri)
+							err = derr
 							parentTblExists = false
 							goto Exit
 						}
+						defer dptr.DeleteDB()
+						exists, err = dbTableExists(dptr, table, dbKey, oper)
 					} else {
-						d = dbs[dbNo]
+						d := dbs[dbNo]
 						if dbKey == "*" { //dbKey is "*" for GET on entire list
 							xfmrLogInfoAll("Found table instance in dbData")
 							goto Exit
@@ -1009,8 +1017,8 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 							xfmrLogInfoAll("Found table instance in dbData")
 							goto Exit
 						}
+						exists, err = dbTableExists(d, table, dbKey, oper)
 					}
-					exists, err = dbTableExists(d, table, dbKey, oper)
 					if !exists || err != nil {
 						log.Warningf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", table, dbKey, uri)
 						err = tlerr.NotFound("Resource not found")
