@@ -1032,12 +1032,22 @@ func pim_hdl_post_xfmr (inParams *XfmrParams, retDbDataMap *map[string]map[strin
 
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim/global":
                 hdl_post_xfmr_pim_globals_del_ (inParams, niName, retDbDataMap)
+                if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; ok {
+                    log.Info ("Removing all PIM_INTERFACE keys ==> ", (*retDbDataMap)["PIM_INTERFACE"],
+                              " from DB-Datamap to delete only PIM_GLOBALS entries while handling DELETE OP for URI: ", inParams.requestUri)
+                    delete ((*retDbDataMap), "PIM_INTERFACE")
+                }
 
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim/interfaces": fallthrough
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim/interfaces/interface":
                 if len(uiIntfId) == 0 {
                     /* Handle only all interfaces delete case. Specific interface delete will be handled in usual way, by infra-code */
                     hdl_post_xfmr_pim_intfs_del_ (inParams, niName, retDbDataMap)
+                    if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; ok {
+                        log.Info ("Removing all PIM_GLOBALS keys ==> ", (*retDbDataMap)["PIM_GLOBALS"],
+                                  " from DB-Datamap to delete only PIM_INTERFACE entries while handling DELETE OP for URI: ", inParams.requestUri)
+                        delete ((*retDbDataMap), "PIM_GLOBALS")
+                    }
                 }
         }
     }
