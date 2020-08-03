@@ -82,7 +82,7 @@ module openconfig-ip-sla {
 
     leaf tcp-source-port {
       type uint16 {
-        range "1..4095" {
+        range "1..65535" {
           error-message "Timeout out of range";
         }
       }
@@ -93,7 +93,7 @@ module openconfig-ip-sla {
 
     leaf tcp-dst-port {
       type uint16 {
-        range "1..4095" {
+        range "1..65535" {
           error-message "Timeout out of range";
         }
       }
