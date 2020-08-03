@@ -36,6 +36,7 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 	ifName := keyNameSplit[1]
 	vipData := vc.CurCfg.Data["vip@"]
 	tblName := ""
+	var owner bool = false
 
 	if vc.CurCfg.VOp == OP_DELETE || len(vipData) == 0 {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
@@ -111,10 +112,15 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 					continue
 			}
 
+			if ipB.Equal(ipA) {
+				owner = true
+			}
+
 			if ipNetA.Contains(ipB) {
 				found = true
 				break
 			}
+
 		}
 
 		if !found {
@@ -122,7 +128,20 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 			errStr := "Virtual IP does not belong to interface IP subnet"
 			return CVLErrorInfo {
 				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: vrrpTable,
+				TableName: "VRRP",
+				CVLErrDetails: errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+	}
+
+	if owner {
+		ret, errStr := vrrp_is_valid_owner(vc, vrrpTable, ifName, keyNameSplit[2])
+
+		if !ret {
+			return CVLErrorInfo {
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: "VRRP",
 				CVLErrDetails: errStr,
 				ConstraintErrMsg: errStr,
 			}
@@ -130,4 +149,224 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func vrrp_is_vip_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name string, vrid string) bool {
+	var if_tbl string
+
+
+  if strings.HasPrefix(vrrp_if_name, "Ethernet") {
+		if_tbl = "INTERFACE"
+	} else if strings.HasPrefix(vrrp_if_name, "Vlan") {
+		if_tbl = "VLAN_INTERFACE"
+	} else if strings.HasPrefix(vrrp_if_name, "PortChannel") {
+		if_tbl = "PORTCHANNEL_INTERFACE"
+	} else {
+		return false
+	}
+
+	if_tbl_ext := if_tbl + "|" + vrrp_if_name + "|" + "*"
+
+	table_keys, err:= vc.RClient.Keys(if_tbl_ext).Result()
+
+	if (err != nil) || (vc.SessCache == nil) {
+		return false
+	}
+
+	var vip_suffix string
+
+	if vrrp_table == "VRRP" {
+		vip_suffix = "/32"
+	} else {
+		vip_suffix = "/128"
+	}
+
+  vrrp_key := vrrp_table + "|" + vrrp_if_name + "|" + vrid
+
+	vrrp_data, err := vc.RClient.HGetAll(vrrp_key).Result()
+	if (err != nil) || (vc.SessCache == nil) {
+		return false
+	}
+
+	vip_data := vrrp_data["vip@"]
+
+	vips := strings.Split(vip_data, ",")
+	for _, vip := range(vips)	{
+
+		vip = vip + vip_suffix
+
+		ipA, _, perr := net.ParseCIDR(vip)
+
+		if ipA == nil || perr != nil {
+			continue
+		}
+
+		for _, db_key := range table_keys {
+			if_key_split := strings.Split(db_key, "|")
+
+			ipB, _, perr := net.ParseCIDR(if_key_split[2])
+
+			if ipB == nil || perr != nil {
+					continue
+			}
+
+			if ipA.Equal(ipB) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func vrrp_is_valid_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name string, vrid string) (bool, string) {
+	var ret string = "Success"
+	var vrrp_track_table string
+	vrrp_key := vrrp_table + "|" + vrrp_if_name + "|" + vrid
+
+
+	vrrp_data, err := vc.RClient.HGetAll(vrrp_key).Result()
+	if (err != nil) || (vc.SessCache == nil) {
+		return true, ret
+	}
+
+	_, has_data := vrrp_data["priority"]
+
+	if has_data {
+		ret = "Remove priority before configuring VIP as owner"
+		return false, ret
+	}
+
+	data, has_data := vrrp_data["pre_empt"]
+
+	if has_data && data == "False"{
+		ret = "Enable preempt before configuring VIP as owner"
+		return false, ret
+	}
+
+	vip := vc.CurCfg.Data["vip@"]
+
+	if strings.Contains(vip, ",") {
+		ret = "Cannot have more than one VIP in case of owner"
+		return false, ret
+	}
+
+
+	if vrrp_table == "VRRP" {
+		vrrp_track_table = "VRRP_TRACK"
+	} else {
+		vrrp_track_table = "VRRP6_TRACK"
+	}
+
+	track_table_ext := vrrp_track_table + "|" + vrrp_if_name + "|" + vrid + "|" + "*"
+
+	track_table_keys, err:= vc.RClient.Keys(track_table_ext).Result()
+
+	if (err != nil) || (vc.SessCache == nil) {
+		return true, ret
+	}
+
+	if len(track_table_keys) > 0 {
+		ret = "Remove track interfaces before configuring VIP as owner"
+		return false, ret
+	}
+
+	return true, ret
+
+}
+
+func (t *CustomValidation) ValidatePreempt(vc *CustValidationCtxt) CVLErrorInfo {
+	preempt_val :=  vc.CurCfg.Data["pre_empt"]
+	key := vc.CurCfg.Key
+	key_split := strings.Split(key, "|")
+
+	log.Info("ValidatePreempt op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
+
+	var owner bool = false
+
+	if vc.CurCfg.VOp != OP_DELETE || len(preempt_val) == 0{
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+  owner = vrrp_is_vip_owner(vc, key_split[0], key_split[1], key_split[2])
+
+	if owner {
+		log.Info("ValidatePreempt owner ip exist")
+		errStr := "Preempt cannot be disabled for owner case"
+		return CVLErrorInfo{
+			ErrCode: CVL_SEMANTIC_ERROR,
+			TableName: "VRRP",
+			CVLErrDetails: errStr,
+			ConstraintErrMsg: errStr,
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+
+}
+
+func (t *CustomValidation) ValidateTrack(vc *CustValidationCtxt) CVLErrorInfo {
+	var owner bool = false
+	var vrrp_table string
+	key := vc.CurCfg.Key
+	key_split := strings.Split(key, "|")
+	track_table := key_split[0]
+
+	log.Info("ValidateTrack op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
+
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	if track_table == "VRRP_TRACK" {
+		vrrp_table = "VRRP"
+	} else {
+		vrrp_table = "VRRP6"
+	}
+
+	owner = vrrp_is_vip_owner(vc, vrrp_table, key_split[1], key_split[2])
+
+	if owner {
+		log.Info("ValidateTrack owner ip exist")
+		errStr := "Track interface cannot be configured for owner case"
+		return CVLErrorInfo{
+			ErrCode: CVL_SEMANTIC_ERROR,
+			TableName: vrrp_table,
+			CVLErrDetails: errStr,
+			ConstraintErrMsg: errStr,
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+
+}
+
+func (t *CustomValidation) ValidatePriority(vc *CustValidationCtxt) CVLErrorInfo {
+	priority_val :=  vc.CurCfg.Data["priority"]
+	key := vc.CurCfg.Key
+	key_split := strings.Split(key, "|")
+
+	log.Info("ValidatePreempt op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
+
+	var owner bool = false
+
+	if vc.CurCfg.VOp == OP_DELETE || len(priority_val) == 0{
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+  owner = vrrp_is_vip_owner(vc, key_split[0], key_split[1], key_split[2])
+
+	if owner {
+		log.Info("ValidatePreempt owner ip exist")
+		errStr := "Priority cannot be configured for owner case"
+		return CVLErrorInfo{
+			ErrCode: CVL_SEMANTIC_ERROR,
+			TableName: "VRRP",
+			CVLErrDetails: errStr,
+			ConstraintErrMsg: errStr,
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+
 }
