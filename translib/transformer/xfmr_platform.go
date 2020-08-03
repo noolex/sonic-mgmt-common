@@ -1912,6 +1912,10 @@ func test_if_available (s string) bool {
     return ((s != "") && (s != "N/A") && (s != "n/a"))
 }
 
+func test_if_blank (s string) bool {
+    return (s != "")
+}
+
 func convert_connector_type(ct string) ocbinds.E_OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE {
     switch ct {
     case "N/A":
@@ -2068,178 +2072,178 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
             xcvrState.FormFactor = convert_form_factor_type(xcvrInfo.Form_Factor)
         }
 
-        if (test_if_available(xcvrInfo.HostSideInputSup)){
+        if (test_if_blank(xcvrInfo.HostSideInputSup)){
             xcvrState.LbHostSideInputSupport = &xcvrInfo.HostSideInputSup
         }
-        if (test_if_available(xcvrInfo.HostSideOutputSup)){
+        if (test_if_blank(xcvrInfo.HostSideOutputSup)){
             xcvrState.LbHostSideOutputSupport = &xcvrInfo.HostSideOutputSup
         }
-        if (test_if_available(xcvrInfo.MediaSideInputSup)){
+        if (test_if_blank(xcvrInfo.MediaSideInputSup)){
             xcvrState.LbMediaSideInputSupport = &xcvrInfo.MediaSideInputSup
         }
-        if (test_if_available(xcvrInfo.MediaSideOutputSup)){
+        if (test_if_blank(xcvrInfo.MediaSideOutputSup)){
             xcvrState.LbMediaSideOutputSupport = &xcvrInfo.MediaSideOutputSup
         }
-        if (test_if_available(xcvrInfo.PerLaneHostSideSup)){
+        if (test_if_blank(xcvrInfo.PerLaneHostSideSup)){
             xcvrState.LbPerLaneHostSideSupport = &xcvrInfo.PerLaneHostSideSup
         }
-        if (test_if_available(xcvrInfo.PerLaneMediaSideSup)){
+        if (test_if_blank(xcvrInfo.PerLaneMediaSideSup)){
             xcvrState.LbPerLaneMediaSideSupport = &xcvrInfo.PerLaneMediaSideSup
         }
-        if (test_if_available(xcvrInfo.SimulHostMediaSideSup)){
+        if (test_if_blank(xcvrInfo.SimulHostMediaSideSup)){
             xcvrState.LbSimulHostMediaSideSupport = &xcvrInfo.SimulHostMediaSideSup
         }
 
-        if (test_if_available(xcvrInfo.HostSideInputEnable)){
+        if (test_if_blank(xcvrInfo.HostSideInputEnable)){
             xcvrState.LbHostSideInputEnable = &xcvrInfo.HostSideInputEnable
         }
-        if (test_if_available(xcvrInfo.HostSideOutputEnable)){
+        if (test_if_blank(xcvrInfo.HostSideOutputEnable)){
             xcvrState.LbHostSideOutputEnable = &xcvrInfo.HostSideOutputEnable
         }
-        if (test_if_available(xcvrInfo.MediaSideInputEnable)){
+        if (test_if_blank(xcvrInfo.MediaSideInputEnable)){
             xcvrState.LbMediaSideInputEnable = &xcvrInfo.MediaSideInputEnable
         }
-        if (test_if_available(xcvrInfo.MediaSideOutputEnable)){
+        if (test_if_blank(xcvrInfo.MediaSideOutputEnable)){
             xcvrState.LbMediaSideOutputEnable = &xcvrInfo.MediaSideOutputEnable
         }
-        if (test_if_available(xcvrInfo.PerLaneHostSideEnable)){
+        if (test_if_blank(xcvrInfo.PerLaneHostSideEnable)){
             xcvrState.LbPerLaneHostSideEnable = &xcvrInfo.PerLaneHostSideEnable
         }
-        if (test_if_available(xcvrInfo.PerLaneMediaSideEnable)){
+        if (test_if_blank(xcvrInfo.PerLaneMediaSideEnable)){
             xcvrState.LbPerLaneMediaSideEnable = &xcvrInfo.PerLaneMediaSideEnable
         }
-        if (test_if_available(xcvrInfo.SimulHostMediaSideEnable)){
+        if (test_if_blank(xcvrInfo.SimulHostMediaSideEnable)){
             xcvrState.LbSimulHostMediaSideEnable = &xcvrInfo.SimulHostMediaSideEnable
         }
 
-        if (test_if_available(xcvrInfo.LolLane_1)){
+        if (test_if_blank(xcvrInfo.LolLane_1)){
             xcvrState.LolLane_1 = &xcvrInfo.LolLane_1
         }
-        if (test_if_available(xcvrInfo.LolLane_2)){
+        if (test_if_blank(xcvrInfo.LolLane_2)){
             xcvrState.LolLane_2 = &xcvrInfo.LolLane_2
         }
-        if (test_if_available(xcvrInfo.LolLane_3)){
+        if (test_if_blank(xcvrInfo.LolLane_3)){
             xcvrState.LolLane_3 = &xcvrInfo.LolLane_3
         }
-        if (test_if_available(xcvrInfo.LolLane_4)){
+        if (test_if_blank(xcvrInfo.LolLane_4)){
             xcvrState.LolLane_4 = &xcvrInfo.LolLane_4
         }
-        if (test_if_available(xcvrInfo.LolLane_5)){
+        if (test_if_blank(xcvrInfo.LolLane_5)){
             xcvrState.LolLane_5 = &xcvrInfo.LolLane_5
         }
-        if (test_if_available(xcvrInfo.LolLane_6)){
+        if (test_if_blank(xcvrInfo.LolLane_6)){
             xcvrState.LolLane_6 = &xcvrInfo.LolLane_6
         }
-        if (test_if_available(xcvrInfo.LolLane_7)){
+        if (test_if_blank(xcvrInfo.LolLane_7)){
             xcvrState.LolLane_7 = &xcvrInfo.LolLane_7
         }
-        if (test_if_available(xcvrInfo.LolLane_8)){
+        if (test_if_blank(xcvrInfo.LolLane_8)){
             xcvrState.LolLane_8 = &xcvrInfo.LolLane_8
         }
-        if (test_if_available(xcvrInfo.LosLane_1)){
+        if (test_if_blank(xcvrInfo.LosLane_1)){
             xcvrState.LosLane_1 = &xcvrInfo.LosLane_1
         }
-        if (test_if_available(xcvrInfo.LosLane_2)){
+        if (test_if_blank(xcvrInfo.LosLane_2)){
             xcvrState.LosLane_2 = &xcvrInfo.LosLane_2
         }
-        if (test_if_available(xcvrInfo.LosLane_3)){
+        if (test_if_blank(xcvrInfo.LosLane_3)){
             xcvrState.LosLane_3 = &xcvrInfo.LosLane_3
         }
-        if (test_if_available(xcvrInfo.LosLane_4)){
+        if (test_if_blank(xcvrInfo.LosLane_4)){
             xcvrState.LosLane_4 = &xcvrInfo.LosLane_4
         }
-        if (test_if_available(xcvrInfo.LosLane_5)){
+        if (test_if_blank(xcvrInfo.LosLane_5)){
             xcvrState.LosLane_5 = &xcvrInfo.LosLane_5
         }
-        if (test_if_available(xcvrInfo.LosLane_6)){
+        if (test_if_blank(xcvrInfo.LosLane_6)){
             xcvrState.LosLane_6 = &xcvrInfo.LosLane_6
         }
-        if (test_if_available(xcvrInfo.LosLane_7)){
+        if (test_if_blank(xcvrInfo.LosLane_7)){
             xcvrState.LosLane_7 = &xcvrInfo.LosLane_7
         }
-        if (test_if_available(xcvrInfo.LosLane_8)){
+        if (test_if_blank(xcvrInfo.LosLane_8)){
             xcvrState.LosLane_8 = &xcvrInfo.LosLane_8
         }
 
-        if (test_if_available(xcvrInfo.RxPowerLane_1)){
+        if (test_if_blank(xcvrInfo.RxPowerLane_1)){
             xcvrState.RxPowerLane_1 = &xcvrInfo.RxPowerLane_1
         }
-        if (test_if_available(xcvrInfo.RxPowerLane_2)){
+        if (test_if_blank(xcvrInfo.RxPowerLane_2)){
             xcvrState.RxPowerLane_2 = &xcvrInfo.RxPowerLane_2
         }
-        if (test_if_available(xcvrInfo.RxPowerLane_3)){
+        if (test_if_blank(xcvrInfo.RxPowerLane_3)){
             xcvrState.RxPowerLane_3 = &xcvrInfo.RxPowerLane_3
         }
-        if (test_if_available(xcvrInfo.RxPowerLane_4)){
+        if (test_if_blank(xcvrInfo.RxPowerLane_4)){
             xcvrState.RxPowerLane_4 = &xcvrInfo.RxPowerLane_4
         }
-        if (test_if_available(xcvrInfo.RxPowerLane_5)){
+        if (test_if_blank(xcvrInfo.RxPowerLane_5)){
             xcvrState.RxPowerLane_5 = &xcvrInfo.RxPowerLane_5
         }
-        if (test_if_available(xcvrInfo.RxPowerLane_6)){
+        if (test_if_blank(xcvrInfo.RxPowerLane_6)){
             xcvrState.RxPowerLane_6 = &xcvrInfo.RxPowerLane_6
         }
-        if (test_if_available(xcvrInfo.RxPowerLane_7)){
+        if (test_if_blank(xcvrInfo.RxPowerLane_7)){
             xcvrState.RxPowerLane_7 = &xcvrInfo.RxPowerLane_7
         }
-        if (test_if_available(xcvrInfo.RxPowerLane_8)){
+        if (test_if_blank(xcvrInfo.RxPowerLane_8)){
             xcvrState.RxPowerLane_8 = &xcvrInfo.RxPowerLane_8
         }
 
-        if (test_if_available(xcvrInfo.TxBiasLane_1)){
+        if (test_if_blank(xcvrInfo.TxBiasLane_1)){
             xcvrState.TxBiasLane_1  = &xcvrInfo.TxBiasLane_1
         }
-        if (test_if_available(xcvrInfo.TxBiasLane_2)){
+        if (test_if_blank(xcvrInfo.TxBiasLane_2)){
             xcvrState.TxBiasLane_2  = &xcvrInfo.TxBiasLane_2
         }
-        if (test_if_available(xcvrInfo.TxBiasLane_3)){
+        if (test_if_blank(xcvrInfo.TxBiasLane_3)){
             xcvrState.TxBiasLane_3  = &xcvrInfo.TxBiasLane_3
         }
-        if (test_if_available(xcvrInfo.TxBiasLane_4)){
+        if (test_if_blank(xcvrInfo.TxBiasLane_4)){
             xcvrState.TxBiasLane_4  = &xcvrInfo.TxBiasLane_4
         }
-        if (test_if_available(xcvrInfo.TxBiasLane_5)){
+        if (test_if_blank(xcvrInfo.TxBiasLane_5)){
             xcvrState.TxBiasLane_5  = &xcvrInfo.TxBiasLane_5
         }
-        if (test_if_available(xcvrInfo.TxBiasLane_6)){
+        if (test_if_blank(xcvrInfo.TxBiasLane_6)){
             xcvrState.TxBiasLane_6  = &xcvrInfo.TxBiasLane_6
         }
-        if (test_if_available(xcvrInfo.TxBiasLane_7)){
+        if (test_if_blank(xcvrInfo.TxBiasLane_7)){
             xcvrState.TxBiasLane_7  = &xcvrInfo.TxBiasLane_7
         }
-        if (test_if_available(xcvrInfo.TxBiasLane_8)){
+        if (test_if_blank(xcvrInfo.TxBiasLane_8)){
             xcvrState.TxBiasLane_8  = &xcvrInfo.TxBiasLane_8
         }
 
-        if (test_if_available(xcvrInfo.TxPowerLane_1 )){
+        if (test_if_blank(xcvrInfo.TxPowerLane_1 )){
             xcvrState.TxPowerLane_1 = &xcvrInfo.TxPowerLane_1
         }
-        if (test_if_available(xcvrInfo.TxPowerLane_2 )){
+        if (test_if_blank(xcvrInfo.TxPowerLane_2 )){
             xcvrState.TxPowerLane_2 = &xcvrInfo.TxPowerLane_2
         }
-        if (test_if_available(xcvrInfo.TxPowerLane_3 )){
+        if (test_if_blank(xcvrInfo.TxPowerLane_3 )){
             xcvrState.TxPowerLane_3 = &xcvrInfo.TxPowerLane_3
         }
-        if (test_if_available(xcvrInfo.TxPowerLane_4 )){
+        if (test_if_blank(xcvrInfo.TxPowerLane_4 )){
             xcvrState.TxPowerLane_4 = &xcvrInfo.TxPowerLane_4
         }
-        if (test_if_available(xcvrInfo.TxPowerLane_5 )){
+        if (test_if_blank(xcvrInfo.TxPowerLane_5 )){
             xcvrState.TxPowerLane_5 = &xcvrInfo.TxPowerLane_5
         }
-        if (test_if_available(xcvrInfo.TxPowerLane_6 )){
+        if (test_if_blank(xcvrInfo.TxPowerLane_6 )){
             xcvrState.TxPowerLane_6 = &xcvrInfo.TxPowerLane_6
         }
-        if (test_if_available(xcvrInfo.TxPowerLane_7 )){
+        if (test_if_blank(xcvrInfo.TxPowerLane_7 )){
             xcvrState.TxPowerLane_7 = &xcvrInfo.TxPowerLane_7
         }
-        if (test_if_available(xcvrInfo.TxPowerLane_8 )){
+        if (test_if_blank(xcvrInfo.TxPowerLane_8 )){
             xcvrState.TxPowerLane_8 = &xcvrInfo.TxPowerLane_8
         }
 
-        if (test_if_available(xcvrInfo.Temperature)){
+        if (test_if_blank(xcvrInfo.Temperature)){
            xcvrState.Temperature = &xcvrInfo.Temperature
         }
-        if (test_if_available( xcvrInfo.Voltage)){
+        if (test_if_blank( xcvrInfo.Voltage)){
             xcvrState.Voltage = &xcvrInfo.Voltage
         }
 
@@ -2375,232 +2379,232 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
                 xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
             }
         case XCVR_TEMPERATURE:
-            if (test_if_available(xcvrInfo.Temperature)){
+            if (test_if_blank(xcvrInfo.Temperature)){
                 xcvrState.Temperature = &xcvrInfo.Temperature
             }
         case XCVR_VOLTAGE:
-            if (test_if_available(xcvrInfo.Voltage)){
+            if (test_if_blank(xcvrInfo.Voltage)){
                 xcvrState.Voltage = &xcvrInfo.Voltage
             }
         case XCVR_LB_MEDIA_SIDE_OUTPUT_SUP:
-            if (test_if_available(xcvrInfo.MediaSideOutputSup)){
+            if (test_if_blank(xcvrInfo.MediaSideOutputSup)){
                 xcvrState.LbMediaSideInputSupport = &xcvrInfo.MediaSideOutputSup
             }
         case XCVR_LB_MEDIA_SIDE_INPUT_SUP:
-            if (test_if_available(xcvrInfo.MediaSideInputSup)){
+            if (test_if_blank(xcvrInfo.MediaSideInputSup)){
                 xcvrState.LbMediaSideInputSupport = &xcvrInfo.MediaSideInputSup
             }
         case XCVR_LB_HOST_SIDE_OUTPUT_SUP:
-            if (test_if_available(xcvrInfo.HostSideOutputSup)){
+            if (test_if_blank(xcvrInfo.HostSideOutputSup)){
                 xcvrState.LbHostSideOutputSupport = &xcvrInfo.HostSideOutputSup
             }
         case XCVR_LB_HOST_SIDE_INPUT_SUP:
-            if (test_if_available(xcvrInfo.HostSideInputSup)){
+            if (test_if_blank(xcvrInfo.HostSideInputSup)){
                 xcvrState.LbHostSideInputSupport = &xcvrInfo.HostSideInputSup
             }
         case XCVR_LB_PER_LANE_HOST_SIDE_SUP:
-            if (test_if_available(xcvrInfo.PerLaneHostSideSup)){
+            if (test_if_blank(xcvrInfo.PerLaneHostSideSup)){
                 xcvrState.LbPerLaneHostSideSupport = &xcvrInfo.PerLaneHostSideSup
             }
         case XCVR_LB_PER_LANE_MEDIA_SIDE_SUP:
-            if (test_if_available(xcvrInfo.PerLaneMediaSideSup)){
+            if (test_if_blank(xcvrInfo.PerLaneMediaSideSup)){
                 xcvrState.LbPerLaneMediaSideSupport = &xcvrInfo.PerLaneMediaSideSup
             }
         case XCVR_LB_SIMUL_HOST_MEDIA_SIDE_SUP:
-            if (test_if_available(xcvrInfo.SimulHostMediaSideSup)){
+            if (test_if_blank(xcvrInfo.SimulHostMediaSideSup)){
                 xcvrState.LbSimulHostMediaSideSupport = &xcvrInfo.SimulHostMediaSideSup
             }
         case XCVR_LB_MEDIA_SIDE_OUTPUT_STATE:
-            if (test_if_available(xcvrInfo.MediaSideOutputEnable)){
+            if (test_if_blank(xcvrInfo.MediaSideOutputEnable)){
                 xcvrState.LbMediaSideOutputEnable = &xcvrInfo.MediaSideOutputEnable
             }
         case XCVR_LB_MEDIA_SIDE_INPUT_STATE:
-            if (test_if_available(xcvrInfo.MediaSideInputEnable)){
+            if (test_if_blank(xcvrInfo.MediaSideInputEnable)){
                 xcvrState.LbMediaSideInputEnable = &xcvrInfo.MediaSideInputEnable
             }
         case XCVR_LB_HOST_SIDE_OUTPUT_STATE:
-            if (test_if_available(xcvrInfo.HostSideOutputEnable)){
+            if (test_if_blank(xcvrInfo.HostSideOutputEnable)){
                 xcvrState.LbHostSideOutputEnable = &xcvrInfo.HostSideOutputEnable
             }
         case XCVR_LB_HOST_SIDE_INPUT_STATE:
-            if (test_if_available(xcvrInfo.HostSideInputEnable)){
+            if (test_if_blank(xcvrInfo.HostSideInputEnable)){
                 xcvrState.LbHostSideInputEnable = &xcvrInfo.HostSideInputEnable
             }
         case XCVR_LB_PER_LANE_HOST_SIDE_STATE:
-            if (test_if_available(xcvrInfo.PerLaneHostSideEnable)){
+            if (test_if_blank(xcvrInfo.PerLaneHostSideEnable)){
                 xcvrState.LbPerLaneHostSideEnable = &xcvrInfo.PerLaneHostSideEnable
             }
         case XCVR_LB_PER_LANE_MEDIA_SIDE_STATE:
-            if (test_if_available(xcvrInfo.PerLaneMediaSideEnable)){
+            if (test_if_blank(xcvrInfo.PerLaneMediaSideEnable)){
                 xcvrState.LbPerLaneMediaSideEnable = &xcvrInfo.PerLaneMediaSideEnable
             }
         case XCVR_LB_SIMUL_HOST_MEDIA_SIDE_STATE:
-            if (test_if_available(xcvrInfo.SimulHostMediaSideEnable)){
+            if (test_if_blank(xcvrInfo.SimulHostMediaSideEnable)){
                 xcvrState.LbSimulHostMediaSideEnable = &xcvrInfo.SimulHostMediaSideEnable
             }
 
         case XCVR_LOL_LANE_1:
-            if (test_if_available(xcvrInfo.LolLane_1)){
+            if (test_if_blank(xcvrInfo.LolLane_1)){
                 xcvrState.LolLane_1 = &xcvrInfo.LolLane_1
             }
         case XCVR_LOL_LANE_2:
-            if (test_if_available(xcvrInfo.LolLane_2)){
+            if (test_if_blank(xcvrInfo.LolLane_2)){
                 xcvrState.LolLane_2 = &xcvrInfo.LolLane_2
             }
         case XCVR_LOL_LANE_3:
-            if (test_if_available(xcvrInfo.LolLane_3)){
+            if (test_if_blank(xcvrInfo.LolLane_3)){
                 xcvrState.LolLane_3 = &xcvrInfo.LolLane_3
             }
         case XCVR_LOL_LANE_4:
-            if (test_if_available(xcvrInfo.LolLane_4)){
+            if (test_if_blank(xcvrInfo.LolLane_4)){
                 xcvrState.LolLane_4 = &xcvrInfo.LolLane_4
             }
         case XCVR_LOL_LANE_5:
-            if (test_if_available(xcvrInfo.LolLane_5)){
+            if (test_if_blank(xcvrInfo.LolLane_5)){
                 xcvrState.LolLane_5 = &xcvrInfo.LolLane_5
             }
         case XCVR_LOL_LANE_6:
-            if (test_if_available(xcvrInfo.LolLane_6)){
+            if (test_if_blank(xcvrInfo.LolLane_6)){
                 xcvrState.LolLane_6 = &xcvrInfo.LolLane_6
             }
         case XCVR_LOL_LANE_7:
-            if (test_if_available(xcvrInfo.LolLane_7)){
+            if (test_if_blank(xcvrInfo.LolLane_7)){
                 xcvrState.LolLane_7 = &xcvrInfo.LolLane_7
             }
         case XCVR_LOL_LANE_8:
-            if (test_if_available(xcvrInfo.LolLane_8)){
+            if (test_if_blank(xcvrInfo.LolLane_8)){
                 xcvrState.LolLane_8 = &xcvrInfo.LolLane_8
             }
 
         case XCVR_LOS_LANE_1:
-            if (test_if_available(xcvrInfo.LosLane_1)){
+            if (test_if_blank(xcvrInfo.LosLane_1)){
                 xcvrState.LosLane_1 = &xcvrInfo.LosLane_1
             }
         case XCVR_LOS_LANE_2:
-            if (test_if_available(xcvrInfo.LosLane_2)){
+            if (test_if_blank(xcvrInfo.LosLane_2)){
                 xcvrState.LosLane_2 = &xcvrInfo.LosLane_2
             }
         case XCVR_LOS_LANE_3:
-            if (test_if_available(xcvrInfo.LosLane_3)){
+            if (test_if_blank(xcvrInfo.LosLane_3)){
                 xcvrState.LosLane_3 = &xcvrInfo.LosLane_3
             }
         case XCVR_LOS_LANE_4:
-            if (test_if_available(xcvrInfo.LosLane_4)){
+            if (test_if_blank(xcvrInfo.LosLane_4)){
                 xcvrState.LosLane_4 = &xcvrInfo.LosLane_4
             }
         case XCVR_LOS_LANE_5:
-            if (test_if_available(xcvrInfo.LosLane_5)){
+            if (test_if_blank(xcvrInfo.LosLane_5)){
                 xcvrState.LosLane_5 = &xcvrInfo.LosLane_5
             }
         case XCVR_LOS_LANE_6:
-            if (test_if_available(xcvrInfo.LosLane_6)){
+            if (test_if_blank(xcvrInfo.LosLane_6)){
                 xcvrState.LosLane_6 = &xcvrInfo.LosLane_6
             }
         case XCVR_LOS_LANE_7:
-            if (test_if_available(xcvrInfo.LosLane_7)){
+            if (test_if_blank(xcvrInfo.LosLane_7)){
                 xcvrState.LosLane_7 = &xcvrInfo.LosLane_7
             }
         case XCVR_LOS_LANE_8:
-            if (test_if_available(xcvrInfo.LosLane_8)){
+            if (test_if_blank(xcvrInfo.LosLane_8)){
                 xcvrState.LosLane_8 = &xcvrInfo.LosLane_8
             }
 
         case XCVR_RXPOWER_LANE_1:
-            if (test_if_available(xcvrInfo.RxPowerLane_1)){
+            if (test_if_blank(xcvrInfo.RxPowerLane_1)){
                 xcvrState.RxPowerLane_1 = &xcvrInfo.RxPowerLane_1
             }
         case XCVR_RXPOWER_LANE_2:
-            if (test_if_available(xcvrInfo.RxPowerLane_2)){
+            if (test_if_blank(xcvrInfo.RxPowerLane_2)){
                 xcvrState.RxPowerLane_2 = &xcvrInfo.RxPowerLane_2
             }
         case XCVR_RXPOWER_LANE_3:
-            if (test_if_available(xcvrInfo.RxPowerLane_3)){
+            if (test_if_blank(xcvrInfo.RxPowerLane_3)){
                 xcvrState.RxPowerLane_3 = &xcvrInfo.RxPowerLane_3
             }
         case XCVR_RXPOWER_LANE_4:
-            if (test_if_available(xcvrInfo.RxPowerLane_4)){
+            if (test_if_blank(xcvrInfo.RxPowerLane_4)){
                 xcvrState.RxPowerLane_4 = &xcvrInfo.RxPowerLane_4
             }
         case XCVR_RXPOWER_LANE_5:
-            if (test_if_available(xcvrInfo.RxPowerLane_5)){
+            if (test_if_blank(xcvrInfo.RxPowerLane_5)){
                 xcvrState.RxPowerLane_5 = &xcvrInfo.RxPowerLane_5
             }
         case XCVR_RXPOWER_LANE_6:
-            if (test_if_available(xcvrInfo.RxPowerLane_6)){
+            if (test_if_blank(xcvrInfo.RxPowerLane_6)){
                 xcvrState.RxPowerLane_6 = &xcvrInfo.RxPowerLane_6
             }
         case XCVR_RXPOWER_LANE_7:
-            if (test_if_available(xcvrInfo.RxPowerLane_7)){
+            if (test_if_blank(xcvrInfo.RxPowerLane_7)){
                 xcvrState.RxPowerLane_7 = &xcvrInfo.RxPowerLane_7
             }
         case XCVR_RXPOWER_LANE_8:
-            if (test_if_available(xcvrInfo.RxPowerLane_8)){
+            if (test_if_blank(xcvrInfo.RxPowerLane_8)){
                 xcvrState.RxPowerLane_8 = &xcvrInfo.RxPowerLane_8
             }
 
         case XCVR_TXBIAS_LANE_1:
-            if (test_if_available(xcvrInfo.TxBiasLane_1)){
+            if (test_if_blank(xcvrInfo.TxBiasLane_1)){
                 xcvrState.TxBiasLane_1  = &xcvrInfo.TxBiasLane_1
             }
         case XCVR_TXBIAS_LANE_2:
-            if (test_if_available(xcvrInfo.TxBiasLane_2)){
+            if (test_if_blank(xcvrInfo.TxBiasLane_2)){
                 xcvrState.TxBiasLane_2  = &xcvrInfo.TxBiasLane_2
             }
         case XCVR_TXBIAS_LANE_3:
-            if (test_if_available(xcvrInfo.TxBiasLane_3)){
+            if (test_if_blank(xcvrInfo.TxBiasLane_3)){
                 xcvrState.TxBiasLane_3  = &xcvrInfo.TxBiasLane_3
             }
         case XCVR_TXBIAS_LANE_4:
-            if (test_if_available(xcvrInfo.TxBiasLane_4)){
+            if (test_if_blank(xcvrInfo.TxBiasLane_4)){
                 xcvrState.TxBiasLane_4  = &xcvrInfo.TxBiasLane_4
             }
         case XCVR_TXBIAS_LANE_5:
-            if (test_if_available(xcvrInfo.TxBiasLane_5)){
+            if (test_if_blank(xcvrInfo.TxBiasLane_5)){
                 xcvrState.TxBiasLane_5  = &xcvrInfo.TxBiasLane_5
             }
         case XCVR_TXBIAS_LANE_6:
-            if (test_if_available(xcvrInfo.TxBiasLane_6)){
+            if (test_if_blank(xcvrInfo.TxBiasLane_6)){
                 xcvrState.TxBiasLane_6  = &xcvrInfo.TxBiasLane_6
             }
         case XCVR_TXBIAS_LANE_7:
-            if (test_if_available(xcvrInfo.TxBiasLane_7)){
+            if (test_if_blank(xcvrInfo.TxBiasLane_7)){
                 xcvrState.TxBiasLane_7  = &xcvrInfo.TxBiasLane_7
             }
         case XCVR_TXBIAS_LANE_8:
-            if (test_if_available(xcvrInfo.TxBiasLane_8)){
+            if (test_if_blank(xcvrInfo.TxBiasLane_8)){
                 xcvrState.TxBiasLane_8  = &xcvrInfo.TxBiasLane_8
             }
 
         case XCVR_TXPOWER_LANE_1:
-            if (test_if_available(xcvrInfo.TxPowerLane_1)){
+            if (test_if_blank(xcvrInfo.TxPowerLane_1)){
                 xcvrState.TxPowerLane_1 = &xcvrInfo.TxPowerLane_1
             }
         case XCVR_TXPOWER_LANE_2:
-            if (test_if_available(xcvrInfo.TxPowerLane_2)){
+            if (test_if_blank(xcvrInfo.TxPowerLane_2)){
                 xcvrState.TxPowerLane_2 = &xcvrInfo.TxPowerLane_2
             }
         case XCVR_TXPOWER_LANE_3:
-            if (test_if_available(xcvrInfo.TxPowerLane_3)){
+            if (test_if_blank(xcvrInfo.TxPowerLane_3)){
                 xcvrState.TxPowerLane_3 = &xcvrInfo.TxPowerLane_3
             }
         case XCVR_TXPOWER_LANE_4:
-            if (test_if_available(xcvrInfo.TxPowerLane_4)){
+            if (test_if_blank(xcvrInfo.TxPowerLane_4)){
                 xcvrState.TxPowerLane_4 = &xcvrInfo.TxPowerLane_4
             }
         case XCVR_TXPOWER_LANE_5:
-            if (test_if_available(xcvrInfo.TxPowerLane_5)){
+            if (test_if_blank(xcvrInfo.TxPowerLane_5)){
                 xcvrState.TxPowerLane_5 = &xcvrInfo.TxPowerLane_5
             }
         case XCVR_TXPOWER_LANE_6:
-            if (test_if_available(xcvrInfo.TxPowerLane_6)){
+            if (test_if_blank(xcvrInfo.TxPowerLane_6)){
                 xcvrState.TxPowerLane_6 = &xcvrInfo.TxPowerLane_6
             }
         case XCVR_TXPOWER_LANE_7:
-            if (test_if_available(xcvrInfo.TxPowerLane_7)){
+            if (test_if_blank(xcvrInfo.TxPowerLane_7)){
                 xcvrState.TxPowerLane_7 = &xcvrInfo.TxPowerLane_7
             }
         case XCVR_TXPOWER_LANE_8:
-            if (test_if_available(xcvrInfo.TxPowerLane_8)){
+            if (test_if_blank(xcvrInfo.TxPowerLane_8)){
                 xcvrState.TxPowerLane_8 = &xcvrInfo.TxPowerLane_8
             }
 
