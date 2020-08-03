@@ -743,7 +743,8 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 		}
 		if ((uri == requestUri) && (len(fldValMap) == 0)) {
 			yangType := yangTypeGet(xYangSpecMap[xpath].yangEntry)
-			if yangType != YANG_LEAF_LIST {
+			// field transformer returns empty map when no data in DB
+			if ((yangType == YANG_LEAF) || ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))))) {
 				log.Errorf("Field transformer returned empty data , uri  - %v", requestUri)
 				err = tlerr.NotFoundError{Format:"Resource not found"}
 			}
