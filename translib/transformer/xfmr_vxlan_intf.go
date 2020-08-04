@@ -831,7 +831,7 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
                     //duplicate qos-mode is configured and dscp isn't configured
                     log.Errorf("qos-mode:%s already configured",qos_mode_in)
                     return &res_map, tlerr.New("qos-mode:%s already configured",qos_mode_in)
-                } else if (duplicate_sip) {
+                } else if (duplicate_sip && qos_mode_in == "" && !dscp_configured) {
                     log.Errorf("source-vtep-ip:%s already configured",src_ip_in)
                     return &res_map, tlerr.New("source_vtep-ip:%s already configured",src_ip_in)
                 }
