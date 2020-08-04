@@ -308,7 +308,7 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 
 	defer func() {
 		if (cvlErr.ErrCode != CVL_SUCCESS) {
-			CVL_LOG(ERROR, "ValidateEditConfig() failed , %+v", cvlErr)
+			CVL_LOG(WARNING, "ValidateEditConfig() failed: %+v", cvlErr)
 		}
 		//Update validation time stats
 		updateValidationTimeStats(time.Since(ts))
@@ -324,7 +324,7 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 		caller = f.Name()
 	}
 
-	TRACE_LOG(INFO_TRACE, "ValidateEditConfig() called from %s() : %v", caller, cfgData)
+	CVL_LOG(INFO, "ValidateEditConfig() called from %s() : %v", caller, cfgData)
 
 	if SkipValidation() {
 		CVL_LOG(INFO_TRACE, "Skipping CVL validation.")
@@ -479,7 +479,7 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 				}
 
 				if !deletedInSameSession {
-					CVL_LOG(ERROR, "\nValidateEditConfig(): Key = %s already exists", cfgData[i].Key)
+					CVL_LOG(WARNING, "\nValidateEditConfig(): Key = %s already exists", cfgData[i].Key)
 					cvlErrObj.ErrCode = CVL_SEMANTIC_KEY_ALREADY_EXIST
 					cvlErrObj.CVLErrDetails = cvlErrorMap[cvlErrObj.ErrCode]
 					return cvlErrObj, CVL_SEMANTIC_KEY_ALREADY_EXIST 
@@ -495,7 +495,7 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 		case OP_UPDATE:
 			n, err1 := redisClient.Exists(cfgData[i].Key).Result()
 			if (err1 != nil || n == 0) { //key must exists
-				CVL_LOG(ERROR, "\nValidateEditConfig(): Key = %s does not exist", cfgData[i].Key)
+				CVL_LOG(WARNING, "\nValidateEditConfig(): Key = %s does not exist", cfgData[i].Key)
 				cvlErrObj.ErrCode = CVL_SEMANTIC_KEY_NOT_EXIST
 				cvlErrObj.CVLErrDetails = cvlErrorMap[cvlErrObj.ErrCode]
 				return cvlErrObj, CVL_SEMANTIC_KEY_NOT_EXIST
@@ -511,7 +511,7 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 		case OP_DELETE:
 			n, err1 := redisClient.Exists(cfgData[i].Key).Result()
 			if (err1 != nil || n == 0) { //key must exists
-				CVL_LOG(ERROR, "\nValidateEditConfig(): Key = %s does not exist", cfgData[i].Key)
+				CVL_LOG(WARNING, "\nValidateEditConfig(): Key = %s does not exist", cfgData[i].Key)
 				cvlErrObj.ErrCode = CVL_SEMANTIC_KEY_NOT_EXIST
 				cvlErrObj.CVLErrDetails = cvlErrorMap[cvlErrObj.ErrCode]
 				return cvlErrObj, CVL_SEMANTIC_KEY_NOT_EXIST
@@ -883,7 +883,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 
 	_, err := pipe.Exec()
 	if err != nil {
-		CVL_LOG(ERROR, "Failed to fetch dependent key details for table %s", tableName)
+		CVL_LOG(WARNING, "Failed to fetch dependent key details for table %s", tableName)
 	}
 	pipe.Close()
 
@@ -897,7 +897,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			mFilterScript.script, mFilterScript.field).Result()
 
 			if (err != nil) {
-				CVL_LOG(ERROR, "Lua script error (%v)", err)
+				CVL_LOG(WARNING, "Lua script error (%v)", err)
 			}
 			if (refEntries == nil) {
 				//No reference field found
@@ -920,7 +920,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			keys := mCmdArr[idx]
 			res, err := keys.Result()
 			if (err != nil) {
-				CVL_LOG(ERROR, "Failed to fetch dependent key details for table %s", tblName)
+				CVL_LOG(WARNING, "Failed to fetch dependent key details for table %s", tblName)
 				continue
 			}
 

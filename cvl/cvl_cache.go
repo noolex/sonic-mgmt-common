@@ -142,13 +142,13 @@ func (c *CVL) fetchTableDataToTmpCache(tableName string, dbKeys map[string]inter
 			//Otherwise fetch it from Redis
 			mCmd[dbKey] = pipe.HGetAll(redisKey) //write into pipeline
 			if mCmd[dbKey] == nil {
-				CVL_LOG(ERROR, "Failed pipe.HGetAll('%s')", redisKey)
+				CVL_LOG(WARNING, "Failed pipe.HGetAll('%s')", redisKey)
 			}
 		}
 
 		_, err := pipe.Exec()
 		if err != nil {
-			CVL_LOG(ERROR, "Failed to fetch details for table %s", tableName)
+			CVL_LOG(WARNING, "Failed to fetch details for table %s", tableName)
 			return 0
 		}
 		pipe.Close()
@@ -250,7 +250,7 @@ func (c *CVL) fetchDataToTmpCache() *yparser.YParserNode {
 			topYangNode, cvlYErrObj := c.generateYangListData(jsonNode, true)
 			if  topYangNode == nil {
 				cvlYErrObj.ErrCode = CVL_SYNTAX_ERROR
-				CVL_LOG(ERROR, "Unable to translate cache data to YANG format")
+				CVL_LOG(WARNING, "Unable to translate cache data to YANG format")
 				return nil
 			}
 
@@ -267,7 +267,7 @@ func (c *CVL) fetchDataToTmpCache() *yparser.YParserNode {
 			}
 
 			if c.mergeYangData(c.yv.root, doc) != CVL_SUCCESS {
-				CVL_LOG(ERROR, "Unable to merge translated YANG data while " +
+				CVL_LOG(WARNING, "Unable to merge translated YANG data while " +
 				"translating from cache data to YANG format")
 				cvlYErrObj.ErrCode = CVL_SYNTAX_ERROR
 				return nil

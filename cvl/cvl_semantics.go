@@ -214,7 +214,7 @@ func (c *CVL) generateYangListData(jsonNode *jsonquery.Node,
 	var topNode *xmlquery.Node
 
 	if _, exists := modelInfo.tableInfo[tableName]; !exists {
-		CVL_LOG(ERROR, "Failed to find schema details for table %s", tableName)
+		CVL_LOG(WARNING, "Failed to find schema details for table %s", tableName)
 		cvlErrObj.ErrCode = CVL_SYNTAX_ERROR
 		cvlErrObj.TableName = tableName 
 		cvlErrObj.Msg ="Schema details not found"
@@ -1581,7 +1581,7 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 					// Entry already in delete request cache, proceed for next dep data
 					continue
 				} else {
-					CVL_LOG(ERROR, "Delete will violate the constraint as entry %s is referred in %v", redisKeyForDepData, depEntkey)
+					CVL_LOG(WARNING, "Delete will violate the constraint as entry %s is referred in %v", redisKeyForDepData, depEntkey)
 					return CVL_SEMANTIC_ERROR
 				}
 			}
