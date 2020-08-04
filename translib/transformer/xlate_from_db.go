@@ -1171,6 +1171,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						err := xfmrHandlerFunc(inParams)
 						if err != nil {
 							xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc, err)
+							return jsonData, true, err
 						}
 						inParamsForGet.dbDataMap = dbDataMap
 						inParamsForGet.ygRoot = ygRoot
@@ -1191,7 +1192,15 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
 						err := xfmrHandlerFunc(inParams)
 						if err != nil {
-							xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc, err)
+							if (((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) && (uri == requestUri)) {
+								// The error handling here is for the deferred resource check error being handled by the subtree for virtual table cases.
+								log.Errorf("Subtree at list instance level returns error %v for  uri  - %v", err, uri)
+								return jsonData, true, err
+
+							} else {
+
+								xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc, err)
+							}
 						}
 						isFirstCall = false
 						inParamsForGet.dbDataMap = dbDataMap
