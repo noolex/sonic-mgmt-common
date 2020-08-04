@@ -53,6 +53,14 @@ module sonic-common {
             }
     }
 
+    typedef percentage {
+        type uint8 {
+            range "0..100";
+        }
+        description
+            "Integer indicating a percentage value";
+    }
+
     container operation {
 	    leaf operation {
 		    type enumeration {

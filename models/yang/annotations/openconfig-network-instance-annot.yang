@@ -3736,6 +3736,12 @@ module openconfig-network-instance-annot {
       }
   }
 
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:interface-id {
+      deviate add {
+          sonic-ext:field-transformer "pim_intf_id_fld_xfmr";
+      }
+  }
+
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:mode {
       deviate add {
           sonic-ext:field-transformer "pim_intf_mode_fld_xfmr";

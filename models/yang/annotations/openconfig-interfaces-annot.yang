@@ -36,12 +36,6 @@ module openconfig-interfaces-annot {
         }
     }
 
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:name {
-        deviate add {
-            sonic-ext:field-transformer "intf_name_empty_xfmr";
-        }
-    }
-
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:config/oc-intf:name {
         deviate add {
             sonic-ext:field-transformer "intf_name_xfmr";
@@ -123,6 +117,11 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf-ext:rate-interval {
+        deviate add {
+            sonic-ext:field-name "port_load_interval";
+        }
+    }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config {
         deviate add {

@@ -10,6 +10,7 @@ module openconfig-system-ext {
     import openconfig-system { prefix oc-sys; }
     import openconfig-inet-types { prefix inet; }
     import openconfig-kdump { prefix oc-kdump; }
+    import openconfig-switch-resource { prefix oc-swresource; }
     import openconfig-interfaces { prefix "oc-if"; }
     import openconfig-infra { prefix "oc-infra"; }
     import openconfig-tpcm { prefix "oc-tpcm"; }
@@ -101,6 +102,11 @@ module openconfig-system-ext {
     augment /oc-sys:system {
         description "Coredump information";
         uses oc-systemd-coredump:systemd-coredump-top;
+    }
+
+    augment /oc-sys:system {
+        description "Switch Resources Management";
+        uses oc-swresource:switch-resource-top;
     }
 
     augment "/oc-sys:system/oc-sys:aaa/oc-sys:authentication/oc-sys:config" {
