@@ -64,6 +64,8 @@ module sonic-qos-pfc {
             "Key for Flex Counter Table";
           type enumeration {
             enum PFCWD;
+            enum PORT;
+            enum QUEUE;
           }
         }
 
