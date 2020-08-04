@@ -15,7 +15,7 @@ func init () {
     XlateFuncBind("DbToYang_oc_kdump_records_xfmr", DbToYang_oc_kdump_records_xfmr)
     XlateFuncBind("DbToYang_oc_kdump_config_xfmr", DbToYang_oc_kdump_config_xfmr)
     XlateFuncBind("YangToDb_oc_kdump_config_xfmr", YangToDb_oc_kdump_config_xfmr)
-
+    XlateFuncBind("YangToDb_kdump_config_key_xfmr", YangToDb_kdump_config_key_xfmr)
 }
 
 /*App specific constants */
@@ -428,4 +428,8 @@ var YangToDb_oc_kdump_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     }
 
     return nil,err;
+}
+
+var YangToDb_kdump_config_key_xfmr = func(inParams XfmrParams) (string, error) {
+        return "config", nil
 }

@@ -686,39 +686,6 @@ func validateQosQueue(dbs [db.MaxDB]*db.DB, queueName string) error {
     return nil
 }
 
-func validateQosConfigQueue(inParams XfmrParams, queueName string) error {
-    var errStr string
-    log.Info(" validateQosConfigQueue - queueName ", queueName);
-    d := inParams.d
-    if (inParams.curDb != db.CountersDB) {
-        d = inParams.dbs[db.CountersDB]
-        log.Info(" validateQosConfigQueue - Get counter DB , inParams.curDb ", inParams.curDb)
-    }
-    if (d == nil) {
-        log.Info(" validateQosConfigQueue - d nil ", queueName)
-        return nil
-    }
-    oid, err := getIntfQCountersTblKey(d, queueName)
-    if err != nil {
-        errStr = "Invalid Queue:" + queueName
-        log.Error(errStr)
-        return tlerr.InvalidArgsError{Format:errStr}
-    }
-
-    queueTypeMap, _ := doGetAllQueueTypeMap(d);
-
-    qType := getQType(queueTypeMap, oid)
-
-    if (qType == "MC") {
-        errStr = "Invalid Queue:" + queueName
-        log.Error(errStr)
-        return tlerr.InvalidArgsError{Format:errStr}
-    }
-
-    return nil
-}
-
-
 func validateQosPg(dbs [db.MaxDB]*db.DB, pgName string) error {
 
     log.Info(" validateQosPg - pgName ", pgName);

@@ -2569,6 +2569,8 @@ func get_rpc_show_bgp_sub_cmd_ (mapData map[string]interface{}) (bool, string, s
             return get_rpc_show_bgp_sub_cmd_for_community_no_peer_ (mapData)
         case "ROUTE-MAP":
             return get_rpc_show_bgp_sub_cmd_for_route_map_ (mapData)
+        case "SUMMARY":
+            return true, "", "summary json"
         default:
             err := "Invalid value in query-type attribute : " + queryType
             log.Info ("In get_rpc_show_bgp_sub_cmd_ : ", err)

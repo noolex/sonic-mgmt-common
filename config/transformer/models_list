@@ -76,6 +76,7 @@ openconfig-qos.yang
 openconfig-qos-ext.yang
 openconfig-qos-maps-ext.yang
 openconfig-qos-annot.yang
+openconfig-qos-pfc.yang
 sonic-qos-clear.yang
 sonic-qos-clear-annot.yang
 openconfig-relay-agent.yang
@@ -86,6 +87,8 @@ openconfig-platform.yang
 openconfig-platform-ext.yang
 openconfig-platform-port.yang
 openconfig-platform-annot.yang
+openconfig-port-group.yang
+openconfig-port-group-annot.yang
 openconfig-copp-ext.yang
 openconfig-copp-ext-annot.yang
 sonic-copp-annot.yang
@@ -114,3 +117,4 @@ openconfig-ip-helper.yang
 openconfig-ip-helper-annot.yang
 sonic-ip-helper.yang
 sonic-ip-helper-annot.yang
+openconfig-switch-resource.yang

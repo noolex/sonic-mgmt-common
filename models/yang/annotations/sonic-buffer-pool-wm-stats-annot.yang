@@ -1,0 +1,22 @@
+module sonic-buffer-pool-wm-stats-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/sonic-buffer-pool-wm-stats-annot";
+    prefix "sonic-buffer-pool-wm-stats-annot";
+
+    import sonic-buffer-pool { prefix sbwm; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sbwm:get-buffer-pool-wm-stats {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_get_buffer_pool_wm_stats";
+        }
+    }
+
+    deviation /sbwm:clear-buffer-pool-wm-stats {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_clear_buffer_pool_wm_stats";
+        }
+    }
+}

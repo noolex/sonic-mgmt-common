@@ -1,0 +1,532 @@
+module openconfig-pim-ext {
+
+    yang-version "1";
+
+    // namespace
+    namespace "http://openconfig.net/yang/pim/extension";
+
+    prefix "oc-pim-ext";
+
+    // import some basic types/interfaces
+    import openconfig-inet-types { prefix oc-inet; }
+    import openconfig-network-instance { prefix oc-netinst; }
+    import openconfig-routing-policy {prefix oc-rpol; }
+    import openconfig-interfaces { prefix oc-if; }
+    import openconfig-extensions { prefix oc-ext; }
+    import openconfig-types { prefix "oc-types"; }
+    import sonic-codegen { prefix sonic-codegen; }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "This module describes a YANG model for PIM protocol configuration extensions.";
+
+    oc-ext:openconfig-version "0.1.0";
+
+    revision "2020-05-18" {
+        description
+            "PIM extensions.";
+        reference "0.1.0";
+    }
+
+
+    typedef route-type {
+        type enumeration {
+            enum "SG" {
+                description
+                    "When this particular (S,G) multicast route entry is not a RPT entry";
+            }
+            enum "SG_RPT" {
+                description
+                    "When this particular (S,G) multicast route entry is a RPT entry";
+            }
+        }
+        description
+            "Multicast route-types";
+    }
+
+    grouping pim-ext-global-config {
+        description
+            "Configuration data for PIM globals.";
+
+        leaf join-prune-interval {
+            type uint16 {
+                range 60..600;
+            }
+            description
+                "Interval at which the router sends the PIM join/prune messages
+                toward the upstream RPF neighbor.";
+        }
+
+        leaf keep-alive-timer {
+            type uint16 {
+                range 31..60000;
+            }
+            description
+                "Time after which router invalidates the multicast route entry.";
+        }
+
+        leaf ecmp-enabled {
+            type boolean;
+            description
+                "When set to TRUE, PIM ECMP will be enabled.";
+        }
+
+        leaf ecmp-rebalance-enabled {
+            type boolean;
+            description
+                "When set to TRUE, PIM ECMP rebalance will be enabled.";
+        }
+    }
+
+    grouping pim-ext-interface-config {
+        description
+            "Configuration data for PIM interface.";
+
+        leaf bfd-enabled {
+            type boolean;
+            description
+                "When set to TRUE, it turns on BFD support for PIM on this interface.";
+        }
+    }
+
+    grouping pim-ext-interface-state {
+        description
+            "Operational state information of PIM interface.";
+
+        leaf nbrs-count {
+            type uint16;
+            description
+                "Number of PIM neighbors on this interface.";
+        }
+
+        leaf local-address {
+            type oc-inet:ipv4-address;
+            description
+                "Local IPv4 address of this interface.";
+        }
+
+        leaf dr-address {
+            type oc-inet:ipv4-address;
+            description
+                "IPv4 address of designated router on this interface.";
+        }
+    }
+
+    grouping pim-ext-neighbor-state {
+        description
+            "Operational state information of PIM neighbor.";
+
+        leaf dr-priority {
+            type uint32 {
+                range 1..4294967295;
+            }
+            description
+                "Designated router priority value.";
+        }
+    }
+
+    grouping pim-ext-gbl-tib-oil-cmn-info-state {
+        description
+            "Common Operational state information of an outgoing interface present in PIM TIB.";
+
+        leaf outgoing-interface {
+            type leafref {
+                path "../state/outgoing-interface";
+            }
+            description
+                "Reference to the outgoing-interface key";
+        }
+
+        container state {
+            description
+                "Common Operational state information of an outgoing interface present in PIM TIB.";
+
+            leaf outgoing-interface {
+                type oc-if:interface-id;
+                description
+                    "Outgoing interface for this multicast entry.";
+            }
+
+            leaf uptime {
+                type oc-types:timeticks64;
+                description
+                    "This timestamp indicates the time, since this particular outgoing interface is present in this multicast entry.
+                    The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                    It can be computed by clients as the difference between this value and the current time in UTC.";
+            }
+
+            leaf expiry {
+                type oc-types:timeticks64;
+                description
+                    "This timestamp indicates the time, when this particular outgoing interface will expire from this multicast entry.
+                    The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                    It can be computed by clients as the difference between this value and the current time in UTC.";
+            }
+        }
+    }
+
+    grouping pim-ext-gbl-tib-src-entry-cmn-info-state {
+        description
+            "Common Operational state information of particular multicast source present in PIM TIB.";
+
+        leaf incoming-interface {
+            type oc-if:interface-id;
+            description
+                "Incoming interface for this multicast entry.";
+        }
+
+        leaf uptime {
+            type oc-types:timeticks64;
+            description
+                "This timestamp indicates the time, since this particular multicast entry is learnt.
+                The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                It can be computed by clients as the difference between this value and the current time in UTC.";
+        }
+
+        leaf expiry {
+            type oc-types:timeticks64;
+            description
+                "This timestamp indicates the time, when this particular multicast entry will expire.
+                The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
+                It can be computed by clients as the difference between this value and the current time in UTC.";
+
+        }
+
+        leaf flags {
+            type string;
+            description
+                "To present the various other states of this entry and the information will be represented in a
+                concatenated string format. The following alphabets represents a state as explained below.
+
+                S - Sparse, C - Connected, L - Local, P - Pruned, R - RP-bit set,
+                F - Register Flag, T - SPT-bit set, J - Join SPT, K - Ack-Pending state
+
+                For e.g. This attribute can represent a state like this ==> SJT, which means these following flags are set
+                in this multicast entry as per PIM-TIB
+                * S - Sparse
+                * J - Join SPT
+                * T - SPT-bit set";
+        }
+
+        container oil-info-entries {
+            description
+                "Details about all outgoing interfaces of this multicast entry.";
+
+            list oil-info-entry {
+                key "outgoing-interface";
+
+                description
+                    "Details about outgoing interface for this multicast entry.";
+
+                uses pim-ext-gbl-tib-oil-cmn-info-state;
+            }
+        }
+    }
+
+    grouping pim-ext-gbl-tib-ipv4-src-entry-cmn-info-state {
+        description
+            "Common IPv4 Operational state information of particular multicast source present in PIM TIB.";
+
+        container rpf-info {
+            description
+                "Details about RPF-neighbor for a particular multicast source present in PIM protocol TIB.";
+
+            container state {
+                description "Operational state information.";
+
+                leaf rpf-neighbor-address {
+                    type oc-inet:ipv4-address;
+                    description
+                        "IPv4 Unicast address of the RPF-neighbor for the multicast source-address.";
+                }
+
+                leaf metric {
+                    type uint32;
+                    description
+                        "Distance metric of the route for this RPF-neighbor";
+                }
+
+                leaf preference {
+                    type uint32;
+                    description
+                        "Preference of the route for this RPF-neighbor";
+                }
+            }
+        }
+    }
+
+    grouping pim-ext-gbl-ip-entry-key-refs-state {
+        description
+            "Common PIM TIB IP multicast group entries keys refereneces.";
+
+        leaf group-address {
+            type leafref {
+                path "../state/group-address";
+            }
+            description
+                "Reference to the group-address key";
+        }
+    }
+
+    grouping pim-ext-gbl-tib-src-entry-key-refs-state {
+        description
+            "Common PIM TIB IP multicast group's source entries keys refereneces.";
+
+        leaf source-address {
+            type leafref {
+                path "../state/source-address";
+            }
+            description
+                "Reference to the source-address key";
+        }
+
+        leaf route-type {
+            type leafref {
+                path "../state/route-type";
+            }
+            description
+                "Reference to the route-type key";
+        }
+    }
+
+    grouping pim-ext-gbl-ipv4-tib-state {
+        description
+            "Operational state IPv4 information of PIM TIB.";
+
+        container ipv4-entries {
+            description
+                "Details about all IPv4 multicast entries present in PIM protocol TIB.";
+
+            list ipv4-entry {
+                key "group-address";
+
+                description
+                    "List of the IPv4 multicast entries present in PIM protocol TIB.";
+
+                uses pim-ext-gbl-ip-entry-key-refs-state;
+
+                container state {
+                    description "Operational state information.";
+
+                    leaf group-address {
+                        type oc-inet:ipv4-address;
+                        description
+                            "IPv4 Multicast group-address";
+                    }
+
+                    container src-entries {
+                        description
+                            "Details about all multicast-source information of this particular multicast group-address entry.";
+
+                        list src-entry {
+                            key "source-address route-type";
+
+                            description
+                                "List of different source-address entries within this particular multicast group-address entry.";
+
+                            uses pim-ext-gbl-tib-src-entry-key-refs-state;
+
+                            container state {
+                                description
+                                    "Operational state information of particular multicast source present in PIM TIB.";
+
+                                leaf source-address {
+                                    type oc-inet:ipv4-address;
+                                    description
+                                        "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
+                                        This address can be 0.0.0.0 in case of *,G multicast group entry.";
+                                }
+
+                                leaf route-type {
+                                    type route-type;
+                                    description
+                                        "Route-type of multicast entry.";
+                                }
+
+                                uses pim-ext-gbl-tib-src-entry-cmn-info-state;
+                                uses pim-ext-gbl-tib-ipv4-src-entry-cmn-info-state;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    grouping pim-ext-gbl-tib-state {
+        description
+            "Operational state information of PIM TIB.";
+
+        container tib {
+            config false;
+            description
+                "PIM Protocol TIB state information.";
+
+            uses pim-ext-gbl-ipv4-tib-state;
+        }
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
+        description
+            "PIM Global config extensions.";
+        container config {
+            description
+                "Configuration data for PIM Global.";
+            uses pim-ext-global-config; 
+        }
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state {
+        description
+            "PIM Global config extensions.";
+        uses pim-ext-global-config;
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global {
+        description
+            "PIM TIB extensions.";
+        uses pim-ext-gbl-tib-state;
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config {
+        description
+            "PIM Interface config extensions.";
+        uses pim-ext-interface-config;
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state {
+        description
+            "PIM Interface config & operational-state extensions.";
+        uses pim-ext-interface-config;
+        uses pim-ext-interface-state;
+    }
+
+    augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state {
+        description
+            "PIM Neighbors operational-state extensions.";
+        uses pim-ext-neighbor-state;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:ssm/oc-netinst:config/oc-netinst:ssm-ranges {
+        deviate replace {
+            type leafref {
+                path "/oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:name";
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:ssm/oc-netinst:state/oc-netinst:ssm-ranges {
+        deviate replace {
+            type leafref {
+                path "/oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:name";
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:rendezvous-points {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state/oc-netinst:neighbor-count {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:state/oc-netinst:counters {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:global/oc-netinst:sources-joined {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:enabled {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:bsr-border {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:bsr-border {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:border-router {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:border-router {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:dr-priority {
+        deviate replace {
+            type uint32 {
+                range 1..4294967295;
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:dr-priority {
+        deviate replace {
+            type uint32 {
+                range 1..4294967295;
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:dr-priority {
+        deviate replace {
+            type uint32 {
+                range 1..4294967295;
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:hello-interval {
+        sonic-codegen:lint-ignore "Deviated to align with PIM Protocol stack";
+        deviate replace {
+            type uint8 {
+                range "1..180";
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:hello-interval {
+        sonic-codegen:lint-ignore "Deviated to align with PIM Protocol stack";
+        deviate replace {
+            type uint8 {
+                range "1..180";
+            }
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:join-prune-interval {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:join-prune-interval {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:dead-timer {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:dead-timer {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:counters {
+        deviate not-supported;
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:interface-ref {
+        deviate not-supported;
+    }
+}

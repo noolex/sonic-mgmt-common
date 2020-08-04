@@ -189,6 +189,9 @@ module sonic-portchannel {
                 leaf speed {
                     type uint64;
                 }
+                leaf port_load_interval {
+                    type uint16;
+                }
             }
         }
 

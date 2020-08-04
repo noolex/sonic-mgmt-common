@@ -64,6 +64,30 @@ module sonic-system-infra {
     rpc show-sys-log {
         description
             "show system log";
+        input {
+            leaf num_lines{
+                type uint16{
+                    range "1..65535" {
+                        error-message "NUM Lines out of range 1..65535";
+                    }
+                }
+               description
+                    "output the last NUM lines of system log";
+            }
+        }
+
+        output {
+            leaf-list status-detail{
+               type string;
+               description
+                    "The detailed status of the operation execution request.";
+           }
+        }
+    }
+
+    rpc clear-sys-log {
+        description
+            "clear logging";
         output {
             leaf result{
                type string;
@@ -72,6 +96,5 @@ module sonic-system-infra {
            }
         }
     }
-
 
 }

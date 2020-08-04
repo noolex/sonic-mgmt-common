@@ -317,11 +317,6 @@ module openconfig-ospfv2-ext {
       "OSPF external route type 2";
   }
 
-  /*typedef ospf-sequence-number {
-    type int64;
-    description "OSPF sequence number";
-  }*/
-
   typedef ospf-cost-metric {
     type uint32 {
       range "0..16777215";
@@ -1492,6 +1487,12 @@ module openconfig-ospfv2-ext {
       description
         "Length of the LSA";
     }
+
+    leaf display-sequence-number {
+      type string;
+      description
+        "Sequence number in display format";
+    }
   }
 
   grouping ospfv2-ext-passive-interface-config {
@@ -1574,15 +1575,27 @@ module openconfig-ospfv2-ext {
         "Description related to flags present in router lsa";
     }
 
-    list link-information {
-      description
-        "Describes the links present in the router LSA (e.g. point-to-point, transit etc)";
+    leaf number-links { 
+      type uint16; 
+      description 
+        "The number of links that are described within the LSA"; 
+    }
 
-      container state {
-        config false;
+    container link-information-list {
+      config false;
+      description
+        "Enclosing container for the list of links present in the router LSA";
+
+      list link-information {
         description
-          "State parameters relating to the OSPF passive interface";
-        uses ospfv2-ext-lsdb-router-lsa-info-state;
+          "Describes the links present in the router LSA (e.g. point-to-point, transit etc)";
+
+        container state {
+          config false;
+          description
+            "State parameters relating to the OSPF passive interface";
+          uses ospfv2-ext-lsdb-router-lsa-info-state;
+        }
       }
     }
   }
@@ -1612,6 +1625,7 @@ module openconfig-ospfv2-ext {
     }
     uses oc-ospfv2:ospfv2-lsdb-common-link-specification;
   }
+
   grouping ospfv2-ext-route-state {
     description
       "Operational state parameters relating to an OSPFV2 route";
@@ -2560,6 +2574,112 @@ module openconfig-ospfv2-ext {
     }
   }
 
+  grouping ospfv2-ext-lsdb-router-lsa-structure-state {
+    description
+      "Structural grouping for Router LSA contents within the LSDB";
+
+    container router-lsa {
+      description
+        "Contents of the router LSA";
+
+      container state {
+        description
+          "State parameters of the router LSA";
+        uses ospfv2-ext-lsdb-router-lsa-state;
+      }
+
+      uses oc-ospfv2:ospfv2-lsdb-generic-lsa-tos-metric-structure;
+    }
+  }
+
+  grouping ospfv2-ext-area-lsdb-lsa-state {
+    description 
+      "OSPF area lsdb lsa state information";
+
+    list lsa-ext {
+      key "link-state-id advertising-router";
+
+      description
+        "List of the LSAs of a specified type in the
+        LSDB for the specified area";
+
+      leaf link-state-id {
+        type leafref {
+          path "../state/link-state-id";
+        }
+        description
+          "Reference to the Link State ID of the LSA";
+      }
+
+      leaf advertising-router {
+        type leafref {
+          path "../state/advertising-router";
+        }
+        description
+          "Reference to the advertising-router of the LSA";
+      }
+
+      container state {
+        description
+          "Operational state parameters relating to all
+          LSA types";
+        uses oc-ospfv2:ospfv2-lsdb-area-lsa-state;
+        uses ospfv2-ext-lsdb-area-lsa-state;
+      }
+
+      uses ospfv2-ext-lsdb-router-lsa-structure-state {
+        when "../../state/type = 'ROUTER_LSA'" {
+          description
+            "Include the router LSA hierarchy solely when
+            that LSA type is being described";
+        }
+      }
+
+      uses oc-ospfv2:ospfv2-lsdb-network-lsa-structure {
+        when "../../state/type = 'NETWORK_LSA'" {
+          description
+            "Include the network LSA hierarchy solely when
+            that LSA type is being described";
+        }
+      }
+
+      uses oc-ospfv2:ospfv2-lsdb-summary-lsa-structure {
+        when "../../state/type = " +
+          "'SUMMARY_IP_NETWORK_LSA' or " +
+          "../../state/type = 'SUMMARY_ASBR_LSA'" {
+          description
+            "Include the summary LSA hierarchy solely when
+            that LSA type is being described";
+        }
+      }
+
+      uses oc-ospfv2:ospfv2-lsdb-asexternal-lsa-structure {
+        when "../../state/type = 'AS_EXTERNAL_LSA'" {
+          description
+            "Include the AS external LSA hierarchy solely when
+            that LSA type is being described";
+        }
+      }
+
+      uses oc-ospfv2:ospfv2-lsdb-nssa-external-lsa-structure {
+        when "../../state/type = 'NSSA_AS_EXTERNAL_LSA'" {
+          description
+            "Include the NSSA External LSA hierarchy solely
+            when that LSA type is being described";
+        }
+      }
+
+      uses oc-ospfv2:ospfv2-lsdb-opaque-lsa-structure {
+        when "../../state/type = 'OSPFV2_LINK_SCOPE_OPAQUE_LSA'
+          or ../../state/type = 'OSPFV2_AREA_SCOPE_OPAQUE_LSA'
+          or ../../state/type = 'OSPFV2_AS_SCOPE_OPAQUE_LSA'" {
+          description
+            "Include the Opaque LSA structure when type of entry
+            being described in an opaque LSA";
+          }
+      }
+    }
+  }
 
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
             "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
@@ -2875,16 +2995,16 @@ module openconfig-ospfv2-ext {
     uses ospfv2-ext-area-interface-neighbors-top;
   }
 
-  augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
+  /*augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
           "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
           "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:state" {
     description
       "extra parameters related to ospfv2 areas area lsdb lsa-types lsa-type lsas lsa state";
     uses ospfv2-ext-lsdb-area-lsa-state;
-  }
+  }*/
 
-  augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
+  /*augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
             "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
             "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
             "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:router-lsa" +
@@ -2894,15 +3014,6 @@ module openconfig-ospfv2-ext {
     uses ospfv2-ext-lsdb-router-lsa-state;
   }
 
- /* deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
-        "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
-        "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
-        "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:state/oc-netinst:sequence-number" {
-    deviate replace {
-      type ospf-sequence-number;
-    }
-  
-  }*/
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
             "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
             "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb/oc-netinst:lsa-types" +
@@ -2941,7 +3052,7 @@ module openconfig-ospfv2-ext {
             "/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa/oc-netinst:router-lsa" +
             "/oc-netinst:state/oc-netinst:number-tos-metrics" {
     deviate not-supported;
-  }
+  }*/
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
           "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" {
@@ -3056,6 +3167,16 @@ module openconfig-ospfv2-ext {
     uses ospfv2-ext-area-interface-message-stats-state;
   }
 
+
+  augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
+          "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+          "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb" +
+      "/oc-netinst:lsa-types/oc-netinst:lsa-type/oc-netinst:lsas" {
+    description
+      "extra parameters related to ospfv2 lsa under areas area lsdb";
+    uses ospfv2-ext-area-lsdb-lsa-state;
+  }
+
   /* OSPF interface augmentaion under interface ipv4 */
 
   augment "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface/oc-ip:ipv4" {
@@ -3081,6 +3202,13 @@ module openconfig-ospfv2-ext {
   deviation "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface" +
             "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
             "/oc-ospfv2-ext:config/oc-ospfv2-ext:hide-network" {
+    deviate not-supported;
+  }
+
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance" +
+            "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+            "/oc-netinst:areas/oc-netinst:area/oc-netinst:lsdb" +
+        "/oc-netinst:lsa-types/oc-netinst:lsa-type/oc-netinst:lsas/oc-netinst:lsa" {
     deviate not-supported;
   }
 

@@ -1,0 +1,16 @@
+module sonic-ipmroute-show-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/sipmrouteshow-annot";
+    prefix "sipmrouteshow-annot";
+
+    import sonic-ipmroute-show { prefix sipmrouteshow; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sipmrouteshow:show-ipmroute {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_ipmroute";
+        }
+    }
+}

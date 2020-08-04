@@ -21,7 +21,11 @@ package custom_validation
 
 import (
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	"fmt"
 	"strings"
+	log "github.com/golang/glog"
+	"net"
+	"strconv"
 )
 
 //ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
@@ -164,9 +168,223 @@ func (t *CustomValidation) ValidatePortChannelCreationDeletion(vc *CustValidatio
 					        ErrAppTag:        "max-reached",
 				        }
 			        }
+
+				total := len(poKeys) + len(vc.ReqData)
+				if total > 128 {
+				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Cannot create more than supported number of portchannels in the system.")
+					errStr := "Number of portchannels already created in the system are " + strconv.Itoa(len(poKeys)) + ". Maximum number of portchannel that can be supported are 128."
+				        return CVLErrorInfo{
+					        ErrCode:          CVL_SEMANTIC_ERROR,
+					        TableName:        "PORTCHANNEL",
+						Keys:             strings.Split(vc.CurCfg.Key, "|"),
+					        ConstraintErrMsg: errStr,
+					        ErrAppTag:        "max-reached",
+				        }
+			        }
                        }
                 }
         }
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func (t *CustomValidation) ValidateVlanMember (vc *CustValidationCtxt) CVLErrorInfo {
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	yangNodeVal := vc.YNodeVal
+	yangNodeName := vc.YNodeName
+	redisKey := vc.CurCfg.Key
+	rediskeyList := strings.SplitN(redisKey, "|", 2)
+	tableName := rediskeyList[0]
+	tableKey := rediskeyList[1]
+	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateVlanMember: validating table: %v|%v for node: %v[%v]\n", tableName, tableKey, yangNodeName, yangNodeVal)
+
+	if tableName == "VLAN" && yangNodeName == "members" {
+		if len(vc.CurCfg.Data) > 0 {
+			// On adding or deleting element to leaf-list, always generates UPDATE request
+			// and yangNodeVal may be empty. So to determine the correct element on which
+			// operation is going, we need to query all elements of leaf-list from DB and
+			// compare with leaf-list received in CurCfg.Data.
+			membersInReq := vc.CurCfg.Data["members@"]
+			tblData, _ := vc.RClient.HGetAll(redisKey).Result()
+			membersInDb := tblData["members@"]
+
+			var membersNames []string
+			// Data in DB is not present, means new element getting added
+			if len(membersInDb) == 0 {
+				membersNames = strings.Split(membersInReq, ",")
+			} else {
+				elemFromDb := strings.Split(membersInDb, ",")
+				elemFromReq := strings.Split(membersInReq, ",")
+				// Adding interface to leaf-list have entry in request but not in DB
+				// Deleting interface from leaf-list have entry in DB but not in request
+				// So their difference will provide the interface under operation
+				membersNames = util.GetDifference(elemFromDb, elemFromReq)
+			}
+			util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateVlanMember: validating for member(s): %v\n", membersNames)
+
+			// No Vlan member provided. Skip further validation.
+			if len(membersNames) == 0 {
+				return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+			}
+
+			for _, memberName := range membersNames {
+				if len(memberName) == 0 {
+					continue
+				}
+				if strings.HasPrefix(memberName, "PortChannel") {
+					// Verify whether Portchannel and its members both are applied for switchport
+					pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + memberName + "|*").Result()
+					for _, ky := range pomemberKeys {
+						pomemberName := ky[strings.LastIndex(ky, "|")+1:]
+						if strings.Contains(membersInReq, pomemberName+",") || strings.HasSuffix(membersInReq, pomemberName) {
+							return CVLErrorInfo {
+								ErrCode: CVL_SEMANTIC_ERROR,
+								TableName: tableName,
+								Keys: strings.Split(tableKey, "|"),
+								ConstraintErrMsg: "A vlan interface member cannot be part of portchannel which is already a vlan member",
+								CVLErrDetails: "Config Validation Semantic Error",
+							}
+						}
+					}
+				} else if strings.HasPrefix(memberName, "Ethernet") {
+					// Verify if port is already member of any portchannel
+					pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + memberName).Result()
+					if len(pomemberKeys) > 0 {
+						return CVLErrorInfo {
+							ErrCode: CVL_SEMANTIC_ERROR,
+							TableName: tableName,
+							Keys: strings.Split(tableKey, "|"),
+							ConstraintErrMsg: "A Portchannel member cannot be added as vlan member",
+							CVLErrDetails: "Config Validation Semantic Error",
+						}
+					}
+				}
+				// Check for mirror session
+				errInf := validateDstPortOfMirrorSession(vc, tableName, tableKey, memberName)
+				if errInf.ErrCode != CVL_SUCCESS {
+					return errInf
+				}
+			}
+		}
+	} else if tableName == "VLAN_MEMBER" && yangNodeName == "ifname" {
+		return validateDstPortOfMirrorSession(vc, tableName, tableKey, yangNodeVal)
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func validateDstPortOfMirrorSession(vc *CustValidationCtxt, tableName, tableKey, portName string) CVLErrorInfo {
+	if len(portName) == 0 {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+	predicate := fmt.Sprintf("return (h['dst_port'] ~= nil and h['dst_port'] == '%s')", portName)
+	entries, _ := util.FILTER_ENTRIES_LUASCRIPT.Run(vc.RClient, []string{}, "MIRROR_SESSION|*", "name", predicate, "dst_port").Result()
+	if entries != nil {
+		entriesJson := string(entries.(string))
+		if strings.Contains(entriesJson, portName) {
+			return CVLErrorInfo {
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: tableName,
+				Keys: strings.Split(tableKey, "|"),
+				ConstraintErrMsg: "Port has mirror session config",
+				CVLErrDetails: "Config Validation Semantic Error",
+				ErrAppTag:  "portlist-configured-as-dst-port-in-mirror-session",
+			}
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+
+func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
+	var vrrp_table string
+	var vip_suffix string
+
+	log.Info("ValidateIntfIp op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
+
+	key := vc.CurCfg.Key
+	key_split := strings.Split(key, "|")
+	table_name := key_split[0]
+	if_name := key_split[1]
+	if_ip := key_split[2]
+
+	log.Info("talbe_name:", table_name)
+
+	if len(if_ip) == 0 || vc.CurCfg.VOp != OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	if strings.Contains(if_ip, ":") {
+		vrrp_table = "VRRP6"
+		vip_suffix = "/128"
+	} else {
+		vrrp_table = "VRRP"
+		vip_suffix = "/32"
+	}
+
+	tbl_name_ext := vrrp_table + "|" + if_name + "|" + "*"
+
+	vrrp_keys, err:= vc.RClient.Keys(tbl_name_ext).Result()
+
+	if (err != nil) || (vc.SessCache == nil) {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	if_ip_prefix, if_ip_net, perr := net.ParseCIDR(if_ip)
+	if if_ip_prefix == nil || perr != nil {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	ip_ll := "fe80::/10"
+	_, ip_net_ll, _ := net.ParseCIDR(ip_ll)
+
+	// Interface IP delete is not allowed as long as VRRP with VIP exist in same subnet
+
+	// Interface IP add and delete is not allowed if VRRP has to transition from/to owner
+	// VRRP checks ensure that interface IP is configured before VIP, hence check just delete
+
+	for _, db_key := range vrrp_keys {
+
+		vrrp_data, err:= vc.RClient.HGetAll(db_key).Result()
+
+		log.Info("vrrp_data: ", vrrp_data)
+
+		if (err != nil) || (vc.SessCache == nil) {
+			continue
+		}
+
+		vip_string := vrrp_data["vip@"]
+
+		vips := strings.Split(vip_string, ",")
+		for _, vip := range(vips)	{
+
+			vip = vip + vip_suffix
+			vip_prefix, _, perr := net.ParseCIDR(vip)
+
+			if vip_prefix == nil || perr != nil {
+					continue
+			}
+
+			if ip_net_ll.Contains(vip_prefix) {
+				continue
+			}
+
+			if if_ip_net.Contains(vip_prefix) {
+				log.Info("ValidateIp deleting last IP overlapping VIP")
+				errStr := "Interface IP is being used by VRRP instance, please delete VRRP virtual IP before deleting/changing interface IP"
+				return CVLErrorInfo {
+					ErrCode: CVL_SEMANTIC_ERROR,
+					TableName: vrrp_table,
+					CVLErrDetails: errStr,
+					ConstraintErrMsg: errStr,
+				}
+			}
+		}
+	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

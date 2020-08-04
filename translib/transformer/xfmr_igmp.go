@@ -23,6 +23,8 @@ import (
     "errors"
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
+    "encoding/json"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
 )
@@ -32,6 +34,8 @@ func init () {
     XlateFuncBind("DbToYang_igmp_sources_get_xfmr", DbToYang_igmp_sources_get_xfmr)
     XlateFuncBind("DbToYang_igmp_stats_get_xfmr", DbToYang_igmp_stats_get_xfmr)
     XlateFuncBind("DbToYang_igmp_interface_get_xfmr", DbToYang_igmp_interface_get_xfmr)
+    XlateFuncBind("rpc_show_igmp_join", rpc_show_igmp_join)
+    XlateFuncBind("rpc_clear_igmp", rpc_clear_igmp)
 }
 
 func getIgmpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp, string, error) {
@@ -66,10 +70,8 @@ func getIgmpRoot (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Netwo
                    AppendModuleName: true,
            },
     })
-    log.Info("################################")
-    log.Infof(" getIgmpRoot App ygot jsonStr: %v", jsonStr)
-    log.Info("################################")
 
+    log.V(1).Info(jsonStr)
     netInstsObj := deviceObj.NetworkInstances
 
     if netInstsObj.NetworkInstance == nil {
@@ -124,11 +126,11 @@ func fillIgmpGroupsXfmr (igmp_map map[string]interface{}, igmpGroups_obj *ocbind
                     }
                     log.Info("interfaceId : ",interfaceId)
                     log.Info("mcastgrpAddr : ",mcastgrpAddr)
-                    igmpGroupKey.InterfaceId = interfaceId
+                    igmpGroupKey.InterfaceId,_ = ospfGetUIIntfName(interfaceId)
                     igmpGroupKey.McastgrpAddr = mcastgrpAddr
                     igmpIgmpGroup_obj = igmpGroups_obj.Group[igmpGroupKey]
                     if (nil == igmpIgmpGroup_obj) {
-                        igmpIgmpGroup_obj, err = igmpGroups_obj.NewGroup(interfaceId,mcastgrpAddr)
+                        igmpIgmpGroup_obj, err = igmpGroups_obj.NewGroup(igmpGroupKey.InterfaceId,mcastgrpAddr)
                         if err  != nil {
                             log.Errorf("%s failed !! Error: Failed to create IgmpGroup  under IgmpGroups", cmn_log)
                             return  oper_err
@@ -196,13 +198,13 @@ func fillIgmpSourcesXfmr (igmp_map map[string]interface{},igmpSources_obj *ocbin
                     log.Info("interfaceId : ",interfaceId)
                     log.Info("grpAddr : ",grpAddr)
                     log.Info("srcAddr : ",srcAddr)
-                    igmpSourceKey.InterfaceId = interfaceId
+                    igmpSourceKey.InterfaceId,_ = ospfGetUIIntfName(interfaceId)
                     igmpSourceKey.McastgrpAddr = grpAddr
                     igmpSourceKey.SrcAddr = srcAddr
                     igmpIgmpSource_obj = igmpSources_obj.Source[igmpSourceKey]
                     if (nil == igmpIgmpSource_obj) {
                         log.Info("Igmp source obj nil creating new")
-                        igmpIgmpSource_obj, err = igmpSources_obj.NewSource(interfaceId,srcAddr,grpAddr)
+                        igmpIgmpSource_obj, err = igmpSources_obj.NewSource(igmpSourceKey.InterfaceId,srcAddr,grpAddr)
                         if err  != nil {
                             log.Errorf("%s failed !! Error: Failed to create Source under Sources", cmn_log)
                             return  oper_err
@@ -427,7 +429,7 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
     oper_err = errors.New("Operational error")
     cmn_log = "GET: xfmr for IGMP Interface"
     log.Info("fillIgmpInterfaceXfmr interface_info %s ",interface_info)
-
+       
     igmpInterfaces_obj = igmp_obj.Interfaces
     if igmpInterfaces_obj == nil {
         log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
@@ -668,6 +670,7 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     cmn_log := "GET: xfmr for Igmp Interface "
     var vtysh_cmd string
     var interfacename string
+    var ifName string
 
     log.Info("DbToYang_igmp_interface_get_xfmr ***", inParams.uri)
     var igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp
@@ -682,12 +685,21 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     log.Info(pathInfo)
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    if err != nil {
+        log.Errorf ("Failed to fetch the Yang path Error:%s",err);
+        return err;
+    }
     log.Info(targetUriPath)
     
     interfacename = pathInfo.Var("interface-id")
     log.Info(interfacename)
 
-    vtysh_cmd = "show ip igmp vrf "+vrfName+" interface "+interfacename+" json"
+    ifName, err = ospfGetNativeIntfName(interfacename)
+    if (err != nil) {
+        return errors.New("Invalid IGMP interface name.")
+    }
+
+    vtysh_cmd = "show ip igmp vrf "+vrfName+" interface "+ifName+" json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
       log.Errorf("Failed to fetch igmp interface details:, err=%s", cmd_err)
@@ -699,8 +711,9 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     for key,value := range output_state {
         interface_info := value.(map[string]interface{})
         log.Info(key)
+        ifName, _ := ospfGetUIIntfName(key)
         log.Info(interface_info)
-        err = fillIgmpInterfaceXfmr (interface_info,key,igmp_obj)
+        err = fillIgmpInterfaceXfmr (interface_info,ifName,igmp_obj)
     }
     return err;
 }
@@ -748,7 +761,7 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
     var err error
     var cmd_err error
     oper_err := errors.New("Operational error")
-    cmn_log := "GET: xfmr for Igmp Groups "
+    cmn_log := "GET: xfmr for Igmp Sources "
     var vtysh_cmd string
 
     log.Info("DbToYang_igmp_sources_get_xfmr ***", inParams.uri)
@@ -795,3 +808,107 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
     return  err;
 }
 
+var rpc_show_igmp_join RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var cmd, vrf_name, interfaceId string
+    var err error
+    var mapData map[string]interface{}
+    var output map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Errorf("Failed to unmarshall given input data err %s",err)
+        return nil, errors.New("Invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-igmp:output"`
+    }
+
+    log.Info("In rpc_show_igmp_join, RPC data:", mapData)
+
+    input := mapData["sonic-igmp:input"]
+    mapData = input.(map[string]interface{})
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        vrf_name = " vrf " + value
+    }
+
+    cmd = "show ip igmp" + vrf_name + " join json"
+
+    igmpOutput, err := exec_vtysh_cmd(cmd)
+    if err != nil {
+        log.Errorf("FRR execution failed err %s",err)
+        return nil, errors.New("Internal error!")
+    }
+ 
+    output = make(map[string]interface{})
+    for key, value := range igmpOutput {
+        interfaceId,_ = ospfGetUIIntfName(key)
+        output[interfaceId] = value.(map[string]interface{})
+    } 
+
+ // Marshal the map into a JSON string.
+    joinData, err := json.Marshal(output)   
+    if err != nil {
+        return nil, errors.New("Json conversion error")
+    }
+    jsonStr := string(joinData)
+    log.V(1).Info(jsonStr)
+
+    result.Output.Status = jsonStr
+    return json.Marshal(&result)
+}
+
+var rpc_clear_igmp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+
+    var err error
+    var status string
+    var mapData map[string]interface{}
+
+    log.Info("rpc_clear_igmp Enter")
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, err
+    }
+
+    var result struct {
+        Output struct {
+            Status string `json:"response"`
+        } `json:"sonic-igmp-clear:output"`
+    }
+
+    input := mapData["sonic-igmp:input"]
+    mapData = input.(map[string]interface{})
+
+    log.Info("rpc_clear_igmp: mapData ", mapData)
+
+    vrfName := "default" 
+    intfAll := true 
+
+    if value, ok := mapData["vrf-name"].(string) ; ok {
+        if (value != "") {
+            vrfName = value
+        }
+    }
+
+    cmdStr := ""
+    if (intfAll) {
+        cmdStr = "clear ip igmp vrf " + vrfName + " interfaces"
+    }
+
+    log.Infof("rpc_clear_igmp: vrf-%s all-%v.", vrfName, intfAll)
+
+    if cmdStr != "" {
+        exec_vtysh_cmd(cmdStr)
+        status = "Success"
+    } else {
+        log.Error("rpc_clear_igmp: Invalid input received mapData ", mapData)
+        status = "Failed"
+    }
+
+    log.Infof("rpc_clear_igmp: %s", status)
+    result.Output.Status = status
+    return json.Marshal(&result)
+}

@@ -19,6 +19,10 @@ module sonic-igmp {
         prefix spc;
     }
 
+    import sonic-vrf {
+        prefix vrf;
+    }
+    
     import sonic-vlan {
         prefix svlan;
     }
@@ -87,7 +91,20 @@ module sonic-igmp {
                 key "interface-id";
 
                 leaf interface-id{
-                    type string;
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                        type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                    }
                 }
 
                 leaf enabled {
@@ -98,7 +115,7 @@ module sonic-igmp {
 
                 leaf version {
                     must "(../enabled='true')" {
-                         error-message "IGMP not enabled on this interface";
+                         error-message "Conflicting IGMP configuration";
                     }
                     type uint8 {
                         range "2..3"{
@@ -109,7 +126,7 @@ module sonic-igmp {
 	
                 leaf query-interval {
                     must "(../enabled='true')" {
-                         error-message "IGMP not enabled on this interface";
+                         error-message "Conflicting IGMP configuration";
                     }
                     type uint32 {
                         range "1..1024" {
@@ -120,7 +137,7 @@ module sonic-igmp {
 				
                 leaf last-member-query-count {
                     must "(../enabled='true')" {
-                         error-message "IGMP not enabled on this interface";
+                         error-message "Conflicting IGMP configuration";
                     }
                     type uint32 {
                         range "1..7"{
@@ -131,7 +148,7 @@ module sonic-igmp {
 
                 leaf last-member-query-interval {
                     must "(../enabled='true')" {
-                         error-message "IGMP not enabled on this interface";
+                         error-message "Conflicting IGMP configuration";
                     }
                     type uint32 {
                         range "1..255"{
@@ -142,7 +159,7 @@ module sonic-igmp {
 				
                 leaf query-max-response-time {
                     must "(../enabled='true')" {
-                         error-message "IGMP not enabled on this interface";
+                         error-message "Conflicting IGMP configuration";
                     }
                     type uint16 {
                          range "10..250"{
@@ -150,8 +167,80 @@ module sonic-igmp {
                          }
                     }
                 }				
-
-             }
+            }
         }
    }
+
+   rpc get-igmp-join {
+        description "RPC to fetch the IGMP join";
+
+        input {
+            leaf vrf-name {
+                type string;
+                default "default";
+                description
+                    "Fetches igmp join for  given VRF name. if VRF name is not present, the default VRF is used";
+            }
+        }
+
+        output {
+            leaf status {
+                type string;
+                description
+                    "On success, returns vtysh JSON string format output of all IGMP join.";
+            }
+        }
+    }
+
+   rpc clear-igmp {
+
+    description "RPC for clearing IGMP sessions. Input can be :
+        1. All IGMP sessions in an Interface in default VRF
+        2. All IGMP sessions in an Interface within a VRF  ";
+
+    input {
+        leaf vrf-name {
+            type union {
+                type string {
+                    pattern "default";
+                }
+                type leafref {
+                    path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                }
+            }
+            description
+                "IGMP VRF name.";
+        }
+
+        leaf interface {
+            type union {
+                type leafref {
+                    path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                }
+                type leafref {
+                    path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                }
+                type leafref {
+                    path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                }
+            }
+            description
+                "Interface name on which the Igmp sessions have to be cleared";
+        }
+
+        leaf interface-all {
+            type boolean; 
+            description
+                "Igmp have to be cleared for all interfaces";
+        }
+    }
+
+    output {
+        leaf status {
+            type string;
+            description
+                "Success / failure in clearing IGMP operation execution request.";
+        }
+    }
+  }
 }

@@ -412,7 +412,7 @@ index 0000000..286a29c
 +}
 +
 diff --git a/pkg/yang/entry.go b/pkg/yang/entry.go
-index ef658d6..cd3b046 100644
+index dfd4525..4af3d0c 100644
 --- a/pkg/yang/entry.go
 +++ b/pkg/yang/entry.go
 @@ -80,6 +80,7 @@ type Entry struct {
@@ -442,7 +442,7 @@ index ef658d6..cd3b046 100644
  		Node:  n,
  		Name:  n.NName(),
  		Extra: map[string][]interface{}{},
-@@ -366,6 +372,7 @@ func (e *Entry) add(key string, value *Entry) *Entry {
+@@ -360,6 +366,7 @@ func (e *Entry) add(key string, value *Entry) *Entry {
  		return e
  	}
  	e.Dir[key] = value
@@ -450,7 +450,7 @@ index ef658d6..cd3b046 100644
  	return e
  }
  
-@@ -1007,7 +1014,7 @@ func (e *Entry) ApplyDeviate() []error {
+@@ -999,7 +1006,7 @@ func (e *Entry) ApplyDeviate() []error {
  					}
  
  					if devSpec.Default != "" {
@@ -459,7 +459,7 @@ index ef658d6..cd3b046 100644
  					}
  
  					if devSpec.Mandatory != TSUnset {
-@@ -1090,6 +1097,7 @@ func (e *Entry) FixChoice() {
+@@ -1082,6 +1089,7 @@ func (e *Entry) FixChoice() {
  				}
  				ce.Parent = ne
  				e.Dir[k] = ne
@@ -467,7 +467,7 @@ index ef658d6..cd3b046 100644
  			}
  		}
  	}
-@@ -1260,6 +1268,14 @@ func (e *Entry) shallowDup() *Entry {
+@@ -1252,6 +1260,14 @@ func (e *Entry) shallowDup() *Entry {
  	// copied we will have to explicitly uncopy them.
  	ne := *e
  
@@ -482,7 +482,7 @@ index ef658d6..cd3b046 100644
  	// Now only copy direct children, clear their Dir, and fix up
  	// Parent pointers.
  	if e.Dir != nil {
-@@ -1283,6 +1299,14 @@ func (e *Entry) dup() *Entry {
+@@ -1275,6 +1291,14 @@ func (e *Entry) dup() *Entry {
  	// to do that.
  	ne := *e
  
@@ -497,15 +497,15 @@ index ef658d6..cd3b046 100644
  	// Now recurse down to all of our children, fixing up Parent
  	// pointers as we go.
  	if e.Dir != nil {
-@@ -1317,6 +1341,7 @@ func (e *Entry) merge(prefix *Value, namespace *Value, oe *Entry) {
- 		} else {
+@@ -1310,6 +1334,7 @@ func (e *Entry) merge(prefix *Value, namespace *Value, oe *Entry) {
  			v.Parent = e
+ 			v.Exts = append(v.Exts, oe.Exts...)
  			e.Dir[k] = v
 +			e.DirOKeys = append(e.DirOKeys, k)
  		}
  	}
  }
-@@ -1378,8 +1403,8 @@ func (s sortedErrors) Less(i, j int) bool {
+@@ -1371,8 +1396,8 @@ func (s sortedErrors) Less(i, j int) bool {
  		}
  		return nless(fi[x], fj[x])
  	}
@@ -516,6 +516,33 @@ index ef658d6..cd3b046 100644
  		case -1:
  			return true
  		case 1:
+diff --git a/pkg/yang/types.go b/pkg/yang/types.go
+index 307610a..ffb59a6 100644
+--- a/pkg/yang/types.go
++++ b/pkg/yang/types.go
+@@ -12,6 +12,9 @@
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
++// This file is changed by Broadcom.
++// Modifications - Copyright 2019 Broadcom. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.
++
+ package yang
+ 
+ // This file implements the functions relating to types and typedefs.
+@@ -69,6 +72,12 @@ func (d *typeDictionary) findExternal(n Node, prefix, name string) (*Typedef, er
+ 	}
+ 	if td := d.find(root, name); td != nil {
+ 		return td, nil
++	} else {
++		for _, in := range root.Include {
++			if td := typeDict.find(in.Module, name); td != nil {
++				return td, nil
++			}
++		}
+ 	}
+ 	if prefix != "" {
+ 		name = prefix + ":" + name
 diff --git a/yang.go b/yang.go
 index 2480a4e..515d1b3 100644
 --- a/yang.go

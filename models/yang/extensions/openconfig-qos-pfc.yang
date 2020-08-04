@@ -1,0 +1,336 @@
+module openconfig-qos-pfc {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/qos/pfc/extension";
+
+  prefix "oc-qos-pfc";
+
+  import openconfig-yang-types { prefix oc-yang; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  organization
+    "Broadcom Inc.";
+  contact
+    "SONiC";
+  description
+    "This module defines YANG model for network quality-of-service
+     Prioity-based Flow Control (PFC).";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-07-16" {
+    description
+      "Initial version";
+    reference
+      "0.3";
+  }
+
+  //////////////// Interface configuration and status for PFC per queue
+  grouping qos-pfc-if-queue-config {
+    description
+      "PFC configuration per queue per interface";
+
+    leaf queue {
+      type uint8 {
+          range 0..19;
+      }
+      description
+        "PFC queue";
+    }
+  }
+
+  grouping qos-pfc-if-queue-state {
+    description
+      "PFC state per queue per interface";
+  }
+
+  grouping qos-pfc-if-queue-statistics {
+    description
+      "PFC statistics per queue per interface";
+
+    leaf storm-detected {
+      type oc-yang:counter64;
+      description
+        "Number of PFC pause storms detected";
+    }
+    leaf storm-restored {
+      type oc-yang:counter64;
+      description
+        "Number of PFC pause storms restored";
+    }
+    leaf tx-ok {
+      type oc-yang:counter64;
+      description
+        "Number of PFC transmit packets";
+    }
+    leaf tx-drop {
+      type oc-yang:counter64;
+      description
+        "Number of PFC transmit drops";
+    }
+    leaf rx-ok {
+      type oc-yang:counter64;
+      description
+        "Number of PFC receive packets";
+    }
+    leaf rx-drop {
+      type oc-yang:counter64;
+      description
+        "Number of PFC receive drops";
+    }
+    leaf tx-ok-last {
+      type oc-yang:counter64;
+      description
+        "Number of PFC transmit packets last";
+    }
+    leaf tx-drop-last {
+      type oc-yang:counter64;
+      description
+        "Number of PFC transmit drops last";
+    }
+    leaf rx-ok-last {
+      type oc-yang:counter64;
+      description
+        "Number of PFC receive packets last";
+    }
+    leaf rx-drop-last {
+      type oc-yang:counter64;
+      description
+        "Number of PFC receive drops last";
+    }
+  }
+
+  grouping qos-pfc-if-queue-top {
+    description
+        "Top Level grouping for per interface per queue configuration
+         and statistics.";
+
+    container pfc-queue {
+      description
+        "Top Level Container for IEEE Std 802.3 Priority-based Flow
+         Control per queue.";
+
+      list pfc-queue {
+        key "queue";
+        description
+          "List of PFC queues";
+
+        leaf queue {
+          type leafref {
+            path "../config/queue";
+          }
+          description
+            "PFC queue";
+        }
+
+        container config {
+          description
+            "Configuration data for the PFC per queue configuration";
+          uses qos-pfc-if-queue-config;
+        }
+
+        container state {
+          config false;
+          description
+            "Operational state data for the PFC per queue status";
+          uses qos-pfc-if-queue-config;
+          uses qos-pfc-if-queue-state;
+        }
+        container statistics {
+          config false;
+          description
+            "Operational state data for the PFC per queue status";
+          uses qos-pfc-if-queue-config;
+          uses qos-pfc-if-queue-statistics;
+        }
+      }
+    }
+  }
+
+  //////////////// Interface configuration and status for PFC
+  grouping qos-pfc-if-priority-state {
+    description
+      "PFC state data per priority";
+
+    leaf pause-frames-rx {
+      type oc-yang:counter64;
+      description
+        "Number of PFC packets received for this priority";
+    }
+
+    leaf pause-frames-tx {
+      type oc-yang:counter64;
+      description
+        "Number of PFC packets transmitted for this priority";
+    }
+  }
+
+  //////////////// Interface configuration and status PFC Watchdog
+  grouping qos-pfc-if-watchdog-config {
+    description
+      "PFC Watchdog configuration per interface.";
+    leaf action {
+      type enumeration {
+        enum "DROP" {
+          description
+            "Drop packets when PFC pause storm detected.";
+        }
+        enum "FORWARD" {
+          description
+            "Forward packets when PFC pause storm detected.";
+        }
+        enum "ALERT" {
+          description
+            "Raise alert when PFC pause storm detected.";
+        }
+      }
+      default "DROP";
+      description
+        "Action taken by PFC Watchdog when pause storm detected.";
+    }
+
+    leaf detection-time {
+      type uint32 {
+        range 100..5000;
+      }
+      units microseconds;
+      description
+        "Detection interval for pause storm.";
+    }
+
+    leaf restoration-time {
+      type uint32 {
+        range 100..60000;
+      }
+      units microseconds;
+      description
+        "Time delay before resuming normal PFC operation.";
+    }
+  }
+
+  grouping qos-pfc-if-watchdog-state {
+    description
+      "PFC Watchdog state information per interface.";
+  }
+
+  grouping qos-pfc-if-watchdog-top {
+    description
+        "Top Level grouping for IEEE Std 802.3 Priority-based Flow
+         Control per priority.";
+
+    container watchdog {
+      description
+        "Top Level Container for IEEE Std 802.3 Priority-based Flow
+         Control per priority.";
+
+      container config {
+        description
+          "Configuration data for the PFC Watchdog";
+        uses qos-pfc-if-watchdog-config;
+      }
+
+      container state {
+        config false;
+        description
+          "Operational state data for the PFC Watchdog";
+        uses qos-pfc-if-watchdog-config;
+        uses qos-pfc-if-watchdog-state;
+      }
+    }
+  }
+
+  /////////////////////// Global configuration for PFC Watchdog
+  grouping qos-pfc-watchdog-flex-config {
+    description
+      "Priority-based Flow Control (PFC) global watchdog configuration";
+
+    leaf counter-poll {
+      type enumeration {
+        enum "ENABLE" {
+          description
+            "Enable use of flex-counters for PFC Watchdog.";
+        }
+        enum "DISABLE" {
+          description
+            "Disable use of flex-counters for PFC Watchdog.";
+        }
+      }
+      description
+        "Enable or disable counter polling";
+    }
+  }
+
+  grouping qos-pfc-watchdog-flex-state {
+    description
+      "Priority-based Flow Control (PFC) watchdog status";
+  }
+
+  grouping qos-pfc-watchdog-poll-config {
+    description
+      "Priority-based Flow Control (PFC) global watchdog configuration";
+
+    leaf poll-interval {
+      type uint32 {
+        range 100..3000;
+      }
+      description
+        "Counter polling interval";
+    }
+  }
+
+  grouping qos-pfc-watchdog-poll-state {
+    description
+      "Priority-based Flow Control (PFC) watchdog status";
+  }
+
+  grouping qos-pfc-watchdog-top {
+    description
+      "Top-level grouping for IEEE Std 802.3 Priority-based Flow
+       Control watchdog global parameters";
+
+    container pfc-watchdog {
+      description
+        "Top Level Container for IEEE Std 802.3 Priority-based Flow
+         Control watchdog.";
+
+      container flex {
+        description
+          "Todo";
+        container config {
+          description
+            "Configuration data for the PFC Watchdog";
+          uses qos-pfc-watchdog-flex-config;
+        }
+
+        container state {
+          config false;
+          description
+            "Operational state data for the PFC Watchdog";
+          uses qos-pfc-watchdog-flex-config;
+          uses qos-pfc-watchdog-flex-state;
+        }
+      }
+      container poll {
+        description
+          "Todo";
+        container config {
+          description
+            "Configuration data for the PFC Watchdog";
+          uses qos-pfc-watchdog-poll-config;
+        }
+
+        container state {
+          config false;
+          description
+            "Operational state data for the PFC Watchdog";
+          uses qos-pfc-watchdog-poll-config;
+          uses qos-pfc-watchdog-poll-state;
+        }
+      }
+
+    }
+  }
+
+}

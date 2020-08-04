@@ -117,18 +117,6 @@ var YangToDb_qos_fwd_group_dscp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     map_entry[map_key] = db.Value{Field: make(map[string]string)}
     log.Info("YangToDb_qos_fwd_group_dscp_xfmr - entry_key : ", map_key)
 
-    if targetUriPath == "/openconfig-qos:qos/forwarding-group-dscp-maps/forwarding-group-dscp-map" ||
-       targetUriPath == "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map" {
-        if inParams.oper == DELETE {
-
-            res_map["TC_TO_DSCP_MAP"] = map_entry
-            return res_map, err
-        }
-
-        // no op at this level
-        return res_map, err
-    }
-
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") {
@@ -369,7 +357,7 @@ var YangToDb_qos_tc_to_dscp_map_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrP
     }
 
     map_name := *(intfObj.InterfaceMaps.Config.ForwardingGroupToDscp)
-    if (inParams.oper == DELETE) {
+    if inParams.oper == DELETE {
         res_map["tc_to_dscp_map"] = ""
         return res_map, err
     }

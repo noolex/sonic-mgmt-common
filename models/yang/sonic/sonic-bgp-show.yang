@@ -14,6 +14,11 @@ module sonic-bgp-show {
     description
         "SONiC yang for RPC based BGP show.";
 
+    revision 2020-07-25 {
+        description
+            "Add SUMMARY attribute in query-type";
+    }
+
     revision 2020-01-20 {
         description
             "Initial revision.";
@@ -33,7 +38,7 @@ module sonic-bgp-show {
     }
 
     typedef show-bgp-query-type {
-        description "Query type that specifies the various ways to fetch the BGP-routes based on the various filters";
+        description "Query type that specifies the various ways to fetch the BGP-routes and neighbors based on the various filters";
 
         type enumeration {
             enum ALL {
@@ -60,12 +65,15 @@ module sonic-bgp-show {
             enum ROUTE-MAP {
                 description "To query the BGP routes that matches route-map";
             }
+            enum SUMMARY {
+                description "To query the BGP neighbors information";
+            }
         }
     }
 
     rpc show-bgp {
 
-        description "RPC for fetch BGP routes based on various different options";
+        description "RPC for fetch BGP routes and neighbors based on various different options";
 
         input {
             leaf vrf-name {
@@ -89,7 +97,7 @@ module sonic-bgp-show {
                 type show-bgp-query-type;
                 default "ALL";
                 description
-                    "Query type that specifies the various ways to fetch the BGP-routes based on the various filters.
+                    "Query type that specifies the various ways to fetch the BGP-routes and neighbors based on the various filters.
                     It represent the choice mentioned below. And then relevant attributes should be filled to fetch the BGP routes.";
             }
 

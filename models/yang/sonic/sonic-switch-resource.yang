@@ -1,0 +1,100 @@
+module sonic-switch-resource {
+  namespace "http://github.com/Azure/sonic-switch-resource";
+  prefix sswresource;
+  yang-version 1.1;
+
+  import sonic-extension {
+    prefix sonic-ext;
+  }
+
+
+  organization
+    "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "SONiC Switch Resource yang model";
+
+  revision 2020-07-07 {
+    description
+      "Initial revision.";
+  }
+
+  typedef switch-resource-type {
+    type enumeration {
+      enum DROP_MONITOR {
+        description
+          "Drop Monitor Resource";
+      }
+    }
+    description
+      "The Different Resource Types of Switch Resource Management  ";
+  }
+
+
+  typedef flow-scale-limit {
+    type enumeration {
+      enum "NONE" {
+        description
+          "No flow scale  configured.";
+      }
+      enum "MIN" {
+        description
+          "Minimum flow scale configured.";
+      }
+    }
+    description
+      "Drop Monitor Flow scale limit ";
+
+  }
+
+  container sonic-switch-resource {
+    container SWITCH_RESOURCE_TABLE {
+      list SWITCH_RESOURCE_TABLE_LIST {
+        key "name";
+
+        leaf name {
+          type switch-resource-type;
+          description
+            "Types of Switch Resources";
+        }
+
+
+        leaf flows {
+          type flow-scale-limit;
+          description
+            "Drop Monitor Flow scale options ";
+        }
+
+      }
+    }
+
+    container SWITCH_RESOURCE_STATE_TABLE {
+
+      sonic-ext:db-name "COUNTERS_DB";
+      sonic-ext:key-delim ":";
+
+      config false;
+      description "state switch resource table";
+
+      list SWITCH_RESOURCE_STATE_TABLE_LIST {
+        key "name";
+
+        leaf name {
+          type switch-resource-type;
+          description
+            "Types of Switch Resources";
+        }
+
+
+        leaf flows_in_hardware {
+          type flow-scale-limit;
+          description
+            "Shows user-configured flow scale when the system boots up ";
+        }
+      }
+    }
+  }
+}

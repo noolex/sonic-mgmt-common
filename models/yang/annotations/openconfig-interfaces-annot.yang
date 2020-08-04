@@ -123,6 +123,11 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf-ext:rate-interval {
+        deviate add {
+            sonic-ext:field-name "port_load_interval";
+        }
+    }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config {
         deviate add {

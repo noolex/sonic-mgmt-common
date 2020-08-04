@@ -24,4 +24,10 @@ module sonic-system-infra-annot {
         }
     }
 
+    deviation /sonic-sinfra:clear-sys-log{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_clear_sys_log_cb";
+        }
+    }
+
 }

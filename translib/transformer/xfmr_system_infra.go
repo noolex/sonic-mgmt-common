@@ -11,7 +11,6 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "io/ioutil"
     "os"
-
 )
 
 func init () {
@@ -21,6 +20,7 @@ func init () {
     XlateFuncBind("rpc_infra_reboot_cb",  rpc_infra_reboot_cb)
     XlateFuncBind("rpc_infra_config_cb",  rpc_infra_config_cb)
     XlateFuncBind("rpc_infra_show_sys_log_cb",  rpc_infra_show_sys_log_cb)
+    XlateFuncBind("rpc_infra_clear_sys_log_cb",  rpc_infra_clear_sys_log_cb)
 }
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -192,55 +192,121 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
         var MGM_SYSLOG1="/host/cli-ca/syslog.1"
         var HOST_SYSLOG="/var/log/syslog"
         var HOST_SYSLOG1="/var/log/syslog.1"
+        var out_list []string
+        var output string
+
+        var operand struct {
+                Input struct {
+                        Param int `json:"num_lines"`
+                } `json:"sonic-system-infra:input"`
+        }
 
         var exec struct {
                 Output struct {
-                        Result string `json:"result"`
+                        Result []string `json:"status-detail"`
                 } `json:"sonic-system-infra:output"`
         }
+
+        err = json.Unmarshal(body, &operand)
+        if err != nil {
+              out_list = append(out_list, "[FAILED] to umarshal input data")
+              exec.Output.Result = out_list
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+        MAX_NUM_LINES := 65535
+        num_lines := operand.Input.Param
+        if num_lines < 0 || num_lines > MAX_NUM_LINES {
+              msg := fmt.Sprintf("[FAILED] invalid number [1-%d]", MAX_NUM_LINES)
+              out_list = append(out_list, msg)
+              exec.Output.Result = out_list
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
         if _, err := os.Stat(MGM_SYSLOG1); err == nil {
-            log.Info("rpc_infra_show_sys_log delete syslog")
             os.Remove(MGM_SYSLOG1)
             os.Remove(MGM_SYSLOG)
         }
 
         cmd := "cp -f " + HOST_SYSLOG + " " + HOST_SYSLOG1 +" " + MGM_DIR
-        log.Info("rpc_infra_show_sys_log cmd: ", cmd)
+        log.Info("rpc_infra_show_sys_log cmd: %v; num_lines: %v", cmd, num_lines)
 
         host_output := HostQuery("infra_host.exec_cmd", cmd)
         if host_output.Err != nil {
-              log.Errorf("rpc_infra_show_sys_log: host Query failed: err=%v", host_output.Err)
-              exec.Output.Result = "[FAILED] host query"
+              msg := fmt.Sprintf("[FAILED] host Query failed: err=%v", host_output.Err) 
+              log.Errorf("rpc_infra_show_sys_log: %s", msg)
+              out_list = append(out_list, msg)
+              exec.Output.Result = out_list
               result, err := json.Marshal(&exec)
               return result, err
         }
 
-        if _, err := os.Stat(MGM_SYSLOG); err == nil {
+        if _, err := os.Stat(MGM_SYSLOG); !os.IsNotExist(err) {
            syslog, err := ioutil.ReadFile(MGM_SYSLOG)
            if err != nil {
-                log.Errorf("rpc_infra_show_sys_log: Failed to read %v err: %v", MGM_SYSLOG, err)
-                exec.Output.Result = "[FAILED] to read syslog"
+                out_list = append(out_list, "[FAILED] to read syslog")
+                exec.Output.Result = out_list
                 result, err := json.Marshal(&exec)
                 return result, err
            } else {
-              if _, err := os.Stat(MGM_SYSLOG1); err == nil {
+              if _, err := os.Stat(MGM_SYSLOG1); !os.IsNotExist(err) {
                    syslog1, err := ioutil.ReadFile(MGM_SYSLOG1)
                    if err != nil {
                         log.Errorf("rpc_infra_show_sys_log: Failed to read %v err: %v", MGM_SYSLOG1, err)
-                        exec.Output.Result = string(syslog)
+                        output = string(syslog)
                    } else {
-                        exec.Output.Result = string(syslog1) + string(syslog)
+                        output = string(syslog1) + string(syslog)
+                   }
+                   _output := strings.TrimSuffix(output,"\n")
+                   out_list = strings.Split(_output,"\n")
+                   total := len(out_list)
+
+                   if num_lines > 0 && num_lines < total {
+                        exec.Output.Result = out_list[total-num_lines:]
+                   } else {
+                        exec.Output.Result = out_list
                    }
               }
            }
         } else {
-             exec.Output.Result = "[FAILED] to get syslog"
+             out_list = append(out_list, "[FAILED] to get syslog")
+             exec.Output.Result = out_list
              result, err := json.Marshal(&exec)
              return result, err
         }
         result, err := json.Marshal(&exec)
         return result, err
 }
+
+var rpc_infra_clear_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_clear_sys_log body:", string(body))
+        var err error
+        var exec struct {
+                Output struct {
+                        Result string `json:"result"`
+                } `json:"sonic-system-infra:output"`
+        }
+
+        cmd := "sonic-clear logging"
+        log.Info("rpc_infra_clear_sys_log cmd: ", cmd)
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              log.Errorf("rpc_infra_clear_sys_log: host Query failed: err=%v", host_output.Err)
+              exec.Output.Result = "[FAILED] host query"
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        var output string
+        output, _ = host_output.Body[1].(string)
+
+        exec.Output.Result = output
+        result, err := json.Marshal(&exec)
+        return result, err
+}
+
 
 
 

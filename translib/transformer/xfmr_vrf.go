@@ -783,6 +783,13 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                                         return res_map, err
                                 }
 
+                                if checkPimCfgExistOnIntf(inParams.d, intfName[0]) {
+                                    errStr = "Interface " + *convUIName + " has PIM configurations"
+                                    log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                                    err = tlerr.InvalidArgsError{Format: errStr}
+                                    return res_map, err
+                                }
+
                                 /* Now add this interface to res_map */
                                 _, ok := res_map[tblName]
                                 if !ok {
@@ -917,6 +924,13 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         fieldOtherThanVrf = false
         err = ValidateIntfNotL3ConfigedOtherThanVrf(inParams.d, intf_tbl_name, *ifName, &fieldOtherThanVrf)
         if err != nil {
+            return res_map, err
+        }
+
+        if checkPimCfgExistOnIntf(inParams.d, *ifName) {
+            errStr = "Interface " + intfId + " has PIM configurations"
+            log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+            err = tlerr.InvalidArgsError{Format: errStr}
             return res_map, err
         }
 
@@ -1081,27 +1095,28 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                                 }
 
                                 intfName := intfKeys[i].Comp
+                                ifUIName = utils.GetUINameFromNativeName(&(intfName[0]))
 
                                 var intfData *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Interfaces_Interface
 
                                 /* if Interfaces.Interface is nil, then allocate for the new interface name */
                                 if (nwInstTree.NetworkInstance[vrfName_str].Interfaces.Interface == nil) {
-                                        intfData, _ = nwInstData.Interfaces.NewInterface(intfName[0])
+                                        intfData, _ = nwInstData.Interfaces.NewInterface(*ifUIName)
                                         ygot.BuildEmptyTree(intfData)
                                 }
 
                                 /* if interface name not in Interfaces.Interface list, then allocate it */
-                                intfData, ok = nwInstTree.NetworkInstance[vrfName_str].Interfaces.Interface[intfName[0]]
+                                intfData, ok = nwInstTree.NetworkInstance[vrfName_str].Interfaces.Interface[*ifUIName] 
                                 if  !ok {
-                                        intfData, _ = nwInstData.Interfaces.NewInterface(intfName[0])
+                                        intfData, _ = nwInstData.Interfaces.NewInterface(*ifUIName)
                                         ygot.BuildEmptyTree(intfData)
                                 }
 
                                 intfData.Config.Id = intfData.Id
                                 intfData.State.Id = intfData.Id
 
-                                log.Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: vrf_name %v intf %v ygRoot %v ", 
-                                          vrfName_str, intfName[0], nwInstTree)
+                                log.Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: vrf_name %v intf %v ygRoot %v",
+                                          vrfName_str, *ifUIName, nwInstTree)
                         }
                 }
         }
