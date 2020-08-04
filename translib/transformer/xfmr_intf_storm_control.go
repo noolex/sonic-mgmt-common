@@ -23,6 +23,7 @@ package transformer
 import (
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "strconv"
     log "github.com/golang/glog"
 )
@@ -36,10 +37,9 @@ func init () {
 
 func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
     var stormKey string
-    log.Info("DbToYang_storm_type_key_xfmr: key=\"%s\"", inParams.key)
     result := make(map[string]interface{})
     stormKey = inParams.key
-    log.Info(stormKey)
+    log.Infof("DbToYang_storm_type_key_xfmr: key:%s stormKey:%s", inParams.key,stormKey)
 
     stormVals := strings.Split(stormKey,"|")
     if (stormVals[1] == "broadcast") {
@@ -48,6 +48,9 @@ func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{},
         result["storm-type"] = "UNKNOWN_UNICAST"
     } else if (stormVals[1] == "unknown-multicast") {
         result["storm-type"] = "UNKNOWN_MULTICAST"
+    } else {
+        log.Errorf("Invalid storm-type:%s",stormVals[1])
+        return result, tlerr.InvalidArgs("Invalid storm-type: %s", stormVals[1])
     }
     result["ifname"] = stormVals[0]
 
@@ -58,32 +61,29 @@ func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{},
 
 var YangToDb_storm_type_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var stormKey string
-    log.Info("Entering YangToDb_storm_type_key_xfmr")
     pathInfo := NewPathInfo(inParams.uri)
-    log.Info(pathInfo)
     intfName := pathInfo.Var("name")
     stormType := pathInfo.Var("storm-type")
-    log.Info(intfName)
-    log.Info(stormType)
-
+    log.Infof("Entering YangToDb_storm_type_key_xfmr intf:%s storm-type:%s",intfName,stormType)
     if (stormType == "BROADCAST") {
         stormKey = intfName+"|"+"broadcast"
     } else if (stormType == "UNKNOWN_UNICAST") {
         stormKey = intfName+"|"+"unknown-unicast"
     } else if (stormType == "UNKNOWN_MULTICAST") {
         stormKey = intfName+"|"+"unknown-multicast"
+    } else {
+        log.Errorf("Invalid storm-type:%s",stormType)
+        return "", tlerr.InvalidArgs("Invalid storm-type: %s", stormType)
     }
-
-    log.Info(stormKey)
+    log.Infof("Returning stormKey:%s",stormKey)
     return stormKey, nil
 }
 
 func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("DbToYang_storm_value_xfmr: key=\"%s\"", inParams.key)
     var stormKey string
     result := make(map[string]interface{})
     stormKey = inParams.key
-    log.Info(stormKey)
+    log.Infof("DbToYang_storm_value_xfmr: key:%s stormKey:%s", inParams.key,stormKey)
 
     stormVals := strings.Split(stormKey,"|")
     if (stormVals[1] == "broadcast") {
@@ -92,6 +92,9 @@ func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, er
         result["storm-type"] = "UNKNOWN_UNICAST"
     } else if (stormVals[1] == "unknown-multicast") {
         result["storm-type"] = "UNKNOWN_MULTICAST"
+    } else {
+        log.Errorf("Invalid storm-type:%s",stormVals[1])
+        return result, tlerr.InvalidArgs("Invalid storm-type: %s", stormVals[1])
     }
     result["ifname"] = stormVals[0]
     
@@ -99,8 +102,10 @@ func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, er
     if err == nil {
         value := entry.Field["kbps"]
         result["kbps"],_ = strconv.ParseFloat(value,64)
+    } else {
+        log.Error("Error ", err)
+        return result, tlerr.NotFound("Resource Not Found")
     }
-
     log.Info(result)
     return result, nil
 }
