@@ -7,11 +7,53 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init() {
     XlateFuncBind("YangToDb_intf_ip_helper_xfmr", YangToDb_intf_ip_helper_xfmr)
     XlateFuncBind("DbToYang_intf_ip_helper_xfmr", DbToYang_intf_ip_helper_xfmr)
+    XlateFuncBind("Subscribe_intf_ip_helper_xfmr", Subscribe_intf_ip_helper_xfmr)
+}
+
+var Subscribe_intf_ip_helper_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    result.dbDataMap = make(RedisDbMap)
+
+    pathInfo := NewPathInfo(inParams.uri)
+
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    keyName := pathInfo.Var("name")
+
+    //Get correct interface table to be modified. Start
+    intfType, _, ierr := getIntfTypeByName(keyName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        errStr := "Invalid interface type IntfTypeUnset"
+        log.Info("Subscribe_intf_ip_helper_xfmr: " + errStr)
+        return result, errors.New(errStr)
+    }
+
+    intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getIntfTableNameByDBId(intTbl, db.ConfigDB)
+    log.Info("Subscribe_intf_ip_helper_xfmr: table name- " + tblName)
+    //Get correct interface table to be modified. End
+
+    log.Infof("Subscribe_intf_ip_helper_xfmr path %v key %v ", targetUriPath, keyName)
+
+    if (keyName != "") {
+        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+        log.Infof("Subscribe_intf_ip_helper_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+    } else {
+        errStr := "Interface name not present in request"
+        log.Info("Subscribe_intf_ip_helper_xfmr: " + errStr)
+        return result, errors.New(errStr)
+    }
+    result.isVirtualTbl = false
+    log.Info("Returning Subscribe_intf_ip_helper_xfmr")
+    return result, err
 }
 
 var YangToDb_intf_ip_helper_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -153,6 +195,8 @@ var DbToYang_intf_ip_helper_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     intfsObj := getIntfsRoot(inParams.ygRoot)
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("name")
+    reqVrf := pathInfo.Var("vrf")
+    reqIp := pathInfo.Var("ip")
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     db_if_name_ptr := utils.GetNativeNameFromUIName(&ifName)
     dbifName := *db_if_name_ptr
@@ -232,26 +276,67 @@ var DbToYang_intf_ip_helper_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     }
 
     ygot.BuildEmptyTree(serversObj)
-    for _ , server := range servers {
-        log.Info("Server: ", server)
-        key := strings.Split(server, "|")
-        var vrf string
-        var ip string
-        if len(key) > 1 {
-            vrf = key[0]
-            ip = key[1]
+
+    if(reqVrf != "" && reqIp != "") {
+        //Specific case
+        var present bool
+        var dbkey string
+        if reqVrf == "default" {
+            dbkey = reqIp
         } else {
-            vrf = "default"
-            ip = key[0]
+            dbkey = reqVrf + "|" + reqIp
         }
-        serverObj, _ := serversObj.NewServer(vrf,ip)
-        ygot.BuildEmptyTree(serverObj)
-        ygot.BuildEmptyTree(serverObj.Config)
-        serverObj.Config.Vrf = &vrf
-        serverObj.Config.Ip = &ip
-        ygot.BuildEmptyTree(serverObj.State)
-        serverObj.State.Vrf = &vrf
-        serverObj.State.Ip = &ip
+        for _ , server := range servers {
+            if server == dbkey {
+                present = true
+            }
+        }
+        if present {
+            var key ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_IpHelper_Servers_Server_Key
+            key.Vrf = reqVrf
+            key.Ip = reqIp
+            serverObj := serversObj.Server[key]
+            ygot.BuildEmptyTree(serverObj)
+            ygot.BuildEmptyTree(serverObj.Config)
+            serverObj.Config.Vrf = &reqVrf
+            serverObj.Config.Ip = &reqIp
+            ygot.BuildEmptyTree(serverObj.State)
+            serverObj.State.Vrf = &reqVrf
+            serverObj.State.Ip = &reqIp
+        } else {
+            return tlerr.NotFound("Resource Not Found")
+        }
+        
+    } else {
+        for _ , server := range servers {
+            log.Info("Server: ", server)
+            var serverObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_IpHelper_Servers_Server
+            key := strings.Split(server, "|")
+            var vrf string
+            var ip string
+            if len(key) > 1 {
+                vrf = key[0]
+                ip = key[1]
+            } else {
+                vrf = "default"
+                ip = key[0]
+            }
+            if(reqVrf != "" && reqIp != "") {
+                var key ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_IpHelper_Servers_Server_Key
+                key.Vrf = reqVrf
+                key.Ip = reqIp
+                serverObj = serversObj.Server[key]
+            } else {
+                serverObj, _ = serversObj.NewServer(vrf,ip)
+            }
+            ygot.BuildEmptyTree(serverObj)
+            ygot.BuildEmptyTree(serverObj.Config)
+            serverObj.Config.Vrf = &vrf
+            serverObj.Config.Ip = &ip
+            ygot.BuildEmptyTree(serverObj.State)
+            serverObj.State.Vrf = &vrf
+            serverObj.State.Ip = &ip
+        }
     }
 
     return err
