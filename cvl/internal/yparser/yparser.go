@@ -632,12 +632,17 @@ func getErrorDetails() YParserError {
 	}
 
 	/* Fetch the invalid field name. */
+	// errMsg is like: Invalid value "Port1" in "dst_port" element.
 	result := strings.Split(errMsg, "\"")
 	if (len(result) > 1) {
 		for i := range result {
 			if (strings.Contains(result[i], "value")) ||
 			(strings.Contains(result[i], "Value")) {
 				ElemVal = result[i+1]
+			}
+
+			if strings.Contains(result[i], "element") || strings.Contains(result[i], "Element") {
+				ElemName = result[i-1]
 			}
 		}
 	} else if (len(result) == 1) {
