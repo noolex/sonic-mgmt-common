@@ -90,6 +90,7 @@ module openconfig-lldp-annot {
 		deviate add {
 			sonic-ext:db-name "APPL_DB";
 			sonic-ext:table-name "LLDP_PORT_TABLE";
+			sonic-ext:virtual-table "True";
 		}
 	}
 
