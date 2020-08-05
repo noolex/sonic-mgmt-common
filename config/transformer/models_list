@@ -118,3 +118,5 @@ openconfig-ip-helper-annot.yang
 sonic-ip-helper.yang
 sonic-ip-helper-annot.yang
 openconfig-switch-resource.yang
+openconfig-image-management.yang
+openconfig-image-management-annot.yang

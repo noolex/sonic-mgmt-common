@@ -1,0 +1,76 @@
+module openconfig-image-management {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/image-management/extension";
+
+  prefix "oc-img-mgmt";
+
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "OpenConfig working group";
+
+  contact
+    "OpenConfig working group
+    www.openconfig.net";
+
+  description
+    "This module defines operational state data
+    for Image Management.";
+
+  revision "2020-07-20" {
+    description
+      "Initial public revision";
+    reference "0.1.0";
+  }
+
+  oc-ext:openconfig-version "0.1.0";  
+
+
+  grouping image-management {
+
+    list image-globals {
+         key "img_key";
+         leaf img_key {
+             type enumeration {
+                 enum "config";
+             }
+         }
+         leaf current {
+             type string;
+         }
+         leaf next-boot {
+             type string;
+         }
+      }
+    list image-list {
+         key "image";
+         leaf image {
+             type string;
+         }
+     }
+
+  }
+
+
+  grouping image-management-top {
+
+    container image-management {
+    
+    description
+    " Top level enclosing container";
+
+      container state {
+        config false;
+        description
+        "Image management state information";
+        uses image-management;
+
+      }
+    }
+  }
+
+  uses image-management-top;
+}
