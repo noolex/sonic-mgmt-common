@@ -16,14 +16,23 @@ import (
 func init () {
 
     XlateFuncBind("DbToYang_ospfv2_global_state_xfmr", DbToYang_ospfv2_global_state_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_global_state_xfmr", Subscribe_ospfv2_global_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_global_timers_spf_state_xfmr", DbToYang_ospfv2_global_timers_spf_state_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_global_timers_spf_state_xfmr", Subscribe_ospfv2_global_timers_spf_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_global_timers_lsa_generation_state_xfmr", DbToYang_ospfv2_global_timers_lsa_generation_state_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_global_timers_lsa_generation_state_xfmr", Subscribe_ospfv2_global_timers_lsa_generation_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_areas_area_state_xfmr", DbToYang_ospfv2_areas_area_state_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_areas_area_state_xfmr", Subscribe_ospfv2_areas_area_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_neighbors_state_xfmr", DbToYang_ospfv2_neighbors_state_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_neighbors_state_xfmr", Subscribe_ospfv2_neighbors_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_vlink_state_xfmr", DbToYang_ospfv2_vlink_state_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_vlink_state_xfmr", Subscribe_ospfv2_vlink_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_stub_state_xfmr", DbToYang_ospfv2_stub_state_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_stub_state_xfmr", Subscribe_ospfv2_stub_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_lsdb_state_xfmr", DbToYang_ospfv2_lsdb_state_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_lsdb_state_xfmr", Subscribe_ospfv2_lsdb_state_xfmr)
     XlateFuncBind("DbToYang_ospfv2_route_table_xfmr", DbToYang_ospfv2_route_table_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_route_table_xfmr", Subscribe_ospfv2_route_table_xfmr)
     XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
 
     XlateFuncBind("rpc_clear_ospfv2", rpc_clear_ospfv2)
@@ -289,19 +298,24 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
         }
         if (nil == ospfv2RouteTable_obj) {
             log.Errorf("failed !! Error: RouteTable not found for routeType %s", route_info["routeType"])
-            return oper_err
+            continue
         }
         if nil == ospfv2RouteTable_obj.State {
-            log.Info("Routetable state information is missing");
+            log.Info("Routetable state information is missing, creating new state");
             ospfv2RouteTableListState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State)
             if nil == ospfv2RouteTableListState_obj {
                 log.Info("Failed to create State information for route Table list state")
                 return oper_err
             }
-            ygot.BuildEmptyTree(ospfv2RouteTableListState_obj)
             ospfv2RouteTable_obj.State = ospfv2RouteTableListState_obj
+        } else {
+            ospfv2RouteTableListState_obj = ospfv2RouteTable_obj.State
         }
         ospfv2RouteTableState_obj = ospfv2RouteTableListState_obj.RouteTableState
+        if nil == ospfv2RouteTableState_obj {
+            ospfv2RouteTableListState_obj.RouteTableState = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState)
+            ospfv2RouteTableState_obj = ospfv2RouteTableListState_obj.RouteTableState
+        }
         if nil == ospfv2RouteTableState_obj.Route {
             ospfv2Route, err = ospfv2RouteTableState_obj.NewRoute(prefixStr) 
             ygot.BuildEmptyTree(ospfv2Route)
@@ -1723,6 +1737,19 @@ func ospfv2_fill_interface_timers_state (intf_info map[string]interface{},
     } 
     return ospfv2Interface_obj, err
 }
+var Subscribe_ospfv2_global_timers_spf_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_global_timers_spf_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
 var DbToYang_ospfv2_global_timers_spf_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
     var cmd_err error
@@ -1763,6 +1790,19 @@ var DbToYang_ospfv2_global_timers_spf_state_xfmr SubTreeXfmrDbToYang = func(inPa
     
     return  err;
 }
+var Subscribe_ospfv2_global_timers_lsa_generation_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_global_timers_lsa_generation_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
 var DbToYang_ospfv2_global_timers_lsa_generation_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
     var cmd_err error
@@ -1800,6 +1840,19 @@ var DbToYang_ospfv2_global_timers_lsa_generation_state_xfmr SubTreeXfmrDbToYang 
     return  err;
 }
 
+var Subscribe_ospfv2_route_table_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_route_table_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
 
 var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
@@ -1839,6 +1892,19 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     return  err;
 }
 
+var Subscribe_ospfv2_global_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_global_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
 var DbToYang_ospfv2_global_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
     var cmd_err error
@@ -1875,6 +1941,19 @@ var DbToYang_ospfv2_global_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     }
     
     return  err;
+}
+var Subscribe_ospfv2_areas_area_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_areas_area_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
 }
 var DbToYang_ospfv2_areas_area_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
@@ -1924,6 +2003,19 @@ var DbToYang_ospfv2_areas_area_state_xfmr SubTreeXfmrDbToYang = func(inParams Xf
     return  err;
 }
 
+var Subscribe_ospfv2_vlink_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_vlink_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
 var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
     var cmd_err error
@@ -2260,6 +2352,19 @@ func  ospfv2_fill_vlink_neighbors_state (output_state map[string]interface{},  o
     }    
     return err
 }
+var Subscribe_ospfv2_stub_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_stub_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
 var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
     var cmd_err error
@@ -2319,6 +2424,19 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
     
     return  err;
+}
+var Subscribe_ospfv2_lsdb_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_lsdb_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
 }
 var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
@@ -2668,6 +2786,19 @@ func ospfv2_fill_lsa_header_information(lsa_info map[string]interface{}, ospfv2L
         ospfv2LsaState_obj.DisplaySequenceNumber = &_sequenceNo
     }
     return err
+}
+var Subscribe_ospfv2_neighbors_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_ospfv2_neighbors_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
 }
 var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
