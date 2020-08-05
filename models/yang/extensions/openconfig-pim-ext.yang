@@ -14,7 +14,7 @@ module openconfig-pim-ext {
     import openconfig-interfaces { prefix oc-if; }
     import openconfig-extensions { prefix oc-ext; }
     import openconfig-types { prefix "oc-types"; }
-    import sonic-codegen { prefix sonic-codegen; } 
+    import sonic-codegen { prefix sonic-codegen; }
 
     organization
         "SONiC";
@@ -489,7 +489,7 @@ module openconfig-pim-ext {
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:hello-interval {
-        sonic-codegen:lint-ignore "Deviated to align with PIM protocol stack"; 
+        sonic-codegen:lint-ignore "Deviated to align with PIM Protocol stack";
         deviate replace {
             type uint8 {
                 range "1..180";
@@ -498,7 +498,7 @@ module openconfig-pim-ext {
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:hello-interval {
-        sonic-codegen:lint-ignore "Deviated to align with PIM protocol stack"; 
+        sonic-codegen:lint-ignore "Deviated to align with PIM Protocol stack";
         deviate replace {
             type uint8 {
                 range "1..180";
