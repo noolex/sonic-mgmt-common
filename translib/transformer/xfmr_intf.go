@@ -810,6 +810,13 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
                 targetUriPath ==  "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6") {
         return tblList, tlerr.New("DELETE operation not allowed on  this container")
 
+	} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config") {
+	    log.Info("VXLAN_TUNNEL ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
+		if IntfTypeVxlan == intfType {
+			tblList = append(tblList, "VXLAN_TUNNEL")
+		} else {
+			tblList = append(tblList, intTbl.cfgDb.portTN)	
+		}
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") && IntfTypeVxlan == intfType  {
 		if inParams.oper == 5 {
 			tblList = append(tblList, "VXLAN_TUNNEL")
@@ -825,8 +832,12 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	        intfPathElem := intfPathTmp.Elem
 	        if len(intfPathElem) > 0 {
 	          targetIdx :=  len(intfPathElem)-1
-	          if intfPathElem[targetIdx].Name == "interfaces" || intfPathElem[targetIdx].Name == "interface" {
-	            log.Info("VXLAN_TUNNEL testing ==> TARGET FOUND ==>", intfPathElem[targetIdx].Name)
+	          if intfPathElem[targetIdx].Name == "interfaces" ||
+                  intfPathElem[targetIdx].Name == "interface" ||
+                      intfPathElem[targetIdx].Name == "config" || intfPathElem[targetIdx].Name == "source-vtep-ip" ||
+                      intfPathElem[targetIdx].Name == "qos-mode" ||
+                      intfPathElem[targetIdx].Name == "dscp" {
+	                log.Info("VXLAN_TUNNEL testing ==> TARGET FOUND ==>", intfPathElem[targetIdx].Name)
 	                _, errTmp := inParams.d.GetEntry(&db.TableSpec{Name:"VXLAN_TUNNEL"}, db.Key{Comp: []string{ifName}})
 	                if errTmp != nil {
 	                    tblList = append(tblList, "VXLAN_TUNNEL")
@@ -840,12 +851,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	      } else {
 	        log.Info("VXLAN_TUNNEL testing ==> TARGET err ==>", errIntf)
 	      }
-		}
-	} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config") {
-		if IntfTypeVxlan == intfType {
-			tblList = append(tblList, "VXLAN_TUNNEL")
-		} else {
-			tblList = append(tblList, intTbl.cfgDb.portTN)	
 		}
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, intTbl.CountersHdl.CountersTN)
