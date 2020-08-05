@@ -1,0 +1,41 @@
+module openconfig-image-management-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/image-management-annot";
+    prefix "oc-img-mgmt-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-image-management { prefix oc-img-mgmt; }
+
+    // meta
+    organization
+       "SONiC";
+
+    contact
+       "SONiC";
+
+    description
+       "SONIC Image Management";
+
+    revision 2020-07-20 {
+       description
+          "Initial revision.";
+    }
+
+    deviation /oc-img-mgmt:image-management/oc-img-mgmt:state/oc-img-mgmt:image-globals {
+      deviate add {
+      sonic-ext:table-name "IMAGE_GLOBAL";
+      sonic-ext:db-name "STATE_DB";      
+      }
+    }
+
+
+    deviation /oc-img-mgmt:image-management/oc-img-mgmt:state/oc-img-mgmt:image-list {
+      deviate add {
+      sonic-ext:table-name "IMAGE_TABLE";
+      sonic-ext:db-name "STATE_DB";      
+      }
+    }
+
+  }
