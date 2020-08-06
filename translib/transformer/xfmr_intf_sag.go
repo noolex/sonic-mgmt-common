@@ -73,18 +73,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
     intfObj := intfsObj.Interface[uriIfName]
 
-    if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
+    if intfObj.RoutedVlan == nil {
 	    if inParams.oper == DELETE {
 	        return nil, nil
 	    }
-        errStr := "SubInterface node is not set"
+        errStr := "RoutedVlan node is not set"
         log.Info("YangToDb_intf_sag_ip_xfmr: " + errStr)
         return subIntfmap, errors.New(errStr)
-    }
-
-    if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-        log.Info("YangToDb_intf_sag_ip_xfmr : Not required for sub intf")
-        return subIntfmap, err
     }
 
     intfType, _, ierr := getIntfTypeByName(ifName)
@@ -97,7 +92,7 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
     intTbl := IntfTypeTblMap[intfType]
     tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
 
-    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+    subIntfObj := intfObj.RoutedVlan
 
     var gwIPListStr string
     sagIPMap := make(map[string]db.Value)
@@ -291,14 +286,14 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 	ipv6_req := false
 	var sagIPKey string
 
-	if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/sag-ipv4") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/sag-ipv4") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4")) {
+	if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/ipv4/sag-ipv4") ||
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/sag-ipv4") ||
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4")) {
 		ipv4_req = true
 		sagIPKey = ifName + "|IPv4"
-	} else if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/sag-ipv6") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/sag-ipv6") ||
-		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/openconfig-interfaces-ext:sag-ipv6")) {
+	} else if (strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/ipv6/sag-ipv6") ||
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/sag-ipv6") ||
+		strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/openconfig-interfaces-ext:sag-ipv6")) {
 		ipv6_req = true
 		sagIPKey = ifName + "|IPv6"
 	}
@@ -324,35 +319,24 @@ var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (e
 			ygot.BuildEmptyTree(intfObj)
 		}
 
-		if intfObj.Subinterfaces == nil {
-			var _subintfs ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces
-			intfObj.Subinterfaces = &_subintfs
-			ygot.BuildEmptyTree(intfObj.Subinterfaces)
+		if intfObj.RoutedVlan == nil {
+			var _routedvlan ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan
+			intfObj.RoutedVlan = &_routedvlan
+			ygot.BuildEmptyTree(intfObj.RoutedVlan)
 		}
 
-		var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
-		if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-			subIntf, err = intfObj.Subinterfaces.NewSubinterface(0)
-			if err != nil {
-				log.Error("Creation of subinterface subtree failed!")
-				return err
-			}
-			ygot.BuildEmptyTree(subIntf)
-		}
-
-		subIntf = intfObj.Subinterfaces.Subinterface[0]
-		ygot.BuildEmptyTree(subIntf)
+    routedvlan := intfObj.RoutedVlan
 
 		if ipv4_req {
-			ygot.BuildEmptyTree(subIntf.Ipv4)
-			ygot.BuildEmptyTree(subIntf.Ipv4.SagIpv4)
-			subIntf.Ipv4.SagIpv4.Config.StaticAnycastGateway = sagGwIPMap
-			subIntf.Ipv4.SagIpv4.State.StaticAnycastGateway = sagGwIPMap
+			ygot.BuildEmptyTree(routedvlan.Ipv4)
+			ygot.BuildEmptyTree(routedvlan.Ipv4.SagIpv4)
+			routedvlan.Ipv4.SagIpv4.Config.StaticAnycastGateway = sagGwIPMap
+			routedvlan.Ipv4.SagIpv4.State.StaticAnycastGateway = sagGwIPMap
 		} else if ipv6_req {
-			ygot.BuildEmptyTree(subIntf.Ipv6)
-			ygot.BuildEmptyTree(subIntf.Ipv6.SagIpv6)
-			subIntf.Ipv6.SagIpv6.Config.StaticAnycastGateway = sagGwIPMap
-			subIntf.Ipv6.SagIpv6.State.StaticAnycastGateway = sagGwIPMap
+			ygot.BuildEmptyTree(routedvlan.Ipv6)
+			ygot.BuildEmptyTree(routedvlan.Ipv6.SagIpv6)
+			routedvlan.Ipv6.SagIpv6.Config.StaticAnycastGateway = sagGwIPMap
+			routedvlan.Ipv6.SagIpv6.State.StaticAnycastGateway = sagGwIPMap
 		}
 	}
 
