@@ -741,12 +741,19 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 			xfmrLogInfoAll("No data from field transformer for %v: %v.", uri, err)
 			return resFldValMap, err
 		}
-		if ((uri == requestUri) && (len(fldValMap) == 0)) {
+		if (uri == requestUri) {
 			yangType := yangTypeGet(xYangSpecMap[xpath].yangEntry)
-			// field transformer returns empty map when no data in DB
-			if ((yangType == YANG_LEAF) || ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))))) {
-				log.Errorf("Field transformer returned empty data , uri  - %v", requestUri)
-				err = tlerr.NotFoundError{Format:"Resource not found"}
+			if len(fldValMap) == 0 {
+				// field transformer returns empty map when no data in DB
+				if ((yangType == YANG_LEAF) || ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))))) {
+					log.Errorf("Field transformer returned empty data , uri  - %v", requestUri)
+					err = tlerr.NotFoundError{Format:"Resource not found"}
+					return resFldValMap, err
+				}
+			} else {
+				if ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+					return resFldValMap, nil
+				}
 			}
 		}
 		for lf, val := range fldValMap {
