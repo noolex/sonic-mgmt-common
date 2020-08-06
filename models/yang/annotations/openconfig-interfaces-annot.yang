@@ -90,6 +90,12 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-intf-ext:graceful-shutdown-mode {
+        deviate add {
+            sonic-ext:field-transformer "lag_graceful_shutdown_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state {
       deviate add {
             sonic-ext:subtree-transformer "intf_lag_state_xfmr";
