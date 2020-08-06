@@ -22,7 +22,13 @@ module openconfig-local-routing-ext {
         "This module describes a YANG model for local routing
         configuration extensions.";
 
-  oc-ext:openconfig-version "0.1.0";
+  oc-ext:openconfig-version "0.2.0";
+
+  revision "2020-08-03" {
+    description
+      "Add unsupported attribute tag and extensions.";
+    reference "0.2.0";
+  }
 
   revision "2020-03-13" {
     description
@@ -63,6 +69,20 @@ module openconfig-local-routing-ext {
       }
 
   }
+  
+  grouping local-routing-ext-tag-config {
+      description
+          "Group for static route next-hop tag value";
+
+      leaf tag {
+         type uint32;
+         description
+              "Tag value for the static route. This references the tag set in route map";
+      }
+
+  }
+
+  
 
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:config/oc-netinst:set-tag {
@@ -118,10 +138,23 @@ module openconfig-local-routing-ext {
       uses local-routing-ext-blackhole-config;
    }
 
+   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:config" {
+      description
+          "Next hop tag value";
+      uses local-routing-ext-tag-config;
+   }
+
    augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:state" {
       description
           "Next hop blackhole flag";
       uses local-routing-ext-blackhole-config;
    }
+
+   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:state" {
+      description
+          "Next hop tag value";
+      uses local-routing-ext-tag-config;
+   }
+
 
 }
