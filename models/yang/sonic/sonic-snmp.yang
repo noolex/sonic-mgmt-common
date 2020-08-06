@@ -164,7 +164,37 @@ module sonic-snmp {
 
   container sonic-snmp {
 
-		container SNMP_SERVER_COMMUNITY {
+    container SNMP_SERVER {
+      list SNMP_SERVER_LIST {
+        key index;
+
+        leaf index {
+          type enumeration {
+            enum SYSTEM;
+          }
+        }
+
+        leaf sysContact {
+          type identifier;
+          description
+            "String that describes the system contact information.";
+        }
+
+        leaf sysLocation {
+          type identifier;
+          description
+            "String that describes the system location information.";
+        }
+
+        leaf traps {
+          type identifier;
+          description
+            "String that describes the system trap information";
+        }
+      }
+    }
+
+    container SNMP_SERVER_COMMUNITY {
       list SNMP_SERVER_COMMUNITY_LIST {
         key index;
         description

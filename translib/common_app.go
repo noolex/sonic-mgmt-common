@@ -307,7 +307,15 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 			    // if payload is empty, no need to invoke merge-struct
 			    if isEmptyPayload {
 				    if areEqual(xfmrYgotRoot, origXfmrYgotRoot) {
+					    log.Info("Original and Xfmr YgotRoot are equal.")
 					    // No data available in xfmrYgotRoot.
+					    if transformer.IsLeafNode(app.pathInfo.Path) {
+						    //if leaf not exist in DB subtree won't fill ygotRoot, as per RFC return err
+						    resPayload = payload
+						    log.Info("No data found for leaf.")
+						    err = tlerr.NotFound("Resource not found")
+						    break
+					    }
 					    resPayload = payload
 					    log.Error("No data available")
 					    //TODO: Return not found error

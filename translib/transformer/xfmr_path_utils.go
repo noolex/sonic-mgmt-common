@@ -61,7 +61,7 @@ func NewPathInfo(path string) *PathInfo {
                }
 
 		if len(name) != 0 {
-			fmt.Fprintf(&template, "{%s}", name)
+			fmt.Fprintf(&template, "{}")
 			info.Vars[name] = value
 		}
 	}
@@ -72,17 +72,22 @@ func NewPathInfo(path string) *PathInfo {
 }
 
 func readUntil(r *strings.Reader, delim byte) string {
-	var buff strings.Builder
-	for {
-		c, err := r.ReadByte()
-		if err == nil && c != delim {
-			buff.WriteByte(c)
-		} else {
-			break
-		}
-	}
+        var buff strings.Builder
+        var escaped bool
 
-	return buff.String()
+        for {
+                c, err := r.ReadByte()
+                if err != nil || (c == delim && !escaped) {
+                        break
+                } else if c == '\\' && !escaped {
+                        escaped = true
+                } else {
+                        escaped = false
+                        buff.WriteByte(c)
+                }
+        }
+
+        return buff.String()
 }
 
 func RemoveXPATHPredicates(s string) (string, error) {

@@ -196,8 +196,8 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 		retdbFormat = fillSonicKeySpec(xpath, tableName, keyStr)
 	} else {
 		/* Extract the xpath and key from input xpath */
-		xpath, keyStr, _, _ := xpathKeyExtract(nil, ygRoot, GET, uri, requestUri, nil, txCache)
-		retdbFormat = FillKeySpecs(xpath, keyStr, &retdbFormat)
+		retData, _ := xpathKeyExtract(nil, ygRoot, GET, uri, requestUri, nil, txCache)
+		retdbFormat = FillKeySpecs(retData.xpath, retData.dbKey, &retdbFormat)
 	}
 
 	return &retdbFormat, err
@@ -632,24 +632,34 @@ func CallRpcMethod(path string, body []byte, dbs [db.MaxDB]*db.DB) ([]byte, erro
 	var err error
 	var ret []byte
 	var data []reflect.Value
+	var rpcFunc = ""
 
 	// TODO - check module name
-	rpcName := strings.Split(path, ":")
-	if dbXpathData, ok := xDbSpecMap[rpcName[1]]; ok {
-		xfmrLogInfo("RPC callback invoked (%v) \r\n", rpcName)
-		data, err = XlateFuncCall(dbXpathData.rpcFunc, body, dbs)
+	if isSonicYang(path) {
+		rpcName := strings.Split(path, ":")
+		if dbXpathData, ok := xDbSpecMap[rpcName[1]]; ok {
+			rpcFunc = dbXpathData.rpcFunc
+		}
+	} else {
+		if xpathData, ok := xYangSpecMap[path]; ok {
+			rpcFunc = xpathData.rpcFunc
+		}
+	}
+
+	if rpcFunc != "" {
+		xfmrLogInfo("RPC callback invoked (%v) \r\n", rpcFunc)
+		data, err = XlateFuncCall(rpcFunc, body, dbs)
 		if err != nil {
 			return nil, err
 		}
 		ret = data[0].Interface().([]byte)
 		if !data[1].IsNil() {
-            err = data[1].Interface().(error)
-        }
+			err = data[1].Interface().(error)
+		}
 	} else {
 		log.Error("No tsupported RPC", path)
 		err = tlerr.NotSupported("Not supported RPC")
 	}
-
 	return ret, err
 }
 
@@ -751,8 +761,8 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 	   }
 
            xpath_dbno := xpathData.dbIndex
-           _, dbKey, dbTbl, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, txCache)
-           if ((len(xpathData.xfmrFunc) == 0) && ((xPathKeyExtractErr != nil) || ((len(strings.TrimSpace(dbKey)) == 0) || (len(strings.TrimSpace(dbTbl)) == 0)))) {
+           retData, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, txCache)
+           if ((len(xpathData.xfmrFunc) == 0) && ((xPathKeyExtractErr != nil) || ((len(strings.TrimSpace(retData.dbKey)) == 0) || (len(strings.TrimSpace(retData.tableName)) == 0)))) {
                log.Error("Error while extracting DB table/key for uri", path, "error - ", xPathKeyExtractErr)
                err = xPathKeyExtractErr
                break
@@ -788,7 +798,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                }
            } else {
 		   subscribe_result.OnChange = true
-		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{dbTbl: {dbKey: {}}}
+		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{retData.tableName: {retData.dbKey: {}}}
 	   }
            if done {
                    break
@@ -814,4 +824,23 @@ func IsTerminalNode(uri string) (bool, error) {
 
 	log.Errorf("xYangSpecMap data not found for xpath : %v", xpath)
 	return false, err
+}
+
+func IsLeafNode(uri string) bool {
+	result := false
+	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	if err != nil {
+		log.Errorf("For uri - %v, couldn't convert to xpath - %v", uri, err)
+		return result
+	}
+	xfmrLogInfoAll("received xpath - %v", xpath)
+	if xpathData, ok := xYangSpecMap[xpath]; ok {
+		if yangTypeGet(xpathData.yangEntry) == YANG_LEAF {
+			result = true
+		}
+	} else {
+		errStr := "xYangSpecMap data not found for xpath - " + xpath
+		log.Error(errStr)
+	}
+	return result
 }

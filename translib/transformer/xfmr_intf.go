@@ -56,6 +56,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_eth_auto_neg_xfmr", DbToYang_intf_eth_auto_neg_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
     XlateFuncBind("YangToDb_intf_eth_port_config_xfmr", YangToDb_intf_eth_port_config_xfmr)
+    XlateFuncBind("DbToYang_intf_eth_port_config_xfmr", DbToYang_intf_eth_port_config_xfmr)
     XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
     XlateFuncBind("DbToYang_intf_ip_addr_xfmr", DbToYang_intf_ip_addr_xfmr)
     XlateFuncBind("YangToDb_ipv6_enabled_xfmr", YangToDb_ipv6_enabled_xfmr)
@@ -70,7 +71,6 @@ func init () {
     XlateFuncBind("DbToYang_subintf_ipv6_tbl_key_xfmr", DbToYang_subintf_ipv6_tbl_key_xfmr)
     XlateFuncBind("YangToDb_subintf_ip_addr_key_xfmr", YangToDb_subintf_ip_addr_key_xfmr)
     XlateFuncBind("DbToYang_subintf_ip_addr_key_xfmr", DbToYang_subintf_ip_addr_key_xfmr)
-    XlateFuncBind("YangToDb_intf_name_empty_xfmr", YangToDb_intf_name_empty_xfmr)
     XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
     XlateFuncBind("YangToDb_igmp_tbl_key_xfmr", YangToDb_igmp_tbl_key_xfmr)
     XlateFuncBind("DbToYang_igmp_mcastgrpaddr_fld_xfmr", DbToYang_igmp_mcastgrpaddr_fld_xfmr)
@@ -969,12 +969,6 @@ var DbToYang_intf_name_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[s
     log.Info("Interface Name = ", ifName)
     res_map["name"] = ifName
     return res_map, nil
-}
-
-var YangToDb_intf_name_empty_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
-    var err error
-    return res_map, err
 }
 
 func updateDefaultMtu(inParams *XfmrParams, ifName *string, ifType E_InterfaceType, resMap map[string]string) error {
@@ -3199,6 +3193,64 @@ func getSpecificCounterAttr(targetUriPath string, entry *db.Value, entry_backup 
             return true, e
         }
 
+    case "/openconfig-interfaces:interfaces/interface/state/counters/in-octets-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_IN_OCTETS_PER_SECOND")
+        if e == nil {
+            counter_val.InOctetsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/in-pkts-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_IN_PKTS_PER_SECOND")
+        if e == nil {
+            counter_val.InPktsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/in-bits-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_IN_BITS_PER_SECOND")
+        if e == nil {
+            counter_val.InBitsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/in-utilization":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_IN_UTILIZATION")
+        if e == nil {
+            tmp := uint8(value)
+            counter_val.InUtilization = &tmp
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/out-octets-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_OUT_OCTETS_PER_SECOND")
+        if e == nil {
+            counter_val.OutOctetsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/out-pkts-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_OUT_PKTS_PER_SECOND")
+        if e == nil {
+            counter_val.OutPktsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/out-bits-per-second":
+        value, e := getIntfCounterValue(entry, "PORT_STAT_IF_OUT_BITS_PER_SECOND")
+        if e == nil {
+            counter_val.OutBitsPerSecond = &value
+        }
+        return true, e
+
+    case "/openconfig-interfaces:interfaces/interface/state/counters/out-utilization":
+        value, e := getIntfCounterValue(entry, "SAI_PORT_STAT_IF_OUT_UTILIZATION")
+        if e == nil {
+            tmp := uint8(value)
+            counter_val.OutUtilization = &tmp
+        }
+        return true, e
+
     case "/openconfig-interfaces:interfaces/interface/state/counters/out-octets":
         e = getCounters(entry, entry_backup, "SAI_PORT_STAT_IF_OUT_OCTETS", &counter_val.OutOctets)
         return true, e
@@ -3358,6 +3410,20 @@ func getSpecificCounterAttr(targetUriPath string, entry *db.Value, entry_backup 
     return false, nil
 }
 
+func getIntfCounterValue(entry *db.Value, attr string) (float64, error) {
+    var err error
+    var value float64
+    val, ok := entry.Field[attr]
+    if !ok {
+        return value, errors.New("Attr " + attr + " doesn't exist in counters entry Map!")
+    }
+    value, err = strconv.ParseFloat(val, 64)
+    if err != nil {
+        log.Infof("Attr " + attr + " parse failed: " + err.Error())
+    }
+    return value, err
+}
+
 func getCounters(entry *db.Value, entry_backup *db.Value, attr string, counter_val **uint64 ) error {
 
     var ok bool = false
@@ -3384,7 +3450,8 @@ func getCounters(entry *db.Value, entry_backup *db.Value, attr string, counter_v
 var portCntList [] string = []string {"in-octets", "in-unicast-pkts", "in-broadcast-pkts", "in-multicast-pkts",
 "in-errors", "in-discards", "in-pkts", "out-octets", "out-unicast-pkts",
 "out-broadcast-pkts", "out-multicast-pkts", "out-errors", "out-discards",
-"out-pkts","last-clear"}
+"out-pkts", "in-octets-per-second", "in-pkts-per-second", "in-bits-per-second", "in-utilization",
+"out-octets-per-second", "out-pkts-per-second", "out-bits-per-second", "out-utilization", "last-clear"}
 
 var etherCntList [] string = [] string {"in-oversize-frames", "out-oversize-frames", "in-undersize-frames", "in-jabber-frames",
                         "in-fragment-frames", "openconfig-if-ethernet-ext:in-distribution/in-frames-128-255-octets"}
@@ -3995,6 +4062,109 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         memMap[intTbl.cfgDb.portTN][ifName] = value
     }
     return memMap, err
+}
+
+// DbToYang_intf_eth_port_config_xfmr is to handle DB to yang translation of port-speed, auto-neg and aggregate-id config.
+var DbToYang_intf_eth_port_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    pathInfo := NewPathInfo(inParams.uri)
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+    log.Infof("DbToYang_intf_eth_port_config_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
+
+    intfType, _, err := getIntfTypeByName(ifName)
+    if err != nil {
+        errStr := "Invalid Interface"
+        err = tlerr.InvalidArgsError{Format: errStr}
+        return err
+    }
+    if IntfTypeVxlan == intfType {
+        return nil
+    }
+    intTbl := IntfTypeTblMap[intfType]
+    tblName := intTbl.cfgDb.portTN
+    entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
+    if (dbErr != nil){
+        errStr := "Invalid Interface"
+        err = tlerr.InvalidArgsError{Format: errStr}
+        return err
+    }
+    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
+        get_cfg_obj := false
+        var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
+        if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
+            var ok bool = false
+            if intfObj, ok = intfsObj.Interface[uriIfName]; !ok {
+                intfObj, _ = intfsObj.NewInterface(uriIfName)
+            }
+            ygot.BuildEmptyTree(intfObj)
+        } else {
+            ygot.BuildEmptyTree(intfsObj)
+            intfObj, _ = intfsObj.NewInterface(uriIfName)
+            ygot.BuildEmptyTree(intfObj)
+        }
+        ygot.BuildEmptyTree(intfObj.Ethernet)
+        ygot.BuildEmptyTree(intfObj.Ethernet.Config)
+
+        if (targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
+            get_cfg_obj = true;
+        }
+        var errStr string
+        if (get_cfg_obj || targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id"){
+            is_id_populated := false
+            intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
+            if intf_lagId != nil {
+                lagPrefix := "PortChannel"
+                if strings.HasPrefix(*intf_lagId, lagPrefix) {
+                    aggrId := strings.TrimPrefix(*intf_lagId, lagPrefix)
+                    intfObj.Ethernet.Config.AggregateId = &aggrId
+                    is_id_populated = true
+                }
+            }
+            if (!is_id_populated) {
+                errStr = "aggregate-id not set"
+            }
+        }
+
+        if (entry.IsPopulated()) {
+            if (get_cfg_obj || targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/auto-negotiate") {
+                autoNeg, ok := entry.Field[PORT_AUTONEG]
+                if ok {
+                    var oc_auto_neg bool
+                    if autoNeg == "true" {
+                        oc_auto_neg = true
+                    } else {
+                        oc_auto_neg = false
+                    }
+                    intfObj.Ethernet.Config.AutoNegotiate = &oc_auto_neg
+                } else {
+                    errStr = "auto-negotiate not set"
+                }
+            }
+            if (get_cfg_obj || targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/port-speed") {
+                speed, ok := entry.Field[PORT_SPEED]
+                portSpeed := ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_UNSET
+                if ok {
+                    portSpeed, err = getDbToYangSpeed(speed)
+                    intfObj.Ethernet.Config.PortSpeed = portSpeed
+                } else {
+                    errStr = "port-speed not set"
+                }
+            }
+        } else {
+            errStr = "Attribute not set"
+        }
+        if (!get_cfg_obj) {
+            err = tlerr.InvalidArgsError{Format: errStr}
+        }
+    }
+
+    return err
 }
 
 // YangToDb_subintf_ipv6_tbl_key_xfmr is a YangToDB Key transformer for IPv6 config.

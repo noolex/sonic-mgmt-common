@@ -1462,10 +1462,12 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 		}
 		 
 	} else {
-		for vniKey := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
-			vniId = vniKey.VniId
-			vtepName = vniKey.SourceNve
-			break
+		if reqP.vxlanNetInstObj.VxlanVniInstances != nil { // need to check vxlan instance
+			for vniKey := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
+				vniId = vniKey.VniId
+				vtepName = vniKey.SourceNve
+				break
+			}
 		}
 	}
 
