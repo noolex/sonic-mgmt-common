@@ -74,6 +74,22 @@ module openconfig-interfaces-ext {
         }
     }
 
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config" {
+        description "Additional fallback attribute for LAG configuration";
+        leaf graceful-shutdown-mode {
+            type string;
+            description "Indicating whether LAG graceful shutdown is enabled or not";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state" {
+        description "Additional fallback attribute for LAG configuration";
+        leaf graceful-shutdown-mode {
+            type string;
+            description "Indicating whether LAG graceful shutdown is enabled or not";
+        }
+    }
+
     augment "/oc-lacp:lacp/oc-lacp:interfaces/oc-lacp:interface/oc-lacp:members/oc-lacp:member/oc-lacp:state" {
         description "Additional selected attribute for LACP state";
         leaf selected {
