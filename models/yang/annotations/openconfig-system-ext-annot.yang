@@ -1,27 +1,27 @@
-module sonic-tpcma-annot {
-
+module openconfig-system-ext-annot {
     yang-version "1";
-
-    namespace "http://openconfig.net/yang/annotation/tpcm-annot";
-    prefix "tpcm-annot"; 
+    namespace "http://openconfig.net/yang/openconfig-system-ext-annot";
+    prefix "oc-sys-ext-annot";
 
     import sonic-extensions { prefix sonic-ext; }
-    import sonic-tpcm { prefix tpcm-rpc; }
+    import openconfig-system-ext { prefix oc-sys-ext; }
 
-    deviation /tpcm-rpc:tpcm-install{
+    deviation /oc-sys-ext:tpcm-install{
         deviate add {
             sonic-ext:rpc-callback "rpc_tpcm_install_cb";
         }
     }
-    deviation /tpcm-rpc:tpcm-uninstall{
+
+    deviation /oc-sys-ext:tpcm-uninstall{
         deviate add {
             sonic-ext:rpc-callback "rpc_tpcm_uninstall_cb";
         }
     }
 
-    deviation /tpcm-rpc:tpcm-upgrade{
+    deviation /oc-sys-ext:tpcm-upgrade{
         deviate add {
             sonic-ext:rpc-callback "rpc_tpcm_upgrade_cb";
         }
-    } 
+    }
+
 }
