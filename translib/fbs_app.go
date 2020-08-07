@@ -1883,7 +1883,7 @@ func (app *FbsApp) fillFbsClassDetails(dbs [db.MaxDB]*db.DB, className string, c
 			l2Filled = found
 		}
 		if strVal, found := classTblVal.Field["ETHER_TYPE"]; found {
-			ethType, _ := strconv.ParseUint(strVal, 16, 32)
+			ethType, _ := strconv.ParseUint(strings.Replace(strVal, "0x", "", -1), 16, 32)
 			ocEtype := getL2EtherType(ethType)
 			classData.MatchHdrFields.L2.Config.Ethertype, _ = classData.MatchHdrFields.L2.Config.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_L2_Config_Ethertype_Union(ocEtype)
 			classData.MatchHdrFields.L2.State.Ethertype, _ = classData.MatchHdrFields.L2.State.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_L2_State_Ethertype_Union(ocEtype)
