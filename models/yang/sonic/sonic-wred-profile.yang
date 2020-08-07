@@ -2,6 +2,14 @@ module sonic-wred-profile {
     namespace "http://github.com/Azure/sonic-wred-profile";
     prefix wrd;
 
+	import sonic-common {
+		prefix cmn;
+	}
+
+    import sonic-extension {
+		prefix sonic-ext;
+	}
+
     organization
         "SONiC";
 
@@ -22,6 +30,7 @@ module sonic-wred-profile {
 
             list WRED_PROFILE_LIST {
                 key "name";
+                sonic-ext:custom-validation ValidateAtLeastOneColorEnabled;
 
                 leaf name{
                     type string;
@@ -40,14 +49,23 @@ module sonic-wred-profile {
                 }
                 leaf yellow_max_threshold {
                     type uint64;
+            		must "(/cmn:operation/cmn:operation = 'DELETE') or (current() >= current()/../yellow_min_threshold)" {
+						error-message "Yellow max threshold must be greater than or equal to min threshold";
+					}
                 }
 
                 leaf green_max_threshold {
                     type uint64;
+            		must "(/cmn:operation/cmn:operation = 'DELETE') or (current() >= current()/../green_min_threshold)" {
+						error-message "Green max threshold must be greater than or equal to min threshold";
+					}
                 }
 
                 leaf red_max_threshold {
                     type uint64;
+            		must "(/cmn:operation/cmn:operation = 'DELETE') or (current() >= current()/../red_min_threshold)" {
+						error-message "Red max threshold must be greater than or equal to min threshold";
+					}
                 }
 
                 leaf ecn {

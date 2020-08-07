@@ -227,13 +227,7 @@ func removeStpConfigOnVlanDeletion(inParams *XfmrParams, vlanName *string, membe
                 stpVlanPortMap[tblKey] = db.Value{Field:map[string]string{}}
             }
 
-            /* get the tagMode for the vlan member, if tagged, check if it is the last vlan member */
-            tagModeEntry, _ := (inParams.d).GetEntry(&db.TableSpec{Name: VLAN_MEMBER_TN}, db.Key{Comp: []string{*vlanName, memberPort}})
-            tagMode := tagModeEntry.Field["tagging_mode"]
-
-            if (tagMode == "untagged") {
-                stpPortMap[memberPort] = db.Value{Field:map[string]string{}}
-            } else if (isLastVlanMemberOnPort(inParams.d, vlanName, &memberPort)) {
+            if (isLastVlanMemberOnPort(inParams.d, vlanName, &memberPort)) {
                 stpPortMap[memberPort] = db.Value{Field:map[string]string{}}
             }
         }
@@ -278,10 +272,7 @@ func removeStpOnInterfaceSwitchportDeletion(d *db.DB, vlanName *string, intfList
             stpVlanPortMap[tblKey] = db.Value{Field:map[string]string{}}
         }
 
-        /* for untagged port, remove STP_PORT for this ifname, for tagged port, check if it's the last member */
-        if (!isTagged) {
-            stpPortMap[intfList[i]] = db.Value{Field:map[string]string{}}
-        } else if (isLastVlanMemberOnPort(d, vlanName, &intfList[i])) {
+        if (isLastVlanMemberOnPort(d, vlanName, &intfList[i])) {
             stpPortMap[intfList[i]] = db.Value{Field:map[string]string{}}
         }
     }
@@ -310,36 +301,15 @@ func validateIntfAssociatedWithVlan(d *db.DB, ifName *string) error {
         return errors.New("Interface name is empty!")
     }
     var vlanKeys []db.Key
-    vlanTable, err := d.GetTable(&db.TableSpec{Name:VLAN_TN})
+    vlanKeys, err = d.GetKeysByPattern(&db.TableSpec{Name: VLAN_MEMBER_TN}, "*"+*ifName)
     if err != nil {
-        return err
+        return errors.New("Failed to get keys from table: " + VLAN_MEMBER_TN)
     }
-
-    vlanKeys, err = vlanTable.GetKeys()
-    if err != nil {
-        return errors.New("Failed to get keys from table: " + VLAN_TN)
-    }
-    log.Infof("Found %d Vlan Table keys", len(vlanKeys))
-
-    for _, vlan := range vlanKeys {
-        vlanEntry, err := d.GetEntry(&db.TableSpec{Name: VLAN_TN}, vlan)
-        if(err != nil) {
-            return err
-        }
-        members, ok := vlanEntry.Field["members@"]
-        if ok {
-            memberPortsList := generateMemberPortsSliceFromString(&members)
-            if memberPortsList == nil {
-                return nil
-            }
-            for _, memberName := range memberPortsList {
-                if memberName == *ifName {
-                    errStr := "Vlan configuration exists on interface: " + *ifUIName
-                    log.Error(errStr)
-                    return tlerr.InvalidArgsError{Format:errStr}
-                }
-            }
-        }
+    log.Infof("Interface member of %d Vlan(s)", len(vlanKeys))
+    if len(vlanKeys) > 0 {
+        errStr := "Vlan configuration exists on interface: " + *ifUIName
+        log.Error(errStr)
+        return tlerr.InvalidArgsError{Format:errStr}
     }
     return err
 }
