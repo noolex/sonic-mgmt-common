@@ -480,18 +480,6 @@ module openconfig-routing-policy-annot {
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:config/oc-rpol-ext:action {
-      deviate add {
-        sonic-ext:field-transformer "prefix_action_fld_xfmr";
-      }
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:state/oc-rpol-ext:action {
-      deviate add {
-        sonic-ext:field-transformer "prefix_action_fld_xfmr";
-      }
-    }
-
     deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:state/oc-rpol:ip-prefix {
       deviate add {
         sonic-ext:field-transformer "prefix_cfg_ip_prefix_fld_xfmr";
