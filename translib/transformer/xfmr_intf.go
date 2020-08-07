@@ -1479,7 +1479,7 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
         return idx, err
     }
 
-    if (inParams.oper == GET) {
+    if (inParams.oper == GET) || (inParams.oper == DELETE) {
         subintf_key = "0"
     }
 
