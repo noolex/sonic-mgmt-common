@@ -84,6 +84,9 @@ module sonic-loopback-interface {
                     type inet:ip-prefix;
 
                 }
+                leaf secondary {
+                    type boolean;
+                }
             }
         }
     }

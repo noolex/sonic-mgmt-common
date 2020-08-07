@@ -480,11 +480,40 @@ func rpc_get_resultTblList_for_intf_ip_delete(intfType E_InterfaceType) []string
     return resultTblList
 }
 
-func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfTblData) error {
-    // Delete the INTERFACE | <ifName> | <IP address> entry from DB
-    err := d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, *ipPrefix}})
-    if err != nil {
-        return err
+func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfTblData, ipEntry db.Value, isSec bool) error {
+    ip := strings.Split(*ipPrefix, "/")
+    if validIPv4(ip[0]) {
+
+        secVal, ok := ipEntry.Field["secondary"]
+        if ok && secVal == "true" {
+            if isSec {
+                err := d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, *ipPrefix}})
+                if err != nil {
+                    return err
+                }
+            }
+        } else {
+            if isSec {
+                log.Errorf("Secondary IPv4 Address : %s for interface : %s doesn't exist!", *ipPrefix, *ifName)
+                return nil
+            }
+            var ifIpMap map[string]db.Value
+            ifIpMap, _ = getIntfIpByName(d, intTbl.cfgDb.intfTN, *ifName, true, false, "")
+
+            if(!utlCheckSecondaryIPConfigured(ifIpMap)) {
+                err := d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, *ipPrefix}})
+                if err != nil {
+                    return err
+                }
+            } else {
+                return tlerr.InvalidArgsError {Format: "Primary IPv4 address delete not permitted when secondary IPv4 address exists"}
+            }
+        }
+    } else {
+        err := d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, *ipPrefix}})
+        if err != nil {
+            return err
+        }
     }
 
     count := 0
@@ -513,7 +542,7 @@ func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfT
             }
         }
     }
-    return err
+    return nil
 }
 
 var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
@@ -546,6 +575,14 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
         result.Output.Status_detail = "ipPrefix field not present in the input for clear_ip rpc!"
         return json.Marshal(&result)
     }
+    isSec := false
+    secVal, ok := mapData["secondary"]
+    if ok {
+        if secVal.(bool) {
+            isSec = true
+        }
+    }
+
     ipPrefix := ipPrefixIntf.(string)
     ifNameStr := inputIfName.(string)
     ifName := utils.GetNativeNameFromUIName(&ifNameStr)
@@ -568,8 +605,8 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     defer d.DeleteDB()
 
     /* Checking whether entry exists in DB. If not, return from here */
-    _, err = d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, ipPrefix}})
-    if err != nil {
+    ipEntry, err := d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, ipPrefix}})
+    if err != nil || !ipEntry.IsPopulated() {
         log.Errorf("IP address: %s doesn't exist for Interafce: %s", ipPrefix, *ifName)
         return json.Marshal(&result)
     }
@@ -595,7 +632,7 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
         return json.Marshal(&result)
     }
 
-    err = rpc_intf_ip_delete(d, ifName, &ipPrefix, intTbl)
+    err = rpc_intf_ip_delete(d, ifName, &ipPrefix, intTbl, ipEntry, isSec)
     if err != nil {
         d.AbortTx()
         result.Output.Status_detail = err.Error()
@@ -1473,7 +1510,7 @@ var DbToYang_intf_subintfs_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map
     var err error
     rmap["index"] = 0
 
-    log.Info("DbToYang_intf_subintfs_xfmr rmap ", rmap) 
+    log.Info("DbToYang_intf_subintfs_xfmr rmap ", rmap)
     return rmap, err
 }
 
@@ -1505,10 +1542,35 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
             } else {
                 for ip := range subIntf.Ipv4.Addresses.Address {
                     ipMap, _ := getIntfIpByName(d, tblName, ifName, true, false, ip)
+                    isSec := false
+
+                    addr := subIntf.Ipv4.Addresses.Address[ip]
+                    if addr.Config != nil && addr.Config.Secondary != nil {
+                        isSec = true
+                    }
 
                     if len(ipMap) > 0 {
                         for k, v := range ipMap {
-                            intfIpMap[k] = v
+                            secVal, ok := v.Field["secondary"]
+                            if ok && secVal == "true" {
+                                if isSec {
+                                    intfIpMap[k] = v
+                                }
+                            } else {
+                                if isSec {
+                                    log.Errorf("Secondary IPv4 Address : %s for interface : %s doesn't exist!", ip, ifName)
+                                    return nil, nil
+                                }
+                                // Primary IPv4 delete
+                                ifIpMap, _ := getIntfIpByName(d, tblName, ifName, true, false, "")
+                                if(!utlCheckSecondaryIPConfigured(ifIpMap)) {
+                                    intfIpMap[k]= v
+                                } else {
+                                    errStr := "Primary IPv4 address delete not permitted when secondary IPv4 address exists"
+                                    log.Error(errStr)
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
+                                }
+                            }
                         }
                     }
                 }
@@ -1540,7 +1602,7 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
 
                     if len(ipMap) > 0 {
                         for k, v := range ipMap {
-                            intfIpMap[k] = v
+                            intfIpMap[k]= v
                         }
                     }
                 }
@@ -1613,10 +1675,33 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
             } else {
                 for ip := range routedVlanIntf.Ipv4.Addresses.Address {
                     ipMap, _ := getIntfIpByName(d, tblName, ifName, true, false, ip)
+                    isSec := false
+
+                    addr := routedVlanIntf.Ipv4.Addresses.Address[ip]
+                    if addr.Config != nil && addr.Config.Secondary != nil {
+                        isSec = true
+                    }
 
                     if len(ipMap) > 0 {
                         for k, v := range ipMap {
-                            intfIpMap[k] = v
+                            secVal, ok := v.Field["secondary"]
+                            if ok && secVal == "true" {
+                                if isSec {
+                                    intfIpMap[k] = v
+                                }
+                            } else {
+                                if isSec {
+                                    log.Errorf("Secondary IPv4 Address : %s for interface : %s doesn't exist!", ip, ifName)
+                                    return nil, nil
+                                }
+                                // Primary IPv4 delete
+                                ifIpMap, _ := getIntfIpByName(d, tblName, ifName, true, false, "")
+                                if(!utlCheckSecondaryIPConfigured(ifIpMap)) {
+                                    intfIpMap[k]= v
+                                } else {
+                                    return nil, tlerr.InvalidArgsError {Format: "Primary IPv4 address delete not permitted when secondary IPv4 address exists"}
+                                }
+                            }
                         }
                     }
                 }
@@ -1863,9 +1948,9 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
 
         for _, sagIf := range sagKeys {
             sagEntry, err := d.GetEntry(&db.TableSpec{Name: "SAG"}, sagIf)
-      			if(err != nil) {
-      			    continue
-      			}
+            if(err != nil) {
+                continue
+            }
 
             sagIpList, ok := sagEntry.Field["gwip@"]
 
@@ -1875,9 +1960,9 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
 
             sagIpMap := strings.Split(sagIpList, ",")
 
-          	if (sagIpMap[0] == "") {
-          		  continue
-          	}
+            if (sagIpMap[0] == "") {
+                continue
+            }
 
             for _, sagIp := range sagIpMap {
                 prekey := make([]string, 3)
@@ -1921,20 +2006,92 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
                     }
                 } else if isIntfIp {
                     //Handle IP overlap on same interface, replace
-                    log.Error("Entry ", key.Get(1), " on ", intf, " needs to be deleted")
+                    //log.Error("Entry ", key.Get(1), " on ", intf, " needs to be deleted")
                     errStr := "IP overlap on same interface with IP or IP Anycast " + key.Get(1)
 
                     if ((len(key.Comp) == 3) && (key.Get(2) == "SAG")) {
                         return "", errors.New(errStr)
-                    } else {
+                    }
+                    /* Handling overlap for IPv6 address only here, overlapping in case of IPv4 address
+                       is handled as part of address type check (Primary / Secondary) */
+                    ip := strings.Split(ipPref, "/")
+                    if validIPv6(ip[0]) {
                         return key.Get(1), errors.New(errStr)
                     }
-
                 }
             }
         }
     }
     return "", nil
+}
+
+func utlCheckAndRetrievePrimaryIPConfigured(ipMap map[string]db.Value) (bool, string) {
+    for ipKey, ipVal := range ipMap {
+        if _, ok := ipVal.Field["secondary"]; !ok {
+            return true, ipKey
+        }
+    }
+    return false, ""
+}
+
+func utlCheckSecondaryIPConfigured(ipMap map[string]db.Value) bool {
+    for _, ipVal := range ipMap {
+        if _, ok := ipVal.Field["secondary"]; ok {
+            return true
+        }
+    }
+    return false
+}
+
+/* Following logic to handle the case when the IP address already exists and handles the case when
+   IP address is configured as primary and the current request(same IP) for secondary IP address config and viceversa */
+func utlValidateIpTypeForCfgredSameIp(ipEntry *db.Value, secFlag bool,
+                                         ipPref *string, ifName *string) error {
+    dbgStr := "IPv4 address: "
+    dbgStr += *ipPref
+
+    if ipEntry.IsPopulated() {
+        _, ok := ipEntry.Field["secondary"]
+        if ok {
+            if !secFlag {
+                errStr := dbgStr + " is already configured as secondary for interface: " + *ifName
+                log.Error(errStr)
+                return tlerr.InvalidArgsError{Format: errStr}
+             }
+             log.Infof("%s is already configured as secondary! Processing further attributes", dbgStr)
+        } else {
+            if secFlag {
+                errStr := dbgStr + " is already configured as primary for interface: " + *ifName
+                log.Error(errStr)
+                return tlerr.InvalidArgsError{Format: errStr}
+             }
+             log.Infof("%s is already configured as primary! Processing further attributes", dbgStr)
+        }
+    }
+    return nil
+}
+
+func utlValidateIpTypeForCfgredDiffIp(m map[string]string, ipMap map[string]db.Value, ipEntry *db.Value, secFlag bool,
+                                       ipPref *string, ifName *string) (string, bool, error) {
+
+    dbgStr := "IPv4 address"
+
+    checkPrimIPCfgred, cfgredPrimIP := utlCheckAndRetrievePrimaryIPConfigured(ipMap)
+    if secFlag {
+        if !checkPrimIPCfgred {
+            errStr := "Primary " + dbgStr + " is not configured for interface: " + *ifName
+            log.Error(errStr)
+            return "", false, tlerr.InvalidArgsError{Format: errStr}
+        }
+        m["secondary"] = "true"
+    } else {
+        if checkPrimIPCfgred && !ipEntry.IsPopulated() {
+            infoStr := "Primary " + dbgStr + " is already configured for interface: " + *ifName
+            log.Info(infoStr)
+            return cfgredPrimIP, true, nil
+        }
+    }
+    return "", false, nil
 }
 
 func checkLocalIpExist(d *db.DB, nbrAddr string) (bool, error) {
@@ -2158,14 +2315,44 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
                 overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
-		if ((intfType == IntfTypeLoopback) && (validateMultiIPForDonorIntf(inParams.d, &ifName))) {
+                if ((intfType == IntfTypeLoopback) && (validateMultiIPForDonorIntf(inParams.d, &ifName))) {
                     errStr := "Loopback interface is Donor for Unnumbered interface. Cannot add Multiple IPv4 address"
                     err = tlerr.InvalidArgsError{Format: errStr}
                     return subIntfmap, err
-		}
+                }
+                ipEntry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName, ipPref}})
+                ipMap, _ := getIntfIpByName(inParams.d, intTbl.cfgDb.intfTN, ifName, true, false, "")
+
+                secFlag := false
+                if addr.Config.Secondary != nil {
+                    secFlag = *addr.Config.Secondary
+                    log.Info("IPv4: Secondary Flag received = ", secFlag)
+                }
+
+                if dbErr == nil {
+                    err := utlValidateIpTypeForCfgredSameIp(&ipEntry, secFlag, &ipPref, &ifName)
+                    if err != nil {
+                        return nil, err
+                    }
+                }
+
+                m := make(map[string]string)
+                alrdyCfgredIP, primaryIpAlrdyCfgred, err := utlValidateIpTypeForCfgredDiffIp(m, ipMap, &ipEntry, secFlag, &ipPref, &ifName)
+                if err != nil {
+                    return nil, err
+                }
+                // Primary IP config already happened and replacing it with new one
+                if primaryIpAlrdyCfgred && len(alrdyCfgredIP) != 0 && alrdyCfgredIP != ipPref {
+                    subIntfmap_del[tblName] = make(map[string]db.Value)
+                    key := ifName + "|" + alrdyCfgredIP
+                    subIntfmap_del[tblName][key] = value
+                    subOpMap[db.ConfigDB] = subIntfmap_del
+                    log.Info("subOpMap: ", subOpMap)
+                    inParams.subOpDataMap[DELETE] = &subOpMap
+                }
 
                 intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
-                m := make(map[string]string)
+
                 if addr.Config.GwAddr != nil {
                     if intfType != IntfTypeMgmt {
                         errStr := "GwAddr config is not supported " + ifName
@@ -2222,8 +2409,10 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
                 overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
-                intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
+
+                intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
+
                 if addr.Config.GwAddr != nil {
                     if intfType != IntfTypeMgmt {
                         errStr := "GwAddr config is not supported " + ifName
@@ -2393,8 +2582,38 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
                 overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
-                intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
+                ipEntry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName, ipPref}})
+                ipMap, _ := getIntfIpByName(inParams.d, intTbl.cfgDb.intfTN, ifName, true, false, "")
+
+                secFlag := false
+                if addr.Config.Secondary != nil {
+                    secFlag = *addr.Config.Secondary
+                    log.Info("IPv4: Secondary Flag received = ", secFlag)
+                }
+
+                if dbErr == nil {
+                    err := utlValidateIpTypeForCfgredSameIp(&ipEntry, secFlag, &ipPref, &ifName)
+                    if err != nil {
+                        return nil, err
+                    }
+                }
+
                 m := make(map[string]string)
+                alrdyCfgredIP, primaryIpAlrdyCfgred, err := utlValidateIpTypeForCfgredDiffIp(m, ipMap, &ipEntry, secFlag, &ipPref, &ifName)
+                if err != nil {
+                    return nil, err
+                }
+                // Primary IP config already happened and replacing it with new one
+                if primaryIpAlrdyCfgred && len(alrdyCfgredIP) != 0 && alrdyCfgredIP != ipPref {
+                    vlanIntfmap_del[tblName] = make(map[string]db.Value)
+                    key := ifName + "|" + alrdyCfgredIP
+                    vlanIntfmap_del[tblName][key] = value
+                    subOpMap[db.ConfigDB] = vlanIntfmap_del
+                    log.Info("subOpMap: ", subOpMap)
+                    inParams.subOpDataMap[DELETE] = &subOpMap
+                }
+
+                intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m["NULL"] = "NULL"
                 value := db.Value{Field: m}
                 if _, ok := vlanIntfmap[tblName]; !ok {
@@ -2435,8 +2654,9 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
                 overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
-                intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m := make(map[string]string)
+
+                intf_key := intf_intf_tbl_key_gen(ifName, *addr.Config.Ip, int(*addr.Config.PrefixLength), "|")
                 m["NULL"] = "NULL"
                 value := db.Value{Field: m}
                 if _, ok := vlanIntfmap[tblName]; !ok {
@@ -2527,6 +2747,15 @@ func convertIpMapToOC (intfIpMap map[string]db.Value, ifInfo *ocbinds.Openconfig
                     *gwaddr = ipdata.Get("gwaddr")
                     v4Address.State.GwAddr = gwaddr
                 }
+                secValStr, ok := ipdata.Field["secondary"]
+                secVal := new(bool)
+                *secVal = false
+                if ok {
+                    if secValStr == "true" {
+                        *secVal = true
+                    }
+                }
+                v4Address.State.Secondary = secVal
             } else {
                 v4Address.Config.Ip = ipStr
                 v4Address.Config.PrefixLength = prfxLen
@@ -2535,6 +2764,15 @@ func convertIpMapToOC (intfIpMap map[string]db.Value, ifInfo *ocbinds.Openconfig
                     *gwaddr = ipdata.Get("gwaddr")
                     v4Address.Config.GwAddr = gwaddr
                 }
+                secValStr, ok := ipdata.Field["secondary"]
+                secVal := new(bool)
+                *secVal = false
+                if ok {
+                    if secValStr == "true" {
+                        *secVal = true
+                    }
+                }
+                v4Address.Config.Secondary = secVal
             }
         }
         if v6Flag {
@@ -2576,7 +2814,7 @@ func convertRoutedVlanIpMapToOC (intfIpMap map[string]db.Value, ifInfo *ocbinds.
     ygot.BuildEmptyTree(routedVlan.Ipv4)
     ygot.BuildEmptyTree(routedVlan.Ipv6)
 
-    for ipKey := range intfIpMap {
+    for ipKey, ipdata := range intfIpMap {
         log.Info("IP address = ", ipKey)
         ipB, ipNetB, _ := net.ParseCIDR(ipKey)
         v4Flag := false
@@ -2615,9 +2853,29 @@ func convertRoutedVlanIpMapToOC (intfIpMap map[string]db.Value, ifInfo *ocbinds.
             if isState {
                 v4Address.State.Ip = ipStr
                 v4Address.State.PrefixLength = prfxLen
+
+                secValStr, ok := ipdata.Field["secondary"]
+                secVal := new(bool)
+                *secVal = false
+                if ok {
+                    if secValStr == "true" {
+                        *secVal = true
+                    }
+                }
+                v4Address.State.Secondary = secVal
             } else {
                 v4Address.Config.Ip = ipStr
                 v4Address.Config.PrefixLength = prfxLen
+
+                secValStr, ok := ipdata.Field["secondary"]
+                secVal := new(bool)
+                *secVal = false
+                if ok {
+                    if secValStr == "true" {
+                        *secVal = true
+                    }
+                }
+                v4Address.Config.Secondary = secVal
             }
         }
         if v6Flag {
