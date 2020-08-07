@@ -258,6 +258,9 @@ module sonic-portchannel-interface {
                     sonic-ext:custom-validation ValidateIntfIp;
 
                 }
+                leaf secondary {
+                    type boolean;
+                }
             }
         }
     }

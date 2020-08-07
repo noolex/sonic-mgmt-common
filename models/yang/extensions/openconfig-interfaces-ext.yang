@@ -83,28 +83,51 @@ module openconfig-interfaces-ext {
     }
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:config" {
-        description "Additional gatway-address attribute for IPv4 address config container associated with an interface";
+        description "Additional attributes for IPv4 address config container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv4-address;
             description "IPv4 Gateway address";
+        }
+        leaf secondary  {
+            type boolean;
+            description "Indicates whether the IPv4 address is configured as primary or secondary";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:config" {
+        description "Additional attributes for IPv4 address config container associated with an interface";
+        leaf secondary  {
+            type boolean;
+            description "Indicates whether the IPv4 address is configured as primary or secondary";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:state" {
-        description "Additional gatway-address attribute for IPv4 address state container associated with an interface";
+        description "Additional attributes for IPv4 address state container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv4-address;
             description "IPv4 Gateway address";
         }
+        leaf secondary {
+            type boolean;
+            description "Indicates whether IPv4 address configured is primary or secondary";
+        }
+    }
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:state" {
+        description "Additional attributes for IPv4 address state container associated with an interface";
+        leaf secondary {
+            type boolean;
+            description "Indicates whether IPv4 address configured is primary or secondary";
+        }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:config" {
-        description "Additional gatway-address attribute for IPv6 address config container associated with an interface";
+        description "Additional attributes for IPv6 address config container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv6-address;
             description "IPv6 Gateway address";
         }
     }
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:state" {
-        description "Additional gatway-address attribute for IPv6 address state container associated with an interface";
+        description "Additional attributes for IPv6 address state container associated with an interface";
         leaf gw-addr {
             type oc-inet:ipv6-address;
             description "IPv6 Gateway address";

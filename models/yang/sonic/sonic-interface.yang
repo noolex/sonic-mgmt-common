@@ -119,6 +119,10 @@ module sonic-interface {
                     description
                         "IP (v4/v6) address needs to be removed";
                 }
+                leaf secondary {
+                    type boolean;
+                    description "Indicates whether IP adddress configured is secondary or not";
+                }
             }
             output {
                 leaf status {
@@ -340,6 +344,10 @@ module sonic-interface {
 					type inet:ip-prefix;
 					sonic-ext:custom-validation ValidateIntfIp;
 				}
+                leaf secondary {
+                    type boolean;
+                    description "Indicates whether IP adddress configured is secondary or not";
+                }
 			}
 		}
 
@@ -375,6 +383,10 @@ module sonic-interface {
 
                 leaf ipPrefix {
                     type inet:ip-prefix;
+                }
+
+                leaf secondary {
+                    type boolean;
                 }
              }
         }
