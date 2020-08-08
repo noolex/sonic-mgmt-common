@@ -388,20 +388,11 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
          *      use "cgexec -g l3mdev:mgmt ntpq -pn"
          */
 
-        d, err := db.NewDB(getDBOptions(db.ConfigDB))
-
-        if err != nil {
-                errStr = "Unable to access DB"
-                log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
-                err = tlerr.InvalidArgsError{Format: errStr}
-                return err
-        }
-
         isMgmtVrfEnabled := isMgmtVrfEnabled(inParams)
 
         ntpTable := &db.TableSpec{Name: "NTP"}
         key := db.Key{Comp: []string{"global"}}
-        dbEntry, _ := d.GetEntry(ntpTable, key)
+        dbEntry, _ := inParams.d.GetEntry(ntpTable, key)
 
         var vrfName string
         if (dbEntry.IsPopulated()) {
