@@ -22,6 +22,7 @@ import (
     "errors"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "github.com/openconfig/ygot/ygot"
     "strconv"
     "strings"
@@ -285,6 +286,12 @@ var YangToDb_sflow_interface_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
     key := NewPathInfo(inParams.uri).Var("name")
+    if key == "" {
+        return res_map, errors.New("Missing interface name")
+    }
+
+    name := utils.GetNativeNameFromUIName(&key)
+    key = *name
 
     if inParams.oper == DELETE {
         if key == "" {
@@ -624,6 +631,9 @@ func appendIntfToYang(sflowIntf *ocbinds.OpenconfigSampling_Sampling_Sflow_Inter
             return err
         }
     }
+
+    uname := utils.GetUINameFromNativeName(&name)
+    name = *uname
 
     ygot.BuildEmptyTree(sfc)
     ygot.BuildEmptyTree(sfc.Config)
