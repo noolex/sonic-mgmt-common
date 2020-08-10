@@ -451,13 +451,13 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
 
         }
     case CREATE:
-    case UPDATE:
-        if *requestUriPath == "/openconfig-interfaces:interfaces/interface/config" {
-            switch ifType {
-            case IntfTypeVlan:
-                enableStpOnVlanCreation(inParams, ifName)
-            }
-        }
+	fallthrough
+    case UPDATE,REPLACE:
+        if(ifType == IntfTypeVlan){
+	    if(validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeVlan].cfgDb.portTN, *ifName)!=nil){
+	        enableStpOnVlanCreation(inParams, ifName)
+	    }
+	}
     }
     return err
 }
