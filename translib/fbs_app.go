@@ -1963,13 +1963,13 @@ func (app *FbsApp) fillFbsClassDetails(dbs [db.MaxDB]*db.DB, className string, c
 		ygot.BuildEmptyTree(classData.MatchHdrFields.Transport.State)
 		transportFilled := false
 		if strVal, found := classTblVal.Field["L4_SRC_PORT"]; found {
-			srcPort, _ := strconv.Atoi(strVal)
+			srcPort := getTransportSrcDestPorts(strVal, "src")
 			classData.MatchHdrFields.Transport.Config.SourcePort, _ = classData.MatchHdrFields.Transport.Config.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_SourcePort_Union(srcPort)
 			classData.MatchHdrFields.Transport.State.SourcePort, _ = classData.MatchHdrFields.Transport.State.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_State_SourcePort_Union(srcPort)
 			transportFilled = found
 		}
 		if strVal, found := classTblVal.Field["L4_DST_PORT"]; found {
-			dstPort, _ := strconv.Atoi(strVal)
+			dstPort := getTransportSrcDestPorts(strVal, "dest")
 			classData.MatchHdrFields.Transport.Config.DestinationPort, _ = classData.MatchHdrFields.Transport.Config.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_Config_DestinationPort_Union(dstPort)
 			classData.MatchHdrFields.Transport.State.DestinationPort, _ = classData.MatchHdrFields.Transport.State.To_OpenconfigFbsExt_Fbs_Classifiers_Classifier_MatchHdrFields_Transport_State_DestinationPort_Union(dstPort)
 			transportFilled = found
@@ -2075,6 +2075,7 @@ func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName 
 			dropFlag = true
 		}
 		policySectionData.Forwarding.Config.Discard = &dropFlag
+		policySectionData.Forwarding.State.Discard = &dropFlag
 	}
 
 	//forwarding EgressInterfaces
@@ -2207,9 +2208,10 @@ func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName 
 }
 
 func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string, policyBindData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface) error {
-	log.Infof("fbs Interface Get;Interface level request; InterfaceId:%v ", uiIfName)
+	nativeIfName := *utils.GetNativeNameFromUIName(&uiIfName)
+	log.Infof("fbs Interface Get;Interface level request; nativeIfName:%v uiIfName:%v ", nativeIfName, uiIfName)
 
-	policyBindTblVal, err := app.getPolicyBindingEntryFromDB(dbs[db.ConfigDB], uiIfName)
+	policyBindTblVal, err := app.getPolicyBindingEntryFromDB(dbs[db.ConfigDB], nativeIfName)
 	if err != nil {
 		return err
 	}
@@ -2222,7 +2224,6 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 	policyBindData.InterfaceRef.Config.Interface = &uiIfName
 	policyBindData.InterfaceRef.State.Interface = &uiIfName
 
-	nativeIfName := *utils.GetNativeNameFromUIName(&uiIfName)
 
 	// find out specific type requested if any. This will help optimize DB access and the response times
 	policyTypes := []string{}
