@@ -6,6 +6,7 @@ import (
     "strings"
     "strconv"
     "errors"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init() {
@@ -38,8 +39,31 @@ func getUdldIntfStatus(dbCl *db.DB, tblName string, key string) (string) {
 }
 
 
+func isUdldEnabled(dbCl *db.DB, tblName string, key string) (bool) {
+    var err error
+
+    log.Info("Checking CFG DB for UDLD GLOBAL Table, Table >>", tblName)
+
+    _, err = configDbPtr.GetTable(&db.TableSpec{Name:tblName})
+    if err != nil {
+        return false
+    }
+
+    _, err = configDbPtr.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{key}})
+    return err == nil
+}
+
+
 var YangToDb_udld_global_key_xfmr = func(inParams XfmrParams) (string, error) {
-	log.Info("YangToDb_udld_global_key_xfmr: ", inParams.ygRoot, inParams.uri)
+
+    if inParams.oper == GET {
+        if !isUdldEnabled(inParams.dbs[db.ConfigDB], "UDLD", "GLOBAL"){
+               log.Info("UDLD is not Enabled")
+            return "", nil
+        }
+    }
+    log.Info("YangToDb_udld_global_key_xfmr: ", inParams.uri)
+
 	return "GLOBAL", nil
 }
 
@@ -47,20 +71,22 @@ var YangToDb_udld_global_key_xfmr = func(inParams XfmrParams) (string, error) {
 func DbToYang_udld_port_status_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
     db_status := getUdldIntfStatus(inParams.dbs[db.ApplDB], "_UDLD_PORT_TABLE", inParams.key) 
-    if db_status != "Error" {
-        res_map["status"] = strings.ToUpper(db_status)
-        log.Info("res_map :", res_map)
+    if db_status == "Error" {
+        return res_map, tlerr.NotFound("Resource Not Found")
     }
+    res_map["status"] = strings.ToUpper(db_status)
+    log.Info("res_map :", res_map)
     return res_map, nil
 }
 
 func DbToYang_udld_port_nbr_status_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
     db_status := getUdldIntfStatus(inParams.dbs[db.ApplDB], "_UDLD_PORT_NEIGH_TABLE", inParams.key) 
-    if db_status != "Error" {
-        res_map["status"] = strings.ToUpper(db_status)
-        log.Info("res_map :", res_map)
+    if db_status == "Error" {
+        return res_map, tlerr.NotFound("Resource Not Found")
     }
+    res_map["status"] = strings.ToUpper(db_status)
+    log.Info("res_map :", res_map)
     return res_map, nil
 }
 
