@@ -1831,7 +1831,7 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     }
     
     log.Info(output_state)
-    if nil == output_state {
+    if (nil == output_state || len(output_state) == 0) {
         log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
     }
@@ -1978,7 +1978,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     }
     
     log.Info(output_state)
-    if nil == output_state {
+    if (nil == output_state || len(output_state) == 0) {
         log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
     }
@@ -2301,7 +2301,7 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
     
     log.Info(output_state)
-    if nil == output_state {
+    if (nil == output_state || len(output_state) == 0) {
         log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
     }
@@ -2322,6 +2322,7 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     
     return  err;
 }
+
 var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
     oper_err := errors.New("Operational error in  DbToYang_ospfv2_lsdb_state_xfmr")
@@ -2451,7 +2452,7 @@ func ospfv2_fill_external_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstanc
     }
 
     log.Info(output_state)
-    if nil == output_state {
+    if (nil == output_state || len(output_state) == 0) {
         log.Errorf("AsExternal LSA database fetched from backend is empty")
         return oper_err
     }
@@ -2559,7 +2560,7 @@ func ospfv2_fill_summary_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
     }
 
     log.Info(output_state)
-    if nil == output_state {
+    if (nil == output_state || len(output_state) == 0) {
         log.Errorf("Summary LSA database fetched from backend is empty")
         return oper_err
     }
@@ -2656,7 +2657,7 @@ func ospfv2_fill_network_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
     }
 
     log.Info(output_state)
-    if nil == output_state {
+    if (nil == output_state || len(output_state) == 0) {
         log.Errorf("Network LSA database fetched from backend is empty")
         return oper_err
     }
@@ -2754,7 +2755,7 @@ func ospfv2_fill_router_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance_
     }
 
     log.Info(output_state)
-    if nil == output_state {
+    if (nil == output_state || len(output_state) == 0) {
         log.Errorf("Router LSA database fetched from backend is empty")
         return oper_err
     }

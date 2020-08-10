@@ -40,6 +40,8 @@ func init () {
     XlateFuncBind("DbToYang_intf_lag_state_xfmr", DbToYang_intf_lag_state_xfmr)
     XlateFuncBind("YangToDb_lag_type_xfmr", YangToDb_lag_type_xfmr)
     XlateFuncBind("DbToYang_lag_type_xfmr", DbToYang_lag_type_xfmr)
+    XlateFuncBind("YangToDb_lag_graceful_shutdown_xfmr", YangToDb_lag_graceful_shutdown_xfmr)
+    XlateFuncBind("DbToYang_lag_graceful_shutdown_xfmr", DbToYang_lag_graceful_shutdown_xfmr)
 }
 
 const (
@@ -844,3 +846,61 @@ func updateMemberPortsMtu(inParams *XfmrParams, lagName *string, mtuValStr *stri
     return err
  }
 
+// YangToDb_lag_graceful_shutdown_xfmr is a Yang to DB translation graceful_shutdown config
+var YangToDb_lag_graceful_shutdown_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    if log.V(3) {
+        log.Info("Entering YangToDb_lag_graceful_shutdown_xfmr")
+    }
+    res_map := make(map[string]string)
+    var err error
+
+    if inParams.param == nil {
+        if log.V(3) {
+            log.Info("YangToDb_lag_graceful_shutdown_xfmr Error: No Params")
+        }
+        return res_map, err
+    }
+
+    err = validatePortChannel(inParams.d, inParams.key)
+    if err != nil {
+        log.Infof("YangToDb_lag_graceful_shutdown_xfmr Error: %v ", err)
+        return res_map, err
+    }
+
+    gshutmode_str, _ := inParams.param.(*string)
+    if *gshutmode_str != "enable" && *gshutmode_str != "disable" {
+        log.Info("Invalid input")
+        return res_map, err
+    }
+    res_map["graceful_shutdown_mode"] = *gshutmode_str
+    return res_map, nil
+}
+
+// DbToYang_lag_graceful_shutdown_xfmr is a DB to Yang translation overloaded method for graceful_shutdown_mode GET config
+var DbToYang_lag_graceful_shutdown_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    if log.V(3) {
+        log.Info("Entering DbToYang_lag_graceful_shutdown_xfmr")
+    }
+
+    var err error
+    result := make(map[string]interface{})
+
+    err = validatePortChannel(inParams.d, inParams.key)
+    if err != nil {
+        log.Infof("DbToYang_lag_graceful_shutdown_xfmr Error: %v ", err)
+        return result, err
+    }
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+
+    gshutmode, ok := data[PORTCHANNEL_TABLE][inParams.key].Field["graceful_shutdown_mode"]
+    if ok {
+        result["graceful-shutdown-mode"] = gshutmode
+    } else {
+        if log.V(3) {
+            log.Info("DbToYang_lag_graceful_shutdown_xfmr: graceful_shutdown_mode set to default")
+        }
+        result["graceful-shutdown-mode"] = ""
+    }
+    return result, err
+}

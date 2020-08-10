@@ -84,6 +84,12 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-intf-ext:graceful-shutdown-mode {
+        deviate add {
+            sonic-ext:field-transformer "lag_graceful_shutdown_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state {
       deviate add {
             sonic-ext:subtree-transformer "intf_lag_state_xfmr";
@@ -211,6 +217,18 @@ module openconfig-interfaces-annot {
     deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6/oc-ip:state/oc-ip:enabled {
         deviate add {
             sonic-ext:field-transformer "ipv6_enabled_xfmr";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-intf-ext:sag-ipv4 {
+        deviate add {
+		        sonic-ext:subtree-transformer "intf_sag_ip_xfmr";
+	      }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6/oc-intf-ext:sag-ipv6 {
+        deviate add {
+		        sonic-ext:subtree-transformer "intf_sag_ip_xfmr";
         }
     }
 
@@ -352,18 +370,6 @@ module openconfig-interfaces-annot {
         deviate add {
             sonic-ext:field-transformer "igmp_srcaddr_fld_xfmr";
         }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:sag-ipv4 {
-      deviate add {
-		sonic-ext:subtree-transformer "intf_sag_ip_xfmr";
-	  }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-intf-ext:sag-ipv6 {
-      deviate add {
-		sonic-ext:subtree-transformer "intf_sag_ip_xfmr";
-      }
     }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-vxlan:vxlan-if/oc-vxlan:config {

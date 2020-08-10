@@ -71,7 +71,7 @@ func (c *CVL) checkMaxElemConstraint(op CVLOperation, tableName string) CVLRetCo
 
 	//Otherwise CREATE case
 	if curSize >=  modelInfo.tableInfo[tableName].redisTableSize {
-		CVL_LOG(ERROR, "%s table size has already reached to max-elements %d",
+		CVL_LOG(WARNING, "%s table size has already reached to max-elements %d",
 		tableName, modelInfo.tableInfo[tableName].redisTableSize)
 
 		return CVL_SYNTAX_ERROR
@@ -80,7 +80,7 @@ func (c *CVL) checkMaxElemConstraint(op CVLOperation, tableName string) CVLRetCo
 	curSize = curSize + 1
 	if (curSize >  modelInfo.tableInfo[tableName].redisTableSize) {
 		//Does not meet the constraint
-		CVL_LOG(ERROR, "Max-elements check failed for table '%s'," +
+		CVL_LOG(WARNING, "Max-elements check failed for table '%s'," +
 		" current size = %v, size in schema = %v",
 		tableName, curSize, modelInfo.tableInfo[tableName].redisTableSize)
 
@@ -138,7 +138,7 @@ parent *yparser.YParserNode, multileaf *[]*yparser.YParserLeafValue) CVLErrorInf
 
 				if errObj := c.yp.AddMultiLeafNodes(modelInfo.tableInfo[tableName].module, listNode, batchInnerListLeaf); errObj.ErrCode != yparser.YP_SUCCESS {
 					cvlErrObj = createCVLErrObj(errObj)
-					CVL_LOG(ERROR, "Failed to create innner list leaf nodes, data = %v", batchInnerListLeaf)
+					CVL_LOG(WARNING, "Failed to create innner list leaf nodes, data = %v", batchInnerListLeaf)
 					return cvlErrObj
 				}
 			} else {
@@ -189,7 +189,7 @@ func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*yparser.
 
 	// Add top most conatiner e.g. 'container sonic-acl {...}'
 	if _, exists := modelInfo.tableInfo[tableName]; !exists {
-		CVL_LOG(ERROR, "Schema details not found for %s", tableName)
+		CVL_LOG(WARNING, "Schema details not found for %s", tableName)
 		cvlErrObj.ErrCode = CVL_SYNTAX_ERROR
 		cvlErrObj.TableName = tableName 
 		cvlErrObj.Msg ="Schema details not found"
@@ -267,8 +267,7 @@ func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*yparser.
 			//process batch leaf creation
 			if errObj := c.yp.AddMultiLeafNodes(modelInfo.tableInfo[tableName].module, listNode, c.batchLeaf); errObj.ErrCode != yparser.YP_SUCCESS {
 				cvlErrObj = createCVLErrObj(errObj)
-				CVL_LOG(ERROR, "Failed to create leaf nodes, data = %v",
-				c.batchLeaf)
+				CVL_LOG(WARNING, "Failed to create leaf nodes, data = %v", c.batchLeaf)
 				return nil, cvlErrObj
 			}
 

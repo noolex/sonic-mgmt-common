@@ -1830,6 +1830,8 @@ func (app *StpApp) convertOperInternalToOCVlanInterface(vlanName string, intfId 
 					pvstVlanIntf.State.Role = ocbinds.OpenconfigSpanningTreeTypes_STP_PORT_ROLE_ALTERNATE
 				case "BACKUP":
 					pvstVlanIntf.State.Role = ocbinds.OpenconfigSpanningTreeTypes_STP_PORT_ROLE_BACKUP
+				case "DISABLED":
+					pvstVlanIntf.State.Role = ocbinds.OpenconfigSpanningTreeTypes_STP_PORT_ROLE_DISABLED
 				}
 
 				if pvstVlanIntf.State.Counters != nil {
@@ -1875,6 +1877,8 @@ func (app *StpApp) convertOperInternalToOCVlanInterface(vlanName string, intfId 
 					rpvstVlanIntf.State.Role = ocbinds.OpenconfigSpanningTreeTypes_STP_PORT_ROLE_ALTERNATE
 				case "BACKUP":
 					rpvstVlanIntf.State.Role = ocbinds.OpenconfigSpanningTreeTypes_STP_PORT_ROLE_BACKUP
+				case "DISABLED":
+					rpvstVlanIntf.State.Role = ocbinds.OpenconfigSpanningTreeTypes_STP_PORT_ROLE_DISABLED
 				}
 
 				if rpvstVlanIntf.State.Counters != nil {

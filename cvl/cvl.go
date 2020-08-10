@@ -253,7 +253,7 @@ func init() {
 
 	_, err := redisClient.ConfigSet("notify-keyspace-events", "AKE").Result()
 	if err != nil {
-		CVL_LOG(ERROR ,"Could not enable notification error %s", err)
+		CVL_LOG(WARNING ,"Could not enable notification error %s", err)
 	}
 
 	xpath.SetLogCallback(func(fmt string, args ...interface{}) {
@@ -391,7 +391,7 @@ func loadSchemaFiles() CVLRetCode {
 				var module *yparser.YParserModule
 				if module, _ = yparser.ParseSchemaFile(modelFilePath); module == nil {
 
-					CVL_LOG(ERROR, "Unable to parse schema file %s", modelFile)
+					CVL_LOG(ERROR, "Unable to parse platform specific schema file %s", modelFile)
 					return CVL_ERROR
 				}
 
@@ -462,7 +462,7 @@ func storeModelInfo(modelFile string, module *yparser.YParserModule) {
 	list := yparser.GetModelListInfo(module)
 
 	if (list == nil) {
-		CVL_LOG(ERROR, "Unable to get schema details for %s", modelFile)
+		CVL_LOG(WARNING, "Unable to get schema details for %s", modelFile)
 		return
 	}
 
@@ -676,7 +676,7 @@ func splitRedisKey(key string) (string, string) {
 
 	if (foundIdx < 0) {
 		//No matches
-		CVL_LOG(ERROR, "Could not find any of key delimeter %v in key '%s'",
+		CVL_LOG(WARNING, "Could not find any of key delimeter %v in key '%s'",
 		modelInfo.allKeyDelims, key)
 		return "", ""
 	}
@@ -685,7 +685,7 @@ func splitRedisKey(key string) (string, string) {
 
 	if _, exists := modelInfo.tableInfo[tblName]; !exists {
 		//Wrong table name
-		CVL_LOG(ERROR, "Could not find table '%s' in schema", tblName)
+		CVL_LOG(WARNING, "Could not find table '%s' in schema", tblName)
 		return "", ""
 	}
 
@@ -840,13 +840,13 @@ func (c *CVL) translateToYang(jsonMap *map[string]interface{}) (*yparser.YParser
 
 		if  topNode == nil {
 			cvlErrObj.ErrCode = CVL_SYNTAX_ERROR
-			CVL_LOG(ERROR, "Unable to translate request data to YANG format")
+			CVL_LOG(WARNING, "Unable to translate request data to YANG format")
 			return nil, cvlErrObj
 		}
 
 		if  topYangNode == nil {
 			cvlYErrObj.ErrCode = CVL_SYNTAX_ERROR
-			CVL_LOG(ERROR, "Unable to translate request data to YANG format")
+			CVL_LOG(WARNING, "Unable to translate request data to YANG format")
 			return nil, cvlYErrObj
 		}
 
@@ -854,7 +854,7 @@ func (c *CVL) translateToYang(jsonMap *map[string]interface{}) (*yparser.YParser
 			root = topNode
 		} else {
 			if root, errObj = c.yp.MergeSubtree(root, topNode); errObj.ErrCode != yparser.YP_SUCCESS {
-				CVL_LOG(ERROR, "Unable to merge translated YANG data(libyang) " +
+				CVL_LOG(WARNING, "Unable to merge translated YANG data(libyang) " +
 				"while translating from request data to YANG format")
 				return nil, cvlErrObj
 			}
@@ -873,7 +873,7 @@ func (c *CVL) translateToYang(jsonMap *map[string]interface{}) (*yparser.YParser
 		}
 
 		if c.mergeYangData(c.yv.root, doc) != CVL_SUCCESS {
-			CVL_LOG(ERROR, "Unable to merge translated YANG data while " +
+			CVL_LOG(WARNING, "Unable to merge translated YANG data while " +
 			"translating from request data to YANG format")
 			cvlYErrObj.ErrCode = CVL_SYNTAX_ERROR
 			return nil, cvlErrObj
@@ -949,7 +949,7 @@ func (c *CVL) validateSyntax(data *yparser.YParserNode) (CVLErrorInfo, CVLRetCod
 			     ErrAppTag	: errObj.ErrAppTag,
 			}
 
-			CVL_LOG(ERROR,"Syntax validation failed. Error - %v", cvlErrObj)
+			CVL_LOG(WARNING,"Syntax validation failed. Error - %v", cvlErrObj)
 
 		return  cvlErrObj, retCode
 	}
@@ -1035,7 +1035,7 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 		cvlErrObj = *(*CVLErrorInfo)(unsafe.Pointer(&errObj))
 
 		if (cvlErrObj.ErrCode != CVL_SUCCESS) {
-			CVL_LOG(ERROR, "Custom validation failed, Error = %v", cvlErrObj)
+			CVL_LOG(WARNING, "Custom validation failed, Error = %v", cvlErrObj)
 			return cvlErrObj
 		}
 	}

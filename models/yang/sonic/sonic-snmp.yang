@@ -501,5 +501,29 @@ module sonic-snmp {
       }
     }
 
+    container SNMP_AGENT_ADDRESS_CONFIG {
+      list SNMP_AGENT_ADDRESS_CONFIG_LIST {
+        key "addr port interface";
+
+        leaf addr {
+          type inet:ip-address;
+          description
+            "The IPv4 or IPv6 address of the SNMP agent.";
+        }
+
+        leaf port {
+          type inet:port-number;
+          description
+            "UDP listening port number.";
+        }
+
+        leaf interface {
+          type string;
+          description
+            "Listening interface.";
+        }
+      }
+    }
+
   }
 }

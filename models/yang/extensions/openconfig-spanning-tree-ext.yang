@@ -53,6 +53,12 @@ module openconfig-spanning-tree-ext {
         description
             "Port state when port is in root inconsistent state due to guard root action";
     }
+    
+    identity DISABLED {
+        base oc-stp-types:STP_PORT_ROLE;
+        description
+            "A port is disabled if it is not in operational up state";
+    }
 
     typedef stp-bridge-priority-type-ext {
         type uint32 {
