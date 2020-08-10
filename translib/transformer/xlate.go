@@ -381,7 +381,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	for _, spec := range *keySpec {
 		err := TraverseDb(dbs, spec, &dbresult, nil)
 		if err != nil {
-			log.Warning("TraverseDb() failure")
+			log.Warning("TraverseDb() didn't fetch data.")
 		}
 	}
 

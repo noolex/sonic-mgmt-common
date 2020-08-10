@@ -295,7 +295,7 @@ func dbMapDataFill(uri string, tableName string, keyName string, d map[string]in
 			}
 			dbval, err := unmarshalJsonToDbData(xDbSpecMap[fieldXpath].dbEntry, fieldXpath, field, value)
 			if err != nil {
-				log.Warningf("Couldn't unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+				log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
 			} else {
 				result[tableName][keyName].Field[field] = dbval
 			}
@@ -319,7 +319,7 @@ func dbMapListDataFill(uri string, tableName string, dbEntry *yang.Entry, jsonDa
 			fieldXpath := tableName + "/" + k
 			val, err := unmarshalJsonToDbData(dbEntry.Dir[k], fieldXpath, k, d[k])
 			if err != nil {
-				log.Warningf("Couldn't unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+				log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
 			} else {
 				keyName += val
 			}
