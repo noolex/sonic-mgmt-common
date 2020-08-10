@@ -3,6 +3,7 @@ package transformer
 import (
     "errors"
     "strings"
+    "reflect"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
@@ -1690,6 +1691,17 @@ var YangToDb_bgp_nbr_community_type_fld_xfmr FieldXfmrYangToDb = func(inParams X
             return res_map, nil
         }
     }
+    /* TEMP FIX:In PATCH case also infra can send default values when body contains the instance/s, curYgotNodeData
+     * is not nil, So check if it not E_OpenconfigBgpExt_BgpExtCommunityType , then it would be string from infra.
+    * so convert it */
+    if reflect.TypeOf(inParams.param) != reflect.TypeOf(ocbinds.OpenconfigBgpExt_BgpExtCommunityType_BOTH) {
+        community_type_str, _ := inParams.param.(*string)
+        if *community_type_str == "BOTH" {
+            res_map["send_community"] = "both"
+            return res_map, nil
+        }
+    }
+
     community_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_BgpExtCommunityType)
     log.Info("YangToDb_bgp_nbr_community_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, 
              " community_type: ", community_type)

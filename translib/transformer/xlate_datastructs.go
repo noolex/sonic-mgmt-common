@@ -45,6 +45,13 @@ type XfmrTranslateSubscribeInfo struct {
     OnChange bool
 }
 
+type xpathTblKeyExtractRet struct {
+    xpath string
+    tableName string
+    dbKey string
+    isVirtualTbl bool
+}
+
 type xlateFromDbParams struct {
 	d *db.DB //current db
 	dbs [db.MaxDB]*db.DB
@@ -85,5 +92,7 @@ type xlateToParams struct {
         name string
         value interface{}
         tableName string
+        yangDefValMap map[string]map[string]db.Value
+        yangAuxValMap map[string]map[string]db.Value
 }
 

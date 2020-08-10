@@ -137,6 +137,7 @@ module openconfig-system-ext {
         }
         leaf  auth-type {
             type string;
+            default "pap";
             description "The global authentication type pap/chap/mschap/mschapv2";
         }
         leaf  secret-key {
@@ -145,6 +146,7 @@ module openconfig-system-ext {
         }
         leaf  timeout {
             type uint16;
+            default 5;
             description "The global authentication timeout";
         }
         leaf retransmit-attempts {

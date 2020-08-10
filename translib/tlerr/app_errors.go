@@ -124,3 +124,7 @@ func NewError(appTag, path, msg string, args ...interface{}) InternalError {
 func (e AuthorizationError) Error() string {
 	return p.Sprintf(e.Format, e.Args...)
 }
+
+func TranslibXfmrRetErr(fail bool) TranslibXfmrRetError {
+	return TranslibXfmrRetError{XlateFailDelReq: fail}
+}

@@ -163,6 +163,7 @@ module openconfig-network-instance-annot {
         deviate add {
             sonic-ext:table-transformer "network_instance_protocols_ptotocol_table_name_xfmr";
             sonic-ext:key-transformer "network_instance_protocol_key_xfmr";
+            sonic-ext:virtual-table "true";
         }
     }
 
@@ -384,6 +385,12 @@ module openconfig-network-instance-annot {
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static {
       deviate add {
           sonic-ext:key-transformer "static_routes_key_xfmr";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:config/oc-netinst:prefix {
+      deviate add {
+          sonic-ext:field-transformer "static_routes_prefix_xfmr";
       }
     }
 
@@ -974,13 +981,13 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config/oc-netinst:src-protocol {
       deviate add {
-        sonic-ext:field-name "src_protocol";
+        sonic-ext:field-transformer "route_table_src_protocol_xfmr";
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config/oc-netinst:dst-protocol {
       deviate add {
-        sonic-ext:field-name "dst_protocol";
+        sonic-ext:field-transformer "route_table_dst_protocol_xfmr";
       }
     }
  
@@ -1004,13 +1011,13 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst:src-protocol {
       deviate add {
-        sonic-ext:field-name "src_protocol";
+        sonic-ext:field-transformer "route_table_src_protocol_xfmr";
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst:dst-protocol {
       deviate add {
-        sonic-ext:field-name "dst_protocol";
+        sonic-ext:field-transformer "route_table_dst_protocol_xfmr";
       }
     }
  
@@ -1022,7 +1029,7 @@ module openconfig-network-instance-annot {
    
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst:address-family {
       deviate add {
-        sonic-ext:field-name "addr_family";
+        sonic-ext:field-transformer "route_table_addr_family_xfmr";
       }
     }
 
@@ -3726,6 +3733,12 @@ module openconfig-network-instance-annot {
           sonic-ext:db-name "CONFIG_DB";
           sonic-ext:table-name "PIM_INTERFACE";
           sonic-ext:key-transformer "pim_intf_tbl_key_xfmr";
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:interface-id {
+      deviate add {
+          sonic-ext:field-transformer "pim_intf_id_fld_xfmr";
       }
   }
 
