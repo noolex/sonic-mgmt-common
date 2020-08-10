@@ -1218,9 +1218,9 @@ func delete_ospf_interfaces_for_vrf(inParams *XfmrParams, ospfRespMap *map[strin
         return nil
     }
 
-    ospfVrfName, _, _, uerr := get_ospf_router_info_from_uri(inParams)
-    if uerr != nil {
-        log.Info("delete_ospf_interfaces_for_vrf: get ospf router info failed ", uerr)
+    ospfObj, ospfVrfName, err := ospfGetRouterObjWithVrfName(inParams, "")
+    if (ospfObj == nil || ospfVrfName == "" || err != nil) {
+        log.Info("delete_ospf_interfaces_for_vrf: ospf router not in request")
         return nil
     }
 
