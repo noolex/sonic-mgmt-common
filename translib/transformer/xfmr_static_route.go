@@ -376,10 +376,22 @@ func getYgotStaticRoutesObj(s *ygot.GoStruct, vrf string) (
     return protoInstObj.StaticRoutes, nil
 }
 
+func verifyIpPrefix(pfx string) error {
+    ipAddr, ipNet, err := net.ParseCIDR(pfx)
+    if err != nil {
+        return tlerr.InvalidArgs("Failed to parse IP prefix")
+    }
+    if !ipAddr.Equal(ipNet.IP) {
+        return tlerr.InvalidArgs("Inconsistent IP address and mask")
+    }
+    return nil
+}
+
 // compose nexthop set based on data of ygot structure
 func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]*ipNexthopSet, error) {
     staticRoutes, err := getYgotStaticRoutesObj(s, vrf)
     if err != nil {
+        log.Infof("Failed to get ygot nexthop object: %v", err)
         return nil, err
     }
     resMap := make(map[string]*ipNexthopSet)
@@ -390,9 +402,10 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
         if routeObj == nil || routeObj.NextHops == nil {
             continue
         }
-        _, _, err := net.ParseCIDR(ipPrefix)
+        err := verifyIpPrefix(ipPrefix)
         if err != nil {
-            return nil, tlerr.InvalidArgs("Failed to parse IP with prefix: %s", ipPrefix)
+            log.Infof("Invalid IP prefix %s", ipPrefix)
+            return nil, err
         }
         pfxIp := parseIPExt(strings.Split(ipPrefix, "/")[0])
         if pfxIp == nil {
