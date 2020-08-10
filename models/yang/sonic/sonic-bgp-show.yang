@@ -220,4 +220,26 @@ module sonic-bgp-show {
             }
         }
     }
+
+    rpc show-bgp-evpn {
+
+        description "RPC to fetch the BGP EVPN debug info";
+
+        input {
+            leaf cmd {
+                type string;
+                default "show evpn";
+                description
+                    "Fetches EVPN debug info";
+            }
+        }
+
+        output {
+            leaf status {
+                type string;
+                description
+                    "On success, returns all BGP EVPN info in ascii.";
+            }
+        }
+    }
 }
