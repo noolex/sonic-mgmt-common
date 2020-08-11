@@ -474,20 +474,40 @@ module openconfig-system-ext {
     description
       "Install the TPC image into SONiC system";
     input {
-      leaf options {
-        type string;
-        description
-          "options";
-      }
       leaf docker-name{
         type string;
         description
           "docker name for the TPC image to be installed";
       }
+      leaf image-source{
+        type string;
+        description
+          "image download source: url, image, pull, file, scp, sftp";
+      }
       leaf image-name{
         type string;
         description
-          "name of the TPC container to be installed";
+          "image name for the TPC container to be installed";
+      }
+      leaf remote-server {
+        type string;
+        description
+          "the remote server name for scp and sftp";
+      }
+      leaf username{
+        type string;
+        description
+          "the remote server login username";
+      }
+      leaf password{
+        type string;
+        description
+          "the remote server login password";
+      }
+      leaf args {
+        type string;
+        description
+          "additional startup args to the container";
       }
     }
     output {
@@ -507,10 +527,10 @@ module openconfig-system-ext {
     description
       "Uninstall the TPC image from SONiC system";
     input {
-      leaf options {
+      leaf clean-data {
         type string;
         description
-          "options";
+          "Delete the TPC data: yes or no";
       }
      leaf docker-name{
         type string;
@@ -536,21 +556,47 @@ module openconfig-system-ext {
     description
       "Upgrade the existing TPC container";
     input {
-      leaf options {
-        type string;
-        description
-          "options";
-      }
      leaf docker-name{
         type string;
         description
           "docker name for the TPC image to be upgraded";
       }
+      leaf image-source{
+        type string;
+        description
+          "image download source: url, image, pull, file, scp, sftp";
+      }
       leaf image-name{
         type string;
         description
-          "name of the TPC container to be upgraded";
+          "image name for the TPC container to be upgraded";
       }
+      leaf remote-server {
+        type string;
+        description
+          "the remote server name for scp and sftp";
+      }
+      leaf username{
+        type string;
+        description
+          "the remote server login username";
+      }
+      leaf password{
+        type string;
+        description
+          "the remote server login password";
+      }
+      leaf skip-data-migration {
+        type string;
+        description
+          "skip the TPC data migration: yes or no";
+      }
+      leaf args {
+        type string;
+        description
+          "additional startup args to the container";
+      }
+
     }
     output {
       leaf status {
