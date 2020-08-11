@@ -28,6 +28,7 @@ import (
     "fmt"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
+    "encoding/json"
 )
 
 func init () {
@@ -47,6 +48,8 @@ func init () {
     XlateFuncBind("DbToYang_bgp_advertise_fld_xfmr", DbToYang_bgp_advertise_fld_xfmr)
 
     XlateFuncBind("DbToYang_bgp_evpn_vni_state_xfmr", DbToYang_bgp_evpn_vni_state_xfmr)
+
+    XlateFuncBind("rpc_show_bgp_evpn", rpc_show_bgp_evpn)
 }
 
 
@@ -1226,3 +1229,41 @@ func fill_evpn_spec_pfx_nbr_out_post_rib_data (evpnOutPostRoute_obj *ocbinds.
 
     return true
 }
+
+var rpc_show_bgp_evpn RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_bgp_stats")
+    var cmd string
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show bgp ipv4/6 unicast statistics, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-bgp-show:output"`
+    }
+
+    log.Info("In rpc_show_bgp_evpn, RPC data:", mapData)
+
+    input := mapData["sonic-bgp-show:input"]
+    mapData = input.(map[string]interface{})
+
+    if value, ok := mapData["cmd"].(string) ; !ok {
+        return nil, errors.New("RPC show evpn, invalid cmd")
+    } else {
+        cmd = value
+    }
+
+    bgpOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Info("In rpc_show_bgp_evpn, FRR execution failed")
+        return nil, errors.New("Internal error!")
+    }
+    result.Output.Status = bgpOutput
+    return json.Marshal(&result)
+}
+
