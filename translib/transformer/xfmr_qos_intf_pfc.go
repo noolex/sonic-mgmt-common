@@ -30,7 +30,6 @@ func doGetIntfPfcPriority(d *db.DB, if_name string) (string) {
     log.Info("doGetIntfPfcPriority  ", db.Key{Comp: []string{if_name}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
         return ""
     }
     pfc_enable, ok := dbEntry.Field["pfc_enable"]
@@ -428,7 +427,6 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
     dbIfName := utils.GetNativeNameFromUIName(&ifname)
     if_name := *dbIfName
     log.Info("DbToYang_qos_intf_pfc_xfmr: ", if_name)
-
     qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
     if qosIntfsObj == nil {
         return nil
@@ -519,6 +517,7 @@ var Subscribe_qos_intf_pfc_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscI
               pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{"PORT_QOS_MAP":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
+    result.isVirtualTbl = true
     result.needCache = true
     result.onChange = true
     result.nOpts = new(notificationOpts)

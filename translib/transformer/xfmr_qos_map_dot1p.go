@@ -199,8 +199,8 @@ func fill_dot1p_map_info_by_name(inParams XfmrParams, dot1PMaps * ocbinds.Openco
     log.Info("Done fetching dot1p-map : ", name)
 
     if entry_key != "" && entry_added == 0 {
-        err = tlerr.NotFoundError{Format:"Instance Not found"}
-        log.Info("Instance not found.")
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        log.Info("Resource not found.")
         return err
     }
 
@@ -248,8 +248,8 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     }
 
     if name != "" && map_added == 0 {
-        err = tlerr.NotFoundError{Format:"Instance Not found"}
-        log.Info("Instance not found.")
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        log.Info("Resource not found.")
         return err
     }
 

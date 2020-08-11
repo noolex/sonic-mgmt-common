@@ -72,6 +72,7 @@ module openconfig-qos-annot {
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc {
       deviate add {
         sonic-ext:subtree-transformer "qos_intf_pfc_xfmr";
+        sonic-ext:virtual-table "true";
       }
     }
 
