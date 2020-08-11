@@ -1427,7 +1427,8 @@ func getIntfVlanAttr(ifName *string, ifMode intfModeType, vlanMemberMap map[stri
     vlanEntries, ok := vlanMemberMap[*ifName]
     if !ok {
         errStr := "Cannot find info for Interface: " + *ifName + " from VLAN_MEMBERS_TABLE!"
-        return nil, nil, errors.New(errStr)
+        log.Info(errStr)
+        return nil, nil, nil
     }
     switch ifMode {
     case ACCESS:
