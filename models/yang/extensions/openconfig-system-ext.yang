@@ -471,4 +471,102 @@ module openconfig-system-ext {
         description
             "NTP server status.";
     }
+
+  rpc tpcm-install {
+    description
+      "Install the TPC image into SONiC system";
+    input {
+      leaf options {
+        type string;
+        description
+          "options";
+      }
+      leaf docker-name{
+        type string;
+        description
+          "docker name for the TPC image to be installed";
+      }
+      leaf image-name{
+        type string;
+        description
+          "name of the TPC container to be installed";
+      }
+    }
+    output {
+      leaf status {
+        type int32;
+        description
+          "The status of the operation execution request.";
+      }
+      leaf-list status-detail {
+            type string;
+            description "The detailed status of the operation execution request.";
+      }
+    }
+  }
+
+  rpc tpcm-uninstall{
+    description
+      "Uninstall the TPC image from SONiC system";
+    input {
+      leaf options {
+        type string;
+        description
+          "options";
+      }
+     leaf docker-name{
+        type string;
+        description
+          "docker name for the TPC image to be uninstalled";
+      }
+    }
+    output {
+      leaf status {
+        type int32;
+        description
+          "The status of the operation execution request.";
+      }
+      leaf-list status-detail {
+            type string;
+            description "The detailed status of the operation execution request.";
+      }
+   }
+  }
+
+
+  rpc tpcm-upgrade{
+    description
+      "Upgrade the existing TPC container";
+    input {
+      leaf options {
+        type string;
+        description
+          "options";
+      }
+     leaf docker-name{
+        type string;
+        description
+          "docker name for the TPC image to be upgraded";
+      }
+      leaf image-name{
+        type string;
+        description
+          "name of the TPC container to be upgraded";
+      }
+    }
+    output {
+      leaf status {
+        type int32;
+        description
+          "The status of the operation execution request.";
+      }
+      leaf-list status-detail {
+            type string;
+            description
+               "The detailed status of the operation execution request.";
+      }
+
+   }
+ }
+
 }

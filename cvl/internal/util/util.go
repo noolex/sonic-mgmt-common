@@ -30,12 +30,11 @@ static void customLogCb(LY_LOG_LEVEL level, const char* msg, const char* path) {
 }
 
 static void ly_set_log_callback(int enable) {
+	ly_set_log_clb(customLogCb, 0);
 	if (enable == 1) {
 		ly_verb(LY_LLDBG);
-		ly_set_log_clb(customLogCb, 0);
 	} else {
 		ly_verb(LY_LLERR);
-		ly_set_log_clb(NULL, 0);
 	}
 }
 
@@ -171,8 +170,11 @@ changing libyang's global log setting */
 
 //export customLogCallback
 func customLogCallback(level C.LY_LOG_LEVEL, msg *C.char, path *C.char)  {
-	TRACE_LEVEL_LOG(TRACE_YPARSER, "[libyang] %s (path: %s)",
-	C.GoString(msg), C.GoString(path))
+	if level == C.LY_LLERR {
+		CVL_LEVEL_LOG(WARNING, "[libyang Error] %s (path: %s)", C.GoString(msg), C.GoString(path))
+	} else {
+		TRACE_LEVEL_LOG(TRACE_YPARSER, "[libyang] %s (path: %s)", C.GoString(msg), C.GoString(path))
+	}
 }
 
 func IsTraceLevelSet(tracelevel CVLTraceLevel) bool {
