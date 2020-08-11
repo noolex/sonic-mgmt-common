@@ -25,6 +25,7 @@ import (
 	"strings"
 	log "github.com/golang/glog"
 	"net"
+	"strconv"
 )
 
 //ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
@@ -164,6 +165,19 @@ func (t *CustomValidation) ValidatePortChannelCreationDeletion(vc *CustValidatio
 					        TableName:        "PORTCHANNEL",
 					        Keys:             strings.Split(vc.CurCfg.Key, "|"),
 					        ConstraintErrMsg: "Maximum number(128) of portchannels already created in the system. Cannot create new portchannel.",
+					        ErrAppTag:        "max-reached",
+				        }
+			        }
+
+				total := len(poKeys) + len(vc.ReqData)
+				if total > 128 {
+				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Cannot create more than supported number of portchannels in the system.")
+					errStr := "Number of portchannels already created in the system are " + strconv.Itoa(len(poKeys)) + ". Maximum number of portchannel that can be supported are 128."
+				        return CVLErrorInfo{
+					        ErrCode:          CVL_SEMANTIC_ERROR,
+					        TableName:        "PORTCHANNEL",
+						Keys:             strings.Split(vc.CurCfg.Key, "|"),
+					        ConstraintErrMsg: errStr,
 					        ErrAppTag:        "max-reached",
 				        }
 			        }

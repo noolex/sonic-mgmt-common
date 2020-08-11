@@ -369,10 +369,6 @@ var Subscribe_nat_mapping_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrS
         } else {
                 result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAT:{"*":{}}}}
         }
-        result.needCache = true
-        result.nOpts = new(notificationOpts)
-        result.nOpts.mInterval = 15
-        result.nOpts.pType = OnChange
         return result, err
 }
 
@@ -805,10 +801,6 @@ var Subscribe_napt_mapping_subtree_xfmr = func(inParams XfmrSubscInParams) (Xfmr
         } else {
                 result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAPT:{dbkey:{}}}}
         }
-        result.needCache = true
-        result.nOpts = new(notificationOpts)
-        result.nOpts.mInterval = 15
-        result.nOpts.pType = OnChange
         return result, err
 }
 

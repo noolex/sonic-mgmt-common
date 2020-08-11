@@ -222,13 +222,6 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
         key := if_name
         if seq != SCHEDULER_PORT_SEQUENCE {
             key = key + "|" + seq
-            qKey := if_name + ":" + seq
-            err = validateQosConfigQueue(inParams, qKey)
-            if err != nil {
-                log.Infof("YangToDb_qos_scheduler_xfmr --> sequence: %v in sp_name %v is not valid for interface: %v",
-                seq, sp_name_str, qKey)
-                continue
-            }
         }
         db_sp_name := sp_name_str + "@" + seq
         log.Infof("YangToDb_qos_intf_sched_policy_xfmr --> key: %v, db_sp_name: %v", key, db_sp_name)
@@ -385,8 +378,6 @@ var DbToYang_qos_intf_sched_policy_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
     pathInfo := NewPathInfo(inParams.uri)
 
     intfName := pathInfo.Var("interface-id")
-
-    log.Info("inParams: ", inParams)
 
     dbIfName := utils.GetNativeNameFromUIName(&intfName)
     sp := doGetIntfSchedulerPolicy(inParams.d, *dbIfName)

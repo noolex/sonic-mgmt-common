@@ -61,7 +61,7 @@ func getQueuesBySchedulerName(scheduler string) ([]string) {
         return s
     }
 
-
+    defer d.DeleteDB()
     // QUEUE
     dbSpec := &db.TableSpec{Name: "QUEUE"}
 
@@ -793,13 +793,6 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
             key := if_name
             if seq != SCHEDULER_PORT_SEQUENCE {
                 key = key + "|" + seq
-                qKey := if_name + ":" + seq
-                err = validateQosConfigQueue(inParams, qKey)
-                if err != nil {
-                    log.Infof("YangToDb_qos_scheduler_xfmr --> sequence: %v in sp_name %v is not valid for interface: %v",
-                    seq, sp_name, qKey)
-                    continue
-                }
             }
             db_sp_name := sp_name + "@" + seq
             log.Infof("YangToDb_qos_scheduler_xfmr --> key: %v, db_sp_name: %v", key, db_sp_name)
