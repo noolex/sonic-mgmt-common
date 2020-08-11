@@ -11,6 +11,11 @@ module sonic-common {
     description
         "SONIC Common";
 
+    revision 2020-08-04 {
+        description
+            "Added fec-mode type.";
+    }
+
     revision 2019-05-15 {
         description
             "Initial revision.";
@@ -42,6 +47,14 @@ module sonic-common {
           type enumeration {
               enum enable;
               enum disable;
+          }
+      }
+
+    typedef fec-mode {
+          type enumeration {
+              enum rs;
+              enum fc;
+              enum none;
           }
       }
 
