@@ -32,13 +32,73 @@ module ietf-snmp-ext {
      (https://www.rfc-editor.org/info/rfcXXXX); see the RFC itself
      for full legal notices.";
 
+  revision "2020-07-22" {
+    description
+      "Extend model with contact, location, trap-enable. Add 
+       source interface for both agent address and notification 
+       target. Exclude unsupported items.";
+    reference "0.2";
+  }
+
   revision "2020-06-11" {
     description
       "Initial revision.";
     reference "0.1";
   }
 
+  deviation /snmp:snmp/snmp:community/snmp:context {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:community/snmp:engine-id {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:community/snmp:name {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:community/snmp:target-tag {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:engine/snmp:enabled {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:engine/snmp:enable-authen-traps {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:engine/snmp:listen/snmp:transport/snmp:dtls {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:engine/snmp:listen/snmp:transport/snmp:ssh {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:engine/snmp:listen/snmp:transport/snmp:tls {
+    deviate not-supported;
+  }
+
   deviation /snmp:snmp/snmp:engine/snmp:version/snmp:v1 {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:notify-filter-profile {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:proxy {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:target-params/snmp:notify-filter-profile {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:target-params/snmp:params/snmp:tsm {
     deviate not-supported;
   }
 
@@ -46,4 +106,96 @@ module ietf-snmp-ext {
     deviate not-supported;
   }
 
+  deviation /snmp:snmp/snmp:target/snmp:mms {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:target/snmp:transport/snmp:dtls {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:target/snmp:transport/snmp:ssh {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:target/snmp:transport/snmp:tls {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:target/snmp:transport/snmp:udp/snmp:udp/snmp:prefix-length {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:tlstm {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:tsm {
+    deviate not-supported;
+  }
+
+  deviation /snmp:snmp/snmp:usm/snmp:remote {
+    deviate not-supported;
+  }
+
+  augment /snmp:snmp {
+    description
+      "Augment ietf-snmp SNMP system-related objects.";
+
+    container system {
+      description
+        "Top-level container for SNMP system-related configuration
+         objects.";
+   
+      leaf contact {
+        type string {
+          length "1..32";
+        }
+        description
+          "String that describes the system contact information.";
+      }
+   
+      leaf location {
+        type string {
+          length "1..32";
+        }
+        description
+          "String that describes the system location information.";
+      }
+   
+      leaf trap-enable {
+        type boolean;
+        description
+          "enable/disable SNMP traps";
+      }
+    }
+  }
+
+  augment /snmp:snmp/snmp:engine/snmp:listen/snmp:transport/snmp:udp/snmp:udp {
+    description
+      "The IPv4 or IPv6 address information on which the engine 
+       listens.";
+
+    leaf interface  {
+      type string {
+        length "1..64";
+      }
+      description
+        "The source interface from which SNMP responses are sent";
+    }
+  }
+
+  augment /snmp:snmp/snmp:target/snmp:transport/snmp:udp/snmp:udp {
+    description
+      "The IPv4 or IPv6 address information from which this engine
+       send notifications.";
+
+    leaf source-interface  {
+      type string {
+        length "1..64";
+      }
+      description
+        "The source interface from which notifications are sent";
+    }
+  }
 }
