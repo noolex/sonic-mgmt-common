@@ -44,8 +44,6 @@ func init () {
 }
 
 
-var configDbAdd, _ = db.NewDB(getDBOptions(db.ConfigDB))
-
 func util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams XfmrParams, vrf string, nbrAddr string,
                                                      afiSafiType ocbinds.E_OpenconfigBgpTypes_AFI_SAFI_TYPE,
                                                      peerData map[string]interface {}) {
@@ -330,7 +328,7 @@ var YangToDb_bgp_nbr_asn_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     /* Form the key */
     neigh_key := db.Key{Comp: []string{vrf, pNbrAddr}}
 
-    entryValue, err := configDbAdd.GetEntry(nbrCfgTblTs, neigh_key)
+    entryValue, err := inParams.d.GetEntry(nbrCfgTblTs, neigh_key)
     if err == nil {
         neigh_field := entryValue.Field;
         if value, ok := neigh_field["peer_type"] ; ok {
@@ -400,8 +398,8 @@ var YangToDb_bgp_nbr_peer_type_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPa
     nbrCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR"}
     /* Form the key */
     neigh_key := db.Key{Comp: []string{vrf, pNbrAddr}}
-    
-    entryValue, err := configDbAdd.GetEntry(nbrCfgTblTs, neigh_key) 
+
+    entryValue, err := inParams.d.GetEntry(nbrCfgTblTs, neigh_key) 
     if err == nil {
         /* Either ASN or peer_type can be configured , not both */
         neigh_field := entryValue.Field

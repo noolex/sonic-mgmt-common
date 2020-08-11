@@ -741,12 +741,19 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 			xfmrLogInfoAll("No data from field transformer for %v: %v.", uri, err)
 			return resFldValMap, err
 		}
-		if ((uri == requestUri) && (len(fldValMap) == 0)) {
+		if (uri == requestUri) {
 			yangType := yangTypeGet(xYangSpecMap[xpath].yangEntry)
-			// field transformer returns empty map when no data in DB
-			if ((yangType == YANG_LEAF) || ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))))) {
-				log.Errorf("Field transformer returned empty data , uri  - %v", requestUri)
-				err = tlerr.NotFoundError{Format:"Resource not found"}
+			if len(fldValMap) == 0 {
+				// field transformer returns empty map when no data in DB
+				if ((yangType == YANG_LEAF) || ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))))) {
+					log.Errorf("Field transformer returned empty data , uri  - %v", requestUri)
+					err = tlerr.NotFoundError{Format:"Resource not found"}
+					return resFldValMap, err
+				}
+			} else {
+				if ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+					return resFldValMap, nil
+				}
 			}
 		}
 		for lf, val := range fldValMap {
@@ -1171,6 +1178,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						err := xfmrHandlerFunc(inParams)
 						if err != nil {
 							xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc, err)
+							return jsonData, true, err
 						}
 						inParamsForGet.dbDataMap = dbDataMap
 						inParamsForGet.ygRoot = ygRoot
@@ -1191,7 +1199,15 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
 						err := xfmrHandlerFunc(inParams)
 						if err != nil {
-							xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc, err)
+							if (((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) && (uri == requestUri)) {
+								// The error handling here is for the deferred resource check error being handled by the subtree for virtual table cases.
+								log.Errorf("Subtree at list instance level returns error %v for  uri  - %v", err, uri)
+								return jsonData, true, err
+
+							} else {
+
+								xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc, err)
+							}
 						}
 						isFirstCall = false
 						inParamsForGet.dbDataMap = dbDataMap

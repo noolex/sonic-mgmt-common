@@ -84,7 +84,7 @@ module sonic-vrrp {
                     type string {
                         pattern 'True|False';
                     }
-                    // default "True";
+                    sonic-ext:custom-validation ValidatePreempt;
                 }
 
                 leaf priority {
@@ -92,6 +92,7 @@ module sonic-vrrp {
                         range "1..254";
                     }
                     default 100;
+                    sonic-ext:custom-validation ValidatePriority;
                 }
 
                 leaf adv_interval {
@@ -147,6 +148,7 @@ module sonic-vrrp {
                     type uint8 {
                         range "1..255";
                     }
+                    sonic-ext:custom-validation ValidateTrack;
                 }
             }
         }
@@ -189,7 +191,7 @@ module sonic-vrrp {
                     type string {
                         pattern 'True|False';
                     }
-                    // default "True";
+                    sonic-ext:custom-validation ValidatePreempt;
                 }
 
                 leaf priority {
@@ -197,6 +199,7 @@ module sonic-vrrp {
                         range "1..254";
                     }
                     default 100;
+                    sonic-ext:custom-validation ValidatePriority;
                 }
 
                 leaf adv_interval {
@@ -252,6 +255,7 @@ module sonic-vrrp {
                     type uint8 {
                         range "1..255";
                     }
+                    sonic-ext:custom-validation ValidateTrack;
                 }
             }
         }
@@ -299,7 +303,7 @@ module sonic-vrrp {
 
                 leaf current_priority {
                     type uint8 {
-                        range "1..254";
+                        range "1..255";
                     }
                 }
 
@@ -354,7 +358,7 @@ module sonic-vrrp {
 
                 leaf current_priority {
                     type uint8 {
-                        range "1..254";
+                        range "1..255";
                     }
                 }
 
