@@ -171,6 +171,7 @@ func getQosOffsetCounters(entry *db.Value, entry_backup *db.Value, attr string, 
     var ok bool = false
     var err error
     val1, ok := entry.Field[attr]
+
     if !ok {
         return errors.New("Attr " + attr + "doesn't exist in table Map!")
     }
@@ -330,7 +331,6 @@ func populateQCounters (inParams XfmrParams, targetUriPath string, oid string, c
     entry_backup, dbErr := inParams.dbs[inParams.curDb].GetEntry(cntTs_cp, db.Key{Comp: []string{oid}})
     if dbErr != nil {
         m := make(map[string]string)
-        log.Info("populateQCounters : not able find the oid entry in DB COUNTERS_BACKUP table")
         /* Frame backup data with 0 as counter values */
         for  attr := range entry.Field {
             m[attr] = "0"
@@ -523,10 +523,6 @@ func getPriorityGroupSpecificCounterAttr(targetUriPath string, d *db.DB, oid str
 
 func populatePriorityGroupCounters (inParams XfmrParams, targetUriPath string, oid string, counter *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Input_PriorityGroups_PriorityGroup_State) (error) {
 
-    log.Info("populatePriorityGroupCounters : inParams.curDb : ", inParams.curDb, " D: ", inParams.d, "DB index : ", inParams.dbs[inParams.curDb])
-
-    log.Info("targetUriPath is : ", targetUriPath)
-
     var err error
     switch (targetUriPath) {
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state":
@@ -629,7 +625,7 @@ func validateQosIntfQueue(dbs [db.MaxDB]*db.DB, intfName string, queueName strin
     }
     queue := strings.Split(queueName, ":")
     if (intfName != queue[0]) {
-        errStr := "Invalid Queue: " + queueName + "on interface " + intfName
+        errStr := "Invalid Queue: " + queueName + " on interface " + intfName
         log.Error(errStr)
         return tlerr.InvalidArgsError{Format:errStr}
     }
@@ -637,7 +633,7 @@ func validateQosIntfQueue(dbs [db.MaxDB]*db.DB, intfName string, queueName strin
     if (dbs[db.CountersDB] != nil) {
         _, err := getIntfQCountersTblKey(dbs[db.CountersDB], queueName)
         if err != nil {
-            errStr := "Invalid Queue: " + queueName + "on interface " + intfName
+            errStr := "Invalid Queue: " + queueName + " on interface " + intfName
             log.Error(errStr)
             return tlerr.InvalidArgsError{Format:errStr}
         }
@@ -683,7 +679,7 @@ func validateQosQueue(dbs [db.MaxDB]*db.DB, queueName string) error {
             log.Error(errStr)
             return tlerr.InvalidArgsError{Format:errStr}
         }
-    } 
+    }
 
     return nil
 }
@@ -825,11 +821,6 @@ var DbToYang_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
     intfName := pathInfo.Var("interface-id")
     dbIntfName := utils.GetNativeNameFromUIName(&intfName)
 
-    err = validateQosIntf(nil, inParams.dbs, *dbIntfName)
-    if err != nil {
-        log.Info("DbToYang_qos_get_one_intf_all_q_counters_xfmr - invalid interface ", *dbIntfName)
-        return err
-    }
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     if strings.HasPrefix(targetUriPath,"/openconfig-qos:qos/interfaces/interface/output/queues/queue"){
         log.Info("DbToYang_qos_get_one_intf_all_q_counters_xfmr - interface specific ")
@@ -1080,12 +1071,6 @@ var DbToYang_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("interface-id")
     dbIntfName := utils.GetNativeNameFromUIName(&intfName)
-
-    err = validateQosIntf(nil, inParams.dbs, *dbIntfName)
-    if err != nil {
-        log.Info("DbToYang_qos_get_one_intf_all_pg_counters_xfmr - invalid interface ", *dbIntfName)
-        return err
-    }
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     if (strings.Contains(targetUriPath, "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group")  ||
@@ -1554,48 +1539,31 @@ var DbToYang_threshold_breach_counter_field_xfmr FieldXfmrDbtoYang = func(inPara
 var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error) {
     var tblList []string
     var key string
-    var err error
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     ifName := pathInfo.Var("interface-id");
 
     log.Info("qos_intf_table_xfmr - Uri: ", inParams.uri, " requestUri ", inParams.requestUri, " targetUriPath ", targetUriPath);
-    log.Info(" TableXfmrFunc - Uri ifName: ", ifName);
+    log.Info("qos_intf_table_xfmr - Uri ifName: ", ifName);
 
     tbl_name := "QOS_PORT"
     if len(ifName) != 0 {
         dbifName := utils.GetNativeNameFromUIName(&ifName)
         key = ifName
-        log.Info("TableXfmrFunc - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
-        if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-maps-ext:interface-maps") {
-            tbl_name = "PORT_QOS_MAP"
-        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/output/scheduler-policy") {
-            tbl_name = "PORT_QOS_MAP"
-        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/oc-qos-ext:pfc/oc-qos-ext:pfc-priorities") {
-            tbl_name = "PORT_QOS_MAP"
-        } else if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/oc-qos-ext:pfc") {
-            tbl_name = "PORT_QOS_MAP"
+        log.Info("qos_intf_table_xfmr - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
+        if strings.HasPrefix(*dbifName, "Eth") {
+            tbl_name = "PORT"
+        } else if strings.HasPrefix(*dbifName, "CPU") {
+            tbl_name = "QOS_PORT"
+            *inParams.isVirtualTbl = true
+        } else if strings.HasPrefix(*dbifName, "Vlan") {
+            tbl_name = "VLAN"
+        } else if strings.HasPrefix(*dbifName, "PortChannel") {
+            tbl_name = "PORTCHANNEL"
         } else {
-            if strings.HasPrefix(*dbifName, "Eth") {
-                tbl_name = "PORT"
-            } else if strings.HasPrefix(*dbifName, "CPU") {
-                tbl_name = "QOS_PORT"
-                *inParams.isVirtualTbl = true
-                log.Info(" TableXfmrFunc - *inParams.isVirtualTbl ", *inParams.isVirtualTbl);
-            } else if strings.HasPrefix(*dbifName, "Vlan") {
-                tbl_name = "PORT_QOS_MAP"
-            } else if strings.HasPrefix(*dbifName, "PortChannel") {
-                tbl_name = "PORT_QOS_MAP"
-            } else {
-                log.Info("qos_intf_table_xfmr - Invalid interface type");
-                return tblList, errors.New("Invalid interface type");
-            }
-        }
-        err = validateQosIntf(nil, inParams.dbs, *dbifName)
-        if err != nil {
-            log.Info("qos_intf_table_xfmr - invalid interface ", *dbifName)
-            return tblList, err
+            log.Info("qos_intf_table_xfmr - Invalid interface type");
+            return tblList, errors.New("Invalid interface type");
         }
 
         if (inParams.dbDataMap != nil) {
@@ -1634,7 +1602,6 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key]; !ok {
                 (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key] = db.Value{Field: make(map[string]string)}
             }
-
             mapIntfKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PORT_QOS_MAP"})
             if len(mapIntfKeys) > 0 {
                 if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
@@ -1650,7 +1617,7 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
                         (*inParams.dbDataMap)[db.ConfigDB][tbl_name][key].Field["NULL"] = "NULL"
                     }
                 }
-            }
+            } 
         }
     }
     tblList = append(tblList, tbl_name)
@@ -1662,18 +1629,6 @@ var YangToDb_qos_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     log.Info("Entering YangToDb_qos_intf_tbl_key_xfmr Uri ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
     ifName = pathInfo.Var("interface-id")
-    log.Info("Intf name: ", ifName)
-    dbIfName := utils.GetNativeNameFromUIName(&ifName)
-    d := inParams.d
-    if (inParams.curDb != db.ConfigDB) {
-        d = nil
-    }
-    log.Info("Db Intf name: ", *dbIfName)
-    err = validateQosIntf(d, inParams.dbs, *dbIfName)
-    if err != nil {
-        log.Info("YangToDb_qos_intf_tbl_key_xfmr - invalid interface ", *dbIfName)
-        return ifName, err
-    }
     log.Info("YangToDb_qos_intf_tbl_key_xfmr - interface ", ifName)
     return ifName, err
 }
@@ -1694,7 +1649,6 @@ var DbToYang_qos_intf_tbl_key_xfmr  KeyXfmrDbToYang = func(inParams XfmrParams) 
 
 var YangToDb_qos_intf_intf_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
-    log.Info("YangToDb_qos_intf_intf_id_fld_xfmr: ", inParams)
     requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
     if (inParams.oper != GET && requestUriPath == "/openconfig-qos:qos/interfaces/interface/interface-id" ) {
         return res_map, tlerr.NotSupported("Operation Not Supported")
@@ -1703,11 +1657,7 @@ var YangToDb_qos_intf_intf_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 }
 
 var DbToYang_qos_intf_intf_id_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_qos_intf_intf_id_fld_xfmr ", inParams.uri)
-
     res_map := make(map[string]interface{})
-
-    log.Info("Interface Name = ", inParams.key)
     ifName := utils.GetUINameFromNativeName(&inParams.key)
     res_map["interface-id"] = *ifName
     return res_map, nil
