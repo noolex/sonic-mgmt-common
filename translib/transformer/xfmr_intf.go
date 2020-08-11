@@ -55,6 +55,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_oper_status_xfmr", DbToYang_intf_oper_status_xfmr)
     XlateFuncBind("DbToYang_intf_eth_auto_neg_xfmr", DbToYang_intf_eth_auto_neg_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
+    XlateFuncBind("DbToYang_intf_eth_port_fec_xfmr", DbToYang_intf_eth_port_fec_xfmr)
     XlateFuncBind("YangToDb_intf_eth_port_config_xfmr", YangToDb_intf_eth_port_config_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_config_xfmr", DbToYang_intf_eth_port_config_xfmr)
     XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
@@ -92,6 +93,8 @@ const (
     PORT_MTU           = "mtu"
     PORT_ADMIN_STATUS  = "admin_status"
     PORT_SPEED         = "speed"
+    PORT_FEC           = "fec"
+    PORT_LANES         = "lanes"
     PORT_DESC          = "description"
     PORT_OPER_STATUS   = "oper_status"
     PORT_AUTONEG       = "autoneg"
@@ -190,6 +193,12 @@ var intfOCToSpeedMap = map[ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED] string
 
 }
 
+var yangToDbFecMap = map[ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE] string {
+    ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_DISABLED : "none",
+    ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_AUTO     : "default",
+    ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_RS       : "rs",
+    ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_FC       : "fc",
+}
 
 type E_InterfaceType  int64
 const (
@@ -1415,7 +1424,46 @@ var DbToYang_intf_eth_port_speed_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
     return result, err
 }
 
+var DbToYang_intf_eth_port_fec_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
 
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    intfType, _, ierr := getIntfTypeByName(inParams.key)
+    if intfType == IntfTypeUnset || ierr != nil {
+        log.Info("DbToYang_intf_eth_port_fec_xfmr - Invalid interface type IntfTypeUnset");
+        return result, errors.New("Invalid interface type IntfTypeUnset");
+    }
+    if IntfTypeEthernet != intfType {
+           return result, nil
+    }
+    intTbl := IntfTypeTblMap[intfType]
+
+    tblName, _ := getPortTableNameByDBId(intTbl, inParams.curDb)
+    pTbl := data[tblName]
+    prtInst := pTbl[inParams.key]
+    fec, ok := prtInst.Field[PORT_FEC]
+    portFec := ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_UNSET
+    if ok {
+        portFec, err = getDbToYangFec(fec)
+        result["port-fec"] = ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE.ΛMap(portFec)["E_OpenconfigPlatformTypes_FEC_MODE_TYPE"][int64(portFec)].Name
+    } else {
+        log.Info("FEC field not found in DB")
+    }
+    return result, err
+}
+
+func getDbToYangFec(fec string) (ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE, error) {
+    portFec := ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_DISABLED
+    var err error = errors.New("Not found in port speed map")
+    for k, v := range yangToDbFecMap {
+        if fec == v {
+            portFec = k
+            err = nil
+        }
+    }
+    return portFec, err
+}
 
 func getDbToYangSpeed (speed string) (ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED, error) {
     portSpeed := ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN
@@ -4122,7 +4170,7 @@ func getDefaultSpeed(d *db.DB, ifName string) int {
 }
 
 
-// YangToDb_intf_eth_port_config_xfmr handles port-speed, auto-neg and aggregate-id config.
+// YangToDb_intf_eth_port_config_xfmr handles port-speed, fec, auto-neg and aggregate-id config.
 var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     var lagStr string
@@ -4291,6 +4339,60 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
         }
     }
+
+    /* Handle Port FEC config */
+    if (strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-fec")) {
+        res_map := make(map[string]string)
+        value := db.Value{Field: res_map}
+        intTbl := IntfTypeTblMap[intfType]
+
+        portFec := intfObj.Ethernet.Config.PortFec
+
+        fec_val, ok := yangToDbFecMap[portFec]
+
+        if !ok {
+            err = tlerr.InvalidArgs("Invalid FEC %s", portFec)
+            log.Infof("Did not find FEC entry")
+        } else {
+            /* Need the number of lanes */
+            port_info, err := inParams.d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
+            if err != nil{
+                err = tlerr.NotSupported("Port info not readable")
+                log.Infof("DB not readable when attempting FEC set to %s", fec_val)
+            } else {
+                lane_count := len(strings.Split(port_info.Get(PORT_LANES), ","))
+                port_speed := port_info.Get(PORT_SPEED)
+
+                log.Infof("Will use lane_count: %d, port_speed: %s, ifname: %s to lookup fec value %s",lane_count, port_speed, ifName, fec_val)
+
+                if fec_val == "default"{
+                    log.Infof("Default FEC will be used")
+                    fec_val = utils.Get_default_fec(ifName, lane_count, port_speed)
+                    log.Infof("Setting default FEC via DB write %s", fec_val)
+
+                    res_map[PORT_FEC] = fec_val
+                } else {
+                    log.Infof("Looking for non default FEC")
+                    /* Check if fec is valid */
+                    if !utils.Is_fec_mode_valid(ifName, lane_count, port_speed, fec_val) {
+                        err = tlerr.NotSupported("FEC mode not supported %s", fec_val)
+                        log.Infof("Fec support check failed")
+                        return nil, errors.New("FEC not supported on interface: " + fec_val)
+                    } else {
+                        res_map[PORT_FEC] = fec_val
+                        log.Infof("Validated fec of %s", fec_val)
+                    }
+                }
+            }
+            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
+                log.Infof("Creating map entry", fec_val)
+                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+            }
+            log.Infof("Finishing map assign  %s", fec_val)
+            memMap[intTbl.cfgDb.portTN][ifName] = value
+        }
+    }
+
     /* Handle AutoNegotiate config */
     if intfObj.Ethernet.Config.AutoNegotiate != nil {
         if intfType != IntfTypeMgmt {
@@ -4407,6 +4509,16 @@ var DbToYang_intf_eth_port_config_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
                     intfObj.Ethernet.Config.PortSpeed = portSpeed
                 } else {
                     errStr = "port-speed not set"
+                }
+            }
+            if (get_cfg_obj || targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-ethernet-ext2:port-fec") {
+                fec, ok := entry.Field[PORT_FEC]
+                portFec := ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_UNSET
+                if ok {
+                    portFec, err = getDbToYangFec(fec)
+                    intfObj.Ethernet.Config.PortFec = portFec
+                } else {
+                    errStr = "port-fec not set"
                 }
             }
         } else {

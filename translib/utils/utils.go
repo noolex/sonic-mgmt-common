@@ -26,8 +26,32 @@ import (
     "sync"
     "strings"
     "fmt"
+    "strconv"
     log "github.com/golang/glog"
 )
+
+/* Needed to deserialize FEC info */
+const (
+    INTF_SEPARATOR = "<>"
+    LANE_SEPARATOR = "|"
+    SPEED_SEPARATOR = "--"
+    FEC_SEPARATOR = ","
+    INTF_TO_LANE_SEPARATOR = "@"
+    SPEED_TO_FEC_SEPARATOR = "="
+    LANE_TO_SPEED_SEPARATOR = ":"
+    DB_TABLE_NAME_FEC_INFO = "INTERFACE"
+    DB_KEY_NAME_FEC_INFO = "FEC_INFO"
+    DB_FIELD_NAME_DEFAULT_FEC_MODES = "Intf_Default_Fec_Modes"
+    DB_FIELD_NAME_SUPPORTED_FEC_MODES = "Intf_Supported_Fec_Modes"
+)
+
+/* Representation of FEC derivation table */
+type fec_info_t map[string]map[string]map[string][]string
+
+/* Cached map of the default FEC modes */
+var default_fec_modes_cache fec_info_t
+/* Cached map of the supported FEC modes */
+var supported_fec_modes_cache fec_info_t
 
 // Maintaining aliasMode based on the following flag
 var aliasMode bool = false
@@ -320,4 +344,109 @@ func RemoveElement(sl []string, str string) []string {
         }
     }
     return sl
+}
+
+// Load_fec_info_from_db_to_cache : Load the FEC data from the DB into cache
+func load_fec_info_from_db_to_cache() {
+    serialized_default_fec_modes_string := ""
+    serialized_supported_fec_modes_string := ""
+
+
+    d, err := db.NewDB(getDBOptions(db.StateDB, false))
+    if err != nil {
+        log.Error("Instantiation of StateDB failed!")
+    }
+
+    serialized_db_entries, err := d.GetEntry(&db.TableSpec{Name:DB_TABLE_NAME_FEC_INFO}, db.Key{Comp: []string{DB_KEY_NAME_FEC_INFO}})
+    if err != nil {
+        log.Error("Unable to read supported and default FEC info from DB")
+        return
+    }
+    // Read default
+    serialized_default_fec_modes_string = serialized_db_entries.Get(DB_FIELD_NAME_DEFAULT_FEC_MODES)
+    // Read supported
+    serialized_supported_fec_modes_string = serialized_db_entries.Get(DB_FIELD_NAME_SUPPORTED_FEC_MODES)
+
+    // Get the map from the flattened string
+    default_fec_modes_cache = deserialize_fec_to_map(serialized_default_fec_modes_string)
+
+    supported_fec_modes_cache = deserialize_fec_to_map(serialized_supported_fec_modes_string)
+    log.Info("Done with FEC deserialize")
+    log.Info("Deserialized default FEC: ", default_fec_modes_cache)
+    log.Info("Deserialized default FEC: ", supported_fec_modes_cache)
+}
+
+func deserialize_fec_to_map(serialized_fec_str string) fec_info_t {
+    if serialized_fec_str == ""{
+        log.Info("Nothing to deserialize")
+        return nil
+    }
+    ret_map := make(fec_info_t)
+
+    intf_tokens := strings.Split(serialized_fec_str, INTF_SEPARATOR)
+    for _, intf_tok := range intf_tokens {
+        intf_lane_combo := strings.Split(intf_tok, INTF_TO_LANE_SEPARATOR)
+        lane_info_map := make(map[string]map[string][]string)
+
+        // Split by LANE_SEPARATOR to get the tokens by lane
+        lane_tokens := strings.Split(intf_lane_combo[1], LANE_SEPARATOR)
+        for _, lane_tok := range lane_tokens {
+            speed_info_map := make(map[string][]string)
+            // Get the right lane
+            lane_speed_combo := strings.Split(lane_tok, LANE_TO_SPEED_SEPARATOR)
+            speed_tokens := strings.Split(lane_speed_combo[1], SPEED_SEPARATOR)
+
+            for _, speed_tok := range speed_tokens {
+                speed_fec_combo :=  strings.Split(speed_tok, SPEED_TO_FEC_SEPARATOR)
+                speed_info_map[speed_fec_combo[0]] = strings.Split(speed_fec_combo[1], FEC_SEPARATOR)
+            }
+            lane_info_map[lane_speed_combo[0]] = speed_info_map
+        }
+        ret_map[intf_lane_combo[0]] = lane_info_map
+    }
+    return ret_map
+}
+
+// Get_supported_fec_list : For the given params, what are the FEC modes allowed
+func Get_supported_fec_list(ifname string, lane_count int, speed string) []string{
+    lane_c := strconv.Itoa(lane_count)
+
+    if len(supported_fec_modes_cache) == 0 {
+        log.Info("Running one-time loading of FEC info from DB to cache")
+        load_fec_info_from_db_to_cache()
+    }
+
+    if supp_list, ok := supported_fec_modes_cache[ifname][lane_c][speed]; ok {
+        return supp_list
+    }
+    return []string{"none"}
+}
+// Get_default_fec : For the given params, whats the default FEC mode
+func Get_default_fec(ifname string, lane_count int, speed string) string{
+    lane_c := strconv.Itoa(lane_count)
+
+    if len(default_fec_modes_cache) == 0 {
+        log.Info("Running one-time loading of FEC info from DB to cache")
+        load_fec_info_from_db_to_cache()
+    }
+
+    if ret, ok := default_fec_modes_cache[ifname][lane_c][speed]; ok {
+        // Use the first value
+        return string(ret[0])
+    }
+    // Default when no data available
+    return "none"
+}
+
+// Is_fec_mode_valid : Given the params, is the specified FEC mode valid for the params?
+func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) bool {
+
+    supp_list := Get_supported_fec_list(ifname, lane_count, speed)
+
+    for _, val := range supp_list{
+        if val == fec{
+            return true
+        }
+    }
+    return false
 }
