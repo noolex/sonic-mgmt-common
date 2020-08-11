@@ -177,11 +177,11 @@ func DbToYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string, dbFldVal s
 		resPtr = &resString
 	case yang.Yempty:
 		logStr := fmt.Sprintf("Yang data type for xpath %v is Yempty.", fldXpath)
-		log.Error(logStr)
+		log.Warning(logStr)
 		err = errors.New(logStr)
         default:
 		logStr := fmt.Sprintf("Unrecognized/Unhandled yang-data type(%v) for xpath %v.", fldXpath, yang.TypeKindToName[yngTerminalNdDtType])
-                log.Error(logStr)
+                log.Warning(logStr)
                 err = errors.New(logStr)
         }
 	return res, resPtr, err
@@ -456,7 +456,7 @@ func directDbToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, e
 	isEmptyPayload := isJsonDataEmpty(string(jsonMapData))
 	jsonData := fmt.Sprintf("%v", string(jsonMapData))
         if isEmptyPayload {
-		log.Error("No data available")
+		log.Warning("No data available")
         }
         return jsonData, isEmptyPayload, err
 }
@@ -485,7 +485,7 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 			/* key from uri should be converted into redis-db key, to read data */
 			tblKey, err = dbKeyValueXfmrHandler(CREATE, cdb, tblName, tblKey)
 			if err != nil {
-				log.Errorf("Value-xfmr for table(%v) & key(%v) failed.", tblName, tblKey)
+				log.Warningf("Value-xfmr for table(%v) & key(%v) didn't do conversion.", tblName, tblKey)
 				return nil, err
 			}
 		}
@@ -494,7 +494,7 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 	}
 	err = TraverseDb(dbs, dbFormat, &dbresult, nil)
 	if err != nil {
-		log.Errorf("TraverseDb() failure for tbl(DB num) %v(%v) for xpath %v", tblName, cdb, xpath)
+		log.Warningf("TraverseDb() didn't fetch data for tbl(DB num) %v(%v) for xpath %v", tblName, cdb, xpath)
 		return nil, err
 	}
 	if _, ok := dbresult[cdb]; !ok {
@@ -746,7 +746,7 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 			if len(fldValMap) == 0 {
 				// field transformer returns empty map when no data in DB
 				if ((yangType == YANG_LEAF) || ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))))) {
-					log.Errorf("Field transformer returned empty data , uri  - %v", requestUri)
+					log.Warningf("Field transformer returned empty data , uri  - %v", requestUri)
 					err = tlerr.NotFoundError{Format:"Resource not found"}
 					return resFldValMap, err
 				}
@@ -795,14 +795,14 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 							inParams := formXfmrDbInputRequest(CREATE, cdb, tbl, tblKey, dbFldName, leafListInstVal)
 							retVal, valXfmrErr := valueXfmrHandler(inParams, *dbSpecFieldInfo.xfmrValue)
 							if valXfmrErr != nil {
-								log.Errorf("Failed in value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").", dbSpecField, leafListInstVal, valXfmrErr)
+								log.Warningf("value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").", dbSpecField, leafListInstVal, valXfmrErr)
 								return resFldValMap, valXfmrErr
 							}
 							log.Info("valueXfmrHandler() retuned ", retVal)
 							leafListInstVal = retVal
 						}
 						if !leafListInstExists((*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName], leafListInstVal) {
-							log.Errorf("Queried leaf-list instance does not exists, uri  - %v, dbData - %v", requestUri, (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName])
+							log.Warningf("Queried leaf-list instance does not exists, uri  - %v, dbData - %v", requestUri, (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName])
 							err = tlerr.NotFoundError{Format:"Resource not found"}
 						}
 						if err == nil {
@@ -819,7 +819,7 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 					}
 				} else {
 					if leafLstInstGetReq {
-						log.Errorf("Queried leaf-list does not exist in DB, uri  - %v", requestUri)
+						log.Warningf("Queried leaf-list does not exist in DB, uri  - %v", requestUri)
 						err = tlerr.NotFoundError{Format:"Resource not found"}
 					}
 				}
@@ -828,7 +828,7 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 				if ok {
 					resVal, _, err := DbToYangType(yngTerminalNdDtType, xpath, val)
 					if err != nil {
-						log.Error("Failure in converting Db value type to yang type for field", xpath)
+						log.Warning("Conversion of Db value type to yang type for field didn't happen.", xpath)
 					} else {
 						resFldValMap[xYangSpecMap[xpath].yangEntry.Name] = resVal
 					}

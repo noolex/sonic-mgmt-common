@@ -87,22 +87,22 @@ func mapFillData(xlateParams xlateToParams) error {
     xfmrLogInfoAll("name: \"%v\", xpathPrefix(\"%v\").", xlateParams.name, xlateParams.xpath)
 
     if !ok || xpathInfo == nil {
-        log.Errorf("Yang path(\"%v\") not found.", xpath)
+        log.Warningf("Yang path(\"%v\") not found.", xpath)
 	return nil
     }
 
     if xpathInfo.tableName == nil && xpathInfo.xfmrTbl == nil{
-        log.Errorf("Table for yang-path(\"%v\") not found.", xpath)
+        log.Warningf("Table for yang-path(\"%v\") not found.", xpath)
 	return nil
     }
 
     if xpathInfo.tableName != nil && *xpathInfo.tableName == XFMR_NONE_STRING {
-        log.Errorf("Table for yang-path(\"%v\") NONE.", xpath)
+        log.Warningf("Table for yang-path(\"%v\") NONE.", xpath)
 	return nil
     }
 
     if len(xlateParams.keyName) == 0 {
-        log.Errorf("Table key for yang path(\"%v\") not found.", xpath)
+        log.Warningf("Table key for yang path(\"%v\") not found.", xpath)
 	return nil
     }
 
@@ -192,7 +192,7 @@ func mapFillDataUtil(xlateParams xlateToParams) error {
         _, ok = xDbSpecMap[fieldXpath]
         if !ok {
                 logStr := fmt.Sprintf("Failed to find the xDbSpecMap: xpath(\"%v\").", fieldXpath)
-                log.Error(logStr)
+                log.Warning(logStr)
                 return nil
         }
 
@@ -202,7 +202,7 @@ func mapFillDataUtil(xlateParams xlateToParams) error {
 		fieldName += "@"
 		if reflect.ValueOf(xlateParams.value).Kind() != reflect.Slice {
 			logStr := fmt.Sprintf("Value for yang xpath %v which is a leaf-list should be a slice", xlateParams.xpath)
-			log.Error(logStr)
+			log.Warning(logStr)
 			return nil
 		}
 		valData := reflect.ValueOf(xlateParams.value)
@@ -220,8 +220,8 @@ func mapFillDataUtil(xlateParams xlateToParams) error {
 			      }
 			      valueStr = valueStr + fVal
                         } else {
-                              logStr := fmt.Sprintf("Failed to unmarshal Json to DbData: table(\"%v\") field(\"%v\") value(\"%v\").", xlateParams.tableName, fieldName, valData.Index(fidx).Interface())
-                              log.Error(logStr)
+                              logStr := fmt.Sprintf("Couldn't unmarshal Json to DbData: table(\"%v\") field(\"%v\") value(\"%v\").", xlateParams.tableName, fieldName, valData.Index(fidx).Interface())
+                              log.Warning(logStr)
                               return nil
                         }
 		}
@@ -234,8 +234,8 @@ func mapFillDataUtil(xlateParams xlateToParams) error {
                 if err == nil {
                       valueStr = fVal
                 } else {
-                      logStr := fmt.Sprintf("Failed to unmarshal Json to DbData: table(\"%v\") field(\"%v\") value(\"%v\").", xlateParams.tableName, fieldName, xlateParams.value)
-                      log.Error(logStr)
+                      logStr := fmt.Sprintf("Couldn't unmarshal Json to DbData: table(\"%v\") field(\"%v\") value(\"%v\").", xlateParams.tableName, fieldName, xlateParams.value)
+                      log.Warning(logStr)
                       return nil
                 }
 
@@ -285,7 +285,7 @@ func dbMapDataFill(uri string, tableName string, keyName string, d map[string]in
 					}
 					fVal, err := unmarshalJsonToDbData(xDbSpecMap[fieldXpath].dbEntry, fieldXpath, field, fieldDt.Index(fidx).Interface())
 					if err != nil {
-						log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+						log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
 					} else {
 						fieldValue = fieldValue + fVal
 					}
@@ -295,7 +295,7 @@ func dbMapDataFill(uri string, tableName string, keyName string, d map[string]in
 			}
 			dbval, err := unmarshalJsonToDbData(xDbSpecMap[fieldXpath].dbEntry, fieldXpath, field, value)
 			if err != nil {
-				log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+				log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
 			} else {
 				result[tableName][keyName].Field[field] = dbval
 			}
@@ -319,7 +319,7 @@ func dbMapListDataFill(uri string, tableName string, dbEntry *yang.Entry, jsonDa
 			fieldXpath := tableName + "/" + k
 			val, err := unmarshalJsonToDbData(dbEntry.Dir[k], fieldXpath, k, d[k])
 			if err != nil {
-				log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+				log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
 			} else {
 				keyName += val
 			}
@@ -439,7 +439,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, tblUri+"/"+childName, xlateParams.requestUri, oper, "", nil, xlateParams.subOpDataMap, param, xlateParams.txCache)
 								retData, err := leafXfmrHandler(inParams, childNode.xfmrField)
 								if err != nil {
-									log.Errorf("Default/AuxMap Value filling. Received error %v from %v", err, childNode.xfmrField)
+									log.Warningf("Default/AuxMap Value filling. Received error %v from %v", err, childNode.xfmrField)
 								}
 								if retData != nil {
 									xfmrLogInfoAll("Transformer function : %v Xpath: %v retData: %v", childNode.xfmrField, childXpath, retData)
@@ -468,7 +468,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 											curXlateParams := formXlateToDbParam(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, childXpath, dbKey, xlateParams.jsonData, xlateParams.resultMap, xlateParams.yangDefValMap, xlateParams.txCache, xlateParams.tblXpathMap, xlateParams.subOpDataMap, xlateParams.pCascadeDelTbl, &xfmrErr, childName, childNode.defVal, tblName)
 											err := mapFillDataUtil(curXlateParams)
 											if err != nil {
-												log.Errorf("Default/AuxMap Value filling. Received error %v from %v", err, childNode.fieldName)
+												log.Warningf("Default/AuxMap Value filling. Received error %v from %v", err, childNode.fieldName)
 											}
 										} else {
 											dataToDBMapAdd(tblName, dbKey, xlateParams.yangAuxValMap, childNode.fieldName, "")

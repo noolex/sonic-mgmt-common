@@ -54,7 +54,7 @@ func keyCreate(keyPrefix string, xpath string, data interface{}, dbKeySep string
 				fieldXpath :=  xpath + "/" + k
 				fVal, err := unmarshalJsonToDbData(yangEntry.Dir[k], fieldXpath, k, data.(map[string]interface{})[k])
 				if err != nil {
-					log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+					log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
 				}
 
 				if ((strings.Contains(fVal, ":")) &&
@@ -166,7 +166,7 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableNa
 
 	if _, ok := xYangSpecMap[xpath]; ok {
 		if xYangSpecMap[xpath].yangEntry == nil {
-			log.Errorf("Yang Entry not available for xpath %v", xpath)
+			log.Warningf("Yang Entry not available for xpath %v", xpath)
 			return nil, "", nil
 		}
 	}
@@ -212,7 +212,7 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableNa
 
 	rmap := make(map[string]interface{})
 	if len(keyNameList) > 1 {
-		log.Errorf("No key transformer found for multi element yang key mapping to a single redis key string, for uri %v", uri)
+		log.Warningf("No key transformer found for multi element yang key mapping to a single redis key string, for uri %v", uri)
                 errStr := fmt.Sprintf("Error processing key for list %v", uri)
                 err = fmt.Errorf("%v", errStr)
                 return rmap, uriWithKey, err
@@ -401,19 +401,19 @@ func uriWithKeyCreate (uri string, xpathTmplt string, data interface{}) (string,
               for _, k := range (strings.Split(yangEntry.Key, " ")) {
 		      keyXpath := xpathTmplt + "/" + k
 		      if _, keyXpathEntryOk := xYangSpecMap[keyXpath]; !keyXpathEntryOk {
-			      log.Errorf("No entry found in xYangSpec map for xapth %v", keyXpath)
+			      log.Warningf("No entry found in xYangSpec map for xapth %v", keyXpath)
                               err = fmt.Errorf("No entry found in xYangSpec map for xapth %v", keyXpath)
                               break
 		      }
 		      keyYangEntry := xYangSpecMap[keyXpath].yangEntry
 		      if keyYangEntry == nil {
-			      log.Errorf("Yang Entry not available for xpath %v", keyXpath)
+			      log.Warningf("Yang Entry not available for xpath %v", keyXpath)
 			      err = fmt.Errorf("Yang Entry not available for xpath %v", keyXpath)
 			      break
 		      }
 		      keyVal, keyValErr := unmarshalJsonToDbData(keyYangEntry, keyXpath, k, data.(map[string]interface{})[k])
 		      if keyValErr != nil {
-			      log.Errorf("unmarshalJsonToDbData() error for key %v with xpath %v", k, keyXpath)
+			      log.Warningf("unmarshalJsonToDbData() didn't unmarshal for key %v with xpath %v", k, keyXpath)
 			      err = keyValErr
 			      break
 		      }
@@ -638,7 +638,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 retData.xpath, _ = XfmrRemoveXPATHPredicates(path)
 	 xpathInfo, ok := xYangSpecMap[retData.xpath]
 	 if !ok {
-		log.Errorf("No entry found in xYangSpecMap for xpath %v.", retData.xpath)
+		log.Warningf("No entry found in xYangSpecMap for xpath %v.", retData.xpath)
 		return retData, err
 	 }
 	 // for SUBSCRIBE reuestUri = path
@@ -766,7 +766,7 @@ func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
 	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
 	 xpathInfo, ok := xYangSpecMap[xPath]
 	 if !ok {
-		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", xPath)
+		 log.Warningf("No entry found in xYangSpecMap for xpath %v.", xPath)
 		 return tableName, err
 	 }
 
@@ -1028,7 +1028,7 @@ func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey strin
 							inParams := formXfmrDbInputRequest(oper, dbNum, tblName, dbKey, kname, curKeyVal)
 							curKeyVal, err = valueXfmrHandler(inParams, *kInfo.xfmrValue)
 							if err != nil {
-								log.Errorf("Failed in value-xfmr: keypath(\"%v\") value (\"%v\"):err(%v).",
+								log.Warningf("value-xfmr: keypath(\"%v\") value (\"%v\"):err(%v).",
 								keyXpath, curKeyVal, err)
 								return "", err
 							}
@@ -1068,7 +1068,7 @@ func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.V
 										inParams := formXfmrDbInputRequest(oper, dbNum, tblName, dbKey, fld, val)
 										retVal, err := valueXfmrHandler(inParams, *fInfo.xfmrValue)
 										if err != nil {
-											log.Errorf("Failed in value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").",
+											log.Warningf("value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").",
 											fldXpath, val, err)
 											return err
 										}
