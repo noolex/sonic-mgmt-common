@@ -491,7 +491,7 @@ var global_sg_tbl_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, erro
         tables = append(tables, "TACPLUS")
         tables = append(tables, "LDAP")
         tables = append(tables, "TACPLUS_SERVER")
-    } else {
+    } else if len(servergroupname) > 0 {
         err = errors.New("Invalid server group name")
     }
 
@@ -562,7 +562,7 @@ var YangToDb_ldap_scope_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
     	} else if scopeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Ldap_Config_Scope_BASE {
     		scopeVal = "base"
     	}
-    	if len(scopeVal) > 0 {
+    	if len (scopeVal) > 0 || inParams.oper == DELETE {
 	    	res_map["scope"] = scopeVal
     	}
     }
@@ -599,8 +599,8 @@ var YangToDb_ldap_ssl_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (
     	} else if sslEnum == ocbinds.OpenconfigAaaLdapExt_LdapSslType_START_TLS {
     		sslVal = "start_tls"
     	}
-    	if len(sslVal) > 0 {
-	    	res_map["ssl"] = sslVal
+    	if len (sslVal) > 0 || inParams.oper == DELETE {
+	    	res_map["ssl"] = sslVal	
     	}
     }
     log.Info("YangToDb_ldap_ssl_field_xfmr: res_map: ", res_map)
