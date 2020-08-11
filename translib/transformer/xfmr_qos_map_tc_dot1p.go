@@ -8,78 +8,28 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_fwd_group_dot1p_xfmr", YangToDb_qos_fwd_group_dot1p_xfmr)
     XlateFuncBind("DbToYang_qos_fwd_group_dot1p_xfmr", DbToYang_qos_fwd_group_dot1p_xfmr)
+    XlateFuncBind("Subscribe_qos_fwd_group_dot1p_xfmr", Subscribe_qos_fwd_group_dot1p_xfmr)
     XlateFuncBind("YangToDb_qos_tc_to_dot1p_map_fld_xfmr", YangToDb_qos_tc_to_dot1p_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_tc_to_dot1p_map_fld_xfmr", DbToYang_qos_tc_to_dot1p_map_fld_xfmr)
  
 }
 
-
-func qos_fwd_group_dot1p_map_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    var err error
-    res_map := make(map[string]map[string]db.Value)
-
-    log.Info("qos_fwd_group_dot1p_map_delete_xfmr: ", inParams.ygRoot, inParams.uri)
-    log.Info("inParams: ", inParams)
-
-    pathInfo := NewPathInfo(inParams.uri)
-    map_name := pathInfo.Var("name")
-    log.Info("YangToDb: map name: ", map_name)
-
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
-    log.Info("targetUriPath: ",  targetUriPath)
-
-
-    var map_entry db.Value
-
-    if map_name != "" {
-        map_entry, err = get_map_entry_by_map_name(inParams.d, "TC_TO_DOT1P_MAP", map_name)
-        if err != nil {
-            err = tlerr.InternalError{Format:"Instance Not found"}
-            log.Info("map name not found.")
-            return res_map, err
-        }
-    }
-
-    if !strings.HasPrefix(targetUriPath,
-    "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map") {
-        log.Info("YangToDb: map name unspecified, using delete_by_map_name")
-        return qos_map_delete_by_map_name(inParams, "TC_TO_DOT1P_MAP", map_name)
-    }
-
-    tc := pathInfo.Var("fwd-group")
-    if tc == "" {
-        log.Info("YangToDb: TC unspecified, using delete_by_map_name")
-        return qos_map_delete_by_map_name(inParams, "TC_TO_DOT1P_MAP", map_name)
-    } else  {
-        _, exist := map_entry.Field[tc]
-        if !exist { 
-            err = tlerr.InternalError{Format:"TC value Not found"}
-            log.Info("TC value not found.")
-            return res_map, err
-        }
-    }
-
-    /* update "map" table field only */
-    rtTblMap := make(map[string]db.Value)
-    rtTblMap[map_name] = db.Value{Field: make(map[string]string)}
-    rtTblMap[map_name].Field[tc] = ""
-
-    res_map["TC_TO_DOT1P_MAP"] = rtTblMap
-
-    return res_map, err
-
+var Subscribe_qos_fwd_group_dot1p_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    map_type := "TC_TO_DOT1P_MAP"
+    return Subscribe_qos_map_xfmr(inParams, map_type)
 }
 
 
 var YangToDb_qos_fwd_group_dot1p_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
+    map_type := "TC_TO_DOT1P_MAP"
+
     if inParams.oper == DELETE {
-        return qos_fwd_group_dot1p_map_delete_xfmr(inParams)
+        return qos_map_delete_xfmr(inParams, map_type)
     }
 
     var err error
@@ -117,38 +67,45 @@ var YangToDb_qos_fwd_group_dot1p_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     map_entry[map_key] = db.Value{Field: make(map[string]string)}
     log.Info("YangToDb_qos_fwd_group_dot1p_xfmr - entry_key : ", map_key)
 
+    if targetUriPath == "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map" ||
+       targetUriPath == "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map" {
+        if inParams.oper == DELETE {
+
+            res_map["TC_TO_DOT1P_MAP"] = map_entry
+            return res_map, err
+        }
+
+        return res_map, err
+    }
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map/forwarding-group-dot1p-map-entries/forwarding-group-dot1p-map-entry") {
-        log.Info("YangToDb: map entry unspecified, stop here")
+        log.Info("YangToDb: map entry unspecified, return the map")
+
+        res_map[map_type] = map_entry
         return res_map, err
     }
 
-    tc := pathInfo.Var("fwd-group")
-    if tc == "" {
+
+    entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
+    log.Info("entry_key : ", entry_key)
+    if entry_key == "" {
         return res_map, err
     }
-    log.Info("tc: ", tc)
 
-    // tmp, _ := strconv.ParseUint(tc, 10, 8)
-    // tc_val := string(tmp)
-
-    entry, ok := mapObj.ForwardingGroupDot1PMapEntries.ForwardingGroupDot1PMapEntry[tc]
+    entry, ok := mapObj.ForwardingGroupDot1PMapEntries.ForwardingGroupDot1PMapEntry[entry_key]
     if !ok  {
         log.Info("entry is nil.")
         return res_map, err
     }
 
-    dot1p := uint8(0)
-    if inParams.oper == CREATE ||
-       inParams.oper == UPDATE {
-        dot1p =  *(entry.Config.Dot1P)
-    }
 
-    map_entry[map_key].Field[tc] = strconv.FormatUint(uint64(dot1p), 10)
+    val :=  *(entry.Config.Dot1P)
 
-    log.Info("YangToDb_qos_fwd_group_dot1p_xfmr - entry_key : ", map_key)
-    res_map["TC_TO_DOT1P_MAP"] = map_entry
+    map_entry[map_key].Field[entry_key] = strconv.Itoa(int(val))
+
+    log.Info("map key : ", map_key, " entry_key: ", entry_key)
+    res_map[map_type] = map_entry
 
     return res_map, err
 }
@@ -208,6 +165,10 @@ func fill_fwd_group_dot1p_map_info_by_name(inParams XfmrParams, fwdGrpDot1PMaps 
     var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupDot1PMaps_ForwardingGroupDot1PMap_ForwardingGroupDot1PMapEntries_ForwardingGroupDot1PMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
+        if k == "NULL" {
+            continue
+        }
+
         if tc != "" && k!= tc {
             continue
         }
@@ -307,65 +268,12 @@ var DbToYang_qos_fwd_group_dot1p_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
 
 
 var DbToYang_qos_tc_to_dot1p_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_qos_tc_to_dot1p_map_fld_xfmr ", inParams)
-
-    res_map := make(map[string]interface{})
-
-    pathInfo := NewPathInfo(inParams.uri)
-
-    if_name := pathInfo.Var("interface-id")
-    dbIfName := utils.GetNativeNameFromUIName(&if_name)
-
-    dbSpec := &db.TableSpec{Name: "PORT_QOS_MAP"}
-
-    key := db.Key{Comp: []string{*dbIfName}}
-    ifCfg, _ := inParams.d.GetEntry(dbSpec, key) 
-
-    log.Info("current entry: ", ifCfg)
-    value, ok := ifCfg.Field["tc_to_dot1p_map"] 
-    if  ok {
-        log.Info("value = ", value)
-        res_map["forwarding-group-to-dot1p"] = DbLeafrefToString(value, "TC_TO_DOT1P_MAP")
-    }
-    return res_map, nil
+    return DbToYang_qos_intf_qos_map_xfmr(inParams, "TC_TO_DOT1P_MAP")
 }
 
 
 
 var YangToDb_qos_tc_to_dot1p_map_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
-    var err error
-
-    log.Info("Entering YangToDb_qos_tc_to_dot1p_map_fld_xfmr ===> ", inParams)
-
-    pathInfo := NewPathInfo(inParams.uri)
-
-    if_name := pathInfo.Var("interface-id")
-
-    qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
-    if qosIntfsObj == nil {
-        return res_map, err
-    }
-
-    intfObj, ok := qosIntfsObj.Interface[if_name]
-    if !ok {
-        return res_map, err
-    }
-
-    map_name := *(intfObj.InterfaceMaps.Config.ForwardingGroupToDot1P)
-
-    if inParams.oper == DELETE {
-        res_map["tc_to_dot1p_map"] = ""
-        return res_map, err
-    }
-
-    if len(map_name) == 0 {
-        log.Error("map name is Missing")
-        return res_map, err
-    }
-
-    log.Info("map name is : ", map_name)
-    res_map["tc_to_dot1p_map"] = StringToDbLeafref(map_name, "TC_TO_DOT1P_MAP")
-    return res_map, err
+    return YangToDb_qos_intf_qos_map_xfmr(inParams, "TC_TO_DOT1P_MAP")
 }
 

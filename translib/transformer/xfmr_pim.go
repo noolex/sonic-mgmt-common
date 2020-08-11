@@ -17,6 +17,8 @@ func init () {
     XlateFuncBind("YangToDb_pim_gbl_tbl_key_xfmr", YangToDb_pim_gbl_tbl_key_xfmr)
     XlateFuncBind("DbToYang_pim_intf_tbl_key_xfmr", DbToYang_pim_intf_tbl_key_xfmr)
     XlateFuncBind("YangToDb_pim_intf_tbl_key_xfmr", YangToDb_pim_intf_tbl_key_xfmr)
+    XlateFuncBind("YangToDb_pim_intf_id_fld_xfmr", YangToDb_pim_intf_id_fld_xfmr)
+    XlateFuncBind("DbToYang_pim_intf_id_fld_xfmr", DbToYang_pim_intf_id_fld_xfmr)
     XlateFuncBind("YangToDb_pim_intf_mode_fld_xfmr", YangToDb_pim_intf_mode_fld_xfmr)
     XlateFuncBind("DbToYang_pim_intf_mode_fld_xfmr", DbToYang_pim_intf_mode_fld_xfmr)
     XlateFuncBind("DbToYang_pim_intf_state_xfmr", DbToYang_pim_intf_state_xfmr)
@@ -162,9 +164,10 @@ var YangToDb_pim_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
         return "", err
     }
 
-    log.Info("YangToDb_pim_gbl_tbl_key_xfmr : URI:", inParams.uri, " VRF:", niName)
+    retKey := (niName + "|" + "ipv4")
+    log.Info("YangToDb_pim_gbl_tbl_key_xfmr : URI:", inParams.uri, " VRF:", niName, " Return-Key:", retKey)
 
-    return (niName + "|" + "ipv4"), err
+    return retKey, err
 }
 
 var YangToDb_pim_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
@@ -178,14 +181,33 @@ var YangToDb_pim_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
         return "", errors.New("interface name is missing")
     }
 
-    log.Info("YangToDb_pim_intf_tbl_key_xfmr : URI:", inParams.uri, " VRF:", niName, " uiIntfId:", uiIntfId)
+    retKey := (niName + "|" + "ipv4" + "|" + uiIntfId)
+    log.Info("YangToDb_pim_intf_tbl_key_xfmr : URI:", inParams.uri, " VRF:", niName, " uiIntfId:", uiIntfId, " Return-Key:", retKey)
 
-    return (niName + "|" + "ipv4" + "|" + uiIntfId), err
+    return retKey, err
 }
 
 var DbToYang_pim_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     rmap := make(map[string]interface{})
-    log.Info("DbToYang_pim_intf_tbl_key_xfmr: Key:", inParams.key)
+    log.Info("DbToYang_pim_intf_tbl_key_xfmr: URI:", inParams.uri, " Key:", inParams.key)
+
+    intfKey := strings.Split(inParams.key, "|")
+    if len(intfKey) < 3 {return rmap, nil}
+
+    rmap["interface-id"] = intfKey[2]
+    return rmap, nil
+}
+
+var YangToDb_pim_intf_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    log.Info("YangToDb_pim_intf_id_fld_xfmr : URI:", inParams.uri, " key:", inParams.key)
+    res_map := make(map[string]string)
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_pim_intf_id_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    rmap := make(map[string]interface{})
+    log.Info("DbToYang_pim_intf_id_fld_xfmr: URI:", inParams.uri, " Key:", inParams.key)
 
     intfKey := strings.Split(inParams.key, "|")
     if len(intfKey) < 3 {return rmap, nil}
@@ -933,4 +955,102 @@ var rpc_clear_pim RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     }
 
     return json.Marshal(&result)
+}
+
+func hdl_post_xfmr_pim_globals_del_ (inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {
+    log.Info ("In PIM Post-Transformer to fill PIM_GLOBALS keys, while handling DELETE-OP for URI : ",
+              inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
+
+    gblTblKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PIM_GLOBALS"})
+
+    matchingKeyFound := false
+    for _, gblTblKey := range gblTblKeys {
+        if gblTblKey.Len() < 2 {continue}
+        if !((gblTblKey.Get(0) == niName) && (gblTblKey.Get(1) == "ipv4")) {continue}
+        matchingKeyFound = true
+
+        if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; !ok {
+            (*retDbDataMap)["PIM_GLOBALS"] = make(map[string]db.Value)
+        }
+
+        key := gblTblKey.Get(0) + "|" + gblTblKey.Get(1)
+        (*retDbDataMap)["PIM_GLOBALS"][key] = db.Value{}
+    }
+
+    if !matchingKeyFound {
+        if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; ok && len((*retDbDataMap)["PIM_GLOBALS"]) == 0 {
+            delete ((*retDbDataMap), "PIM_GLOBALS")
+        }
+    }
+
+    log.Info ("After PIM Post-Transformer PIM_GLOBALS handler ==> retDbDataMap : ", (*retDbDataMap))
+}
+
+func hdl_post_xfmr_pim_intfs_del_ (inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {
+    log.Info ("In PIM Post-Transformer to fill PIM_INTERFACE keys, while handling DELETE-OP for URI : ",
+              inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
+
+    intfTblKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PIM_INTERFACE"})
+
+    matchingKeyFound := false
+    for _, intfTblKey := range intfTblKeys {
+        if intfTblKey.Len() < 3 {continue}
+        if !((intfTblKey.Get(0) == niName) && (intfTblKey.Get(1) == "ipv4")) {continue}
+        matchingKeyFound = true
+
+        if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; !ok {
+            (*retDbDataMap)["PIM_INTERFACE"] = make(map[string]db.Value)
+        }
+
+        key := intfTblKey.Get(0) + "|" + intfTblKey.Get(1) + "|" + intfTblKey.Get(2)
+        (*retDbDataMap)["PIM_INTERFACE"][key] = db.Value{}
+    }
+
+    if !matchingKeyFound {
+        if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; ok && len((*retDbDataMap)["PIM_INTERFACE"]) == 0 {
+            delete ((*retDbDataMap), "PIM_INTERFACE")
+        }
+    }
+
+    log.Info ("After PIM Post-Transformer PIM_INTERFACE handler ==> retDbDataMap : ", (*retDbDataMap))
+}
+
+func pim_hdl_post_xfmr (inParams *XfmrParams, retDbDataMap *map[string]map[string]db.Value) (error) {
+    var err error
+
+    if inParams.oper == DELETE {
+        xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        pathInfo := NewPathInfo(inParams.requestUri)
+        niName := pathInfo.Var("name")
+        if len(niName) == 0 {return err}
+        uiIntfId := pathInfo.Var("interface-id")
+
+        switch xpath {
+            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim":
+                hdl_post_xfmr_pim_globals_del_ (inParams, niName, retDbDataMap)
+                hdl_post_xfmr_pim_intfs_del_ (inParams, niName, retDbDataMap)
+
+            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim/global":
+                hdl_post_xfmr_pim_globals_del_ (inParams, niName, retDbDataMap)
+                if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; ok {
+                    log.Info ("Removing all PIM_INTERFACE keys ==> ", (*retDbDataMap)["PIM_INTERFACE"],
+                              " from DB-Datamap to delete only PIM_GLOBALS entries while handling DELETE OP for URI: ", inParams.requestUri)
+                    delete ((*retDbDataMap), "PIM_INTERFACE")
+                }
+
+            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim/interfaces": fallthrough
+            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/pim/interfaces/interface":
+                if len(uiIntfId) == 0 {
+                    /* Handle only all interfaces delete case. Specific interface delete will be handled in usual way, by infra-code */
+                    hdl_post_xfmr_pim_intfs_del_ (inParams, niName, retDbDataMap)
+                    if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; ok {
+                        log.Info ("Removing all PIM_GLOBALS keys ==> ", (*retDbDataMap)["PIM_GLOBALS"],
+                                  " from DB-Datamap to delete only PIM_INTERFACE entries while handling DELETE OP for URI: ", inParams.requestUri)
+                        delete ((*retDbDataMap), "PIM_GLOBALS")
+                    }
+                }
+        }
+    }
+
+    return err
 }

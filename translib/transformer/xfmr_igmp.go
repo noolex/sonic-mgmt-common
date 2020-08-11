@@ -31,9 +31,13 @@ import (
 
 func init () {
     XlateFuncBind("DbToYang_igmp_groups_get_xfmr", DbToYang_igmp_groups_get_xfmr)
+    XlateFuncBind("Subscribe_igmp_groups_get_xfmr", Subscribe_igmp_groups_get_xfmr)
     XlateFuncBind("DbToYang_igmp_sources_get_xfmr", DbToYang_igmp_sources_get_xfmr)
+    XlateFuncBind("Subscribe_igmp_sources_get_xfmr", Subscribe_igmp_sources_get_xfmr)
     XlateFuncBind("DbToYang_igmp_stats_get_xfmr", DbToYang_igmp_stats_get_xfmr)
+    XlateFuncBind("Subscribe_igmp_stats_get_xfmr", Subscribe_igmp_stats_get_xfmr)
     XlateFuncBind("DbToYang_igmp_interface_get_xfmr", DbToYang_igmp_interface_get_xfmr)
+    XlateFuncBind("Subscribe_igmp_interface_get_xfmr", Subscribe_igmp_interface_get_xfmr)
     XlateFuncBind("rpc_show_igmp_join", rpc_show_igmp_join)
     XlateFuncBind("rpc_clear_igmp", rpc_clear_igmp)
 }
@@ -612,6 +616,20 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
     return err
 }
 
+var Subscribe_igmp_groups_get_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_igmp_groups_get_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
+
 var DbToYang_igmp_groups_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
     var cmd_err error
@@ -661,6 +679,20 @@ var DbToYang_igmp_groups_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
 
     err = fillIgmpGroupsXfmr (output_state, igmpGroups_obj)
     return  err;
+}
+
+var Subscribe_igmp_interface_get_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_igmp_interface_get_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
 }
 
 var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
@@ -718,6 +750,20 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     return err;
 }
 
+var Subscribe_igmp_stats_get_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_igmp_stats_get_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
+
 var DbToYang_igmp_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
     var cmd_err error
@@ -755,6 +801,20 @@ var DbToYang_igmp_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
         err = fillIgmpStatsXfmr (stats_info, igmp_obj)
     }
     return  err;
+}
+
+var Subscribe_igmp_sources_get_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_igmp_sources_get_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
 }
 
 var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {

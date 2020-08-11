@@ -42,6 +42,7 @@ type XfmrParams struct {
 	param interface{}
 	txCache *sync.Map
 	skipOrdTblChk *bool
+	isVirtualTbl *bool
         pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
 }
 
@@ -72,6 +73,7 @@ type XfmrSubscOutParams struct {
     needCache bool
     onChange bool
     nOpts *notificationOpts  //these can be set regardless of error 
+    isVirtualTbl bool //used for RFC parent table check, set to true when no Redis Mapping
 }
 
 // XfmrDbParams represents input paraDeters for value-transformer

@@ -1334,7 +1334,9 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	} else if strings.HasPrefix(niName, "Vrf") {
 		tblName = "VRF"
 	} else {
-		return res_map, tlerr.InvalidArgs("Invalid Network Instance name: %s", niName)
+		//return res_map, tlerr.InvalidArgs("Invalid Network Instance name: %s", niName)
+                //for now return nil as error in this case otherwise "no ip mgmt" won't work
+                return res_map, nil
 	}
 
 	pathInfoOrig := NewPathInfo(inParams.requestUri) // orignial user given URI
@@ -1460,10 +1462,12 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 		}
 		 
 	} else {
-		for vniKey := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
-			vniId = vniKey.VniId
-			vtepName = vniKey.SourceNve
-			break
+		if reqP.vxlanNetInstObj.VxlanVniInstances != nil { // need to check vxlan instance
+			for vniKey := range reqP.vxlanNetInstObj.VxlanVniInstances.VniInstance {
+				vniId = vniKey.VniId
+				vtepName = vniKey.SourceNve
+				break
+			}
 		}
 	}
 
@@ -1478,7 +1482,11 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 		valueMap[tblKeyStr].Field["vni"] = strconv.Itoa(int(vniId))
 	}
 
-	res_map[tblName] = valueMap
+        // for vniId is 0 such that the uri not including vniId, return empty map so it doesn't prevent "no ip vrf xxx" from deleted
+        if (vniId != 0) {
+	        res_map[tblName] = valueMap
+        }
+
 	return res_map, err
 }
 

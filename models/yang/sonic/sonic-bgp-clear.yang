@@ -33,12 +33,22 @@ module sonic-bgp-clear {
             "Initial revision.";
     }
 
+    revision 2020-08-01 {
+        description
+            "Added clear dampening support";
+    }
+
    rpc clear-bgp {
 
     description "RPC for clearing BGP. Input can be :
-        1. All BGP sessions 
-        2. All interfaces
-        3. All interfaces of a particular type";
+        1. All BGP sessions.
+        2. interface to clear interface and in,out,soft are optional.
+        3. address to clear ipv4 or ipv6 address.
+        4. prefix to clear ipv4 or ipv6 prefix.
+        5. external with in,out,soft as optional.
+        6. asn to clear an AS and in,out,soft as optional.
+        7. Peer-group with name and in,out,soft are optional.
+        8. dampening with address,prefix,in,out,soft are optional.";
 
     input {
         leaf clear-all {
@@ -80,7 +90,7 @@ module sonic-bgp-clear {
             leaf address {
                 type inet:ip-address;
                 description
-                    "Clear BGP by neighbor address.";
+                    "Clear BGP by address.";
             }
 
             leaf interface {
@@ -120,6 +130,12 @@ module sonic-bgp-clear {
                 type string;
                 description
                     "Clear BGP by peer-group.";
+            }
+
+            leaf dampening {
+                type boolean;
+                description
+                    "Clear BGP dampening.";
             }
 
         }

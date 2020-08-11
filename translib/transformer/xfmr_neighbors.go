@@ -41,6 +41,8 @@ func init () {
     XlateFuncBind("DbToYang_neigh_tbl_key_xfmr", DbToYang_neigh_tbl_key_xfmr)
     XlateFuncBind("YangToDb_neigh_tbl_key_xfmr", YangToDb_neigh_tbl_key_xfmr)
     XlateFuncBind("rpc_clear_neighbors", rpc_clear_neighbors)
+    XlateFuncBind("Subscribe_neigh_tbl_get_all_ipv4_xfmr", Subscribe_neigh_tbl_get_all_ipv4_xfmr)
+    XlateFuncBind("Subscribe_neigh_tbl_get_all_ipv6_xfmr", Subscribe_neigh_tbl_get_all_ipv6_xfmr)
 }
 
 const (
@@ -298,6 +300,68 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         inParams.subOpDataMap[DELETE] = &subOpMap
     }
     return neighIntfmap, err
+}
+
+var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: pathInfo ", pathInfo)
+
+    result.dbDataMap = make(RedisDbMap)
+    result.isVirtualTbl = false
+
+    intfNameRcvd := pathInfo.Var("name")
+    if intfNameRcvd == "" {
+        errStr := "Empty intfNameRcvd"
+        log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    ipAddrRcvd := pathInfo.Var("ip")
+    if ipAddrRcvd == "" {
+        errStr := "Empty ipAddrRcvd"
+        log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    neighIntfTbl := "NEIGH"
+    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+
+    log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
+    return result, nil
+}
+
+var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: pathInfo ", pathInfo)
+
+    result.dbDataMap = make(RedisDbMap)
+    result.isVirtualTbl = false
+
+    intfNameRcvd := pathInfo.Var("name")
+    if intfNameRcvd == "" {
+        errStr := "Empty intfNameRcvd"
+        log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    ipAddrRcvd := pathInfo.Var("ip")
+    if ipAddrRcvd == "" {
+        errStr := "Empty ipAddrRcvd"
+        log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    neighIntfTbl := "NEIGH"
+    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+
+    log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
+    return result, nil
 }
 
 var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams XfmrParams) (map[string]map[string]db.Value, error)  {

@@ -776,7 +776,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     var err error
     var status string
     var clear_all string
-    var af_str, vrf_name, all, soft, in, out,neigh_address, prefix, peer_group, asn, intf, external string
+    var af_str, vrf_name, all, soft, in, out, ip_address, prefix, peer_group, asn, intf, external, dampening string
     var cmd, cmdbase string
     is_evpn := false
     var mapData map[string]interface{}
@@ -839,7 +839,12 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     if value, ok := mapData["address"].(string) ; ok {
         if value != "" {
-            neigh_address = value + " "
+            ip_address = value + " "
+            if dampvalue, ok := mapData["dampening"].(bool) ; ok {
+               if dampvalue {
+                  ip_address = value + " "
+               }
+            }
         }
     }
 
@@ -859,12 +864,24 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     if value, ok := mapData["prefix"].(string) ; ok {
         if value != "" {
             prefix = "prefix " + value + " "
+
+            if dampvalue, ok := mapData["dampening"].(bool) ; ok {
+               if dampvalue {
+                  prefix = value + " "
+               }
+            }
         }
     }
 
     if value, ok := mapData["peer-group"].(string) ; ok {
         if value != "" {
             peer_group = "peer-group " + value + " "
+        }
+    }
+
+    if value, ok := mapData["dampening"].(bool) ; ok {
+        if value {
+            dampening = "dampening "
         }
     }
 
@@ -886,7 +903,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
         }
     }
 
-    log.Info("In rpc_clear_bgp ", clear_all, vrf_name, af_str, all, neigh_address, intf, asn, prefix, peer_group, in, out, soft)
+    log.Info("In rpc_clear_bgp ", clear_all, vrf_name, af_str, all, ip_address, intf, asn, prefix, peer_group, dampening, in, out, soft)
 
     if !is_evpn {
         cmdbase = "clear ip bgp "
@@ -905,8 +922,12 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
             cmd = cmd + af_str
         }
 
-        if neigh_address != "" {
-            cmd = cmd + neigh_address
+        if dampening != "" {
+            cmd = cmd + dampening
+        }
+
+        if ip_address != "" {
+            cmd = cmd + ip_address
         }
 
         if intf != "" {

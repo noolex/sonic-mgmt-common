@@ -12,6 +12,7 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_scheduler_xfmr", YangToDb_qos_scheduler_xfmr)
     XlateFuncBind("DbToYang_qos_scheduler_xfmr", DbToYang_qos_scheduler_xfmr)
+    XlateFuncBind("Subscribe_qos_scheduler_xfmr", Subscribe_qos_scheduler_xfmr)
  
 }
 
@@ -21,6 +22,33 @@ const (
     SCHEDULER_MIN_BURST_BYTES int =  256
     SCHEDULER_MAX_BURST_BYTES int =  128000000
 )
+
+var Subscribe_qos_scheduler_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    print ("targetUriPath:", targetUriPath)
+
+    seq := pathInfo.Var("sequence")
+    if seq == "" {
+        seq = "*"
+    }
+
+    name   :=  pathInfo.Var("name")
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Info("XfmrSubscribe_qos_scheduler_xfmr")
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{"SCHEDULER":{name+"@"+seq:{}}}}  // tablename & table-idx for the inParams.uri
+    result.needCache = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0 
+    result.nOpts.pType = OnChange
+    log.Info("Returning Subscribe_qos_scheduler_xfmr")
+    return result, err
+}
 
 func getQueuesBySchedulerName(scheduler string) ([]string) {
     var s []string
@@ -430,7 +458,8 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         sched_entry[sched_key].Field["type"] = "STRICT"
     }
 
-    if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" {
+    if (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" ||
+       targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/weight") {
         log.Info("Handling No Weight ")
 
         if isLastSchedulerInActivePolicy(sched_key) &&
@@ -501,7 +530,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
 
     if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler" ||
        (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/priority" && isLastSchedulerField(sched_key, "type")) ||
-       (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" && isLastSchedulerField(sched_key, "weight")) ||
+       ((targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" || targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/weight") && isLastSchedulerField(sched_key, "weight")) ||
        (strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color") && isLastSchedulerFields(sched_key, attrs)) {
 
         // one specific scheduler is deleted
@@ -573,18 +602,21 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         return res_map, err
     }
 
-    seq := pathInfo.Var("sequence")
+    seq :=  ""
+    var seq_val uint32 = 0
+    for seq_val = range spObj.Schedulers.Scheduler {
+        // expect only one scheduler (sequence#) in the request
+        log.Info("YangToDb: Scheduler obj: ", sp_name, " seq_val ", seq_val)
+        seq =strconv.Itoa(int(seq_val))
+        break;
+    }
+
     if seq == "" {
         // no op
         log.Info("YangToDb: no sequence specified")
         return res_map, err
     }
 
-    seq_val, err := strconv.ParseUint(seq, 10, 32)
-    if err != nil {
-        log.Info("YangToDb: no proper sequence value")
-        return res_map, err
-    }
 
     schedObj, ok := spObj.Schedulers.Scheduler[uint32(seq_val)]
     if !ok {

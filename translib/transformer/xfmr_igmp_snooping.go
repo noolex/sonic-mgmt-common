@@ -79,6 +79,7 @@ func init() {
 	XlateFuncBind("DbToYang_igmp_snooping_static_member_state_key_xfmr", DbToYang_igmp_snooping_static_member_state_key_xfmr)
 	XlateFuncBind("YangToDb_igmp_snooping_subtree_xfmr", YangToDb_igmp_snooping_subtree_xfmr)
 	XlateFuncBind("DbToYang_igmp_snooping_subtree_xfmr", DbToYang_igmp_snooping_subtree_xfmr)
+    XlateFuncBind("Subscribe_igmp_snooping_subtree_xfmr", Subscribe_igmp_snooping_subtree_xfmr)
 }
 
 type reqProcessor struct {
@@ -726,8 +727,7 @@ var DbToYang_igmp_snooping_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 	if err != nil {
 		return tlerr.InvalidArgs("Invalid request - error: %v", err)
 	}
-
-	return reqP.translateToYgotObj()
+    return reqP.translateToYgotObj()
 }
 
 func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
@@ -1296,4 +1296,19 @@ func (reqP *reqProcessor) translateToYgotObj() error {
 	pretty.Print(reqP.igmpsObj)
 
 	return err
+}
+
+
+var Subscribe_igmp_snooping_subtree_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+
+    var err error
+    var result XfmrSubscOutParams
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_igmp_snooping_subtree_xfmr:- URI:%s pathinfo:%s ", inParams.uri, pathInfo.Path)
+    log.Infof("Subscribe_igmp_snooping_subtree_xfmr:- Target URI path:%s", targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
 }

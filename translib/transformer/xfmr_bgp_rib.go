@@ -14,6 +14,7 @@ import (
 
 func init () {
     XlateFuncBind("DbToYang_bgp_routes_get_xfmr", DbToYang_bgp_routes_get_xfmr)
+    XlateFuncBind("Subscribe_bgp_routes_get_xfmr", Subscribe_bgp_routes_get_xfmr)
     XlateFuncBind("rpc_show_bgp", rpc_show_bgp)
     XlateFuncBind("rpc_show_bgp_stats", rpc_show_bgp_stats)
 }
@@ -2287,7 +2288,22 @@ func get_all_bgp_nbrs_adj_rib_for_specific_nbr (bgpRib_obj *ocbinds.OpenconfigNe
     return err
 }
 
+var Subscribe_bgp_routes_get_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_bgp_rib_state_xfmr path:%s; template:%s targetUriPath:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
+
 var DbToYang_bgp_routes_get_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+
     var err error
     oper_err := errors.New("Opertational error")
     cmn_log := "GET: xfmr for BGP-RIB"

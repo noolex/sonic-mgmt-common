@@ -26,7 +26,6 @@ import (
         "github.com/Azure/sonic-mgmt-common/translib/db"
         "github.com/Azure/sonic-mgmt-common/translib/tlerr"
         log "github.com/golang/glog"
-        "fmt"
 )
 
 func init () {
@@ -40,6 +39,7 @@ func init () {
     XlateFuncBind("server_table_xfmr", server_table_xfmr)
     XlateFuncBind("YangToDb_server_name_xfmr", YangToDb_server_name_xfmr)
     XlateFuncBind("YangToDb_server_ipaddr_xfmr", YangToDb_server_ipaddr_xfmr)
+    XlateFuncBind("DbToYang_server_ipaddr_xfmr", DbToYang_server_ipaddr_xfmr)
     XlateFuncBind("YangToDb_server_vrf_name_xfmr", YangToDb_server_vrf_name_xfmr)
     XlateFuncBind("DbToYang_server_vrf_name_xfmr", DbToYang_server_vrf_name_xfmr)
     XlateFuncBind("YangToDb_auth_method_xfmr", YangToDb_auth_method_xfmr)
@@ -346,15 +346,24 @@ var YangToDb_server_ipaddr_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (m
     log.Info( "YangToDb_server_ipaddr_xfmr: root: ", inParams.ygRoot,
             ", uri: ", inParams.uri)
     res_map :=  make(map[string]string)
-    pathInfo := NewPathInfo(inParams.uri)
-    servergroupname := pathInfo.Var("name")
-    if servergroupname == "LDAP" {
-	    res_map["NULL"] = "NULL"	
-    } else if inParams.param != nil {
-		res_map["ipaddress"] = fmt.Sprintf("%v", inParams.param)
-    }
-    log.Info( "YangToDb_server_ipaddr_xfmr: res_map: ", res_map)
+	res_map["NULL"] = "NULL"	
     return res_map, nil
+}
+
+var DbToYang_server_ipaddr_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_server_ipaddr_xfmr: ", data, "inParams : ", inParams)
+
+    entry_key := inParams.key
+    key := strings.Split(entry_key, "|")
+    address := key[0]
+    result["address"] = address
+
+    return result, err
 }
 
 var YangToDb_server_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -482,7 +491,7 @@ var global_sg_tbl_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, erro
         tables = append(tables, "TACPLUS")
         tables = append(tables, "LDAP")
         tables = append(tables, "TACPLUS_SERVER")
-    } else {
+    } else if len(servergroupname) > 0 {
         err = errors.New("Invalid server group name")
     }
 
@@ -553,7 +562,7 @@ var YangToDb_ldap_scope_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
     	} else if scopeEnum == ocbinds.OpenconfigSystem_System_Aaa_ServerGroups_ServerGroup_Ldap_Config_Scope_BASE {
     		scopeVal = "base"
     	}
-    	if len(scopeVal) > 0 {
+    	if len (scopeVal) > 0 || inParams.oper == DELETE {
 	    	res_map["scope"] = scopeVal
     	}
     }
@@ -590,8 +599,8 @@ var YangToDb_ldap_ssl_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (
     	} else if sslEnum == ocbinds.OpenconfigAaaLdapExt_LdapSslType_START_TLS {
     		sslVal = "start_tls"
     	}
-    	if len(sslVal) > 0 {
-	    	res_map["ssl"] = sslVal
+    	if len (sslVal) > 0 || inParams.oper == DELETE {
+	    	res_map["ssl"] = sslVal	
     	}
     }
     log.Info("YangToDb_ldap_ssl_field_xfmr: res_map: ", res_map)

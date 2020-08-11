@@ -17,11 +17,19 @@ func init () {
 
     XlateFuncBind("YangToDb_qos_dscp_fwd_group_xfmr", YangToDb_qos_dscp_fwd_group_xfmr)
     XlateFuncBind("DbToYang_qos_dscp_fwd_group_xfmr", DbToYang_qos_dscp_fwd_group_xfmr)
+    XlateFuncBind("Subscribe_qos_dscp_fwd_group_xfmr", Subscribe_qos_dscp_fwd_group_xfmr)
+
     XlateFuncBind("YangToDb_qos_dscp_to_tc_map_fld_xfmr", YangToDb_qos_dscp_to_tc_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_dscp_to_tc_map_fld_xfmr", DbToYang_qos_dscp_to_tc_map_fld_xfmr)
 
 }
 
+
+
+var Subscribe_qos_dscp_fwd_group_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    map_type := "DSCP_TO_TC_MAP"
+    return Subscribe_qos_map_xfmr(inParams, map_type)
+}
 
 var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
@@ -68,14 +76,15 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/dscp-maps/dscp-map/dscp-map-entries/dscp-map-entry")  &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map/dscp-map-entries/dscp-map-entry") {
-        log.Info("YangToDb: map entry unspecified, stop here")
+        log.Info("YangToDb: map entry unspecified, return the map")
+
+        res_map[map_type] = map_entry
         return res_map, err
     }
 
     str := qos_map_oc_yang_key_map[map_type]
     log.Info("key string: " , str)
     entry_key := pathInfo.Var(str)
-    //entry_key := pathInfo.Var("dscp")
     log.Info("entry_key : ", entry_key)
     if entry_key == "" {
         return res_map, err
@@ -154,6 +163,10 @@ func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.Openconf
     var tmp_sta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
+        if k == "NULL" {
+            continue
+        }
+
         if entry_key != "" && k!= entry_key {
             continue
         }

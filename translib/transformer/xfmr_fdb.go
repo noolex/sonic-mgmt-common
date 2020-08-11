@@ -4,14 +4,10 @@ import (
     "errors"
     "strings"
     "strconv"
-    "reflect"
-    gnmipb "github.com/openconfig/gnmi/proto/gnmi"
-    "github.com/openconfig/goyang/pkg/yang"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
-    "github.com/openconfig/ygot/ytypes"
     "encoding/json"
     log "github.com/golang/glog"
 )
@@ -21,6 +17,7 @@ func init () {
     XlateFuncBind("DbToYang_fdb_mac_table_xfmr", DbToYang_fdb_mac_table_xfmr)
     XlateFuncBind("rpc_clear_fdb", rpc_clear_fdb)
     XlateFuncBind("DbToYang_fdb_mac_table_count_xfmr", DbToYang_fdb_mac_table_count_xfmr)
+    XlateFuncBind("Subscribe_fdb_mac_table_xfmr", Subscribe_fdb_mac_table_xfmr)
 }
 
 const (
@@ -35,18 +32,6 @@ var FDB_ENTRY_TYPE_MAP = map[string]string{
     strconv.FormatInt(int64(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_State_EntryType_DYNAMIC), 10): SONIC_ENTRY_TYPE_DYNAMIC,
 }
 
-type reqProcessor_fdb struct {
-	uri        *string
-	uriPath    *gnmipb.Path
-	opcode     int
-	rootObj    *ocbinds.Device
-	targetObj  interface{}
-	db         *db.DB
-	dbs        [db.MaxDB]*db.DB
-	intfConfigObj   *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Interface
-	intfStateObj    *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Interface
-	targetNode *yang.Entry
-}
 var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     var err error
     var  valLst [2]string
@@ -165,41 +150,55 @@ func getFdbMacTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds
 }
 
 var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    path, err := getUriPath(inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
     macAddr := pathInfo.Var("mac-address")
     vlan := pathInfo.Var("vlan")
     instance := pathInfo.Var("name")
+    targetUriPath, err  := getYangPathFromUri(inParams.uri)
+    if err != nil {
+        log.Error("getASICStateMaps failed.")
+        return nil, err
+    }
 
     if strings.HasPrefix(instance, "Vrf") || strings.HasPrefix(instance, "mgmt") {
         log.Error("YangToDb_fdb_mac_table_xfmr Failed to OP:",inParams.oper," FDB on VRF:", instance)
         return nil, err
     }
 
-    reqP := &reqProcessor_fdb{&inParams.uri, path, inParams.oper, (*inParams.ygRoot).(*ocbinds.Device), inParams.param, inParams.d, inParams.dbs, nil, nil, nil}
     log.Info("YangToDb_fdb_mac_table_xfmr =>", inParams)
 
     key := "Vlan" + vlan + "|" + macAddr
     var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
     var fdbTblMap map[string]db.Value = make(map[string]db.Value)
     dbV := db.Value{Field: make(map[string]string)}
-    if (inParams.oper == DELETE) {
+
+    macTbl := getFdbMacTableRoot(inParams.ygRoot, instance, true)
+    if macTbl == nil {
+        log.Info("YangToDb_fdb_mac_table_xfmr - getFdbMacTableRoot returned nil, for URI: ", inParams.uri)
+        return nil, err
+    }
+    ygot.BuildEmptyTree(macTbl)
+
+    switch inParams.oper {
+    case DELETE:
         fdbTblMap[key] = dbV
         res_map["FDB"] = fdbTblMap
         return res_map, nil
-    }
-
-    if targetNodeList, errTmp := ytypes.GetNode(ocbinds.SchemaTree["Device"], reqP.rootObj, path); errTmp != nil || len(targetNodeList) == 0 {
-        return nil, err
-    } else {
-        v := reflect.ValueOf(targetNodeList[0].Data).Elem()
-        var port = v.Field(0).Elem()
-        var portname string = port.String()
-        dbV.Field["port"] = portname
-        fdbTblMap[key] = dbV
-        res_map["FDB"] = fdbTblMap
-
-	return res_map, nil
+    case CREATE:
+        fallthrough
+    case UPDATE:
+        if targetUriPath == "/openconfig-network-instance:network-instances/network-instance/fdb/mac-table/entries/entry/interface/interface-ref/config"{
+            vlanId, _ := strconv.Atoi(vlan)
+            var mcEntryKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Key
+            mcEntryKey.MacAddress = macAddr
+            mcEntryKey.Vlan = uint16(vlanId)
+            intfRef := macTbl.Entries.Entry[mcEntryKey]
+            intfName := intfRef.Interface.InterfaceRef.Config.Interface
+            dbV.Field["port"] = *intfName
+            fdbTblMap[key] = dbV
+            res_map["FDB"] = fdbTblMap
+            return res_map, nil
+        }
     }
     return nil, err
 }
@@ -483,5 +482,25 @@ var DbToYang_fdb_mac_table_count_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
     countTbl.DynamicCount = &dynamicCount
 
     return err
+}
+
+var Subscribe_fdb_mac_table_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    log.Info("Entering Subscribe_fdb_mac_table_xfmr")
+    var err error
+    var result XfmrSubscOutParams
+    result.dbDataMap = make(RedisDbMap)
+    pathInfo := NewPathInfo(inParams.uri)
+    macAddr := pathInfo.Var("mac-address")
+    vlan := pathInfo.Var("vlan")
+    keyName := "Vlan" + vlan + "|" + macAddr
+    tblName := "FDB"
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+
+    result.needCache = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 15
+    result.nOpts.pType = OnChange
+    log.Info("Returning Subscribe_fdb_mac_table_xfmr, result:", result)
+    return result, err
 }
 

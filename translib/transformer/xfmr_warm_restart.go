@@ -21,6 +21,7 @@ package transformer
 import (
 	log "github.com/golang/glog"
         "strconv"
+        "strings"
 	"errors"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
@@ -39,6 +40,10 @@ func init() {
 	XlateFuncBind("YangToDb_wmr_timer_value_field_xfmr", YangToDb_wmr_timer_value_field_xfmr)
 	XlateFuncBind("DbToYang_wmr_timer_value_field_xfmr", DbToYang_wmr_timer_value_field_xfmr)
 	XlateFuncBind("DbToYang_wrm_status_subtree_xfmr", DbToYang_wrm_status_subtree_xfmr)
+	XlateFuncBind("DbToYang_wmr_timer_submodule_field_xfmr", DbToYang_wmr_timer_submodule_field_xfmr)
+	XlateFuncBind("YangToDb_wmr_timer_submodule_field_xfmr", YangToDb_wmr_timer_submodule_field_xfmr)
+	XlateFuncBind("DbToYang_wmr_module_field_xfmr", DbToYang_wmr_module_field_xfmr)
+	XlateFuncBind("YangToDb_wmr_module_field_xfmr", YangToDb_wmr_module_field_xfmr)
 }
 
 //Currently supported module
@@ -295,3 +300,56 @@ var DbToYang_wrm_status_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     log.V(3).Info("submodulesList",submodulesList)
     return err
 }
+
+var YangToDb_wmr_module_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_wmr_module_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_wmr_module_field_xfmr: ", data, "inParams : ", inParams)
+
+    entry_key := inParams.key
+    key := strings.Split(entry_key, "|")
+    modName := key[0]
+    ocModName, ok := getOCModuleName(modName)
+    if !ok {
+       return result, err
+    }
+    result["module"] = ocModName
+
+    return result, err
+}
+
+var YangToDb_wmr_timer_submodule_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_wmr_timer_submodule_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_wmr_timer_submodule_field_xfmr: ", data, "inParams : ", inParams)
+
+    entry_key := inParams.key
+    key := strings.Split(entry_key, "|")
+    modName := key[0]
+    subModule, ok := getSubModuleFromModule(modName)
+    if (!ok) {
+        return result, err
+    }
+
+    result["submodule"] = subModule
+
+    return result, err
+}
+
+
