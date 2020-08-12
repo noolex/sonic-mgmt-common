@@ -61,6 +61,72 @@ func getSchedulerIds(sp_name string) ([]string, error) {
     return sched_ids, err
 }
 
+func getAndValidateSchedulerIds(if_name string, sp_name string) ([]string, error) { 
+    var sched_ids []string
+
+    d, err := db.NewDB(getDBOptions(db.ConfigDB))
+
+    if err != nil {
+        log.Infof("getAndValidateSchedulerIds, unable to get configDB, error %v", err)
+        return sched_ids, err
+    }
+
+
+    defer d.DeleteDB()
+
+    ts := &db.TableSpec{Name: "SCHEDULER"}
+    keys, err := d.GetKeys(ts)
+    for  _, key := range keys {
+        if len(key.Comp) < 1 {
+            continue
+        }
+
+        key0 := key.Get(0)
+        log.Info("Key0 : ", key0)
+
+        log.Info("Current key comp[0]: ", key.Comp[0])
+        var spname string;
+        var spseq string;
+
+        if strings.Contains(key.Comp[0], "@") {
+            s := strings.Split(key.Comp[0], "@")
+            spname = s[0]
+            spseq = s[1]
+        } else {
+            spname = key.Comp[0]
+            spseq = "0"
+        }
+        log.Infof("sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+        if strings.Compare(sp_name, spname) == 0 {
+            entry, err := d.GetEntry(&db.TableSpec{Name: "SCHEDULER"}, key)
+            if err == nil {
+                if entry.Has("meter-type") {
+                    meter_type := entry.Get("meter-type")
+                    if if_name == "CPU" && meter_type == "BYTES" {
+                        errStr := "Invalid scheduler policy meter type for CPU"
+                        err = tlerr.InternalError{Format: errStr}
+                        return sched_ids, err
+                    }
+                    if if_name != "CPU" && meter_type == "PACKETS" {
+                        errStr := "Invalid scheduler policy meter type for " + if_name
+                        err = tlerr.InternalError{Format: errStr}
+                        return sched_ids, err
+                    }
+                } else if if_name == "CPU" {
+                    errStr := "Invalid scheduler policy meter type for CPU"
+                    err = tlerr.InternalError{Format: errStr}
+                    return sched_ids, err
+                }
+            }
+            log.Infof("Add sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+            sched_ids = append(sched_ids, spseq)
+        }
+    }
+
+    log.Info("sp_name: ", sp_name, "sched_ids: ", sched_ids)
+    return sched_ids, err
+}
+
 func qos_intf_prev_sched_policy_delete(inParams XfmrParams, if_name string) (map[string]map[string]db.Value, error) {
     var err error
     res_map := make(map[string]map[string]db.Value)
@@ -205,12 +271,28 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 
     log.Info("YangToDb: sp_name: ", *sp_name)
 
+	// CPU scheduler policy name is fixed
+	if if_name == "CPU" && sp_name_str != "copp-scheduler-policy" {
+        errStr := "Invalid scheduler policy for CPU"
+        err = tlerr.InternalError{Format: errStr}
+        return res_map, err
+	}
+
+	if if_name != "CPU" && sp_name_str == "copp-scheduler-policy" {
+        errStr := "Invalid scheduler policy for " + if_name
+        err = tlerr.InternalError{Format: errStr}
+        return res_map, err
+	}
+
     queueTblMap := make(map[string]db.Value)
     portQosTblMap := make(map[string]db.Value)
     log.Info("YangToDb_qos_intf_sched_policy_xfmr: ", inParams.ygRoot, inParams.uri)
 
     // read scheduler policy and its schedulers (seq).
-    scheduler_ids, _ := getSchedulerIds(sp_name_str)
+    scheduler_ids, err := getAndValidateSchedulerIds(if_name, sp_name_str)
+    if err != nil {
+        return res_map, err
+    }
     if len(scheduler_ids) == 0 {
         errStr := "No instance found for " + *sp_name
         err = tlerr.InternalError{Format: errStr}
