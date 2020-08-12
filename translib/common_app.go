@@ -590,10 +590,12 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						auxRw, auxRwOk = app.cmnAppYangAuxMap[tblNm][tblKey]
 						log.Info("Process Aux row ", auxRw)
 						isTlNd := false
-						isTlNd, err = transformer.IsTerminalNode(app.pathInfo.Path)
-						log.Info("transformer.IsTerminalNode() returned - ", isTlNd, " error ", err)
-						if err != nil {
-							return err
+						if !strings.HasPrefix(app.pathInfo.Path, "/sonic") {
+							isTlNd, err = transformer.IsTerminalNode(app.pathInfo.Path)
+							log.Info("transformer.IsTerminalNode() returned - ", isTlNd, " error ", err)
+							if err != nil {
+								return err
+							}
 						}
 						if isTlNd && isPartialReplace(existingEntry, tblRw, auxRw) {
 							log.Info("Since its partial replace modifying fields - ", tblRw)
