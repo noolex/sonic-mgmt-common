@@ -570,7 +570,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			// Special case when we delete at container that does exist. Not required to do translation. Do not return error either.
 			return nil
 		}
-		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
+		log.Warningf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
 		return err
 	}
 	if !exists {

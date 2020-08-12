@@ -529,7 +529,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	exists, err = verifyParentTable(d, dbs, ygRoot, oper, uri, nil, txCache, subOpMapDiscard)
 	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
 	if err != nil {
-		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
+		log.Warningf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
 		return err
 	}
 	if !exists {
@@ -982,7 +982,6 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 		goto Exit
 	}
 	if st_err != nil {
-		log.Errorf("Failed to get table and key from Subscribe subtree for uri: %v err: %v", uri, st_err)
 		err = st_err
 		parentTblExists = false
 		goto Exit

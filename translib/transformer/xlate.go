@@ -388,7 +388,6 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	isEmptyPayload := false
 	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache)
 	if err != nil {
-		log.Error("XlateFromDb() failure.")
 		return payload, true, err
 	}
 
