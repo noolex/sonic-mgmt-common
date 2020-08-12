@@ -46,7 +46,7 @@ const (
 	STP_MODE                 = "mode"
 	OC_STP_APP_MODULE_NAME   = "/openconfig-spanning-tree:stp"
 	OC_STP_YANG_PATH_PREFIX  = "/device/stp"
-	PVST_MAX_INSTANCES       = 255
+	PVST_MAX_INSTANCES       = 510
 
 	STP_DEFAULT_ROOT_GUARD_TIMEOUT = "30"
 	STP_DEFAULT_FORWARD_DELAY      = "15"

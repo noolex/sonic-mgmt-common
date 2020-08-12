@@ -66,56 +66,181 @@ var DbToYang_sys_tpcm_state_image_list_xfmr FieldXfmrDbtoYang = func(inParams Xf
 
 
 var rpc_tpcm_install_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-    return tpcm_image_operation("install", body)
+        var out_list []string
+        var exec_cmd_list []string
+        log.Info("rpc_tpcm_install_cb body:", string(body))
+
+        var result struct {
+                Output struct {
+                        Status int32 `json:"status"`
+                        Status_detail []string`json:"status-detail"`
+                } `json:"openconfig-system-ext:output"`
+        }
+
+        var operand struct {
+                Input struct {
+                     DockerName string `json:"docker-name"`
+                     ImageSource string `json:"image-source"`
+                     ImageName string `json:"image-name"`
+                     RemoteServer string `json:"remote-server"`
+                     UserName string `json:"username"`
+                     PassWord string `json:"password"`
+                     Args  string `json:"args"`
+                } `json:"openconfig-system-ext:input"`
+        }
+
+       err := json.Unmarshal(body, &operand)
+       if err != nil {
+                result.Output.Status = 1
+                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
+                result.Output.Status_detail  = out_list
+                return json.Marshal(&result)
+       }
+       dockerName := operand.Input.DockerName
+       imageSource := operand.Input.ImageSource
+       imageName := operand.Input.ImageName
+       remoteServer := operand.Input.RemoteServer
+       userName := operand.Input.UserName
+       passWord := operand.Input.PassWord
+       args := operand.Input.Args
+
+       exec_cmd_list = append(exec_cmd_list, "tpcm install")
+       exec_cmd_list = append(exec_cmd_list,  "name " + dockerName)
+       if imageSource == "scp" || imageSource == "sftp" {
+               exec_cmd_list = append(exec_cmd_list,  imageSource)
+               exec_cmd_list = append(exec_cmd_list,  remoteServer)
+               exec_cmd_list = append(exec_cmd_list,  "--username " + userName)
+               exec_cmd_list = append(exec_cmd_list,  "--password " + passWord)
+               exec_cmd_list = append(exec_cmd_list,  "--filename " + imageName)
+       } else {
+               exec_cmd_list = append(exec_cmd_list,  imageSource)
+               exec_cmd_list = append(exec_cmd_list,  imageName)
+       } 
+       if (args != "string") && (len(args) > 0)  {
+               if strings.Contains(args, "\"") {
+                   exec_cmd_list = append(exec_cmd_list,  "--args " + args )
+               } else {
+                   exec_cmd_list = append(exec_cmd_list,  "--args '" + args + "'")
+               }
+       }
+
+        exec_cmd_list = append(exec_cmd_list,  "-y")
+        exec_cmd := strings.Join(exec_cmd_list," ")
+
+    return tpcm_image_operation(exec_cmd)
 }
 
 var rpc_tpcm_uninstall_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-    return tpcm_image_operation("uninstall", body)
+        var out_list []string
+        var exec_cmd_list []string
+        log.Info("rpc_tpcm_uninstall_cb body:", string(body))
+        var result struct {
+                Output struct {
+                        Status int32 `json:"status"`
+                        Status_detail []string`json:"status-detail"`
+                } `json:"openconfig-system-ext:output"`
+        }
+        var operand struct {
+                Input struct {
+                     CleanData string `json:"clean-data"`
+                     DockerName string `json:"docker-name"`
+               } `json:"openconfig-system-ext:input"`
+       }
+
+       err := json.Unmarshal(body, &operand)
+       if err != nil {
+                result.Output.Status = 1
+                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
+                result.Output.Status_detail  = out_list
+                return json.Marshal(&result)
+       }
+
+       cleanData := strings.TrimSpace(operand.Input.CleanData)
+       dockerName := operand.Input.DockerName
+
+       exec_cmd_list = append(exec_cmd_list, "tpcm uninstall")
+       exec_cmd_list = append(exec_cmd_list,  "name " + dockerName)
+       if cleanData != "string" && len(cleanData) > 0 && cleanData == "yes" {
+               exec_cmd_list = append(exec_cmd_list,  "--clean_data ")
+       }
+
+        exec_cmd_list = append(exec_cmd_list,  "-y")
+        exec_cmd := strings.Join(exec_cmd_list," ")
+
+       return tpcm_image_operation(exec_cmd)
 }
 
 var rpc_tpcm_upgrade_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-    return tpcm_image_operation("upgrade", body)
+        var out_list []string
+        var exec_cmd_list []string
+        log.Info("rpc_tpcm_upgrade_cb body:", string(body))
+        var result struct {
+                Output struct {
+                        Status int32 `json:"status"`
+                        Status_detail []string`json:"status-detail"`
+                } `json:"openconfig-system-ext:output"`
+        }
+        var operand struct {
+                Input struct {
+                     DockerName string `json:"docker-name"`
+                     ImageSource string `json:"image-source"`
+                     ImageName string `json:"image-name"`
+                     RemoteServer string `json:"remote-server"`
+                     UserName string `json:"username"`
+                     PassWord string `json:"password"`
+                     SkipDataMigration string `json:"skip-data-migration"`
+                     Args  string `json:"args"`
+                } `json:"openconfig-system-ext:input"`
+        }
+       err := json.Unmarshal(body, &operand)
+       if err != nil {
+                result.Output.Status = 1
+                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
+                result.Output.Status_detail  = out_list
+                return json.Marshal(&result)
+       }
+       dockerName := operand.Input.DockerName
+       imageSource := operand.Input.ImageSource
+       imageName := operand.Input.ImageName
+       remoteServer := operand.Input.RemoteServer
+       userName := operand.Input.UserName
+       passWord := operand.Input.PassWord
+       skipDataMigration := strings.TrimSpace(operand.Input.SkipDataMigration)
+       args := operand.Input.Args
+
+       exec_cmd_list = append(exec_cmd_list, "tpcm upgrade")
+       exec_cmd_list = append(exec_cmd_list,  "name " + dockerName)
+       if  imageSource == "scp" || imageSource == "sftp"  {
+               exec_cmd_list = append(exec_cmd_list,  imageSource)
+               exec_cmd_list = append(exec_cmd_list,  remoteServer)
+               exec_cmd_list = append(exec_cmd_list,  "--username " + userName)
+               exec_cmd_list = append(exec_cmd_list,  "--password " + passWord)
+               exec_cmd_list = append(exec_cmd_list,  "--filename " + imageName)
+       } else {
+               exec_cmd_list = append(exec_cmd_list,  imageSource)
+               exec_cmd_list = append(exec_cmd_list,  imageName)
+       } 
+       if skipDataMigration != "string" && len(skipDataMigration) > 0 && skipDataMigration =="yes" {
+               exec_cmd_list = append(exec_cmd_list,  "--skip_data_migration ")
+       }
+       if (args != "string") && (len(args) > 0)  {
+               if strings.Contains(args, "\"") {
+                   exec_cmd_list = append(exec_cmd_list,  "--args " + args )
+               } else {
+                   exec_cmd_list = append(exec_cmd_list,  "--args '" + args + "'")
+               }
+       }
+
+        exec_cmd_list = append(exec_cmd_list,  "-y")
+        exec_cmd := strings.Join(exec_cmd_list," ")
+  
+        return tpcm_image_operation(exec_cmd)
 }
 
-func tpcm_image_operation(command string, body []byte) ([]byte, error) {
+func tpcm_image_operation(exec_cmd string) ([]byte, error) {
 
-   log.Info("tpcm_image_operation cmd:", command, " body:" ,string(body))
-        var err error
-        var exec_cmd_list []string
-        var options string
-        var dockerName string
-        var imageName string
+   log.Info("tpcm_image_operation cmd:", exec_cmd)
         var out_list []string
-
-        if command == "uninstall" {
-            var operand struct {
-                Input struct {
-                     Options string `json:"options"`
-                     DockerName string `json:"docker-name"`
-               } `json:"sonic-tpcm:input"`
-            }
-
-            err = json.Unmarshal(body, &operand)
-            if err == nil {
-               options = operand.Input.Options
-               dockerName = operand.Input.DockerName
-            }
-        } else {
-            var operand struct {
-                Input struct {
-                     Options string `json:"options"`
-                     DockerName string `json:"docker-name"`
-                     ImageName string `json:"image-name"`
-                } `json:"sonic-tpcm:input"`
-            }
-            err = json.Unmarshal(body, &operand)
-            if err == nil {
-               options = operand.Input.Options
-               dockerName = operand.Input.DockerName
-               imageName = operand.Input.ImageName
-            }
-
-        }
 
    	var result struct {
     		Output struct {
@@ -124,33 +249,6 @@ func tpcm_image_operation(command string, body []byte) ([]byte, error) {
       		} `json:"sonic-tpcm:output"`
     	}
 
-        if err != nil {
-                log.Errorf("tpcm_image_operation: FAILED to parse rpc input; err=%v", err)
-                result.Output.Status = 1
-                out_list = append(out_list, err.Error())
-                out_list = append(out_list, "FAILED")
-                result.Output.Status_detail  = out_list 
-                return json.Marshal(&result)
-
-        }
-
-        exec_cmd_list = append(exec_cmd_list, "tpcm " + command)
-        if (dockerName != "string") {
-           exec_cmd_list = append(exec_cmd_list,  dockerName)
-        }
-
-        if ( command != "uninstall" && imageName != "string") {
-              exec_cmd_list = append(exec_cmd_list,  imageName)
-        }
-
-        if (options != "string") {
-              log.Info("tpcm_image_operation options:", options)
-              exec_cmd_list = append(exec_cmd_list, options)
-        }
-        exec_cmd_list = append(exec_cmd_list,  "-y")
-        exec_cmd := strings.Join(exec_cmd_list," ")
-
-        log.Info("tpcm_image_operation exec_cmd:", exec_cmd)
 
         host_output := HostQuery("infra_host.exec_cmd", exec_cmd)
         if host_output.Err != nil {
@@ -168,14 +266,11 @@ func tpcm_image_operation(command string, body []byte) ([]byte, error) {
         failure_status :=  strings.Contains(_output, "FAILED")
         success_status :=  strings.Contains(_output, "SUCCESS")
 
-        log.Info("tpcm_image_operation output:", _output)
-        if (options == "--help" || failure_status || !success_status) {
-           log.Info("tpcm_image_operation Dispaly all")
+        if (failure_status || !success_status) {
            out_list = strings.Split(_output,"\n")
         } else { 
            _out_list := strings.Split(_output,"\n")
            for index, each := range _out_list {
-                 log.Info("tpcm_image_operation each:", each)
                  i := strings.Index(each, "SUCCESS")
                  if i != -1 {
                      out_list = append(out_list, _out_list[index])
@@ -185,7 +280,6 @@ func tpcm_image_operation(command string, body []byte) ([]byte, error) {
 
         result.Output.Status = 0
         result.Output.Status_detail  = out_list 
-        log.Info("tpcm_image_operation exec_cmd output:", out_list)
         return json.Marshal(&result)
 }
 
