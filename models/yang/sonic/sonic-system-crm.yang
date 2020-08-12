@@ -348,6 +348,37 @@ module sonic-system-crm {
         }
     }
 
+    rpc crm-acl-table-stats {
+
+        description "CRM ACL Table Statistics";
+
+        output {
+            list crm-acl-table-stats-list {
+                description
+                    "ACL Table statistics list";
+                key "id";
+
+                leaf id {
+                    type string;
+                    description
+                        "ACL Table ID";
+                }
+                leaf crm_stats_acl_counter_available {
+                    type uint32;
+                }
+                leaf crm_stats_acl_counter_used {
+                    type uint32;
+                }
+                leaf crm_stats_acl_entry_available {
+                    type uint32;
+                }
+                leaf crm_stats_acl_entry_used {
+                    type uint32;
+                }
+            }
+        }
+    }
+
     rpc crm-stats {
 
         description "CRM Statistics";
