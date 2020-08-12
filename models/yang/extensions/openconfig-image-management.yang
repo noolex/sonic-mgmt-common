@@ -1,0 +1,113 @@
+module openconfig-image-management {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/image-management/extension";
+
+  prefix "oc-img-mgmt";
+
+  //import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module defines operational state data
+    for Image Management.";
+
+  revision "2020-07-20" {
+    description
+      "Initial public revision";
+    reference "0.1.0";
+  }
+
+  //oc-ext:openconfig-version "0.1.0";  
+
+
+  grouping image-management-global-state {
+      description "Grouping for image management global state.";
+         leaf current {
+             type string;
+             description "Active image.";
+         }
+  }
+  grouping image-management-global-config {
+      description "Grouping for image management global config.";
+         leaf next-boot {
+            type string;
+            description "Next boot image.";
+        }
+  }
+
+  grouping image-management-common {
+
+    description "Grouping for image-mangement common data.";
+
+    container image-globals {
+      description "Enclosing container for image-global data.";
+
+    list image-global {
+         key "global-key";
+         
+         description "Image management global configuration.";
+         
+         leaf global-key {
+             type enumeration {
+                 enum "CONFIG" {
+                     description "Global configuration.";
+                 }
+             }
+             description "Default key for global configuration
+               table.";
+         }
+         container state {
+             description "Enclosing state container.";
+             uses image-management-global-config;
+             uses image-management-global-state;
+         }
+      }
+    }
+  }
+
+  grouping image-management-state {
+    description "Grouping for image-mangement state data.";
+    container images {
+      description "Enclosing container for image list.";
+    list image {
+         key "image-name";
+         
+         description "List of images on the device.";
+         
+         leaf image-name {
+             type string;
+             description "Image name.";
+         }
+     }
+   }
+  }
+
+
+  grouping image-management-top {
+    description "Top level grouping for image management containers.";
+    container image-management {
+    
+    description
+    " Enclosing container for operational state data.";
+
+      container state {
+        config false;
+        description
+        "Image management state information.";
+        uses image-management-common;
+        uses image-management-state;
+
+      }
+    }
+  }
+
+  uses image-management-top;
+}
