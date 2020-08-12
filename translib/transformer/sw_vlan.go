@@ -62,7 +62,7 @@ const (
     STP_VLAN_TABLE           = "STP_VLAN"
     STP_VLAN_PORT_TABLE      = "STP_VLAN_PORT"
     STP_PORT_TABLE           = "STP_PORT"
-    PVST_MAX_INSTANCES       = 255
+    PVST_MAX_INSTANCES       = 510
 )
 
 func init () {

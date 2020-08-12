@@ -19,4 +19,10 @@ module sonic-bgp-show-annot {
             sonic-ext:rpc-callback "rpc_show_bgp_stats";
         }
     }
+
+    deviation /sbgpshow:show-bgp-evpn {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_bgp_evpn";
+        }
+    }
 }
