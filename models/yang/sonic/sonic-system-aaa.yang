@@ -1,6 +1,11 @@
 module sonic-system-aaa {
     namespace "http://github.com/Azure/sonic-system-aaa";
     prefix ssys;
+    yang-version 1.1;
+
+    revision 2020-07-30 {
+        description "Adding User container for USERNAME.";
+    }
 
     revision 2020-06-08 {
         description "AAA Name Service.";
@@ -53,6 +58,27 @@ module sonic-system-aaa {
                             error-message "Error: Invalid failthrough setting";
                         }
                     }
+                }
+            }
+        }
+        container USER {
+            list USER_LIST {
+                key "username";
+
+                leaf username {
+                    type string {
+                        pattern '[a-z_][a-z0-9_-]*[$]';
+                        length 1..31;
+                    }
+                }
+
+                leaf password {
+                    type string;
+                }
+
+                leaf role {
+                    type string;
+                    description "Role of the user [admin/operator].";
                 }
             }
         }
