@@ -120,6 +120,7 @@ func init() {
     XlateFuncBind("DbToYang_crm_config_xfmr", DbToYang_crm_config_xfmr)
     XlateFuncBind("DbToYang_crm_stats_xfmr", DbToYang_crm_stats_xfmr)
     XlateFuncBind("DbToYang_crm_acl_stats_xfmr", DbToYang_crm_acl_stats_xfmr)
+    XlateFuncBind("DbToYang_crm_acl_table_stats_xfmr", DbToYang_crm_acl_table_stats_xfmr)
 }
 
 // getUint32 returns value of a field as uint32. Returns 0 if the field does
@@ -1282,3 +1283,66 @@ var DbToYang_crm_acl_stats_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     return getCrmAclStats(inParams.dbs[db.CountersDB], devObj.System.Crm.AclStatistics)
 }
 
+func getCrmAclTableStats (d *db.DB, stats *ocbinds.OpenconfigSystem_System_Crm_AclTableStatistics) (error) {
+
+    tbl := db.TableSpec { Name: "CRM" }
+    key := db.Key { Comp : [] string { "ACL_TABLE_STATS", "*" } }
+    d.Opts.KeySeparator = ":"
+    d.Opts.TableNameSeparator = ":"
+
+    keys, err := d.GetKeysPattern(&tbl, key)
+    if err != nil {
+        return err
+    }
+
+    if stats.AclTableStatisticsList == nil {
+        stats.AclTableStatisticsList = make(map[string]*ocbinds.OpenconfigSystem_System_Crm_AclTableStatistics_AclTableStatisticsList)
+    }
+
+    for i := 0; i < len(keys); i++ {
+        var row ocbinds.OpenconfigSystem_System_Crm_AclTableStatistics_AclTableStatisticsList
+        var counter ocbinds.OpenconfigSystem_System_Crm_AclTableStatistics_AclTableStatisticsList_Counter
+        var entry ocbinds.OpenconfigSystem_System_Crm_AclTableStatistics_AclTableStatisticsList_Entry
+        var val db.Value
+        var id string
+
+        val, err = d.GetEntry(&tbl, keys[i])
+        if err != nil {
+            continue
+        }
+
+        cntFree, hasCntFree := getUint32(val, "crm_stats_acl_counter_available")
+        cntUsed, hasCntUsed := getUint32(val, "crm_stats_acl_counter_used")
+        if hasCntFree {
+            counter.Available = &cntFree
+        }
+        if hasCntUsed {
+            counter.Used = &cntUsed
+        }
+
+        entFree, hasEntFree := getUint32(val, "crm_stats_acl_entry_available")
+        entUsed, hasEntUsed := getUint32(val, "crm_stats_acl_entry_used")
+        if hasEntFree {
+            entry.Available = &entFree
+        }
+        if hasEntUsed {
+            entry.Used = &entUsed
+        }
+
+        id = keys[i].Comp[1]
+        row.Id = &id
+        row.Counter = &counter
+        row.Entry = &entry
+        stats.AclTableStatisticsList[id] = &row
+    }
+
+    return err
+}
+
+var DbToYang_crm_acl_table_stats_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+
+    devObj := (*inParams.ygRoot).(*ocbinds.Device)
+    ygot.BuildEmptyTree(devObj.System.Crm.AclTableStatistics)
+
+    return getCrmAclTableStats(inParams.dbs[db.CountersDB], devObj.System.Crm.AclTableStatistics)
+}
