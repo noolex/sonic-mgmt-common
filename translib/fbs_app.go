@@ -2259,17 +2259,30 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 						ygot.BuildEmptyTree(policyBindData.IngressPolicies.Forwarding)
 						policyBindData.IngressPolicies.Forwarding.Config.PolicyName = &str_val
 						policyBindData.IngressPolicies.Forwarding.State.PolicyName = &str_val
-						app.fillFbsIngressIfPolicyFwdSections(dbs, nativeIfName, str_val, policyBindData.IngressPolicies.Forwarding.Sections)
+						err := app.fillFbsIngressIfPolicyFwdSections(dbs, nativeIfName, str_val, policyBindData.IngressPolicies.Forwarding.Sections)
+                        if (err != nil) {
+                            log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
+                            return err
+                        }
+
 					} else if policyType == SONIC_POLICY_TYPE_MONITORING {
 						ygot.BuildEmptyTree(policyBindData.IngressPolicies.Monitoring)
 						policyBindData.IngressPolicies.Monitoring.Config.PolicyName = &str_val
 						policyBindData.IngressPolicies.Monitoring.State.PolicyName = &str_val
 						app.fillFbsIngressIfPolicyMonSections(dbs, nativeIfName, str_val, policyBindData.IngressPolicies.Monitoring.Sections)
-					} else if policyType == SONIC_POLICY_TYPE_QOS {
+                        if (err != nil) {
+                            log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
+                            return err
+                        }
+                    } else if policyType == SONIC_POLICY_TYPE_QOS {
 						ygot.BuildEmptyTree(policyBindData.IngressPolicies.Qos)
 						policyBindData.IngressPolicies.Qos.Config.PolicyName = &str_val
 						policyBindData.IngressPolicies.Qos.State.PolicyName = &str_val
 						app.fillFbsIngressIfPolicyQosSections(dbs, nativeIfName, str_val, policyBindData.IngressPolicies.Qos.Sections)
+                        if (err != nil) {
+                            log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
+                            return err
+                        }
 					}
 				} else {
 					ygot.BuildEmptyTree(policyBindData.EgressPolicies)
@@ -2278,6 +2291,10 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 						policyBindData.EgressPolicies.Qos.Config.PolicyName = &str_val
 						policyBindData.EgressPolicies.Qos.State.PolicyName = &str_val
 						app.fillFbsEgressIfPolicyQosSections(dbs, nativeIfName, str_val, policyBindData.EgressPolicies.Qos.Sections)
+                        if (err != nil) {
+                            log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
+                            return err;
+                        }
 					}
 				}
 			}
@@ -2302,7 +2319,6 @@ func (app *FbsApp) fillPolicySectionCounters(dbs [db.MaxDB]*db.DB, polPbfKey db.
 	countersDbPtr := dbs[db.CountersDB]
 	fbsCtrVal, err := countersDbPtr.GetEntry(fbsCntrTblTs, polPbfKey)
 	lastFbsCtrVal, err2 := countersDbPtr.GetEntry(lastFbsCntrTblTs, polPbfKey)
-	log.Infof("fbsCtrVal:%v", fbsCtrVal)
 	activeFlag := false
 	if err == nil && err2 == nil {
 		count := get_counter_diff(fbsCtrVal, lastFbsCtrVal, "Packets")
@@ -2315,6 +2331,7 @@ func (app *FbsApp) fillPolicySectionCounters(dbs [db.MaxDB]*db.DB, polPbfKey db.
 		fbsFlowState.Active = activeFlag
 	}
 
+	log.Infof("fbsCtrVal:%v err:%v err2:%v ", fbsCtrVal, err, err2)
 	return err
 }
 
@@ -2429,10 +2446,11 @@ func (app *FbsApp) fillFbsIngressIfPolicyFwdSections(dbs [db.MaxDB]*db.DB, nativ
 	if len(policySectionsData.Section) == 0 {
 		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
 		if err != nil {
+            log.Infof("fillFbsIngressIfPolicyFwdSections err:%v ; policyName:%v ", err, policyName)
 			return err
 		}
 		for _, key := range policySectionKeys {
-			policySectionsData.NewSection(key.Get(1))
+            policySectionsData.NewSection(key.Get(1))
 		}
 	}
 
@@ -2443,15 +2461,17 @@ func (app *FbsApp) fillFbsIngressIfPolicyFwdSections(dbs [db.MaxDB]*db.DB, nativ
 		//Fill PolicySectionDetails
 		ygot.BuildEmptyTree(policySectionData)
 
-		policySectionData.ClassName = &className
-		policySectionData.State.ClassName = &className
-		log.Infof("Policy Get;policyName:%v className:%v ", policyName, className)
+        ygotClassName := className
+		policySectionData.ClassName = &ygotClassName
+		policySectionData.State.ClassName = &ygotClassName
+		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
 
 		//fill forwarding selected egress interface and select nexhop details
 		var fwdState FbsFlowForwardingStateEntry
 		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
 		err := app.fillFbsForwardingStateEntry(dbs, polPbfKey, &fwdState)
 		if err != nil {
+            log.Infof("fbs forwarding flow state get failed err:%v ; polPbfKey:%v ", err, polPbfKey)
 			return err
 		}
 
@@ -2487,6 +2507,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyMonSections(dbs [db.MaxDB]*db.DB, nativ
 	if len(policySectionsData.Section) == 0 {
 		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
 		if err != nil {
+            log.Infof("fillFbsIngressIfPolicyMonSections failed err:%v ; policyName:%v ", err, policyName)
 			return err
 		}
 		for _, key := range policySectionKeys {
@@ -2501,14 +2522,16 @@ func (app *FbsApp) fillFbsIngressIfPolicyMonSections(dbs [db.MaxDB]*db.DB, nativ
 		//Fill PolicySectionDetails
 		ygot.BuildEmptyTree(policySectionData)
 
-		policySectionData.ClassName = &className
-		policySectionData.State.ClassName = &className
-		log.Infof("Policy Get;policyName:%v className:%v ", policyName, className)
+        ygotClassName := className
+		policySectionData.ClassName = &ygotClassName
+		policySectionData.State.ClassName = &ygotClassName
+		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
 
 		var fbsFlowState FbsFwdCountersEntry
 		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
 		err := app.fillPolicySectionCounters(dbs, polPbfKey, &fbsFlowState)
 		if nil != err {
+            log.Infof("fillPolicySectionCounters failed err:%v ; polPbfKey:%v ", err, polPbfKey)
 			return err
 		}
 
@@ -2529,6 +2552,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, nativ
 	if len(policySectionsData.Section) == 0 {
 		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
 		if err != nil {
+            log.Infof("fillFbsIngressIfPolicyQosSections failed err:%v ; policyName:%v ", err, policyName)
 			return err
 		}
 		for _, key := range policySectionKeys {
@@ -2543,32 +2567,37 @@ func (app *FbsApp) fillFbsIngressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, nativ
 		//Fill PolicySectionDetails
 		ygot.BuildEmptyTree(policySectionData)
 
-		policySectionData.ClassName = &className
-		policySectionData.State.ClassName = &className
-		log.Infof("Policy Get;policyName:%v className:%v ", policyName, className)
+        ygotClassName := className
+		policySectionData.ClassName = &ygotClassName
+		policySectionData.State.ClassName = &ygotClassName
+		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
 
 		var qosState FbsFlowQosStateEntry
 		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
 		err := app.fillFbsQosStateEntry(dbs, polPbfKey, &qosState)
-		if err != nil {
-			return err
-		}
-		policySectionData.State.Active = &qosState.Active
-		policySectionData.State.Cir = &(qosState.policerState.Cir)
-		policySectionData.State.Pir = &(qosState.policerState.Pir)
-		policySectionData.State.Bc = &(qosState.policerState.Bc)
-		policySectionData.State.Be = &(qosState.policerState.Be)
+        if err != nil {
+            activeFlag := false;
+            log.Infof("policer State not active ; polPbfKey:%v ", polPbfKey)
+            policySectionData.State.Active = &activeFlag
+        } else {
+            policySectionData.State.Active = &qosState.Active
+            policySectionData.State.Cir = &(qosState.policerState.Cir)
+            policySectionData.State.Pir = &(qosState.policerState.Pir)
+            policySectionData.State.Bc = &(qosState.policerState.Bc)
+            policySectionData.State.Be = &(qosState.policerState.Be)
 
-		policySectionData.State.ConformingOctets = &(qosState.ConformingOctets)
-		policySectionData.State.ConformingPkts = &(qosState.ConformingPkts)
-		policySectionData.State.ExceedingOctets = &(qosState.ExceedingOctets)
-		policySectionData.State.ExceedingPkts = &(qosState.ExceedingPkts)
-		policySectionData.State.ViolatingOctets = &(qosState.ViolatingOctets)
-		policySectionData.State.ViolatingPkts = &(qosState.ViolatingPkts)
+            policySectionData.State.ConformingOctets = &(qosState.ConformingOctets)
+            policySectionData.State.ConformingPkts = &(qosState.ConformingPkts)
+            policySectionData.State.ExceedingOctets = &(qosState.ExceedingOctets)
+            policySectionData.State.ExceedingPkts = &(qosState.ExceedingPkts)
+            policySectionData.State.ViolatingOctets = &(qosState.ViolatingOctets)
+            policySectionData.State.ViolatingPkts = &(qosState.ViolatingPkts)
+        }
 
 		var fbsFlowState FbsFwdCountersEntry
 		err = app.fillPolicySectionCounters(dbs, polPbfKey, &fbsFlowState)
 		if nil != err {
+            log.Infof("fillPolicySectionCounters failed err:%v; polPbfKey:%v ", err, polPbfKey)
 			return err
 		}
 
@@ -2589,6 +2618,7 @@ func (app *FbsApp) fillFbsEgressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, native
 	if len(policySectionsData.Section) == 0 {
 		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
 		if err != nil {
+            log.Infof("fillFbsEgressIfPolicyQosSections failed err:%v ; policyName:%v ", err, policyName)
 			return err
 		}
 		for _, key := range policySectionKeys {
@@ -2603,32 +2633,37 @@ func (app *FbsApp) fillFbsEgressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, native
 		//Fill PolicySectionDetails
 		ygot.BuildEmptyTree(policySectionData)
 
-		policySectionData.ClassName = &className
-		policySectionData.State.ClassName = &className
-		log.Infof("Policy Get;policyName:%v className:%v ", policyName, className)
+        ygotClassName := className
+		policySectionData.ClassName = &ygotClassName
+		policySectionData.State.ClassName = &ygotClassName
+		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
 
 		var qosState FbsFlowQosStateEntry
 		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
 		err := app.fillFbsQosStateEntry(dbs, polPbfKey, &qosState)
 		if err != nil {
-			return err
-		}
-		policySectionData.State.Active = &qosState.Active
-		policySectionData.State.Cir = &(qosState.policerState.Cir)
-		policySectionData.State.Pir = &(qosState.policerState.Pir)
-		policySectionData.State.Bc = &(qosState.policerState.Bc)
-		policySectionData.State.Be = &(qosState.policerState.Be)
-
-		policySectionData.State.ConformingOctets = &(qosState.ConformingOctets)
-		policySectionData.State.ConformingPkts = &(qosState.ConformingPkts)
-		policySectionData.State.ExceedingOctets = &(qosState.ExceedingOctets)
-		policySectionData.State.ExceedingPkts = &(qosState.ExceedingPkts)
-		policySectionData.State.ViolatingOctets = &(qosState.ViolatingOctets)
-		policySectionData.State.ViolatingPkts = &(qosState.ViolatingPkts)
+            activeFlag := false;
+            policySectionData.State.Active = &activeFlag
+            log.Infof("policer State not active ; polPbfKey:%v ", polPbfKey)
+		} else {
+			policySectionData.State.Active = &qosState.Active
+			policySectionData.State.Cir = &(qosState.policerState.Cir)
+			policySectionData.State.Pir = &(qosState.policerState.Pir)
+			policySectionData.State.Bc = &(qosState.policerState.Bc)
+			policySectionData.State.Be = &(qosState.policerState.Be)
+            
+			policySectionData.State.ConformingOctets = &(qosState.ConformingOctets)
+			policySectionData.State.ConformingPkts = &(qosState.ConformingPkts)
+			policySectionData.State.ExceedingOctets = &(qosState.ExceedingOctets)
+			policySectionData.State.ExceedingPkts = &(qosState.ExceedingPkts)
+			policySectionData.State.ViolatingOctets = &(qosState.ViolatingOctets)
+			policySectionData.State.ViolatingPkts = &(qosState.ViolatingPkts)
+        }
 
 		var fbsFlowState FbsFwdCountersEntry
 		err = app.fillPolicySectionCounters(dbs, polPbfKey, &fbsFlowState)
 		if nil != err {
+            log.Infof("fillPolicySectionCounters failed err:%v; polPbfKey:%v ", err, polPbfKey)
 			return err
 		}
 
