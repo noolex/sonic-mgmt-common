@@ -228,8 +228,8 @@ const (
    TEMP_CURRENT               = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:current"
    TEMP_HIGH_THRES            = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:high-threshold"
    TEMP_LOW_THRES             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:low-threshold"
-   WARNING_STATUS             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:warning-status"
-   TIMESTAMP                  = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:timestamp"
+   TEMP_TIMESTAMP             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:timestamp"
+   TEMP_WARNING_STATUS        = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:warning-status"
 )
 
 /**
@@ -377,9 +377,9 @@ type TempSensor struct {
     Current              string
     High_Threshold       string
     Low_Threshold        string
+    Name                 string
     Warning_Status       string
     Timestamp            string
-    Name                 string
 }
 
 func init () {
@@ -1023,6 +1023,7 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
     var query_result = HostQuery("fetch_environment.action", "")
     if query_result.Err != nil {
         log.Infof("Error in Calling dbus fetch_environment %v", query_result.Err)
+        return query_result.Err
     }
     env_op := query_result.Body[1].(string)
     scanner := bufio.NewScanner(strings.NewReader(env_op))
@@ -2718,10 +2719,19 @@ func getSysTempFromDb(name string, d *db.DB) (TempSensor, error) {
     tempInfo.Crit_Low_Threshold = tempEntry.Get("critical_low_threshold")
     tempInfo.High_Threshold = tempEntry.Get("high_threshold")
     tempInfo.Low_Threshold = tempEntry.Get("low_threshold")
-    tempInfo.Warning_Status = tempEntry.Get("warning_status")
     tempInfo.Timestamp = tempEntry.Get("timestamp")
+    tempInfo.Warning_Status = tempEntry.Get("warning_status")
 
     return tempInfo, err
+}
+
+/* This function converts the timestamp stored in the dB to the pattern accepted
+ * by the IETF timestamp pattern specified in the YANG model
+ */
+func convertToIetfTime(time string) (string) {
+    time = time[:8] + "T" + time[9:]
+    time = time[:4] + "-" + time[4:6] + "-" + time[6:8] + time[8:] + "Z"
+    return time
 }
 
 func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component_State,
@@ -2773,16 +2783,17 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
             }
             tempCom.LowThreshold = &lt
         }
-        if tempInfo.Warning_Status != "" {
-            ws, terr := strconv.ParseBool(tempInfo.Warning_Status)
-            if terr != nil {
-                return terr
-            }
-            tempCom.WarningStatus = &ws
+        warning := false
+        if tempInfo.Warning_Status != "" && strings.ToLower(tempInfo.Warning_Status) == "true" {
+            warning = true
         }
+        tempCom.WarningStatus = &warning
+
         if tempInfo.Timestamp != "" {
-            tempCom.Timestamp = &tempInfo.Timestamp
+            timeStamp := convertToIetfTime(tempInfo.Timestamp)
+            tempCom.Timestamp = &timeStamp
         }
+
         return err
     }
 
@@ -2831,17 +2842,16 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
             }
             tempCom.LowThreshold = &lt
         }
-    case WARNING_STATUS:
-        if tempInfo.Warning_Status != "" {
-            ws, terr := strconv.ParseBool(tempInfo.Warning_Status)
-            if terr != nil {
-                return terr
-            }
-            tempCom.WarningStatus = &ws
+    case TEMP_WARNING_STATUS:
+        warning := false
+        if tempInfo.Warning_Status != "" && strings.ToLower(tempInfo.Warning_Status) == "true" {
+            warning = true
         }
-    case TIMESTAMP:
+        tempCom.WarningStatus = &warning
+    case TEMP_TIMESTAMP:
         if tempInfo.Timestamp != "" {
-            tempCom.Timestamp = &tempInfo.Timestamp
+            timeStamp := convertToIetfTime(tempInfo.Timestamp)
+            tempCom.Timestamp = &timeStamp
         }
     }
 
