@@ -11,6 +11,10 @@ module sonic-snmp {
     prefix inet;
   }
 
+  import sonic-common {
+    prefix scommon;
+  }
+
   organization
     "SONiC";
 
@@ -177,20 +181,45 @@ module sonic-snmp {
         leaf sysContact {
           type identifier;
           description
-            "String that describes the system contact information.";
+            "SNMP System Contact.";
         }
 
         leaf sysLocation {
           type identifier;
           description
-            "String that describes the system location information.";
+            "SNMP System Location.";
         }
 
         leaf traps {
-          type identifier;
+          type scommon:mode-enable;
           description
-            "String that describes the system trap information";
+            "SNMP System Global Trap enable.";
         }
+      }
+    }
+
+    container SNMP_AGENT_ADDRESS_CONFIG {
+      list SNMP_AGENT_ADDRESS_CONFIG_LIST {
+        key "ip port interface";
+
+        leaf ip {
+          type inet:ip-address;
+          description
+            "The IPv4 or IPv6 address of the SNMP agent.";
+        }
+
+        leaf port {
+          type inet:port-number;
+          description
+            "UDP listening port number.";
+        }
+
+        leaf interface {
+          type string;
+          description
+            "Listening interface";
+        }
+
       }
     }
 
@@ -485,42 +514,12 @@ module sonic-snmp {
           }
         }
 
-        leaf enabled {
-          type boolean;
-          description
-            "Enables the SNMP engine. This is always true";
-        }
-
         leaf engine-id {
           type engine-id;
           description
             "The local SNMP engine's administratively assigned unique
              identifier. If this leaf is not set, the device automatically
              calculates an engine ID, as described in RFC 3411.";
-        }
-      }
-    }
-
-    container SNMP_AGENT_ADDRESS_CONFIG {
-      list SNMP_AGENT_ADDRESS_CONFIG_LIST {
-        key "addr port interface";
-
-        leaf addr {
-          type inet:ip-address;
-          description
-            "The IPv4 or IPv6 address of the SNMP agent.";
-        }
-
-        leaf port {
-          type inet:port-number;
-          description
-            "UDP listening port number.";
-        }
-
-        leaf interface {
-          type string;
-          description
-            "Listening interface.";
         }
       }
     }
