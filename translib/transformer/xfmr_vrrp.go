@@ -1304,6 +1304,7 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
     var err error
     var result XfmrSubscOutParams
     var tableName string
+    var trackStr string
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -1314,6 +1315,18 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
     } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group" ||
               targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group" {
          tableName = "VRRP6"
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group/vrrp-track/vrrp-track-interface" ||
+              targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/openconfig-interfaces-ext:vrrp-track/vrrp-track-interface" {
+        tableName = "VRRP_TRACK"
+        _trackIf := pathInfo.Var("track-intf")
+        trackIf := utils.GetNativeNameFromUIName(&_trackIf)
+        trackStr = "|" + *trackIf
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group/vrrp-track/vrrp-track-interface" ||
+              targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/openconfig-interfaces-ext:vrrp-track/vrrp-track-interface" {
+        tableName = "VRRP6_TRACK"
+        _trackIf := pathInfo.Var("track-intf")
+        trackIf := utils.GetNativeNameFromUIName(&_trackIf)
+        trackStr = "|" + *trackIf
     } else {
         log.Infof("Subscribe attempted on unsupported path:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
         return result, err
@@ -1323,9 +1336,9 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
     vrId       := pathInfo.Var("virtual-router-id")
 
     ifName := utils.GetNativeNameFromUIName(&_ifName)
-    var redisKey string = *ifName + "|" + vrId
+    var redisKey string = *ifName + "|" + vrId + trackStr
 
-    log.Info("redisKey:", *ifName, vrId, redisKey)
+    log.Info("redisKey:", tableName, *ifName, vrId, redisKey, trackStr)
 
     result.dbDataMap = make(RedisDbMap)
     log.Infof("Subscribe_intf_vrrp_xfmr path:%s; template:%s targetUriPath:%s key:%s",
