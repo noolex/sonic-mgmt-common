@@ -23,8 +23,6 @@ module openconfig-interfaces-ext {
     import ietf-yang-types { prefix yang; }
     import ietf-inet-types { prefix "ietf-inet"; }
     import openconfig-if-types-ext { prefix oc-if-types-ext; }
-
-    include openconfig-ip-helper-interface-ext;
  
     organization "SONiC";
 
