@@ -160,7 +160,7 @@ func mapFillDataUtil(xlateParams xlateToParams) error {
 		/* field transformer present */
 		xfmrLogInfoAll("Transformer function(\"%v\") invoked for yang path(\"%v\"). uri: %v", xpathInfo.xfmrField, xlateParams.xpath, xlateParams.uri)
 		curYgotNodeData, nodeErr := yangNodeForUriGet(xlateParams.uri, xlateParams.ygRoot)
-		if nodeErr != nil {
+		if nodeErr != nil && xlateParams.oper != DELETE {
 			return nil
 		}
 		inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, xlateParams.uri, xlateParams.requestUri, xlateParams.oper, xlateParams.keyName, nil, xlateParams.subOpDataMap, curYgotNodeData, xlateParams.txCache)
