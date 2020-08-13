@@ -186,7 +186,7 @@ func (nhs *ipNexthopSet)updateNH(nh ipNexthop, oper int) (bool, error) {
     }
     var changed bool
     if _, ok := nhs.nhList[nh.index]; !ok {
-        if oper == CREATE || oper == UPDATE {
+        if oper == CREATE || oper == UPDATE || oper == REPLACE {
             nhs.nhList[nh.index] = nh
             changed = true
         }
@@ -194,7 +194,7 @@ func (nhs *ipNexthopSet)updateNH(nh ipNexthop, oper int) (bool, error) {
         if oper == DELETE {
             delete(nhs.nhList, nh.index)
             changed = true
-        } else if oper == REPLACE {
+        } else if oper == REPLACE || oper == UPDATE {
             nhs.nhList[nh.index] = nh
             changed = true
         }
@@ -706,7 +706,7 @@ func (data *vrfRouteInfo)isDataValid(scope uriScopeType, oper int, vrf string) b
                 }
             }
         }
-    } else if scope != STATIC_ROUTES {
+    } else if scope != STATIC_ROUTES && oper == DELETE {
         // check if route or nexthop in DB
         for pfx, route := range vrfRoute {
             if route.dbNh == nil || len(route.dbNh.nhList.nhList) == 0 {
@@ -878,6 +878,7 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
                 } else {
                     // udpate nexthop
                     if inParams.oper != REPLACE || uriScope == STATIC_ROUTES_NEXTHOP {
+                        // add original nexthop to new list
                         for k, v := range routeInfo.dbNh.nhList.nhList {
                             if _, ok := routeInfo.ygotNhList.nhList[k]; !ok {
                                 routeInfo.ygotNhList.updateNH(v, CREATE)
