@@ -12,6 +12,7 @@ import (
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "errors"
+    "reflect"
 )
 
 const (
@@ -333,7 +334,11 @@ func parsePlatformDefJsonFile () (error) {
                 /* Val is of type interface{}
                    Need to conver to string first
                 */
-                platDefStr["port-group"][pg_key][key] = val.(string)
+                switch reflect.TypeOf(val).Kind() {
+                case reflect.String:
+                    platDefStr["port-group"][pg_key][key] = val.(string)
+                case reflect.Slice:
+                }
             }
         }
 
