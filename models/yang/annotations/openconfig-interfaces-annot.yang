@@ -201,6 +201,12 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation  "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ospfv2-ext:ospfv2" {
+        deviate add {
+            sonic-ext:subtree-transformer "ospfv2_interface_subtree_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6/oc-ip:addresses {
         deviate add {
             sonic-ext:table-name "NONE";
