@@ -211,20 +211,7 @@ var YangToDb_server_vrf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 
     log.Infof("YangToDb_server_vrf_name_xfmr: Address %v VRF %v", key, vrfName)
 
-    if vrfName == "default" {
-        subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
-        subMap := make(map[string]map[string]db.Value)
-        vrfMap := make(map[string]db.Value)
-
-        vrfDbValues  := db.Value{Field: map[string]string{}}
-        (&vrfDbValues).Set("vrf", "mgmt")
-        vrfMap[key] = vrfDbValues
-
-        log.Infof("YangToDb_server_vrf_name_xfmr: vrfMap %v", vrfMap)
-        subMap["TACPLUS_SERVER"] = vrfMap
-        subOpMap[db.ConfigDB] = subMap
-        inParams.subOpDataMap[DELETE] = &subOpMap
-    } else if vrfName == "mgmt" {
+    if vrfName == "mgmt" {
         if strings.Contains(servergroupName, "TACACS") {
             err = validateMgmtVrfExists(inParams.d)
         }
