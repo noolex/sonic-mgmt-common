@@ -506,6 +506,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Neighbors_Neighbor
 
     intfNameRcvd := pathInfo.Var("name")
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
+  
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
@@ -584,7 +586,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
           available in the received URI
         */
         if (strings.Contains(targetUriPath, "ipv4") && addrFamily != "IPv4") ||
-            (intfName != intfNameRcvd ) {
+            (intfName != *nativeIntfName ) {
                 log.Info("Skipping entry: ", entry, "for interface: ", intfName, " and IP:", ipAddr,
                          "interface received: ", intfNameRcvd, " IP received: ", ipAddrRcvd)
                 continue
@@ -653,6 +655,8 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
 
     intfNameRcvd := pathInfo.Var("name")
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
+ 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
         log.Info("DbToYang_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
@@ -730,7 +734,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
           available in the received URI
         */
         if (strings.Contains(targetUriPath, "ipv6") && addrFamily != "IPv6") ||
-            (intfName != intfNameRcvd ) {
+            (intfName != *nativeIntfName) {
                 log.Info("Skipping entry: ", entry, "for interface: ", intfName, " and IP:", ipAddr,
                          "interface received: ", intfNameRcvd, " IP received: ", ipAddrRcvd)
                 continue
