@@ -206,8 +206,8 @@ func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.Openconf
     log.Info("Done fetching dscp-map : ", name)
 
     if entry_key != "" && entry_added == 0 {
-        err = tlerr.NotFoundError{Format:"Instance Not found"}
-        log.Info("Instance not found.")
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        log.Info("Resource not found.")
         return err
     }
 
@@ -256,8 +256,8 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     }
 
     if name != "" && map_added == 0 {
-        err = tlerr.NotFoundError{Format:"Instance Not found"}
-        log.Info("Instance not found.")
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        log.Info("Resource not found.")
         return err
     }
 

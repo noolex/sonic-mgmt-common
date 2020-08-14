@@ -96,7 +96,7 @@ func qos_map_delete_xfmr(inParams XfmrParams, map_type string) (map[string]map[s
     if map_name != "" {
         map_entry, err = get_map_entry_by_map_name(inParams.d, map_type, map_name)
         if err != nil {
-            err = tlerr.InternalError{Format:"Instance Not found"}
+            err = tlerr.NotFoundError{Format:"Resource not found"}
             log.Info("map name not found.")
             return res_map, err
         }
@@ -113,8 +113,8 @@ func qos_map_delete_xfmr(inParams XfmrParams, map_type string) (map[string]map[s
         return qos_map_delete_by_map_name(inParams, map_type, map_name)
     } else  {
         _, exist := map_entry.Field[entry_key]
-        if !exist { 
-            err = tlerr.InternalError{Format:"Field Name Value Not found"}
+        if !exist {
+            err = tlerr.NotFoundError{Format:"Resource not found"}
             log.Info("Field Name value not found.", entry_key)
             return res_map, err
         }
@@ -285,7 +285,6 @@ var map_type_name_in_db = map[string]string {
 }
 
 func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_qos_intf_qos_map_xfmr", inParams)
 
     res_map := make(map[string]interface{})
 
@@ -299,7 +298,6 @@ func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[s
     key := db.Key{Comp: []string{*dbIfName}}
     qCfg, _ := inParams.d.GetEntry(dbSpec, key) 
 
-    log.Info("current entry: ", qCfg)
     db_attr_name, ok := map_type_name_in_db[map_type]
     if !ok {
         log.Info("map_type not implemented", map_type)

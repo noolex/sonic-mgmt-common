@@ -283,7 +283,6 @@ func doGetIntfPfcWdAction(d *db.DB, if_name string) (string) {
 
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
         return ""
     }
 
@@ -309,7 +308,6 @@ func doGetIntfPfcWdDetect(d *db.DB, if_name string) (int) {
 
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
         return 0
     }
 
@@ -338,7 +336,6 @@ func doGetIntfPfcWdRestore(d *db.DB, if_name string) (int) {
 
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
         return 0
     }
 
@@ -365,7 +362,6 @@ var DbToYang_qos_intf_pfcwd_st_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     dbIfName := utils.GetNativeNameFromUIName(&ifname)
     if_name := *dbIfName
     log.Info("DbToYang_qos_intf_pfcwd_st_xfmr   if_name : ", if_name)
-
     qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
     if qosIntfsObj == nil {
         return nil
@@ -607,13 +603,11 @@ var DbToYang_qos_intf_pfc_counters_st_xfmr SubTreeXfmrDbToYang = func(inParams X
   log.Info("DbToYang_qos_intf_pfc_counters_st_xfmr       uri: ", inParams.uri)
 
   var err error
-
   pathInfo := NewPathInfo(inParams.uri)
   ifname := pathInfo.Var("interface-id")
   dot1p  := pathInfo.Var("dot1p")
   cos32, _ := strconv.Atoi(dot1p)
   cos := uint8(cos32)
-
   qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
   if qosIntfsObj == nil {
       return nil
