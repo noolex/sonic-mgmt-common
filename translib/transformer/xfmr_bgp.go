@@ -840,11 +840,6 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     if value, ok := mapData["address"].(string) ; ok {
         if value != "" {
             ip_address = value + " "
-            if dampvalue, ok := mapData["dampening"].(bool) ; ok {
-               if dampvalue {
-                  ip_address = value + " "
-               }
-            }
         }
     }
 
@@ -864,7 +859,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     if value, ok := mapData["prefix"].(string) ; ok {
         if value != "" {
             prefix = "prefix " + value + " "
-
+            af_str = ""
             if dampvalue, ok := mapData["dampening"].(bool) ; ok {
                if dampvalue {
                   prefix = value + " "
@@ -905,68 +900,67 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     log.Info("In rpc_clear_bgp ", clear_all, vrf_name, af_str, all, ip_address, intf, asn, prefix, peer_group, dampening, in, out, soft)
 
-    if !is_evpn {
-        cmdbase = "clear ip bgp "
-    } else {
+    if clear_all != "" && dampening == "" {
+        cmdbase = "clear bgp "
+    } else if is_evpn {
         cmdbase = "clear bgp l2vpn "
-    }
-    if clear_all != "" {
-        cmd = cmdbase + clear_all
     } else {
-        cmd = cmdbase
-        if vrf_name != "" {
-            cmd = cmdbase + vrf_name
-        }
-
-        if af_str != "" {
-            cmd = cmd + af_str
-        }
-
-        if dampening != "" {
-            cmd = cmd + dampening
-        }
-
-        if ip_address != "" {
-            cmd = cmd + ip_address
-        }
-
-        if intf != "" {
-            cmd = cmd + intf
-        }
-
-        if prefix != "" {
-            cmd = cmd + prefix
-        }
-
-        if peer_group != "" {
-            cmd = cmd + peer_group
-        }
-
-        if external != "" {
-            cmd = cmd + external
-        }
-
-        if asn != "" {
-            cmd = cmd + asn
-        }
-
-        if all != "" {
-            cmd = cmd + all
-        }
-
-        if soft != "" {
-            cmd = cmd + soft
-        }
-
-        if in != "" {
-            cmd = cmd + in
-        }
-
-        if out != "" {
-            cmd = cmd + out
-        }
-
+        cmdbase = "clear ip bgp "
     }
+
+    cmd = cmdbase
+    if vrf_name != "" {
+        cmd = cmdbase + vrf_name
+    }
+
+    if af_str != "" {
+        cmd = cmd + af_str
+    }
+
+    if dampening != "" {
+        cmd = cmd + dampening
+    }
+
+    if ip_address != "" {
+        cmd = cmd + ip_address
+    }
+
+    if intf != "" {
+        cmd = cmd + intf
+    }
+
+    if prefix != "" {
+        cmd = cmd + prefix
+    }
+
+    if peer_group != "" {
+        cmd = cmd + peer_group
+    }
+
+    if external != "" {
+        cmd = cmd + external
+    }
+
+    if asn != "" {
+        cmd = cmd + asn
+    }
+
+    if all != "" {
+        cmd = cmd + all
+    }
+
+    if soft != "" {
+        cmd = cmd + soft
+    }
+
+    if in != "" {
+        cmd = cmd + in
+    }
+
+    if out != "" {
+        cmd = cmd + out
+    }
+
     cmd = strings.TrimSuffix(cmd, " ")
     exec_vtysh_cmd (cmd)
     status = "Success"
