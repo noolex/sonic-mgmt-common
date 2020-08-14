@@ -23,7 +23,9 @@ func init () {
     XlateFuncBind("DbToYang_pim_intf_mode_fld_xfmr", DbToYang_pim_intf_mode_fld_xfmr)
     XlateFuncBind("DbToYang_pim_intf_state_xfmr", DbToYang_pim_intf_state_xfmr)
     XlateFuncBind("DbToYang_pim_nbrs_state_xfmr", DbToYang_pim_nbrs_state_xfmr)
+    XlateFuncBind("Subscribe_pim_nbrs_state_xfmr", Subscribe_pim_nbrs_state_xfmr)
     XlateFuncBind("DbToYang_pim_tib_state_xfmr", DbToYang_pim_tib_state_xfmr)
+    XlateFuncBind("Subscribe_pim_tib_state_xfmr", Subscribe_pim_tib_state_xfmr)
     XlateFuncBind("rpc_show_pim", rpc_show_pim)
     XlateFuncBind("rpc_clear_pim", rpc_clear_pim)
 }
@@ -542,6 +544,19 @@ var DbToYang_pim_nbrs_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     return err
 }
 
+var Subscribe_pim_nbrs_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_pim_nbrs_state_xfmr path:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
+}
+
 type _xfmr_pim_tib_state_key struct {
     niName string
     grpAddr string
@@ -767,6 +782,19 @@ var DbToYang_pim_tib_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     return err
+}
+
+var Subscribe_pim_tib_state_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("Subscribe_pim_tib_state_xfmr path:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
+
+    result.isVirtualTbl = true
+    return result, err
 }
 
 func get_rpc_show_pim_sub_cmd_for_rpf_ (mapData map[string]interface{}) (bool, string, string) {
