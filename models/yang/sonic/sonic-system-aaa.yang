@@ -74,9 +74,10 @@ module sonic-system-aaa {
 
                 leaf password {
                     type string;
+                    description "Hashed password for username.";
                 }
 
-                leaf role {
+                leaf-list role {
                     type string;
                     description "Role of the user [admin/operator].";
                 }
