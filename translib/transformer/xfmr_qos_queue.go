@@ -27,13 +27,7 @@ var YangToDb_qos_queue_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
        return entry_key, nil
     }
 
-    dbQueueName, err := getDbQueueName(qname)
-    if err != nil {
-        log.Info("YangToDb_qos_queue_key_xfmr - invalid queue ", qname)
-        return entry_key, nil
-    }
-
-    qKey := strings.Replace(strings.Replace(dbQueueName, " ", "_", -1), "-", "_", -1)
+    qKey := strings.Replace(strings.Replace(qname, " ", "_", -1), "-", "_", -1)
 
     entry_key = strings.Replace(qKey, ":", "|", -1)
     log.Info("YangToDb_qos_queue_key_xfmr - entry_key : ", entry_key)
