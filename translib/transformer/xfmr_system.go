@@ -474,7 +474,7 @@ var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
             key :=db.Key{Comp: []string{userName}}
             err = d.DeleteEntry(userTable, key)
             if err != nil {
-                log.Infof("YangToDb_sys_aaa_auth_xfmr, set default entry error %v", err)
+                log.Infof("YangToDb_sys_aaa_auth_xfmr, delete entry error %v", err)
                 return nil, err
             }
         }
@@ -496,10 +496,10 @@ var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 key :=db.Key{Comp: []string{*(value.Config.Username)}}
                 userInfo := db.Value {Field: map[string]string{}}
                 (&userInfo).Set("password", *(value.Config.PasswordHashed))
-                (&userInfo).Set("role", temp.String)
+                (&userInfo).Set("role@", temp.String)
                 err = d.CreateEntry(userTable, key, userInfo)
                 if err != nil {
-                    log.Infof("YangToDb_sys_aaa_auth_xfmr, set default entry error %v", err)
+                    log.Infof("YangToDb_sys_aaa_auth_xfmr, create entry error %v", err)
                     return nil, err
                 }
             }
