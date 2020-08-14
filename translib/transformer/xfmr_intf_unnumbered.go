@@ -33,6 +33,8 @@ import (
 func init () {
     XlateFuncBind("YangToDb_unnumbered_intf_xfmr", YangToDb_unnumbered_intf_xfmr)
     XlateFuncBind("DbToYang_unnumbered_intf_xfmr", DbToYang_unnumbered_intf_xfmr)
+    XlateFuncBind("YangToDb_routed_vlan_unnumbered_intf_xfmr", YangToDb_routed_vlan_unnumbered_intf_xfmr)
+    XlateFuncBind("DbToYang_routed_vlan_unnumbered_intf_xfmr", DbToYang_routed_vlan_unnumbered_intf_xfmr)
 }
 
 /* Validates whether Donor interface has multiple IPv4 Address configured on it */
@@ -85,8 +87,7 @@ func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 }
 
 
-func intf_unnumbered_del(tblName *string, subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface,
-                         inParams *XfmrParams, ifdb map[string]string, ifName *string) error  {
+func intf_unnumbered_del(tblName *string, inParams *XfmrParams, ifdb map[string]string, ifName *string) error  {
     var err error
 	log.Info("DELETE Unnum Intf:=", *tblName, *ifName)
 
@@ -211,7 +212,7 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
         //Delete is for IPv4 container
         if inParams.oper == DELETE {
             if validateUnnumEntryExists(inParams.d, &tblName, &ifName) {
-                err = intf_unnumbered_del(&tblName, subIntfObj, &inParams, ifdb, &ifName)
+                err = intf_unnumbered_del(&tblName, &inParams, ifdb, &ifName)
                 if err != nil {
                     return subIntfmap, err
                 }
@@ -231,7 +232,7 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     log.Info("subIntfObj:=", subIntfObj)
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.Unnumbered != nil && subIntfObj.Ipv4.Unnumbered.InterfaceRef != nil {
         if inParams.oper == DELETE {
-            err = intf_unnumbered_del(&tblName, subIntfObj, &inParams, ifdb, &ifName)
+            err = intf_unnumbered_del(&tblName, &inParams, ifdb, &ifName)
             if err != nil {
                 return subIntfmap, err
             }
@@ -372,6 +373,225 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
             if entry.Has(UNNUMBERED) {
                 value := entry.Get(UNNUMBERED)
                 subIntf.Ipv4.Unnumbered.InterfaceRef.State.Interface = &value
+                log.Info("State Unnum Intf : " + value)
+            }
+        }
+    }
+    return err
+}
+
+var YangToDb_routed_vlan_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    var err error
+    resMap := make(map[string]map[string]db.Value)
+
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        log.Info("YangToDb_routed_vlan_unnumbered_intf_xfmr: IntfsObj/interface list is empty.")
+        return resMap, errors.New("IntfsObj/Interface is not specified")
+    }
+
+    pathInfo := NewPathInfo(inParams.uri)
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+    log.Infof("YangToDb_routed_vlan_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
+
+    if ifName == "" {
+        errStr := "Interface KEY not present"
+        log.Info("YangToDb_routed_vlan_unnumbered_intf_xfmr: " + errStr)
+        return resMap, errors.New(errStr)
+    }
+
+    if _, ok := intfsObj.Interface[uriIfName]; !ok {
+        errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
+        log.Info("YangToDb_routed_vlan_unnumbered_intf_xfmr : " + errStr)
+        return resMap, errors.New(errStr)
+    }
+
+    intfObj := intfsObj.Interface[uriIfName]
+    intfType, _, ierr := getIntfTypeByName(ifName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        errStr := "Invalid interface type IntfTypeUnset"
+        log.Info("YangToDb_routed_vlan_unnumbered_intf_xfmr : " + errStr)
+        return resMap, errors.New(errStr)
+    }
+    intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
+
+    if intfObj.RoutedVlan == nil {
+        // Delete is for Interface instance / routed-vlan container level
+        if inParams.oper == DELETE {
+            return nil, nil
+        } 
+        errStr := "Routed vlan node is not set"
+        log.Info("YangToDb_routed_vlan_unnumbered_intf_xfmr : " + errStr)
+        return resMap, errors.New(errStr)
+    }
+
+    ipv4Obj := intfObj.RoutedVlan.Ipv4
+
+    ifdb := make(map[string]string)
+    if _, ok := resMap[tblName]; !ok {
+        resMap[tblName] = make(map[string]db.Value)
+    }
+
+    if ipv4Obj == nil || ipv4Obj.Unnumbered == nil || ipv4Obj.Unnumbered.InterfaceRef == nil {
+        //Delete is for IPv4 container
+        if inParams.oper == DELETE {
+            if validateUnnumEntryExists(inParams.d, &tblName, &ifName) {
+                err = intf_unnumbered_del(&tblName, &inParams, ifdb, &ifName)
+                if err != nil {
+                    return resMap, err
+                }
+                value := db.Value{Field: ifdb}
+                resMap[tblName][ifName] = value
+                log.Info("resMap: ", resMap)
+                return resMap, err
+            } else {
+                return nil, nil
+            }
+        }
+        errStr := "IPv4 ygot structure missing"
+        log.Info("YangToDb_routed_vlan_unnumbered_intf_xfmr : " + errStr)
+        return resMap, errors.New(errStr)
+    }
+
+    if ipv4Obj != nil && ipv4Obj.Unnumbered != nil && ipv4Obj.Unnumbered.InterfaceRef != nil {
+        if inParams.oper == DELETE {
+            err = intf_unnumbered_del(&tblName, &inParams, ifdb, &ifName)
+            if err != nil {
+                return resMap, err
+            }
+            value := db.Value{Field: ifdb}
+            resMap[tblName][ifName] = value
+            return resMap, err
+        }
+        unnumberedObj := ipv4Obj.Unnumbered.InterfaceRef
+        if unnumberedObj.Config != nil {
+            log.Info("Unnum Intf:=", *unnumberedObj.Config.Interface)
+            ifdb[UNNUMBERED] = *unnumberedObj.Config.Interface
+        }
+        value := db.Value{Field: ifdb}
+
+		if inParams.oper == REPLACE || inParams.oper == CREATE {
+			subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+			subResMap := make(map[string]map[string]db.Value)
+			subResMap[tblName] = make(map[string]db.Value)
+			subResMap[tblName][ifName] = value
+			subOpMap[db.ConfigDB] = subResMap
+			log.Info("subOpMap: ", subOpMap)
+			inParams.subOpDataMap[UPDATE] = &subOpMap
+		} else {
+        	resMap[tblName][ifName] = value
+		}
+    }
+
+    log.Info("YangToDb_routed_vlan_unnumbered_intf_xfmr : resMap : ", resMap)
+    return resMap, err
+}
+
+var DbToYang_routed_vlan_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (error) {
+    var err error
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    pathInfo := NewPathInfo(inParams.uri)
+    uriIfName := pathInfo.Var("name")
+    ifName := uriIfName
+
+    log.Info("db to yang - unnumbered sub tree and ifname: ", ifName)
+    sonicIfName := utils.GetNativeNameFromUIName(&ifName)
+    log.Infof("DbToYang_routed_vlan_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    ifName = *sonicIfName
+    targetUriPath, err := getYangPathFromUri(inParams.uri)
+
+    log.Info("targetUriPath is ", targetUriPath)
+
+    var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
+    intfType, _, ierr := getIntfTypeByName(ifName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        errStr := "Invalid interface type IntfTypeUnset"
+        log.Info("DbToYang_routed_vlan_unnumbered_intf_xfmr: " + errStr)
+        return errors.New(errStr)
+    }
+
+    intTbl := IntfTypeTblMap[intfType]
+
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") {
+        if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
+            var ok bool = false
+            if intfObj, ok = intfsObj.Interface[uriIfName]; !ok {
+                intfObj, _ = intfsObj.NewInterface(uriIfName)
+            }
+            ygot.BuildEmptyTree(intfObj)
+            if intfObj.RoutedVlan == nil {
+                ygot.BuildEmptyTree(intfObj.RoutedVlan)
+            }
+        } else {
+            ygot.BuildEmptyTree(intfsObj)
+            intfObj, _ = intfsObj.NewInterface(uriIfName)
+            ygot.BuildEmptyTree(intfObj)
+        }
+
+        routedVlanObj := intfObj.RoutedVlan
+        ygot.BuildEmptyTree(routedVlanObj)
+        ygot.BuildEmptyTree(routedVlanObj.Ipv4)
+        ygot.BuildEmptyTree(routedVlanObj.Ipv4.Unnumbered)
+        ygot.BuildEmptyTree(routedVlanObj.Ipv4.Unnumbered.InterfaceRef)
+
+        if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/unnumbered/interface-ref/state") ||
+            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/ipv4/unnumbered/interface-ref/state") {
+            entry, dbErr := inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                routedVlanObj.Ipv4.Unnumbered.InterfaceRef.State.Interface = &value
+                log.Info("State Unnum Intf : " + value)
+            }
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/unnumbered/interface-ref/config") ||
+                strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/ipv4/unnumbered/interface-ref/config") {
+            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                routedVlanObj.Ipv4.Unnumbered.InterfaceRef.Config.Interface = &value
+                log.Info("Config Unnum Intf: " + value)
+            }
+        } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/unnumbered/interface-ref") ||
+                strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces:unnumbered/interface-ref") {
+            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read Config DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                routedVlanObj.Ipv4.Unnumbered.InterfaceRef.Config.Interface = &value
+                log.Info("Config Unnum Intf: " + value)
+            }
+
+            entry, dbErr = inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
+
+            if dbErr != nil {
+                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + ifName)
+                return nil
+            }
+
+            if entry.Has(UNNUMBERED) {
+                value := entry.Get(UNNUMBERED)
+                routedVlanObj.Ipv4.Unnumbered.InterfaceRef.State.Interface = &value
                 log.Info("State Unnum Intf : " + value)
             }
         }
