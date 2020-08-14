@@ -122,7 +122,7 @@ func InvokeCustomValidation(cv *CustomValidation, name string, args... interface
 	if !f.IsNil() {
 		v := f.Call(inputs)
 		util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC,
-		"InvokeCustomValidation: %s(), return value = %v", v[0])
+			"InvokeCustomValidation: %s(), CVLErrorInfo: %v", name, v[0])
 
 		return (v[0].Interface()).(CVLErrorInfo)
 	}

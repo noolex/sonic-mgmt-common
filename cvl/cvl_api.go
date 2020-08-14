@@ -403,6 +403,18 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 						cvlErrObj.ConstraintErrMsg = cvlErrObj.Msg
 						return cvlErrObj, CVL_SEMANTIC_ERROR
 					}
+
+					//Check mandatory node deletion
+					if len(field) != 0 && isMandatoryTrueNode(tbl, field) {
+						cvlErrObj.ErrCode = CVL_SEMANTIC_ERROR
+						cvlErrObj.Msg = "Mandatory field getting deleted"
+						cvlErrObj.TableName = tbl
+						cvlErrObj.Field = field
+						cvlErrObj.CVLErrDetails = cvlErrorMap[cvlErrObj.ErrCode]
+						cvlErrObj.ErrAppTag = "mandatory-field-delete"
+						cvlErrObj.ConstraintErrMsg = cvlErrObj.Msg
+						return cvlErrObj, CVL_SEMANTIC_ERROR
+					}
 				}
 			} else {
 				//Entire entry to be deleted

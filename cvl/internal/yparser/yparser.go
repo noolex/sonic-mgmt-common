@@ -274,6 +274,7 @@ type YParserListInfo struct {
 	XpathExpr map[string][]*XpathExpression
 	CustValidation map[string]string
 	WhenExpr map[string][]*WhenExpression //multiple when expression for choice/case etc
+	MandatoryNodes map[string]bool
 }
 
 type YParserLeafValue struct {
@@ -863,6 +864,13 @@ func getModelChildInfo(l *YParserListInfo, node *C.struct_lys_node,
 					}
 				}
 			}
+
+			// check for mandatory flag
+			if (sChild.flags & C.LYS_MAND_MASK) == C.LYS_MAND_TRUE {
+				l.MandatoryNodes[leafName] = true
+			} else if (sChild.flags & C.LYS_MAND_MASK) == C.LYS_MAND_FALSE {
+				l.MandatoryNodes[leafName] = false
+			}
 		}
 	}
 }
@@ -913,6 +921,7 @@ func GetModelListInfo(module *YParserModule) []*YParserListInfo {
 			l.CustValidation = make(map[string]string)
 			l.WhenExpr = make(map[string][]*WhenExpression)
 			l.DfltLeafVal = make(map[string]string)
+			l.MandatoryNodes = make(map[string]bool)
 
 			//Add keys
 			keys := (*[10]*C.struct_lys_node_leaf)(unsafe.Pointer(slist.keys))
