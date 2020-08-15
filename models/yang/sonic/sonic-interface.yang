@@ -18,6 +18,10 @@ module sonic-interface {
             prefix lointf;
         }
 
+        import sonic-loopback {
+            prefix lo;
+        }
+
         import sonic-portchannel {
             prefix spc;
         }
@@ -47,7 +51,10 @@ module sonic-interface {
 	description
 		"SONIC INTERFACE";
 
-
+    revision 2020-07-26 {
+        description
+            "Modification for sonic-loopback.yang.";
+    }
     revision 2020-04-07 {
         description
             "Add VRF and IP address attribute";
@@ -72,8 +79,7 @@ module sonic-interface {
         description
 	        "Initial revision.";
     }
-
-
+    
 /*
  * RPCs
 */
@@ -310,7 +316,7 @@ module sonic-interface {
 
 					sonic-ext:custom-validation ValidateIpv4UnnumIntf;
                     type leafref {
-                        path "/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST/lointf:loIfName";
+                        path "/lo:sonic-loopback/lo:LOOPBACK/lo:LOOPBACK_LIST/lo:name";
                     }
                 }
 

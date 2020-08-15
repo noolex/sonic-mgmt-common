@@ -26,6 +26,10 @@ module sonic-vlan-interface {
         prefix lointf;
     }
 
+    import sonic-loopback {
+        prefix lo;
+    }
+
     import sonic-extension {
         prefix sonic-ext;
     }
@@ -39,6 +43,10 @@ module sonic-vlan-interface {
     description
         "SONIC VLAN INTERFACE";
 
+    revision 2020-07-26 {
+        description
+            "Change for sonic-loopback.yang.";
+    }
     revision 2020-04-07 {
         description
             "Add VRF and IP address attribute";
@@ -133,7 +141,7 @@ module sonic-vlan-interface {
                     sonic-ext:custom-validation ValidateIpv4UnnumIntf;
 
                     type leafref {
-                        path "/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST/lointf:loIfName";
+                        path "/lo:sonic-loopback/lo:LOOPBACK/lo:LOOPBACK_LIST/lo:name";
                     }
                 }
 

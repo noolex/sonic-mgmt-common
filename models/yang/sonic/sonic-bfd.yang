@@ -19,8 +19,8 @@ module sonic-bfd {
         	prefix svlan;
     	}
 
-        import sonic-loopback-interface {
-                prefix sloif;
+        import sonic-loopback {
+                prefix slo;
         }
 
         organization
@@ -32,6 +32,10 @@ module sonic-bfd {
         description
                 "SONIC BFD";
 
+        revision 2020-07-26 {
+                description
+                        "Change for sonic-loopback.yang.";
+        }
         revision 2019-11-22 {
                 description  
                         "Initial revision.";
@@ -73,7 +77,7 @@ module sonic-bfd {
                                         path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                                 }
                                 type leafref {
-                                        path "/sloif:sonic-loopback-interface/sloif:LOOPBACK_INTERFACE/sloif:LOOPBACK_INTERFACE_LIST/sloif:loIfName";
+                                        path "/slo:sonic-loopback/slo:LOOPBACK/slo:LOOPBACK_LIST/slo:name";
                                 }
                         }
 
