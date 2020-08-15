@@ -113,7 +113,7 @@ var relay_agent_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string,
     var tblList []string
     var err error
 
-    log.V(2).Info("RATableXfmrFunc - Uri: ", inParams.uri);
+    log.Info("RATableXfmrFunc - Uri: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
@@ -122,7 +122,7 @@ var relay_agent_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string,
     log.V(2).Info(ifName)
 
     if ifName == "" {
-        log.Info("TableXfmrFunc - intf_table_xfmr Intf key is not present")
+        log.V(2).Info("TableXfmrFunc - intf_table_xfmr Intf key is not present")
 
         if _, ok := dbIdToTblMap[inParams.curDb]; !ok {
             log.Info("TableXfmrFunc - intf_table_xfmr db id entry not present")
@@ -170,7 +170,7 @@ var DbToYang_relay_agent_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
     var err error
     var tblList string
     res_map := make(map[string]interface{})
-    log.V(2).Info("DbToYang_relay_agent_intf_tbl_key_xfmr: ", inParams.key)
+    log.Info("DbToYang_relay_agent_intf_tbl_key_xfmr: ", inParams.key)
 
     if (inParams.key != "") {
         var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
@@ -188,7 +188,7 @@ var DbToYang_relay_agent_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
         entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{inParams.key}})
         configDb.DeleteDB()
         if dbErr != nil {
-            log.Info("Failed to read mgmt port status from config DB, " + tblList + " " + inParams.key)
+            log.Info("Failed to read dhcp relay obj from config DB, " + tblList + " " + inParams.key)
             return res_map, dbErr
         }
 
@@ -219,7 +219,7 @@ var YangToDb_relay_agent_id_field_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
         vlanId := ifName[len("Vlan"):]
         res_map["vlanid"] = vlanId
     }
-    log.V(2).Info("YangToDb_relay_agent_id_field_xfmr: res_map:", res_map)
+    log.Info("YangToDb_relay_agent_id_field_xfmr: res_map:", res_map)
     return res_map, err
 }
 
@@ -227,7 +227,7 @@ var YangToDb_relay_agent_id_field_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 func getRelayCountersFromFile (fileName string, counterObj interface{}) error {
    
     tmpFileName := PATH_PREFIX + fileName
-    log.V(2).Info(tmpFileName) 
+    log.Info(tmpFileName) 
 
     jsonFile, err := os.Open(tmpFileName)
     if err != nil {
@@ -272,7 +272,7 @@ var DbToYang_relay_agent_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrP
     var raObj *ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface 
     var jsonRelayAgentCounter JSONDhcpCounters
 
-    log.V(2).Info("In DbToYang_relay_agent_counters_xfmr")
+    log.Info("In DbToYang_relay_agent_counters_xfmr")
     log.V(2).Info(inParams)
     relayAgentObj := getRelayAgentRoot(inParams.ygRoot)
     log.V(2).Info(relayAgentObj)
@@ -358,7 +358,7 @@ var DbToYang_relay_agent_v6_counters_xfmr SubTreeXfmrDbToYang = func(inParams Xf
     var raObj *ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface 
     var jsonV6RelayAgentCounter JSONDhcpv6Counters
 
-    log.V(2).Info("In DbToYang_relay_agent_v6_counters_xfmr")
+    log.Info("In DbToYang_relay_agent_v6_counters_xfmr")
     log.V(2).Info(inParams)
     relayAgentObj := getRelayAgentRoot(inParams.ygRoot)
     log.V(2).Info(relayAgentObj)
@@ -462,19 +462,19 @@ func getRelayAgentIntfTblByType(ifName string) string {
 }
 
 // Helper function to get the tableName
-func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, configDb *db.DB) {
+func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, configDb *db.DB) error{
    tblList := getRelayAgentIntfTblByType(ifName)
    log.V(2).Info(tblList)
 
    entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
    if dbErr != nil {
-     log.Warning("Failed to read mgmt port status from config DB, " + tblList + " " + ifName)
-     return
+     log.Info("Failed to read dhcp relay object from config DB, " + tblList + " " + ifName)
+     return tlerr.InvalidArgsError{Format: "Failed to read dhcp relay object from config DB"}
    }
 
    //continue only if there is data to proceed 
    if !entry.Has("dhcp_servers@") {
-      return
+      return nil
    }
 
    //Now create and assign the values to the object
@@ -489,8 +489,21 @@ func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgen
    ygot.BuildEmptyTree(raObj.Config)
 
    //Helper Address
-   helperAddress := entry.GetList("dhcp_servers")
-   raObj.Config.HelperAddress = helperAddress
+   // if the user is asking for a specific helper address only that address should be returned
+   helperAddress := entry.GetList("dhcp_servers@")
+   if raObj.Config.HelperAddress != nil {
+      for index := 0; (index < len(helperAddress)  && index < 4 && helperAddress[index] != ""); index++ {
+           if helperAddress[index] == strings.ReplaceAll(raObj.Config.HelperAddress[0], " ", ""){  
+               //helperAddress exists
+               raObj.Config.HelperAddress[0] =  helperAddress[index]
+               return nil
+           }
+       }
+       //helper address not found, return an empty object
+       return tlerr.NotFoundError{Format:"Resource not found"}
+   } else {
+       raObj.Config.HelperAddress = helperAddress
+   }
    
    //Augmented Params
    if entry.Has("dhcp_relay_link_select") {
@@ -536,22 +549,23 @@ func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgen
         raObj.Config.PolicyAction = ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface_Config_PolicyAction_DISCARD
      }
    }
+   return nil
 }
 
 // Helper function to get the tableName
-func getDhcpv6DataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, configDb *db.DB) {
+func getDhcpv6DataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, configDb *db.DB) error {
    tblList := getRelayAgentIntfTblByType(ifName)
    log.V(2).Info(tblList)
 
    entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
    if dbErr != nil {
-     log.Warning("Failed to read mgmt port status from config DB, " + tblList + " " + ifName)
-     return
+       log.Info("Failed to read dhcp relay object from config DB, " + tblList + " " + ifName)
+       return tlerr.InvalidArgsError{Format: "Failed to read dhcp relay object from config DB"}
    }
 
    //continue only if there is data to proceed 
    if !entry.Has("dhcpv6_servers@")  {
-      return
+       return nil
    }
 
    //Now create and assign the values to the object
@@ -566,8 +580,21 @@ func getDhcpv6DataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAg
    ygot.BuildEmptyTree(raObj.Config)
 
    //Helper Address
+   // if the user is asking for a specific helper address only that address should be returned
    helperAddress := entry.GetList("dhcpv6_servers@")
-   raObj.Config.HelperAddress = helperAddress
+   if raObj.Config.HelperAddress != nil {
+       for index := 0; (index < len(helperAddress)  && index < 4 && helperAddress[index] != ""); index++ {
+           if helperAddress[index] == strings.ReplaceAll(raObj.Config.HelperAddress[0], " ", ""){  
+               //helperAddress exists
+               raObj.Config.HelperAddress[0] =  helperAddress[index]
+               return nil
+           }
+       }
+       //helper address not found, return an empty object
+       return tlerr.NotFoundError{Format:"Resource not found"}
+   } else {
+       raObj.Config.HelperAddress = helperAddress
+   }
 
    //Augmented Params
    if entry.Has("dhcpv6_relay_max_hop_count")  {
@@ -595,7 +622,7 @@ func getDhcpv6DataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAg
      serverVrf:= entry.Get("dhcpv6_server_vrf")
      raObj.Config.Vrf = &serverVrf
    }
-
+   return nil
 }
 
 //Helper function to fetch relay info for a given interface
@@ -604,13 +631,13 @@ func getRelayAgentInfoForInterface (ifName string, inParams XfmrParams, relayAge
    var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
 
    if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent/dhcpv6")) {
-      getDhcpv6DataFromDb(ifName, relayAgentObj, configDb)
+       err = getDhcpv6DataFromDb(ifName, relayAgentObj, configDb)
    } else if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent/dhcp")) {
-      getDhcpDataFromDb(ifName, relayAgentObj, configDb)
+       err = getDhcpDataFromDb(ifName, relayAgentObj, configDb)
    } else if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent")) {
-      //top most level so display v4 and v6 data
-      getDhcpDataFromDb(ifName, relayAgentObj, configDb)
-      getDhcpv6DataFromDb(ifName, relayAgentObj, configDb)
+       //top most level so display v4 and v6 data
+       _ = getDhcpDataFromDb(ifName, relayAgentObj, configDb)
+       _ = getDhcpv6DataFromDb(ifName, relayAgentObj, configDb)
    }
 
    configDb.DeleteDB()
@@ -651,7 +678,7 @@ func getRelayAgentInfoForAllInterfaces (inParams XfmrParams) error {
 var DbToYang_relay_agent_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error
 
-    log.V(2).Info("DbToYang_relay_agent_xfmr: ", inParams.uri)
+    log.Info("DbToYang_relay_agent_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("id")
     targetUriPath := inParams.requestUri
@@ -698,7 +725,7 @@ func replaceRelayAgentObjectAttributes (inParams XfmrParams)  error{
    var tblList string
    var err error
 
-   log.V(2).Info("replaceRelayAgentObjectAttributes: ", inParams.uri)
+   log.Info("replaceRelayAgentObjectAttributes: ", inParams.uri)
    updateMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
    updateMap[db.ConfigDB] = make(map[string]map[string]db.Value)
@@ -722,7 +749,7 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
    var index uint8
    var err error
 
-   log.V(2).Info("replaceDhcpObjectAttributes, tblList: ", tblList)
+   log.Info("replaceDhcpObjectAttributes, tblList: ", tblList)
 
 
    for ifName := range relayAgentObj.Dhcp.Interfaces.Interface {
@@ -802,7 +829,7 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
 	if (intf.Config.LinkSelect == ocbinds.OpenconfigRelayAgentExt_Mode_ENABLE) {
             entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
             if dbErr != nil {
-            log.Info("Failed to read dhcp relay config info from configdb")
+            log.Info("Failed to read dhcp relay obj from config DB, " + tblList + " " + inParams.key)
             return  dbErr
             }
             log.V(2).Info("entry:", entry)
@@ -890,7 +917,7 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
    var index uint8
    var err error
 
-   log.V(2).Info("replaceDhcpV6ObjectAttributes, tblList: ", tblList)
+   log.Info("replaceDhcpV6ObjectAttributes, tblList: ", tblList)
 
    for ifName := range relayAgentObj.Dhcpv6.Interfaces.Interface {
 
@@ -1035,7 +1062,7 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
 
    targetUriPath := inParams.requestUri
 
-   log.V(2).Info("deleteRelayAgentObjectAttributes: ", inParams.uri)
+   log.Info("deleteRelayAgentObjectAttributes: ", inParams.uri)
 
    if ifName == "" {
        errStr := "deleteRelayAgentObjectAttributes - ifName is NULL"
@@ -1050,7 +1077,7 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
    entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
    configDb.DeleteDB()
    if dbErr != nil {
-     errStr := "Failed to read mgmt port status from config DB, " + tblList + " " + ifName
+     errStr := "Failed to read dhcp relay obj from config DB, " + tblList + " " + ifName
      err = tlerr.InvalidArgsError{Format: errStr}
      return err
    }
@@ -1267,7 +1294,7 @@ var YangToDb_relay_agent_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
    res_map := make(map[string]map[string]db.Value)
    targetUriPath := inParams.requestUri
    
-   log.V(2).Info("YangToDb_relay_agent_xfmr: ", inParams.uri)
+   log.Info("YangToDb_relay_agent_xfmr: ", inParams.uri)
 
    switch inParams.oper {
         case CREATE:

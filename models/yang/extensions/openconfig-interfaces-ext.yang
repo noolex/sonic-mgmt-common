@@ -62,7 +62,6 @@ module openconfig-interfaces-ext {
         description "Additional fast-rate attribute for LAG configuration";
         leaf fast-rate {
             type boolean;
-            default false;
             description "If true, send LACP packets every second; Else every 30 secs";
         }
     }

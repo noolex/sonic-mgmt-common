@@ -130,6 +130,16 @@ module sonic-extensions {
     description "Db table field/key value transformer name. This can be applied to transform yang value to some different format.";
   }
 
+  extension table-owner {
+    argument "table-owner-flag";
+    description "Owner of the redis-db table.";
+  }
+
+  extension virtual-table {
+    argument "virtual-table-flag";
+    description "Table not present in redis-db.";
+  }
+
   extension pre-transformer {
 	  argument "pre-transformer-name";
 	  description "Transformer name that will perform pre-translation tasks.";

@@ -35,6 +35,40 @@ func init () {
     XlateFuncBind("DbToYang_unnumbered_intf_xfmr", DbToYang_unnumbered_intf_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_unnumbered_intf_xfmr", YangToDb_routed_vlan_unnumbered_intf_xfmr)
     XlateFuncBind("DbToYang_routed_vlan_unnumbered_intf_xfmr", DbToYang_routed_vlan_unnumbered_intf_xfmr)
+    XlateFuncBind("Subscribe_unnumbered_intf_xfmr", Subscribe_unnumbered_intf_xfmr)
+}
+
+var Subscribe_unnumbered_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    result.dbDataMap = make(RedisDbMap)
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    keyName := pathInfo.Var("name")
+
+    //Get correct interface table to be modified. Start
+    intfType, _, ierr := getIntfTypeByName(keyName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        errStr := "Invalid interface type IntfTypeUnset"
+        log.Info("Subscribe_unnumbered_intf_xfmr: " + errStr)
+        return result, errors.New(errStr)
+    }
+
+    intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getIntfTableNameByDBId(intTbl, db.ConfigDB)
+    log.Info("Subscribe_unnumbered_intf_xfmr: Table: ", tblName, " TargetURI: ", targetUriPath, " Key: ", keyName)
+
+    if (keyName != "") {
+        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+    } else {
+        errStr := "Interface name not present in request"
+        log.Info("Subscribe_unnumbered_intf_xfmr: " + errStr)
+        return result, errors.New(errStr)
+    }
+    result.isVirtualTbl = false
+    log.Info("Subscribe_unnumbered_intf_xfmr resultMap:", result.dbDataMap)
+    return result, err
 }
 
 /* Validates whether Donor interface has multiple IPv4 Address configured on it */

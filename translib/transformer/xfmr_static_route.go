@@ -19,7 +19,7 @@ const (
         DEFAULT_VRF = "default"
       )
 
-var tableFieldNames [6]string = [6]string{"blackhole", "nexthop", "ifname", "distance", "nexthop-vrf", "track"}
+var tableFieldNames [7]string = [7]string{"blackhole", "nexthop", "ifname", "distance", "nexthop-vrf", "track", "tag" }
 
 func zeroIp(ipv4 bool) string {
     var gwIp string
@@ -114,6 +114,7 @@ type ipNexthop struct {
     blackhole bool
     gwIp *IPExt
     ifName string
+    tag uint32
     distance uint32
     vrf string
     track uint16
@@ -133,6 +134,9 @@ func (nh ipNexthop) String() string {
     if len(nh.ifName) > 0 {
         str += fmt.Sprintf(" INTF %s", nh.ifName)
     }
+    if nh.tag != 0 {
+        str += fmt.Sprintf(" TAG %d", nh.tag)
+    }
     if nh.distance != 0 {
         str += fmt.Sprintf(" DIST %d", nh.distance)
     }
@@ -146,7 +150,7 @@ func (nh ipNexthop) String() string {
     return str
 }
 
-func newNexthop(srcVrf string, bkh bool, gw string, intf string, dist uint32, vrf string, track uint16) (*ipNexthop, error) {
+func newNexthop(srcVrf string, bkh bool, gw string, intf string, tag uint32, dist uint32, vrf string, track uint16) (*ipNexthop, error) {
     nh := new(ipNexthop)
     nh.index = getNexthopIndex(bkh, gw, intf, vrf)
     if len(nh.index) == 0 {
@@ -159,6 +163,7 @@ func newNexthop(srcVrf string, bkh bool, gw string, intf string, dist uint32, vr
         return nil, tlerr.InvalidArgs("Invalid Nexthop IP format: %v", gw)
     }
     nh.ifName = intf
+    nh.tag = tag
     nh.distance = dist
     if vrf != srcVrf {
         nh.vrf = vrf
@@ -235,6 +240,10 @@ func (nhs *ipNexthopSet)toAttrMap() db.Value {
             attrList[5].haveData = true
         }
         attrList[5].value = append(attrList[5].value, strconv.FormatUint(uint64(nh.track), 10))
+        if nh.tag != 0 {
+            attrList[6].haveData = true
+        }
+        attrList[6].value = append(attrList[6].value, strconv.FormatUint(uint64(nh.tag), 10))
     }
     for idx, attr := range attrList {
         if attr.haveData {
@@ -292,12 +301,18 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
         if fieldValues[4] != nil {
             vrf = fieldValues[4][idx]
         }
+
         var track uint16
         if fieldValues[5] != nil {
             trackNum, _ := strconv.ParseUint(fieldValues[5][idx], 10, 32)
             track = uint16(trackNum)
         }
-        if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, distance, vrf, track); err == nil {
+        var tag uint32
+        if fieldValues[6] != nil {
+            tagNum, _ := strconv.ParseUint(fieldValues[6][idx], 10, 32)
+            tag = uint32(tagNum)
+        }
+        if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, tag, distance, vrf, track); err == nil {
             nhs.nhList[nh.index] = *nh
         }
     }
@@ -391,12 +406,16 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
             }
             var blackhole bool
             var intfName, nhVrf string
+            var tag uint32
             var distance uint32
             var gwIp string
             var track uint16
             if nexthopObj.Config != nil {
                 if nexthopObj.Config.Blackhole != nil {
                     blackhole = *nexthopObj.Config.Blackhole
+                }
+                if nexthopObj.Config.Tag != nil {
+                    tag = *nexthopObj.Config.Tag
                 }
                 if nexthopObj.Config.Metric != nil {
                     distance = *nexthopObj.Config.Metric
@@ -425,8 +444,8 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
             if nexthopObj.InterfaceRef != nil && nexthopObj.InterfaceRef.Config != nil && nexthopObj.InterfaceRef.Config.Interface != nil {
                 intfName = *nexthopObj.InterfaceRef.Config.Interface
             }
-            log.Infof("NH[%v]: blackhole %v IP %v interface %v distance %v VRF %v track %v", nhIndex, blackhole, gwIp, intfName, distance, nhVrf, track)
-            nhObj, err := newNexthop(vrf, blackhole, gwIp, intfName, distance, nhVrf, track)
+            log.Infof("NH[%v]: blackhole %v IP %v interface %v tag %v distance %v VRF %v track %v", nhIndex, blackhole, gwIp, intfName, tag, distance, nhVrf, track)
+            nhObj, err := newNexthop(vrf, blackhole, gwIp, intfName, tag, distance, nhVrf, track)
             if err != nil {
                 log.Infof("Failed to create nexthop object: %v", err)
                 return nil, err
@@ -460,8 +479,8 @@ func nexthopFromStrList(srcVrf string, strList []string, isIpv4 bool) (*ipNextho
     if strList[0] == "true" {
         blackhole = true
     }
-    var distance int64
     var err error
+    var distance int64
     if len(strList[3]) > 0 {
         distance, err = strconv.ParseInt(strList[3], 10, 32)
         if err != nil {
@@ -483,7 +502,14 @@ func nexthopFromStrList(srcVrf string, strList []string, isIpv4 bool) (*ipNextho
             return nil, err
         }
     }
-    return newNexthop(srcVrf, blackhole, gwIp, ifName, uint32(distance), strList[4], uint16(track))
+    var tag uint64
+    if len(strList[6]) > 0 {
+        tag, err = strconv.ParseUint(strList[6], 10, 32)
+        if err != nil {
+            return nil, err
+        }
+    }
+    return newNexthop(srcVrf, blackhole, gwIp, ifName, uint32(tag), uint32(distance), strList[4], uint16(track))
 }
 
 func getAllPrefixFromDB(d *db.DB, vrf string) []string {
@@ -639,7 +665,7 @@ func getRouteData(inParams XfmrParams, scope uriScopeType) (*vrfRouteInfo, error
     for prefix, nhs := range srouteObjMap {
         nhList, vrfInKey, err := getNexthopListFromDB(inParams.d, vrf, prefix)
         if err != nil {
-            log.Infof("Faile to get nexthops of %s from DB: %v", prefix, err)
+            log.Infof("Failed to get nexthops of %s from DB: %v", prefix, err)
             return nil, err
         }
         dbNh := &dbNexthopInfo{vrfInKey, &nhList}
@@ -656,22 +682,18 @@ func (data *vrfRouteInfo)isDataValid(scope uriScopeType, oper int, vrf string) b
         return false
     }
     if oper == CREATE {
-        // check if route or nexthop already created
+        // check if route already created
         for pfx, route := range vrfRoute {
             if route.dbNh != nil && len(route.dbNh.nhList.nhList) > 0 {
-                if scope != STATIC_ROUTES_NEXTHOP {
-                    log.Infof("route prefix %s was already in DB", pfx)
-                    return false
-                }
                 for key := range route.ygotNhList.nhList {
                     if _, ok := route.dbNh.nhList.nhList[key]; ok {
-                        log.Infof("route prefix %s nexthop %s was already in DB", pfx, key)
+                        log.Infof("route prefix %s with nexthop %s was already in DB", pfx, key)
                         return false
                     }
                 }
             }
         }
-    } else if oper == DELETE || (oper == REPLACE && scope != STATIC_ROUTES) {
+    } else if scope != STATIC_ROUTES {
         // check if route or nexthop in DB
         for pfx, route := range vrfRoute {
             if route.dbNh == nil || len(route.dbNh.nhList.nhList) == 0 {
@@ -735,6 +757,27 @@ func addRouteUpdToMap(inParams XfmrParams, vrf string, prefix string, nexthops *
     }
     resMap[STATIC_ROUTE_TABLE][key] = nexthops.toAttrMap()
     return nil
+}
+
+var YangToDb_static_routes_prefix_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+    return res_map, nil
+}
+
+var DbToYang_static_routes_prefix_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    log.Infof("DbToYang_static_routes_prefix_xfmr : URI %s, requestURI %s, inparams.key %s", inParams.uri, inParams.requestUri, inParams.key)
+    rmap := make(map[string]interface{})
+    entry_key := inParams.key
+    key := strings.Split(entry_key, "|")
+    if len(key) >= 2 {
+        rmap["prefix"] =  key[1] 
+        return rmap,nil 
+    } else {
+        log.Infof("DbToYang_static_routes_prefix_xfmr: prefix missing in key")
+        return rmap, errors.New("Route prefix not found in key")
+   }
 }
 
 var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -821,7 +864,7 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
                     }
                 } else {
                     // udpate nexthop
-                    if inParams.oper != REPLACE {
+                    if inParams.oper != REPLACE || uriScope == STATIC_ROUTES_NEXTHOP {
                         for k, v := range routeInfo.dbNh.nhList.nhList {
                             if _, ok := routeInfo.ygotNhList.nhList[k]; !ok {
                                 routeInfo.ygotNhList.updateNH(v, CREATE)
@@ -930,6 +973,12 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhI
                 }
                 nhObj.Config.NextHop = gwObj
             }
+            if nh.tag != 0 {
+                if nhObj.Config.Tag == nil {
+                    nhObj.Config.Tag = new(uint32)
+                }
+                *nhObj.Config.Tag = nh.tag
+            }
             if nh.distance != 0 {
                 if nhObj.Config.Metric == nil {
                     nhObj.Config.Metric = new(uint32)
@@ -1026,9 +1075,40 @@ func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
     return strings.Join(aliasList, ","), nil
 }
 
+func Subscribe_static_routes_nexthop_xfmr(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    var routeKey string
+    if pathInfo.HasVar("name") {
+        var prefix string
+        vrf := pathInfo.Var("name")
+        if pathInfo.HasVar("prefix") {
+            prefix = pathInfo.Var("prefix")
+        } else {
+            prefix = "*"
+        }
+        routeKey = vrf + "|" + prefix
+    } else {
+        routeKey = "*"
+    }
+
+    log.Infof("Subscribe_static_routes_nexthop_xfmr: URI %s", inParams.uri)
+    result.dbDataMap = RedisDbMap{db.ConfigDB: {STATIC_ROUTE_TABLE: {routeKey: {}}}}
+    result.needCache = true
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, nil
+}
+
 func init() {
     XlateFuncBind("YangToDb_static_routes_nexthop_xfmr", YangToDb_static_routes_nexthop_xfmr)
     XlateFuncBind("DbToYang_static_routes_nexthop_xfmr", DbToYang_static_routes_nexthop_xfmr)
+    XlateFuncBind("YangToDb_static_routes_prefix_xfmr", YangToDb_static_routes_prefix_xfmr)
+    XlateFuncBind("DbToYang_static_routes_prefix_xfmr", DbToYang_static_routes_prefix_xfmr)
+    XlateFuncBind("Subscribe_static_routes_nexthop_xfmr", Subscribe_static_routes_nexthop_xfmr)
     XlateFuncBind("YangToDb_static_routes_key_xfmr", YangToDb_static_routes_key_xfmr)
     XlateFuncBind("DbToYang_static_routes_key_xfmr", DbToYang_static_routes_key_xfmr)
     XlateFuncBind("static_routes_validate_proto", validate_static_protocol)

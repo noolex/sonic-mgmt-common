@@ -12,9 +12,15 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_dot1p_fwd_group_xfmr", YangToDb_qos_dot1p_fwd_group_xfmr)
     XlateFuncBind("DbToYang_qos_dot1p_fwd_group_xfmr", DbToYang_qos_dot1p_fwd_group_xfmr)
+    XlateFuncBind("Subscribe_qos_dot1p_fwd_group_xfmr", Subscribe_qos_dot1p_fwd_group_xfmr)
     XlateFuncBind("YangToDb_qos_dot1p_to_tc_map_fld_xfmr", YangToDb_qos_dot1p_to_tc_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_dot1p_to_tc_map_fld_xfmr", DbToYang_qos_dot1p_to_tc_map_fld_xfmr)
  
+}
+
+var Subscribe_qos_dot1p_fwd_group_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    map_type := "DOT1P_TO_TC_MAP"
+    return Subscribe_qos_map_xfmr(inParams, map_type)
 }
 
 
@@ -64,7 +70,8 @@ var YangToDb_qos_dot1p_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/dot1p-maps/dot1p-map/dot1p-map-entries/dot1p-map-entry") &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:dot1p-maps/dot1p-map/dot1p-map-entries/dot1p-map-entry") {
-        log.Info("YangToDb: map entry unspecified, stop here")
+        log.Info("YangToDb: map entry unspecified, return the map")
+        res_map[map_type] = map_entry
         return res_map, err
     }
 
@@ -149,6 +156,10 @@ func fill_dot1p_map_info_by_name(inParams XfmrParams, dot1PMaps * ocbinds.Openco
     var tmp_sta ocbinds.OpenconfigQos_Qos_Dot1PMaps_Dot1PMap_Dot1PMapEntries_Dot1PMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
+        if k == "NULL" {
+            continue
+        }
+
         if entry_key != "" && k!= entry_key {
             continue
         }
@@ -188,8 +199,8 @@ func fill_dot1p_map_info_by_name(inParams XfmrParams, dot1PMaps * ocbinds.Openco
     log.Info("Done fetching dot1p-map : ", name)
 
     if entry_key != "" && entry_added == 0 {
-        err = tlerr.NotFoundError{Format:"Instance Not found"}
-        log.Info("Instance not found.")
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        log.Info("Resource not found.")
         return err
     }
 
@@ -237,8 +248,8 @@ var DbToYang_qos_dot1p_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     }
 
     if name != "" && map_added == 0 {
-        err = tlerr.NotFoundError{Format:"Instance Not found"}
-        log.Info("Instance not found.")
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        log.Info("Resource not found.")
         return err
     }
 

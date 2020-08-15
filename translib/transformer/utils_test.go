@@ -53,6 +53,7 @@ func processGetRequest(url string, expectedRespJson string, errorCase bool, expE
 			} else if expErr != nil {
 				checkErr(t, err, expErr[0])
 			}
+			return
 		}
 
 		err = json.Unmarshal([]byte(expectedRespJson), &expectedMap)

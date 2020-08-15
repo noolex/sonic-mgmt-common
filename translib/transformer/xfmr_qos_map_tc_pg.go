@@ -12,11 +12,18 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_tc_pg_xfmr", YangToDb_qos_tc_pg_xfmr)
     XlateFuncBind("DbToYang_qos_tc_pg_xfmr", DbToYang_qos_tc_pg_xfmr)
+    XlateFuncBind("Subscribe_qos_tc_pg_xfmr", Subscribe_qos_tc_pg_xfmr)
     XlateFuncBind("YangToDb_qos_tc_to_pg_map_fld_xfmr", YangToDb_qos_tc_to_pg_map_fld_xfmr)
     XlateFuncBind("DbToYang_qos_tc_to_pg_map_fld_xfmr", DbToYang_qos_tc_to_pg_map_fld_xfmr)
 
 }
 
+
+
+var Subscribe_qos_tc_pg_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    map_type := "TC_TO_PRIORITY_GROUP_MAP"
+    return Subscribe_qos_map_xfmr(inParams, map_type)
+}
 
 
 var YangToDb_qos_tc_pg_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -64,7 +71,9 @@ var YangToDb_qos_tc_pg_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
     if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-priority-group-maps/forwarding-group-priority-group-map/forwarding-group-priority-group-map-entries/forwarding-group-priority-group-map-entry") &&
        !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-priority-group-maps/forwarding-group-priority-group-map/forwarding-group-priority-group-map-entries/forwarding-group-priority-group-map-entry") {
-        log.Info("YangToDb: map entry unspecified, stop here")
+        log.Info("YangToDb: map entry unspecified, return the map")
+
+        res_map[map_type] = map_entry
         return res_map, err
     }
 
@@ -142,6 +151,10 @@ func fill_tc_pg_map_info_by_name(inParams XfmrParams, forwardingGroupPriorityGro
     var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_ForwardingGroupPriorityGroupMapEntries_ForwardingGroupPriorityGroupMapEntry_State
     entry_added :=  0
     for k, v := range mapCfg.Field {
+        if k == "NULL" {
+            continue
+        }
+
         if entry_key != "" && k!= entry_key {
             continue
         }
@@ -181,8 +194,8 @@ func fill_tc_pg_map_info_by_name(inParams XfmrParams, forwardingGroupPriorityGro
     log.Info("Done fetching forwarding-group-queue-map : ", name)
 
     if entry_key != "" && entry_added == 0 {
-        err = tlerr.NotFoundError{Format:"Instance Not found"}
-        log.Info("Instance not found.")
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        log.Info("Resource not found.")
         return err
     }
 
@@ -231,8 +244,8 @@ var DbToYang_qos_tc_pg_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
     }
 
     if name != "" && map_added == 0 {
-        err = tlerr.NotFoundError{Format:"Instance Not found"}
-        log.Info("Instance not found.")
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        log.Info("Resource not found.")
         return err
     }
 

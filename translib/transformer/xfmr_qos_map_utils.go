@@ -32,6 +32,8 @@ var qos_map_oc_yang_key_map = map[string]string {
     "TC_TO_QUEUE_MAP":  "fwd-group",
     "TC_TO_PRIORITY_GROUP_MAP":  "fwd-group",
     "MAP_PFC_PRIORITY_TO_QUEUE": "dot1p",
+    "TC_TO_DOT1P_MAP":  "fwd-group",
+    "TC_TO_DSCP_MAP":   "fwd-group",
 }
 
 func targetUriPathContainsMapName (uri string, map_type string) bool {
@@ -60,6 +62,16 @@ func targetUriPathContainsMapName (uri string, map_type string) bool {
         return true
     }
 
+    if map_type == "TC_TO_DOT1P_MAP" &&
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map")  {
+        return true
+    }
+
+    if map_type == "TC_TO_DSCP_MAP" &&
+        !strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map")  {
+        return true
+    }
+
     return false
 
 }
@@ -84,7 +96,7 @@ func qos_map_delete_xfmr(inParams XfmrParams, map_type string) (map[string]map[s
     if map_name != "" {
         map_entry, err = get_map_entry_by_map_name(inParams.d, map_type, map_name)
         if err != nil {
-            err = tlerr.InternalError{Format:"Instance Not found"}
+            err = tlerr.NotFoundError{Format:"Resource not found"}
             log.Info("map name not found.")
             return res_map, err
         }
@@ -101,8 +113,8 @@ func qos_map_delete_xfmr(inParams XfmrParams, map_type string) (map[string]map[s
         return qos_map_delete_by_map_name(inParams, map_type, map_name)
     } else  {
         _, exist := map_entry.Field[entry_key]
-        if !exist { 
-            err = tlerr.InternalError{Format:"Field Name Value Not found"}
+        if !exist {
+            err = tlerr.NotFoundError{Format:"Resource not found"}
             log.Info("Field Name value not found.", entry_key)
             return res_map, err
         }
@@ -258,6 +270,8 @@ var map_type_name_in_oc_yang = map[string]string {
     "TC_TO_QUEUE_MAP":          "forwarding-group-to-queue",
     "TC_TO_PRIORITY_GROUP_MAP": "forwarding-group-to-priority-group",
     "MAP_PFC_PRIORITY_TO_QUEUE":"pfc-priority-to-queue",
+    "TC_TO_DOT1P_MAP":          "forwarding-group-to-dot1p",
+    "TC_TO_DSCP_MAP":           "forwarding-group-to-dscp",
 }
 
 var map_type_name_in_db = map[string]string {
@@ -266,10 +280,11 @@ var map_type_name_in_db = map[string]string {
     "TC_TO_QUEUE_MAP":          "tc_to_queue_map",
     "TC_TO_PRIORITY_GROUP_MAP": "tc_to_pg_map",
     "MAP_PFC_PRIORITY_TO_QUEUE":"pfc_to_queue_map",
+    "TC_TO_DOT1P_MAP":          "tc_to_dot1p_map",
+    "TC_TO_DSCP_MAP":           "tc_to_dscp_map",
 }
 
 func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_qos_intf_qos_map_xfmr", inParams)
 
     res_map := make(map[string]interface{})
 
@@ -283,7 +298,6 @@ func DbToYang_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string) (map[s
     key := db.Key{Comp: []string{*dbIfName}}
     qCfg, _ := inParams.d.GetEntry(dbSpec, key) 
 
-    log.Info("current entry: ", qCfg)
     db_attr_name, ok := map_type_name_in_db[map_type]
     if !ok {
         log.Info("map_type not implemented", map_type)
@@ -338,6 +352,10 @@ func YangToDb_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string)  (map[
         map_name = *(intfObj.InterfaceMaps.Config.ForwardingGroupToPriorityGroup)
     } else if map_type == "MAP_PFC_PRIORITY_TO_QUEUE" {
         map_name = *(intfObj.InterfaceMaps.Config.PfcPriorityToQueue)
+    } else if map_type == "TC_TO_DOT1P_MAP" {
+        map_name = *(intfObj.InterfaceMaps.Config.ForwardingGroupToDot1P)
+    } else if map_type == "TC_TO_DSCP_MAP" {
+        map_name = *(intfObj.InterfaceMaps.Config.ForwardingGroupToDscp)
     }
 
     if inParams.oper == DELETE {
@@ -368,3 +386,24 @@ func YangToDb_qos_intf_qos_map_xfmr(inParams XfmrParams, map_type string)  (map[
 }
 
 
+func Subscribe_qos_map_xfmr(inParams XfmrSubscInParams, map_type string) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    print ("targetUriPath:", targetUriPath)
+
+    name   :=  pathInfo.Var("name")
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Info("XfmrSubscribe_qos_map_xfmr map_type (DB name): ", map_type, " name (key): ", name)
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{map_type: {name:{}}}}  // tablename & table-idx for the inParams.uri
+    result.needCache = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0 
+    result.nOpts.pType = OnChange
+    log.Info("Returning XfmrSubscribe_qos_map_xfmr")
+    return result, err
+}

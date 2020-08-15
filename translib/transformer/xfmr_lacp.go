@@ -33,6 +33,7 @@ import (
 
 func init () {
     XlateFuncBind("DbToYang_lacp_get_xfmr", DbToYang_lacp_get_xfmr)
+    XlateFuncBind("Subscribe_lacp_get_xfmr", Subscribe_lacp_get_xfmr)
 }
 
 func getLacpRoot (s *ygot.GoStruct) *ocbinds.OpenconfigLacp_Lacp {
@@ -381,4 +382,22 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
 
 }
 
+var Subscribe_lacp_get_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error)  {
+
+     var err error
+     var result XfmrSubscOutParams
+
+     pathInfo := NewPathInfo(inParams.uri)
+     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+     log.Infof("Subscribe_lacp_get_xfmr:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
+
+     ifName := pathInfo.Var("name")
+     log.Infof("ifName %v ", ifName)
+     result.dbDataMap = make(RedisDbMap)
+
+     log.Infof("Subscribe_lacp_get_xfmr path:%s; template:%s targetUriPath:%s key:%s tbl:LAG_TABLE", pathInfo.Path, pathInfo.Template, targetUriPath, ifName)
+     result.dbDataMap = RedisDbMap{db.ApplDB:{"LAG_TABLE":{ifName:{}}}}
+
+     return result, err
+}
 

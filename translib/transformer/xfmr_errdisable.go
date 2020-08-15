@@ -6,6 +6,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init() {
@@ -14,7 +15,7 @@ func init() {
 	XlateFuncBind("DbToYang_errdisable_cause_xfmr", DbToYang_errdisable_cause_xfmr)
 }
 
-func getDbEntry(dbCl *db.DB, tblName string, key string) (db.Value, string) {
+func getDbEntry(dbCl *db.DB, tblName string, key string) (db.Value, error) {
     var err error
 	var ERRDISABLE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: tblName}
 
@@ -23,37 +24,37 @@ func getDbEntry(dbCl *db.DB, tblName string, key string) (db.Value, string) {
     errdisableData, err := configDbPtr.GetTable(ERRDISABLE_TABLE_TS)
     if err != nil {
         log.Error("GetTable failed")
-        return db.Value{Field: make(map[string]string)}, "Error"
+        return db.Value{Field: make(map[string]string)}, err
     }
 
     entry, err := errdisableData.GetEntry(db.Key{Comp: []string{key}})
     if err != nil {
         log.Error("GetEntry failed")
-        return db.Value{Field: make(map[string]string)}, "Error"
+        return db.Value{Field: make(map[string]string)}, err
     }
 
     log.Info("getEntry : ",entry)
-    return entry, "ok"
+    return entry, nil
 }
 
-
-func getAllCauseStatus(dbCl *db.DB, tblName string, key string) ([]string) {
+func getAllCauseStatus(dbCl *db.DB, tblName string, key string) ([]string, error) {
 	var cause []string
-    entry, ret := getDbEntry(dbCl, tblName, key)
-    if ret != "Error" {
-        if entry.Field["udld"] == "enabled" {
-            enumName, _ := ygot.EnumName(ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_UDLD)
-            cause = append(cause, enumName)
-        }
-
-        if entry.Field["bpduguard"] == "enabled" {
-            enumName, _ := ygot.EnumName(ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_BPDUGUARD)
-            cause = append(cause, enumName)
-        }
+    entry, err := getDbEntry(dbCl, tblName, key)
+    if err != nil {
+        return cause, err
     }
-    return cause
+
+    if entry.Field["udld"] == "enabled" {
+        enumName, _ := ygot.EnumName(ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_UDLD)
+        cause = append(cause, enumName)
+    }
+
+    if entry.Field["bpduguard"] == "enabled" {
+        enumName, _ := ygot.EnumName(ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_BPDUGUARD)
+        cause = append(cause, enumName)
+    }
+    return cause, err
 }
-    
 
 var YangToDb_errdisable_global_key_xfmr = func(inParams XfmrParams) (string, error) {
 	log.Info("YangToDb_errdisable_global_key_xfmr: ", inParams.ygRoot, inParams.uri)
@@ -87,8 +88,8 @@ var YangToDb_errdisable_cause_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
         }
         subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"] = db.Value{Field: make(map[string]string)}
 
-        errdisable_entry, ret := getDbEntry(inParams.dbs[db.ConfigDB], "ERRDISABLE", "RECOVERY")
-        if ret == "Error" {
+        errdisable_entry, err := getDbEntry(inParams.dbs[db.ConfigDB], "ERRDISABLE", "RECOVERY")
+        if err != nil {
             log.Error("getEntry FAiled")
             return res_map, err
         }
@@ -142,17 +143,25 @@ var YangToDb_errdisable_cause_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
 
 
 func DbToYang_errdisable_cause_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
+    item_exist := false
     res_map := make(map[string]interface{})
-    cause_list := getAllCauseStatus(inParams.dbs[db.ConfigDB], "ERRDISABLE", "RECOVERY")
+    cause_list,err := getAllCauseStatus(inParams.dbs[db.ConfigDB], "ERRDISABLE", "RECOVERY")
+    if err != nil {
+        return nil, tlerr.NotFound("Resource Not Found")
+    }
     pathInfo := NewPathInfo(inParams.uri)
     cause := pathInfo.Var("cause")
     if len(cause) != 0 {
         for _, item := range cause_list {
             if cause == item {
-                res_map["cause"] = []string{cause}
+                item_exist = true
                 break
             }
         }
+        if !item_exist {
+            return nil, tlerr.NotFound("Resource Not Found")
+        }
+        //if item exist we should return empty as per guidance from DELL.
     } else {
         res_map["cause"] = cause_list
     }

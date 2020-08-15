@@ -26,6 +26,7 @@ func init() {
 
   XlateFuncBind("YangToDb_qos_intf_pfcwd_st_xfmr",              YangToDb_qos_intf_pfcwd_st_xfmr)
   XlateFuncBind("DbToYang_qos_intf_pfcwd_st_xfmr",              DbToYang_qos_intf_pfcwd_st_xfmr)
+  XlateFuncBind("Subscribe_qos_intf_pfcwd_st_xfmr",             Subscribe_qos_intf_pfcwd_st_xfmr)
 
   XlateFuncBind("YangToDb_qos_intf_pfcwd_action_fld_xfmr",      YangToDb_qos_intf_pfcwd_action_fld_xfmr)
   XlateFuncBind("DbToYang_qos_intf_pfcwd_action_fld_xfmr",      DbToYang_qos_intf_pfcwd_action_fld_xfmr)
@@ -177,6 +178,31 @@ var DbToYang_qos_intf_pfcwd_action_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
     return result, err
 }
 
+var Subscribe_qos_intf_pfcwd_st_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var result XfmrSubscOutParams
+
+    log.Info("Subscribe_qos_intf_pfcwd_st_xfmr: ", inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    ifname := pathInfo.Var("interface-id")
+    dbIfName := utils.GetNativeNameFromUIName(&ifname)
+    if_name := *dbIfName
+    log.Info("Subscribe_qos_intf_pfc_xfmr: ", if_name)
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Infof("Subscribe_qos_intf_pfcwd_st_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+              pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
+
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{"PFC_WD":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
+    result.needCache = true
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, nil
+}
+
 var YangToDb_qos_intf_pfcwd_st_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     log.Info("YangToDb_qos_intf_pfcwd_st_xfmr            uri : ", inParams.uri)
 
@@ -257,7 +283,6 @@ func doGetIntfPfcWdAction(d *db.DB, if_name string) (string) {
 
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
         return ""
     }
 
@@ -283,7 +308,6 @@ func doGetIntfPfcWdDetect(d *db.DB, if_name string) (int) {
 
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
         return 0
     }
 
@@ -312,7 +336,6 @@ func doGetIntfPfcWdRestore(d *db.DB, if_name string) (int) {
 
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
         return 0
     }
 
@@ -339,7 +362,6 @@ var DbToYang_qos_intf_pfcwd_st_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     dbIfName := utils.GetNativeNameFromUIName(&ifname)
     if_name := *dbIfName
     log.Info("DbToYang_qos_intf_pfcwd_st_xfmr   if_name : ", if_name)
-
     qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
     if qosIntfsObj == nil {
         return nil
@@ -581,13 +603,11 @@ var DbToYang_qos_intf_pfc_counters_st_xfmr SubTreeXfmrDbToYang = func(inParams X
   log.Info("DbToYang_qos_intf_pfc_counters_st_xfmr       uri: ", inParams.uri)
 
   var err error
-
   pathInfo := NewPathInfo(inParams.uri)
   ifname := pathInfo.Var("interface-id")
   dot1p  := pathInfo.Var("dot1p")
   cos32, _ := strconv.Atoi(dot1p)
   cos := uint8(cos32)
-
   qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
   if qosIntfsObj == nil {
       return nil

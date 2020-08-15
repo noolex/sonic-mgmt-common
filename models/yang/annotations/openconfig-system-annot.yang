@@ -133,17 +133,6 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:name {
-      deviate add {
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address {
-      deviate add {
-          sonic-ext:field-name "ipaddress";
-      }
-    }
-
     deviation /oc-sys:system/oc-sys:cpus {
         deviate add {
             sonic-ext:subtree-transformer "sys_cpus_xfmr";
@@ -484,14 +473,6 @@ module openconfig-system-annot {
       }
     }
 
-/*
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:address {
-      deviate add {
-          sonic-ext:field-name "ipaddress";
-      }
-    }
-*/
-
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config {
       deviate add {
       }
@@ -510,6 +491,12 @@ module openconfig-system-annot {
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address {
+      deviate add {
+      		sonic-ext:field-transformer "server_ipaddr_xfmr";          
+      }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address {
       deviate add {
       		sonic-ext:field-transformer "server_ipaddr_xfmr";          
       }

@@ -8,6 +8,8 @@ import (
 func init () {
     XlateFuncBind("YangToDb_qos_queue_key_xfmr", YangToDb_qos_queue_key_xfmr)
     XlateFuncBind("DbToYang_qos_queue_key_xfmr", DbToYang_qos_queue_key_xfmr)
+    XlateFuncBind("YangToDb_qos_queue_fld_xfmr", YangToDb_qos_queue_fld_xfmr)
+    XlateFuncBind("DbToYang_qos_queue_fld_xfmr", DbToYang_qos_queue_fld_xfmr)
     XlateFuncBind("YangToDb_qos_queue_wred_profile_fld_xfmr", YangToDb_qos_queue_wred_profile_fld_xfmr)
     XlateFuncBind("DbToYang_qos_queue_wred_profile_fld_xfmr", DbToYang_qos_queue_wred_profile_fld_xfmr)
 
@@ -40,6 +42,24 @@ var YangToDb_qos_queue_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 }
 
 var DbToYang_qos_queue_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    rmap := make(map[string]interface{})
+    entry_key := inParams.key
+    log.Info("DbToYang_qos_queue_key_xfmr: ", entry_key)
+    dbQkey := strings.Replace(entry_key, "|", ":", 1)
+    rmap["name"] = dbQkey
+    log.Info("DbToYang_qos_queue_key_xfmr: ", rmap["name"])
+    return rmap, nil
+}
+
+var YangToDb_qos_queue_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+
+    log.Info("YangToDb_qos_queue_fld_xfmr: ", inParams.key)
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_qos_queue_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     rmap := make(map[string]interface{})
     entry_key := inParams.key
     log.Info("DbToYang_qos_queue_key_xfmr: ", entry_key)

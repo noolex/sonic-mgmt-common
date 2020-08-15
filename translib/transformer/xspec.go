@@ -51,12 +51,14 @@ type yangXpathInfo  struct {
     keyLevel       int
     isKey          bool
     defVal         string
+    tblOwner       *bool
     hasChildSubTree bool
     hasNonTerminalNode bool
     subscribePref      *string
     subscribeOnChg     int
     subscribeMinIntvl  int
     cascadeDel     int
+    virtualTbl     *bool
     nameWithMod    *string
 	xfmrPre        string
 }
@@ -181,8 +183,8 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathData, ok := xYangSpecMap[curXpathFull]
 		if !ok {
 			curXpathData = new(yangXpathInfo)
-			xYangSpecMap[curXpathFull] = curXpathData
 			curXpathData.dbIndex = db.ConfigDB // default value
+			xYangSpecMap[curXpathFull] = curXpathData
 		}
 		curXpathData.yangDataType = strings.ToLower(yang.EntryKindToName[entry.Kind])
 		curXpathData.yangEntry    = entry
@@ -208,6 +210,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathFull = xpathFull + "/" + entry.Name
 		if annotNode, ok := xYangSpecMap[curXpathFull]; ok {
 			xpathData := new(yangXpathInfo)
+			xpathData.dbIndex = db.ConfigDB // default value
 			xYangSpecMap[xpath] = xpathData
 			copyYangXpathSpecData(xYangSpecMap[xpath], annotNode)
 			updateChoiceCaseXpath = true
@@ -346,6 +349,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 			keyXpath[id] = xpath + "/" + keyName
 			if _, ok := xYangSpecMap[xpath + "/" + keyName]; !ok {
 				keyXpathData := new(yangXpathInfo)
+				keyXpathData.dbIndex = db.ConfigDB // default value
 				xYangSpecMap[xpath + "/" + keyName] = keyXpathData
 			}
 			xYangSpecMap[xpath + "/" + keyName].isKey = true
@@ -650,6 +654,7 @@ func childToUpdateParent( xpath string, tableName string) {
 	_, ok := xYangSpecMap[parent]
 	if !ok {
 		xpathData = new(yangXpathInfo)
+		xpathData.dbIndex = db.ConfigDB // default value
 		xYangSpecMap[parent] = xpathData
 	}
 
@@ -742,6 +747,14 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				xpathData.keyXpath  = nil
 			case "db-name" :
 				xpathData.dbIndex = dbNameToIndex(ext.NName())
+			case "table-owner" :
+				if xpathData.tblOwner == nil {
+					xpathData.tblOwner  = new(bool)
+					*xpathData.tblOwner = true
+				}
+				if strings.EqualFold(ext.NName(), "False") {
+					*xpathData.tblOwner = false
+				}
 			case "subscribe-preference" :
 				if xpathData.subscribePref == nil {
 					xpathData.subscribePref = new(string)
@@ -769,6 +782,14 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 					xpathData.cascadeDel = XFMR_ENABLE
 				} else {
 					xpathData.cascadeDel = XFMR_DISABLE
+				}
+			case "virtual-table" :
+				if xpathData.virtualTbl == nil {
+					xpathData.virtualTbl  = new(bool)
+					*xpathData.virtualTbl = false
+				}
+				if strings.EqualFold(ext.NName(), "True") {
+					*xpathData.virtualTbl = true
 				}
 			}
 		}
@@ -944,18 +965,26 @@ func mapPrint(inMap map[string]*yangXpathInfo, fileName string) {
 		fmt.Fprintf(fp, "    cascadeDel  : %v\r\n", d.cascadeDel)
         fmt.Fprintf(fp, "    hasChildSubTree : %v\r\n", d.hasChildSubTree)
         fmt.Fprintf(fp, "    hasNonTerminalNode : %v\r\n", d.hasNonTerminalNode)
-	 fmt.Fprintf(fp, "    subscribeOnChg     : %v\r\n", d.subscribeOnChg)
-	 fmt.Fprintf(fp, "    subscribeMinIntvl  : %v\r\n", d.subscribeMinIntvl)
-	 if d.subscribePref != nil {
-		fmt.Fprintf(fp, "    subscribePref      : %v\r\n", *d.subscribePref)
-	 }
+		fmt.Fprintf(fp, "    subscribeOnChg     : %v\r\n", d.subscribeOnChg)
+		fmt.Fprintf(fp, "    subscribeMinIntvl  : %v\r\n", d.subscribeMinIntvl)
+		if d.subscribePref != nil {
+			fmt.Fprintf(fp, "    subscribePref      : %v\r\n", *d.subscribePref)
+		}
         fmt.Fprintf(fp, "    hasChildSubTree: %v\r\n", d.hasChildSubTree)
         fmt.Fprintf(fp, "    tableName: ")
         if d.tableName != nil {
             fmt.Fprintf(fp, "%v", *d.tableName)
         }
-    fmt.Fprintf(fp, "\r\n    preXfmr  : %v", d.xfmrPre)
 	fmt.Fprintf(fp, "\r\n    postXfmr : %v", d.xfmrPost)
+        fmt.Fprintf(fp, "\r\n    tblOwner: ")
+        if d.tblOwner != nil {
+            fmt.Fprintf(fp, "%v", *d.tblOwner)
+        }
+        fmt.Fprintf(fp, "\r\n    virtualTbl: ")
+		if d.virtualTbl != nil {
+			fmt.Fprintf(fp, "%v", *d.virtualTbl)
+        }
+        fmt.Fprintf(fp, "\r\n    preXfmr  : %v", d.xfmrPre)
         fmt.Fprintf(fp, "\r\n    xfmrTbl  : ")
         if d.xfmrTbl != nil {
             fmt.Fprintf(fp, "%v", *d.xfmrTbl)
@@ -1001,7 +1030,7 @@ func dbMapPrint( fname string) {
     defer fp.Close()
 	fmt.Fprintf (fp, "-----------------------------------------------------------------\r\n")
     for k, v := range xDbSpecMap {
-		fmt.Fprintf(fp, " field:%v: \r\n", k)
+		fmt.Fprintf(fp, "     field:%v: \r\n", k)
         fmt.Fprintf(fp, "     type     :%v \r\n", v.fieldType)
         fmt.Fprintf(fp, "     db-type  :%v \r\n", v.dbIndex)
         fmt.Fprintf(fp, "     rpcFunc  :%v \r\n", v.rpcFunc)

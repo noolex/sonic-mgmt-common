@@ -9,11 +9,15 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 )
 
+const (
+        PORT_GROUP_TABLE    = "PORT_GROUP"
+        PORT_TABLE          = "PORT"
+)
 /* Transformer specific functions */
 func init () {
     XlateFuncBind("YangToDb_port_group_config_xfmr", YangToDb_port_group_config_xfmr)
-    XlateFuncBind("DbToYang_port_group_config_xfmr", DbToYang_port_group_config_xfmr)
-    XlateFuncBind("DbToYang_port_group_state_xfmr", DbToYang_port_group_state_xfmr)
+    XlateFuncBind("DbToYang_port_group_xfmr", DbToYang_port_group_xfmr)
+    XlateFuncBind("Subscribe_port_group_xfmr", Subscribe_port_group_xfmr)
     parsePlatformDefJsonFile()
     parsePlatformJsonFile()
 }
@@ -23,7 +27,7 @@ func getPgRoot (s *ygot.GoStruct) (*ocbinds.OpenconfigPortGroup_PortGroups) {
     return deviceObj.PortGroups
 }
 
-var DbToYang_port_group_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+var DbToYang_port_group_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
 
     pgObj := getPgRoot(inParams.ygRoot)
     if pgObj == nil {
@@ -65,12 +69,12 @@ var YangToDb_port_group_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
             m := make(map[string]string)
             data := db.Value{Field: m}
             data.Set("speed", port_speed)
-            pgMap["PORT"] = make (map[string]db.Value)
+            pgMap[PORT_TABLE] = make (map[string]db.Value)
             for _, ifName := range ports {
-                pgMap["PORT"][ifName] = data
+                pgMap[PORT_TABLE][ifName] = data
             }
-            pgMap["PORT_GROUP"] = make (map[string]db.Value)
-            pgMap["PORT_GROUP"][inParams.key] = data
+            pgMap[PORT_GROUP_TABLE] = make (map[string]db.Value)
+            pgMap[PORT_GROUP_TABLE][inParams.key] = data
         } else {
             log.Info("Could not get the member ports for ", inParams.key)
             err = tlerr.InvalidArgs("Invalid port-group")
@@ -81,8 +85,25 @@ var YangToDb_port_group_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
         portMap := make(map[db.DBNum]map[string]map[string]db.Value)
         portMap[db.ConfigDB] = pgMap
         inParams.subOpDataMap[UPDATE] = &portMap
-        pgMap["PORT_GROUP"] = make (map[string]db.Value)
-        pgMap["PORT_GROUP"][inParams.key] = db.Value{}
+        pgMap[PORT_GROUP_TABLE] = make (map[string]db.Value)
+        pgMap[PORT_GROUP_TABLE][inParams.key] = db.Value{}
     }
     return pgMap, err
 }
+
+var Subscribe_port_group_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    result.dbDataMap = make(RedisDbMap)
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    key := pathInfo.Var("id")
+    log.Info("Subscribe_port_group_xfmr path %v key %v ", targetUriPath, key)
+    if (key != "") {
+        result.dbDataMap = RedisDbMap{db.ConfigDB:{PORT_GROUP_TABLE:{key:{}}}}
+    } else {
+        result.dbDataMap = RedisDbMap{db.ConfigDB:{PORT_GROUP_TABLE:{"*":{}}}}
+    }
+    return result, err
+}
+
