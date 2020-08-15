@@ -23,10 +23,6 @@ module sonic-vlan {
         prefix spc;
     }
 
-    import sonic-mirror-session {
-        prefix sms;
-    }
-
     organization
         "SONiC";
 
