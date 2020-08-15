@@ -19,8 +19,8 @@ module sonic-bfd-clear {
         prefix svlan;
     }
 
-    import sonic-loopback-interface {
-        prefix sloif;
+    import sonic-loopback {
+        prefix slo;
     }
 
     organization
@@ -32,6 +32,10 @@ module sonic-bfd-clear {
     description
         "SONiC yang for BFD counters clear options";
 
+    revision 2020-07-26 {
+        description
+            "Change for sonic-loopback.yang";
+    }
     revision 2020-10-02 {
         description
             "Initial revision.";
@@ -86,7 +90,7 @@ module sonic-bfd-clear {
                         path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                     }
                     type leafref {
-                        path "/sloif:sonic-loopback-interface/sloif:LOOPBACK_INTERFACE/sloif:LOOPBACK_INTERFACE_LIST/sloif:loIfName";
+                        path "/slo:sonic-loopback/slo:LOOPBACK/slo:LOOPBACK_LIST/slo:name";
                     }
                 }
 

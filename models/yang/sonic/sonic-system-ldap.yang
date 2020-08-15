@@ -27,8 +27,8 @@ module sonic-system-ldap {
       prefix svlan;
   }
 
-  import sonic-loopback-interface {
-      prefix lointf;
+  import sonic-loopback {
+      prefix lo;
   }
 
   import sonic-mgmt-port {
@@ -43,6 +43,11 @@ module sonic-system-ldap {
 
   description
       "SONiC LDAP";
+
+  revision 2020-07-26 {
+      description
+          "Change for sonic-loopback.yang.";
+  }
 
   revision 2020-05-14 {
       description
@@ -282,7 +287,7 @@ module sonic-system-ldap {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                         }
                         type leafref {
-                            path "/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST/lointf:loIfName";
+                            path "/lo:sonic-loopback/lo:LOOPBACK/lo:LOOPBACK_LIST/lo:name";
                         }
                         type leafref {
                             path "/smgmt:sonic-mgmt-port/smgmt:MGMT_PORT/smgmt:MGMT_PORT_LIST/smgmt:ifname";

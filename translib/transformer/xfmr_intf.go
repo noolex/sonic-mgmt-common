@@ -85,6 +85,7 @@ func init () {
     XlateFuncBind("intf_pre_xfmr", intf_pre_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_ip_addr_xfmr", YangToDb_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("DbToYang_routed_vlan_ip_addr_xfmr", DbToYang_routed_vlan_ip_addr_xfmr)
+    XlateFuncBind("DbToYang_intf_description_xfmr", DbToYang_intf_description_xfmr)
     XlateFuncBind("Subscribe_intf_ip_addr_xfmr", Subscribe_intf_ip_addr_xfmr)
 }
 
@@ -104,6 +105,7 @@ const (
     PORTCHANNEL_TN     = "PORTCHANNEL"
     PORTCHANNEL_INTERFACE_TN  = "PORTCHANNEL_INTERFACE"
     PORTCHANNEL_MEMBER_TN  = "PORTCHANNEL_MEMBER"
+    LOOPBACK_TN            = "LOOPBACK"
     LOOPBACK_INTERFACE_TN  = "LOOPBACK_INTERFACE"
     UNNUMBERED         = "unnumbered"
     DEFAULT_MTU        = "9100"
@@ -166,13 +168,13 @@ var IntfTypeTblMap = map[E_InterfaceType]IntfTblData {
         appDb:TblData{portTN:"VLAN_TABLE", memberTN: "VLAN_MEMBER_TABLE", intfTN:"INTF_TABLE", keySep: COLON},
     },
     IntfTypeLoopback : IntfTblData {
-       cfgDb:TblData{portTN:"LOOPBACK_INTERFACE", intfTN: "LOOPBACK_INTERFACE", keySep: PIPE},
+       cfgDb:TblData{portTN:"LOOPBACK", intfTN: "LOOPBACK_INTERFACE", keySep: PIPE},
        appDb:TblData{intfTN: "INTF_TABLE", keySep: COLON},
    },
 }
 
 var dbIdToTblMap = map[db.DBNum][]string {
-    db.ConfigDB: {"PORT", "MGMT_PORT", "VLAN", "PORTCHANNEL", "LOOPBACK_INTERFACE", "VXLAN_TUNNEL"},
+    db.ConfigDB: {"PORT", "MGMT_PORT", "VLAN", "PORTCHANNEL", "LOOPBACK", "VXLAN_TUNNEL"},
     db.ApplDB  : {"PORT_TABLE", "MGMT_PORT_TABLE", "VLAN_TABLE", "LAG_TABLE"},
     db.StateDB : {"PORT_TABLE", "MGMT_PORT_TABLE", "LAG_TABLE"},
 }
@@ -531,7 +533,7 @@ func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfT
     _ = interfaceIPcount(intTbl.cfgDb.intfTN, d, ifName, &count)
     log.Info("IP count retrieved  = ", count)
 
-    if (count == 2) && (intTbl.cfgDb.intfTN != LOOPBACK_INTERFACE_TN) {
+    if (count == 2) {
         intfEntry, err := d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName}})
         if err != nil {
             log.Error(err.Error())
@@ -895,6 +897,8 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 		}
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, intTbl.CountersHdl.CountersTN)
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/description") {
+	tblList = append(tblList, intTbl.cfgDb.portTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state") {
@@ -1716,7 +1720,7 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
         _ = interfaceIPcount(tblName, d, &ifName, &count)
 
         /* Delete interface from interface table if no other interface attributes/ip */
-        if (count - len(intfIpMap)) == 1 && (tblName != LOOPBACK_INTERFACE_TN) {
+        if ((count - len(intfIpMap)) == 1 ) {
             IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
             if err != nil {
                 return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
@@ -3036,8 +3040,9 @@ func deleteLoopbackIntf(inParams *XfmrParams, loName *string) error {
     loMap[*loName] = db.Value{Field:map[string]string{}}
 
     IntfMapObj, err := inParams.d.GetMapAll(&db.TableSpec{Name:intTbl.cfgDb.portTN + "|" + *loName})
+
     if err != nil || !IntfMapObj.IsPopulated() {
-        errStr := "Retrieving data from LOOPBACK_INTERFACE table for Loopback: " + *loName + " failed!"
+        errStr := "Retrieving data from LOOPBACK table for Loopback: " + *loName + " failed!"
         log.Errorf(errStr)
         return tlerr.InvalidArgsError{Format:errStr}
     }
@@ -3049,7 +3054,7 @@ func deleteLoopbackIntf(inParams *XfmrParams, loName *string) error {
         }
     }
 
-    resMap[intTbl.cfgDb.intfTN] = loMap
+    resMap[intTbl.cfgDb.portTN] = loMap
 
     subOpMap[db.ConfigDB] = resMap
     inParams.subOpDataMap[DELETE] = &subOpMap
@@ -4636,7 +4641,7 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         sort.Strings(keys)
         /* Delete interface from interface table if disabling IPv6 and no other interface attributes/ip 
            else remove ipv6_use_link_local_only field */
-        if !((reflect.DeepEqual(keys, check_keys) || reflect.DeepEqual(keys, check_keys[1:])) && len(ipMap) == 0 && intfType != IntfTypeLoopback) {
+        if !((reflect.DeepEqual(keys, check_keys) || reflect.DeepEqual(keys, check_keys[1:])) && len(ipMap) == 0 ) {
             log.Info("YangToDb_ipv6_enabled_xfmr, deleting ipv6_use_link_local_only field")
             // Adding field to the map
             (&res_values).Set("ipv6_use_link_local_only", enStr)
@@ -4770,3 +4775,39 @@ var DbToYang_igmp_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[
 
     return nil, err
 }
+
+var DbToYang_intf_description_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[db.ConfigDB]
+
+    intfType, _, ierr := getIntfTypeByName(inParams.key)
+    if intfType == IntfTypeUnset || ierr != nil {
+        log.Info("DbToYang_intf_description_xfmr - Invalid interface type IntfTypeUnset");
+        return result, errors.New("Invalid interface type IntfTypeUnset");
+    }
+    if IntfTypeVxlan == intfType {
+            return result, nil
+    }
+    intTbl := IntfTypeTblMap[intfType]
+
+    tblName, _ := getPortTableNameByDBId(intTbl, db.ConfigDB)
+    if _, ok := data[tblName]; !ok {
+        log.Info("DbToYang_intf_description_xfmr table not found : ", tblName)
+        return result, errors.New("table not found : " + tblName)
+    }
+
+    pTbl := data[tblName]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_intf_description_xfmr Interface not found : ", inParams.key)
+        return result, errors.New("Interface not found : " + inParams.key)
+    }
+    prtInst := pTbl[inParams.key]
+    descStr := prtInst.Field["description"]
+
+    result["description"] = descStr
+
+    return result, err
+}
+
