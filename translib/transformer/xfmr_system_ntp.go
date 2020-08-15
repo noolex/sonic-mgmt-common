@@ -237,6 +237,8 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
             return err
         }
 
+        defer cmd.Wait()
+
         in := bufio.NewScanner(output)
 
         /*  Sample output 
@@ -365,10 +367,6 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 line_num ++
         }
 
-        if err := cmd.Wait(); err != nil {
-                log.Info("ProcessGetNtpServer: error ", err)
-                return err
-        }
 
         return nil
 }
