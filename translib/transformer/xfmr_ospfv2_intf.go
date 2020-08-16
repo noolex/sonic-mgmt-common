@@ -1,18 +1,7 @@
 //////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020 Broadcom, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2020 Broadcom.
+// The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.
 //
 //////////////////////////////////////////////////////////////////////////
 
@@ -33,6 +22,49 @@ import (
 func init () {
     XlateFuncBind("YangToDb_ospfv2_interface_subtree_xfmr", YangToDb_ospfv2_interface_subtree_xfmr)
     XlateFuncBind("DbToYang_ospfv2_interface_subtree_xfmr", DbToYang_ospfv2_interface_subtree_xfmr)
+    XlateFuncBind("Subscribe_ospfv2_interface_subtree_xfmr", Subscribe_ospfv2_interface_subtree_xfmr)
+}
+
+
+var Subscribe_ospfv2_interface_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+
+    var err error
+    var result XfmrSubscOutParams
+    var ifName string
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("Subscribe_ospfv2_interface_subtree_xfmr: pathInfo ", pathInfo)
+
+    result.dbDataMap = make(RedisDbMap)
+    result.isVirtualTbl = false
+
+    reqIfName := pathInfo.Var("name")
+    if reqIfName == "" {
+        errStr := "Empty OSPFv2 interface name"
+        log.Info("Subscribe_ospfv2_interface_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }  
+       
+    ifName, err = ospfGetNativeIntfName(reqIfName)
+    if (err != nil) {
+        errStr := "Invalid OSPFv2 interface name"
+        log.Info("Subscribe_ospfv2_interface_subtree_xfmr: " + errStr + " " + reqIfName)
+        return result, tlerr.New(errStr)
+    }
+
+    ifAddress := pathInfo.Var("address")
+    if ifAddress == "" {
+        errStr := "Empty OSPF interface address"
+        log.Info("Subscribe_ospfv2_interface_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    } 
+
+    ospfIntfTbl := "OSPFV2_INTERFACE"
+    ospfIntfTblKey := ifName + "|" + ifAddress
+    result.dbDataMap = RedisDbMap{db.ConfigDB: {ospfIntfTbl:{ospfIntfTblKey:{}}}}
+
+    log.Info("Subscribe_ospfv2_interface_subtree_xfmr: ospfIntfTblKey " + ospfIntfTblKey)
+    return result, nil
 }
 
 
@@ -1172,7 +1204,6 @@ func delete_ospf_interfaces_for_vrf(inParams *XfmrParams, ospfRespMap *map[strin
 
     log.Info("delete_ospf_interfaces_for_vrf: -------------********---------------")
 
-    //rcvdUri, uriErr := getOspfUriPath(inParams)
     rcvdUri, uriErr := getOspfUriPath(inParams)
     if (uriErr != nil) {
         log.Info("delete_ospf_interfaces_for_vrf: getOspfUriPath error ", uriErr)
@@ -1180,14 +1211,16 @@ func delete_ospf_interfaces_for_vrf(inParams *XfmrParams, ospfRespMap *map[strin
     }
 
     log.Info("delete_ospf_interfaces_for_vrf: rcvdUri ", rcvdUri)
-    if (!strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2/global")) {
+
+    if (!(strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2") ||
+          strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2/global"))) {
         log.Info("delete_ospf_interfaces_for_vrf: rcvdUri not ospfv2/global")
         return nil
     }
 
-    ospfVrfName, _, _, uerr := get_ospf_router_info_from_uri(inParams)
-    if uerr != nil {
-        log.Info("delete_ospf_interfaces_for_vrf: get ospf router info failed ", uerr)
+    ospfObj, ospfVrfName, err := ospfGetRouterObjWithVrfName(inParams, "")
+    if (ospfObj == nil || ospfVrfName == "" || err != nil) {
+        log.Info("delete_ospf_interfaces_for_vrf: ospf router not in request")
         return nil
     }
 

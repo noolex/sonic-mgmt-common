@@ -4,6 +4,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "strconv"
+    "strings"
     "fmt"
     "encoding/json"
     log "github.com/golang/glog"
@@ -12,10 +13,13 @@ import (
 
 func init () {
     XlateFuncBind("DbToYang_oc_kdump_status_xfmr", DbToYang_oc_kdump_status_xfmr)
+    XlateFuncBind("Subscribe_oc_kdump_status_xfmr", Subscribe_oc_kdump_status_xfmr)
     XlateFuncBind("DbToYang_oc_kdump_records_xfmr", DbToYang_oc_kdump_records_xfmr)
+    XlateFuncBind("Subscribe_oc_kdump_records_xfmr", Subscribe_oc_kdump_records_xfmr)
     XlateFuncBind("DbToYang_oc_kdump_config_xfmr", DbToYang_oc_kdump_config_xfmr)
     XlateFuncBind("YangToDb_oc_kdump_config_xfmr", YangToDb_oc_kdump_config_xfmr)
     XlateFuncBind("YangToDb_kdump_config_key_xfmr", YangToDb_kdump_config_key_xfmr)
+    XlateFuncBind("Subscribe_oc_kdump_config_xfmr", Subscribe_oc_kdump_config_xfmr)
 }
 
 /*App specific constants */
@@ -288,7 +292,7 @@ var DbToYang_oc_kdump_status_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
         return err
     }
     log.Info("TARGET URI PATH KDUMP:", targetUriPath)
-    if targetUriPath == "/openconfig-system:system/openconfig-system-ext:kdump/state" {
+    if strings.Contains(targetUriPath,"/openconfig-system:system/openconfig-system-ext:kdump/state") {
 	log.Info("TARGET URI PATH KDUMP:", targetUriPath)
         log.Info("TableXfmrFunc - Uri KDUMP: ", inParams.uri);
         err =  getKdumpStatus(kdumpObj)
@@ -308,7 +312,7 @@ var DbToYang_oc_kdump_records_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
         return err
     }
     log.Info("TARGET URI PATH KDUMP:", targetUriPath)
-    if targetUriPath == "/openconfig-system:system/openconfig-system-ext:kdump/kdump-records" {
+    if strings.Contains(targetUriPath, "/openconfig-system:system/openconfig-system-ext:kdump/kdump-records") {
         log.Info("TARGET URI PATH KDUMP:", targetUriPath)
         log.Info("TableXfmrFunc - Uri KDUMP: ", inParams.uri);
         return  getKdumpRecords(kdumpObj)
@@ -432,4 +436,31 @@ var YangToDb_oc_kdump_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
 
 var YangToDb_kdump_config_key_xfmr = func(inParams XfmrParams) (string, error) {
         return "config", nil
+}
+
+var Subscribe_oc_kdump_status_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
+}
+
+var Subscribe_oc_kdump_config_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
+}
+
+var Subscribe_oc_kdump_records_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
 }

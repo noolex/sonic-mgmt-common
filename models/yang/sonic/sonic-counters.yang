@@ -6,10 +6,6 @@ module sonic-counters {
         prefix scommon;
     }
 
-    import sonic-extension {
-        prefix sonic-ext;
-    }
-
     organization
         "SONiC";
 

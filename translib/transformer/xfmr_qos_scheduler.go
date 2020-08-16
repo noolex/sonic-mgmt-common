@@ -21,6 +21,8 @@ const (
     SCHEDULER_MIN_RATE_BPS uint64 =  4000
     SCHEDULER_MIN_BURST_BYTES int =  256
     SCHEDULER_MAX_BURST_BYTES int =  128000000
+    SCHEDULER_MAX_RATE_PPS uint64 =  100000
+    SCHEDULER_MAX_BURST_PACKETS int =  100000
 )
 
 var Subscribe_qos_scheduler_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
@@ -474,6 +476,21 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         sched_entry[sched_key].Field["weight"] = "0"
     }
 
+    if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:meter-type" {
+        log.Info("Handling No Meter-type ")
+
+        if isLastSchedulerInActivePolicy(sched_key) &&
+           isLastSchedulerField(sched_key, "meter-type") {
+            err = tlerr.InternalError{Format:"Last scheduler used by interface cannot be deleted"}
+            log.Info("Not allow the last field to be deleted")
+            log.Info("Disallow to delete the last scheduler in an actively used policy: ", sched_key)
+            return res_map, err
+        }
+
+        log.Info("field Meter-type is set for attribute deletion")
+        sched_entry[sched_key].Field["meter-type"] = "0"
+    }
+
 
     attrs := []string{"cbs", "pbs", "cir" , "pir"}
     if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color") {
@@ -529,6 +546,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
     rtTblMap := make(map[string]db.Value)
 
     if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler" ||
+       (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:meter-type" && isLastSchedulerField(sched_key, "meter-type")) ||
        (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/priority" && isLastSchedulerField(sched_key, "type")) ||
        ((targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" || targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/weight") && isLastSchedulerField(sched_key, "weight")) ||
        (strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color") && isLastSchedulerFields(sched_key, attrs)) {
@@ -668,10 +686,18 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         if schedObj.TwoRateThreeColor != nil && schedObj.TwoRateThreeColor.Config != nil {
             if schedObj.TwoRateThreeColor.Config.Bc != nil  {
                 cbs := (int)(*schedObj.TwoRateThreeColor.Config.Bc)
-                if cbs < SCHEDULER_MIN_BURST_BYTES || cbs > SCHEDULER_MAX_BURST_BYTES {
-                    err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
-                    log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
-                    return res_map, err
+                if seq == "255" {
+                    if cbs < SCHEDULER_MIN_BURST_BYTES || cbs > SCHEDULER_MAX_BURST_BYTES {
+                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
+                        log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
+                        return res_map, err
+                    }
+                } else {
+                    if cbs > SCHEDULER_MAX_BURST_PACKETS {
+                        err = tlerr.InternalError{Format:"CBS must be less than or equal to 100000 Packets"}
+                        log.Info("CBS must be less than or equal to 100000 Packets")
+                        return res_map, err
+                    }
                 }
 
                 sched_entry[sched_key].Field["cbs"] = strconv.Itoa(cbs)
@@ -679,21 +705,38 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
 
             if schedObj.TwoRateThreeColor.Config.Be != nil  {
                 pbs := (int)(*schedObj.TwoRateThreeColor.Config.Be)
-                if pbs < SCHEDULER_MIN_BURST_BYTES || pbs > SCHEDULER_MAX_BURST_BYTES {
-                    err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
-                    log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
-                    return res_map, err
+                if seq == "255" {
+                    if pbs < SCHEDULER_MIN_BURST_BYTES || pbs > SCHEDULER_MAX_BURST_BYTES {
+                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
+                        log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
+                        return res_map, err
+                    }
+                } else {
+                    if pbs > SCHEDULER_MAX_BURST_PACKETS {
+                        err = tlerr.InternalError{Format:"PBS must be less than or equal to 100000 Packets"}
+                        log.Info("PBS must be less than or equal to 100000 Packets")
+                        return res_map, err
+                    }
                 }
                 sched_entry[sched_key].Field["pbs"] = strconv.Itoa(pbs)
             }
 
             if schedObj.TwoRateThreeColor.Config.Cir != nil  {
-                cir = (uint64)(*schedObj.TwoRateThreeColor.Config.Cir)/8
-                // Min 32 Kbps  ==  4 KBps == 4000 Bps
-                if cir < SCHEDULER_MIN_RATE_BPS {
-                    err = tlerr.InternalError{Format:"CIR must be greater than 32Kbp/4KBps/4000Bps"}
-                    log.Info("CIR must be greater than 32Kbps/4KBps/4000Bps")
-                    return res_map, err
+                if seq == "255" {
+                    cir = (uint64)(*schedObj.TwoRateThreeColor.Config.Cir)/8
+                    // Min 32 Kbps  ==  4 KBps == 4000 Bps
+                    if cir < SCHEDULER_MIN_RATE_BPS {
+                        err = tlerr.InternalError{Format:"CIR must be greater than 32Kbp/4KBps/4000Bps"}
+                        log.Info("CIR must be greater than 32Kbps/4KBps/4000Bps")
+                        return res_map, err
+                    }
+                } else {
+                    cir = (uint64)(*schedObj.TwoRateThreeColor.Config.Cir)
+                    if cir > SCHEDULER_MAX_RATE_PPS {
+                        err = tlerr.InternalError{Format:"CIR must be lesser than 100000pps"}
+                        log.Info("CIR must be lesser than 100000pps")
+                        return res_map, err
+                    }
                 }
                 if schedObj.TwoRateThreeColor.Config.Pir == nil {
                    if prev_pir_exist && (cir > prev_pir) {
@@ -706,11 +749,20 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
             }
 
             if schedObj.TwoRateThreeColor.Config.Pir != nil  {
-                pir = (uint64)(*schedObj.TwoRateThreeColor.Config.Pir)/8
-                if pir < SCHEDULER_MIN_RATE_BPS {
-                    err = tlerr.InternalError{Format:"PIR must be greater than 32Kbp/4KBps/4000Bps"}
-                    log.Info("CIR must be greater than 32Kbps/4KBps/4000Bps")
-                    return res_map, err
+                if seq == "255" {
+                    pir = (uint64)(*schedObj.TwoRateThreeColor.Config.Pir)/8
+                    if pir < SCHEDULER_MIN_RATE_BPS {
+                        err = tlerr.InternalError{Format:"PIR must be greater than 32Kbp/4KBps/4000Bps"}
+                        log.Info("CIR must be greater than 32Kbps/4KBps/4000Bps")
+                        return res_map, err
+                    }
+                } else {
+                    pir = (uint64)(*schedObj.TwoRateThreeColor.Config.Pir)
+                    if pir > SCHEDULER_MAX_RATE_PPS {
+                        err = tlerr.InternalError{Format:"PIR must be lesser than 100000pps"}
+                        log.Info("PIR must be lesser than 100000pps")
+                        return res_map, err
+                    }
                 }
 
                 if schedObj.TwoRateThreeColor.Config.Cir == nil {
@@ -772,6 +824,12 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 err = tlerr.InternalError{Format:"Strict priority scheduling can not be configured with weight"}
                 log.Info("Strict priority scheduling can not be configured with weight")
                 return res_map, err
+            }
+
+            if schedObj.Config.MeterType == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_MeterType_PACKETS {
+                sched_entry[sched_key].Field["meter-type"] = "PACKETS"
+            } else if schedObj.Config.MeterType == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_MeterType_BYTES {
+                sched_entry[sched_key].Field["meter-type"] = "BYTES"
             }
         }
     }
@@ -965,7 +1023,9 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
 
         if val, exist := schedCfg.Field["cir"]; exist {
             cir,_ := strconv.ParseUint(val, 10, 32)
-            cir = cir * 8
+            if spseq == "255" {
+                cir = cir * 8
+            }
             if t23c_config {
                 schedObj.TwoRateThreeColor.Config.Cir = &cir
             }
@@ -976,7 +1036,9 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
 
         if val, exist := schedCfg.Field["pir"]; exist {
             pir,_ := strconv.ParseUint(val, 10, 32)
-            pir = pir * 8
+            if spseq == "255" {
+                pir = pir * 8
+            }
             if t23c_config {
                 schedObj.TwoRateThreeColor.Config.Pir = &pir
             }
@@ -1015,6 +1077,23 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
             }
             if sched_state {
                 schedObj.State.Weight = &weight
+            }
+        }
+
+        if val, exist := schedCfg.Field["meter-type"]; exist {
+            if sched_config {
+                if val == "PACKETS" {
+                    schedObj.Config.MeterType = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_MeterType_PACKETS
+                } else if val == "BYTES" {
+                    schedObj.Config.MeterType = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_MeterType_BYTES
+                }
+            }
+            if sched_state {
+                if val == "PACKETS" {
+                    schedObj.State.MeterType = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_State_MeterType_PACKETS
+                } else if val == "BYTES" {
+                    schedObj.State.MeterType = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_State_MeterType_BYTES
+                }
             }
         }
     }

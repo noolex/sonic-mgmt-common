@@ -13,9 +13,12 @@ import (
 
 func init () {
     XlateFuncBind("DbToYang_oc_systemd_coredump_status_xfmr", DbToYang_oc_systemd_coredump_status_xfmr)
+    XlateFuncBind("Subscribe_oc_systemd_coredump_status_xfmr", Subscribe_oc_systemd_coredump_status_xfmr)
     XlateFuncBind("DbToYang_oc_systemd_coredump_records_xfmr", DbToYang_oc_systemd_coredump_records_xfmr)
+    XlateFuncBind("Subscribe_oc_systemd_coredump_records_xfmr", Subscribe_oc_systemd_coredump_records_xfmr)
     XlateFuncBind("DbToYang_oc_systemd_coredump_config_xfmr", DbToYang_oc_systemd_coredump_config_xfmr)
     XlateFuncBind("YangToDb_oc_systemd_coredump_config_xfmr", YangToDb_oc_systemd_coredump_config_xfmr)
+    XlateFuncBind("Subscribe_oc_systemd_coredump_config_xfmr", Subscribe_oc_systemd_coredump_config_xfmr)
     XlateFuncBind("YangToDb_coredump_config_key_xfmr", YangToDb_coredump_config_key_xfmr)
 }
 
@@ -370,7 +373,6 @@ var DbToYang_oc_systemd_coredump_config_xfmr SubTreeXfmrDbToYang = func (inParam
         return err
     }
     log.Info("TARGET URI PATH systemd-coredump:", targetUriPath)
-
     act:= "getconfig"
     var args [2]string
     mess, err := coredumpAction(act, args)
@@ -438,4 +440,31 @@ var YangToDb_oc_systemd_coredump_config_xfmr SubTreeXfmrYangToDb = func(inParams
 
 var YangToDb_coredump_config_key_xfmr = func(inParams XfmrParams) (string, error) {
         return "config", nil
+}
+
+var Subscribe_oc_systemd_coredump_config_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
+}
+
+var Subscribe_oc_systemd_coredump_status_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
+}
+
+var Subscribe_oc_systemd_coredump_records_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
 }

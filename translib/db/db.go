@@ -647,11 +647,11 @@ func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Val
 	cei, cvlRetCode = d.cv.ValidateEditConfig(d.cvlEditConfigData)
 
 	if cvl.CVL_SUCCESS != cvlRetCode {
-		glog.Error("doCVL: CVL Failure: ", cvlRetCode)
+		glog.Warning("doCVL: CVL Failure: ", cvlRetCode)
 		// e = errors.New("CVL Failure: " + string(cvlRetCode))
 		e = tlerr.TranslibCVLFailure{Code: int(cvlRetCode),
 			CVLErrorInfo: cei}
-		glog.Error("doCVL: ", len(d.cvlEditConfigData), len(cvlOps))
+		glog.Info("doCVL: ", len(d.cvlEditConfigData), len(cvlOps))
 		d.cvlEditConfigData = d.cvlEditConfigData[:len(d.cvlEditConfigData)-len(cvlOps)]
 	} else {
 		for i := 0; i < len(cvlOps); i++ {

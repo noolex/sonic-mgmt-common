@@ -1,6 +1,6 @@
 diff -ruN ygot-dir-orig/ygot/generator/generator.go ygot-dir/ygot/generator/generator.go
---- ygot-dir-orig/ygot/generator/generator.go	2020-06-21 15:35:13.777667000 -0700
-+++ ygot-dir/ygot/generator/generator.go	2020-07-01 12:37:45.327603000 -0700
+--- ygot-dir-orig/ygot/generator/generator.go	2020-08-13 14:32:22.714922000 -0700
++++ ygot-dir/ygot/generator/generator.go	2020-08-13 17:37:35.535882000 -0700
 @@ -109,7 +109,7 @@
  }
  
@@ -11,8 +11,8 @@ diff -ruN ygot-dir-orig/ygot/generator/generator.go ygot-dir/ygot/generator/gene
  		b.WriteString(s)
  	}
 diff -ruN ygot-dir-orig/ygot/genutil/common.go ygot-dir/ygot/genutil/common.go
---- ygot-dir-orig/ygot/genutil/common.go	2020-06-21 15:35:13.763550000 -0700
-+++ ygot-dir/ygot/genutil/common.go	2020-07-01 12:37:45.315870000 -0700
+--- ygot-dir-orig/ygot/genutil/common.go	2020-08-13 14:32:22.699571000 -0700
++++ ygot-dir/ygot/genutil/common.go	2020-08-13 17:37:35.529751000 -0700
 @@ -18,9 +18,9 @@
  
  import (
@@ -35,8 +35,8 @@ diff -ruN ygot-dir-orig/ygot/genutil/common.go ygot-dir/ygot/genutil/common.go
  		b.WriteString(s)
  	}
 diff -ruN ygot-dir-orig/ygot/util/debug.go ygot-dir/ygot/util/debug.go
---- ygot-dir-orig/ygot/util/debug.go	2020-06-21 15:35:13.562106000 -0700
-+++ ygot-dir/ygot/util/debug.go	2020-07-01 12:37:44.978418000 -0700
+--- ygot-dir-orig/ygot/util/debug.go	2020-08-13 14:32:22.504536000 -0700
++++ ygot-dir/ygot/util/debug.go	2020-08-13 17:37:35.294974000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -73,8 +73,8 @@ diff -ruN ygot-dir-orig/ygot/util/debug.go ygot-dir/ygot/util/debug.go
  	if len(yt.Pattern) != 0 {
  		out += fmt.Sprintf(", Pattern: %s", strings.Join(yt.Pattern, " or "))
 diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
---- ygot-dir-orig/ygot/util/path.go	2020-06-21 15:35:13.572583000 -0700
-+++ ygot-dir/ygot/util/path.go	2020-07-01 12:37:44.984586000 -0700
+--- ygot-dir-orig/ygot/util/path.go	2020-08-13 14:32:22.515967000 -0700
++++ ygot-dir/ygot/util/path.go	2020-08-13 17:37:35.298993000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -85,16 +85,22 @@ diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
  package util
  
  import (
-@@ -23,6 +26,8 @@
+@@ -19,10 +22,13 @@
+ 	"fmt"
+ 	"reflect"
+ 	"strings"
+-
++	"sync"
  	"github.com/openconfig/goyang/pkg/yang"
  )
  
 +var pathToSchemaCache map[reflect.StructTag][]string = make(map[reflect.StructTag][]string)
++var pathToSchemaMutex sync.RWMutex
 +
  // SchemaPaths returns all the paths in the path tag.
  func SchemaPaths(f reflect.StructField) ([][]string, error) {
  	var out [][]string
-@@ -49,25 +54,32 @@
+@@ -49,25 +55,39 @@
  // leafref; the schema *yang.Entry for the field is given by
  // schema.Dir["config"].Dir["a"].
  func RelativeSchemaPath(f reflect.StructField) ([]string, error) {
@@ -102,9 +108,12 @@ diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
 -	if !ok || pathTag == "" {
 -		return nil, fmt.Errorf("field %s did not specify a path", f.Name)
 -	}
++	pathToSchemaMutex.RLock()
 +	if pe, ok := pathToSchemaCache[f.Tag]; ok {
++		pathToSchemaMutex.RUnlock()
 +		return pe, nil
 +	} else {
++		pathToSchemaMutex.RUnlock()
 +		pathTag, ok := f.Tag.Lookup("path")
 +		if !ok || pathTag == "" {
 +			return nil, fmt.Errorf("field %s did not specify a path", f.Name)
@@ -124,14 +133,18 @@ diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
 +		if len(paths) == 1 {
 +			pathTag = strings.TrimPrefix(pathTag, "/")
 +			retPath := strings.Split(pathTag, "/")
++			pathToSchemaMutex.Lock()
 +			pathToSchemaCache[f.Tag] = retPath
++			pathToSchemaMutex.Unlock()
 +			return retPath, nil
 +		}
 +		for _, pv := range paths {
 +			pv = strings.TrimPrefix(pv, "/")
 +			pe := strings.Split(pv, "/")
 +			if len(pe) > 1 {
++				pathToSchemaMutex.Lock()
 +				pathToSchemaCache[f.Tag] = pe
++				pathToSchemaMutex.Unlock()
 +				return pe, nil
 +			}
  		}
@@ -143,7 +156,7 @@ diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
  }
  
  // SchemaTreePath returns the schema tree path of the supplied yang.Entry
-@@ -215,6 +227,10 @@
+@@ -215,6 +235,10 @@
  		refSchema = refSchema.Dir[pe]
  	}
  
@@ -155,8 +168,8 @@ diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
  }
  
 diff -ruN ygot-dir-orig/ygot/util/reflect.go ygot-dir/ygot/util/reflect.go
---- ygot-dir-orig/ygot/util/reflect.go	2020-06-21 15:35:13.578335000 -0700
-+++ ygot-dir/ygot/util/reflect.go	2020-07-01 12:37:44.991239000 -0700
+--- ygot-dir-orig/ygot/util/reflect.go	2020-08-13 14:32:22.520091000 -0700
++++ ygot-dir/ygot/util/reflect.go	2020-08-13 19:49:31.030310000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -189,17 +202,36 @@ diff -ruN ygot-dir-orig/ygot/util/reflect.go ygot-dir/ygot/util/reflect.go
  		return fmt.Errorf("cannot assign value %v (type %T) to struct field %s (type %v) in struct %T", fieldValue, fieldValue, fieldName, ft.Type, parentStruct)
  	}
  
-@@ -458,8 +463,17 @@
+@@ -452,14 +457,36 @@
+ 	return cmp.Equal(aa, bb)
+ }
+ 
++func updateChildSchemaCache (schema *yang.Entry, tagStr reflect.StructTag, ygEntry *yang.Entry) {
++	schema.ChildSchemaMutex.Lock()		
++	schema.ChildSchemaCache[tagStr] = ygEntry
++	schema.ChildSchemaMutex.Unlock()
++}
++
+ // ChildSchema returns the schema for the struct field f, if f contains a valid
+ // path tag and the schema path is found in the schema tree. It returns an error
+ // if the struct tag is invalid, or nil if tag is valid but the schema is not
  // found in the tree at the specified path.
  // TODO(wenbli): need unit test
  func ChildSchema(schema *yang.Entry, f reflect.StructField) (*yang.Entry, error) {
 -	pathTag, _ := f.Tag.Lookup("path")
 -	DbgSchema("childSchema for schema %s, field %s, tag %s\n", schema.Name, f.Name, pathTag)
++	schema.ChildSchemaMutex.Lock()
 +	if (schema.ChildSchemaCache == nil) {
 +		schema.ChildSchemaCache = make(map[reflect.StructTag]*yang.Entry)
-+	} else if cschema, ok := schema.ChildSchemaCache[f.Tag]; ok {
++	}
++	schema.ChildSchemaMutex.Unlock()
++
++	schema.ChildSchemaMutex.RLock()
++	if cschema, ok := schema.ChildSchemaCache[f.Tag]; ok {
++		schema.ChildSchemaMutex.RUnlock()
 +		return cschema, nil
 +	}
++	schema.ChildSchemaMutex.RUnlock()
 +	
 +	if IsDebugSchemaEnabled() {
 +		pathTag, _ := f.Tag.Lookup("path")
@@ -209,19 +241,19 @@ diff -ruN ygot-dir-orig/ygot/util/reflect.go ygot-dir/ygot/util/reflect.go
  	p, err := RelativeSchemaPath(f)
  	if err != nil {
  		return nil, err
-@@ -490,6 +504,7 @@
+@@ -490,6 +517,7 @@
  	}
  	if foundSchema {
  		DbgSchema(" - found\n")
-+		schema.ChildSchemaCache[f.Tag] = childSchema
++		updateChildSchemaCache (schema, f.Tag, childSchema)
  		return childSchema, nil
  	}
  	DbgSchema(" - not found\n")
-@@ -505,11 +520,15 @@
+@@ -505,11 +533,15 @@
  		// path element i.e. choice1/case1/leaf1 path in the schema will have
  		// struct tag `path:"leaf1"`. This implies that only paths with length
  		// 1 are eligible for this matching.
-+		schema.ChildSchemaCache[f.Tag] = nil
++		updateChildSchemaCache (schema, f.Tag, nil)
  		return nil, nil
  	}
  	entries := FindFirstNonChoiceOrCase(schema)
@@ -234,23 +266,23 @@ diff -ruN ygot-dir-orig/ygot/util/reflect.go ygot-dir/ygot/util/reflect.go
  	for path, entry := range entries {
  		splitPath := SplitPath(path)
  		name := splitPath[len(splitPath)-1]
-@@ -517,11 +536,13 @@
+@@ -517,11 +549,13 @@
  
  		if StripModulePrefix(name) == p[0] {
  			DbgSchema(" - match\n")
-+			schema.ChildSchemaCache[f.Tag] = entry
++			updateChildSchemaCache (schema, f.Tag, entry)
  			return entry, nil
  		}
  	}
  
  	DbgSchema(" - no matches\n")
-+	schema.ChildSchemaCache[f.Tag] = nil
++	updateChildSchemaCache (schema, f.Tag, nil)	
  	return nil, nil
  }
  
 diff -ruN ygot-dir-orig/ygot/ygen/codegen.go ygot-dir/ygot/ygen/codegen.go
---- ygot-dir-orig/ygot/ygen/codegen.go	2020-06-21 15:35:13.714871000 -0700
-+++ ygot-dir/ygot/ygen/codegen.go	2020-07-01 12:37:45.290207000 -0700
+--- ygot-dir-orig/ygot/ygen/codegen.go	2020-08-13 14:32:22.650945000 -0700
++++ ygot-dir/ygot/ygen/codegen.go	2020-08-13 17:37:35.511938000 -0700
 @@ -15,6 +15,10 @@
  // Package ygen contains a library to generate Go structs from a YANG model.
  // The Goyang parsing library is used to parse YANG. The output can consider
@@ -272,8 +304,8 @@ diff -ruN ygot-dir-orig/ygot/ygen/codegen.go ygot-dir/ygot/ygen/codegen.go
  		default:
  			errs = util.AppendErr(errs, fmt.Errorf("unknown type of entry %v in findMappableEntities for %s", e.Kind, e.Path()))
 diff -ruN ygot-dir-orig/ygot/ygen/genstate.go ygot-dir/ygot/ygen/genstate.go
---- ygot-dir-orig/ygot/ygen/genstate.go	2020-06-21 15:35:13.722530000 -0700
-+++ ygot-dir/ygot/ygen/genstate.go	2020-07-01 12:37:45.295765000 -0700
+--- ygot-dir-orig/ygot/ygen/genstate.go	2020-08-13 14:32:22.660332000 -0700
++++ ygot-dir/ygot/ygen/genstate.go	2020-08-13 17:37:35.515720000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -341,8 +373,8 @@ diff -ruN ygot-dir-orig/ygot/ygen/genstate.go ygot-dir/ygot/ygen/genstate.go
  	}
  
 diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/struct_validation_map.go
---- ygot-dir-orig/ygot/ygot/struct_validation_map.go	2020-06-21 15:35:13.614961000 -0700
-+++ ygot-dir/ygot/ygot/struct_validation_map.go	2020-07-01 12:37:45.053593000 -0700
+--- ygot-dir-orig/ygot/ygot/struct_validation_map.go	2020-08-13 14:32:22.553900000 -0700
++++ ygot-dir/ygot/ygot/struct_validation_map.go	2020-08-13 17:37:35.350780000 -0700
 @@ -19,6 +19,10 @@
  //	  to return pointers to a type.
  //	- Renders structs to other output formats such as JSON, or gNMI
@@ -481,8 +513,8 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
 +	return nil, fmt.Errorf("No match found in the existingKeys map.")
 +}
 diff -ruN ygot-dir-orig/ygot/ytypes/container.go ygot-dir/ygot/ytypes/container.go
---- ygot-dir-orig/ygot/ytypes/container.go	2020-06-21 15:35:13.644909000 -0700
-+++ ygot-dir/ygot/ytypes/container.go	2020-07-01 12:37:45.147953000 -0700
+--- ygot-dir-orig/ygot/ytypes/container.go	2020-08-13 14:32:22.584218000 -0700
++++ ygot-dir/ygot/ytypes/container.go	2020-08-13 17:37:35.429579000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -533,8 +565,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/container.go ygot-dir/ygot/ytypes/container.
  }
  
 diff -ruN ygot-dir-orig/ygot/ytypes/leaf.go ygot-dir/ygot/ytypes/leaf.go
---- ygot-dir-orig/ygot/ytypes/leaf.go	2020-06-21 15:35:13.659910000 -0700
-+++ ygot-dir/ygot/ytypes/leaf.go	2020-07-01 12:37:45.153609000 -0700
+--- ygot-dir-orig/ygot/ytypes/leaf.go	2020-08-13 14:32:22.597341000 -0700
++++ ygot-dir/ygot/ytypes/leaf.go	2020-08-13 17:37:35.434822000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -751,8 +783,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/leaf.go ygot-dir/ygot/ytypes/leaf.go
 +}
 \ No newline at end of file
 diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
---- ygot-dir-orig/ygot/ytypes/list.go	2020-06-21 15:35:13.671135000 -0700
-+++ ygot-dir/ygot/ytypes/list.go	2020-07-01 12:37:45.160677000 -0700
+--- ygot-dir-orig/ygot/ytypes/list.go	2020-08-13 14:32:22.607748000 -0700
++++ ygot-dir/ygot/ytypes/list.go	2020-08-13 17:37:35.440137000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -897,8 +929,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  	if err != nil {
  		return nil, fmt.Errorf("failed to create map value for insert, root %T, keys %v: %v", root, keys, err)
 diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
---- ygot-dir-orig/ygot/ytypes/node.go	2020-06-21 15:35:13.674994000 -0700
-+++ ygot-dir/ygot/ytypes/node.go	2020-07-01 12:37:45.169026000 -0700
+--- ygot-dir-orig/ygot/ytypes/node.go	2020-08-13 14:32:22.611871000 -0700
++++ ygot-dir/ygot/ytypes/node.go	2020-08-13 17:37:35.445148000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -939,8 +971,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
  		if err != nil {
  			return nil, err
 diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_type.go
---- ygot-dir-orig/ygot/ytypes/string_type.go	2020-06-21 15:35:13.679051000 -0700
-+++ ygot-dir/ygot/ytypes/string_type.go	2020-07-01 12:37:45.178903000 -0700
+--- ygot-dir-orig/ygot/ytypes/string_type.go	2020-08-13 14:32:22.614869000 -0700
++++ ygot-dir/ygot/ytypes/string_type.go	2020-08-13 17:37:35.449572000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -951,16 +983,22 @@ diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_t
  package ytypes
  
  import (
-@@ -23,6 +26,8 @@
+@@ -19,10 +22,14 @@
+ 	"fmt"
+ 	"regexp"
+ 	"unicode/utf8"
++  "sync"
+ 
  	"github.com/openconfig/goyang/pkg/yang"
  )
  
 +var regexpCache map[string]*regexp.Regexp = make(map[string]*regexp.Regexp)
++var regexpMutex sync.RWMutex = sync.RWMutex{}
 +
  // Refer to: https://tools.ietf.org/html/rfc6020#section-9.4.
  
  // validateString validates value, which must be a Go string type, against the
-@@ -48,10 +53,18 @@
+@@ -48,10 +55,23 @@
  
  	// Check that the value satisfies any regex patterns.
  	for _, p := range schema.Type.Pattern {
@@ -968,21 +1006,26 @@ diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_t
 -		if err != nil {
 -			return err
 +		var r *regexp.Regexp
++		regexpMutex.RLock()
 +		if val, ok := regexpCache[p]; ok {
++			regexpMutex.RUnlock()
 +			r = val
 +		} else {
++			regexpMutex.RUnlock()
 +			var err error
 +			r, err = regexp.Compile(fixYangRegexp(p))
 +			if err != nil {
 +				return err
 +			}
-+			regexpCache[p] = r	
++			regexpMutex.Lock()
++			regexpCache[p] = r
++			regexpMutex.Unlock()	
  		}
 +		
  		// fixYangRegexp adds ^(...)$ around the pattern - the result is
  		// equivalent to a full match of whole string.
  		if !r.MatchString(stringVal) {
-@@ -105,13 +118,29 @@
+@@ -105,13 +125,33 @@
  		return fmt.Errorf("string schema %s has wrong type %v", schema.Name, schema.Type.Kind)
  	}
  
@@ -996,13 +1039,17 @@ diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_t
 -		if _, err := regexp.Compile(fixYangRegexp(p)); err != nil {
 -			return fmt.Errorf("error generating regexp %s %v for schema %s", p, err, schema.Name)
 -		}
++	  regexpMutex.RLock()
 +		_, ok := regexpCache[p]
++		regexpMutex.RUnlock()
 +		if (ok == false) {
 +			var r *regexp.Regexp
 +			if r, err = regexp.Compile(fixYangRegexp(p)); err != nil {
 +				return fmt.Errorf("error generating regexp %s %v for schema %s", p, err, schema.Name)
 +			} else {
++			  regexpMutex.Lock()
 +				regexpCache[p] = r
++				regexpMutex.Unlock()
 +			}
 +		}		
  	}
@@ -1017,8 +1064,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_t
  
  // fixYangRegexp takes a pattern regular expression from a YANG module and
 diff -ruN ygot-dir-orig/ygot/ytypes/unmarshal.go ygot-dir/ygot/ytypes/unmarshal.go
---- ygot-dir-orig/ygot/ytypes/unmarshal.go	2020-06-21 15:35:13.685260000 -0700
-+++ ygot-dir/ygot/ytypes/unmarshal.go	2020-07-01 12:37:45.189539000 -0700
+--- ygot-dir-orig/ygot/ytypes/unmarshal.go	2020-08-13 14:32:22.621934000 -0700
++++ ygot-dir/ygot/ytypes/unmarshal.go	2020-08-13 17:37:35.453327000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -1042,8 +1089,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/unmarshal.go ygot-dir/ygot/ytypes/unmarshal.
  	if enc == GNMIEncoding && !(schema.IsLeaf() || schema.IsLeafList()) {
  		return errors.New("unmarshalling a non leaf node isn't supported in GNMIEncoding mode")
 diff -ruN ygot-dir-orig/ygot/ytypes/validate.go ygot-dir/ygot/ytypes/validate.go
---- ygot-dir-orig/ygot/ytypes/validate.go	2020-06-21 15:35:13.699446000 -0700
-+++ ygot-dir/ygot/ytypes/validate.go	2020-07-01 12:37:45.198346000 -0700
+--- ygot-dir-orig/ygot/ytypes/validate.go	2020-08-13 14:32:22.637048000 -0700
++++ ygot-dir/ygot/ytypes/validate.go	2020-08-13 17:37:35.457999000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.

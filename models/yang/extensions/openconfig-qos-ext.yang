@@ -470,6 +470,20 @@ module openconfig-qos-ext {
             description
                 "DWRR weight";
         }
+        leaf meter-type {
+            type enumeration {
+                enum PACKETS {
+                    description
+                        "Packets are metered";
+                }
+                enum BYTES {
+                    description
+                        "Bytes are metered";
+                }
+            }
+            description
+                "Identifies the metering method used by the scheduler policy";
+        }
     }
 
     augment /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:state {
@@ -481,6 +495,20 @@ module openconfig-qos-ext {
             }
             description
                 "DWRR weight";
+        }
+        leaf meter-type {
+            type enumeration {
+                enum PACKETS {
+                    description
+                        "Packets are metered";
+                }
+                enum BYTES {
+                    description
+                        "Bytes are metered";
+                }
+            }
+            description
+                "Identifies the metering method used by the scheduler policy";
         }
     }
 

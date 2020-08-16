@@ -292,8 +292,10 @@ func getZtpStatus(ztpObj *ocbinds.OpenconfigZtp_Ztp) (error) {
 
 func init () {
     XlateFuncBind("DbToYang_ztp_status_xfmr", DbToYang_ztp_status_xfmr)
+    XlateFuncBind("Subscribe_ztp_status_xfmr", Subscribe_ztp_status_xfmr)
     XlateFuncBind("DbToYang_ztp_config_xfmr", DbToYang_ztp_config_xfmr)
     XlateFuncBind("YangToDb_ztp_config_xfmr", YangToDb_ztp_config_xfmr)
+    XlateFuncBind("Subscribe_ztp_config_xfmr", Subscribe_ztp_config_xfmr)
 }
 
 var DbToYang_ztp_status_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
@@ -376,4 +378,22 @@ var YangToDb_ztp_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
 
     _, err = ztpAction(act)
     return nil,err;
+}
+
+var Subscribe_ztp_status_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
+}
+
+var Subscribe_ztp_config_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
 }

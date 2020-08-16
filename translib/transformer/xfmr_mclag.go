@@ -25,6 +25,7 @@ import (
 	"strings"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init() {
@@ -34,6 +35,7 @@ func init() {
 	XlateFuncBind("DbToYang_mclag_vlan_name_fld_xfmr", DbToYang_mclag_vlan_name_fld_xfmr)
 	XlateFuncBind("YangToDb_mclag_interface_subtree_xfmr", YangToDb_mclag_interface_subtree_xfmr)
 	XlateFuncBind("DbToYang_mclag_interface_subtree_xfmr", DbToYang_mclag_interface_subtree_xfmr)
+	XlateFuncBind("Subscribe_mclag_interface_subtree_xfmr", Subscribe_mclag_interface_subtree_xfmr)
 
 	XlateFuncBind("DbToYang_mclag_domain_oper_status_fld_xfmr", DbToYang_mclag_domain_oper_status_fld_xfmr)
 	XlateFuncBind("DbToYang_mclag_domain_role_fld_xfmr", DbToYang_mclag_domain_role_fld_xfmr)
@@ -356,3 +358,64 @@ func getMclagRoot(s *ygot.GoStruct) *ocbinds.OpenconfigMclag_Mclag {
 	deviceObj := (*s).(*ocbinds.Device)
 	return deviceObj.Mclag
 }
+
+
+var Subscribe_mclag_interface_subtree_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error)  {
+
+     var err error
+     var result XfmrSubscOutParams
+
+     pathInfo := NewPathInfo(inParams.uri)
+     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+     log.Infof("Subscribe_mclag_interface_subtree_xfmr:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
+
+     if targetUriPath != "/openconfig-mclag:mclag/interfaces/interface" {
+         log.Infof("Subscribe attempted on unsupported path:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
+         return result, err
+     }
+
+     ifName := pathInfo.Var("name")
+     log.Infof("ifName %v ", ifName)
+     domainId := pathInfo.Var("mclag-domain-id")
+     log.Infof("domainId %v ", domainId)
+     // DomainId info NOT available from URI or body. So make db query.
+     if domainId == "" {
+         cdb, err := db.NewDB(getDBOptions(db.ConfigDB))
+         if err != nil {
+             log.Infof("Subscribe_mclag_interface_subtree_xfmr, unable to get configDB, error %v", err)
+             return result, err
+         }
+	     mclagIntfKeys, _ := cdb.GetKeysPattern(&db.TableSpec{Name: "MCLAG_INTERFACE"}, db.Key{[]string{"*", ifName}})
+         log.Infof("keys %v ", mclagIntfKeys)
+	     if len(mclagIntfKeys) > 0 {
+	         for _, intfKey := range mclagIntfKeys {
+	             if intfKey.Get(1) == ifName {
+	        	     domainId = intfKey.Get(0)
+                     break
+	        	  }
+	         }
+          }
+          
+      }
+
+     
+     result.dbDataMap = make(RedisDbMap)
+     if (domainId == "") { 
+         log.Infof("Subscribe_mclag_interface_subtree_xfmr resouce not found for ifName:%s ", ifName)
+         return result, tlerr.NotFound("Resource not found")
+     }
+
+     mclagIntfKey := domainId + "|" + ifName
+     log.Infof("Subscribe_mclag_interface_subtree_xfmr path:%s; template:%s targetUriPath:%s key:%s", pathInfo.Path, pathInfo.Template, targetUriPath, mclagIntfKey)
+     result.dbDataMap = RedisDbMap{db.ConfigDB:{"MCLAG_INTERFACE":{mclagIntfKey:{}}}} // tablename & table-idx for the inParams.uri
+
+     //result.needCache = true
+     //Onchange notification subscription
+     //result.onChange = true
+     //result.nOpts = new(notificationOpts)
+     //result.nOpts.mInterval = 0
+     //result.nOpts.pType = OnChange
+
+     return result, err 
+}
+

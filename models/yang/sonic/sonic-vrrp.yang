@@ -7,14 +7,6 @@ module sonic-vrrp {
         prefix "inet";
     }
 
-    import ietf-yang-types {
-        prefix "yang";
-    }
-
-    import sonic-interface {
-        prefix "sint";
-    }
-
     import sonic-port {
         prefix sprt;
     }

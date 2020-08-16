@@ -28,15 +28,59 @@ import (
 
 func init() {
     XlateFuncBind("rpc_crm_stats", rpc_crm_stats)
+    XlateFuncBind("rpc_crm_acl_group_stats", rpc_crm_acl_group_stats)
+    XlateFuncBind("rpc_crm_acl_table_stats", rpc_crm_acl_table_stats)
 }
 
-/* RPC for CRM_STATS and CRM_ACL_GROUP_STATS */
+/* RPC CRM_STATS */
 var rpc_crm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 
     var str string
     var idx int
+
+    log.Info("+++ RPC: rpc_crm_stats +++")
+
+    d := dbs[db.CountersDB]
+    d.Opts.KeySeparator = ":"
+    d.Opts.TableNameSeparator = ":"
+
+    tbl := db.TableSpec { Name: "CRM" }
+    key := db.Key { Comp : [] string { "STATS" } }
+
+    val, err := d.GetEntry(&tbl, key)
+
+    if err == nil {
+        idx = 0
+        str += "{\n"
+        str += "  \"sonic-system-crm:output\": {\n"
+        for k, v := range val.Field {
+            str += fmt.Sprintf("    \"%s\": %s", k, v)
+            if (idx == len(val.Field) - 1) {
+                str += "\n"
+            } else {
+                str += ",\n"
+            }
+            idx = idx + 1
+        }
+        str += "  }\n"
+        str += "}"
+    } else {
+        str = "{}"
+    }
+
+    return []byte(str), err
+}
+
+/* RPC CRM_ACL_GROUP_STATS */
+var rpc_crm_acl_group_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+
+    var str string
+    var idx int
     var err error
+    var val db.Value
     var mapData map[string]interface{}
+
+    log.Info("+++ RPC: rpc_crm_acl_group_stats +++")
 
     err = json.Unmarshal(body, &mapData)
     if err != nil {
@@ -61,32 +105,85 @@ var rpc_crm_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     d.Opts.TableNameSeparator = ":"
 
     tbl := db.TableSpec { Name: "CRM" }
-    key := db.Key { Comp : [] string { } }
-    if (rule != "") && (proto != "") {
-        key.Comp = append(key.Comp, "ACL_STATS")
-        key.Comp = append(key.Comp, rule)
-        key.Comp = append(key.Comp, proto)
-    } else {
-        key.Comp = append(key.Comp, "STATS")
-    }
+    key := db.Key { Comp : [] string { "ACL_STATS", rule, proto } }
 
-    val, err := d.GetEntry(&tbl, key)
+    val, err = d.GetEntry(&tbl, key)
 
     if err == nil {
         idx = 0
-        str = str + "{\n"
-        str = str + "  \"sonic-system-crm:output\": {\n"
+        str += "{\n"
+        str += "  \"sonic-system-crm:output\": {\n"
         for k, v := range val.Field {
-            str = str + fmt.Sprintf("    \"%s\": %s", k, v)
-            if (idx < len(val.Field) - 1) {
-                str = str + ",\n"
+            str += fmt.Sprintf("    \"%s\": %s", k, v)
+            if (idx == len(val.Field) - 1) {
+                str += "\n"
             } else {
-                str = str + "\n"
+                str += ",\n"
             }
             idx = idx + 1
         }
-        str = str + "  }\n"
-        str = str + "}"
+        str += "  }\n"
+        str += "}"
+    } else {
+        str = "{}"
+    }
+
+    return []byte(str), err
+}
+
+/* RPC CRM_ACL_TABLE_STATS */
+var rpc_crm_acl_table_stats RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var str string
+
+    log.Info("+++ RPC: rpc_crm_acl_table_stats +++")
+
+    tbl := db.TableSpec { Name: "CRM" }
+    key := db.Key { Comp : [] string { "ACL_TABLE_STATS", "*" } }
+
+    d := dbs[db.CountersDB]
+    d.Opts.KeySeparator = ":"
+    d.Opts.TableNameSeparator = ":"
+
+    keys, err := d.GetKeysPattern(&tbl, key)
+    if err == nil {
+        str += "{\n"
+        str += "  \"sonic-system-crm:output\": {\n"
+        str += "    \"crm-acl-table-stats-list\": [\n"
+
+        for i := 0; i < len(keys); i++ {
+            var j int
+            var val db.Value
+
+            str += "      {\n"
+            str += fmt.Sprintf("        \"id\": \"%s\",\n", keys[i].Comp[1])
+
+            val, err = d.GetEntry(&tbl, keys[i])
+            if err != nil {
+                continue
+            }
+            j = 0
+            for k, v := range val.Field {
+                str += fmt.Sprintf("        \"%s\": %s", k, v)
+                if (j == len(val.Field) - 1) {
+                    str += "\n"
+                } else {
+                    str += ",\n"
+                }
+                j += 1
+            }
+
+            if (i == len(keys) - 1) {
+                str += "      }\n"
+            } else {
+                str += "      },\n"
+            }
+        }
+
+        str += "    ]\n"
+        str += "  }\n"
+        str += "}"
+    } else {
+        str = "{}"
     }
 
     return []byte(str), err

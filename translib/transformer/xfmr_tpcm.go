@@ -246,7 +246,7 @@ func tpcm_image_operation(exec_cmd string) ([]byte, error) {
     		Output struct {
           		Status int32 `json:"status"`
           		Status_detail []string`json:"status-detail"`
-      		} `json:"sonic-tpcm:output"`
+      		} `json:"openconfig-system-ext:output"`
     	}
 
 

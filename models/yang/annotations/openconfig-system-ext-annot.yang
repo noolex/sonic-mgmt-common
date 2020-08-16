@@ -24,4 +24,21 @@ module openconfig-system-ext-annot {
         }
     }
 
+    deviation /oc-sys-ext:show-sys-log{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_show_sys_log_cb";
+        }
+    }
+
+    deviation /oc-sys-ext:clear-sys-log{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_clear_sys_log_cb";
+        }
+    }
+    deviation /oc-sys-ext:reboot-ops{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_reboot_cb";
+        }
+    }
+
 }
