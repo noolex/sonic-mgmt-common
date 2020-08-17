@@ -1018,25 +1018,32 @@ var DbToYang_ospfv2_router_enable_fld_xfmr FieldXfmrDbtoYang = func(inParams Xfm
     return res_map, err
 }
 
+func ospfGetDottedAreaFromUint32(areaInt uint32) (string) {
+    var areaIdInt int64 = int64(areaInt)
+    b0 := strconv.FormatInt((areaIdInt >> 24) & 0xff, 10)
+    b1 := strconv.FormatInt((areaIdInt >> 16) & 0xff, 10)
+    b2 := strconv.FormatInt((areaIdInt >>  8) & 0xff, 10)
+    b3 := strconv.FormatInt((areaIdInt      ) & 0xff, 10)
+    areaIdStr :=  b0 + "." + b1 + "." + b2 + "." + b3
+    log.Infof("ospfGetDottedAreaFromUint32: %d is %s", areaInt, areaIdStr)
+    return areaIdStr
+}
 
 func getAreaDotted(areaString string) string {
     if len(areaString) == 0 {
        log.Info("getAreaDotted: Null area id received")
        return ""
     }
-
     areaInt, err := strconv.ParseInt(areaString, 10, 64)
     if err == nil {
         b0 := strconv.FormatInt((areaInt >> 24) & 0xff, 10)
         b1 := strconv.FormatInt((areaInt >> 16) & 0xff, 10)
         b2 := strconv.FormatInt((areaInt >> 8) & 0xff, 10)
         b3 := strconv.FormatInt((areaInt & 0xff), 10)
-
         areaDotted :=  b0 + "." + b1 + "." + b2 + "." + b3
         log.Info("getAreaDotted: ", areaDotted)
         return areaDotted
      }
-
      log.Info("getAreaDotted: ", areaString)
      return areaString
 }
