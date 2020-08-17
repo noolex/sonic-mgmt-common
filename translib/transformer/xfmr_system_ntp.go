@@ -144,20 +144,9 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 getServStateOnly = true
         }
 
-        /* populate the config and state address accordingly */
- 
         sysObj := getSystemRootObject(inParams)
-
-        ygot.BuildEmptyTree(sysObj)
-
         ntpData := sysObj.Ntp
-
-        ygot.BuildEmptyTree(ntpData)
-
         ntpServers := ntpData.Servers
-
-        ygot.BuildEmptyTree(ntpServers)
-
         ntpServer := ntpServers.Server
 
         var currNtpServer *ocbinds.OpenconfigSystem_System_Ntp_Servers_Server
