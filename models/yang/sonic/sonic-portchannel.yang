@@ -120,6 +120,12 @@ module sonic-portchannel {
                     description
                         "Enable/Disable graceful shutdown mode per portchannel";
                 }
+
+                leaf description {
+                    type string;
+                    description
+                        "Decription of the portchannel";
+                }
             }
         }
 
