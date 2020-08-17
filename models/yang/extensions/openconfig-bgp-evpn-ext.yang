@@ -113,6 +113,12 @@ module openconfig-bgp-evpn-ext {
       description 
         "true, if Gateway MAC is advertised";
     }
+
+    leaf router-mac {
+      type string;
+      description
+        "Router MAC associated with the VNI";
+    }
     
   }
 
