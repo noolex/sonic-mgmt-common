@@ -1156,6 +1156,7 @@ func deleteVlanIntfAndMembers(inParams *XfmrParams, vlanName *string) error {
     resMap := make(map[string]map[string]db.Value)
     vlanMap := make(map[string]db.Value)
     vlanMemberMap := make(map[string]db.Value)
+    vlanIntfMap := make(map[string]db.Value)
 
     vlanMap[*vlanName] = db.Value{Field:map[string]string{}}
     subOpMap[db.ConfigDB] = resMap
@@ -1203,6 +1204,13 @@ func deleteVlanIntfAndMembers(inParams *XfmrParams, vlanName *string) error {
         /* need to check STP_VLAN table */
         removeStpConfigOnVlanDeletion(inParams, vlanName, nil, resMap)
     }
+
+    /* Handle VLAN_INTERFACE TABLE */
+    processIntfTableRemoval(inParams.d, *vlanName, VLAN_INTERFACE_TN, vlanIntfMap)
+    if len(vlanIntfMap) != 0 {
+        resMap[VLAN_INTERFACE_TN] = vlanIntfMap
+    }
+
     if len(vlanMap) != 0 {
         resMap[VLAN_TN] = vlanMap
     }

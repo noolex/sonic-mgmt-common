@@ -3041,6 +3041,7 @@ func deleteLoopbackIntf(inParams *XfmrParams, loName *string) error {
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     resMap := make(map[string]map[string]db.Value)
     loMap := make(map[string]db.Value)
+    loIntfMap := make(map[string]db.Value)
 
     loMap[*loName] = db.Value{Field:map[string]string{}}
 
@@ -3057,6 +3058,12 @@ func deleteLoopbackIntf(inParams *XfmrParams, loName *string) error {
         if err != nil {
             return err
         }
+    }
+
+    /* Handle LOOPBACK_INTERFACE TABLE */
+    processIntfTableRemoval(inParams.d, *loName, LOOPBACK_INTERFACE_TN, loIntfMap)
+    if len(loIntfMap) != 0 {
+        resMap[LOOPBACK_INTERFACE_TN] = loIntfMap
     }
 
     resMap[intTbl.cfgDb.portTN] = loMap
@@ -3424,7 +3431,13 @@ func getIntfTableNameByDBId (intftbl IntfTblData, curDb db.DBNum) (string, error
     return tblName, nil
 }
 
-
+func processIntfTableRemoval(d *db.DB, ifName string, tblName string, intfMap map[string]db.Value) {
+    intfKey, _ := d.GetKeysByPattern(&db.TableSpec{Name: tblName}, "*"+ifName)
+    if len(intfKey) != 0 {
+        key := ifName
+        intfMap[key] = db.Value{Field:map[string]string{}}
+    }
+}
 
 func getIntfCountersTblKey (d *db.DB, ifKey string) (string, error) {
     var oid string
