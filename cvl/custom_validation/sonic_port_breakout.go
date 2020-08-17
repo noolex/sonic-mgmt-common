@@ -1,7 +1,6 @@
 package custom_validation
 
 import (
-    "fmt"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
     "strings"
     log "github.com/golang/glog"
@@ -113,7 +112,7 @@ func (t *CustomValidation) ValidateDpbStatus(
                 Keys: strings.Split(vc.CurCfg.Key, ":"),
                 ConstraintErrMsg: "Port breakout is in progress. Try later.",
                 CVLErrDetails: "Config Validation Error",
-                ErrAppTag:  "operation-inprogress",
+                ErrAppTag:  "breakout-in-progress",
         }
     }
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
@@ -145,7 +144,7 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 			isNodeLeafList = true
 		}
 	}
-	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: DPB check on table: %v|%v for node: %v[%v], isleaflist:%t\n", tableName, tableKey, yangNodeName, yangNodeVal, isNodeLeafList)
+	util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: DPB check on table: %v|%v for node: %v[%v], isleaflist:%t\n", tableName, tableKey, yangNodeName, yangNodeVal, isNodeLeafList)
 
 	var intfNameToCheck string
 	// Determine the interface name on which operation is happening
@@ -162,7 +161,7 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 					correctNodeName = yangNodeName + "@"
 				}
 			}
-			util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: leaf-list data from Request: %v", fldVal)
+			util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: leaf-list data from Request: %v", fldVal)
 			if exists && (len(fldVal) > 0) {
 				// On adding or deleting element to leaf-list, always generates UPDATE request
 				// and yangNodeVal may be empty. So to determine the correct interface on which
@@ -170,7 +169,7 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 				// compare with leaf-list received in CurCfg.Data.
 				tblData, _ := vc.RClient.HGetAll(redisKey).Result()
 				dbNodeVal := tblData[correctNodeName]
-				util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: leaf-list data from DB: %v", dbNodeVal)
+				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: leaf-list data from DB: %v", dbNodeVal)
 
 				// Data in DB is not present, means new element getting added
 				if len(dbNodeVal) == 0 {
@@ -190,7 +189,7 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 			}
 		}
 	}
-	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: operation in progress for interface: %s", intfNameToCheck)
+	util.CVL_LEVEL_LOG(util.INFO, "CheckDpbInProgressForPortConfig: operation in progress for interface: %s", intfNameToCheck)
 
 	// Skipping if interface name could not be determined
 	if len(intfNameToCheck) == 0 {
@@ -213,7 +212,7 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 	if !exists {
 		masterPortName = intfNameToCheck
 	}
-	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "CheckDpbInProgressForPortConfig: DPB status check for Master port: %s", masterPortName)
+	util.CVL_LEVEL_LOG(util.INFO, "CheckDpbInProgressForPortConfig: DPB status check for Master port: %s", masterPortName)
 
 	/* Check STATE_DB if any DPB in progress */
 	rclient := util.NewDbClient("STATE_DB")
@@ -241,14 +240,14 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 	}
 	// if DPB status is InProgress, return error
 	if dpbStatus == "InProgress" {
-		log.Errorf("[DPB-CVL] Operation failed on: %v|%v for node: %v[%v] as DPB in progress\n", tableName, tableKey, yangNodeName, yangNodeVal)
+		util.CVL_LEVEL_LOG(util.WARNING, "[DPB-CVL] Operation failed on: %v|%v for node: %v[%v] as breakout of %s in progress\n", tableName, tableKey, yangNodeName, yangNodeVal, masterPortName)
 		return CVLErrorInfo {
 			ErrCode: CVL_SEMANTIC_ERROR,
 			TableName: tableName,
 			Keys: strings.Split(tableKey, "|"),
-			ConstraintErrMsg: fmt.Sprintf("Breakout of port %s in progress", masterPortName),
+			ConstraintErrMsg: "Breakout of port in progress",
 			CVLErrDetails: "Config Validation Semantic Error",
-			ErrAppTag:  "operation-inprogress",
+			ErrAppTag:  "breakout-in-progress",
 		}
 	}
 
