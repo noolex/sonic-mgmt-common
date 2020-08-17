@@ -214,6 +214,39 @@ module openconfig-system-crm {
     }
   }
 
+  grouping system-crm-acl-table-resource-state {
+    description
+      "ACL table resources";
+    container counter {
+      description
+        "ACL table counter statistics";
+      leaf used {
+        type uint32;
+        description
+          "Number of used entries for 'acl table counter' resource";
+      }
+      leaf available {
+        type uint32;
+        description
+          "Number of available entries for 'acl table counter' resource";
+      }
+    }
+    container entry {
+      description
+        "ACL table entry statistics";
+      leaf used {
+        type uint32;
+        description
+          "Number of used entries for 'acl table entry' resource";
+      }
+      leaf available {
+        type uint32;
+        description
+          "Number of available entries for 'acl table entry' resource";
+      }
+    }
+  }
+
   grouping system-crm-top
   {
     description
@@ -422,6 +455,22 @@ module openconfig-system-crm {
           description
             "ACL egress statistics";
           uses system-crm-resource-state;
+        }
+      }
+      container acl-table-statistics {
+        config false;
+        description
+          "ACL table statistics";
+        list acl-table-statistics-list {
+          key "id";
+          description
+            "ACL table statistics list";
+          leaf id {
+            type string;
+            description
+              "ACL table id";
+          }
+          uses system-crm-acl-table-resource-state;
         }
       }
     }

@@ -35,6 +35,7 @@ import (
 func init () {
     XlateFuncBind("YangToDb_intf_vrrp_xfmr", YangToDb_intf_vrrp_xfmr)
     XlateFuncBind("DbToYang_intf_vrrp_xfmr", DbToYang_intf_vrrp_xfmr)
+    XlateFuncBind("Subscribe_intf_vrrp_xfmr", Subscribe_intf_vrrp_xfmr)
     XlateFuncBind("rpc_show_vrrp", rpc_show_vrrp)
   	XlateFuncBind("rpc_show_vrrp6", rpc_show_vrrp6)
 }
@@ -1297,4 +1298,57 @@ var rpc_show_vrrp6 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resul
     result, err = vrrp_show_summary(body, dbs, "VRRP6", "VRRP6_TRACK")
 	  return result, err
 
+}
+
+var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    var tableName string
+    var trackStr string
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    if targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group" ||
+       targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group" {
+         tableName = "VRRP"
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group" ||
+              targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group" {
+         tableName = "VRRP6"
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group/vrrp-track/vrrp-track-interface" ||
+              targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/openconfig-interfaces-ext:vrrp-track/vrrp-track-interface" {
+        tableName = "VRRP_TRACK"
+        _trackIf := pathInfo.Var("track-intf")
+        trackIf := utils.GetNativeNameFromUIName(&_trackIf)
+        trackStr = "|" + *trackIf
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group/vrrp-track/vrrp-track-interface" ||
+              targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/openconfig-interfaces-ext:vrrp-track/vrrp-track-interface" {
+        tableName = "VRRP6_TRACK"
+        _trackIf := pathInfo.Var("track-intf")
+        trackIf := utils.GetNativeNameFromUIName(&_trackIf)
+        trackStr = "|" + *trackIf
+    } else {
+        log.Infof("Subscribe attempted on unsupported path:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
+        return result, err
+    }
+
+    _ifName     := pathInfo.Var("name")
+    vrId       := pathInfo.Var("virtual-router-id")
+
+    ifName := utils.GetNativeNameFromUIName(&_ifName)
+    var redisKey string = *ifName + "|" + vrId + trackStr
+
+    log.Info("redisKey:", tableName, *ifName, vrId, redisKey, trackStr)
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Infof("Subscribe_intf_vrrp_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+               pathInfo.Path, pathInfo.Template, targetUriPath, redisKey)
+
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.needCache = true
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, err 
 }

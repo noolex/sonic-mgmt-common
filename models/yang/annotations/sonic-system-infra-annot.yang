@@ -7,27 +7,9 @@ module sonic-system-infra-annot {
 
     import sonic-system-infra { prefix sonic-sinfra; }
     import sonic-extensions { prefix sonic-ext; }
-
-    deviation /sonic-sinfra:reboot-ops{
-        deviate add {
-            sonic-ext:rpc-callback "rpc_infra_reboot_cb";
-        }
-    }
     deviation /sonic-sinfra:config{
         deviate add {
             sonic-ext:rpc-callback "rpc_infra_config_cb";
         }
     }
-    deviation /sonic-sinfra:show-sys-log{
-        deviate add {
-            sonic-ext:rpc-callback "rpc_infra_show_sys_log_cb";
-        }
-    }
-
-    deviation /sonic-sinfra:clear-sys-log{
-        deviate add {
-            sonic-ext:rpc-callback "rpc_infra_clear_sys_log_cb";
-        }
-    }
-
 }

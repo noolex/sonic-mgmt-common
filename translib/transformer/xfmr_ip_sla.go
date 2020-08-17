@@ -34,6 +34,7 @@ func init() {
     XlateFuncBind("YangToDb_ip_sla_id_fld_xfmr", YangToDb_ip_sla_id_fld_xfmr)
     XlateFuncBind("DbToYang_ip_sla_id_fld_xfmr", DbToYang_ip_sla_id_fld_xfmr)
     XlateFuncBind("DbToYang_ip_sla_state_xfmr", DbToYang_ip_sla_state_xfmr)
+    XlateFuncBind("Subscribe_ip_sla_id_fld_xfmr", Subscribe_ip_sla_id_fld_xfmr)
     XlateFuncBind("rpc_show_ipsla_history", rpc_show_ipsla_history)
     XlateFuncBind("rpc_clear_ipsla_counters", rpc_clear_ipsla_counters)
 }
@@ -443,4 +444,31 @@ var rpc_clear_ipsla_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
     }
 
     return json.Marshal(&result)
+}
+
+
+var Subscribe_ip_sla_id_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    var tableName string
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    tableName = "IP_SLA"
+    slaId := pathInfo.Var("ip-sla-id")
+
+    log.Info("redisKey:", slaId)
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Infof("Subscribe_ip_sla_id_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+               pathInfo.Path, pathInfo.Template, targetUriPath, slaId)
+
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{slaId:{}}}}
+    result.needCache = true
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, err
 }

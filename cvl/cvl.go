@@ -113,6 +113,7 @@ type modelTableInfo struct {
 	refFromTables []tblFieldPair //list of table or table/field referring to this table
 	custValidation map[string]string // Map for custom validation node and function name
 	dfltLeafVal map[string]string //map of leaf names and default value
+	mandatoryNodes map[string]bool  //map of leaf names and mandatory flag
 }
 
 
@@ -482,6 +483,7 @@ func storeModelInfo(modelFile string, module *yparser.YParserModule) {
 		tInfo.keys = lInfo.Keys
 		tInfo.mapLeaf = lInfo.MapLeaf
 		tInfo.custValidation = lInfo.CustValidation
+		tInfo.mandatoryNodes = lInfo.MandatoryNodes
 
 		//store default values used in must and when exp
 		tInfo.dfltLeafVal = make(map[string]string, len(lInfo.DfltLeafVal))
@@ -1058,4 +1060,12 @@ func getLeafRefInfo(tblName, fldName, targetTblName string) *leafRefInfo {
 		}
 	}
 	return nil
+}
+
+func isMandatoryTrueNode(tblName, field string) bool {
+	if flag, exists := modelInfo.tableInfo[tblName].mandatoryNodes[field]; exists {
+		return flag
+	}
+
+	return false
 }

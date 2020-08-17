@@ -5,6 +5,7 @@ import (
     "errors"
     "strconv"
     "strings"
+    "fmt"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -13,7 +14,6 @@ import (
     log "github.com/golang/glog"
 )
 
-//const sock_addr = "/etc/sonic/frr/bgpd_client_sock"
 
 func init () {
 
@@ -86,19 +86,19 @@ func getOspfUriPath(inParams *XfmrParams) (string, error) {
     uriPath := ""
     uriBlockList := strings.Split(yangPath, "/")
     for _, uriBlock := range uriBlockList {
-        if uriBlock == ""  {  
+        if uriBlock == ""  {
             continue
-        } 
-            
+        }
+
         uriSubBlockList := strings.Split(uriBlock, ":")
         listLen := len(uriSubBlockList)
         if (listLen != 0) {
             uriPath = uriPath + "/" + uriSubBlockList[listLen - 1]
         }
     }
-     
-    log.Infof("getOspfUriPath: uriPath %s", uriPath)  
-    return uriPath, nil 
+
+    log.Infof("getOspfUriPath: uriPath %s", uriPath)
+    return uriPath, nil
 }
 
 func getOspfv2Root (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, string, error) {
@@ -119,7 +119,7 @@ func getOspfv2Root (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Net
     if !strings.Contains(ospfv2Identifier, "OSPF") {
         return nil, "", errors.New("Protocol ID OSPF is missing")
     }
- 
+
     if len(ospfv2InstanceNumber) == 0 {
         return nil, "", errors.New("Protocol Insatnce Id is missing")
     }
@@ -157,6 +157,703 @@ func getOspfv2Root (inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_Net
     return protoInstObj.Ospfv2, ospfv2VrfName, err
 }
 
+func ospfGetNetworkInstance(inParams *XfmrParams, vrfName string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance, bool, error) {
+    log.Infof("ospfGetNetworkInstance: get vrf %s.",  vrfName)
+    ending := false
+
+    deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
+    if (deviceObj == nil) {
+        errStr := "Device object not set"
+        log.Info("ospfGetNetworkInstance: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    nwInstsObj := deviceObj.NetworkInstances
+    if (nwInstsObj == nil) {
+        errStr := "Device Network-instances object not set"
+        log.Info("ospfGetNetworkInstance: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    if nwInstsObj.NetworkInstance == nil {
+        errStr := "Network-instances container missing"
+        log.Info("ospfGetNetworkInstance: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    var nwInstObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance
+    if (vrfName != "") {
+        nwInstObj = nwInstsObj.NetworkInstance[vrfName]
+    } else {
+        for _, nwInstObjElt := range nwInstsObj.NetworkInstance {
+            if (nwInstObjElt != nil) {
+                nwInstObj = nwInstObjElt
+                break
+            }
+        }
+    }
+
+    if (nwInstObj == nil) {
+        errStr := "Network-instance container missing for vrf " + vrfName
+        log.Info("ospfGetNetworkInstance: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    instVrfName := ""
+    if (nwInstObj.Name != nil) {
+        instVrfName = *nwInstObj.Name
+
+        if (vrfName != "" && instVrfName != vrfName) {
+            errStr := "vrfName " + vrfName + " doesnt match instVrfName " + instVrfName
+            log.Info("ospfGetNetworkInstance: ", errStr)
+            return nil, false, errors.New(errStr)
+        }
+    }
+
+    log.Infof("ospfGetNetworkInstance: found vrf %s %s ending %t", instVrfName, vrfName, ending)
+    return nwInstObj, ending, nil
+}
+
+func ospfGetRouterObject(inParams *XfmrParams, vrfName string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, bool, error) {
+    log.Infof("ospfGetRouterObject: get vrf %s.",  vrfName)
+    ending := false
+
+    nwInstObj, ending, err := ospfGetNetworkInstance(inParams, vrfName)
+    if (nwInstObj == nil) {
+        return nil, ending, err
+    }
+
+    if (ending) {
+        errStr := "Network instance Protocols object ends"
+        log.Info("ospfGetRouterObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    if (nwInstObj.Protocols == nil || len(nwInstObj.Protocols.Protocol) == 0) {
+        errStr := "Network instance Protocols object missing "
+        log.Info("ospfGetRouterObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    var protoKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Key
+    protoKey.Identifier = ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_OSPF
+    protoKey.Name = "ospfv2"
+    protoObj := nwInstObj.Protocols.Protocol[protoKey]
+    if (protoObj == nil) {
+        errStr := "Network instance Protocol identifier OSPF:ospfv2 not present"
+        log.Info("ospfGetRouterObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ospfv2Obj := protoObj.Ospfv2
+    if (ospfv2Obj == nil) {
+        errStr := "Ospfv2 object not present in protocols"
+        log.Info("ospfGetRouterObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (ospfv2Obj.Global == nil &&
+        ospfv2Obj.Areas == nil &&
+        ospfv2Obj.RouteTables == nil) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterObject: found vrf %s ending %t", vrfName, ending)
+    return ospfv2Obj, ending, nil
+}
+
+func ospfGetRouterObjWithVrfName(inParams *XfmrParams, vrfName string)(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2, string, error) {
+    nwInstObj, _, _ := ospfGetNetworkInstance(inParams, vrfName) 
+    if (nwInstObj == nil) {
+        return nil, "", errors.New("Nil Network instance")
+    }
+
+    if (nwInstObj.Name == nil) {
+        errStr := "Network instance vrfname is nil"
+        log.Info("ospfGetRouterObjWithVrfName: ", errStr)
+        return nil, "", errors.New(errStr)
+    }
+
+    ospfVrfName := *nwInstObj.Name
+
+    ospfv2Obj, _, _ := ospfGetRouterObject(inParams, ospfVrfName)
+    if (ospfv2Obj == nil) {
+        errStr := "Ospf router object is nil in vrf " + ospfVrfName
+        log.Info("ospfGetRouterObjWithVrfName: ", errStr)
+        return nil, ospfVrfName, errors.New(errStr) 
+    }
+
+    log.Infof("ospfGetRouterObjWithVrfName: found with vrfname %s.", ospfVrfName)
+    return ospfv2Obj, ospfVrfName, nil
+}
+
+func ospfGetRouterGlobalObject(inParams *XfmrParams, vrfName string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global, bool, error) {
+    log.Infof("ospfGetRouterGlobalObject: get vrf %s.",  vrfName)
+    ending := false
+
+    ospfv2Obj, ending, err := ospfGetRouterObject(inParams, vrfName)
+    if (ospfv2Obj == nil) {
+        return nil, ending, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 router object ends"
+        log.Info("ospfGetRouterGlobalObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    globalObj := ospfv2Obj.Global
+    if (globalObj == nil) {
+        errStr := "Ospfv2 global object not present"
+        log.Info("ospfGetRouterGlobalObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (globalObj.Config == nil &&
+        globalObj.Distance == nil &&
+        globalObj.InterAreaPropagationPolicies == nil &&
+        globalObj.PassiveInterfaces == nil &&
+        globalObj.RouteDistributionPolicies == nil &&
+        globalObj.Timers == nil ) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterGlobalObject: found vrf %s ending %t", vrfName, ending)
+    return globalObj, ending, nil
+}
+
+
+func ospfGetRouterGlobalIaPolicyObject(inParams *XfmrParams, vrfName string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies, bool, error) {
+    log.Infof("ospfGetRouterGlobalIaPolicyObject: get vrf %s.",  vrfName)
+    ending := false
+
+    globalObj, ending, err := ospfGetRouterGlobalObject(inParams, vrfName)
+    if (globalObj == nil) {
+        return nil, ending, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 router global object ends"
+        log.Info("ospfGetRouterGlobalIaPolicyObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    iaPolObj := globalObj.InterAreaPropagationPolicies
+    if (iaPolObj == nil) {
+        errStr := "Ospfv2 global IA policy object not present"
+        log.Info("ospfGetRouterGlobalIaPolicyObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (iaPolObj.InterAreaPolicy == nil) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterGlobalIaPolicyObject: found vrf %s ending %t", vrfName, ending)
+    return iaPolObj, ending, nil
+}
+
+
+func ospfGetRouterIaPolicyList(inParams *XfmrParams, vrfName string) (* map[ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union]*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy, bool, error) {
+    log.Infof("ospfGetRouterIaPolicyList: get vrf %s area list",  vrfName)
+    ending := false
+
+    iaPolObj, ending, err := ospfGetRouterGlobalIaPolicyObject(inParams, vrfName)
+    if (iaPolObj == nil) {
+        return nil, ending, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 router IA policy object ends"
+        log.Info("ospfGetRouterIaPolicyList: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    iapolListObj := &iaPolObj.InterAreaPolicy
+    if (iapolListObj == nil) {
+        errStr := "Ospfv2 areas list not present"
+        log.Info("ospfGetRouterIaPolicyList: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    if (len(iaPolObj.InterAreaPolicy) == 0) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterIaPolicyList: found vrf %s ending %t", vrfName, ending)
+    return iapolListObj, ending, nil
+}
+
+
+func ospfGetAreaStringFromSrcAreaId(areaIdObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union)(string, error) {
+
+    areaId := ""
+    if (areaIdObj == nil) {
+        return "", errors.New("Nil Area Identifier union")
+    }
+
+    areaString := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union_String)
+    if (areaString != nil) {
+         areaId = areaString.String
+    }
+
+    if (areaId == "") {
+        areaUint := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union_Uint32)
+        if (areaUint != nil) {
+            areaId = fmt.Sprintf("%d", areaUint.Uint32)
+            areaId = getAreaDotted(areaId)
+        }
+    }
+
+    if (areaId == "") {
+        return "", errors.New("Area Id conversion failed")
+    }
+
+    log.Infof("ospfGetAreaStringFromSrcAreaId: %s success", areaId)
+    return areaId, nil
+}
+
+func ospfGetRouterIaPolicySrcAreaObject(inParams *XfmrParams, vrfName string, areaId string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy, bool, error) {
+    log.Infof("ospfGetRouterIaPolicySrcAreaObject: get vrf %s area %s.",  vrfName, areaId)
+    ending := false
+
+    iapolListObj, ending, err := ospfGetRouterIaPolicyList(inParams, vrfName)
+    if (iapolListObj == nil) {
+        return nil, false, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 IA areas object ends"
+        log.Info("ospfGetRouterIaPolicySrcAreaObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    var srcAreaObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy
+    for srcAreaKey, srcAreaObjElt := range *iapolListObj {
+        keyArea, _ := ospfGetAreaStringFromSrcAreaId(&srcAreaKey)
+        if (keyArea == "") {
+            keyArea, _ = ospfGetAreaStringFromSrcAreaId(&srcAreaObjElt.SrcArea)
+            if (keyArea == "") {
+                log.Info("ospfGetRouterAreaObject: get area string failed")
+                continue
+            }
+        }
+
+        if (areaId != "") {
+            if (keyArea == areaId) {
+                srcAreaObj = srcAreaObjElt
+                break
+            }
+        } else if (srcAreaObjElt != nil) {
+            srcAreaObj = srcAreaObjElt
+            break
+        }
+    }
+
+    if (srcAreaObj == nil) {
+        if (areaId != "") {
+            errStr := "Requested ia policy src area not present"
+            log.Info("ospfGetRouterIaPolicySrcAreaObject: ", errStr)
+            return nil, false, errors.New(errStr)
+        }
+
+        ending = true
+        errStr := "Ia policy source Area not present in src area list"
+        log.Info("ospfGetRouterIaPolicySrcAreaObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (srcAreaObj.Config == nil &&
+        srcAreaObj.FilterListIn == nil &&
+        srcAreaObj.FilterListOut == nil &&
+        srcAreaObj.Ranges == nil) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterIaPolicySrcAreaObject: found vrf %s area %s ending %t", vrfName, areaId, ending)
+    return srcAreaObj, ending, nil
+}
+
+
+func ospfGetRouterPolicyRangeList(inParams *XfmrParams, vrfName string, areaId string) (* map[string]*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Ranges_Range, bool, error) {
+    log.Infof("ospfGetRouterPolicyRangeList: get vrf %s area %s nw list", vrfName, areaId)
+    ending := false
+
+    srcAreaObj, ending, err := ospfGetRouterIaPolicySrcAreaObject(inParams, vrfName, areaId)
+    if (srcAreaObj == nil) {
+        return nil, ending, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 router Src area object ends"
+        log.Info("ospfGetRouterPolicyRangeList: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    if ( srcAreaObj.Ranges == nil) {
+        errStr := "Ospfv2 router Src area ranges object ends"
+        log.Info("ospfGetRouterPolicyRangeList: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    rangesListObj := &srcAreaObj.Ranges.Range
+    if (rangesListObj == nil) {
+        errStr := "Ospfv2 areas network list not present"
+        log.Info("ospfGetRouterPolicyRangeList: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    if (len(srcAreaObj.Ranges.Range) == 0) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterPolicyRangeList: found vrf %s area %s ending %t", vrfName, areaId, ending)
+    return rangesListObj, ending, nil
+}
+
+
+func ospfGetRouterPolicyRangeObject(inParams *XfmrParams, vrfName string, areaId string, rangePrefix string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Ranges_Range, bool, error) {
+    log.Infof("ospfGetRouterPolicyRangeObject: get vrf %s area %s range %s object.",  vrfName, areaId, rangePrefix)
+    ending := false
+
+    rangesListObj, ending, err := ospfGetRouterPolicyRangeList(inParams, vrfName, areaId)
+    if (rangesListObj == nil) {
+        return nil, false, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 area Network list object ends"
+        log.Info("ospfGetRouterPolicyRangeObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    var rangeObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Ranges_Range
+    for rangeKey, rangeObjElt := range *rangesListObj {
+        if (rangePrefix != "") {
+            if (rangeKey == rangePrefix) {
+                rangeObj = rangeObjElt
+                break
+            }
+        } else if (rangeObjElt != nil) {
+            rangeObj = rangeObjElt
+            break
+        }
+    }
+
+    if (rangeObj == nil) {
+        if (rangePrefix != "") {
+            errStr := "Requested area network not present"
+            log.Info("ospfGetRouterPolicyRangeObject: ", errStr)
+            return nil, false, errors.New(errStr)
+        }
+
+        ending = true
+        errStr := "Area network not present in network list"
+        log.Info("ospfGetRouterPolicyRangeObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (rangeObj.Config == nil) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterPolicyRangeObject: found vrf %s area %s range %s ending %t", vrfName, areaId, rangePrefix, ending)
+    return rangeObj, ending, nil
+}
+
+func ospfGetAreaStringFromAreaId(areaIdObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union)(string, error) {
+
+    areaId := ""
+    if (areaIdObj == nil) {
+        return "", errors.New("Nil Area Identifier union")
+    }
+
+    areaString := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String)
+    if (areaString != nil) {
+         areaId = areaString.String
+    }
+
+    if (areaId == "") {
+        areaUint := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_Uint32)
+        if (areaUint != nil) {
+            areaId = fmt.Sprintf("%d", areaUint.Uint32)
+            areaId = getAreaDotted(areaId)
+        }
+    }
+
+    if (areaId == "") {
+        return "", errors.New("Area Id conversion failed")
+    }
+
+    log.Infof("ospfGetAreaStringFromAreaId: %s success", areaId)
+    return areaId, nil
+}
+
+func ospfGetRouterAreaList(inParams *XfmrParams, vrfName string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas, bool, error) {
+    log.Infof("ospfGetRouterAreaList: get vrf %s area list",  vrfName)
+    ending := false
+
+    ospfv2Obj, ending, err := ospfGetRouterObject(inParams, vrfName)
+    if (ospfv2Obj == nil) {
+        return nil, ending, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 router object ends"
+        log.Info("ospfGetRouterAreaList: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    areaListObj := ospfv2Obj.Areas
+    if (areaListObj == nil) {
+        errStr := "Ospfv2 areas list not present"
+        log.Info("ospfGetRouterAreaList: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    if (len(areaListObj.Area) == 0) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterAreaList: found vrf %s ending %t", vrfName, ending)
+    return areaListObj, ending, nil
+}
+
+
+func ospfGetRouterAreaObject(inParams *XfmrParams, vrfName string, areaId string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area, bool, error) {
+    log.Infof("ospfGetRouterAreaObject: get vrf %s area %s.",  vrfName, areaId)
+    ending := false
+
+    areasObj, ending, err := ospfGetRouterAreaList(inParams, vrfName)
+    if (areasObj == nil) {
+        return nil, false, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 areas object ends"
+        log.Info("ospfGetRouterAreaObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    var areaObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area
+    for areaKey, areaObjElt := range areasObj.Area {
+        keyArea, _ := ospfGetAreaStringFromAreaId(&areaKey)
+        if (keyArea == "") {
+            keyArea, _ = ospfGetAreaStringFromAreaId(&areaObjElt.Identifier)
+            if (keyArea == "") {
+                log.Info("ospfGetRouterAreaObject: get area string failed")
+                continue
+            }
+        }
+
+        if (areaId != "") {
+            if (keyArea == areaId) {
+                areaObj = areaObjElt
+                break
+            }
+        } else if (areaObjElt != nil) {
+            areaObj = areaObjElt
+            break
+        }
+    }
+
+    if (areaObj == nil) {
+        if (areaId != "") {
+            errStr := "Requested area not present"
+            log.Info("ospfGetRouterAreaObject: ", errStr)
+            return nil, false, errors.New(errStr)
+        }
+
+        ending = true
+        errStr := "Area not present in area list"
+        log.Info("ospfGetRouterAreaObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (areaObj.Config == nil &&
+        areaObj.Networks == nil &&
+        areaObj.Stub == nil &&
+        areaObj.VirtualLinks == nil) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterAreaObject: found vrf %s area %s ending %t", vrfName, areaId, ending)
+    return areaObj, ending, nil
+}
+
+func ospfGetRouterAreaNetwokList(inParams *XfmrParams, vrfName string, areaId string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Networks, bool, error) {
+    log.Infof("ospfGetRouterAreaNetwokList: get vrf %s area %s nw list", vrfName, areaId)
+    ending := false
+
+    areaObj, ending, err := ospfGetRouterAreaObject(inParams, vrfName, areaId)
+    if (areaObj == nil) {
+        return nil, ending, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 router area object ends"
+        log.Info("ospfGetRouterAreaNetwokList: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    nwListObj := areaObj.Networks
+    if (nwListObj == nil) {
+        errStr := "Ospfv2 areas network list not present"
+        log.Info("ospfGetRouterAreaNetwokList: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    if (len(nwListObj.Network) == 0) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterAreaNetwokList: found vrf %s area %s ending %t", vrfName, areaId, ending)
+    return nwListObj, ending, nil
+}
+
+
+func ospfGetRouterAreaNetworkObject(inParams *XfmrParams, vrfName string, areaId string, nwPrefix string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Networks_Network, bool, error) {
+    log.Infof("ospfGetRouterAreaNetworkObject: get vrf %s area %s nw %s object.",  vrfName, areaId, nwPrefix)
+    ending := false
+
+    nwsObj, ending, err := ospfGetRouterAreaNetwokList(inParams, vrfName, areaId)
+    if (nwsObj == nil) {
+        return nil, false, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 area Network list object ends"
+        log.Info("ospfGetRouterAreaNetworkObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    var nwObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Networks_Network
+    for nwKey, nwObjElt := range nwsObj.Network {
+        if (nwPrefix != "") {
+            if (nwKey == nwPrefix) {
+                nwObj = nwObjElt
+                break
+            }
+        } else if (nwObjElt != nil) {
+            nwObj = nwObjElt
+            break
+        }
+    }
+
+    if (nwObj == nil) {
+        if (nwPrefix != "") {
+            errStr := "Requested area network not present"
+            log.Info("ospfGetRouterAreaNetworkObject: ", errStr)
+            return nil, false, errors.New(errStr)
+        }
+
+        ending = true
+        errStr := "Area network not present in network list"
+        log.Info("ospfGetRouterAreaNetworkObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (nwObj.Config == nil) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterAreaNetworkObject: found vrf %s area %s nw %s ending %t", vrfName, areaId, nwPrefix, ending)
+    return nwObj, ending, nil
+}
+
+func ospfGetRouterAreaVlinkList(inParams *XfmrParams, vrfName string, areaId string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks, bool, error) {
+    log.Infof("ospfGetRouterAreaNetwokList: get vrf %s area %s nw list", vrfName, areaId)
+    ending := false
+
+    areaObj, ending, err := ospfGetRouterAreaObject(inParams, vrfName, areaId)
+    if (areaObj == nil) {
+        return nil, ending, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 router area object ends"
+        log.Info("ospfGetRouterAreaVlinkList: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    vlinkListObj := areaObj.VirtualLinks
+    if (vlinkListObj == nil) {
+        errStr := "Ospfv2 areas network list not present"
+        log.Info("ospfGetRouterAreaVlinkList: ", errStr)
+        return nil, false, errors.New(errStr)
+    }
+
+    if (len(vlinkListObj.VirtualLink) == 0) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterAreaVlinkList: found vrf %s area %s ending %t", vrfName, areaId, ending)
+    return vlinkListObj, ending, nil
+}
+
+func ospfGetRouterAreaVlinkObject(inParams *XfmrParams, vrfName string, areaId string, rmtId string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink, bool, error) {
+    log.Infof("ospfGetRouterAreaVlinkObject: get vrf %s area %s rmtId %s object.",  vrfName, areaId, rmtId)
+    ending := false
+
+    vlinkListObj, ending, err := ospfGetRouterAreaVlinkList(inParams, vrfName, areaId)
+    if (vlinkListObj == nil) {
+        return nil, false, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 area Network list object ends"
+        log.Info("ospfGetRouterAreaVlinkObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    var vlinkObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink
+    for vlinkKey, vlinkObjElt := range vlinkListObj.VirtualLink {
+        if (rmtId != "") {
+            if (vlinkKey == rmtId) {
+                vlinkObj = vlinkObjElt
+                break
+            }
+        } else if (vlinkObjElt != nil) {
+            vlinkObj = vlinkObjElt
+            break
+        }
+    }
+
+    if (vlinkObj == nil) {
+        if (rmtId != "") {
+            errStr := "Requested area network not present"
+            log.Info("ospfGetRouterAreaVlinkObject: ", errStr)
+            return nil, false, errors.New(errStr)
+        }
+
+        ending = true
+        errStr := "Area network not present in network list"
+        log.Info("ospfGetRouterAreaVlinkObject: ", errStr)
+        return nil, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (vlinkObj.Config == nil) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterAreaVlinkObject: found vrf %s area %s rmtId %s ending %t", vrfName, areaId, rmtId, ending)
+    return vlinkObj, ending, nil
+}
+
+
 func ospfGetNativeIntfName(ifName string) (string, error) {
    var errStr string
 
@@ -177,7 +874,7 @@ func ospfGetNativeIntfName(ifName string) (string, error) {
        }
    }
 
-   nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel", 
+   nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel",
                                      "Vlan", "VLAN", "vlan", "VLINK" }
 
    for _, intfPrefix := range nonPhyIntfPrefixes {
@@ -203,7 +900,7 @@ func ospfGetUIIntfName(ifName string) (string, error) {
 
    if (!utils.IsAliasModeEnabled()) {
        log.Infof("ospfGetUIIntfName: alias mode disabled return same name %s", ifName)
-       return ifName, nil 
+       return ifName, nil
    }
 
    nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel",
@@ -219,53 +916,6 @@ func ospfGetUIIntfName(ifName string) (string, error) {
    uiNamePtr := utils.GetUINameFromNativeName(&ifName)
    log.Infof("ospfGetUIIntfName: ifName %s uiName %s.", ifName, *uiNamePtr)
    return *uiNamePtr, nil
-}
-
-
-func get_ospf_router_info_from_uri(inParams *XfmrParams) (string, string, string, error) {
-
-    log.Info("get_ospf_router_info_from_uri: inParams.uri ", inParams.uri)
- 
-    rcvdUri, err := getOspfUriPath(inParams)
-    if err != nil {
-        errStr := "GetYangPathFromUri Failed " 
-        log.Info("get_ospf_router_info_from_uri: ", errStr)
-        return "", "", "", errors.New(errStr)
-    }
-
-    if (!strings.Contains(rcvdUri, "protocol/ospfv2")) {
-        errStr := "Not an OSPF URI " + rcvdUri
-        log.Info("get_ospf_router_info_from_uri: ", errStr)
-        return "", "", "", errors.New(errStr)
-    }
-
-    pathInfo := NewPathInfo(inParams.uri)
-    ospfVrfName :=  pathInfo.Var("name")
-    ospfIdentifier := pathInfo.Var("identifier")
-    ospfInstanceNumber := pathInfo.Var("name#2")
-
-    if (ospfVrfName == "") {
-        errStr := "Input URI doesnot contain ospf VRF name"
-        log.Info("get_ospf_router_info_from_uri: ", errStr)
-        return "", "", "", errors.New(errStr)
-    }
-
-    if (ospfIdentifier != "OSPF") {
-        errStr := "Input URI doesnot contain ospf identifier name"
-        log.Info("get_ospf_router_info_from_uri: ", errStr)
-        return "", "", "", errors.New(errStr)
-    }
-
-    if len(ospfInstanceNumber) == 0 {
-        errStr := "Input URI doesnot contain ospf instance number"
-        log.Info("get_ospf_router_info_from_uri: ", errStr)
-        return "", "", "", errors.New(errStr)
-    }
-
-    log.Infof("get_ospf_router_info_from_uri: vrf %s id %s instance %s.",
-                   ospfVrfName, ospfIdentifier, ospfInstanceNumber)
-
-    return ospfVrfName, ospfIdentifier, ospfInstanceNumber, nil
 }
 
 
@@ -381,13 +1031,13 @@ func getAreaDotted(areaString string) string {
         b1 := strconv.FormatInt((areaInt >> 16) & 0xff, 10)
         b2 := strconv.FormatInt((areaInt >> 8) & 0xff, 10)
         b3 := strconv.FormatInt((areaInt & 0xff), 10)
-         
+
         areaDotted :=  b0 + "." + b1 + "." + b2 + "." + b3
         log.Info("getAreaDotted: ", areaDotted)
         return areaDotted
      }
 
-     log.Info("getAreaDotted: ", areaString) 
+     log.Info("getAreaDotted: ", areaString)
      return areaString
 }
 
@@ -578,7 +1228,7 @@ var YangToDb_ospfv2_router_area_policy_export_list_fld_xfmr FieldXfmrYangToDb = 
 
     res_map, err := YangToDb_ospfv2_validate_acl_name(inParams, "export-list")
     log.Infof("YangToDb_ospfv2_router_area_policy_export_list_fld_xfmr: key %s res_map %v", inParams.key, res_map)
-    return res_map, err        
+    return res_map, err
 }
 
 
@@ -982,7 +1632,7 @@ var YangToDb_ospfv2_router_distribute_route_tbl_key_xfmr KeyXfmrYangToDb = func(
     if len(tempkey2) > 1 {
         distributionDirection = tempkey2[1]
     }
-   
+
     pdistributionTableKey := ospfv2VrfName + "|" + distributionProtocol + "|" + distributionDirection
 
     log.Info("YangToDb_ospfv2_router_distribute_route_tbl_key_xfmr: pdistributionTableKey - ", pdistributionTableKey)
@@ -1111,7 +1761,7 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
         log.Info("OSPF Route Distriburion protocol name Missing")
         return "", nil
     }
-    
+
     log.Info("URI VRF ", ospfv2VrfName)
     log.Info("URI route distribution passiveIfName ", passiveIfName)
     log.Info("URI route distribution passiveIfAddress ", passiveIfAddress)
@@ -1124,7 +1774,7 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
     passiveIfName, err = ospfGetNativeIntfName(passiveIfName)
     if (err != nil) {
         return "", tlerr.New("Invalid passive interface name.")
-    } 
+    }
 
     tempkey1 = strings.Split(passiveIfAddress, ":")
     if len(tempkey1) > 1 {
@@ -1146,7 +1796,7 @@ var DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrDbToYang = func
 
     if len(passiveIfTableKeys) >= 3 {
         passiveIfName, _ := ospfGetUIIntfName(passiveIfTableKeys[1])
-        res_map["name"] = passiveIfName 
+        res_map["name"] = passiveIfName
         res_map["address"] = passiveIfTableKeys[2]
     }
 
@@ -1171,8 +1821,8 @@ var DbToYang_ospfv2_router_passive_interface_name_fld_xfmr FieldXfmrDbtoYang = f
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
     if len(passiveIfTableKeys) >= 3 {
-        passiveIfName, _ := ospfGetUIIntfName(passiveIfTableKeys[1]) 
-        res_map["name"] = passiveIfName  
+        passiveIfName, _ := ospfGetUIIntfName(passiveIfTableKeys[1])
+        res_map["name"] = passiveIfName
     }
     return res_map, err
 }
@@ -1262,7 +1912,7 @@ var DbToYang_ospfv2_interface_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
 
     if len(interfaceTableKeys) >= 1 {
         res_map["name"] = interfaceTableKeys[0]
-        res_map["index"] = 0 
+        res_map["index"] = 0
     }
     */
 
@@ -1311,57 +1961,55 @@ func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[s
         return uriErr
     }
 
+    log.Infof("ospfv2_config_post_xfmr: operation %d rcvdUri %s", inParams.oper, rcvdUri)
+
+    ospfObj, vrfName, uerr := ospfGetRouterObjWithVrfName(inParams, "")
+    if (ospfObj == nil || vrfName == "" || uerr != nil) {
+        log.Info("ospfv2_config_post_xfmr: ospf router not in request")
+        return nil
+    }
+
     if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
         log.Info("ospfv2_config_post_xfmr for ADD/UPDATE operation")
 
-        autoCreateOspfArea := true
-        if (autoCreateOspfArea) {
-            if (strings.Contains(rcvdUri, "protocols/protocol/ospfv2")) {
-                if (strings.Contains(rcvdUri, "networks/network") ||
-                    strings.Contains(rcvdUri, "virtual-links/virtual-link") ||
-                    strings.Contains(rcvdUri, "inter-area-policy/ranges/range")) {
-                    err = ospf_auto_create_ospf_router_area(inParams, ospfRespMap)
-                    if (err != nil) {
-                        log.Info("ospfv2_config_post_xfmr: ospf_auto_create_ospf_router_area failed ", err)
-                        return err
-                    }
-                }
-            }
+        err = ospf_auto_create_ospf_router_area(inParams, ospfRespMap)
+        if (err != nil) {
+            log.Info("ospfv2_config_post_xfmr: ospf_auto_create_ospf_router_area failed ", err)
+            return err
         }
+
     } else if inParams.oper == DELETE {
         log.Info("ospfv2_config_post_xfmr: for DELETE operation")
 
-        if (strings.Contains(rcvdUri, "protocols/protocol/ospfv2")) {
-            /* OSPFv2 uri */
-            if (strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2") ||
-                strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2/global")) {
-                /* ospf router delete */
-                err = delete_ospf_interfaces_for_vrf(inParams, ospfRespMap)
+        if (strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2") ||
+            strings.HasSuffix(rcvdUri, "protocols/protocol/ospfv2/global")) {
+            /* ospf router delete */
+            err = delete_ospf_interfaces_for_vrf(inParams, ospfRespMap)
+            if (err != nil) {
+                log.Info("ospfv2_config_post_xfmr: delete_ospf_interfaces_for_vrf failed ", err)
+                return err
+            }
+        } else {
+            if (strings.Contains(rcvdUri, "route-distribution-policies")) {
+                /* ospf router redistribute delete */
+                err = delete_ospf_router_redistribute_entry(inParams, ospfRespMap)
                 if (err != nil) {
-                    log.Info("ospfv2_config_post_xfmr: delete_ospf_interfaces_for_vrf failed ", err)
+                    log.Info("ospfv2_config_post_xfmr: delete_ospf_router_redistribute_entry failed ", err)
                     return err
                 }
-            } else {
-                if (strings.Contains(rcvdUri, "route-distribution-policies")) {
-                    /* ospf router redistribute delete */
-                    err = delete_ospf_router_redistribute_entry(inParams, ospfRespMap)
-                    if (err != nil) {
-                        log.Info("ospfv2_config_post_xfmr: delete_ospf_router_redistribute_entry failed ", err)
-                        return err
-                    }
-                }
+            }
 
-                if (strings.Contains(rcvdUri, "areas/area")) {
-                    err = validate_ospf_router_area_delete(inParams, ospfRespMap)
-                    if (err != nil) {
-                        log.Info("ospfv2_config_post_xfmr: validate_ospf_router_area_delete failed ", err)
-                        return err
-                    }
+            if (strings.Contains(rcvdUri, "areas/area")) {
+                err = validate_ospf_router_area_delete(inParams, ospfRespMap)
+                if (err != nil) {
+                    log.Info("ospfv2_config_post_xfmr: validate_ospf_router_area_delete failed ", err)
+                    return err
                 }
             }
         }
     }
 
+    log.Info("ospfv2_config_post_xfmr: return with respmap ", *ospfRespMap)
     return err
 }
 
@@ -1480,8 +2128,8 @@ func ospf_router_area_network_present(inParams *XfmrParams, vrfName string, area
                if (keyAreaId == areaId) {
                    log.Info("ospf_router_area_network_present: network config present with key ", ospfTblKey)
                    return true, nil
-               }    
-           } 
+               }
+           }
         }
     }
 
@@ -1606,7 +2254,7 @@ func create_ospf_area_entry(inParams *XfmrParams, vrfName string, areaId string,
     if areaPresent {
         log.Infof("create_ospf_area_entry: area id entry already present")
         return nil
-    } 
+    }
 
     ospfTblName := "OSPFV2_ROUTER_AREA"
     ospfTblKey := vrfName + "|" + areaId
@@ -1623,46 +2271,54 @@ func create_ospf_area_entry(inParams *XfmrParams, vrfName string, areaId string,
 
     ospfTblMap := make(map[string]db.Value)
     ospfTblMap[ospfTblKey] = ospfTblDbValue
-    (*ospfRespMap)[ospfTblName] = ospfTblMap 
+    (*ospfRespMap)[ospfTblName] = ospfTblMap
 
+    log.Infof("create_ospf_area_entry: Areas entry %s added respmap", ospfTblKey)
     return nil
 }
 
 func ospf_auto_create_ospf_router_area(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
     log.Info("ospf_auto_create_ospf_router_area: ", inParams.uri)
 
-    rcvdUri, _ := getOspfUriPath(inParams)
-    autoCreate := false
+    ospfObj, vrfName, err := ospfGetRouterObjWithVrfName(inParams, "")
+    if (ospfObj == nil || vrfName == "" || err != nil) {
+        log.Info("ospf_auto_create_ospf_router_area: ospf router not in request")
+        return nil
+    }
 
-    log.Info("ospf_auto_create_ospf_router_area: rcvdUri ", rcvdUri)
+    areaId := ""
+    areaObj, _, _ := ospfGetRouterAreaObject(inParams, vrfName, areaId)
+    if (areaObj != nil) {
+        areaId, _ = ospfGetAreaStringFromAreaId(&areaObj.Identifier)
+        if (areaId != "") {
+            nwObj, _, _ := ospfGetRouterAreaNetworkObject(inParams, vrfName, areaId, "")
+            if (nwObj != nil) {
+                log.Infof("ospf_auto_create_ospf_router_area: Auto create nw area %s in vrf %s", areaId, vrfName)
+                create_ospf_area_entry(inParams, vrfName, areaId, ospfRespMap)
+            }
 
-    if (strings.Contains(rcvdUri, "protocols/protocol/ospfv2")) {
-        if (strings.Contains(rcvdUri, "networks/network")) {
-            autoCreate = true
-        } else if (strings.Contains(rcvdUri, "virtual-links/virtual-link")) {
-            autoCreate = true
-        } else if (strings.Contains(rcvdUri, "inter-area-policy/ranges/range")) {
-            autoCreate = true
+            vlinkObj, _, _ := ospfGetRouterAreaVlinkObject(inParams, vrfName, areaId, "")
+            if (vlinkObj != nil) {
+                log.Infof("ospf_auto_create_ospf_router_area: Auto create vl area %s in vrf %s", areaId, vrfName)
+                create_ospf_area_entry(inParams, vrfName, areaId, ospfRespMap)
+            }
         }
     }
 
-    if (!autoCreate) {
-        log.Info("ospf_auto_create_ospf_router_area: uris dont match, no autocreate")
-        return nil
+    polAreaObj, ending, _ := ospfGetRouterIaPolicySrcAreaObject(inParams, vrfName, "")
+    if (polAreaObj != nil && !ending) {
+        polAreaId, _ := ospfGetAreaStringFromSrcAreaId(&polAreaObj.SrcArea)
+        if (polAreaId != "" && polAreaId != areaId) {
+            rangeObj, _, _ := ospfGetRouterPolicyRangeObject(inParams, vrfName, polAreaId, "")
+            if (rangeObj != nil) {
+                log.Infof("ospf_auto_create_ospf_router_area: Auto create pol area %s in vrf %s", areaId, vrfName)
+                create_ospf_area_entry(inParams, vrfName, polAreaId, ospfRespMap)
+            }
+        } 
     }
 
-    pathInfo := NewPathInfo(inParams.uri)
-    ospfVrfName :=  pathInfo.Var("name")
-    ospfAreaId := pathInfo.Var("identifier#2")
-
-    log.Infof("ospf_auto_create_ospf_router_area: ospfVrfName %s ospfAreaId %s", ospfVrfName, ospfAreaId)
-    if (ospfVrfName == "" || ospfAreaId == "") {
-        log.Info("ospf_auto_create_ospf_router_area: invalid vrf name or area Id")
-        return nil
-    }
-
-    log.Infof("ospf_auto_create_ospf_router_area: Auto create area %s in vrf %s", ospfAreaId, ospfVrfName)
-    return create_ospf_area_entry(inParams, ospfVrfName, ospfAreaId, ospfRespMap)
+    log.Info("ospf_auto_create_ospf_router_area: done")
+    return nil
 }
 
 func validate_ospf_router_area_delete(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
@@ -1679,6 +2335,12 @@ func validate_ospf_router_area_delete(inParams *XfmrParams, ospfRespMap *map[str
         return nil
     }
 
+    ospfObj, ospfVrfName, uerr := ospfGetRouterObjWithVrfName(inParams, "")
+    if (ospfObj == nil || ospfVrfName == "" || uerr != nil) {
+        log.Info("validate_ospf_router_area_delete: get ospf router info failed ", uerr)
+        return nil
+    }
+
     areaDelete := false
     if (strings.HasSuffix(rcvdUri, "areas") ||
         strings.HasSuffix(rcvdUri, "areas/area") ||
@@ -1691,12 +2353,6 @@ func validate_ospf_router_area_delete(inParams *XfmrParams, ospfRespMap *map[str
         return nil
     }
 
-    ospfVrfName, _, _, uerr := get_ospf_router_info_from_uri(inParams)
-    if uerr != nil {
-        log.Info("validate_ospf_router_area_delete: get ospf router info failed ", uerr)
-        return nil
-    }
-
     ospfAreaId := pathInfo.Var("identifier#2")
     if len(ospfAreaId) == 0 {
         log.Info("OSPF area Id is Missing")
@@ -1706,25 +2362,25 @@ func validate_ospf_router_area_delete(inParams *XfmrParams, ospfRespMap *map[str
 
     errStr := "Delete interface area, network, address-range and virtual links in the area first"
 
-    ifAreaPresent, _ := ospf_area_id_present_in_interfaces(inParams, ospfVrfName, ospfAreaId)  
+    ifAreaPresent, _ := ospf_area_id_present_in_interfaces(inParams, ospfVrfName, ospfAreaId)
     if (ifAreaPresent) {
         log.Info("validate_ospf_router_area_delete: Area config present under interface")
         return tlerr.New(errStr)
     }
 
-    nwAreaPresent, _ := ospf_router_area_network_present(inParams, ospfVrfName, ospfAreaId)  
+    nwAreaPresent, _ := ospf_router_area_network_present(inParams, ospfVrfName, ospfAreaId)
     if (nwAreaPresent) {
         log.Info("validate_ospf_router_area_delete: Area config present under network config")
         return tlerr.New(errStr)
     }
 
-    vlAreaPresent, _ := ospf_router_area_virtual_link_present(inParams, ospfVrfName, ospfAreaId)  
+    vlAreaPresent, _ := ospf_router_area_virtual_link_present(inParams, ospfVrfName, ospfAreaId)
     if (vlAreaPresent) {
         log.Info("validate_ospf_router_area_delete: Area config present under virtual link config")
         return tlerr.New(errStr)
     }
 
-    arAreaPresent, _ := ospf_router_area_address_range_present(inParams, ospfVrfName, ospfAreaId)  
+    arAreaPresent, _ := ospf_router_area_address_range_present(inParams, ospfVrfName, ospfAreaId)
     if (arAreaPresent) {
         log.Info("validate_ospf_router_area_delete: Area config present under address range config")
         return tlerr.New(errStr)
@@ -1750,6 +2406,13 @@ func delete_ospf_router_redistribute_entry(inParams *XfmrParams, ospfRespMap *ma
     }
 
     log.Info("delete_ospf_router_redistribute_entry: rcvdUri ", rcvdUri)
+
+    ospfObj, ospfVrfName, err := ospfGetRouterObjWithVrfName(inParams, "")
+    if (ospfObj == nil || ospfVrfName == "" || err != nil) {
+        log.Info("delete_ospf_router_redistribute_entry: ospf router not in request")
+        return nil
+    }
+
     if (!strings.Contains(rcvdUri, "protocols/protocol/ospfv2/global")) {
         log.Info("delete_ospf_router_redistribute_entry: rcvdUri not ospfv2/global")
         return nil
@@ -1758,12 +2421,6 @@ func delete_ospf_router_redistribute_entry(inParams *XfmrParams, ospfRespMap *ma
     if (!strings.Contains(rcvdUri, "route-distribution-policies")) {
         log.Info("delete_ospf_router_redistribute_entry: rcvdUri not distribute-list")
         return nil
-    }
-
-    ospfVrfName, _, _, uerr := get_ospf_router_info_from_uri(inParams)
-    if uerr != nil {
-         log.Info("delete_ospf_router_redistribute_entry: ", uerr)
-         return nil
     }
 
     redistProtocol  := pathInfo.Var("protocol")
@@ -1786,13 +2443,13 @@ func delete_ospf_router_redistribute_entry(inParams *XfmrParams, ospfRespMap *ma
 
     fieldNameList := []string { "BGP", "STATIC", "KERNEL", "DIRECTLY_CONNECTED" }
     validProtocol := false
-    for _, fieldName := range fieldNameList { 
+    for _, fieldName := range fieldNameList {
         if (redistProtocol == fieldName) {
             validProtocol = true
             break
         }
     }
-  
+
     if (!validProtocol) {
         log.Info("delete_ospf_router_redistribute_entry: not valid protocol")
         return nil
@@ -1827,8 +2484,8 @@ func delete_ospf_router_redistribute_entry(inParams *XfmrParams, ospfRespMap *ma
         keyProtocol := ospfTblKey.Get(1)
         keyDirection := ospfTblKey.Get(2)
 
-        if (keyVrfName != ospfVrfName || 
-            keyProtocol != redistProtocol || 
+        if (keyVrfName != ospfVrfName ||
+            keyProtocol != redistProtocol ||
             keyDirection != redistDirection ) {
             continue
         }

@@ -15,7 +15,13 @@ module sonic-system-crm-annot {
 
     deviation /sonic-crm:crm-acl-group-stats {
         deviate add {
-            sonic-ext:rpc-callback "rpc_crm_stats";
+            sonic-ext:rpc-callback "rpc_crm_acl_group_stats";
+        }
+    }
+
+    deviation /sonic-crm:crm-acl-table-stats {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_crm_acl_table_stats";
         }
     }
 }

@@ -385,9 +385,11 @@ func getPgData (pgObj *ocbinds.OpenconfigPortGroup_PortGroups) (error) {
             entry.ValidSpeeds = val_speeds
             if _, ok := pgObj.PortGroup[id]; ok {
                 pgInstance = pgObj.PortGroup[id]
-                pgInstance.State = &entry
-                log.Info("Entry ", id, " ", entry)
+            } else {
+                pgInstance, _ = pgObj.NewPortGroup(id)
             }
+            pgInstance.State = &entry
+            log.Info("Entry ", id, " ", entry)
         }
     }
 

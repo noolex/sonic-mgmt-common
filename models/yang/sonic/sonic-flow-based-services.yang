@@ -11,10 +11,6 @@ module sonic-flow-based-services {
         prefix sonic-ext;
     }
 
-    import sonic-acl {
-        prefix sacl;
-    }
-
     import sonic-port {
         prefix sprt;
     }

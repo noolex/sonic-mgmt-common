@@ -11,11 +11,14 @@ import (
     "os/exec"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init () {
     XlateFuncBind("DbToYang_bfd_shop_state_xfmr", DbToYang_bfd_shop_state_xfmr)
     XlateFuncBind("DbToYang_bfd_mhop_state_xfmr", DbToYang_bfd_mhop_state_xfmr)
+    XlateFuncBind("Subscribe_bfd_shop_state_xfmr", Subscribe_bfd_shop_state_xfmr)
+    XlateFuncBind("Subscribe_bfd_mhop_state_xfmr", Subscribe_bfd_mhop_state_xfmr)
     XlateFuncBind("YangToDb_bfd_shop_remoteaddr_fld_xfmr", YangToDb_bfd_shop_remoteaddr_fld_xfmr)
     XlateFuncBind("YangToDb_bfd_shop_vrf_fld_xfmr", YangToDb_bfd_shop_vrf_fld_xfmr)
     XlateFuncBind("YangToDb_bfd_shop_interface_fld_xfmr", YangToDb_bfd_shop_interface_fld_xfmr)
@@ -1283,4 +1286,96 @@ var rpc_clear_bfd RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     status = "Success"
     result.Output.Status = status
     return json.Marshal(&result)
+}
+
+var Subscribe_bfd_shop_state_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("Subscribe_bfd_shop_subtree_xfmr: pathInfo ", pathInfo)
+
+    result.dbDataMap = make(RedisDbMap)
+    result.isVirtualTbl = false
+
+    bfdPeer := pathInfo.Var("remote-address")
+    if bfdPeer == "" {
+        errStr := "Empty BFD Remote-address"
+        log.Info("Subscribe_bfd_shop_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    bfdInterface := pathInfo.Var("interface")
+    if bfdInterface == "" {
+        errStr := "Empty BFD interface name"
+        log.Info("Subscribe_bfd_shop_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    bfdVrf := pathInfo.Var("vrf")
+    if bfdVrf == "" {
+        errStr := "Empty BFD vrf"
+        log.Info("Subscribe_bfd_shop_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    bfdLocalAddr := pathInfo.Var("local-address")
+    if bfdLocalAddr == "" {
+        errStr := "Empty BFD local address"
+        log.Info("Subscribe_bfd_shop_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    bfdIntfTbl := "BFD_PEER_SINGLE_HOP"
+    bfdIntfTblKey := bfdPeer + "|" + bfdInterface + "|" + bfdVrf + "|" + bfdLocalAddr
+    result.dbDataMap = RedisDbMap{db.StateDB: {bfdIntfTbl:{bfdIntfTblKey:{}}}}
+
+    log.Info("Subscribe_bfd_shop_subtree_xfmr: bfdIntfTblKey " + bfdIntfTbl)
+    return result, nil
+}
+
+var Subscribe_bfd_mhop_state_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("Subscribe_bfd_mhop_subtree_xfmr: pathInfo ", pathInfo)
+
+    result.dbDataMap = make(RedisDbMap)
+    result.isVirtualTbl = false
+
+    bfdPeer := pathInfo.Var("remote-address")
+    if bfdPeer == "" {
+        errStr := "Empty BFD Remote-address"
+        log.Info("Subscribe_bfd_mhop_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    bfdInterface := pathInfo.Var("interface")
+    if bfdInterface == "" {
+        errStr := "Empty BFD interface name"
+        log.Info("Subscribe_bfd_mhop_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    bfdVrf := pathInfo.Var("vrf")
+    if bfdVrf == "" {
+        errStr := "Empty BFD vrf"
+        log.Info("Subscribe_bfd_mhop_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    bfdLocalAddr := pathInfo.Var("local-address")
+    if bfdLocalAddr == "" {
+        errStr := "Empty BFD local address"
+        log.Info("Subscribe_bfd_mhop_subtree_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    bfdTbl := "BFD_PEER_MULTI_HOP"
+    bfdTblKey := bfdPeer + "|" + bfdInterface + "|" + bfdVrf + "|" + bfdLocalAddr
+    result.dbDataMap = RedisDbMap{db.StateDB: {bfdTbl:{bfdTblKey:{}}}}
+
+    log.Info("Subscribe_bfd_mhop_subtree_xfmr: bfdTblKey " + bfdTbl)
+    return result, nil
 }

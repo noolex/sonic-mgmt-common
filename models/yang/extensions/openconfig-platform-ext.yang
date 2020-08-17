@@ -10,6 +10,9 @@ module openconfig-platform-ext {
     import openconfig-extensions { prefix "oc-ext"; }
     import openconfig-platform { prefix oc-pf; }
     import openconfig-platform-transceiver { prefix oc-transceiver; }
+    import ietf-yang-types {
+        prefix yang;
+    }
 
     organization "SONiC";
     contact
@@ -344,12 +347,13 @@ module openconfig-platform-ext {
         leaf warning-status {
             type boolean;
             description
-                "Indication for temperature warning status";
+              "Temperature sensor warning status";
         }
 
         leaf timestamp {
-            type string;
-            description "The timestamp for the fetched temperature";
+            type yang:date-and-time;
+            description
+              "Temperature sensor reading timestamp";
         }
     }
 

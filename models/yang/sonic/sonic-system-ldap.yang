@@ -7,17 +7,13 @@ module sonic-system-ldap {
       prefix inet;
   }
 
-  import sonic-vrf {
-      prefix vrf;
-  }
-
   import sonic-port {
       prefix sport;
   }
 
-	import sonic-common {
-	    prefix cmn;
-	}
+  import sonic-common {
+      prefix cmn;
+  }
 
   import sonic-portchannel {
       prefix spc;

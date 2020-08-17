@@ -90,7 +90,7 @@ var rpc_infra_reboot_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         var operand struct {
                 Input struct {
                         Param string `json:"param"`
-                } `json:"sonic-system-infra:input"`
+                } `json:"openconfig-system-ext:input"`
         }
 
 
@@ -103,7 +103,7 @@ var rpc_infra_reboot_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         var exec struct {
                 Output struct {
                         Result string `json:"result"`
-                } `json:"sonic-system-infra:output"`
+                } `json:"openconfig-system-ext:output"`
         }
 
         //Don't allow warm-reboot when spanning-tree is enabled
@@ -197,14 +197,14 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
 
         var operand struct {
                 Input struct {
-                        Param int `json:"num_lines"`
-                } `json:"sonic-system-infra:input"`
+                        Param int `json:"num-lines"`
+                } `json:"openconfig-system-ext:input"`
         }
 
         var exec struct {
                 Output struct {
                         Result []string `json:"status-detail"`
-                } `json:"sonic-system-infra:output"`
+                } `json:"openconfig-system-ext:output"`
         }
 
         err = json.Unmarshal(body, &operand)
@@ -230,7 +230,7 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
         }
 
         cmd := "cp -f " + HOST_SYSLOG + " " + HOST_SYSLOG1 +" " + MGM_DIR
-        log.Info("rpc_infra_show_sys_log cmd: %v; num_lines: %v", cmd, num_lines)
+        log.Info("rpc_infra_show_sys_log cmd:", cmd)
 
         host_output := HostQuery("infra_host.exec_cmd", cmd)
         if host_output.Err != nil {
@@ -285,7 +285,7 @@ var rpc_infra_clear_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*d
         var exec struct {
                 Output struct {
                         Result string `json:"result"`
-                } `json:"sonic-system-infra:output"`
+                } `json:"openconfig-system-ext:output"`
         }
 
         cmd := "sonic-clear logging"
