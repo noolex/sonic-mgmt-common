@@ -21,6 +21,7 @@ func init () {
     XlateFuncBind("rpc_infra_config_cb",  rpc_infra_config_cb)
     XlateFuncBind("rpc_infra_show_sys_log_cb",  rpc_infra_show_sys_log_cb)
     XlateFuncBind("rpc_infra_clear_sys_log_cb",  rpc_infra_clear_sys_log_cb)
+    XlateFuncBind("rpc_infra_logger_cb",  rpc_infra_logger_cb)
 }
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -307,6 +308,48 @@ var rpc_infra_clear_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*d
         return result, err
 }
 
+var rpc_infra_logger_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_logger_cb body:", string(body))
+        var err error
+        var operand struct {
+                Input struct {
+                        Messages string `json:"messages"`
+                } `json:"openconfig-system-ext:input"`
+        }
+
+        err = json.Unmarshal(body, &operand)
+        if err != nil {
+                log.Errorf("rpc_infra_reboot_cb: Failed to parse rpc input; err=%v", err)
+                return nil,tlerr.InvalidArgs("Invalid rpc input")
+        }
+
+        var exec struct {
+                Output struct {
+                        Result string `json:"result"`
+                } `json:"openconfig-system-ext:output"`
+        }
+
+        cmd := "logger " + operand.Input.Messages 
+        log.Info("rpc_infra_logger_cb cmd: ", cmd)
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              log.Errorf("rpc_infra_logger_cb: host Query failed: err=%v", host_output.Err)
+              exec.Output.Result = "[FAILED] host query"
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        var output string
+        output, _ = host_output.Body[1].(string)
+        if len(output) > 0 {
+           exec.Output.Result = output
+        } else {
+           exec.Output.Result = "SUCCESS" 
+        }
+        result, err := json.Marshal(&exec)
+        return result, err
+}
 
 
 
