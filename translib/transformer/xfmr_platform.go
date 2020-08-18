@@ -1062,9 +1062,15 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
 
     var query_result = HostQuery("fetch_environment.action", "")
     if query_result.Err != nil {
-        log.Infof("Error in Calling dbus fetch_environment %v", query_result.Err)
+        log.Error("Error in Calling dbus fetch_environment %v", query_result.Err)
         return query_result.Err
     }
+
+    if (len(query_result.Body) < 2) {
+        log.Error("Error result body is incomplete")
+        return errors.New("Result body is incomplete")
+    }
+
     env_op := query_result.Body[1].(string)
     scanner := bufio.NewScanner(strings.NewReader(env_op))
     for scanner.Scan() {
@@ -1087,7 +1093,9 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
         scanner.Scan()
         for scanner.Text() != "" {
             s := strings.Split(scanner.Text(), ":")
-            if !SubCatFound || s[1] == "" {
+            if len(s) < 2 {
+                log.Error("Unable to parse sensor info: ", scanner.Text())
+            } else if !SubCatFound || s[1] == "" {
                 log.Infof("scomp: %s",scanner.Text())
                 pf_sensor_cat, perr = pf_scomp.State.NewSensorCategory(scanner.Text())
                 if pf_sensor_cat == nil {
