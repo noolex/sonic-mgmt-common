@@ -1,6 +1,7 @@
 module sonic-loopback-interface {
     namespace "http://github.com/Azure/sonic-loopback-interface";
     prefix sonic-lo-if;
+    yang-version 1.1;
 
     import ietf-inet-types {
         prefix inet;
@@ -67,8 +68,13 @@ module sonic-loopback-interface {
                 }
 
                 leaf vrf_name {
-                    type leafref {
-                        path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                    type union {
+                        type string {
+                            pattern "mgmt";
+                        }
+                        type leafref {
+                            path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                        }
                     }
                 }
 
