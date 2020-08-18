@@ -1056,7 +1056,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 				err = preXfmrHandlerFunc(modSpecInfo.xfmrPre, inParams)
 				xfmrLogInfo("Invoked pre transformer: %v, dbDataMap: %v ", modSpecInfo.xfmrPre, dbDataMap)
 				if err != nil {
-					log.Errorf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
+					log.Warningf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
 					return jsonData, true, err
 				}
 				inParamsForGet.dbDataMap = dbDataMap
@@ -1201,7 +1201,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						if err != nil {
 							if (((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) && (uri == requestUri)) {
 								// The error handling here is for the deferred resource check error being handled by the subtree for virtual table cases.
-								log.Errorf("Subtree at list instance level returns error %v for  uri  - %v", err, uri)
+								log.Warningf("Subtree at list instance level returns error %v for  uri  - %v", err, uri)
 								return jsonData, true, err
 
 							} else {

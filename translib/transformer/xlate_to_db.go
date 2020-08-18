@@ -560,10 +560,10 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 						resultMap[UPDATE] = make(RedisDbMap)
 						resultMap[UPDATE][db.ConfigDB] = result
 					} else {
-						log.Errorf("For uri - %v, no entry found in xDbSpecMap for table(%v)/field(%v)", uri, tableName, fldNm)
+						log.Warningf("For uri - %v, no entry found in xDbSpecMap for table(%v)/field(%v)", uri, tableName, fldNm)
 					}
 				} else {
-					log.Errorf("For uri - %v, no entry found in xDbSpecMap with tableName - %v", uri, tableName)
+					log.Warningf("For uri - %v, no entry found in xDbSpecMap with tableName - %v", uri, tableName)
 				}
 			}
 		} else {
@@ -579,7 +579,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			xfmrLogInfo("Invoked pre-transformer: %v, oper: %v, subOpDataMap: %v ",
 			modSpecInfo.xfmrPre, oper, subOpDataMap)
 			if err != nil {
-				log.Errorf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
+				log.Warningf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
 				return err
 			}
 		}
@@ -645,7 +645,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
                                     }
 				}
 			} else {
-				log.Errorf("No Entry exists for module %s in xYangSpecMap. Unable to process post xfmr (\"%v\") uri(\"%v\") error (\"%v\").", oper, uri, err)
+				log.Warningf("No Entry exists for module %s in xYangSpecMap. Unable to process post xfmr (\"%v\") uri(\"%v\") error (\"%v\").", oper, uri, err)
 			}
                         if len(result) > 0 || len(subOpDataMap) > 0 {
                                   resultMap[oper] = make(RedisDbMap)
@@ -668,7 +668,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 
 		err = dbDataXfmrHandler(resultMap)
 		if err != nil {
-			log.Errorf("Failed in dbdata-xfmr for %v", resultMap)
+			log.Warningf("Failed in dbdata-xfmr for %v", resultMap)
 			return err
 		}
 
@@ -682,7 +682,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 
 		printDbData(resultMap, yangDefValMap, "/tmp/yangToDbDataCreate.txt")
 	} else {
-		log.Errorf("DBMapCreate req failed for oper (\"%v\") uri(\"%v\") error (\"%v\").", oper, uri, err)
+		log.Warningf("DBMapCreate req failed for oper (\"%v\") uri(\"%v\") error (\"%v\").", oper, uri, err)
 	}
 	return err
 }
@@ -864,7 +864,7 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 							curXlateParams := formXlateToDbParam(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, xlateParams.uri, xlateParams.requestUri, xlateParams.xpath, curKey, xlateParams.jsonData, xlateParams.resultMap, xlateParams.result, xlateParams.txCache, xlateParams.tblXpathMap, xlateParams.subOpDataMap, xlateParams.pCascadeDelTbl, xlateParams.xfmrErr, pathAttr, value, "")
 							retErr = mapFillData(curXlateParams)
 							if retErr != nil {
-								log.Errorf("Failed constructing data for db write: key(\"%v\"), value(\"%v\"), path(\"%v\").",
+								log.Warningf("Failed constructing data for db write: key(\"%v\"), value(\"%v\"), path(\"%v\").",
 								pathAttr, value, xlateParams.xpath)
 								return retErr
 							}
@@ -926,7 +926,6 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
 			// Valid table mapping exists. Read the table entry from DB
 			tableExists, derr = dbTableExists(d, table, dbKey, oper)
 			if derr != nil {
-				log.Errorf("%v", derr)
 				return false, derr
 			}
 		}
@@ -936,13 +935,13 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper int, uri string
                         // POST case since the uri is the parent, the parent needs to exist
                         // PUT case allow operation(Irrespective of table existence update the DB either through CREATE or REPLACE)
                         // DELETE case Table instance should be available to perform delete else, CVL may throw error
-                        log.Errorf("Parent table %v with key %v does not exist for oper %v in DB", table, dbKey, oper)
+                        log.Warningf("Parent table %v with key %v does not exist for oper %v in DB", table, dbKey, oper)
                         err = tlerr.NotFound("Resource not found")
                         return false, err
                 } else if len(pathList) > SONIC_LIST_INDEX  && !tableExists {
                         // Uri is at /sonic-module/container-table/list or /sonic-module/container-table/list/leaf
                         // Parent table should exist for all CRUD cases
-                        log.Errorf("Parent table %v with key %v does not exist in DB", table, dbKey)
+                        log.Warningf("Parent table %v with key %v does not exist in DB", table, dbKey)
                         err = tlerr.NotFound("Resource not found")
                         return false, err
                 } else {
@@ -997,7 +996,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 					if oper != GET {
 						dptr, derr := db.NewDB(getDBOptions(dbNo))
 						if derr != nil {
-							log.Error("Couldn't allocate NewDb/DbOptions for db - %v, while processing uri - %v", dbNo, uri)
+							log.Warningf("Couldn't allocate NewDb/DbOptions for db - %v, while processing uri - %v", dbNo, uri)
 							err = derr
 							parentTblExists = false
 							goto Exit
@@ -1052,7 +1051,6 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
         if !ok {
 		errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", uri)
 		err = tlerr.InternalError{Format:errStr}
-		log.Errorf("%v", err)
 		return false, err
 	}
 	yangType = yangTypeGet(xpathInfo.yangEntry)
@@ -1114,7 +1112,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				// Get Table and Key only for yang list instances
 				xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache)
 				if xerr != nil {
-					log.Errorf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
+					log.Warningf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
 					err = xerr
 					parentTblExists = false
 					break
@@ -1140,7 +1138,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 						}
 						if !exists {
 							parentTblExists = false
-							log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, uri)
+							log.Warningf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, uri)
 							err = tlerr.NotFound("Resource not found")
 							break
 						}
@@ -1148,7 +1146,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				} else {
 					// We always expect a valid table and key to be returned. Else we cannot validate parent check
 					parentTblExists = false
-					log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, curUri)
+					log.Warningf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, curUri)
 					err = tlerr.NotFound("Resource not found")
 					break
 				}
@@ -1168,13 +1166,12 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		xfmrLogInfoAll("Check last parent table for uri: %v", uri)
 		xpath, xpathErr := XfmrRemoveXPATHPredicates(uri)
 		if xpathErr != nil {
-			log.Errorf("Xpath conversion didn't happen for Uri - %v, due to - %v", uri, xpathErr)
+			log.Warningf("Xpath conversion didn't happen for Uri - %v, due to - %v", uri, xpathErr)
 			return false, xpathErr
 		}
 		xpathInfo, ok := xYangSpecMap[xpath]
 		if !ok {
 			err = fmt.Errorf("xYangSpecMap does not contain xpath - %v", xpath)
-			log.Error("%v", err)
 			return false, err
 		}
 		virtualTbl := false
@@ -1206,7 +1203,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 
 		xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
 		if xerr != nil {
-			log.Errorf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
+			log.Warningf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 			return false, xerr
 		}
 		if xpathKeyExtRet.isVirtualTbl {
@@ -1228,7 +1225,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 					}
 					if !exists {
 						parentTblExists = false
-						log.Errorf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, uri)
+						log.Warningf("Parent Tbl :%v, dbKey: %v does not exist for uri %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, uri)
 						err = tlerr.NotFound("Resource not found")
 					}
 				}
@@ -1236,11 +1233,11 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 				exists, derr = dbTableExists(d, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, oper)
 			}
 			if derr != nil {
-				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, derr)
+				log.Warningf("GetEntry failed for table: %v, key: %v err: %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, derr)
 				return false, derr
 			}
 			if !exists {
-				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, derr)
+				log.Warningf("GetEntry failed for table: %v, key: %v err: %v", xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey, derr)
 				err = tlerr.NotFound("Resource not found")
 				return false, err
 			} else {
@@ -1249,7 +1246,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		} else if !((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {//uri points to entire list
 			return true, nil
 		} else {
-			log.Errorf("Unable to get valid table and key err: %v, table %v, key %v", xerr, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
+			log.Warningf("Unable to get valid table and key err: %v, table %v, key %v", xerr, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 			return false, xerr
 		}
 	} else if (yangType == YANG_CONTAINER && oper == DELETE && ((xpathInfo.keyName != nil && len(*xpathInfo.keyName) > 0) || len(xpathInfo.xfmrKey) > 0)) {
