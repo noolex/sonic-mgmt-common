@@ -1568,10 +1568,6 @@ var Subscribe_routed_vlan_ip_addr_xfmr = func (inParams XfmrSubscInParams) (Xfmr
         tblName := intTbl.cfgDb.intfTN
         result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
     }
-    result.needCache = true
-    result.nOpts = new(notificationOpts)
-    result.nOpts.mInterval = 15
-    result.nOpts.pType = OnChange
     log.Info("Returning Subscribe_routed_vlan_ip_addr_xfmr, result:", result)
     return result, err
 }
