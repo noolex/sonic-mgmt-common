@@ -1,6 +1,7 @@
 module sonic-portchannel-interface {
     namespace "http://github.com/Azure/sonic-portchannel-interface";
     prefix spchint;
+    yang-version 1.1;
 
     import ietf-inet-types {
         prefix inet;
@@ -92,9 +93,15 @@ module sonic-portchannel-interface {
                 }
 
                 leaf vrf_name {
-                        type leafref {
-                                path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                    type union {
+                        type string {
+                            pattern "mgmt";
                         }
+
+                        type leafref {
+                            path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                        }
+                    }
                 }
 
                 leaf-list dhcp_servers{
