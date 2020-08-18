@@ -474,11 +474,11 @@ var YangToDb_pfm_components_transceiver_xfmr FieldXfmrYangToDb = func(inParams X
   /* pretty.Print(st) */
   /* log.Info("st = ", st) */
 
-  stDb, _ := db.NewDB(getDBOptions(db.StateDB))
+  stDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
   defer stDb.DeleteDB()
-  /* log.Info(" TRANSCEIVER_DOM   ", TRANSCEIVER_DOM) */
-  xcvrDOMEntry, err := stDb.GetEntry(&db.TableSpec{Name: TRANSCEIVER_DOM}, db.Key{Comp: []string{name}})
+  /* log.Info(" PORT_TBL   ", PORT_TBL) */
+  xcvrDOMEntry, err := stDb.GetEntry(&db.TableSpec{Name: PORT_TBL}, db.Key{Comp: []string{name}})
   if strings.Contains(inParams.requestUri, "lb-host-side-input-enable") {
     if strings.Contains(*st.LbHostSideInputEnable, "True") {
       xcvrDOMEntry.Set("host_side_input_loopback_enable", "True")
@@ -494,7 +494,7 @@ var YangToDb_pfm_components_transceiver_xfmr FieldXfmrYangToDb = func(inParams X
     }
   }
 
-  stDb.SetEntry(&db.TableSpec{Name: TRANSCEIVER_DOM}, db.Key{Comp: []string{name}}, xcvrDOMEntry)
+  stDb.SetEntry(&db.TableSpec{Name: PORT_TBL}, db.Key{Comp: []string{name}}, xcvrDOMEntry)
 
   return res_map, err
 }
