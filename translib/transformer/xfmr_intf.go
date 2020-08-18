@@ -4534,7 +4534,7 @@ var DbToYang_intf_eth_port_config_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
         } else {
             errStr = "Attribute not set"
         }
-        if (!get_cfg_obj) {
+        if (!get_cfg_obj && errStr != "") {
             err = tlerr.InvalidArgsError{Format: errStr}
         }
     }
