@@ -128,11 +128,8 @@ module sonic-portchannel {
 
                 leaf description {
                     type string;
-<<<<<<< HEAD
-=======
                     description
                         "Decription of the portchannel";
->>>>>>> origin/broadcom_sonic_3.x_share
                 }
             }
         }
