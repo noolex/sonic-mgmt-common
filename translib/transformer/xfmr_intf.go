@@ -719,7 +719,11 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
         }
     } else {
         log.Info("rpc_clear_counters: Clear counters for given interface name")
-        id := getIdFromIntfName(&input_str)
+        ok, id := getIdFromIntfName(&input_str) ; if !ok {
+            log.Info("Invalid Interface format")
+            result.Output.Status_detail = fmt.Sprintf("Error: Clear Counters not supported for %s", input_str)
+            return json.Marshal(&result)
+        }
         if strings.HasPrefix(input_str, "Ethernet") {
             input_str = "Ethernet" + id
         } else if strings.HasPrefix(input_str, "PortChannel") {
@@ -767,10 +771,11 @@ func resetCounters(d *db.DB, oid string) (error,error) {
 }
 
 /* Extract ID from Intf String */
-func getIdFromIntfName(intfName *string) (string) {
+func getIdFromIntfName(intfName *string) (bool, string) {
     var re = regexp.MustCompile("[0-9]+")
     id := re.FindStringSubmatch(*intfName)
-    return id[0]
+    if len(id) != 0 {return true, id[0]}
+    return false, ""
 }
 
 var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {

@@ -701,7 +701,12 @@ func resetPfcInterfaceQueueCounters(inputStr string, dbs [db.MaxDB]*db.DB) (stri
         return errString, err
     }
 
-    id := getIdFromIntfName(&inputStr)
+    ok, id := getIdFromIntfName(&inputStr) ; if !ok {
+        log.Info("resetPfcInterfaceQueueCounters    Invalid Interface format")
+        err = tlerr.InvalidArgsError{Format:"Invalid Interface"}
+        errString = fmt.Sprintf("Error: Clear PFC Counters not supported for %s", inputStr)
+        return errString, err
+    }
     if strings.HasPrefix(inputStr, "Ethernet") {
         inputStr = "Ethernet" + id
     } else {
