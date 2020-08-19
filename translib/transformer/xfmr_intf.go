@@ -87,6 +87,7 @@ func init () {
     XlateFuncBind("DbToYang_routed_vlan_ip_addr_xfmr", DbToYang_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("DbToYang_intf_description_xfmr", DbToYang_intf_description_xfmr)
     XlateFuncBind("Subscribe_intf_ip_addr_xfmr", Subscribe_intf_ip_addr_xfmr)
+    XlateFuncBind("Subscribe_routed_vlan_ip_addr_xfmr", Subscribe_routed_vlan_ip_addr_xfmr)
 }
 
 const (
@@ -1549,6 +1550,32 @@ var Subscribe_intf_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOu
     result.nOpts.mInterval = 15
     result.nOpts.pType = OnChange
     log.Info("Returning Subscribe_intf_ip_addr_xfmr, result:", result)
+    return result, err
+}
+
+var Subscribe_routed_vlan_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    log.Info("Entering Subscribe_routed_vlan_ip_addr_xfmr")
+    var err error
+    var result XfmrSubscOutParams
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    uriIfName := pathInfo.Var("name")
+    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+    keyName := *sonicIfName
+
+    log.Infof("Subscribe_routed_vlan_ip_addr_xfmr path:%s; template:%s targetUriPath:%s key:%s",pathInfo.Path, pathInfo.Template, targetUriPath, keyName)
+
+    if (keyName != "") {
+        result.dbDataMap = make(RedisDbMap)
+        result.isVirtualTbl = false
+        intfType, _, _ := getIntfTypeByName(keyName)
+        intTbl := IntfTypeTblMap[intfType]
+        tblName := intTbl.cfgDb.intfTN
+        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+    } else  {
+        err = errors.New("Invalid or Null Key")
+    }
+    log.Info("Returning Subscribe_routed_vlan_ip_addr_xfmr, result:", result)
     return result, err
 }
 
