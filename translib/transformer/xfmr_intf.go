@@ -1552,8 +1552,6 @@ var Subscribe_routed_vlan_ip_addr_xfmr = func (inParams XfmrSubscInParams) (Xfmr
     log.Info("Entering Subscribe_routed_vlan_ip_addr_xfmr")
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
-    result.isVirtualTbl = false
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     uriIfName := pathInfo.Var("name")
@@ -1563,6 +1561,8 @@ var Subscribe_routed_vlan_ip_addr_xfmr = func (inParams XfmrSubscInParams) (Xfmr
     log.Infof("Subscribe_routed_vlan_ip_addr_xfmr path:%s; template:%s targetUriPath:%s key:%s",pathInfo.Path, pathInfo.Template, targetUriPath, keyName)
 
     if (keyName != "") {
+        result.dbDataMap = make(RedisDbMap)
+        result.isVirtualTbl = false
         intfType, _, _ := getIntfTypeByName(keyName)
         intTbl := IntfTypeTblMap[intfType]
         tblName := intTbl.cfgDb.intfTN
