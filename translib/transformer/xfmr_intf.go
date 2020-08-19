@@ -1567,6 +1567,8 @@ var Subscribe_routed_vlan_ip_addr_xfmr = func (inParams XfmrSubscInParams) (Xfmr
         intTbl := IntfTypeTblMap[intfType]
         tblName := intTbl.cfgDb.intfTN
         result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+    } else  {
+        err = errors.New("Invalid or Null Key")
     }
     log.Info("Returning Subscribe_routed_vlan_ip_addr_xfmr, result:", result)
     return result, err

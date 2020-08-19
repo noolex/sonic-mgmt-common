@@ -922,7 +922,7 @@ var YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func 
     log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr:: pathInfo ", pathInfo)
     log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr:: rcvd uri ", rcvdUri)
 
-    if vlanIntfObj.Ipv4.Neighbors == nil {
+    if vlanIntfObj.Ipv4 == nil || vlanIntfObj.Ipv4.Neighbors == nil {
         errStr := "vlanInterface Neighbors node is not set"
         log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
         if (deleteOperation) {
@@ -1053,7 +1053,7 @@ var YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func 
     log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr:: pathInfo ", pathInfo)
     log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr:: rcvd uri ", rcvdUri)
 
-    if vlanIntfObj.Ipv6.Neighbors == nil {
+    if vlanIntfObj.Ipv6 == nil || vlanIntfObj.Ipv6.Neighbors == nil {
         errStr := "vlanInterface Neighbors node is not set"
         log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
         if (deleteOperation) {
