@@ -10,7 +10,7 @@ import (
     "strconv"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    //"github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "encoding/binary"
     "net"
 )
@@ -18,8 +18,8 @@ import (
 func init () {
     XlateFuncBind("DbToYang_bfd_shop_state_xfmr", DbToYang_bfd_shop_state_xfmr)
     XlateFuncBind("DbToYang_bfd_mhop_state_xfmr", DbToYang_bfd_mhop_state_xfmr)
-    XlateFuncBind("Subscribe_bfd_shop_state_xfmr", Subscribe_bfd_shop_state_xfmr)
-    XlateFuncBind("Subscribe_bfd_mhop_state_xfmr", Subscribe_bfd_mhop_state_xfmr)
+    //XlateFuncBind("Subscribe_bfd_shop_state_xfmr", Subscribe_bfd_shop_state_xfmr)
+    //XlateFuncBind("Subscribe_bfd_mhop_state_xfmr", Subscribe_bfd_mhop_state_xfmr)
     XlateFuncBind("YangToDb_bfd_shop_remoteaddr_fld_xfmr", YangToDb_bfd_shop_remoteaddr_fld_xfmr)
     XlateFuncBind("YangToDb_bfd_shop_vrf_fld_xfmr", YangToDb_bfd_shop_vrf_fld_xfmr)
     XlateFuncBind("YangToDb_bfd_shop_interface_fld_xfmr", YangToDb_bfd_shop_interface_fld_xfmr)
@@ -1286,15 +1286,17 @@ var rpc_clear_bfd RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     return json.Marshal(&result)
 }
 
+/*
 var Subscribe_bfd_shop_state_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
 
+    var err error
     var result XfmrSubscOutParams
 
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_bfd_shop_subtree_xfmr: pathInfo ", pathInfo)
 
     result.dbDataMap = make(RedisDbMap)
-    result.isVirtualTbl = false
+    result.isVirtualTbl = true
 
     bfdPeer := pathInfo.Var("remote-address")
     if bfdPeer == "" {
@@ -1334,13 +1336,15 @@ var Subscribe_bfd_shop_state_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscO
 
 var Subscribe_bfd_mhop_state_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
 
+    var err error
     var result XfmrSubscOutParams
 
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_bfd_mhop_subtree_xfmr: pathInfo ", pathInfo)
 
     result.dbDataMap = make(RedisDbMap)
-    result.isVirtualTbl = false
+
+    result.isVirtualTbl = true
 
     bfdPeer := pathInfo.Var("remote-address")
     if bfdPeer == "" {
@@ -1377,3 +1381,4 @@ var Subscribe_bfd_mhop_state_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscO
     log.Info("Subscribe_bfd_mhop_subtree_xfmr: bfdTblKey " + bfdTbl)
     return result, nil
 }
+*/
