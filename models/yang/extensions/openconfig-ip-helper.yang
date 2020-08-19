@@ -7,6 +7,7 @@ module openconfig-ip-helper {
 
   prefix "oc-ip-helper";
 
+  import openconfig-interfaces { prefix oc-if; }
   import openconfig-extensions { prefix oc-ext; }
 
   // meta
@@ -101,6 +102,218 @@ module openconfig-ip-helper {
 
         uses ip-helper-global-state;
 
+      }
+
+      uses ip-helper-interfaces-top;
+
+    }
+
+  }
+
+  grouping ip-helper-interface-servers-config {
+
+    description
+      "Grouping for IP helper server configuration data on an interface";
+
+    leaf vrf {
+      type string;
+      description
+        "Vrf of the server";
+    }
+
+    leaf ip {
+      type string;
+      description
+        "IP address of the server";
+    }
+
+  }
+
+  grouping ip-helper-interface-servers-top {
+
+    description
+      "Top level grouping for IP helper Servers info";
+
+    container servers {
+      description
+        "Enclosure for list of server addresses";
+
+      list server {
+
+        key "vrf ip";
+        max-elements 4;
+        description
+          "List of server addresses";
+                
+        leaf vrf {
+          type leafref {
+            path "../config/vrf";
+          }
+          description
+            "Vrf of the server";
+        }
+
+        leaf ip {
+          type leafref {
+            path "../config/ip";
+          }
+          description
+            "IP address of the server";
+        }
+
+        container config {
+          description
+            "IP helper interface configuration data";
+          uses ip-helper-interface-servers-config;
+        }
+
+        container state {
+          config false;
+          description
+            "IP helper interface operational state data";
+          uses ip-helper-interface-servers-config;
+        }
+      }
+    }
+  }
+
+  grouping ip-helper-interface-counters {
+
+    description
+      "Grouping for IP helper counters data on an interface";
+
+    leaf received-packets {
+      type uint64;
+      description
+        "Number of packets received";    
+    }
+
+    leaf relayed-packets {
+      type uint64;
+      description
+        "Number of packets relayed";
+    }
+
+    leaf dropped-packets {
+      type uint64;
+      description
+        "Number of packets dropped";
+    }
+
+    leaf packets-with-invalid-ttl {
+      type uint64;
+      description
+        "Number of packets with invalid ttl";
+    }
+
+    leaf broadcast-packets {
+      type uint64;
+      description
+        "Number of packets broadcast";
+    }
+
+    leaf net-broadcast-packets {
+      type uint64;
+      description
+        "Number of packets net broadcast";
+    }
+
+  }
+
+  grouping ip-helper-interface-top {
+
+    description
+      "Grouping for top level IP helper interface information";
+        
+    container ip-helper {
+      
+      description
+        "Top level container for IP helper information on interface";
+
+      uses ip-helper-interface-servers-top;
+
+      container state {
+        config false;
+        description
+          "Operational state data for IP helper on interface";
+                
+        container counters {
+          description
+            "Enclosing container for IP helper counters on interface";
+            
+          uses ip-helper-interface-counters;
+        }
+      }
+    }
+  }
+
+  grouping ip-helper-interfaces-config {
+    description
+      "Configuration data for interfaces enabled for IP helper";
+
+    leaf id {
+      type oc-if:interface-id;
+      description
+        "Name of the interface on which IP helper is active";
+    }
+
+  }
+
+  grouping ip-helper-interfaces-state {
+    description
+      "Operational state data for interfaces enabled for IP helper";
+
+    container counters {
+      description
+        "Counters and statistics for IP helper operation.";
+
+      uses ip-helper-interface-counters;
+    }
+  }
+
+  grouping ip-helper-interfaces-top {
+    description
+      "Top-level grouping for IP helper on interfaces";
+
+    container interfaces {
+      description
+        "Enclosing container for the list of interface references.";
+
+      list interface {
+        key "id";
+        description
+          "List of interfaces on which the IP helper is
+          configured.";
+
+        leaf id {
+          type leafref {
+            path "../config/id";
+          }
+          description
+            "Reference to the interface list key";
+        }
+
+        container config {
+          description
+            "Configuration data for IP helper interfaces.";
+
+          uses ip-helper-interfaces-config;
+        }
+
+        uses ip-helper-interface-servers-top;
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state data for IP helper interfaces.";
+
+          uses ip-helper-interfaces-config;
+          uses ip-helper-interfaces-state;
+        }
+
+        //uses oc-if:interface-ref;
       }
     }
   }

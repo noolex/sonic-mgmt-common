@@ -17,6 +17,7 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "unsafe"
 )
 
 func init () {
@@ -67,11 +68,11 @@ var Subscribe_ospfv2_interface_subtree_xfmr = func(inParams XfmrSubscInParams) (
     return result, nil
 }
 
-
 var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     var ifName string
     subIntfmap := make(map[string]map[string]db.Value)
+    var ospfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2
 
     pathInfo := NewPathInfo(inParams.uri)
     reqIfName := pathInfo.Var("name")
@@ -110,6 +111,11 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: Native ifName ", ifName)
 
+    routedVlan := false
+    if (strings.HasPrefix(reqIfName, "Vlan")) {
+        routedVlan = true
+    }
+
     intfType, _, ierr := getIntfTypeByName(ifName)
     if intfType == IntfTypeUnset || ierr != nil {
         errStr := "Invalid interface type IntfTypeUnset"
@@ -143,8 +149,9 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
     }
 
     intfObj := intfsObj.Interface[reqIfName]
-    if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
-        errStr := "SubInterface node is not set"
+
+    if (intfObj.Subinterfaces == nil && intfObj.RoutedVlan == nil) {
+        errStr := "Both subInterfaces and RoutedVlan not set"
         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
         if (deleteOperation) {
             err = delete_ospf_interface_config_all(&inParams, &subIntfmap)
@@ -153,28 +160,64 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
         return subIntfmap, errors.New(errStr)
     }
 
-    if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-        errStr := "SubInterface node is not set"
-        log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
-        if (deleteOperation) {
-            err = delete_ospf_interface_config_all(&inParams, &subIntfmap)
-            return subIntfmap, err
+    if (intfObj.RoutedVlan == nil) {
+        routedVlan = false
+        if (len(intfObj.Subinterfaces.Subinterface) < 1) {
+            errStr := "SubInterface node is not set"
+            log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+            if (deleteOperation) {
+                err = delete_ospf_interface_config_all(&inParams, &subIntfmap)
+                return subIntfmap, err
+            }
+            return subIntfmap, errors.New(errStr)
         }
-        return subIntfmap, errors.New(errStr)
     }
 
-    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
-    if subIntfObj.Ipv4 == nil {
-        errStr := "SubInterface IPv4 node is not set"
-        log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
-        if (deleteOperation) {
-            err = delete_ospf_interface_config_all(&inParams, &subIntfmap)
-            return subIntfmap, err
+    if (intfObj.Subinterfaces != nil) {
+        if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+            errStr := "SubInterface node is not set"
+            log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+            if (deleteOperation) {
+                err = delete_ospf_interface_config_all(&inParams, &subIntfmap)
+                return subIntfmap, err
+            }
+            return subIntfmap, errors.New(errStr)
         }
-        return subIntfmap, errors.New(errStr)
-    }
 
-    ospfObj := subIntfObj.Ipv4.Ospfv2
+        subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+        ipv4Obj := subIntfObj.Ipv4
+
+        if (ipv4Obj) == nil {
+            errStr := "SubInterface IPv4 node is not set"
+            log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+            if (deleteOperation) {
+                err = delete_ospf_interface_config_all(&inParams, &subIntfmap)
+                return subIntfmap, err
+            }
+            return subIntfmap, errors.New(errStr)
+        }
+
+        ospfObj = ipv4Obj.Ospfv2
+        routedVlan = false
+
+    } else if (intfObj.RoutedVlan != nil) {
+        ipv4Obj := intfObj.RoutedVlan.Ipv4
+        if (ipv4Obj) == nil {
+            errStr := "SubInterface IPv4 node is not set"
+            log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+            if (deleteOperation) {
+                err = delete_ospf_interface_config_all(&inParams, &subIntfmap)
+                return subIntfmap, err
+            }
+            return subIntfmap, errors.New(errStr)
+        }
+
+        ospfObj = (*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2)(unsafe.Pointer(ipv4Obj.Ospfv2))
+        routedVlan = true
+    } 
+
+    log.Info("YangToDb_ospfv2_interface_subtree_xfmr: routed vlan interface ", routedVlan)
+
     if (ospfObj == nil) {
         errStr := "Ospfv2 node is not set"
         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
@@ -228,8 +271,10 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
     for intfAddrKey, intfAddrObj := range ospfObj.IfAddresses {
 
         intfTblKey := ifName + "|" + intfAddrKey
-        ospfCfgObj := intfAddrObj.Config
         ospfIntfDbValue := db.Value{Field: make(map[string]string)}
+
+        ospfCfgObj := intfAddrObj.Config
+        ospfRVlanCfgObj := (*ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2_IfAddresses_Config)(unsafe.Pointer(ospfCfgObj))
 
         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: IfAddresses intfTblKey is ",intfTblKey)
 
@@ -256,22 +301,33 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
                  if (ospfCfgObj.AreaId != nil) {
                      fieldName := "area-id"
-                     areaIdObj := ospfCfgObj.AreaId
                      dbVlaueStr := "NULL"
-                     areaIdUnionType := reflect.TypeOf(areaIdObj).Elem()
 
-                     switch areaIdUnionType {
-                         case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_String{}):
-                             areaId := (areaIdObj).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_String)
-                             dbVlaueStr = areaId.String
-                         case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_Uint32{}):
-                             areaId := (areaIdObj).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_Uint32)
-                             var dbVlaueInt int64 = int64(areaId.Uint32)
-                             b0 := strconv.FormatInt((dbVlaueInt >> 24) & 0xff, 10)
-                             b1 := strconv.FormatInt((dbVlaueInt >> 16) & 0xff, 10)
-                             b2 := strconv.FormatInt((dbVlaueInt >>  8) & 0xff, 10)
-                             b3 := strconv.FormatInt((dbVlaueInt      ) & 0xff, 10)
-                             dbVlaueStr =  b0 + "." + b1 + "." + b2 + "." + b3
+                     if (routedVlan) {
+                         areaIdObj := ospfRVlanCfgObj.AreaId
+                         areaIdUnionType := reflect.TypeOf(areaIdObj).Elem()
+                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: routed vlan area id type ", areaIdUnionType)
+                         switch areaIdUnionType {
+                             case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_String{}):
+                                 areaId := (areaIdObj).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_String)
+                                 dbVlaueStr = areaId.String
+                             case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_Uint32{}):
+                                 areaId := (areaIdObj).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_Uint32)
+                                 dbVlaueStr = ospfGetDottedAreaFromUint32(areaId.Uint32)
+                         }
+
+                     } else {
+                         areaIdObj := ospfCfgObj.AreaId
+                         areaIdUnionType := reflect.TypeOf(areaIdObj).Elem()
+                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: subinterface area id type ", areaIdUnionType)
+                         switch areaIdUnionType {
+                             case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_String{}):
+                                 areaId := (areaIdObj).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_String)
+                                 dbVlaueStr = areaId.String
+                             case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_Uint32{}):
+                                 areaId := (areaIdObj).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union_Uint32)
+                                 dbVlaueStr = ospfGetDottedAreaFromUint32(areaId.Uint32)
+                         }
                      }
 
                      log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Area id field to ", dbVlaueStr)
@@ -613,6 +669,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
 
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
     var subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
+    var ospfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
 
@@ -632,30 +689,66 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
         ygot.BuildEmptyTree(intfObj)
     }
 
-    if subIntfObj, ok = intfObj.Subinterfaces.Subinterface[0]; !ok {
-        subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(0)
-        if err != nil {
-            log.Error("DbToYang_ospfv2_interface_subtree_xfmr: Creation of subinterface subtree failed!")
-            return err
+    routedVlan := false
+    if (strings.HasPrefix(reqIfName, "Vlan")) {
+        routedVlan = true
+    }
+
+    if (routedVlan) {
+        if (intfObj.RoutedVlan == nil) {
+            errStr := "Ipv4 doesnt have RoutedVlan object!"
+            log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+            intfObj.RoutedVlan = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan)
+            ygot.BuildEmptyTree(intfObj.RoutedVlan)
         }
-        ygot.BuildEmptyTree(subIntfObj)
-    }
 
-    if subIntfObj.Ipv4 == nil {
-        errStr := "Subinterface doesnt have ipv4 object!"
-        log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
-        subIntfObj.Ipv4 = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4)
-        ygot.BuildEmptyTree(subIntfObj.Ipv4)
-    }
-    ipv4Obj := subIntfObj.Ipv4
+        routedVlanObj := intfObj.RoutedVlan
+        
+        if (routedVlanObj.Ipv4 == nil) {
+            errStr := "Routed vlan doesnt have ipv4 object!"
+            log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+            routedVlanObj.Ipv4 = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4)
+            ygot.BuildEmptyTree(routedVlanObj.Ipv4)
+        }
+        ipv4Obj := routedVlanObj.Ipv4
 
-    if ipv4Obj.Ospfv2 == nil {
-        errStr := "Ipv4 doesnt have Ospfv2 object!"
-        log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
-        ipv4Obj.Ospfv2 = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2)
-        ygot.BuildEmptyTree(ipv4Obj.Ospfv2)
+        if (ipv4Obj.Ospfv2 == nil) {
+            errStr := "Ipv4 doesnt have Ospfv2 object!"
+            log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+            ipv4Obj.Ospfv2 = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2)
+            ygot.BuildEmptyTree(ipv4Obj.Ospfv2)
+        }
+
+        ospfObj = (*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2)(unsafe.Pointer(ipv4Obj.Ospfv2))
+
+    } else {
+
+        if subIntfObj, ok = intfObj.Subinterfaces.Subinterface[0]; !ok {
+            subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(0)
+            if err != nil {
+                log.Error("DbToYang_ospfv2_interface_subtree_xfmr: Creation of subinterface subtree failed!")
+                return err
+            }
+            ygot.BuildEmptyTree(subIntfObj)
+        }
+
+        if subIntfObj.Ipv4 == nil {
+            errStr := "Subinterface doesnt have ipv4 object!"
+            log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+            subIntfObj.Ipv4 = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4)
+            ygot.BuildEmptyTree(subIntfObj.Ipv4)
+        }
+
+        ipv4Obj := subIntfObj.Ipv4
+        if (ipv4Obj.Ospfv2 == nil) {
+            errStr := "Ipv4 doesnt have Ospfv2 object!"
+            log.Info("DbToYang_ospfv2_interface_subtree_xfmr:", errStr)
+            ipv4Obj.Ospfv2 = new(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2)
+            ygot.BuildEmptyTree(ipv4Obj.Ospfv2)
+        }
+
+        ospfObj = ipv4Obj.Ospfv2
     }
-    ospfObj := ipv4Obj.Ospfv2
 
     var ospfCfgObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config
     ospfCfgObj = nil
@@ -732,6 +825,8 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
             ospfIfAddresses.Config = ospfCfgObj
         }
 
+        ospfRVlanCfgObj := (*ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2_IfAddresses_Config)(unsafe.Pointer(ospfCfgObj))
+
         readFieldNameList := []string {}
         if (!strings.HasSuffix(rcvdUri, "config")) {
               for _, fieldName := range fieldNameList {
@@ -787,9 +882,16 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
             }
 
             if (fieldName == "area-id") {
-                areaIdUnion, err3 := ospfCfgObj.To_OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union(fieldValue)
-                if err3 == nil {
-                    ospfCfgObj.AreaId = areaIdUnion
+                if (routedVlan) {
+                    areaIdUnion, err3 := ospfRVlanCfgObj.To_OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union(fieldValue)
+                    if err3 == nil {
+                        ospfRVlanCfgObj.AreaId = areaIdUnion
+                    }
+                } else {
+                    areaIdUnion, err3 := ospfCfgObj.To_OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config_AreaId_Union(fieldValue)
+                    if err3 == nil {
+                        ospfCfgObj.AreaId = areaIdUnion
+                    }
                 }
             }
 
@@ -1228,5 +1330,4 @@ func delete_ospf_interfaces_for_vrf(inParams *XfmrParams, ospfRespMap *map[strin
 
     return delete_ospf_interface_area_ids(inParams, ospfVrfName, "*", ospfRespMap)
 }
-
 

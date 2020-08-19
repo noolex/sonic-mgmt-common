@@ -39,6 +39,7 @@ type portCaps struct {
 
 var platConfigStr map[string]map[string]string
 var platDefStr map[string]map[string]map[string]string
+var platDef4Level map[string]map[string]map[string]map[string]string
 
 
 /* For parsing FEC data from config file*/
@@ -304,6 +305,7 @@ func parsePlatformDefJsonFile () (error) {
         return err
     }
 
+<<<<<<< HEAD
     var fec_raw_map map[string]map[string]map[string]interface{}
 
     /* Map if for FEC parsing */
@@ -346,6 +348,14 @@ func parsePlatformDefJsonFile () (error) {
     } else {
         log.Info("No port-group configs to parse in platform-def")
     }
+=======
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDefStr)
+>>>>>>> origin/broadcom_sonic_3.x_share
     return err
 }
 
@@ -395,6 +405,30 @@ func getPgData (pgObj *ocbinds.OpenconfigPortGroup_PortGroups) (error) {
 
     log.Info("PG Data: ", pgObj.PortGroup)
     return nil
+}
+
+func getDefFecMode(ifName, lanes, speed string) (string) {
+    if defFecRecords, ok := platDef4Level["default-fec-mode"]; ok {
+        for ifRange, recs := range defFecRecords {
+            ifRangeSplitted := strings.Split(strings.TrimLeft(ifRange, "Ethern"), "-")
+            ifNum,_ := strconv.Atoi(strings.TrimLeft(ifName, "Ethern"))
+            startNum,_ := strconv.Atoi(ifRangeSplitted[0])
+            endNum,_ := strconv.Atoi(ifRangeSplitted[1])
+            if (ifNum >= startNum) && (ifNum <= endNum) {
+                for fecLanes, speedFec := range recs {
+                    if fecLanes == lanes {
+                        for fecSpeed, fec := range speedFec {
+                            if fecSpeed == speed {
+                                log.Info("FEC for ", ifName, ": ", fec)
+                                return fec
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return ""
 }
 
 func isPortGroupMember(ifName string) (bool) {
@@ -499,6 +533,10 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
         value.Set("alias", ports[i].alias)
         value.Set("speed", ports[i].speed)
         value.Set("valid_speeds", ports[i].valid_speeds)
+        fec := getDefFecMode(ports[i].name, strconv.Itoa(strings.Count(ports[i].lanes, ",") + 1), ports[i].speed)
+        if len(fec)>1 {
+             value.Set("fec", fec)
+        }
         entryMap[ports[i].name] = value
     }
 

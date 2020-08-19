@@ -214,6 +214,12 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation  "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ospfv2-ext:ospfv2" {
+        deviate add {
+            sonic-ext:subtree-transformer "ospfv2_interface_subtree_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6/oc-ip:addresses {
         deviate add {
             sonic-ext:table-name "NONE";
@@ -472,53 +478,4 @@ module openconfig-interfaces-annot {
         }
     }
 
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-helper/oc-intf-ext:servers {
-      deviate add {
-        sonic-ext:subtree-transformer "intf_ip_helper_xfmr";
-      }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-helper/oc-intf-ext:state/oc-intf-ext:counters {
-      deviate add {
-        sonic-ext:db-name "COUNTERS_DB";
-        sonic-ext:table-name "COUNTERS_IP_HELPER";
-        sonic-ext:key-transformer "ip_helper_interface_counter_key_xfmr";
-      }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-helper/oc-intf-ext:state/oc-intf-ext:counters/oc-intf-ext:received-packets {
-      deviate add {
-        sonic-ext:field-name "PKTS_RECEIVED";
-      }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-helper/oc-intf-ext:state/oc-intf-ext:counters/oc-intf-ext:relayed-packets {
-      deviate add {
-        sonic-ext:field-name "PKTS_RELAYED";
-      }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-helper/oc-intf-ext:state/oc-intf-ext:counters/oc-intf-ext:dropped-packets {
-      deviate add {
-        sonic-ext:field-name "PKTS_DROPPED";
-      }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-helper/oc-intf-ext:state/oc-intf-ext:counters/oc-intf-ext:packets-with-invalid-ttl {
-      deviate add {
-        sonic-ext:field-name "PKTS_INVALID_TTL";
-      }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-helper/oc-intf-ext:state/oc-intf-ext:counters/oc-intf-ext:broadcast-packets {
-      deviate add {
-        sonic-ext:field-name "PKTS_BROADCAST";
-      }
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:ip-helper/oc-intf-ext:state/oc-intf-ext:counters/oc-intf-ext:net-broadcast-packets {
-      deviate add {
-        sonic-ext:field-name "PKTS_NET_BROADCAST";
-      }
-    }
 }

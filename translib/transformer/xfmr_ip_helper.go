@@ -9,6 +9,7 @@ import (
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "encoding/json"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 
 const (
@@ -37,6 +38,88 @@ func init() {
     XlateFuncBind("rpc_clear_ip_helper", clear_ip_helper)
 
     XlateFuncBind("ip_helper_post_xfmr", ip_helper_post_xfmr)
+
+    XlateFuncBind("ip_helper_table_xfmr", ip_helper_table_xfmr)
+    XlateFuncBind("YangToDb_ip_helper_intf_tbl_key_xfmr", YangToDb_ip_helper_intf_tbl_key_xfmr)
+    XlateFuncBind("DbToYang_ip_helper_intf_tbl_key_xfmr", DbToYang_ip_helper_intf_tbl_key_xfmr)
+}
+
+var ip_helper_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error) {
+    var tblList []string
+    var err error
+
+    log.Info("ip_helper_table_xfmr - Uri: ", inParams.uri);
+    pathInfo := NewPathInfo(inParams.uri)
+
+    targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+
+    ifName := pathInfo.Var("id");
+    log.Info(ifName)
+
+    if ifName == "" {
+        log.Info("ip_helper_table_xfmr key is not present")
+        if _, ok := dbIdToTblMap[inParams.curDb]; !ok {
+            log.Info("ip_helper_table_xfmr db id entry not present")
+            return tblList, errors.New("Key not present")
+        } else {
+            return dbIdToTblMap[inParams.curDb], nil
+        }
+    }
+
+    intfType, _, ierr := getIntfTypeByName(ifName)
+    if intfType == IntfTypeUnset || ierr != nil {
+        log.Info("ip_helper_table_xfmr - Invalid interface type IntfTypeUnset");
+        return tblList, errors.New("Invalid interface type IntfTypeUnset");
+    }
+
+    intTbl := IntfTypeTblMap[intfType]
+    log.Info("ip_helper_table_xfmr - targetUriPath : ", targetUriPath)
+
+    tblList = append(tblList, intTbl.cfgDb.intfTN)
+
+    log.Info("ip_helper_table_xfmr - Returning tblList", tblList)
+    return tblList, err
+}
+
+var YangToDb_ip_helper_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+    var err error
+    pathInfo := NewPathInfo(inParams.uri)
+    ifName := pathInfo.Var("id")
+    log.Info(ifName)
+    return ifName, err
+}
+
+var DbToYang_ip_helper_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    var tblList string
+    res_map := make(map[string]interface{})
+    log.Info("DbToYang_ip_helper_intf_tbl_key_xfmr: ", inParams.key)
+
+    if (inParams.key != "") {
+        var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
+
+        intfType, _, _ := getIntfTypeByName(inParams.key)
+
+        intTbl := IntfTypeTblMap[intfType]
+        tblList = intTbl.cfgDb.intfTN
+
+        db_if_name_ptr := utils.GetNativeNameFromUIName(&inParams.key)
+        dbifName := *db_if_name_ptr
+
+        entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{dbifName}})
+        configDb.DeleteDB()
+        if dbErr != nil {
+            log.Info("Failed to read interface from config DB, " + tblList + " " + dbifName)
+            return res_map, dbErr
+        }
+
+        if (entry.Get("helper_addresses@") != "")  {
+            //Check if ip helper is valid for the interface
+            res_map["id"] = inParams.key
+        }
+    }
+    log.Info("DbToYang_ip_helper_intf_tbl_key_xfmr: res_map", res_map)
+    return res_map, err
 }
 
 var clear_ip_helper RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
@@ -78,7 +161,7 @@ var YangToDb_ip_helper_global_key_xfmr = func(inParams XfmrParams) (string, erro
 var YangToDb_ip_helper_interface_counter_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     log.Info("YangToDb_ip_helper_interface_counter_key_xfmr: ", inParams.ygRoot, inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    ifName := pathInfo.Var("id")
     log.Info("YangToDb_intf_tbl_key_xfmr: ifName ", ifName)
     return ifName, nil
 }
@@ -159,8 +242,11 @@ var YangToDb_ip_helper_ports_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
     log.Info("YangToDb_ip_helper_ports_xfmr: ports in request", inPorts)
 
     ipHelperDBEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"UDP_BROADCAST_FORWARDING"}, db.Key{Comp: []string{"Ports"}})
-    if (ipHelperDBEntry.Has("include_ports@")) {
-        dbvalue := strings.Split(ipHelperDBEntry.Field["include_ports@"], ",")
+    if (ipHelperDBEntry.Has("include_ports@") || ipHelperDBEntry.Has("exclude_default_ports@")) {
+        var dbvalue []string
+        if (ipHelperDBEntry.Has("include_ports@")) {
+            dbvalue = strings.Split(ipHelperDBEntry.Field["include_ports@"], ",")
+        } 
         log.Info("YangToDb_ip_helper_ports_xfmr: include_ports present in db ", dbvalue)
         dbvalueint := make([]uint16, len(dbvalue))
         for i := range dbvalue {
@@ -311,8 +397,14 @@ var ip_helper_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map
     DEFAULT_UDP_PORTS := getDefaultPortList()
     log.Info("ip_helper_post_xfmr called. oper ", inParams.oper)
 
+    requestUri, _ := getYangPathFromUri(inParams.requestUri)
+    if strings.Contains(requestUri, "openconfig-ip-helper:ip-helper/interfaces") {
+        //do nothing
+        return retDbDataMap, err
+    }
+
     ipHelperDBEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"UDP_BROADCAST_FORWARDING"}, db.Key{Comp: []string{"Ports"}})
-    if (ipHelperDBEntry.Has("include_ports@")) {
+    if (ipHelperDBEntry.Has("include_ports@") || ipHelperDBEntry.Has("exclude_default_ports@")) {
         log.Info("ip_helper_post_xfmr include_ports present in db, do nothing")
         return retDbDataMap, err
     } else {
