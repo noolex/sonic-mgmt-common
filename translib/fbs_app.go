@@ -2626,7 +2626,7 @@ func (app *FbsApp) fillFbsEgressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, native
 		}
 	}
 
-	bindDir := "INGRESS"
+	bindDir := "EGRESS"
 
 	for className, policySectionData := range policySectionsData.Section {
 		log.Infof("IntfPolicysection className:%v", className)
