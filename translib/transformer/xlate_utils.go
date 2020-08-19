@@ -261,13 +261,13 @@ func getYangPathFromUri(uri string) (string, error) {
 
     path, err = ygot.StringToPath(uri, ygot.StructuredPath, ygot.StringSlicePath)
     if err != nil {
-        log.Errorf("Error in uri to path conversion: %v", err)
+        log.Warningf("Error in uri to path conversion: %v", err)
         return "", err
     }
 
     yangPath, yperr := ygot.PathToSchemaPath(path)
     if yperr != nil {
-        log.Errorf("Error in Gnmi path to Yang path conversion: %v", yperr)
+        log.Warningf("Error in Gnmi path to Yang path conversion: %v", yperr)
         return "", yperr
     }
 
@@ -448,20 +448,20 @@ func uriModuleNameGet(uri string) (string, error) {
 	var err error
 	result := ""
 	if len(uri) == 0 {
-		log.Error("Empty uri string supplied")
+		log.Warning("Empty uri string supplied")
                 err = fmt.Errorf("Empty uri string supplied")
 		return result, err
 	}
 	urislice := strings.Split(uri, ":")
 	if len(urislice) == 1 {
-		log.Errorf("uri string %s does not have module name", uri)
+		log.Warningf("uri string %s does not have module name", uri)
 		err = fmt.Errorf("uri string does not have module name: %v", uri)
 		return result, err
 	}
 	moduleNm := strings.Split(urislice[0], "/")
 	result = moduleNm[1]
 	if len(strings.Trim(result, " ")) == 0 {
-		log.Error("Empty module name")
+		log.Warning("Empty module name")
 		err = fmt.Errorf("No module name found in uri %s", uri)
         }
 	xfmrLogInfo("module name = %v", result)
@@ -1146,7 +1146,7 @@ func formXlateToDbParam(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, r
 func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error) {
 	if len(uri) == 0 {
 		errMsg := errors.New("Error: URI is empty")
-		log.Error(errMsg)
+		log.Warning(errMsg)
 		return nil, errMsg
 	}
 
@@ -1166,7 +1166,7 @@ func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error)
 	ygNode, _, errYg := ytypes.GetOrCreateNode(ocbSch.RootSchema(), deviceObj, path)
 
 	if errYg != nil {
-		log.Error("Error in creating the target object: ", errYg)
+		log.Warning("Error in creating the target object: ", errYg)
 		return nil, errYg
 	}
 
@@ -1219,7 +1219,7 @@ func dbTableExists(d *db.DB, tableName string, dbKey string, oper int) (bool, er
 			if len(keys) > 0 {
 				return true, nil
 			} else {
-				log.Errorf("dbKey %v does not exist in DB for table %v", dbKey, tableName)
+				log.Warningf("dbKey %v does not exist in DB for table %v", dbKey, tableName)
 				err = tlerr.NotFound("Resource not found")
 				return false, err
 			}
@@ -1227,14 +1227,14 @@ func dbTableExists(d *db.DB, tableName string, dbKey string, oper int) (bool, er
 
 			existingEntry, derr := d.GetEntry(dbTblSpec, db.Key{Comp: []string{dbKey}})
 			if derr != nil {
-				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				log.Warningf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
 				err = tlerr.NotFound("Resource not found")
 				return false, err
 			}
 			return existingEntry.IsPopulated(), err
 		}
 	} else {
-		log.Error("Empty table name received")
+		log.Warning("Empty table name received")
 		return false, nil
 	}
 }

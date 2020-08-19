@@ -96,7 +96,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 
 	err := traverseDbHelper(dbs, spec, &dataMap, parentKey)
 	if err != nil {
-		log.Warning("Failed to get data from traverseDbHelper")
+		log.Warning("Couldn't get data from traverseDbHelper")
 		return err
 	}
 	/* db data processing */
@@ -104,7 +104,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 	curMap[GET] = dataMap
 	err = dbDataXfmrHandler(curMap)
 	if err != nil {
-		log.Warning("Failed in dbdata-xfmr")
+		log.Warning("No conversion in dbdata-xfmr")
 		return err
 	}
 
@@ -129,7 +129,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		if spec.Ts.Name != XFMR_NONE_STRING { // Do not traverse for NONE table
 			data, err := dbs[spec.DbNum].GetEntry(&spec.Ts, spec.Key)
 			if err != nil {
-				log.Warningf("Failed to get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
+				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
 			}
 
@@ -149,7 +149,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		if spec.Ts.Name != XFMR_NONE_STRING { //Do not traverse for NONE table
 			keys, err := dbs[spec.DbNum].GetKeys(&spec.Ts)
 			if err != nil {
-				log.Warningf("Failed to get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
+				log.Warningf("Couldn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
 				return err
 			}
 			xfmrLogInfoAll("keys for table %v in Db %v are %v", spec.Ts.Name, spec.DbNum, keys)
@@ -163,7 +163,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 				spec.Key = keys[i]
                                 err = traverseDbHelper(dbs, spec, result, parentKey)
                                 if err != nil {
-                                        log.Warningf("Traversal failed for : %v", err)
+                                        log.Warningf("Traversal didn't fetch for : %v", err)
                                 }
 			}
 		} else if len(spec.Child) > 0 {
@@ -325,7 +325,6 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 	err = json.Unmarshal([]byte(jsonStr), &jsonData)
 	if err != nil {
 		errStr := "Error: failed to unmarshal json."
-		log.Error(errStr)
 		err = tlerr.InternalError{Format: errStr}
 		return nil, nil, nil, err
 	}
@@ -339,28 +338,28 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		xfmrLogInfo("CREATE case")
 		err = dbMapCreate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, yangAuxValMap, txCache)
 		if err != nil {
-			log.Errorf("Error: Data translation from yang to db failed for create request.")
+			log.Warning("Data translation from yang to db failed for create request.")
 		}
 
 	case UPDATE:
 		xfmrLogInfo("UPDATE case")
 		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, yangAuxValMap, txCache)
 		if err != nil {
-			log.Errorf("Error: Data translation from yang to db failed for update request.")
+			log.Warning("Data translation from yang to db failed for update request.")
 		}
 
 	case REPLACE:
 		xfmrLogInfo("REPLACE case")
 		err = dbMapUpdate(d, yg, opcode, path, requestUri, jsonData, result, yangDefValMap, yangAuxValMap, txCache)
 		if err != nil {
-			log.Errorf("Error: Data translation from yang to db failed for replace request.")
+			log.Warning("Data translation from yang to db failed for replace request.")
 		}
 
 	case DELETE:
 		xfmrLogInfo("DELETE case")
 		err = dbMapDelete(d, yg, opcode, path, requestUri, jsonData, result, txCache, skipOrdTbl)
 		if err != nil {
-			log.Errorf("Error: Data translation from yang to db failed for delete request.")
+			log.Warning("Data translation from yang to db failed for delete request.")
 		}
 	}
 	return result, yangDefValMap, yangAuxValMap, err
@@ -411,7 +410,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
         exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache, subOpMapDiscard)
         xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
         if err != nil {
-		log.Errorf("Cannot perform GET Operation on uri %v due to - %v", uri, err)
+		log.Warningf("Cannot perform GET Operation on uri %v due to - %v", uri, err)
 		return []byte(""), true, err
         }
         if !exists {
@@ -492,7 +491,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	xfmrLogInfo("Payload generated : " + payload)
 
 	if err != nil {
-		log.Errorf("Error: failed to create json response from DB data.")
+		log.Warning("Couldn't create json response from DB data.")
 		return nil, isEmptyPayload, err
 	}
 

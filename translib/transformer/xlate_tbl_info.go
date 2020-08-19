@@ -98,7 +98,7 @@ func ordTblListCreate(ordTblList map[string][]string, tnMap map[string]*gphNode)
 	 errStr := "Failed to create cvl session"
 	 cvSess, status := cvl.ValidationSessOpen()
 	 if status != cvl.CVL_SUCCESS {
-		 log.Errorf("CVL validation session creation failed(%v).", status)
+		 log.Warningf("CVL validation session creation failed(%v).", status)
 		 err = fmt.Errorf("%v", errStr)
 		 return err
 	 }
@@ -137,7 +137,7 @@ func xlateJsonTblInfoLoad(ordTblListMap map[string][]string, jsonFileName string
     for i := 0; i < len(tlist.TblInfo); i++ {
 		err := tblInfoAdd(tnMap, tlist.TblInfo[i].Name, tlist.TblInfo[i].Parent)
 		if err != nil {
-			log.Errorf("Failed to add table dependency(tbl:%v, par:%v) into tablenode list.(%v)\r\n",
+			log.Warningf("Failed to add table dependency(tbl:%v, par:%v) into tablenode list.(%v)\r\n",
 		               tlist.TblInfo[i].Name, tlist.TblInfo[i].Parent, err)
 			break;
 		}
