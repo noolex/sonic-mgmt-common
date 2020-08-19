@@ -34,6 +34,7 @@ func init() {
 	XlateFuncBind("DbToYang_suppress_tlv_adv_xfmr", DbToYang_suppress_tlv_adv_xfmr)
 	XlateFuncBind("YangToDb_lldp_intf_xfmr", YangToDb_lldp_intf_xfmr)
 	XlateFuncBind("DbToYang_lldp_intf_xfmr", DbToYang_lldp_intf_xfmr)
+    XlateFuncBind("Subscribe_lldp_intf_xfmr", Subscribe_lldp_intf_xfmr)
 }
 
 var YangToDb_lldp_global_key_xfmr = func(inParams XfmrParams) (string, error) {
@@ -97,6 +98,29 @@ var DbToYang_suppress_tlv_adv_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
 	return res_map, nil
 }
 
+var Subscribe_lldp_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    result.dbDataMap = make(RedisDbMap)
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    keyName := pathInfo.Var("name")
+
+    log.Info("Subscribe_lldp_intf_xfmr: TargetURI: ", targetUriPath, " Key: ", keyName)
+
+    if (keyName != "") {
+        result.dbDataMap = RedisDbMap{db.ApplDB:{"LLDP_PORT_TABLE":{keyName:{}}}}
+    } else {
+        errStr := "Interface name not present in request"
+        log.Info("Subscribe_unnumbered_intf_xfmr: " + errStr)
+        return result, errors.New(errStr)
+    }
+    result.isVirtualTbl = false
+    log.Info("Subscribe_unnumbered_intf_xfmr resultMap:", result.dbDataMap)
+    return result, err
+}
+
 var YangToDb_lldp_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 	var err error
 	resMap := make(map[string]map[string]db.Value)
@@ -111,50 +135,112 @@ var YangToDb_lldp_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 	uriIfName := pathInfo.Var("name")
 	ifName := uriIfName
 
-	sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
-	log.Infof("YangToDb_lldp_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
-	ifName = *sonicIfName
-
 	if ifName == "" {
-		errStr := "Interface KEY not present"
-		log.Info("YangToDb_lldp_intf_xfmr: " + errStr)
-		return resMap, errors.New(errStr)
-	}
+        for uriIfName := range lldpObj.Interfaces.Interface {
+            lldpIntfObj := lldpObj.Interfaces.Interface[uriIfName]
 
-	if _, ok := lldpObj.Interfaces.Interface[uriIfName]; !ok {
-		errStr := "Interface entry not found in Ygot tree, ifname: " + uriIfName
-		log.Info("YangToDb_lldp_intf_xfmr : " + errStr)
-		return resMap, errors.New(errStr)
-	}
+	        sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+            log.Infof("YangToDb_lldp_intf_xfmr: Interface name retrieved from alias : %s is %s", uriIfName, *sonicIfName)
+            ifName = *sonicIfName
+            err = convOcLldpIntfInternal(inParams, &ifName, lldpIntfObj, resMap)
+            if err != nil {
+                return resMap, err
+            }
+        }
+	} else {
+	    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+        log.Infof("YangToDb_lldp_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+        ifName = *sonicIfName
 
-	lldpIntfObj := lldpObj.Interfaces.Interface[uriIfName]
+        if _, ok := lldpObj.Interfaces.Interface[uriIfName]; !ok {
+            errStr := "Interface entry not found in Ygot tree, ifname: " + uriIfName
+            log.Info("YangToDb_lldp_intf_xfmr : " + errStr)
+            return resMap, errors.New(errStr)
+        }
+	    
+        lldpIntfObj := lldpObj.Interfaces.Interface[uriIfName]
+        err = convOcLldpIntfInternal(inParams, &ifName, lldpIntfObj, resMap)
+    }
+
+    return resMap, err
+}
+
+func convOcLldpIntfInternal(inParams XfmrParams, ifName *string, lldpIntfObj *ocbinds.OpenconfigLldp_Lldp_Interfaces_Interface, resMap map[string]map[string]db.Value) error {
+    var err error
+    requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
+    log.Info("requestUriPath: ", requestUriPath)
+
+    if lldpIntfObj == nil {
+        errStr := "error lldpIntfObj nil"
+        log.Info("convOcLldpIntfInternal:" + errStr)
+        return errors.New(errStr)
+    }
+
 	if lldpIntfObj.Config != nil {
 		dataMap := make(map[string]string)
 		var value db.Value
 
-		if lldpIntfObj.Config.Enabled != nil {
-			if *lldpIntfObj.Config.Enabled {
-				dataMap["enabled"] = "true"
-			} else {
-				dataMap["enabled"] = "false"
-			}
-		}
+        if inParams.oper == DELETE {
+            lldpEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name: "LLDP_PORT"}, db.Key{Comp: []string{*ifName}})
+            if len(lldpEntry.Field) > 1 {
+                if requestUriPath == "/openconfig-lldp:lldp/interfaces/interface/config/openconfig-lldp-ext:mode" {
+                    dataMap["mode"] = ""
+                }
+                if requestUriPath == "/openconfig-lldp:lldp/interfaces/interface/config/enabled" {
+                    dataMap["enabled"] = "false"
+                }
+            }
+        } else {
+		    if lldpIntfObj.Config.Enabled != nil {
+			    if *lldpIntfObj.Config.Enabled {
+				    dataMap["enabled"] = "true"
+			    } else {
+				    dataMap["enabled"] = "false"
+			    }
+		    }
 
-		if lldpIntfObj.Config.Mode == ocbinds.OpenconfigLldpExt_LldpExtModeType_RECEIVE {
-			dataMap["mode"] = "RECEIVE"
-		} else if lldpIntfObj.Config.Mode == ocbinds.OpenconfigLldpExt_LldpExtModeType_TRANSMIT {
-			dataMap["mode"] = "TRANSMIT"
-		}
+            if lldpIntfObj.Config.Mode == ocbinds.OpenconfigLldpExt_LldpExtModeType_RECEIVE {
+                dataMap["mode"] = "RECEIVE"
+            } else if lldpIntfObj.Config.Mode == ocbinds.OpenconfigLldpExt_LldpExtModeType_TRANSMIT {
+                dataMap["mode"] = "TRANSMIT"
+            }
+        }
 
 		value = db.Value{Field: dataMap}
 		if _, ok := resMap["LLDP_PORT"]; !ok {
 			resMap["LLDP_PORT"] = make(map[string]db.Value)
 		}
-		resMap["LLDP_PORT"][ifName] = value
+		resMap["LLDP_PORT"][*ifName] = value
 	}
 
 	log.Info("YangToDb_lldp_intf_xfmr : resMap : ", resMap)
-	return resMap, err
+	return err
+}
+
+func convInternalLldpIntfOc(inParams XfmrParams, intfObj *ocbinds.OpenconfigLldp_Lldp_Interfaces_Interface, ifName string) error {
+	var err error
+
+	targetUriPath, err := getYangPathFromUri(inParams.uri)
+
+	if strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp/interfaces/interface/config") {
+		getLldpIntfEntry(inParams, false, ifName, intfObj)
+	} else if strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp/interfaces/interface/state") {
+		getLldpIntfEntry(inParams, true, ifName, intfObj)
+	} else if strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp/interfaces/interface/neighbors"){
+		getLldpNeighborEntry(inParams, ifName, intfObj)
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp/interfaces/interface") || 
+              strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp/interfaces" ) ||
+              strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp") {
+		getLldpIntfEntry(inParams, false, ifName, intfObj)
+		getLldpIntfEntry(inParams, true, ifName, intfObj)
+		getLldpNeighborEntry(inParams, ifName, intfObj)
+	} else {
+        log.Info("Invalid Request")
+        err = errors.New("Invalid Request")
+        return err
+	}
+
+    return err
 }
 
 var DbToYang_lldp_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (error) {
@@ -166,49 +252,63 @@ var DbToYang_lldp_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (err
 	targetUriPath, err := getYangPathFromUri(inParams.uri)
 
 	pathInfo := NewPathInfo(inParams.uri)
-	uriIfName := pathInfo.Var("name")
-	ifName := uriIfName
-
-	sonicIfName := utils.GetNativeNameFromUIName(&ifName)
-	log.Infof("DbToYang_lldp_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
-	ifName = *sonicIfName
+	ifName := pathInfo.Var("name")
 
 	log.Info("targetUriPath is ", targetUriPath)
 	log.Info("ifName ", ifName)
+
+    if lldpObj.Interfaces == nil {
+        log.Info("Interfaces == nil")
+        ygot.BuildEmptyTree(lldpObj)
+        ygot.BuildEmptyTree(lldpObj.Interfaces)
+    }
+    intfsObj := lldpObj.Interfaces
+
 	if ifName == "" {
-		log.Info("ifName NULL")
-		err = errors.New("ifName NULL")
-		return err
-	}
+        lldpIntfKeys, _ := inParams.dbs[db.ApplDB].GetKeys(&db.TableSpec{Name:"LLDP_PORT_TABLE"})
+        for _, dbkey := range lldpIntfKeys {
+            ifName := dbkey.Get(0)
+            uriIfName := *(utils.GetUINameFromNativeName(&ifName))
+            if uriIfName == "" {
+                log.Info("uriIfName NULL")
+                err = errors.New("uriIfName NULL")
+                return err
+            }
 
-	if lldpObj.Interfaces == nil {
-		log.Info("Interfaces == nil")
-		ygot.BuildEmptyTree(lldpObj)
-		ygot.BuildEmptyTree(lldpObj.Interfaces)
-	}
-	intfsObj := lldpObj.Interfaces
+		    intfObj, err := intfsObj.NewInterface(uriIfName)
+		    if err != nil {
+			    log.Info("Creation of interface subtree failed!")
+			    return err
+		    }
+		    ygot.BuildEmptyTree(intfObj)
 
-	intfObj, ok := intfsObj.Interface[uriIfName]
-	if !ok {
-		log.Info("create new interface")
-		intfObj, err = intfsObj.NewInterface(uriIfName)
-		if err != nil {
-			log.Info("Creation of interface subtree failed!")
-			return err
-		}
-		log.Info("init interface obj")
-		ygot.BuildEmptyTree(intfObj)
-	}
-
-	if strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp/interfaces/interface/config") {
-		getLldpIntfEntry(inParams, false, ifName, intfObj)
-	} else if strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp/interfaces/interface/state") {
-		getLldpIntfEntry(inParams, true, ifName, intfObj)
-	} else if strings.HasPrefix(targetUriPath, "/openconfig-lldp:lldp/interfaces/interface/neighbors"){
-		getLldpNeighborEntry(inParams, ifName, intfObj)
+            convInternalLldpIntfOc(inParams, intfObj, ifName)
+        }
 	} else {
-		log.Info("Invalid Request")
-	}
+        uriIfName := ifName
+        sonicIfName := utils.GetNativeNameFromUIName(&ifName)
+	    log.Infof("DbToYang_lldp_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+	    ifName = *sonicIfName
+	
+        if ifName == "" {
+            log.Info("ifName NULL")
+            err = errors.New("ifName NULL")
+            return err
+        }
+
+	    intfObj, ok := intfsObj.Interface[uriIfName]
+	    if !ok {
+		    log.Info("create new interface")
+		    intfObj, err = intfsObj.NewInterface(uriIfName)
+		    if err != nil {
+			    log.Info("Creation of interface subtree failed!")
+			    return err
+		    }
+		    log.Info("init interface obj")
+		    ygot.BuildEmptyTree(intfObj)
+	    }
+        convInternalLldpIntfOc(inParams, intfObj, ifName)
+    }
 
 	return err
 }
@@ -301,9 +401,7 @@ func getLldpNeighborEntry(inParams XfmrParams, ifName string, intfObj *ocbinds.O
 	ygot.BuildEmptyTree(nbrObj)
 
 	for attr := range lldpNbrEntry.Field {
-		log.Info("LLDP Attr: ", attr)
 		value := lldpNbrEntry.Get(attr)
-		log.Info("LLDP Val : ", value)
 		switch attr {
 		case LLDP_REMOTE_CAP_ENABLED:
 			if (len(value) == 0) {
