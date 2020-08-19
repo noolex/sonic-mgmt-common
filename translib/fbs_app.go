@@ -2708,7 +2708,7 @@ func (app *FbsApp) processOperation(d *db.DB, filter bool, opcodeBmp int) error 
 	return err
 }
 
-func applyTableData(d *db.DB, tableTs *db.TableSpec, tableData map[string]*db.Value, cacheTableData map[string]db.Value, filter bool, opcode int) error {
+func applyTableData(d *db.DB, tableTs *db.TableSpec, tableData map[string]*db.Value, cacheTableData map[string]db.Value, filter bool, opcodeBmp int) error {
 	tblJson, _ := json.Marshal(tableData)
 	cacheJson, _ := json.Marshal(cacheTableData)
 	log.Infof("Table:%v Cache:%v", string(tblJson), string(cacheJson))
@@ -2717,8 +2717,8 @@ func applyTableData(d *db.DB, tableTs *db.TableSpec, tableData map[string]*db.Va
 		dbKey := asKey(key)
 		if keyData == nil {
 			log.Infof("Delete Table:%v Key:%v", tableTs.Name, dbKey)
-			if filter && (opcode&DELETE) == 0 {
-				log.Infof("Skip as per input arg filter:%v opcodeBmp:%x", filter, opcode)
+			if filter && (opcodeBmp&(1<<DELETE)) == 0 {
+				log.Infof("Skip as per input arg filter:%v opcodeBmp:%x", filter, opcodeBmp)
 				continue
 			}
 			err := d.DeleteEntry(tableTs, dbKey)
@@ -2728,8 +2728,8 @@ func applyTableData(d *db.DB, tableTs *db.TableSpec, tableData map[string]*db.Va
 			}
 		} else if _, found := cacheTableData[key]; found {
 			log.Infof("Modify Table:%v Key:%v Value:%v", tableTs.Name, dbKey, *keyData)
-			if filter && (opcode&UPDATE) == 0 {
-				log.Infof("Skip as per input arg filter:%v opcodeBmp:%x", filter, opcode)
+			if filter && (opcodeBmp&(1<<UPDATE)) == 0 {
+				log.Infof("Skip as per input arg filter:%v opcodeBmp:%x", filter, opcodeBmp)
 				continue
 			}
 			err := d.SetEntry(tableTs, dbKey, *keyData)
@@ -2739,8 +2739,8 @@ func applyTableData(d *db.DB, tableTs *db.TableSpec, tableData map[string]*db.Va
 			}
 		} else {
 			log.Infof("Set Table:%v Key:%v Value:%v", tableTs.Name, dbKey, *keyData)
-			if filter && (opcode&CREATE) == 0 {
-				log.Infof("Skip as per input arg filter:%v opcodeBmp:%x", filter, opcode)
+			if filter &&  (opcodeBmp&(1<<CREATE)) == 0 {
+				log.Infof("Skip as per input arg filter:%v opcodeBmp:%x", filter, opcodeBmp)
 				continue
 			}
 			err := d.CreateEntry(tableTs, dbKey, *keyData)
