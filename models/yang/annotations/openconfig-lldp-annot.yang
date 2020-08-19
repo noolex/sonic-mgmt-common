@@ -86,27 +86,8 @@ module openconfig-lldp-annot {
 		}
 	}
 
+
 	deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface {
-		deviate add {
-			sonic-ext:db-name "APPL_DB";
-			sonic-ext:table-name "LLDP_PORT_TABLE";
-			sonic-ext:virtual-table "True";
-		}
-	}
-
-	deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:config {
-		deviate add {
-			sonic-ext:subtree-transformer "lldp_intf_xfmr";
-		}
-	}
-
-	deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:state {
-		deviate add {
-			sonic-ext:subtree-transformer "lldp_intf_xfmr";
-		}
-	}
-
-	deviation /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:neighbors {
 		deviate add {
 			sonic-ext:subtree-transformer "lldp_intf_xfmr";
 		}
