@@ -683,6 +683,75 @@ func (c *CVL) GetOrderedTables(yangModule string) ([]string, CVLRetCode) {
 	return c.SortDepTables(tableList)
 }
 
+func (c *CVL) GetOrderedDepTables(yangModule, tableName string) ([]string, CVLRetCode) {
+	tableList := []string{}
+
+	if _, exists := modelInfo.tableInfo[tableName]; !exists {
+		return nil, CVL_ERROR
+	}
+
+	//Get all the table names under this yang module
+	for tblName, tblNameInfo := range modelInfo.tableInfo {
+		if (tblNameInfo.modelName == yangModule) {
+			tableList = append(tableList, tblName)
+		}
+	}
+
+	graph := toposort.NewGraph(len(tableList))
+	redisTblTo := getYangListToRedisTbl(tableName)
+	graph.AddNodes(redisTblTo)
+
+	for _, tbl := range tableList {
+		if (tableName == tbl) {
+			//same table, continue
+			continue
+		}
+		redisTblFrom := getYangListToRedisTbl(tbl)
+
+		//map for checking duplicate edge
+		dupEdgeCheck := map[string]string{}
+
+		for _, leafRefs := range modelInfo.tableInfo[tbl].leafRef {
+			for _, leafRef := range leafRefs {
+				// If no relation through leaf-ref, then skip
+				if !(strings.Contains(leafRef.path, tableName + "_LIST")) {
+					continue
+				}
+
+				// if target node of leaf-ref is not key, then skip
+				var isLeafrefTargetIsKey bool
+				for _, key := range modelInfo.tableInfo[tbl].keys {
+					if key == leafRef.targetNodeName {
+						isLeafrefTargetIsKey = true
+					}
+				}
+				if !(isLeafrefTargetIsKey) {
+					continue
+				}
+
+				toName, exists := dupEdgeCheck[redisTblFrom]
+				if exists && (toName == redisTblTo) {
+					//Don't add duplicate edge
+					continue
+				}
+
+				//Add and store the edge in map
+				graph.AddNodes(redisTblFrom)
+				graph.AddEdge(redisTblFrom, redisTblTo)
+				dupEdgeCheck[redisTblFrom] = redisTblTo
+			}
+		}
+	}
+
+	//Now perform topological sort
+	result, ret := graph.Toposort()
+	if !ret {
+		return nil, CVL_ERROR
+	}
+
+	return result, CVL_SUCCESS
+}
+
 func (c *CVL) addDepTables(tableMap map[string]bool, tableName string) {
 
 	//Mark it is added in list
