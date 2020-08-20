@@ -37,7 +37,6 @@ module openconfig-bgp-evpn-ext {
 
     leaf advertise-default-gw {
       type boolean;
-      default "false";
       description
         "If set to true, advertise default gateway";
     }

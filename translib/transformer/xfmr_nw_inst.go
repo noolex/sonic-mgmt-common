@@ -14,6 +14,7 @@ var network_instance_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[str
 
     if ospfv2Err := ospfv2_config_post_xfmr (&inParams, &retDbDataMap) ; ospfv2Err != nil {err = ospfv2Err}
     if pimErr := pim_hdl_post_xfmr (&inParams, &retDbDataMap) ; pimErr != nil {err = pimErr}
+    if bgpErr := bgp_hdl_post_xfmr (&inParams, &retDbDataMap) ; bgpErr != nil {err = bgpErr}
 
     return retDbDataMap, err
 }
