@@ -25,6 +25,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "strings"
 	"github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
@@ -172,7 +173,8 @@ func validateIntfAssociatedWithPortChannel(d *db.DB, ifName *string) error {
     if err == nil {
         for i := range lagKeys {
             if *ifName == lagKeys[i].Get(1) {
-                errStr := lagKeys[i].Get(1) + " is already part of : " + lagKeys[i].Get(0)
+		intfNameAlias := utils.GetUINameFromNativeName(ifName)
+                errStr := *intfNameAlias + " is already part of : " + lagKeys[i].Get(0)
                 log.Error(errStr)
                 return tlerr.InvalidArgsError{Format:errStr}
             }
