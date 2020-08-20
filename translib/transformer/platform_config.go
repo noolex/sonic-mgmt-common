@@ -305,7 +305,6 @@ func parsePlatformDefJsonFile () (error) {
         return err
     }
 
-<<<<<<< HEAD
     var fec_raw_map map[string]map[string]map[string]interface{}
 
     /* Map if for FEC parsing */
@@ -348,14 +347,15 @@ func parsePlatformDefJsonFile () (error) {
     } else {
         log.Info("No port-group configs to parse in platform-def")
     }
-=======
+
+/* Keeping this commented for now 
     platDefStr = make(map[string]map[string]map[string]string)
     err = json.Unmarshal([]byte(file), &platDefStr)
     log.Info(platDefStr)
     platDef4Level = make(map[string]map[string]map[string]map[string]string)
     json.Unmarshal([]byte(file), &platDef4Level)
     log.Info(platDefStr)
->>>>>>> origin/broadcom_sonic_3.x_share
+*/
     return err
 }
 
