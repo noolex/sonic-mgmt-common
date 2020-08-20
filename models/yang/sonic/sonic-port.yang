@@ -84,10 +84,6 @@ module sonic-port {
                     type string;
                 }
 
-                leaf fec {
-                    type string;
-                }
-
                 leaf admin_status {
                     type scommon:admin-status;
                 }
