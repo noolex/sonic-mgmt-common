@@ -87,6 +87,10 @@ module sonic-port {
                 leaf pfc_asym {
                     type string;
                 }
+
+                leaf override_unreliable_los {
+                    type string;
+                }
             }
         }
         container PORT_TABLE {
