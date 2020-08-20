@@ -43,7 +43,8 @@ type XfmrParams struct {
 	txCache *sync.Map
 	skipOrdTblChk *bool
 	isVirtualTbl *bool
-        pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
+    pCascadeDelTbl *[] string //used to populate list of tables needed cascade delete by subtree overloaded methods
+    yangDefValMap map[string]map[string]db.Value
 }
 
 // SubscProcType represents subcription process type identifying the type of subscription request made from translib.
