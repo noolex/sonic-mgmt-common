@@ -117,36 +117,36 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
     }
 
     /* Remove the invalid default values for BGP address family */
-    for key, _ := range inParams.yangDefValMap["BGP_GLOBALS_AF"] {
+    for key := range inParams.yangDefValMap["BGP_GLOBALS_AF"] {
         if strings.Contains(key, "l2vpn_evpn") {
-            if _, ok := inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ebgp_paths"]; ok {
+            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ebgp_paths"] != "" {
                delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ebgp_paths")
             }
-            if _, ok := inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ibgp_paths"]; ok {
+            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ibgp_paths"] != "" {
                delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ibgp_paths")
             }
         } else if (strings.Contains(key, "ipv4_unicast") ||
                    strings.Contains(key, "ipv6_unicast")) {
-            if _, ok := inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["advertise-default-gw"]; ok {
+            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["advertise-default-gw"] != "" {
                delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "advertise-default-gw")
             }
         }
     }
 
-    for key, _ := range inParams.yangDefValMap["BGP_NEIGHBOR_AF"] {
+    for key := range inParams.yangDefValMap["BGP_NEIGHBOR_AF"] {
         if strings.Contains(key, "l2vpn_evpn") {
-            if _, ok := inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["rrclient"]; ok {
+            if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["rrclient"] != "" {
                delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "rrclient")
             }
-            if _, ok := inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["send_community"]; ok {
+            if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["send_community"] != "" {
                delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "send_community")
             }
         }
     }
 
-    for key, _ := range inParams.yangDefValMap["BGP_PEER_GROUP_AF"] {
+    for key := range inParams.yangDefValMap["BGP_PEER_GROUP_AF"] {
         if strings.Contains(key, "l2vpn_evpn") {
-            if _, ok := inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["rrclient"]; ok {
+            if inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["rrclient"] != "" {
                delete (inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field, "rrclient")
             }
         }
