@@ -632,6 +632,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					dbDataMap[db.ConfigDB] = result
 					var dbs [db.MaxDB]*db.DB
 					inParams := formXfmrInputRequest(d, dbs, db.ConfigDB, ygRoot, uri, requestUri, oper, "", &dbDataMap, subOpDataMap, nil, txCache)
+					inParams.yangDefValMap = yangDefValMap
 					result, err = postXfmrHandlerFunc(xYangSpecMap[moduleNm].xfmrPost, inParams)
 					if err != nil {
 						return err

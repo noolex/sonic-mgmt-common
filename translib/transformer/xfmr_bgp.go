@@ -109,6 +109,52 @@ func init () {
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
 }
 
+func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]db.Value) (error) {
+    var err error
+
+    if inParams.oper == DELETE {
+        return err
+    }
+
+    /* Remove the invalid default values for BGP address family */
+    for key := range inParams.yangDefValMap["BGP_GLOBALS_AF"] {
+        if strings.Contains(key, "l2vpn_evpn") {
+            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ebgp_paths"] != "" {
+               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ebgp_paths")
+            }
+            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ibgp_paths"] != "" {
+               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ibgp_paths")
+            }
+        } else if (strings.Contains(key, "ipv4_unicast") ||
+                   strings.Contains(key, "ipv6_unicast")) {
+            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["advertise-default-gw"] != "" {
+               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "advertise-default-gw")
+            }
+        }
+    }
+
+    for key := range inParams.yangDefValMap["BGP_NEIGHBOR_AF"] {
+        if strings.Contains(key, "l2vpn_evpn") {
+            if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["rrclient"] != "" {
+               delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "rrclient")
+            }
+            if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["send_community"] != "" {
+               delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "send_community")
+            }
+        }
+    }
+
+    for key := range inParams.yangDefValMap["BGP_PEER_GROUP_AF"] {
+        if strings.Contains(key, "l2vpn_evpn") {
+            if inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["rrclient"] != "" {
+               delete (inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field, "rrclient")
+            }
+        }
+    }
+
+    return err
+}
+
 var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList, nil_tblList []string
 
