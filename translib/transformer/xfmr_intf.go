@@ -505,11 +505,15 @@ func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfT
                 if err != nil {
                     return err
                 }
+            } else {
+                errStr := "No such address (" + *ipPrefix + ") configured on this interface as primary address"
+                return tlerr.InvalidArgsError {Format: errStr}
             }
         } else {
             if isSec {
                 log.Errorf("Secondary IPv4 Address : %s for interface : %s doesn't exist!", *ipPrefix, *ifName)
-                return nil
+                errStr := "No such address (" + *ipPrefix + ") configured on this interface as secondary address"
+                return tlerr.InvalidArgsError {Format: errStr}
             }
             var ifIpMap map[string]db.Value
             ifIpMap, _ = getIntfIpByName(d, intTbl.cfgDb.intfTN, *ifName, true, false, "")
@@ -658,6 +662,7 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
         result.Output.Status_detail = err.Error()
         return json.Marshal(&result)
     }
+    result.Output.Status = 0
     log.Infof("Commit transaction succesful for IP address: %s delete", ipPrefix)
     return  json.Marshal(&result)
 }
