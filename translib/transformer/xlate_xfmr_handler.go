@@ -26,9 +26,11 @@ import (
 func xfmrHandlerFunc(inParams XfmrParams) (error) {
 	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
 	xfmrLogInfoAll("Subtree transformer function(\"%v\") invoked for yang path(\"%v\").", xYangSpecMap[xpath].xfmrFunc, xpath)
-	_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
-	if yerr != nil {
-		xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+	if inParams.uri != inParams.requestUri {
+		_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
+		if yerr != nil {
+			xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
+		}
 	}
 	ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrFunc), inParams)
 	if err != nil {

@@ -462,24 +462,59 @@ var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     }
     if inParams.oper == DELETE {
 	status , err_str = hostAccountUserDel(userName)
+        if (status){
+            d, err := db.NewDB(getDBOptions(db.ConfigDB))
+            if err != nil {
+                log.Infof("YangToDb_sys_aaa_auth_xfmr, unable to get configDB, error %v", err)
+                return nil, err
+            }
+            defer d.DeleteDB()
+            var USER_TABLE= "USER"
+            userTable := &db.TableSpec{Name: USER_TABLE}
+            key :=db.Key{Comp: []string{userName}}
+            err = d.DeleteEntry(userTable, key)
+            if err != nil {
+                log.Infof("YangToDb_sys_aaa_auth_xfmr, delete entry error %v", err)
+                return nil, err
+            }
+        }
     } else {
         if value,present := usersObj.User[userName]; present {
 	    log.Info("User:",*(value.Config.Username))
 	    temp := value.Config.Role.(*ocbinds.OpenconfigSystem_System_Aaa_Authentication_Users_User_Config_Role_Union_String)
 	    log.Info("Role:",temp.String)
             status, err_str = hostAccountUserMod(*(value.Config.Username), temp.String, *(value.Config.PasswordHashed))
+            if (status) {
+                d, err := db.NewDB(getDBOptions(db.ConfigDB))
+                if err != nil {
+                    log.Infof("YangToDb_sys_aaa_auth_xfmr, unable to get configDB, error %v", err)
+                    return nil, err
+                }
+                defer d.DeleteDB()
+                var USER_TABLE= "USER"
+                userTable := &db.TableSpec{Name: USER_TABLE}
+                key :=db.Key{Comp: []string{*(value.Config.Username)}}
+                userInfo := db.Value {Field: map[string]string{}}
+                (&userInfo).Set("password", *(value.Config.PasswordHashed))
+                (&userInfo).Set("role@", temp.String)
+                err = d.CreateEntry(userTable, key, userInfo)
+                if err != nil {
+                    log.Infof("YangToDb_sys_aaa_auth_xfmr, create entry error %v", err)
+                    return nil, err
+                }
+            }
         }
     }
-	if (!status) {
-		if _,present := inParams.txCache.Load("tx_err"); !present {
-		    log.Info("Error in operation:",err_str)
-	            inParams.txCache.Store("tx_err",err_str)
-	            return nil, fmt.Errorf("%s", err_str)
-	        }
-	} else {
-		return nil, nil
-	}
-	return nil,nil
+    if (!status) {
+        if _,present := inParams.txCache.Load("tx_err"); !present {
+            log.Info("Error in operation:",err_str)
+            inParams.txCache.Store("tx_err",err_str)
+            return nil, fmt.Errorf("%s", err_str)
+        }
+    } else {
+       return nil, nil
+    }
+    return nil,nil
 }
 
 var YangToDb_global_dns_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {

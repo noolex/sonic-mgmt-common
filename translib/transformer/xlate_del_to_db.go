@@ -570,7 +570,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			// Special case when we delete at container that does exist. Not required to do translation. Do not return error either.
 			return nil
 		}
-		log.Errorf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
+		log.Warningf("Cannot perform Operation %v on uri %v due to - %v", oper, uri, err)
 		return err
 	}
 	if !exists {
@@ -609,7 +609,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				xfmrLogInfo("Invoked pre-transformer: %v, oper: %v, subOpDataMap: %v ",
 				modSpecInfo.xfmrPre, oper, subOpDataMap)
 				if err != nil {
-					log.Errorf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
+					log.Warningf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
 					return err
 				}
 			}
@@ -718,7 +718,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 						}
 					}
 				}  else {
-					log.Errorf("No proper table and key information to fill result map for uri %v, table: %v, key %v", uri, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
+					log.Warningf("No proper table and key information to fill result map for uri %v, table: %v, key %v", uri, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 				}
 			} else {
 				xfmrLogInfoAll("Before calling allChildTblGetToDelete result: %v", curXlateParams.result)
@@ -790,7 +790,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 
 	err = dbDataXfmrHandler(resultMap)
 	if err != nil {
-		log.Errorf("Failed in dbdata-xfmr for %v", resultMap)
+		log.Warningf("Failed in dbdata-xfmr for %v", resultMap)
 		return err
 	}
 	if (len(cascadeDelTbl) > 0) {

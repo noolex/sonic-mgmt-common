@@ -23,6 +23,11 @@ module sonic-portchannel {
     description
         "SONIC PORTCHANNEL";
 
+    revision 2020-07-30 {
+        description
+            "Add Portchannel description.";
+    }
+
     revision 2019-05-15 {
         description
             "Initial revision.";

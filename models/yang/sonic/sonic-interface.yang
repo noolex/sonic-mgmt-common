@@ -1,6 +1,7 @@
 module sonic-interface {
 	namespace "http://github.com/Azure/sonic-interface";
 	prefix sint;
+    yang-version 1.1;
 
 	import ietf-inet-types {
 		prefix inet;
@@ -16,6 +17,10 @@ module sonic-interface {
 
         import sonic-loopback-interface {
             prefix lointf;
+        }
+
+        import sonic-loopback {
+            prefix lo;
         }
 
         import sonic-portchannel {
@@ -47,7 +52,10 @@ module sonic-interface {
 	description
 		"SONIC INTERFACE";
 
-
+    revision 2020-07-26 {
+        description
+            "Modification for sonic-loopback.yang.";
+    }
     revision 2020-04-07 {
         description
             "Add VRF and IP address attribute";
@@ -72,8 +80,7 @@ module sonic-interface {
         description
 	        "Initial revision.";
     }
-
-
+    
 /*
  * RPCs
 */
@@ -119,6 +126,10 @@ module sonic-interface {
                     description
                         "IP (v4/v6) address needs to be removed";
                 }
+                leaf secondary {
+                    type boolean;
+                    description "Indicates whether IP adddress configured is secondary or not";
+                }
             }
             output {
                 leaf status {
@@ -148,11 +159,16 @@ module sonic-interface {
 					}
 				}
 
-				leaf vrf_name {
-                                        type leafref {
-                                                path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
-                                        }
-				}
+                leaf vrf_name {
+                    type union {
+                        type string {
+                            pattern "mgmt";
+                        }
+                        type leafref {
+                            path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                        }
+                    }
+                }
 
                 leaf nat_zone {
                     type uint8 {
@@ -306,7 +322,7 @@ module sonic-interface {
 
 					sonic-ext:custom-validation ValidateIpv4UnnumIntf;
                     type leafref {
-                        path "/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST/lointf:loIfName";
+                        path "/lo:sonic-loopback/lo:LOOPBACK/lo:LOOPBACK_LIST/lo:name";
                     }
                 }
 
@@ -340,6 +356,10 @@ module sonic-interface {
 					type inet:ip-prefix;
 					sonic-ext:custom-validation ValidateIntfIp;
 				}
+                leaf secondary {
+                    type boolean;
+                    description "Indicates whether IP adddress configured is secondary or not";
+                }
 			}
 		}
 
@@ -375,6 +395,10 @@ module sonic-interface {
 
                 leaf ipPrefix {
                     type inet:ip-prefix;
+                }
+
+                leaf secondary {
+                    type boolean;
                 }
              }
         }

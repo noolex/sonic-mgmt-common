@@ -92,6 +92,9 @@ module sonic-mgmt-interface {
                     type inet:ip-address;
                 }
 
+                leaf secondary {
+                    type boolean;
+                }
             }
 
         }
@@ -116,6 +119,9 @@ module sonic-mgmt-interface {
 
                 leaf ipPrefix {
                     type inet:ip-prefix;
+                }
+                leaf secondary {
+                    type boolean;
                 }
              }
         }

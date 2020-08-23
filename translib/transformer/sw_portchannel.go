@@ -25,6 +25,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "strings"
 	"github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
@@ -172,7 +173,8 @@ func validateIntfAssociatedWithPortChannel(d *db.DB, ifName *string) error {
     if err == nil {
         for i := range lagKeys {
             if *ifName == lagKeys[i].Get(1) {
-                errStr := lagKeys[i].Get(1) + " is already part of : " + lagKeys[i].Get(0)
+		intfNameAlias := utils.GetUINameFromNativeName(ifName)
+                errStr := *intfNameAlias + " is already part of : " + lagKeys[i].Get(0)
                 log.Error(errStr)
                 return tlerr.InvalidArgsError{Format:errStr}
             }
@@ -704,6 +706,7 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
     resMap := make(map[string]map[string]db.Value)
     lagMap := make(map[string]db.Value)
     lagMemberMap := make(map[string]db.Value)
+    lagIntfMap := make(map[string]db.Value)
     lagMap[*lagName] = db.Value{Field:map[string]string{}}
 
     intTbl := IntfTypeTblMap[IntfTypePortChannel]
@@ -745,6 +748,13 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
             resMap["PORTCHANNEL_MEMBER"] = lagMemberMap
         }
     }
+
+    /* Handle PORTCHANNEL_INTERFACE TABLE */
+    processIntfTableRemoval(inParams.d, *lagName, PORTCHANNEL_INTERFACE_TN, lagIntfMap)
+    if len(lagIntfMap) != 0 {
+        resMap[PORTCHANNEL_INTERFACE_TN] = lagIntfMap
+    }
+
     /* Handle PORTCHANNEL TABLE */
     resMap["PORTCHANNEL"] = lagMap
     subOpMap[db.ConfigDB] = resMap

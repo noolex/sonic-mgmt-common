@@ -144,20 +144,9 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 getServStateOnly = true
         }
 
-        /* populate the config and state address accordingly */
- 
         sysObj := getSystemRootObject(inParams)
-
-        ygot.BuildEmptyTree(sysObj)
-
         ntpData := sysObj.Ntp
-
-        ygot.BuildEmptyTree(ntpData)
-
         ntpServers := ntpData.Servers
-
-        ygot.BuildEmptyTree(ntpServers)
-
         ntpServer := ntpServers.Server
 
         var currNtpServer *ocbinds.OpenconfigSystem_System_Ntp_Servers_Server
@@ -236,6 +225,8 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
             log.Info("ProcessGetNtpServer error  ", err)
             return err
         }
+
+        defer cmd.Wait()
 
         in := bufio.NewScanner(output)
 
@@ -365,10 +356,6 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 line_num ++
         }
 
-        if err := cmd.Wait(); err != nil {
-                log.Info("ProcessGetNtpServer: error ", err)
-                return err
-        }
 
         return nil
 }

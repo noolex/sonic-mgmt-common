@@ -259,12 +259,12 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
             isEmptyPayload  := false
 	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
 	    if err != nil {
-		    log.Error("transformer.transformer.GetAndXlateFromDB failure. error:", err)
+		    log.Error("transformer.GetAndXlateFromDB failure. error:", err)
 		    resPayload = payload
 		    break
             }
 	    if strings.HasPrefix(app.pathInfo.Path, "/sonic") && isEmptyPayload {
-		    log.Error("transformer.transformer.GetAndXlateFromDB returned EmptyPayload")
+		    log.Info("transformer.transformer.GetAndXlateFromDB returned EmptyPayload")
 		    resPayload = payload
 		    break
 	    }
@@ -317,7 +317,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 						    break
 					    }
 					    resPayload = payload
-					    log.Error("No data available")
+					    log.Info("No data available")
 					    //TODO: Return not found error
 					    //err = tlerr.NotFound("Resource not found")
 					    break
@@ -384,7 +384,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	app.cmnAppYangDefValMap = defValMap
 	app.cmnAppYangAuxMap = auxMap //used for Replace case
 	if len(result) == 0 {
-		log.Error("XlatetoDB() returned empty map")
+		log.Info("XlatetoDB() returned empty map")
 		//Note: Get around for no redis ABNF Schema for set(temporary)
 		//`err = errors.New("transformer.XlatetoDB() returned empty map")
 		return keys, err
@@ -590,10 +590,12 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						auxRw, auxRwOk = app.cmnAppYangAuxMap[tblNm][tblKey]
 						log.Info("Process Aux row ", auxRw)
 						isTlNd := false
-						isTlNd, err = transformer.IsTerminalNode(app.pathInfo.Path)
-						log.Info("transformer.IsTerminalNode() returned - ", isTlNd, " error ", err)
-						if err != nil {
-							return err
+						if !strings.HasPrefix(app.pathInfo.Path, "/sonic") {
+							isTlNd, err = transformer.IsTerminalNode(app.pathInfo.Path)
+							log.Info("transformer.IsTerminalNode() returned - ", isTlNd, " error ", err)
+							if err != nil {
+								return err
+							}
 						}
 						if isTlNd && isPartialReplace(existingEntry, tblRw, auxRw) {
 							log.Info("Since its partial replace modifying fields - ", tblRw)

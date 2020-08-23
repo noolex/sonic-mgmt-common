@@ -22,6 +22,8 @@ import (
     "errors"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/openconfig/ygot/ygot"
     "strconv"
     "strings"
@@ -268,8 +270,10 @@ var Subscribe_sflow_interface_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSub
     }
 
     log.Infof("XfmrSubscribe_sflow_interface_xfmr")
+    key = *utils.GetNativeNameFromUIName(&key)
     result.dbDataMap = make(RedisDbMap)
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{SFLOW_INTF_TBL:{key:{}}}}
+    result.dbDataMap = RedisDbMap{db.ApplDB:{SFLOW_SESS_TBL:{key:{}}}}
+
     log.Infof("Returning XfmrSubscribe_sflow_interface_xfmr")
     return result, err
 }
@@ -284,55 +288,56 @@ var YangToDb_sflow_interface_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
-    key := NewPathInfo(inParams.uri).Var("name")
-
     if inParams.oper == DELETE {
-        if key == "" {
-            return res_map, errors.New("Interface name required for DELETE operation")
+        if !strings.Contains(targetUriPath, SAMPLING_SFLOW_INTFS_INTF) {
+            return res_map, tlerr.NotSupportedError{Format: "DELETE not supported", Path: targetUriPath}
         }
-        intf_map[key] = db.Value{Field: make(map[string]string)}
+
+        name := NewPathInfo(inParams.uri).Var("name")
+        if name == "" {
+            return res_map, tlerr.InvalidArgs("Missing interface name")
+        }
+
+        name = *utils.GetNativeNameFromUIName(&name)
+        intf_map[name] = db.Value{Field: make(map[string]string)}
         switch (targetUriPath) {
         case SAMPLING_SFLOW_INTFS_INTF_CONFIG_SAMPL_RATE:
-            intf_map[key].Field[SFLOW_SAMPL_RATE_KEY] = ""
+            intf_map[name].Field[SFLOW_SAMPL_RATE_KEY] = ""
+        case SAMPLING_SFLOW_INTFS_INTF_CONFIG_ENABLED:
+            intf_map[name].Field[SFLOW_ADMIN_KEY] = ""
+        case SAMPLING_SFLOW_INTFS_INTF:
+            /* Delete all interface configurations */
         default:
-            return res_map, errors.New("DELETE not supported on attribute")
-        }
-        res_map[SFLOW_INTF_TBL] = intf_map
-        return res_map, err
-    }
-
-    if key == "" {
-        for _, intf := range sflowObj.Sflow.Interfaces.Interface {
-            intf_map[*(intf.Name)] = db.Value{Field: make(map[string]string)}
-            if intf.Config.Enabled != nil {
-                if *(intf.Config.Enabled) {
-                    intf_map[*(intf.Name)].Field[SFLOW_ADMIN_KEY] = "up"
-                } else {
-                    intf_map[*(intf.Name)].Field[SFLOW_ADMIN_KEY] = "down"
-                }
-            }
-            if intf.Config.SamplingRate != nil {
-                intf_map[*(intf.Name)].Field[SFLOW_SAMPL_RATE_KEY] = strconv.FormatUint(uint64(*(intf.Config.SamplingRate)), 10)
-            }
-        }
-        res_map[SFLOW_INTF_TBL] = intf_map
-        return res_map, err
-    }
-
-    if intf, found := sflowObj.Sflow.Interfaces.Interface[key]; found {
-        intf_map[key] = db.Value{Field: make(map[string]string)}
-        if intf.Config.Enabled != nil {
-            if *(intf.Config.Enabled) {
-                intf_map[key].Field[SFLOW_ADMIN_KEY] = "up"
-            } else {
-                intf_map[key].Field[SFLOW_ADMIN_KEY] = "down"
-            }
-        }
-        if intf.Config.SamplingRate != nil {
-            intf_map[key].Field[SFLOW_SAMPL_RATE_KEY] = strconv.FormatUint(uint64(*(intf.Config.SamplingRate)), 10)
+            return res_map, errors.New("DELETE not supported on attribute or container")
         }
     } else {
-        return res_map, errors.New("Interface not found")
+        for _, intf := range sflowObj.Sflow.Interfaces.Interface {
+
+            if intf.Name == nil {
+                return res_map, errors.New("sFlow Interface: No interface name")
+            }
+
+            if intf.Config == nil {
+                log.Infof("sFlow Inteface: No configuration")
+                continue
+            }
+
+            name := *utils.GetNativeNameFromUIName(intf.Name)
+            intf_map[name] = db.Value{Field: make(map[string]string)}
+
+            if intf.Config.Enabled != nil {
+                if *(intf.Config.Enabled) {
+                    intf_map[name].Field[SFLOW_ADMIN_KEY] = "up"
+                } else {
+                    intf_map[name].Field[SFLOW_ADMIN_KEY] = "down"
+                }
+            }
+
+            if intf.Config.SamplingRate != nil {
+                intf_map[name].Field[SFLOW_SAMPL_RATE_KEY] =
+                    strconv.FormatUint(uint64(*(intf.Config.SamplingRate)), 10)
+            }
+        }
     }
 
     res_map[SFLOW_INTF_TBL] = intf_map
@@ -602,6 +607,7 @@ func fillSflowInterfaceInfo (sflowIntfs *ocbinds.OpenconfigSampling_Sampling_Sfl
         return err
     }
 
+    name = *utils.GetNativeNameFromUIName(&name)
     if v, ok := sfInfo[name]; ok {
         tmp, _ := strconv.ParseUint(v.Sampling_Rate, 10, 32)
         samplingRate = uint32(tmp)
@@ -616,6 +622,7 @@ func fillSflowInterfaceInfo (sflowIntfs *ocbinds.OpenconfigSampling_Sampling_Sfl
 func appendIntfToYang(sflowIntf *ocbinds.OpenconfigSampling_Sampling_Sflow_Interfaces,
     name string, enabled bool, samplingRate uint32) (error) {
     var err error
+    name = *utils.GetUINameFromNativeName(&name)
     sfc, found := sflowIntf.Interface[name]
     if !found {
         sfc, err = sflowIntf.NewInterface(name)

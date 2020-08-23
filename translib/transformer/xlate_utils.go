@@ -54,7 +54,7 @@ func keyCreate(keyPrefix string, xpath string, data interface{}, dbKeySep string
 				fieldXpath :=  xpath + "/" + k
 				fVal, err := unmarshalJsonToDbData(yangEntry.Dir[k], fieldXpath, k, data.(map[string]interface{})[k])
 				if err != nil {
-					log.Errorf("Failed to unmashal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
+					log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", fieldXpath, err)
 				}
 
 				if ((strings.Contains(fVal, ":")) &&
@@ -166,7 +166,7 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableNa
 
 	if _, ok := xYangSpecMap[xpath]; ok {
 		if xYangSpecMap[xpath].yangEntry == nil {
-			log.Errorf("Yang Entry not available for xpath %v", xpath)
+			log.Warningf("Yang Entry not available for xpath %v", xpath)
 			return nil, "", nil
 		}
 	}
@@ -212,7 +212,7 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableNa
 
 	rmap := make(map[string]interface{})
 	if len(keyNameList) > 1 {
-		log.Errorf("No key transformer found for multi element yang key mapping to a single redis key string, for uri %v", uri)
+		log.Warningf("No key transformer found for multi element yang key mapping to a single redis key string, for uri %v", uri)
                 errStr := fmt.Sprintf("Error processing key for list %v", uri)
                 err = fmt.Errorf("%v", errStr)
                 return rmap, uriWithKey, err
@@ -261,13 +261,13 @@ func getYangPathFromUri(uri string) (string, error) {
 
     path, err = ygot.StringToPath(uri, ygot.StructuredPath, ygot.StringSlicePath)
     if err != nil {
-        log.Errorf("Error in uri to path conversion: %v", err)
+        log.Warningf("Error in uri to path conversion: %v", err)
         return "", err
     }
 
     yangPath, yperr := ygot.PathToSchemaPath(path)
     if yperr != nil {
-        log.Errorf("Error in Gnmi path to Yang path conversion: %v", yperr)
+        log.Warningf("Error in Gnmi path to Yang path conversion: %v", yperr)
         return "", yperr
     }
 
@@ -401,19 +401,19 @@ func uriWithKeyCreate (uri string, xpathTmplt string, data interface{}) (string,
               for _, k := range (strings.Split(yangEntry.Key, " ")) {
 		      keyXpath := xpathTmplt + "/" + k
 		      if _, keyXpathEntryOk := xYangSpecMap[keyXpath]; !keyXpathEntryOk {
-			      log.Errorf("No entry found in xYangSpec map for xapth %v", keyXpath)
+			      log.Warningf("No entry found in xYangSpec map for xapth %v", keyXpath)
                               err = fmt.Errorf("No entry found in xYangSpec map for xapth %v", keyXpath)
                               break
 		      }
 		      keyYangEntry := xYangSpecMap[keyXpath].yangEntry
 		      if keyYangEntry == nil {
-			      log.Errorf("Yang Entry not available for xpath %v", keyXpath)
+			      log.Warningf("Yang Entry not available for xpath %v", keyXpath)
 			      err = fmt.Errorf("Yang Entry not available for xpath %v", keyXpath)
 			      break
 		      }
 		      keyVal, keyValErr := unmarshalJsonToDbData(keyYangEntry, keyXpath, k, data.(map[string]interface{})[k])
 		      if keyValErr != nil {
-			      log.Errorf("unmarshalJsonToDbData() error for key %v with xpath %v", k, keyXpath)
+			      log.Warningf("unmarshalJsonToDbData() didn't unmarshal for key %v with xpath %v", k, keyXpath)
 			      err = keyValErr
 			      break
 		      }
@@ -448,20 +448,20 @@ func uriModuleNameGet(uri string) (string, error) {
 	var err error
 	result := ""
 	if len(uri) == 0 {
-		log.Error("Empty uri string supplied")
+		log.Warning("Empty uri string supplied")
                 err = fmt.Errorf("Empty uri string supplied")
 		return result, err
 	}
 	urislice := strings.Split(uri, ":")
 	if len(urislice) == 1 {
-		log.Errorf("uri string %s does not have module name", uri)
+		log.Warningf("uri string %s does not have module name", uri)
 		err = fmt.Errorf("uri string does not have module name: %v", uri)
 		return result, err
 	}
 	moduleNm := strings.Split(urislice[0], "/")
 	result = moduleNm[1]
 	if len(strings.Trim(result, " ")) == 0 {
-		log.Error("Empty module name")
+		log.Warning("Empty module name")
 		err = fmt.Errorf("No module name found in uri %s", uri)
         }
 	xfmrLogInfo("module name = %v", result)
@@ -638,7 +638,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 retData.xpath, _ = XfmrRemoveXPATHPredicates(path)
 	 xpathInfo, ok := xYangSpecMap[retData.xpath]
 	 if !ok {
-		log.Errorf("No entry found in xYangSpecMap for xpath %v.", retData.xpath)
+		log.Warningf("No entry found in xYangSpecMap for xpath %v.", retData.xpath)
 		return retData, err
 	 }
 	 // for SUBSCRIBE reuestUri = path
@@ -766,7 +766,7 @@ func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
 	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
 	 xpathInfo, ok := xYangSpecMap[xPath]
 	 if !ok {
-		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", xPath)
+		 log.Warningf("No entry found in xYangSpecMap for xpath %v.", xPath)
 		 return tableName, err
 	 }
 
@@ -1028,7 +1028,7 @@ func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey strin
 							inParams := formXfmrDbInputRequest(oper, dbNum, tblName, dbKey, kname, curKeyVal)
 							curKeyVal, err = valueXfmrHandler(inParams, *kInfo.xfmrValue)
 							if err != nil {
-								log.Errorf("Failed in value-xfmr: keypath(\"%v\") value (\"%v\"):err(%v).",
+								log.Warningf("value-xfmr: keypath(\"%v\") value (\"%v\"):err(%v).",
 								keyXpath, curKeyVal, err)
 								return "", err
 							}
@@ -1068,7 +1068,7 @@ func dbDataXfmrHandler(resultMap map[int]map[db.DBNum]map[string]map[string]db.V
 										inParams := formXfmrDbInputRequest(oper, dbNum, tblName, dbKey, fld, val)
 										retVal, err := valueXfmrHandler(inParams, *fInfo.xfmrValue)
 										if err != nil {
-											log.Errorf("Failed in value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").",
+											log.Warningf("value-xfmr:fldpath(\"%v\") val(\"%v\"):err(\"%v\").",
 											fldXpath, val, err)
 											return err
 										}
@@ -1146,7 +1146,7 @@ func formXlateToDbParam(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, r
 func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error) {
 	if len(uri) == 0 {
 		errMsg := errors.New("Error: URI is empty")
-		log.Error(errMsg)
+		log.Warning(errMsg)
 		return nil, errMsg
 	}
 
@@ -1166,7 +1166,7 @@ func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error)
 	ygNode, _, errYg := ytypes.GetOrCreateNode(ocbSch.RootSchema(), deviceObj, path)
 
 	if errYg != nil {
-		log.Error("Error in creating the target object: ", errYg)
+		log.Warning("Error in creating the target object: ", errYg)
 		return nil, errYg
 	}
 
@@ -1219,7 +1219,7 @@ func dbTableExists(d *db.DB, tableName string, dbKey string, oper int) (bool, er
 			if len(keys) > 0 {
 				return true, nil
 			} else {
-				log.Errorf("dbKey %v does not exist in DB for table %v", dbKey, tableName)
+				log.Warningf("dbKey %v does not exist in DB for table %v", dbKey, tableName)
 				err = tlerr.NotFound("Resource not found")
 				return false, err
 			}
@@ -1227,14 +1227,14 @@ func dbTableExists(d *db.DB, tableName string, dbKey string, oper int) (bool, er
 
 			existingEntry, derr := d.GetEntry(dbTblSpec, db.Key{Comp: []string{dbKey}})
 			if derr != nil {
-				log.Errorf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
+				log.Warningf("GetEntry failed for table: %v, key: %v err: %v", tableName, dbKey, derr)
 				err = tlerr.NotFound("Resource not found")
 				return false, err
 			}
 			return existingEntry.IsPopulated(), err
 		}
 	} else {
-		log.Error("Empty table name received")
+		log.Warning("Empty table name received")
 		return false, nil
 	}
 }

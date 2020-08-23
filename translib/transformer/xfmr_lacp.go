@@ -58,15 +58,11 @@ func getLacpData(ifKey string) (map[string]interface{}, error) {
         return TeamdJson, tlerr.InternalError{Format:errStr}
     }
 
+    defer cmd.Wait()
+
     err = json.NewDecoder(out_stream).Decode(&TeamdJson)
     if err != nil {
         log.Infof("Not able to decode teamd json output")
-        return TeamdJson, tlerr.InternalError{Format:errStr}
-    }
-
-    err = cmd.Wait()
-    if err != nil {
-        log.Warningf("Command execution completion failed with %s\n", err.Error())
         return TeamdJson, tlerr.InternalError{Format:errStr}
     }
 

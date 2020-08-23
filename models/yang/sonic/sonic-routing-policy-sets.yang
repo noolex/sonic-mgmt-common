@@ -21,6 +21,19 @@ module sonic-routing-policy-sets {
             "Initial revision.";
     }
 
+    typedef routing-policy-action-type {
+        type enumeration {
+            enum PERMIT {
+                description "Permit action.";
+            }
+            enum DENY {
+                description "Deny action.";
+            }
+        }
+        description
+            "Routing policy action type permit or deny";
+    }
+
     container sonic-routing-policy-sets {
 
         container PREFIX_SET {
@@ -79,7 +92,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type string;
+                    type routing-policy-action-type;
                     description
                         "Permit/Deny action for the prefix list.";
                 }
@@ -106,6 +119,12 @@ module sonic-routing-policy-sets {
                         enum ANY;
                         enum ALL;
                     }
+                }
+
+                leaf action {
+                    type routing-policy-action-type; 
+                    description
+                        "Permit/Deny action for the community";
                 }
 
                 leaf-list community_member {
@@ -139,6 +158,12 @@ module sonic-routing-policy-sets {
                     }
                 }
 
+                leaf action {
+                    type routing-policy-action-type;
+                    description
+                        "Permit/Deny action for the ext-community";
+                }
+
                 leaf-list community_member {
                     type string;
                     description
@@ -154,6 +179,12 @@ module sonic-routing-policy-sets {
 
                 leaf name {
                     type string;
+                }
+
+                leaf action {
+                    type routing-policy-action-type;
+                    description
+                        "Permit/Deny action for the as-path-list.";
                 }
 
                 leaf-list as_path_set_member {

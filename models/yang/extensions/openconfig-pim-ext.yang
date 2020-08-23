@@ -488,24 +488,6 @@ module openconfig-pim-ext {
         }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:hello-interval {
-        sonic-codegen:lint-ignore "Deviated to align with PIM Protocol stack";
-        deviate replace {
-            type uint8 {
-                range "1..180";
-            }
-        }
-    }
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:state/oc-netinst:hello-interval {
-        sonic-codegen:lint-ignore "Deviated to align with PIM Protocol stack";
-        deviate replace {
-            type uint8 {
-                range "1..180";
-            }
-        }
-    }
-
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:pim/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:config/oc-netinst:join-prune-interval {
         deviate not-supported;
     }
