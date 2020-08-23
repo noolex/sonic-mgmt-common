@@ -371,6 +371,119 @@ module openconfig-qos-ext {
       uses oc-qos-pfc:qos-pfc-watchdog-top;
     }
 
+	grouping qos-ext-threshold-config {
+
+		description
+			"Configuration data for buffer thresholds";
+
+
+		leaf buffer {
+			type string;
+			description
+				"Queue buffer / Priority Group buffers";
+		}
+
+		leaf type {
+			type string;
+			description
+				"For Queue buffers, the type of queue: unicast or multicast;
+			for Priority Group buffers, the shared buffer or headroom buffer";
+		}
+
+		leaf port {
+			type string;
+			description
+				"The name of the port whose buffer is monitored for threshold breaches";
+		}
+
+		leaf index {
+			type uint32;
+			description
+				"Queue index or Priority Group index within a port";
+		}
+
+		leaf threshold-value {
+			type oc-types:percentage;
+			description
+				"Threshold value , in percentage, of the Counter to be considered a breach";
+		}
+
+	}
+
+	grouping qos-ext-threshold-state {
+		description 
+			"Dummy state container ";
+	}
+
+	grouping qos-ext-threshold-top {
+		description
+			"Top-level grouping for QoS threshold configuration";
+
+		container thresholds {
+			description
+				"Enclosing container for the list of threshold configurations";
+
+            list threshold {
+
+                key "buffer type port index";
+
+                leaf buffer {
+                  type leafref {
+                    path "../config/buffer";
+                  }
+                  description
+                    "Reference to the buffer of the threshold config";
+                }
+
+                leaf type {
+                  type leafref {
+                    path "../config/type";
+                  }
+                  description
+                    "Reference to the type of the threshold config";
+                }
+
+
+                leaf port {
+                  type leafref {
+                    path "../config/port";
+                  }
+                  description
+                    "Reference to the port of the threshold config";
+                }
+
+
+                leaf index {
+                  type leafref {
+                    path "../config/index";
+                  }
+                  description
+                    "Reference to the buffer index of the threshold config";
+                }
+
+                description
+                    "List of threshold configurations";
+
+                container config {
+                    
+					description
+                        "Operational data for breach event";
+
+					uses qos-ext-threshold-config;
+				}
+
+				container state {
+					config false;
+					description 
+						"Operational state data";
+
+					uses qos-ext-threshold-config;
+					uses qos-ext-threshold-state;
+				}
+            }
+        }
+    }
+
     grouping qos-ext-threshold-breach-top {
         description
             "Top-level grouping for QoS threshold breach information";
@@ -455,6 +568,7 @@ module openconfig-qos-ext {
     augment /oc-qos:qos {
         description
             "Qos extensions containers";
+		uses qos-ext-threshold-top;
         uses qos-ext-threshold-breach-top;
         uses qos-ext-wred-profile-top;
     }

@@ -76,6 +76,113 @@ module openconfig-qos-annot {
       }
     }
 
+	deviation /oc-qos:qos/oc-qos-ext:thresholds {
+		deviate add {
+			sonic-ext:db-name "CONFIG_DB";
+			sonic-ext:key-delim "|";
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold {
+		deviate add {
+			sonic-ext:table-name "THRESHOLD_TABLE";
+			sonic-ext:key-transformer "tam_threshold_key_xfmr";
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:config {
+		deviate add {
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:config/oc-qos-ext:buffer {
+		deviate add {
+			sonic-ext:field-transformer "tam_threshold_field_xfmr";
+
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:config/oc-qos-ext:type {
+		deviate add {
+			sonic-ext:field-transformer "tam_threshold_field_xfmr";
+
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:config/oc-qos-ext:port {
+		deviate add {
+			sonic-ext:field-transformer "tam_threshold_field_xfmr";
+
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:config/oc-qos-ext:index {
+		deviate add {
+			sonic-ext:field-transformer "tam_threshold_field_xfmr";
+
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:config/oc-qos-ext:threshold-value {
+		deviate add {
+			sonic-ext:field-name "threshold";
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:state/oc-qos-ext:buffer {
+		deviate add {
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:state/oc-qos-ext:type {
+		deviate add {
+
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:state/oc-qos-ext:port {
+		deviate add {
+
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:state/oc-qos-ext:index {
+		deviate add {
+
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:state/oc-qos-ext:threshold-value {
+		deviate add {
+			sonic-ext:field-name "threshold";
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:buffer {
+		deviate add {
+			sonic-ext:field-name "buffer";
+		}
+    }
+
+    deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:type {
+      deviate add {
+          sonic-ext:field-name "threshold_buffer_type";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:port {
+      deviate add {
+          sonic-ext:field-name "interface_name";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos-ext:thresholds/oc-qos-ext:threshold/oc-qos-ext:index {
+      deviate add {
+          sonic-ext:field-name "buffer_index_per_port";
+      }
+    }
+
+ 
     deviation /oc-qos:qos/oc-qos-ext:threshold-breaches {
       deviate add {
         sonic-ext:db-name "COUNTERS_DB";
