@@ -218,6 +218,18 @@ module sonic-route-map {
                     type string;
                 }
 
+                leaf match_evpn_default_type5_route { 
+                    type boolean;
+                }
+
+                leaf match_evpn_advertise_route_type { 
+                    type string;
+                }
+
+                leaf match_evpn_vni_number { 
+                    type uint32;
+                }
+
                 leaf match_local_pref{
                     type uint32;
                 }
