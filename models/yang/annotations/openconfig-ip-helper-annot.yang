@@ -91,5 +91,68 @@ module openconfig-ip-helper-annot {
     }
   }
 
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface {
+    deviate add {
+       sonic-ext:table-transformer "ip_helper_table_xfmr";
+       sonic-ext:key-transformer "ip_helper_intf_tbl_key_xfmr";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface/oc-ip-helper:servers {
+    deviate add {
+      sonic-ext:subtree-transformer "ip_helper_intf_xfmr";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface/oc-ip-helper:state/oc-ip-helper:counters {
+    deviate add {
+      sonic-ext:db-name "COUNTERS_DB";
+      sonic-ext:table-name "COUNTERS_IP_HELPER";
+      sonic-ext:key-transformer "ip_helper_interface_counter_key_xfmr";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface/oc-ip-helper:state/oc-ip-helper:counters/oc-ip-helper:received-packets {
+    deviate add {
+      sonic-ext:field-name "PKTS_RECEIVED";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface/oc-ip-helper:state/oc-ip-helper:counters/oc-ip-helper:relayed-packets {
+    deviate add {
+      sonic-ext:field-name "PKTS_RELAYED";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface/oc-ip-helper:state/oc-ip-helper:counters/oc-ip-helper:dropped-packets {
+    deviate add {
+      sonic-ext:field-name "PKTS_DROPPED";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface/oc-ip-helper:state/oc-ip-helper:counters/oc-ip-helper:packets-with-invalid-ttl {
+    deviate add {
+      sonic-ext:field-name "PKTS_INVALID_TTL";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface/oc-ip-helper:state/oc-ip-helper:counters/oc-ip-helper:broadcast-packets {
+    deviate add {
+      sonic-ext:field-name "PKTS_BROADCAST";
+    }
+  }
+
+  deviation /oc-ip-helper:ip-helper/oc-ip-helper:interfaces/oc-ip-helper:interface/oc-ip-helper:state/oc-ip-helper:counters/oc-ip-helper:net-broadcast-packets {
+    deviate add {
+      sonic-ext:field-name "PKTS_NET_BROADCAST";
+    }
+  }
+
+  deviation /oc-ip-helper:clear-ip-helper-statistics {
+    deviate add {
+      sonic-ext:rpc-callback "rpc_clear_ip_helper";
+    }
+  }
+
 }
 

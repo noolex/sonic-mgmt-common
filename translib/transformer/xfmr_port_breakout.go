@@ -36,7 +36,7 @@ func init () {
     XlateFuncBind("DbToYang_port_breakout_state_xfmr", DbToYang_port_breakout_state_xfmr)
     XlateFuncBind("rpc_breakout_dependencies", rpc_breakout_dependencies)
     XlateFuncBind("rpc_breakout_capabilities", rpc_breakout_capabilities)
-
+    parsePlatformDefJsonFile()
     parsePlatformJsonFile()
 }
 

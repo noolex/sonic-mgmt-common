@@ -19,6 +19,7 @@ module openconfig-ospfv2-ext {
   import openconfig-policy-types { prefix "oc-pol-types"; }
   import openconfig-acl { prefix oc-acl; }
   import openconfig-extensions { prefix oc-ext; }
+  import openconfig-vlan { prefix oc-vlan; }
 
   // import ospfv2 module
   import openconfig-ospfv2 { prefix "oc-ospfv2"; }
@@ -3200,6 +3201,32 @@ module openconfig-ospfv2-ext {
   }
 
   deviation "/oc-if:interfaces/oc-if:interface/oc-if:subinterfaces/oc-if:subinterface" +
+            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
+            "/oc-ospfv2-ext:config/oc-ospfv2-ext:hide-network" {
+    deviate not-supported;
+  }
+
+  augment "/oc-if:interfaces/oc-if:interface/oc-vlan:routed-vlan/oc-ip:ipv4" {
+    description
+      "extra parameters related to interfaces interface subinterfaces subinterface ipv4";
+    uses ospfv2-ext-interface-phys-config;
+  }
+
+  deviation "/oc-if:interfaces/oc-if:interface/oc-vlan:routed-vlan" +
+            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
+            "/oc-ospfv2-ext:config/oc-ospfv2-ext:metric" {
+    deviate replace {
+      type ospf-cost-metric;
+    }
+  }
+
+  deviation "/oc-if:interfaces/oc-if:interface/oc-vlan:routed-vlan" +
+            "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
+            "/oc-ospfv2-ext:config/oc-ospfv2-ext:passive" {
+    deviate not-supported;
+  }
+
+  deviation "/oc-if:interfaces/oc-if:interface/oc-vlan:routed-vlan" +
             "/oc-ip:ipv4/oc-ospfv2-ext:ospfv2/oc-ospfv2-ext:if-addresses" +
             "/oc-ospfv2-ext:config/oc-ospfv2-ext:hide-network" {
     deviate not-supported;

@@ -459,6 +459,10 @@ var DbToYang_bgp_evpn_vni_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     }
 
     err = get_specific_vni_state (vni_obj, inParams.dbs[db.ConfigDB], &vni_key)
+    if err != nil {
+        return err;
+    }
+    err = get_specific_vni_zevpn_state (vni_obj, inParams.dbs[db.ConfigDB], &vni_key)
     return err;
 }
 
@@ -468,6 +472,47 @@ type _xfmr_bgp_vni_state_key struct {
     afiSafiNameStr string
     afiSafiNameDbStr string
     afiSafiNameEnum ocbinds.E_OpenconfigBgpTypes_AFI_SAFI_TYPE
+}
+
+func fill_vni_zevpn_state_info (vni_key *_xfmr_bgp_vni_state_key, vniDataValue interface{}, cfgDb *db.DB,
+                          vni_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Global_AfiSafis_AfiSafi_L2VpnEvpn_Vnis_Vni) error {
+    var err error
+
+    vniDataJson := vniDataValue.(map[string]interface{})
+
+    var vniState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Global_AfiSafis_AfiSafi_L2VpnEvpn_Vnis_Vni_State
+    if vniState = vni_obj.State ; vniState == nil {
+        var _vniState ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Global_AfiSafis_AfiSafi_L2VpnEvpn_Vnis_Vni_State
+        vni_obj.State = &_vniState
+        vniState = vni_obj.State
+    }
+
+    if value, ok := vniDataJson["routerMac"].(string) ; ok {
+        vniState.RouterMac = &value
+    }
+
+    return err
+}
+
+func get_specific_vni_zevpn_state (vni_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Global_AfiSafis_AfiSafi_L2VpnEvpn_Vnis_Vni,
+                             cfgDb *db.DB, vni_key *_xfmr_bgp_vni_state_key) error {
+    var err error
+    vniMapJson := make(map[string]interface{})
+ 
+    vtysh_cmd := "show evpn vni " + vni_key.vniNumber + " json"
+    output, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    if cmd_err != nil {
+        log.Errorf("Failed to fetch evpn state info for niName:%s vniNumber:%s. Err: %s\n", vni_key.niName, vni_key.vniNumber, err)
+        return cmd_err
+    }
+
+    vniMapJson["output"] = output
+
+    if vniDataJson, ok := vniMapJson["output"].(map[string]interface{}) ; ok {
+        err = fill_vni_zevpn_state_info (vni_key, vniDataJson, cfgDb, vni_obj)
+    }    
+
+    return err
 }
 
 func fill_vni_state_info (vni_key *_xfmr_bgp_vni_state_key, vniDataValue interface{}, cfgDb *db.DB,
