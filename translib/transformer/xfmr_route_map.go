@@ -130,15 +130,15 @@ var YangToDb_route_map_action_policy_result_xfmr FieldXfmrYangToDb = func(inPara
 
     res_map := make(map[string]string)
     var err error
-    if inParams.param == nil {
-        return res_map, err
-    }
- 
     if inParams.oper == DELETE {
         res_map["route_operation"] = ""
         return res_map, nil
     }
 
+    if inParams.param == nil {
+        return res_map, err
+    }
+ 
     action, _ := inParams.param.(ocbinds.E_OpenconfigRoutingPolicy_PolicyResultType)
     log.Info("YangToDb_route_map_action_policy_result_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " route-operation: ", action)
     if action == ocbinds.OpenconfigRoutingPolicy_PolicyResultType_ACCEPT_ROUTE {
@@ -202,16 +202,16 @@ var DbToYang_route_map_set_next_hop_xfmr FieldXfmrDbtoYang= func(inParams XfmrPa
 var YangToDb_route_map_set_next_hop_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
     var err error
-    if inParams.param == nil {
-        err = errors.New("No Params")
-        return res_map, err
-    }
 
     if inParams.oper == DELETE {
         res_map["set_next_hop"] = ""
         return res_map, nil
     }
 
+    if inParams.param == nil {
+        err = errors.New("No Params")
+        return res_map, err
+    }
     addr := inParams.param.(*ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_Config_SetNextHop_Union_String).String
 
     /* Reject special address settings */
@@ -263,14 +263,15 @@ var DbToYang_route_map_set_ipv6_next_hop_xfmr FieldXfmrDbtoYang= func(inParams X
 var YangToDb_route_map_set_ipv6_next_hop_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
     var err error
-    if inParams.param == nil {
-        err = errors.New("No Params")
-        return res_map, err
-    }
 
     if inParams.oper == DELETE {
         res_map["set_ipv6_next_hop_global"] = ""
         return res_map, nil
+    }
+
+    if inParams.param == nil {
+        err = errors.New("No Params")
+        return res_map, err
     }
     addr, _ := inParams.param.(*string)
 
@@ -288,15 +289,15 @@ var YangToDb_route_map_match_protocol_xfmr FieldXfmrYangToDb = func(inParams Xfm
 
     res_map := make(map[string]string)
     var err error
-    if inParams.param == nil {
-        return res_map, err
-    }
  
     if inParams.oper == DELETE {
         res_map["match_protocol"] = ""
         return res_map, nil
     }
 
+    if inParams.param == nil {
+        return res_map, err
+    }
     protocol, _ := inParams.param.(ocbinds.E_OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE)
     log.Info("YangToDb_route_map_match_protocol_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " protocol: ", protocol)
     switch protocol {
@@ -971,14 +972,15 @@ var DbToYang_route_map_set_med_xfmr FieldXfmrDbtoYang= func(inParams XfmrParams)
 var YangToDb_route_map_set_med_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
     var err error
-    if inParams.param == nil {
-        err = errors.New("No Params")
-        return res_map, err
-    }
 
     if inParams.oper == DELETE {
         res_map["set_med"] = ""
         return res_map, nil
+    }
+
+    if inParams.param == nil {
+        err = errors.New("No Params")
+        return res_map, err
     }
     setMed := inParams.param.(ocbinds.OpenconfigRoutingPolicy_RoutingPolicy_PolicyDefinitions_PolicyDefinition_Statements_Statement_Actions_BgpActions_Config_SetMed_Union)
     setMedType := reflect.TypeOf(setMed).Elem()

@@ -60,12 +60,15 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
     intfObj := intfsObj.Interface[ifUIName]
 
     if intfObj.NatZone == nil || intfObj.NatZone.Config == nil || intfObj.NatZone.Config.NatZone == nil {
-	    if inParams.oper != DELETE {
+        if inParams.oper != DELETE {
             log.Info("YangToDb Interface nat zone config is not valid - ", ifUIName)
             return natZoneMap, errors.New("YangToDb Interface nat zone config is not valid - " + ifUIName)
         }
     }
-    intfType, _, ierr := getIntfTypeByName(ifUIName)
+
+    ifName := utils.GetNativeNameFromUIName(&ifUIName)
+
+    intfType, _, ierr := getIntfTypeByName(*ifName)
     if intfType == IntfTypeUnset || ierr != nil {
         errStr := "Invalid interface type IntfTypeUnset"
         log.Info("YangToDb_intf_nat_zone_xfmr : " + errStr)
@@ -74,20 +77,24 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
     intTbl := IntfTypeTblMap[intfType]
     tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
 
-    ifName := utils.GetNativeNameFromUIName(&ifUIName)
     if inParams.oper == DELETE {
         entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{*ifName}})
         if dbErr != nil {
             log.Info("Failed to read DB entry, " + tblName + " " + *ifName)
             return natZoneMap, nil
         }
-
         if !entry.Has("nat_zone") {
             log.Info("NAT zone config not present, " + tblName + " " + *ifName)
             return natZoneMap, nil
         }
         if _, ok := natZoneMap[tblName]; !ok {
             natZoneMap[tblName] = make (map[string]db.Value)
+        }
+        // Handling the scenario for top level Interface instance delete
+        if intfObj.NatZone == nil {
+            //Return map with key
+            natZoneMap[tblName][*ifName] = db.Value{Field:make(map[string]string)}
+            return natZoneMap, err
         }
         m := make(map[string]string)
         data := db.Value{Field: m}
