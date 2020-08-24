@@ -19,11 +19,15 @@ module sonic-port {
     description
         "SONIC PORT";
 
+    revision 2020-08-04 {
+        description
+            "Added fec attribute";
+    }
+
     revision 2019-05-15 {
         description
             "Initial revision.";
     }
-
 
     container sonic-port {
 
@@ -50,6 +54,10 @@ module sonic-port {
                     type uint64;
                 }
 
+                leaf fec {
+                    type scommon:fec-mode;
+                }
+
                 leaf valid_speeds {
                     type string;
                 }
@@ -73,10 +81,6 @@ module sonic-port {
                 }
 
                 leaf lanes {
-                    type string;
-                }
-
-                leaf fec {
                     type string;
                 }
 
@@ -145,8 +149,13 @@ module sonic-port {
                 leaf speed {
                     type uint64;
                 }
+
                 leaf port_load_interval {
                     type uint16;
+                }
+
+                leaf fec {
+                    type scommon:fec-mode;
                 }
             }
         }

@@ -19,8 +19,8 @@ module sonic-system-ntp {
         prefix svlan;
     }
 
-    import sonic-loopback-interface {
-        prefix lointf;
+    import sonic-loopback {
+        prefix lo;
     }
 
     import sonic-vrf {
@@ -39,6 +39,11 @@ module sonic-system-ntp {
 
     description
         "SONIC NTP";
+
+    revision 2020-07-26 {
+        description
+            "Change for sonic-loopback.yang.";
+    }
 
     revision 2020-04-25 {
         description
@@ -78,7 +83,7 @@ module sonic-system-ntp {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                         }
                         type leafref {
-                            path "/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST/lointf:loIfName";
+                            path "/lo:sonic-loopback/lo:LOOPBACK/lo:LOOPBACK_LIST/lo:name";
                         }
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";

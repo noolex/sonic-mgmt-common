@@ -175,7 +175,7 @@ func (t *CustomValidation) ValidateNexthopGateway(
 // Path /sonic-static-route/STATIC_ROUTE/ifname
 func (t *CustomValidation) ValidateNexthopInterface(
 	vc *CustValidationCtxt) CVLErrorInfo {
-    var tableList = []string{"PORT", "PORTCHANNEL", "VLAN", "LOOPBACK_INTERFACE"}
+    var tableList = []string{"PORT", "PORTCHANNEL", "VLAN", "LOOPBACK"}
     return validateNexthopAttrCmn(vc, checkNexthopIntfVrf, tableList, vc.RClient)
 }
 

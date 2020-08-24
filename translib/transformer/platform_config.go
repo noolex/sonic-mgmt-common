@@ -11,6 +11,8 @@ import (
     "io/ioutil"
     "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "errors"
+    "reflect"
 )
 
 const (
@@ -39,12 +41,29 @@ var platConfigStr map[string]map[string]string
 var platDefStr map[string]map[string]map[string]string
 var platDef4Level map[string]map[string]map[string]map[string]string
 
+
+/* For parsing FEC data from config file*/
+
+type fec_mode_t     string
+type speed_t        string
+type interface_t    string
+type lane_t         string
+
+/*  interface -> lane -> speed -> list of fec values */
+type fec_tbl_t map[interface_t]map[lane_t]map[speed_t][]fec_mode_t
+
+// Table of fec values when default is expected
+var default_fec_tbl fec_tbl_t
+// Allowed set of FEC values
+var supported_fec_tbl fec_tbl_t
+
 /* Functions */
 
 func init () {
     parsePlatformJsonFile();
+    parsePlatformDefJsonFile();
+    populate_fec_modes_to_db();
 }
-
 
 func decodePortParams(port_i string, mode string, subport int, entry map[string]string) (portProp, error) {
     var port_config portProp
@@ -273,20 +292,67 @@ func parsePlatformJsonFile () (error) {
 }
 
 func parsePlatformDefJsonFile () (error) {
+    /*
+        Due to GoLang strict typing, we cannot marshal to a strict format until we know what the table we will be parsing is.
+        When parsing FEC, the format is slightly different from when parsing port-group
+    */
+    log.Info("Reading platform-def.json")
 
     file, err := ioutil.ReadFile(PLATFORM_DEF_JSON)
 
     if nil != err {
-        log.Info("Platform specific properties not supported");
+        log.Info("Unable to read platform-def file: Platform specific properties not supported");
         return err
     }
 
-    platDefStr = make(map[string]map[string]map[string]string)
-    err = json.Unmarshal([]byte(file), &platDefStr)
-    log.Info(platDefStr)
+    //platDefStr = make(map[string]map[string]map[string]string)
+    //err = json.Unmarshal([]byte(file), &platDefStr)
+    //log.Info(platDefStr)
     platDef4Level = make(map[string]map[string]map[string]map[string]string)
     json.Unmarshal([]byte(file), &platDef4Level)
-    log.Info(platDefStr)
+    log.Info(platDef4Level)
+    var fec_raw_map map[string]map[string]map[string]interface{}
+
+    /* Map if for FEC parsing */
+    err = json.Unmarshal([]byte(file), &fec_raw_map)
+
+    if err != nil {
+        log.Info("platform-def.json parse failed")
+        return err
+    }
+
+    default_fec_tbl = make(fec_tbl_t)
+    supported_fec_tbl = make(fec_tbl_t)
+
+    /* Default table of fec */
+    default_fec_tbl = parse_fec_config(fec_raw_map["default-fec-mode"])
+    /* Supported table */
+    supported_fec_tbl = parse_fec_config(fec_raw_map["fec-mode"])
+
+    /* Check for port-group field */
+    if pg_entries, ok := fec_raw_map["port-group"]; ok {
+        /* For backward compat */
+        platDefStr = make(map[string]map[string]map[string]string)
+        platDefStr["port-group"] = make(map[string]map[string]string)
+
+        for pg_key, pg_val := range pg_entries {
+            platDefStr["port-group"][pg_key] = make(map[string]string)
+            for key, val := range pg_val {
+                /* Val is of type interface{}
+                   Need to conver to string first
+                */
+                switch reflect.TypeOf(val).Kind() {
+                case reflect.String:
+                    platDefStr["port-group"][pg_key][key] = val.(string)
+                case reflect.Slice:
+                }
+            }
+        }
+
+        log.Info("Parsed port-group info as %s", platDefStr)
+    } else {
+        log.Info("No port-group configs to parse in platform-def")
+    }
     return err
 }
 
@@ -363,12 +429,6 @@ func getDefFecMode(ifName, lanes, speed string) (string) {
 }
 
 func isPortGroupMember(ifName string) (bool) {
-    if len(platDefStr) < 1 {
-        parsePlatformDefJsonFile()
-        if len(platDefStr) < 1 {
-            return false
-        }
-    }
     if pgs, ok := platDefStr["port-group"]; ok {
         for id, pg := range pgs {
             memRange := strings.Split(strings.TrimLeft(pg["members"], "Ethern"), "-")
@@ -388,12 +448,6 @@ func isPortGroupMember(ifName string) (bool) {
 func getPortGroupMembersAfterSpeedCheck(pgid string, speed *string) ([]string, error) {
    var  members []string
 
-    if len(platDefStr) < 1 {
-        parsePlatformDefJsonFile()
-        if len(platDefStr) < 1 {
-            return members, tlerr.NotSupported("Port-group is not supported")
-        }
-    }
     if pgs, ok := platDefStr["port-group"]; ok {
         for id, pg := range pgs {
             if id == pgid {
@@ -511,4 +565,152 @@ func getIfName(port_i string) (string) {
         }
     }
     return ifName
+}
+
+
+func populate_speed_fec_info(v interface {}) map[speed_t][]fec_mode_t {
+    mp := make(map[speed_t][]fec_mode_t )
+    speed_list := []speed_t {"1000", "10000", "25000", "40000", "50000","100000","200000","400000", "600000", "800000"}
+
+    // If given as raw val/string, all speeds for this lane have one FEC value
+    // Try as a raw val
+    raw_str, ok := v.(string)
+    if ok {
+        /* Apply to all speeds */
+        for _, spd := range speed_list {
+            mp[speed_t(spd)] = []fec_mode_t {fec_mode_t(raw_str)}
+        }
+        return mp
+    }
+    // If given as slice, all speeds for this lane have a list/slice of FEC values
+    // Try as a slice
+    slice, ok := v.([]interface{})
+    if ok {
+        str_slice := []fec_mode_t{}
+        for _, f := range slice {
+            str_slice = append(str_slice, fec_mode_t(f.(string)))
+        }
+        /* Apply to all speeds */
+        for _, spd := range speed_list {
+            mp[speed_t(spd)] = str_slice
+        }
+        return mp
+    }
+
+    /* At this point the data is given as a dict/map */
+    fec_str := v.(map[string]interface{})
+
+    for spd, val := range fec_str {
+        /* It can either be a string or list*/
+        _, ok := val.([]interface{})
+        if !ok {
+            raw_str := val.(interface{})
+            mp[speed_t(spd)] = []fec_mode_t {fec_mode_t(raw_str.(string))}
+        } else {
+            slice := val.([]interface{})
+            str_slice := []fec_mode_t{}
+            for _, f := range slice {
+                str_slice = append(str_slice, fec_mode_t(f.(string)))
+            }
+            mp[speed_t(spd)] = str_slice
+        }
+    }
+    return mp
+}
+
+func populate_lane_fec_info(v map[string]interface {}) map[lane_t]map[speed_t][]fec_mode_t {
+    mp := make(map[lane_t]map[speed_t][]fec_mode_t)
+    for lane, entry := range v {
+        mp[lane_t(lane)] = populate_speed_fec_info(entry)
+    }
+    return mp
+}
+
+func parse_fec_config(tbl map[string]map[string]interface{}) fec_tbl_t {
+    ret := make(fec_tbl_t)
+    for intf, intf_fec_raw := range tbl {
+        intf_token := intf
+        start := 0
+        end := 0
+        /*  We can get either a range or a singleton */
+        /* Chop off the Ethernet prefix if exist */
+        if strings.HasPrefix(intf_token, "Ethernet"){
+           intf_token = strings.Split(intf_token, "Ethernet")[1]
+        }
+        rng := strings.Split(intf_token, "-")
+        if intf_start, err := strconv.Atoi(rng[0]); err != nil {
+            return ret
+        } else {
+            start = intf_start
+            end = intf_start
+        }
+        if len(rng) == 2 {
+            if intf_end, err := strconv.Atoi(rng[1]); err != nil {
+               return ret
+            } else {
+                end = intf_end
+            }
+        }
+        for count := start; count < end+1; count++ {
+            if_num := strconv.Itoa(count)
+            ret[interface_t(if_num)] = populate_lane_fec_info(intf_fec_raw)
+        }
+    }
+    return ret
+}
+
+/* Flattens/serializes the FEC info table */
+func serialize_fec_info_tbl (tbl fec_tbl_t) (string, error) {
+    if tbl == nil {
+        log.Info("Cannot serialize nil FEC info table.")
+        return "", errors.New("Invalid arg")
+    }
+    serial := []string{}
+    for intf, lane_map := range tbl {
+        intf_name := "Ethernet"+string(intf)
+        intf_info := ""
+        intf_info_list := []string {}
+        for lane, speed_map := range lane_map {
+            fec_modes_list := []string {}
+            for speed, fec_modes := range speed_map {
+                fm := []string{}
+                for _, s := range fec_modes{
+                    fm = append(fm, string(s))
+                }
+
+                fec_modes_list = append(fec_modes_list, string(speed) + utils.SPEED_TO_FEC_SEPARATOR + strings.Join(fm, utils.FEC_SEPARATOR))
+            }
+            intf_info_list = append(intf_info_list, string(lane) + utils.LANE_TO_SPEED_SEPARATOR + strings.Join(fec_modes_list, utils.SPEED_SEPARATOR))
+        }
+        intf_info = strings.Join(intf_info_list, utils.LANE_SEPARATOR)
+        //serialized[intf_name] = intf_info
+        serial = append(serial, intf_name+utils.INTF_TO_LANE_SEPARATOR+intf_info)
+    }
+    return strings.Join(serial, utils.INTF_SEPARATOR), nil
+}
+
+// Puts the flattened/serialized fec info into the DB (StateDB)
+func populate_fec_modes_to_db() {
+    /* Use StateDB */
+    d, err := db.NewDB(getDBOptions(db.StateDB))
+    if err != nil {
+        log.Info("Unable to connect to StateDB")
+        return
+    }
+
+    serialized_supported_fec_modes, _ := serialize_fec_info_tbl(supported_fec_tbl)
+    serialized_default_fec_modes, err := serialize_fec_info_tbl(default_fec_tbl)
+    log.Info("Done serializing default fec modes.", serialized_default_fec_modes)
+    log.Info("Done serializing supported fec modes.", serialized_supported_fec_modes)
+    if err == nil {
+        fec_fields := db.Value{Field: make(map[string]string)}
+        fec_fields.Set(utils.DB_FIELD_NAME_DEFAULT_FEC_MODES, serialized_default_fec_modes)
+        fec_fields.Set(utils.DB_FIELD_NAME_SUPPORTED_FEC_MODES, serialized_supported_fec_modes)
+
+        err := d.ModEntry(&db.TableSpec{Name:utils.DB_TABLE_NAME_FEC_INFO}, db.Key{Comp: []string{utils.DB_KEY_NAME_FEC_INFO}}, fec_fields)
+        if err != nil {
+            log.Info("Unable to write fec modes to db")
+            return
+        }
+    }
 }

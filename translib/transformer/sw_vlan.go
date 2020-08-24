@@ -1156,6 +1156,7 @@ func deleteVlanIntfAndMembers(inParams *XfmrParams, vlanName *string) error {
     resMap := make(map[string]map[string]db.Value)
     vlanMap := make(map[string]db.Value)
     vlanMemberMap := make(map[string]db.Value)
+    vlanIntfMap := make(map[string]db.Value)
 
     vlanMap[*vlanName] = db.Value{Field:map[string]string{}}
     subOpMap[db.ConfigDB] = resMap
@@ -1203,6 +1204,13 @@ func deleteVlanIntfAndMembers(inParams *XfmrParams, vlanName *string) error {
         /* need to check STP_VLAN table */
         removeStpConfigOnVlanDeletion(inParams, vlanName, nil, resMap)
     }
+
+    /* Handle VLAN_INTERFACE TABLE */
+    processIntfTableRemoval(inParams.d, *vlanName, VLAN_INTERFACE_TN, vlanIntfMap)
+    if len(vlanIntfMap) != 0 {
+        resMap[VLAN_INTERFACE_TN] = vlanIntfMap
+    }
+
     if len(vlanMap) != 0 {
         resMap[VLAN_TN] = vlanMap
     }
@@ -1299,7 +1307,7 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
     switch inParams.oper {
     case CREATE:
         fallthrough
-    case UPDATE:
+    case UPDATE,REPLACE:
         err = intfVlanMemberAdd(&swVlanConfig, &inParams, &ifName, vlanMap, vlanMemberMap, stpPortMap, intfType)
         if err != nil {
             log.Errorf("Interface VLAN member port addition failed for Interface: %s!", ifName)
@@ -1333,8 +1341,6 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
         if (len(stpPortMap) != 0) {
             res_map[STP_PORT_TABLE] = stpPortMap
         }
-    case REPLACE:
-        return nil, tlerr.NotSupported("REPLACE of Vlan members is currently not supported.")
     }
     log.Info("YangToDb_sw_vlans_xfmr: vlan res map:", res_map)
     return res_map, err
@@ -1389,7 +1395,8 @@ func getIntfVlanAttr(ifName *string, ifMode intfModeType, vlanMemberMap map[stri
     vlanEntries, ok := vlanMemberMap[*ifName]
     if !ok {
         errStr := "Cannot find info for Interface: " + *ifName + " from VLAN_MEMBERS_TABLE!"
-        return nil, nil, errors.New(errStr)
+        log.Info(errStr)
+        return nil, nil, nil
     }
     switch ifMode {
     case ACCESS:

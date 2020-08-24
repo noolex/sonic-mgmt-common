@@ -19,7 +19,7 @@ module sonic-ospfv2-common {
       prefix "sonic-vlan";
   }
 
-  import sonic-loopback-interface {
+  import sonic-loopback {
       prefix "sonic-lbk";
   }
 
@@ -36,6 +36,10 @@ module sonic-ospfv2-common {
   description
       "SONIC OSPFv2 common YANG attributes";
 
+  revision 2020-07-26 {
+      description
+          "Change for sonic-loopback.yang.";
+  }
   revision 2020-03-21 {
       description
           "Initial revision.";
@@ -234,7 +238,7 @@ module sonic-ospfv2-common {
         path "/sonic-vlan:sonic-vlan/sonic-vlan:VLAN/sonic-vlan:VLAN_LIST/sonic-vlan:name";
       }
       type leafref {
-        path "/sonic-lbk:sonic-loopback-interface/sonic-lbk:LOOPBACK_INTERFACE/sonic-lbk:LOOPBACK_INTERFACE_LIST/sonic-lbk:loIfName";
+        path "/sonic-lbk:sonic-loopback/sonic-lbk:LOOPBACK/sonic-lbk:LOOPBACK_LIST/sonic-lbk:name";
       }
     }
     description 

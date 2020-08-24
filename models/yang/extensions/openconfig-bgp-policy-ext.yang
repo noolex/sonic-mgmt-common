@@ -12,6 +12,7 @@ module openconfig-bgp-policy-ext {
   import openconfig-bgp-types { prefix oc-bgp-types; }
   import openconfig-bgp-policy { prefix oc-bgp-pol; }
   import openconfig-extensions { prefix oc-ext; }
+  import openconfig-routing-policy-ext {prefix oc-rpol-ext;}
 
   organization
       "SONiC";
@@ -25,12 +26,17 @@ module openconfig-bgp-policy-ext {
 
   oc-ext:openconfig-version "0.1.1";
 
+  revision "2020-08-01" {
+    description
+      "Added the action for as-path, community and ext-community.";
+    reference "0.1.2";
+  }
+
   revision "2020-04-08" {
     description
       "Added the attributes for IPv6 next hop.";
     reference "0.1.1";
   }
-
 
   revision "2019-11-13" {
     description
@@ -119,6 +125,42 @@ module openconfig-bgp-policy-ext {
     description
         "Policy definition extensions for BGP actions";
         uses bgp-policy-ext-ipv6-next-hop-config;
+  }
+
+  augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:as-path-sets/oc-bgp-pol:as-path-set/oc-bgp-pol:config {
+    description
+        "BGP as-path set extensions";
+      uses oc-rpol-ext:routing-policy-ext-action-config;
+  }
+
+  augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:as-path-sets/oc-bgp-pol:as-path-set/oc-bgp-pol:state {
+    description
+        "BGP as-path set extensions";
+      uses oc-rpol-ext:routing-policy-ext-action-config;
+  }
+
+  augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:community-sets/oc-bgp-pol:community-set/oc-bgp-pol:config {
+    description
+        "BGP community set extensions";
+      uses oc-rpol-ext:routing-policy-ext-action-config;
+  }
+
+  augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:community-sets/oc-bgp-pol:community-set/oc-bgp-pol:state {
+    description
+        "BGP community set extensions";
+      uses oc-rpol-ext:routing-policy-ext-action-config;
+  }
+
+  augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:ext-community-sets/oc-bgp-pol:ext-community-set/oc-bgp-pol:config {
+    description
+        "BGP ext-community set extensions";
+      uses oc-rpol-ext:routing-policy-ext-action-config;
+  }
+
+  augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:ext-community-sets/oc-bgp-pol:ext-community-set/oc-bgp-pol:state {
+    description
+        "BGP ext-community set extensions";
+      uses oc-rpol-ext:routing-policy-ext-action-config;
   }
 
   // rpc statements

@@ -152,7 +152,7 @@ module sonic-pim {
                 leaf hello-interval {
                     description "Hello interval in seconds";
                     type uint8 {
-                        range "1..180";
+                        range "1..255";
                     }
                 }
 

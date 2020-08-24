@@ -32,6 +32,11 @@ module sonic-vlan {
     description
         "SONIC VLAN";
 
+    revision 2020-07-30 {
+        description
+            "Add Vlan description.";
+    }
+
     revision 2019-05-15 {
         description
             "Initial revision.";
@@ -142,6 +147,10 @@ module sonic-vlan {
                leaf dhcpv6_relay_vrf_select {
                     type scommon:mode-enable;
                     default disable;
+                }
+
+                leaf description {
+                    type string;
                 }
 	    }
         }

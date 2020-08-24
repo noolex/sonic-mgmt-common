@@ -446,6 +446,33 @@ var DbToYang_network_instance_enabled_field_xfmr FieldXfmrDbtoYang = func(inPara
         return res_map, err
 }
 
+func ValidateInbandMgmtConfigOnMgmtVRF(d *db.DB) error {
+    var err error
+
+    mgmtVrfTblSpec := &db.TableSpec{Name:"MGMT_VRF_CONFIG"}
+    key :=db.Key{Comp: []string{"vrf_global"}}
+    dbEntry, err := d.GetEntry(mgmtVrfTblSpec, key)
+    if err != nil {
+        return err
+    }
+    log.Infof("ValidateInbandMgmtConfigOnMgmtVRF")
+    mgmt_vrf_enabled := (&dbEntry).Get("mgmtVrfEnabled")
+    if mgmt_vrf_enabled == "" {
+        return err
+    }
+    in_band_mgmt := (&dbEntry).Get("in_band_mgmt_enabled")
+    if in_band_mgmt == "" {
+        return err
+    }
+    if ((mgmt_vrf_enabled == "true") && (in_band_mgmt == "true")) {
+        errStr := "Management VRF is associated with data interface(s), unbind them before VRF deletion!"
+        log.Info(":ValidateInbandMgmtConfigOnMgmtVRF ", errStr);
+        err = tlerr.InvalidArgsError{Format: errStr}
+    }
+    return err
+}
+
+
 // YangToDb_network_instance_table_key_xfmr is a YangToDB key transformer for top level network instance
 var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
         var vrfTbl_key  string
@@ -460,13 +487,23 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
         log.Info("YangToDb_network_instance_table_key_xfmr: ", vrfTbl_key)
 
         /* Validate:
-         * - if management VRF is used by TACACS+ server, deletion is not allowed
+         * - if management VRF is used by TACACS+ server or in-band data interfaces, deletion is not allowed
            -
          */
         if (keyName == "mgmt" && inParams.oper == DELETE) {
             err = ValidateTacplusServerNotUseMgmtVRF(inParams.d)
             if err != nil {
                 return vrfTbl_key, err
+            }
+            requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
+            log.Info("YangToDb_network_instance_table_key_xfmr request URI: ", requestUriPath)
+            if ((requestUriPath == "/openconfig-network-instance:network-instances/network-instance") ||
+                (requestUriPath == "/openconfig-network-instance:network-instances")) {
+                // Validate only for mgmt VRF delete
+                err = ValidateInbandMgmtConfigOnMgmtVRF(inParams.d)
+                if err != nil {
+                    return vrfTbl_key, err
+                }
             }
         }
 
@@ -484,7 +521,6 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
              (inParams.oper == DELETE)) {
 
                 if keyName == "mgmt" {
-                        subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
                         resMap := make(map[string]map[string]db.Value)
                         sshVrfMap := make(map[string]db.Value)
 
@@ -494,8 +530,14 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
 
                         log.Infof("ssh server vrf %v", sshVrfMap)
                         resMap["SSH_SERVER_VRF"] = sshVrfMap
-                        subOpMap[db.ConfigDB] = resMap
-                        inParams.subOpDataMap[inParams.oper] = &subOpMap
+
+                        if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil {
+                            mapCopy((*inParams.subOpDataMap[inParams.oper])[db.ConfigDB], resMap)
+                        } else {
+                            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+                            subOpMap[db.ConfigDB] = resMap
+                            inParams.subOpDataMap[inParams.oper] = &subOpMap
+                        }
                 }
         }
 
@@ -704,6 +746,51 @@ var DbToYang_network_instance_route_distinguisher_field_xfmr KeyXfmrDbToYang = f
         return res_map, err
 }
 
+func inBandMgmtFieldUpdate(inParams XfmrParams, is_set bool) error {
+    var err error
+    mgmtVrfTblSpec := &db.TableSpec{Name:"MGMT_VRF_CONFIG"}
+    key :=db.Key{Comp: []string{"vrf_global"}}
+    dbEntry, err := inParams.d.GetEntry(mgmtVrfTblSpec, key)
+    mgmt_vrf_enabled := (&dbEntry).Get("mgmtVrfEnabled")
+    log.Infof("Mgmt VRF %s", mgmt_vrf_enabled)
+    if mgmt_vrf_enabled == "true" {
+        in_band_mgmt := (&dbEntry).Get("in_band_mgmt_enabled")
+        log.Infof("Mgmt VRF in-band %s", in_band_mgmt)
+        var update_req bool = false
+        if is_set {
+            if ((in_band_mgmt == "") || (in_band_mgmt == "false")) {
+                update_req = true
+            }
+        } else if (in_band_mgmt == "true") {
+            update_req = true
+        }
+        if update_req {
+            resMap := make(map[string]map[string]db.Value)
+            mgmtVrfMap := make(map[string]db.Value)
+
+            mgmtVrfDbValues  := db.Value{Field: map[string]string{}}
+            (&mgmtVrfDbValues).Set("in_band_mgmt_enabled", "true")
+            mgmtVrfMap["vrf_global"] = mgmtVrfDbValues
+
+            log.Infof("Mgmt VRF %v op:%d", mgmtVrfMap, is_set)
+            resMap["MGMT_VRF_CONFIG"] = mgmtVrfMap
+
+            oper := DELETE
+            if is_set {
+                oper = UPDATE
+            }
+            if inParams.subOpDataMap[oper] != nil && (*inParams.subOpDataMap[oper])[db.ConfigDB] != nil {
+                mapCopy((*inParams.subOpDataMap[oper])[db.ConfigDB], resMap)
+            } else {
+                subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+                subOpMap[db.ConfigDB] = resMap
+                inParams.subOpDataMap[oper] = &subOpMap
+            }
+        }
+    }
+    return err
+}
+
 // YangToDb_network_instance_interface_binding_subtree_xfmr is a YangToDb subtree transformer for network instance interface binding
 var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
         var err error
@@ -723,7 +810,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         keyName := pathInfo.Var("name")
         intfId := pathInfo.Var("id")
 
-        if ((keyName == "") || (keyName == "mgmt")) {
+        if (keyName == "") {
                 log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: no intf binding for VRF ", keyName)
                 return res_map, err
         }
@@ -805,6 +892,10 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                                         (&dbVal).Set("vrf_name", keyName)
                                 }
                         }
+                }
+
+                if keyName == "mgmt" {
+                    inBandMgmtFieldUpdate(inParams, false)
                 }
                 log.Infof("YangToDb_network_instance_interface_binding_subtree_xfmr: delete VRF %v res_map %v", keyName, res_map)
                 return res_map, err
@@ -903,6 +994,9 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
             if err != nil {
                 return res_map, err
             }
+            if keyName == "mgmt" {
+                inBandMgmtFieldUpdate(inParams, true)
+            }
         } else {
             // VRF Unbind case. Check if all IP has been deleted before VRF unbind
 		    ipKeys, _ := inParams.d.GetKeysPattern(&db.TableSpec{Name: intf_tbl_name}, db.Key{Comp: []string{ *ifName, "*" }})
@@ -946,6 +1040,36 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                 (&dbVal).Set("vrf_name", keyName)
         }
 
+        if ((keyName == "mgmt") && (inParams.oper == DELETE)) {
+            // If no L3 interface is associated with mgmt VRF, 
+            // delete the in_band_mgmt_enabled field in MGMT_VRF_CONFIG table.
+            var last_in_band_intf_in_mgmt_vrf = true
+            for _, tblName := range intf_tbl_name_list {
+                intfTable := &db.TableSpec{Name: tblName}
+                intfKeys, err := inParams.d.GetKeys(intfTable)
+                if err != nil {
+                    continue
+                }
+                for i := range intfKeys {
+                    /* vrf_name is only in the entry with intf name alone as the key */
+                    if (len(intfKeys[i].Comp)) > 1 {
+                        continue
+                    }
+                    tempIntfName  := intfKeys[i].Comp
+                    if tempIntfName[0] == *ifName {
+                        continue
+                    }
+                    intfEntry,_ := inParams.d.GetEntry(intfTable, intfKeys[i])
+                    vrfName_str := (&intfEntry).Get("vrf_name")
+                    if (vrfName_str == keyName) {
+                        last_in_band_intf_in_mgmt_vrf = false
+                    }
+                }
+            }
+            if last_in_band_intf_in_mgmt_vrf {
+                inBandMgmtFieldUpdate(inParams, false)
+            }
+        }
         log.Infof("YangToDb_network_instance_interface_binding_subtree_xfmr: set vrf_name %v for %v in %v",
                   keyName, intfId, intf_tbl_name)
 
@@ -978,11 +1102,6 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
         targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
         log.Info("DbToYang_network_instance_interface_binding_subtree_xfmr, targeturiPath: ", targetUriPath)
-
-        if (pathNwInstName  == "mgmt") {
-                log.Info("DbToYang_network_instance_interface_binding_subtree_xfmr, no intf binding for: ", pathNwInstName)
-                return err
-        }
 
         /* If nwInst name and intf Id are given, get the db entry directly, else go through all interface tables */
         if ((pathNwInstName != "") && (pathIntfId != "")) {

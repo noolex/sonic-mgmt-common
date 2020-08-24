@@ -32,7 +32,60 @@ func init() {
 	XlateFuncBind("rpc_image_install", rpc_image_install)
   XlateFuncBind("rpc_image_remove", rpc_image_remove)
   XlateFuncBind("rpc_image_default", rpc_image_default)
+  XlateFuncBind("YangToDb_image_table_key_xfmr", YangToDb_image_table_key_xfmr)
+  XlateFuncBind("DbToYang_image_table_key_xfmr", DbToYang_image_table_key_xfmr)
+  XlateFuncBind("YangToDb_image_global_key_xfmr", YangToDb_image_global_key_xfmr)
+  XlateFuncBind("DbToYang_image_global_key_xfmr", DbToYang_image_global_key_xfmr)  
 }
+
+
+var YangToDb_image_table_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+
+  var err error
+  pathInfo := NewPathInfo(inParams.uri)
+
+  iName := pathInfo.Var("image-name")
+  log.Infof("YangToDb_image_table_key_xfmr img-name %s, uri: %s", iName, inParams.uri)
+  if len(iName) == 0 {
+        return "", errors.New("image name is missing")
+  }
+
+  return iName, err
+}
+
+var DbToYang_image_table_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+  rmap := make(map[string]interface{})
+  var err error
+  log.Infof("DbToYang_image_table_key_xfmr uri: %s, key %s", inParams.uri, inParams.key)
+  rmap["image-name"] = inParams.key
+  return rmap, err
+}
+
+
+var YangToDb_image_global_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+  var err error
+  pathInfo := NewPathInfo(inParams.uri)
+
+  key := pathInfo.Var("global-key")
+  log.Infof("YangToDb_image_table_key_xfmr uri: %s , key %s ", inParams.uri, key)
+  if len(key) == 0 {
+       return "", errors.New("Global key missing.")
+  }
+
+  if key != "CONFIG" {
+       return "", errors.New("Invalid global key.")      
+  }
+  return "config", err
+}
+
+var DbToYang_image_global_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+  rmap := make(map[string]interface{})
+  var err error
+  log.Info("DbToYang_image_global_key_xfmr root, uri: ", inParams.uri)
+  rmap["global-key"] = "CONFIG"
+  return rmap, err
+}
+
 
 
 var rpc_image_install RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {

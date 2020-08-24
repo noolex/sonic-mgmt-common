@@ -125,7 +125,7 @@ module openconfig-routing-policy-ext {
         description
             "Configuration data for action type";
         leaf action {
-            type routing-policy-ext-action-type;
+            type oc-rpol-ext:routing-policy-ext-action-type;
             description
                 "Select the action, accept or reject.";
         }
