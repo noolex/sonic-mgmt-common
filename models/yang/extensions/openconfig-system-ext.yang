@@ -675,25 +675,55 @@ module openconfig-system-ext {
         }
     }
 
-    rpc logger {
+    rpc sys-log-count {
         description
-            "enter messages into the system log";
-        input {
-            leaf messages {
-               type string; 
-               description
-                    "messages into the system log";
-            }
-        }
-
+            "total number of system log entries";
         output {
             leaf result{
+               type string;
+               description
+                    "total number of system log entries";
+           }
+        }
+    }
+    rpc set-loglevel-severity {
+        description
+            "logging severity level setting";
+        input {
+            leaf loglevel{
+                type string; 
+                description
+                    "loglevel value";
+            }
+            leaf component-name {
+                type string; 
+                description
+                    "component name in DB for which loglevel is applied (provided with loglevel): component name or all";
+            }
+            leaf sai-component {
+                type boolean; 
+                default false;
+                description
+                    "apply loglevel for SAI api component";
+            }
+        }
+        output {
+            leaf-list status-detail{
                type string;
                description
                     "The detailed status of the operation execution request.";
            }
         }
     }
-
-
+    rpc get-loglevel-severity {
+        description
+           "print components registered in DB for which setting can be applied";
+        output {
+            leaf-list status-detail{
+               type string;
+               description
+                    "The detailed status of the operation execution request.";
+           }
+        }
+    }
 }

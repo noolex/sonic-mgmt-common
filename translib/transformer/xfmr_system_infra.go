@@ -21,7 +21,9 @@ func init () {
     XlateFuncBind("rpc_infra_config_cb",  rpc_infra_config_cb)
     XlateFuncBind("rpc_infra_show_sys_log_cb",  rpc_infra_show_sys_log_cb)
     XlateFuncBind("rpc_infra_clear_sys_log_cb",  rpc_infra_clear_sys_log_cb)
-    XlateFuncBind("rpc_infra_logger_cb",  rpc_infra_logger_cb)
+    XlateFuncBind("rpc_infra_sys_log_count_cb",  rpc_infra_sys_log_count_cb)
+    XlateFuncBind("rpc_infra_set_loglevel_severity_cb",  rpc_infra_set_loglevel_severity_cb)
+    XlateFuncBind("rpc_infra_get_loglevel_severity_cb",  rpc_infra_get_loglevel_severity_cb)
 }
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -231,7 +233,6 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
         }
 
         cmd := "cp -f " + HOST_SYSLOG + " " + HOST_SYSLOG1 +" " + MGM_DIR
-        log.Info("rpc_infra_show_sys_log cmd:", cmd)
 
         host_output := HostQuery("infra_host.exec_cmd", cmd)
         if host_output.Err != nil {
@@ -308,48 +309,124 @@ var rpc_infra_clear_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*d
         return result, err
 }
 
-var rpc_infra_logger_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-        log.Info("rpc_infra_logger_cb body:", string(body))
+
+var rpc_infra_sys_log_count_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
         var err error
-        var operand struct {
-                Input struct {
-                        Messages string `json:"messages"`
-                } `json:"openconfig-system-ext:input"`
-        }
+        var HOST_SYSLOG="/var/log/syslog"
+        var HOST_SYSLOG1="/var/log/syslog.1"
 
-        err = json.Unmarshal(body, &operand)
-        if err != nil {
-                log.Errorf("rpc_infra_reboot_cb: Failed to parse rpc input; err=%v", err)
-                return nil,tlerr.InvalidArgs("Invalid rpc input")
-        }
-
-        var exec struct {
+        var _exec struct {
                 Output struct {
                         Result string `json:"result"`
                 } `json:"openconfig-system-ext:output"`
         }
 
-        cmd := "logger " + operand.Input.Messages 
-        log.Info("rpc_infra_logger_cb cmd: ", cmd)
+    	cmd := fmt.Sprintf(" wc -l %s %s | grep total ",HOST_SYSLOG1, HOST_SYSLOG)
 
         host_output := HostQuery("infra_host.exec_cmd", cmd)
         if host_output.Err != nil {
-              log.Errorf("rpc_infra_logger_cb: host Query failed: err=%v", host_output.Err)
-              exec.Output.Result = "[FAILED] host query"
+              msg := fmt.Sprintf("[FAILED] host Query failed: err=%v", host_output.Err) 
+              _exec.Output.Result = msg 
+              result, err := json.Marshal(&_exec)
+              return result, err
+        }
+
+        var output string
+        var _array []string
+        output, _ = host_output.Body[1].(string)
+        _output := strings.TrimSpace(output)
+        _array = strings.Fields(_output)
+        if (len(_array) > 1) {
+           _exec.Output.Result = _array[len(_array)-2]
+        } else {
+           log.Errorf("rpc_infra_sys_log_count: [FAILED]: ", _array)
+           _exec.Output.Result = "[FAILED]" 
+        }
+        result, err := json.Marshal(&_exec)
+        return result, err
+}
+
+var rpc_infra_set_loglevel_severity_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        var err error
+        var exec_cmd string
+        var operand struct {
+                Input struct {
+                        LogLevel string `json:"loglevel"`
+                        Component string `json:"component-name"`
+                        IsSAI bool `json:"sai-component"`
+                } `json:"openconfig-system-ext:input"`
+        }
+        var exec struct {
+                Output struct {
+                        Result []string `json:"status-detail"`
+                } `json:"openconfig-system-ext:output"`
+        }
+        err = json.Unmarshal(body, &operand)
+        if err != nil {
+              exec.Output.Result = append(exec.Output.Result, "[FAILED] to umarshal input data")
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+        loglevel := operand.Input.LogLevel
+        component := operand.Input.Component
+        is_sai := operand.Input.IsSAI
+        if component != "string" && len(component) > 0 && loglevel != "string" && len(loglevel) > 0{
+             if component == "all" {
+                exec_cmd = "swssloglevel -l " + loglevel + " -a"  
+             } else {
+                exec_cmd = "swssloglevel -l " + loglevel + " -c " + component  
+             }
+        }
+        if is_sai {
+              exec_cmd = exec_cmd + " -s"
+        } 
+
+     return loglevel_severity_operation("config", exec_cmd)
+}
+
+var rpc_infra_get_loglevel_severity_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+     exec_cmd := "swssloglevel -p"
+     return loglevel_severity_operation("display", exec_cmd)
+
+}
+
+func loglevel_severity_operation(ops_cmd string, exec_cmd string) ([]byte, error) {
+
+        log.Info("loglevel_severity_operation cmd:", exec_cmd)
+
+        var err error
+        var out_list []string
+
+
+        var exec struct {
+                Output struct {
+                        Result []string `json:"status-detail"`
+                } `json:"openconfig-system-ext:output"`
+        }
+
+        host_output := HostQuery("infra_host.exec_cmd", exec_cmd)
+        if host_output.Err != nil {
+              msg := fmt.Sprintf("[FAILED] host Query failed: err=%v", host_output.Err) 
+              out_list = append(out_list, msg)
+              exec.Output.Result = out_list
               result, err := json.Marshal(&exec)
               return result, err
         }
 
         var output string
         output, _ = host_output.Body[1].(string)
-        if len(output) > 0 {
-           exec.Output.Result = output
+        _output := strings.TrimLeft(output,"\n")
+        if len(_output) > 0 {
+              _out_list := strings.Split(_output,"\n")
+            if ops_cmd == "display" { 
+               out_list = _out_list
+            } else {
+               out_list = append(out_list, _out_list[0])
+            }
         } else {
-           exec.Output.Result = "SUCCESS" 
-        }
+           out_list = append(out_list, "SUCCESS")
+        } 
+        exec.Output.Result = out_list
         result, err := json.Marshal(&exec)
         return result, err
 }
-
-
-
