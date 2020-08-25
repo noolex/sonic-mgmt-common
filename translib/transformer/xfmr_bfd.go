@@ -8,10 +8,11 @@ import (
     "strings"
     "encoding/json"
     "strconv"
-    "os/exec"
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "encoding/binary"
+    "net"
 )
 
 func init () {
@@ -364,38 +365,35 @@ func exec_vtysh_cmd_array (vtysh_cmd string) ([]interface{}, error) {
     var err error
     oper_err := errors.New("Operational error")
 
-    log.Infof("Going to execute vtysh cmd ==> \"%s\"", vtysh_cmd)
-
-    cmd := exec.Command("/usr/bin/docker", "exec", "bgp", "vtysh", "-c", vtysh_cmd)
-    out_stream, err := cmd.StdoutPipe()
+    log.Infof("Going to connect UDS socket call to reach FRR for VTYSH-cmd ==> \"%s\" execution", vtysh_cmd)
+    conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
     if err != nil {
-        log.Errorf("Can't get stdout pipe: %s\n", err)
+        log.Infof("Failed to connect proxy server: %s\n", err)
         return nil, oper_err
     }
-
-    err = cmd.Start()
+    defer conn.Close()
+    bs := make([]byte, 4)
+    binary.BigEndian.PutUint32(bs, uint32(len(vtysh_cmd)))
+    _, err = conn.Write(bs)
     if err != nil {
-        log.Errorf("cmd.Start() failed with %s\n", err)
+        log.Infof("Failed to write command length to server: %s\n", err)
+        return nil, oper_err
+    }
+    _, err = conn.Write([]byte(vtysh_cmd))
+    if err != nil {
+        log.Infof("Failed to write command length to server: %s\n", err)
         return nil, oper_err
     }
 
     var outputJson []interface{}
-    err = json.NewDecoder(out_stream).Decode(&outputJson)
+    err = json.NewDecoder(conn).Decode(&outputJson)
     if err != nil {
-        log.Errorf("Not able to decode vtysh json output as array of objects: %s\n", err)
+        log.Errorf("Not able to decode vtysh json output: %s\n", err)
         return nil, oper_err
     }
-
-    err = cmd.Wait()
-    if err != nil {
-        log.Errorf("Command execution completion failed with %s\n", err)
-        return nil, oper_err
-    }
-
-    log.Infof("Successfully executed vtysh-cmd ==> \"%s\"", vtysh_cmd)
 
     if outputJson == nil {
-        log.Errorf("VTYSH output empty !!!")
+        log.Infof("VTYSH output empty\n")
         return nil, oper_err
     }
 

@@ -214,7 +214,7 @@ var YangToDb_qos_intf_pfcwd_st_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
     ifname := pathInfo.Var("interface-id")
     db_if_name := utils.GetNativeNameFromUIName(&ifname)
     if_name := *db_if_name
-    log.Info("YangToDb_qos_intf_pfcwd_st_xfmr         ifname :", ifname)
+    log.Info("YangToDb_qos_intf_pfcwd_st_xfmr         ifname :", if_name)
 
     qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
     if qosIntfsObj == nil {
@@ -474,7 +474,7 @@ func getPfcStats (ifName string, cos uint8, d *db.DB, stats *ocbinds.OpenconfigQ
     var txCntr uint64;
     counters := &db.TableSpec{Name: "COUNTERS"}
     oid := ifCountInfo.Field[ifName]
-    log.Infof("getPfcStats      oid: ", oid)
+    log.Infof("getPfcStats      oid: '%v'", oid)
 
     entry, err := d.GetEntry(counters, db.Key{Comp: []string{oid}})
     if err != nil {
@@ -499,6 +499,7 @@ func getPfcStats (ifName string, cos uint8, d *db.DB, stats *ocbinds.OpenconfigQ
         rxCntr = rxCntr - backupCntr
     } else {
         // it is OK that a snapshot does not exist. Just means the counters have not been "cleared"
+        err = nil
         log.Info("getPfcStats      counter snapshot does not exist.")
     }
 
@@ -582,6 +583,7 @@ func getPfcQueueStats (ifName string, queue uint8, d *db.DB, stats *ocbinds.Open
         txPacketsLastCntr = txPacketsLastCntr - backupCntr
     } else {
         // it is OK that a snapshot does not exist. Just means the counters have not been "cleared"
+        err = nil
         log.Info("getPfcQueue      counter snapshot does not exist.")
     }
 
@@ -605,6 +607,9 @@ var DbToYang_qos_intf_pfc_counters_st_xfmr SubTreeXfmrDbToYang = func(inParams X
   var err error
   pathInfo := NewPathInfo(inParams.uri)
   ifname := pathInfo.Var("interface-id")
+  dbIfName := utils.GetNativeNameFromUIName(&ifname)
+  if_name := *dbIfName
+  log.Info("DbToYang_qos_intf_pfc_counters_st_xfmr: ", if_name)
   dot1p  := pathInfo.Var("dot1p")
   cos32, _ := strconv.Atoi(dot1p)
   cos := uint8(cos32)
@@ -630,7 +635,7 @@ var DbToYang_qos_intf_pfc_counters_st_xfmr SubTreeXfmrDbToYang = func(inParams X
 
   ygot.BuildEmptyTree(statsObj)
 
-  err = getPfcStats(ifname, cos, inParams.dbs[db.CountersDB], statsObj)
+  err = getPfcStats(if_name, cos, inParams.dbs[db.CountersDB], statsObj)
 
   return err
 }
@@ -642,6 +647,9 @@ var DbToYang_qos_intf_pfc_queue_counters_st_xfmr SubTreeXfmrDbToYang = func(inPa
 
   pathInfo := NewPathInfo(inParams.uri)
   ifname := pathInfo.Var("interface-id")
+  dbIfName := utils.GetNativeNameFromUIName(&ifname)
+  if_name := *dbIfName
+  log.Info("DbToYang_qos_intf_pfc_queue_counters_st_xfmr: ", if_name)
   queue  := pathInfo.Var("queue")
   queue32, _ := strconv.Atoi(queue)
   que := uint8(queue32)
@@ -668,7 +676,7 @@ var DbToYang_qos_intf_pfc_queue_counters_st_xfmr SubTreeXfmrDbToYang = func(inPa
 
   ygot.BuildEmptyTree(statsObj)
 
-  err = getPfcQueueStats(ifname, que, inParams.dbs[db.CountersDB], statsObj)
+  err = getPfcQueueStats(if_name, que, inParams.dbs[db.CountersDB], statsObj)
 
   return err
 }

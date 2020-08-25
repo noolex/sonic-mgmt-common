@@ -1272,15 +1272,33 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 	err := fmt.Errorf("Unable to extract leaf-list instance value for uri - %v", uri)
 
 	xpath, xerr := XfmrRemoveXPATHPredicates(uri)
-	specInfo, ok := xYangSpecMap[xpath]
-	if !ok {
-		return leafListInstVal, xerr
-	}
-
-	yangType = yangTypeGet(specInfo.yangEntry)
-	if !(yangType == YANG_LEAF_LIST) {
-		return leafListInstVal, err
-	}
+        if !isSonicYang(uri) {
+                specInfo, ok := xYangSpecMap[xpath]
+                if !ok {
+                        return leafListInstVal, xerr
+                }
+                yangType = yangTypeGet(specInfo.yangEntry)
+                if !(yangType == YANG_LEAF_LIST) {
+                        return leafListInstVal, err
+                }
+        } else {
+                tokens:= strings.Split(xpath, "/")
+                fieldName := ""
+                tableName := ""
+                if len(tokens) > SONIC_FIELD_INDEX {
+                        fieldName = tokens[SONIC_FIELD_INDEX]
+                        tableName = tokens[SONIC_TABLE_INDEX]
+                }
+                dbSpecField := tableName + "/" + fieldName
+                _, ok := xDbSpecMap[dbSpecField]
+                if ok {
+                        yangType := xDbSpecMap[dbSpecField].fieldType
+                        // terminal node case
+                        if !(yangType == YANG_LEAF_LIST) {
+                                return leafListInstVal, err
+                        }
+                }
+        }
 
 	//Check if uri has Leaf-list value
 	if ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
