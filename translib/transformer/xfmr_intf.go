@@ -949,7 +949,8 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses") {
         tblList = append(tblList, intTbl.cfgDb.intfTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") ||
-              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan") {
+               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan") {
+        if IntfTypeVlan == intfType {
 	     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/config") ||
                  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/config") ||
                  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/config") ||
@@ -968,6 +969,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
              } else {
                  tblList = append(tblList, intTbl.cfgDb.intfTN)
              }
+        }
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
         if inParams.oper != DELETE {
