@@ -1833,6 +1833,12 @@ module openconfig-ospfv2-ext {
         "OSPF authentication password string.";
     }
 
+    leaf authentication-key-encrypted {
+      type boolean;
+      description
+         "OSPF authentication password string is encrypted.";
+    }
+
     leaf authentication-key-id {
       type uint8;
       description
@@ -1886,6 +1892,8 @@ module openconfig-ospfv2-ext {
             uses oc-ospfv2:ospfv2-area-interface-timers-config;
             uses ospfv2-ext-area-interface-timers-config;
          }
+
+         uses ospfv2-ext-message-digest-authentication-top;
        }
     }
   }
@@ -2319,6 +2327,71 @@ module openconfig-ospfv2-ext {
     }
   }
 
+
+  grouping ospfv2-ext-message-digest-authentication-config {
+    description
+      "Configuration parameters relating to a message digest authentication";
+
+    leaf authentication-key-id {
+      type uint8;
+      description
+        "Message digest key ID";
+    }
+
+    leaf authentication-md5-key {
+      type string;
+      description
+        "OSPF authentication password string.";
+    }
+
+    leaf authentication-key-encrypted {
+      type boolean;
+      description
+         "OSPF authentication password string is encrypted.";
+    }
+  }
+
+  grouping ospfv2-ext-message-digest-authentication-top {
+    description
+      "Configuration parameters relating to a message digest authentication";
+
+    container md-authentications {
+      description
+        "Configuration and state parameters relating
+        message digest authentication";
+
+      list md-authentication {
+        key "authentication-key-id";
+
+        description
+          "Configuration and state parameters relating
+          message digest authentication";
+
+        leaf authentication-key-id {
+          type leafref {
+            path "../config/authentication-key-id";
+          }
+          description
+            "Authentication key ID";
+        }
+
+        container config {
+          description
+             "Configuration parameters relating to a message digest authentication";
+          uses ospfv2-ext-message-digest-authentication-config;
+        }
+
+        container state {
+          config false;
+          description
+            "State parameters relating to a message digest authentication";
+          uses ospfv2-ext-message-digest-authentication-config;
+        }
+      }
+    }
+  }
+
+
   grouping ospfv2-ext-area-virtual-link-config {
     description
       "Configuration parameters relating to a virtual-link within
@@ -2341,6 +2414,12 @@ module openconfig-ospfv2-ext {
       type string;
       description
         "OSPF authentication password string.";
+    }
+
+    leaf authentication-key-encrypted {
+      type boolean;
+      description
+         "OSPF authentication password string is encrypted.";
     }
 
     leaf authentication-key-id {
@@ -2981,6 +3060,15 @@ module openconfig-ospfv2-ext {
     description
       "extra parameters related to ospfv2 areas area virtual-links virtual-link config";
     uses ospfv2-ext-area-virtual-link-config;
+  }
+
+  augment "/oc-netinst:network-instances/oc-netinst:network-instance" +
+          "/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:ospfv2" +
+          "/oc-netinst:areas/oc-netinst:area/oc-netinst:virtual-links" +
+          "/oc-netinst:virtual-link" {
+    description
+      "extra parameters related to ospfv2 areas area virtual-links virtual-link config";
+    uses ospfv2-ext-message-digest-authentication-top;
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance" +

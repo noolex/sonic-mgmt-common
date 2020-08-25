@@ -276,6 +276,12 @@ module sonic-ospfv2 {
            default "OSPFv2 Area";
         }
 
+        leaf enable {
+          type boolean;
+          description
+            "Enable/Disable area";
+        }
+
         leaf authentication {
           type string;
           description
@@ -391,6 +397,12 @@ module sonic-ospfv2 {
              default "Network address";
         }
 
+        leaf enable {
+          type boolean;
+          description
+            "Enable/Disable area network";
+        }
+
       } //OSPFV2_ROUTER_AREA_NETWORK_LIST
     } //OSPFV2_ROUTER_AREA_NETWORK
 
@@ -447,6 +459,12 @@ module sonic-ospfv2 {
           type string;
           description
             "OSPF authentication password string.";
+        }
+
+        leaf authentication-key-encrypted {
+          type boolean;
+          description
+            "Authentication key is in encrypted format";
         }
 
         leaf authentication-key-id {
@@ -507,6 +525,57 @@ module sonic-ospfv2 {
         }
       } //OSPFV2_ROUTER_AREA_VIRTUAL_LINK_LIST
     } //OSPFV2_ROUTER_AREA_VIRTUAL_LINK
+
+
+    container OSPFV2_ROUTER_AREA_VLMD_AUTHENTICATION {
+      description
+        "OSPFv2 passive interface configuration table.";
+
+      list OSPFV2_ROUTER_AREA_VLMD_AUTHENTICATION_LIST {
+
+        key "vrf_name area-id remote-router-id authentication-key-id";
+
+        leaf vrf_name {
+          type leafref {
+            path "../../../OSPFV2_ROUTER/OSPFV2_ROUTER_LIST/vrf_name";
+          }
+          description
+            "OSPF router VRF name";
+        }
+
+        leaf area-id {
+          type sonic-ospf-cmn:ospf-area-identifier;
+          description
+             "Virtual link transit Area Id";
+        }
+
+        leaf remote-router-id {
+          type ietf-yang:dotted-quad;
+          description
+            "The router ID of the remote OSPFv2 ABR router.";
+        }
+
+        leaf authentication-key-id {
+          type uint8 {
+            range "1..255";
+          }
+          description
+            "Message digest key ID";
+        }
+
+        leaf authentication-md5-key {
+          type string;
+          description
+            "Authentication key";
+        }
+
+        leaf authentication-key-encrypted { 
+          type boolean;
+          description
+            "Authentication key is in encrypted format";
+        }
+      } //OSPFV2_ROUTER_AREA_VLMD_AUTHENTICATION_LIST
+    }//OSPFV2_ROUTER_AREA_VLMD_AUTHENTICATION
 
 
     container OSPFV2_ROUTER_AREA_POLICY_ADDRESS_RANGE {
@@ -571,6 +640,12 @@ module sonic-ospfv2 {
           type ietf-inet:ipv4-prefix;
           description
             "Substitute Address prefix for the OSPF address";
+        }
+
+        leaf enable {
+          type boolean;
+          description
+            "Enable/Disable area address range";
         }
 
       } //OSPFV2_ROUTER_AREA_POLICY_ADDRESS_RANGE_LIST
@@ -718,6 +793,12 @@ module sonic-ospfv2 {
              "The Interface address";
          }
 
+         leaf enable {
+           type boolean;
+           description
+              "Interface OSPF is enabled.";
+         }
+
          leaf network-type {
            type sonic-ospf-cmn:ospf-network-type;
            description
@@ -837,6 +918,54 @@ module sonic-ospfv2 {
        } //OSPFV2_INTERFACE_LIST
      } //OSPFV2_INTERFACE
 
+
+    container OSPFV2_INTERFACE_MD_AUTHENTICATION {
+      description
+        "OSPFv2 passive interface configuration table.";
+
+      list OSPFV2_INTERFACE_MD_AUTHENTICATION_LIST {
+
+        key "name address authentication-key-id";
+
+        leaf name {
+          type sonic-ospf-cmn:ospf-interface;
+          description
+            "The name of the passive interface .";
+         }
+
+        leaf address {
+          type ietf-inet:ipv4-address-no-zone;
+          description
+              "Interface IP address";
+        }
+
+        leaf authentication-key-id {
+          type uint8 {
+            range "1..255";
+          }
+          description
+            "Message digest key ID";
+        }
+
+        leaf enable {
+           type boolean;
+           description
+             "OSPF Interface authentication is present.";
+        }
+
+        leaf authentication-md5-key {
+          type string;
+          description
+            "Authentication key";
+        }
+
+        leaf authentication-key-encrypted {
+          type boolean;
+          description
+            "Authentication key is in encrypted format";
+        }
+      } //OSPFV2_INTERFACE_MD_AUTHENTICATION_LIST
+    }//OSPFV2_INTERFACE_MD_AUTHENTICATION
 
 
 
