@@ -1,0 +1,154 @@
+submodule openconfig-tam-ifa {
+    yang-version 1.1;
+
+    // main module reference
+    belongs-to openconfig-tam {
+        prefix oc-tam;
+    }
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+    import openconfig-tam-types {
+        prefix oc-tam-types;
+    }
+
+    // meta
+    organization
+      "SONiC";
+    contact
+      "SONiC";
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    identity IFA {
+        base oc-tam-types:TAM_FEATURE;
+        description
+          "IFA 2.0 feature";
+    }
+
+    // typedef statements
+    typedef ifa-node-type {
+        type enumeration {
+            enum INGRESS {
+                description
+                  "The switch acts as an ingress node for the specific flow";
+            }
+            enum EGRESS {
+                description
+                  "The switch acts as an egress node for the specific flow";
+            }
+            enum INTERMEDIATE {
+                description
+                  "The switch acts as a transit node for the specific flow";
+            }
+        }
+        description
+          "IFA node selection for the specific flow";
+    }
+
+    // grouping statements
+    grouping tam-ifa-config {
+        description
+          "Individual TAM IFA session definition";
+        leaf name {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "IFA session name, for reference from elsewhere";
+        }
+        leaf flowgroup {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Flow Group to be used for IFA";
+        }
+        leaf collector {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            description
+              "Collector to be used for IFA for this session";
+        }
+        leaf sample-rate {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            description
+              "Sample-rate to be used for IFA for this session";
+        }
+        leaf node-type {
+            type ifa-node-type;
+            default "INTERMEDIATE";
+            description
+              "IFA node selection for the specific session";
+        }
+    }
+
+    grouping tam-ifa-state {
+        description
+          "Operational state container for sessions";
+    }
+
+    grouping tam-ifa-top {
+        description
+          "Top-level grouping for sessions";
+        container ifa-sessions {
+            description
+              "top-level container for tam IFA configuration";
+            list ifa-session {
+                key "name";
+                description
+                  "Uniqueuly identifies a flow-group";
+                leaf name {
+                    type leafref {
+                        path "../config/name";
+                    }
+                    description
+                      "Key for the flow-group list";
+                }
+                container config {
+                    description
+                      "Configuration Data";
+                    uses tam-ifa-config;
+                }
+                container state {
+                    config false;
+                    description
+                      "Operational state data";
+                    uses tam-ifa-config;
+                    uses tam-ifa-state;
+                }
+            }
+        }
+    }
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}

@@ -1,0 +1,100 @@
+module sonic-tam-collectors {
+    yang-version 1.1;
+
+    // namespace
+    namespace "http://github.com/Azure/sonic-tam-collectors";
+
+    prefix sonic-tam-collectors;
+
+    // import some basic types
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    // data definition statements
+    container sonic-tam-collectors {
+        description
+          "top-level container";
+
+        container TAM_COLLECTORS_TABLE {
+            description
+              "tam-collector table in the config-db";
+
+            list TAM_COLLECTORS_TABLE_LIST {
+                key name;
+
+                description
+                  "Individual collector configuration";
+
+                leaf name {
+                    type string {
+                        length "1..32";
+                        pattern
+                          '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                    }
+                    sonic-ext:custom-validation CollectorValidation;
+                    mandatory true;
+                    description
+                      "Collector name, for reference from elsewhere";
+                }
+                leaf ip {
+                    type inet:ip-address;
+                    mandatory true;
+                    description
+                      "IP Address of the collector";
+                }
+                leaf port {
+                    type inet:port-number;
+                    mandatory true;
+                    description
+                      "Layer-4 port-number on which collector
+                       may be listening on";
+                }
+                leaf protocol {
+                    type enumeration {
+                        enum UDP {
+                            description
+                              "Use UDP to reach collector";
+                        }
+                        enum TCP {
+                            description
+                              "Use TCP to reach collector";
+                        }
+                    }
+                    default UDP;
+                    description
+                      "Protocol to be used for reaching collector";
+                }
+            }
+        }
+    }
+// augment statements
+// rpc statements
+// notification statements
+}

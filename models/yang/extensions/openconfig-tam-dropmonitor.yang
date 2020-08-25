@@ -1,0 +1,176 @@
+submodule openconfig-tam-dropmonitor {
+    yang-version 1.1;
+
+    // main module reference
+    belongs-to openconfig-tam {
+        prefix oc-tam;
+    }
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+    import openconfig-tam-types {
+        prefix oc-tam-types;
+    }
+
+    // meta
+    organization
+      "SONiC";
+    contact
+      "SONiC";
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    identity DROPMONITOR {
+        base oc-tam-types:TAM_FEATURE;
+        description
+          "Drop Monitor feature";
+    }
+
+    // typedef statements
+    // grouping statements
+    grouping tam-dropmonitor-sessions-config {
+        description
+          "Individual TAM Drop Monitor session definition";
+        leaf name {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Drop Monitor session name, for reference from elsewhere";
+        }
+        leaf flowgroup {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Flow Group to be used for Drop Monitor";
+        }
+        leaf collector {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Collector to be used for Drop Monitor for this session";
+        }
+        leaf sample-rate {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Sample-rate to be used for Drop Monitor for this session";
+        }
+    }
+
+    grouping tam-dropmonitor-sessions-state {
+        description
+          "Operational state container for sessions";
+    }
+
+    grouping tam-dropmonitor-global-config {
+        description
+          "switch-wide configuration for drop-monitor";
+        leaf aging-interval {
+            type uint16 {
+                range "1..3600";
+            }
+            units "seconds";
+            default "5";
+            description
+              "Interval in seconds for aging out flows";
+        }
+    }
+
+    grouping tam-dropmonitor-global-state {
+        description
+          "TODO:";
+    }
+
+    grouping tam-dropmonitor-global-config-top {
+        description
+          "switch-wide configuration for drop-monitor";
+        container global {
+            description
+              "TODO:";
+            container config {
+                description
+                  "Container holding the dropmonitor config";
+                uses tam-dropmonitor-global-config;
+            }
+            container state {
+                config false;
+                description
+                  "State container";
+                uses tam-dropmonitor-global-config;
+                uses tam-dropmonitor-global-state;
+            }
+        }
+    }
+
+    grouping tam-dropmonitor-top {
+        description
+          "Top-level grouping for dropmonitor";
+        container dropmonitor {
+            description
+              "TODO:";
+            uses tam-dropmonitor-global-config-top;
+            container dropmonitor-sessions {
+                description
+                  "top-level container for tam dropmonitor configuration";
+                list dropmonitor-session {
+                    key "name";
+                    description
+                      "Uniqueuly identifies a session";
+                    leaf name {
+                        type leafref {
+                            path "../config/name";
+                        }
+                        description
+                          "Key for the session list";
+                    }
+                    container config {
+                        description
+                          "Configuration Data";
+                        uses tam-dropmonitor-sessions-config;
+                    }
+                    container state {
+                        config false;
+                        description
+                          "Operational state data";
+                        uses tam-dropmonitor-sessions-config;
+                        uses tam-dropmonitor-sessions-state;
+                    }
+                }
+            }
+        }
+    }
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}

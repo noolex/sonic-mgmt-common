@@ -1,0 +1,149 @@
+module sonic-tam-ifa {
+    yang-version 1.1;
+
+    // namespace
+    namespace "http://github.com/Azure/sonic-tam-ifa";
+
+    prefix sonic-tam-ifa;
+
+    import sonic-acl {
+        prefix sonic-acl;
+    }
+
+    import sonic-tam-collectors {
+        prefix sonic-tam-collectors;
+    }
+
+    import sonic-tam-samplers {
+        prefix sonic-tam-samplers;
+    }
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    // feature statements
+    // identity statements
+    // typedef statements
+    typedef ifa-node-type {
+
+        type enumeration {
+            enum INGRESS {
+                description
+                  "The switch acts as an ingress node for the specific flow";
+            }
+            enum EGRESS {
+                description
+                  "The switch acts as an egress node for the specific flow";
+            }
+            enum INTERMEDIATE {
+                description
+                  "The switch acts as a transit node for the specific flow";
+            }
+        }
+
+        description
+          "IFA node selection for the specific flow";
+    }
+
+    // grouping statements
+    // data definition statements
+    container sonic-tam-ifa {
+        description
+          "top-level container";
+
+        container TAM_IFA_SESSIONS_TABLE {
+            description
+              "tam-ifa-sessions table in the config-db";
+
+            list TAM_IFA_SESSIONS_TABLE_LIST {
+                key name;
+
+                sonic-ext:custom-validation IfaSessionValidation;
+                description
+                  "Individual sessions configuration";
+
+                leaf name {
+                    type string {
+                        length "1..32";
+                        pattern
+                          '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                    }
+                    mandatory true;
+                    description
+                      "Session name, for reference from elsewhere";
+                }
+
+                leaf flowgroup {
+                    type string {
+                        length "1..32";
+                        pattern
+                          '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                    }
+                    must "(/sonic-acl:sonic-acl/sonic-acl:ACL_RULE/sonic-acl:ACL_RULE_LIST/sonic-acl:rulename = current())" {
+                        error-message "Flowgroup does not exist.";
+                        error-app-tag flowgroup-not-exists;
+                    }
+                    mandatory true;
+                    description
+                      "Flowgroup name";
+                }
+
+                leaf collector {
+                    type string {
+                        length "1..32";
+                        pattern
+                          '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                    }
+                    must "(/sonic-tam-collectors:sonic-tam-collectors/sonic-tam-collectors:TAM_COLLECTORS_TABLE/sonic-tam-collectors:TAM_COLLECTORS_TABLE_LIST/sonic-tam-collectors:name = current())" {
+                        error-message "Collector does not exist.";
+                        error-app-tag collector-not-exists;
+                    }
+                    description
+                      "Collector to be used for IFA for this session";
+                }
+
+                leaf sample-rate {
+                    type string {
+                        length "1..32";
+                        pattern
+                          '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                    }
+                    must "(/sonic-tam-samplers:sonic-tam-samplers/sonic-tam-samplers:TAM_SAMPLINGRATE_TABLE/sonic-tam-samplers:TAM_SAMPLINGRATE_TABLE_LIST/sonic-tam-samplers:name = current())" {
+                        error-message "Sampler does not exist.";
+                        error-app-tag sampler-not-exists;
+                    }
+                    description
+                      "Sample-rate to be used for IFA for this session";
+                }
+
+                leaf node-type {
+                    type ifa-node-type;
+                    description
+                      "IFA node selection for the specific session";
+                }
+            }
+        }
+    }
+// augment statements
+// rpc statements
+// notification statements
+}

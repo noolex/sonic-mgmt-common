@@ -1,0 +1,78 @@
+module sonic-tam-samplers {
+    yang-version 1.1;
+
+    // namespace
+    namespace "http://github.com/Azure/sonic-tam-samplers";
+
+    prefix sonic-tam-samplers;
+
+    // import some basic types
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    // data definition statements
+    container sonic-tam-samplers {
+        description
+          "top-level container";
+
+        container TAM_SAMPLINGRATE_TABLE {
+            description
+              "tam-sampling table in the config-db";
+
+            list TAM_SAMPLINGRATE_TABLE_LIST {
+                key name;
+
+                description
+                  "Individual sampler configuration";
+
+                leaf name {
+                    type string {
+                        length "1..32";
+                        pattern
+                          '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                    }
+                    sonic-ext:custom-validation SamplerValidation;
+                    mandatory true;
+                    description
+                      "Name, for reference from elsewhere";
+                }
+
+                leaf sampling-rate {
+                    type uint32;
+                    default "1";
+                    description
+                      "A value of x here implies that one in every x packets
+                       will be sampled at the ingress interface for use by the
+                       Dataplane telemetry features, as applicable. When not
+                       specified, every ingress packet would be sampled";
+                }
+            }
+        }
+    }
+// augment statements
+// rpc statements
+// notification statements
+}

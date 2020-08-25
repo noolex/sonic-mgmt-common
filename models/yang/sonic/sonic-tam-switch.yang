@@ -1,0 +1,128 @@
+module sonic-tam-switch {
+    yang-version 1.1;
+
+    // namespace
+    namespace "http://github.com/Azure/sonic-tam-switch";
+
+    prefix sonic-tam-switch;
+
+    // import some basic types
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    // data definition statements
+    container sonic-tam-switch {
+        description
+          "top-level container";
+
+        container TAM_SWITCH_TABLE {
+            description
+              "tam-switch table in the config-db";
+
+            list TAM_SWITCH_TABLE_LIST {
+                key name;
+
+                description
+                  "switch-wide attributes";
+
+                leaf name {
+                    type enumeration {
+                        enum global {
+                            description
+                              "Global key";
+                        }
+                    }
+                    description
+                      "Global switch-wide attributes";
+                }
+                leaf switch-id {
+                    type uint32;
+                    description
+                      "Switch identifier to be used in all dataplane
+                       telemetry features. Uniquely identifies the switch
+                       in the network. When not configured, the least
+                       significant four bytes of the system mac-address
+                       are used";
+                }
+
+                leaf enterprise-id {
+                    type uint32;
+                    description
+                      "Value to be used as the enterprise-id for all
+                       IPFIX reports emanating from this switch.
+                       When not configured, the OID part of the
+                       system mac-address is used";
+                }
+            }
+        }
+
+        container TAM_APPL_SWITCH_TABLE {
+
+            config false;
+
+            description
+              "top-level container";
+
+            sonic-ext:db-name "APPL_DB";
+            sonic-ext:key-delim ":";
+
+            list TAM_APPL_SWITCH_TABLE_LIST {
+                key name;
+
+                description
+                  "Operational attributes";
+
+                leaf name {
+                    type enumeration {
+                        enum global {
+                            description
+                              "Global key";
+                        }
+                    }
+                    description
+                      "Global switch-wide attributes state";
+                }
+                leaf op-switch-id {
+                    type uint32;
+                    description
+                      "Currently used Switch identifier for all dataplane
+                       telemetry features. Uniquely identifies the switch
+                       in the network.";
+                }
+
+                leaf op-enterprise-id {
+                    type uint32;
+                    description
+                      "Value being be used as the enterprise-id for all
+                       IPFIX reports emanating from this switch";
+                }
+            }
+        }
+    }
+// augment statements
+// rpc statements
+// notification statements
+}

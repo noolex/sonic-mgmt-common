@@ -1,0 +1,147 @@
+submodule openconfig-tam-flowgroups {
+    yang-version 1.1;
+
+    // main module reference
+    belongs-to openconfig-tam {
+        prefix oc-tam;
+    }
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+    import openconfig-inet-types {
+        prefix oc-inet;
+    }
+    import openconfig-packet-match {
+        prefix oc-pkt-match-types;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    grouping tam-flowgroups-config {
+        description
+          "Individual TAM Flow Group definition";
+        leaf name {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Flow Group name, for reference from elsewhere";
+        }
+        leaf id {
+            type uint32;
+            mandatory true;
+            description
+              "Flowgroup identifier to be used in all dataplane
+               reporting regarding this flowgroup. Uniquely identifies the flowgroup.";
+        }
+        leaf priority {
+            type uint16 {
+                range "1..1024";
+            }
+            default "100";
+            description
+              "Indicates the priority of this flowgroup, and used when the
+               specified match criterion is used for packet matching";
+        }
+        leaf ip-version {
+            type oc-inet:ip-version {
+                enum IPV4 {
+                    description
+                      "The IPv4 protocol as defined in RFC 791.";
+                }
+                enum IPV6 {
+                    description
+                      "The IPv6 protocol as defined in RFC 2460.";
+                }
+            }
+            mandatory true;
+            description
+              "IP Address version";
+        }
+    }
+
+    grouping tam-flowgroups-state {
+        description
+          "Operational state container for flowgroups";
+    }
+
+    grouping tam-flowgroups-top {
+        description
+          "Top-level grouping for flowgroups";
+        container flowgroups {
+            description
+              "top-level container for flowgroups";
+            list flowgroup {
+                key "name";
+                description
+                  "Uniqueuly identifies a flow-group";
+                leaf name {
+                    type leafref {
+                        path "../config/name";
+                    }
+                    description
+                      "Key for the flow-group list";
+                }
+                container config {
+                    description
+                      "Configuration Data";
+                    uses tam-flowgroups-config;
+                }
+                container state {
+                    config false;
+                    description
+                      "Operational state data";
+                    uses tam-flowgroups-config;
+                    uses tam-flowgroups-state;
+                }
+                // Various packet match conditions that are supported
+                // re-used from oc-packet-match yang
+                uses oc-pkt-match-types:ethernet-header-top;
+                uses oc-pkt-match-types:ipv4-protocol-fields-top {
+                    when "./config/ip-version = 'IPV4'" {
+                        description
+                          "TODO:";
+                    }
+                }
+                uses oc-pkt-match-types:ipv6-protocol-fields-top {
+                    when "./config/ip-version = 'IPV4'" {
+                        description
+                          "TODO:";
+                    }
+                }
+                uses oc-pkt-match-types:transport-fields-top;
+            }
+        }
+    }
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}
