@@ -559,21 +559,22 @@ func check_port_speed_and_scheduler(inParams XfmrParams, sp_name string, intf st
             spname = key.Comp[0]
         }
 
-        log.Infof("Check sp_name %v key spname %v ", sp_name, spname)
+        log.Infof("Check sp_name :", sp_name, "  spname : ", spname)
         if strings.Compare(sp_name, spname) != 0 {
             continue
         }
 
         schedCfg, _ := inParams.d.GetEntry(dbSpec, key)
         if val, exist := schedCfg.Field["pir"]; exist {
-            pir,_ := strconv.ParseUint(val, 10, 32)
+            pir,_ := strconv.ParseUint(val, 10, 64)
+            log.Info("pir :", pir,  " speed_Bps: ", speed_Bps)
             if pir > speed_Bps{
                 return false
             }
         }
 
         if val, exist := schedCfg.Field["cir"]; exist {
-            cir,_ := strconv.ParseUint(val, 10, 32)
+            cir,_ := strconv.ParseUint(val, 10, 64)
             if cir > speed_Bps{
                 return false
             }
