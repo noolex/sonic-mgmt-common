@@ -109,42 +109,10 @@ func init () {
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
 }
 
-func bgp_hdl_post_xfmr(inParams *XfmrParams, retDbDataMap *map[string]map[string]db.Value) (error) {
+func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]db.Value) (error) {
     var err error
 
     if inParams.oper == DELETE {
-        pathInfo := NewPathInfo(inParams.requestUri)
-        niName := pathInfo.Var("name")
-        log.Info ("BGP Post-Transformer to fill BGP_GLOBALS keys, while handling DELETE-OP for URI : ",
-              inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
-
-        gblTblKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"BGP_GLOBALS"})
-        /* BGP_GLOBALS should be present for any BGP instance and hence 
-         * if the BGP instance is not present for the particular VRF, 
-         * remove the BGP tables set by the infra. */
-
-        matchingKeyFound := false
-        for _, gblTblKey := range gblTblKeys {
-            if (gblTblKey.Get(0) != niName) {continue}
-            matchingKeyFound = true
-        }
-
-        if !matchingKeyFound {
-            if _, ok := (*retDbDataMap)["BGP_GLOBALS"]; ok {
-                delete ((*retDbDataMap), "BGP_GLOBALS")
-            }
-            if _, ok := (*retDbDataMap)["BGP_GLOBALS_AF"]; ok {
-                delete ((*retDbDataMap), "BGP_GLOBALS_AF")
-            }
-            if _, ok := (*retDbDataMap)["BGP_GLOBALS_LISTEN_PREFIX"]; ok {
-                delete ((*retDbDataMap), "BGP_GLOBALS_LISTEN_PREFIX")
-            }
-            if _, ok := (*retDbDataMap)["BGP_PEER_GROUP"]; ok {
-                delete ((*retDbDataMap), "BGP_PEER_GROUP")
-            }
-        }
-
-        log.Info ("After BGP Post-Transformer BGP_GLOBALS handler ==> retDbDataMap : ", (*retDbDataMap))
         return err
     }
 
