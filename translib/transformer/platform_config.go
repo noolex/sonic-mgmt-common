@@ -37,6 +37,13 @@ type portCaps struct {
     DefMode string `json:"defmode,omitempty"`
 }
 
+type portGroup struct {
+    memberIfStart string
+    memberIfEnd string
+    validPortSpeeds map[string]string
+}
+var portGroups map[string]portGroup
+
 var platConfigStr map[string]map[string]string
 var platDefStr map[string]map[string]map[string]string
 var platDef4Level map[string]map[string]map[string]map[string]string
@@ -305,9 +312,6 @@ func parsePlatformDefJsonFile () (error) {
         return err
     }
 
-    //platDefStr = make(map[string]map[string]map[string]string)
-    //err = json.Unmarshal([]byte(file), &platDefStr)
-    //log.Info(platDefStr)
     platDef4Level = make(map[string]map[string]map[string]map[string]string)
     json.Unmarshal([]byte(file), &platDef4Level)
     log.Info(platDef4Level)
@@ -331,6 +335,8 @@ func parsePlatformDefJsonFile () (error) {
 
     /* Check for port-group field */
     if pg_entries, ok := fec_raw_map["port-group"]; ok {
+        parsePortGroupData (pg_entries)
+
         /* For backward compat */
         platDefStr = make(map[string]map[string]map[string]string)
         platDefStr["port-group"] = make(map[string]map[string]string)
@@ -349,7 +355,7 @@ func parsePlatformDefJsonFile () (error) {
             }
         }
 
-        log.Info("Parsed port-group info as %s", platDefStr)
+        log.Info("Parsed port-group info as ", platDefStr)
     } else {
         log.Info("No port-group configs to parse in platform-def")
     }
@@ -369,26 +375,31 @@ func getPgData (pgObj *ocbinds.OpenconfigPortGroup_PortGroups) (error) {
         "400000": ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_400GB,
     }
 
-    if len(platDefStr) < 1 {
-        log.Info("Platform does not support port-group");
-        return tlerr.NotSupported("Platform does not support port-group")
-    }
-
-    if pgs, ok := platDefStr["port-group"]; ok {
-        for id, pg := range pgs {
+    if len(portGroups) > 0 {
+        for id, pg := range portGroups {
             var entry ocbinds.OpenconfigPortGroup_PortGroups_PortGroup_State
             var pgInstance *ocbinds.OpenconfigPortGroup_PortGroups_PortGroup
-            entry.Id = &id
-            ifRange := strings.Split(pg["members"],"-")
-            entry.MemberIfStart = utils.GetUINameFromNativeName(&ifRange[0])
-            ifRange[1] = "Ethernet" + ifRange[1]
-            entry.MemberIfEnd = utils.GetUINameFromNativeName(&ifRange[1])
-            vspeeds := strings.Split(strings.TrimSpace(pg["valid_speeds"]),",")
+            idCopy := id
+            entry.Id = &idCopy
+            ifStart := pg.memberIfStart
+            ifEnd := pg.memberIfEnd
+            entry.MemberIfStart = utils.GetUINameFromNativeName(&ifStart)
+            entry.MemberIfEnd = utils.GetUINameFromNativeName(&ifEnd)
             var val_speeds []ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED
-            for _, spd := range vspeeds{
+            defSpeed := 0
+            for spd := range pg.validPortSpeeds{
+                curSpeed, _ := strconv.Atoi(spd)
                 val_speeds = append(val_speeds, speedMap[spd])
+                if curSpeed > defSpeed {
+                    defSpeed = curSpeed
+                    entry.Speed = speedMap[spd]
+                }
             }
-            entry.Speed = val_speeds[0]
+            sort.SliceStable(val_speeds, func(i, j int) bool {
+                first := val_speeds[i]
+                second := val_speeds[j]
+                return first  < second
+            })
             entry.ValidSpeeds = val_speeds
             if _, ok := pgObj.PortGroup[id]; ok {
                 pgInstance = pgObj.PortGroup[id]
@@ -398,6 +409,9 @@ func getPgData (pgObj *ocbinds.OpenconfigPortGroup_PortGroups) (error) {
             pgInstance.State = &entry
             log.Info("Entry ", id, " ", entry)
         }
+    } else {
+        log.Info("Platform does not support port-group");
+        return tlerr.NotSupported("Platform does not support port-group")
     }
 
     log.Info("PG Data: ", pgObj.PortGroup)
@@ -448,30 +462,32 @@ func isPortGroupMember(ifName string) (bool) {
 func getPortGroupMembersAfterSpeedCheck(pgid string, speed *string) ([]string, error) {
    var  members []string
 
-    if pgs, ok := platDefStr["port-group"]; ok {
-        for id, pg := range pgs {
+    if len(portGroups) > 0 {
+        for id, pg := range portGroups {
             if id == pgid {
-                vspeeds := strings.Split(strings.Trim(strings.TrimSpace(pg["valid_speeds"]), "[]"),",")
                 isSpeedValid := false
-                for _, spd := range vspeeds {
+                maxSpeed := 0
+                for spd := range pg.validPortSpeeds{
                     if *speed == spd {
                         isSpeedValid = true
                         break
-                    } else if *speed == "" {
-                        *speed = vspeeds[0]
-                        isSpeedValid = true
-                        log.Info("Setting default speed to ", *speed)
-                        break
+                    } else if *speed == "" || maxSpeed > 0 {
+                        spdi,_ := strconv.Atoi(spd)
+                        if spdi > maxSpeed {
+                            maxSpeed = spdi
+                            *speed = spd
+                            isSpeedValid = true
+                            log.Info("Setting probable default speed to ", *speed)
+                        }
                     }
                 }
                 if !isSpeedValid {
                     log.Info("speed ", *speed, " is not supported for PG#", pgid)
-                    return members, tlerr.NotSupported("Speed not supported")
+                    return members, tlerr.NotSupported("Unsupported speed")
                 }
-                memRange := strings.Split(strings.TrimLeft(pg["members"], "Ethern"), "-")
-                startNum,_ := strconv.Atoi(memRange[0])
-                endNum,_ := strconv.Atoi(memRange[1])
-                log.Info("PG ", id, pg["members"], " ", pg["valid_speeds"], " ==> ",
+                startNum,_ := strconv.Atoi(strings.TrimLeft(pg.memberIfStart, "Ethern"))
+                endNum,_ := strconv.Atoi(strings.TrimLeft(pg.memberIfEnd, "Ethern"))
+                log.Info("PG ", id, " ", pg.validPortSpeeds[*speed], " ==> ",
                             startNum, " - ", endNum)
                 for i := startNum; i <= endNum; i++ {
                     members = append(members, "Ethernet"+strconv.Itoa(i))
@@ -713,4 +729,81 @@ func populate_fec_modes_to_db() {
             return
         }
     }
+}
+
+func parsePortGroupData (pgs map[string]map[string]interface{}) (error) {
+
+    portGroups = make(map[string]portGroup)
+    for id, pg := range pgs {
+        var entry portGroup
+        mem, ok := pg["members"].(string)
+        if ok {
+            ifRange := strings.Split(mem,"-")
+            entry.memberIfStart = ifRange[0]
+            ifRange[1] = "Ethernet" + ifRange[1]
+            entry.memberIfEnd = ifRange[1]
+        } else {
+            log.Error("Entry ", id, " members not string")
+        }
+        vspd, ok := pg["valid_speeds"].([]interface{})
+        if ok {
+            entry.validPortSpeeds = make(map[string]string)
+            for _, spd := range vspd {
+                var val_speeds []string
+                var speed string
+                switch reflect.TypeOf(spd).Kind() {
+                    case reflect.String:
+                        speed, ok = spd.(string)
+                        if ok {
+                            val_speeds = append(val_speeds, speed)
+                        } else {
+                            log.Error("Entry ", id, " speed not string")
+                        }
+                    case reflect.Slice:
+                        speed_s, ok := spd.([]interface{})
+                        if ok {
+                            for i, nspd := range speed_s {
+                                nested_speed, ok := nspd.(string)
+                                if ok {
+                                    if i == 0 {
+                                        speed = nested_speed
+                                    }
+                                    val_speeds = append(val_speeds, nested_speed)
+                                } else {
+                                    log.Error("Entry ", id, " speed not string")
+                                }
+                            }
+                        } else {
+                            log.Error("Entry ", id, " speed not slice of interfaces")
+                        }
+                    default:
+                        log.Error("PG ", id, "unsupported type: ", reflect.TypeOf(spd).Kind())
+                 }
+                 entry.validPortSpeeds[speed] = strings.Join(val_speeds,",")
+            }
+        } else {
+            log.Error("Entry ", id, " vspeeds not slice")
+        }
+        portGroups[id] = entry
+        log.Info("Entry ", id, "==> ", portGroups[id])
+    }
+
+    log.Info("PG Parsed entry map : ", portGroups)
+    return nil
+
+}
+
+func getPgPortValidSpeeds(pgid string, speed string) (string, error) {
+    var vspeed string
+    var err error
+    if pg, ok := portGroups[pgid]; ok {
+        if vspeed, ok = pg.validPortSpeeds[speed]; ok {
+            log.Info("PG-", pgid, ", PG speed: ", speed,", Valid speeds: ", vspeed)
+        } else {
+            err = tlerr.InvalidArgs("Invalid port-group speed ", speed)
+        }
+    } else {
+        err = tlerr.NotSupported("Port-group ", pgid, " is not valid")
+    }
+    return vspeed, err
 }
