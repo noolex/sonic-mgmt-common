@@ -297,7 +297,9 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 			if len(mode) == 0 {
 				err = app.enableStpMode(d)
 			} else {
-				return tlerr.InvalidArgs("STP mode is configured as %s", mode)
+				if mode != app.convertOCStpModeToInternal(stp.Global.Config.EnabledProtocol[0]) {
+				    return tlerr.InvalidArgs("STP mode is configured as %s", mode)
+                }
 			}
 		case REPLACE, UPDATE:
 			if *app.ygotTarget == stp.Global || *app.ygotTarget == stp.Global.Config || targetUriPath == "/openconfig-spanning-tree:stp/global/config/enabled-protocol" {

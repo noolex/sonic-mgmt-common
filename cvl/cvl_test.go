@@ -3342,6 +3342,28 @@ func TestGetOrderedTables(t *testing.T) {
 	cvl.ValidationSessClose(cvSess)
 }
 
+func TestGetOrderedDepTables(t *testing.T) {
+	cvSess, _ := cvl.ValidationSessOpen()
+
+	result, _ := cvSess.GetOrderedDepTables("sonic-vlan", "VLAN")
+
+	expectedResult := []string{"VLAN_MEMBER", "VLAN"}
+
+	if len(expectedResult) != len(result) {
+		t.Errorf("Validation failed, returned value = %v", result)
+		return
+	}
+
+	for i := 0; i < len(expectedResult) ; i++ {
+		if result[i] != expectedResult[i] {
+			t.Errorf("Validation failed, returned value = %v", result)
+			break
+		}
+	}
+
+	cvl.ValidationSessClose(cvSess)
+}
+
 func TestGetDepTables(t *testing.T) {
 	cvSess, _ := cvl.ValidationSessOpen()
 

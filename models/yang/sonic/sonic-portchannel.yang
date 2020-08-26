@@ -222,6 +222,11 @@ module sonic-portchannel {
                         path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                     }
                 }
+                leaf status {
+                    type string;
+                    description
+                        "status of the portchannel member";
+                }
             }
         }
     }
