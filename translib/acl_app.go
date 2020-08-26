@@ -1356,8 +1356,8 @@ func (app *AclApp) getOCIntfAclSetAclEntryData(dbs [db.MaxDB]*db.DB,
 	}
 
 	entrySetState.Elem().FieldByName("SequenceId").Set(entrySet.Elem().FieldByName("SequenceId"))
-	entrySetState.Elem().FieldByName("MatchedOctets").Set(reflect.ValueOf(&packets))
-	entrySetState.Elem().FieldByName("MatchedPackets").Set(reflect.ValueOf(&bytes))
+	entrySetState.Elem().FieldByName("MatchedPackets").Set(reflect.ValueOf(&packets))
+	entrySetState.Elem().FieldByName("MatchedOctets").Set(reflect.ValueOf(&bytes))
 
 	return nil
 }

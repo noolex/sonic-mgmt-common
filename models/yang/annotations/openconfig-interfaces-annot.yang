@@ -60,9 +60,9 @@ module openconfig-interfaces-annot {
             sonic-ext:field-transformer "intf_enabled_xfmr";
         }
     }
-    
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-lag:min-links {
-        deviate add { 
+        deviate add {
             sonic-ext:field-transformer "lag_min_links_xfmr";
         }
     }
@@ -74,7 +74,7 @@ module openconfig-interfaces-annot {
     }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-intf-ext:fallback {
-        deviate add { 
+        deviate add {
             sonic-ext:field-transformer "lag_fallback_xfmr";
         }
     }
@@ -288,7 +288,20 @@ module openconfig-interfaces-annot {
             sonic-ext:subtree-transformer "intf_vrrp_xfmr";
         }
     }
-    
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group {
+        deviate add {
+            sonic-ext:table-name "VRRP";
+            sonic-ext:subtree-transformer "intf_vlan_vrrp_xfmr";
+        }
+    }
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group {
+        deviate add {
+            sonic-ext:table-name "VRRP6";
+            sonic-ext:subtree-transformer "intf_vlan_vrrp_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4 {
         deviate add {
             sonic-ext:table-transformer "intf_table_xfmr";
@@ -428,17 +441,17 @@ module openconfig-interfaces-annot {
             sonic-ext:subtree-transformer "intf_vxlan_config_xfmr";
         }
     }
-    
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-vxlan:vxlan-if/oc-vxlan:state {
         deviate add {
-            sonic-ext:table-name "VXLAN_TUNNEL";            
-        }    
+            sonic-ext:table-name "VXLAN_TUNNEL";
+        }
     }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-vxlan:vxlan-if/oc-vxlan:state/oc-vxlan:source-vtep-ip {
         deviate add {
-        		sonic-ext:field-name "src_ip";            
-        }    
+        		sonic-ext:field-name "src_ip";
+        }
     }
 
     deviation  "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ospfv2-ext:ospfv2" {

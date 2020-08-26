@@ -49,6 +49,7 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     var cfg_port string
     var testCode bool
     var errStr string
+    var port_cfg map[string]string
 
     /* Create a response payload */
     var response rpcResponse
@@ -157,7 +158,7 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 
     /* Read and set PORT default configuration */
     if cfg_port_table, ok := defaultConfig["PORT"]; ok {
-        if port_cfg, ok := cfg_port_table[cfg_port]; ok {
+        if port_cfg, ok = cfg_port_table[cfg_port]; ok {
             if _, ok := port_cfg["speed"]; ok {
                  default_cfg_port_speed = port_cfg["speed"]
             } else {
@@ -176,11 +177,6 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
             } else {
                  errStr = fmt.Sprintf("Failed to read default admin status for port %v", cfg_port)
                  return errResponse(errStr)
-            }
-            if _, ok := port_cfg["fec"]; ok {
-                 portValue.Set("fec", port_cfg["fec"])
-            } else if port_entry.Has("fec") {
-                 portValue.Set("fec", "None")
             }
         } else {
             errStr = fmt.Sprintf("Port default configuration not found for port %v", cfg_port)
@@ -290,6 +286,12 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
             portValue.Set("speed", default_cfg_port_speed)
         }
     }
+    // Read other configuration parameters from the PORT table
+    for k,v := range port_cfg {
+        if !portValue.Has(k) {
+            portValue.Set(k, v)
+        }
+    }
     /* End of values from ConfigDB */
 
     updatePortMap[port_str] = portValue
@@ -309,8 +311,23 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     handleCascadeDelete(dbs[db.ConfigDB], dbDataMap, cascadeDelTbl)
     log.Infof("rpc_default_port_config : Configuration to be deleted: %v.", dbDataMap)
 
-    /* Do not delete PORT as the same port needs to be updated with default configuration */
+    delPortData := make(map[string]string)
+    delPortValue := db.Value{Field: delPortData}
+    deletePortCfgFlag := false
+    for k,v := range port_entry.Field {
+        if !portValue.Has(k) {
+            delPortValue.Set(k, v)
+            deletePortCfgFlag = true
+        }
+    }
+
+    /* Do not delete PORT as the same port needs to be updated with default configuration.
+       Instead delete only user added configuration from the PORT table. */
     delete(dbDataMap[DELETE][db.ConfigDB], "PORT")
+    if deletePortCfgFlag {
+        delMap[port_str] = delPortValue
+        dbDataMap[DELETE][db.ConfigDB]["PORT"] = delMap
+    }
 
     /* Obtain the list of dependent tables and keys to watch while performing the config operations */
     var tblsToWatch []*db.TableSpec
