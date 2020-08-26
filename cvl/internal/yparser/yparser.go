@@ -642,7 +642,7 @@ func getErrorDetails() YParserError {
 				ElemVal = result[i+1]
 			}
 
-			if strings.Contains(result[i], "element") || strings.Contains(result[i], "Element") {
+			if (strings.Contains(result[i], "element") || strings.Contains(result[i], "Element")) && (i > 0) {
 				ElemName = result[i-1]
 			}
 		}

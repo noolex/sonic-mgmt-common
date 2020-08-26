@@ -5,7 +5,7 @@ import (
     "errors"
     "strconv"
     "strings"
-    "fmt"
+    "reflect"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -387,33 +387,30 @@ func ospfGetRouterIaPolicyList(inParams *XfmrParams, vrfName string) (* map[ocbi
     return iapolListObj, ending, nil
 }
 
-
 func ospfGetAreaStringFromSrcAreaId(areaIdObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union)(string, error) {
 
-    areaId := ""
+    areaIdStr := ""
     if (areaIdObj == nil) {
         return "", errors.New("Nil Area Identifier union")
     }
 
-    areaString := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union_String)
-    if (areaString != nil) {
-         areaId = areaString.String
+    areaIdUnionType := reflect.TypeOf(*areaIdObj).Elem()
+    log.Info("ospfGetAreaStringFromSrcAreaId: area id type ", areaIdUnionType)
+    switch areaIdUnionType {
+        case reflect.TypeOf(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union_String{}):
+            areaId := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union_String)
+            areaIdStr = areaId.String
+        case reflect.TypeOf(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union_Uint32{}):
+            areaId := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union_Uint32)
+            areaIdStr = ospfGetDottedAreaFromUint32(areaId.Uint32)
     }
 
-    if (areaId == "") {
-        areaUint := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy_Config_SrcArea_Union_Uint32)
-        if (areaUint != nil) {
-            areaId = fmt.Sprintf("%d", areaUint.Uint32)
-            areaId = getAreaDotted(areaId)
-        }
-    }
-
-    if (areaId == "") {
+    if (areaIdStr == "") {
         return "", errors.New("Area Id conversion failed")
     }
 
-    log.Infof("ospfGetAreaStringFromSrcAreaId: %s success", areaId)
-    return areaId, nil
+    log.Infof("ospfGetAreaStringFromSrcAreaId: %s success", areaIdStr)
+    return areaIdStr, nil
 }
 
 func ospfGetRouterIaPolicySrcAreaObject(inParams *XfmrParams, vrfName string, areaId string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_InterAreaPropagationPolicies_InterAreaPolicy, bool, error) {
@@ -568,32 +565,31 @@ func ospfGetRouterPolicyRangeObject(inParams *XfmrParams, vrfName string, areaId
     return rangeObj, ending, nil
 }
 
+
 func ospfGetAreaStringFromAreaId(areaIdObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union)(string, error) {
 
-    areaId := ""
+    areaIdStr := ""
     if (areaIdObj == nil) {
         return "", errors.New("Nil Area Identifier union")
     }
 
-    areaString := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String)
-    if (areaString != nil) {
-         areaId = areaString.String
+    areaIdUnionType := reflect.TypeOf(*areaIdObj).Elem()
+    log.Info("ospfGetAreaStringFromAreaId: area id type ", areaIdUnionType)
+    switch areaIdUnionType {
+        case reflect.TypeOf(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String{}):
+            areaId := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_String)
+            areaIdStr = areaId.String
+        case reflect.TypeOf(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_Uint32{}):
+            areaId := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_Uint32)
+            areaIdStr = ospfGetDottedAreaFromUint32(areaId.Uint32)
     }
 
-    if (areaId == "") {
-        areaUint := (*areaIdObj).(*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union_Uint32)
-        if (areaUint != nil) {
-            areaId = fmt.Sprintf("%d", areaUint.Uint32)
-            areaId = getAreaDotted(areaId)
-        }
-    }
-
-    if (areaId == "") {
+    if (areaIdStr == "") {
         return "", errors.New("Area Id conversion failed")
     }
 
-    log.Infof("ospfGetAreaStringFromAreaId: %s success", areaId)
-    return areaId, nil
+    log.Infof("ospfGetAreaStringFromAreaId: %s success", areaIdStr)
+    return areaIdStr, nil
 }
 
 func ospfGetRouterAreaList(inParams *XfmrParams, vrfName string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas, bool, error) {

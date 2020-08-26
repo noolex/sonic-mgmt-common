@@ -289,7 +289,7 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
 
         /* For delete request and for fields with default value, transformer adds subOp map with update operation (to update with default value).
            So, adding code to clear the update SubOp map for delete operation to go through for the following requestUriPath */
-        if requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/config/enabled" || 
+        if requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/config/enabled" ||
            requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/config/enabled" {
             if len(inParams.subOpDataMap) > 0 {
                 dbMap := make(map[string]map[string]db.Value)
@@ -381,15 +381,15 @@ func ValidateIntfProvisionedForRelay(d *db.DB, ifName string, prefixIp string) (
        log.V(2).Info(entry)
        if len(entry.Field["dhcp_servers@"]) > 0 {
            return true, nil
-       } 
-   } else if strings.Contains(prefixIp, ":") || strings.Contains(prefixIp, "ipv6"){ 
+       }
+   } else if strings.Contains(prefixIp, ":") || strings.Contains(prefixIp, "ipv6"){
    //check if dhcpv6_sever is provisioned for ipv6
        log.V(2).Info("ValidateIntfProvisionedForRelay  - IPv6Check")
        log.V(2).Info(entry)
        if len(entry.Field["dhcpv6_servers@"]) > 0 {
            return true, nil
-       } 
-   }   
+       }
+   }
    return false, nil
 }
 
@@ -626,6 +626,7 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     ipEntry, err := d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, ipPrefix}})
     if err != nil || !ipEntry.IsPopulated() {
         log.Errorf("IP address: %s doesn't exist for Interafce: %s", ipPrefix, *ifName)
+        result.Output.Status_detail = "No such address configured on this interface"
         return json.Marshal(&result)
     }
     moduleNm := "sonic-interface"
@@ -852,7 +853,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         return tblList, errors.New("Invalid interface type IntfTypeUnset");
     }
     intTbl := IntfTypeTblMap[intfType]
-    log.Info("TableXfmrFunc - targetUriPath : ", targetUriPath)    
+    log.Info("TableXfmrFunc - targetUriPath : ", targetUriPath)
 
     if IntfTypeVxlan == intfType {
 		//handle VXLAN interface.
@@ -874,7 +875,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 		if IntfTypeVxlan == intfType {
 			tblList = append(tblList, "VXLAN_TUNNEL")
 		} else {
-			tblList = append(tblList, intTbl.cfgDb.portTN)	
+			tblList = append(tblList, intTbl.cfgDb.portTN)
 		}
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") && IntfTypeVxlan == intfType  {
 		if inParams.oper == 5 {
@@ -949,7 +950,8 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses") {
         tblList = append(tblList, intTbl.cfgDb.intfTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") ||
-              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan") {
+               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan") {
+        if IntfTypeVlan == intfType {
 	     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/config") ||
                  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/config") ||
                  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/config") ||
@@ -968,6 +970,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
              } else {
                  tblList = append(tblList, intTbl.cfgDb.intfTN)
              }
+        }
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
         if inParams.oper != DELETE {
@@ -1263,9 +1266,9 @@ var DbToYang_intf_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
         return result, errors.New("Invalid interface type IntfTypeUnset");
     }
     if IntfTypeVxlan == intfType {
-	    return result, nil	
+	    return result, nil
     }
-    
+
     intTbl := IntfTypeTblMap[intfType]
 
     tblName, _ := getPortTableNameByDBId(intTbl, inParams.curDb)
@@ -1426,7 +1429,7 @@ var DbToYang_intf_eth_port_speed_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
     if IntfTypeVxlan == intfType || IntfTypeVlan == intfType {
 	    return result, nil
     }
-    
+
     intTbl := IntfTypeTblMap[intfType]
 
     tblName, _ := getPortTableNameByDBId(intTbl, inParams.curDb)
@@ -1885,7 +1888,7 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
     _ = interfaceIPcount(tblName, d, &ifName, &vlanIntfcount)
     var data db.Value
 
-    // There is atleast one IP Address Configured on Vlan Intf 
+    // There is atleast one IP Address Configured on Vlan Intf
     if len(intfIpMap) > 0 {
         if _, ok := vlanIntfmap[tblName]; !ok {
             vlanIntfmap[tblName] = make (map[string]db.Value)
@@ -2034,7 +2037,7 @@ func checkIfSagAfiExistOnIntf(d *db.DB, afi string, ifName string) (bool){
     sagEntry, err := d.GetEntry(&db.TableSpec{Name: "SAG"}, sagKey)
     if(err == nil) {
         sagIpList, ok := sagEntry.Field["gwip@"]
-  
+
         if (!ok) {
             return true
         }
@@ -2043,14 +2046,14 @@ func checkIfSagAfiExistOnIntf(d *db.DB, afi string, ifName string) (bool){
             return true
         }
     }
-  
+
     return false
 }
-  
+
 func chekIfSagExistOnIntf(d *db.DB, ifName string) (bool) {
-  
+
     return (checkIfSagAfiExistOnIntf(d, "IPv4", ifName) || checkIfSagAfiExistOnIntf(d, "IPv6", ifName))
-  
+
 }
 
 /* Check for IP overlap */
@@ -2360,7 +2363,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     }else if (strings.Contains(inParams.uri, "ipv6")) {
        prefixType = "ipv6"
     }
- 
+
     if inParams.oper == DELETE {
        dhcpProv, dhcpErr :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
        if dhcpProv {
@@ -2633,14 +2636,14 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     log.Info("YangToDb_routed_vlan_ip_addr_xfmr: tblName: ", tblName)
     intfObj := intfsObj.Interface[ifName]
 
-    // Validate if DHCP_Relay is provisioned on the interface 
+    // Validate if DHCP_Relay is provisioned on the interface
     prefixType := ""
     if (strings.Contains(inParams.uri, "ipv4")) {
        prefixType = "ipv4"
     }else if (strings.Contains(inParams.uri, "ipv6")) {
        prefixType = "ipv6"
     }
-   
+
     if intfObj.RoutedVlan == nil {
         // Handling the scenario for Interface instance delete at interfaces/interface[name] level or subinterfaces container level
         if inParams.oper == DELETE {
@@ -3052,7 +3055,7 @@ func deleteVxlanIntf(inParams *XfmrParams, ifName *string) error {
     if err != nil {
     	return tlerr.NotFound("Resource Not Found")
     }
-    
+
     _, err = inParams.d.GetEntry(&db.TableSpec{Name:"EVPN_NVO"}, db.Key{Comp: []string{"nvo1"}})
     if err == nil {
 	    evpnNvoMap := make(map[string]db.Value)
@@ -3061,11 +3064,11 @@ func deleteVxlanIntf(inParams *XfmrParams, ifName *string) error {
 	    evpnNvoMap["nvo1"] = evpnDbV
 	    resMap["EVPN_NVO"] = evpnNvoMap
     }
-    
+
     vxlanIntfMap := make(map[string]db.Value)
     vxlanIntfMap[*ifName] = db.Value{Field:map[string]string{}}
     resMap["VXLAN_TUNNEL"] = vxlanIntfMap
-   
+
     subOpMap[db.ConfigDB] = resMap
     inParams.subOpDataMap[DELETE] = &subOpMap
     return nil
@@ -3121,7 +3124,7 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
 
     keys,err := doGetAllIpKeys(dbCl, &db.TableSpec{Name:tblName})
     if( err != nil) {
-        return intfIpMap, err 
+        return intfIpMap, err
     }
     for _, key := range keys {
         if len(key.Comp) < 2 {
@@ -3154,7 +3157,7 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
         ipInfo, _ := dbCl.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{key.Get(0), key.Get(1)}})
         intfIpMap[key.Get(1)]= ipInfo
     }
-    return intfIpMap, err 
+    return intfIpMap, err
 }
 
 func handleIntfIPGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName string, intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
@@ -3351,7 +3354,7 @@ var DbToYang_routed_vlan_ip_addr_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
     log.Info("DbToYang_routed_vlan_ip_addr_xfmr: targetUriPath is ", targetUriPath)
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") || 
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") ||
        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan") {
         if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
             var ok bool = false
@@ -4694,7 +4697,7 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
         }
         check_keys := []string{"NULL", "ipv6_use_link_local_only"}
         sort.Strings(keys)
-        /* Delete interface from interface table if disabling IPv6 and no other interface attributes/ip 
+        /* Delete interface from interface table if disabling IPv6 and no other interface attributes/ip
            else remove ipv6_use_link_local_only field */
         if !((reflect.DeepEqual(keys, check_keys) || reflect.DeepEqual(keys, check_keys[1:])) && len(ipMap) == 0 ) {
             log.Info("YangToDb_ipv6_enabled_xfmr, deleting ipv6_use_link_local_only field")

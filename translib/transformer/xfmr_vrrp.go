@@ -36,6 +36,9 @@ func init () {
     XlateFuncBind("YangToDb_intf_vrrp_xfmr", YangToDb_intf_vrrp_xfmr)
     XlateFuncBind("DbToYang_intf_vrrp_xfmr", DbToYang_intf_vrrp_xfmr)
     XlateFuncBind("Subscribe_intf_vrrp_xfmr", Subscribe_intf_vrrp_xfmr)
+    XlateFuncBind("Subscribe_intf_vlan_vrrp_xfmr", Subscribe_intf_vlan_vrrp_xfmr)
+    XlateFuncBind("YangToDb_intf_vlan_vrrp_xfmr", YangToDb_intf_vlan_vrrp_xfmr)
+    XlateFuncBind("DbToYang_intf_vlan_vrrp_xfmr", DbToYang_intf_vlan_vrrp_xfmr)
     XlateFuncBind("rpc_show_vrrp", rpc_show_vrrp)
   	XlateFuncBind("rpc_show_vrrp6", rpc_show_vrrp6)
 }
@@ -160,8 +163,6 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                         if inParams.oper != DELETE {
                             t["vrid"] = strconv.Itoa(int(virtual_router_id))
                         }
-
-                       // t["vrid"] = strconv.Itoa(int(virtual_router_id))
 
                         if vrrpEntry.IsPopulated() {
                             vips = vrrpEntry.Field["vip@"]
@@ -434,6 +435,381 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
     return subIntfmap, err
 }
 
+var YangToDb_intf_vlan_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    var err error
+    subIntfmap := make(map[string]map[string]db.Value)
+
+    pathInfo := NewPathInfo(inParams.uri)
+    uriIfName := pathInfo.Var("name")
+    _ifName := utils.GetNativeNameFromUIName(&uriIfName)
+    ifName := *_ifName
+	  intfType, _, ierr := getIntfTypeByName(ifName)
+
+    if IntfTypeVxlan == intfType {
+	    return subIntfmap, nil
+    }
+
+    log.Info("inParams:", inParams)
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        log.Info("YangToDb_intf_vlan_vrrp_xfmr : IntfsObj/interface list is empty.")
+        return subIntfmap, errors.New("IntfsObj/Interface is not specified")
+    }
+
+    if ifName == "" {
+        errStr := "Interface KEY not present"
+        log.Info("YangToDb_intf_vlan_vrrp_xfmr : " + errStr)
+        return subIntfmap, errors.New(errStr)
+    }
+
+    if intfType == IntfTypeUnset || ierr != nil {
+        errStr := "Invalid interface type IntfTypeUnset"
+        log.Info("YangToDb_intf_vlan_vrrp_xfmr : " + errStr)
+        return subIntfmap, errors.New(errStr)
+    }
+    /* Validate whether the Interface is configured as member-port associated with any vlan */
+    if intfType == IntfTypeEthernet || intfType == IntfTypePortChannel {
+        err = validateIntfAssociatedWithVlan(inParams.d, &ifName)
+        if err != nil {
+            return subIntfmap, err
+        }
+    }
+    /* Validate whether the Interface is configured as member-port associated with any portchannel */
+    if intfType == IntfTypeEthernet {
+        err = validateIntfAssociatedWithPortChannel(inParams.d, &ifName)
+        if err != nil {
+            errStr := "IP config is not permitted on LAG member port."
+            return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+        }
+    }
+
+    if _, ok := intfsObj.Interface[uriIfName]; !ok {
+        errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
+        log.Info("YangToDb_intf_vlan_vrrp_xfmr : " + errStr)
+        return subIntfmap, errors.New(errStr)
+    }
+
+    intfObj := intfsObj.Interface[uriIfName]
+
+    if intfObj.RoutedVlan == nil {
+        errStr := "RoutedVlan node is not set"
+        log.Info("YangToDb_intf_vlan_vrrp_xfmr : " + errStr)
+        return subIntfmap, errors.New(errStr)
+    }
+
+    log.Info("Processing YangToDb_intf_vlan_vrrp_xfmr")
+
+    intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
+
+    subIntfObj := intfObj.RoutedVlan
+
+    entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+    if dbErr != nil || !entry.IsPopulated() {
+        ifdb := make(map[string]string)
+        ifdb["NULL"] = "NULL"
+        value := db.Value{Field: ifdb}
+        if _, ok := subIntfmap[tblName]; !ok {
+            subIntfmap[tblName] = make(map[string]db.Value)
+        }
+        subIntfmap[tblName][ifName] = value
+
+    }
+
+    if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.Addresses != nil {
+        for ip := range subIntfObj.Ipv4.Addresses.Address {
+            addr := subIntfObj.Ipv4.Addresses.Address[ip]
+
+            if addr.Vrrp != nil {
+
+                log.Info("addr.Vrrp present")
+
+                for virtual_router_id := range addr.Vrrp.VrrpGroup {
+                    vrrp_rtr := addr.Vrrp.VrrpGroup[virtual_router_id]
+
+                    t := make(map[string]string)
+                    vrrp_key := ifName + "|" + strconv.Itoa(int(virtual_router_id))
+                    vips := ""
+                    vrrpEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"VRRP"}, db.Key{Comp: []string{vrrp_key}})
+
+
+                    if vrrp_rtr.Config != nil {
+
+                        if inParams.oper != DELETE {
+                            t["vrid"] = strconv.Itoa(int(virtual_router_id))
+                        }
+
+                        if vrrpEntry.IsPopulated() {
+                            vips = vrrpEntry.Field["vip@"]
+                        }
+
+                        log.Info("vips:", vips)
+
+                        if vrrp_rtr.Config.VirtualAddress != nil {
+
+                            for vip_id := range vrrp_rtr.Config.VirtualAddress {
+                                if (vips == "" || inParams.oper == DELETE) {
+                                    vips =  vrrp_rtr.Config.VirtualAddress[vip_id]
+                                } else {
+                                    vips = vips + "," + vrrp_rtr.Config.VirtualAddress[vip_id]
+                                }
+                            }
+                            t["vip@"] = vips
+                        }
+
+                        if vrrp_rtr.Config.Priority != nil {
+
+                            base_priority := int(*vrrp_rtr.Config.Priority)
+
+                            track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), "", true, false))
+
+                            if base_priority + track_priority > 254 {
+                                errStr := "VRRP instance priority and track priority exceeds 254"
+                                log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                            }
+
+                            t["priority"] = strconv.Itoa(int(*vrrp_rtr.Config.Priority))
+                        }
+
+                        if vrrp_rtr.Config.Preempt != nil {
+                            if (bool(*vrrp_rtr.Config.Preempt)) {
+                                t["pre_empt"] = "True"
+                            } else {
+                                t["pre_empt"] = "False"
+                            }
+                        }
+                        if vrrp_rtr.Config.Version != nil {
+                            t["version"] = strconv.Itoa(int(*vrrp_rtr.Config.Version))
+                        }
+
+                        if vrrp_rtr.Config.AdvertisementInterval != nil {
+                            t["adv_interval"] = strconv.Itoa(int(*vrrp_rtr.Config.AdvertisementInterval))
+                        }
+
+                        log.Info("In config : subIntfmap : ",  subIntfmap)
+
+
+                    }
+
+                    track_exist := false
+
+                    if (vrrp_rtr.VrrpTrack != nil && vrrp_rtr.VrrpTrack.VrrpTrackInterface != nil) {
+
+
+                        for track_if := range vrrp_rtr.VrrpTrack.VrrpTrackInterface {
+                            vrrp_track_data := vrrp_rtr.VrrpTrack.VrrpTrackInterface[track_if]
+
+                            log.Info("track if name:", track_if)
+
+                            _trackifNativeName := utils.GetNativeNameFromUIName(&track_if)
+                            trackifNativeName := *_trackifNativeName
+
+                            log.Info("track if native name:", trackifNativeName)
+
+                            track_table := make(map[string]string)
+                            track_key := ifName + "|" + strconv.Itoa(int(virtual_router_id)) + "|" + trackifNativeName
+
+                            if vrrp_track_data.Config != nil {
+
+                                if vrrp_track_data.Config.PriorityIncrement != nil {
+                                    if ifName == trackifNativeName {
+                                        errStr := "VRRP track interface cannot be same as VRRP instance interface"
+                                        log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                        return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                                    }
+
+                                    base_priority := 100
+                                    if vrrpEntry.Has("priority") {
+                                        base_priority, _ = strconv.Atoi(vrrpEntry.Get("priority"))
+                                    }
+                                    new_priority := int(*vrrp_track_data.Config.PriorityIncrement)
+                                    track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), trackifNativeName, true, true))
+
+                                    if (base_priority + track_priority + new_priority) > 254 {
+                                        errStr := "VRRP instance priority and track priority exceeds 254"
+                                        log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                        return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                                    }
+
+                                    track_table["priority_increment"] = strconv.Itoa(int(*vrrp_track_data.Config.PriorityIncrement))
+                                }
+                            }
+
+                            track_value := db.Value{Field: track_table}
+                            if _, ok := subIntfmap["VRRP_TRACK"]; !ok {
+                                subIntfmap["VRRP_TRACK"] = make(map[string]db.Value)
+                            }
+
+                            subIntfmap["VRRP_TRACK"][track_key] = track_value
+
+                            track_exist = true
+                        }
+
+                        log.Info("In track : subIntfmap : ",  subIntfmap)
+
+                    }
+
+                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && !track_exist)) {
+                        value := db.Value{Field: t}
+                        if _, ok := subIntfmap["VRRP"]; !ok {
+                            subIntfmap["VRRP"] = make(map[string]db.Value)
+                        }
+                        subIntfmap["VRRP"][vrrp_key] = value
+                    }
+
+                   log.Info("Outside : subIntfmap : ",  subIntfmap)
+
+                }
+            } else if (inParams.oper != DELETE) {
+                  log.Info("Delete all VRRP entries & track from the table : ",  subIntfmap)
+            }
+        }
+    }
+
+    if subIntfObj.Ipv6 != nil && subIntfObj.Ipv6.Addresses != nil {
+        for ip := range subIntfObj.Ipv6.Addresses.Address {
+            addr := subIntfObj.Ipv6.Addresses.Address[ip]
+
+            if addr.Vrrp != nil {
+
+                log.Info("addr.Vrrp present")
+
+                for virtual_router_id := range addr.Vrrp.VrrpGroup {
+                    vrrp_rtr := addr.Vrrp.VrrpGroup[virtual_router_id]
+
+                    t := make(map[string]string)
+                    vrrp_key := ifName + "|" + strconv.Itoa(int(virtual_router_id))
+                    vips := ""
+                    vrrpEntry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"VRRP6"}, db.Key{Comp: []string{vrrp_key}})
+
+
+                    if vrrp_rtr.Config != nil {
+
+                        t["vrid"] = strconv.Itoa(int(virtual_router_id))
+
+                        if vrrpEntry.IsPopulated() {
+                            vips = vrrpEntry.Field["vip@"]
+                        }
+
+                        log.Info("vips:", vips)
+
+                        if vrrp_rtr.Config.VirtualAddress != nil {
+
+                            for vip_id := range vrrp_rtr.Config.VirtualAddress {
+                                if (vips == "" || inParams.oper == DELETE) {
+                                    vips =  vrrp_rtr.Config.VirtualAddress[vip_id]
+                                } else {
+                                    vips = vips + "," + vrrp_rtr.Config.VirtualAddress[vip_id]
+                                }
+                            }
+                            t["vip@"] = vips
+                        }
+
+                        if vrrp_rtr.Config.Priority != nil {
+                            base_priority := int(*vrrp_rtr.Config.Priority)
+
+                            track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP6_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), "", true, false))
+
+                            if base_priority + track_priority > 254 {
+                                errStr := "VRRP instance priority and track priority exceeds 254"
+                                log.Info("YangToDb_intf_vlan_vrrp_xfmr : " + errStr)
+                                return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                            }
+                            t["priority"] = strconv.Itoa(int(*vrrp_rtr.Config.Priority))
+                        }
+
+                        if vrrp_rtr.Config.Preempt != nil {
+                            if (bool(*vrrp_rtr.Config.Preempt)) {
+                                t["pre_empt"] = "True"
+                            } else {
+                                t["pre_empt"] = "False"
+                            }
+                        }
+
+                        if vrrp_rtr.Config.AdvertisementInterval != nil {
+                            t["adv_interval"] = strconv.Itoa(int(*vrrp_rtr.Config.AdvertisementInterval))
+                        }
+
+                        log.Info("In config : subIntfmap : ",  subIntfmap)
+
+                    }
+
+                    track_exist := false
+
+                    if (vrrp_rtr.VrrpTrack != nil && vrrp_rtr.VrrpTrack.VrrpTrackInterface != nil) {
+
+                        for track_if := range vrrp_rtr.VrrpTrack.VrrpTrackInterface {
+                            vrrp_track_data := vrrp_rtr.VrrpTrack.VrrpTrackInterface[track_if]
+
+                            log.Info("track if name:", track_if)
+
+                            _trackifNativeName := utils.GetNativeNameFromUIName(&track_if)
+                            trackifNativeName := *_trackifNativeName
+
+                            log.Info("track if native name:", trackifNativeName)
+
+                            track_table := make(map[string]string)
+                            track_key := ifName + "|" + strconv.Itoa(int(virtual_router_id)) + "|" + trackifNativeName
+
+                            if vrrp_track_data.Config != nil {
+
+                                if vrrp_track_data.Config.PriorityIncrement != nil {
+
+                                    if ifName == trackifNativeName {
+                                        errStr := "VRRP track interface cannot be same as VRRP instance interface"
+                                        log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
+                                        return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                                    }
+
+                                    base_priority := 100
+                                    if vrrpEntry.Has("priority") {
+                                        base_priority, _ = strconv.Atoi(vrrpEntry.Get("priority"))
+                                    }
+                                    new_priority := int(*vrrp_track_data.Config.PriorityIncrement)
+                                    track_priority := int(getVrrpTrackPriority(inParams.d, nil, "VRRP6_TRACK", ifName, strconv.Itoa(int(virtual_router_id)), trackifNativeName, true, true))
+
+                                    if (base_priority + track_priority + new_priority) > 254 {
+                                        errStr := "VRRP instance priority and track priority exceeds 254"
+                                        log.Info("YangToDb_intf_vlan_vrrp_xfmr : " + errStr)
+                                        return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
+                                    }
+                                    track_table["priority_increment"] = strconv.Itoa(int(*vrrp_track_data.Config.PriorityIncrement))
+                                }
+                            }
+
+                            track_value := db.Value{Field: track_table}
+                            if _, ok := subIntfmap["VRRP6_TRACK"]; !ok {
+                                subIntfmap["VRRP6_TRACK"] = make(map[string]db.Value)
+                            }
+
+                            subIntfmap["VRRP6_TRACK"][track_key] = track_value
+
+                            track_exist = true
+
+                        }
+
+                        log.Info("In track : subIntfmap : ",  subIntfmap)
+                    }
+
+                    if ((inParams.oper != DELETE) || (inParams.oper == DELETE && !track_exist)) {
+                        value := db.Value{Field: t}
+                        if _, ok := subIntfmap["VRRP6"]; !ok {
+                            subIntfmap["VRRP6"] = make(map[string]db.Value)
+                        }
+                        subIntfmap["VRRP6"][vrrp_key] = value
+                    }
+
+                    log.Info("Outside : subIntfmap : ",  subIntfmap)
+                }
+            }
+        }
+    }
+
+    log.Info("YangToDb_intf_vlan_vrrp_xfmr : subIntfmap : ",  subIntfmap)
+    return subIntfmap, err
+}
+
 func getVrrpByName(dbCl *db.DB, tblName string, ifName string, isvrid bool, vrid string) (map[string]db.Value, error) {
     var err error
     vrrpMap := make(map[string]db.Value)
@@ -699,9 +1075,16 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/config") ||
        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/config") {
 
-        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
-        log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, true, false)
+         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
+         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
+         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, true, false)
+
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/config") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/config") {
+
+         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
+         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
+         convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, true, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/state") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/state") {
@@ -710,34 +1093,69 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, false, true)
 
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/state") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/state") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, false, true)
+
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group/config") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/config") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, false, false, false)
+
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group/config") ||
-            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/config") {
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/config") {
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, false, false, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group/state") ||
-            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/state") {
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/state") {
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, true, false, false)
 
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group/state") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/state") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, true, false, false)
+
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group") ||
-            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group") {
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group") {
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, true, true, true)
 
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, true, true, true)
     }
+
     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/config") ||
        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/config") {
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, true, false)
+
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/config") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/config") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, true, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/state") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/state") {
@@ -746,26 +1164,54 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, false, true)
 
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/state") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/state") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, false, true)
+
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group/config") ||
-            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/config") {
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/config") {
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, false, false, false)
 
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/config") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/config") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, false, false, false)
+
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group/state") ||
-            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/state") {
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/state") {
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, true, false, false)
 
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/state") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/state") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, true, false, false)
+
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/vrrp/vrrp-group") ||
-            strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group") {
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group") {
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, true, true, true)
+
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group") ||
+              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group") {
+
+        vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
+        log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
+        convertVrrpMapToVlanOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, true, true, true)
 
     }
 
@@ -1167,6 +1613,391 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
     return err
 }
 
+func convertVrrpMapToVlanOC (inParams XfmrParams, targetUriPath string, ifName string, vrrpMap map[string]db.Value, ifInfo *ocbinds.OpenconfigInterfaces_Interfaces_Interface, isConfig bool, isState bool, isTrackConfig bool, isTrackState bool) error {
+    var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan
+    var err error
+    var v4Flag bool
+    var v4Address *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Addresses_Address
+    var v6Address *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv6_Addresses_Address
+    vrrpTrackMap := make(map[string]db.Value)
+
+    v4Flag = false
+
+    log.Info("convertVrrpMapToVlanOC:", vrrpTrackMap)
+
+    subIntf = ifInfo.RoutedVlan
+    ygot.BuildEmptyTree(subIntf)
+
+    pathInfo := NewPathInfo(inParams.uri)
+    ipB := pathInfo.Var("ip")
+    if len(ipB) == 0 {
+        return err
+    }
+
+
+    vridStr := pathInfo.Var("virtual-router-id")
+    if len(vridStr) == 0 {
+        log.Info("Missing key in convertVrrpMapToVlanOC")
+        return err
+    }
+
+    if len(vrrpMap) == 0 {
+        log.Info("VRRP entry not present")
+        return err
+    }
+
+    vrid64, err := strconv.ParseUint(vridStr, 10, 8)
+    vrid := uint8(vrid64)
+
+    if validIPv4(ipB) {
+        if _, ok := subIntf.Ipv4.Addresses.Address[ipB]; !ok {
+            v4Address, _ = subIntf.Ipv4.Addresses.NewAddress(ipB)
+        } else {
+            v4Address = subIntf.Ipv4.Addresses.Address[ipB]
+        }
+        v4Flag = true
+    } else if validIPv6(ipB) {
+        if _, ok := subIntf.Ipv6.Addresses.Address[ipB]; !ok {
+            v6Address, _ = subIntf.Ipv6.Addresses.NewAddress(ipB)
+        } else {
+            v6Address = subIntf.Ipv6.Addresses.Address[ipB]
+        }
+    } else {
+        log.Error("Invalid IP address " + ipB)
+        return err
+    }
+
+    for _, vrrpData := range vrrpMap {
+
+        if v4Flag {
+
+            log.Info("for ipv4")
+
+            var vrrp4 *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Addresses_Address_Vrrp_VrrpGroup
+
+            if _, ok := v4Address.Vrrp.VrrpGroup[vrid]; !ok {
+                vrrp4, err = v4Address.Vrrp.NewVrrpGroup(vrid)
+            } else {
+                vrrp4 = v4Address.Vrrp.VrrpGroup[vrid]
+            }
+
+            ygot.BuildEmptyTree(vrrp4)
+            pvrid := new(uint8)
+            *pvrid = vrid
+            vrrp4.VirtualRouterId = pvrid
+            var state uint8
+            state = 0
+
+            if isState {
+
+              priority := getVrrpOwnerPriority(inParams.d, vrrpData, ifName, false)
+              vrrp4.State.Priority = &priority
+
+              advintv := 1
+              if vrrpData.Has("adv_interval") {
+                  advintv, _ = strconv.Atoi(vrrpData.Get("adv_interval"))
+              }
+              padvintv := new(uint16)
+              *padvintv  = uint16(advintv)
+              vrrp4.State.AdvertisementInterval = padvintv
+
+              preemptstr := "True"
+              if vrrpData.Has("pre_empt") {
+                  preemptstr = vrrpData.Get("pre_empt")
+              }
+              ppreempt := new(bool)
+              if preemptstr == "True"{
+                  *ppreempt = true
+              } else {
+                  *ppreempt = false
+              }
+              vrrp4.State.Preempt = ppreempt
+
+              if vrrpData.Has("vip@") {
+                  vipstr := vrrpData.Get("vip@")
+                  vipmap := strings.Split(vipstr, ",")
+                  vrrp4.State.VirtualAddress = vipmap
+
+                  state = getVrrpState(inParams.dbs[db.ApplDB], "VRRP_TABLE", ifName, vipmap[0], "/32", vridStr)
+
+              }
+
+              pstate := new(uint8)
+              *pstate  = uint8(state)
+              vrrp4.State.State = pstate
+
+              version := 2
+              if vrrpData.Has("version") {
+                  version, _ = strconv.Atoi(vrrpData.Get("version"))
+              }
+              pversion := new(uint8)
+              *pversion  = uint8(version)
+              vrrp4.State.Version = pversion
+
+            }
+            if isConfig {
+                priority := getVrrpOwnerPriority(inParams.d, vrrpData, ifName, false)
+                vrrp4.Config.Priority = &priority
+
+                advintv := 1
+                if vrrpData.Has("advert_int") {
+                    advintv, _ = strconv.Atoi(vrrpData.Get("advert_int"))
+                }
+                padvintv := new(uint16)
+                *padvintv  = uint16(advintv)
+                vrrp4.Config.AdvertisementInterval = padvintv
+
+                preemptstr := "True"
+                if vrrpData.Has("pre_empt") {
+                    preemptstr = vrrpData.Get("pre_empt")
+                }
+                ppreempt := new(bool)
+                if preemptstr == "True"{
+                    *ppreempt = true
+                } else {
+                    *ppreempt = false
+                }
+                vrrp4.Config.Preempt = ppreempt
+
+                if vrrpData.Has("vip@") {
+                    vipstr := vrrpData.Get("vip@")
+                    vipmap := strings.Split(vipstr, ",")
+                    vrrp4.Config.VirtualAddress = vipmap
+                }
+
+                version := 2
+                if vrrpData.Has("version") {
+                    version, _ = strconv.Atoi(vrrpData.Get("version"))
+                }
+                pversion := new(uint8)
+                *pversion  = uint8(version)
+                vrrp4.Config.Version = pversion
+            }
+
+
+            if (isTrackState || isTrackConfig) {
+
+                vrrpTrackMap, err = getVrrpTrackByName(inParams.dbs[db.ConfigDB], "VRRP_TRACK", ifName, vridStr)
+                log.Info("vrrpTrackMap: ", vrrpTrackMap)
+
+
+                for vrrpTrackKey, vrrpTrackData := range vrrpTrackMap {
+
+                    log.Info("vrrpTrackKey: vrrpTrackData: ", vrrpTrackKey, vrrpTrackData)
+
+                    vrrpTrackKeySplit := strings.Split(vrrpTrackKey, "|")
+
+                    trackIfname := pathInfo.Var("vrrp-track-interface")
+
+                    if trackIfname == "" {
+                        trackIfname = vrrpTrackKeySplit[2]
+                    }
+
+                    _trackIfUIName := utils.GetUINameFromNativeName(&trackIfname)
+                    trackIfUIName := *_trackIfUIName
+
+                    log.Info("trackIfname: ", trackIfname)
+                    log.Info("trackIfUIname: ", trackIfUIName)
+
+                    if _, ok := vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName]; !ok {
+                        vrrp4.VrrpTrack.NewVrrpTrackInterface(trackIfUIName)
+                    }
+
+                    if vrrpTrackData.Has("priority_increment") {
+
+                        ygot.BuildEmptyTree(vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName])
+
+
+                        ppriority_increment := new(uint8)
+                        ppriority_incr_state := new(uint8)
+                        priority_increment, _ := strconv.Atoi(vrrpTrackData.Get("priority_increment"))
+                        *ppriority_increment  = uint8(priority_increment)
+                        *ppriority_incr_state  = uint8(priority_increment)
+
+                        if (isTrackConfig) {
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
+                        }
+
+                        if (isTrackState) {
+
+                            ifup := isIntfUp(inParams.dbs[db.ApplDB], trackIfname)
+                            if !ifup {
+                                *ppriority_incr_state = 0
+                            }
+
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].State.PriorityIncrement = ppriority_incr_state
+                        }
+
+                        if (isTrackConfig) {
+                            vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
+                        }
+
+                        log.Info("PriorityIncrement: ", ppriority_incr_state)
+                    }
+                }
+            }
+        } else {
+
+            log.Info("for ipv6")
+
+            var vrrp6 *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv6_Addresses_Address_Vrrp_VrrpGroup
+
+            if _, ok := v6Address.Vrrp.VrrpGroup[vrid]; !ok {
+                vrrp6, err = v6Address.Vrrp.NewVrrpGroup(vrid)
+            } else {
+                vrrp6 = v6Address.Vrrp.VrrpGroup[vrid]
+            }
+
+
+            ygot.BuildEmptyTree(vrrp6)
+            pvrid := new(uint8)
+            *pvrid = vrid
+            vrrp6.VirtualRouterId = pvrid
+            var state uint8
+            state = 0
+
+            if isState {
+
+              priority := getVrrpOwnerPriority(inParams.d, vrrpData, ifName, false)
+              vrrp6.State.Priority = &priority
+
+              advintv := 1
+              if vrrpData.Has("adv_interval") {
+                  advintv, _ = strconv.Atoi(vrrpData.Get("adv_interval"))
+              }
+              padvintv := new(uint16)
+              *padvintv  = uint16(advintv)
+              vrrp6.State.AdvertisementInterval = padvintv
+
+              preemptstr := "True"
+              if vrrpData.Has("pre_empt") {
+                  preemptstr = vrrpData.Get("pre_empt")
+              }
+              ppreempt := new(bool)
+              if preemptstr == "True"{
+                  *ppreempt = true
+              } else {
+                  *ppreempt = false
+              }
+              vrrp6.State.Preempt = ppreempt
+
+              if vrrpData.Has("vip@") {
+                  vipstr := vrrpData.Get("vip@")
+                  vipmap := strings.Split(vipstr, ",")
+                  vrrp6.State.VirtualAddress = vipmap
+
+                  state = getVrrpState(inParams.dbs[db.ApplDB], "VRRP_TABLE", ifName, vipmap[0], "/128", vridStr)
+
+              }
+
+              pstate := new(uint8)
+              *pstate  = uint8(state)
+              vrrp6.State.State = pstate
+
+              version := 3
+              if vrrpData.Has("version") {
+                  version, _ = strconv.Atoi(vrrpData.Get("version"))
+              }
+              pversion := new(uint8)
+              *pversion  = uint8(version)
+              vrrp6.State.Version = pversion
+
+            }
+            if isConfig {
+              priority := getVrrpOwnerPriority(inParams.d, vrrpData, ifName, false)
+              vrrp6.Config.Priority = &priority
+
+              advintv := 1
+              if vrrpData.Has("advert_int") {
+                  advintv, _ = strconv.Atoi(vrrpData.Get("advert_int"))
+              }
+              padvintv := new(uint16)
+              *padvintv  = uint16(advintv)
+              vrrp6.Config.AdvertisementInterval = padvintv
+
+              preemptstr := "True"
+              if vrrpData.Has("pre_empt") {
+                  preemptstr = vrrpData.Get("pre_empt")
+              }
+              ppreempt := new(bool)
+              if preemptstr == "True"{
+                  *ppreempt = true
+              } else {
+                  *ppreempt = false
+              }
+              vrrp6.Config.Preempt = ppreempt
+
+              if vrrpData.Has("vip@") {
+                  vipstr := vrrpData.Get("vip@")
+                  vipmap := strings.Split(vipstr, ",")
+                  vrrp6.Config.VirtualAddress = vipmap
+              }
+
+            }
+
+            if (isTrackState || isTrackConfig) {
+                vrrpTrackMap, err = getVrrpTrackByName(inParams.dbs[db.ConfigDB], "VRRP6_TRACK", ifName, vridStr)
+                log.Info("vrrpTrackMap: ", vrrpTrackMap)
+
+
+                for vrrpTrackKey, vrrpTrackData := range vrrpTrackMap {
+
+                    log.Info("vrrpTrackKey: vrrpTrackData: ", vrrpTrackKey, vrrpTrackData)
+
+                    vrrpTrackKeySplit := strings.Split(vrrpTrackKey, "|")
+
+                    trackIfname := pathInfo.Var("vrrp-track-interface")
+
+                    if trackIfname == "" {
+                        trackIfname = vrrpTrackKeySplit[2]
+                    }
+
+                    _trackIfUIName := utils.GetUINameFromNativeName(&trackIfname)
+                    trackIfUIName := *_trackIfUIName
+
+                    log.Info("trackIfname: ", trackIfname)
+                    log.Info("trackIfUIName: ", trackIfUIName)
+
+                    if _, ok := vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName]; !ok {
+                        vrrp6.VrrpTrack.NewVrrpTrackInterface(trackIfUIName)
+                    }
+
+                    if vrrpTrackData.Has("priority_increment") {
+
+                        ygot.BuildEmptyTree(vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName])
+
+
+                        ppriority_increment := new(uint8)
+                        ppriority_incr_state := new(uint8)
+                        priority_increment, _ := strconv.Atoi(vrrpTrackData.Get("priority_increment"))
+                        *ppriority_increment  = uint8(priority_increment)
+                        *ppriority_incr_state  = uint8(priority_increment)
+
+                        if (isTrackConfig) {
+                            vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName].Config.PriorityIncrement = ppriority_increment
+                        }
+
+                        if (isTrackState) {
+
+                            ifup := isIntfUp(inParams.dbs[db.ApplDB], trackIfname)
+                            if !ifup {
+                                *ppriority_incr_state = 0
+                            }
+
+                            vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName].State.PriorityIncrement = ppriority_incr_state
+                        }
+
+                        log.Info("PriorityIncrement: ", priority_increment)
+                    }
+                }
+            }
+        }
+    }
+
+    log.Info("err:", err)
+    return err
+}
+
 
 var DbToYang_intf_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
@@ -1211,6 +2042,46 @@ var DbToYang_intf_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (er
     return err
 }
 
+var DbToYang_intf_vlan_vrrp_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    pathInfo := NewPathInfo(inParams.uri)
+    intfName := pathInfo.Var("name")
+    targetUriPath, _ := getYangPathFromUri(inParams.uri)
+    log.Info("targetUriPath is ", targetUriPath)
+    var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
+
+    log.Info("DbToYang_intf_vlan_vrrp_xfmr")
+
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") {
+        if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
+            var ok bool = false
+            if intfObj, ok = intfsObj.Interface[intfName]; !ok {
+                intfObj, _ = intfsObj.NewInterface(intfName)
+            }
+            ygot.BuildEmptyTree(intfObj)
+            if intfObj.RoutedVlan == nil {
+                ygot.BuildEmptyTree(intfObj.RoutedVlan)
+            }
+        } else {
+            ygot.BuildEmptyTree(intfsObj)
+            intfObj, _ = intfsObj.NewInterface(intfName)
+            ygot.BuildEmptyTree(intfObj)
+        }
+    }
+
+    _ifName := utils.GetNativeNameFromUIName(&intfName)
+    ifName := *_ifName
+
+    err = handleVrrpGetByTargetURI(inParams, targetUriPath, ifName, intfObj)
+
+    log.Info("err:", err)
+
+    if err != nil {
+        return tlerr.NotFound("Resource Not Found")
+    }
+    return err
+}
 
 func vrrp_show_summary (body []byte, dbs [db.MaxDB]*db.DB, tableName string, trackTableName string) (result []byte, err error) {
     var vip_suffix string
@@ -1350,5 +2221,58 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
-    return result, err 
+    return result, err
+}
+
+var Subscribe_intf_vlan_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    var tableName string
+    var trackStr string
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    if targetUriPath == "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group" ||
+       targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group" {
+         tableName = "VRRP"
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group" ||
+              targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group" {
+         tableName = "VRRP6"
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group/vrrp-track/vrrp-track-interface" ||
+              targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/openconfig-interfaces-ext:vrrp-track/vrrp-track-interface" {
+        tableName = "VRRP_TRACK"
+        _trackIf := pathInfo.Var("track-intf")
+        trackIf := utils.GetNativeNameFromUIName(&_trackIf)
+        trackStr = "|" + *trackIf
+    } else if targetUriPath == "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/vrrp-track/vrrp-track-interface" ||
+              targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/openconfig-interfaces-ext:vrrp-track/vrrp-track-interface" {
+        tableName = "VRRP6_TRACK"
+        _trackIf := pathInfo.Var("track-intf")
+        trackIf := utils.GetNativeNameFromUIName(&_trackIf)
+        trackStr = "|" + *trackIf
+    } else {
+        log.Infof("Subscribe attempted on unsupported path:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
+        return result, err
+    }
+
+    _ifName     := pathInfo.Var("name")
+    vrId       := pathInfo.Var("virtual-router-id")
+
+    ifName := utils.GetNativeNameFromUIName(&_ifName)
+    var redisKey string = *ifName + "|" + vrId + trackStr
+
+    log.Info("redisKey:", tableName, *ifName, vrId, redisKey, trackStr)
+
+    result.dbDataMap = make(RedisDbMap)
+    log.Infof("Subscribe_intf_vlan_vrrp_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+               pathInfo.Path, pathInfo.Template, targetUriPath, redisKey)
+
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.needCache = true
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, err
 }
