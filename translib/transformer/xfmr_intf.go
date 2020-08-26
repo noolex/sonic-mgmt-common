@@ -626,6 +626,7 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     ipEntry, err := d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, ipPrefix}})
     if err != nil || !ipEntry.IsPopulated() {
         log.Errorf("IP address: %s doesn't exist for Interafce: %s", ipPrefix, *ifName)
+        result.Output.Status_detail = "No such address configured on this interface"
         return json.Marshal(&result)
     }
     moduleNm := "sonic-interface"
