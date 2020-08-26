@@ -4331,7 +4331,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 /* Check if given iface already part of another PortChannel */
                 intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
                 if intf_lagId != nil && *intf_lagId != lagStr {
-                    errStr := ifName + " already member of "+ *intf_lagId
+		    intfNameUi := utils.GetUINameFromNativeName(&ifName)
+                    errStr := *intfNameUi + " already member of "+ *intf_lagId
                     return nil, tlerr.InvalidArgsError{Format: errStr}
                 }
                 /* Restrict configuring member-port if iface configured as member-port of any vlan */

@@ -661,11 +661,12 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
                     } else {
                         vlanId := vlanName[len("Vlan"):]
                         var errStr string
+			intfNameUi := utils.GetUINameFromNativeName(&ifName)
                         switch existingIfMode {
                         case ACCESS:
-                            errStr = "Untagged VLAN: " + vlanId + " configuration exists for Interface: " + ifName
+                            errStr = "Untagged VLAN: " + vlanId + " configuration exists for Interface: " + *intfNameUi
                         case TRUNK:
-                            errStr = "Tagged VLAN: " + vlanId + " configuration exists for Interface: " + ifName
+                            errStr = "Tagged VLAN: " + vlanId + " configuration exists for Interface: " + *intfNameUi
                         }
                         log.Error(errStr)
                         return tlerr.InvalidArgsError{Format: errStr}
