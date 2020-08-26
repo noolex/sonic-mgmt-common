@@ -43,6 +43,7 @@ const (
 	STP_VLAN_OPER_TABLE      = "_STP_VLAN_TABLE"
 	STP_VLAN_PORT_OPER_TABLE = "_STP_VLAN_PORT_TABLE"
 	STP_PORT_OPER_TABLE      = "_STP_PORT_TABLE"
+    STP_STATE_TABLE          = "STP_TABLE"
 	STP_MODE                 = "mode"
 	OC_STP_APP_MODULE_NAME   = "/openconfig-spanning-tree:stp"
 	OC_STP_YANG_PATH_PREFIX  = "/device/stp"
@@ -274,6 +275,39 @@ func (app *StpApp) translateCRUCommon(d *db.DB, opcode int) ([]db.WatchKeys, err
 	return keys, err
 }
 
+func (app *StpApp) handleDisabledStpVlans(d *db.DB, opcode int, vlan_list []uint16)  error {
+	stp := app.getAppRootObject()
+    switch opcode {
+    case REPLACE:
+        log.Infof("URL: %s Not Supported", app.pathInfo.Template)
+        return tlerr.NotSupported("Operation Not Supported")
+    case CREATE, UPDATE, DELETE:
+		for _, vlanId := range vlan_list {
+            err := app.handleVlanDisable(d, "Vlan"+strconv.Itoa(int(vlanId)), opcode == DELETE)
+            if err != nil {
+                return err
+            }
+        }
+    case GET:
+        var err error=nil
+        if len(vlan_list) > 0 {
+            err = app.convertDBDisabledVlanConfigToInternal(d, asKey("Vlan"+strconv.Itoa(int(vlan_list[0]))))
+        } else {
+            err = app.convertDBDisabledVlanConfigToInternal(d, db.Key{})
+        }
+        if err != nil {
+            return err
+        }
+        ygot.BuildEmptyTree(stp)
+        err = app.convertInternalToOCStpDisabledVlans(stp.Global)
+        if err != nil {
+            return err
+        }
+
+    }
+    return nil
+}
+
 func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 	var err error
 	var topmostPath bool = false
@@ -290,7 +324,15 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 
 	targetUriPath, _ := getYangPathFromUri(app.pathInfo.Path)
 	log.Infof("processCommon -- isTopmostPath: %t and Uri: %s Opcode: %d", topmostPath, targetUriPath, opcode)
+
 	if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/global") {
+
+        if targetUriPath == "/openconfig-spanning-tree:stp/global/config/openconfig-spanning-tree-ext:disabled-vlans" {
+            return app.handleDisabledStpVlans(d, opcode, stp.Global.Config.DisabledVlans)
+        } else if targetUriPath == "/openconfig-spanning-tree:stp/global/state/openconfig-spanning-tree-ext:disabled-vlans" {
+            return app.handleDisabledStpVlans(d, opcode, stp.Global.State.DisabledVlans)
+        }
+
 		mode, _ := app.getStpModeFromConfigDB(d)
 		switch opcode {
 		case CREATE:
@@ -332,8 +374,14 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 			if err != nil {
 				return err
 			}
+            err := app.convertDBDisabledVlanConfigToInternal(d, db.Key{})
+            if err != nil {
+                return err
+            }
+
 			ygot.BuildEmptyTree(stp)
 			app.convertInternalToOCStpGlobalConfig(stp.Global)
+            app.convertInternalToOCStpDisabledVlans(stp.Global)
 		}
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-spanning-tree:stp/openconfig-spanning-tree-ext:pvst") {
 		mode, _ := app.getStpModeFromConfigDB(d)
@@ -604,16 +652,30 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 				return err
 			}
 			app.convertInternalToOCStpInterfaces("", stp.Interfaces, nil)
+            app.convertInternalToOCStpDisabledVlans(stp.Global)
 		}
 	}
 
 	return err
 }
 
+
+func isVlanCreated(d *db.DB, vlanName string) bool{
+
+    vlanTable := &db.TableSpec{Name: "VLAN"}
+    _, err := d.GetEntry(vlanTable, asKey(vlanName))
+    return err == nil
+}
+
 func (app *StpApp) handleRpvstCRUDOperationsAtVlanLevel(d *db.DB, opcode int, vlanName string, isInterfacesSubtree bool, mode interface{}, vlan interface{}) error {
 	var err error
 
 	log.Infof("handleRpvstCRUDOperationsAtVlanLevel --> Perform CRUD for %s", reflect.TypeOf(vlan).Elem().Name())
+
+    if !isVlanCreated(d, vlanName) {
+        log.Infof("handleRpvstCRUDOperationsAtVlanLevel : Vlan %s is not configured", vlanName)
+        return tlerr.NotFound("Vlan %s is not configured", vlanName)
+    }
 	switch opcode {
 	case CREATE:
 		if *app.ygotTarget == vlan {
@@ -652,7 +714,7 @@ func (app *StpApp) handleRpvstCRUDOperationsAtVlanLevel(d *db.DB, opcode int, vl
 			err = d.SetEntry(app.vlanTable, asKey(vlanName), app.vlanTableMap[vlanName])
 		}
 	case UPDATE:
-		if *app.ygotTarget == vlan {
+        if *app.ygotTarget == vlan {
 			err = app.setRpvstVlanDataInDB(d, false)
 			if err != nil {
 				return err
@@ -661,7 +723,51 @@ func (app *StpApp) handleRpvstCRUDOperationsAtVlanLevel(d *db.DB, opcode int, vl
 		} else if isInterfacesSubtree {
 			err = app.setRpvstVlanInterfaceDataInDB(d, false)
 		} else {
-			err = d.ModEntry(app.vlanTable, asKey(vlanName), app.vlanTableMap[vlanName])
+            if vlanData, ok := app.vlanTableMap[vlanName]; ok {
+                if is_enabled, _ := strconv.ParseBool((&vlanData).Get("enabled")); is_enabled {
+                    existingEntry, err := d.GetEntry(app.vlanTable, asKey(vlanName))
+                    if err != nil {
+                        return err
+                    }
+
+                    stpGlobalDBEntry, err := d.GetEntry(app.globalTable, asKey("GLOBAL"))
+                    if err != nil {
+                        return err
+                    }
+                    fDelay := (&stpGlobalDBEntry).Get("forward_delay")
+                    helloTime := (&stpGlobalDBEntry).Get("hello_time")
+                    maxAge := (&stpGlobalDBEntry).Get("max_age")
+                    priority := (&stpGlobalDBEntry).Get("priority")
+
+                    defaultDBValues := db.Value{Field: map[string]string{}}
+                    if !existingEntry.Has("hello_time") {
+                        (&defaultDBValues).Set("hello_time", helloTime)
+                    }
+                    if !existingEntry.Has("forward_delay") {
+                        (&defaultDBValues).Set("forward_delay", fDelay)
+                    }
+                    if !existingEntry.Has("max_age") {
+                        (&defaultDBValues).Set("max_age", maxAge)
+                    }
+                    if !existingEntry.Has("priority") {
+                        (&defaultDBValues).Set("priority", priority)
+                    }
+                    (&defaultDBValues).Set("enabled", "true")
+                    vlanId := strings.Replace(vlanName, "Vlan", "", 1)
+                    (&defaultDBValues).Set("vlanid", vlanId)
+
+                    //log.Info("app.vlanTableMap")
+                    //log.Info(app.vlanTableMap[vlanName])
+                    //log.Info("DefaultDBValues")
+                    //log.Info(defaultDBValues)
+                    d.ModEntry(app.vlanTable, asKey(vlanName), defaultDBValues)
+                } else {
+                    err := d.ModEntry(app.vlanTable, asKey(vlanName), app.vlanTableMap[vlanName])
+                    if err != nil {
+                        return err
+                    }
+                }
+            }
 		}
 	case DELETE:
 		if *app.ygotTarget == vlan {
@@ -792,6 +898,33 @@ func (app *StpApp) convertDBStpGlobalConfigToInternal(d *db.DB) error {
 	}
 	return err
 }
+
+func (app *StpApp) convertInternalToOCStpDisabledVlans(stpGlobal *ocbinds.OpenconfigSpanningTree_Stp_Global) error {
+    var vlan_list []uint16 = nil
+    for vlanName := range app.vlanTableMap {
+        if vlanData, ok := app.vlanTableMap[vlanName]; ok {
+            if is_enabled, _ := strconv.ParseBool((&vlanData).Get("enabled")); !is_enabled {
+                vlanId, _ := strconv.Atoi(strings.Replace(vlanName, "Vlan", "", 1))
+                vlan_list = append(vlan_list, uint16(vlanId))
+            }
+        }
+    }
+
+	if stpGlobal != nil {
+        if stpGlobal.Config != nil {
+            stpGlobal.Config.DisabledVlans = vlan_list
+        }
+		if stpGlobal.State != nil {
+            stpGlobal.State.DisabledVlans = vlan_list
+		}
+	}
+    if len(vlan_list) == 0 {
+        return tlerr.NotFound("Entry not found")
+    }
+    return nil
+}
+
+
 
 func (app *StpApp) convertInternalToOCStpGlobalConfig(stpGlobal *ocbinds.OpenconfigSpanningTree_Stp_Global) {
 	if stpGlobal != nil {
@@ -962,6 +1095,37 @@ func (app *StpApp) setRpvstVlanInterfaceDataInDB(d *db.DB, createFlag bool) erro
 	}
 	return nil
 }
+
+func (app *StpApp) convertDBDisabledVlanConfigToInternal(d *db.DB, vlanKey db.Key) error {
+	var err error
+	if vlanKey.Len() > 0 {
+		entry, err := d.GetEntry(app.vlanTable, vlanKey)
+		if err != nil {
+			return err
+		}
+		vlanName := vlanKey.Get(0)
+		if entry.IsPopulated() {
+			app.vlanTableMap[vlanName] = entry
+		} else {
+			return tlerr.NotFound("Vlan %s is not configured", vlanName)
+		}
+	} else {
+		tbl, err := d.GetTable(app.vlanTable)
+		if err != nil {
+			return err
+		}
+		keys, err := tbl.GetKeys()
+		if err != nil {
+			return err
+		}
+		for i := range keys {
+			app.convertDBDisabledVlanConfigToInternal(d, keys[i])
+		}
+	}
+
+	return err
+}
+
 
 func (app *StpApp) convertDBRpvstVlanConfigToInternal(d *db.DB, vlanKey db.Key) error {
 	var err error
@@ -1988,6 +2152,33 @@ func (app *StpApp) convertInternalStpModeToOC(mode string) []ocbinds.E_Openconfi
 	return stpModes
 }
 
+func (app *StpApp) getMaxStpInstances() (int, error) {
+
+    dbs, err := getAllDbs(true)
+
+    if err != nil {
+        return 0, err
+    }
+
+    stateDB := dbs[db.StateDB]
+    stpStateDbEntry, err := stateDB.GetEntry(&db.TableSpec{Name: STP_STATE_TABLE}, asKey("GLOBAL"))
+    if err != nil {
+        return 0, err
+    }
+    max_inst, err := strconv.Atoi((&stpStateDbEntry).Get("max_stp_inst"))
+    if err != nil {
+        return 0, err
+    }
+    log.Infof("Hardware Supported Max Stp Instances: %d", max_inst)
+    if max_inst > PVST_MAX_INSTANCES {
+        max_inst = PVST_MAX_INSTANCES
+    }
+
+    closeAllDbs(dbs[:])
+
+    return max_inst, nil
+}
+
 func (app *StpApp) getStpModeFromConfigDB(d *db.DB) (string, error) {
 	stpGlobalDbEntry, err := d.GetEntry(app.globalTable, asKey("GLOBAL"))
 	if err != nil {
@@ -2089,17 +2280,39 @@ func (app *StpApp) enableStpForVlans(d *db.DB) error {
 		return err
 	}
 
+    max_stp_instances, err := app.getMaxStpInstances()
+    if err != nil {
+        log.Info("getMaxStpInstances Failed : ",err)
+        return tlerr.NotSupported("Operation Not Supported")
+    }
+
+    totalVlansCount := len(vlanKeys)
+    if totalVlansCount > max_stp_instances {
+        // when STP is getting enabled globally, 
+        // disabledVlansCount = number of entries in STP_VLAN_TABLE
+        stpDisabledVlanKeys, _ := d.GetKeys(&db.TableSpec{Name: "STP_VLAN"})
+        disabledVlansCount := len(stpDisabledVlanKeys)
+        if (totalVlansCount - disabledVlansCount) > max_stp_instances {
+            log.Infof("Exceeds MAX_STP_INSTANCE(%d), Disable STP on %d Vlans", max_stp_instances, (totalVlansCount - disabledVlansCount - max_stp_instances))
+            return tlerr.NotSupported("Error - exceeds maximum spanning-tree instances(%d) supported, disable STP for atleast %d vlans", max_stp_instances, (totalVlansCount - disabledVlansCount - max_stp_instances))
+        }
+    }
+
 	var vlanList []string
 	for i := range vlanKeys {
 		vlanKey := vlanKeys[i]
-		vlanList = append(vlanList, (&vlanKey).Get(0))
+		_, err := d.GetEntry(app.vlanTable, vlanKey)
+		if err != nil {
+            // append to vlan list only non-existing entries
+            vlanList = append(vlanList, (&vlanKey).Get(0))
+        }
 	}
 
 	// Sort vlanList in natural order such that 'Vlan2' < 'Vlan10'
 	natsort.Sort(vlanList)
 
 	for i := range vlanList {
-		if i < PVST_MAX_INSTANCES {
+		if i < max_stp_instances {
 			defaultDBValues := db.Value{Field: map[string]string{}}
 			(&defaultDBValues).Set("enabled", "true")
 			(&defaultDBValues).Set("forward_delay", fDelay)
@@ -2408,6 +2621,34 @@ func (app *StpApp) handleVlanInterfaceFieldsDeletion(d *db.DB, vlanName string, 
 	}
 
 	return nil
+}
+
+func (app *StpApp) handleVlanDisable(d *db.DB, vlanName string, enable_stp bool) error {
+
+    dbEntry, err := d.GetEntry(app.vlanTable, asKey(vlanName))
+    vlanDbEntry := db.Value{Field: map[string]string{}}
+    if enable_stp {
+        log.Info("Enable STP on Vlan : ",vlanName)
+        if err == nil {
+            if (&dbEntry).Get("enabled") == "false" {
+                vlanDbEntry.Field["enabled"] = "true"
+                err = d.ModEntry(app.vlanTable, asKey(vlanName), vlanDbEntry)
+            }
+        }
+    } else {
+        log.Info("Disable STP on Vlan : ",vlanName)
+        vlanDbEntry.Field["enabled"] = "false"
+
+        if err == nil {
+            if (&dbEntry).Get("enabled") == "true" {
+                err = d.ModEntry(app.vlanTable, asKey(vlanName), vlanDbEntry)
+            }
+        }else {
+            err = d.CreateEntry(app.vlanTable, asKey(vlanName), vlanDbEntry)
+        }
+    }
+
+	return err
 }
 
 func (app *StpApp) handleVlanFieldsDeletion(d *db.DB, vlanName string) error {

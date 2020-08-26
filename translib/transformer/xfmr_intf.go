@@ -469,7 +469,10 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
     case UPDATE,REPLACE:
         if(ifType == IntfTypeVlan){
 	    if(validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeVlan].cfgDb.portTN, *ifName)!=nil){
-	        enableStpOnVlanCreation(inParams, ifName)
+            err = enableStpOnVlanCreation(inParams, ifName)
+            if (err != nil) {
+                return err
+            }
 	    }
 	}
     }

@@ -163,9 +163,7 @@ module sonic-spanning-tree {
                 key "name";
 
                 leaf name {
-                    type leafref {
-                        path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
-                    }
+                    type string;
                     description
                         "Vlan identifier";
                 }

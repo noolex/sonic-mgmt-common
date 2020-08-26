@@ -62,8 +62,27 @@ const (
     STP_VLAN_TABLE           = "STP_VLAN"
     STP_VLAN_PORT_TABLE      = "STP_VLAN_PORT"
     STP_PORT_TABLE           = "STP_PORT"
+    STP_STATE_TABLE          = "STP_TABLE"
     PVST_MAX_INSTANCES       = 510
 )
+
+func getMaxStpInstances() (int, error) {
+    var stateDbPtr, _ = db.NewDB(getDBOptions(db.StateDB))
+    stpStateDbEntry, err := stateDbPtr.GetEntry(&db.TableSpec{Name:STP_STATE_TABLE}, db.Key{Comp: []string{"GLOBAL"}})
+    if err != nil {
+        return 0, err
+    }
+    max_inst, err := strconv.Atoi((&stpStateDbEntry).Get("max_stp_inst"))
+    if err != nil {
+        return 0, err
+    }
+    log.Infof("Hardware supported Max Stp Instances: %d", max_inst)
+    if max_inst > PVST_MAX_INSTANCES {
+        max_inst = PVST_MAX_INSTANCES
+    }
+
+    return max_inst, nil
+}
 
 func init () {
     XlateFuncBind("YangToDb_sw_vlans_xfmr", YangToDb_sw_vlans_xfmr)
@@ -77,9 +96,9 @@ func getNumVlansOnPort (d *db.DB, ifName *string) int {
     return len(keyList)
 }
 
-func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) {
+func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) error {
     if len(*vlanName) == 0 {
-        return
+        return nil
     }
     d := inParams.d
 
@@ -88,13 +107,34 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) {
     resMap := make(map[string]map[string]db.Value)
     stpPortMap := make(map[string]db.Value)
 
-    vlanKeys, _ := d.GetKeys(&db.TableSpec{Name: STP_VLAN_TABLE})
-    existingEntriesCount := len(vlanKeys)
-    if existingEntriesCount < PVST_MAX_INSTANCES {
-        stpGlobalDBEntry, err := d.GetEntry(&db.TableSpec{Name: STP_GLOBAL_TABLE}, db.Key{Comp:[]string {"GLOBAL"}})
-        if err != nil {
-            return
+    stpVlanDBEntry, err := d.GetEntry(&db.TableSpec{Name: STP_VLAN_TABLE}, db.Key{Comp:[]string {*vlanName}})
+    if err == nil && (&stpVlanDBEntry).Get("enabled") == "false" {
+        log.Info("STP is disabled on ", *vlanName)
+        return nil
+    }
+ 
+    stpGlobalDBEntry, err := d.GetEntry(&db.TableSpec{Name: STP_GLOBAL_TABLE}, db.Key{Comp:[]string {"GLOBAL"}})
+    if err != nil {
+        log.Info("GLOBAL STP is disabled")
+        return nil
+    }
+ 
+    stpVlanKeys, _ := d.GetKeys(&db.TableSpec{Name: STP_VLAN_TABLE})
+    enabledStpVlans := 0
+    for i := range stpVlanKeys {
+        stpVlanDBEntry, err := d.GetEntry(&db.TableSpec{Name: STP_VLAN_TABLE}, db.Key{Comp:[]string {(&stpVlanKeys[i]).Get(0)}})
+        if err == nil && (&stpVlanDBEntry).Get("enabled") == "true" {
+            enabledStpVlans++
         }
+    }
+
+    max_stp_instances, err := getMaxStpInstances()
+    if err != nil {
+        log.Infof("getMaxStpInstances Failed : ",err)
+        return tlerr.NotSupported("Operation Not Supported")
+    }
+
+    if enabledStpVlans < max_stp_instances {
         fDelay := (&stpGlobalDBEntry).Get("forward_delay")
         helloTime := (&stpGlobalDBEntry).Get("hello_time")
         maxAge := (&stpGlobalDBEntry).Get("max_age")
@@ -110,12 +150,15 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) {
         vlanId := strings.Replace(*vlanName, "Vlan", "", 1)
         (&defaultDBValues).Set("vlanid", vlanId)
         stpPortMap[*vlanName] = defaultDBValues
-    }
-    if len(stpPortMap) != 0 {
+
         resMap[STP_VLAN_TABLE] = stpPortMap
         subOpMap[db.ConfigDB] = resMap
         inParams.subOpDataMap[inParams.oper] = &subOpMap
+    } else {
+        log.Info("Exceeds MAX_STP_INSTANCE(%d), Disable STP for this vlan",max_stp_instances)
+        return tlerr.NotSupported("Error - exceeds maximum spanning-tree instances(%d) supported, disable STP for this vlan",max_stp_instances)
     }
+    return nil
 }
 
 func enableStpOnInterfaceVlanMembership(d *db.DB, vlanName *string, intfList []string,
