@@ -40,10 +40,21 @@ module openconfig-system-ext-annot {
             sonic-ext:rpc-callback "rpc_infra_reboot_cb";
         }
     }
-    deviation /oc-sys-ext:logger{
+
+    deviation /oc-sys-ext:sys-log-count{
         deviate add {
-            sonic-ext:rpc-callback "rpc_infra_logger_cb";
+            sonic-ext:rpc-callback "rpc_infra_sys_log_count_cb";
         }
     }
 
+    deviation /oc-sys-ext:set-loglevel-severity{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_set_loglevel_severity_cb";
+        }
+    }
+    deviation /oc-sys-ext:get-loglevel-severity{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_get_loglevel_severity_cb";
+        }
+    }
 }
