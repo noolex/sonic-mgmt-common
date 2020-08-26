@@ -35,7 +35,8 @@ package translib
 
 import (
 	"sync"
-	"github.com/Azure/sonic-mgmt-common/translib/db"
+  "runtime/debug"
+  "github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
@@ -521,7 +522,7 @@ func Get(req GetRequest) (GetResponse, error) {
 	}
 
 	resp, err = (*app).processGet(dbs)
-
+  debug.FreeOSMemory()
 	return resp, err
 }
 
