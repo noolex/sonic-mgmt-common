@@ -435,7 +435,7 @@ var rpc_clear_ipsla_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
     vtysh_cmd := "clear ip sla " + ipSlaIdStr
     _, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-        log.Errorf("Failed to clear IP SLA data for key:", ipSlaIdStr, " err: %s", cmd_err)
+        log.Info("clear IP SLA data for key:", ipSlaIdStr, " Response err: %s", cmd_err)
         result.Output.Status = 1
         result.Output.Status_detail = fmt.Sprintf("Error: %s.", cmd_err)
     } else {
