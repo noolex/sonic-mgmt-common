@@ -315,6 +315,7 @@ module openconfig-bgp-ext {
 
       leaf fast-external-failover {
           type boolean;
+          default true;
           description
               "This causes bgp to take down ebgp peers immediately when a link flaps.";
       }
