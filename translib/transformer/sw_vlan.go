@@ -84,7 +84,6 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) {
     d := inParams.d
 
     log.Infof("enableStpOnVlanCreation --> Enable Stp on Vlans: %s", *vlanName)
-    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     resMap := make(map[string]map[string]db.Value)
     stpPortMap := make(map[string]db.Value)
 
@@ -113,8 +112,13 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) {
     }
     if len(stpPortMap) != 0 {
         resMap[STP_VLAN_TABLE] = stpPortMap
-        subOpMap[db.ConfigDB] = resMap
-        inParams.subOpDataMap[inParams.oper] = &subOpMap
+        if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
+            mapCopy((*inParams.subOpDataMap[inParams.oper])[db.ConfigDB], resMap)
+        }else{
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subOpMap[db.ConfigDB] = resMap
+            inParams.subOpDataMap[inParams.oper] = &subOpMap
+        }
     }
 }
 
