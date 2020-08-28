@@ -2188,16 +2188,14 @@ func utlValidateIpTypeForCfgredSameIp(ipEntry *db.Value, secFlag bool,
         _, ok := ipEntry.Field["secondary"]
         if ok {
             if !secFlag {
-		intfNameUi := utils.GetUINameFromNativeName(ifName)
-                errStr := dbgStr + " is already configured as secondary for interface: " + *intfNameUi
+                errStr := dbgStr + " is already configured as secondary for interface: " + *ifName
                 log.Error(errStr)
                 return tlerr.InvalidArgsError{Format: errStr}
              }
              log.Infof("%s is already configured as secondary! Processing further attributes", dbgStr)
         } else {
             if secFlag {
-		intfNameUi := utils.GetUINameFromNativeName(ifName)
-                errStr := dbgStr + " is already configured as primary for interface: " + *intfNameUi
+                errStr := dbgStr + " is already configured as primary for interface: " + *ifName
                 log.Error(errStr)
                 return tlerr.InvalidArgsError{Format: errStr}
              }
@@ -2467,7 +2465,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 }
 
                 if dbErr == nil {
-                    err := utlValidateIpTypeForCfgredSameIp(&ipEntry, secFlag, &ipPref, &ifName)
+                    err := utlValidateIpTypeForCfgredSameIp(&ipEntry, secFlag, &ipPref, &uriIfName)
                     if err != nil {
                         return nil, err
                     }
@@ -4331,8 +4329,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 /* Check if given iface already part of another PortChannel */
                 intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
                 if intf_lagId != nil && *intf_lagId != lagStr {
-		    intfNameUi := utils.GetUINameFromNativeName(&ifName)
-                    errStr := *intfNameUi + " already member of "+ *intf_lagId
+                    errStr := uriIfName + " already member of "+ *intf_lagId
                     return nil, tlerr.InvalidArgsError{Format: errStr}
                 }
                 /* Restrict configuring member-port if iface configured as member-port of any vlan */

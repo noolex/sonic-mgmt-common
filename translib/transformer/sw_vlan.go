@@ -659,14 +659,13 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
                     if cfgReqIfMode == existingIfMode {
                         continue
                     } else {
-                        vlanId := vlanName[len("Vlan"):]
                         var errStr string
 			intfNameUi := utils.GetUINameFromNativeName(&ifName)
                         switch existingIfMode {
                         case ACCESS:
-                            errStr = "Untagged VLAN: " + vlanId + " configuration exists for Interface: " + *intfNameUi
+                            errStr = vlanName + " already configured as access for " + *intfNameUi
                         case TRUNK:
-                            errStr = "Tagged VLAN: " + vlanId + " configuration exists for Interface: " + *intfNameUi
+                            errStr = vlanName + " already configured as trunk for " + *intfNameUi
                         }
                         log.Error(errStr)
                         return tlerr.InvalidArgsError{Format: errStr}
