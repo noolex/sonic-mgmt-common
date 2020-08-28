@@ -32,6 +32,7 @@ import (
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 
 //CounterObj - Sub structure required based on the counters file in the DUT
@@ -118,8 +119,9 @@ var relay_agent_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string,
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
 
-    ifName := pathInfo.Var("id");
-    log.V(2).Info(ifName)
+    aliasName := pathInfo.Var("id");
+
+    ifName := *utils.GetNativeNameFromUIName(&aliasName)
 
     if ifName == "" {
         log.V(2).Info("TableXfmrFunc - intf_table_xfmr Intf key is not present")
@@ -175,7 +177,9 @@ var DbToYang_relay_agent_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
     if (inParams.key != "") {
         var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
 
-        intfType, _, _ := getIntfTypeByName(inParams.key)
+        ifName := *utils.GetNativeNameFromUIName(&inParams.key)
+
+        intfType, _, _ := getIntfTypeByName(ifName)
 
         intTbl := IntfTypeTblMap[intfType]
 
@@ -185,10 +189,10 @@ var DbToYang_relay_agent_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
             tblList = intTbl.cfgDb.portTN
         }
 
-        entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{inParams.key}})
+        entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
         configDb.DeleteDB()
         if dbErr != nil {
-            log.Info("Failed to read dhcp relay obj from config DB, " + tblList + " " + inParams.key)
+            log.Info("Failed to read dhcp relay obj from config DB, " + tblList + " " + ifName)
             return res_map, dbErr
         }
 
@@ -278,9 +282,9 @@ var DbToYang_relay_agent_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrP
     log.V(2).Info(relayAgentObj)
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("id")
-    log.V(2).Info(ifName)
-    
+    aliasName := pathInfo.Var("id")
+    ifName := *utils.GetNativeNameFromUIName(&aliasName)
+
     if ifName == "" { 
        return err 
     }
@@ -301,15 +305,15 @@ var DbToYang_relay_agent_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrP
             var ok bool = false
             ygot.BuildEmptyTree(relayAgentObj.Dhcp)
             ygot.BuildEmptyTree(relayAgentObj.Dhcp.Interfaces)
-         if raObj, ok = relayAgentObj.Dhcp.Interfaces.Interface[ifName]; !ok {
-                raObj, _ = relayAgentObj.Dhcp.Interfaces.NewInterface(ifName)
+         if raObj, ok = relayAgentObj.Dhcp.Interfaces.Interface[aliasName]; !ok {
+                raObj, _ = relayAgentObj.Dhcp.Interfaces.NewInterface(aliasName)
             }
             ygot.BuildEmptyTree(raObj)
         } else if relayAgentObj != nil {
             ygot.BuildEmptyTree(relayAgentObj)
             ygot.BuildEmptyTree(relayAgentObj.Dhcp)
             ygot.BuildEmptyTree(relayAgentObj.Dhcp.Interfaces)
-            raObj, _ = relayAgentObj.Dhcp.Interfaces.NewInterface(ifName)
+            raObj, _ = relayAgentObj.Dhcp.Interfaces.NewInterface(aliasName)
             ygot.BuildEmptyTree(raObj)
         }
         ygot.BuildEmptyTree(raObj.State)
@@ -318,7 +322,7 @@ var DbToYang_relay_agent_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrP
             err = errors.New("Invalid URI : " + targetUriPath)
         }
 
-    counterObj := relayAgentObj.Dhcp.Interfaces.Interface[ifName].State.Counters
+    counterObj := relayAgentObj.Dhcp.Interfaces.Interface[aliasName].State.Counters
 
     counterObj.TotalDropped = getCounterValue(jsonRelayAgentCounter.TotalDropped.Value)
     
@@ -364,7 +368,8 @@ var DbToYang_relay_agent_v6_counters_xfmr SubTreeXfmrDbToYang = func(inParams Xf
     log.V(2).Info(relayAgentObj)
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("id")
+    aliasName := pathInfo.Var("id")
+    ifName := *utils.GetNativeNameFromUIName(&aliasName)
     
     if ifName == "" { 
        return err 
@@ -386,15 +391,15 @@ var DbToYang_relay_agent_v6_counters_xfmr SubTreeXfmrDbToYang = func(inParams Xf
             var ok bool = false
             ygot.BuildEmptyTree(relayAgentObj.Dhcpv6)
             ygot.BuildEmptyTree(relayAgentObj.Dhcpv6.Interfaces)
-            if raObj, ok = relayAgentObj.Dhcpv6.Interfaces.Interface[ifName]; !ok {
-                raObj, _ = relayAgentObj.Dhcpv6.Interfaces.NewInterface(ifName)
+            if raObj, ok = relayAgentObj.Dhcpv6.Interfaces.Interface[aliasName]; !ok {
+                raObj, _ = relayAgentObj.Dhcpv6.Interfaces.NewInterface(aliasName)
             }
             ygot.BuildEmptyTree(raObj)
          } else if relayAgentObj != nil {
             ygot.BuildEmptyTree(relayAgentObj)
             ygot.BuildEmptyTree(relayAgentObj.Dhcpv6)
             ygot.BuildEmptyTree(relayAgentObj.Dhcpv6.Interfaces)
-            raObj, _ = relayAgentObj.Dhcpv6.Interfaces.NewInterface(ifName)
+            raObj, _ = relayAgentObj.Dhcpv6.Interfaces.NewInterface(aliasName)
             ygot.BuildEmptyTree(raObj)
         }
         ygot.BuildEmptyTree(raObj.State)
@@ -403,7 +408,7 @@ var DbToYang_relay_agent_v6_counters_xfmr SubTreeXfmrDbToYang = func(inParams Xf
             err = errors.New("Invalid URI : " + targetUriPath)
     }
 
-    counterObj := relayAgentObj.Dhcpv6.Interfaces.Interface[ifName].State.Counters
+    counterObj := relayAgentObj.Dhcpv6.Interfaces.Interface[aliasName].State.Counters
 
     counterObj.TotalDropped = getCounterValue(jsonV6RelayAgentCounter.TotalDropped.Value)    
 
@@ -462,7 +467,9 @@ func getRelayAgentIntfTblByType(ifName string) string {
 }
 
 // Helper function to get the tableName
-func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, configDb *db.DB) error{
+func getDhcpDataFromDb(aliasName string, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, configDb *db.DB) error{
+   ifName := *utils.GetNativeNameFromUIName(&aliasName)
+
    tblList := getRelayAgentIntfTblByType(ifName)
    log.V(2).Info(tblList)
 
@@ -480,9 +487,9 @@ func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgen
    //Now create and assign the values to the object
    log.V(2).Info(relayAgentObj)
 
-   raObj, ok := relayAgentObj.Dhcp.Interfaces.Interface[ifName]
+   raObj, ok := relayAgentObj.Dhcp.Interfaces.Interface[aliasName]
    if !ok {
-      raObj, _ = relayAgentObj.Dhcp.Interfaces.NewInterface(ifName)
+      raObj, _ = relayAgentObj.Dhcp.Interfaces.NewInterface(aliasName)
    }
 
    ygot.BuildEmptyTree(raObj)
@@ -553,7 +560,9 @@ func getDhcpDataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgen
 }
 
 // Helper function to get the tableName
-func getDhcpv6DataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, configDb *db.DB) error {
+func getDhcpv6DataFromDb(aliasName string, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, configDb *db.DB) error {
+   ifName := *utils.GetNativeNameFromUIName(&aliasName)
+
    tblList := getRelayAgentIntfTblByType(ifName)
    log.V(2).Info(tblList)
 
@@ -571,9 +580,9 @@ func getDhcpv6DataFromDb(ifName string, relayAgentObj *ocbinds.OpenconfigRelayAg
    //Now create and assign the values to the object
    log.V(2).Info(relayAgentObj)
 
-   raObj, ok := relayAgentObj.Dhcpv6.Interfaces.Interface[ifName]
+   raObj, ok := relayAgentObj.Dhcpv6.Interfaces.Interface[aliasName]
    if !ok {
-      raObj, _ = relayAgentObj.Dhcpv6.Interfaces.NewInterface(ifName)
+      raObj, _ = relayAgentObj.Dhcpv6.Interfaces.NewInterface(aliasName)
    }
 
    ygot.BuildEmptyTree(raObj)
@@ -662,13 +671,14 @@ func getRelayAgentInfoForAllInterfaces (inParams XfmrParams) error {
            if(err != nil) {
                 continue
            }
-       ifName := intfKey.Comp[0]
+           ifName := intfKey.Comp[0]
            ygot.BuildEmptyTree(relayAgentObj)
            ygot.BuildEmptyTree(relayAgentObj.Dhcp)
            ygot.BuildEmptyTree(relayAgentObj.Dhcp.Interfaces)
            ygot.BuildEmptyTree(relayAgentObj.Dhcpv6)
            ygot.BuildEmptyTree(relayAgentObj.Dhcpv6.Interfaces)
-           err = getRelayAgentInfoForInterface(ifName, inParams, relayAgentObj)
+           aliasName := *utils.GetUINameFromNativeName(&ifName)
+           err = getRelayAgentInfoForInterface(aliasName, inParams, relayAgentObj)
         }
     }
      return err
@@ -722,7 +732,6 @@ func getIntfIpInfo(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6 b
 
 //Helper function to modify relay info for a given interface
 func replaceRelayAgentObjectAttributes (inParams XfmrParams)  error{
-   var tblList string
    var err error
 
    log.Info("replaceRelayAgentObjectAttributes: ", inParams.uri)
@@ -735,24 +744,24 @@ func replaceRelayAgentObjectAttributes (inParams XfmrParams)  error{
    log.V(2).Info("intfsObj:", intfsObj)
  
    if (relayAgentObj.Dhcp != nil  && relayAgentObj.Dhcp.Interfaces != nil && relayAgentObj.Dhcp.Interfaces.Interface != nil) {
-       err = replaceDhcpObjectAttributes(inParams, relayAgentObj, updateMap, tblList)
+       err = replaceDhcpObjectAttributes(inParams, relayAgentObj, updateMap)
    } 
    if (relayAgentObj.Dhcpv6 != nil  && relayAgentObj.Dhcpv6.Interfaces != nil && relayAgentObj.Dhcpv6.Interfaces.Interface != nil) {
-       err = replaceDhcpV6ObjectAttributes(inParams, relayAgentObj, updateMap, tblList)
+       err = replaceDhcpV6ObjectAttributes(inParams, relayAgentObj, updateMap)
    }
    inParams.subOpDataMap[UPDATE] = &updateMap
    return err
  }
 
-func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, updateMap map[db.DBNum]map[string]map[string]db.Value, tblList string)  error {
+func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, updateMap map[db.DBNum]map[string]map[string]db.Value)  error {
    var helperAddress string
    var index uint8
    var err error
+   var tblList string
 
-   log.Info("replaceDhcpObjectAttributes, tblList: ", tblList)
+   for aliasName := range relayAgentObj.Dhcp.Interfaces.Interface {
 
-
-   for ifName := range relayAgentObj.Dhcp.Interfaces.Interface {
+       ifName := *utils.GetNativeNameFromUIName(&aliasName)
 
        if ifName == "" {
            errStr := "ifName is NULL"
@@ -761,7 +770,7 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
        }
 
        tblList = getRelayAgentIntfTblByType(ifName)
-       log.V(2).Info(tblList)
+       log.Info("replaceDhcpObjectAttributes tblList: ", tblList)
 
        ipTbl := tblList
        if ( ipTbl == "VLAN") {
@@ -779,7 +788,8 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
        }
 
        intfObj := relayAgentObj.Dhcp.Interfaces
-       intf := intfObj.Interface[ifName]
+       intf := intfObj.Interface[aliasName]
+
        log.V(2).Info("intf:", intf)
 
        if (len(intf.Config.HelperAddress) != 0) {
@@ -912,23 +922,24 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
      return err
  }
 
-func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, updateMap map[db.DBNum]map[string]map[string]db.Value, tblList string)  error {
+func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent, updateMap map[db.DBNum]map[string]map[string]db.Value)  error {
    var helperAddress string
    var index uint8
    var err error
+   var tblList string
 
-   log.Info("replaceDhcpV6ObjectAttributes, tblList: ", tblList)
+   for aliasName := range relayAgentObj.Dhcpv6.Interfaces.Interface {
 
-   for ifName := range relayAgentObj.Dhcpv6.Interfaces.Interface {
-
-       if ifName == "" {
+       if aliasName == "" {
            errStr := "ifName is NULL"
            err = tlerr.InvalidArgsError{Format: errStr}
            return err
        }
 
+       ifName := *utils.GetNativeNameFromUIName(&aliasName)
+
        tblList = getRelayAgentIntfTblByType(ifName)
-       log.V(2).Info(tblList)
+       log.Info("replaceDhcpV6ObjectAttributes, tblList: ", tblList)
 
        if updateMap[db.ConfigDB][tblList] == nil {
          //allocate only for the first time
@@ -941,7 +952,7 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
        }
 
        intfObj := relayAgentObj.Dhcpv6.Interfaces
-       intf := intfObj.Interface[ifName]
+       intf := intfObj.Interface[aliasName]
 
        log.V(2).Info("intf:", intf)
 
@@ -1052,7 +1063,7 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
  }
     
 //Function to delete config for an interface level
-func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error {
+func deleteRelayAgentObjectAttributes(inParams XfmrParams, aliasName string) error {
    var tblList string   
    var fieldStr [] string
    var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
@@ -1063,6 +1074,8 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
    targetUriPath := inParams.requestUri
 
    log.Info("deleteRelayAgentObjectAttributes: ", inParams.uri)
+
+   ifName := *utils.GetNativeNameFromUIName(&aliasName)
 
    if ifName == "" {
        errStr := "deleteRelayAgentObjectAttributes - ifName is NULL"
@@ -1092,7 +1105,7 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
    if  strings.Contains(targetUriPath, "dhcpv6") && strings.Contains(targetUriPath, "helper-address"){
       if (relayAgentObj.Dhcpv6 != nil  && relayAgentObj.Dhcpv6.Interfaces != nil && relayAgentObj.Dhcpv6.Interfaces.Interface != nil) {
           //We have a specific address to delete - delete only that address
-	  intf := relayAgentObj.Dhcpv6.Interfaces.Interface[ifName]
+	  intf := relayAgentObj.Dhcpv6.Interfaces.Interface[aliasName]
 	  helperAddress = ""
    	  for index = 0; (index < uint8(len(intf.Config.HelperAddress))  && index < 4 && intf.Config.HelperAddress[index] != ""); index++ {
 	     if (index == 0) {
@@ -1131,7 +1144,7 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, ifName string) error 
    } else if  strings.Contains(targetUriPath, "dhcp") && strings.Contains(targetUriPath, "helper-address"){
       if (relayAgentObj.Dhcp != nil  && relayAgentObj.Dhcp.Interfaces != nil && relayAgentObj.Dhcp.Interfaces.Interface != nil) {
           //We have a specific address to delete - delete only that address
-	  intf := relayAgentObj.Dhcp.Interfaces.Interface[ifName]
+	  intf := relayAgentObj.Dhcp.Interfaces.Interface[aliasName]
    	  for index = 0; (index < uint8(len(intf.Config.HelperAddress))  && index < 4 && intf.Config.HelperAddress[index] != ""); index++ {
 	     if (index ==0) {
 		helperAddress = intf.Config.HelperAddress[index]
