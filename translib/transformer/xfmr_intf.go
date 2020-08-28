@@ -786,30 +786,25 @@ func getIdFromIntfName(intfName *string) (bool, string) {
 }
 
 var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    log.Info("Entering YangToDb_intf_tbl_key_xfmr")
     var err error
 
-    log.Info("YangToDb_intf_tbl_key_xfmr: inParams.uri ", inParams.uri)
-
     pathInfo := NewPathInfo(inParams.uri)
-    log.Info("YangToDb_intf_tbl_key_xfmr: pathInfo ", pathInfo)
+    requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
+    log.Infof("YangToDb_intf_tbl_key_xfmr: inParams.uri: %s, pathInfo: %s, inParams.requestUri: %s", inParams.uri, pathInfo, requestUriPath)
 
     ifName := pathInfo.Var("name")
     if ifName != "" {
-        log.Info("Intf name: ", ifName)
+        log.Info("YangToDb_intf_tbl_key_xfmr: ifName: ", ifName)
         intfType, _, ierr := getIntfTypeByName(ifName)
         if ierr != nil {
             log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
             return "", tlerr.New (ierr.Error())
         }
-        requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
-        log.Info("inParams.requestUri: ", requestUriPath)
         err = performIfNameKeyXfmrOp(&inParams, &requestUriPath, &ifName, intfType)
         if err != nil {
             return "", tlerr.InvalidArgsError{Format: err.Error()}
         }
     }
-    log.Info("YangToDb_intf_tbl_key_xfmr: ifName ", ifName)
     return ifName, err
 }
 
@@ -827,7 +822,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     var tblList []string
     var err error
 
-    log.Info("TableXfmrFunc - Uri: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
@@ -844,7 +838,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         }
     }
     sonicIfName := utils.GetNativeNameFromUIName(&ifName)
-    log.Infof("TableXfmrFunc - Sonic Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    if log.V(3) {
+        log.Infof("TableXfmrFunc - Sonic Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    }
     ifName = *sonicIfName
 
     intfType, _, ierr := getIntfTypeByName(ifName)
@@ -853,10 +849,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         return tblList, errors.New("Invalid interface type IntfTypeUnset");
     }
     intTbl := IntfTypeTblMap[intfType]
-    log.Info("TableXfmrFunc - targetUriPath : ", targetUriPath)
 
     if IntfTypeVxlan == intfType {
-		//handle VXLAN interface.
+	//handle VXLAN interface.
 	intfsObj := getIntfsRoot(inParams.ygRoot)
 	for intfKey, intfValObj := range intfsObj.Interface {
  		if strings.HasPrefix(intfKey, VXLAN) && intfValObj != nil && intfValObj.Config != nil {
@@ -871,8 +866,8 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         return tblList, tlerr.New("DELETE operation not allowed on  this container")
 
 	} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config") {
-	    log.Info("VXLAN_TUNNEL ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
 		if IntfTypeVxlan == intfType {
+	                log.Info("VXLAN_TUNNEL ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
 			tblList = append(tblList, "VXLAN_TUNNEL")
 		} else {
 			tblList = append(tblList, intTbl.cfgDb.portTN)
@@ -989,7 +984,8 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         err = errors.New("Invalid URI")
     }
 
-    log.Infof("TableXfmrFunc - uri(%v), tblList(%v)\r\n", inParams.uri, tblList);
+    log.Infof("TableXfmrFunc - Uri: (%v), targetUriPath: %s, tblList: (%v)\r\n", inParams.uri, targetUriPath, tblList)
+
     return tblList, err
 }
 
@@ -1974,7 +1970,6 @@ func validateIntfExists(d *db.DB, intfTs string, ifName string) error {
     }
     nativeName := utils.GetNativeNameFromUIName(&ifName)
     ifName = *nativeName
-    log.Infof("Converted Interface name = ", ifName)
     entry, err := d.GetEntry(&db.TableSpec{Name:intfTs}, db.Key{Comp: []string{ifName}})
     if err != nil || !entry.IsPopulated() {
         errStr := "Invalid Interface:" + ifName
