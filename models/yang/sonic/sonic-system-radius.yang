@@ -31,6 +31,10 @@ module sonic-system-radius {
         prefix smt;
     }
 
+    import sonic-vrf {
+        prefix vrf;
+    }
+
     organization
         "SONiC";
 
@@ -39,6 +43,10 @@ module sonic-system-radius {
 
     description
         "SONiC RADIUS";
+
+    revision 2020-08-28 {
+        description "RADIUS vrf syntax.";
+    }
 
     revision 2020-07-26 {
         description "Change for sonic-loopback.yang.";
@@ -214,7 +222,14 @@ module sonic-system-radius {
                 }
 
                 leaf vrf {
-                    type string;
+                    type union {
+                        type enumeration{
+                            enum mgmt;
+                        }
+                        type leafref {
+                            path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                       }
+                    }
                     description
                             "RADIUS server's VRF";
                 }
