@@ -61,6 +61,10 @@ func init () {
     XlateFuncBind("DbToYang_tam_threshold_key_xfmr", DbToYang_tam_threshold_key_xfmr)
     XlateFuncBind("DbToYang_tam_threshold_field_xfmr", DbToYang_tam_threshold_field_xfmr)
     XlateFuncBind("YangToDb_tam_threshold_field_xfmr", YangToDb_tam_threshold_field_xfmr)
+    
+	// Watermark Configuration 
+    XlateFuncBind("YangToDb_tam_watermark_key_xfmr", YangToDb_tam_watermark_key_xfmr)
+    XlateFuncBind("DbToYang_tam_watermark_key_xfmr", DbToYang_tam_watermark_key_xfmr)
 
 }
 
@@ -107,6 +111,18 @@ var DbToYang_tam_threshold_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) 
 	}
    return rmap, nil
 }
+
+
+var YangToDb_tam_watermark_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+	var newkey = "TELEMETRY_INTERVAL";
+	return newkey, nil
+}
+
+var DbToYang_tam_watermark_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    rmap := make(map[string]interface{})
+	return rmap, nil
+}
+
 
 func getQosRoot (s *ygot.GoStruct) *ocbinds.OpenconfigQos_Qos {
     deviceObj := (*s).(*ocbinds.Device)
