@@ -130,3 +130,5 @@ openconfig-tam-tailstamping.yang
 openconfig-tam-types.yang
 openconfig-tam.yang
 openconfig-tam-annot.yang
+openconfig-image-management.yang
+openconfig-image-management-annot.yang
