@@ -1,0 +1,131 @@
+submodule openconfig-tam-collectors {
+    yang-version 1.1;
+
+    // main module reference
+    belongs-to openconfig-tam {
+        prefix oc-tam;
+    }
+
+    // import some basic types
+    import ietf-inet-types {
+        prefix inet;
+    }
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+
+    // meta
+    organization
+      "SONiC";
+    contact
+      "SONiC";
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    grouping tam-collectors-config {
+        description
+          "Individual collector configuration";
+        leaf name {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Collector name, for reference from elsewhere";
+        }
+        leaf ip {
+            type inet:ip-address;
+            mandatory true;
+            description
+              "IP Address of the collector";
+        }
+        leaf port {
+            type inet:port-number;
+            mandatory true;
+            description
+              "Layer-4 port-number on which collector
+               may be listening on";
+        }
+        leaf protocol {
+            type enumeration {
+                enum UDP {
+                    description
+                      "Use UDP to reach collector";
+                }
+                enum TCP {
+                    description
+                      "Use TCP to reach collector";
+                }
+            }
+            default "UDP";
+            description
+              "Protocol to be used for reaching collector";
+        }
+    }
+
+    grouping tam-collectors-state {
+        description
+          "Operational state container for collectors";
+    }
+
+    grouping tam-collectors-top {
+        description
+          "Top-level grouping for collectors";
+
+        container collectors {
+            description
+              "top-level container for tam collector configuration";
+
+            list collector {
+                key "name";
+
+                description
+                  "Uniqueuly identifies a collector and
+                   is used for reference from elsewhere";
+
+                leaf name {
+                    type leafref {
+                        path "../config/name";
+                    }
+                    description
+                      "Key for the collector list";
+                }
+                container config {
+                    description
+                      "Configuration Data";
+
+                    uses tam-collectors-config;
+                }
+                container state {
+                    config false;
+
+                    description
+                      "Operational state data";
+
+                    uses tam-collectors-config;
+                    uses tam-collectors-state;
+                }
+            }
+        }
+    }
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}

@@ -1,0 +1,118 @@
+submodule openconfig-tam-switch {
+    yang-version 1.1;
+
+    // main module reference
+    belongs-to openconfig-tam {
+        prefix oc-tam;
+    }
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    grouping tam-switch-config {
+
+        description
+          "Switch-wide global configuration properties
+           for Dataplane telemetry";
+
+        leaf switch-id {
+            type uint32;
+            description
+              "Switch identifier to be used in all dataplane
+               telemetry features. Uniquely identifies the switch
+               in the network. When not configured, the least
+               significant four bytes of the system mac-address
+               are used";
+        }
+
+        leaf enterprise-id {
+            type uint32;
+            description
+              "Value to be used as the enterprise-id for all
+               IPFIX reports emanating from this switch.
+               When not configured, the OID part of the
+               system mac-address is used";
+        }
+    }
+
+    grouping tam-switch-state {
+
+        description
+          "Operational State for Dataplane telemetry";
+
+        leaf op-switch-id {
+            type uint32;
+            description
+              "Currently used Switch identifier for all dataplane
+               telemetry features. Uniquely identifies the switch
+               in the network.";
+        }
+
+        leaf op-enterprise-id {
+            type uint32;
+            description
+              "Value being be used as the enterprise-id for all
+               IPFIX reports emanating from this switch";
+        }
+    }
+
+    grouping tam-switch-top {
+
+        description
+          "Top-level grouping";
+
+        container switch {
+
+            description
+              "top-level container for tam switch configuration";
+
+            container config {
+                description
+                  "Configuration Data";
+
+                uses tam-switch-config;
+            }
+
+            container state {
+
+                config false;
+
+                description
+                  "Operational state data";
+
+                uses tam-switch-config;
+                uses tam-switch-state;
+            }
+        }
+    }
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}
