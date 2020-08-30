@@ -484,7 +484,8 @@ module openconfig-qos-ext {
         }
     }
 
-    grouping qos-ext-threshold-breach-top {
+
+	grouping qos-ext-threshold-breach-top {
         description
             "Top-level grouping for QoS threshold breach information";
 
@@ -565,9 +566,53 @@ module openconfig-qos-ext {
         }
     }
 
+	grouping qos-ext-watermark-config {
+		description 
+			"watermark global refresh interval ";
+	
+		leaf refresh-interval {
+			type uint16 {
+				range "1..600";
+			}
+			units "seconds";
+			default "10";
+			description 
+				"Watermark counters auto refresh interval";
+		}
+	}
+
+    grouping qos-ext-watermark-state {
+        description
+          "Operational state container";
+    }
+
+	grouping qos-ext-watermark-top {
+        description
+          "Configuration for Watermark counters auto refresh interval";
+
+        container watermark {
+            description
+              "TODO:";
+            container config {
+                description
+                  "Container holding the watermark config";
+                uses qos-ext-watermark-config;
+            }
+            container state {
+                config false;
+                description
+                  "State container";
+                uses qos-ext-watermark-config;
+                uses qos-ext-watermark-state;
+            }
+        }
+    }
+
+
     augment /oc-qos:qos {
         description
             "Qos extensions containers";
+		uses qos-ext-watermark-top;
 		uses qos-ext-threshold-top;
         uses qos-ext-threshold-breach-top;
         uses qos-ext-wred-profile-top;
