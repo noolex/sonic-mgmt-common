@@ -131,7 +131,7 @@ submodule openconfig-tam-flowgroups {
                     }
                 }
                 uses oc-pkt-match-types:ipv6-protocol-fields-top {
-                    when "./config/ip-version = 'IPV4'" {
+                    when "./config/ip-version = 'IPV6'" {
                         description
                           "TODO:";
                     }
