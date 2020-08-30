@@ -23,7 +23,7 @@ import (
    "github.com/Azure/sonic-mgmt-common/translib/db"
    log "github.com/golang/glog"
    "strings"
-
+   "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init() {
@@ -46,11 +46,8 @@ var DbToYang_sys_tpcm_state_image_list_xfmr FieldXfmrDbtoYang = func(inParams Xf
     cmd := "tpcm list"
     host_output = HostQuery("infra_host.exec_cmd", cmd)
     if host_output.Err != nil {
-           log.Errorf("rpc_infra_reboot_cb: host Query FAILED: err=%v", host_output.Err)
-           out_list  = append(out_list, host_output.Err.Error()) 
-           out_list  = append(out_list, "[ FAILED ] host query") 
-           result["tpcm-image-list"] = out_list
-           return result, err
+           retErr := tlerr.New("Host Query [FAILED]: %v", host_output.Err)
+           return nil, retErr 
     }
 
     output, _ := host_output.Body[1].(string)
@@ -66,16 +63,8 @@ var DbToYang_sys_tpcm_state_image_list_xfmr FieldXfmrDbtoYang = func(inParams Xf
 
 
 var rpc_tpcm_install_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-        var out_list []string
         var exec_cmd_list []string
         log.Info("rpc_tpcm_install_cb body:", string(body))
-
-        var result struct {
-                Output struct {
-                        Status int32 `json:"status"`
-                        Status_detail []string`json:"status-detail"`
-                } `json:"openconfig-system-ext:output"`
-        }
 
         var operand struct {
                 Input struct {
@@ -91,10 +80,8 @@ var rpc_tpcm_install_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
        err := json.Unmarshal(body, &operand)
        if err != nil {
-                result.Output.Status = 1
-                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
-                result.Output.Status_detail  = out_list
-                return json.Marshal(&result)
+                retErr := tlerr.InvalidArgs("FAILED: %v", err.Error())
+                return nil, retErr 
        }
        dockerName := operand.Input.DockerName
        imageSource := operand.Input.ImageSource
@@ -131,15 +118,8 @@ var rpc_tpcm_install_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 }
 
 var rpc_tpcm_uninstall_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-        var out_list []string
         var exec_cmd_list []string
         log.Info("rpc_tpcm_uninstall_cb body:", string(body))
-        var result struct {
-                Output struct {
-                        Status int32 `json:"status"`
-                        Status_detail []string`json:"status-detail"`
-                } `json:"openconfig-system-ext:output"`
-        }
         var operand struct {
                 Input struct {
                      CleanData string `json:"clean-data"`
@@ -149,10 +129,8 @@ var rpc_tpcm_uninstall_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB)
 
        err := json.Unmarshal(body, &operand)
        if err != nil {
-                result.Output.Status = 1
-                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
-                result.Output.Status_detail  = out_list
-                return json.Marshal(&result)
+                retErr := tlerr.InvalidArgs("FAILED: %v", err.Error())
+                return nil, retErr
        }
 
        cleanData := strings.TrimSpace(operand.Input.CleanData)
@@ -171,15 +149,8 @@ var rpc_tpcm_uninstall_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB)
 }
 
 var rpc_tpcm_upgrade_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-        var out_list []string
         var exec_cmd_list []string
         log.Info("rpc_tpcm_upgrade_cb body:", string(body))
-        var result struct {
-                Output struct {
-                        Status int32 `json:"status"`
-                        Status_detail []string`json:"status-detail"`
-                } `json:"openconfig-system-ext:output"`
-        }
         var operand struct {
                 Input struct {
                      DockerName string `json:"docker-name"`
@@ -194,10 +165,8 @@ var rpc_tpcm_upgrade_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         }
        err := json.Unmarshal(body, &operand)
        if err != nil {
-                result.Output.Status = 1
-                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
-                result.Output.Status_detail  = out_list
-                return json.Marshal(&result)
+                retErr := tlerr.InvalidArgs("FAILED: %v", err.Error())
+                return nil, retErr
        }
        dockerName := operand.Input.DockerName
        imageSource := operand.Input.ImageSource
@@ -241,6 +210,7 @@ func tpcm_image_operation(exec_cmd string) ([]byte, error) {
 
    log.Info("tpcm_image_operation cmd:", exec_cmd)
         var out_list []string
+        var retErr error
 
    	var result struct {
     		Output struct {
@@ -252,12 +222,8 @@ func tpcm_image_operation(exec_cmd string) ([]byte, error) {
 
         host_output := HostQuery("infra_host.exec_cmd", exec_cmd)
         if host_output.Err != nil {
-              log.Errorf("tpcm_image_operation: host Query FAILED: err=%v", host_output.Err)
-              result.Output.Status = 1
-              out_list  = append(out_list, host_output.Err.Error()) 
-              out_list  = append(out_list, "[ FAILED ] host query") 
-              result.Output.Status_detail  = out_list 
-              return json.Marshal(&result)
+              retErr = tlerr.New("Host Query [FAILED]: %v", host_output.Err)
+              return nil, retErr 
         }
 
         var output string
@@ -267,7 +233,8 @@ func tpcm_image_operation(exec_cmd string) ([]byte, error) {
         success_status :=  strings.Contains(_output, "SUCCESS")
 
         if (failure_status || !success_status) {
-           out_list = strings.Split(_output,"\n")
+           retErr = tlerr.New("%s", _output)
+           return nil, retErr 
         } else { 
            _out_list := strings.Split(_output,"\n")
            for index, each := range _out_list {
@@ -277,8 +244,7 @@ func tpcm_image_operation(exec_cmd string) ([]byte, error) {
                  }
            }
         }
-
-        result.Output.Status = 0
+        result.Output.Status  = 0 
         result.Output.Status_detail  = out_list 
         return json.Marshal(&result)
 }
