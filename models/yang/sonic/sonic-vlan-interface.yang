@@ -164,6 +164,14 @@ module sonic-vlan-interface {
 			list VLAN_INTERFACE_IPADDR_LIST {
 				key "vlanName ip_prefix";
 
+                    must "(/cmn:operation/cmn:operation != 'CREATE') or " +
+                         "(not(contains(current()/ip_prefix, '.')) or "  +
+                         "(count(current()/../VLAN_INTERFACE_LIST[vlanName=current()/vlanName]/unnumbered) = 0))"
+                    {
+                        error-message "Cannot configure IPv4 address and IP Unnumbered interface configurations on the same interface";
+                        error-app-tag vlan-intf-unnum;
+                    }
+
 				leaf vlanName{
 					type leafref {
 						path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
