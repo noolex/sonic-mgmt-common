@@ -73,6 +73,7 @@ func doGetIntfPfcAsymmetricCfg(d *db.DB, if_name string) (bool) {
 func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     res_map := make(map[string]map[string]db.Value)
+    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
     log.Info("qos_intf_pfc_delete_xfmr: ", inParams.ygRoot, inParams.uri)
     log.Info("inParams: ", inParams)
@@ -158,6 +159,17 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
         entry.Set("pfc_asym",  "off")
         portTblMap[dbkey] = entry
         res_map["PORT"] = portTblMap
+        if _, ok := subOpMap[db.ConfigDB]; !ok {
+            subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        }
+        if _, ok := subOpMap[db.ConfigDB]["PORT"]; !ok {
+            subOpMap[db.ConfigDB]["PORT"] = make(map[string]db.Value)
+        }
+        subOpMap[db.ConfigDB]["PORT"][if_name] = db.Value{Field: make(map[string]string)}
+        subOpMap[db.ConfigDB]["PORT"][if_name].Field["pfc_asym"] = "off"
+
+        inParams.subOpDataMap[UPDATE] = &subOpMap
+
     }
 
     if targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc" {
@@ -223,19 +235,9 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 portTblMap[dbkey] = entry
                 res_map["PORT"] = portTblMap
             } else {
-                /* entry.Set("pfc_asym",  "off")
+                entry.Set("pfc_asym",  "off")
                 portTblMap[dbkey] = entry
-                res_map["PORT"] = portTblMap */
-                if _, ok := subOpMap[db.ConfigDB]; !ok {
-                    subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-                }
-                if _, ok := subOpMap[db.ConfigDB]["PORT"]; !ok {
-                    subOpMap[db.ConfigDB]["PORT"] = make(map[string]db.Value)
-                }
-                subOpMap[db.ConfigDB]["PORT"][if_name] = db.Value{Field: make(map[string]string)}
-                subOpMap[db.ConfigDB]["PORT"][if_name].Field["pfc_asym"] = "off"
-
-                inParams.subOpDataMap[DELETE] = &subOpMap
+                res_map["PORT"] = portTblMap
             }
         }
     }
