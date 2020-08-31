@@ -1,0 +1,16 @@
+module sonic-ospfv2-show-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/sospfv2show-annot";
+    prefix "sospfv2show-annot";
+
+    import sonic-ospfv2-show { prefix sn-ospfv2-show; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sn-ospfv2-show:show-ospfv2-max-age-lsa {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_ospfv2_max_age_lsa";
+        }
+    }
+}
