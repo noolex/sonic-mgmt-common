@@ -52,52 +52,62 @@ func getFeatureStatus(feature string) string {
     return status
 }
 
-func CheckInSessions(vc * CustValidationCtxt, table string, identity string, name string) bool {
-     var used bool
-     used = false
+func CheckInSessions(vc * CustValidationCtxt, table string, identity string, name string) (string, bool) {
+     var used bool = false
+     var collector string = ""
 
      sessions, err := vc.RClient.Keys(table+"|*").Result()
      if (err == nil) {
          for _, sessionKey := range sessions {
-             val, err := vc.RClient.HGet(sessionKey, identity).Result()
+             entry, err := vc.RClient.HGetAll(sessionKey).Result()
              if err == nil {
-                 if (val == name) {
+                 if (name == entry[identity]) {
                      used = true
-                     break
+                 }
+                 c := entry["collector"]
+                 if c != "" {
+                     collector = c
                  }
              }
          }
      }
-     return used
+     return collector, used
 }
 
-func CheckUsage(vc * CustValidationCtxt, identity string, name string) bool {
+func CheckUsage(vc * CustValidationCtxt, identity string, name string) (map[string]string, bool) {
      var used bool
+     var c string
+     var collectors = make(map[string]string)
      
      if ((identity == "collector") || (identity == "sample-rate")) {
-         used = CheckInSessions(vc, "TAM_IFA_SESSIONS_TABLE",identity,name)
+         c, used = CheckInSessions(vc, "TAM_IFA_SESSIONS_TABLE",identity,name)
+         collectors["ifa"] = c
          if used {
-             return used
+             return collectors, used
          }
-         used = CheckInSessions(vc, "TAM_DROPMONITOR_SESSIONS_TABLE",identity,name)
+         c, used = CheckInSessions(vc, "TAM_DROPMONITOR_SESSIONS_TABLE",identity,name)
+         collectors["dropmonitor"] = c
          if used { 
-             return used
+             return collectors, used
          }
      } else if identity == "flowgroup" {
-         used = CheckInSessions(vc, "TAM_IFA_SESSIONS_TABLE",identity,name)
+         c, used = CheckInSessions(vc, "TAM_IFA_SESSIONS_TABLE",identity,name)
+         collectors["ifa"] = c
          if used {
-             return used
+             return collectors, used
          }
-         used = CheckInSessions(vc, "TAM_DROPMONITOR_SESSIONS_TABLE",identity,name)
+         c, used = CheckInSessions(vc, "TAM_DROPMONITOR_SESSIONS_TABLE",identity,name)
+         collectors["dropmonitor"] = c
          if used { 
-             return used
+             return collectors, used
          }
-         used = CheckInSessions(vc, "TAM_TAILSTAMPING_SESSIONS_TABLE",identity,name)
+         c, used = CheckInSessions(vc, "TAM_TAILSTAMPING_SESSIONS_TABLE",identity,name)
+         collectors["tailstamping"] = c
          if used { 
-             return used
+             return collectors, used
          }
      }
-     return used
+     return collectors, used
 }
 
 func(t * CustomValidation) CollectorValidation(vc * CustValidationCtxt) CVLErrorInfo {
@@ -129,7 +139,7 @@ func(t * CustomValidation) CollectorValidation(vc * CustValidationCtxt) CVLError
         }
     }
 
-    inUse := CheckUsage(vc, "collector", thisCollector)
+    _, inUse := CheckUsage(vc, "collector", thisCollector)
     if ((vc.CurCfg.VOp == OP_DELETE) && inUse) {
         return CVLErrorInfo{
             ErrCode: CVL_SEMANTIC_ERROR,
@@ -170,7 +180,7 @@ func(t * CustomValidation) SamplerValidation(vc * CustValidationCtxt) CVLErrorIn
          }
      }
 
-     inUse := CheckUsage(vc, "sample-rate", thisSampler)
+     _, inUse := CheckUsage(vc, "sample-rate", thisSampler)
      if ((vc.CurCfg.VOp == OP_DELETE) && inUse) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
@@ -211,7 +221,7 @@ func(t * CustomValidation) FlowgroupValidation(vc * CustValidationCtxt) CVLError
          }
      }
 
-     inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
+     _, inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
      if ((vc.CurCfg.VOp == OP_DELETE) && inUse) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
@@ -301,13 +311,31 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
 
      // is flowgroup in use
      thisFlowgroup := vc.CurCfg.Data["flowgroup"]
-     inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
+     collectors, inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
      if ((vc.CurCfg.VOp != OP_DELETE) && inUse) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
              ConstraintErrMsg: fmt.Sprintf("One or more sessions are using the flowgroup '%s'.", thisFlowgroup),
              CVLErrDetails : "Flowgroup is in use.",
              ErrAppTag : "flowgroup-in-use",
+         }
+     }
+
+     // only single collector is allowed
+     thisCollector, exists := vc.CurCfg.Data["collector"]
+     if exists {
+         c, e := collectors["ifa"]
+         if e {
+             if ((c != "") && (thisCollector != c)) {
+                 if (vc.CurCfg.VOp != OP_DELETE) {
+                     return CVLErrorInfo{
+                         ErrCode: CVL_SEMANTIC_ERROR,
+                         ConstraintErrMsg: fmt.Sprintf("Only one collector can be used. Collector '%s' is in use.", c),
+                         CVLErrDetails : "Only one collector can be used.",
+                         ErrAppTag : "single-collector-allowed",
+                     }
+                 }
+             }
          }
      }
 
@@ -400,13 +428,31 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
 
      // is flowgroup in use
      thisFlowgroup := vc.CurCfg.Data["flowgroup"]
-     inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
+     collectors, inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
      if ((vc.CurCfg.VOp != OP_DELETE) && inUse) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
              ConstraintErrMsg: fmt.Sprintf("One or more sessions are using the flowgroup '%s'.", thisFlowgroup),
              CVLErrDetails : "Flowgroup is in use.",
              ErrAppTag : "flowgroup-in-use",
+         }
+     }
+
+     // only single collector is allowed
+     thisCollector, exists := vc.CurCfg.Data["collector"]
+     if exists {
+         c, e := collectors["dropmonitor"]
+         if e {
+             if ((c != "") && (thisCollector != c)) {
+                 if (vc.CurCfg.VOp != OP_DELETE) {
+                     return CVLErrorInfo{
+                         ErrCode: CVL_SEMANTIC_ERROR,
+                         ConstraintErrMsg: fmt.Sprintf("Only one collector can be used. Collector '%s' is in use.", c),
+                         CVLErrDetails : "Only one collector can be used.",
+                         ErrAppTag : "single-collector-allowed",
+                     }
+                 }
+             }
          }
      }
 
@@ -466,7 +512,7 @@ func(t * CustomValidation) TailstampingSessionValidation(vc * CustValidationCtxt
 
      // is flowgroup in use
      thisFlowgroup := vc.CurCfg.Data["flowgroup"]
-     inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
+     _, inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
      if ((vc.CurCfg.VOp == OP_DELETE) && inUse) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
