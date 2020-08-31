@@ -18,7 +18,6 @@ func init () {
     XlateFuncBind("YangToDb_port_group_config_xfmr", YangToDb_port_group_config_xfmr)
     XlateFuncBind("DbToYang_port_group_xfmr", DbToYang_port_group_xfmr)
     XlateFuncBind("Subscribe_port_group_xfmr", Subscribe_port_group_xfmr)
-    parsePlatformDefJsonFile()
     parsePlatformJsonFile()
 }
 
@@ -53,7 +52,9 @@ var YangToDb_port_group_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
     if len(inParams.key) == 0 {
         pathInfo := NewPathInfo(inParams.uri)
         inParams.key = pathInfo.Var("id")
-        log.Info("Updated PG KEY: ", inParams.key);
+        if len(inParams.key) > 0 {
+            log.Info("Updated PG KEY: ", inParams.key);
+        }
     }
     err = nil
 
@@ -62,6 +63,15 @@ var YangToDb_port_group_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
         log.Info("DbToYang_port_group_config_xfmr: Empty component.")
         return pgMap, tlerr.NotSupported("Port group is not supported")
     }
+
+    if len(inParams.key) == 0 {
+        log.Info("No key, InParams: ", inParams)
+        return pgMap, err
+    }
+    if _, ok := pgObj.PortGroup[inParams.key]; !ok {
+        return pgMap, tlerr.NotSupported("Internal error")
+    }
+
     port_speed := strings.ReplaceAll(ocSpeedMap[pgObj.PortGroup[inParams.key].Config.Speed], "G", "000")
     ports, err := getPortGroupMembersAfterSpeedCheck(inParams.key, &port_speed)
     if (err == nil) {
@@ -69,12 +79,19 @@ var YangToDb_port_group_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
             m := make(map[string]string)
             data := db.Value{Field: m}
             data.Set("speed", port_speed)
-            pgMap[PORT_TABLE] = make (map[string]db.Value)
-            for _, ifName := range ports {
-                pgMap[PORT_TABLE][ifName] = data
-            }
             pgMap[PORT_GROUP_TABLE] = make (map[string]db.Value)
             pgMap[PORT_GROUP_TABLE][inParams.key] = data
+            vspeed, err1 := getPgPortValidSpeeds(inParams.key, port_speed)
+            n := make(map[string]string)
+            pdata := db.Value{Field: n}
+            pdata.Set("speed", port_speed)
+            if err1 == nil {
+                pdata.Set("valid_speeds", vspeed)
+            }
+            pgMap[PORT_TABLE] = make (map[string]db.Value)
+            for _, ifName := range ports {
+                pgMap[PORT_TABLE][ifName] = pdata
+            }
         } else {
             log.Info("Could not get the member ports for ", inParams.key)
             err = tlerr.InvalidArgs("Invalid port-group")

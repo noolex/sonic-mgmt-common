@@ -964,15 +964,16 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 				}
 			}
 
-			intfEntry := intfServicePolicyData[key.Comp[0]]
-			intfEntry.INTERFACE_NAME = key.Comp[0]
+            uiIfName := *(utils.GetUINameFromNativeName(&interface_name))
+			intfEntry := intfServicePolicyData[uiIfName]
+			intfEntry.INTERFACE_NAME = uiIfName
 
 			var policy_entry ServicePolicyEntry
 			policy_entry.TYPE = field_splits[1]
 			policy_entry.STAGE = field_splits[0]
 			policy_entry.POLICY_NAME = value
 
-			log.Infof("Interface:%v Policy:%v Type:%v Stage:%v", key.Comp[0], value, field_splits[1], field_splits[0])
+			log.Infof("Interface:%v Policy:%v Type:%v Stage:%v", uiIfName, value, field_splits[1], field_splits[0])
 
 			var POLICY_SECTION_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
 			referingClassKeys, err := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{value, "*"}})
@@ -999,7 +1000,7 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 			}
 
 			intfEntry.APPLIED_POLICIES = append(intfEntry.APPLIED_POLICIES, policy_entry)
-			intfServicePolicyData[key.Comp[0]] = intfEntry
+			intfServicePolicyData[uiIfName] = intfEntry
 		}
 	}
 

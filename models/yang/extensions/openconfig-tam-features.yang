@@ -1,0 +1,162 @@
+submodule openconfig-tam-features {
+    yang-version 1.1;
+
+    // main module reference
+    belongs-to openconfig-tam {
+        prefix oc-tam;
+    }
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+
+    import openconfig-tam-types {
+        prefix oc-tam-type;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    // typedef statements
+    grouping tam-feature-config {
+        description
+          "Individual TAM Feature turning on/off";
+        leaf feature-ref {
+            type identityref {
+                base oc-tam-type:TAM_FEATURE;
+            }
+            mandatory true;
+            description
+              "Reference to a specific feature";
+        }
+        leaf status {
+            type oc-tam-type:tam-feature-stautus-type {
+                enum ACTIVE {
+                    description
+                      "Feature is active";
+                }
+                enum INACTIVE {
+                    description
+                      "Feature is suspended/inactive ";
+                }
+            // This enum is restricted here from the original
+            // definition to remove the operation status enum
+            // fields from the configuration options
+            }
+            description
+              "Reference to a feature status";
+        }
+    }
+
+    grouping tam-features-state {
+        description
+          "Operational state container for collectors";
+
+        leaf feature-ref {
+            type identityref {
+                base oc-tam-type:TAM_FEATURE;
+            }
+            mandatory true;
+            description
+              "Reference to a specific feature";
+        }
+
+        leaf op-status {
+            type oc-tam-type:tam-feature-stautus-type;
+            description
+              "Current operational status of the feature";
+        }
+    }
+
+    grouping tam-features-top {
+        description
+          "Top-level grouping for features";
+
+        container features {
+            description
+              "top-level container for tam features configuration";
+
+            list feature {
+                key "feature-ref";
+                description
+                  "Uniqueuly identifies a feature";
+
+                leaf feature-ref {
+                    type leafref {
+                        path "../config/feature-ref";
+                    }
+                    description
+                      "Key for the feature list";
+                }
+
+                container config {
+                    description
+                      "Configuration Data";
+
+                    uses tam-feature-config;
+                }
+
+                container state {
+                    config false;
+
+                    description
+                      "Operational state data";
+
+                    uses tam-feature-config;
+                }
+            }
+        }
+
+        container features-state {
+            config false;
+            description
+              "Enclosing container for the feature list";
+
+            list feature {
+                key "feature-ref";
+
+                description
+                  "Uniqueuly identifies a feature";
+
+                leaf feature-ref {
+                    type leafref {
+                        path "../state/feature-ref";
+                    }
+                    description
+                      "Key for the feature list";
+                }
+
+                container state {
+                    config false;
+                    description
+                      " state container";
+                    uses tam-features-state;
+                }
+            }
+        }
+    }
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}

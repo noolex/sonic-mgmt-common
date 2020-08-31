@@ -1,0 +1,111 @@
+submodule openconfig-tam-tailstamping {
+    yang-version 1.1;
+
+    // main module reference
+    belongs-to openconfig-tam {
+        prefix oc-tam;
+    }
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+    import openconfig-tam-types {
+        prefix oc-tam-types;
+    }
+
+    // meta
+    organization
+      "SONiC";
+    contact
+      "SONiC";
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    identity TAILSTAMPING {
+        base oc-tam-types:TAM_FEATURE;
+        description
+          "Tailstamping feature";
+    }
+
+    // typedef statements
+    // grouping statements
+    grouping tam-tailstamping-config {
+        description
+          "Individual TAM Tailstamping Flow Group definition";
+        leaf name {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Tailstamping Flow Group name, for reference from elsewhere";
+        }
+        leaf flowgroup {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "FlowGroup to be used for this Tailstamping session";
+        }
+    }
+
+    grouping tam-tailstamping-state {
+        description
+          "Operational state container for sessions";
+    }
+
+    grouping tam-tailstamping-top {
+        description
+          "Top-level grouping for sessions";
+        container tailstamping-sessions {
+            description
+              "top-level container for tam tailstamping configuration";
+            list tailstamping-session {
+                key "name";
+                description
+                  "Uniqueuly identifies a session";
+                leaf name {
+                    type leafref {
+                        path "../config/name";
+                    }
+                    description
+                      "Key for the session list";
+                }
+                container config {
+                    description
+                      "Configuration Data";
+                    uses tam-tailstamping-config;
+                }
+                container state {
+                    config false;
+                    description
+                      "Operational state data";
+                    uses tam-tailstamping-config;
+                    uses tam-tailstamping-state;
+                }
+            }
+        }
+    }
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}

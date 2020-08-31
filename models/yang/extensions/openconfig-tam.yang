@@ -1,0 +1,100 @@
+module openconfig-tam {
+    yang-version 1.1;
+
+    // namespace
+    namespace "http://openconfig.net/yang/tam/extension";
+
+    prefix oc-tam;
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+    import openconfig-tam-types {
+        prefix oc-tam-types;
+    }
+
+    // include submodules
+    include openconfig-tam-switch;
+    include openconfig-tam-collectors;
+    include openconfig-tam-samplers;
+    include openconfig-tam-features;
+    include openconfig-tam-flowgroups;
+    include openconfig-tam-ifa;
+    include openconfig-tam-tailstamping;
+    include openconfig-tam-dropmonitor;
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    grouping tam-config {
+        description
+          "TAM Configuration Group";
+    }
+
+    grouping tam-state {
+        description
+          "TAM operational state group";
+    }
+
+    grouping tam-top {
+        description
+          "top-level grouping for TAM";
+
+        container tam {
+            description
+              "Top level container for TAM";
+
+            uses tam-switch-top;
+            uses tam-collectors-top;
+            uses tam-samplers-top;
+            uses tam-features-top;
+            uses tam-flowgroups-top;
+            uses tam-ifa-top {
+                when "./features/feature[feature-ref=IFA]/state/op-status = 'oc-tam-types:ACTIVE'" {
+                    description
+                      "IFA configuration is valid only when IFA feature is enabled";
+                }
+            }
+            uses tam-tailstamping-top {
+                when "./features/feature[feature-ref=TAILSTAMPING]/state/op-status = 'oc-tam-types:ACTIVE'" {
+                    description
+                      "Tailstamping configuration is valid only when Tailstamping is enabled";
+                }
+            }
+            uses tam-dropmonitor-top {
+                when "./features/feature[feature-ref=DROPMONITOR]/state/op-status = 'oc-tam-types:ACTIVE'" {
+                    description
+                      "Drop Monitor configuration is valid only when DropMonitor is enabled";
+                }
+            }
+        }
+    }
+
+    // data definition statements
+    uses tam-top;
+// augment statements
+// rpc statements
+// notification statements
+}

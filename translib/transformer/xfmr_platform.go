@@ -33,6 +33,7 @@ import (
     "strings"
     "syscall"
     "regexp"
+    "unicode/utf8"
     log "github.com/golang/glog"
 )
 
@@ -838,6 +839,19 @@ func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
         }
 
         entryVal = eepromEntry.Get("Value")
+        if !utf8.ValidString(entryVal) {
+            v := make([]rune, 0, len(entryVal))
+            for i, r := range entryVal {
+                if r == utf8.RuneError {
+                     _, size := utf8.DecodeRuneInString(entryVal[i:])
+                     if size == 1 {
+                        continue
+                     }
+                 }
+                 v = append(v, r)
+             }
+             entryVal = string(v)
+         }
         switch typeCode {
         case PROD_NAME_KEY:
             eepromInfo.Product_Name = entryVal

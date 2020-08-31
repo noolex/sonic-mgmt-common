@@ -207,9 +207,9 @@ module sonic-acl {
 
 
                 leaf ETHER_TYPE {
-                    must "(((/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3') and (current() = '0x800')) or " +
-                          "((/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3V6') and ((current() = '0x86DD') or (current() = '0x86dd'))) or " +
-                          "(/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L2'))" {
+                    must "(((/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'TAM')) and (current() = '0x800')) or " +
+                          "(((/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3V6') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'TAM')) and ((current() = '0x86DD') or (current() = '0x86dd'))) or " +
+                          "((/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L2') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'TAM'))" {
                           error-message "Ethertype value invalid or not supported for this table type";
                     }
                     type string {
@@ -336,6 +336,12 @@ module sonic-acl {
                         range "0..1" {
                             error-message "Invalid DEI Value.";
                         }
+                    }
+                }
+
+                leaf-list IN_PORTS {
+                    type leafref {
+                        path "/sprt:sonic-port/sprt:PORT/sprt:PORT_LIST/sprt:ifname";
                     }
                 }
             }
