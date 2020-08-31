@@ -205,11 +205,6 @@ module openconfig-copp-ext {
 			description
 				"Yellow action";
 		}
-		leaf enable {
-			type boolean;
-			description
-				"enable/disable classifier";
-		}
 	}
 	grouping copp-ext-main-config {
 		description
