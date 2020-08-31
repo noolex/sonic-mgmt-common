@@ -79,6 +79,7 @@ func init () {
     XlateFuncBind("DbToYang_igmp_srcaddr_fld_xfmr", DbToYang_igmp_srcaddr_fld_xfmr)
     XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr)
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
+    XlateFuncBind("rpc_oc_clear_counters", rpc_oc_clear_counters)
     XlateFuncBind("rpc_clear_ip", rpc_clear_ip)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
@@ -668,7 +669,68 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     return  json.Marshal(&result)
 }
 
-/* RPC for clear counters */
+func util_rpc_clear_counters (dbs [db.MaxDB]*db.DB, input string) (bool, string) {
+    portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
+    ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
+    if err != nil {
+        return false, "Error: Port-OID (Counters) get for all the interfaces failed!"
+    }
+
+    if input == "all" {
+        log.Info("util_rpc_clear_counters : Clear Counters for all interfaces")
+        for  intf, oid := range ifCountInfo.Field {
+            verr, cerr := resetCounters(dbs[db.CountersDB], oid)
+            if verr != nil || cerr != nil {
+                log.Info("Failed to reset counters for ", intf)
+            } else {
+                log.Info("Counters reset for " + intf)
+            }
+        }
+    } else if input == "Ethernet" || input == "PortChannel" {
+        log.Info("util_rpc_clear_counters : Reset counters for given interface type")
+        for  intf, oid := range ifCountInfo.Field {
+            if strings.HasPrefix(strings.ToUpper(intf), input) {
+                verr, cerr := resetCounters(dbs[db.CountersDB], oid)
+                if verr != nil || cerr != nil {
+                    log.Error("Failed to reset counters for: ", intf)
+                } else {
+                    log.Info("Counters reset for " + intf)
+                }
+            }
+        }
+    } else {
+        log.Info("util_rpc_clear_counters: Clear counters for given interface name")
+        ok, id := getIdFromIntfName(&input) ; if !ok {
+            log.Info("Invalid Interface format")
+            return false, fmt.Sprintf("Error: Clear Counters not supported for %s", input)
+        }
+        if strings.HasPrefix(input, "Ethernet") {
+            input = "Ethernet" + id
+        } else if strings.HasPrefix(input, "PortChannel") {
+            input = "PortChannel" + id
+        } else {
+            log.Info("Invalid Interface")
+            return false, fmt.Sprintf("Error: Clear Counters not supported for %s", input)
+        }
+        oid, ok := ifCountInfo.Field[input]
+        if !ok {
+            return false, fmt.Sprintf("Error: OID info not found in COUNTERS_PORT_NAME_MAP for %s", input)
+        }
+        verr, cerr := resetCounters(dbs[db.CountersDB], oid)
+        if verr != nil {
+            return false, fmt.Sprintf("Error: Failed to get counter values from COUNTERS table for %s", input)
+        }
+        if cerr != nil {
+            log.Info("Failed to reset counters values")
+            return false, fmt.Sprintf("Error: Failed to reset counters values for %s.", input)
+        }
+        log.Info("Counters reset for " + input)
+    }
+
+    return true, "Success: Cleared Counters"
+}
+
+/* RPC for clear counters through Sonic-RPC */
 var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     var err error
     var result struct {
@@ -687,78 +749,68 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
         return json.Marshal(&result)
     }
     log.Info("-----mapData[sonic-interface:input]----", mapData["sonic-interface:input"])
-    input := mapData["sonic-interface:input"]
+    input, ok := mapData["sonic-interface:input"] ; if !ok {
+        err_str := "Error: Mandatory info missing! Input container not present!"
+        log.Info(err_str)
+        result.Output.Status_detail = err_str
+        return json.Marshal(&result)
+    }
     mapData = input.(map[string]interface{})
-    input = mapData["interface-param"]
+    input, ok = mapData["interface-param"] ; if !ok {
+        err_str := "Error: Mandatory info missing! interface-param attribute not present!"
+        log.Info(err_str)
+        result.Output.Status_detail = err_str
+        return json.Marshal(&result)
+    }
     input_str := fmt.Sprintf("%v", input)
-    //input_str = strings.ToUpper(string(input_str))
     sonicName := utils.GetNativeNameFromUIName(&input_str)
     input_str = *sonicName
 
-    portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
-    ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
+    ok, result.Output.Status_detail = util_rpc_clear_counters(dbs, input_str) ; if ok {
+        result.Output.Status = 0
+    }
+    return json.Marshal(&result)
+}
+
+/* RPC for clear counters through Openconfig-RPC */
+var rpc_oc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var err error
+    var result struct {
+        Output struct {
+            Status int32 `json:"status"`
+            Status_detail string`json:"status-detail"`
+        } `json:"openconfig-interfaces-ext:output"`
+    }
+    result.Output.Status = 1
+    /* Get input data */
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
     if err != nil {
-        result.Output.Status_detail = "Error: Port-OID (Counters) get for all the interfaces failed!"
+        log.Info("Failed to unmarshall given input data")
+        result.Output.Status_detail = "Error: Failed to unmarshall given input data"
         return json.Marshal(&result)
     }
-
-    if input_str == "all" {
-        log.Info("rpc_clear_counters : Clear Counters for all interfaces")
-        for  intf, oid := range ifCountInfo.Field {
-            verr, cerr := resetCounters(dbs[db.CountersDB], oid)
-            if verr != nil || cerr != nil {
-                log.Info("Failed to reset counters for ", intf)
-            } else {
-                log.Info("Counters reset for " + intf)
-            }
-        }
-    } else if input_str == "Ethernet" || input_str == "PortChannel" {
-        log.Info("rpc_clear_counters : Reset counters for given interface type")
-        for  intf, oid := range ifCountInfo.Field {
-            if strings.HasPrefix(strings.ToUpper(intf), input_str) {
-                verr, cerr := resetCounters(dbs[db.CountersDB], oid)
-                if verr != nil || cerr != nil {
-                    log.Error("Failed to reset counters for: ", intf)
-                } else {
-                    log.Info("Counters reset for " + intf)
-                }
-            }
-        }
-    } else {
-        log.Info("rpc_clear_counters: Clear counters for given interface name")
-        ok, id := getIdFromIntfName(&input_str) ; if !ok {
-            log.Info("Invalid Interface format")
-            result.Output.Status_detail = fmt.Sprintf("Error: Clear Counters not supported for %s", input_str)
-            return json.Marshal(&result)
-        }
-        if strings.HasPrefix(input_str, "Ethernet") {
-            input_str = "Ethernet" + id
-        } else if strings.HasPrefix(input_str, "PortChannel") {
-            input_str = "PortChannel" + id
-        } else {
-            log.Info("Invalid Interface")
-            result.Output.Status_detail = fmt.Sprintf("Error: Clear Counters not supported for %s", input_str)
-            return json.Marshal(&result)
-        }
-        oid, ok := ifCountInfo.Field[input_str]
-        if !ok {
-            result.Output.Status_detail = fmt.Sprintf("Error: OID info not found in COUNTERS_PORT_NAME_MAP for %s", input_str)
-            return json.Marshal(&result)
-        }
-        verr, cerr := resetCounters(dbs[db.CountersDB], oid)
-        if verr != nil {
-            result.Output.Status_detail = fmt.Sprintf("Error: Failed to get counter values from COUNTERS table for %s", input_str)
-            return json.Marshal(&result)
-        }
-        if cerr != nil {
-            log.Info("Failed to reset counters values")
-            result.Output.Status_detail = fmt.Sprintf("Error: Failed to reset counters values for %s.", input_str)
-            return json.Marshal(&result)
-        }
-        log.Info("Counters reset for " + input_str)
+    log.Info("-----mapData[openconfig-interfaces-ext:input]----", mapData["openconfig-interfaces-ext:input"])
+    input, ok := mapData["openconfig-interfaces-ext:input"] ; if !ok {
+        err_str := "Error: Mandatory info missing! Input container not present!"
+        log.Info(err_str)
+        result.Output.Status_detail = err_str
+        return json.Marshal(&result)
     }
-    result.Output.Status = 0
-    result.Output.Status_detail = "Success: Cleared Counters"
+    mapData = input.(map[string]interface{})
+    input, ok = mapData["interface-param"] ; if !ok {
+        err_str := "Error: Mandatory info missing! interface-param attribute not present!"
+        log.Info(err_str)
+        result.Output.Status_detail = err_str
+        return json.Marshal(&result)
+    }
+    input_str := fmt.Sprintf("%v", input)
+    sonicName := utils.GetNativeNameFromUIName(&input_str)
+    input_str = *sonicName
+
+    ok, result.Output.Status_detail = util_rpc_clear_counters(dbs, input_str) ; if ok {
+        result.Output.Status = 0
+    }
     return json.Marshal(&result)
 }
 
