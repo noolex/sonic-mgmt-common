@@ -803,5 +803,33 @@ module openconfig-interfaces-ext {
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state/oc-eth:negotiated-port-speed {
         deviate not-supported;
+    }  
+
+    // rpc statements
+    rpc clear-counters {
+        description "RPC for clearing interface counters. Input can be :
+            1. Single interface name
+            2. All interfaces
+            3. All interfaces of a particular type";
+
+        input {
+            leaf interface-param {
+                type string;
+                description
+                    "parameter for clearing counters - all or interface type(Ethernet/PortChannel) or interface name";
+            }
+        }
+        output {
+            leaf status {
+                type int32;
+                description
+                    "The status of the operation execution request.";
+            }
+            leaf status-detail {
+                type string;
+                description
+                    "The detailed status of the operation execution request.";
+            }
+        }
     }
 }
