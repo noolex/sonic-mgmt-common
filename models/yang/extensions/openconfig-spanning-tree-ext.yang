@@ -10,6 +10,7 @@ module openconfig-spanning-tree-ext {
 	import openconfig-spanning-tree { prefix oc-stp; }
     import openconfig-spanning-tree-types { prefix oc-stp-types; }
     import openconfig-yang-types { prefix oc-yang; }
+    import openconfig-vlan-types { prefix oc-vlan-types; }
     import openconfig-extensions { prefix oc-ext; }
 
     organization 
@@ -87,9 +88,25 @@ module openconfig-spanning-tree-ext {
             "IEEE 802.1D 17.13.10 Port Identifier Priority";
     }
 
+    grouping spanning-tree-ext-disabled-vlan-list{
+        description
+            "Top grouping for list of disabled spanning tree VLAN";
+
+        leaf-list disabled-vlans {
+            type union {
+                type oc-vlan-types:vlan-id;
+            }
+            description
+                "List of the vlans";
+
+        }
+    }
+
     grouping spanning-tree-ext-global-config {
         description
             "Grouping of extended STP global configuration";
+
+        uses spanning-tree-ext-disabled-vlan-list;
         leaf rootguard-timeout {
             type uint16 {
                 range 5..600;
