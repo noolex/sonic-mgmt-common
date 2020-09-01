@@ -68,6 +68,29 @@ func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErro
 		}
 	}
 
+    key_split := strings.Split(vc.CurCfg.Key, "|")
+    if_name := key_split[1]
+
+    if strings.Contains(if_name, "Vlan") {
+        sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
+
+        sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()
+        if (err != nil) || (vc.SessCache == nil) {
+            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+        }
+
+        if len(sag_keys) >= 1 {
+            errStr := "IP Unnumbered not allowed when anycast IP is already configured"
+            log.Error(errStr)
+            return CVLErrorInfo {
+                ErrCode: CVL_SEMANTIC_ERROR,
+                TableName: vc.CurCfg.Key,
+                CVLErrDetails: errStr,
+                ConstraintErrMsg: errStr,
+            }
+        }
+    }
+
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -314,9 +337,33 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 
 	log.Info("talbe_name:", table_name)
 
-	if len(if_ip) == 0 || vc.CurCfg.VOp != OP_DELETE {
+	if len(if_ip) == 0 {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
+
+    if vc.CurCfg.VOp != OP_DELETE {
+        if strings.Contains(if_name, "Vlan") {
+            sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
+
+            sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()
+            if (err != nil) || (vc.SessCache == nil) {
+                return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+            }
+
+            if len(sag_keys) >= 1 {
+                errStr := "Interface IP not allowed when anycast IP is already configured"
+                log.Error(errStr)
+                return CVLErrorInfo {
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: key,
+                    CVLErrDetails: errStr,
+                    ConstraintErrMsg: errStr,
+                }
+            }
+        } else {
+            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+        }
+    }
 
 	if strings.Contains(if_ip, ":") {
 		vrrp_table = "VRRP6"
