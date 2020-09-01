@@ -40,11 +40,9 @@ func init() {
 }
 
 type IpslaHistoryEntry struct {
-    timestamp   string
-    event       string    `json:",omitempty"`
+    Timestamp   string    `json:"timestamp"`
+    Event       string    `json:"event,omitempty"`
 }
-
-// showOutput.Output.History = make([]IpslaHistory, 0)
 
 var YangToDb_ip_sla_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
@@ -310,10 +308,8 @@ func ipsla_show_history (body []byte, dbs [db.MaxDB]*db.DB, tableName string) (r
     log.Infof("Enter ipsla_show_history")
 
     var showOutput struct {
-        Output struct {
-        Status        string `json:"status"`
-        Status_detail string `json:"status-detail"`
-        History [] IpslaHistoryEntry
+	      Output struct {
+			      IPSLA_HISTORY [] IpslaHistoryEntry
         } `json:"sonic-ip-sla:output"`
     }
 
@@ -321,33 +317,23 @@ func ipsla_show_history (body []byte, dbs [db.MaxDB]*db.DB, tableName string) (r
     var inputParams map[string]interface{}
     err = json.Unmarshal(body, &inputParams)
     if err != nil {
-        log.Info("Failed to unmarshall given input data")
-        showOutput.Output.Status = "INVALID_PAYLOAD"
-        showOutput.Output.Status_detail = "Failed to unmarshall given input data"
-        json, _ := json.Marshal(&result)
-        return json, tlerr.InvalidArgs("INVALID_PAYLOAD")
+        return nil, err
     }
 
     if input, err := inputParams["sonic-ip-sla:input"]; err {
         inputParams = input.(map[string]interface{})
     } else {
-        showOutput.Output.Status = "INVALID_PAYLOAD"
-        showOutput.Output.Status_detail = "No input"
-        json, _ := json.Marshal(&result)
-        return json, tlerr.InvalidArgs("INVALID_PAYLOAD")
+        return nil, tlerr.InvalidArgs("INVALID_PAYLOAD")
     }
 
     log.Info("Input=", inputParams)
 
     ipSlaIdKey, found := inputParams["ip_sla_id"]
     if !found {
-        showOutput.Output.Status = "INVALID_PAYLOAD"
-        showOutput.Output.Status_detail = "IPSLA SLA-ID missing"
-        json, _ := json.Marshal(&result)
-        return json, tlerr.InvalidArgs("INVALID_PAYLOAD")
+        return nil, tlerr.InvalidArgs("INVALID_PAYLOAD")
     }
 
-    showOutput.Output.History = make([]IpslaHistoryEntry, 0)
+    showOutput.Output.IPSLA_HISTORY = make([]IpslaHistoryEntry, 0)
 
     ipSlaIdStr := fmt.Sprintf("%v", ipSlaIdKey)
     vtysh_cmd := "show ip sla " + ipSlaIdStr + " history json"
@@ -365,17 +351,17 @@ func ipsla_show_history (body []byte, dbs [db.MaxDB]*db.DB, tableName string) (r
         var ipslahistoryentry IpslaHistoryEntry
 
         if value, ok := ipSlaDataJson["timestamp"].(string) ; ok {
-            ipslahistoryentry.timestamp = value
+            ipslahistoryentry.Timestamp = value
         }
 
         if value, ok := ipSlaDataJson["event"].(string) ; ok {
-            ipslahistoryentry.event = value
+            ipslahistoryentry.Event = value
         }
 
-        showOutput.Output.History = append(showOutput.Output.History, ipslahistoryentry)
+        showOutput.Output.IPSLA_HISTORY = append(showOutput.Output.IPSLA_HISTORY, ipslahistoryentry)
     }
 
-    log.Infof("ip sla history:", showOutput.Output.History)
+    log.Infof("ip sla history:", showOutput.Output.IPSLA_HISTORY)
 
     result, err = json.Marshal(&showOutput)
     return result, err
