@@ -705,7 +705,9 @@ var DbToYang_relay_agent_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) er
 
 }
 
-func getIntfIpInfo(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6 bool) bool {
+func getIntfIpInfo(dbCl *db.DB, tblName string, aliasName string, ipv4 bool, ipv6 bool) bool {
+
+    ifName := *utils.GetNativeNameFromUIName(&aliasName)
     log.V(2).Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
 
     log.V(2).Info(tblName, ifName)
@@ -869,7 +871,7 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
              ipTbl = "VLAN_INTERFACE"
           }
           if (!getIntfIpInfo(inParams.d, ipTbl, *intf.Config.SrcIntf, true, false)) {
-          errStr := "No Ip configured on the src intf"
+          errStr := "No IP address configured on the source interface"
           err :=  tlerr.InvalidArgsError{Format: errStr}
           return err
         }
@@ -1016,7 +1018,7 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
               tblName = "VLAN_INTERFACE"
            }
            if (!getIntfIpInfo(inParams.d, tblName, *intf.Config.SrcIntf, false, true)) {
-           errStr := "No IPv6 address configured on the src intf"
+           errStr := "No IPv6 address configured on the source interface"
            err :=  tlerr.InvalidArgsError{Format: errStr}
            return err
            }
