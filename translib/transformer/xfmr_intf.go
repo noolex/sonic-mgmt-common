@@ -901,10 +901,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         return tblList, errors.New("Invalid interface type IntfTypeUnset");
     }
     intTbl := IntfTypeTblMap[intfType]
-<<<<<<< HEAD
-=======
-    log.Info("TableXfmrFunc - targetUriPath : ", targetUriPath)
->>>>>>> origin/broadcom_sonic_3.x_share
 
     if IntfTypeVxlan == intfType {
 	//handle VXLAN interface.

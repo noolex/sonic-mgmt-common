@@ -803,7 +803,6 @@ module openconfig-interfaces-ext {
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state/oc-eth:negotiated-port-speed {
         deviate not-supported;
-<<<<<<< HEAD
     }  
 
     // rpc statements
@@ -832,7 +831,5 @@ module openconfig-interfaces-ext {
                     "The detailed status of the operation execution request.";
             }
         }
-=======
->>>>>>> origin/broadcom_sonic_3.x_share
     }
 }
