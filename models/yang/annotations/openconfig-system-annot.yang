@@ -821,6 +821,11 @@ module openconfig-system-annot {
             }
     }
 
+   deviation /oc-sys:system/oc-sys-ext:infra/oc-sys-ext:state/oc-sys-ext:show-user-list{
+        deviate add {
+            sonic-ext:field-transformer "sys_infra_state_show_user_list_xfmr";
+            }
+    }
 
     deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:state {
         deviate add {
