@@ -79,8 +79,8 @@ type FbsFlowForwardingStateEntry struct {
 }
 
 type FbsPolicerStateEntry struct {
-	Bc  uint64 `path:"bc" module:"openconfig-fbs-ext"`
-	Be  uint64 `path:"be" module:"openconfig-fbs-ext"`
+	Cbs uint64 `path:"cbs" module:"openconfig-fbs-ext"`
+	Pbs uint64 `path:"pbs" module:"openconfig-fbs-ext"`
 	Cir uint64 `path:"cir" module:"openconfig-fbs-ext"`
 	Pir uint64 `path:"pir" module:"openconfig-fbs-ext"`
 }
@@ -834,11 +834,11 @@ func (app *FbsApp) translateCUPolicy(d *db.DB, opcode int) error {
 							if policySectionVal.Qos.Policer.Config.Pir != nil {
 								sectionDbV.Field["SET_POLICER_PIR"] = strconv.FormatInt(int64(*policySectionVal.Qos.Policer.Config.Pir), 10)
 							}
-							if policySectionVal.Qos.Policer.Config.Bc != nil {
-								sectionDbV.Field["SET_POLICER_CBS"] = strconv.FormatInt(int64(*policySectionVal.Qos.Policer.Config.Bc), 10)
+							if policySectionVal.Qos.Policer.Config.Cbs != nil {
+								sectionDbV.Field["SET_POLICER_CBS"] = strconv.FormatInt(int64(*policySectionVal.Qos.Policer.Config.Cbs), 10)
 							}
-							if policySectionVal.Qos.Policer.Config.Be != nil {
-								sectionDbV.Field["SET_POLICER_PBS"] = strconv.FormatInt(int64(*policySectionVal.Qos.Policer.Config.Be), 10)
+							if policySectionVal.Qos.Policer.Config.Pbs != nil {
+								sectionDbV.Field["SET_POLICER_PBS"] = strconv.FormatInt(int64(*policySectionVal.Qos.Policer.Config.Pbs), 10)
 							}
 						}
 					}
@@ -2165,8 +2165,8 @@ func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName 
 	}
 	if strVal, found := policySectionTblVal.Field["SET_POLICER_CBS"]; found {
 		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Qos.Policer.Config.Bc = &val
-		policySectionData.Qos.Policer.State.Bc = &val
+		policySectionData.Qos.Policer.Config.Cbs = &val
+		policySectionData.Qos.Policer.State.Cbs = &val
 	}
 	if strVal, found := policySectionTblVal.Field["SET_POLICER_PIR"]; found {
 		val, _ := strconv.ParseUint(strVal, 10, 64)
@@ -2175,8 +2175,8 @@ func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName 
 	}
 	if strVal, found := policySectionTblVal.Field["SET_POLICER_PBS"]; found {
 		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Qos.Policer.Config.Be = &val
-		policySectionData.Qos.Policer.State.Be = &val
+		policySectionData.Qos.Policer.Config.Pbs = &val
+		policySectionData.Qos.Policer.State.Pbs = &val
 	}
 	if strVal, found := policySectionTblVal.Field["SET_PCP"]; found {
 		ygot.BuildEmptyTree(policySectionData.Qos)
@@ -2224,7 +2224,6 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 	policyBindData.InterfaceRef.Config.Interface = &uiIfName
 	policyBindData.InterfaceRef.State.Interface = &uiIfName
 
-
 	// find out specific type requested if any. This will help optimize DB access and the response times
 	policyTypes := []string{}
 	policyDirs := []string{}
@@ -2260,29 +2259,29 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 						policyBindData.IngressPolicies.Forwarding.Config.PolicyName = &str_val
 						policyBindData.IngressPolicies.Forwarding.State.PolicyName = &str_val
 						err := app.fillFbsIngressIfPolicyFwdSections(dbs, nativeIfName, str_val, policyBindData.IngressPolicies.Forwarding.Sections)
-                        if (err != nil) {
-                            log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
-                            return err
-                        }
+						if err != nil {
+							log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
+							return err
+						}
 
 					} else if policyType == SONIC_POLICY_TYPE_MONITORING {
 						ygot.BuildEmptyTree(policyBindData.IngressPolicies.Monitoring)
 						policyBindData.IngressPolicies.Monitoring.Config.PolicyName = &str_val
 						policyBindData.IngressPolicies.Monitoring.State.PolicyName = &str_val
 						app.fillFbsIngressIfPolicyMonSections(dbs, nativeIfName, str_val, policyBindData.IngressPolicies.Monitoring.Sections)
-                        if (err != nil) {
-                            log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
-                            return err
-                        }
-                    } else if policyType == SONIC_POLICY_TYPE_QOS {
+						if err != nil {
+							log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
+							return err
+						}
+					} else if policyType == SONIC_POLICY_TYPE_QOS {
 						ygot.BuildEmptyTree(policyBindData.IngressPolicies.Qos)
 						policyBindData.IngressPolicies.Qos.Config.PolicyName = &str_val
 						policyBindData.IngressPolicies.Qos.State.PolicyName = &str_val
 						app.fillFbsIngressIfPolicyQosSections(dbs, nativeIfName, str_val, policyBindData.IngressPolicies.Qos.Sections)
-                        if (err != nil) {
-                            log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
-                            return err
-                        }
+						if err != nil {
+							log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
+							return err
+						}
 					}
 				} else {
 					ygot.BuildEmptyTree(policyBindData.EgressPolicies)
@@ -2291,10 +2290,10 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 						policyBindData.EgressPolicies.Qos.Config.PolicyName = &str_val
 						policyBindData.EgressPolicies.Qos.State.PolicyName = &str_val
 						app.fillFbsEgressIfPolicyQosSections(dbs, nativeIfName, str_val, policyBindData.EgressPolicies.Qos.Sections)
-                        if (err != nil) {
-                            log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
-                            return err;
-                        }
+						if err != nil {
+							log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
+							return err
+						}
 					}
 				}
 			}
@@ -2388,12 +2387,12 @@ func (app *FbsApp) fillFbsPolicerStateEntry(dbs [db.MaxDB]*db.DB, polPbfKey db.K
 
 		if str_val, found := policerTblVal.Field["CBS"]; found {
 			val, _ := strconv.ParseUint(str_val, 10, 64)
-			qosState.Bc = val
+			qosState.Cbs = val
 		}
 
 		if str_val, found := policerTblVal.Field["PBS"]; found {
 			val, _ := strconv.ParseUint(str_val, 10, 64)
-			qosState.Be = val
+			qosState.Pbs = val
 		}
 	}
 
@@ -2446,11 +2445,11 @@ func (app *FbsApp) fillFbsIngressIfPolicyFwdSections(dbs [db.MaxDB]*db.DB, nativ
 	if len(policySectionsData.Section) == 0 {
 		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
 		if err != nil {
-            log.Infof("fillFbsIngressIfPolicyFwdSections err:%v ; policyName:%v ", err, policyName)
+			log.Infof("fillFbsIngressIfPolicyFwdSections err:%v ; policyName:%v ", err, policyName)
 			return err
 		}
 		for _, key := range policySectionKeys {
-            policySectionsData.NewSection(key.Get(1))
+			policySectionsData.NewSection(key.Get(1))
 		}
 	}
 
@@ -2461,7 +2460,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyFwdSections(dbs [db.MaxDB]*db.DB, nativ
 		//Fill PolicySectionDetails
 		ygot.BuildEmptyTree(policySectionData)
 
-        ygotClassName := className
+		ygotClassName := className
 		policySectionData.ClassName = &ygotClassName
 		policySectionData.State.ClassName = &ygotClassName
 		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
@@ -2471,7 +2470,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyFwdSections(dbs [db.MaxDB]*db.DB, nativ
 		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
 		err := app.fillFbsForwardingStateEntry(dbs, polPbfKey, &fwdState)
 		if err != nil {
-            log.Infof("fbs forwarding flow state get failed err:%v ; polPbfKey:%v ", err, polPbfKey)
+			log.Infof("fbs forwarding flow state get failed err:%v ; polPbfKey:%v ", err, polPbfKey)
 			return err
 		}
 
@@ -2507,7 +2506,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyMonSections(dbs [db.MaxDB]*db.DB, nativ
 	if len(policySectionsData.Section) == 0 {
 		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
 		if err != nil {
-            log.Infof("fillFbsIngressIfPolicyMonSections failed err:%v ; policyName:%v ", err, policyName)
+			log.Infof("fillFbsIngressIfPolicyMonSections failed err:%v ; policyName:%v ", err, policyName)
 			return err
 		}
 		for _, key := range policySectionKeys {
@@ -2522,7 +2521,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyMonSections(dbs [db.MaxDB]*db.DB, nativ
 		//Fill PolicySectionDetails
 		ygot.BuildEmptyTree(policySectionData)
 
-        ygotClassName := className
+		ygotClassName := className
 		policySectionData.ClassName = &ygotClassName
 		policySectionData.State.ClassName = &ygotClassName
 		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
@@ -2531,7 +2530,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyMonSections(dbs [db.MaxDB]*db.DB, nativ
 		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
 		err := app.fillPolicySectionCounters(dbs, polPbfKey, &fbsFlowState)
 		if nil != err {
-            log.Infof("fillPolicySectionCounters failed err:%v ; polPbfKey:%v ", err, polPbfKey)
+			log.Infof("fillPolicySectionCounters failed err:%v ; polPbfKey:%v ", err, polPbfKey)
 			return err
 		}
 
@@ -2552,7 +2551,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, nativ
 	if len(policySectionsData.Section) == 0 {
 		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
 		if err != nil {
-            log.Infof("fillFbsIngressIfPolicyQosSections failed err:%v ; policyName:%v ", err, policyName)
+			log.Infof("fillFbsIngressIfPolicyQosSections failed err:%v ; policyName:%v ", err, policyName)
 			return err
 		}
 		for _, key := range policySectionKeys {
@@ -2567,7 +2566,7 @@ func (app *FbsApp) fillFbsIngressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, nativ
 		//Fill PolicySectionDetails
 		ygot.BuildEmptyTree(policySectionData)
 
-        ygotClassName := className
+		ygotClassName := className
 		policySectionData.ClassName = &ygotClassName
 		policySectionData.State.ClassName = &ygotClassName
 		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
@@ -2575,29 +2574,29 @@ func (app *FbsApp) fillFbsIngressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, nativ
 		var qosState FbsFlowQosStateEntry
 		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
 		err := app.fillFbsQosStateEntry(dbs, polPbfKey, &qosState)
-        if err != nil {
-            activeFlag := false;
-            log.Infof("policer State not active ; polPbfKey:%v ", polPbfKey)
-            policySectionData.State.Active = &activeFlag
-        } else {
-            policySectionData.State.Active = &qosState.Active
-            policySectionData.State.Cir = &(qosState.policerState.Cir)
-            policySectionData.State.Pir = &(qosState.policerState.Pir)
-            policySectionData.State.Bc = &(qosState.policerState.Bc)
-            policySectionData.State.Be = &(qosState.policerState.Be)
+		if err != nil {
+			activeFlag := false
+			log.Infof("policer State not active ; polPbfKey:%v ", polPbfKey)
+			policySectionData.State.Active = &activeFlag
+		} else {
+			policySectionData.State.Active = &qosState.Active
+			policySectionData.State.Cir = &(qosState.policerState.Cir)
+			policySectionData.State.Pir = &(qosState.policerState.Pir)
+			policySectionData.State.Cbs = &(qosState.policerState.Cbs)
+			policySectionData.State.Pbs = &(qosState.policerState.Pbs)
 
-            policySectionData.State.ConformingOctets = &(qosState.ConformingOctets)
-            policySectionData.State.ConformingPkts = &(qosState.ConformingPkts)
-            policySectionData.State.ExceedingOctets = &(qosState.ExceedingOctets)
-            policySectionData.State.ExceedingPkts = &(qosState.ExceedingPkts)
-            policySectionData.State.ViolatingOctets = &(qosState.ViolatingOctets)
-            policySectionData.State.ViolatingPkts = &(qosState.ViolatingPkts)
-        }
+			policySectionData.State.ConformingOctets = &(qosState.ConformingOctets)
+			policySectionData.State.ConformingPkts = &(qosState.ConformingPkts)
+			policySectionData.State.ExceedingOctets = &(qosState.ExceedingOctets)
+			policySectionData.State.ExceedingPkts = &(qosState.ExceedingPkts)
+			policySectionData.State.ViolatingOctets = &(qosState.ViolatingOctets)
+			policySectionData.State.ViolatingPkts = &(qosState.ViolatingPkts)
+		}
 
 		var fbsFlowState FbsFwdCountersEntry
 		err = app.fillPolicySectionCounters(dbs, polPbfKey, &fbsFlowState)
 		if nil != err {
-            log.Infof("fillPolicySectionCounters failed err:%v; polPbfKey:%v ", err, polPbfKey)
+			log.Infof("fillPolicySectionCounters failed err:%v; polPbfKey:%v ", err, polPbfKey)
 			return err
 		}
 
@@ -2618,7 +2617,7 @@ func (app *FbsApp) fillFbsEgressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, native
 	if len(policySectionsData.Section) == 0 {
 		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
 		if err != nil {
-            log.Infof("fillFbsEgressIfPolicyQosSections failed err:%v ; policyName:%v ", err, policyName)
+			log.Infof("fillFbsEgressIfPolicyQosSections failed err:%v ; policyName:%v ", err, policyName)
 			return err
 		}
 		for _, key := range policySectionKeys {
@@ -2633,7 +2632,7 @@ func (app *FbsApp) fillFbsEgressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, native
 		//Fill PolicySectionDetails
 		ygot.BuildEmptyTree(policySectionData)
 
-        ygotClassName := className
+		ygotClassName := className
 		policySectionData.ClassName = &ygotClassName
 		policySectionData.State.ClassName = &ygotClassName
 		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
@@ -2642,28 +2641,28 @@ func (app *FbsApp) fillFbsEgressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, native
 		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
 		err := app.fillFbsQosStateEntry(dbs, polPbfKey, &qosState)
 		if err != nil {
-            activeFlag := false;
-            policySectionData.State.Active = &activeFlag
-            log.Infof("policer State not active ; polPbfKey:%v ", polPbfKey)
+			activeFlag := false
+			policySectionData.State.Active = &activeFlag
+			log.Infof("policer State not active ; polPbfKey:%v ", polPbfKey)
 		} else {
 			policySectionData.State.Active = &qosState.Active
 			policySectionData.State.Cir = &(qosState.policerState.Cir)
 			policySectionData.State.Pir = &(qosState.policerState.Pir)
-			policySectionData.State.Bc = &(qosState.policerState.Bc)
-			policySectionData.State.Be = &(qosState.policerState.Be)
-            
+			policySectionData.State.Cbs = &(qosState.policerState.Cbs)
+			policySectionData.State.Pbs = &(qosState.policerState.Pbs)
+
 			policySectionData.State.ConformingOctets = &(qosState.ConformingOctets)
 			policySectionData.State.ConformingPkts = &(qosState.ConformingPkts)
 			policySectionData.State.ExceedingOctets = &(qosState.ExceedingOctets)
 			policySectionData.State.ExceedingPkts = &(qosState.ExceedingPkts)
 			policySectionData.State.ViolatingOctets = &(qosState.ViolatingOctets)
 			policySectionData.State.ViolatingPkts = &(qosState.ViolatingPkts)
-        }
+		}
 
 		var fbsFlowState FbsFwdCountersEntry
 		err = app.fillPolicySectionCounters(dbs, polPbfKey, &fbsFlowState)
 		if nil != err {
-            log.Infof("fillPolicySectionCounters failed err:%v; polPbfKey:%v ", err, polPbfKey)
+			log.Infof("fillPolicySectionCounters failed err:%v; polPbfKey:%v ", err, polPbfKey)
 			return err
 		}
 
@@ -2739,7 +2738,7 @@ func applyTableData(d *db.DB, tableTs *db.TableSpec, tableData map[string]*db.Va
 			}
 		} else {
 			log.Infof("Set Table:%v Key:%v Value:%v", tableTs.Name, dbKey, *keyData)
-			if filter &&  (opcodeBmp&(1<<CREATE)) == 0 {
+			if filter && (opcodeBmp&(1<<CREATE)) == 0 {
 				log.Infof("Skip as per input arg filter:%v opcodeBmp:%x", filter, opcodeBmp)
 				continue
 			}
