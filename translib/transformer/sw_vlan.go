@@ -625,7 +625,7 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
 
     /* Updating the VLAN member table */
     for vlanName, ifEntries := range vlanMembersMap {
-        log.Info("Processing VLAN: ", vlanName)
+        log.V(3).Info("Processing VLAN: ", vlanName)
         var memberPortsListStrB strings.Builder
         var memberPortsList []string
         var stpInterfacesList []string
@@ -648,7 +648,7 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
         }
 
         for ifName, ifEntry := range ifEntries {
-            log.Infof("Processing Interface: %s for VLAN: %s", ifName, vlanName)
+            log.V(3).Infof("Processing Interface: %s for VLAN: %s", ifName, vlanName)
             /* Adding the following validation, just to avoid an another db-get in translate fn */
             /* Reason why it's ignored is, if we return, it leads to sync data issues between VlanT and VlanMembT */
             if memberPortsExists {
@@ -682,7 +682,7 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
             vlanMemberKey := vlanName + "|" + ifName
             vlanMemberMap[vlanMemberKey] = db.Value{Field:make(map[string]string)}
             vlanMemberMap[vlanMemberKey].Field["tagging_mode"] = ifEntry.Field["tagging_mode"]
-            log.Infof("Updated Vlan Member Map with vlan member key: %s and tagging-mode: %s", vlanMemberKey, ifEntry.Field["tagging_mode"])
+            log.V(3).Infof("Updated Vlan Member Map with vlan member key: %s and tagging-mode: %s", vlanMemberKey, ifEntry.Field["tagging_mode"])
 
             if len(memberPortsList) == 0 && len(ifEntries) == 1 {
                 memberPortsListStrB.WriteString(ifName)
@@ -690,7 +690,7 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
                 memberPortsListStrB.WriteString("," + ifName)
             }
         }
-        log.Infof("Member ports = %s", memberPortsListStrB.String())
+        log.V(3).Infof("Member ports = %s", memberPortsListStrB.String())
         if !isMembersListUpdate {
             continue
         }
