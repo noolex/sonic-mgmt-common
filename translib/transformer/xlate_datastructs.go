@@ -85,7 +85,7 @@ type xlateToParams struct {
         resultMap map[int]RedisDbMap
         result map[string]map[string]db.Value
         txCache interface{}
-        tblXpathMap map[string]map[string]bool
+        tblXpathMap map[string]map[string]map[string]bool
         subOpDataMap map[int]*RedisDbMap
         pCascadeDelTbl *[]string
         xfmrErr *error

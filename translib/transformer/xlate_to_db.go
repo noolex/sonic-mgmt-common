@@ -126,16 +126,19 @@ func mapFillData(xlateParams xlateToParams) error {
     }
 
     // tblXpathMap used for default value processing for a given request
-    if tblUriMapVal, tblUriMapOk := xlateParams.tblXpathMap[tableName]; !tblUriMapOk {
+    if tblUriMapVal, tblUriMapOk := xlateParams.tblXpathMap[tableName][xlateParams.keyName]; !tblUriMapOk {
+	    if _, tblOk := xlateParams.tblXpathMap[tableName]; !tblOk {
+		    xlateParams.tblXpathMap[tableName] = make(map[string]map[string]bool)
+	    }
 	    tblUriMapVal = map[string]bool{xlateParams.uri: true}
-	    xlateParams.tblXpathMap[tableName] = tblUriMapVal
+	    xlateParams.tblXpathMap[tableName][xlateParams.keyName] = tblUriMapVal
     } else {
 	    if tblUriMapVal == nil {
 		    tblUriMapVal = map[string]bool{xlateParams.uri: true}
 	    } else {
 		    tblUriMapVal[xlateParams.uri] = true
 	    }
-	    xlateParams.tblXpathMap[tableName] = tblUriMapVal
+	    xlateParams.tblXpathMap[tableName][xlateParams.keyName] = tblUriMapVal
     }
 
     curXlateParams := xlateParams
@@ -403,14 +406,13 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 						}
 					}
 					if (childNode.tableName != nil && *childNode.tableName == tblName) || (childNode.xfmrTbl != nil) {
+						tblXfmrPresent := false
+						var inParamsTblXfmr XfmrParams
 						if childNode.xfmrTbl != nil {
 							if len(*childNode.xfmrTbl) > 0 {
-								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, childUri, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, "", xlateParams.txCache)
-								chldTblNm, _ := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParams)
-								xfmrLogInfoAll("Table transformer %v for xpath %v returned table %v", *childNode.xfmrTbl, childXpath, chldTblNm)
-								if chldTblNm != tblName {
-									continue
-								}
+								inParamsTblXfmr = formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, childUri, xlateParams.requestUri, xlateParams.oper, "", nil, xlateParams.subOpDataMap, "", xlateParams.txCache)
+								//performance optimization - call table transformer only for default val leaf and avoid for other leaves unless its REPLACE operi(aux-map filling)
+								tblXfmrPresent = true
 
 							}
 						}
@@ -421,6 +423,13 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 								var param interface{}
 								oper := xlateParams.oper
 								if len(childNode.defVal) > 0 {
+									if tblXfmrPresent {
+										chldTblNm, _ := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParamsTblXfmr )
+										xfmrLogInfoAll("Table transformer %v for xpath %v returned table %v", *childNode.xfmrTbl, childXpath, chldTblNm)
+										if chldTblNm != tblName {
+											continue
+										}
+									}
 									xfmrLogInfoAll("Update(\"%v\") default: tbl[\"%v\"]key[\"%v\"]fld[\"%v\"] = val(\"%v\").",
 									childXpath, tblName, dbKey, childNode.fieldName, childNode.defVal)
 									_, defValPtr, err := DbToYangType(childYangType, childXpath, childNode.defVal)
@@ -435,6 +444,13 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 										continue
 									}
 									oper = DELETE
+									if tblXfmrPresent {
+										chldTblNm, _ := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParamsTblXfmr )
+										xfmrLogInfoAll("Table transformer %v for xpath %v returned table %v", *childNode.xfmrTbl, childXpath, chldTblNm)
+										if chldTblNm != tblName {
+											continue
+										}
+									}
 								}
 								inParams := formXfmrInputRequest(xlateParams.d, dbs, db.MaxDB, xlateParams.ygRoot, tblUri+"/"+childName, xlateParams.requestUri, oper, "", nil, xlateParams.subOpDataMap, param, xlateParams.txCache)
 								retData, err := leafXfmrHandler(inParams, childNode.xfmrField)
@@ -489,23 +505,19 @@ func dbMapDefaultValFill(xlateParams xlateToParams) error {
 	for tbl, tblData := range xlateParams.result {
 		for dbKey := range tblData {
 			var yxpathList []string //contains all uris(with keys) that were traversed for a table while processing the incoming request
-			if tblUriMapVal, ok := xlateParams.tblXpathMap[tbl]; ok {
+			if tblUriMapVal, ok := xlateParams.tblXpathMap[tbl][dbKey]; ok {
 				for tblUri := range tblUriMapVal {
-					xpathKeyExtRet, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, tblUri, xlateParams.requestUri, xlateParams.subOpDataMap, xlateParams.txCache)
-					if xerr != nil {
-						xfmrLogInfoAll("dbMapDefaultValFill: Unable to get table and key for uri: %v err: %v", tblUri, xerr)
-					}
-					if xpathKeyExtRet.dbKey == dbKey {
 						yxpathList = append(yxpathList, tblUri)
-					}
 				}
 			}
 			curXlateParams := xlateParams
 			curXlateParams.tableName = tbl
 			curXlateParams.keyName = dbKey
-			err := dbMapDefaultFieldValFill(curXlateParams, yxpathList)
-			if err != nil {
-				return err
+			if len(yxpathList) > 0 {
+				err := dbMapDefaultFieldValFill(curXlateParams, yxpathList)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -518,7 +530,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	var err, xfmrErr error
     var cascadeDelTbl []string
 	var result        = make(map[string]map[string]db.Value)
-	tblXpathMap  := make(map[string]map[string]bool)
+	tblXpathMap  := make(map[string]map[string]map[string]bool)
 	subOpDataMap := make(map[int]*RedisDbMap)
 	root         := xpathRootNameGet(uri)
 
