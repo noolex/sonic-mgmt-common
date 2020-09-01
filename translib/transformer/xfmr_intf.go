@@ -235,10 +235,9 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     var err error
 
     ifName := inParams.value
-    log.Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
+    log.V(3).Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
 
     if !utils.IsAliasModeEnabled() {
-        log.Info("Alias mode is not enabled!")
         return ifName, err
     }
     var convertedName *string
@@ -248,7 +247,7 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     } else {
         convertedName = utils.GetNativeNameFromUIName(&ifName)
     }
-    log.Info("Returned string from alias_value_xfmr = ", *convertedName)
+    log.V(3).Info("Returned string from alias_value_xfmr = ", *convertedName)
     return *convertedName, err
 }
 
@@ -2022,6 +2021,7 @@ func validateIntfExists(d *db.DB, intfTs string, ifName string) error {
     }
     nativeName := utils.GetNativeNameFromUIName(&ifName)
     ifName = *nativeName
+    log.V(3).Info("Converted Interface name = ", ifName)
     entry, err := d.GetEntry(&db.TableSpec{Name:intfTs}, db.Key{Comp: []string{ifName}})
     if err != nil || !entry.IsPopulated() {
         errStr := "Invalid Interface:" + ifName
@@ -3167,7 +3167,7 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
     if !ipv4 || !ipv6 {
         all = false
     }
-    log.Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
+    log.V(3).Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
 
     keys,err := doGetAllIpKeys(dbCl, &db.TableSpec{Name:tblName})
     if( err != nil) {
