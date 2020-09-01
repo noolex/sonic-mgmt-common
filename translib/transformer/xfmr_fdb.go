@@ -9,6 +9,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
     "encoding/json"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     log "github.com/golang/glog"
 )
 
@@ -149,6 +150,27 @@ func getFdbMacTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds
     return fdbMacTableObj
 }
 
+func validateMacAddr (macAdd string) string {
+    macAddr := strings.ToLower(macAdd)
+    errStr := ""
+    if macAddr == "00:00:00:00:00:00" {
+        errStr = "Invalid (Zero) MAC address"
+    } else if macAddr == "ff:ff:ff:ff:ff:ff" {
+        errStr = "Invalid (Broadcast) MAC address"
+    } else {
+        macSplit := strings.Split(macAddr, ":")
+        macHi, err := strconv.ParseUint(macSplit[0], 16, 8)
+        if err != nil {
+            errStr = "Invalid MAC address"
+        } else if macHi & 0x01 == 0x01 {
+            errStr = "Invalid (Multicast) MAC address"
+        } else {
+            return errStr
+        }
+    }
+    return errStr
+}
+
 var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     pathInfo := NewPathInfo(inParams.uri)
     macAddr := pathInfo.Var("mac-address")
@@ -188,6 +210,11 @@ var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         fallthrough
     case UPDATE:
         if targetUriPath == "/openconfig-network-instance:network-instances/network-instance/fdb/mac-table/entries/entry/interface/interface-ref/config"{
+            errStr := validateMacAddr(macAddr)
+            if errStr != "" {
+                log.Error(errStr)
+                return nil, tlerr.InvalidArgsError{Format:errStr}
+            }
             vlanId, _ := strconv.Atoi(vlan)
             var mcEntryKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Key
             mcEntryKey.MacAddress = macAddr
