@@ -38,6 +38,7 @@ func init () {
     XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
 
     XlateFuncBind("rpc_clear_ospfv2", rpc_clear_ospfv2)
+    XlateFuncBind("rpc_show_ospfv2_max_age_lsa", rpc_show_ospfv2_max_age_lsa)
 }
 
 func ospfv2_display_output_state(inParams XfmrParams) {
@@ -3390,6 +3391,43 @@ var rpc_clear_ospfv2 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]b
 
     log.Infof("rpc_clear_ospfv2: %s", status)
     result.Output.Status = status
+    return json.Marshal(&result)
+}
+
+var rpc_show_ospfv2_max_age_lsa RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_ospfv2_max_age_lsa")
+    var cmd string
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show ip ospf database max age lsa, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-ospfv2-show:output"`
+    }
+
+    log.Info("In rpc_show_ospfv2_max_age_lsa, RPC data:", mapData)
+
+    input := mapData["sonic-ospfv2-show:input"]
+    mapData = input.(map[string]interface{})
+
+    if value, ok := mapData["cmd"].(string) ; !ok {
+        return nil, errors.New("RPC show ip ospf database max age lsa, invalid cmd")
+    } else {
+        cmd = value
+    }
+
+    ospfOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Info("In rpc_show_ospfv2_max_age_lsa, FRR execution failed")
+        return nil, errors.New("Internal error!")
+    }
+    result.Output.Status = ospfOutput
     return json.Marshal(&result)
 }
 
