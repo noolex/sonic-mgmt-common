@@ -10,6 +10,8 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "net"
 )
 
 func init () {
@@ -2644,7 +2646,52 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
         log.Info("In rpc_show_bgp, ", dbg_err_str)
         return nil, errors.New("Internal error!")
     }
-    result.Output.Status = bgpOutput
+
+    if subCmd != "summary json" {
+        /* no interface names except in summary */
+        result.Output.Status = bgpOutput
+        return json.Marshal(&result)
+    }
+
+    var summaryDict map[string]interface{}
+    if err := json.Unmarshal([]byte(bgpOutput), &summaryDict); err != nil {
+        dbg_err_str := "Unmarshalling BGP summary failed."
+        log.Info("In rpc_show_bgp, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
+
+    if err, ok := summaryDict["warning"] ; ok {
+        log.Info ("\"%s\" VTYSH-cmd execution failed with warning-msg ==> \"%s\" !!", cmd, err)
+        result.Output.Status = bgpOutput
+        return json.Marshal(&result)
+    }
+
+    for aftype := range summaryDict {
+        summaryMapJson := summaryDict[aftype].(map[string]interface{})
+        if peers, ok := summaryMapJson["peers"].(map[string]interface{}) ; ok {
+             updIfNbrs := make(map[string]string)
+             for nbrName := range peers {
+                 if net.ParseIP(nbrName) != nil {continue}
+                 altIfName := utils.GetUINameFromNativeName(&nbrName)
+                 if *altIfName == nbrName {continue}
+                 updIfNbrs[nbrName] = *altIfName
+             }
+             for nbrIf, altIf := range updIfNbrs {
+                 /* interface name is dict key: create new alt-If entry with native-If data */
+                 /* and remove old native-If entry */
+                 peers[altIf] = peers[nbrIf]
+                 delete(peers, nbrIf)
+             }
+        }
+    }
+
+    modifiedSummary, err := json.Marshal(&summaryDict)
+    if err != nil {
+        dbg_err_str := "Marshalling modified BGP summary failed."
+        log.Info("In rpc_show_bgp, ", dbg_err_str)
+        return nil, errors.New(dbg_err_str)
+    }
+    result.Output.Status = string(modifiedSummary)
     return json.Marshal(&result)
 }
 
