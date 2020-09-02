@@ -56,7 +56,9 @@ var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     }
     if value, ok := mapData["PORT"].(string) ; ok {
         valLst[0]= "PORT"
-        valLst[1] = value
+        /* If Alias mode is enabled, get native name from alias name */
+        cvtdName := utils.GetNativeNameFromUIName(&value)
+        valLst[1] = *cvtdName
     }
     data, err = json.Marshal(valLst)
 
