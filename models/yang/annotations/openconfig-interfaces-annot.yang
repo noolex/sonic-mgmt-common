@@ -164,6 +164,12 @@ module openconfig-interfaces-annot {
         }
     }
 
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state/oc-eth-ext2:port-unreliable-los {
+        deviate add {
+            sonic-ext:field-transformer "intf_eth_port_unreliable_los_xfmr";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state/oc-eth:counters {
         deviate add {
             sonic-ext:db-name "COUNTERS_DB";
