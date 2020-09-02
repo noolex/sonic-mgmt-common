@@ -34,12 +34,12 @@ This package can also talk to non-DB clients.
 package translib
 
 import (
-	"sync"
-  "runtime/debug"
-  "github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
+	"runtime/debug"
+	"sync"
 )
 
 //Write lock for all write operations to be synchronized
@@ -522,7 +522,11 @@ func Get(req GetRequest) (GetResponse, error) {
 	}
 
 	resp, err = (*app).processGet(dbs)
-  debug.FreeOSMemory()
+	// if the size of byte array equals or greater than 10 MB, then free the memory
+	if len(resp.Payload) >= 10000000 {
+		log.Info("Calling FreeOSMemory..")	 
+		debug.FreeOSMemory()	
+	}
 	return resp, err
 }
 
@@ -578,7 +582,11 @@ func Action(req ActionRequest) (ActionResponse, error) {
 	}
 
 	resp, err = (*app).processAction(dbs)
-
+	// if the size of byte array equals or greater than 10 MB, then free the memory
+	if len(resp.Payload) >= 10000000 {
+		log.Info("Calling FreeOSMemory..")	 
+		debug.FreeOSMemory()	
+	}
 	return resp, err
 }
 
