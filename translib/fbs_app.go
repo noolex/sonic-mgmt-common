@@ -420,14 +420,16 @@ func (app *FbsApp) translateDel(d *db.DB) error {
 				policyBindKeys, _ := policyBindingTable.GetKeys()
 				for _, policyBindKey := range policyBindKeys {
 					bindingData, _ := policyBindingTable.GetEntry(policyBindKey)
+                    isModified := false
 					for key, value := range bindingData.Field {
 						if value == policyName {
 							delete(bindingData.Field, key)
+                            isModified = true     
 						}
 					}
 					if len(bindingData.Field) == 0 {
 						app.policyBindingTable[policyBindKey.Get(0)] = nil
-					} else {
+					} else if(isModified) {
 						app.policyBindingCache[policyBindKey.Get(0)] = bindingData
 						app.policyBindingTable[policyBindKey.Get(0)] = &bindingData
 					}
