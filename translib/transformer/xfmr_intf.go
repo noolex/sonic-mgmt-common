@@ -4458,6 +4458,11 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
         portFec := intfObj.Ethernet.Config.PortFec
 
+        if inParams.oper == DELETE {
+            /* Delete implies default*/
+            portFec = ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_AUTO
+        }
+
         fec_val, ok := yangToDbFecMap[portFec]
 
         if !ok {
