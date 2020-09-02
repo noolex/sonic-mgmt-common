@@ -247,6 +247,7 @@ var rpc_clear_relay_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
     var  data  []byte
     var  ipv4type string
     var  ipv6type string
+    var  ifName string
 
     i := input["sonic-counters:input"].(map[string]interface{})
 
@@ -255,11 +256,13 @@ var rpc_clear_relay_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 
     if ipv4type != "NULL" && ipv6type == "NULL" {
         valLst[0] = "V4-INTERFACE"
-        valLst[1] = i["ipv4-relay-param"].(string)
+        ifName = i["ipv4-relay-param"].(string)
+        valLst[1] = *utils.GetNativeNameFromUIName(&ifName)
 
     } else if ipv4type == "NULL" && ipv6type != "NULL" {
         valLst[0] = "V6-INTERFACE"
-        valLst[1] = i["ipv6-relay-param"].(string)
+        ifName = i["ipv6-relay-param"].(string)
+        valLst[1] = *utils.GetNativeNameFromUIName(&ifName)
 
     } else {
         log.Infof("Error - Unknown family type\n")
