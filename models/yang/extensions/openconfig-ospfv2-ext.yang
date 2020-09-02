@@ -1838,18 +1838,6 @@ module openconfig-ospfv2-ext {
       description
          "OSPF authentication password string is encrypted.";
     }
-
-    leaf authentication-key-id {
-      type uint8;
-      description
-        "Authentication key Id";
-    }
-
-    leaf authentication-md5-key {
-      type string;
-      description
-        "OSPF authentication md5 password string.";
-    }
   }
 
   grouping ospfv2-ext-interface-phys-config {
@@ -2410,7 +2398,6 @@ module openconfig-ospfv2-ext {
     }
 
     leaf authentication-key {
-      when "../authentication-type = 'TEXT'";
       type string;
       description
         "OSPF authentication password string.";
@@ -2420,20 +2407,6 @@ module openconfig-ospfv2-ext {
       type boolean;
       description
          "OSPF authentication password string is encrypted.";
-    }
-
-    leaf authentication-key-id {
-      when "../authentication-type = 'MD5HMAC'";
-      type uint8;
-      description
-        "Authentication key Id";
-    }
-
-    leaf authentication-md5-key {
-      when "../authentication-type = 'MD5HMAC'";
-      type string;
-      description
-        "OSPF authentication md5 password string.";
     }
 
     uses oc-ospfv2:ospfv2-area-interface-timers-config;

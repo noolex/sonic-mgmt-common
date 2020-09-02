@@ -2187,11 +2187,6 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
         passiveIfName = tempkey1[1]
     }
 
-    passiveIfName, err = ospfGetNativeIntfName(passiveIfName)
-    if (err != nil) {
-        return "", tlerr.New("Invalid passive interface name.")
-    }
-
     tempkey1 = strings.Split(passiveIfAddress, ":")
     if len(tempkey1) > 1 {
         passiveIfAddress = tempkey1[1]
@@ -2211,8 +2206,7 @@ var DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrDbToYang = func
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
     if len(passiveIfTableKeys) >= 3 {
-        passiveIfName, _ := ospfGetUIIntfName(passiveIfTableKeys[1])
-        res_map["name"] = passiveIfName
+        res_map["name"] = passiveIfTableKeys[1]
         res_map["address"] = passiveIfTableKeys[2]
     }
 
@@ -2237,8 +2231,7 @@ var DbToYang_ospfv2_router_passive_interface_name_fld_xfmr FieldXfmrDbtoYang = f
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
     if len(passiveIfTableKeys) >= 3 {
-        passiveIfName, _ := ospfGetUIIntfName(passiveIfTableKeys[1])
-        res_map["name"] = passiveIfName
+        res_map["name"] = passiveIfTableKeys[1]
     }
     return res_map, err
 }
@@ -2567,6 +2560,10 @@ func ospf_update_table_entry(inParams *XfmrParams, action int,
             (*subOpMap)[db.ConfigDB][tblName][tblKey].Field[fldName] = "NULL"
             (*respMap)[tblName][tblKey].Field[fldName] = "NULL"
             log.Infof("ospf_update_table_entry: delete row field %s %s ", fldName, fldValue)
+        } else {
+            (*subOpMap)[db.ConfigDB][tblName][tblKey] = db.Value{Field: make(map[string]string)}
+            (*respMap)[tblName][tblKey] = db.Value{Field: make(map[string]string)}
+            log.Infof("ospf_update_table_entry: row delete overriding existing field deletes")
         }
     }
 
@@ -2736,6 +2733,8 @@ func ospf_get_table_entry(inParams *XfmrParams, tblName string, tblKey string) (
 func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
 
     var err error
+    log.Info("ospfv2_config_post_xfmr: --------- ospf post xfmr ----------")
+    log.Info("ospfv2_config_post_xfmr: input respmap ", *ospfRespMap)
 
     err = nil
     rcvdUri, uriErr := getOspfUriPath(inParams)
@@ -2744,8 +2743,6 @@ func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[s
         return uriErr
     }
 
-    log.Infof("ospfv2_config_post_xfmr: operation %d rcvdUri %s", inParams.oper, rcvdUri)
-
     ospfObj, vrfName, _, _ := ospfGetRouterObject(inParams, "")
     if (ospfObj == nil || vrfName == "") {
         log.Info("ospfv2_config_post_xfmr: ospf router not in request")
@@ -2753,7 +2750,7 @@ func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[s
     }
 
     if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
-        log.Info("ospfv2_config_post_xfmr for ADD/UPDATE operation")
+        log.Info("ospfv2_config_post_xfmr for ADD/UPDATE/REPLACE operation ", inParams.oper)
 
         err = ospf_auto_create_ospf_router_area(inParams, ospfRespMap)
         if (err != nil) {
@@ -3068,19 +3065,11 @@ func create_ospf_area_entry(inParams *XfmrParams, vrfName string, areaId string,
     ospfTblName := "OSPFV2_ROUTER_AREA"
     ospfTblKey := vrfName + "|" + areaId
 
-    ospfOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
-    ospfOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-    ospfOpMap[db.ConfigDB][ospfTblName] = make(map[string]db.Value)
-    ospfOpMap[db.ConfigDB][ospfTblName][ospfTblKey] = db.Value{Field: make(map[string]string)}
-    ospfOpMap[db.ConfigDB][ospfTblName][ospfTblKey].Field["NULL"] = "NULL"
-    inParams.subOpDataMap[CREATE] = &ospfOpMap
-
-    ospfTblDbValue := db.Value{Field: make(map[string]string)}
-    ospfTblDbValue.Field["NULL"] = "NULL"
-
-    ospfTblMap := make(map[string]db.Value)
-    ospfTblMap[ospfTblKey] = ospfTblDbValue
-    (*ospfRespMap)[ospfTblName] = ospfTblMap
+    err := ospf_update_table_entry(inParams, inParams.oper, ospfTblName, ospfTblKey, "enable", "true", ospfRespMap)
+    if (err != nil) {
+        log.Info("create_ospf_area_entry: create area entry failed ", err)
+        return err
+    }
 
     log.Infof("create_ospf_area_entry: Areas entry %s added respmap", ospfTblKey)
     return nil
@@ -3317,58 +3306,16 @@ func delete_ospf_router_redistribute_entry(inParams *XfmrParams, ospfRespMap *ma
         return nil
     }
 
+    redistTableName := "OSPFV2_ROUTER_DISTRIBUTE_ROUTE"
     redistTableKey := ospfVrfName + "|" + redistProtocol + "|" + redistDirection
 
-    ospfTblName := "OSPFV2_ROUTER_DISTRIBUTE_ROUTE"
-    var ospfTblSpec *db.TableSpec = &db.TableSpec{Name: ospfTblName}
-    ospfTblData, err := configDbPtr.GetTable(ospfTblSpec)
-    if err != nil {
-        errStr := "Distribute table get failed"
-        log.Error("delete_ospf_router_redistribute_entry: OSPF Interface Table data not found ", errStr)
-        return nil
+    err := ospf_delete_table_entry(inParams, redistTableName, redistTableKey, ospfRespMap)
+    if (err != nil) {
+        log.Info("delete_ospf_router_redistribute_entry: entry delete failed ", err)
+        return err
     }
 
-    ospfTblKeys, err := ospfTblData.GetKeys()
-    if err != nil {
-        errStr := "Distribute table get keys failed"
-        log.Info("delete_ospf_router_redistribute_entry: get keys failed ", errStr)
-        return nil
-    }
-
-    ospfOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
-    ospfOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-    ospfOpMap[db.ConfigDB][ospfTblName] = make(map[string]db.Value)
-    ospfTblMap := make(map[string]db.Value)
-
-    entryDeleted := false
-    for _, ospfTblKey := range ospfTblKeys {
-        keyVrfName := ospfTblKey.Get(0)
-        keyProtocol := ospfTblKey.Get(1)
-        keyDirection := ospfTblKey.Get(2)
-
-        if (keyVrfName != ospfVrfName ||
-            keyProtocol != redistProtocol ||
-            keyDirection != redistDirection ) {
-            continue
-        }
-
-        log.Info("delete_ospf_router_redistribute_entry: delete entry ", redistTableKey)
-
-        ospfDbValue := db.Value{Field: make(map[string]string)}
-        ospfOpMap[db.ConfigDB][ospfTblName][redistTableKey] = db.Value{Field: make(map[string]string)}
-        ospfTblMap[redistTableKey] = ospfDbValue
-        entryDeleted = true
-    }
-
-    if entryDeleted {
-        inParams.subOpDataMap[inParams.oper] = &ospfOpMap
-        (*ospfRespMap)[ospfTblName] = ospfTblMap
-
-        log.Info("delete_ospf_router_redistribute_entry: ospfRespMap ", ospfRespMap)
-        return nil
-    }
-
-    log.Info("delete_ospf_router_redistribute_entry: no entries to delete for ", redistTableKey)
+    log.Info("delete_ospf_router_redistribute_entry: entry delete for ", redistTableKey)
     return nil
 }
 
@@ -3420,8 +3367,7 @@ func ospf_delete_all_vlmd_auth_config(inParams *XfmrParams, vrfName string, area
 
     err = ospf_delete_table_entry(inParams, vlAuthTblName, vlAuthTblKey, ospfRespMap)
     if err != nil {
-        log.Info("ospf_delete_all_vlmd_auth_config: failed ", vlAuthTblKey)
-        return err
+        log.Info("ospf_delete_all_vlmd_auth_config: entry delete failed ", err)
     }
 
     log.Info("ospf_delete_all_vlmd_auth_config: success for ", vlAuthTblKey)

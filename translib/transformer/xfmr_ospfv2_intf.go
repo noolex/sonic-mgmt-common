@@ -375,7 +375,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
     uriIfName, ifName, err := ospfGetIntfUriAndNativeName(&inParams)
     if (err != nil) {
-        log.Info("ospfGetIntfOspfObject: uri and native if get failed")
+        log.Info("YangToDb_ospfv2_interface_subtree_xfmr: uri and native if get failed")
         return ospfRespMap, err
     }
 
@@ -611,61 +611,9 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                      }
 
                      intfUpdateMap[fieldName] = dbVlaueStr
-                 }
 
-                 if (ospfCfgObj.AuthenticationKeyId != nil) {
-                     fieldName := "authentication-key-id"
-
-                     var dbVlaueInt int = int(uint(*(ospfCfgObj.AuthenticationKeyId)))
-                     dbVlaueStr := strconv.Itoa(dbVlaueInt)
-                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth key id field to ", dbVlaueStr)
-
-                     if (intfEntryPresent) {
-                         currKeyId := (&intfTblEntry).Get(fieldName)
-                         if (currKeyId != "") {
-                             if (currKeyId != dbVlaueStr) {
-                                 errStr := "Please unconfigure existing key-id and key first"
-                                 log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
-                                 return ospfRespMap, tlerr.New(errStr)
-                             }
-
-                             if (currKeyId == dbVlaueStr) {
-                                 errStr := "Please unconfigure existing key-id and key first"
-                                 log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
-                                 return ospfRespMap, tlerr.New(errStr)
-                             }
-                         }
-                     }
-
-                     if (ospfCfgObj.AuthenticationMd5Key == nil) {
-                         errStr := "Please provide message digest authentication key along with key-id"
-                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
-                         return ospfRespMap, tlerr.New(errStr)
-                     }
-
-                     intfUpdateMap[fieldName] = dbVlaueStr
-                 }
-
-                 if (ospfCfgObj.AuthenticationMd5Key != nil) {
-                     fieldName := "authentication-md5-key"
-
-                     dbVlaueStr := *(ospfCfgObj.AuthenticationMd5Key)
-                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth md5key field to ", dbVlaueStr)
-
-                     if (ospfCfgObj.AuthenticationKeyId == nil || dbVlaueStr == "") {
-                         errStr := "Please provide message digest key id along with authentication key"
-                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
-                         return ospfRespMap, tlerr.New(errStr)
-                     }
-
-                     keyLength := len(dbVlaueStr)
-                     if (keyLength > 16) {
-                         errStr := "MD authentication key shall be max 16 charater long"
-                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
-                         return ospfRespMap, tlerr.New(errStr)
-                     }
-
-                     intfUpdateMap[fieldName] = dbVlaueStr
+                     fieldName = "authentication-key-encrypted"
+                     intfUpdateMap[fieldName] = "true"
                  }
 
                  if (ospfCfgObj.BfdEnable != nil) {
@@ -1030,20 +978,9 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
                 ospfCfgObj.AuthenticationKey = &fieldValue
             }
 
-            if (fieldName == "authentication-key-id") {
-                if intVal, err3 := strconv.Atoi(fieldValue); err3 == nil {
-                    fieldValueInt := uint8(intVal)
-                    ospfCfgObj.AuthenticationKeyId = &fieldValueInt
-                }
-            }
-
             if (fieldName == "authentication-key-encrypted") {
                 enabled := true
                 ospfCfgObj.AuthenticationKeyEncrypted = &enabled
-            }
-
-            if (fieldName == "authentication-md5-key") {
-                ospfCfgObj.AuthenticationMd5Key = &fieldValue
             }
 
             if (fieldName == "dead-interval") {
@@ -1486,7 +1423,7 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
 
     uriIfName, ifName, err := ospfGetIntfUriAndNativeName(&inParams)
     if (err != nil) {
-        log.Info("ospfGetIntfOspfObject: uri and native if get failed")
+        log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: uri and native if get failed")
         return ospfRespMap, err
     }
 
@@ -1641,6 +1578,9 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
                          }
 
                          intfUpdateMap[fieldName] = dbVlaueStr
+
+                         fieldName = "authentication-key-encrypted"
+                         intfUpdateMap[fieldName] = "true"
                      }
                 }
 
