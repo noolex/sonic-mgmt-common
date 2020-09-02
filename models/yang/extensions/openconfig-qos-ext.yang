@@ -371,6 +371,43 @@ module openconfig-qos-ext {
       uses oc-qos-pfc:qos-pfc-watchdog-top;
     }
 
+	rpc clear-watermarks {
+		description
+			"Install the TPC image into SONiC system";
+		input {
+			leaf buffer {
+				type string;
+				description
+					"queue or priority-groups buffers";
+			}
+
+			leaf buffer-type {
+				type string;
+				description
+					"For Queue buffers, the type of queue: unicast or multicast;
+				for Priority Group buffers, the shared buffer or headroom buffer";
+			}
+
+			leaf watermark-type {
+				type string;
+				description
+					"watermark or persistent-watermark";
+			}
+
+		}
+		output {
+			leaf status {
+				type int32;
+				description
+					"The status of the operation execution request.";
+			}
+			leaf-list status-detail {
+				type string;
+				description "The detailed status of the operation execution request.";
+			}
+		}
+	}
+
 	grouping qos-ext-threshold-config {
 
 		description

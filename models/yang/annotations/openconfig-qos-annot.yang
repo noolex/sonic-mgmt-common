@@ -742,4 +742,5 @@ module openconfig-qos-annot {
       sonic-ext:field-name "POLL_INTERVAL";
     }
   }
+
 }
