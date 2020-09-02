@@ -1,0 +1,100 @@
+module openconfig-neighbor {
+
+  yang-version "1.1";
+  // namespace
+  namespace "http://openconfig.net/yang/neighbor/extension";
+  prefix "oc-nbr";
+
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-interfaces { prefix oc-if; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module defines configuration and operational state data for various neighbor attributes .";
+
+
+  revision "2020-09-01" {
+  description
+    "Initial revision";
+    reference "0.1.0";
+  }
+
+  oc-ext:openconfig-version "1.0.2";
+
+  grouping neighbor-global-config {
+    description
+      "Neighbor global config";
+
+
+                leaf name {
+                    type string;
+                    description "Key node identifier";
+                }
+
+                leaf ipv4-arp-timeout {
+                    type uint16 {
+                        range "60..14400" {
+                            error-message "Invalid ARP timeout value";
+                        }
+                    }
+                    default 180;
+                    description "ARP timeout value";
+                }
+
+                leaf ipv6-nd-cache-expiry {
+                    type uint16 {
+                        range "60..14400" {
+                            error-message "Invalid ND cache expiry value";
+                        }
+                    }
+                    default 180;
+                    description "ND cache expiry value";
+                }
+}
+
+  grouping neighbor-globals-top {
+    description
+       "Neighbor global variables top level container";
+
+  container neighbor-globals {
+    description
+      "Neighbor global entries variables enclosing container";
+
+    list neighbor-global {
+      key "name";
+      description
+        "List of neighbor global entries";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+          description
+            "Reference to the neighbor global list  key";
+        }
+
+        container config {
+          description
+            "The configuration and information table for neighbor global";
+          uses neighbor-global-config;
+
+        }
+
+        container state {
+          config false;
+          description
+            "Neighbor global state table information";
+          uses neighbor-global-config;
+        }
+      }
+    }
+  }
+
+  uses neighbor-globals-top;
+}
