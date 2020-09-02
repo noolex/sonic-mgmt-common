@@ -97,24 +97,40 @@ module openconfig-lst-ext {
 	  description
 	    "Indicates that this group tracks all MCLAGs as downstream interfaces";
 	}
+
+    leaf defer-time {
+      type uint16 {
+        range "1..120";
+      }
+      units "seconds";
+      description
+        "This time value indicates wait duration before disable the downstream 
+        interfaces after the upstream interfaces go down";
+    }
+
+    leaf enable {
+      type boolean;
+      description
+        "This indicates enable status of the group";
+    }
   }
 
   grouping lst-ext-group-state {
     description
       "Link state tracking group operational state";
   }
-  
+
   grouping lst-ext-group-top {
     description
       "Top level grouping for Link state tracking data and structure";
-      
+
     container lst-groups {
       description
         "Link state tracking groups variables enclosing container";
-        
+
       list lst-group {
         key "name";
-        
+
         description
           "List of all link state tracking groups";
 
@@ -164,12 +180,12 @@ module openconfig-lst-ext {
   grouping lst-ext-interface-upstream-top {
     description
       "Top-level grouping for per-interface upstream group data";
-      
+
     container upstream-groups {
       description
       "Enclosing container the list of groups that are tracking this
       interface as upstream";
-      
+
       list upstream-group {
         key "group-name";
 
@@ -184,7 +200,7 @@ module openconfig-lst-ext {
           description
             "Reference to group name list key";
         }
-        
+
         container config {
           description
             "Configuration data";
@@ -201,7 +217,7 @@ module openconfig-lst-ext {
 
           uses lst-ext-interface-upstream-group-config;
           uses lst-ext-interface-upstream-group-state;
-        }        
+        }
       }
     }
   }
@@ -224,7 +240,7 @@ module openconfig-lst-ext {
   grouping lst-ext-interface-downstream-group-state {
     description
       "Operational state data per-interface downstream link state tracking group";
-      
+
     leaf disabled {
       type boolean;
 
@@ -236,11 +252,11 @@ module openconfig-lst-ext {
   grouping lst-ext-interface-downstream-top {
     description
       "Top-level grouping for per-interface downstream group data";
-      
+
     container downstream-group {
       description
       "Enclosing container for the downstream interface data";
-      
+
       container config {
         description
           "Configuration data";
@@ -258,7 +274,7 @@ module openconfig-lst-ext {
         uses lst-ext-interface-downstream-group-config;
         uses lst-ext-interface-downstream-group-state;
       }
-    }      
+    }
   }
 
   grouping lst-ext-interfaces-config {
@@ -324,9 +340,9 @@ module openconfig-lst-ext {
         uses lst-ext-interface-upstream-top;
         uses lst-ext-interface-downstream-top;
       }
-    }  
+    }
   }
-  
+
   grouping lst-ext-config {
     description
       "Global configuration data for link state tracking";
@@ -340,7 +356,7 @@ module openconfig-lst-ext {
   grouping lst-ext-top {
     description
       "Top level grouping for Link state tracking data";
-      
+
     container lst {
       description
         "Top level enclosing container for link state tracking model 
@@ -349,16 +365,16 @@ module openconfig-lst-ext {
       container config {
         description
           "Global config data for link state tracking";
-        
+
         uses lst-ext-config;
       }
-      
+
       container state {
         config false;
 
         description
           "Global operational state data for link state tracking";
-          
+
         uses lst-ext-config;
         uses lst-ext-state;
       }
@@ -376,4 +392,12 @@ module openconfig-lst-ext {
   // rpc statements
 
   // notification statements
+
+  // deviations
+  deviation /oc-lst-ext:lst/oc-lst-ext:lst-groups/oc-lst-ext:lst-group/oc-lst-ext:config/oc-lst-ext:enable {
+    deviate not-supported;
+  }
+  deviation /oc-lst-ext:lst/oc-lst-ext:lst-groups/oc-lst-ext:lst-group/oc-lst-ext:config/oc-lst-ext:defer-time {
+    deviate not-supported;
+  }
 }

@@ -1,4 +1,4 @@
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //  Copyright 2019 Broadcom. The term Broadcom refers to Broadcom Inc. and/or //
 //  its subsidiaries.                                                         //
@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "github.com/Azure/sonic-mgmt-common/translib/utils"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"math"
 	"strconv"
@@ -490,7 +490,7 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 		for i := range intfs {
 			var fwdEntry ForwardingEgressEntry
 			intfSplits := strings.Split(intfs[i], "|")
-            convertedIfName := *(utils.GetUINameFromNativeName(&intfSplits[0]))
+			convertedIfName := *(utils.GetUINameFromNativeName(&intfSplits[0]))
 			fwdEntry.INTERFACE = &convertedIfName
 			if len(intfSplits[1]) > 0 {
 				prio, _ := strconv.Atoi(intfSplits[1])
@@ -611,13 +611,13 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 		state.STATUS = "Inactive"
 	}
 
-    if state.STATUS == "Inactive" {
-        exPolPbfKey := db.Key{[]string{policy_name, class_name, interface_name, bind_dir, "Excluded"}}
-        _, err := countersDbPtr.GetEntry(fbsCtrTbl_ts, exPolPbfKey)
-        if err == nil {
-            state.STATUS = "Active"
-        }
-    }
+	if state.STATUS == "Inactive" {
+		exPolPbfKey := db.Key{[]string{policy_name, class_name, interface_name, bind_dir, "Excluded"}}
+		_, err := countersDbPtr.GetEntry(fbsCtrTbl_ts, exPolPbfKey)
+		if err == nil {
+			state.STATUS = "Active"
+		}
+	}
 
 	if strings.EqualFold(policy_type, "QOS") {
 		var policer FlowPolicerStateEntry
@@ -933,13 +933,13 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 	}
 
 	intfServicePolicyData := make(map[string]ServicePolicyInterfaceEntry)
+	interface_name = *(utils.GetNativeNameFromUIName(&interface_name))
 
 	policyBindKeys, _ := policyBindTbl.GetKeys()
 	for index, key := range policyBindKeys {
 		if interface_name_found {
-            convertedIfName := *(utils.GetNativeNameFromUIName(&interface_name))
-			if key.Comp[0] != convertedIfName {
-				log.Infof("Interface:%s Needed:%s. Skip", key.Comp[0], convertedIfName)
+			if key.Comp[0] != interface_name {
+				log.Infof("Interface:%s Needed:%s. Skip", key.Comp[0], interface_name)
 				continue
 			}
 		}
@@ -964,7 +964,7 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 				}
 			}
 
-            uiIfName := *(utils.GetUINameFromNativeName(&interface_name))
+			uiIfName := *(utils.GetUINameFromNativeName(&key.Comp[0]))
 			intfEntry := intfServicePolicyData[uiIfName]
 			intfEntry.INTERFACE_NAME = uiIfName
 
@@ -990,7 +990,7 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 				log.Infof("Keys:%v", referingClassKeys[i])
 
 				var referingClassEntry PolicyFlowEntry
-				err = fill_policy_section_table_info(value, referingClassKeys[i].Comp[1], key.Comp[0], field_splits[0], 
+				err = fill_policy_section_table_info(value, referingClassKeys[i].Comp[1], key.Comp[0], field_splits[0],
 					field_splits[1], policySectionTblVal, dbs, true, &referingClassEntry)
 				if nil != err {
 					return nil, err
@@ -1081,13 +1081,14 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 		return nil, err
 	}
 
+	interface_name = *(utils.GetNativeNameFromUIName(&interface_name))
+
 	var match_found bool
 	policyBindKeys, _ := policyBindTbl.GetKeys()
 	for index, key := range policyBindKeys {
 		if interface_name_found {
-            convertedIfName := *(utils.GetNativeNameFromUIName(&interface_name))
-			if key.Comp[0] != convertedIfName {
-				log.Infof("Interface:%s Needed:%s. Skip", key.Comp[0], convertedIfName)
+			if key.Comp[0] != interface_name {
+				log.Infof("Interface:%s Needed:%s. Skip", key.Comp[0], interface_name)
 				continue
 			}
 		}
