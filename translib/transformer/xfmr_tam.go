@@ -28,7 +28,7 @@ import (
     "reflect"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "github.com/openconfig/ygot/util"  // NEEDED
+    "github.com/openconfig/ygot/util"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
@@ -307,12 +307,8 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
     return (*inParams.dbDataMap)[db.ConfigDB], nil
 }
 
-func getRecord(d *db.DB, name string) (AclRule, error) {
+func getRecord(d *db.DB, ruleEntry db.Value, name string) (AclRule, error) {
     var aclRule AclRule
-    ruleEntry, err := d.GetEntry(&db.TableSpec{Name: "ACL_RULE"}, db.Key{Comp: []string{"TAM", name}})
-    if err != nil {
-        return aclRule, tlerr.NotFound("Resource Not Found")
-    }
     aclRule.TableName = "TAM"
     aclRule.RuleName = name
     priority, _ := strconv.ParseInt(ruleEntry.Get("PRIORITY"), 10, 32)
@@ -324,8 +320,16 @@ func getRecord(d *db.DB, name string) (AclRule, error) {
     aclRule.EtherType = ruleEntry.Get("ETHER_TYPE")
     aclRule.SrcMac = ruleEntry.Get("SRC_MAC")
     aclRule.DstMac = ruleEntry.Get("DST_MAC")
-    aclRule.SrcIp = ruleEntry.Get("SRC_IP")
-    aclRule.DstIp = ruleEntry.Get("DST_IP")
+    if (ruleEntry.Get("DST_IP") == "0.0.0.0/0") {
+        aclRule.DstIp = ""
+    } else {
+        aclRule.DstIp = ruleEntry.Get("DST_IP")
+    }
+    if (ruleEntry.Get("SRC_IP") == "0.0.0.0/0") {
+        aclRule.SrcIp = ""
+    } else {
+        aclRule.SrcIp = ruleEntry.Get("SRC_IP")
+    }
     aclRule.SrcIpv6 = ruleEntry.Get("SRC_IPV6")
     aclRule.DstIpv6 = ruleEntry.Get("DST_IPV6")
     aclRule.L4SrcPort = ruleEntry.Get("L4_SRC_PORT")
@@ -347,22 +351,27 @@ func getRecord(d *db.DB, name string) (AclRule, error) {
 func getFlowGroupsFromDb(d *db.DB, name string) (map[string]AclRule, error) {
     var ruleEntries = make(map[string]AclRule)
     var err error
+    var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
+    var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
+    aclRuleTable, _ := configDbPtr.GetTable(ACL_RULE_TABLE_TS)
+
     if name != "" {
-        entry, err := getRecord(d, name)
+        aclKey := "TAM|"+name
+        ruleEntry, err := configDbPtr.GetEntry(ACL_RULE_TABLE_TS, db.Key{[]string{aclKey}})
         if err != nil {
             return ruleEntries, err
         }
-        ruleEntries[name] = entry
+        record, _ := getRecord(d, ruleEntry, name)
+        ruleEntries[name] = record
     } else {
-        AclRules, err := d.GetTable(&db.TableSpec{Name: "ACL_RULE"})
-        if err != nil {
-            return ruleEntries, tlerr.NotFound("Resource Not Found")
-        }
-        keys, _ := AclRules.GetKeys()
+        keys, _ := aclRuleTable.GetKeys()
         for _, key := range keys {
             rule := key.Get(1)
-            entry, _ := getRecord(d, key.Get(1))
-            ruleEntries[rule] = entry
+            if (key.Get(0) == "TAM") {
+                entry, _ := aclRuleTable.GetEntry(key)
+                record, _ := getRecord(d, entry, rule)
+                ruleEntries[rule] = record
+            }
         }
     }
     return ruleEntries, err
@@ -391,8 +400,6 @@ func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rul
 
     // Ipv4
     if (entry.IpType == "IPV4ANY") {
-        flowGroup.Config.IpVersion = ocbinds.OpenconfigTam_IpVersion_IPV4
-        flowGroup.State.IpVersion = ocbinds.OpenconfigTam_IpVersion_IPV4
         ygot.BuildEmptyTree(flowGroup.Ipv4)
         ygot.BuildEmptyTree(flowGroup.Ipv4.Config)
         ygot.BuildEmptyTree(flowGroup.Ipv4.State)
@@ -402,7 +409,7 @@ func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rul
         if (entry.DstIp != "") {flowGroup.Ipv4.State.DestinationAddress = &(entry.DstIp)}
         if (entry.Dscp != 0) {flowGroup.Ipv4.Config.Dscp = &(entry.Dscp)}
         if (entry.Dscp != 0) {flowGroup.Ipv4.State.Dscp = &(entry.Dscp)}
-        if ((entry.IpProtocol != "") && (entry.IpType == "IPV4ANY")) {
+        if (entry.IpProtocol != "") {
             ipProto, _ := strconv.ParseInt(entry.IpProtocol, 10, 64)
             protocolVal := getIpProtocol(ipProto)
             flowGroup.Ipv4.Config.Protocol, _ = flowGroup.Ipv4.Config.To_OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union(protocolVal)
@@ -412,8 +419,6 @@ func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rul
 
     // Ipv6
     if (entry.IpType == "IPV6ANY") {
-        flowGroup.Config.IpVersion = ocbinds.OpenconfigTam_IpVersion_IPV6
-        flowGroup.State.IpVersion = ocbinds.OpenconfigTam_IpVersion_IPV6
         ygot.BuildEmptyTree(flowGroup.Ipv6)
         ygot.BuildEmptyTree(flowGroup.Ipv6.Config)
         ygot.BuildEmptyTree(flowGroup.Ipv6.State)
@@ -423,7 +428,7 @@ func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rul
         if (entry.DstIpv6 != "") {flowGroup.Ipv6.State.DestinationAddress = &(entry.DstIpv6)}
         if (entry.Dscp != 0) {flowGroup.Ipv6.Config.Dscp = &(entry.Dscp)}
         if (entry.Dscp != 0) {flowGroup.Ipv6.State.Dscp = &(entry.Dscp)}
-        if ((entry.IpProtocol != "") && (entry.IpType == "IPV6ANY")) {
+        if (entry.IpProtocol != "") {
             ipProto, _ := strconv.ParseInt(entry.IpProtocol, 10, 64)
             protocolVal := getIpProtocol(ipProto)
             flowGroup.Ipv6.Config.Protocol, _ = flowGroup.Ipv6.Config.To_OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv6_Config_Protocol_Union(protocolVal)
@@ -576,34 +581,29 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
 
                 // mandatory
                 if flowgroup.Config.Id == nil {
-                    errStr := "key field id (uint32) has nil value"
+                    errStr := "key field id (uint32) has nil value."
                     err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
                 }
                 id := strconv.FormatInt(int64(*flowgroup.Config.Id), 10)
                 if (set[id] || currentSet[id]) {
-                    errStr := fmt.Sprintf("Flowgroup with id %v already exists", *flowgroup.Config.Id)
+                    errStr := fmt.Sprintf("Flowgroup with id %v already exists.", *flowgroup.Config.Id)
                     err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
                 }
                 if (currentSet[id]) {
-                    errStr := fmt.Sprintf("Duplicate id (%v) present in the payload", *flowgroup.Config.Id)
+                    errStr := fmt.Sprintf("Duplicate id (%v) present in the payload.", *flowgroup.Config.Id)
                     err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
                 }
                 if flowgroup.Config.Name == nil {
-                    errStr := "key field name (*string) has nil value"
+                    errStr := "key field name (*string) has nil value."
                     err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
                 }
-                if flowgroup.Config.IpVersion == ocbinds.OpenconfigTam_IpVersion_UNSET {
-                    errStr := "Mandatory parameter ip-version is not set"
-                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
-                    return res_map, err
-                }
-                if ((flowgroup.Config.IpVersion != ocbinds.OpenconfigTam_IpVersion_IPV4) && (flowgroup.Config.IpVersion != ocbinds.OpenconfigTam_IpVersion_IPV6)) {
-                    errStr := "Invalid ip-version"
-                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
+                if flowgroup.Ipv6 != nil && flowgroup.Ipv6.Config != nil {
+                    errStr := "IPv6 flowgroups are not supported."
+                    err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
                 }
                 priority := "100"
@@ -612,43 +612,42 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                 }
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
 
-                // IPv4
-                if (flowgroup.Config.IpVersion == ocbinds.OpenconfigTam_IpVersion_IPV4) {
-                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV4ANY"
-                    if flowgroup.Ipv4 != nil && flowgroup.Ipv4.Config != nil {
-                        if flowgroup.Ipv4.Config.SourceAddress != nil {
-                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = *(flowgroup.Ipv4.Config.SourceAddress)
+								// IPv4
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV4ANY"
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = "0.0.0.0/0"
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = "0.0.0.0/0"
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = "17"
+                if flowgroup.Ipv4 != nil && flowgroup.Ipv4.Config != nil {
+                    if flowgroup.Ipv4.Config.SourceAddress != nil {
+                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = *(flowgroup.Ipv4.Config.SourceAddress)
+                    }
+                    if flowgroup.Ipv4.Config.DestinationAddress != nil {
+                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = *(flowgroup.Ipv4.Config.DestinationAddress)
+                    }
+                    if flowgroup.Ipv4.Config.Dscp != nil {
+                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DSCP"] = strconv.FormatInt(int64(*flowgroup.Ipv4.Config.Dscp), 10)
+                    }
+                    if flowgroup.Ipv4.Config.Protocol != nil && util.IsTypeStructPtr(reflect.TypeOf(flowgroup.Ipv4.Config.Protocol)) {
+                        protocolType := reflect.TypeOf(flowgroup.Ipv4.Config.Protocol).Elem()
+                        switch protocolType {
+                            case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL{}):
+                                v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL)
+                                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(IP_PROTOCOL_MAP[v.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]), 10)
+                            case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8{}):
+                                v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8)
+                                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(v.Uint8), 10)
                         }
-                        if flowgroup.Ipv4.Config.DestinationAddress != nil {
-                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = *(flowgroup.Ipv4.Config.DestinationAddress)
-                        }
-                        if flowgroup.Ipv4.Config.Dscp != nil {
-                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DSCP"] = strconv.FormatInt(int64(*flowgroup.Ipv4.Config.Dscp), 10)
-                        }
-
-                        if flowgroup.Ipv4.Config.Protocol != nil && util.IsTypeStructPtr(reflect.TypeOf(flowgroup.Ipv4.Config.Protocol)) {
-                            protocolType := reflect.TypeOf(flowgroup.Ipv4.Config.Protocol).Elem()
-                            switch protocolType {
-                                case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL{}):
-                                    v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL)
-                                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(IP_PROTOCOL_MAP[v.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]), 10)
-                                case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8{}):
-                                    v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8)
-                                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(v.Uint8), 10)
-                            }
-                        }
-                        if flowgroup.Ipv4.Config.HopLimit != nil {
-                            errStr := "parameter hop-limit is not supported"
-                            err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
-                            return res_map, err
-                        }
+                    }
+                    if flowgroup.Ipv4.Config.HopLimit != nil {
+                        errStr := "Parameter hop-limit is not supported."
+                        err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
+                        return res_map, err
                     }
                 }
 
                 // IPv6
-                if (flowgroup.Config.IpVersion == ocbinds.OpenconfigTam_IpVersion_IPV6) {
+                if flowgroup.Ipv6 != nil && flowgroup.Ipv6.Config != nil {
                     updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV6ANY"
-
                     if flowgroup.Ipv6.Config.Protocol != nil && util.IsTypeStructPtr(reflect.TypeOf(flowgroup.Ipv6.Config.Protocol)) {
                         protocolType := reflect.TypeOf(flowgroup.Ipv6.Config.Protocol).Elem()
                         switch protocolType {
@@ -732,7 +731,6 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["L4_SRC_PORT"] = strconv.FormatInt(int64(v.Uint16), 10)
                         }
                     }
-
                     if flowgroup.Transport.Config.DestinationPort != nil && util.IsTypeStructPtr(reflect.TypeOf(flowgroup.Transport.Config.DestinationPort)) {
                         destportType := reflect.TypeOf(flowgroup.Transport.Config.DestinationPort).Elem()
                         switch destportType {
@@ -747,14 +745,13 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["L4_DST_PORT"] = strconv.FormatInt(int64(v.Uint16), 10)
                         }
                     }
-
                     if len(flowgroup.Transport.Config.TcpFlags) > 0 {
                         updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["TCP_FLAGS"] = convertOCTcpFlagsToDbFormat(flowgroup.Transport.Config.TcpFlags)
                     }
                 }
                 // Create Flowgroup Table
                 updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"][thiskey] = db.Value{Field: make(map[string]string)}
-                updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"][thiskey].Field["id"] = id //strconv.FormatInt(int64(*flowgroup.Config.Id), 10)
+                updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"][thiskey].Field["id"] = id
                 updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"][thiskey].Field["table-name"] = "TAM"
                 currentSet[id] = true
                 inParams.subOpDataMap[method] = &updateMap
@@ -989,4 +986,3 @@ func getTransportConfigTcpFlags(tcpFlags string) []ocbinds.E_OpenconfigPacketMat
     }
     return flags
 }
-
