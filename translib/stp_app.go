@@ -661,6 +661,159 @@ func (app *StpApp) processCommon(d *db.DB, opcode int) error {
 	return err
 }
 
+func (app *StpApp) getMaxStpInstances() (int, error) {
+
+    dbs, err := getAllDbs(true)
+
+    if err != nil {
+        return 0, err
+    }
+    defer closeAllDbs(dbs[:])
+
+    stateDB := dbs[db.StateDB]
+    stpStateDbEntry, err := stateDB.GetEntry(&db.TableSpec{Name: STP_STATE_TABLE}, asKey("GLOBAL"))
+    if err != nil {
+        return 0, err
+    }
+    max_inst, err := strconv.Atoi((&stpStateDbEntry).Get("max_stp_inst"))
+    if err != nil {
+        return 0, err
+    }
+    log.Infof("Hardware Supported Max Stp Instances: %d", max_inst)
+    if max_inst > PVST_MAX_INSTANCES {
+        max_inst = PVST_MAX_INSTANCES
+    }
+
+
+    return max_inst, nil
+}
+
+
+func (app *StpApp) check_max_stp_limit_reached(d *db.DB) error {
+
+    var configEnableVlanMap map[string]bool = make(map[string]bool)
+    totalStpVlans := 0
+
+    for vlanName := range app.vlanTableMap {
+        if vlanData, ok := app.vlanTableMap[vlanName]; ok {
+            if (&vlanData).Get("enabled") == "true" {
+                configEnableVlanMap[vlanName] = true
+                totalStpVlans++
+            }
+        }
+    }
+    
+    if totalStpVlans == 0 { 
+        // nothing to enable
+        return nil
+    }
+
+    max_stp_instances, err := app.getMaxStpInstances()
+    if err != nil {
+        log.Info("getMaxStpInstances Failed : ",err)
+        return err
+    }
+
+    tbl, err := d.GetTable(app.vlanTable)
+    if err != nil {
+        return err
+    }
+    keys, err := tbl.GetKeys()
+    if err != nil {
+        return err
+    }
+    for i := range keys {
+        stpVlanDBEntry, err := tbl.GetEntry(keys[i])
+        if err == nil && (&stpVlanDBEntry).Get("enabled") == "true" {
+            if _, ok := configEnableVlanMap[keys[i].Get(0)]; !ok {
+                //increment only if its not enabled in config
+                totalStpVlans++
+            }
+        }
+    }
+
+    if totalStpVlans > max_stp_instances {
+        log.Infof("Error - exceeds MAX_STP_INST(%d), disable atleast %d vlans", max_stp_instances, (totalStpVlans - max_stp_instances))
+        return tlerr.NotSupported("Error - exceeds maximum spanning-tree instances(%d) supported, disable STP for atleast %d vlans", max_stp_instances, (totalStpVlans - max_stp_instances))
+    }
+
+    return nil
+}
+
+func (app *StpApp) handleRpvstVlanEnable(d *db.DB, vlanName string, isSetEntry bool) error {
+    dbValues := db.Value{Field: map[string]string{}}
+
+	log.Infof("handleRpvstVlanEnable -->  for %s", vlanName)
+
+    if vlanData, ok := app.vlanTableMap[vlanName]; ok {
+
+        var mandatoryFields = [4]string{"forward_delay", "hello_time", "max_age", "priority"} 
+        var missingFields []string
+
+        existingEntry, err := d.GetEntry(app.vlanTable, asKey(vlanName))
+        if err != nil {
+            log.Info("GetEntry vlanTable failed")
+            return err
+        }
+
+        for _,field := range mandatoryFields {
+            if !existingEntry.Has(field) {
+                missingFields = append(missingFields, field)
+            }
+        }
+
+        stpGlobalDBEntry := db.Value{Field: map[string]string{}}
+        if len(missingFields) > 0 {
+            stpGlobalDBEntry, err = d.GetEntry(app.globalTable, asKey("GLOBAL"))
+            if err != nil {
+                log.Info("GetEntry Global table failed")
+                return err
+            }
+        }
+
+        if is_enabled, _ := strconv.ParseBool((&vlanData).Get("enabled")); is_enabled {
+            //if existing entry is disabled and new config is to enable
+            // check for max_stp_limit
+            if existingEntry.Has("enabled") {
+                if is_enabled, _ := strconv.ParseBool((&existingEntry).Get("enabled")); !is_enabled {
+                    err := app.check_max_stp_limit_reached(d)
+                    if err != nil {
+                        log.Info("check_max_stp_limit_reached Failed : ", err)
+                        return err
+                    }
+                }
+            }
+
+            defaultDBValues := db.Value{Field: map[string]string{}}
+            (&defaultDBValues).Set("enabled", "true")
+            vlanId := strings.Replace(vlanName, "Vlan", "", 1)
+            (&defaultDBValues).Set("vlanid", vlanId)
+
+            for _,field := range missingFields {
+                (&defaultDBValues).Set(field, (&stpGlobalDBEntry).Get(field))
+            }
+
+            dbValues = defaultDBValues
+        } else {
+            dbValues = app.vlanTableMap[vlanName]
+
+            for _,field := range missingFields {
+                if dbValues.Has(field) {
+                    continue
+                }
+                (&dbValues).Set(field, (&stpGlobalDBEntry).Get(field))
+            }
+        }
+
+        if isSetEntry {
+            d.SetEntry(app.vlanTable, asKey(vlanName), dbValues)
+        } else {
+            d.ModEntry(app.vlanTable, asKey(vlanName), dbValues)
+        }
+    }
+
+    return nil
+}
 
 func isVlanCreated(d *db.DB, vlanName string) bool{
 
@@ -689,7 +842,11 @@ func (app *StpApp) handleRpvstCRUDOperationsAtVlanLevel(d *db.DB, opcode int, vl
 		} else if isInterfacesSubtree {
 			err = app.setRpvstVlanInterfaceDataInDB(d, true)
 		} else {
-			err = d.SetEntry(app.vlanTable, asKey(vlanName), app.vlanTableMap[vlanName])
+            err = app.handleRpvstVlanEnable(d, vlanName, true)
+            if err != nil {
+                log.Info("handleRpvstVlanEnable Failed : ", err)
+                return err
+            }
 		}
 	case REPLACE:
 		if *app.ygotTarget == vlan {
@@ -713,7 +870,11 @@ func (app *StpApp) handleRpvstCRUDOperationsAtVlanLevel(d *db.DB, opcode int, vl
 			}
 			err = app.setRpvstVlanInterfaceDataInDB(d, true)
 		} else {
-			err = d.SetEntry(app.vlanTable, asKey(vlanName), app.vlanTableMap[vlanName])
+            err = app.handleRpvstVlanEnable(d, vlanName, true)
+            if err != nil {
+                log.Info("handleRpvstVlanEnable Failed : ", err)
+                return err
+            }
 		}
 	case UPDATE:
         if *app.ygotTarget == vlan {
@@ -725,50 +886,10 @@ func (app *StpApp) handleRpvstCRUDOperationsAtVlanLevel(d *db.DB, opcode int, vl
 		} else if isInterfacesSubtree {
 			err = app.setRpvstVlanInterfaceDataInDB(d, false)
 		} else {
-            if vlanData, ok := app.vlanTableMap[vlanName]; ok {
-                if is_enabled, _ := strconv.ParseBool((&vlanData).Get("enabled")); is_enabled {
-                    existingEntry, err := d.GetEntry(app.vlanTable, asKey(vlanName))
-                    if err != nil {
-                        return err
-                    }
-
-                    stpGlobalDBEntry, err := d.GetEntry(app.globalTable, asKey("GLOBAL"))
-                    if err != nil {
-                        return err
-                    }
-                    fDelay := (&stpGlobalDBEntry).Get("forward_delay")
-                    helloTime := (&stpGlobalDBEntry).Get("hello_time")
-                    maxAge := (&stpGlobalDBEntry).Get("max_age")
-                    priority := (&stpGlobalDBEntry).Get("priority")
-
-                    defaultDBValues := db.Value{Field: map[string]string{}}
-                    if !existingEntry.Has("hello_time") {
-                        (&defaultDBValues).Set("hello_time", helloTime)
-                    }
-                    if !existingEntry.Has("forward_delay") {
-                        (&defaultDBValues).Set("forward_delay", fDelay)
-                    }
-                    if !existingEntry.Has("max_age") {
-                        (&defaultDBValues).Set("max_age", maxAge)
-                    }
-                    if !existingEntry.Has("priority") {
-                        (&defaultDBValues).Set("priority", priority)
-                    }
-                    (&defaultDBValues).Set("enabled", "true")
-                    vlanId := strings.Replace(vlanName, "Vlan", "", 1)
-                    (&defaultDBValues).Set("vlanid", vlanId)
-
-                    //log.Info("app.vlanTableMap")
-                    //log.Info(app.vlanTableMap[vlanName])
-                    //log.Info("DefaultDBValues")
-                    //log.Info(defaultDBValues)
-                    d.ModEntry(app.vlanTable, asKey(vlanName), defaultDBValues)
-                } else {
-                    err := d.ModEntry(app.vlanTable, asKey(vlanName), app.vlanTableMap[vlanName])
-                    if err != nil {
-                        return err
-                    }
-                }
+            err = app.handleRpvstVlanEnable(d, vlanName, false)
+            if err != nil {
+                log.Info("handleRpvstVlanEnable Failed : ", err)
+                return err
             }
 		}
 	case DELETE:
@@ -1088,6 +1209,16 @@ func (app *StpApp) convertOCRpvstConfToInternal(opcode int) error {
 }
 
 func (app *StpApp) setRpvstVlanDataInDB(d *db.DB, createFlag bool) error {
+    // count number of vlans to be enabled=true
+    // if no_of_vlans + already exisiting enabled_vlans count > Max_inst
+    // return err.
+
+    err := app.check_max_stp_limit_reached(d)
+    if err != nil {
+        log.Info("check_max_stp_limit_reached Failed : ", err)
+        return err
+    }
+
 	for vlanName := range app.vlanTableMap {
 		existingEntry, err := d.GetEntry(app.vlanTable, asKey(vlanName))
 		if createFlag && existingEntry.IsPopulated() {
@@ -2213,33 +2344,6 @@ func (app *StpApp) convertInternalStpModeToOC(mode string) []ocbinds.E_Openconfi
 		}
 	}
 	return stpModes
-}
-
-func (app *StpApp) getMaxStpInstances() (int, error) {
-
-    dbs, err := getAllDbs(true)
-
-    if err != nil {
-        return 0, err
-    }
-
-    stateDB := dbs[db.StateDB]
-    stpStateDbEntry, err := stateDB.GetEntry(&db.TableSpec{Name: STP_STATE_TABLE}, asKey("GLOBAL"))
-    if err != nil {
-        return 0, err
-    }
-    max_inst, err := strconv.Atoi((&stpStateDbEntry).Get("max_stp_inst"))
-    if err != nil {
-        return 0, err
-    }
-    log.Infof("Hardware Supported Max Stp Instances: %d", max_inst)
-    if max_inst > PVST_MAX_INSTANCES {
-        max_inst = PVST_MAX_INSTANCES
-    }
-
-    closeAllDbs(dbs[:])
-
-    return max_inst, nil
 }
 
 func (app *StpApp) getStpModeFromConfigDB(d *db.DB) (string, error) {
