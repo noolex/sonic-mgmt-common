@@ -458,6 +458,11 @@ var DbToYang_bfd_shop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     log.Info(output_counter)
     bfdCounterMapJson["output"] = output_counter
 
+    /* While filling the ygot tree, we always want to fill the user names of the interface and not the native names */
+    if (bfdshop_key.Interface != "null") {
+        bfdshop_key.Interface = *utils.GetUINameFromNativeName(&(bfdshop_key.Interface))
+    }
+
     if sessions, ok := bfdMapJson["output"].(map[string]interface{}) ; ok {
         log.Info(sessions)
         if counters, ok := bfdCounterMapJson["output"].(map[string]interface{}) ; ok {
@@ -526,6 +531,11 @@ var DbToYang_bfd_mhop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
 
     log.Info(output_counter)
     bfdCounterMapJson["output"] = output_counter
+
+    /* While filling the ygot tree, we always want to fill the user names of the interface and not the native names */
+    if (bfdmhop_key.Interface != "null") {
+        bfdmhop_key.Interface = *utils.GetUINameFromNativeName(&(bfdmhop_key.Interface))
+    }
 
     if sessions, ok := bfdMapJson["output"].(map[string]interface{}) ; ok {
         log.Info(sessions)
