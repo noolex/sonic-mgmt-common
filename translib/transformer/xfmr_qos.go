@@ -206,7 +206,7 @@ var DbToYang_tam_threshold_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) 
 
 
 var YangToDb_tam_watermark_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-	var newkey = "TELEMETRY_INTERVAL";
+	var newkey = "SNAPSHOT_INTERVAL";
 	return newkey, nil
 }
 

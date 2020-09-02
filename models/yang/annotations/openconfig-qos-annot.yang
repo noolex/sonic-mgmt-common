@@ -191,7 +191,7 @@ module openconfig-qos-annot {
 
 	deviation /oc-qos:qos/oc-qos-ext:watermark/oc-qos-ext:config {
 		deviate add {
-			sonic-ext:table-name "WATERMARK_TABLE";
+			sonic-ext:table-name "SNAPSHOT_TABLE";
 			sonic-ext:key-transformer "tam_watermark_key_xfmr";
 		}
 	}
@@ -204,7 +204,7 @@ module openconfig-qos-annot {
 
 	deviation /oc-qos:qos/oc-qos-ext:watermark/oc-qos-ext:state {
 		deviate add {
-			sonic-ext:table-name "WATERMARK_TABLE";
+			sonic-ext:table-name "SNAPSHOT_TABLE";
 			sonic-ext:key-transformer "tam_watermark_key_xfmr";
 		}
 	}
