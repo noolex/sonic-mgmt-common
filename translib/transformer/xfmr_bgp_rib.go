@@ -2560,6 +2560,15 @@ func get_rpc_show_bgp_sub_cmd_for_route_map_ (mapData map[string]interface{}) (b
     return true, "", subCmd
 }
 
+func get_rpc_show_bgp_sub_cmd_for_dampening_ (mapData map[string]interface{}) (bool, string, string) {
+    dampMapName, ok := mapData["dampening"].(string) ; if !ok {
+        return false, "Dampening attribute missing", ""
+    }
+    dampMapName = strings.ToLower(dampMapName)
+    subCmd := " dampening " + dampMapName + " json"
+    return true, "", subCmd
+}
+
 func get_rpc_show_bgp_sub_cmd_ (mapData map[string]interface{}) (bool, string, string) {
     subCmd := "json" /* default value for "ALL" option as well" */
 
@@ -2589,6 +2598,8 @@ func get_rpc_show_bgp_sub_cmd_ (mapData map[string]interface{}) (bool, string, s
             return get_rpc_show_bgp_sub_cmd_for_route_map_ (mapData)
         case "SUMMARY":
             return true, "", "summary json"
+        case "DAMPENING":
+            return get_rpc_show_bgp_sub_cmd_for_dampening_ (mapData)
         default:
             err := "Invalid value in query-type attribute : " + queryType
             log.Info ("In get_rpc_show_bgp_sub_cmd_ : ", err)
