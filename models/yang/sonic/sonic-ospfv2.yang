@@ -467,20 +467,6 @@ module sonic-ospfv2 {
             "Authentication key is in encrypted format";
         }
 
-        leaf authentication-key-id {
-          // when "../authentication-type = 'MD5HMAC'";
-          type uint8;
-          description
-            "Authentication key Id";
-        }
-
-        leaf authentication-md5-key {
-          // when "../authentication-type = 'MD5HMAC'";
-          type string;
-          description
-            "OSPF authentication md5 password string.";
-        }
-
         leaf dead-interval {
           type uint32 {
             range "1..65535";
@@ -844,18 +830,10 @@ module sonic-ospfv2 {
              "OSPF authentication password string.";
          }
 
-         leaf authentication-key-id {
-           //when "../authentication-type = 'MD5HMAC'";
-           type uint8;
+         leaf authentication-key-encrypted {
+           type boolean;
            description
-             "Authentication key Id";
-         }
-
-         leaf authentication-md5-key {
-           //when "../authentication-type = 'MD5HMAC'";
-           type string;
-           description
-             "OSPF authentication md5 password string.";
+             "Authentication key is in encrypted format";
          }
 
          leaf dead-interval {
