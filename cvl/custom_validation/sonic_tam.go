@@ -373,6 +373,9 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
      }
 
      // make sure flowgroup bound to port in case of sampler configured
+	
+	// Temporarily suspending this error checking to evaluate pre-configuration
+	/*
      if ((vc.CurCfg.VOp != OP_DELETE) && sampler_exists) {
          inPorts, _ := vc.RClient.HGet("ACL_RULE|TAM|"+thisFlowgroup, "IN_PORTS@").Result()
          if (inPorts == "") {
@@ -384,6 +387,7 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
              }
          }
      }
+	*/
 
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
@@ -457,6 +461,9 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
      }
 
      // make sure flowgroup bound to port in case of sampler configured
+
+	// Temporarily suspending this error checking to evaluate pre-configuration
+	/*
      if (vc.CurCfg.VOp != OP_DELETE) {
          inPorts, _ := vc.RClient.HGet("ACL_RULE|TAM|"+thisFlowgroup, "IN_PORTS@").Result()
          if (inPorts == "") {
@@ -468,6 +475,7 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
              }
          }
      }
+	*/
 
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
