@@ -1294,7 +1294,8 @@ func (app *StpApp) convertInternalToOCRpvstVlanConfig(vlanName string, rpvst *oc
 				rpvstVlanConf.State.DesignatedBridgeId = &desigBridgeId
 
 				rootPortStr := (&operDbVal).Get("root_port")
-				rpvstVlanConf.State.RootPortName = &rootPortStr
+                rootPortUIName := utils.GetUINameFromNativeName(&rootPortStr)
+                rpvstVlanConf.State.RootPortName = rootPortUIName 
 			}
 
 			app.convertInternalToOCRpvstVlanInterface(vlanName, "", rpvstVlanConf, nil)
@@ -1545,7 +1546,8 @@ func (app *StpApp) convertInternalToOCPvstVlan(vlanName string, pvst *ocbinds.Op
 				pvstVlan.State.DesignatedBridgeId = &desigBridgeId
 
 				rootPortStr := (&operDbVal).Get("root_port")
-				pvstVlan.State.RootPortName = &rootPortStr
+                rootPortUIName := utils.GetUINameFromNativeName(&rootPortStr)
+                pvstVlan.State.RootPortName = rootPortUIName 
 			}
 
 			app.convertInternalToOCPvstVlanInterface(vlanName, "", pvstVlan, nil)
