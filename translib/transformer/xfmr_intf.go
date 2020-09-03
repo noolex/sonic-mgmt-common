@@ -910,7 +910,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
                       intfPathElem[targetIdx].Name == "dscp" {
 	                log.Info("VXLAN_TUNNEL testing ==> TARGET FOUND ==>", intfPathElem[targetIdx].Name)
 	                _, errTmp := inParams.d.GetEntry(&db.TableSpec{Name:"VXLAN_TUNNEL"}, db.Key{Comp: []string{ifName}})
-	                if errTmp != nil {
+	                if errTmp == nil {
 	                    tblList = append(tblList, "VXLAN_TUNNEL")
 	                } else {
 	                    return tblList, tlerr.New("PUT / PATCH method not allowed to replace the existing Vxlan Interface %s", ifName)
