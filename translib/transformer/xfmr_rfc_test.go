@@ -221,7 +221,7 @@ func Test_Rfc_Post_Error_Cases(t *testing.T) {
 
         fmt.Println("++++++++++++++  POST with uri: list instance, but the list instance not existent, return 404 +++++++++++++")
         url = "/openconfig-interfaces:interfaces/interface[name=Vlan1]/subinterfaces/subinterface[index=0]"
-        payload = "{\"openconfig-interfaces:config\":{\"index\":0},\"openconfig-if-ip:ipv4\":{\"openconfig-interfaces-ext:sag-ipv4\":{\"config\":{\"static-anycast-gateway\":[\"1.1.1.1/1\"]}}}}"
+        payload = "{\"openconfig-interfaces:config\":{\"index\":0}}"
         expected_err =  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC -  POST(no list instance) on list instance", processSetRequest(url, payload, "POST", true, expected_err))
 }
@@ -407,9 +407,12 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         // Put(create) on leaf, parent table present
 
         cleanuptbl1 = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":""}}
+        cleanuptbl2 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
         prereq1 = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":map[string]interface{}{"NULL":"NULL"}}}
 
         loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  PUT(create) uri: leaf, message-body: leaf  +++++++++++++")
         url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
@@ -420,14 +423,17 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         t.Run("RFC - Verify PUT(create) on leaf", verifyDbResult(rclient, "ROUTE_MAP|MAP1|1", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
 
 
         // Put(modify) on leaf, parent table present, overriding set_local_pref:8 with set_local_pref:7
 
         prereq1 = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"set_local_pref":"8"}}}
+        prereq2 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":map[string]interface{}{"NULL":"NULL"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  PUT(modify) uri: leaf, message-body: leaf  +++++++++++++")
         url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
@@ -438,7 +444,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         t.Run("RFC - Verify PUT(modify) on leaf", verifyDbResult(rclient, "ROUTE_MAP|MAP1|1", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
-
+        unloadConfigDB(rclient, cleanuptbl2)
 
         // Put(create) on leaf-list, parent table present
 
@@ -446,6 +452,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         prereq1 = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"NULL":"NULL"}}}
 
         // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl1)
         loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  PUT(create) uri: leaf-list, message-body: leaf-list  +++++++++++++")
@@ -794,9 +801,12 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         // Patch(create) on leaf, parent table present
 
         cleanuptbl1 = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":""}}
+        cleanuptbl1 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
         prereq1 = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":map[string]interface{}{"NULL":"NULL"}}}
 
         loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
 	fmt.Println("++++++++++++++  PATCH(create) uri: leaf, message-body: leaf  +++++++++++++")
         url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
@@ -807,25 +817,28 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         t.Run("RFC - Verify PATCH(create) on leaf", verifyDbResult(rclient, "ROUTE_MAP|MAP1|1", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
 
 
         // Patch(merge) on leaf, parent table present, overriding set_local_pref:8 with set_local_pref:7
 
         prereq1 = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"set_local_pref":"8"}}}
+        prereq2 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":map[string]interface{}{"set_local_pref":"8"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  PATCH(merge) uri: leaf, message-body: leaf  +++++++++++++")
         url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
         payload = "{ \"openconfig-bgp-policy:set-local-pref\": 7}"
-        expected = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"set_local_pref":"7"}}}
+	expected = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"set_local_pref":"7", "NULL":"NULL"}}}
         t.Run("RFC - PATCH(merge) on leaf", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PATCH(merge) on leaf", verifyDbResult(rclient, "ROUTE_MAP|MAP1|1", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
-
+        unloadConfigDB(rclient, cleanuptbl2)
 
         // Patch(create) on leaf-list, parent table present
 
@@ -939,7 +952,7 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
 
 	fmt.Println("++++++++++++++  DELETE uri container, data present in DB  +++++++++++++")
         url := "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global"
-        expected := make(map[string]interface{})
+	expected := map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL"}}}
         t.Run("RFC - Delete on container, data present in DB", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify Delete on container, data present in DB", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -1004,17 +1017,17 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
         prereq1 = map[string]interface{}{"RADIUS":map[string]interface{}{"global":map[string]interface{}{"timeout":"40"}}}
 
         // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl1)
         loadConfigDB(rclient, prereq1)
 
         fmt.Println("++++++++++++++  DELETE uri leaf, data present in DB  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]/config/openconfig-system-ext:timeout"
-        expected = map[string]interface{}{"RADIUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
+        expected = map[string]interface{}{"RADIUS":map[string]interface{}{"global":map[string]interface{}{"timeout":"5"}}}
         t.Run("RFC - Delete on leaf, data present in DB", processDeleteRequest(url, false))
         time.Sleep(1 * time.Second)
         t.Run("Verify Delete on leaf, data present in DB", verifyDbResult(rclient, "RADIUS|global", expected, false))
 
         unloadConfigDB(rclient, cleanuptbl1)
-
 
         // Delete on leaf-list, data present in DB
 
@@ -1048,6 +1061,32 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
         t.Run("Verify Delete on leaf-list instance, data present in DB", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected, false))
 
         unloadConfigDB(rclient, cleanuptbl1)
+
+        // Delete on list instance, data present in DB, virtual table flag not set by table xfmr
+
+        prereq1 = map[string]interface{}{"BFD_PEER_SINGLE_HOP":map[string]interface{}{"1.1.1.2|Ethernet0|default|null":map[string]interface{}{"NULL": "NULL"}}}
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+
+        fmt.Println("++++++++++++++  DELETE uri list instance, data present in DB, Virtual Table flag not set by table xfmr   +++++++++++++")
+	url = "/openconfig-bfd:bfd/openconfig-bfd-ext:bfd-shop-sessions/single-hop[remote-address=1.1.1.2][interface=Ethernet0][vrf=default][local-address=null]"
+        expected = make(map[string]interface{})
+        t.Run("RFC - Delete on list instance, data present in DB virtaul flag not set in table xfmr", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify Delete on list instance, data present in DB, virtual tbl not set in table xfmr", verifyDbResult(rclient, "BFD_PEER_SINGLE_HOP|1.1.1.2|Ethernet0|default|null", expected, false))
+
+        unloadConfigDB(rclient, prereq1)
+
+        // Delete on list instance, data not present in DB, virtual table flag set by table xfmr
+
+        // Setup - Prerequisite
+	// No prereq
+
+        fmt.Println("++++++++++++++  DELETE uri list instance, data present in DB, Virtual Table flag set by table xfmr   +++++++++++++")
+        url = "/openconfig-bfd:bfd/openconfig-bfd-ext:bfd-shop-sessions/single-hop[remote-address=1.1.1.2][interface=Ethernet0][vrf=default][local-address=null]"
+        expected = make(map[string]interface{})
+        t.Run("RFC - Delete on list instance, data present in DB virtaul flag set in table xfmr", processDeleteRequest(url, false))
+
 }
 
 func Test_Rfc_Delete_Error_Cases(t *testing.T) {
@@ -1129,13 +1168,12 @@ func Test_Rfc_Delete_Error_Cases(t *testing.T) {
         loadConfigDB(rclient, prereq)
 
         fmt.Println("++++++++++++++  DELETE uri leaf, data not present in DB +++++++++++++")
-        url = "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]/config/openconfig-system-ext:timeout"
-        t.Run("RFC - Delete on leaf, data not present in DB", processDeleteRequest(url, false))
+        url = "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]/config/openconfig-system-ext:secret-key"
+        t.Run("RFC - Delete on leaf, data not present in DB", processDeleteRequest(url, true, expected_err))
         time.Sleep(1 * time.Second)
         t.Run("Verify Delete on leaf, data not present in DB", verifyDbResult(rclient, "RADIUS|global", prereq, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
-
 
         // Delete on leaf-list, data not present in DB
 
@@ -1161,7 +1199,7 @@ func Test_Rfc_Delete_Error_Cases(t *testing.T) {
 
         fmt.Println("++++++++++++++  DELETE uri leaf-list instance, data not present in DB +++++++++++++")
         url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include[include=1.3.4.*]"
-        t.Run("RFC - Delete on leaf-list instance", processDeleteRequest(url, false))
+        t.Run("RFC - Delete on leaf-list instance", processDeleteRequest(url, true, expected_err))
         time.Sleep(1 * time.Second)
         t.Run("Verify Delete on leaf-list instance", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", prereq, false))
         // Teardown
@@ -1263,7 +1301,6 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 
-
         // Get on Sonic leaf-list, instances exist
 
         cleanuptbl = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":""}}
@@ -1302,34 +1339,63 @@ func Test_Rfc_Get_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl1)
         unloadConfigDB(rclient, cleanuptbl2)
 
-
         // Get on a leaf/field, parent list instance exists but field exists in DB (OC YANG)
 
-        cleanuptbl = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":""}}
-        prereq = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"set_local_pref":"4294967294"}}}
+        cleanuptbl1 = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":""}}
+        cleanuptbl2 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":""}}
+        prereq1 = map[string]interface{}{"ROUTE_MAP":map[string]interface{}{"MAP1|1":map[string]interface{}{"set_local_pref":"4294967294"}}}
+        prereq2 = map[string]interface{}{"ROUTE_MAP_SET":map[string]interface{}{"MAP1":map[string]interface{}{"set_local_pref":"4294967294"}}}
 
         // Setup - Prerequisite
-        loadConfigDB(rclient, prereq)
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  GET on a leaf/field, parent list instance exists but field exists in DB (OC YANG) +++++++++++++")
         url = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition[name=MAP1]/statements/statement[name=1]/actions/openconfig-bgp-policy:bgp-actions/config/set-local-pref"
         expected = "{\"openconfig-bgp-policy:set-local-pref\":4294967294}"
         t.Run("Verify Get on a leaf/field, parent list instance exists but field exists in DB (OC YANG)", processGetRequest(url, expected, false))
         // Teardown
-        unloadConfigDB(rclient, cleanuptbl)
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
 
 
         // Get on a leaf/field, parent list instance exists but field exist in DB (Sonic YANG)
 
         // Setup - Prerequisite
-        loadConfigDB(rclient, prereq)
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
 
         fmt.Println("++++++++++++++  GET on a leaf/field, parent list instance exists but field exists in DB (Sonic YANG) +++++++++++++")
         url = "/sonic-route-map:sonic-route-map/ROUTE_MAP/ROUTE_MAP_LIST[route_map_name=MAP1][stmt_name=1]/set_local_pref"
         expected = "{\"sonic-route-map:set_local_pref\":4294967294}"
         t.Run("Verify Get on a leaf/field, parent list instance exists but field exists in DB (Sonic YANG)", processGetRequest(url, expected, false))
         // Teardown
-        unloadConfigDB(rclient, cleanuptbl)
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+
+        // Get on list instance with subtree. subscribe subtree return virtual table flag true
+
+        // Setup - Prerequisite
+
+        fmt.Println("++++++++++++++  Get on list instance with subtree. subscribe subtree return virtual table flag true +++++++++++++")
+        url = "/openconfig-qos:qos/interfaces/interface[interface-id=Ethernet0]/output/queues/queue[name=Ethernet0:0]"
+        expected = "{\"openconfig-qos:queue\":[{\"config\":{\"name\":\"Ethernet0:0\"},\"name\":\"Ethernet0:0\",\"state\":{\"dropped-pkts\":\"0\",\"name\":\"Ethernet0:0\",\"openconfig-qos-ext:dropped-octets\":\"0\",\"openconfig-qos-ext:persistent-watermark\":\"0\",\"openconfig-qos-ext:persistent-watermark-percent\":0,\"openconfig-qos-ext:traffic-type\":\"UC\",\"openconfig-qos-ext:transmit-octets-per-second\":\"0\",\"openconfig-qos-ext:transmit-pkts-per-second\":\"0\",\"openconfig-qos-ext:watermark\":\"0\",\"openconfig-qos-ext:watermark-percent\":0,\"transmit-octets\":\"0\",\"transmit-pkts\":\"0\"}}]}"
+        t.Run("Verify Get on list instance with subtree. subscribe subtree return virtual table flag true", processGetRequest(url, expected, false))
+        // Teardown
+	// No Teardown as non redis entry
+
+
+        // Get on list instance with subtree that does not map to any real table in DB, and subscribe subtree return virtual table flag , table transformer returns isVirtualTbl true
+
+        // Setup - Prerequisite
+        // No prerequisite as entry not in redisDB
+
+        fmt.Println("++++++++++++++  Get on list instance  with Subtree, subscribe subtree and table xfmr at parent sets isVirtual Table to true +++++++++++++")
+        url = "/openconfig-qos:qos/interfaces/interface[interface-id=CPU]/output/queues/queue[name=CPU:0]"
+        expected = "{\"openconfig-qos:queue\":[{\"config\":{\"name\":\"CPU:0\"},\"name\":\"CPU:0\",\"state\":{\"dropped-pkts\":\"0\",\"name\":\"CPU:0\",\"openconfig-qos-ext:dropped-octets\":\"0\",\"openconfig-qos-ext:persistent-watermark\":\"0\",\"openconfig-qos-ext:persistent-watermark-percent\":0,\"openconfig-qos-ext:traffic-type\":\"MC\",\"openconfig-qos-ext:transmit-octets-per-second\":\"0\",\"openconfig-qos-ext:transmit-pkts-per-second\":\"0\",\"openconfig-qos-ext:watermark\":\"0\",\"openconfig-qos-ext:watermark-percent\":0,\"transmit-octets\":\"0\",\"transmit-pkts\":\"0\"}}]}"
+        t.Run("Verify Get on list instance  with Subtree, subscribe subtree and table xfmr at parent sets isVirtual Table to true", processGetRequest(url, expected, false))
+        // Teardown
+        // No Teardown as non redis entry
 
 }
 
@@ -1430,7 +1496,7 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
       unloadConfigDB(rclient, cleanuptbl)
 
 
-   /*   // Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB
+      // Get on a leaf/field that has a field transformer, parent list instance exists but field does NOT exist in DB
 
       cleanuptbl = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":""}}
       prereq = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
@@ -1457,10 +1523,10 @@ func Test_Rfc_Get_Error_Cases(t *testing.T) {
       loadConfigDB(rclient, prereq2)
 
       fmt.Println("++++++++++++++  Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB  +++++++++++++")
-      url = "/openconfig-interfaces:interfaces/interface[name=Vlan1]/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
+      url = "/openconfig-interfaces:interfaces/interface[name=Vlan1]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
       t.Run("Verify Get on a leaf/field that has subtree transformer, parent list instance exists but field does NOT exist in DB", processGetRequest(url, expected, false))
       // Teardown
       unloadConfigDB(rclient, cleanuptbl1)
-      unloadConfigDB(rclient, cleanuptbl2) */
+      unloadConfigDB(rclient, cleanuptbl2)
 }
 
