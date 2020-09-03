@@ -97,7 +97,7 @@ submodule openconfig-tam-dropmonitor {
           "switch-wide configuration for drop-monitor";
         leaf aging-interval {
             type uint16 {
-                range "1..3600";
+                range "1..30";
             }
             units "seconds";
             default "5";
