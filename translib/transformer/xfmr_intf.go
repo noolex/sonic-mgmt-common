@@ -2182,7 +2182,9 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
                     vrfNameA, _ := d.GetMap(&db.TableSpec{Name:tblName+"|"+intf}, "vrf_name")
                     vrfNameB, _ := d.GetMap(&db.TableSpec{Name:intTbl.cfgDb.intfTN+"|"+key.Get(0)}, "vrf_name")
                     if vrfNameA == vrfNameB {
-                        errStr := "IP " + ipPref + " overlaps with IP or IP Anycast " + key.Get(1) + " of Interface " + key.Get(0)
+			intfName := key.Get(0)
+			intfNameUi := *utils.GetUINameFromNativeName(&intfName)
+                        errStr := "IP " + ipPref + " overlaps with IP or IP Anycast " + key.Get(1) + " of Interface " + intfNameUi
                         log.Error(errStr)
                         return "", errors.New(errStr)
                     }
@@ -2261,7 +2263,8 @@ func utlValidateIpTypeForCfgredDiffIp(m map[string]string, ipMap map[string]db.V
     checkPrimIPCfgred, cfgredPrimIP := utlCheckAndRetrievePrimaryIPConfigured(ipMap)
     if secFlag {
         if !checkPrimIPCfgred {
-            errStr := "Primary " + dbgStr + " is not configured for interface: " + *ifName
+	    intfNameUi := utils.GetUINameFromNativeName(ifName)
+            errStr := "Primary " + dbgStr + " is not configured for interface: " + *intfNameUi
             log.Error(errStr)
             return "", false, tlerr.InvalidArgsError{Format: errStr}
         }
@@ -2512,7 +2515,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 }
 
                 if dbErr == nil {
-                    err := utlValidateIpTypeForCfgredSameIp(&ipEntry, secFlag, &ipPref, &ifName)
+                    err := utlValidateIpTypeForCfgredSameIp(&ipEntry, secFlag, &ipPref, &uriIfName)
                     if err != nil {
                         return nil, err
                     }
@@ -4376,7 +4379,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 /* Check if given iface already part of another PortChannel */
                 intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
                 if intf_lagId != nil && *intf_lagId != lagStr {
-                    errStr := ifName + " already member of "+ *intf_lagId
+                    errStr := uriIfName + " already member of "+ *intf_lagId
                     return nil, tlerr.InvalidArgsError{Format: errStr}
                 }
                 /* Restrict configuring member-port if iface configured as member-port of any vlan */
