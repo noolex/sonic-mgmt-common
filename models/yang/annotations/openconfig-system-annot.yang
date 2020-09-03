@@ -788,6 +788,18 @@ module openconfig-system-annot {
         }
     }
 
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys-ext:vrf-name" {
+        deviate add {
+            sonic-ext:field-name "vrf_name";
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:vrf-name" {
+        deviate add {
+            sonic-ext:field-name "vrf_name";
+        }
+    }
+
     deviation /oc-sys:system/oc-sys-ext:infra/oc-sys-ext:state/oc-sys-ext:clock{
         deviate add {
             sonic-ext:field-transformer "sys_infra_state_clock_xfmr";
