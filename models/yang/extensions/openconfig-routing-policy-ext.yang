@@ -25,7 +25,13 @@ module openconfig-routing-policy-ext {
         "This module describes a YANG model for routing policy
         configuration extensions.";
 
-    oc-ext:openconfig-version "0.1.2";
+    oc-ext:openconfig-version "0.1.3";
+
+    revision "2020-09-01" {
+        description
+            "Added the ipv6 prefix set in routing policy conditions.";
+        reference "0.1.3";
+    }
 
     revision "2020-06-23" {
         description
@@ -216,6 +222,20 @@ module openconfig-routing-policy-ext {
         }
     }
 
+    grouping routing-policy-ext-prefix-set-config {
+        description
+            "Configuration data for ipv6 prefix set definitions.";
+
+        leaf ipv6-prefix-set {
+            type leafref {
+                path "/oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:config/oc-rpol:name";
+            }
+            description
+                "Leaf reference of the ipv6 prefix set name";
+        }
+    }
+
+
     grouping routing-policy-ext-match-network-instance-config {
         description
             "Configuration data for match network instance.";
@@ -350,7 +370,18 @@ module openconfig-routing-policy-ext {
           "Policy definition extensions for tag match configs";
         uses routing-policy-ext-tag-set-config;
     }
- 
+  
+    augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-prefix-set/oc-rpol:config {
+      description
+          "Policy definition extensions for prefix match configs";
+        uses routing-policy-ext-prefix-set-config;
+    }
+    
+    augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-prefix-set/oc-rpol:state{
+      description
+          "Policy definition extensions for prefix match configs";
+        uses routing-policy-ext-prefix-set-config;
+    }
 
     deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:config/oc-rpol:tag-set {
         deviate not-supported;
