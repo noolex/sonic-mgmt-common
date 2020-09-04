@@ -216,6 +216,39 @@ module openconfig-qos-annot {
 	}
 
 
+	deviation /oc-qos:qos/oc-qos-ext:telemetry-watermark {
+		deviate add {
+			sonic-ext:db-name "CONFIG_DB";
+			sonic-ext:key-delim "|";
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:telemetry-watermark/oc-qos-ext:config {
+		deviate add {
+			sonic-ext:table-name "WATERMARK_TABLE";
+			sonic-ext:key-transformer "telemetry_watermark_key_xfmr";
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:telemetry-watermark/oc-qos-ext:config/oc-qos-ext:refresh-interval {
+		deviate add {
+			sonic-ext:field-name "interval";
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:telemetry-watermark/oc-qos-ext:state {
+		deviate add {
+			sonic-ext:table-name "WATERMARK_TABLE";
+			sonic-ext:key-transformer "telemetry_watermark_key_xfmr";
+		}
+	}
+
+	deviation /oc-qos:qos/oc-qos-ext:telemetry-watermark/oc-qos-ext:state/oc-qos-ext:refresh-interval {
+		deviate add {
+			sonic-ext:field-name "interval";
+		}
+	}
+
  
     deviation /oc-qos:qos/oc-qos-ext:threshold-breaches {
       deviate add {
