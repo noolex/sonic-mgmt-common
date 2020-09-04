@@ -28,11 +28,12 @@ import (
 	log "github.com/golang/glog"
 )
 
-func tblKeyDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, cdb db.DBNum) ([]string, error) {
+func tblKeyDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, cdb db.DBNum) ([]string, bool, error) {
 	var err error
 	var dbs [db.MaxDB]*db.DB
 	var tblList []string
 	dbs[cdb] = xlateParams.d
+	isVirtualTbl := false
 
 	xfmrLogInfoAll("Get table data for  (\"%v\")", xlateParams.uri)
 	if (xYangSpecMap[xlateParams.xpath].tableName != nil) && (len(*xYangSpecMap[xlateParams.xpath].tableName) > 0) {
@@ -43,7 +44,10 @@ func tblKeyDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string
 			inParams := formXfmrInputRequest(xlateParams.d, dbs, cdb, xlateParams.ygRoot, xlateParams.uri, xlateParams.requestUri, xlateParams.oper, xlateParams.keyName, dbDataMap, nil, nil, xlateParams.txCache)
 			tblList, err = xfmrTblHandlerFunc(xfmrTblFunc, inParams)
 			if err != nil {
-				return tblList, err
+				return tblList, isVirtualTbl, err
+			}
+			if inParams.isVirtualTbl != nil {
+				isVirtualTbl = *(inParams.isVirtualTbl)
 			}
 		}
 	}
@@ -53,7 +57,7 @@ func tblKeyDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string
 			tblList = append(tblList, tbl)
 		}
 	}
-	return tblList, err
+	return tblList, isVirtualTbl, err
 }
 
 func subTreeXfmrDelDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, cdb db.DBNum, spec *yangXpathInfo, chldSpec *yangXpathInfo, subTreeResMap *map[string]map[string]db.Value) error {
@@ -123,12 +127,15 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				}
 			}
 		}
+		if xpathKeyExtRet.isVirtualTbl {
+			virtualTbl = true
+		}
 		keyName = xpathKeyExtRet.dbKey
 		xlateParams.tableName = xpathKeyExtRet.tableName
 		xlateParams.keyName = keyName
 	}
 
-	tblList, err = tblKeyDataGet(xlateParams, dbDataMap, cdb)
+	tblList, virtualTbl, err = tblKeyDataGet(xlateParams, dbDataMap, cdb)
 	if err != nil {
 		return err
 	}
