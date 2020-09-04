@@ -148,6 +148,7 @@ func(t * CustomValidation) CollectorValidation(vc * CustValidationCtxt) CVLError
             ErrAppTag : "collector-in-use",
         }
     }
+
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -336,6 +337,31 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
                      }
                  }
              }
+
+			if (vc.CurCfg.VOp != OP_DELETE) {
+				// Check for protocol of the collector, for IFA, it must be UDP
+				tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
+				proto, er := vc.RClient.HGet(tableName, "protocol").Result()
+				if (er != nil) {
+					log.Info("******========****** Error in Collector protocol query : ", er)
+					return CVLErrorInfo{
+                         ErrCode: CVL_SEMANTIC_ERROR,
+                         ConstraintErrMsg: fmt.Sprintf(" Error in Collector protocol query '%s'", c),
+                         CVLErrDetails : "Unknown internal error.",
+                         ErrAppTag : "unknown-internal-error",
+					}
+				}
+				if (proto != "UDP") {
+					log.Info("******========****** Unsupported collector protocol for IFA : ", proto)
+					return CVLErrorInfo{
+                         ErrCode: CVL_SEMANTIC_ERROR,
+                         ConstraintErrMsg: fmt.Sprintf("IFA supports only UDP protocol for collectors. Collector '%s' uses '%s'.", thisCollector, proto),
+                         CVLErrDetails : "Invalid Collector protocol for IFA.",
+                         ErrAppTag : "invalid-collector-protocol",
+					}
+				}
+
+			}
          }
      }
 
@@ -457,6 +483,30 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
                      }
                  }
              }
+			 if (vc.CurCfg.VOp != OP_DELETE) {
+				// Check for protocol of the collector, for DropMonitor, it must be UDP
+				tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
+				proto, er := vc.RClient.HGet(tableName, "protocol").Result()
+				if (er != nil) {
+					log.Info("******========****** Error in Collector protocol query : ", er)
+					return CVLErrorInfo{
+                         ErrCode: CVL_SEMANTIC_ERROR,
+                         ConstraintErrMsg: fmt.Sprintf(" Error in Collector protocol query '%s'", c),
+                         CVLErrDetails : "Unknown internal error.",
+                         ErrAppTag : "unknown-internal-error",
+					}
+				}
+				if (proto != "UDP") {
+					log.Info("******========****** Unsupported collector protocol for DropMonitor : ", proto)
+					return CVLErrorInfo{
+                         ErrCode: CVL_SEMANTIC_ERROR,
+                         ConstraintErrMsg: fmt.Sprintf("DropMonitor supports only UDP protocol for collectors. Collector '%s' uses '%s'.", thisCollector, proto),
+                         CVLErrDetails : "Invalid Collector protocol for DropMonitor.",
+                         ErrAppTag : "invalid-collector-protocol",
+					}
+				}
+			}
+
          }
      }
 
