@@ -1,0 +1,84 @@
+module sonic-tam-tailstamping {
+    yang-version 1.1;
+
+    // namespace
+    namespace "http://github.com/Azure/sonic-tam-tailstamping";
+
+    prefix sonic-tam-tailstamping;
+
+    import sonic-acl {
+        prefix sonic-acl;
+    }
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    // data definition statements
+    container sonic-tam-tailstamping {
+        description
+          "top-level container";
+
+        container TAM_TAILSTAMPING_SESSIONS_TABLE {
+            description
+              "tam-ts-sessions table in the config-db";
+
+            list TAM_TAILSTAMPING_SESSIONS_TABLE_LIST {
+                key name;
+
+                sonic-ext:custom-validation TailstampingSessionValidation;
+                description
+                  "Individual sessions configuration";
+
+                leaf name {
+                    type string {
+                        length "1..32";
+                        pattern
+                          '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                    }
+                    mandatory true;
+                    description
+                      "Session name, for reference from elsewhere";
+                }
+
+                leaf flowgroup {
+                    type leafref {
+                        path "/sonic-acl:sonic-acl/sonic-acl:ACL_RULE/sonic-acl:ACL_RULE_LIST/sonic-acl:rulename";
+                    }
+                    must "(/sonic-acl:sonic-acl/sonic-acl:ACL_RULE/sonic-acl:ACL_RULE_LIST/sonic-acl:rulename = current())" {
+                        error-message "Flowgroup does not exists";
+                        error-app-tag flowgroup-not-exists;
+                    }
+                    mandatory true;
+                    description
+                      "Flowgroup name";
+                }
+            }
+        }
+    }
+// augment statements
+// rpc statements
+// notification statements
+}

@@ -1,0 +1,391 @@
+module openconfig-tam-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/oc-tam-annot";
+    prefix "oc-tam-annot";
+
+    import openconfig-tam { prefix oc-tam; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /oc-tam:tam {
+      deviate add {
+          sonic-ext:post-transformer "tam_post_xfmr";
+      }
+    }
+
+    // ------------------- FEATURE
+    deviation /oc-tam:tam/oc-tam:features/oc-tam:feature {
+      deviate add {
+          sonic-ext:table-name "TAM_FEATURES_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:features/oc-tam:feature/oc-tam:state/oc-tam:feature-ref {
+      deviate add {
+          sonic-ext:field-transformer "tam_feature_field_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:features/oc-tam:feature/oc-tam:state/oc-tam:status {
+      deviate add {
+          sonic-ext:field-name "status";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:features/oc-tam:feature/oc-tam:feature-ref {
+      deviate add {
+          sonic-ext:field-name "feature-ref";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:features/oc-tam:feature/oc-tam:config/oc-tam:feature-ref {
+      deviate add {
+            sonic-ext:field-transformer "tam_feature_field_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:features/oc-tam:feature/oc-tam:config/oc-tam:status {
+      deviate add {
+            sonic-ext:field-name "status";
+      }
+    }
+
+    // ------------------- FEATURE STATE
+    deviation /oc-tam:tam/oc-tam:features-state/oc-tam:feature {
+      deviate add {
+          sonic-ext:db-name "STATE_DB";
+          sonic-ext:table-name "TAM_STATE_FEATURES_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:features-state/oc-tam:feature/oc-tam:feature-ref {
+      deviate add {
+          sonic-ext:field-name "feature-ref";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:features-state/oc-tam:feature/oc-tam:state/oc-tam:op-status {
+      deviate add {
+          sonic-ext:field-name "op-status";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:features-state/oc-tam:feature/oc-tam:state/oc-tam:feature-ref {
+      deviate add {
+          sonic-ext:field-transformer "tam_feature_field_xfmr";
+      }
+    }
+
+
+    // ------------------- SWITCH ID
+    deviation /oc-tam:tam/oc-tam:switch {
+      deviate add {
+        sonic-ext:key-transformer "tam_switch_global_key_xfmr";
+        sonic-ext:table-name "TAM_SWITCH_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:switch/oc-tam:state {
+      deviate add {
+        sonic-ext:db-name "APPL_DB";
+        sonic-ext:table-name "TAM_APPL_SWITCH_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:switch/oc-tam:state/oc-tam:op-enterprise-id {
+      deviate add {
+        sonic-ext:field-name "op-enterprise-id";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:switch/oc-tam:state/oc-tam:enterprise-id {
+      deviate add {
+        sonic-ext:field-name "enterprise-id";
+      }
+    }
+
+    // -------- SAMPLERS
+    deviation /oc-tam:tam/oc-tam:samplers/oc-tam:sampler {
+      deviate add {
+          sonic-ext:table-name "TAM_SAMPLINGRATE_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:samplers/oc-tam:sampler/oc-tam:name {
+      deviate add {
+          sonic-ext:field-name "name";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:samplers/oc-tam:sampler/oc-tam:config/oc-tam:sampling-rate {
+      deviate add {
+          sonic-ext:field-name "sampling-rate";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:samplers/oc-tam:sampler/oc-tam:config/oc-tam:name {
+      deviate add {
+          sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:samplers/oc-tam:sampler/oc-tam:state/oc-tam:sampling-rate {
+      deviate add {
+          sonic-ext:field-name "sampling-rate";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:samplers/oc-tam:sampler/oc-tam:state/oc-tam:name {
+      deviate add {
+          sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    // -------- COLLECTORS
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector {
+      deviate add {
+          sonic-ext:table-name "TAM_COLLECTORS_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:state/oc-tam:ip {
+      deviate add {
+        sonic-ext:field-name "ip";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:state/oc-tam:port {
+      deviate add {
+        sonic-ext:field-name "port";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:state/oc-tam:protocol {
+      deviate add {
+        sonic-ext:field-name "protocol";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:state/oc-tam:name {
+      deviate add {
+        sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:name {
+      deviate add {
+        sonic-ext:field-name "name";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:config/oc-tam:name {
+      deviate add {
+        sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:config/oc-tam:ip {
+      deviate add {
+        sonic-ext:field-name "ip";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:config/oc-tam:port {
+      deviate add {
+        sonic-ext:field-name "port";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:config/oc-tam:protocol {
+      deviate add {
+        sonic-ext:field-name "protocol";
+      }
+    }
+
+    // -------- IFA
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session {
+      deviate add {
+          sonic-ext:table-name "TAM_IFA_SESSIONS_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:state/oc-tam:sample-rate {
+      deviate add {
+        sonic-ext:field-name "sample-rate";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:state/oc-tam:node-type {
+      deviate add {
+        sonic-ext:field-name "node-type";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:state/oc-tam:name {
+      deviate add {
+        sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:state/oc-tam:flowgroup {
+      deviate add {
+        sonic-ext:field-name "flowgroup";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:state/oc-tam:collector {
+      deviate add {
+        sonic-ext:field-name "collector";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:name {
+      deviate add {
+        sonic-ext:field-name "name";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:config/oc-tam:flowgroup {
+      deviate add {
+        sonic-ext:field-name "flowgroup";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:config/oc-tam:collector {
+      deviate add {
+        sonic-ext:field-name "collector";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:config/oc-tam:sample-rate {
+      deviate add {
+        sonic-ext:field-name "sample-rate";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:config/oc-tam:node-type {
+      deviate add {
+        sonic-ext:field-name "node-type";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:ifa-sessions/oc-tam:ifa-session/oc-tam:config/oc-tam:name {
+      deviate add {
+        sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    // -------- TAILSTAMPING
+    deviation /oc-tam:tam/oc-tam:tailstamping-sessions/oc-tam:tailstamping-session {
+      deviate add {
+          sonic-ext:table-name "TAM_TAILSTAMPING_SESSIONS_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:tailstamping-sessions/oc-tam:tailstamping-session/oc-tam:name {
+      deviate add {
+        sonic-ext:field-name "name";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:tailstamping-sessions/oc-tam:tailstamping-session/oc-tam:config/oc-tam:name {
+      deviate add {
+        sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:tailstamping-sessions/oc-tam:tailstamping-session/oc-tam:config/oc-tam:flowgroup {
+      deviate add {
+        sonic-ext:field-name "flowgroup";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:tailstamping-sessions/oc-tam:tailstamping-session/oc-tam:state/oc-tam:name {
+      deviate add {
+         sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:tailstamping-sessions/oc-tam:tailstamping-session/oc-tam:state/oc-tam:flowgroup {
+      deviate add {
+        sonic-ext:field-name "flowgroup";
+      }
+    }
+
+    // -------- DROPMONITOR
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session {
+      deviate add {
+          sonic-ext:table-name "TAM_DROPMONITOR_SESSIONS_TABLE";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:state/oc-tam:name {
+      deviate add {
+          sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:state/oc-tam:flowgroup {
+      deviate add {
+          sonic-ext:field-name "flowgroup";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:state/oc-tam:collector {
+      deviate add {
+          sonic-ext:field-name "collector";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:state/oc-tam:sample-rate {
+      deviate add {
+          sonic-ext:field-name "sample-rate";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:name {
+      deviate add {
+          sonic-ext:field-name "name";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:config/oc-tam:name {
+      deviate add {
+          sonic-ext:field-transformer "tam_common_key_xfmr";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:config/oc-tam:flowgroup {
+      deviate add {
+          sonic-ext:field-name "flowgroup";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:config/oc-tam:collector {
+      deviate add {
+          sonic-ext:field-name "collector";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:dropmonitor-sessions/oc-tam:dropmonitor-session/oc-tam:config/oc-tam:sample-rate {
+      deviate add {
+          sonic-ext:field-name "sample-rate";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:dropmonitor/oc-tam:global {
+      deviate add {
+        sonic-ext:key-transformer "tam_dropmonitor_global_key_xfmr";
+        sonic-ext:table-name "TAM_DROPMONITOR_TABLE";
+      }
+    }
+
+    // -------- FLOWGROUPS
+    deviation /oc-tam:tam/oc-tam:flowgroups {
+      deviate add {
+          sonic-ext:subtree-transformer "tam_flowgroups_xfmr";
+      }
+    }
+}
+

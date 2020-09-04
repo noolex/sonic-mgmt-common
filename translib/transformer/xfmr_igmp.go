@@ -664,6 +664,10 @@ var DbToYang_igmp_groups_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
     log.Info(output_state)
     log.Info(vrfName)
 
+    if outError, ok := output_state["warning"] ; ok {
+           log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", vtysh_cmd, outError)
+           return oper_err
+    }
 
     igmpGroups_obj = igmp_obj.Groups
     if igmpGroups_obj == nil {
@@ -740,6 +744,11 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     log.Info(output_state)
     log.Info(vrfName)
 
+    if outError, ok := output_state["warning"] ; ok {
+           log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", vtysh_cmd, outError)
+           return oper_err
+    }
+
     for key,value := range output_state {
         interface_info := value.(map[string]interface{})
         log.Info(key)
@@ -768,7 +777,7 @@ var DbToYang_igmp_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     var err error
     var cmd_err error
     oper_err := errors.New("Operational error")
-    cmn_log := "GET: xfmr for Igmp Groups "
+    cmn_log := "GET: xfmr for Igmp Stats "
     var vtysh_cmd string
 
     log.Info("DbToYang_igmp_stats_get_xfmr ***", inParams.uri)
@@ -794,6 +803,10 @@ var DbToYang_igmp_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     log.Info(output_state)
     log.Info(vrfName)
 
+    if outError, ok := output_state["warning"] ; ok {
+           log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", vtysh_cmd, outError)
+           return oper_err
+    }
     for key,value := range output_state {
         stats_info := value.(map[string]interface{})
         log.Info(key)
@@ -851,6 +864,10 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
     log.Info(output_state)
     log.Info(vrfName)
 
+    if outError, ok := output_state["warning"] ; ok {
+           log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", vtysh_cmd, outError)
+           return oper_err
+    }
 
     igmpSources_obj = igmp_obj.Sources
     if igmpSources_obj == nil {
@@ -901,7 +918,12 @@ var rpc_show_igmp_join RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
         log.Errorf("FRR execution failed err %s",err)
         return nil, errors.New("Internal error!")
     }
- 
+
+    if outError, ok := igmpOutput["warning"] ; ok {
+           log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", cmd, outError)
+           return nil,errors.New("Operational error")
+    } 
+
     output = make(map[string]interface{})
     for key, value := range igmpOutput {
         interfaceId,_ = ospfGetUIIntfName(key)

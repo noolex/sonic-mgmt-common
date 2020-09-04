@@ -56,6 +56,56 @@ func init () {
     XlateFuncBind("YangToDb_wred_ecn_fld_xfmr", YangToDb_wred_ecn_fld_xfmr)
     XlateFuncBind("DbToYang_wred_ecn_fld_xfmr", DbToYang_wred_ecn_fld_xfmr)
 
+    // THRESHOLD Configuration 
+    XlateFuncBind("YangToDb_tam_threshold_key_xfmr", YangToDb_tam_threshold_key_xfmr)
+    XlateFuncBind("DbToYang_tam_threshold_key_xfmr", DbToYang_tam_threshold_key_xfmr)
+    XlateFuncBind("DbToYang_tam_threshold_field_xfmr", DbToYang_tam_threshold_field_xfmr)
+    XlateFuncBind("YangToDb_tam_threshold_field_xfmr", YangToDb_tam_threshold_field_xfmr)
+
+}
+
+var DbToYang_tam_threshold_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+    return res_map, nil
+}
+
+var YangToDb_tam_threshold_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    return res_map, nil
+}
+
+var YangToDb_tam_threshold_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+	var dbKey strings.Builder
+	pathInfo := NewPathInfo(inParams.uri)
+	vbuffer := pathInfo.Var("buffer")
+	vtype := pathInfo.Var("type")
+	vport := pathInfo.Var("port")
+	vindex := pathInfo.Var("index")
+	
+	dbKey.WriteString(vbuffer)
+	dbKey.WriteString("|")
+	dbKey.WriteString(vtype)
+	dbKey.WriteString("|")
+	dbKey.WriteString(vport)
+	dbKey.WriteString("|")
+	dbKey.WriteString(vindex)
+
+	var newkey = dbKey.String()
+	return newkey, nil
+}
+
+var DbToYang_tam_threshold_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var flds = strings.Split(inParams.key, "|")
+
+    rmap := make(map[string]interface{})
+	rmap["buffer"] = flds[0]
+	rmap["type"] = flds[1]
+	rmap["port"] = flds[2]
+	idx, err := strconv.Atoi(flds[3])
+	if (err == nil) {
+		rmap["index"] = idx
+	}
+   return rmap, nil
 }
 
 func getQosRoot (s *ygot.GoStruct) *ocbinds.OpenconfigQos_Qos {

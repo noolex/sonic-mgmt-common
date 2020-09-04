@@ -1,0 +1,117 @@
+submodule openconfig-tam-samplers {
+    yang-version 1.1;
+
+    // main module reference
+    belongs-to openconfig-tam {
+        prefix oc-tam;
+    }
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    grouping tam-samplers-config {
+        description
+          "Configurable items at the sample-rate level";
+
+        leaf name {
+            type string {
+                length "1..32";
+                pattern
+                  '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+            }
+            mandatory true;
+            description
+              "Unique name for a given sample-rate";
+        }
+
+        leaf sampling-rate {
+            type uint32;
+
+            default "1";
+
+            description
+              "A value of x here implies that one in every x packets
+               will be sampled at the ingress interface for use by the
+               Dataplane telemetry features, as applicable. When not
+               specified, every ingress packet would be sampled";
+        }
+    }
+
+    grouping tam-samplers-state {
+        description
+          "Operational State for sampling config";
+    }
+
+    grouping tam-samplers-top {
+        description
+          "Top-level grouping";
+
+        container samplers {
+            description
+              "top-level container for tam samplers configuration";
+
+            list sampler {
+                key "name";
+
+                description
+                  "Sample rate. sample-rate is at the physical interface level.
+                   Each sample is uniquely referenced by its name. Only one sample
+                   rate is allowed for a given interface";
+
+                leaf name {
+                    type leafref {
+                        path "../config/name";
+                    }
+                    description
+                      "The unique reference to the sample-rate";
+                }
+
+                container config {
+                    description
+                      "Configuration Data";
+
+                    uses tam-samplers-config;
+                }
+                container state {
+                    config false;
+
+                    description
+                      "Operational state data";
+
+                    uses tam-samplers-config;
+                    uses tam-samplers-state;
+                }
+            }
+        }
+    }
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}

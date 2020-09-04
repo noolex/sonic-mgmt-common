@@ -1,0 +1,73 @@
+module openconfig-tam-types {
+    yang-version 1.1;
+
+    // namespace
+    namespace "http://openconfig.net/yang/tam/types/extension";
+
+    prefix oc-tam-types;
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+
+    // include submodules
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    oc-ext:openconfig-version "3.2.0";
+
+    // feature statements
+    // identity statements
+    identity TAM_FEATURE {
+        description
+          "TAM feature identification";
+    }
+
+    // typedef statements
+    typedef tam-feature-stautus-type {
+
+        type enumeration {
+            enum ACTIVE {
+                description
+                  "Feature is active";
+            }
+            enum INACTIVE {
+                description
+                  "Feature is suspended/inactive ";
+            }
+            enum UNSUPPORTED {
+                description
+                  "Feature is unsuported on the switch";
+            }
+            enum INSUFFICIENT_RESOURCES {
+                description
+                  "Feature requires resources before
+                   it can be made active";
+            }
+        }
+
+        description
+          "Status of a given TAM feature ";
+    }
+// grouping statements
+// data definition statements
+// augment statements
+// rpc statements
+// notification statements
+}

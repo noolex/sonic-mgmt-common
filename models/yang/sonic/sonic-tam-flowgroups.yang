@@ -1,0 +1,94 @@
+module sonic-tam-flowgroups {
+    yang-version 1.1;
+
+    // namespace
+    namespace "http://github.com/Azure/sonic-tam-flowgroups";
+
+    prefix sonic-tam-flowgroups;
+
+    // import some basic types
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    import sonic-acl {
+        prefix sonic-acl;
+    }
+
+    // meta
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "Silicon Telemetry Module";
+
+    revision 2020-06-01 {
+        description
+          "Initial revision";
+        reference
+          "3.2.0";
+    }
+
+    // extension statements
+    // feature statements
+    // identity statements
+    // typedef statements
+    // grouping statements
+    // data definition statements
+    container sonic-tam-flowgroups {
+        description
+          "top-level container";
+
+        container TAM_FLOWGROUP_TABLE {
+            description
+              "tam-flowgroup table in the config-db";
+
+            list TAM_FLOWGROUP_TABLE_LIST {
+                key name;
+
+
+                description
+                  "Individual FlowGroup configuration";
+
+                leaf name {
+                    type string {
+                        length "1..32";
+                        pattern
+                          '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,32})';
+                    }
+                    sonic-ext:custom-validation FlowgroupValidation;
+                    mandatory true;
+                    description
+                      "Flowgroup name, for reference from elsewhere";
+                }
+
+                leaf id {
+                    type uint32;
+                    sonic-ext:custom-validation UniqueidValidation;
+                    description
+                      "Flowgroup identifier to be used in all dataplane
+                       reporting regarding this flowgroup. Uniquely identifies the flowgroup.";
+                }
+
+                leaf table-name {
+                    must "/sonic-acl:sonic-acl/sonic-acl:ACL_TABLE/sonic-acl:ACL_TABLE_LIST/sonic-acl:aclname = 'TAM'" {
+                        error-app-tag tam-acl-table-not-present;
+                        error-message "TAM ACL Table is not present";
+                    }
+                    type leafref {
+                        path "/sonic-acl:sonic-acl/sonic-acl:ACL_TABLE/sonic-acl:ACL_TABLE_LIST/sonic-acl:aclname";
+                    }
+                    mandatory true;
+                    description
+                      "Flowgroup name, for reference from elsewhere";
+                }
+            }
+        }
+    }
+// augment statements
+// rpc statements
+// notification statements
+}

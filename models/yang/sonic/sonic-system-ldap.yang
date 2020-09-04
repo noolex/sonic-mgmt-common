@@ -401,9 +401,6 @@ module sonic-system-ldap {
 				}
 				
 				leaf to {
-          must "(/cmn:operation/cmn:operation != 'DELETE')" {
-						error-message "Map value is not allowed to be deleted";
-          }
 					type string;
 					mandatory true;
 					description

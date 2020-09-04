@@ -4232,15 +4232,21 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
 }
 
 /* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
-func isValidSpeed(d *db.DB, ifName string, speed string) bool {
-    var isValid bool = false
+func validateSpeed(d *db.DB, ifName string, speed string) error {
+    var err error
 
     portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
     if(err != nil) {
         log.Info("Could not retrieve PORT|",ifName)
-        isValid = true
     } else {
+        err = tlerr.InvalidArgs("Unsupported speed")
         speeds := strings.Split(portEntry.Field["valid_speeds"], ",");
+        /*  Allow speed change for port-group member ports only when there more than 1 valid speeds.
+            This is to make sure than port-group speed change error is thrown in other cases. */
+        if (len(speeds) < 2) && isPortGroupMember(ifName) {
+            err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
+            return err
+        }
         if len(portEntry.Field["valid_speeds"]) < 1 {
             speeds,_ = getValidSpeeds(ifName)
             log.Info("Speed from platform.json ", speeds)
@@ -4248,12 +4254,17 @@ func isValidSpeed(d *db.DB, ifName string, speed string) bool {
         log.Info("Valid speeds for ",ifName, " is ", speeds, " SET ", speed)
         for _, vspeed := range speeds {
             if  speed == strings.TrimSpace(vspeed) {
-                isValid = true
-                log.Info(vspeed, " is valid.")
+                if speed == portEntry.Field["speed"] {
+                    err = tlerr.InvalidArgs("No change in the speed")
+                } else {
+                    err = nil
+                    log.Info(vspeed, " is valid.")
+                }
+                break
             }
         }
     }
-    return isValid
+    return err
 }
 
 
@@ -4419,7 +4430,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     if (strings.Contains(inParams.requestUri, "port-speed")) {
         if isPortGroupMember(ifName) {
             err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
-        } else if intfObj.Ethernet.Config.PortSpeed != 0 {
+        }
+        if intfObj.Ethernet.Config.PortSpeed != 0 {
             res_map := make(map[string]string)
             value := db.Value{Field: res_map}
             intTbl := IntfTypeTblMap[intfType]
@@ -4427,17 +4439,19 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
             portSpeed := intfObj.Ethernet.Config.PortSpeed
             val, ok := intfOCToSpeedMap[portSpeed]
             if ok {
-                if isValidSpeed(inParams.d, ifName, val) {
+                err = validateSpeed(inParams.d, ifName, val)
+                if err == nil {
                     res_map[PORT_SPEED] = val
-                } else {
-                    err = tlerr.InvalidArgs("Unsupported speed %s", val)
                 }
             } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
                 defSpeed := getDefaultSpeed(inParams.d, ifName)
                 log.Info(" defSpeed  ", defSpeed)
                 if defSpeed != 0 {
                     val = strconv.FormatInt(int64(defSpeed), 10)
-                    res_map[PORT_SPEED] = val
+                    err = validateSpeed(inParams.d, ifName, val)
+                    if err == nil {
+                        res_map[PORT_SPEED] = val
+                    }
                 } else {
                     err = tlerr.NotSupported("Default speed not available")
                 }
