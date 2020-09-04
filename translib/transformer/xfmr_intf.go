@@ -2500,11 +2500,6 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 ipPref := *addr.Config.Ip+"/"+strconv.Itoa(int(*addr.Config.PrefixLength))
                 overlapIP, oerr = validateIpOverlap(inParams.d, ifName, ipPref, tblName, true);
 
-                if ((intfType == IntfTypeLoopback) && (validateMultiIPForDonorIntf(inParams.d, &ifName))) {
-                    errStr := "Loopback interface is Donor for Unnumbered interface. Cannot add Multiple IPv4 address"
-                    err = tlerr.InvalidArgsError{Format: errStr}
-                    return subIntfmap, err
-                }
                 ipEntry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName, ipPref}})
                 ipMap, _ := getIntfIpByName(inParams.d, intTbl.cfgDb.intfTN, ifName, true, false, "")
 
@@ -2512,6 +2507,12 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 if addr.Config.Secondary != nil {
                     secFlag = *addr.Config.Secondary
                     log.Info("IPv4: Secondary Flag received = ", secFlag)
+
+                    if ((intfType == IntfTypeLoopback) && (validateMultiIPForDonorIntf(inParams.d, &ifName))) {
+                        errStr := "Loopback interface is Donor for Unnumbered interface. Cannot add Multiple IPv4 address"
+                        err = tlerr.InvalidArgsError{Format: errStr}
+                        return subIntfmap, err
+                    }
                 }
 
                 if dbErr == nil {
