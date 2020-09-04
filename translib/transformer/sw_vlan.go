@@ -242,7 +242,10 @@ func removeStpOnInterfaceSwitchportDeletion(d *db.DB, ifName *string, untagdVlan
     log.Info("removeStpOnInterfaceSwitchportDeletion DeletedVlanCnt: ", deletedVlanCnt)
 
     if (getNumVlansOnPort(d, ifName) <= deletedVlanCnt) {
-        stpPortMap[*ifName] = db.Value{Field:map[string]string{}}
+        _, _err := d.GetEntry(&db.TableSpec{Name: STP_PORT_TABLE}, db.Key{Comp:[]string {*ifName}})
+        if _err == nil {
+            stpPortMap[*ifName] = db.Value{Field:map[string]string{}}
+        }
     }
 
     log.Info("removeStpOnInterfaceSwitchportDeletion stpVlanPortMap: ", stpVlanPortMap, " stpPortMap: ", stpPortMap)
