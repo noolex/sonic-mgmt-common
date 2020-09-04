@@ -521,7 +521,7 @@ func(t * CustomValidation) TailstampingSessionValidation(vc * CustValidationCtxt
      // is flowgroup in use
      thisFlowgroup := vc.CurCfg.Data["flowgroup"]
      _, inUse := CheckUsage(vc, "flowgroup", thisFlowgroup)
-     if ((vc.CurCfg.VOp == OP_DELETE) && inUse) {
+     if ((vc.CurCfg.VOp != OP_DELETE) && inUse) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
              ConstraintErrMsg: fmt.Sprintf("One or more sessions are using the flowgroup '%s'.", thisFlowgroup),

@@ -43,6 +43,8 @@ const (
     IPV4_HOP_LIMIT_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv4/state/hop-limit"
     IPV6_HOP_LIMIT_CONFIG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv6/config/hop-limit"
     IPV6_HOP_LIMIT_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv6/state/hop-limit"
+    SWITCH_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/switch-id"
+    ENTERPRISE_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/enterprise-id"
 )
 
 var URL_MAP = map[string]bool {
@@ -205,6 +207,14 @@ func getSessionInfo(template string) (string, bool) {
     return feature, isSession
 }
 
+func isSwitchTemplate (template string) (bool) {
+    if ((strings.Contains(template, SWITCH_ID_TEMPLATE)) || (strings.Contains(template, ENTERPRISE_ID_TEMPLATE)))  {
+        return true
+    } else {
+        return false
+   }
+}
+
 var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     pathInfo := NewPathInfo(inParams.uri)
     template := pathInfo.Template
@@ -213,12 +223,32 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
     log.Info("key: " , key)
     feature, isSessionsUri := getSessionInfo(template)
 
-    if (isSessionsUri) {
-        updateMap := make(map[db.DBNum]map[string]map[string]db.Value)
-        updateMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-        updateMap[db.ConfigDB]["ACL_RULE"] = make(map[string]db.Value)
-        var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
+    updateMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    updateMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+    var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
+    if (method == DELETE) {
+        if (isSwitchTemplate(template)) {
+            var SWITCH_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "TAM_SWITCH_TABLE"}
+            switchTableEntry, _ := configDbPtr.GetEntry(SWITCH_TABLE_TS, db.Key{Comp: []string{"global"}})
+            if (len(switchTableEntry.Field) == 1) {
+                var existingKeyArray []string
+                for k := range switchTableEntry.Field {
+                    existingKeyArray = append(existingKeyArray, k)
+                }
+                requestMap := (*inParams.dbDataMap)[db.ConfigDB]["TAM_SWITCH_TABLE"]["global"].Field
+                _, found := requestMap[existingKeyArray[0]]
+                if found {
+                    updateMap[db.ConfigDB]["TAM_SWITCH_TABLE"] = make(map[string]db.Value)
+                    updateMap[db.ConfigDB]["TAM_SWITCH_TABLE"]["global"] = db.Value{Field: make(map[string]string)}
+                    delete((*inParams.dbDataMap)[db.ConfigDB]["TAM_SWITCH_TABLE"], "global")
+                    inParams.subOpDataMap[method] = &updateMap
+                }
+            }
+        }
+    }
 
+    if (isSessionsUri) {
+        updateMap[db.ConfigDB]["ACL_RULE"] = make(map[string]db.Value)
         var aclKey string
         sessions := (*inParams.dbDataMap)[db.ConfigDB]
         var sessionEntries map[string]db.Value
