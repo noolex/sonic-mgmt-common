@@ -102,6 +102,8 @@ const (
    SW_COMP                    = "/openconfig-platform:components/component/openconfig-platform-ext:software"
    SW_DIST_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/distribution-version"
    SW_DOCKER_VER              = "/openconfig-platform:components/component/openconfig-platform-ext:software/docker-version"
+   SW_PRODUCT_DESCR           = "/openconfig-platform:components/component/openconfig-platform-ext:software/product-description"
+   SW_CONFIGDB_VER            = "/openconfig-platform:components/component/openconfig-platform-ext:software/config-db-version"
    SW_HWSKU_VER               = "/openconfig-platform:components/component/openconfig-platform-ext:software/hwsku-version"
    SW_HW_VER                  = "/openconfig-platform:components/component/openconfig-platform-ext:software/hardware-version"
    SW_KERN_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/kernel-version"
@@ -565,6 +567,7 @@ func getSoftwareVersion() string {
 
 func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_Component_Software, targetUriPath string, allAttr bool, d *db.DB) (error) {
 
+    brandingScanner := bufio.NewScanner(strings.NewReader(""))
     versionScanner := bufio.NewScanner(strings.NewReader(""))
     scanner := bufio.NewScanner(strings.NewReader(""))
     var eepromInfo Eeprom
@@ -572,7 +575,7 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
 
     if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
        targetUriPath == SW_BUILD_COMMIT || targetUriPath == SW_ASIC_VER || targetUriPath == SW_BUILD_DATE ||
-       targetUriPath == SW_BUILT_BY || targetUriPath == SW_SW_VER{
+       targetUriPath == SW_BUILT_BY || targetUriPath == SW_SW_VER || targetUriPath == SW_CONFIGDB_VER {
         swVersionFile, err := os.Open("/etc/sonic/sonic_version.yml")
         if err != nil {
             log.Infof("sonic_version.yml open failed")
@@ -582,6 +585,18 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         defer swVersionFile.Close()
         versionScanner = bufio.NewScanner(swVersionFile)
         versionScanner.Split(bufio.ScanLines)
+    }
+
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_PRODUCT_DESCR {
+        brandingFile, err := os.Open("/etc/sonic/sonic_branding.yml")
+        if err != nil {
+            log.Infof("sonic_branding.yml open failed")
+            errStr := "Information not available or Not supported"
+            return tlerr.NotFoundError{Format: errStr}
+        }
+        defer brandingFile.Close()
+        brandingScanner = bufio.NewScanner(brandingFile)
+        brandingScanner.Split(bufio.ScanLines)
     }
 
     if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_HWSKU_VER || targetUriPath == SW_HW_VER ||
@@ -619,6 +634,11 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                 swComp.KernelVersion = &res1[1]
                 continue
             }
+            if strings.Contains(versionScanner.Text(), "config_db_version:") {
+                res1 := strings.Split(versionScanner.Text(), ": ")
+                swComp.ConfigDbVersion = &res1[1]
+                continue
+            }
             if strings.Contains(versionScanner.Text(), "asic_type:") {
                 res1 := strings.Split(versionScanner.Text(), ": ")
                 swComp.AsicVersion = &res1[1]
@@ -640,6 +660,14 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                 continue
             }
 
+        }
+
+        for brandingScanner.Scan() {
+            if strings.Contains(brandingScanner.Text(), "product_name:") {
+                res1 := strings.Split(brandingScanner.Text(), ": ")
+                swComp.ProductDescription = &res1[1]
+                continue
+            }
         }
 
         if eepromInfo.Platform_Name != "" {
@@ -701,6 +729,14 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                     break
                 }
             }
+        case SW_PRODUCT_DESCR:
+            for brandingScanner.Scan() {
+                if strings.Contains(brandingScanner.Text(), "product_name:") {
+                    res1 := strings.Split(brandingScanner.Text(), ": ")
+                    swComp.ProductDescription = &res1[1]
+                    break
+                }
+            }
         case SW_DIST_VER:
             for versionScanner.Scan() {
                 if strings.Contains(versionScanner.Text(), "debian_version:") {
@@ -714,6 +750,14 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                 if strings.Contains(versionScanner.Text(), "kernel_version:") {
                     res1 := strings.Split(versionScanner.Text(), ": ")
                     swComp.KernelVersion = &res1[1]
+                    break
+                }
+            }
+        case SW_CONFIGDB_VER:
+            for versionScanner.Scan() {
+                if strings.Contains(versionScanner.Text(), "config_db_version:") {
+                    res1 := strings.Split(versionScanner.Text(), ": ")
+                    swComp.ConfigDbVersion = &res1[1]
                     break
                 }
             }
