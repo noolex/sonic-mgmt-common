@@ -74,7 +74,23 @@ submodule openconfig-tam-flowgroups {
 
     grouping tam-flowgroups-state {
         description
-          "Operational state container for flowgroups";
+            "Operational state container for flowgroups";
+
+        container statistics {
+            description 
+                "Statistics for the transport";
+            leaf packets {
+                type uint64;
+                description
+                    "Total Packets received that matched this flowgroup";
+            }
+            leaf bytes {
+                type uint64;
+                description
+                    "Total Bytes received that matched this flowgroup";
+            }
+        }
+
     }
 
     grouping tam-flowgroups-top {

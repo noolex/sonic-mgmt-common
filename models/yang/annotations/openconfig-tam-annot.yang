@@ -387,5 +387,26 @@ module openconfig-tam-annot {
           sonic-ext:subtree-transformer "tam_flowgroups_xfmr";
       }
     }
+
+    deviation /oc-tam:tam/oc-tam:flowgroups/oc-tam:flowgroup/oc-tam:state/oc-tam:statistics {
+      deviate add {
+        sonic-ext:db-name "COUNTERS_DB";
+        sonic-ext:key-delim ":";
+        sonic-ext:table-name "COUNTERS:TAM";
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:flowgroups/oc-tam:flowgroup/oc-tam:state/oc-tam:statistics/oc-tam:bytes {
+      deviate add {
+      	sonic-ext:field-name "Bytes";
+
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:flowgroups/oc-tam:flowgroup/oc-tam:state/oc-tam:statistics/oc-tam:packets {
+      deviate add {
+        sonic-ext:field-name "Packets";
+      }
+    }
 }
 

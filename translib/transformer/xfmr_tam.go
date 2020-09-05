@@ -145,6 +145,8 @@ type AclRule struct {
     Dscp               uint8;
     InPorts            string;
     Id                 uint32;
+    bytes              uint64;
+    packets            uint64;
 }
 
 func init () {
@@ -337,7 +339,7 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
     return (*inParams.dbDataMap)[db.ConfigDB], nil
 }
 
-func getRecord(d *db.DB, ruleEntry db.Value, name string) (AclRule, error) {
+func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, name string) (AclRule, error) {
     var aclRule AclRule
     aclRule.TableName = "TAM"
     aclRule.RuleName = name
@@ -375,15 +377,25 @@ func getRecord(d *db.DB, ruleEntry db.Value, name string) (AclRule, error) {
     }
     id, _ := strconv.ParseInt(flowEntry.Get("id"), 10, 32)
     aclRule.Id = uint32(id)
+
+    packets, _ := strconv.ParseInt(statEntry.Get("Packets"), 10, 64)
+    aclRule.packets = uint64(packets)
+    bytes, _ := strconv.ParseInt(statEntry.Get("Bytes"), 10, 64)
+    aclRule.bytes = uint64(bytes)
+
     return aclRule, err
 }
 
-func getFlowGroupsFromDb(d *db.DB, name string) (map[string]AclRule, error) {
+func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule, error) {
     var ruleEntries = make(map[string]AclRule)
     var err error
+
     var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
     var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
     aclRuleTable, _ := configDbPtr.GetTable(ACL_RULE_TABLE_TS)
+
+    var countersDbPtr, _ = db.NewDB(getDBOptions(db.CountersDB))
+    var ACL_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COUNTERS"}
 
     if name != "" {
         aclKey := "TAM|"+name
@@ -391,7 +403,14 @@ func getFlowGroupsFromDb(d *db.DB, name string) (map[string]AclRule, error) {
         if err != nil {
             return ruleEntries, err
         }
-        record, _ := getRecord(d, ruleEntry, name)
+
+        statKey := "TAM:"+name
+        statEntry, e2 := countersDbPtr.GetEntry(ACL_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
+        if e2 != nil {
+            return ruleEntries, e2
+        }
+
+        record, _ := getRecord(d, cdb, ruleEntry, statEntry, name)
         ruleEntries[name] = record
     } else {
         keys, _ := aclRuleTable.GetKeys()
@@ -399,7 +418,9 @@ func getFlowGroupsFromDb(d *db.DB, name string) (map[string]AclRule, error) {
             rule := key.Get(1)
             if (key.Get(0) == "TAM") {
                 entry, _ := aclRuleTable.GetEntry(key)
-                record, _ := getRecord(d, entry, rule)
+                statKey := "TAM:"+rule
+                statEntry, _ := countersDbPtr.GetEntry(ACL_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
+                record, _ := getRecord(d, cdb, entry, statEntry, rule)
                 ruleEntries[rule] = record
             }
         }
@@ -427,6 +448,8 @@ func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rul
     flowGroup.State.Priority = &(entry.Priority)
     flowGroup.State.Id = &(entry.Id)
     flowGroup.State.Name = &rule
+    flowGroup.State.Statistics.Packets = &(entry.packets);
+    flowGroup.State.Statistics.Bytes = &(entry.bytes);
 
     // Ipv4
     if (entry.IpType == "IPV4ANY") {
@@ -502,8 +525,8 @@ func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rul
     return err
 }
 
-func fillFlowgroupInfo(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, name string, targetUriPath string, uri string, d *db.DB) (error) {
-    ruleEntries , err := getFlowGroupsFromDb(d, name)
+func fillFlowgroupInfo(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, name string, targetUriPath string, uri string, d *db.DB, cdb *db.DB) (error) {
+    ruleEntries , err := getFlowGroupsFromDb(d, cdb, name)
     if err == nil {
         for k, v := range ruleEntries {
             err = appendFlowGroupToYang(flowGroups, k, v)
@@ -512,11 +535,11 @@ func fillFlowgroupInfo(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, name st
     return err
 }
 
-func getFlowGroups(tamObj *ocbinds.OpenconfigTam_Tam, targetUriPath string, uri string, d *db.DB) (error) {
+func getFlowGroups(tamObj *ocbinds.OpenconfigTam_Tam, targetUriPath string, uri string, d *db.DB, cdb *db.DB) (error) {
     name := NewPathInfo(uri).Var("name")
     ygot.BuildEmptyTree(tamObj)
     ygot.BuildEmptyTree(tamObj.Flowgroups)
-    return fillFlowgroupInfo(tamObj.Flowgroups, name, targetUriPath, uri, d)
+    return fillFlowgroupInfo(tamObj.Flowgroups, name, targetUriPath, uri, d, cdb)
 }
 
 var Subscribe_tam_flowgroups_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
@@ -542,12 +565,13 @@ var Subscribe_tam_flowgroups_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscO
 var DbToYang_tam_flowgroups_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     tamObj := getTamRoot(inParams.ygRoot)
     pathInfo := NewPathInfo(inParams.uri)
+    log.Error("*********** Incoming uri : ", inParams.uri);
     if (!isSupported(pathInfo.Template)) {
         return tlerr.NotSupported("Operation Not Supported")
     } else {
         targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
         uri := inParams.uri
-        return getFlowGroups(tamObj, targetUriPath, uri, inParams.dbs[db.ConfigDB])
+        return getFlowGroups(tamObj, targetUriPath, uri, inParams.dbs[db.ConfigDB], inParams.dbs[db.CountersDB])
     }
 }
 
