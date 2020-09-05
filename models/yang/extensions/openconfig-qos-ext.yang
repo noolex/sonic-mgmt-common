@@ -603,6 +603,49 @@ module openconfig-qos-ext {
         }
     }
 
+	grouping qos-ext-telemetry-watermark-config {
+		description 
+			"watermark global refresh interval (telemetry) ";
+	
+		leaf refresh-interval {
+			type uint16 {
+				range "1..600";
+			}
+			units "seconds";
+			default "120";
+			description 
+				"Watermark counters auto refresh interval (telemetry)";
+		}
+	}
+
+    grouping qos-ext-telemetry-watermark-state {
+        description
+          "Operational state container";
+    }
+
+	grouping qos-ext-telemetry-watermark-top {
+        description
+          "Configuration for Watermark counters auto refresh interval (telemetry)";
+
+        container telemetry-watermark {
+            description
+              "TODO:";
+            container config {
+                description
+                  "Container holding the watermark config";
+                uses qos-ext-telemetry-watermark-config;
+            }
+            container state {
+                config false;
+                description
+                  "State container";
+                uses qos-ext-telemetry-watermark-config;
+                uses qos-ext-telemetry-watermark-state;
+            }
+        }
+    }
+
+
 	grouping qos-ext-watermark-config {
 		description 
 			"watermark global refresh interval ";
@@ -649,7 +692,8 @@ module openconfig-qos-ext {
     augment /oc-qos:qos {
         description
             "Qos extensions containers";
-		uses qos-ext-watermark-top;
+        uses qos-ext-watermark-top;
+		uses qos-ext-telemetry-watermark-top;
 		uses qos-ext-threshold-top;
         uses qos-ext-threshold-breach-top;
         uses qos-ext-wred-profile-top;

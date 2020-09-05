@@ -67,6 +67,11 @@ func init () {
     XlateFuncBind("DbToYang_tam_watermark_key_xfmr", DbToYang_tam_watermark_key_xfmr)
 	XlateFuncBind("rpc_watermarks_clear_cb", rpc_watermarks_clear_cb)
 
+	// Watermark Configuration (Telemetry) 
+    XlateFuncBind("YangToDb_telemetry_watermark_key_xfmr", YangToDb_telemetry_watermark_key_xfmr)
+    XlateFuncBind("DbToYang_telemetry_watermark_key_xfmr", DbToYang_telemetry_watermark_key_xfmr)
+
+
 }
 
 
@@ -204,7 +209,6 @@ var DbToYang_tam_threshold_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) 
    return rmap, nil
 }
 
-
 var YangToDb_tam_watermark_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
 	var newkey = "SNAPSHOT_INTERVAL";
 	return newkey, nil
@@ -214,6 +218,17 @@ var DbToYang_tam_watermark_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) 
     rmap := make(map[string]interface{})
 	return rmap, nil
 }
+
+var YangToDb_telemetry_watermark_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+	var newkey = "TELEMETRY_INTERVAL";
+	return newkey, nil
+}
+
+var DbToYang_telemetry_watermark_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    rmap := make(map[string]interface{})
+	return rmap, nil
+}
+
 
 
 func getQosRoot (s *ygot.GoStruct) *ocbinds.OpenconfigQos_Qos {
