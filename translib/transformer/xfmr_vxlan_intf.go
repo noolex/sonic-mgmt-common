@@ -84,6 +84,7 @@ func init() {
 	XlateFuncBind("DbToYang_vlan_nd_suppress_key_xfmr", DbToYang_vlan_nd_suppress_key_xfmr)
 	XlateFuncBind("YangToDb_vlan_nd_suppress_fld_xfmr", YangToDb_vlan_nd_suppress_fld_xfmr)
 	XlateFuncBind("DbToYang_vlan_nd_suppress_fld_xfmr", DbToYang_vlan_nd_suppress_fld_xfmr)
+    XlateFuncBind("Subscribe_vxlan_vni_instance_subtree_xfmr", Subscribe_vxlan_vni_instance_subtree_xfmr)
 }
 
 var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
@@ -1402,10 +1403,14 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 	log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: reqP=> ", reqP)
 
 	if reqP.opcode == DELETE && 
-    (pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance{vni-id}{source-nve}" ||
-		 pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances" ||
-		 pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance" ||
-     pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/vxlan-vni-instances") {
+    (pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance{vni-id}{source-nve}" || 
+    pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances" || 
+    pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance" || 
+    pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{name}/vxlan-vni-instances" || 
+    pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{}/openconfig-vxlan:vxlan-vni-instances/vni-instance{}{}" ||
+    pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{}/openconfig-vxlan:vxlan-vni-instances/vni-instance" ||
+    pathInfo.Template == "/openconfig-network-instance:network-instances/network-instance{}/openconfig-vxlan:vxlan-vni-instances") {
+	    log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: res_map=> err => ", res_map, err)
 		dbKeys, err := inParams.d.GetKeys(&db.TableSpec{Name: tblName})
 		if err != nil {
 	    log.Info("YangToDb_vxlan_vni_instance_subtree_xfmr: res_map=> err => ", res_map, err)
@@ -1551,7 +1556,11 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 		}
 	}
 
-	if isSubtreeRequest(pathInfo.Template, "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance{vni-id}{source-nve}") {
+    if log.V(1) {
+        log.Info("DbToYang_vxlan_vni_instance_subtree_xfmr: pathInfo.Template=> ", pathInfo.Template)
+    }
+
+	if (isSubtreeRequest(pathInfo.Template, "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances/vni-instance{vni-id}{source-nve}")) || (isSubtreeRequest(pathInfo.Template, "/openconfig-network-instance:network-instances/network-instance{}/openconfig-vxlan:vxlan-vni-instances/vni-instance{}{}")){
 		vniIdStr = pathInfo.Var("vni-id")
 		vtepName = pathInfo.Var("source-nve")
 
@@ -1579,7 +1588,7 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 				fillVniInstanceDetails(niName, vniId, srcNve, vniInst)
 			}
 		}
-	} else if isSubtreeRequest(pathInfo.Template, "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances") {
+	} else if (isSubtreeRequest(pathInfo.Template, "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances")) || (isSubtreeRequest(pathInfo.Template, "/openconfig-network-instance:network-instances/network-instance{}/openconfig-vxlan:vxlan-vni-instances")) {
 		dbKeys, err := configDb.GetKeys(&db.TableSpec{Name: tblName})
 		if err != nil {
 			return err
@@ -1701,3 +1710,55 @@ var DbToYang_vlan_nd_suppress_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
 
 	return res_map, nil
 }
+
+var Subscribe_vxlan_vni_instance_subtree_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+	var tblName string
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    if log.V(3) {
+        log.Info("targetUriPath:",targetUriPath)
+    }
+
+    if targetUriPath != "/openconfig-network-instance:network-instances/network-instance/openconfig-vxlan:vxlan-vni-instances/vni-instance" {
+        log.Infof("Subscribe attempted on unsupported path:%s; template:%s targetUriPath:%s",
+                  pathInfo.Path, pathInfo.Template, targetUriPath)
+        return result, err
+    }
+
+    niName := pathInfo.Var("name")
+    if strings.HasPrefix(niName, "Vlan") {
+        tblName = "VXLAN_TUNNEL_MAP"
+    } else if strings.HasPrefix(niName, "Vrf") {
+        tblName = "VRF"
+        result.isVirtualTbl = true
+        result.needCache = true
+    } else {
+        return result,nil
+    }
+
+    vniIdKeyStr := pathInfo.Var("vni-id")
+    srcNveKeyStr := pathInfo.Var("source-nve")
+    if log.V(3) {
+        log.Infof("tblname:%s, vniid:%s, nve:%s",tblName, vniIdKeyStr, srcNveKeyStr)
+    }
+
+	var redisKey string = srcNveKeyStr + "|" + "map_" + vniIdKeyStr + "_" + niName
+
+    result.dbDataMap = make(RedisDbMap)
+    if log.V(3) {
+        log.Infof("Subscribe_vxlan_vni_instance_subtree_xfmr path:%s; template:%s targetUriPath:%s",
+                  pathInfo.Path, pathInfo.Template, targetUriPath)
+    }
+
+    result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.onChange = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, err
+}
+
