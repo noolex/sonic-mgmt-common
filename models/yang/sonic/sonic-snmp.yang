@@ -219,7 +219,13 @@ module sonic-snmp {
           description
             "Listening interface";
         }
-
+        leaf name {
+          type string {
+            length "0..64";
+          }
+          description
+            "The entry name";
+        }
       }
     }
 

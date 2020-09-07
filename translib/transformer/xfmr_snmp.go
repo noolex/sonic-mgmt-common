@@ -1,5 +1,5 @@
 package transformer
- 
+
 import (
  "fmt"
  "strings"
@@ -20,6 +20,7 @@ const (
 func init() {
   XlateFuncBind("YangToDb_snmp_system_key_xfmr",        YangToDb_snmp_system_key_xfmr)
 
+  XlateFuncBind("Subscribe_snmp_listen_subtree_xfmr",    Subscribe_snmp_listen_subtree_xfmr)
   XlateFuncBind("YangToDb_snmp_listen_subtree_xfmr",     YangToDb_snmp_listen_subtree_xfmr)
   XlateFuncBind("DbToYang_snmp_listen_subtree_xfmr",     DbToYang_snmp_listen_subtree_xfmr)
 
@@ -36,7 +37,7 @@ func init() {
   XlateFuncBind("YangToDb_snmp_access_key_xfmr",    YangToDb_snmp_access_key_xfmr)
   XlateFuncBind("DbToYang_snmp_access_key_xfmr",    DbToYang_snmp_access_key_xfmr)
 }
- 
+
 var YangToDb_snmp_system_key_xfmr = func(inParams XfmrParams) (string, error) {
   log.Info("YangToDb_snmp_system_key_xfmr            uri: ", inParams.uri)
   return "SYSTEM", nil
@@ -187,6 +188,17 @@ func getEngineRoot (s *ygot.GoStruct) *ocbinds.IETFSnmp_Snmp_Engine {
     return deviceObj.Snmp.Engine
 }
 
+var Subscribe_snmp_listen_subtree_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+
+    log.Info("Subscribe_snmp_listen_subtree_xfmr  uri: ", inParams.uri)
+
+    /* no need to verify dB data */
+    result.isVirtualTbl = true
+    return result, err
+}
+
 var YangToDb_snmp_listen_subtree_xfmr  SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     log.Info("YangToDb_snmp_listen_subtree_xfmr           URI: ", inParams.uri)
 
@@ -200,38 +212,49 @@ var YangToDb_snmp_listen_subtree_xfmr  SubTreeXfmrYangToDb = func(inParams XfmrP
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    log.Info("YangToDb_snmp_listen_subtree_xfmr targetUriPath:", targetUriPath)
+    log.Info("YangToDb_snmp_listen_subtree_xfmr targetUriPath: ", targetUriPath)
 
-    name := pathInfo.Var("name")
+    listenName := pathInfo.Var("name")
 
-    if name != "" {
-        listenObj, ok := engineObj.Listen[name]
+    if listenName != "" {
+        listenObj, ok := engineObj.Listen[listenName]
         if !ok {
             return res_map, errors.New("Cannot get listen node.")
         }
 
         var key strings.Builder
         var keyName string
+        var entryName  string
         if (inParams.oper == DELETE) {
-            log.Info("YangToDb_snmp_listen_subtree_xfmr        delete: ", name)
+            log.Info("YangToDb_snmp_listen_subtree_xfmr        delete: ", listenName)
             if (targetUriPath == "/ietf-snmp:snmp/engine/listen") || (targetUriPath == "/ietf-snmp:snmp/engine/listen/udp") {
                 AgentAddrTblTs := db.TableSpec {Name: SNMP_AGENT_TABLE_NAME}
                 keys, verr := inParams.d.GetKeys(&AgentAddrTblTs)
                 if verr != nil {
-                    log.Errorf("Unable to get DB keys from THRESHOLD_BREACH_TABLE, error=%v", verr)
+                    log.Errorf("Unable to get DB keys from SNMP_AGENT_TABLE_NAME, error=%v", verr)
                     return res_map, verr
                 }
-                for i := 0; i < len(keys); i++ {        
+                for i := 0; i < len(keys); i++ {
                     log.Info("YangToDb_snmp_listen_subtree_xfmr           key: ", keys[i])
-                    if name == keys[i].Get(0) {
-                        fmt.Fprintf(&key, "%s|%s|%s", keys[i].Get(0), keys[i].Get(1), keys[i].Get(2))
-                        keyName = key.String()
-                        log.Info("YangToDb_snmp_listen_subtree_xfmr        delete: ", keyName)
-            
-                        verr = inParams.d.DeleteEntry(&AgentAddrTblTs, keys[i])
-                        if verr != nil {
-                            log.Errorf("Unable to delete DB entry: %s from THRESHOLD_BREACH_TABLE, error=%v", keys[i], verr)
-                            return res_map, verr
+                    entry, err := inParams.d.GetEntry(&db.TableSpec{Name: SNMP_AGENT_TABLE_NAME}, keys[i])
+                    if err == nil {
+                        if entry.Has("name") {
+                            entryName = entry.Get("name")
+                        } else {
+                            entryName = keys[i].Get(0)
+                        }
+                        log.Infof("DbToYang_snmp_listen_subtree_xfmr       entryName: %v", entryName )
+
+                        if entryName == listenName {
+                            fmt.Fprintf(&key, "%s|%s|%s", keys[i].Get(0), keys[i].Get(1), keys[i].Get(2))
+                            keyName = key.String()
+                            log.Info("YangToDb_snmp_listen_subtree_xfmr        delete: ", keyName)
+
+                            verr = inParams.d.DeleteEntry(&AgentAddrTblTs, keys[i])
+                            if verr != nil {
+                                log.Errorf("Unable to delete DB entry: %s from SNMP_AGENT_TABLE_NAME, error=%v", keys[i], verr)
+                                return res_map, verr
+                            }
                         }
                     }
                 }
@@ -240,10 +263,10 @@ var YangToDb_snmp_listen_subtree_xfmr  SubTreeXfmrYangToDb = func(inParams XfmrP
             }
 
         } else if (inParams.oper == UPDATE) {
-            log.Info("YangToDb_snmp_listen_subtree_xfmr        update: ", name)
+            log.Info("YangToDb_snmp_listen_subtree_xfmr        update: ", listenName)
             ipAddr := *listenObj.Udp.Ip
             port := *listenObj.Udp.Port
-       
+
             iface := ""
             if listenObj.Udp.Interface != nil {
                 iface = *listenObj.Udp.Interface
@@ -256,7 +279,7 @@ var YangToDb_snmp_listen_subtree_xfmr  SubTreeXfmrYangToDb = func(inParams XfmrP
             res_map[SNMP_AGENT_TABLE_NAME][keyName] = db.Value{Field: map[string]string{}}
             dbVal := res_map[SNMP_AGENT_TABLE_NAME][keyName]
 
-            (&dbVal).Set("NULL", "NULL")
+            (&dbVal).Set("name", listenName)
         }
     }
 
@@ -283,44 +306,66 @@ var DbToYang_snmp_listen_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     log.Info("DbToYang_snmp_listen_subtree_xfmr            uri : ", uri)
 
     dataBase := inParams.d
+
     keys, tblErr := dataBase.GetKeysPattern(&(db.TableSpec{Name: SNMP_AGENT_TABLE_NAME}), db.Key{Comp: []string{"*"}})
     if tblErr == nil {
         var err   error
+        var name  string
         var ip    string
         var port  string
         var iface string
         var temp  int
+        var ok    bool
         var listenObj *ocbinds.IETFSnmp_Snmp_Engine_Listen
-       
+
         if uri == "listen" {
             ygot.BuildEmptyTree(engineObj)
-       
+
             for _, key := range keys {
                 ip    = key.Comp[0]
                 port  = key.Comp[1]
                 iface = key.Comp[2]
                 log.Infof("DbToYang_snmp_listen_subtree_xfmr   ip port iface: %v %v %v", ip, port, iface )
-    
-                listenObj, err = engineObj.NewListen(ip)
+                entry, err := dataBase.GetEntry(&db.TableSpec{Name: SNMP_AGENT_TABLE_NAME}, key)
+
                 if err != nil {
-                    log.Infof("Failed to get new listen object: %v", err)
+                    log.Infof("Failed to get value: %v", err)
                     return err
                 }
+
+                if entry.Has("name") {
+                    name = entry.Get("name")
+                } else {
+                    name = ip
+                }
+
+                log.Infof("DbToYang_snmp_listen_subtree_xfmr           entry: %v", entry )
+                log.Infof("DbToYang_snmp_listen_subtree_xfmr            name: %v", name )
+
+                listenObj, ok = engineObj.Listen[name]
+                if !ok {
+                    listenObj, err = engineObj.NewListen(name)
+                    if err != nil {
+                        log.Infof("Failed to get new listen object: %v", err)
+                        return err
+                    }
+                }
                 listenObj.Udp = new(ocbinds.IETFSnmp_Snmp_Engine_Listen_Udp)
-    
+
                 listenObj.Udp.Ip         = new(string)
                 *listenObj.Udp.Ip        = ip
-    
+
                 temp, _ = strconv.Atoi(port)
                 listenObj.Udp.Port       = new(uint16)
                 *listenObj.Udp.Port      = uint16(temp)
-    
+
                 if (iface != "") {
                     listenObj.Udp.Interface  = new(string)
                     *listenObj.Udp.Interface = iface
                 }
-    
+
             }
+
         } else if uri == "listen/udp" {
 
             name := pathInfo.Var("name")
@@ -346,16 +391,16 @@ var DbToYang_snmp_listen_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
                 if strings.Compare(name, ip) == 0 {
                     listenObj.Udp.Ip         = new(string)
                     *listenObj.Udp.Ip        = ip
-                
+
                     temp, _ = strconv.Atoi(port)
                     listenObj.Udp.Port       = new(uint16)
                     *listenObj.Udp.Port      = uint16(temp)
-                
+
                     if (iface != "") {
                         listenObj.Udp.Interface  = new(string)
                         *listenObj.Udp.Interface = iface
                     }
-                
+
                     log.Info("DbToYang_snmp_listen_subtree_xfmr            err : ", err)
                     log.Info("DbToYang_snmp_listen_subtree_xfmr  listenObj.Udp : ", listenObj.Udp)
                     break
