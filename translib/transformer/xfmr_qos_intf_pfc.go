@@ -392,10 +392,13 @@ func intf_pfc_priroity_state_attr_get (inParams XfmrParams, attrUri string, if_n
         curAttrUri = curAttrUri + "/state"
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority/state":
-        attrList := []string {"enable"}
+        attrList := []string {"enable", "statistics"}
         for _, val := range attrList {
-            curAttrUri = curAttrUri + "/" + val
-            intf_pfc_priroity_state_attr_get (inParams, curAttrUri, if_name, dot1p, prioStateObj)
+            _curAttrUri := curAttrUri + "/" + val
+            if val == "statistics" {
+                ygot.BuildEmptyTree(prioStateObj.Statistics)
+            }
+            intf_pfc_priroity_state_attr_get (inParams, _curAttrUri, if_name, dot1p, prioStateObj)
         }
         /* Place holder for counters */
     case "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority/state/enable":
@@ -410,13 +413,37 @@ func intf_pfc_priroity_state_attr_get (inParams XfmrParams, attrUri string, if_n
         } else {
             *prioStateObj.Enable = false
         }
+    case "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority/state/statistics":
+        pfc_prio, _ := strconv.Atoi(dot1p)
+        pfc_p := uint8(pfc_prio)
+        getPfcStats (if_name, pfc_p, inParams.dbs[db.CountersDB], prioStateObj.Statistics)
     default:
         return nil
     }
     return nil
 }
 
+func getPfcQueueIDs(if_name string, dbs [db.MaxDB]*db.DB) ([]string) {
+    var     err  error
+    q_list := []string{}
 
+    queueOidMapTs := &db.TableSpec{Name: "COUNTERS_QUEUE_NAME_MAP"}
+    queueCountInfo, err := dbs[db.CountersDB].GetMapAll(queueOidMapTs)
+    if err != nil {
+        log.Error("getPfcQueueIDs    err: ", err)
+        return q_list
+    }
+
+    for queue, oid := range queueCountInfo.Field {
+        if strings.HasPrefix(queue, if_name) && oid != "" {
+            elements := strings.Split(queue, ":")
+            if len(elements) >= 2 {
+                q_list = append(q_list, elements[1])
+            }
+        }
+    }
+    return q_list
+}
 
 var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
 
@@ -496,6 +523,61 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
            intf_pfc_priroity_state_attr_get(inParams, targetUriPath, if_name, pfc_prio, prioObj.State)
        }
    }
+
+    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-queue") ||
+       (targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc") {
+       q_list := []string{}
+       queue := pathInfo.Var("queue")
+       if intfObj.Pfc.PfcQueue == nil {
+           ygot.BuildEmptyTree(intfObj.Pfc.PfcQueue)
+       }
+
+       pfcQueueTblObj := intfObj.Pfc.PfcQueue
+       if queue != "" {
+           q_list = append(q_list, queue)
+       } else {
+           q_list = getPfcQueueIDs(ifname, inParams.dbs)
+       }
+
+       state_flag := strings.HasSuffix(targetUriPath, "state")
+       config_flag := strings.HasSuffix(targetUriPath, "config")
+       stats_flag := strings.HasSuffix(targetUriPath, "statistics")
+
+       for _, q := range q_list {
+           q32_val,err := strconv.Atoi(q)
+           if err != nil {
+               continue
+           }
+           q_val := uint8(q32_val)
+           qObj, ok := pfcQueueTblObj.PfcQueue[q_val]
+           if !ok {
+               qObj, _ = pfcQueueTblObj.NewPfcQueue(q_val)
+               log.Info("NewPfcQueue: ", q_val)
+           }
+           ygot.BuildEmptyTree(qObj)
+           if !state_flag && !stats_flag {
+               ygot.BuildEmptyTree(qObj.Config)
+               qc_val := q_val
+               qObj.Config.Queue = new(uint8)
+               qObj.Config.Queue = &qc_val
+           }
+           if !config_flag && !stats_flag {
+               ygot.BuildEmptyTree(qObj.State)
+               qs_val := q_val
+               qObj.State.Queue = new(uint8)
+               qObj.State.Queue = &qs_val
+           }
+           if !state_flag && !config_flag {
+               ygot.BuildEmptyTree(qObj.Statistics)
+
+               if getPfcQueueStats(if_name, q_val, inParams.dbs[db.CountersDB], qObj.Statistics) != nil {
+                  log.Errorf("DbToYang_qos_intf_pfc_xfmr: Failed to read PFC stats for interface %s queue %s", if_name, q)
+                  continue
+               }
+           }
+       }
+   }
+
    return nil
 }
 
