@@ -55,7 +55,9 @@ submodule openconfig-tam-flowgroups {
               "Flow Group name, for reference from elsewhere";
         }
         leaf id {
-            type uint32;
+             type uint32 {
+                range "1..254";
+             }
             mandatory true;
             description
               "Flowgroup identifier to be used in all dataplane
