@@ -49,9 +49,85 @@ func init () {
 
     XlateFuncBind("DbToYang_bgp_evpn_vni_state_xfmr", DbToYang_bgp_evpn_vni_state_xfmr)
 
+    XlateFuncBind("bgp_evpn_vni_tbl_xfmr", bgp_evpn_vni_tbl_xfmr)
+
     XlateFuncBind("rpc_show_bgp_evpn", rpc_show_bgp_evpn)
 }
 
+func get_bgp_evpn_vni_cfg_tbl_entry (inParams XfmrParams, tableName string) (bool) {
+    var err error
+    pathInfo := NewPathInfo(inParams.uri)
+
+    if len(pathInfo.Vars) <  4 {
+        log.Info("Invalid Key length", len(pathInfo.Vars))
+        return false
+    }
+
+    vrfName    :=  pathInfo.Var("name")
+    vniNumber   := pathInfo.Var("vni-number")
+    afName     := pathInfo.Var("afi-safi-name")
+
+    TableKey := vrfName + "|" + afName + "|" + vniNumber
+
+    vniTblTs := &db.TableSpec{Name:tableName}
+    vniEntryKey := db.Key{Comp:[]string{TableKey}}
+
+    _, err = configDbPtr.GetEntry(vniTblTs, vniEntryKey);
+    if (err != nil) {
+        return false
+    } else {
+        log.Info("get_bgp_evpn_vni_cfg_tbl_entry: entry found")
+        return true
+    }
+}
+
+var bgp_evpn_vni_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
+    var tblList []string
+    vniMapJson := make(map[string]interface{})
+
+    tblList = append(tblList, "BGP_GLOBALS_EVPN_VNI")
+
+    if (inParams.dbDataMap != nil) {
+        if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"]; !ok {
+                    (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"] = make(map[string]db.Value)
+        }
+    } else {
+        if found := get_bgp_evpn_vni_cfg_tbl_entry(inParams, "BGP_GLOBALS_EVPN_VNI") ; !found {
+            if (nil != inParams.isVirtualTbl) {
+                *inParams.isVirtualTbl = true
+            }
+        }
+
+        return tblList,nil
+    }
+
+    vtysh_cmd := "show bgp l2vpn evpn vni json"
+    output, err := exec_vtysh_cmd (vtysh_cmd)
+    if err != nil {
+        log.Errorf("Failed to fetch bgp evpn vni list:, err")
+            return tblList,nil
+    }
+
+    vniMapJson["output"] = output
+    vnis, _ := vniMapJson["output"].(map[string]interface{})
+
+    for key := range vnis {
+
+        if _, err = strconv.Atoi(key); err != nil {
+            continue
+        }
+        
+        dbkey := "default|L2VPN_EVPN|" + key
+
+        log.Info(dbkey)
+
+        if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"][dbkey]; !ok {
+                    (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"][dbkey] = db.Value{Field: make(map[string]string)}
+        }
+    }
+
+    return tblList, nil
+}
 
 var YangToDb_bgp_evpn_vni_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
