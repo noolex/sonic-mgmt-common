@@ -1512,6 +1512,12 @@ module openconfig-ospfv2-ext {
       description
           "Interface IP address";
     }
+
+    leaf non-passive {
+      type boolean;
+      description
+        "Make this interface non passive";
+    }
   }
 
   grouping ospfv2-ext-passive-interfaces-top {
