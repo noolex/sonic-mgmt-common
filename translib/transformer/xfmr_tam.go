@@ -655,6 +655,11 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                     err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
                 }
+                if flowgroup.L2 != nil && flowgroup.L2.Config != nil {
+                    errStr := "L2 match criterion for flowgroups is not supported."
+                    err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
+                    return res_map, err
+                }
                 if flowgroup.Ipv6 != nil && flowgroup.Ipv6.Config != nil {
                     errStr := "IPv6 flowgroups are not supported."
                     err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
