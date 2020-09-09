@@ -17,6 +17,10 @@ submodule openconfig-tam-flowgroups {
         prefix oc-pkt-match-types;
     }
 
+    import openconfig-interfaces {
+        prefix "oc-if";
+    }
+
     // meta
     organization
       "SONiC";
@@ -71,6 +75,13 @@ submodule openconfig-tam-flowgroups {
             description
               "Indicates the priority of this flowgroup, and used when the
                specified match criterion is used for packet matching";
+        }
+        leaf-list interfaces {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+              "Associate flowgroup to interfaces.";
         }
     }
 
