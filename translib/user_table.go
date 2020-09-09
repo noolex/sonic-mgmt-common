@@ -83,7 +83,7 @@ func getUserFromDB(akey db.Key) (User, error) {
 	}
 
 	userStruct.Password = avalue.Field["password"]
-	userStruct.Roles = strings.Split(avalue.Field["roles@"], ",")
+	userStruct.Roles = strings.Split(avalue.Field["role@"], ",")
 
 	// Make sure that we have a valid set of roles
 	if len(userStruct.Roles) == 0 {

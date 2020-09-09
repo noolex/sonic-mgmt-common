@@ -72,8 +72,16 @@ func getLacpData(ifKey string) (map[string]interface{}, error) {
 func fillLacpState(inParams XfmrParams, ifKey string, TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State) error {
     var runner_map map[string]interface{}
     var status bool
-    if runner_map, status = TeamdJson["runner"].(map[string]interface{}); !status {
+
+    setup_map := TeamdJson["setup"].(map[string]interface{})
+    if setup_map["runner_name"] != "lacp" {
         errStr := "LAG not in LACP mode"
+        log.Infof(errStr)
+        return tlerr.InvalidArgsError{Format:errStr}
+    }
+
+    if runner_map, status = TeamdJson["runner"].(map[string]interface{}); !status {
+        errStr := "LAG doesn't contain runner details"
         log.Infof(errStr)
         return tlerr.InvalidArgsError{Format:errStr}
     }

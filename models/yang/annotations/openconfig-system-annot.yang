@@ -90,6 +90,12 @@ module openconfig-system-annot {
         }
     }
 
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group {
+      deviate add {
+          sonic-ext:virtual-table "true";
+      }
+    }
+
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config {
       deviate add {
           sonic-ext:key-transformer "global_sg_key_xfmr";
@@ -158,7 +164,7 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:tacacs/oc-sys:config {
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:tacacs {
       deviate add {
           sonic-ext:table-transformer "server_table_xfmr";
           sonic-ext:key-transformer "server_key_xfmr";
@@ -327,21 +333,9 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group {
-      deviate add {
-          sonic-ext:key-transformer "global_sg_key_xfmr";
-          sonic-ext:table-transformer "global_sg_tbl_xfmr";
-      }
-    }
-
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:name {
       deviate add {
           sonic-ext:field-transformer "global_sg_name_xfmr";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config {
-      deviate add {
       }
     }
 
@@ -468,20 +462,10 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers {
-      deviate add {
-      }
-    }
-
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server {
       deviate add {
           sonic-ext:table-transformer "server_table_xfmr";
           sonic-ext:key-transformer "server_key_xfmr";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:config {
-      deviate add {
       }
     }
 
@@ -808,6 +792,18 @@ module openconfig-system-annot {
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address" {
         deviate add {
             sonic-ext:field-transformer "server_dns_field_xfmr";
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys-ext:vrf-name" {
+        deviate add {
+            sonic-ext:field-name "vrf_name";
+        }
+    }
+
+    deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:vrf-name" {
+        deviate add {
+            sonic-ext:field-name "vrf_name";
         }
     }
 

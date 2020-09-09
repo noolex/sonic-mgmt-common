@@ -19,8 +19,8 @@ func init () {
 const (
     SCHEDULER_PORT_SEQUENCE string = "255"
     SCHEDULER_MIN_RATE_BPS uint64 =  4000
-    SCHEDULER_MIN_BURST_BYTES int =  256
-    SCHEDULER_MAX_BURST_BYTES int =  128000000
+    SCHEDULER_MIN_BURST_BYTES int =  250
+    SCHEDULER_MAX_BURST_BYTES int =  125000000
     SCHEDULER_MAX_RATE_PPS uint64 =  100000
     SCHEDULER_MAX_BURST_PACKETS int =  100000
 )
@@ -668,11 +668,11 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         if entry_err == nil {
            log.Info("current entry: ", prev_entry)
            if val, prev_cir_exist = prev_entry.Field["cir"]; prev_cir_exist {
-              prev_cir, _ = strconv.ParseUint(val, 10, 32)
+              prev_cir, _ = strconv.ParseUint(val, 10, 64)
            }
 
            if val, prev_pir_exist = prev_entry.Field["pir"]; prev_pir_exist {
-              prev_pir, _ = strconv.ParseUint(val, 10, 32)
+              prev_pir, _ = strconv.ParseUint(val, 10, 64)
            }
            if val, prev_type_exist = prev_entry.Field["type"]; prev_type_exist {
                prev_type = val
@@ -688,8 +688,8 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 cbs := (int)(*schedObj.TwoRateThreeColor.Config.Bc)
                 if sp_name != "copp-scheduler-policy" {
                     if cbs < SCHEDULER_MIN_BURST_BYTES || cbs > SCHEDULER_MAX_BURST_BYTES {
-                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
-                        log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
+                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 250 Bytes and less than or equal to 125000000 Bytes"}
+                        log.Info("CBS must be greater than or equal to 250 Bytes and less than or equal to 125000000 Bytes")
                         return res_map, err
                     }
                 } else {
@@ -707,8 +707,8 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 pbs := (int)(*schedObj.TwoRateThreeColor.Config.Be)
                 if sp_name != "copp-scheduler-policy" {
                     if pbs < SCHEDULER_MIN_BURST_BYTES || pbs > SCHEDULER_MAX_BURST_BYTES {
-                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
-                        log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
+                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 250 Bytes and less than or equal to 125000000 Bytes"}
+                        log.Info("CBS must be greater than or equal to 250 Bytes and less than or equal to 125000000 Bytes")
                         return res_map, err
                     }
                 } else {
@@ -733,7 +733,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 } else {
                     cir = (uint64)(*schedObj.TwoRateThreeColor.Config.Cir)
                     if cir > SCHEDULER_MAX_RATE_PPS {
-                        err = tlerr.InternalError{Format:"CIR must be lesser than 100000pps"}
+                        err = tlerr.InternalError{Format:"CIR must be lesser than 100000 pps"}
                         log.Info("CIR must be lesser than 100000pps")
                         return res_map, err
                     }
@@ -759,7 +759,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 } else {
                     pir = (uint64)(*schedObj.TwoRateThreeColor.Config.Pir)
                     if pir > SCHEDULER_MAX_RATE_PPS {
-                        err = tlerr.InternalError{Format:"PIR must be lesser than 100000pps"}
+                        err = tlerr.InternalError{Format:"PIR must be lesser than 100000 pps"}
                         log.Info("PIR must be lesser than 100000pps")
                         return res_map, err
                     }
@@ -791,7 +791,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                     if !ok {
                         continue
                     }
-                    speed_Mbps, _ := strconv.ParseUint(speed, 10, 32)
+                    speed_Mbps, _ := strconv.ParseUint(speed, 10, 64)
                     speed_Bps := speed_Mbps * 1000 * 1000/8
                     if (cir > speed_Bps ||  pir > speed_Bps) {
                         err = tlerr.InternalError{Format:"PIR/CIR must be less than or equal to port speed"}
@@ -1022,7 +1022,7 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
         }
 
         if val, exist := schedCfg.Field["cir"]; exist {
-            cir,_ := strconv.ParseUint(val, 10, 32)
+            cir,_ := strconv.ParseUint(val, 10, 64)
             if spname != "copp-scheduler-policy" {
                 cir = cir * 8
             }
@@ -1035,7 +1035,7 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
          }
 
         if val, exist := schedCfg.Field["pir"]; exist {
-            pir,_ := strconv.ParseUint(val, 10, 32)
+            pir,_ := strconv.ParseUint(val, 10, 64)
             if spname != "copp-scheduler-policy" {
                 pir = pir * 8
             }

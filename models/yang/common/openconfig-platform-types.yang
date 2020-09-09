@@ -24,12 +24,6 @@ module openconfig-platform-types {
 
   oc-ext:openconfig-version "1.0.0";
 
-  revision "2020-07-14" {
-    description
-      "Add RS and FC fec types for forward error correction";
-    reference "1.0.0";
-  }
-
   revision "2019-06-03" {
     description
       "Add OpenConfig component operating system patch type.";
@@ -294,18 +288,6 @@ module openconfig-platform-types {
   identity FEC_MODE_TYPE {
     description
       "Base identity for FEC operational modes.";
-  }
-
-  identity FEC_RS {
-    base FEC_MODE_TYPE;
-    description
-      "FEC is set to RS (Reed-Solomon code).";
-  }
-
-  identity FEC_FC {
-    base FEC_MODE_TYPE;
-    description
-      "FEC is set to FC (Fire code).";
   }
 
   identity FEC_ENABLED {

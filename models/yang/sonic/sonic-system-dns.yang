@@ -26,7 +26,12 @@ module sonic-system-dns {
     import sonic-mgmt-port {
         prefix smt;
     }
-   
+ 
+    revision 2020-08-20 {
+        description
+            "Add vrf-name for DNS server.";
+    } 
+  
     revision 2020-07-26 {
         description
             "Change for sonic-loopback.yang.";
@@ -44,6 +49,12 @@ module sonic-system-dns {
 
                 leaf ipaddress {
                     type inet:ip-address;
+                }
+
+                leaf vrf_name {
+                    type string {
+                        pattern "mgmt|default";
+                    }
                 }
             }
         }

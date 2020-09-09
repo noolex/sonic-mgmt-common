@@ -586,7 +586,9 @@ var YangToDb_network_instance_name_field_xfmr FieldXfmrYangToDb = func(inParams 
             res_map["vlanid"] = vlanIdStr
         } else {
             /* the key name is not repeated as attr name in the DB */
-            res_map["NULL"] = "NULL"
+            if inParams.key != "default" {
+                res_map["NULL"] = "NULL"
+            }
         }
 
         return res_map, err
