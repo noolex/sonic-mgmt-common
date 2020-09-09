@@ -1655,7 +1655,6 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 
     if idx != "0"  {
         errStr := "Invalid sub-interface index: " + idx
-        log.Error(errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return idx, err
     }
