@@ -121,6 +121,9 @@ openconfig-ip-helper-annot.yang
 sonic-ip-helper.yang
 sonic-ip-helper-annot.yang
 openconfig-switch-resource.yang
+openconfig-image-management.yang
+openconfig-image-management-annot.yang
+openconfig-qos-ext-annot.yang
 openconfig-tam-collectors.yang
 openconfig-tam-dropmonitor.yang
 openconfig-tam-features.yang

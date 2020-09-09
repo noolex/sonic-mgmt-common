@@ -489,12 +489,12 @@ module openconfig-qos-ext {
             "Top-level grouping for QoS threshold breach information";
 
         container threshold-breaches {
+            config false;
             description
                 "Enclosing container for the list of threshold breaches";
 
             list breach {
                 key "id";
-                config false;
 
                 leaf id {
                   type leafref {
@@ -941,4 +941,38 @@ module openconfig-qos-ext {
     deviate not-supported;
   }
 
+  // rpc statements
+  rpc clear-threshold-breach {
+      description "RPC for clearing threshold breaches. Input can be :
+          1. Single breach event id
+          2. All breach events";
+
+      input {
+          leaf breach-event-id {
+               type union {
+                   type enumeration {
+                       enum ALL {
+                           description
+                               "ECN for all packets.";
+                       }
+                   }
+                  type uint64;
+              }
+              description
+                 "Input parameter breach event id - all or a evendId";
+         }
+     }
+     output {
+         leaf status {
+              type int32;
+              description
+                 "The status of the operation execution request.";
+         }
+         leaf status-detail {
+              type string;
+              description
+                 "The detailed status of the operation execution request.";
+         }
+     }
+  }
 }
