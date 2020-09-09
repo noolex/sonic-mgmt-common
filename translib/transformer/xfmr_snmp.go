@@ -8,6 +8,7 @@ import (
  "path/filepath"
  "github.com/openconfig/ygot/ygot"
  "github.com/Azure/sonic-mgmt-common/translib/db"
+ "github.com/Azure/sonic-mgmt-common/translib/utils"
  "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
   log "github.com/golang/glog"
 )
@@ -18,6 +19,8 @@ const (
 
 
 func init() {
+  XlateFuncBind("snmp_alias_value_xfmr",            snmp_alias_value_xfmr)
+
   XlateFuncBind("YangToDb_snmp_system_key_xfmr",        YangToDb_snmp_system_key_xfmr)
 
   XlateFuncBind("Subscribe_snmp_listen_subtree_xfmr",    Subscribe_snmp_listen_subtree_xfmr)
@@ -409,4 +412,31 @@ var DbToYang_snmp_listen_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
         }
     }
     return nil
+}
+
+func snmp_alias_value_xfmr(inParams XfmrDbParams) (string, error) {
+    var err error
+    var uiName string
+
+    ifName := inParams.value
+    log.Infof("+++ snmp_alias_value_xfmr: op=%v: ifname='%v' +++", inParams.oper, ifName)
+
+    if !utils.IsAliasModeEnabled() {
+        return ifName, err
+    }
+
+    for i, s := range strings.Split(ifName, ",") {
+        var convertedName *string
+
+        if inParams.oper == GET {
+            convertedName = utils.GetUINameFromNativeName(&s)
+        } else {
+            convertedName = utils.GetNativeNameFromUIName(&s)
+        }
+        if i > 0 {
+            uiName += ","
+        }
+        uiName += *convertedName
+    }
+    return uiName, err
 }
