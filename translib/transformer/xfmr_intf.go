@@ -891,7 +891,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") && IntfTypeVxlan == intfType  {
 		if inParams.oper == 5 {
 			tblList = append(tblList, "VXLAN_TUNNEL")
-			tblList = append(tblList, "EVPN_NVO")
 		} else if inParams.oper == 1 || inParams.oper == 2 {
 			// allowed for create
 			tblList = append(tblList, "VXLAN_TUNNEL")
@@ -3096,19 +3095,22 @@ func interfaceIPcount(tblName string, d *db.DB, intfName *string, ipCnt *int) er
     return nil
 }
 
-/* Function to delete Loopback Interface */
+/* Function to delete Vxlan Interface */
 func deleteVxlanIntf(inParams *XfmrParams, ifName *string) error {
     var err error
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     resMap := make(map[string]map[string]db.Value)
 
+    log.Infof("deleteVxlanIntf: vxlanIf: %s ", *ifName)
     _, err = inParams.d.GetEntry(&db.TableSpec{Name:"VXLAN_TUNNEL"}, db.Key{Comp: []string{*ifName}})
     if err != nil {
+        log.Infof("deleteVxlanIntf: vxlanIf: %s not found ", *ifName)
     	return tlerr.NotFound("Resource Not Found")
     }
 
     _, err = inParams.d.GetEntry(&db.TableSpec{Name:"EVPN_NVO"}, db.Key{Comp: []string{"nvo1"}})
     if err == nil {
+        log.Infof("deleteVxlanIntf: vxlanIf: %s EVPN_NVO Table found ", *ifName)
 	    evpnNvoMap := make(map[string]db.Value)
 	    evpnDbV := db.Value{Field:map[string]string{}}
 	    //evpnDbV.Field["source_vtep"] = *ifName

@@ -55,6 +55,7 @@ func init() {
 	// vxlan: interface config
 	XlateFuncBind("YangToDb_intf_vxlan_config_xfmr", YangToDb_intf_vxlan_config_xfmr)
 	XlateFuncBind("DbToYang_intf_vxlan_config_xfmr", DbToYang_intf_vxlan_config_xfmr)
+	XlateFuncBind("DbToYang_intf_vxlan_qosmode_fld_xfmr", DbToYang_intf_vxlan_qosmode_fld_xfmr)
 
 	// vxlan: vni-network-instance - config - replaced by subtree - vxlan_vni_instance_subtree_xfmr
 	//	XlateFuncBind("YangToDb_nw_inst_vxlan_key_xfmr", YangToDb_nw_inst_vxlan_key_xfmr)
@@ -1059,10 +1060,10 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 
                     //Return appropriate enum values based on the qos-mode set in DB
                     if qosModeStr != "" {
-                        if qosModeStr == "pipe" {
-                            reqP.intfObject.VxlanIf.Config.QosMode = 2
+                        if qosModeStr == "pipe" { 
+                            reqP.intfObject.VxlanIf.Config.QosMode = ocbinds.OpenconfigInterfaces_Interfaces_Interface_VxlanIf_Config_QosMode_PIPE;
                         } else {
-                            reqP.intfObject.VxlanIf.Config.QosMode = 1
+                            reqP.intfObject.VxlanIf.Config.QosMode = ocbinds.OpenconfigInterfaces_Interfaces_Interface_VxlanIf_Config_QosMode_UNIFORM;
                         }
                     }
                     if dscpStr != ""{
@@ -1083,6 +1084,29 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 	}
 
 	return nil
+}
+
+var DbToYang_intf_vxlan_qosmode_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	res_map := make(map[string]interface{})
+
+	pathInfo := NewPathInfo(inParams.uri)
+	ifName := pathInfo.Var("name")
+	data := (*inParams.dbDataMap)[inParams.curDb]
+
+	log.Infof("DbToYang_intf_vxlan_qosmode_fld_xfmr: key: %v, data: %v", ifName, data)
+	if len(data) > 0 {
+		dbv := data["VXLAN_TUNNEL"][ifName]
+        qosModeStr := dbv.Field["qos-mode"]
+	        log.Infof("DbToYang_intf_vxlan_qosmode_fld_xfmr: key: %v, qosModeStr", ifName, qosModeStr)
+            if qosModeStr != "" {
+                if qosModeStr == "pipe" { 
+                    res_map["qos-mode"], _ = ygot.EnumName(ocbinds.OpenconfigInterfaces_Interfaces_Interface_VxlanIf_Config_QosMode_PIPE);
+                } else {
+                    res_map["qos-mode"], _ = ygot.EnumName(ocbinds.OpenconfigInterfaces_Interfaces_Interface_VxlanIf_Config_QosMode_UNIFORM);
+                }
+            }
+	}
+	return res_map, nil
 }
 
 var DbToYang_nw_inst_vxlan_vni_id_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -1734,7 +1758,6 @@ var Subscribe_vxlan_vni_instance_subtree_xfmr SubTreeXfmrSubscribe = func (inPar
         tblName = "VXLAN_TUNNEL_MAP"
     } else if strings.HasPrefix(niName, "Vrf") {
         tblName = "VRF"
-        result.isVirtualTbl = true
         result.needCache = true
     } else {
         return result,nil
