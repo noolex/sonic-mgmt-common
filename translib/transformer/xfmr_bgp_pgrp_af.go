@@ -3,6 +3,7 @@ package transformer
 import (
     "errors"
     "strings"
+    "reflect"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     log "github.com/golang/glog"
@@ -285,6 +286,26 @@ var YangToDb_bgp_pgrp_community_type_fld_xfmr FieldXfmrYangToDb = func(inParams 
 
         inParams.subOpDataMap[UPDATE] = &subOpMap
         return res_map, nil
+    }
+    /* In case of POST operation and field has some default value in the YANG, infra is internally filling the enum 
+     * in string format (in this case) and hence setting the field value accordingly. */
+    curYgotNodeData, _:= yangNodeForUriGet(inParams.uri, inParams.ygRoot)
+    if curYgotNodeData == nil && (inParams.oper == CREATE || inParams.oper == REPLACE) {
+        community_type_str, _ := inParams.param.(*string)
+        if *community_type_str == "BOTH" {
+            res_map["send_community"] = "both"
+            return res_map, nil
+        }
+    }
+    /* TEMP FIX:In PATCH case also infra can send default values when body contains the instance/s, curYgotNodeData
+     * is not nil, So check if it not E_OpenconfigBgpExt_BgpExtCommunityType , then it would be string from infra.
+    * so convert it */
+    if reflect.TypeOf(inParams.param) != reflect.TypeOf(ocbinds.OpenconfigBgpExt_BgpExtCommunityType_BOTH) {
+        community_type_str, _ := inParams.param.(*string)
+        if *community_type_str == "BOTH" {
+            res_map["send_community"] = "both"
+            return res_map, nil
+        }
     }
 
     community_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_BgpExtCommunityType)

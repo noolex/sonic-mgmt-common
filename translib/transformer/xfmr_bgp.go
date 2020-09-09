@@ -116,6 +116,32 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
         return err
     }
 
+    for key := range inParams.yangDefValMap["BGP_GLOBALS"] {
+        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["always_compare_med"] = "false"
+        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["ignore_as_path_length"] = "false"
+        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["external_compare_router_id"] = "true"
+        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["log_nbr_state_changes"] = "true"
+        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["load_balance_mp_relax"] = "false"
+    }
+
+    for key := range inParams.yangDefValMap["BGP_NEIGHBOR"] {
+        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["min_adv_interval"] = "30"
+        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["keepalive"] = "60"
+        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["holdtime"] = "180"
+        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["conn_retry"] = "30"
+        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["passive_mode"] = "false"
+        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["ebgp_multihop"] = "false"
+    }
+
+    for key := range inParams.yangDefValMap["BGP_PEER_GROUP"] {
+        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["min_adv_interval"] = "30"
+        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["keepalive"] = "60"
+        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["holdtime"] = "180"
+        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["conn_retry"] = "30"
+        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["passive_mode"] = "false"
+        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["ebgp_multihop"] = "false"
+    }
+    
     /* Remove the invalid default values for BGP address family */
     for key := range inParams.yangDefValMap["BGP_GLOBALS_AF"] {
         if strings.Contains(key, "l2vpn_evpn") {
@@ -130,6 +156,10 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
             if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["advertise-default-gw"] != "" {
                delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "advertise-default-gw")
             }
+            if strings.Contains(key, "ipv4_unicast") {
+               /* Route flap dampening is supported only for IPv4 AF. */
+                inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["route_flap_dampen"] = "false"
+            }
         }
     }
 
@@ -141,6 +171,10 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
             if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["send_community"] != "" {
                delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "send_community")
             }
+        } else if (strings.Contains(key, "ipv4_unicast") ||
+                   strings.Contains(key, "ipv6_unicast")) {
+            inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["send_default_route"] = "false"
+            inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["max_prefix_warning_only"] = "false"
         }
     }
 
@@ -149,6 +183,13 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
             if inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["rrclient"] != "" {
                delete (inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field, "rrclient")
             }
+            if inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["send_community"] != "" {
+               delete (inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field, "send_community")
+            }
+        } else if (strings.Contains(key, "ipv4_unicast") ||
+                   strings.Contains(key, "ipv6_unicast"))  {
+            inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["send_default_route"] = "false"
+            inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["max_prefix_warning_only"] = "false"
         }
     }
 
