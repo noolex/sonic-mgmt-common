@@ -51,6 +51,7 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 
     log.Info("YangToDb: name: ", name)
     log.Info("targetUriPath:",  targetUriPath)
+    log.Info("requestUriPath:",  inParams.requestUri)
 
     /* parse the inParams */
     qosObj := getQosRoot(inParams.ygRoot)
@@ -93,6 +94,19 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     tmp, _ := strconv.ParseUint(entry_key, 10, 8)
     tmp2 := uint8(tmp)
     log.Info("entry_key in val: ", tmp2)
+
+    if inParams.oper == CREATE && 
+        strings.Contains(inParams.requestUri, "-entry[" + str + "=") {
+        mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
+        if err == nil { 
+            _, ok := mapCfg.Field[entry_key]
+            if !ok {
+                log.Info("Entry not exist; cannot create it with key in URI itself")
+                err = tlerr.NotFound("Resource not found")
+                return res_map, err
+            }
+        }
+    }
 
     entry, ok := mapObj.DscpMapEntries.DscpMapEntry[tmp2]
     if !ok  {
