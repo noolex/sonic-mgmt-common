@@ -192,6 +192,8 @@ module openconfig-qos-annot {
     deviation /oc-qos:qos/oc-qos-ext:threshold-breaches/oc-qos-ext:breach {
       deviate add {
         sonic-ext:table-name "THRESHOLD_BREACH_TABLE";
+        sonic-ext:key-transformer "qos_threshold_breach_key_xfmr";
+        sonic-ext:key-delim ":";
       }
     }
 

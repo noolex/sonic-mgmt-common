@@ -1,0 +1,16 @@
+module openconfig-qos-ext-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/qos-ext-annot";
+    prefix "oc-qos-ext-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-qos-ext {prefix oc-qos-ext; }
+
+    deviation /oc-qos-ext:clear-threshold-breach {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_oc_clear_threshold_breach";
+        }
+    }
+}
