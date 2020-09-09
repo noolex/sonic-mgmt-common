@@ -483,6 +483,7 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
         if len(ifName) > 1 {
             result.dbDataMap = RedisDbMap{db.ConfigDB:{BREAKOUT_TBL:{ifName:{}}}}
         } else {
+            log.Info("Invalid component name ", key)
             return result, errors.New("Invalid component name")
         }
     }
@@ -1290,6 +1291,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 comp_cnt++
             }
+            dpbCaps := getCapabilities()
+            for _, prt := range dpbCaps {
+                pf_comp, _ = pf_cpts.NewComponent(prt.Port)
+                log.Info("DPB Adding ", prt.Port)
+                ygot.BuildEmptyTree(pf_comp)
+                //err = fillDpbData(pf_comp, prt.Port, targetUriPath, d)
+                //log.Info(err)
+            }
             return err
         } else {
             if matchStr == "system eeprom" {
@@ -1357,7 +1366,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 ygot.BuildEmptyTree(pf_comp)
                 err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+            } else if len(getIfName(compName)) > 1 {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name ", compName)
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
             } else {
+                log.Info("Invalid Component Name: ", compName)
                 err = errors.New("Invalid component name")
             }
         }
@@ -1426,6 +1443,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             ygot.BuildEmptyTree(pf_comp.State.Temperature)
             err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
         } else {
+            log.Info("Invalid Component Name: ", compName)
             err = errors.New("Invalid component name ")
         }
 
@@ -1493,7 +1511,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
               }
               ygot.BuildEmptyTree(pf_comp)
               err = fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
+            } else if len(getIfName(compName)) > 1 {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name", compName)
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
             } else {
+                log.Info("Invalid Component Name: ", compName)
                 err = errors.New("Invalid input component name")
             }
         } else {
