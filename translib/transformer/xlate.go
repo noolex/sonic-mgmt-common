@@ -655,7 +655,7 @@ func CallRpcMethod(path string, body []byte, dbs [db.MaxDB]*db.DB) ([]byte, erro
 			err = data[1].Interface().(error)
 		}
 	} else {
-		log.Error("No tsupported RPC", path)
+		log.Warning("Not supported RPC", path)
 		err = tlerr.NotSupported("Not supported RPC")
 	}
 	return ret, err

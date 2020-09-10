@@ -261,7 +261,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 
    if ok && (parentXpathData.subscribeMinIntvl == XFMR_INVALID ||
       parentXpathData.subscribeOnChg == XFMR_INVALID) {
-       log.Errorf("Susbscribe MinInterval/OnChange flag is set to invalid for(%v) \r\n", xpathPrefix)
+       log.Warningf("Susbscribe MinInterval/OnChange flag is set to invalid for(%v) \r\n", xpathPrefix)
        return
    }
 
@@ -284,7 +284,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 
 		if parentXpathData.cascadeDel == XFMR_INVALID {
 			/* should not hit this case */
-			log.Errorf("Cascade-delete flag is set to invalid for(%v) \r\n", xpathPrefix)
+			log.Warningf("Cascade-delete flag is set to invalid for(%v) \r\n", xpathPrefix)
 			return
 		}
 
@@ -539,7 +539,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
                                         } else {
                                                 lrefpath, lerr = dbSpecXpathGet(lrefpath)
                                                 if lerr != nil {
-                                                        log.Errorf("Failed to add leaf-ref for(%v) \r\n", entry.Type.Path)
+                                                        log.Warningf("Failed to add leaf-ref for(%v) \r\n", entry.Type.Path)
                                                         return
                                                 }
 
@@ -556,7 +556,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
                                                         } else {
                                                                 lrefpath, lerr = dbSpecXpathGet(lrefpath)
                                                                 if lerr != nil {
-                                                                        log.Errorf("Failed to add leaf-ref for(%v) \r\n", ltype.Path)
+                                                                        log.Warningf("Failed to add leaf-ref for(%v) \r\n", ltype.Path)
                                                                         return
                                                                 }
 
@@ -772,7 +772,7 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				} else {
 					minIntvl, err := strconv.Atoi(ext.NName())
 					if err != nil {
-						log.Errorf("Invalid subscribe min interval time(%v).\r\n", ext.NName())
+						log.Warningf("Invalid subscribe min interval time(%v).\r\n", ext.NName())
 						return
 					}
 					xpathData.subscribeMinIntvl = minIntvl
@@ -843,7 +843,7 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 		// check rpc?
 		rpcName := strings.Split(pname[1], ":")
 		if len(rpcName) < 2 {
-			log.Errorf("DB spec-map data not found(%v) \r\n", rpcName)
+			log.Warningf("DB spec-map data not found(%v) \r\n", rpcName)
 			return err
 		}
 		dbXpathData, ok = xDbSpecMap[rpcName[1]]
@@ -862,7 +862,7 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 			dbMapPrint("/tmp/dbSpecMapFull.txt")
 			return err
 		} else {
-			log.Errorf("DB spec-map data not found(%v) \r\n", dbXpath)
+			log.Warningf("DB spec-map data not found(%v) \r\n", dbXpath)
 			return err
 		}
 	}
@@ -871,7 +871,7 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 	// container(redis tablename)
 	dbXpathData, ok = xDbSpecMap[tableName]
 	if !ok {
-		log.Errorf("DB spec-map data not found(%v) \r\n", dbXpath)
+		log.Warningf("DB spec-map data not found(%v) \r\n", dbXpath)
 		return err
 	}
 
