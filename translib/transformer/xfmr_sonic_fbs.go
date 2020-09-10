@@ -277,7 +277,11 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 func fill_copp_classifier_trap_details(class_name string, coppTrapTblVal db.Value, classEntry *ClassifierEntry) error {
 	classEntry.CLASSIFIER_NAME = class_name
 	classEntry.MATCH_TYPE = new(string)
-	*classEntry.MATCH_TYPE = "copp"
+	if class_name == "default" {
+		*classEntry.MATCH_TYPE = "any"
+	} else {
+		*classEntry.MATCH_TYPE = "copp"
+	}
 	if str_val, found := coppTrapTblVal.Field["trap_ids"]; found {
 		classEntry.TRAP_IDS = &str_val
 	}
@@ -388,6 +392,10 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 			}
 			if match_type != "" && match_type != "COPP" {
 				log.Infof("Not matching index:%v class_name:%v match_type:%v ", index, class_name, match_type)
+				continue
+			}
+			if match_type == "COPP" && class_name == "default" {
+				log.Infof("Not matching index:%v class_name:%v match_type:any ", index, class_name)
 				continue
 			}
 
