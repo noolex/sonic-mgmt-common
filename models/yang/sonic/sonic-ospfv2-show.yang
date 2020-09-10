@@ -1,0 +1,40 @@
+module sonic-ospfv2-show {
+    namespace "http://github.com/Azure/sonic-ospfv2-show";
+    prefix sospfv2show;
+    yang-version 1.1;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC yang for RPC based OSPFv2 show.";
+
+    revision 2020-01-20 {
+        description
+            "Initial revision.";
+    }
+
+    rpc show-ospfv2-max-age-lsa {
+        description "RPC for showing max age lsa in ospfv2";
+
+        input {
+            leaf cmd {
+                type string;
+                default "show ip ospf vrf default database max-age";
+                description
+                    "Shows max age lsa for ospfv2 for given VRF name. if VRF name is not present, the default VRF is used";
+            }
+        }
+
+        output {
+            leaf status {
+                type string;
+                description
+                    "On success, returns max-age lsa information in ascii.";
+            }
+        }
+    }
+}

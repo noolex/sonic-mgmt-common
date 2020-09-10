@@ -45,9 +45,36 @@ func init () {
     XlateFuncBind("rpc_clear_bfd", rpc_clear_bfd)
 }
 
-var bfd_table_key_transformer = func(inParams XfmrParams) (string, error) {
+func get_bfd_cfg_tbl_entry (inParams XfmrParams, tableName string) (bool) {
     var err error
+    pathInfo := NewPathInfo(inParams.uri)
 
+    if len(pathInfo.Vars) <  4 {
+        log.Info("Invalid Key length", len(pathInfo.Vars))
+        return false
+    }
+
+    bfdPeer        := pathInfo.Var("remote-address")
+    bfdInterface   := pathInfo.Var("interface")
+    bfdVrf         := pathInfo.Var("vrf")
+    bfdLocalAddr   := pathInfo.Var("local-address")
+
+    TableKey := bfdPeer + "|" + bfdInterface + "|" + bfdVrf + "|" + bfdLocalAddr
+
+    bfdTblTs := &db.TableSpec{Name:tableName}
+    bfdEntryKey := db.Key{Comp:[]string{TableKey}}
+
+    _, err = configDbPtr.GetEntry(bfdTblTs, bfdEntryKey);
+    if (err != nil) {
+        return false
+    } else {
+        log.Info("get_bfd_cfg_tbl_entry: entry found")
+        return true
+    }
+}
+
+var bfd_table_key_transformer = func(inParams XfmrParams, tableName string) (string, error) {
+    var err error
     pathInfo := NewPathInfo(inParams.uri)
 
     bfdPeer        := pathInfo.Var("remote-address")
@@ -100,14 +127,14 @@ var YangToDb_bfd_shop_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
 
     log.Info("YangToDb_bfd_shop_tbl_key_xfmr: ", inParams.uri)
 
-    return bfd_table_key_transformer(inParams)
+    return bfd_table_key_transformer(inParams, "BFD_PEER_SINGLE_HOP")
 }
 
 var YangToDb_bfd_mhop_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
 
     log.Info("YangToDb_bfd_mhop_tbl_key_xfmr: ", inParams.uri)
 
-    return bfd_table_key_transformer(inParams)
+    return bfd_table_key_transformer(inParams, "BFD_PEER_MULTI_HOP")
 }
 
 var YangToDb_bfd_shop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[string]string, error) {
@@ -458,6 +485,11 @@ var DbToYang_bfd_shop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
     log.Info(output_counter)
     bfdCounterMapJson["output"] = output_counter
 
+    /* While filling the ygot tree, we always want to fill the user names of the interface and not the native names */
+    if (bfdshop_key.Interface != "null") {
+        bfdshop_key.Interface = *utils.GetUINameFromNativeName(&(bfdshop_key.Interface))
+    }
+
     if sessions, ok := bfdMapJson["output"].(map[string]interface{}) ; ok {
         log.Info(sessions)
         if counters, ok := bfdCounterMapJson["output"].(map[string]interface{}) ; ok {
@@ -526,6 +558,11 @@ var DbToYang_bfd_mhop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
 
     log.Info(output_counter)
     bfdCounterMapJson["output"] = output_counter
+
+    /* While filling the ygot tree, we always want to fill the user names of the interface and not the native names */
+    if (bfdmhop_key.Interface != "null") {
+        bfdmhop_key.Interface = *utils.GetUINameFromNativeName(&(bfdmhop_key.Interface))
+    }
 
     if sessions, ok := bfdMapJson["output"].(map[string]interface{}) ; ok {
         log.Info(sessions)
@@ -1072,6 +1109,12 @@ var bfd_mhop_session_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
                     (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_MULTI_HOP"] = make(map[string]db.Value)
         }
     } else {
+        if found := get_bfd_cfg_tbl_entry(inParams, "BFD_PEER_MULTI_HOP") ; !found {
+            if (nil != inParams.isVirtualTbl) {
+                *inParams.isVirtualTbl = true
+            }
+        }
+
         return tblList,nil
     }
 
@@ -1142,8 +1185,13 @@ var bfd_shop_session_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_SINGLE_HOP"]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_SINGLE_HOP"] = make(map[string]db.Value)
         }
-
     } else {
+        if found := get_bfd_cfg_tbl_entry(inParams, "BFD_PEER_SINGLE_HOP") ; !found {
+            if (nil != inParams.isVirtualTbl) {
+                *inParams.isVirtualTbl = true
+            }
+        }
+
         return tblList,nil
     }
 

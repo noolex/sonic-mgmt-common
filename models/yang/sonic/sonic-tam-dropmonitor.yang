@@ -71,7 +71,7 @@ module sonic-tam-dropmonitor {
                 }
                 leaf aging-interval {
                     type uint16 {
-                        range 1..3600;
+                        range 1..30;
                     }
                     units "seconds";
                     default 5;

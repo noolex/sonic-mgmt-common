@@ -113,6 +113,16 @@ func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
+    if len(tableKeys) >= 1 {
+        errStr := "Anycast IP configuration is not allowed in presence of interface IP"
+        log.Error(errStr)
+        return CVLErrorInfo {
+            ErrCode: CVL_SEMANTIC_ERROR,
+            TableName: keyName,
+            CVLErrDetails: errStr,
+            ConstraintErrMsg: errStr,
+        }
+    }
 
 	gwips := strings.Split(gwipData, ",")
 	for _, gwip := range(gwips)	{

@@ -79,6 +79,7 @@ openconfig-qos.yang
 openconfig-qos-ext.yang
 openconfig-qos-maps-ext.yang
 openconfig-qos-annot.yang
+openconfig-qos-ext-annot.yang
 openconfig-qos-pfc.yang
 sonic-qos-clear.yang
 sonic-qos-clear-annot.yang
@@ -135,3 +136,7 @@ openconfig-tam-tailstamping.yang
 openconfig-tam-types.yang
 openconfig-tam.yang
 openconfig-tam-annot.yang
+openconfig-neighbor.yang
+openconfig-neighbor-annot.yang
+openconfig-image-management.yang
+openconfig-image-management-annot.yang

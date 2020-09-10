@@ -47,6 +47,7 @@ func init () {
     XlateFuncBind("rpc_clear_neighbors", rpc_clear_neighbors)
     XlateFuncBind("Subscribe_neigh_tbl_get_all_ipv4_xfmr", Subscribe_neigh_tbl_get_all_ipv4_xfmr)
     XlateFuncBind("Subscribe_neigh_tbl_get_all_ipv6_xfmr", Subscribe_neigh_tbl_get_all_ipv6_xfmr)
+    XlateFuncBind("YangToDb_neighbor_global_key_xfmr", YangToDb_neighbor_global_key_xfmr)
 }
 
 const (
@@ -134,6 +135,11 @@ var DbToYang_routed_vlan_neigh_tbl_key_xfmr KeyXfmrDbToYang = func(inParams Xfmr
 
     rmap["ip"] =  inParams.key[(len(mykey[0])+1):]
     return rmap, err
+}
+
+var YangToDb_neighbor_global_key_xfmr = func(inParams XfmrParams) (string, error) {
+        log.Info("YangToDb_neighbor_global_key_xfmr: ", inParams.ygRoot, inParams.uri)
+        return "Values", nil
 }
 
 

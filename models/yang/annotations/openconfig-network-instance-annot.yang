@@ -2953,8 +2953,8 @@ module openconfig-network-instance-annot {
     
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vnis/oc-bgp-evpn-ext:vni {
       deviate add {
-        sonic-ext:table-name "BGP_GLOBALS_EVPN_VNI";
         sonic-ext:key-transformer "bgp_evpn_vni_key_xfmr";
+        sonic-ext:table-transformer "bgp_evpn_vni_tbl_xfmr";
       }
     } 
 
@@ -3517,6 +3517,45 @@ module openconfig-network-instance-annot {
     }
   }
 
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area" +
+             "/oc-netinst:virtual-links/oc-netinst:virtual-link" +
+             "/oc-netinst:config/oc-ospfv2-ext:authentication-key" {
+    deviate add {
+      sonic-ext:field-transformer  "ospfv2_router_area_vl_authentication_key_fld_xfmr";
+    }
+  }
+
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area" +
+             "/oc-netinst:virtual-links/oc-netinst:virtual-link" +
+             "/oc-ospfv2-ext:md-authentications/oc-ospfv2-ext:md-authentication" {
+    deviate add {
+      sonic-ext:db-name "CONFIG_DB";
+      sonic-ext:table-name "OSPFV2_ROUTER_AREA_VLMD_AUTHENTICATION";
+      sonic-ext:key-transformer "ospfv2_router_area_vlmd_auth_tbl_key_xfmr";
+    }
+  }
+
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area" +
+             "/oc-netinst:virtual-links/oc-netinst:virtual-link" +
+             "/oc-ospfv2-ext:md-authentications/oc-ospfv2-ext:md-authentication" +
+             "/oc-ospfv2-ext:config/oc-ospfv2-ext:authentication-key-id" {
+    deviate add {
+      sonic-ext:field-transformer  "ospfv2_router_area_vlmd_auth_key_id_fld_xfmr";
+    }
+  }
+
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area" +
+             "/oc-netinst:virtual-links/oc-netinst:virtual-link" +
+             "/oc-ospfv2-ext:md-authentications/oc-ospfv2-ext:md-authentication" +
+             "/oc-ospfv2-ext:config/oc-ospfv2-ext:authentication-md5-key" {
+    deviate add {
+      sonic-ext:field-transformer  "ospfv2_router_area_vlmd_auth_md5_key_fld_xfmr";
+    }
+  }
 
   /*-------- OSPFV2_ROUTER_AREA_NETWORK --------*/
 

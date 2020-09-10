@@ -70,26 +70,27 @@ submodule openconfig-tam-flowgroups {
               "Indicates the priority of this flowgroup, and used when the
                specified match criterion is used for packet matching";
         }
-        leaf ip-version {
-            type oc-inet:ip-version {
-                enum IPV4 {
-                    description
-                      "The IPv4 protocol as defined in RFC 791.";
-                }
-                enum IPV6 {
-                    description
-                      "The IPv6 protocol as defined in RFC 2460.";
-                }
-            }
-            mandatory true;
-            description
-              "IP Address version";
-        }
     }
 
     grouping tam-flowgroups-state {
         description
-          "Operational state container for flowgroups";
+            "Operational state container for flowgroups";
+
+        container statistics {
+            description 
+                "Statistics for the transport";
+            leaf packets {
+                type uint64;
+                description
+                    "Total Packets received that matched this flowgroup";
+            }
+            leaf bytes {
+                type uint64;
+                description
+                    "Total Bytes received that matched this flowgroup";
+            }
+        }
+
     }
 
     grouping tam-flowgroups-top {
@@ -124,18 +125,8 @@ submodule openconfig-tam-flowgroups {
                 // Various packet match conditions that are supported
                 // re-used from oc-packet-match yang
                 uses oc-pkt-match-types:ethernet-header-top;
-                uses oc-pkt-match-types:ipv4-protocol-fields-top {
-                    when "./config/ip-version = 'IPV4'" {
-                        description
-                          "TODO:";
-                    }
-                }
-                uses oc-pkt-match-types:ipv6-protocol-fields-top {
-                    when "./config/ip-version = 'IPV4'" {
-                        description
-                          "TODO:";
-                    }
-                }
+                uses oc-pkt-match-types:ipv4-protocol-fields-top;
+                uses oc-pkt-match-types:ipv6-protocol-fields-top;
                 uses oc-pkt-match-types:transport-fields-top;
             }
         }

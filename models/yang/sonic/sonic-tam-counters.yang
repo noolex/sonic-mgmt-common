@@ -1,0 +1,78 @@
+module sonic-tam-counters {
+	yang-version 1.1;
+
+	// namespace
+	namespace "http://github.com/Azure/sonic-tam-counters";
+
+	prefix sonic-tam-counters;
+
+	// import some basic types
+	import sonic-extension {
+		prefix sonic-ext;
+	}
+
+	// meta
+	organization
+		"SONiC";
+
+	contact
+		"SONiC";
+
+	description
+		"Silicon Telemetry Module";
+
+	revision 2020-06-01 {
+		description
+			"Initial revision";
+		reference
+			"3.2.0";
+	}
+
+	// extension statements
+	// feature statements
+	// identity statements
+	// typedef statements
+	// grouping statements
+	// data definition statements
+	container sonic-tam-counters {
+		description
+			"top-level container";
+
+		container COUNTERS {
+
+			config false;
+
+			description
+				"counters table in the counters-db";
+
+			sonic-ext:db-name "COUNTERS_DB";
+			sonic-ext:key-delim ":";
+
+			list COUNTERS_LIST {
+				key name;
+
+				description
+					"counter attributes";
+
+				leaf name {
+					type string {
+						length "1..32";
+					}
+					description
+						"Counter Name";
+				}
+				leaf Packets {
+					type uint64;
+				}
+
+				leaf Bytes {
+					type uint64;
+				}
+			}
+		}
+
+	}
+	// augment statements
+	// rpc statements
+	// notification statements
+}

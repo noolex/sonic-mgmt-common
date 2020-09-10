@@ -17,6 +17,7 @@ func init () {
     XlateFuncBind("DbToYang_sys_infra_state_clock_xfmr", DbToYang_sys_infra_state_clock_xfmr)
     XlateFuncBind("DbToYang_sys_infra_state_uptime_xfmr", DbToYang_sys_infra_state_uptime_xfmr)
     XlateFuncBind("DbToYang_sys_infra_state_reboot_cause_xfmr", DbToYang_sys_infra_state_reboot_cause_xfmr)
+    XlateFuncBind("DbToYang_sys_infra_state_show_user_list_xfmr", DbToYang_sys_infra_state_show_user_list_xfmr)
     XlateFuncBind("rpc_infra_reboot_cb",  rpc_infra_reboot_cb)
     XlateFuncBind("rpc_infra_config_cb",  rpc_infra_config_cb)
     XlateFuncBind("rpc_infra_show_sys_log_cb",  rpc_infra_show_sys_log_cb)
@@ -85,6 +86,31 @@ var DbToYang_sys_infra_state_reboot_cause_xfmr FieldXfmrDbtoYang = func(inParams
 
 }
 
+var DbToYang_sys_infra_state_show_user_list_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    var host_output HostResult
+    var out_list []string
+
+    result := make(map[string]interface{})
+
+    cmd := "show users"
+    log.Info("DbToYang_sys_infra_state_show_user_list_xfmr cmd:", cmd)
+    host_output = HostQuery("infra_host.exec_cmd", cmd)
+    if host_output.Err != nil {
+              retErr := tlerr.New("Host Query [FAILED]: %v", host_output.Err)
+              return nil, retErr
+    }
+
+    output, _ := host_output.Body[1].(string)
+    log.Info("DbToYang_sys_infra_state_show_user_list_xfmr: %s", output)
+    _output := strings.TrimLeft(output,"\n")
+    out_list = strings.Split(_output,"\n")
+
+    result["show-user-list"] = out_list
+
+    return result, err
+
+}
 
 var rpc_infra_reboot_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
         log.Info("rpc_infra_reboot_cb body: ", string(body))

@@ -1,0 +1,30 @@
+module openconfig-neighbor-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/oc-nbr-annot";
+    prefix "oc-nbr-annot";
+
+    import openconfig-neighbor { prefix oc-nbr; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /oc-nbr:neighbor-globals/oc-nbr:neighbor-global {
+        deviate add {
+            sonic-ext:table-name "NEIGH_GLOBAL";
+            sonic-ext:key-transformer "neighbor_global_key_xfmr";
+        }
+    }
+
+    deviation /oc-nbr:neighbor-globals/oc-nbr:neighbor-global/oc-nbr:config/oc-nbr:ipv4-arp-timeout {
+        deviate add {
+            sonic-ext:field-name "ipv4_arp_timeout";
+        }
+    }
+
+    deviation /oc-nbr:neighbor-globals/oc-nbr:neighbor-global/oc-nbr:config/oc-nbr:ipv6-nd-cache-expiry {
+        deviate add {
+            sonic-ext:field-name "ipv6_nd_cache_expiry";
+        }
+    }
+
+}
