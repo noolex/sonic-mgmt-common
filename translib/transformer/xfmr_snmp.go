@@ -39,6 +39,9 @@ func init() {
 
   XlateFuncBind("YangToDb_snmp_access_key_xfmr",    YangToDb_snmp_access_key_xfmr)
   XlateFuncBind("DbToYang_snmp_access_key_xfmr",    DbToYang_snmp_access_key_xfmr)
+
+  XlateFuncBind("YangToDb_snmp_tag_name_xfmr",      YangToDb_snmp_tag_name_xfmr)
+  XlateFuncBind("DbToYang_snmp_tag_name_xfmr",      DbToYang_snmp_tag_name_xfmr)
 }
 
 var YangToDb_snmp_system_key_xfmr = func(inParams XfmrParams) (string, error) {
@@ -124,6 +127,85 @@ var DbToYang_snmp_access_key_xfmr = func(inParams XfmrParams) (map[string]interf
   rmap["security-level"] = secLevel
   log.Info("DbToYang_snmp_access_key_xfmr   Key Returned: ", rmap)
   return rmap, nil
+}
+
+var YangToDb_snmp_tag_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+
+    if inParams.param == nil {
+        return res_map, errors.New("No Params")
+    }
+
+    log.Info("YangToDb_snmp_tag_name_xfmr   oper=", inParams.oper)
+    if inParams.oper == DELETE {
+        res_map["tag@"] = ""
+        return res_map, nil
+    }
+    if inParams.oper != UPDATE {
+        return res_map, errors.New("No UPDATE operation")
+    }
+
+    members := inParams.param.([]string)
+    if len(members) == 1 {
+        new_tag := fmt.Sprintf("%v", members[0])
+        res_map["tag@"] = new_tag
+        return res_map, nil
+    }
+    if len(members) != 2 {
+        return res_map, errors.New("Invalid Params")
+    }
+
+    /* Translate original port name to native port name, if needed */
+    org_ifname := fmt.Sprintf("%v", members[1])
+    var nat_ifname_str string
+    if utils.IsAliasModeEnabled() {
+        nat_ifname := utils.GetNativeNameFromUIName(&org_ifname)
+        nat_ifname_str = *nat_ifname
+        log.Info("YangToDb_snmp_tag_name_xfmr  ", org_ifname, " -> ", nat_ifname_str)
+    } else {
+        nat_ifname_str = org_ifname
+    }
+
+    new_tag := fmt.Sprintf("%v,%v", members[0], nat_ifname_str)
+    res_map["tag@"] = new_tag
+    return res_map, nil
+}
+
+var DbToYang_snmp_tag_name_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+
+    log.Info("YangToDb_snmp_tag_name_xfmr   oper=", inParams.oper)
+    pTbl := data["SNMP_SERVER_TARGET"]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_snmp_tag_name_xfmr SNMP_SERVER_TARGET not found : ", inParams.key)
+        return result, errors.New("SNMP_SERVER_TARGET not found : " + inParams.key)
+    }
+    pSystemKey := pTbl[inParams.key]
+    str, ok := pSystemKey.Field["tag@"]
+
+    if ok {
+        members := strings.Split(str, ",")
+        if (len(members) != 1) && (len(members) != 2) {
+            return result, errors.New("SNMP_SERVER_TARGET , tag not found : " + inParams.key)
+        }
+        if len(members) == 2 {
+            /* Translate native port name to original port name, if needed */
+            if utils.IsAliasModeEnabled() {
+                org_ifname := fmt.Sprintf("%v", members[1])
+                nat_ifname := utils.GetUINameFromNativeName(&org_ifname)
+                nat_ifname_str := *nat_ifname
+                log.Info("DbToYang_snmp_tag_name_xfmr  ", org_ifname, " -> ", nat_ifname_str)
+                members[1] = nat_ifname_str
+            }
+        }
+        result["tag"] = members
+    } else {
+        log.Info("tag field not found in SNMP_SERVER_TARGET")
+    }
+
+    return result, nil
 }
 
 var YangToDb_snmp_trap_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -273,6 +355,13 @@ var YangToDb_snmp_listen_subtree_xfmr  SubTreeXfmrYangToDb = func(inParams XfmrP
             iface := ""
             if listenObj.Udp.Interface != nil {
                 iface = *listenObj.Udp.Interface
+                /* Translate original port name to native port name */
+                if utils.IsAliasModeEnabled() {
+                    nat_ifname := utils.GetNativeNameFromUIName(&iface)
+                    nat_ifname_str := *nat_ifname
+                    log.Info("YangToDb_snmp_listen_subtree_xfmr  ", iface, " -> ", nat_ifname_str)
+                    iface = nat_ifname_str
+                }
             }
             res_map[SNMP_AGENT_TABLE_NAME] = make(map[string]db.Value)
             fmt.Fprintf(&key, "%s|%d|%s", ipAddr, port, iface)
@@ -363,6 +452,13 @@ var DbToYang_snmp_listen_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
                 *listenObj.Udp.Port      = uint16(temp)
 
                 if (iface != "") {
+                    if utils.IsAliasModeEnabled() {
+                        org_ifname := iface
+                        nat_ifname := utils.GetUINameFromNativeName(&org_ifname)
+                        nat_ifname_str := *nat_ifname
+                        log.Info("DbToYang_snmp_listen_subtree_xfmr  ", org_ifname, " -> ", nat_ifname_str)
+                        iface = nat_ifname_str
+                    }
                     listenObj.Udp.Interface  = new(string)
                     *listenObj.Udp.Interface = iface
                 }
@@ -400,6 +496,13 @@ var DbToYang_snmp_listen_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
                     *listenObj.Udp.Port      = uint16(temp)
 
                     if (iface != "") {
+                        if utils.IsAliasModeEnabled() {
+                            org_ifname := iface
+                            nat_ifname := utils.GetUINameFromNativeName(&org_ifname)
+                            nat_ifname_str := *nat_ifname
+                            log.Info("DbToYang_snmp_listen_subtree_xfmr  ", org_ifname, " -> ", nat_ifname_str)
+                            iface = nat_ifname_str
+                        }
                         listenObj.Udp.Interface  = new(string)
                         *listenObj.Udp.Interface = iface
                     }
