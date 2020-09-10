@@ -130,12 +130,6 @@ module openconfig-interfaces-annot {
         }
     }
 
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf:description {
-        deviate add {
-            sonic-ext:field-transformer "intf_description_xfmr";
-        }
-    }
-
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config {
         deviate add {
             sonic-ext:subtree-transformer "intf_eth_port_config_xfmr";
