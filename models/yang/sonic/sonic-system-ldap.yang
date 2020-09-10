@@ -31,6 +31,10 @@ module sonic-system-ldap {
       prefix smgmt;
   }
 
+  import sonic-vrf {
+      prefix vrf;
+  }
+
   organization
       "SONiC";
 
@@ -39,6 +43,10 @@ module sonic-system-ldap {
 
   description
       "SONiC LDAP";
+
+  revision 2020-08-28 {
+      description "LDAP vrf syntax.";
+  }
 
   revision 2020-07-26 {
       description
@@ -292,14 +300,16 @@ module sonic-system-ldap {
                 }
 				
                 leaf vrf_name {
-                    type string {
-                        pattern "mgmt|Vrf[a-zA-Z0-9_-]+" {
-                            error-message "Invalid VRF name for SSH server";
-                            error-app-tag vrf-name-ssh-invalid;
+                    type union {
+                        type enumeration{
+                            enum mgmt;
                         }
+                        type leafref {
+                            path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                       }
                     }
-		            description
-		              "Vrf name";
+                    description
+                   "Vrf name";
                 }
       }
   	}

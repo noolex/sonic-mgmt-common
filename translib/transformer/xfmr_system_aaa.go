@@ -58,6 +58,7 @@ func init () {
     XlateFuncBind("DbToYang_ldap_scope_field_xfmr", DbToYang_ldap_scope_field_xfmr)
     XlateFuncBind("YangToDb_ldap_server_map_key_xfmr", YangToDb_ldap_server_map_key_xfmr)
     XlateFuncBind("DbToYang_ldap_server_map_key_xfmr", DbToYang_ldap_server_map_key_xfmr)
+    XlateFuncBind("system_post_xfmr", system_post_xfmr)
 }
 
 // authMethodFind takes a slice and looks for an element in it. If found it will
@@ -646,4 +647,30 @@ var DbToYang_ldap_server_map_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams
 	log.Info("DbToYang_ldap_server_map_key_xfmr: res_map: ", res_map)
 	
     return  res_map, err
+}
+
+var system_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+	log.Info("system_post_xfmr called - inParams.requestUri: ", inParams.requestUri)
+
+	retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
+    if inParams.oper == DELETE {
+    	xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    	log.Info("system_post_xfmr xpath: ", xpath)
+    	if strings.HasSuffix(xpath, "/server-group") || strings.HasSuffix(xpath, "/server-groups") ||
+	    	strings.HasSuffix(xpath, "/aaa") || strings.HasSuffix(xpath, "/openconfig-system:system") {  
+    		pathInfo := NewPathInfo(inParams.requestUri)
+			servergroupname := pathInfo.Var("name") 
+    		if servergroupname == "LDAP" || len(servergroupname) == 0 {
+    			log.Infof("system_post_xfmr handling LDAP server group..")
+		        if len(servergroupname) == 0 {
+		        	retDbDataMap["LDAP"] = make(map[string]db.Value)
+		        }
+		        retDbDataMap["LDAP_SERVER"] = make(map[string]db.Value)
+		        retDbDataMap["LDAP_MAP"] = make(map[string]db.Value)
+    		}
+    	}
+    }
+    
+    log.Infof("system_post_xfmr returned : %v, skipOrdTblChk: %v", retDbDataMap, *inParams.skipOrdTblChk)
+    return retDbDataMap, nil
 }

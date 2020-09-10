@@ -24,6 +24,13 @@ module openconfig-system-annot {
     import openconfig-aaa-ldap-ext { prefix oc-aaa-ldap-ext; }
     import openconfig-system-crm { prefix oc-sys-crm; }
 
+    
+    deviation /oc-sys:system {
+      deviate add {
+        sonic-ext:post-transformer "system_post_xfmr";
+      }
+    }
+
     /* CRM - Critical Resource Monitoring */
 
     deviation /oc-sys:system/oc-sys-crm:crm/oc-sys-crm:config {
@@ -817,6 +824,11 @@ module openconfig-system-annot {
             }
     }
 
+   deviation /oc-sys:system/oc-sys-ext:infra/oc-sys-ext:state/oc-sys-ext:show-user-list{
+        deviate add {
+            sonic-ext:field-transformer "sys_infra_state_show_user_list_xfmr";
+            }
+    }
 
     deviation /oc-sys:system/oc-sys-ext:systemd-coredump/oc-sys-ext:state {
         deviate add {

@@ -80,6 +80,7 @@ const (
 	ACL_RULE_PACKET_ACTION           = "PACKET_ACTION"
 	ACL_CTRL_PLANE_PORT              = "CtrlPlane"
 	ACL_GLOBAL_PORT                  = "Switch"
+	ACL_KEYWORD_NAME                 = "name"
 
 	MIN_PRIORITY = 1
 	MAX_PRIORITY = 65536 // Seq num range is 1-65535. these are converted into prio 65535-1
@@ -199,12 +200,23 @@ func (app *AclApp) translateDelete(d *db.DB) ([]db.WatchKeys, error) {
 	var keys []db.WatchKeys
 	log.Info("translateDelete:acl:path =", app.pathInfo.Template)
 
+	err = app.validateAclNameWithType(d, DELETE)
+	if err != nil {
+		log.Error(err)
+	}
+
 	return keys, err
 }
 
 func (app *AclApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	var err error
 	log.Info("translateGet:acl:path =", app.pathInfo.Template)
+
+	err = app.validateAclNameWithType(dbs[db.ConfigDB], GET)
+	if err != nil {
+		log.Error(err)
+	}
+
 	return err
 }
 
@@ -235,7 +247,7 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 			return nil, nil, err
 		}
 
-		aclkey := convertOCAclnameTypeToInternal(pathInfo.Var("name"), t)
+		aclkey := convertOCAclnameTypeToInternal(pathInfo.Var(ACL_KEYWORD_NAME), t)
 
 		if strings.Contains(pathInfo.Template, "/acl-entry{}") {
 			// Subscribe for one rule
@@ -370,6 +382,11 @@ func (app *AclApp) translateCRUCommon(d *db.DB, opcode int) ([]db.WatchKeys, err
 	// later from the payload
 	if strings.Contains(app.pathInfo.Template, "input-interface") {
 		return nil, tlerr.NotSupported("input-interface not supported")
+	}
+	err = app.validateAclNameWithType(d, opcode)
+	if err != nil {
+		log.Error(err)
+		return keys, err
 	}
 
 	app.convertOCCountermodeToInternal()
@@ -564,7 +581,7 @@ func (app *AclApp) processCommon(d *db.DB, opcode int) error {
 							}
 							err = d.DeleteEntry(app.aclTs, db.Key{Comp: []string{aclKey}})
 						} else if isAclEntriesSubtree {
-							err = d.DeleteKeys(app.ruleTs, db.Key{Comp: []string{aclKey + TABLE_SEPARATOR + "RULE_*"}})
+							err = d.DeleteKeys(app.ruleTs, db.Key{Comp: []string{aclKey + TABLE_SEPARATOR + "*"}})
 						} else {
 							nodeInfo, err := getTargetNodeYangSchema(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device))
 							if err != nil {
@@ -636,10 +653,7 @@ func (app *AclApp) processCommonToplevelPath(d *db.DB, acl *ocbinds.OpenconfigAc
 			err = app.setAclRuleDataInConfigDb(d, app.ruleTableMap, true)
 		}
 	case REPLACE:
-		err = d.DeleteTable(app.aclTs)
-		if err == nil {
-			err = d.DeleteTable(app.ruleTs)
-		}
+		err = app.deleteAllAcls(d)
 		if err == nil {
 			err = app.setAclCounterDataInConfigDb(d, app.hardwareAclTableMap)
 		}
@@ -658,10 +672,7 @@ func (app *AclApp) processCommonToplevelPath(d *db.DB, acl *ocbinds.OpenconfigAc
 			err = app.setAclRuleDataInConfigDb(d, app.ruleTableMap, false)
 		}
 	case DELETE:
-		err = d.DeleteTable(app.ruleTs)
-		if err == nil {
-			err = d.DeleteTable(app.aclTs)
-		}
+		err = app.deleteAllAcls(d)
 	}
 	return err
 }
@@ -777,26 +788,27 @@ func (app *AclApp) convertDBAclToInternal(dbs [db.MaxDB]*db.DB, aclkey db.Key) e
 			return err
 		}
 		if entry.IsPopulated() {
-			app.aclTableMap[aclkey.Get(0)] = entry
-			app.ruleTableMap[aclkey.Get(0)] = make(map[string]db.Value)
-			err = app.convertDBAclRulesToInternal(dbs, aclkey.Get(0), "", db.Key{})
-			if err != nil {
-				return err
+			if entry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_L2 || entry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_IPV4 || entry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_IPV6 {
+				app.aclTableMap[aclkey.Get(0)] = entry
+				app.ruleTableMap[aclkey.Get(0)] = make(map[string]db.Value)
+				err = app.convertDBAclRulesToInternal(dbs, aclkey.Get(0), "", db.Key{})
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			return tlerr.NotFound("Acl %s is not configured", aclkey.Get(0))
 		}
 	} else {
-		// Get all ACLs
-		tbl, err := dbCl.GetTable(app.aclTs)
-		if err != nil {
-			return err
-		}
-		keys, _ := tbl.GetKeys()
-		for i := range keys {
-			app.convertDBAclToInternal(dbs, keys[i])
+		// Get all ACL Keys
+		aclKeys, err := dbCl.GetKeys(app.aclTs)
+		if err == nil {
+			for i := range aclKeys {
+				app.convertDBAclToInternal(dbs, aclKeys[i])
+			}
 		}
 	}
+
 	return err
 }
 
@@ -2612,4 +2624,52 @@ func convertOCAclnameTypeToInternal(aclname string, acltype ocbinds.E_Openconfig
 	//	aclT := acltype.ΛMap()["E_OpenconfigAcl_ACL_TYPE"][int64(acltype)].Name
 	//	return aclname + "_" + aclT
 	return aclname
+}
+
+func (app *AclApp) deleteAllAcls(d *db.DB) error {
+	aclTable, err := d.GetTable(app.aclTs)
+	if err == nil {
+		aclKeys, _ := aclTable.GetKeys()
+		for _, aclKey := range aclKeys {
+			aclData, _ := aclTable.GetEntry(aclKey)
+			if aclData.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_L2 ||
+				aclData.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_IPV4 ||
+				aclData.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_IPV6 {
+				app.deleteAllAclRules(d, aclKey.Get(0))
+				err := d.DeleteEntry(app.aclTs, aclKey)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (app *AclApp) deleteAllAclRules(d *db.DB, aclName string) error {
+	return d.DeleteKeys(app.ruleTs, db.Key{Comp: []string{aclName + TABLE_SEPARATOR + "*"}})
+}
+
+func (app *AclApp) validateAclNameWithType(d *db.DB, opcode int) error {
+	aclName, found := app.pathInfo.Vars[ACL_KEYWORD_NAME]
+	aclType := app.pathInfo.Vars[ACL_FIELD_TYPE]
+	ocAclType, _ := getAclTypeOCEnumFromName(aclType)
+	if found {
+		sonicType := convertOCAclTypeToInternal(ocAclType)
+		data, err := d.GetEntry(app.aclTs, db.Key{Comp: []string{aclName}})
+		if err != nil {
+			if !isNotFoundError(err) {
+				return err
+			}
+			// Return not found error for these operations.
+			if opcode == UPDATE || opcode == DELETE || opcode == GET {
+				return err
+			}
+		} else if data.Field[ACL_FIELD_TYPE] != sonicType {
+			return tlerr.NotFound("ACL %v of type %v not found", aclName, aclType)
+		}
+	}
+
+	return nil
 }

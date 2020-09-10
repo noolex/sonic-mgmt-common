@@ -18,6 +18,14 @@ module sonic-sag {
 		    prefix sonic-ext;
 		}
 
+    import sonic-common {
+        prefix cmn;
+    }
+
+	import sonic-vlan-interface {
+        prefix "svintf";
+    }
+
     description
 		"SONIC SAG";
 
@@ -49,6 +57,13 @@ module sonic-sag {
 			}
 
 		    leaf-list gwip {
+                must "(/cmn:operation/cmn:operation != 'CREATE') or " +
+                     "(count(/svintf:sonic-vlan-interface/svintf:VLAN_INTERFACE/svintf:VLAN_INTERFACE_LIST[vlanName=current()/../ifname]/unnumbered) = 0)"
+                {
+                    error-message "Anycast IP configuration is not allowed in presence of IP Unnumbered";
+                    error-app-tag vlan-intf-unnum;
+                }
+
 			    max-elements 16;
 						type inet:ip-prefix;
 						sonic-ext:custom-validation ValidateSagIp;
@@ -89,6 +104,43 @@ module sonic-sag {
 				sonic-ext:custom-validation ValidateSagMac;
 			}
         }
+    }
+
+    container SAG_INTF {
+        sonic-ext:db-name "STATE_DB";
+        sonic-ext:key-delim "|";
+        config false;
+        description
+            "SAG state information";
+
+        list SAG_INTF_LIST {
+            key "ifname";
+
+            leaf ifname {
+                type string;
+            }
+
+            leaf oper {
+                type string;
+            }
+
+            leaf mode {
+                type string;
+            }
+
+            leaf vmac {
+                type string;
+            }
+
+            leaf-list v4GwIp {
+                type string;
+            }
+
+            leaf-list v6GwIp {
+                type string;
+            }
+        }
+
     }
 }
 }

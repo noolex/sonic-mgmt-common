@@ -41,6 +41,7 @@ module openconfig-infra {
             "State parameters of infra ";
           uses infra-sys-time-state;
           uses infra-sys-reboot-cause-state;
+          uses infra-sys-show-users;
         }
     }
   }
@@ -73,5 +74,15 @@ module openconfig-infra {
 
    }
 
+  grouping infra-sys-show-users{
+          description
+               "show users";
+          leaf-list show-user-list {
+               type string;
+               description
+                     "Show users";
+           }
+
+   }
 
 }

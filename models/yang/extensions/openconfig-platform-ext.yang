@@ -63,6 +63,14 @@ module openconfig-platform-ext {
             type string;
             description "Kernel Version";
         }
+        leaf config-db-version {
+            type string;
+            description "Configuration Database Version";
+        }
+        leaf product-description {
+            type string;
+            description "Product Description";
+        }
         leaf build-commit {
             type string;
             description "Build Commit ID";

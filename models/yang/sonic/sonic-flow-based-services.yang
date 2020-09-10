@@ -721,8 +721,9 @@ module sonic-flow-based-services {
                         type leafref {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                         }
-                        type string {
-                            pattern "Switch";
+                        type enumeration {
+                            enum Switch;
+                            enum CtrlPlane;
                         }
                     }
                 }

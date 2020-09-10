@@ -38,8 +38,8 @@ func init () {
     XlateFuncBind("ospfv2_router_area_tbl_xfmr", ospfv2_router_area_tbl_xfmr)
 
     XlateFuncBind("rpc_clear_ospfv2", rpc_clear_ospfv2)
+    XlateFuncBind("rpc_show_ospfv2_max_age_lsa", rpc_show_ospfv2_max_age_lsa)
 }
-
 func ospfv2_display_output_state(inParams XfmrParams) {
 
     deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
@@ -51,9 +51,9 @@ func ospfv2_display_output_state(inParams XfmrParams) {
                    AppendModuleName: true,
            },
     })
-    log.Info("################################")
+    log.Info("#####################################################################################")
     log.Infof(" ospfv2_display_output_state App ygot jsonStr: %v", jsonStr)
-    log.Info("################################")
+    log.Info("#####################################################################################")
 
 }
 func ospfv2_fill_only_global_state (output_state map[string]interface{}, 
@@ -417,7 +417,7 @@ func ospfv2_fill_global_timers_lsa_generation_state (output_state map[string]int
     oper_err := errors.New("Operational error")
     cmn_log := "GET: xfmr for OSPF-Global State"
 
-    log.Infof("ospfv2_fill_neighbors_state - start")
+    log.Infof("ospfv2_fill_global_timers_lsa_generation_state - start")
 
     ospfv2Gbl_obj = ospfv2_obj.Global
     if ospfv2Gbl_obj == nil {
@@ -1766,7 +1766,6 @@ var DbToYang_ospfv2_global_timers_spf_state_xfmr SubTreeXfmrDbToYang = func(inPa
         log.Errorf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
-    log.Info(vrfName)
 
     // get the values from the backend
     pathInfo := NewPathInfo(inParams.uri)
@@ -1780,14 +1779,14 @@ var DbToYang_ospfv2_global_timers_spf_state_xfmr SubTreeXfmrDbToYang = func(inPa
       return  cmd_err
     }
     
-    log.Info(output_state)
-    log.Info(vrfName)
+    log.V(1).Infof("Payload received = %v", output_state)
     
-    for key,value := range output_state {
+    for _, value := range output_state {
         ospf_info := value.(map[string]interface{})
-        log.Info(key)
-        log.Info(ospf_info)
         err = ospfv2_fill_global_timers_spf_state (ospf_info, ospfv2_obj)
+    }
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
     }
     
     return  err;
@@ -1831,12 +1830,14 @@ var DbToYang_ospfv2_global_timers_lsa_generation_state_xfmr SubTreeXfmrDbToYang 
       log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
+    log.V(1).Infof("Payload received = %v", output_state)
     
-    for key,value := range output_state {
+    for _, value := range output_state {
         ospf_info := value.(map[string]interface{})
-        log.Info(key)
-        log.Info(ospf_info)
         err = ospfv2_fill_global_timers_lsa_generation_state (ospf_info, ospfv2_obj)
+    }
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
     }
     
     return  err;
@@ -1883,14 +1884,16 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
       return  cmd_err
     }
     
-    log.Info(output_state)
+    log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
         log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
     }
-    log.Info(vrfName)
     ospf_info := output_state[vrfName].(map[string]interface{})
     err = ospfv2_fill_route_table (ospf_info, ospfv2_obj)
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
+    }
     return  err;
 }
 
@@ -1921,7 +1924,6 @@ var DbToYang_ospfv2_global_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
         log.Errorf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
-    log.Info(vrfName)
 
     // get the values from the backend
     pathInfo := NewPathInfo(inParams.uri)
@@ -1934,12 +1936,15 @@ var DbToYang_ospfv2_global_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
       log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
+
+    log.V(1).Infof("Payload received = %v", output_state)
     
-    for key,value := range output_state {
+    for _, value := range output_state {
         ospf_info := value.(map[string]interface{})
-        log.Info(key)
-        log.Info(ospf_info)
         err = ospfv2_fill_only_global_state(ospf_info, ospfv2_obj)
+    }
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
     }
     
     return  err;
@@ -1971,7 +1976,6 @@ var DbToYang_ospfv2_areas_area_state_xfmr SubTreeXfmrDbToYang = func(inParams Xf
         log.Errorf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
-    log.Info("vrfName=", vrfName)
 
     // get the values from the backend
     pathInfo := NewPathInfo(inParams.uri)
@@ -1982,7 +1986,6 @@ var DbToYang_ospfv2_areas_area_state_xfmr SubTreeXfmrDbToYang = func(inParams Xf
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
-        log.Infof("Area Id %s", area_id)
     }
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
     log.Info(targetUriPath)
@@ -1993,13 +1996,15 @@ var DbToYang_ospfv2_areas_area_state_xfmr SubTreeXfmrDbToYang = func(inParams Xf
       return  cmd_err
     }
     
-    log.Info(output_state)
+    log.V(1).Infof("Payload received = %v", output_state)
     
-    for key,value := range output_state {
+    for _,value := range output_state {
         ospf_info := value.(map[string]interface{})
-        log.Info(key)
-        log.Info(ospf_info)
         err = ospfv2_fill_area_state (ospf_info, ospfv2_obj, area_id, vrfName)
+    }
+
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
     }
     
     return  err;
@@ -2038,7 +2043,6 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         log.Errorf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
-    log.Info("vrfName=", vrfName)
 
     // get the values from the backend
     pathInfo := NewPathInfo(inParams.uri)
@@ -2049,7 +2053,6 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
-        log.Infof("Area Id %s", area_id)
     }
     remote_rtr_id :=pathInfo.Var("remote-router-id")
     if(len(remote_rtr_id) == 0) {
@@ -2068,8 +2071,8 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
       log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
+    log.V(1).Infof("Payload received = %v", output_state)
     
-    log.Info(output_state)
     if (nil == output_state || len(output_state) == 0) {
         log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
@@ -2089,16 +2092,18 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
       log.Errorf("Failed to fetch ospf interfaces:, err=%s", cmd_err)
       return  cmd_err
     }
-    
+    log.V(1).Infof("Payload received = %v", output_interfaces)
     log.Info(output_interfaces)
+    
     vtysh_cmd = "show ip ospf vrf " + vrfName + " interface traffic json"
     output_interfaces_traffic, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
       log.Errorf("Failed to fetch ospf interfaces traffic:, err=%s", cmd_err)
       return  cmd_err
     }
-    
+    log.V(1).Infof("Payload received = %v", output_interfaces_traffic)
     log.Info(output_interfaces_traffic)
+    
 
     vtysh_cmd = "show ip ospf vrf " + vrfName + " neighbor detail json"
     output_nbrs_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
@@ -2107,6 +2112,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
       return  cmd_err
     }
     
+    log.V(1).Infof("Payload received = %v", output_nbrs_state)
     log.Info(output_nbrs_state)
     for _,value := range output_interfaces { 
         interfaces_info := value.(map[string]interface{})
@@ -2145,6 +2151,9 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
                 ospfv2_fill_vlink_neighbors_state(neighbors_info, ospfv2Vlink_obj, area_id, remote_rtr_id, intf_name)
             }
         }
+    }
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
     }
     
     return  err;
@@ -2383,7 +2392,6 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
         log.Errorf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
-    log.Info("vrfName=", vrfName)
 
     // get the values from the backend
     pathInfo := NewPathInfo(inParams.uri)
@@ -2394,7 +2402,6 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
-        log.Infof("Area Id %s", area_id)
     }
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     log.Info(targetUriPath)
@@ -2405,7 +2412,7 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
       return  cmd_err
     }
     
-    log.Info(output_state)
+    log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
         log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
@@ -2423,6 +2430,9 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
         if _stubEnable {
             ospfv2_fill_area_stub_state(ospfv2Area_obj, area_info)    
         }
+    }
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
     }
     
     return  err;
@@ -2459,7 +2469,6 @@ var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
         log.Errorf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
-    log.Info("vrfName=", vrfName)
 
     // get the values from the backend
     pathInfo := NewPathInfo(inParams.uri)
@@ -2523,7 +2532,9 @@ var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     ospfv2_fill_summary_lsa_state(ospfv2_obj, ospfv2AreaLsaTypes_obj, areaNameStr, vrfName, ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_SUMMARY_IP_NETWORK_LSA)
     ospfv2_fill_summary_lsa_state(ospfv2_obj, ospfv2AreaLsaTypes_obj, areaNameStr, vrfName, ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_SUMMARY_ASBR_LSA)
     ospfv2_fill_external_lsa_state(ospfv2_obj, ospfv2AreaLsaTypes_obj, areaNameStr, vrfName)
-    ospfv2_display_output_state(inParams)
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
+    }
     return  err;
 }
 func ospfv2_fill_external_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2,
@@ -2568,7 +2579,7 @@ func ospfv2_fill_external_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstanc
       return  cmd_err
     }
 
-    log.Info(output_state)
+    log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
         log.Errorf("AsExternal LSA database fetched from backend is empty")
         return oper_err
@@ -2676,7 +2687,7 @@ func ospfv2_fill_summary_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
       return  cmd_err
     }
 
-    log.Info(output_state)
+    log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
         log.Errorf("Summary LSA database fetched from backend is empty")
         return oper_err
@@ -2773,7 +2784,7 @@ func ospfv2_fill_network_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
       return  cmd_err
     }
 
-    log.Info(output_state)
+    log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
         log.Errorf("Network LSA database fetched from backend is empty")
         return oper_err
@@ -2871,7 +2882,7 @@ func ospfv2_fill_router_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance_
       return  cmd_err
     }
 
-    log.Info(output_state)
+    log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
         log.Errorf("Router LSA database fetched from backend is empty")
         return oper_err
@@ -3107,7 +3118,6 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
         log.Errorf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
-    log.Info("vrfName=", vrfName)
 
     // get the values from the backend
     pathInfo := NewPathInfo(inParams.uri)
@@ -3118,7 +3128,6 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
-        log.Infof("Area Id %s", area_id)
     }
     
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
@@ -3129,9 +3138,8 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
       log.Errorf("Failed to fetch ospf neighbor detail:, err=%s", cmd_err)
       return  cmd_err
     }
-    
-    log.Info(output_nbrs_state)
-    log.Info(vrfName)
+    log.Info(output_nbrs_state) 
+    log.V(1).Infof("Payload received = %v", output_nbrs_state)
     vtysh_cmd = "show ip ospf vrf " + vrfName + " interface json"
     output_interfaces, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
@@ -3139,7 +3147,8 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
       return  cmd_err
     }
     
-    log.Info(output_interfaces)
+    log.Info(output_interfaces) 
+    log.V(1).Infof("Payload received = %v", output_interfaces)
     vtysh_cmd = "show ip ospf vrf " + vrfName + " interface traffic json"
     output_interfaces_traffic, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
@@ -3148,6 +3157,7 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     }
     
     log.Info(output_interfaces_traffic)
+    log.V(1).Infof("Payload received = %v", output_interfaces_traffic)
     for _,value := range output_interfaces { 
         interfaces_info := value.(map[string]interface{})
         interface_map := interfaces_info["interfaces"].(map[string]interface{})
@@ -3179,6 +3189,9 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
                 }
             }
         }
+    }
+    if log.V(1) {
+        ospfv2_display_output_state(inParams)
     }
     return  err;
 }
@@ -3390,6 +3403,43 @@ var rpc_clear_ospfv2 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]b
 
     log.Infof("rpc_clear_ospfv2: %s", status)
     result.Output.Status = status
+    return json.Marshal(&result)
+}
+
+var rpc_show_ospfv2_max_age_lsa RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpc_show_ospfv2_max_age_lsa")
+    var cmd string
+    var err error
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Info("Failed to unmarshall given input data")
+        return nil, errors.New("RPC show ip ospf database max age lsa, invalid input")
+    }
+
+    var result struct {
+        Output struct {
+              Status string `json:"response"`
+        } `json:"sonic-ospfv2-show:output"`
+    }
+
+    log.Info("In rpc_show_ospfv2_max_age_lsa, RPC data:", mapData)
+
+    input := mapData["sonic-ospfv2-show:input"]
+    mapData = input.(map[string]interface{})
+
+    if value, ok := mapData["cmd"].(string) ; !ok {
+        return nil, errors.New("RPC show ip ospf database max age lsa, invalid cmd")
+    } else {
+        cmd = value
+    }
+
+    ospfOutput, err := exec_raw_vtysh_cmd(cmd)
+    if err != nil {
+        log.Info("In rpc_show_ospfv2_max_age_lsa, FRR execution failed")
+        return nil, errors.New("Internal error!")
+    }
+    result.Output.Status = ospfOutput
     return json.Marshal(&result)
 }
 

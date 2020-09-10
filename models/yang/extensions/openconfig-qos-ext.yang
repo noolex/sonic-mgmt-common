@@ -371,6 +371,43 @@ module openconfig-qos-ext {
       uses oc-qos-pfc:qos-pfc-watchdog-top;
     }
 
+	rpc clear-watermarks {
+		description
+			"Install the TPC image into SONiC system";
+		input {
+			leaf buffer {
+				type string;
+				description
+					"queue or priority-groups buffers";
+			}
+
+			leaf buffer-type {
+				type string;
+				description
+					"For Queue buffers, the type of queue: unicast or multicast;
+				for Priority Group buffers, the shared buffer or headroom buffer";
+			}
+
+			leaf watermark-type {
+				type string;
+				description
+					"watermark or persistent-watermark";
+			}
+
+		}
+		output {
+			leaf status {
+				type int32;
+				description
+					"The status of the operation execution request.";
+			}
+			leaf-list status-detail {
+				type string;
+				description "The detailed status of the operation execution request.";
+			}
+		}
+	}
+
 	grouping qos-ext-threshold-config {
 
 		description
@@ -484,7 +521,8 @@ module openconfig-qos-ext {
         }
     }
 
-    grouping qos-ext-threshold-breach-top {
+
+	grouping qos-ext-threshold-breach-top {
         description
             "Top-level grouping for QoS threshold breach information";
 
@@ -565,9 +603,97 @@ module openconfig-qos-ext {
         }
     }
 
+	grouping qos-ext-telemetry-watermark-config {
+		description 
+			"watermark global refresh interval (telemetry) ";
+	
+		leaf refresh-interval {
+			type uint16 {
+				range "1..600";
+			}
+			units "seconds";
+			default "120";
+			description 
+				"Watermark counters auto refresh interval (telemetry)";
+		}
+	}
+
+    grouping qos-ext-telemetry-watermark-state {
+        description
+          "Operational state container";
+    }
+
+	grouping qos-ext-telemetry-watermark-top {
+        description
+          "Configuration for Watermark counters auto refresh interval (telemetry)";
+
+        container telemetry-watermark {
+            description
+              "TODO:";
+            container config {
+                description
+                  "Container holding the watermark config";
+                uses qos-ext-telemetry-watermark-config;
+            }
+            container state {
+                config false;
+                description
+                  "State container";
+                uses qos-ext-telemetry-watermark-config;
+                uses qos-ext-telemetry-watermark-state;
+            }
+        }
+    }
+
+
+	grouping qos-ext-watermark-config {
+		description 
+			"watermark global refresh interval ";
+	
+		leaf refresh-interval {
+			type uint16 {
+				range "1..600";
+			}
+			units "seconds";
+			default "10";
+			description 
+				"Watermark counters auto refresh interval";
+		}
+	}
+
+    grouping qos-ext-watermark-state {
+        description
+          "Operational state container";
+    }
+
+	grouping qos-ext-watermark-top {
+        description
+          "Configuration for Watermark counters auto refresh interval";
+
+        container watermark {
+            description
+              "TODO:";
+            container config {
+                description
+                  "Container holding the watermark config";
+                uses qos-ext-watermark-config;
+            }
+            container state {
+                config false;
+                description
+                  "State container";
+                uses qos-ext-watermark-config;
+                uses qos-ext-watermark-state;
+            }
+        }
+    }
+
+
     augment /oc-qos:qos {
         description
             "Qos extensions containers";
+        uses qos-ext-watermark-top;
+		uses qos-ext-telemetry-watermark-top;
 		uses qos-ext-threshold-top;
         uses qos-ext-threshold-breach-top;
         uses qos-ext-wred-profile-top;
