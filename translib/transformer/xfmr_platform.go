@@ -457,6 +457,8 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     key := NewPathInfo(inParams.uri).Var("name")
     mstr := strings.ToLower(key)
 
+    log.Infof("+++ Subscribe_pfm_components_xfmr (%v) +++", inParams.uri)
+
     if key == "" || mstr == "sensor" {
         /* no need to verify dB data if we are requesting ALL
            components or if request is for sensor */
@@ -477,7 +479,11 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     } else if validTempName(&key) {
         result.dbDataMap = RedisDbMap{db.StateDB: {TEMP_TBL:{key:{}}}}
     } else if validXcvrName(&key) {
-        result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{key:{}}}}
+        ifName := key
+        if utils.IsAliasModeEnabled() {
+            ifName = *(utils.GetNativeNameFromUIName(&key))
+        }
+        result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{ifName:{}}}}
     } else {
         ifName := getIfName(key);
         if len(ifName) > 1 {
@@ -505,41 +511,39 @@ var DbToYang_pfm_components_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
 
 var YangToDb_pfm_components_transceiver_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 
+  log.Infof("+++ YangToDb_pfm_components_transceiver_xfmr: uri='%v' +++", inParams.uri)
+
   /* var err error */
   res_map := make(map[string]string)
 
   /* pretty.Print(inParams.param) */
 
   name := inParams.key
-  /* log.Info("---> name: ", name) */
+  if utils.IsAliasModeEnabled() {
+    name = *(utils.GetNativeNameFromUIName(&name))
+  }
+  log.Infof("---> name: '%v'", name)
+
+  inParams.table = PORT_TBL
+  inParams.key   = name
+  inParams.curDb = db.ApplDB
+  inParams.d = inParams.dbs[db.ApplDB]
 
   st, _ := inParams.param.(*ocbinds.OpenconfigPlatform_Components_Component_Transceiver_Config)
   /* pretty.Print(st) */
-  /* log.Info("st = ", st) */
+  log.Infof("st = %v", st)
 
-  stDb, _ := db.NewDB(getDBOptions(db.ApplDB))
-
-  defer stDb.DeleteDB()
-  /* log.Info(" PORT_TBL   ", PORT_TBL) */
-  xcvrDOMEntry, err := stDb.GetEntry(&db.TableSpec{Name: PORT_TBL}, db.Key{Comp: []string{name}})
-  if strings.Contains(inParams.requestUri, "lb-host-side-input-enable") {
-    if strings.Contains(*st.LbHostSideInputEnable, "True") {
-      xcvrDOMEntry.Set("host_side_input_loopback_enable", "True")
-    } else {
-      xcvrDOMEntry.Set("host_side_input_loopback_enable", "False")
-    }
-  }
-  if strings.Contains(inParams.requestUri, "lb-media-side-input-enable") {
-    if strings.Contains(*st.LbMediaSideInputEnable, "True") {
-      xcvrDOMEntry.Set("media_side_input_loopback_enable", "True")
-    } else {
-      xcvrDOMEntry.Set("media_side_input_loopback_enable", "False")
-    }
+  if st.LbHostSideInputEnable != nil {
+    res_map["host_side_input_loopback_enable"] = *st.LbHostSideInputEnable
   }
 
-  stDb.SetEntry(&db.TableSpec{Name: PORT_TBL}, db.Key{Comp: []string{name}}, xcvrDOMEntry)
+  if st.LbMediaSideInputEnable != nil {
+    res_map["media_side_input_loopback_enable"] = *st.LbMediaSideInputEnable
+  }
 
-  return res_map, err
+  log.Infof("---> res_map: '%v'", res_map)
+
+  return res_map, nil
 }
 
 func getSoftwareVersion() string {
