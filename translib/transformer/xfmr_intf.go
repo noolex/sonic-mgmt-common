@@ -3192,7 +3192,8 @@ func deleteLoopbackIntf(inParams *XfmrParams, loName *string) error {
     if err != nil || !IntfMapObj.IsPopulated() {
         errStr := "Retrieving data from LOOPBACK table for Loopback: " + *loName + " failed!"
         log.Errorf(errStr)
-        return tlerr.InvalidArgsError{Format:errStr}
+        // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+        return nil
     }
     /* Validate L3 config only if operation is not delete */
     if inParams.oper != DELETE {
