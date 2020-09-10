@@ -128,6 +128,7 @@ const (
    PSU_OUTPUT_CURRENT         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-current"
    PSU_OUTPUT_POWER           = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-power"
    PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
+   PSU_VOLT_TYPE             = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
 
    /** Supported Fan URIs **/
    FAN_SPEED                  = "/openconfig-platform:components/component/fan/state/openconfig-platform-fan:speed"
@@ -279,6 +280,7 @@ type PSU struct {
     Serial_Number       string
     Status              bool
     Status_Led          string
+    Volt_Type           string
 }
 
 type Fan struct {
@@ -1562,6 +1564,7 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     psuInfo.Output_Current = psuEntry.Get("output_current")
     psuInfo.Output_Voltage = psuEntry.Get("output_voltage")
     psuInfo.Output_Power = psuEntry.Get("output_power")
+    psuInfo.Volt_Type = psuEntry.Get("type")
 
     psuInfo.Presence = false
     if psuEntry.Get("presence") == "true" {
@@ -1605,6 +1608,12 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
                 psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
             }
 
+            if psuInfo.Volt_Type == "AC" {
+                psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_AC
+            } else if psuInfo.Volt_Type == "DC" {
+                psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_DC
+            }
+
             if err != nil {
                 log.Info("float data error")
                 return err
@@ -1612,9 +1621,13 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             return err
         }
         psuEepromState.Empty = &empty
-        psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
-        if psuInfo.Status {
-            psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
+        if psuInfo.Presence {
+            if psuInfo.Status {
+                psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+            } else {
+                psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+            }
         }
 
         if psuInfo.Model_Name != "" {
@@ -1650,6 +1663,13 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     case PSU_OUTPUT_POWER:
         if psuInfo.Output_Power != "" {
             psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+        }
+    case PSU_VOLT_TYPE:
+        psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_UNSET
+        if psuInfo.Volt_Type == "AC" {
+            psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_AC
+        } else if psuInfo.Volt_Type == "DC" {
+            psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_DC
         }
     case COMP_LED_STATUS:
         if psuInfo.Status_Led != "" {
@@ -1689,7 +1709,7 @@ func validPsuName(name *string) bool {
     if name == nil || *name == "" {
         return false
     }
-    valid, _ := regexp.MatchString("PSU [1-9][0-9]*\\b", *name)
+    valid, _ := regexp.MatchString("PSU [1-9][0-9]*$", *name)
     return valid
 }
 
@@ -1728,8 +1748,8 @@ func validFanName(name *string) (bool) {
     if name == nil || *name == "" {
         return false
     }
-    valid, _ := regexp.MatchString("FAN [1-9][0-9]*\\b", *name)
-    return valid
+    validFan, _ := regexp.MatchString("(PSU [1-9][0-9]* ){0,1}FAN [1-9][0-9]*$", *name)
+    return validFan
 }
 
 func getSysFanFromDb(name string, d *db.DB) (Fan, error) {
@@ -2831,7 +2851,7 @@ func validTempName(name *string) bool {
     if name == nil || *name == "" {
         return false
     }
-    valid, _ := regexp.MatchString("TEMP [1-9][0-9]*\\b", *name)
+    valid, _ := regexp.MatchString("TEMP [1-9][0-9]*$", *name)
     return valid
 }
 

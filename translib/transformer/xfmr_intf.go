@@ -80,6 +80,7 @@ func init () {
     XlateFuncBind("DbToYang_igmp_srcaddr_fld_xfmr", DbToYang_igmp_srcaddr_fld_xfmr)
     XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr)
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
+    XlateFuncBind("rpc_oc_clear_counters", rpc_oc_clear_counters)
     XlateFuncBind("rpc_clear_ip", rpc_clear_ip)
     XlateFuncBind("intf_subintfs_table_xfmr", intf_subintfs_table_xfmr)
     XlateFuncBind("intf_post_xfmr", intf_post_xfmr)
@@ -242,10 +243,9 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     var err error
 
     ifName := inParams.value
-    log.Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
+    log.V(3).Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
 
     if !utils.IsAliasModeEnabled() {
-        log.Info("Alias mode is not enabled!")
         return ifName, err
     }
     var convertedName *string
@@ -255,7 +255,7 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     } else {
         convertedName = utils.GetNativeNameFromUIName(&ifName)
     }
-    log.Info("Returned string from alias_value_xfmr = ", *convertedName)
+    log.V(3).Info("Returned string from alias_value_xfmr = ", *convertedName)
     return *convertedName, err
 }
 
@@ -679,7 +679,68 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     return  json.Marshal(&result)
 }
 
-/* RPC for clear counters */
+func util_rpc_clear_counters (dbs [db.MaxDB]*db.DB, input string) (bool, string) {
+    portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
+    ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
+    if err != nil {
+        return false, "Error: Port-OID (Counters) get for all the interfaces failed!"
+    }
+
+    if input == "all" {
+        log.Info("util_rpc_clear_counters : Clear Counters for all interfaces")
+        for  intf, oid := range ifCountInfo.Field {
+            verr, cerr := resetCounters(dbs[db.CountersDB], oid)
+            if verr != nil || cerr != nil {
+                log.Info("Failed to reset counters for ", intf)
+            } else {
+                log.Info("Counters reset for " + intf)
+            }
+        }
+    } else if input == "Ethernet" || input == "PortChannel" {
+        log.Info("util_rpc_clear_counters : Reset counters for given interface type")
+        for  intf, oid := range ifCountInfo.Field {
+            if strings.HasPrefix(strings.ToUpper(intf), input) {
+                verr, cerr := resetCounters(dbs[db.CountersDB], oid)
+                if verr != nil || cerr != nil {
+                    log.Error("Failed to reset counters for: ", intf)
+                } else {
+                    log.Info("Counters reset for " + intf)
+                }
+            }
+        }
+    } else {
+        log.Info("util_rpc_clear_counters: Clear counters for given interface name")
+        ok, id := getIdFromIntfName(&input) ; if !ok {
+            log.Info("Invalid Interface format")
+            return false, fmt.Sprintf("Error: Clear Counters not supported for %s", input)
+        }
+        if strings.HasPrefix(input, "Ethernet") {
+            input = "Ethernet" + id
+        } else if strings.HasPrefix(input, "PortChannel") {
+            input = "PortChannel" + id
+        } else {
+            log.Info("Invalid Interface")
+            return false, fmt.Sprintf("Error: Clear Counters not supported for %s", input)
+        }
+        oid, ok := ifCountInfo.Field[input]
+        if !ok {
+            return false, fmt.Sprintf("Error: OID info not found in COUNTERS_PORT_NAME_MAP for %s", input)
+        }
+        verr, cerr := resetCounters(dbs[db.CountersDB], oid)
+        if verr != nil {
+            return false, fmt.Sprintf("Error: Failed to get counter values from COUNTERS table for %s", input)
+        }
+        if cerr != nil {
+            log.Info("Failed to reset counters values")
+            return false, fmt.Sprintf("Error: Failed to reset counters values for %s.", input)
+        }
+        log.Info("Counters reset for " + input)
+    }
+
+    return true, "Success: Cleared Counters"
+}
+
+/* RPC for clear counters through Sonic-RPC */
 var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     var err error
     var result struct {
@@ -698,78 +759,68 @@ var rpc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
         return json.Marshal(&result)
     }
     log.Info("-----mapData[sonic-interface:input]----", mapData["sonic-interface:input"])
-    input := mapData["sonic-interface:input"]
+    input, ok := mapData["sonic-interface:input"] ; if !ok {
+        err_str := "Error: Mandatory info missing! Input container not present!"
+        log.Info(err_str)
+        result.Output.Status_detail = err_str
+        return json.Marshal(&result)
+    }
     mapData = input.(map[string]interface{})
-    input = mapData["interface-param"]
+    input, ok = mapData["interface-param"] ; if !ok {
+        err_str := "Error: Mandatory info missing! interface-param attribute not present!"
+        log.Info(err_str)
+        result.Output.Status_detail = err_str
+        return json.Marshal(&result)
+    }
     input_str := fmt.Sprintf("%v", input)
-    //input_str = strings.ToUpper(string(input_str))
     sonicName := utils.GetNativeNameFromUIName(&input_str)
     input_str = *sonicName
 
-    portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
-    ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
+    ok, result.Output.Status_detail = util_rpc_clear_counters(dbs, input_str) ; if ok {
+        result.Output.Status = 0
+    }
+    return json.Marshal(&result)
+}
+
+/* RPC for clear counters through Openconfig-RPC */
+var rpc_oc_clear_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var err error
+    var result struct {
+        Output struct {
+            Status int32 `json:"status"`
+            Status_detail string`json:"status-detail"`
+        } `json:"openconfig-interfaces-ext:output"`
+    }
+    result.Output.Status = 1
+    /* Get input data */
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
     if err != nil {
-        result.Output.Status_detail = "Error: Port-OID (Counters) get for all the interfaces failed!"
+        log.Info("Failed to unmarshall given input data")
+        result.Output.Status_detail = "Error: Failed to unmarshall given input data"
         return json.Marshal(&result)
     }
-
-    if input_str == "all" {
-        log.Info("rpc_clear_counters : Clear Counters for all interfaces")
-        for  intf, oid := range ifCountInfo.Field {
-            verr, cerr := resetCounters(dbs[db.CountersDB], oid)
-            if verr != nil || cerr != nil {
-                log.Info("Failed to reset counters for ", intf)
-            } else {
-                log.Info("Counters reset for " + intf)
-            }
-        }
-    } else if input_str == "Ethernet" || input_str == "PortChannel" {
-        log.Info("rpc_clear_counters : Reset counters for given interface type")
-        for  intf, oid := range ifCountInfo.Field {
-            if strings.HasPrefix(strings.ToUpper(intf), input_str) {
-                verr, cerr := resetCounters(dbs[db.CountersDB], oid)
-                if verr != nil || cerr != nil {
-                    log.Error("Failed to reset counters for: ", intf)
-                } else {
-                    log.Info("Counters reset for " + intf)
-                }
-            }
-        }
-    } else {
-        log.Info("rpc_clear_counters: Clear counters for given interface name")
-        ok, id := getIdFromIntfName(&input_str) ; if !ok {
-            log.Info("Invalid Interface format")
-            result.Output.Status_detail = fmt.Sprintf("Error: Clear Counters not supported for %s", input_str)
-            return json.Marshal(&result)
-        }
-        if strings.HasPrefix(input_str, "Ethernet") {
-            input_str = "Ethernet" + id
-        } else if strings.HasPrefix(input_str, "PortChannel") {
-            input_str = "PortChannel" + id
-        } else {
-            log.Info("Invalid Interface")
-            result.Output.Status_detail = fmt.Sprintf("Error: Clear Counters not supported for %s", input_str)
-            return json.Marshal(&result)
-        }
-        oid, ok := ifCountInfo.Field[input_str]
-        if !ok {
-            result.Output.Status_detail = fmt.Sprintf("Error: OID info not found in COUNTERS_PORT_NAME_MAP for %s", input_str)
-            return json.Marshal(&result)
-        }
-        verr, cerr := resetCounters(dbs[db.CountersDB], oid)
-        if verr != nil {
-            result.Output.Status_detail = fmt.Sprintf("Error: Failed to get counter values from COUNTERS table for %s", input_str)
-            return json.Marshal(&result)
-        }
-        if cerr != nil {
-            log.Info("Failed to reset counters values")
-            result.Output.Status_detail = fmt.Sprintf("Error: Failed to reset counters values for %s.", input_str)
-            return json.Marshal(&result)
-        }
-        log.Info("Counters reset for " + input_str)
+    log.Info("-----mapData[openconfig-interfaces-ext:input]----", mapData["openconfig-interfaces-ext:input"])
+    input, ok := mapData["openconfig-interfaces-ext:input"] ; if !ok {
+        err_str := "Error: Mandatory info missing! Input container not present!"
+        log.Info(err_str)
+        result.Output.Status_detail = err_str
+        return json.Marshal(&result)
     }
-    result.Output.Status = 0
-    result.Output.Status_detail = "Success: Cleared Counters"
+    mapData = input.(map[string]interface{})
+    input, ok = mapData["interface-param"] ; if !ok {
+        err_str := "Error: Mandatory info missing! interface-param attribute not present!"
+        log.Info(err_str)
+        result.Output.Status_detail = err_str
+        return json.Marshal(&result)
+    }
+    input_str := fmt.Sprintf("%v", input)
+    sonicName := utils.GetNativeNameFromUIName(&input_str)
+    input_str = *sonicName
+
+    ok, result.Output.Status_detail = util_rpc_clear_counters(dbs, input_str) ; if ok {
+        result.Output.Status = 0
+    }
     return json.Marshal(&result)
 }
 
@@ -797,30 +848,25 @@ func getIdFromIntfName(intfName *string) (bool, string) {
 }
 
 var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    log.Info("Entering YangToDb_intf_tbl_key_xfmr")
     var err error
 
-    log.Info("YangToDb_intf_tbl_key_xfmr: inParams.uri ", inParams.uri)
-
     pathInfo := NewPathInfo(inParams.uri)
-    log.Info("YangToDb_intf_tbl_key_xfmr: pathInfo ", pathInfo)
+    requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
+    log.Infof("YangToDb_intf_tbl_key_xfmr: inParams.uri: %s, pathInfo: %s, inParams.requestUri: %s", inParams.uri, pathInfo, requestUriPath)
 
     ifName := pathInfo.Var("name")
     if ifName != "" {
-        log.Info("Intf name: ", ifName)
+        log.Info("YangToDb_intf_tbl_key_xfmr: ifName: ", ifName)
         intfType, _, ierr := getIntfTypeByName(ifName)
         if ierr != nil {
             log.Errorf("Extracting Interface type for Interface: %s failed!", ifName)
             return "", tlerr.New (ierr.Error())
         }
-        requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
-        log.Info("inParams.requestUri: ", requestUriPath)
         err = performIfNameKeyXfmrOp(&inParams, &requestUriPath, &ifName, intfType)
         if err != nil {
             return "", tlerr.InvalidArgsError{Format: err.Error()}
         }
     }
-    log.Info("YangToDb_intf_tbl_key_xfmr: ifName ", ifName)
     return ifName, err
 }
 
@@ -838,7 +884,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     var tblList []string
     var err error
 
-    log.Info("TableXfmrFunc - Uri: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
@@ -855,7 +900,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         }
     }
     sonicIfName := utils.GetNativeNameFromUIName(&ifName)
-    log.Infof("TableXfmrFunc - Sonic Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    if log.V(3) {
+        log.Infof("TableXfmrFunc - Sonic Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    }
     ifName = *sonicIfName
 
     intfType, _, ierr := getIntfTypeByName(ifName)
@@ -867,7 +914,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     log.Info("TableXfmrFunc - targetUriPath : ", targetUriPath)
 
     if IntfTypeVxlan == intfType {
-		//handle VXLAN interface.
+	//handle VXLAN interface.
 	intfsObj := getIntfsRoot(inParams.ygRoot)
 	for intfKey, intfValObj := range intfsObj.Interface {
  		if strings.HasPrefix(intfKey, VXLAN) && intfValObj != nil && intfValObj.Config != nil {
@@ -882,8 +929,8 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         return tblList, tlerr.New("DELETE operation not allowed on  this container")
 
 	} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config") {
-	    log.Info("VXLAN_TUNNEL ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
 		if IntfTypeVxlan == intfType {
+	                log.Info("VXLAN_TUNNEL ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
 			tblList = append(tblList, "VXLAN_TUNNEL")
 		} else {
 			tblList = append(tblList, intTbl.cfgDb.portTN)
@@ -960,7 +1007,8 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses") {
         tblList = append(tblList, intTbl.cfgDb.intfTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") ||
-              strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan") {
+               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan") {
+        if IntfTypeVlan == intfType {
 	     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/config") ||
                  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/config") ||
                  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/config") ||
@@ -979,6 +1027,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
              } else {
                  tblList = append(tblList, intTbl.cfgDb.intfTN)
              }
+        }
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
         if inParams.oper != DELETE {
@@ -997,7 +1046,8 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         err = errors.New("Invalid URI")
     }
 
-    log.Infof("TableXfmrFunc - uri(%v), tblList(%v)\r\n", inParams.uri, tblList);
+    log.Infof("TableXfmrFunc - Uri: (%v), targetUriPath: %s, tblList: (%v)\r\n", inParams.uri, targetUriPath, tblList)
+
     return tblList, err
 }
 
@@ -2023,7 +2073,7 @@ func validateIntfExists(d *db.DB, intfTs string, ifName string) error {
     }
     nativeName := utils.GetNativeNameFromUIName(&ifName)
     ifName = *nativeName
-    log.Infof("Converted Interface name = ", ifName)
+    log.V(3).Info("Converted Interface name = ", ifName)
     entry, err := d.GetEntry(&db.TableSpec{Name:intfTs}, db.Key{Comp: []string{ifName}})
     if err != nil || !entry.IsPopulated() {
         errStr := "Invalid Interface:" + ifName
@@ -2184,7 +2234,9 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
                     vrfNameA, _ := d.GetMap(&db.TableSpec{Name:tblName+"|"+intf}, "vrf_name")
                     vrfNameB, _ := d.GetMap(&db.TableSpec{Name:intTbl.cfgDb.intfTN+"|"+key.Get(0)}, "vrf_name")
                     if vrfNameA == vrfNameB {
-                        errStr := "IP " + ipPref + " overlaps with IP or IP Anycast " + key.Get(1) + " of Interface " + key.Get(0)
+			intfName := key.Get(0)
+			intfNameUi := *utils.GetUINameFromNativeName(&intfName)
+                        errStr := "IP " + ipPref + " overlaps with IP or IP Anycast " + key.Get(1) + " of Interface " + intfNameUi
                         log.Error(errStr)
                         return "", errors.New(errStr)
                     }
@@ -2263,7 +2315,8 @@ func utlValidateIpTypeForCfgredDiffIp(m map[string]string, ipMap map[string]db.V
     checkPrimIPCfgred, cfgredPrimIP := utlCheckAndRetrievePrimaryIPConfigured(ipMap)
     if secFlag {
         if !checkPrimIPCfgred {
-            errStr := "Primary " + dbgStr + " is not configured for interface: " + *ifName
+	    intfNameUi := utils.GetUINameFromNativeName(ifName)
+            errStr := "Primary " + dbgStr + " is not configured for interface: " + *intfNameUi
             log.Error(errStr)
             return "", false, tlerr.InvalidArgsError{Format: errStr}
         }
@@ -2515,7 +2568,7 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 }
 
                 if dbErr == nil {
-                    err := utlValidateIpTypeForCfgredSameIp(&ipEntry, secFlag, &ipPref, &ifName)
+                    err := utlValidateIpTypeForCfgredSameIp(&ipEntry, secFlag, &ipPref, &uriIfName)
                     if err != nil {
                         return nil, err
                     }
@@ -3173,7 +3226,7 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
     if !ipv4 || !ipv6 {
         all = false
     }
-    log.Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
+    log.V(3).Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
 
     keys,err := doGetAllIpKeys(dbCl, &db.TableSpec{Name:tblName})
     if( err != nil) {
@@ -4393,7 +4446,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 /* Check if given iface already part of another PortChannel */
                 intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
                 if intf_lagId != nil && *intf_lagId != lagStr {
-                    errStr := ifName + " already member of "+ *intf_lagId
+                    errStr := uriIfName + " already member of "+ *intf_lagId
                     return nil, tlerr.InvalidArgsError{Format: errStr}
                 }
                 /* Restrict configuring member-port if iface configured as member-port of any vlan */
@@ -4477,6 +4530,11 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         intTbl := IntfTypeTblMap[intfType]
 
         portFec := intfObj.Ethernet.Config.PortFec
+
+        if inParams.oper == DELETE {
+            /* Delete implies default*/
+            portFec = ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_AUTO
+        }
 
         fec_val, ok := yangToDbFecMap[portFec]
 

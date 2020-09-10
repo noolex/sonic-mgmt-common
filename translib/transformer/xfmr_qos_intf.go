@@ -2,6 +2,7 @@ package transformer
 
 import (
     "strings"
+    "strconv"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
@@ -288,6 +289,12 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
     portQosTblMap := make(map[string]db.Value)
     log.Info("YangToDb_qos_intf_sched_policy_xfmr: ", inParams.ygRoot, inParams.uri)
 
+    if !check_port_speed_and_scheduler(inParams, sp_name_str, if_name) {
+        err = tlerr.InternalError{Format:"PIR/CIR must be less than or equal to port speed"}
+        log.Info("PIR/CIR must be less than or equal to port speed")
+        return res_map, err
+    }
+
     // read scheduler policy and its schedulers (seq).
     scheduler_ids, err := getAndValidateSchedulerIds(if_name, sp_name_str)
     if err != nil {
@@ -523,3 +530,56 @@ var DbToYang_qos_intf_sched_policy_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 }
 
 
+/* Given a scheduler name, (no sequence), check its MAX cir or pir against the port speed */
+func check_port_speed_and_scheduler(inParams XfmrParams, sp_name string, intf string) bool{
+
+    dbSpec := &db.TableSpec{Name: "PORT"}
+    portCfg, _ := inParams.d.GetEntry(dbSpec, db.Key{Comp: []string{intf}})
+    speed, ok := portCfg.Field["speed"]
+    if !ok {
+       return false 
+    }
+    speed_Mbps, _ := strconv.ParseUint(speed, 10, 32)
+    speed_Bps := speed_Mbps * 1000 * 1000/8
+
+    // Scheduler
+    dbSpec = &db.TableSpec{Name: "SCHEDULER"}
+
+    keys, _ := inParams.d.GetKeys(dbSpec)
+    for  _, key := range keys {
+        if len(key.Comp) < 1 {
+            continue
+        }
+        var spname string;
+
+        if strings.Contains(key.Comp[0], "@") {
+            s := strings.Split(key.Comp[0], "@")
+            spname = s[0]
+        } else {
+            spname = key.Comp[0]
+        }
+
+        log.Infof("Check sp_name :", sp_name, "  spname : ", spname)
+        if strings.Compare(sp_name, spname) != 0 {
+            continue
+        }
+
+        schedCfg, _ := inParams.d.GetEntry(dbSpec, key)
+        if val, exist := schedCfg.Field["pir"]; exist {
+            pir,_ := strconv.ParseUint(val, 10, 64)
+            log.Info("pir :", pir,  " speed_Bps: ", speed_Bps)
+            if pir > speed_Bps{
+                return false
+            }
+        }
+
+        if val, exist := schedCfg.Field["cir"]; exist {
+            cir,_ := strconv.ParseUint(val, 10, 64)
+            if cir > speed_Bps{
+                return false
+            }
+        }
+    }
+
+    return true
+}

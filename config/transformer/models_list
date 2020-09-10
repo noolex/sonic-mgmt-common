@@ -8,11 +8,13 @@ openconfig-platform-fan.yang
 openconfig-platform-fan-ext.yang
 openconfig-platform-transceiver.yang
 openconfig-interfaces.yang
+openconfig-interfaces-ext.yang
 openconfig-if-ip.yang
 openconfig-if-ethernet.yang
 openconfig-if-ethernet-ext.yang
 openconfig-if-ethernet-ext2.yang
 openconfig-interfaces-annot.yang
+openconfig-interfaces-ext-annot.yang
 openconfig-ztp.yang
 openconfig-ztp-annot.yang
 openconfig-network-instance.yang
