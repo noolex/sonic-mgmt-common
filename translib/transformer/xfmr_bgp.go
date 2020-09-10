@@ -144,6 +144,11 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
     
     /* Remove the invalid default values for BGP address family */
     for key := range inParams.yangDefValMap["BGP_GLOBALS_AF"] {
+        if !(strings.Contains(key, "ipv4_unicast")) &&
+             inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["route_flap_dampen"] != "" {
+             /* Route flap dampening is supported only for IPv4 AF. */
+             delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "route_flap_dampen")
+        }
         if strings.Contains(key, "l2vpn_evpn") {
             if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ebgp_paths"] != "" {
                delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ebgp_paths")
@@ -155,10 +160,6 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
                    strings.Contains(key, "ipv6_unicast")) {
             if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["advertise-default-gw"] != "" {
                delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "advertise-default-gw")
-            }
-            if strings.Contains(key, "ipv4_unicast") {
-               /* Route flap dampening is supported only for IPv4 AF. */
-                inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["route_flap_dampen"] = "false"
             }
         }
     }
