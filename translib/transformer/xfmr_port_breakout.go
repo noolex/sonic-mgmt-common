@@ -101,7 +101,6 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
             log.Info("DPB only members for ", ifName)
         }
     } else if statusExist {
-        members = append(members, ifName)
         log.Info("DPB mode is default for ", ifName)
     } else {
         log.Info("No port breakout configurations for ", ifName)
