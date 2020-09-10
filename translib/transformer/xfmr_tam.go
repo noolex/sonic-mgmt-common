@@ -32,6 +32,7 @@ import (
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "encoding/json"
 )
 
 const (
@@ -186,6 +187,8 @@ func init () {
     XlateFuncBind("Subscribe_tam_flowgroups_xfmr", Subscribe_tam_flowgroups_xfmr)
 
     XlateFuncBind("tam_post_xfmr", tam_post_xfmr)
+
+	XlateFuncBind("rpc_clear_flowgroup_counters_cb", rpc_clear_flowgroup_counters_cb)
 }
 
 func getTamRoot(s *ygot.GoStruct) (*ocbinds.OpenconfigTam_Tam) {
@@ -342,7 +345,7 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
     return (*inParams.dbDataMap)[db.ConfigDB], nil
 }
 
-func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, name string) (AclRule, error) {
+func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, lastStatEntry db.Value, name string) (AclRule, error) {
     var aclRule AclRule
     aclRule.TableName = "TAM"
     aclRule.RuleName = name
@@ -382,9 +385,12 @@ func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, na
     aclRule.Id = uint32(id)
 
     packets, _ := strconv.ParseInt(statEntry.Get("Packets"), 10, 64)
-    aclRule.packets = uint64(packets)
+    lastPackets,_ := strconv.ParseInt(lastStatEntry.Get("Packets"), 10, 64)
+    aclRule.packets = uint64(packets) - uint64(lastPackets)
+
     bytes, _ := strconv.ParseInt(statEntry.Get("Bytes"), 10, 64)
-    aclRule.bytes = uint64(bytes)
+    lastBytes, _ := strconv.ParseInt(lastStatEntry.Get("Bytes"), 10, 64)
+    aclRule.bytes = uint64(bytes) - uint64(lastBytes)
 
     return aclRule, err
 }
@@ -398,6 +404,8 @@ func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule,
 
     var countersDbPtr, _ = db.NewDB(getDBOptions(db.CountersDB))
     var ACL_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COUNTERS"}
+    
+    var ACL_LAST_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "LAST_COUNTERS"}
 
     if name != "" {
         aclKey := "TAM|"+name
@@ -411,8 +419,14 @@ func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule,
         if e2 != nil {
             return ruleEntries, e2
         }
+        
+        lastStatKey := "TAM:"+name
+        lastStatEntry, e3 := countersDbPtr.GetEntry(ACL_LAST_COUNTERS_TABLE_TS, db.Key{[]string{lastStatKey}})
+        if e3 != nil {
+            return ruleEntries, e3
+        }
 
-        record, _ := getRecord(d, cdb, ruleEntry, statEntry, name)
+        record, _ := getRecord(d, cdb, ruleEntry, statEntry, lastStatEntry, name)
         ruleEntries[name] = record
     } else {
         keys, _ := aclRuleTable.GetKeys()
@@ -422,7 +436,8 @@ func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule,
                 entry, _ := aclRuleTable.GetEntry(key)
                 statKey := "TAM:"+rule
                 statEntry, _ := countersDbPtr.GetEntry(ACL_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
-                record, _ := getRecord(d, cdb, entry, statEntry, rule)
+                lastStatEntry, _ := countersDbPtr.GetEntry(ACL_LAST_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
+                record, _ := getRecord(d, cdb, entry, statEntry, lastStatEntry, rule)
                 ruleEntries[rule] = record
             }
         }
@@ -1102,3 +1117,90 @@ func getTransportConfigTcpFlags(tcpFlags string) []ocbinds.E_OpenconfigPacketMat
     }
     return flags
 }
+
+var rpc_clear_flowgroup_counters_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        var out_list []string
+        var exec_cmd_list []string
+        log.Info("rpc_clear_flowgroup_counters_cb body:", string(body))
+
+        var result struct {
+                Output struct {
+                        Status int32 `json:"status"`
+                        Status_detail []string`json:"status-detail"`
+                } `json:"openconfig-tam:output"`
+        }
+
+        var operand struct {
+                Input struct {
+                     Name string `json:"name"`
+                } `json:"openconfig-tam:input"`
+        }
+
+       err := json.Unmarshal(body, &operand)
+       if err != nil {
+                result.Output.Status = 1
+                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
+                result.Output.Status_detail  = out_list
+                return json.Marshal(&result)
+       }
+       name := operand.Input.Name
+
+       if name != "" {
+           exec_cmd_list = append(exec_cmd_list, "aclshow -c -r")
+           exec_cmd_list = append(exec_cmd_list,   name)
+        } else {
+           exec_cmd_list = append(exec_cmd_list, "aclshow -c -t TAM")
+        }
+       
+       exec_cmd := strings.Join(exec_cmd_list," ")
+
+    return counters_clear_operation(exec_cmd)
+}
+
+func counters_clear_operation(exec_cmd string) ([]byte, error) {
+
+   log.Info("counters_clear_operation cmd:", exec_cmd)
+        var out_list []string
+
+    var result struct {
+            Output struct {
+                Status int32 `json:"status"`
+                Status_detail []string`json:"status-detail"`
+            } `json:"openconfig-tam:output"`
+        }
+
+
+        host_output := HostQuery("infra_host.exec_cmd", exec_cmd)
+        if host_output.Err != nil {
+              log.Errorf("counters_clear_operation: host Query FAILED: err=%v", host_output.Err)
+              result.Output.Status = 1
+              out_list  = append(out_list, host_output.Err.Error()) 
+              out_list  = append(out_list, "[ FAILED ] host query") 
+              result.Output.Status_detail  = out_list 
+              return json.Marshal(&result)
+        }
+
+        var output string
+        output, _ = host_output.Body[1].(string)
+        _output := strings.TrimLeft(output,"\n")
+        failure_status :=  strings.Contains(_output, "FAILED")
+        success_status :=  strings.Contains(_output, "SUCCESS")
+
+        if (failure_status || !success_status) {
+           out_list = strings.Split(_output,"\n")
+        } else { 
+           _out_list := strings.Split(_output,"\n")
+           for index, each := range _out_list {
+                 i := strings.Index(each, "SUCCESS")
+                 if i != -1 {
+                     out_list = append(out_list, _out_list[index])
+                 }
+           }
+        }
+
+        result.Output.Status = 0
+        result.Output.Status_detail  = out_list 
+        return json.Marshal(&result)
+}
+
+
