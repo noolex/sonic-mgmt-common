@@ -1758,6 +1758,7 @@ var Subscribe_vxlan_vni_instance_subtree_xfmr SubTreeXfmrSubscribe = func (inPar
         tblName = "VXLAN_TUNNEL_MAP"
     } else if strings.HasPrefix(niName, "Vrf") {
         tblName = "VRF"
+        result.isVirtualTbl = true
         result.needCache = true
     } else {
         return result,nil
