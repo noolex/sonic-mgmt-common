@@ -373,7 +373,7 @@ module openconfig-qos-ext {
 
 	rpc clear-watermarks {
 		description
-			"Install the TPC image into SONiC system";
+			"Clear the recorded watermarks for various buffers";
 		input {
 			leaf buffer {
 				type string;
