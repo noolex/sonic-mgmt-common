@@ -185,7 +185,7 @@ var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
     }
 
     if strings.HasPrefix(instance, "Vrf") || strings.HasPrefix(instance, "mgmt") {
-        log.Error("YangToDb_fdb_mac_table_xfmr Failed to OP:",inParams.oper," FDB on VRF:", instance)
+        log.Info("YangToDb_fdb_mac_table_xfmr Ignoring OP:",inParams.oper," for FDB on VRF:", instance)
         return nil, err
     }
 
