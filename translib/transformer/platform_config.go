@@ -312,6 +312,7 @@ func parsePlatformDefJsonFile () (error) {
         return err
     }
 
+<<<<<<< HEAD
     //platDefStr = make(map[string]map[string]map[string]string)
     //err = json.Unmarshal([]byte(file), &platDefStr)
     //log.Info(platDefStr)
@@ -319,6 +320,38 @@ func parsePlatformDefJsonFile () (error) {
     //json.Unmarshal([]byte(file), &platDef4Level)
     //log.Info(platDef4Level)
 
+||||||| merged common ancestors
+<<<<<<< Temporary merge branch 1
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDef4Level)
+||||||| merged common ancestors
+<<<<<<< Temporary merge branch 1
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDefStr)
+||||||| merged common ancestors
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+=======
+=======
+    //platDefStr = make(map[string]map[string]map[string]string)
+    //err = json.Unmarshal([]byte(file), &platDefStr)
+    //log.Info(platDefStr)
+    //platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    //json.Unmarshal([]byte(file), &platDef4Level)
+    //log.Info(platDef4Level)
+
+>>>>>>> Temporary merge branch 2
+=======
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDef4Level)
+>>>>>>> origin/broadcom_sonic_3.x_share
     var fec_raw_map map[string]map[string]map[string]interface{}
 
     /* Map if for FEC parsing */
@@ -363,6 +396,7 @@ func parsePlatformDefJsonFile () (error) {
     } else {
         log.Info("No port-group configs to parse in platform-def")
     }
+<<<<<<< HEAD
 
 /* Keeping this commented for now 
     platDefStr = make(map[string]map[string]map[string]string)
@@ -372,6 +406,23 @@ func parsePlatformDefJsonFile () (error) {
     json.Unmarshal([]byte(file), &platDef4Level)
     log.Info(platDefStr)
 */
+||||||| merged common ancestors
+<<<<<<< Temporary merge branch 1
+||||||| merged common ancestors
+>>>>>>> Temporary merge branch 2
+=======
+
+/* Keeping this commented for now 
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDefStr)
+*/
+>>>>>>> Temporary merge branch 2
+=======
+>>>>>>> origin/broadcom_sonic_3.x_share
     return err
 }
 

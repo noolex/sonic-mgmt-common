@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 module openconfig-qos-ext-annot {
 
     yang-version "1.1";
@@ -14,3 +15,25 @@ module openconfig-qos-ext-annot {
         }
     }
 }
+||||||| merged common ancestors
+=======
+module openconfig-qos-ext-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/qos-ext-annot";
+    prefix "oc-qos-ext-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-qos { prefix oc-qos; }
+    import openconfig-qos-ext {prefix oc-qos-ext; }
+    import openconfig-qos-maps-ext {prefix oc-qos-maps-ext; }
+
+    deviation /oc-qos-ext:clear-watermarks {
+      deviate add {
+            sonic-ext:rpc-callback "rpc_watermarks_clear_cb";
+      }
+    }
+
+}
+>>>>>>> origin/broadcom_sonic_3.x_share

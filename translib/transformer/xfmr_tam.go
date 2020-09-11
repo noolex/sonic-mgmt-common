@@ -43,8 +43,17 @@ const (
     IPV4_HOP_LIMIT_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv4/state/hop-limit"
     IPV6_HOP_LIMIT_CONFIG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv6/config/hop-limit"
     IPV6_HOP_LIMIT_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv6/state/hop-limit"
+<<<<<<< HEAD
     SWITCH_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/switch-id"
     ENTERPRISE_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/enterprise-id"
+||||||| merged common ancestors
+=======
+    SWITCH_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/switch-id"
+    ENTERPRISE_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/enterprise-id"
+
+    FLOWGROUP_INTERFACE_CFG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{}/config/interfaces{}"
+    FLOWGROUP_CFG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{}"
+>>>>>>> origin/broadcom_sonic_3.x_share
 )
 
 var URL_MAP = map[string]bool {
@@ -369,7 +378,7 @@ func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, na
     aclRule.TcpFlags = ruleEntry.Get("TCP_FLAGS")
     dscp, _ := strconv.ParseInt(ruleEntry.Get("DSCP"), 10, 32)
     aclRule.Dscp = uint8(dscp)
-    aclRule.InPorts = ruleEntry.Get("IN_PORTS")
+    aclRule.InPorts = ruleEntry.Get("IN_PORTS@")
 
     flowEntry, err := d.GetEntry(&db.TableSpec{Name: "TAM_FLOWGROUP_TABLE"}, db.Key{Comp: []string{name}})
     if err != nil {
@@ -389,6 +398,7 @@ func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, na
 func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule, error) {
     var ruleEntries = make(map[string]AclRule)
     var err error
+<<<<<<< HEAD
 
     var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
     var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
@@ -397,6 +407,16 @@ func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule,
     var countersDbPtr, _ = db.NewDB(getDBOptions(db.CountersDB))
     var ACL_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COUNTERS"}
 
+||||||| merged common ancestors
+=======
+    var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
+    var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
+    aclRuleTable, _ := configDbPtr.GetTable(ACL_RULE_TABLE_TS)
+
+    var countersDbPtr, _ = db.NewDB(getDBOptions(db.CountersDB))
+    var ACL_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COUNTERS"}
+
+>>>>>>> origin/broadcom_sonic_3.x_share
     if name != "" {
         aclKey := "TAM|"+name
         ruleEntry, err := configDbPtr.GetEntry(ACL_RULE_TABLE_TS, db.Key{[]string{aclKey}})
@@ -448,8 +468,18 @@ func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rul
     flowGroup.State.Priority = &(entry.Priority)
     flowGroup.State.Id = &(entry.Id)
     flowGroup.State.Name = &rule
+<<<<<<< HEAD
     flowGroup.State.Statistics.Packets = &(entry.packets);
     flowGroup.State.Statistics.Bytes = &(entry.bytes);
+||||||| merged common ancestors
+=======
+    flowGroup.State.Statistics.Packets = &(entry.packets);
+    flowGroup.State.Statistics.Bytes = &(entry.bytes);
+    if (entry.InPorts != "") {
+        flowGroup.Config.Interfaces = strings.Split(entry.InPorts, ",")
+        flowGroup.State.Interfaces = strings.Split(entry.InPorts, ",")
+    }
+>>>>>>> origin/broadcom_sonic_3.x_share
 
     // Ipv4
     if (entry.IpType == "IPV4ANY") {
@@ -582,45 +612,76 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
     tamObj := getTamRoot(inParams.ygRoot)
     method := inParams.oper
 
-    key := NewPathInfo(inParams.uri).Var("name")
+    pathInfo := NewPathInfo(inParams.uri)
+    key := pathInfo.Var("name")
+    template := pathInfo.Template
 
     updateMap := make(map[db.DBNum]map[string]map[string]db.Value)
     updateMap[db.ConfigDB] = make(map[string]map[string]db.Value)
 
     var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
     var TAM_FLOWGROUP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "TAM_FLOWGROUP_TABLE"}
+    var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
     flowGroupTable, _ := configDbPtr.GetTable(TAM_FLOWGROUP_TABLE_TS)
     flowGroupsKeys, _ := flowGroupTable.GetKeys()
 
     set := make(map[string]bool)
+    existingFlowGroups := make(map[string]db.Value)
     for _, v := range flowGroupsKeys {
-        flowEntry, _ := configDbPtr.GetEntry(&db.TableSpec{Name: "TAM_FLOWGROUP_TABLE"}, db.Key{Comp: []string{v.Get(0)}})
+        flowEntry, _ := flowGroupTable.GetEntry(v)
         id := flowEntry.Get("id")
         set[id] = true
+        existingFlowGroups[v.Get(0)] = db.Value{Field: make(map[string]string)}
+        aclKey := "TAM|"+v.Get(0)
+        aclEntry, _ := configDbPtr.GetEntry(ACL_RULE_TABLE_TS, db.Key{[]string{aclKey}})
+        existingFlowGroups[v.Get(0)] = aclEntry
+        existingFlowGroups[v.Get(0)].Field["id"] = id
     }
 
-    updateMap[db.ConfigDB]["ACL_RULE"] = make(map[string]db.Value)
-    updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"] = make(map[string]db.Value)
     currentSet := make(map[string]bool)
     if key != "" {
         if (method == DELETE) {
-            for _, k := range flowGroupsKeys {
-                entry_key := k.Get(0)
-                aclKey := "TAM|"+entry_key
-                if (key == k.Get(0)) {
-                    updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"][entry_key] = db.Value{Field: make(map[string]string)}
-                    updateMap[db.ConfigDB]["ACL_RULE"][aclKey] = db.Value{Field: make(map[string]string)}
+            flowGroupName := pathInfo.Var("name")
+            aclKey := "TAM|"+flowGroupName
+            if (template == FLOWGROUP_INTERFACE_CFG_TEMPLATE) {
+                intf := pathInfo.Var("interfaces")
+                inports := existingFlowGroups[flowGroupName].Field["IN_PORTS@"]
+                if (inports != "") {
+                    s := strings.Split(inports, ",")
+                    tmp := make(map[string]bool)
+                    for _, v := range s {
+                        tmp[v] = true
+                    }
+                    if (tmp[intf]) {
+                        updateMap[db.ConfigDB]["ACL_RULE"] = make(map[string]db.Value)
+                        updateMap[db.ConfigDB]["ACL_RULE"][aclKey] = db.Value{Field: make(map[string]string)}
+                        updateMap[db.ConfigDB]["ACL_RULE"][aclKey].Field["IN_PORTS@"] = intf
+                    } else {
+                        errStr := fmt.Sprintf("Flowgroup (%v) is not associated with interface (%v).", key, intf)
+                        err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
+                        return res_map, err
+                    }
+                } else {
+                    errStr := fmt.Sprintf("Flowgroup (%v) is not associated with interface (%v).", key, intf)
+                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
+                    return res_map, err
                 }
+            } else if (template == FLOWGROUP_CFG_TEMPLATE) {
+                updateMap[db.ConfigDB]["ACL_RULE"] = make(map[string]db.Value)
+                updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"] = make(map[string]db.Value)
+                updateMap[db.ConfigDB]["ACL_RULE"][aclKey] = db.Value{Field: make(map[string]string)}
+                updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"][flowGroupName] = db.Value{Field: make(map[string]string)}
             }
             inParams.subOpDataMap[DELETE] = &updateMap
-        }
-        if (method == CREATE) { // POST
+        } else if (method == CREATE) {
             errStr := fmt.Sprintf("Flowgroup (%v) is alreay present", key)
             err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
             return res_map, err
         }
     } else {
         if (method == DELETE) {
+            updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"] = make(map[string]db.Value)
+            updateMap[db.ConfigDB]["ACL_RULE"] = make(map[string]db.Value)
             for _, k := range flowGroupsKeys {
                 entry_key := k.Get(0)
                 aclKey := "TAM|"+entry_key
@@ -629,6 +690,8 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
             }
             inParams.subOpDataMap[DELETE] = &updateMap
         } else {
+            updateMap[db.ConfigDB]["TAM_FLOWGROUP_TABLE"] = make(map[string]db.Value)
+            updateMap[db.ConfigDB]["ACL_RULE"] = make(map[string]db.Value)
             for thiskey, flowgroup := range tamObj.Flowgroups.Flowgroup {
                 entry_key := "TAM|"+thiskey
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key] = db.Value{Field: make(map[string]string)}
@@ -640,10 +703,30 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                     return res_map, err
                 }
                 id := strconv.FormatInt(int64(*flowgroup.Config.Id), 10)
+<<<<<<< HEAD
                 if (set[id] || currentSet[id]) {
                     errStr := fmt.Sprintf("Flowgroup with id %v already exists.", *flowgroup.Config.Id)
                     err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
+||||||| merged common ancestors
+                if (set[id] || currentSet[id]) {
+                    errStr := fmt.Sprintf("Flowgroup with id %v already exists", *flowgroup.Config.Id)
+                    err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
+                    return res_map, err
+=======
+                if val, ok := existingFlowGroups[thiskey].Field["id"]; ok {
+                    if (val != id) {
+                        errStr := fmt.Sprintf("Flowgroup name(%v) and id(%v) are not matching.", thiskey, *flowgroup.Config.Id)
+                        err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
+                        return res_map, err
+                    }
+                } else {
+                    if (set[id]) {
+                        errStr := fmt.Sprintf("Flowgroup id(%v) is used by other flowgroup.", *flowgroup.Config.Id)
+                        err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
+                        return res_map, err
+                    }
+>>>>>>> origin/broadcom_sonic_3.x_share
                 }
                 if (currentSet[id]) {
                     errStr := fmt.Sprintf("Duplicate id (%v) present in the payload.", *flowgroup.Config.Id)
@@ -651,8 +734,26 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                     return res_map, err
                 }
                 if flowgroup.Config.Name == nil {
+<<<<<<< HEAD
                     errStr := "key field name (*string) has nil value."
                     err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
+||||||| merged common ancestors
+                    errStr := "key field name (*string) has nil value"
+                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
+                    return res_map, err
+                }
+                if flowgroup.Config.IpVersion == ocbinds.OpenconfigTam_IpVersion_UNSET {
+                    errStr := "Mandatory parameter ip-version is not set"
+                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
+=======
+                    errStr := "key field name (*string) has nil value."
+                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
+                    return res_map, err
+                }
+                if flowgroup.L2 != nil && flowgroup.L2.Config != nil {
+                    errStr := "L2 match criterion for flowgroups is not supported."
+                    err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
+>>>>>>> origin/broadcom_sonic_3.x_share
                     return res_map, err
                 }
                 if flowgroup.Ipv6 != nil && flowgroup.Ipv6.Config != nil {
@@ -666,6 +767,7 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                 }
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
 
+<<<<<<< HEAD
 								// IPv4
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV4ANY"
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = "0.0.0.0/0"
@@ -690,6 +792,73 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                             case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8{}):
                                 v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8)
                                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(v.Uint8), 10)
+||||||| merged common ancestors
+                // IPv4
+                if (flowgroup.Config.IpVersion == ocbinds.OpenconfigTam_IpVersion_IPV4) {
+                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV4ANY"
+                    if flowgroup.Ipv4 != nil && flowgroup.Ipv4.Config != nil {
+                        if flowgroup.Ipv4.Config.SourceAddress != nil {
+                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = *(flowgroup.Ipv4.Config.SourceAddress)
+                        }
+                        if flowgroup.Ipv4.Config.DestinationAddress != nil {
+                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = *(flowgroup.Ipv4.Config.DestinationAddress)
+                        }
+                        if flowgroup.Ipv4.Config.Dscp != nil {
+                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DSCP"] = strconv.FormatInt(int64(*flowgroup.Ipv4.Config.Dscp), 10)
+                        }
+
+                        if flowgroup.Ipv4.Config.Protocol != nil && util.IsTypeStructPtr(reflect.TypeOf(flowgroup.Ipv4.Config.Protocol)) {
+                            protocolType := reflect.TypeOf(flowgroup.Ipv4.Config.Protocol).Elem()
+                            switch protocolType {
+                                case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL{}):
+                                    v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL)
+                                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(IP_PROTOCOL_MAP[v.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]), 10)
+                                case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8{}):
+                                    v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8)
+                                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(v.Uint8), 10)
+                            }
+                        }
+                        if flowgroup.Ipv4.Config.HopLimit != nil {
+                            errStr := "parameter hop-limit is not supported"
+                            err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
+                            return res_map, err
+=======
+                // update interfaces
+                if (flowgroup.Config.Interfaces != nil) {
+                    interfaces := flowgroup.Config.Interfaces
+                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IN_PORTS@"] = strings.Join(interfaces, ",")
+                }
+
+                // IPv4
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV4ANY"
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = "0.0.0.0/0"
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = "0.0.0.0/0"
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = "17"
+                if _, ok := existingFlowGroups[thiskey].Field["id"]; ok {
+                    if (existingFlowGroups[thiskey].Field["protocol"] != "17") {
+                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = existingFlowGroups[thiskey].Field["IP_PROTOCOL"]
+                    }
+                }
+                if flowgroup.Ipv4 != nil && flowgroup.Ipv4.Config != nil {
+                    if flowgroup.Ipv4.Config.SourceAddress != nil {
+                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = *(flowgroup.Ipv4.Config.SourceAddress)
+                    }
+                    if flowgroup.Ipv4.Config.DestinationAddress != nil {
+                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = *(flowgroup.Ipv4.Config.DestinationAddress)
+                    }
+                    if flowgroup.Ipv4.Config.Dscp != nil {
+                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DSCP"] = strconv.FormatInt(int64(*flowgroup.Ipv4.Config.Dscp), 10)
+                    }
+                    if flowgroup.Ipv4.Config.Protocol != nil && util.IsTypeStructPtr(reflect.TypeOf(flowgroup.Ipv4.Config.Protocol)) {
+                        protocolType := reflect.TypeOf(flowgroup.Ipv4.Config.Protocol).Elem()
+                        switch protocolType {
+                            case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL{}):
+                                v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL)
+                                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(IP_PROTOCOL_MAP[v.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]), 10)
+                            case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8{}):
+                                v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8)
+                                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(v.Uint8), 10)
+>>>>>>> origin/broadcom_sonic_3.x_share
                         }
                     }
                     if flowgroup.Ipv4.Config.HopLimit != nil {

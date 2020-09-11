@@ -748,6 +748,13 @@ module sonic-ospfv2 {
           description
               "Interface IP address";
         }
+
+        leaf non-passive {
+          type boolean;
+          description
+            "Make this interface non passive";
+        }
+
       } //OSPFV2_ROUTER_PASSIVE_INTERFACE_LIST
     }//OSPFV2_ROUTER_PASSIVE_INTERFACE
 

@@ -17,6 +17,10 @@ submodule openconfig-tam-flowgroups {
         prefix oc-pkt-match-types;
     }
 
+    import openconfig-interfaces {
+        prefix "oc-if";
+    }
+
     // meta
     organization
       "SONiC";
@@ -55,7 +59,9 @@ submodule openconfig-tam-flowgroups {
               "Flow Group name, for reference from elsewhere";
         }
         leaf id {
-            type uint32;
+             type uint32 {
+                range "1..254";
+             }
             mandatory true;
             description
               "Flowgroup identifier to be used in all dataplane
@@ -70,6 +76,32 @@ submodule openconfig-tam-flowgroups {
               "Indicates the priority of this flowgroup, and used when the
                specified match criterion is used for packet matching";
         }
+<<<<<<< HEAD
+||||||| merged common ancestors
+        leaf ip-version {
+            type oc-inet:ip-version {
+                enum IPV4 {
+                    description
+                      "The IPv4 protocol as defined in RFC 791.";
+                }
+                enum IPV6 {
+                    description
+                      "The IPv6 protocol as defined in RFC 2460.";
+                }
+            }
+            mandatory true;
+            description
+              "IP Address version";
+        }
+=======
+        leaf-list interfaces {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+              "Associate flowgroup to interfaces.";
+        }
+>>>>>>> origin/broadcom_sonic_3.x_share
     }
 
     grouping tam-flowgroups-state {

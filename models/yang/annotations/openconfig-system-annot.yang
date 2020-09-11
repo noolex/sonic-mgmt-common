@@ -93,6 +93,8 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group {
       deviate add {
           sonic-ext:virtual-table "true";
+          sonic-ext:key-transformer "global_sg_key_xfmr";
+          sonic-ext:table-transformer "global_sg_tbl_xfmr";
       }
     }
 
