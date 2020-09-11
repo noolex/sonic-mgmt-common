@@ -41,6 +41,7 @@ module sonic-sag {
            "Configures Static Anycast Gateway for IPv4 and IPv6";
 
         list SAG_LIST {
+                        max-elements 500;
 
 			key "ifname table_distinguisher";
 
