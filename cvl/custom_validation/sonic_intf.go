@@ -341,6 +341,7 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
+
     if vc.CurCfg.VOp != OP_DELETE {
         if strings.Contains(if_name, "Vlan") {
             sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
@@ -395,6 +396,24 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 	// VRRP checks ensure that interface IP is configured before VIP, hence check just delete
 
 	for _, db_key := range vrrp_keys {
+
+		log.Info("db_key: ", db_key)
+
+
+		found := false
+		if vc.CurCfg.VOp == OP_DELETE {
+			for i := 0; i < len(vc.ReqData); i++ {
+				if vc.ReqData[i].Key == db_key {
+					found = true
+					log.Info("Allow deletion of VRRP key: ", db_key)
+					break
+				}
+			}
+
+			if found {
+				continue;
+			}
+		}
 
 		vrrp_data, err:= vc.RClient.HGetAll(db_key).Result()
 
