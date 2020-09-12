@@ -1688,12 +1688,6 @@ module openconfig-network-instance-annot {
     }
 
 /* BGP Neighbors*/
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors {
-      deviate add {
-        sonic-ext:table-transformer "NONE";
-      }
-    }
-
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor {
       deviate add {
         sonic-ext:table-transformer "bgp_nbr_tbl_xfmr";
@@ -1821,7 +1815,7 @@ module openconfig-network-instance-annot {
 /* BGP NBR AFI SAFI */
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis {
       deviate add {
-        sonic-ext:table-transformer "NONE";
+        sonic-ext:table-name "NONE";
       }
     }
 
