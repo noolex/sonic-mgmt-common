@@ -3,6 +3,7 @@ package custom_validation
 import (
     log "github.com/golang/glog"
     "reflect"
+    util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
  )
 
 //ValidateDstPort validates whether destination port has any VLAN configuration
@@ -67,5 +68,40 @@ func (t *CustomValidation) ValidateDstPort(vc *CustValidationCtxt) CVLErrorInfo 
 
     log.Info("ValidateDstPort: ", vc.YNodeVal, "has LLDP: ", lldpData["enabled"])
     */
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+//ValidateMaxMirrorSessions validates whether mirror sessions are available.
+func (t *CustomValidation) ValidateMaxMirrorSessions(vc *CustValidationCtxt) CVLErrorInfo {
+
+    if (vc.CurCfg.VOp == OP_DELETE) {
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    stateDBClient := util.NewDbClient("STATE_DB")
+    defer func() {
+        if (stateDBClient != nil) {
+            stateDBClient.Close()
+        }
+    }()
+
+    if (stateDBClient != nil) {
+        key := "MIRROR_SESSION_TABLE|mirror_capability"
+        available_count, err := stateDBClient.HGet(key, "available_count").Result()
+
+        if (err == nil) {
+            if (available_count == "0") {
+                log.Error("ValidateMaxMirrorSessions: Exceed max active sessions.", available_count)
+                errStr := "Maximum sessions already configured"
+                return CVLErrorInfo{
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: "MIRROR_SESSION_TABLE",
+                    CVLErrDetails : errStr,
+                    ConstraintErrMsg : errStr,
+                }
+            }
+        }
+        log.Info("ValidateMaxMirrorSessions: available_sessions ", available_count)
+    }
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
