@@ -22,6 +22,7 @@ package custom_validation
 import (
     "github.com/go-redis/redis/v7"
     "strings"
+    "strconv"
     "fmt"
     log "github.com/golang/glog"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
@@ -261,6 +262,16 @@ func(t * CustomValidation) UniqueidValidation(vc * CustValidationCtxt) CVLErrorI
          }
      }
 */
+     id, _ := strconv.Atoi(currentId)
+     if (((id < 2) || (id > 254)) && (vc.CurCfg.VOp != OP_DELETE)) {
+         return CVLErrorInfo{
+             ErrCode: CVL_SEMANTIC_ERROR,
+             ConstraintErrMsg: fmt.Sprintf("Invalid flowgroup id(%s), allowed range is 2-254.", currentId),
+             CVLErrDetails : "Invalid flowgroup id.",
+             ErrAppTag : "invalid-flowgroup-id",
+         }
+     }
+
      if (!(currentSet[currentId]) && (vc.CurCfg.VOp == OP_DELETE)) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
