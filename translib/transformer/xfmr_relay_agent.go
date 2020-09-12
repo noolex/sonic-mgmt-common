@@ -532,7 +532,8 @@ func getDhcpDataFromDb(aliasName string, relayAgentObj *ocbinds.OpenconfigRelayA
    }
    if entry.Has("dhcp_relay_src_intf")  {
      srcIntf := entry.Get("dhcp_relay_src_intf")
-     raObj.Config.SrcIntf = &srcIntf
+     srcIntfName := *utils.GetUINameFromNativeName(&srcIntf)
+     raObj.Config.SrcIntf = &srcIntfName
    }
    if entry.Has("dhcp_relay_vrf_select")  {
       vrfSelectVal := entry.Get("dhcp_relay_vrf_select")
@@ -617,7 +618,8 @@ func getDhcpv6DataFromDb(aliasName string, relayAgentObj *ocbinds.OpenconfigRela
    }
    if entry.Has("dhcpv6_relay_src_intf")  {
       srcIntf := entry.Get("dhcpv6_relay_src_intf")
-      raObj.Config.SrcIntf = &srcIntf
+      srcIntfName := *utils.GetUINameFromNativeName(&srcIntf)
+      raObj.Config.SrcIntf = &srcIntfName
    }
    if entry.Has("dhcpv6_relay_vrf_select")  {
       vrfSelectVal := entry.Get("dhcpv6_relay_vrf_select")
@@ -875,7 +877,8 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
           err :=  tlerr.InvalidArgsError{Format: errStr}
           return err
         }
-	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_src_intf"] = *intf.Config.SrcIntf
+	srcIntfName := *utils.GetNativeNameFromUIName(intf.Config.SrcIntf)
+	updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_src_intf"] = srcIntfName
 	}
 
 	//vrf
@@ -1023,7 +1026,8 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
            return err
            }
 
-	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = *intf.Config.SrcIntf
+	   srcIntfName := *utils.GetNativeNameFromUIName(intf.Config.SrcIntf)
+	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = srcIntfName
        }
 
        //vrf
