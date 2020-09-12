@@ -105,46 +105,6 @@ module sonic-sag {
 			}
         }
     }
-<<<<<<< HEAD
-
-    container SAG_INTF {
-        sonic-ext:db-name "STATE_DB";
-        sonic-ext:key-delim "|";
-        config false;
-        description
-            "SAG state information";
-
-        list SAG_INTF_LIST {
-            key "ifname";
-
-            leaf ifname {
-                type string;
-            }
-
-            leaf oper {
-                type string;
-            }
-
-            leaf mode {
-                type string;
-            }
-
-            leaf vmac {
-                type string;
-            }
-
-            leaf-list v4GwIp {
-                type string;
-            }
-
-            leaf-list v6GwIp {
-                type string;
-            }
-        }
-
-    }
-||||||| merged common ancestors
-=======
 
     container SAG_INTF {
         sonic-ext:db-name "STATE_DB";
@@ -186,6 +146,5 @@ module sonic-sag {
         }
 
     }
->>>>>>> origin/broadcom_sonic_3.x_share
 }
 }
