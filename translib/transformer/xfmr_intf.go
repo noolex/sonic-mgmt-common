@@ -4312,7 +4312,19 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
 
 /* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
 func validateSpeed(d *db.DB, ifName string, speed string) error {
-    var err error
+
+    intfType, _, err := getIntfTypeByName(ifName)
+    if err != nil {
+        errStr := "Invalid Interface"
+        err = tlerr.InvalidArgsError{Format: errStr}
+        return err
+    }
+
+    /* No validation possible for MGMT interface */
+    if IntfTypeMgmt == intfType {
+        log.Info("Management port ",ifName, " skipped speed validation.")
+        return nil
+    }
 
     portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
     if(err != nil) {
