@@ -32,6 +32,7 @@ import (
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "encoding/json"
 )
 
 const (
@@ -43,17 +44,11 @@ const (
     IPV4_HOP_LIMIT_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv4/state/hop-limit"
     IPV6_HOP_LIMIT_CONFIG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv6/config/hop-limit"
     IPV6_HOP_LIMIT_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv6/state/hop-limit"
-<<<<<<< HEAD
-    SWITCH_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/switch-id"
-    ENTERPRISE_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/enterprise-id"
-||||||| merged common ancestors
-=======
     SWITCH_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/switch-id"
     ENTERPRISE_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/enterprise-id"
 
     FLOWGROUP_INTERFACE_CFG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{}/config/interfaces{}"
     FLOWGROUP_CFG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{}"
->>>>>>> origin/broadcom_sonic_3.x_share
 )
 
 var URL_MAP = map[string]bool {
@@ -192,6 +187,8 @@ func init () {
     XlateFuncBind("Subscribe_tam_flowgroups_xfmr", Subscribe_tam_flowgroups_xfmr)
 
     XlateFuncBind("tam_post_xfmr", tam_post_xfmr)
+
+	XlateFuncBind("rpc_clear_flowgroup_counters_cb", rpc_clear_flowgroup_counters_cb)
 }
 
 func getTamRoot(s *ygot.GoStruct) (*ocbinds.OpenconfigTam_Tam) {
@@ -348,7 +345,7 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
     return (*inParams.dbDataMap)[db.ConfigDB], nil
 }
 
-func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, name string) (AclRule, error) {
+func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, lastStatEntry db.Value, name string) (AclRule, error) {
     var aclRule AclRule
     aclRule.TableName = "TAM"
     aclRule.RuleName = name
@@ -388,9 +385,12 @@ func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, na
     aclRule.Id = uint32(id)
 
     packets, _ := strconv.ParseInt(statEntry.Get("Packets"), 10, 64)
-    aclRule.packets = uint64(packets)
+    lastPackets,_ := strconv.ParseInt(lastStatEntry.Get("Packets"), 10, 64)
+    aclRule.packets = uint64(packets) - uint64(lastPackets)
+
     bytes, _ := strconv.ParseInt(statEntry.Get("Bytes"), 10, 64)
-    aclRule.bytes = uint64(bytes)
+    lastBytes, _ := strconv.ParseInt(lastStatEntry.Get("Bytes"), 10, 64)
+    aclRule.bytes = uint64(bytes) - uint64(lastBytes)
 
     return aclRule, err
 }
@@ -398,25 +398,15 @@ func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, na
 func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule, error) {
     var ruleEntries = make(map[string]AclRule)
     var err error
-<<<<<<< HEAD
-
     var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
     var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
     aclRuleTable, _ := configDbPtr.GetTable(ACL_RULE_TABLE_TS)
 
     var countersDbPtr, _ = db.NewDB(getDBOptions(db.CountersDB))
     var ACL_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COUNTERS"}
+    
+    var ACL_LAST_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "LAST_COUNTERS"}
 
-||||||| merged common ancestors
-=======
-    var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
-    var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
-    aclRuleTable, _ := configDbPtr.GetTable(ACL_RULE_TABLE_TS)
-
-    var countersDbPtr, _ = db.NewDB(getDBOptions(db.CountersDB))
-    var ACL_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COUNTERS"}
-
->>>>>>> origin/broadcom_sonic_3.x_share
     if name != "" {
         aclKey := "TAM|"+name
         ruleEntry, err := configDbPtr.GetEntry(ACL_RULE_TABLE_TS, db.Key{[]string{aclKey}})
@@ -429,8 +419,14 @@ func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule,
         if e2 != nil {
             return ruleEntries, e2
         }
+        
+        lastStatKey := "TAM:"+name
+        lastStatEntry, e3 := countersDbPtr.GetEntry(ACL_LAST_COUNTERS_TABLE_TS, db.Key{[]string{lastStatKey}})
+        if e3 != nil {
+            return ruleEntries, e3
+        }
 
-        record, _ := getRecord(d, cdb, ruleEntry, statEntry, name)
+        record, _ := getRecord(d, cdb, ruleEntry, statEntry, lastStatEntry, name)
         ruleEntries[name] = record
     } else {
         keys, _ := aclRuleTable.GetKeys()
@@ -440,7 +436,8 @@ func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule,
                 entry, _ := aclRuleTable.GetEntry(key)
                 statKey := "TAM:"+rule
                 statEntry, _ := countersDbPtr.GetEntry(ACL_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
-                record, _ := getRecord(d, cdb, entry, statEntry, rule)
+                lastStatEntry, _ := countersDbPtr.GetEntry(ACL_LAST_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
+                record, _ := getRecord(d, cdb, entry, statEntry, lastStatEntry, rule)
                 ruleEntries[rule] = record
             }
         }
@@ -468,18 +465,12 @@ func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rul
     flowGroup.State.Priority = &(entry.Priority)
     flowGroup.State.Id = &(entry.Id)
     flowGroup.State.Name = &rule
-<<<<<<< HEAD
-    flowGroup.State.Statistics.Packets = &(entry.packets);
-    flowGroup.State.Statistics.Bytes = &(entry.bytes);
-||||||| merged common ancestors
-=======
     flowGroup.State.Statistics.Packets = &(entry.packets);
     flowGroup.State.Statistics.Bytes = &(entry.bytes);
     if (entry.InPorts != "") {
         flowGroup.Config.Interfaces = strings.Split(entry.InPorts, ",")
         flowGroup.State.Interfaces = strings.Split(entry.InPorts, ",")
     }
->>>>>>> origin/broadcom_sonic_3.x_share
 
     // Ipv4
     if (entry.IpType == "IPV4ANY") {
@@ -595,7 +586,6 @@ var Subscribe_tam_flowgroups_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscO
 var DbToYang_tam_flowgroups_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     tamObj := getTamRoot(inParams.ygRoot)
     pathInfo := NewPathInfo(inParams.uri)
-    log.Error("*********** Incoming uri : ", inParams.uri);
     if (!isSupported(pathInfo.Template)) {
         return tlerr.NotSupported("Operation Not Supported")
     } else {
@@ -703,17 +693,6 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                     return res_map, err
                 }
                 id := strconv.FormatInt(int64(*flowgroup.Config.Id), 10)
-<<<<<<< HEAD
-                if (set[id] || currentSet[id]) {
-                    errStr := fmt.Sprintf("Flowgroup with id %v already exists.", *flowgroup.Config.Id)
-                    err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
-                    return res_map, err
-||||||| merged common ancestors
-                if (set[id] || currentSet[id]) {
-                    errStr := fmt.Sprintf("Flowgroup with id %v already exists", *flowgroup.Config.Id)
-                    err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
-                    return res_map, err
-=======
                 if val, ok := existingFlowGroups[thiskey].Field["id"]; ok {
                     if (val != id) {
                         errStr := fmt.Sprintf("Flowgroup name(%v) and id(%v) are not matching.", thiskey, *flowgroup.Config.Id)
@@ -726,7 +705,6 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                         err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
                         return res_map, err
                     }
->>>>>>> origin/broadcom_sonic_3.x_share
                 }
                 if (currentSet[id]) {
                     errStr := fmt.Sprintf("Duplicate id (%v) present in the payload.", *flowgroup.Config.Id)
@@ -734,18 +712,6 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                     return res_map, err
                 }
                 if flowgroup.Config.Name == nil {
-<<<<<<< HEAD
-                    errStr := "key field name (*string) has nil value."
-                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
-||||||| merged common ancestors
-                    errStr := "key field name (*string) has nil value"
-                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
-                    return res_map, err
-                }
-                if flowgroup.Config.IpVersion == ocbinds.OpenconfigTam_IpVersion_UNSET {
-                    errStr := "Mandatory parameter ip-version is not set"
-                    err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
-=======
                     errStr := "key field name (*string) has nil value."
                     err = tlerr.InvalidArgsError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
@@ -753,7 +719,6 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                 if flowgroup.L2 != nil && flowgroup.L2.Config != nil {
                     errStr := "L2 match criterion for flowgroups is not supported."
                     err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
->>>>>>> origin/broadcom_sonic_3.x_share
                     return res_map, err
                 }
                 if flowgroup.Ipv6 != nil && flowgroup.Ipv6.Config != nil {
@@ -767,62 +732,6 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                 }
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
 
-<<<<<<< HEAD
-								// IPv4
-                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV4ANY"
-                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = "0.0.0.0/0"
-                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = "0.0.0.0/0"
-                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = "17"
-                if flowgroup.Ipv4 != nil && flowgroup.Ipv4.Config != nil {
-                    if flowgroup.Ipv4.Config.SourceAddress != nil {
-                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = *(flowgroup.Ipv4.Config.SourceAddress)
-                    }
-                    if flowgroup.Ipv4.Config.DestinationAddress != nil {
-                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = *(flowgroup.Ipv4.Config.DestinationAddress)
-                    }
-                    if flowgroup.Ipv4.Config.Dscp != nil {
-                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DSCP"] = strconv.FormatInt(int64(*flowgroup.Ipv4.Config.Dscp), 10)
-                    }
-                    if flowgroup.Ipv4.Config.Protocol != nil && util.IsTypeStructPtr(reflect.TypeOf(flowgroup.Ipv4.Config.Protocol)) {
-                        protocolType := reflect.TypeOf(flowgroup.Ipv4.Config.Protocol).Elem()
-                        switch protocolType {
-                            case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL{}):
-                                v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL)
-                                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(IP_PROTOCOL_MAP[v.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]), 10)
-                            case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8{}):
-                                v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8)
-                                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(v.Uint8), 10)
-||||||| merged common ancestors
-                // IPv4
-                if (flowgroup.Config.IpVersion == ocbinds.OpenconfigTam_IpVersion_IPV4) {
-                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV4ANY"
-                    if flowgroup.Ipv4 != nil && flowgroup.Ipv4.Config != nil {
-                        if flowgroup.Ipv4.Config.SourceAddress != nil {
-                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = *(flowgroup.Ipv4.Config.SourceAddress)
-                        }
-                        if flowgroup.Ipv4.Config.DestinationAddress != nil {
-                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = *(flowgroup.Ipv4.Config.DestinationAddress)
-                        }
-                        if flowgroup.Ipv4.Config.Dscp != nil {
-                            updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DSCP"] = strconv.FormatInt(int64(*flowgroup.Ipv4.Config.Dscp), 10)
-                        }
-
-                        if flowgroup.Ipv4.Config.Protocol != nil && util.IsTypeStructPtr(reflect.TypeOf(flowgroup.Ipv4.Config.Protocol)) {
-                            protocolType := reflect.TypeOf(flowgroup.Ipv4.Config.Protocol).Elem()
-                            switch protocolType {
-                                case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL{}):
-                                    v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_E_OpenconfigPacketMatchTypes_IP_PROTOCOL)
-                                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(IP_PROTOCOL_MAP[v.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]), 10)
-                                case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8{}):
-                                    v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8)
-                                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(v.Uint8), 10)
-                            }
-                        }
-                        if flowgroup.Ipv4.Config.HopLimit != nil {
-                            errStr := "parameter hop-limit is not supported"
-                            err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
-                            return res_map, err
-=======
                 // update interfaces
                 if (flowgroup.Config.Interfaces != nil) {
                     interfaces := flowgroup.Config.Interfaces
@@ -858,7 +767,6 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                             case reflect.TypeOf(ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8{}):
                                 v := (flowgroup.Ipv4.Config.Protocol).(*ocbinds.OpenconfigTam_Tam_Flowgroups_Flowgroup_Ipv4_Config_Protocol_Union_Uint8)
                                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = strconv.FormatInt(int64(v.Uint8), 10)
->>>>>>> origin/broadcom_sonic_3.x_share
                         }
                     }
                     if flowgroup.Ipv4.Config.HopLimit != nil {
@@ -1209,3 +1117,90 @@ func getTransportConfigTcpFlags(tcpFlags string) []ocbinds.E_OpenconfigPacketMat
     }
     return flags
 }
+
+var rpc_clear_flowgroup_counters_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        var out_list []string
+        var exec_cmd_list []string
+        log.Info("rpc_clear_flowgroup_counters_cb body:", string(body))
+
+        var result struct {
+                Output struct {
+                        Status int32 `json:"status"`
+                        Status_detail []string`json:"status-detail"`
+                } `json:"openconfig-tam:output"`
+        }
+
+        var operand struct {
+                Input struct {
+                     Name string `json:"name"`
+                } `json:"openconfig-tam:input"`
+        }
+
+       err := json.Unmarshal(body, &operand)
+       if err != nil {
+                result.Output.Status = 1
+                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
+                result.Output.Status_detail  = out_list
+                return json.Marshal(&result)
+       }
+       name := operand.Input.Name
+
+       if name != "" {
+           exec_cmd_list = append(exec_cmd_list, "aclshow -c -r")
+           exec_cmd_list = append(exec_cmd_list,   name)
+        } else {
+           exec_cmd_list = append(exec_cmd_list, "aclshow -c -t TAM")
+        }
+       
+       exec_cmd := strings.Join(exec_cmd_list," ")
+
+    return counters_clear_operation(exec_cmd)
+}
+
+func counters_clear_operation(exec_cmd string) ([]byte, error) {
+
+   log.Info("counters_clear_operation cmd:", exec_cmd)
+        var out_list []string
+
+    var result struct {
+            Output struct {
+                Status int32 `json:"status"`
+                Status_detail []string`json:"status-detail"`
+            } `json:"openconfig-tam:output"`
+        }
+
+
+        host_output := HostQuery("infra_host.exec_cmd", exec_cmd)
+        if host_output.Err != nil {
+              log.Errorf("counters_clear_operation: host Query FAILED: err=%v", host_output.Err)
+              result.Output.Status = 1
+              out_list  = append(out_list, host_output.Err.Error()) 
+              out_list  = append(out_list, "[ FAILED ] host query") 
+              result.Output.Status_detail  = out_list 
+              return json.Marshal(&result)
+        }
+
+        var output string
+        output, _ = host_output.Body[1].(string)
+        _output := strings.TrimLeft(output,"\n")
+        failure_status :=  strings.Contains(_output, "FAILED")
+        success_status :=  strings.Contains(_output, "SUCCESS")
+
+        if (failure_status || !success_status) {
+           out_list = strings.Split(_output,"\n")
+        } else { 
+           _out_list := strings.Split(_output,"\n")
+           for index, each := range _out_list {
+                 i := strings.Index(each, "SUCCESS")
+                 if i != -1 {
+                     out_list = append(out_list, _out_list[index])
+                 }
+           }
+        }
+
+        result.Output.Status = 0
+        result.Output.Status_detail  = out_list 
+        return json.Marshal(&result)
+}
+
+

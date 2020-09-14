@@ -64,34 +64,6 @@ func init () {
     XlateFuncBind("DbToYang_tam_threshold_key_xfmr", DbToYang_tam_threshold_key_xfmr)
     XlateFuncBind("DbToYang_tam_threshold_field_xfmr", DbToYang_tam_threshold_field_xfmr)
     XlateFuncBind("YangToDb_tam_threshold_field_xfmr", YangToDb_tam_threshold_field_xfmr)
-<<<<<<< HEAD
-    
-	// Watermark Configuration 
-    XlateFuncBind("YangToDb_tam_watermark_key_xfmr", YangToDb_tam_watermark_key_xfmr)
-    XlateFuncBind("DbToYang_tam_watermark_key_xfmr", DbToYang_tam_watermark_key_xfmr)
-	XlateFuncBind("rpc_watermarks_clear_cb", rpc_watermarks_clear_cb)
-
-	// Watermark Configuration (Telemetry) 
-    XlateFuncBind("YangToDb_telemetry_watermark_key_xfmr", YangToDb_telemetry_watermark_key_xfmr)
-    XlateFuncBind("DbToYang_telemetry_watermark_key_xfmr", DbToYang_telemetry_watermark_key_xfmr)
-
-
-}
-
-
-var rpc_watermarks_clear_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-        var out_list []string
-        var exec_cmd_list []string
-        log.Info("rpc_watermarks_clear_cb body:", string(body))
-
-        var result struct {
-                Output struct {
-                        Status int32 `json:"status"`
-                        Status_detail []string`json:"status-detail"`
-                } `json:"openconfig-qos-ext:output"`
-        }
-||||||| merged common ancestors
-=======
     
 	// Watermark Configuration 
     XlateFuncBind("YangToDb_tam_watermark_key_xfmr", YangToDb_tam_watermark_key_xfmr)
@@ -159,85 +131,6 @@ func watermarks_clear_operation(exec_cmd string) ([]byte, error) {
       		} `json:"openconfig-qos-ext:output"`
     	}
 
->>>>>>> origin/broadcom_sonic_3.x_share
-
-<<<<<<< HEAD
-        var operand struct {
-                Input struct {
-                     Buffer string `json:"buffer"`
-                     BufferType string `json:"buffer-type"`
-                     WatermarkType string `json:"watermark-type"`
-                } `json:"openconfig-qos-ext:input"`
-        }
-
-       err := json.Unmarshal(body, &operand)
-       if err != nil {
-                result.Output.Status = 1
-                out_list = append(out_list, "[FAILED] unmarshal input: " + err.Error())
-                result.Output.Status_detail  = out_list
-                return json.Marshal(&result)
-       }
-       buffer := operand.Input.Buffer
-       bufferType := operand.Input.BufferType
-       watermarkType := operand.Input.WatermarkType
-
-       exec_cmd_list = append(exec_cmd_list, "sonic-clear")
-       exec_cmd_list = append(exec_cmd_list,   buffer)
-       exec_cmd_list = append(exec_cmd_list,   watermarkType)
-       exec_cmd_list = append(exec_cmd_list,   bufferType)
-
-        exec_cmd := strings.Join(exec_cmd_list," ")
-
-    return watermarks_clear_operation(exec_cmd)
-||||||| merged common ancestors
-=======
-        host_output := HostQuery("infra_host.exec_cmd", exec_cmd)
-        if host_output.Err != nil {
-              log.Errorf("watermarks_clear_operation: host Query FAILED: err=%v", host_output.Err)
-              result.Output.Status = 1
-              out_list  = append(out_list, host_output.Err.Error()) 
-              out_list  = append(out_list, "[ FAILED ] host query") 
-              result.Output.Status_detail  = out_list 
-              return json.Marshal(&result)
-        }
-
-        var output string
-        output, _ = host_output.Body[1].(string)
-        _output := strings.TrimLeft(output,"\n")
-        failure_status :=  strings.Contains(_output, "FAILED")
-        success_status :=  strings.Contains(_output, "SUCCESS")
-
-        if (failure_status || !success_status) {
-           out_list = strings.Split(_output,"\n")
-        } else { 
-           _out_list := strings.Split(_output,"\n")
-           for index, each := range _out_list {
-                 i := strings.Index(each, "SUCCESS")
-                 if i != -1 {
-                     out_list = append(out_list, _out_list[index])
-                 }
-           }
-        }
-
-        result.Output.Status = 0
-        result.Output.Status_detail  = out_list 
-        return json.Marshal(&result)
->>>>>>> origin/broadcom_sonic_3.x_share
-}
-
-<<<<<<< HEAD
-func watermarks_clear_operation(exec_cmd string) ([]byte, error) {
-
-   log.Info("watermarks_clear_operation cmd:", exec_cmd)
-        var out_list []string
-
-   	var result struct {
-    		Output struct {
-          		Status int32 `json:"status"`
-          		Status_detail []string`json:"status-detail"`
-      		} `json:"openconfig-qos-ext:output"`
-    	}
-
 
         host_output := HostQuery("infra_host.exec_cmd", exec_cmd)
         if host_output.Err != nil {
@@ -275,12 +168,6 @@ func watermarks_clear_operation(exec_cmd string) ([]byte, error) {
 
 
 
-||||||| merged common ancestors
-=======
-
-
-
->>>>>>> origin/broadcom_sonic_3.x_share
 var DbToYang_tam_threshold_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
     return res_map, nil
