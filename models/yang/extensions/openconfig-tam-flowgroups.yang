@@ -10,9 +10,6 @@ submodule openconfig-tam-flowgroups {
     import openconfig-extensions {
         prefix oc-ext;
     }
-    import openconfig-inet-types {
-        prefix oc-inet;
-    }
     import openconfig-packet-match {
         prefix oc-pkt-match-types;
     }
@@ -81,7 +78,7 @@ submodule openconfig-tam-flowgroups {
                 path "/oc-if:interfaces/oc-if:interface/oc-if:name";
             }
             description
-              "Associate flowgroup to interfaces.";
+              "List of interfaces associated to the flowgroup.";
         }
     }
 
@@ -115,7 +112,7 @@ submodule openconfig-tam-flowgroups {
             list flowgroup {
                 key "name";
                 description
-                  "Uniqueuly identifies a flow-group";
+                  "Uniquely identifies a flow-group";
                 leaf name {
                     type leafref {
                         path "../config/name";

@@ -22,11 +22,14 @@ package custom_validation
 import (
     "github.com/go-redis/redis/v7"
     "strings"
+    "reflect"
     "strconv"
     "fmt"
     log "github.com/golang/glog"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 )
+
+const MAX_FLOWGROUPS = 253
 
 func log_request_info( vc * CustValidationCtxt, func_name string ) {
   log.Info(func_name, ":" ,
@@ -73,6 +76,33 @@ func CheckInSessions(vc * CustValidationCtxt, table string, identity string, nam
          }
      }
      return collector, used
+}
+
+func getFlowGroups(vc * CustValidationCtxt, table string, flowGroup string) (string, bool) {
+    matched := false
+    matchedFlow := ""
+    sessions, err := vc.RClient.Keys(table+"|*").Result()
+    if (err == nil) {
+        testGroup, err := vc.RClient.HGetAll("ACL_RULE|TAM|"+flowGroup).Result()
+        if (err == nil) {
+            for _, sessionKey := range sessions {
+                entry, err := vc.RClient.HGetAll(sessionKey).Result()
+                if (err == nil) {
+                    currentFlow := entry["flowgroup"]
+                    if (currentFlow != flowGroup) {
+                        currentGroup, err := vc.RClient.HGetAll("ACL_RULE|TAM|"+currentFlow).Result()
+                        if (err == nil) {
+                            delete(currentGroup, "PACKET_ACTION")
+                            matched = reflect.DeepEqual(testGroup, currentGroup)
+                            matchedFlow = currentFlow
+                            break
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return matchedFlow, matched
 }
 
 func CheckUsage(vc * CustValidationCtxt, identity string, name string) (map[string]string, bool) {
@@ -233,6 +263,36 @@ func(t * CustomValidation) FlowgroupValidation(vc * CustValidationCtxt) CVLError
              ErrAppTag : "flowgroup-in-use",
          }
      }
+
+     if (vc.CurCfg.VOp != OP_DELETE) { 
+         var nokey []string
+         ls := redis.NewScript(`return #redis.call('KEYS', "TAM_FLOWGROUP_TABLE|*")`)
+
+         //Get current coutnt from Redis
+         redisEntries, err := ls.Run(vc.RClient, nokey).Result()
+         if err != nil {
+             return CVLErrorInfo{ErrCode: CVL_SEMANTIC_ERROR}
+         }
+
+         flowsCount := int(redisEntries.(int64))
+         //Get count from user request
+         for idx := 0; idx < len(vc.ReqData); idx++ {
+             if (vc.ReqData[idx].VOp == OP_CREATE) && (strings.HasPrefix(vc.ReqData[idx].Key, "TAM_FLOWGROUP_TABLE|")) {
+                 flowsCount = flowsCount + 1
+             }
+         }
+
+         // max flowgroups
+         if (flowsCount > MAX_FLOWGROUPS) {
+             return CVLErrorInfo{
+                 ErrCode: CVL_SEMANTIC_ERROR,
+                 ConstraintErrMsg: fmt.Sprintf("Maximum number (%d) of flowgroups are already created.", MAX_FLOWGROUPS),
+                 CVLErrDetails: "Config Validation Syntax Error",
+                 ErrAppTag: "too-many-elements",
+             }
+         }
+     }
+
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -424,6 +484,18 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
          }
      }
 */
+
+     if (vc.CurCfg.VOp != OP_DELETE) {
+         flow, isMatched := getFlowGroups(vc, "TAM_IFA_SESSIONS_TABLE", thisFlowgroup)
+         if (isMatched) {
+             return CVLErrorInfo{
+                 ErrCode: CVL_SEMANTIC_ERROR,
+                 ConstraintErrMsg: fmt.Sprintf("Flowgroup (%v) with similar match criterion is already in use.", flow),
+                 CVLErrDetails : "operation-not-allowed",
+                 ErrAppTag : "operation-not-allowed",
+             }
+         }
+     }
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -527,13 +599,25 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
          if (inPorts == "") {
              return CVLErrorInfo{
                  ErrCode: CVL_SEMANTIC_ERROR,
-                 ConstraintErrMsg: fmt.Sprintf("No ports are bound the flowgroup '%s'.", thisFlowgroup),
+                 ConstraintErrMsg: fmt.Sprintf("No ports are bound to the flowgroup '%s'.", thisFlowgroup),
                  CVLErrDetails : "Port(s) are not bound to the flowgroup",
                  ErrAppTag : "ports-not-bound-to-flowgroup",
              }
          }
      }
 */
+     if (vc.CurCfg.VOp != OP_DELETE) {
+         flow, isMatched := getFlowGroups(vc, "TAM_DROPMONITOR_SESSIONS_TABLE", thisFlowgroup)
+         if (isMatched) {
+             return CVLErrorInfo{
+                 ErrCode: CVL_SEMANTIC_ERROR,
+                 ConstraintErrMsg: fmt.Sprintf("Flowgroup (%v) with similar match criterion is already in use.", flow),
+                 CVLErrDetails : "operation-not-allowed",
+                 ErrAppTag : "operation-not-allowed",
+             }
+         }
+     }
+
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -584,6 +668,18 @@ func(t * CustomValidation) TailstampingSessionValidation(vc * CustValidationCtxt
              ConstraintErrMsg: fmt.Sprintf("One or more sessions are using the flowgroup '%s'.", thisFlowgroup),
              CVLErrDetails : "Flowgroup is in use.",
              ErrAppTag : "flowgroup-in-use",
+         }
+     }
+
+     if (vc.CurCfg.VOp != OP_DELETE) {
+         flow, isMatched := getFlowGroups(vc, "TAM_TAILSTAMPING_SESSIONS_TABLE", thisFlowgroup)
+         if ((vc.CurCfg.VOp != OP_DELETE) && isMatched) {
+             return CVLErrorInfo{
+                 ErrCode: CVL_SEMANTIC_ERROR,
+                 ConstraintErrMsg: fmt.Sprintf("Flowgroup (%v) with similar match criterion is already in use.", flow),
+                 CVLErrDetails : "operation-not-allowed",
+                 ErrAppTag : "operation-not-allowed",
+             }
          }
      }
 
