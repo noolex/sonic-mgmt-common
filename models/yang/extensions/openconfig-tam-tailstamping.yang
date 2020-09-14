@@ -81,7 +81,7 @@ submodule openconfig-tam-tailstamping {
             list tailstamping-session {
                 key "name";
                 description
-                  "Uniqueuly identifies a session";
+                  "Uniquely identifies a session";
                 leaf name {
                     type leafref {
                         path "../config/name";

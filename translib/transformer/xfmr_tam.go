@@ -817,7 +817,7 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
             }
             inParams.subOpDataMap[DELETE] = &updateMap
         } else if (method == CREATE) {
-            errStr := fmt.Sprintf("Flowgroup (%v) is alreay present", key)
+            errStr := fmt.Sprintf("Flowgroup (%v) is already present", key)
             err = tlerr.AlreadyExistsError{AppTag: "invalid-value", Path: "", Format: errStr}
             return res_map, err
         }
