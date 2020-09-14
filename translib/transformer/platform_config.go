@@ -239,27 +239,6 @@ func getValidSpeeds(port_i string) ([]string, error) {
     return valid_speeds, nil
 }
 
-// getDefaultBreakoutModeSpeed - Returns default speed of a port or error 
-func getDefaultBreakoutModeSpeed(port_i string) (string, error) {
-    var err error
-    var mode string
-    var default_speed string
-
-    mode, err = getDefaultBreakoutMode(port_i)
-    if err == nil {
-        pos := strings.Index(mode, "G")
-        if pos != -1 {
-            speed, err := strconv.Atoi(mode[2:pos])
-            if err == nil {
-                default_speed = strconv.Itoa(speed*1000)
-            }
-        } else {
-            err = tlerr.InvalidArgs("Unable to determine default port speed")
-        }
-    }
-    return default_speed, err
-}
-
 // getDefaultBreakoutMode - Returns default breakout mode of a port
 func getDefaultBreakoutMode(port_i string) (string, error) {
     var def_breakout_mode string
