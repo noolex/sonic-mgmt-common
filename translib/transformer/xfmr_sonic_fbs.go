@@ -761,7 +761,7 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxD
 			if value == policy_name {
 				field_splits := strings.Split(field, "_")
 				policy_bind_dir := field_splits[0]
-				appliedPort.INTERFACE_NAME = policyBindKeys[index].Comp[0]
+				appliedPort.INTERFACE_NAME = *(utils.GetUINameFromNativeName(&policyBindKeys[index].Comp[0]))
 				appliedPort.STAGE = policy_bind_dir
 				policyEntry.APPLIED_INTERFACES = append(policyEntry.APPLIED_INTERFACES, appliedPort)
 				break
