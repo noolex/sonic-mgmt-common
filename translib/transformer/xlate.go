@@ -129,6 +129,9 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		// get an entry with a specific key
 		if spec.Ts.Name != XFMR_NONE_STRING { // Do not traverse for NONE table
 			data, err := dbs[spec.DbNum].GetEntry(&spec.Ts, spec.Key)
+			queriedDbInfo := make(map[string]string)
+			queriedDbInfo[spec.Ts.Name] = strings.Join(spec.Key.Comp, separator)
+			dbTblKeyGetCache.Store(spec.DbNum,queriedDbInfo)
 			if err != nil {
 				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
@@ -334,6 +337,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 	var result = make(map[int]RedisDbMap)
 	var yangDefValMap = make(map[string]map[string]db.Value)
 	var yangAuxValMap = make(map[string]map[string]db.Value)
+	dbTblKeyGetCache = sync.Map{}
 	keyXfmrCache = sync.Map{}
 	switch opcode {
 	case CREATE:
@@ -365,6 +369,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		}
 	}
 	keyXfmrCache = sync.Map{}
+	dbTblKeyGetCache = sync.Map{}
 	return result, yangDefValMap, yangAuxValMap, err
 }
 
@@ -373,6 +378,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	var payload []byte
 	xfmrLogInfo("received xpath = " + uri)
 	keyXfmrCache = sync.Map{}
+	dbTblKeyGetCache = sync.Map{}
 	requestUri := uri
 	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
 	var dbresult = make(RedisDbMap)
@@ -390,6 +396,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	isEmptyPayload := false
 	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache)
 	keyXfmrCache = sync.Map{}
+	dbTblKeyGetCache = sync.Map{}
 	if err != nil {
 		return payload, true, err
 	}

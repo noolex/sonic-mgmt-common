@@ -907,11 +907,28 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					chtbl := xpathKeyExtRet.tableName
 					inParamsForGet.ygRoot = ygRoot
 					if _, ok := (*dbDataMap)[cdb][chtbl]; !ok && len(chtbl) > 0 {
+						dbgMsg  := fmt.Sprintf("(query req) table:%v, uri:%v", chtbl, chldUri)
+						dbgPrint("/tmp/dbTblKeycacheFirst.log", dbgMsg)
+						dbgPrint("/tmp/dbTblKeycacheSubseq.log", dbgMsg)
+
+						qdbMapHasData := false
+						if queriedDbDataIntf, getOk := dbTblKeyGetCache.Load(cdb); getOk {
+							qdbMap := queriedDbDataIntf.(map[string]string)
+							if _, tblPresent := qdbMap[chtbl]; tblPresent {
+								qdbMapHasData = true
+								dbgMsg  = fmt.Sprintf("(already queried) table:%v, uri:%v", chtbl, chldUri)
+								dbgPrint("/tmp/dbTblKeycacheSubseq.log", dbgMsg)
+							}
+						}
+						if !qdbMapHasData {
 						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, "", cdb, dbs)
+						dbgMsg  = fmt.Sprintf("(first-time query) table:%v, uri:%v", chtbl, chldUri)
+						dbgPrint("/tmp/dbTblKeycacheFirst.log", dbgMsg)
 						if err == nil {
 							mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
 							inParamsForGet.dbDataMap = dbDataMap
 						}
+					    }
 					}
 					cname := xYangSpecMap[chldXpath].yangEntry.Name
 					if xYangSpecMap[chldXpath].xfmrTbl != nil {

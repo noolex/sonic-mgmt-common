@@ -26,6 +26,7 @@ import (
 
 //Map of map[uri][dbKey]
 var keyXfmrCache sync.Map
+var dbTblKeyGetCache sync.Map
 
 type KeySpec struct {
         DbNum db.DBNum
