@@ -341,33 +341,6 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-<<<<<<< HEAD
-    if vc.CurCfg.VOp != OP_DELETE {
-        if strings.Contains(if_name, "Vlan") {
-            sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
-
-            sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()
-            if (err != nil) || (vc.SessCache == nil) {
-                return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-            }
-
-            if len(sag_keys) >= 1 {
-                errStr := "Interface IP not allowed when anycast IP is already configured"
-                log.Error(errStr)
-                return CVLErrorInfo {
-                    ErrCode: CVL_SEMANTIC_ERROR,
-                    TableName: key,
-                    CVLErrDetails: errStr,
-                    ConstraintErrMsg: errStr,
-                }
-            }
-        } else {
-            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-        }
-    }
-
-||||||| merged common ancestors
-=======
 
     if vc.CurCfg.VOp != OP_DELETE {
         if strings.Contains(if_name, "Vlan") {
@@ -393,7 +366,6 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
         }
     }
 
->>>>>>> origin/broadcom_sonic_3.x_share
 	if strings.Contains(if_ip, ":") {
 		vrrp_table = "VRRP6"
 		vip_suffix = "/128"
