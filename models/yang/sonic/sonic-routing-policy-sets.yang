@@ -7,6 +7,10 @@ module sonic-routing-policy-sets {
         prefix inet;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -19,19 +23,6 @@ module sonic-routing-policy-sets {
     revision 2019-10-23 {
         description
             "Initial revision.";
-    }
-
-    typedef routing-policy-action-type {
-        type enumeration {
-            enum PERMIT {
-                description "Permit action.";
-            }
-            enum DENY {
-                description "Deny action.";
-            }
-        }
-        description
-            "Routing policy action type permit or deny";
     }
 
     container sonic-routing-policy-sets {
@@ -57,13 +48,24 @@ module sonic-routing-policy-sets {
         container PREFIX {
 
             list PREFIX_LIST { 
-                key "set_name ip_prefix masklength_range";
+                key "set_name sequence_number ip_prefix masklength_range";
+                sonic-ext:custom-validation ValidateIpPrefixListCfg;
 
                 leaf set_name {
                     type leafref {
                         path "../../../PREFIX_SET/PREFIX_SET_LIST/name";
                     }
                 }   
+
+                leaf sequence_number {
+                    type uint32 {
+                        range "1..4294967295";
+                    }
+                    description
+                        "The sequence number determines the order in which prefix-list entries are applied. It must be unique
+                         for each prefix in a prefix-list. Target devices should apply the prefixes in ascending order determined
+                         by sequence no (low to high), rather than relying only on order in the list.";
+                }
 
                 leaf ip_prefix {
                     /* TODO - Validate ip-prefix based on PREFIX_SET/mode */
@@ -92,7 +94,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type routing-policy-action-type;
+                    type string;
                     description
                         "Permit/Deny action for the prefix list.";
                 }
@@ -122,7 +124,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type routing-policy-action-type; 
+                    type string;
                     description
                         "Permit/Deny action for the community";
                 }
@@ -159,7 +161,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type routing-policy-action-type;
+                    type string;
                     description
                         "Permit/Deny action for the ext-community";
                 }
@@ -182,7 +184,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type routing-policy-action-type;
+                    type string;
                     description
                         "Permit/Deny action for the as-path-list.";
                 }
