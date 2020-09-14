@@ -2314,8 +2314,8 @@ func (app *AclApp) setAclBindDataInConfigDb(d *db.DB, opcode int) error {
 			if CREATE == opcode {
 				if found {
 					log.Errorf("Intf %s has ACL %s at %s already. Cant create new ACL %s binding", intf,
-						existingAclName, dbAclDirec, aclKey)
-					return tlerr.AlreadyExists("ACL binding on %s at %s already exists.", intf, newDirec)
+						existingAclName, strings.ToLower(dbAclDirec), aclKey)
+					return tlerr.AlreadyExists("ACL binding on %s at %s already exists.", intf, strings.ToLower(dbAclDirec))
 				}
 			} else if REPLACE == opcode || UPDATE == opcode {
 				log.Infof("Intf %s ACL binding update requested from %s => %s", intf, existingAclName, aclKey)
