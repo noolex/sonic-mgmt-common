@@ -294,8 +294,6 @@ func init() {
         XlateFuncBind("DbToYang_network_instance_type_field_xfmr", DbToYang_network_instance_type_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_mtu_field_xfmr", YangToDb_network_instance_mtu_field_xfmr)
         XlateFuncBind("DbToYang_network_instance_mtu_field_xfmr", DbToYang_network_instance_mtu_field_xfmr)
-        XlateFuncBind("YangToDb_network_instance_description_field_xfmr", YangToDb_network_instance_description_field_xfmr)
-        XlateFuncBind("DbToYang_network_instance_description_field_xfmr", DbToYang_network_instance_description_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_router_id_field_xfmr", YangToDb_network_instance_router_id_field_xfmr)
         XlateFuncBind("DbToYang_network_instance_router_id_field_xfmr", DbToYang_network_instance_router_id_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_route_distinguisher_field_xfmr", YangToDb_network_instance_route_distinguisher_field_xfmr)
@@ -684,26 +682,6 @@ var DbToYang_network_instance_mtu_field_xfmr KeyXfmrDbToYang = func(inParams Xfm
         var err error
 
         log.Info("DbToYang_network_instance_mtu_field_xfmr")
-
-        return res_map, err
-}
-
-// YangToDb_network_instance_description_field_xfmr is a YangToDb Field transformer for description in the top level network instance config
-var YangToDb_network_instance_description_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-        res_map := make(map[string]string)
-        var err error
-
-        log.Info("YangToDb_network_instance_description_field_xfmr")
-
-        return res_map, err
-}
-
-// DbToYang_network_instance_description_field_xfmr is a DbToYang Field transformer for description in the top level network instance config
-var DbToYang_network_instance_description_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-        res_map := make(map[string]interface{})
-        var err error
-
-        log.Info("DbToYang_network_instance_description_field_xfmr")
 
         return res_map, err
 }
