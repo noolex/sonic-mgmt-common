@@ -675,6 +675,8 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr += keySeparator
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
+				 keyStrIntf, _ok := keyXfmrCache.Load(curPathWithKey)
+				 if !_ok {
 					 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 					 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 					 if oper == GET {
@@ -694,6 +696,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 }
 						 keyStr = ret
 					 }
+					keyXfmrCache.Store(curPathWithKey,keyStr)
+				 } else {
+					keyStr = keyStrIntf.(string)
+				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
 					 keyStr += *xYangSpecMap[yangXpath].keyName
 				 } else {
@@ -709,6 +715,8 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
+			   keyStrIntf, _ok := keyXfmrCache.Load(curPathWithKey)
+			   if !_ok {
 				 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 				 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 				 if oper == GET {
@@ -728,6 +736,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 					 keyStr = ret
 				 }
+				keyXfmrCache.Store(curPathWithKey,keyStr)
+			 } else {
+				keyStr = keyStrIntf.(string)
+			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {
 				 keyStr += *xYangSpecMap[yangXpath].keyName
 			 }
