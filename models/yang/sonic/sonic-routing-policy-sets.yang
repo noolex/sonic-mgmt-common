@@ -20,9 +20,28 @@ module sonic-routing-policy-sets {
     description
         "SONiC ROUTING POLICY SETS";
 
+    revision 2020-09-14 {
+        description
+            "Used enum values permit/deny for action type.";
+    }
+
+
     revision 2019-10-23 {
         description
             "Initial revision.";
+    }
+
+    typedef routing-policy-action-type {
+        type enumeration {
+            enum permit {
+                description "Permit action.";
+            }
+            enum deny {
+                description "Deny action.";
+            }
+        }
+        description
+            "Routing policy action type permit or deny";
     }
 
     container sonic-routing-policy-sets {
@@ -94,7 +113,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type string;
+                    type routing-policy-action-type;
                     description
                         "Permit/Deny action for the prefix list.";
                 }
@@ -124,7 +143,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type string;
+                    type routing-policy-action-type;
                     description
                         "Permit/Deny action for the community";
                 }
@@ -161,7 +180,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type string;
+                    type routing-policy-action-type;
                     description
                         "Permit/Deny action for the ext-community";
                 }
@@ -184,7 +203,7 @@ module sonic-routing-policy-sets {
                 }
 
                 leaf action {
-                    type string;
+                    type routing-policy-action-type;
                     description
                         "Permit/Deny action for the as-path-list.";
                 }
