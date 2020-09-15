@@ -56,7 +56,6 @@ func init () {
     XlateFuncBind("DbToYang_intf_eth_auto_neg_xfmr", DbToYang_intf_eth_auto_neg_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_fec_xfmr", DbToYang_intf_eth_port_fec_xfmr)
-    XlateFuncBind("DbToYang_intf_eth_port_unreliable_los_xfmr", DbToYang_intf_eth_port_unreliable_los_xfmr)
     XlateFuncBind("YangToDb_intf_eth_port_config_xfmr", YangToDb_intf_eth_port_config_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_config_xfmr", DbToYang_intf_eth_port_config_xfmr)
     XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
@@ -98,7 +97,6 @@ const (
     PORT_ADMIN_STATUS  = "admin_status"
     PORT_SPEED         = "speed"
     PORT_FEC           = "fec"
-    PORT_UNRELIABLE_LOS = "override_unreliable_los"
     PORT_LANES         = "lanes"
     PORT_DESC          = "description"
     PORT_OPER_STATUS   = "oper_status"
@@ -204,12 +202,6 @@ var yangToDbFecMap = map[ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE] string
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_AUTO     : "default",
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_RS       : "rs",
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_FC       : "fc",
-}
-
-var yangToDbLosMap = map[ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE] string {
-    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF  : "off",
-    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_ON   : "on",
-    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_AUTO : "auto",
 }
 
 type E_InterfaceType  int64
@@ -1573,47 +1565,6 @@ func getDbToYangFec(fec string) (ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE
         }
     }
     return portFec, err
-}
-
-var DbToYang_intf_eth_port_unreliable_los_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
-    var err error
-    result := make(map[string]interface{})
-
-    data := (*inParams.dbDataMap)[inParams.curDb]
-    intfType, _, ierr := getIntfTypeByName(inParams.key)
-    if intfType == IntfTypeUnset || ierr != nil {
-        log.Info("DbToYang_intf_eth_port_unreliable_los_xfmr - Invalid interface type IntfTypeUnset");
-        return result, errors.New("Invalid interface type IntfTypeUnset");
-    }
-    if IntfTypeEthernet != intfType {
-           return result, nil
-    }
-    intTbl := IntfTypeTblMap[intfType]
-
-    tblName, _ := getPortTableNameByDBId(intTbl, inParams.curDb)
-    pTbl := data[tblName]
-    prtInst := pTbl[inParams.key]
-    los, ok := prtInst.Field[PORT_UNRELIABLE_LOS]
-    portLos := ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF
-    if ok {
-        portLos, err = getDbToYangLos(los)
-        result["port-unreliable-los"] = ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE.ΛMap(portLos)["E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE"][int64(portLos)].Name
-    } else {
-        log.Info("Unreliable los field not found in DB")
-    }
-    return result, err
-}
-
-func getDbToYangLos(los string) (ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE, error) {
-    portLos := ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF
-    var err error = errors.New("Unreliable los mode not found in db")
-    for k, v := range yangToDbLosMap {
-        if los == v {
-            portLos = k
-            err = nil
-        }
-    }
-    return portLos, err
 }
 
 func getDbToYangSpeed (speed string) (ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED, error) {
@@ -4385,7 +4336,7 @@ func getDefaultSpeed(d *db.DB, ifName string) int {
 }
 
 
-// YangToDb_intf_eth_port_config_xfmr handles port-speed, fec, unreliable-los, auto-neg and aggregate-id config.
+// YangToDb_intf_eth_port_config_xfmr handles port-speed, fec, auto-neg and aggregate-id config.
 var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     var lagStr string
@@ -4612,32 +4563,6 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
             }
             log.Infof("Finishing map assign  %s", fec_val)
-            memMap[intTbl.cfgDb.portTN][ifName] = value
-        }
-    }
-
-    /* unreliable los mode */
-    if (strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-unreliable-los")) {
-        res_map := make(map[string]string)
-        value := db.Value{Field: res_map}
-        intTbl := IntfTypeTblMap[intfType]
-
-        portLos := intfObj.Ethernet.Config.PortUnreliableLos
-
-        los_val, ok := yangToDbLosMap[portLos]
-
-        if !ok {
-            err = tlerr.InvalidArgs("Invalid unreliable los %s", portLos)
-            log.Errorf("Did not find valid unreliable los configuration entry")
-        } else {
-            /* Need the number of lanes */
-            log.Infof("Configuring unreliable los of port %s to %s", ifName, los_val)
-            res_map[PORT_UNRELIABLE_LOS] = los_val
-            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
-                log.Infof("Creating map entry", los_val)
-                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
-            }
-            log.Infof("Finishing map assign  %s", los_val)
             memMap[intTbl.cfgDb.portTN][ifName] = value
         }
     }
