@@ -748,6 +748,9 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 		 curPathWithKey += "/"
 	 }
 	 curPathWithKey = strings.TrimSuffix(curPathWithKey, "/")
+	 if !strings.HasPrefix(curPathWithKey, "/") {
+		curPathWithKey = "/" + curPathWithKey
+	 }
 	 retData.dbKey = keyStr
 	 tblPtr     := xpathInfo.tableName
 	 if tblPtr != nil && *tblPtr != XFMR_NONE_STRING {
