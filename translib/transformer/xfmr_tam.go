@@ -879,11 +879,6 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                     err = tlerr.NotSupportedError{AppTag: "invalid-value", Path: "", Format: errStr}
                     return res_map, err
                 }
-                priority := "100"
-                if (flowgroup.Config.Priority != nil) {
-                    priority = strconv.FormatInt(int64(*(flowgroup.Config.Priority)), 10)
-                }
-                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
 
                 // update interfaces
                 if (flowgroup.Config.Interfaces != nil) {
@@ -891,7 +886,8 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                     updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IN_PORTS@"] = strings.Join(interfaces, ",")
                 }
 
-                // IPv4
+                priority := "100"
+                updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_TYPE"] = "IPV4ANY"
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = "0.0.0.0/0"
                 updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = "0.0.0.0/0"
@@ -900,7 +896,18 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                     if (existingFlowGroups[thiskey].Field["protocol"] != "17") {
                         updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["IP_PROTOCOL"] = existingFlowGroups[thiskey].Field["IP_PROTOCOL"]
                     }
+                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = existingFlowGroups[thiskey].Field["PRIORITY"]
+                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = existingFlowGroups[thiskey].Field["SRC_IP"]
+                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["DST_IP"] = existingFlowGroups[thiskey].Field["DST_IP"]
                 }
+                if (flowgroup.Config.Priority != nil) {
+                    priority = strconv.FormatInt(int64(*(flowgroup.Config.Priority)), 10)
+                    if (priority != "100") {
+                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
+                    }
+                }
+
+                // IPv4
                 if flowgroup.Ipv4 != nil && flowgroup.Ipv4.Config != nil {
                     if flowgroup.Ipv4.Config.SourceAddress != nil {
                         updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["SRC_IP"] = *(flowgroup.Ipv4.Config.SourceAddress)
