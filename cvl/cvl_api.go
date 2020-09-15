@@ -978,7 +978,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			mFilterScript.script, mFilterScript.field).Result()
 
 			if (err != nil) {
-				CVL_LOG(WARNING, "Lua script error (%v)", err)
+				CVL_LOG(WARNING, "Lua script status: (%v)", err)
 			}
 			if (refEntries == nil) {
 				//No reference field found

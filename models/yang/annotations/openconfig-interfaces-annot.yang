@@ -454,6 +454,11 @@ module openconfig-interfaces-annot {
             sonic-ext:table-name "VXLAN_TUNNEL";
         }
     }
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-vxlan:vxlan-if/oc-vxlan:state/oc-vxlan:qos-mode {
+        deviate add {
+            sonic-ext:field-transformer "intf_vxlan_qosmode_fld_xfmr";
+        }
+    }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-vxlan:vxlan-if/oc-vxlan:state/oc-vxlan:source-vtep-ip {
         deviate add {
