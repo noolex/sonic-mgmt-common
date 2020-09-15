@@ -519,10 +519,34 @@ func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBN
        }
     }
     xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
+
+	terminalNodeGet  := false
+	qdbMapHasTblData := false
+	qdbMapHasTblKeyData := false
+	if !xYangSpecMap[xpath].hasNonTerminalNode  && len(inParams.key) > 0 {
+		terminalNodeGet = true
+	}
+	if queriedDbDataIntf, getOk := dbTblKeyGetCache.Load(inParams.curDb); getOk {
+		qdbMap := queriedDbDataIntf.(map[string]map[string]bool)
+		if dbTblData, tblPresent := qdbMap[tbl]; tblPresent {
+			qdbMapHasTblData = true
+			if _, keyPresent := dbTblData[inParams.key]; keyPresent {
+				qdbMapHasTblKeyData = true;
+			}
+		}
+	}
+
+	if !qdbMapHasTblData || (terminalNodeGet && qdbMapHasTblData && !qdbMapHasTblKeyData) {
+		dbgMsg  := fmt.Sprintf("(-*- dbDataFromTblXfmrGet first-time query) table:%v, key:%v, uri:%v", tbl, inParams.key, inParams.uri)
+		dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
     curDbDataMap, err := fillDbDataMapForTbl(inParams.uri, xpath, tbl, inParams.key, inParams.curDb, inParams.dbs)
     if err == nil {
         mapCopy((*dbDataMap)[inParams.curDb], curDbDataMap[inParams.curDb])
     }
+	} else {
+		dbgMsg := fmt.Sprintf("(dbDataFromTblXfmrGet already queried) table:%v, key:%v, uri:%v", tbl, inParams.key, inParams.uri)
+		dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
+	}
     return nil
 }
 
@@ -906,24 +930,32 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					tblKey := xpathKeyExtRet.dbKey
 					chtbl := xpathKeyExtRet.tableName
 					inParamsForGet.ygRoot = ygRoot
-					if _, ok := (*dbDataMap)[cdb][chtbl]; !ok && len(chtbl) > 0 {
-						dbgMsg  := fmt.Sprintf("(query req) table:%v, uri:%v", chtbl, chldUri)
-						dbgPrint("/tmp/dbTblKeycacheFirst.log", dbgMsg)
-						dbgPrint("/tmp/dbTblKeycacheSubseq.log", dbgMsg)
 
-						qdbMapHasData := false
+					if _, ok := (*dbDataMap)[cdb][chtbl]; !ok && len(chtbl) > 0 {
+						childDBKey := ""
+						terminalNodeGet  := false
+						qdbMapHasTblData := false
+						qdbMapHasTblKeyData := false
+						if !xYangSpecMap[chldXpath].hasNonTerminalNode {
+							childDBKey      = tblKey
+							terminalNodeGet = true
+						}
 						if queriedDbDataIntf, getOk := dbTblKeyGetCache.Load(cdb); getOk {
-							qdbMap := queriedDbDataIntf.(map[string]string)
-							if _, tblPresent := qdbMap[chtbl]; tblPresent {
-								qdbMapHasData = true
-								dbgMsg  = fmt.Sprintf("(already queried) table:%v, uri:%v", chtbl, chldUri)
-								dbgPrint("/tmp/dbTblKeycacheSubseq.log", dbgMsg)
+							qdbMap := queriedDbDataIntf.(map[string]map[string]bool)
+							if dbTblData, tblPresent := qdbMap[chtbl]; tblPresent {
+								qdbMapHasTblData = true
+								if _, keyPresent := dbTblData[tblKey]; keyPresent {
+									qdbMapHasTblKeyData = true;
+								}
+								dbgMsg := fmt.Sprintf("(already queried) table:%v, key:%v, uri:%v", chtbl, childDBKey, chldUri)
+								dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
 							}
 						}
-						if !qdbMapHasData {
-						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, "", cdb, dbs)
-						dbgMsg  = fmt.Sprintf("(first-time query) table:%v, uri:%v", chtbl, chldUri)
-						dbgPrint("/tmp/dbTblKeycacheFirst.log", dbgMsg)
+
+						if !qdbMapHasTblData || (terminalNodeGet && qdbMapHasTblData && !qdbMapHasTblKeyData) {
+						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, childDBKey, cdb, dbs)
+						dbgMsg := fmt.Sprintf("(-*- first-time query) table:%v, key:%v, uri:%v", chtbl, childDBKey, chldUri)
+						dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
 						if err == nil {
 							mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
 							inParamsForGet.dbDataMap = dbDataMap

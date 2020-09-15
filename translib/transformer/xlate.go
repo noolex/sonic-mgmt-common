@@ -129,8 +129,10 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		// get an entry with a specific key
 		if spec.Ts.Name != XFMR_NONE_STRING { // Do not traverse for NONE table
 			data, err := dbs[spec.DbNum].GetEntry(&spec.Ts, spec.Key)
-			queriedDbInfo := make(map[string]string)
-			queriedDbInfo[spec.Ts.Name] = strings.Join(spec.Key.Comp, separator)
+			queriedDbInfo := make(map[string]map[string]bool)
+			queriedDbTblInfo := make(map[string]bool)
+			queriedDbTblInfo[strings.Join(spec.Key.Comp, separator)] = true
+			queriedDbInfo[spec.Ts.Name] = queriedDbTblInfo
 			dbTblKeyGetCache.Store(spec.DbNum,queriedDbInfo)
 			if err != nil {
 				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
