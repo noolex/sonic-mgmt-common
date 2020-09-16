@@ -55,6 +55,9 @@ func init () {
     XlateFuncBind("DbToYang_wred_profile_name_fld_xfmr", DbToYang_wred_profile_name_fld_xfmr)
     XlateFuncBind("YangToDb_wred_ecn_fld_xfmr", YangToDb_wred_ecn_fld_xfmr)
     XlateFuncBind("DbToYang_wred_ecn_fld_xfmr", DbToYang_wred_ecn_fld_xfmr)
+    XlateFuncBind("YangToDb_qos_threshold_breach_key_xfmr", YangToDb_qos_threshold_breach_key_xfmr)
+    XlateFuncBind("DbToYang_qos_threshold_breach_key_xfmr", DbToYang_qos_threshold_breach_key_xfmr)
+    XlateFuncBind("rpc_oc_clear_threshold_breach", rpc_oc_clear_threshold_breach)
 
     // THRESHOLD Configuration 
     XlateFuncBind("YangToDb_tam_threshold_key_xfmr", YangToDb_tam_threshold_key_xfmr)
@@ -86,7 +89,6 @@ var rpc_watermarks_clear_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
                         Status_detail []string`json:"status-detail"`
                 } `json:"openconfig-qos-ext:output"`
         }
-
         var operand struct {
                 Input struct {
                      Buffer string `json:"buffer"`
@@ -161,9 +163,6 @@ func watermarks_clear_operation(exec_cmd string) ([]byte, error) {
         result.Output.Status_detail  = out_list 
         return json.Marshal(&result)
 }
-
-
-
 
 var DbToYang_tam_threshold_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
@@ -1913,4 +1912,73 @@ var DbToYang_wred_ecn_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     }
     log.Info("DbToYang_wred_ecn_fld_xfmr ", result)
 	return result, err
+}
+
+var YangToDb_qos_threshold_breach_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+    var err error
+    var id string
+    log.Info("Entering YangToDb_qos_threshold_breach_key_xfmr Uri ", inParams.uri)
+    pathInfo := NewPathInfo(inParams.uri)
+    id = pathInfo.Var("id")
+    if len(id) == 0 {
+       log.Info("YangToDb_qos_threshold_breach_key_xfmr- no key ")
+       return id, err
+    }
+    breach_id := "breach-report:" + id
+    log.Info("YangToDb_qos_threshold_breach_key_xfmr - breach_id ", breach_id)
+    return breach_id, err
+}
+
+var DbToYang_qos_threshold_breach_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    log.Info("Entering DbToYang_qos_threshold_breach_key_xfmr ", inParams.uri)
+    var id string
+    res_map := make(map[string]interface{})
+
+    log.Info("breach_id = ", inParams.key)
+    if strings.Contains(inParams.key, ":") {
+       id = strings.Split(inParams.key, ":")[1]
+    } else {
+       id = inParams.key
+    }
+
+    res_map["id"] = id
+    log.Info("res_map = ", res_map)
+    return res_map, nil
+}
+
+
+/* RPC for clear threshold breach */
+var rpc_oc_clear_threshold_breach RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    var err error
+    var result struct {
+        Output struct {
+            Status int32 `json:"status"`
+            Status_detail string`json:"status-detail"`
+        } `json:"openconfig-qos-ext:output"`
+    }
+    result.Output.Status = 1
+    /* Get input data */
+    var mapData map[string]interface{}
+    err = json.Unmarshal(body, &mapData)
+    if err != nil {
+        log.Errorf("Failed to unmarshall given input data, error=%v", err)
+        result.Output.Status_detail = "Error: Unable to unmarshall given input data"
+        return json.Marshal(&result)
+    }
+    input := mapData["openconfig-qos-ext:input"]
+    mapData = input.(map[string]interface{})
+    input = mapData["breach-event-id"]
+    input_str := fmt.Sprintf("%v", input)
+    log.Info("INPUT received! : ", input_str)
+
+    log.Info("rpc_oc_clear_threshold_breach, Clear threshold breaches for breach_event_id: ", input_str)
+    verr := clearThresholdBreaches(dbs[db.CountersDB], input_str)
+    if verr != nil {
+		log.Errorf("Unable to clear threshold breaches for breach_event_id: %v, error=%v", input_str, verr)
+    } else {
+        log.Info("Threshold breaches successfully cleared for breach_event_id: ", input_str)
+    }
+    result.Output.Status = 0
+    result.Output.Status_detail = "Success: Cleared threshold breaches"
+    return json.Marshal(&result)
 }

@@ -70,7 +70,7 @@ var rpc_clear_threshold_breach RpcCallpoint = func(body []byte, dbs [db.MaxDB]*d
 func clearThresholdBreaches(d *db.DB, input_str string) (error) {
     var verr error
     ThresholdBreachTblTs := db.TableSpec {Name: "THRESHOLD_BREACH_TABLE"}
-    if input_str == "all" {
+    if input_str == "all" || input_str == "ALL" {
 	keys, verr := d.GetKeys(&ThresholdBreachTblTs)
         if verr != nil {
                 log.Errorf("Unable to get DB keys from THRESHOLD_BREACH_TABLE, error=%v", verr)

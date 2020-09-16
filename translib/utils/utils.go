@@ -121,12 +121,34 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
     log.V(3).Infof("alias cache updated %s <==> %s", portName, aliasName)
 }
 
+func deleteFromCacheForPort(portKey *db.Key) {
+    portName := portKey.Get(0)
+
+    aliasName, ok := ifNameAliasMap.Load(portName)
+    if !ok {
+        log.V(3).Infof("Port name %s not in Alias cache", portName)
+        return
+    }
+    ifNameAliasMap.Delete(portName)
+
+    _, _ok := aliasIfNameMap.Load(aliasName)
+    if !_ok {
+        log.V(3).Infof("Alias name %s for corresponding Port name %s not in Alias cache", aliasName, portName)
+        return
+    }
+    aliasIfNameMap.Delete(aliasName)
+    log.V(3).Infof("Deleted %s <==> %s from alias cache", portName, aliasName)
+}
+
+
 func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
     log.V(3).Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
            " event: ", event)
     switch event {
     case db.SEventHSet, db.SEventHDel:
         updateCacheForPort(key, d)
+    case db.SEventDel:
+        deleteFromCacheForPort(key)
     }
     return nil
 }

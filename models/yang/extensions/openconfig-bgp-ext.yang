@@ -894,6 +894,7 @@ module openconfig-bgp-ext {
       "Configuration data for allow own AS under neighbor group address family";
       leaf enabled {
           type boolean;
+          default false;
           description
               "This leaf indicates whether to accept as-path update with local AS present in it.";
       }
@@ -977,6 +978,7 @@ module openconfig-bgp-ext {
       "Configuration data for route flap damping under global level";
       leaf enabled {
           type boolean;
+          default false;
           description
               "This leaf indicates whether route flap damping is enabled for
               this AFI-SAFI";

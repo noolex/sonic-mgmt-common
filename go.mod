@@ -19,6 +19,7 @@ require (
 	github.com/philopon/go-toposort v0.0.0-20170620085441-9be86dbd762f
 	github.com/pkg/profile v1.4.0
 	github.com/shirou/gopsutil v2.20.5+incompatible
+	github.com/tredoe/osutil v1.0.5
 	golang.org/x/text v0.3.2
 	google.golang.org/grpc v1.28.0
 )
