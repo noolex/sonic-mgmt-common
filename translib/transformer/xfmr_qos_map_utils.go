@@ -38,37 +38,44 @@ var qos_map_oc_yang_key_map = map[string]string {
 
 func targetUriPathContainsMapName (uri string, map_type string) bool {
     if map_type == "DSCP_TO_TC_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map")  {
+        (strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:dscp-maps/dscp-map") || 
+         strings.HasPrefix(uri, "/openconfig-qos:qos/dscp-maps/dscp-map"))  {
         return true
     }
 
     if map_type == "DOT1P_TO_TC_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:dot1p-maps/dot1p-map") {
+        (strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:dot1p-maps/dot1p-map") || 
+         strings.HasPrefix(uri, "/openconfig-qos:qos/dot1p-maps/dot1p-map")) {
         return true
     }
 
     if map_type == "TC_TO_QUEUE_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-queue-maps/forwarding-group-queue-map")  {
+        (strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-queue-maps/forwarding-group-queue-map") || 
+         strings.HasPrefix(uri, "/openconfig-qos:qos/forwarding-group-queue-maps/forwarding-group-queue-map")) {
         return true
     }
 
     if map_type == "TC_TO_PRIORITY_GROUP_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-priority-group-maps/forwarding-group-priority-group-map")  {
+        (strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-priority-group-maps/forwarding-group-priority-group-map") ||
+         strings.HasPrefix(uri, "/openconfig-qos:qos/forwarding-group-priority-group-maps/forwarding-group-priority-group-map")) {
         return true
     }
 
     if map_type == "MAP_PFC_PRIORITY_TO_QUEUE" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:pfc-priority-queue-maps/pfc-priority-queue-map")  {
+        (strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:pfc-priority-queue-maps/pfc-priority-queue-map") ||
+         strings.HasPrefix(uri, "/openconfig-qos:qos/pfc-priority-queue-maps/pfc-priority-queue-map"))  {
         return true
     }
 
     if map_type == "TC_TO_DOT1P_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map")  {
+        (strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dot1p-maps/forwarding-group-dot1p-map") ||
+         strings.HasPrefix(uri, "/openconfig-qos:qos/forwarding-group-dot1p-maps/forwarding-group-dot1p-map"))  {
         return true
     }
 
     if map_type == "TC_TO_DSCP_MAP" &&
-        strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map")  {
+        (strings.HasPrefix(uri, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map")  ||
+         strings.HasPrefix(uri, "/openconfig-qos:qos/forwarding-group-dscp-maps/forwarding-group-dscp-map"))  {
         return true
     }
 

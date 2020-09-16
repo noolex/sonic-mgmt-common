@@ -87,7 +87,7 @@ var YangToDb_qos_dot1p_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     tmp2 := uint8(tmp)
     log.Info("entry_key in val: ", tmp2)
 
-    if inParams.oper == CREATE && 
+    if (inParams.oper == CREATE || inParams.oper == UPDATE ) && 
         strings.Contains(inParams.requestUri, "-entry[" + str + "=") {
         mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
         if err == nil { 

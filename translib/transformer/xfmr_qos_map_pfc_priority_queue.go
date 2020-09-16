@@ -92,7 +92,7 @@ var YangToDb_qos_pfc_priority_queue_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
 
     str := qos_map_oc_yang_key_map[map_type]
     log.Info("key string: " , str)
-    if inParams.oper == CREATE && 
+    if (inParams.oper == CREATE || inParams.oper == UPDATE ) && 
         strings.Contains(inParams.requestUri, "-entry[" + str + "=") {
         mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
         if err == nil { 
