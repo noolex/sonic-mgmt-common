@@ -95,8 +95,11 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
     tmp2 := uint8(tmp)
     log.Info("entry_key in val: ", tmp2)
 
-    if inParams.oper == CREATE && 
+
+    log.Info("operation: ", inParams.oper)
+    if (inParams.oper == CREATE || inParams.oper == UPDATE) && 
         strings.Contains(inParams.requestUri, "-entry[" + str + "=") {
+        log.Info("Checking entry existence.")
         mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
         if err == nil { 
             _, ok := mapCfg.Field[entry_key]
@@ -104,9 +107,16 @@ var YangToDb_qos_dscp_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                 log.Info("Entry not exist; cannot create it with key in URI itself")
                 err = tlerr.NotFound("Resource not found")
                 return res_map, err
+            } else {
+                log.Info("Entry exist; OK to proceed")
             }
         }
+    } else {
+        log.Info("Skip the enry existence checking")
+        log.Info("inParam.oper: ", inParams.oper)
     }
+
+    log.Info("CREATE: ", CREATE, " REPLACE: ", REPLACE, " UPDATE: ", UPDATE) 
 
     entry, ok := mapObj.DscpMapEntries.DscpMapEntry[tmp2]
     if !ok  {
