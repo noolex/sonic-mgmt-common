@@ -1216,7 +1216,8 @@ func deleteVlanIntfAndMembers(inParams *XfmrParams, vlanName *string) error {
     if err != nil {
         errStr := "Retrieving data from VLAN table for VLAN: " + *vlanName + " failed!"
         log.Error(errStr)
-        return errors.New(errStr)
+        // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+        return nil
     }
     /* Validation is needed, if oper is not DELETE. Cleanup for sub-interfaces is done as part of Delete. */
     if inParams.oper != DELETE {

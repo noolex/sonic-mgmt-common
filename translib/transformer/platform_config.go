@@ -303,6 +303,13 @@ func parsePlatformDefJsonFile () (error) {
     platDef4Level = make(map[string]map[string]map[string]map[string]string)
     json.Unmarshal([]byte(file), &platDef4Level)
     log.Info(platDef4Level)
+    //platDefStr = make(map[string]map[string]map[string]string)
+    //err = json.Unmarshal([]byte(file), &platDefStr)
+    //log.Info(platDefStr)
+    //platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    //json.Unmarshal([]byte(file), &platDef4Level)
+    //log.Info(platDef4Level)
+
     var fec_raw_map map[string]map[string]map[string]interface{}
 
     /* Map if for FEC parsing */
@@ -351,6 +358,14 @@ func parsePlatformDefJsonFile () (error) {
         parseNativeValidSpeed(vspeedEntries)
     }
 
+/* Keeping this commented for now 
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDefStr)
+*/
     return err
 }
 

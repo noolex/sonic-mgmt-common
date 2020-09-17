@@ -75,6 +75,8 @@ var YangToDb_qos_dot1p_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
         return res_map, err
     }
 
+    str := qos_map_oc_yang_key_map[map_type]
+    log.Info("key string: " , str)
     entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
     log.Info("entry_key : ", entry_key)
     if entry_key == "" {
@@ -84,6 +86,19 @@ var YangToDb_qos_dot1p_fwd_group_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     tmp, _ := strconv.ParseUint(entry_key, 10, 8)
     tmp2 := uint8(tmp)
     log.Info("entry_key in val: ", tmp2)
+
+    if inParams.oper == CREATE && 
+        strings.Contains(inParams.requestUri, "-entry[" + str + "=") {
+        mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
+        if err == nil { 
+            _, ok := mapCfg.Field[entry_key]
+            if !ok {
+                log.Info("Entry not exist; cannot create it with key in URI itself")
+                err = tlerr.NotFound("Resource not found")
+                return res_map, err
+            }
+        }
+    }
 
     entry, ok := mapObj.Dot1PMapEntries.Dot1PMapEntry[tmp2]
     if !ok  {

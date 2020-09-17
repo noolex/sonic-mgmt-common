@@ -844,7 +844,7 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 							if valErr == nil {
 								dbFldVal, err = unmarshalJsonToDbData(xDbSpecMap[dbSpecField].dbEntry, dbSpecField, fieldName, leafListInstVal)
 								if err != nil {
-									log.Errorf("Failed to unmarshal Json to DbData: path(\"%v\") error (\"%v\").", dbSpecField, err)
+									log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", dbSpecField, err)
 									return err
 								}
 							}

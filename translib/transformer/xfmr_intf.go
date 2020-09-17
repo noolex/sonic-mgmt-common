@@ -56,6 +56,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_eth_auto_neg_xfmr", DbToYang_intf_eth_auto_neg_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_fec_xfmr", DbToYang_intf_eth_port_fec_xfmr)
+    XlateFuncBind("DbToYang_intf_eth_port_unreliable_los_xfmr", DbToYang_intf_eth_port_unreliable_los_xfmr)
     XlateFuncBind("YangToDb_intf_eth_port_config_xfmr", YangToDb_intf_eth_port_config_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_config_xfmr", DbToYang_intf_eth_port_config_xfmr)
     XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
@@ -86,7 +87,6 @@ func init () {
     XlateFuncBind("intf_pre_xfmr", intf_pre_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_ip_addr_xfmr", YangToDb_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("DbToYang_routed_vlan_ip_addr_xfmr", DbToYang_routed_vlan_ip_addr_xfmr)
-    XlateFuncBind("DbToYang_intf_description_xfmr", DbToYang_intf_description_xfmr)
     XlateFuncBind("Subscribe_intf_ip_addr_xfmr", Subscribe_intf_ip_addr_xfmr)
     XlateFuncBind("Subscribe_routed_vlan_ip_addr_xfmr", Subscribe_routed_vlan_ip_addr_xfmr)
 }
@@ -97,6 +97,7 @@ const (
     PORT_ADMIN_STATUS  = "admin_status"
     PORT_SPEED         = "speed"
     PORT_FEC           = "fec"
+    PORT_UNRELIABLE_LOS = "override_unreliable_los"
     PORT_LANES         = "lanes"
     PORT_DESC          = "description"
     PORT_OPER_STATUS   = "oper_status"
@@ -171,7 +172,7 @@ var IntfTypeTblMap = map[E_InterfaceType]IntfTblData {
     },
     IntfTypeLoopback : IntfTblData {
        cfgDb:TblData{portTN:"LOOPBACK", intfTN: "LOOPBACK_INTERFACE", keySep: PIPE},
-       appDb:TblData{intfTN: "INTF_TABLE", keySep: COLON},
+       appDb:TblData{portTN:"LOOPBACK_TABLE", intfTN: "INTF_TABLE", keySep: COLON},
    },
 }
 
@@ -202,6 +203,12 @@ var yangToDbFecMap = map[ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE] string
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_AUTO     : "default",
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_RS       : "rs",
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_FC       : "fc",
+}
+
+var yangToDbLosMap = map[ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE] string {
+    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF  : "off",
+    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_ON   : "on",
+    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_AUTO : "auto",
 }
 
 type E_InterfaceType  int64
@@ -992,8 +999,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 		}
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, intTbl.CountersHdl.CountersTN)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/description") {
-	tblList = append(tblList, intTbl.cfgDb.portTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state") {
@@ -1567,6 +1572,47 @@ func getDbToYangFec(fec string) (ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE
     return portFec, err
 }
 
+var DbToYang_intf_eth_port_unreliable_los_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    intfType, _, ierr := getIntfTypeByName(inParams.key)
+    if intfType == IntfTypeUnset || ierr != nil {
+        log.Info("DbToYang_intf_eth_port_unreliable_los_xfmr - Invalid interface type IntfTypeUnset");
+        return result, errors.New("Invalid interface type IntfTypeUnset");
+    }
+    if IntfTypeEthernet != intfType {
+           return result, nil
+    }
+    intTbl := IntfTypeTblMap[intfType]
+
+    tblName, _ := getPortTableNameByDBId(intTbl, inParams.curDb)
+    pTbl := data[tblName]
+    prtInst := pTbl[inParams.key]
+    los, ok := prtInst.Field[PORT_UNRELIABLE_LOS]
+    portLos := ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF
+    if ok {
+        portLos, err = getDbToYangLos(los)
+        result["port-unreliable-los"] = ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE.ΛMap(portLos)["E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE"][int64(portLos)].Name
+    } else {
+        log.Info("Unreliable los field not found in DB")
+    }
+    return result, err
+}
+
+func getDbToYangLos(los string) (ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE, error) {
+    portLos := ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF
+    var err error = errors.New("Unreliable los mode not found in db")
+    for k, v := range yangToDbLosMap {
+        if los == v {
+            portLos = k
+            err = nil
+        }
+    }
+    return portLos, err
+}
+
 func getDbToYangSpeed (speed string) (ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED, error) {
     portSpeed := ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN
     var err error = errors.New("Not found in port speed map")
@@ -1687,7 +1733,6 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 
     if idx != "0"  {
         errStr := "Invalid sub-interface index: " + idx
-        log.Error(errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return idx, err
     }
@@ -1769,11 +1814,15 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                             if ok && secVal == "true" {
                                 if isSec {
                                     intfIpMap[k] = v
+                                } else {
+                                    errStr := "No such address (" + k + ") configured on this interface as primary address"
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
                                 }
                             } else {
                                 if isSec {
                                     log.Errorf("Secondary IPv4 Address : %s for interface : %s doesn't exist!", ip, ifName)
-                                    return nil, nil
+                                    errStr := "No such address (" + k + ") configured on this interface as secondary address"
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
                                 }
                                 // Primary IPv4 delete
                                 ifIpMap, _ := getIntfIpByName(d, tblName, ifName, true, false, "")
@@ -3170,7 +3219,8 @@ func deleteLoopbackIntf(inParams *XfmrParams, loName *string) error {
     if err != nil || !IntfMapObj.IsPopulated() {
         errStr := "Retrieving data from LOOPBACK table for Loopback: " + *loName + " failed!"
         log.Errorf(errStr)
-        return tlerr.InvalidArgsError{Format:errStr}
+        // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+        return nil
     }
     /* Validate L3 config only if operation is not delete */
     if inParams.oper != DELETE {
@@ -4336,7 +4386,7 @@ func getDefaultSpeed(d *db.DB, ifName string) int {
 }
 
 
-// YangToDb_intf_eth_port_config_xfmr handles port-speed, fec, auto-neg and aggregate-id config.
+// YangToDb_intf_eth_port_config_xfmr handles port-speed, fec, unreliable-los, auto-neg and aggregate-id config.
 var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     var lagStr string
@@ -4563,6 +4613,32 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
             }
             log.Infof("Finishing map assign  %s", fec_val)
+            memMap[intTbl.cfgDb.portTN][ifName] = value
+        }
+    }
+
+    /* unreliable los mode */
+    if (strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-unreliable-los")) {
+        res_map := make(map[string]string)
+        value := db.Value{Field: res_map}
+        intTbl := IntfTypeTblMap[intfType]
+
+        portLos := intfObj.Ethernet.Config.PortUnreliableLos
+
+        los_val, ok := yangToDbLosMap[portLos]
+
+        if !ok {
+            err = tlerr.InvalidArgs("Invalid unreliable los %s", portLos)
+            log.Errorf("Did not find valid unreliable los configuration entry")
+        } else {
+            /* Need the number of lanes */
+            log.Infof("Configuring unreliable los of port %s to %s", ifName, los_val)
+            res_map[PORT_UNRELIABLE_LOS] = los_val
+            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
+                log.Infof("Creating map entry", los_val)
+                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+            }
+            log.Infof("Finishing map assign  %s", los_val)
             memMap[intTbl.cfgDb.portTN][ifName] = value
         }
     }
@@ -4943,40 +5019,5 @@ var DbToYang_igmp_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[
     var err error
 
     return nil, err
-}
-
-var DbToYang_intf_description_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    var err error
-    result := make(map[string]interface{})
-
-    data := (*inParams.dbDataMap)[db.ConfigDB]
-
-    intfType, _, ierr := getIntfTypeByName(inParams.key)
-    if intfType == IntfTypeUnset || ierr != nil {
-        log.Info("DbToYang_intf_description_xfmr - Invalid interface type IntfTypeUnset");
-        return result, errors.New("Invalid interface type IntfTypeUnset");
-    }
-    if IntfTypeVxlan == intfType {
-            return result, nil
-    }
-    intTbl := IntfTypeTblMap[intfType]
-
-    tblName, _ := getPortTableNameByDBId(intTbl, db.ConfigDB)
-    if _, ok := data[tblName]; !ok {
-        log.Info("DbToYang_intf_description_xfmr table not found : ", tblName)
-        return result, errors.New("table not found : " + tblName)
-    }
-
-    pTbl := data[tblName]
-    if _, ok := pTbl[inParams.key]; !ok {
-        log.Info("DbToYang_intf_description_xfmr Interface not found : ", inParams.key)
-        return result, errors.New("Interface not found : " + inParams.key)
-    }
-    prtInst := pTbl[inParams.key]
-    descStr := prtInst.Field["description"]
-
-    result["description"] = descStr
-
-    return result, err
 }
 

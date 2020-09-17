@@ -1251,19 +1251,20 @@ func fill_nbr_state_timers_info (nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataVal
             _keepaliveInterval := (value.(float64))/1000
             nbrTimersState.KeepaliveInterval = &_keepaliveInterval
         }
-    }
-    if cfgDbEntry, cfgdb_get_err := get_spec_nbr_cfg_tbl_entry (cfgDb, nbr_key) ; cfgdb_get_err == nil {
-        if value, ok := cfgDbEntry["conn_retry"] ; ok {
-            _connectRetry, _ := strconv.ParseFloat(value, 64)
+
+        if value, ok := frrNbrDataJson["minBtwnAdvertisementRunsTimerMsecs"] ; ok {
+            _minimumAdvertisementInterval := (value.(float64))/1000
+            nbrTimersState.MinimumAdvertisementInterval = &_minimumAdvertisementInterval
+        }
+
+        if value, ok := frrNbrDataJson["connectRetryTimer"] ; ok {
+            _connectRetry := value.(float64)
             nbrTimersState.ConnectRetry = &_connectRetry
         }
-        if value, ok := cfgDbEntry["holdtime"] ; ok {
-            _holdTime, _ := strconv.ParseFloat(value, 64)
+
+        if value, ok := frrNbrDataJson["bgpTimerConfiguredHoldTimeMsecs"] ; ok {
+            _holdTime := (value.(float64))/1000
             nbrTimersState.HoldTime = &_holdTime
-        }
-        if value, ok := cfgDbEntry["min_adv_interval"] ; ok {
-            _minimumAdvertisementInterval, _ := strconv.ParseFloat(value, 64)
-            nbrTimersState.MinimumAdvertisementInterval = &_minimumAdvertisementInterval
         }
     }
 
@@ -1619,6 +1620,8 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
                    nbr_af_key.niName, nbr_af_key.nbrAddr, afiSafi_cmd, nbr_cmd_err, vtysh_cmd)
         return nil
     }
+    if _, ok := nbrMapJson["bgpNoSuchNeighbor"] ; ok {return nil}
+
     if net.ParseIP(nbr_af_key.nbrAddr) != nil {
         nbrKey = net.ParseIP(nbr_af_key.nbrAddr).String()
     }
