@@ -1826,9 +1826,13 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
             return err
         }
 
-        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
-        if fanInfo.Status {
-            fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
+        if fanInfo.Presence {
+            if fanInfo.Status {
+                fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+            } else {
+                fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+            }
         }
 
         if fanInfo.Model_Name != "" {
