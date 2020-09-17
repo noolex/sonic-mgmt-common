@@ -484,6 +484,9 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
                     }
                 } else if (feature == "tailstamp") {
                     updateMap[db.ConfigDB]["ACL_RULE"][aclKey].Field["PACKET_ACTION"] = "INT_INSERT"
+                    if (v.Get("node-type") == "IFA") {
+                        updateMap[db.ConfigDB]["ACL_RULE"][aclKey].Field["TAM_INT_TYPE"] = "IFA"
+                    }
                 } else {
                     updateMap[db.ConfigDB]["ACL_RULE"][aclKey].Field["PACKET_ACTION"] = "MONITOR_DROPS"
                 }
