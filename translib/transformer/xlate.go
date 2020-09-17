@@ -29,6 +29,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"sync"
 )
 
 const (
@@ -333,6 +334,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 	var result = make(map[int]RedisDbMap)
 	var yangDefValMap = make(map[string]map[string]db.Value)
 	var yangAuxValMap = make(map[string]map[string]db.Value)
+	keyXfmrCache = sync.Map{}
 	switch opcode {
 	case CREATE:
 		xfmrLogInfo("CREATE case")
@@ -362,6 +364,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 			log.Warning("Data translation from yang to db failed for delete request.")
 		}
 	}
+	keyXfmrCache = sync.Map{}
 	return result, yangDefValMap, yangAuxValMap, err
 }
 
@@ -369,7 +372,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	var err error
 	var payload []byte
 	xfmrLogInfo("received xpath = " + uri)
-
+	keyXfmrCache = sync.Map{}
 	requestUri := uri
 	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
 	var dbresult = make(RedisDbMap)
@@ -386,6 +389,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 
 	isEmptyPayload := false
 	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache)
+	keyXfmrCache = sync.Map{}
 	if err != nil {
 		return payload, true, err
 	}
