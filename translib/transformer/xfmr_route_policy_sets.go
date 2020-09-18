@@ -254,7 +254,7 @@ func prefix_set_mode_get_by_set_name (d *db.DB , setName string, tblName string)
     log.Info("prefix_set_mode_get_by_set_name  ", db.Key{Comp: []string{setName}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{setName}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        log.Info("No Entry found e = ", err)
         return "", err
     }
     mode, ok := dbEntry.Field["mode"]
@@ -284,7 +284,7 @@ var YangToDb_prefix_set_mode_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPara
     setName := pathInfo.Var("name")
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
     is_prefixes_exits := prefixes_exits_by_set_name (inParams.d, setName, "PREFIX")
@@ -346,7 +346,7 @@ var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string
     } else {
         if len(pathInfo.Vars) < 4 {
             err = errors.New("Invalid xpath, key attributes not found")
-            log.Error("YangToDb_prefix_key_xfmr: Prefix keys are Missing, numKeys ", len(pathInfo.Vars))
+            log.Info("YangToDb_prefix_key_xfmr: Prefix keys are Missing, numKeys ", len(pathInfo.Vars))
             return prefixTblKey, err
         }
         setName = pathInfo.Var("name")
@@ -521,7 +521,7 @@ func community_set_match_options_get_by_set_name (d *db.DB , setName string, tbl
     log.Info("community_set_match_options_get_by_set_name: key  ", db.Key{Comp: []string{setName}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{setName}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        log.Info("No Entry found e = ", err)
         return "", err
     }
     match_action, ok := dbEntry.Field["match_action"]
@@ -550,7 +550,7 @@ var YangToDb_community_match_set_options_fld_xfmr FieldXfmrYangToDb = func(inPar
     pathInfo := NewPathInfo(inParams.uri)
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
-        log.Error("Invalid Key length", len(pathInfo.Vars))
+        log.Info("Invalid Key length", len(pathInfo.Vars))
         return res_map, err
     }
 
@@ -558,7 +558,7 @@ var YangToDb_community_match_set_options_fld_xfmr FieldXfmrYangToDb = func(inPar
     log.Info("YangToDb_community_match_set_options_fld_xfmr: setName ", setName)
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
 
@@ -607,7 +607,7 @@ func community_set_type_get_by_set_name (d *db.DB , setName string, tblName stri
     log.Info("community_set_type_get_by_set_name: key  ", db.Key{Comp: []string{setName}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{setName}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        log.Info("No Entry found e = ", err)
         return "", err
     }
     prev_type, ok := dbEntry.Field["set_type"]
@@ -628,7 +628,7 @@ func community_set_is_community_members_exits (d *db.DB , setName string, tblNam
     log.Info("community_set_is_community_members_exits: key  ", db.Key{Comp: []string{setName}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{setName}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        log.Info("No Entry found e = ", err)
         return false, err
     }
 
@@ -661,7 +661,7 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
     pathInfo := NewPathInfo(inParams.uri)
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
-        log.Error("Invalid Key length", len(pathInfo.Vars))
+        log.Info("Invalid Key length", len(pathInfo.Vars))
         return res_map, err
     }
 
@@ -669,7 +669,7 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
     log.Info("YangToDb_community_member_fld_xfmr: setName ", setName)
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
     is_member_exits, _ := community_set_is_community_members_exits (inParams.d, setName, "COMMUNITY_SET", "community_member@");
@@ -721,7 +721,7 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
         if ((len(prev_type) > 0) && (prev_type != new_type)){
             log.Error("YangToDb_community_member_fld_xfmr: Type Difference Error, previous", prev_type, " newType: ", new_type)
             if inParams.oper == DELETE {
-                return res_map, tlerr.InvalidArgs("Can't find community-list") 
+                return res_map, tlerr.InvalidArgs("Can't find community-list")
             }
             err = errors.New("Type difference, Quit Operation");
             return res_map, err
@@ -822,7 +822,7 @@ var YangToDb_ext_community_match_set_options_fld_xfmr FieldXfmrYangToDb = func(i
     pathInfo := NewPathInfo(inParams.uri)
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
-        log.Error("Invalid Key length", len(pathInfo.Vars))
+        log.Info("Invalid Key length", len(pathInfo.Vars))
         return res_map, err
     }
 
@@ -830,7 +830,7 @@ var YangToDb_ext_community_match_set_options_fld_xfmr FieldXfmrYangToDb = func(i
     log.Info("YangToDb_ext_community_match_set_options_fld_xfmr: setName ", setName)
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
 
@@ -887,7 +887,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
     pathInfo := NewPathInfo(inParams.uri)
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
-        log.Error("Invalid Key length", len(pathInfo.Vars))
+        log.Info("Invalid Key length", len(pathInfo.Vars))
         return res_map, err
     }
 
@@ -895,7 +895,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
     log.Info("YangToDb_ext_community_member_fld_xfmr: setName ", setName)
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
     is_member_exits, _ := community_set_is_community_members_exits (inParams.d, setName, "EXTENDED_COMMUNITY_SET", "community_member@");
@@ -930,7 +930,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
         if ((len(prev_type) > 0) && (prev_type != new_type)){
             log.Error("YangToDb_ext_community_member_fld_xfmr: Type Difference Error, previous", prev_type, " newType: ", new_type)
             if inParams.oper == DELETE {
-                return res_map, tlerr.InvalidArgs("Can't find extcommunity-list") 
+                return res_map, tlerr.InvalidArgs("Can't find extcommunity-list")
             }
             err = errors.New("Type difference, Quit Operation");
             return res_map, err
