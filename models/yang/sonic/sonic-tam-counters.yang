@@ -72,6 +72,46 @@ module sonic-tam-counters {
 		}
 
 	}
+
+	container sonic-tam-last-counters {
+		description
+			"top-level container";
+
+		container LAST_COUNTERS {
+
+			config false;
+
+			description
+				"counters table in the counters-db";
+
+			sonic-ext:db-name "COUNTERS_DB";
+			sonic-ext:key-delim ":";
+
+			list LAST_COUNTERS_LIST {
+				key name;
+
+				description
+					"counter attributes";
+
+				leaf name {
+					type string {
+						length "1..32";
+					}
+					description
+						"Counter Name";
+				}
+				leaf Packets {
+					type uint64;
+				}
+
+				leaf Bytes {
+					type uint64;
+				}
+			}
+		}
+
+	}
+
 	// augment statements
 	// rpc statements
 	// notification statements

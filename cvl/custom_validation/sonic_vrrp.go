@@ -284,7 +284,7 @@ func (t *CustomValidation) ValidatePreempt(vc *CustValidationCtxt) CVLErrorInfo 
 
 	var owner bool = false
 
-	if vc.CurCfg.VOp != OP_DELETE || len(preempt_val) == 0{
+	if ((len(preempt_val) == 0) || ((vc.CurCfg.VOp != OP_DELETE) && (preempt_val == "True"))) {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 

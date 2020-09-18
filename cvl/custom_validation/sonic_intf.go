@@ -327,7 +327,7 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 	var vrrp_table string
 	var vip_suffix string
 
-	log.Info("ValidateIntfIp op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
+	log.Info("ValidateIntfIp op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data, "vc.ReqData: ", vc.ReqData, "vc.SessCache", vc.SessCache)
 
 	key := vc.CurCfg.Key
 	key_split := strings.Split(key, "|")
@@ -395,16 +395,18 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 	// Interface IP add and delete is not allowed if VRRP has to transition from/to owner
 	// VRRP checks ensure that interface IP is configured before VIP, hence check just delete
 
+  vrrp_del_count := 0
+
 	for _, db_key := range vrrp_keys {
 
 		log.Info("db_key: ", db_key)
-
 
 		found := false
 		if vc.CurCfg.VOp == OP_DELETE {
 			for i := 0; i < len(vc.ReqData); i++ {
 				if vc.ReqData[i].Key == db_key {
 					found = true
+					vrrp_del_count++
 					log.Info("Allow deletion of VRRP key: ", db_key)
 					break
 				}
@@ -442,6 +444,57 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 			if if_ip_net.Contains(vip_prefix) {
 				log.Info("ValidateIp deleting last IP overlapping VIP")
 				errStr := "Interface IP is being used by VRRP instance, please delete VRRP virtual IP before deleting/changing interface IP"
+				return CVLErrorInfo {
+					ErrCode: CVL_SEMANTIC_ERROR,
+					TableName: vrrp_table,
+					CVLErrDetails: errStr,
+					ConstraintErrMsg: errStr,
+				}
+			}
+		}
+	}
+
+	if (vc.CurCfg.VOp == OP_DELETE) {
+
+		if (vrrp_table == "VRRP") {
+
+			if_ip_data, _ := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
+
+			_, has_data := if_ip_data["secondary"]
+
+			log.Info("ValidateIntfIp if_ip_data:", if_ip_data, " secondary:", has_data, " vrrp_keys:", vrrp_keys)
+
+			if ((!has_data) && ((len(vrrp_keys) - vrrp_del_count) > 0)) {
+				log.Info("Primary IP is deleted, no VRRP instance should be present")
+				errStr := "Remove all the VRRP instances before removing interface IP"
+				return CVLErrorInfo {
+					ErrCode: CVL_SEMANTIC_ERROR,
+					TableName: vrrp_table,
+					CVLErrDetails: errStr,
+					ConstraintErrMsg: errStr,
+	                       }
+                	}
+		} else {
+
+			ipaddr_table := table_name + "|" + if_name + "|" + "*"
+
+			ip_addr_keys, _:= vc.RClient.Keys(ipaddr_table).Result()
+
+			log.Info("ValidateIntfIp ipaddr_table:", ip_addr_keys, " vrrp_keys:", vrrp_keys)
+
+      count := 0
+			for _, ip_key := range ip_addr_keys {
+				ip_split := strings.Split(ip_key, "|")
+				if strings.Contains(ip_split[2], ":") {
+					count++
+				}
+			}
+
+			log.Info("ValidateIntfIp IPv6 count:", count)
+
+			if ((count-1 <= 0) && ((len(vrrp_keys) - vrrp_del_count) > 0)) {
+				log.Info("IPv6 address are removed, no VRRP instance should be present")
+				errStr := "Remove all the VRRP instances before removing interface IP"
 				return CVLErrorInfo {
 					ErrCode: CVL_SEMANTIC_ERROR,
 					TableName: vrrp_table,

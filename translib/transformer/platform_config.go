@@ -44,6 +44,14 @@ type portGroup struct {
 }
 var portGroups map[string]portGroup
 
+type validPortSpeed struct {
+    ifStart int
+    ifEnd int
+    validSpeeds map[int][]string
+}
+var validPortSpeeds []validPortSpeed
+
+
 var platConfigStr map[string]map[string]string
 var platDefStr map[string]map[string]map[string]string
 var platDef4Level map[string]map[string]map[string]map[string]string
@@ -131,6 +139,7 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
     port_config.index = dpb_index
     port_config.lanes = dpb_lanes
     port_config.speed = strconv.Itoa(lane_speed_map[mode][1])
+    port_config.valid_speeds = getPortValidSpeeds(port_config.name, lane_speed[0])
     if strings.HasPrefix(mode, "1x") {
         pos := strings.LastIndex(port_config.alias, "/")
         if pos != -1 {
@@ -239,27 +248,6 @@ func getValidSpeeds(port_i string) ([]string, error) {
     return valid_speeds, nil
 }
 
-// getDefaultBreakoutModeSpeed - Returns default speed of a port or error 
-func getDefaultBreakoutModeSpeed(port_i string) (string, error) {
-    var err error
-    var mode string
-    var default_speed string
-
-    mode, err = getDefaultBreakoutMode(port_i)
-    if err == nil {
-        pos := strings.Index(mode, "G")
-        if pos != -1 {
-            speed, err := strconv.Atoi(mode[2:pos])
-            if err == nil {
-                default_speed = strconv.Itoa(speed*1000)
-            }
-        } else {
-            err = tlerr.InvalidArgs("Unable to determine default port speed")
-        }
-    }
-    return default_speed, err
-}
-
 // getDefaultBreakoutMode - Returns default breakout mode of a port
 func getDefaultBreakoutMode(port_i string) (string, error) {
     var def_breakout_mode string
@@ -312,9 +300,63 @@ func parsePlatformDefJsonFile () (error) {
         return err
     }
 
+<<<<<<< HEAD
     platDef4Level = make(map[string]map[string]map[string]map[string]string)
     json.Unmarshal([]byte(file), &platDef4Level)
     log.Info(platDef4Level)
+||||||| merged common ancestors
+<<<<<<< Temporary merge branch 1
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDef4Level)
+||||||| merged common ancestors
+<<<<<<< Temporary merge branch 1
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDef4Level)
+||||||| merged common ancestors
+<<<<<<< Temporary merge branch 1
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDefStr)
+||||||| merged common ancestors
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+=======
+=======
+    //platDefStr = make(map[string]map[string]map[string]string)
+    //err = json.Unmarshal([]byte(file), &platDefStr)
+    //log.Info(platDefStr)
+    //platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    //json.Unmarshal([]byte(file), &platDef4Level)
+    //log.Info(platDef4Level)
+
+>>>>>>> Temporary merge branch 2
+=======
+    //platDefStr = make(map[string]map[string]map[string]string)
+    //err = json.Unmarshal([]byte(file), &platDefStr)
+    //log.Info(platDefStr)
+    //platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    //json.Unmarshal([]byte(file), &platDef4Level)
+    //log.Info(platDef4Level)
+
+>>>>>>> Temporary merge branch 2
+=======
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDef4Level)
+    //platDefStr = make(map[string]map[string]map[string]string)
+    //err = json.Unmarshal([]byte(file), &platDefStr)
+    //log.Info(platDefStr)
+    //platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    //json.Unmarshal([]byte(file), &platDef4Level)
+    //log.Info(platDef4Level)
+
+>>>>>>> origin/broadcom_sonic_3.x_share
     var fec_raw_map map[string]map[string]map[string]interface{}
 
     /* Map if for FEC parsing */
@@ -354,11 +396,54 @@ func parsePlatformDefJsonFile () (error) {
                 }
             }
         }
-
         log.Info("Parsed port-group info as ", platDefStr)
     } else {
         log.Info("No port-group configs to parse in platform-def")
     }
+<<<<<<< HEAD
+||||||| merged common ancestors
+<<<<<<< Temporary merge branch 1
+||||||| merged common ancestors
+<<<<<<< Temporary merge branch 1
+||||||| merged common ancestors
+>>>>>>> Temporary merge branch 2
+=======
+
+/* Keeping this commented for now 
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDefStr)
+*/
+>>>>>>> Temporary merge branch 2
+=======
+
+/* Keeping this commented for now 
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDefStr)
+*/
+>>>>>>> Temporary merge branch 2
+=======
+
+    if vspeedEntries, ok := fec_raw_map["native-port-supported-speeds"]; ok {
+        parseNativeValidSpeed(vspeedEntries)
+    }
+
+/* Keeping this commented for now 
+    platDefStr = make(map[string]map[string]map[string]string)
+    err = json.Unmarshal([]byte(file), &platDefStr)
+    log.Info(platDefStr)
+    platDef4Level = make(map[string]map[string]map[string]map[string]string)
+    json.Unmarshal([]byte(file), &platDef4Level)
+    log.Info(platDefStr)
+*/
+>>>>>>> origin/broadcom_sonic_3.x_share
     return err
 }
 
@@ -545,7 +630,9 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
         value.Set("lanes", ports[i].lanes)
         value.Set("alias", ports[i].alias)
         value.Set("speed", ports[i].speed)
-        value.Set("valid_speeds", ports[i].valid_speeds)
+        if len(ports[i].valid_speeds) > 1 {
+            value.Set("valid_speeds", ports[i].valid_speeds)
+        }
         fec := getDefFecMode(ports[i].name, strconv.Itoa(strings.Count(ports[i].lanes, ",") + 1), ports[i].speed)
         if len(fec)>1 {
              value.Set("fec", fec)
@@ -791,6 +878,64 @@ func parsePortGroupData (pgs map[string]map[string]interface{}) (error) {
     log.Info("PG Parsed entry map : ", portGroups)
     return nil
 
+}
+
+func parseNativeValidSpeed (nativeValidSpeeds map[string]map[string]interface{}) (error) {
+
+    for ifs, laneVspeeds := range nativeValidSpeeds {
+        var entry validPortSpeed
+        ifRange := strings.Split(ifs,"-")
+        //entry.ifStart = ifRange[0]
+        //ifRange[1] = "Ethernet" + ifRange[1]
+        entry.ifStart,_ = strconv.Atoi(strings.TrimLeft(ifRange[0], "Ethern"))
+        entry.ifEnd,_ = strconv.Atoi(ifRange[1])
+        entry.validSpeeds = make(map[int][]string)
+        for laneCount, vSpeeds := range laneVspeeds {
+            var val_speeds []string
+            switch reflect.TypeOf(vSpeeds).Kind() {
+                case reflect.Slice:
+                    speeds, ok := vSpeeds.([]interface{})
+                    if ok {
+                        //val_speeds, ok = speeds.([]string)
+                        for _, spd := range speeds {
+                            speed, ok := spd.(string)
+                            if ok {
+                                val_speeds = append(val_speeds, speed)
+                            } else {
+                                log.Error(spd, " speed not string")
+                            }
+                        }
+                        lcount, _ := strconv.Atoi(laneCount)
+                        entry.validSpeeds[lcount] = val_speeds
+                        log.Info("Valid speed - ", entry.validSpeeds)
+                    }
+                default:
+                    log.Error("Failed to translate type of valid speed: ", entry.ifStart, " - ", entry.ifEnd,
+                        ", Lane count: ", laneCount, " Type: ", reflect.TypeOf(vSpeeds).Kind())
+             }
+        }
+        validPortSpeeds = append(validPortSpeeds, entry)
+        log.Info("Entry ", entry)
+    }
+
+    log.Info("Parsed valid_speeds map : ", validPortSpeeds)
+    return nil
+}
+
+func getPortValidSpeeds(ifName string, laneCount int) (string) {
+    var valid_speeds string
+    port,_ := strconv.Atoi(strings.TrimLeft(ifName, "Ethern"))
+    for _, ifRange := range validPortSpeeds {
+        if port >= ifRange.ifStart && port <= ifRange.ifEnd {
+            if vspeeds, ok := ifRange.validSpeeds[laneCount]; ok {
+                valid_speeds = strings.Join(vspeeds, ",")
+                log.Info(ifName, "valid_speeds ", valid_speeds, " for lane count: ", laneCount)
+                break
+            }
+        }
+    }
+    log.Info(ifName, " ", valid_speeds)
+    return valid_speeds
 }
 
 func getPgPortValidSpeeds(pgid string, speed string) (string, error) {
