@@ -4467,8 +4467,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                     log.Infof("%s is member of %s", ifName, *lagId)
                 }
                 if lagId == nil || err != nil {
-                    errStr := "Retrieveing PortChannel associated with Interface: " + ifName + " failed!"
-                    return nil, errors.New(errStr)
+                    return nil, nil
                 }
                 lagStr = *lagId
        }/* End of switch case */
