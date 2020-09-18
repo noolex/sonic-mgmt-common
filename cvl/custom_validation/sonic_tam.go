@@ -22,13 +22,8 @@ package custom_validation
 import (
     "github.com/go-redis/redis/v7"
     "strings"
-<<<<<<< HEAD
-    "strconv"
-||||||| merged common ancestors
-=======
     "reflect"
     "strconv"
->>>>>>> origin/broadcom_sonic_3.x_share
     "fmt"
     log "github.com/golang/glog"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
@@ -489,15 +484,6 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
          }
      }
 */
-<<<<<<< HEAD
-||||||| merged common ancestors
-||||||| merged common ancestors
-
-=======
-	*/
-
->>>>>>> Temporary merge branch 2
-=======
 
      if (vc.CurCfg.VOp != OP_DELETE) {
          flow, isMatched := getFlowGroups(vc, "TAM_IFA_SESSIONS_TABLE", thisFlowgroup)
@@ -510,7 +496,6 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
              }
          }
      }
->>>>>>> origin/broadcom_sonic_3.x_share
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -621,15 +606,6 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
          }
      }
 */
-<<<<<<< HEAD
-||||||| merged common ancestors
-||||||| merged common ancestors
-
-=======
-	*/
-
->>>>>>> Temporary merge branch 2
-=======
      if (vc.CurCfg.VOp != OP_DELETE) {
          flow, isMatched := getFlowGroups(vc, "TAM_DROPMONITOR_SESSIONS_TABLE", thisFlowgroup)
          if (isMatched) {
@@ -642,7 +618,6 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
          }
      }
 
->>>>>>> origin/broadcom_sonic_3.x_share
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
