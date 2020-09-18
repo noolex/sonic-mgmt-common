@@ -311,9 +311,5 @@ module sonic-system-radius {
             }
         }
     }
-
-    rpc clear-radius {
-        description "Clear RADIUS statistics counters";
-    }
 }
 
