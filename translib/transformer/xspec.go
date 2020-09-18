@@ -859,7 +859,6 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 					}
 				}
 			}
-			dbMapPrint("/tmp/dbSpecMapFull.txt")
 			return err
 		} else {
 			log.Warningf("DB spec-map data not found(%v) \r\n", dbXpath)
@@ -922,7 +921,6 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 		}
 	}
 
-    dbMapPrint("/tmp/dbSpecMapFull.txt")
 	return err
 }
 
@@ -945,6 +943,7 @@ func annotDbSpecMap(annotEntries []*yang.Entry) {
 			}
 		}
 	}
+	dbMapPrint("/tmp/dbSpecMapFull.txt")
 }
 
 /* Debug function to print the yang xpath lookup map */
