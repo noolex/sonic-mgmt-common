@@ -78,34 +78,8 @@ submodule openconfig-tam-flowgroups {
                 path "/oc-if:interfaces/oc-if:interface/oc-if:name";
             }
             description
-<<<<<<< HEAD
-              "Associate flowgroup to interfaces.";
-        }
-||||||| merged common ancestors
-              "Associate flowgroup to interfaces.";
-        }
-||||||| merged common ancestors
-        leaf ip-version {
-            type oc-inet:ip-version {
-                enum IPV4 {
-                    description
-                      "The IPv4 protocol as defined in RFC 791.";
-                }
-                enum IPV6 {
-                    description
-                      "The IPv6 protocol as defined in RFC 2460.";
-                }
-            }
-            mandatory true;
-            description
-              "IP Address version";
-        }
-=======
->>>>>>> Temporary merge branch 2
-=======
               "List of interfaces associated to the flowgroup.";
         }
->>>>>>> origin/broadcom_sonic_3.x_share
     }
 
     grouping tam-flowgroups-state {
