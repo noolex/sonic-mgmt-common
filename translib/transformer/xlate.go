@@ -29,7 +29,6 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
-	"sync"
 )
 
 const (
@@ -357,13 +356,13 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		}
 
 	case DELETE:
-		keyXfmrCache = sync.Map{}
+		keyXfmrCache = make(map[string]string)
 		xfmrLogInfo("DELETE case")
 		err = dbMapDelete(d, yg, opcode, path, requestUri, jsonData, result, txCache, skipOrdTbl)
 		if err != nil {
 			log.Warning("Data translation from yang to db failed for delete request.")
 		}
-		keyXfmrCache = sync.Map{}
+		keyXfmrCache = make(map[string]string)
 	}
 	return result, yangDefValMap, yangAuxValMap, err
 }

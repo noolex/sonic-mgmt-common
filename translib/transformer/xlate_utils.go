@@ -677,8 +677,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
 				 if oper == DELETE {
-					if keyStrIntf, _ok := keyXfmrCache.Load(curPathWithKey); _ok {
-						keyStr = keyStrIntf.(string)
+					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
 						callKeyXfmr = false
 					}
 				 }
@@ -703,7 +702,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 keyStr = ret
 					 }
 					 if oper == DELETE {
-						keyXfmrCache.Store(curPathWithKey,keyStr)
+						keyXfmrCache[curPathWithKey] = keyStr
 					 }
 				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
@@ -722,8 +721,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
 				 if oper == DELETE {
-					if keyStrIntf, _ok := keyXfmrCache.Load(curPathWithKey); _ok {
-						keyStr = keyStrIntf.(string)
+					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
 						callKeyXfmr = false
 					}
 				 }
@@ -748,7 +746,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr = ret
 				 }
 				 if oper == DELETE {
-					keyXfmrCache.Store(curPathWithKey,keyStr)
+					keyXfmrCache[curPathWithKey] = keyStr
 				 }
 			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {
