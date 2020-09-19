@@ -1983,11 +1983,12 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         }
     }
 
-    vlanIntfcount := 0
-    _ = interfaceIPcount(tblName, d, &ifName, &vlanIntfcount)
+    vlanIntfCount := 0
+    _ = interfaceIPcount(tblName, d, &ifName, &vlanIntfCount)
     var data db.Value
 
     // There is atleast one IP Address Configured on Vlan Intf
+    // Add the key "<ifname>|<IP>" to the Map
     if len(intfIpMap) > 0 {
         if _, ok := vlanIntfmap[tblName]; !ok {
             vlanIntfmap[tblName] = make (map[string]db.Value)
@@ -2000,27 +2001,30 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
     }
 
     // Case-1: Last IP Address getting deleted on Vlan Interface
-    // Case-2: Interface Vlan getting deleted with no IP addresses configured
-    if (vlanIntfcount - len(intfIpMap)) == 1 {
+    // Case-2: Interface Vlan getting deleted with L3 Attributes Present
+    if (vlanIntfCount - len(intfIpMap)) == 1 {
+        sagIpKey, _ := d.GetKeysByPattern(&db.TableSpec{Name: "SAG"}, ifName+"|*")
         IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
         if err != nil {
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
         }
         IntfMap := IntfMapObj.Field
-        // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>" (or)
-        if len(IntfMap) == 1 {
-            if _, ok := vlanIntfmap[tblName]; !ok {
-                vlanIntfmap[tblName] = make (map[string]db.Value)
-	    }
+        // NULL indicates atleast one a) IP Address Config or b) SAG IP Config
+        // So delete only when it is the Last IP and no SAG Config
+        if len(IntfMap) == 1 &&   len(sagIpKey) == 0 {
             if _, ok := IntfMap["NULL"]; ok {
+                if _, ok := vlanIntfmap[tblName]; !ok {
+                    vlanIntfmap[tblName] = make (map[string]db.Value)
+                }
                 vlanIntfmap[tblName][ifName] = data
             }
         }
         // Case-2: If deletion at parent container(routedVlanIntf)
-        if routedVlanIntf == nil {
+        // Delete it only when no SAG Config is present
+        if routedVlanIntf == nil &&  len(sagIpKey) == 0 {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
-	    }
+            }
             vlanIntfmap[tblName][ifName] = data
         }
     }
