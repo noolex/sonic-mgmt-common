@@ -125,7 +125,7 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
     }
 
     for key := range inParams.yangDefValMap["BGP_NEIGHBOR"] {
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["min_adv_interval"] = "30"
+        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["min_adv_interval"] = "0"
         inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["keepalive"] = "60"
         inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["holdtime"] = "180"
         inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["conn_retry"] = "30"
@@ -134,7 +134,7 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]d
     }
 
     for key := range inParams.yangDefValMap["BGP_PEER_GROUP"] {
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["min_adv_interval"] = "30"
+        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["min_adv_interval"] = "0"
         inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["keepalive"] = "60"
         inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["holdtime"] = "180"
         inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["conn_retry"] = "30"
