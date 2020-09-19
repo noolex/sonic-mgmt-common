@@ -618,7 +618,7 @@ func replacePrefixWithModuleName(xpath string) (string) {
 
 
 /* Extract key vars, create db key and xpath */
-func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (xpathTblKeyExtractRet, error) {
+func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}, xfmrKeyCache map[string]string) (xpathTblKeyExtractRet, error) {
 	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)
 	 var retData xpathTblKeyExtractRet
 	 keyStr    := ""
@@ -676,9 +676,9 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr += keySeparator
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
-				 if oper == DELETE {
-					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
-						callKeyXfmr = false
+			     if len(xfmrKeyCache) > 0 {
+				     if keyStr, ok = xfmrKeyCache[curPathWithKey]; ok {
+                         callKeyXfmr = false
 					}
 				 }
 				 if callKeyXfmr {
@@ -701,8 +701,8 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 }
 						 keyStr = ret
 					 }
-					 if oper == DELETE {
-						keyXfmrCache[curPathWithKey] = keyStr
+					 if len(xfmrKeyCache) > 0 {
+						xfmrKeyCache[curPathWithKey] = keyStr
 					 }
 				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
@@ -720,11 +720,11 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
-				 if oper == DELETE {
-					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
+				if len(xfmrKeyCache) > 0 {
+					if keyStr, ok = xfmrKeyCache[curPathWithKey]; ok {
 						callKeyXfmr = false
 					}
-				 }
+				}
 			   if callKeyXfmr {
 				 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 				 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
@@ -745,8 +745,8 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 					 keyStr = ret
 				 }
-				 if oper == DELETE {
-					keyXfmrCache[curPathWithKey] = keyStr
+				 if len(xfmrKeyCache) > 0 {
+					xfmrKeyCache[curPathWithKey] = keyStr
 				 }
 			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {

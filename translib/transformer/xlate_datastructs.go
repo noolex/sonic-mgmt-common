@@ -23,9 +23,6 @@ import (
     "github.com/openconfig/ygot/ygot"
 )
 
-//Map of map[uri][dbKey]
-var keyXfmrCache map[string]string
-
 type KeySpec struct {
         DbNum db.DBNum
         Ts    db.TableSpec
@@ -74,6 +71,7 @@ type xlateFromDbParams struct {
 	tblKey string
 	resultMap map[string]interface{}
 	validate bool
+    xfmrKeyCache map[string]string
 }
 
 type xlateToParams struct {
@@ -97,5 +95,5 @@ type xlateToParams struct {
         tableName string
         yangDefValMap map[string]map[string]db.Value
         yangAuxValMap map[string]map[string]db.Value
+		xfmrKeyCache map[string]string
 }
-
