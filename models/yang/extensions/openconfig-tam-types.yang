@@ -49,11 +49,11 @@ module openconfig-tam-types {
             }
             enum INACTIVE {
                 description
-                  "Feature is suspended/inactive ";
+                  "Feature is suspended/inactive";
             }
             enum UNSUPPORTED {
                 description
-                  "Feature is unsuported on the switch";
+                  "Feature is unsupported on the switch";
             }
             enum INSUFFICIENT_RESOURCES {
                 description
@@ -63,7 +63,7 @@ module openconfig-tam-types {
         }
 
         description
-          "Status of a given TAM feature ";
+          "Status of a given TAM feature";
     }
 // grouping statements
 // data definition statements

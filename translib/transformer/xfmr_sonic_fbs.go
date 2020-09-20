@@ -277,7 +277,11 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 func fill_copp_classifier_trap_details(class_name string, coppTrapTblVal db.Value, classEntry *ClassifierEntry) error {
 	classEntry.CLASSIFIER_NAME = class_name
 	classEntry.MATCH_TYPE = new(string)
-	*classEntry.MATCH_TYPE = "copp"
+	if class_name == "default" {
+		*classEntry.MATCH_TYPE = "any"
+	} else {
+		*classEntry.MATCH_TYPE = "copp"
+	}
 	if str_val, found := coppTrapTblVal.Field["trap_ids"]; found {
 		classEntry.TRAP_IDS = &str_val
 	}
@@ -388,6 +392,10 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 			}
 			if match_type != "" && match_type != "COPP" {
 				log.Infof("Not matching index:%v class_name:%v match_type:%v ", index, class_name, match_type)
+				continue
+			}
+			if match_type == "COPP" && class_name == "default" {
+				log.Infof("Not matching index:%v class_name:%v match_type:any ", index, class_name)
 				continue
 			}
 
@@ -753,7 +761,7 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxD
 			if value == policy_name {
 				field_splits := strings.Split(field, "_")
 				policy_bind_dir := field_splits[0]
-				appliedPort.INTERFACE_NAME = policyBindKeys[index].Comp[0]
+				appliedPort.INTERFACE_NAME = *(utils.GetUINameFromNativeName(&policyBindKeys[index].Comp[0]))
 				appliedPort.STAGE = policy_bind_dir
 				policyEntry.APPLIED_INTERFACES = append(policyEntry.APPLIED_INTERFACES, appliedPort)
 				break

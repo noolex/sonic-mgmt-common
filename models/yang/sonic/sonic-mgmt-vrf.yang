@@ -2,6 +2,10 @@ module sonic-mgmt-vrf {
     namespace "http://github.com/Azure/sonic-mgmt-vrf";
     prefix mgmt-vrf;
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -57,6 +61,8 @@ module sonic-mgmt-vrf {
                     description
                         "This is set to true when data interfaces are associated with management VRF for in-band management";
                 }
+
+                sonic-ext:custom-validation ValidateBeforeMgmtVrfDelete;
             }
         }
     }

@@ -1466,13 +1466,22 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 					}
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := inParams.d.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
+                    log.Infof("DELETE operation: vrf:%v, vniid:%v ",niName, vniIdKeyStr)
 					if err != nil {
 						return res_map, err
 					}
 					if vrfEntry.Has("vni") {
 						vniIdStr := vrfEntry.Get("vni")
+                        if ( (vniIdKeyStr != "") && (vniIdKeyStr != vniIdStr) ) {
+                            log.Infof("VNI ID:%v != VNI ID:%v in vrf:%v DB ",vniIdKeyStr, vniIdStr, niName)
+                            return res_map,tlerr.NotFound("Resource not found")
+                        }
+
 						vniNum, _ := strconv.ParseUint(vniIdStr, 10, 32)
 						vniId = uint32(vniNum)
+                    } else if (vniIdKeyStr != "") {
+                        log.Infof("VNI ID:%v not found in  vrf:%v DB; no vni mapped to VRF",vniIdKeyStr, niName)
+                        return res_map,tlerr.NotFound("Resource not found")
 					}
 				}
 			}
@@ -1758,6 +1767,7 @@ var Subscribe_vxlan_vni_instance_subtree_xfmr SubTreeXfmrSubscribe = func (inPar
         tblName = "VXLAN_TUNNEL_MAP"
     } else if strings.HasPrefix(niName, "Vrf") {
         tblName = "VRF"
+        result.isVirtualTbl = true
         result.needCache = true
     } else {
         return result,nil

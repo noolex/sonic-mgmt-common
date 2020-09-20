@@ -89,7 +89,6 @@ var rpc_watermarks_clear_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
                         Status_detail []string`json:"status-detail"`
                 } `json:"openconfig-qos-ext:output"`
         }
-
         var operand struct {
                 Input struct {
                      Buffer string `json:"buffer"`
@@ -164,9 +163,6 @@ func watermarks_clear_operation(exec_cmd string) ([]byte, error) {
         result.Output.Status_detail  = out_list 
         return json.Marshal(&result)
 }
-
-
-
 
 var DbToYang_tam_threshold_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
