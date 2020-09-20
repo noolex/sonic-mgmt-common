@@ -676,7 +676,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr += keySeparator
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
-			     if len(xfmrKeyCache) > 0 {
+			     if xfmrKeyCache != nil {
 				     if keyStr, ok = xfmrKeyCache[curPathWithKey]; ok {
                          callKeyXfmr = false
 					}
@@ -701,7 +701,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 }
 						 keyStr = ret
 					 }
-					 if len(xfmrKeyCache) > 0 {
+					 if xfmrKeyCache != nil {
 						xfmrKeyCache[curPathWithKey] = keyStr
 					 }
 				 }
@@ -720,7 +720,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
-				if len(xfmrKeyCache) > 0 {
+				 if xfmrKeyCache != nil {
 					if keyStr, ok = xfmrKeyCache[curPathWithKey]; ok {
 						callKeyXfmr = false
 					}
@@ -745,7 +745,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 					 keyStr = ret
 				 }
-				 if len(xfmrKeyCache) > 0 {
+				 if xfmrKeyCache != nil {
 					xfmrKeyCache[curPathWithKey] = keyStr
 				 }
 			 }
