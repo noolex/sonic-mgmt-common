@@ -109,91 +109,146 @@ func init () {
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
 }
 
-func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]db.Value) (error) {
+func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, key string, fieldName string, fieldValue string, 
+                                        entry db.Value) {
+    /* If Default field exists in yangDefValMap, return */
+    defValEntry := inParams.yangDefValMap[tblName][key]
+    if defValEntry.Has(fieldName) {
+        return
+    }
+    /* If default field exists in dbDataMap table entry, return */
+    if entry.IsPopulated() && entry.Has(fieldName) {
+        return
+    }
+    inParams.yangDefValMap[tblName][key].Field[fieldName] = fieldValue
+}
+
+func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
     var err error
 
+    if log.V(3) {
+        log.Info("bgp_hdl_post_xfmr: Yang default value map ", inParams.yangDefValMap)
+        log.Info("bgp_hdl_post_xfmr: Yang DB data map ", data)
+    }
+
     if inParams.oper == DELETE {
+        if (inParams.subOpDataMap[UPDATE] == nil) {
+            return err
+        }
+        xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        specInfo, ok := xYangSpecMap[xpath]
+        if !ok {
+           return err
+        }
+        yangType := yangTypeGet(specInfo.yangEntry)
+        if !(yangType == YANG_LEAF) {
+            return err
+        }
+        if log.V(3) {
+            log.Info("bgp_hdl_post_xfmr: Yang sub op data map ",
+                    (*inParams.subOpDataMap[UPDATE])[db.ConfigDB])
+        }
+        subOpUpdMap := (*inParams.subOpDataMap[UPDATE])[db.ConfigDB]
+        bgpNbrTbl := "BGP_NEIGHBOR"
+        bgpNbrAfTbl := "BGP_NEIGHBOR_AF"
+        if len(subOpUpdMap[bgpNbrTbl]) == 0 && len(subOpUpdMap[bgpNbrAfTbl]) == 0 {
+            return err
+        }
+        subOpDelMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        subOpDelMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        inParams.subOpDataMap[DELETE] = &subOpDelMap
+        nbrTbls := []string{bgpNbrTbl, bgpNbrAfTbl}
+        for _, tbl := range nbrTbls {
+            if (len(subOpUpdMap[tbl]) == 0) {
+                continue
+            }
+            subOpDelMap[db.ConfigDB][tbl] = make(map[string]db.Value)
+            for key, val := range subOpUpdMap[tbl] {
+               (*inParams.subOpDataMap[DELETE])[db.ConfigDB][tbl][key] = val
+            }
+            subOpUpdMap[tbl] = make(map[string]db.Value)
+        }
+        if log.V(3) {
+            log.Info("bgp_hdl_post_xfmr: Yang UPDATE sub op data map ",
+                    (*inParams.subOpDataMap[UPDATE])[db.ConfigDB])
+            log.Info("bgp_hdl_post_xfmr: Yang DELETE sub op data map ",
+                    (*inParams.subOpDataMap[DELETE])[db.ConfigDB])
+        }
         return err
     }
-
-    for key := range inParams.yangDefValMap["BGP_GLOBALS"] {
-        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["always_compare_med"] = "false"
-        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["ignore_as_path_length"] = "false"
-        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["external_compare_router_id"] = "true"
-        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["log_nbr_state_changes"] = "true"
-        inParams.yangDefValMap["BGP_GLOBALS"][key].Field["load_balance_mp_relax"] = "false"
+    tblName := "BGP_GLOBALS"
+    for key := range inParams.yangDefValMap[tblName] {
+        entry := (*data)[tblName][key]
+        bgp_validate_and_set_default_value(inParams, tblName, key, "always_compare_med", "false", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "ignore_as_path_length", "false", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "external_compare_router_id", "false", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "log_nbr_state_changes", "true", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "load_balance_mp_relax", "false", entry)
     }
 
-    for key := range inParams.yangDefValMap["BGP_NEIGHBOR"] {
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["min_adv_interval"] = "30"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["keepalive"] = "60"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["holdtime"] = "180"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["conn_retry"] = "30"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["passive_mode"] = "false"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["ebgp_multihop"] = "false"
+    /* Dont set the fields with default values for BGP neighbor and neighbor AF tables from infra as it 
+     * impacts the configs inheritance from PG when nbr is part of the PG, the default values are expected 
+     * to be initialised as part of BGP neighbor creation in bgpcfgd */
+    delete (inParams.yangDefValMap, "BGP_NEIGHBOR")
+    delete (inParams.yangDefValMap, "BGP_NEIGHBOR_AF")
+
+    tblName = "BGP_PEER_GROUP"
+    for key := range inParams.yangDefValMap[tblName] {
+        entry := (*data)[tblName][key]
+        bgp_validate_and_set_default_value(inParams, tblName, key, "min_adv_interval", "0", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "keepalive", "60", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "holdtime", "180", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "conn_retry", "30", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "passive_mode", "false", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "ebgp_multihop", "false", entry)
     }
 
-    for key := range inParams.yangDefValMap["BGP_PEER_GROUP"] {
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["min_adv_interval"] = "30"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["keepalive"] = "60"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["holdtime"] = "180"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["conn_retry"] = "30"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["passive_mode"] = "false"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["ebgp_multihop"] = "false"
-    }
-    
     /* Remove the invalid default values for BGP address family */
-    for key := range inParams.yangDefValMap["BGP_GLOBALS_AF"] {
-        if !(strings.Contains(key, "ipv4_unicast")) &&
-             inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["route_flap_dampen"] != "" {
+    tbl := inParams.yangDefValMap["BGP_GLOBALS_AF"]
+    for key := range tbl {
+        entry := tbl[key]
+        if !(strings.Contains(key, "ipv4_unicast")) && entry.Has("route_flap_dampen") {
              /* Route flap dampening is supported only for IPv4 AF. */
-             delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "route_flap_dampen")
+             delete (entry.Field, "route_flap_dampen")
         }
         if strings.Contains(key, "l2vpn_evpn") {
-            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ebgp_paths"] != "" {
-               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ebgp_paths")
+            if entry.Has("max_ebgp_paths") {
+               delete (entry.Field, "max_ebgp_paths")
             }
-            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ibgp_paths"] != "" {
-               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ibgp_paths")
+            if entry.Has("max_ibgp_paths") {
+               delete (entry.Field, "max_ibgp_paths")
             }
         } else if (strings.Contains(key, "ipv4_unicast") ||
                    strings.Contains(key, "ipv6_unicast")) {
-            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["advertise-default-gw"] != "" {
-               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "advertise-default-gw")
+            if entry.Has("advertise-default-gw") {
+               delete (entry.Field, "advertise-default-gw")
             }
         }
     }
 
-    for key := range inParams.yangDefValMap["BGP_NEIGHBOR_AF"] {
+    tblName = "BGP_PEER_GROUP_AF"
+    tbl = inParams.yangDefValMap[tblName]
+    for key := range tbl {
+        entry := tbl[key]
         if strings.Contains(key, "l2vpn_evpn") {
-            if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["rrclient"] != "" {
-               delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "rrclient")
+            if entry.Has("rrclient") {
+               delete (entry.Field, "rrclient")
             }
-            if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["send_community"] != "" {
-               delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "send_community")
-            }
-        } else if (strings.Contains(key, "ipv4_unicast") ||
-                   strings.Contains(key, "ipv6_unicast")) {
-            inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["send_default_route"] = "false"
-            inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["max_prefix_warning_only"] = "false"
-        }
-    }
-
-    for key := range inParams.yangDefValMap["BGP_PEER_GROUP_AF"] {
-        if strings.Contains(key, "l2vpn_evpn") {
-            if inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["rrclient"] != "" {
-               delete (inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field, "rrclient")
-            }
-            if inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["send_community"] != "" {
-               delete (inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field, "send_community")
+            if entry.Has("send_community") {
+               delete (entry.Field, "send_community")
             }
         } else if (strings.Contains(key, "ipv4_unicast") ||
                    strings.Contains(key, "ipv6_unicast"))  {
-            inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["send_default_route"] = "false"
-            inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["max_prefix_warning_only"] = "false"
+            dbMapEntry := (*data)[tblName][key]
+            bgp_validate_and_set_default_value(inParams, tblName, key, "send_default_route", "false", dbMapEntry)
+            bgp_validate_and_set_default_value(inParams, tblName, key, "max_prefix_warning_only", "false", dbMapEntry)
         }
     }
 
+    if log.V(3) {
+        log.Info("bgp_hdl_post_xfmr: updated Yang default value map ", inParams.yangDefValMap)
+        log.Info("bgp_hdl_post_xfmr: updated Yang DB data map ", data)
+    }
     return err
 }
 
