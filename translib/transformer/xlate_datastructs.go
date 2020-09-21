@@ -21,11 +21,10 @@ package transformer
 import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/openconfig/ygot/ygot"
-    "sync"
 )
 
 //Map of map[uri][dbKey]
-var keyXfmrCache sync.Map
+var keyXfmrCache map[string]string
 
 type KeySpec struct {
         DbNum db.DBNum
