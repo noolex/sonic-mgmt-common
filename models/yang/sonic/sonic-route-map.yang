@@ -150,7 +150,7 @@ module sonic-route-map {
                 }
 
                 leaf route_operation {
-                    type string;
+                    type srpolsets:routing-policy-action-type;
                 }
 
                 leaf match_interface{

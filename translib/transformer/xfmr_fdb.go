@@ -191,9 +191,18 @@ var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
 
     log.Info("YangToDb_fdb_mac_table_xfmr =>", inParams)
 
-    key := "Vlan" + vlan + "|" + macAddr
     var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
     var fdbTblMap map[string]db.Value = make(map[string]db.Value)
+
+    if len(pathInfo.Vars) < 3  {
+        if (inParams.oper == DELETE) {
+           /* For parent level DELETE just return FDB table" */
+           res_map["FDB"] = fdbTblMap
+           return res_map, nil
+        }
+    }
+
+    key := "Vlan" + vlan + "|" + macAddr
     dbV := db.Value{Field: make(map[string]string)}
 
     macTbl := getFdbMacTableRoot(inParams.ygRoot, instance, true)

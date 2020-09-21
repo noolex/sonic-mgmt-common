@@ -294,8 +294,6 @@ func init() {
         XlateFuncBind("DbToYang_network_instance_type_field_xfmr", DbToYang_network_instance_type_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_mtu_field_xfmr", YangToDb_network_instance_mtu_field_xfmr)
         XlateFuncBind("DbToYang_network_instance_mtu_field_xfmr", DbToYang_network_instance_mtu_field_xfmr)
-        XlateFuncBind("YangToDb_network_instance_description_field_xfmr", YangToDb_network_instance_description_field_xfmr)
-        XlateFuncBind("DbToYang_network_instance_description_field_xfmr", DbToYang_network_instance_description_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_router_id_field_xfmr", YangToDb_network_instance_router_id_field_xfmr)
         XlateFuncBind("DbToYang_network_instance_router_id_field_xfmr", DbToYang_network_instance_router_id_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_route_distinguisher_field_xfmr", YangToDb_network_instance_route_distinguisher_field_xfmr)
@@ -390,12 +388,11 @@ var YangToDb_network_instance_enabled_field_xfmr FieldXfmrYangToDb = func(inPara
                 return res_map, errors.New("Network instance not set")
         }
 
-        if strings.HasPrefix(inParams.key, "Vlan") {
-            log.Infof("YangToDb Vlan key %s, do not add fallback attriubtes.", inParams.key)
-            return res_map, err
-        }
-
         pathInfo := NewPathInfo(inParams.uri)
+
+        if strings.HasPrefix(pathInfo.Var("name"), "Vlan") {
+                return res_map, err
+        }
 
         if len(pathInfo.Vars) < 1 {
                 /* network instance table has 1 key "name" */
@@ -609,8 +606,9 @@ var DbToYang_network_instance_name_field_xfmr KeyXfmrDbToYang = func(inParams Xf
                 } else if ((strings.HasPrefix(inParams.key, "vrf_global")) &&
                            (isMgmtVrfDbTbl(inParams))) {
                         res_map["name"] = "mgmt"
+                } else if (strings.HasPrefix(inParams.key, "Vlan")) {
+                        res_map["name"] =  inParams.key
                 }
-
         } else {
                 log.Info("DbToYang_network_instance_name_field_xfmr, empty key")
         }
@@ -684,26 +682,6 @@ var DbToYang_network_instance_mtu_field_xfmr KeyXfmrDbToYang = func(inParams Xfm
         var err error
 
         log.Info("DbToYang_network_instance_mtu_field_xfmr")
-
-        return res_map, err
-}
-
-// YangToDb_network_instance_description_field_xfmr is a YangToDb Field transformer for description in the top level network instance config
-var YangToDb_network_instance_description_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-        res_map := make(map[string]string)
-        var err error
-
-        log.Info("YangToDb_network_instance_description_field_xfmr")
-
-        return res_map, err
-}
-
-// DbToYang_network_instance_description_field_xfmr is a DbToYang Field transformer for description in the top level network instance config
-var DbToYang_network_instance_description_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-        res_map := make(map[string]interface{})
-        var err error
-
-        log.Info("DbToYang_network_instance_description_field_xfmr")
 
         return res_map, err
 }
