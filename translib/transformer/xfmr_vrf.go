@@ -223,6 +223,17 @@ func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName st
         return err
 }
 
+
+func checkOspfv2CfgExistOnIntf(inParams *XfmrParams, intfName string) (bool) {
+
+    if (intfName == "") {
+        log.Info("checkOspfv2CfgExistOnIntf: empty intfName parameter")
+        return false
+    }
+
+    return ospf_interface_config_present(inParams, intfName)
+}
+
 func xfmr_set_default_vrf_configDb() error {
         log.Info ("xfmr_set_default_vrf_configDb")
 
@@ -880,6 +891,13 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                                     return res_map, err
                                 }
 
+                                if checkOspfv2CfgExistOnIntf(&inParams, intfName[0]) {
+                                    errStr = "Interface " + *convUIName + " has OSPFv2 configurations"
+                                    log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                                    err = tlerr.InvalidArgsError{Format: errStr}
+                                    return res_map, err
+                                }
+
                                 /* Now add this interface to res_map */
                                 _, ok := res_map[tblName]
                                 if !ok {
@@ -993,6 +1011,16 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
             } else {
                 err = validateL3ConfigExists(inParams.d, ifName)
             }
+
+            if err == nil {
+                // verify if interface has ospfv2 configs
+                if checkOspfv2CfgExistOnIntf(&inParams, *ifName) {
+                    errStr = "Interface " + intfId + " has OSPFv2 configurations"
+                    log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                }
+            }
+
             if err != nil {
                 return res_map, err
             }
@@ -1008,6 +1036,14 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 			    err = tlerr.InvalidArgsError{Format: errStr}
 			    return res_map, err
 		    }
+
+                // verify if interface has ospfv2 configs
+                if checkOspfv2CfgExistOnIntf(&inParams, *ifName) {
+                    errStr = "Interface " + intfId + " has OSPFv2 configurations"
+                    log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    return res_map, err
+                }
 	}
 
         if chekIfSagExistOnIntf(inParams.d, *ifName) {
@@ -1026,6 +1062,14 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
         if checkPimCfgExistOnIntf(inParams.d, *ifName) {
             errStr = "Interface " + intfId + " has PIM configurations"
+            log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+            err = tlerr.InvalidArgsError{Format: errStr}
+            return res_map, err
+        }
+
+        // verify if interface has ospfv2 configs
+        if checkOspfv2CfgExistOnIntf(&inParams, *ifName) {
+            errStr = "Interface " + intfId + " has OSPFv2 configurations"
             log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
             err = tlerr.InvalidArgsError{Format: errStr}
             return res_map, err
