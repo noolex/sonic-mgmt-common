@@ -530,6 +530,10 @@ module sonic-bgp-common {
             type boolean;
         }
 
+        leaf advertise-svi-ip {
+            type boolean;
+        }
+
         leaf route-distinguisher {
             type string;
         }
