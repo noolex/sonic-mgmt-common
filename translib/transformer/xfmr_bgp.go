@@ -123,6 +123,120 @@ func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, ke
     inParams.yangDefValMap[tblName][key].Field[fieldName] = fieldValue
 }
 
+func hdl_post_xfmr_bgp_nbr_del(inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {
+    if log.V(3) {
+        log.Info ("In Post-Transformer to fill BGP_NEIGHBOR keys, while handling DELETE-OP for URI : ",
+                  inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
+    }
+
+    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR"}, niName+"|*")
+    for _, bgpTblKey := range bgpTblKeys {
+        if _, ok := (*retDbDataMap)["BGP_NEIGHBOR"]; !ok {
+            (*retDbDataMap)["BGP_NEIGHBOR"] = make(map[string]db.Value)
+        }
+
+        key := bgpTblKey.Get(0) + "|" + bgpTblKey.Get(1)
+        (*retDbDataMap)["BGP_NEIGHBOR"][key] = db.Value{}
+    }
+    if log.V(3) {
+        log.Info ("After Post-Transformer BGP_NEIGHBOR handler ==> retDbDataMap : ", (*retDbDataMap))
+    }
+}
+
+func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr string, retDbDataMap *map[string]map[string]db.Value) {
+    if log.V(3) {
+        log.Info ("In Post-Transformer to fill BGP_NEIGHBOR_AF keys, while handling DELETE-OP for URI : ",
+                  inParams.requestUri, " ; VRF : ", niName, " ; nbrAddr: ", nbrAddr, " ; Incoming DB-Datamap : ", (*retDbDataMap))
+    }
+
+    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR_AF"}, niName+"|"+nbrAddr+"|*")
+    for _, bgpTblKey := range bgpTblKeys {
+        if _, ok := (*retDbDataMap)["BGP_NEIGHBOR_AF"]; !ok {
+            (*retDbDataMap)["BGP_NEIGHBOR_AF"] = make(map[string]db.Value)
+        }
+
+        key := bgpTblKey.Get(0) + "|" + bgpTblKey.Get(1) + "|" + bgpTblKey.Get(2)
+        (*retDbDataMap)["BGP_NEIGHBOR_AF"][key] = db.Value{}
+    }
+    if log.V(3) {
+        log.Info ("After Post-Transformer BGP_NEIGHBOR_AF handler ==> retDbDataMap : ", (*retDbDataMap))
+    }
+}
+
+func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
+    var err error
+    xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    pathInfo := NewPathInfo(inParams.requestUri)
+    niName := pathInfo.Var("name")
+    if len(niName) == 0 {return err}
+    switch xpath {
+        case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors": fallthrough
+        case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor":
+            /* Infra has a limitation to handle this parent level delete when there is a table xfmr function for a neighbor, 
+             * so, handle as part of post xfmr function */
+            nbrAddr   := pathInfo.Var("neighbor-address")
+            if len(nbrAddr) == 0 {
+                hdl_post_xfmr_bgp_nbr_del(inParams, niName, data)
+                return err
+            }
+        case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis": fallthrough
+        case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/afi-safi":
+            /* Infra has a limitation to handle this parent level delete when there is a table xfmr function for a neighbor, 
+             * so, handle as part of post xfmr function */
+            nbrAddr   := pathInfo.Var("neighbor-address")
+            afiSafiName := pathInfo.Var("afi-safi-name")
+            if len(nbrAddr) != 0 && len(afiSafiName) == 0 {
+                util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
+                hdl_post_xfmr_bgp_nbr_af_del(inParams, niName, nbrAddr, data)
+                return err
+            }
+    }
+
+    if (inParams.subOpDataMap[UPDATE] == nil) {
+        return err
+    }
+
+    specInfo, ok := xYangSpecMap[xpath]
+    if !ok {
+       return err
+    }
+    yangType := yangTypeGet(specInfo.yangEntry)
+    if !(yangType == YANG_LEAF) {
+        return err
+    }
+    if log.V(3) {
+        log.Info("bgp_hdl_post_xfmr: Yang sub op data map ",
+                (*inParams.subOpDataMap[UPDATE])[db.ConfigDB])
+    }
+    subOpUpdMap := (*inParams.subOpDataMap[UPDATE])[db.ConfigDB]
+    bgpNbrTbl := "BGP_NEIGHBOR"
+    bgpNbrAfTbl := "BGP_NEIGHBOR_AF"
+    if len(subOpUpdMap[bgpNbrTbl]) == 0 && len(subOpUpdMap[bgpNbrAfTbl]) == 0 {
+        return err
+    }
+    subOpDelMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    subOpDelMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+    inParams.subOpDataMap[DELETE] = &subOpDelMap
+    nbrTbls := []string{bgpNbrTbl, bgpNbrAfTbl}
+    for _, tbl := range nbrTbls {
+        if (len(subOpUpdMap[tbl]) == 0) {
+            continue
+        }
+        subOpDelMap[db.ConfigDB][tbl] = make(map[string]db.Value)
+        for key, val := range subOpUpdMap[tbl] {
+           (*inParams.subOpDataMap[DELETE])[db.ConfigDB][tbl][key] = val
+        }
+        subOpUpdMap[tbl] = make(map[string]db.Value)
+    }
+    if log.V(3) {
+        log.Info("bgp_hdl_post_xfmr: Yang UPDATE sub op data map ",
+                (*inParams.subOpDataMap[UPDATE])[db.ConfigDB])
+        log.Info("bgp_hdl_post_xfmr: Yang DELETE sub op data map ",
+                (*inParams.subOpDataMap[DELETE])[db.ConfigDB])
+    }
+    return err
+}
+
 func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
     var err error
 
@@ -132,48 +246,7 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
     }
 
     if inParams.oper == DELETE {
-        if (inParams.subOpDataMap[UPDATE] == nil) {
-            return err
-        }
-        xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
-        specInfo, ok := xYangSpecMap[xpath]
-        if !ok {
-           return err
-        }
-        yangType := yangTypeGet(specInfo.yangEntry)
-        if !(yangType == YANG_LEAF) {
-            return err
-        }
-        if log.V(3) {
-            log.Info("bgp_hdl_post_xfmr: Yang sub op data map ",
-                    (*inParams.subOpDataMap[UPDATE])[db.ConfigDB])
-        }
-        subOpUpdMap := (*inParams.subOpDataMap[UPDATE])[db.ConfigDB]
-        bgpNbrTbl := "BGP_NEIGHBOR"
-        bgpNbrAfTbl := "BGP_NEIGHBOR_AF"
-        if len(subOpUpdMap[bgpNbrTbl]) == 0 && len(subOpUpdMap[bgpNbrAfTbl]) == 0 {
-            return err
-        }
-        subOpDelMap := make(map[db.DBNum]map[string]map[string]db.Value)
-        subOpDelMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-        inParams.subOpDataMap[DELETE] = &subOpDelMap
-        nbrTbls := []string{bgpNbrTbl, bgpNbrAfTbl}
-        for _, tbl := range nbrTbls {
-            if (len(subOpUpdMap[tbl]) == 0) {
-                continue
-            }
-            subOpDelMap[db.ConfigDB][tbl] = make(map[string]db.Value)
-            for key, val := range subOpUpdMap[tbl] {
-               (*inParams.subOpDataMap[DELETE])[db.ConfigDB][tbl][key] = val
-            }
-            subOpUpdMap[tbl] = make(map[string]db.Value)
-        }
-        if log.V(3) {
-            log.Info("bgp_hdl_post_xfmr: Yang UPDATE sub op data map ",
-                    (*inParams.subOpDataMap[UPDATE])[db.ConfigDB])
-            log.Info("bgp_hdl_post_xfmr: Yang DELETE sub op data map ",
-                    (*inParams.subOpDataMap[DELETE])[db.ConfigDB])
-        }
+        err = hdl_del_post_xfmr(inParams, data)
         return err
     }
     tblName := "BGP_GLOBALS"
