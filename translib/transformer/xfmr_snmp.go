@@ -411,8 +411,9 @@ var DbToYang_snmp_listen_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
         var listenObj *ocbinds.IETFSnmp_Snmp_Engine_Listen
 
         if uri == "listen" {
-            ygot.BuildEmptyTree(engineObj)
-
+            if len(keys) > 0 {
+                ygot.BuildEmptyTree(engineObj)
+            }
             for _, key := range keys {
                 ip    = key.Comp[0]
                 port  = key.Comp[1]
