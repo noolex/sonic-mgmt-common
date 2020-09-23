@@ -639,19 +639,17 @@ func getDhcpv6DataFromDb(aliasName string, relayAgentObj *ocbinds.OpenconfigRela
 //Helper function to fetch relay info for a given interface
 func getRelayAgentInfoForInterface (ifName string, inParams XfmrParams, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent) error {
    var err error
-   var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
 
    if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent/dhcpv6")) {
-       err = getDhcpv6DataFromDb(ifName, relayAgentObj, configDb)
+       err = getDhcpv6DataFromDb(ifName, relayAgentObj, inParams.d)
    } else if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent/dhcp")) {
-       err = getDhcpDataFromDb(ifName, relayAgentObj, configDb)
+       err = getDhcpDataFromDb(ifName, relayAgentObj, inParams.d)
    } else if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent")) {
        //top most level so display v4 and v6 data
-       _ = getDhcpDataFromDb(ifName, relayAgentObj, configDb)
-       _ = getDhcpv6DataFromDb(ifName, relayAgentObj, configDb)
+       _ = getDhcpDataFromDb(ifName, relayAgentObj, inParams.d)
+       _ = getDhcpv6DataFromDb(ifName, relayAgentObj, inParams.d)
    }
 
-   configDb.DeleteDB()
    return err
 }
 
@@ -1092,7 +1090,6 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
 func deleteRelayAgentObjectAttributes(inParams XfmrParams, aliasName string) error {
    var tblList string   
    var fieldStr [] string
-   var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
    var helperAddress string
    var index uint8
    var err error
@@ -1113,8 +1110,7 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, aliasName string) err
    tblList = getRelayAgentIntfTblByType(ifName)
    log.V(2).Info(tblList)
 
-   entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
-   configDb.DeleteDB()
+   entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
    if dbErr != nil {
      errStr := "Failed to read DHCP relay obj from config DB, " + tblList + " " + ifName
      err = tlerr.InvalidArgsError{Format: errStr}
