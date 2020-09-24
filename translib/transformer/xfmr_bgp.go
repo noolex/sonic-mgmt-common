@@ -240,50 +240,14 @@ func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
 func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
     var err error
 
-<<<<<<< HEAD
     if log.V(3) {
         log.Info("bgp_hdl_post_xfmr: Yang default value map ", inParams.yangDefValMap)
         log.Info("bgp_hdl_post_xfmr: Yang DB data map ", data)
-||||||| merged common ancestors
-    for key := range inParams.yangDefValMap["BGP_NEIGHBOR"] {
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["min_adv_interval"] = "30"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["keepalive"] = "60"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["holdtime"] = "180"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["conn_retry"] = "30"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["passive_mode"] = "false"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["ebgp_multihop"] = "false"
-=======
-    for key := range inParams.yangDefValMap["BGP_NEIGHBOR"] {
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["min_adv_interval"] = "0"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["keepalive"] = "60"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["holdtime"] = "180"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["conn_retry"] = "30"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["passive_mode"] = "false"
-        inParams.yangDefValMap["BGP_NEIGHBOR"][key].Field["ebgp_multihop"] = "false"
->>>>>>> origin/broadcom_sonic_3.x_share
     }
 
-<<<<<<< HEAD
     if inParams.oper == DELETE {
         err = hdl_del_post_xfmr(inParams, data)
         return err
-||||||| merged common ancestors
-    for key := range inParams.yangDefValMap["BGP_PEER_GROUP"] {
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["min_adv_interval"] = "30"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["keepalive"] = "60"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["holdtime"] = "180"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["conn_retry"] = "30"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["passive_mode"] = "false"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["ebgp_multihop"] = "false"
-=======
-    for key := range inParams.yangDefValMap["BGP_PEER_GROUP"] {
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["min_adv_interval"] = "0"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["keepalive"] = "60"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["holdtime"] = "180"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["conn_retry"] = "30"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["passive_mode"] = "false"
-        inParams.yangDefValMap["BGP_PEER_GROUP"][key].Field["ebgp_multihop"] = "false"
->>>>>>> origin/broadcom_sonic_3.x_share
     }
     tblName := "BGP_GLOBALS"
     for key := range inParams.yangDefValMap[tblName] {
