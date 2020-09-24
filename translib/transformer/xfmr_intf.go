@@ -4522,44 +4522,41 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
        }
     }
     /* Handle PortSpeed config */
-    if (strings.Contains(inParams.requestUri, "port-speed")) {
+    if intfObj.Ethernet.Config.PortSpeed != 0 {
         if isPortGroupMember(ifName) {
             err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
         }
-        if intfObj.Ethernet.Config.PortSpeed != 0 {
-            res_map := make(map[string]string)
-            value := db.Value{Field: res_map}
-            intTbl := IntfTypeTblMap[intfType]
+        res_map := make(map[string]string)
+        value := db.Value{Field: res_map}
+        intTbl := IntfTypeTblMap[intfType]
 
-            portSpeed := intfObj.Ethernet.Config.PortSpeed
-            val, ok := intfOCToSpeedMap[portSpeed]
-            if ok {
+        portSpeed := intfObj.Ethernet.Config.PortSpeed
+        val, ok := intfOCToSpeedMap[portSpeed]
+        if ok {
+            err = validateSpeed(inParams.d, ifName, val)
+            if err == nil {
+                res_map[PORT_SPEED] = val
+            }
+        } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+            defSpeed := getDefaultSpeed(inParams.d, ifName)
+            log.Info(" defSpeed  ", defSpeed)
+            if defSpeed != 0 {
+                val = strconv.FormatInt(int64(defSpeed), 10)
                 err = validateSpeed(inParams.d, ifName, val)
                 if err == nil {
                     res_map[PORT_SPEED] = val
                 }
-            } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
-                defSpeed := getDefaultSpeed(inParams.d, ifName)
-                log.Info(" defSpeed  ", defSpeed)
-                if defSpeed != 0 {
-                    val = strconv.FormatInt(int64(defSpeed), 10)
-                    err = validateSpeed(inParams.d, ifName, val)
-                    if err == nil {
-                        res_map[PORT_SPEED] = val
-                    }
-                } else {
-                    err = tlerr.NotSupported("Default speed not available")
-                }
             } else {
-                err = tlerr.InvalidArgs("Invalid speed %s", val)
+                err = tlerr.NotSupported("Default speed not available")
             }
-
-            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
-                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
-            }
-            memMap[intTbl.cfgDb.portTN][ifName] = value
-
+        } else {
+            err = tlerr.InvalidArgs("Invalid speed %s", val)
         }
+
+        if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
+            memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+        }
+        memMap[intTbl.cfgDb.portTN][ifName] = value
     }
 
     /* Handle Port FEC config */
