@@ -420,16 +420,16 @@ func (app *FbsApp) translateDel(d *db.DB) error {
 				policyBindKeys, _ := policyBindingTable.GetKeys()
 				for _, policyBindKey := range policyBindKeys {
 					bindingData, _ := policyBindingTable.GetEntry(policyBindKey)
-                    isModified := false
+					isModified := false
 					for key, value := range bindingData.Field {
 						if value == policyName {
 							delete(bindingData.Field, key)
-                            isModified = true     
+							isModified = true
 						}
 					}
 					if len(bindingData.Field) == 0 {
 						app.policyBindingTable[policyBindKey.Get(0)] = nil
-					} else if(isModified) {
+					} else if isModified {
 						app.policyBindingCache[policyBindKey.Get(0)] = bindingData
 						app.policyBindingTable[policyBindKey.Get(0)] = &bindingData
 					}
@@ -1323,11 +1323,12 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 								for egressIfName, egressIfVal := range policySectionVal.Forwarding.EgressInterfaces.EgressInterface {
 									var delKey string
 									var exact bool
+									nativeName := *utils.GetNativeNameFromUIName(&egressIfName)
 									if (egressIfVal.Config != nil) && (egressIfVal.Config.Priority != nil) {
-										delKey = egressIfName + "|" + strconv.FormatInt(int64(*egressIfVal.Config.Priority), 10)
+										delKey = nativeName + "|" + strconv.FormatInt(int64(*egressIfVal.Config.Priority), 10)
 										exact = true
 									} else {
-										delKey = egressIfName + "|"
+										delKey = nativeName + "|"
 										exact = false
 									}
 									for _, intf := range egressIfs {
@@ -1339,7 +1340,6 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 											break
 										}
 									}
-
 								}
 								if len(egressIfs) > 0 {
 									sectionDbV.Field["SET_INTERFACE@"] = strings.Join(egressIfs, ",")

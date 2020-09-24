@@ -1,0 +1,23 @@
+module sonic-system-radius-clear {
+    namespace "http://github.com/Azure/sonic-system-radius-clear";
+    prefix ssys-clear;
+    yang-version 1.1;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC RADIUS clear";
+
+    revision 2020-09-17 {
+        description "RADIUS clear";
+    }
+
+    rpc clear-radius {
+        description "Clear RADIUS statistics counters";
+    }
+}
+
