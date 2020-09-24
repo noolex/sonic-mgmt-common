@@ -20,7 +20,6 @@ package transformer
 
 import (
         "errors"
-        "fmt"
         "strings"
         log "github.com/golang/glog"
         "encoding/json"
@@ -137,10 +136,8 @@ func cfg_copy_action(body []byte) ([]byte, error) {
         sum.Output.Status_detail  =  err.Error()
     } else if query_result.Err != nil {
         sum.Output.Status_detail = "ERROR:Internal SONiC Hostservice communication failure."
-    } else if query_result.Body[0].(int32) ==2 {
-        sum.Output.Status_detail = fmt.Sprintf("ERROR:Invalid filename %s.", filename)
     } else if query_result.Body[0].(int32) != 0 {
-        sum.Output.Status_detail = "ERROR:Command Failed."
+        sum.Output.Status_detail = query_result.Body[1].(string)
     } else {
         sum.Output.Status = 0
         sum.Output.Status_detail = "SUCCESS."
