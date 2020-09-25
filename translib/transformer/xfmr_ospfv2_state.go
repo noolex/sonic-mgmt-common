@@ -243,9 +243,7 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
     var prefixStr string
     var ospfv2Route *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route
     var ospfv2RouteState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State
-    var ospfv2Nexthop *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State_NextHopsList_NextHops
-    var ospfv2NexthopState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State_NextHopsList_NextHops_State
-    var nexthop_ip, nexthop_ifname string
+    var nexthop_ip, nexthop_ifname, nexthop_area_id string
     var ospfv2Zero bool = false
     var ospfv2One bool = true
     oper_err := errors.New("Operational error")
@@ -353,22 +351,18 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
                 if _ip, ok := nexthop["ip"].(string); ok {
                     nexthop_ip = fmt.Sprintf("%v",_ip)
                 }
+                if _area_id, ok := route_info["area"].(string); ok {
+                    nexthop_area_id = fmt.Sprintf("%v", _area_id)
+                } else if _area_id, ok := nexthop["area"].(string); ok {
+                    nexthop_area_id = fmt.Sprintf("%v", _area_id)
+                } else {
+                    nexthop_area_id = "0.0.0.0"
+                }
                 if _direct_intf, ok := nexthop["directly attached to"].(string); ok {
                     nexthop_ifname = fmt.Sprintf("%v",_direct_intf)
                     nexthop_ip = "0.0.0.0"
                 }
-                ospfv2Nexthop, err = ospfv2RouteState.NextHopsList.NewNextHops(nexthop_ip, nexthop_ifname)
-                if nil != ospfv2Nexthop {
-                    ygot.BuildEmptyTree(ospfv2Nexthop)
-                    ospfv2NexthopState = ospfv2Nexthop.State
-                    if _area_id, ok := route_info["area"].(string); ok {
-                        ospfv2NexthopState.AreaId = &_area_id
-                    } else {
-                        if area_id, ok := nexthop["area"].(string); ok {
-                            ospfv2NexthopState.AreaId = &area_id
-                        }      
-                    }
-                }
+                ospfv2RouteState.NextHopsList.NewNextHops(nexthop_ip, nexthop_ifname, nexthop_area_id)
             }
         }
         if _ia, ok := route_info["IA"].(bool); ok {
