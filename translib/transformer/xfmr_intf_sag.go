@@ -279,6 +279,8 @@ func intf_sag_ip_del(inParams XfmrParams , ifName string) (map[string]map[string
 
     if sagIPv4Entry.IsPopulated() || sagIPv6Entry.IsPopulated() {
         vlanIntfmap["SAG"] = make(map[string]db.Value)
+        vlanIntfmap["VLAN_INTERFACE"] = make(map[string]db.Value)
+        vlanIntfmap["VLAN_INTERFACE"][ifName] = db.Value{}        
     }
 
     if sagIPv4Entry.IsPopulated() {
