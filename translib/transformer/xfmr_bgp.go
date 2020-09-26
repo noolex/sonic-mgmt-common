@@ -268,9 +268,16 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
     tblName = "BGP_PEER_GROUP"
     for key := range inParams.yangDefValMap[tblName] {
         entry := (*data)[tblName][key]
+        yang_def_entry := inParams.yangDefValMap[tblName][key]
+        /* Dont push the default values of keepalive & holdtime fields as this impacts
+         * the global keepalive/holdtime values inheritance */
+        if yang_def_entry.Has("keepalive") {
+            delete (yang_def_entry.Field, "keepalive")
+        }
+        if yang_def_entry.Has("holdtime") {
+            delete (yang_def_entry.Field, "holdtime")
+        }
         bgp_validate_and_set_default_value(inParams, tblName, key, "min_adv_interval", "0", entry)
-        bgp_validate_and_set_default_value(inParams, tblName, key, "keepalive", "60", entry)
-        bgp_validate_and_set_default_value(inParams, tblName, key, "holdtime", "180", entry)
         bgp_validate_and_set_default_value(inParams, tblName, key, "conn_retry", "30", entry)
         bgp_validate_and_set_default_value(inParams, tblName, key, "passive_mode", "false", entry)
         bgp_validate_and_set_default_value(inParams, tblName, key, "ebgp_multihop", "false", entry)
