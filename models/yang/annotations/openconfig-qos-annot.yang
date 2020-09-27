@@ -10,10 +10,17 @@ module openconfig-qos-annot {
     import openconfig-qos-ext {prefix oc-qos-ext; }
     import openconfig-qos-maps-ext {prefix oc-qos-maps-ext; }
 
+    deviation /oc-qos:qos {
+      deviate add {
+          sonic-ext:post-transformer "qos_post_xfmr";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface {
       deviate add {
           sonic-ext:key-transformer "qos_intf_tbl_key_xfmr";
           sonic-ext:table-transformer "qos_intf_table_xfmr";
+          sonic-ext:table-owner "false";
       }
     }
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:interface-id {
@@ -46,6 +53,12 @@ module openconfig-qos-annot {
         }
     }
 
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output {
+      deviate add {
+        sonic-ext:table-name "NONE";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues {
       deviate add {
         sonic-ext:subtree-transformer "qos_get_one_intf_all_q_counters_xfmr";
@@ -61,6 +74,12 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input {
+      deviate add {
+        sonic-ext:table-name "NONE";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:input/oc-qos-ext:priority-groups {
       deviate add {
         sonic-ext:subtree-transformer "qos_get_one_intf_all_pg_counters_xfmr";
@@ -71,6 +90,7 @@ module openconfig-qos-annot {
 
     deviation /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos-ext:pfc {
       deviate add {
+        sonic-ext:table-name "NONE";
         sonic-ext:subtree-transformer "qos_intf_pfc_xfmr";
         sonic-ext:virtual-table "true";
       }
@@ -78,6 +98,7 @@ module openconfig-qos-annot {
 
 	deviation /oc-qos:qos/oc-qos-ext:thresholds {
 		deviate add {
+            sonic-ext:table-name "NONE";
 			sonic-ext:db-name "CONFIG_DB";
 			sonic-ext:key-delim "|";
 		}
@@ -306,6 +327,12 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos:queues {
+      deviate add {
+        sonic-ext:table-name "NONE";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos:queues/oc-qos:queue {
       deviate add {
         sonic-ext:table-name "QUEUE";
@@ -339,9 +366,21 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos:scheduler-policies {
+      deviate add {
+        sonic-ext:table-name "NONE";
+      }
+    }
+
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy {
       deviate add {
         sonic-ext:subtree-transformer "qos_scheduler_xfmr";
+      }
+    }
+
+    deviation /oc-qos:qos/oc-qos-ext:wred-profiles {
+      deviate add {
+        sonic-ext:table-name "NONE";
       }
     }
 
@@ -525,6 +564,12 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos-maps-ext:dscp-maps {
+        deviate add {
+            sonic-ext:table-name "NONE";
+        }
+    }
+
     deviation /oc-qos:qos/oc-qos-maps-ext:dscp-maps/oc-qos-maps-ext:dscp-map {
         deviate add {
             sonic-ext:subtree-transformer "qos_dscp_fwd_group_xfmr";
@@ -657,6 +702,11 @@ module openconfig-qos-annot {
       }
     }
 
+    deviation /oc-qos:qos/oc-qos:forwarding-groups {
+      deviate add {
+          sonic-ext:table-name "NONE";
+      }
+    }
 
     deviation /oc-qos:qos/oc-qos:forwarding-groups/oc-qos:forwarding-group {
       deviate add {
@@ -737,6 +787,12 @@ module openconfig-qos-annot {
     }
 
 ///////////////////////// PFC Watchdog Global ////////////////////////////////////////////////////////
+  deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog {
+    deviate add {
+      sonic-ext:table-name "NONE";
+    }
+  }
+
   deviation /oc-qos:qos/oc-qos-ext:pfc-watchdog/oc-qos-ext:flex {
     deviate add {
       sonic-ext:table-name "FLEX_COUNTER_TABLE";
