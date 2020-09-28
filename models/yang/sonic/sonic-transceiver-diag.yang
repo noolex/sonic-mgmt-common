@@ -24,7 +24,29 @@ module sonic-transceiver-diag {
             "Initial revision.";
     }
 
-    container sonic-xcvr-diags {
+    container sonic-transceiver-diag {
+
+        container XCVR {
+            sonic-ext:db-name "CONFIG_DB";
+            list XCVR_LIST {
+                key "ifname";
+
+                leaf ifname {
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
+                }
+                leaf media_side_input_loopback_enable {
+                    type string;
+                    description "Loopback from TP3 to TP2.";
+                }
+                leaf host_side_input_loopback_enable {
+                    type string;
+                    description "Loopback at TP1a.";
+                }
+            }
+        }
+
         container LOOPBACK_CAP {
             sonic-ext:db-name "STATE_DB";
             config false;
@@ -106,8 +128,8 @@ module sonic-transceiver-diag {
                     type string;
                     description "Per-lane Media Side Loopback.";
                 }
-	    }
-	}
+            }
+        }
         container LOOPBACK_STATUS {
             sonic-ext:db-name "STATE_DB";
             config false;
@@ -149,7 +171,7 @@ module sonic-transceiver-diag {
                     description "Per-lane Media Side Loopback.";
                 }
             }
-	}
+        }
         container sonic-xcvr-op-parms {
             container XCVR_OPER_PARAMS {
                 sonic-ext:db-name "STATE_DB";
@@ -341,7 +363,7 @@ module sonic-transceiver-diag {
         description "RPC for listing the transceiver diagnostic 
                      loopback capabilities of ports.
                      Input is Ethernet interface.
-		     No configuration should change through RPC's.";
+                     No configuration should change through RPC's.";
 
         input {
             leaf ifname {
@@ -387,7 +409,7 @@ module sonic-transceiver-diag {
 
         description "RPC for gathering per-lane Tx Power, Tx Bias, LOS and Rx Power. 
                      Input is Ethernet interface.
-		     No configuration should change through RPC's.";
+                     No configuration should change through RPC's.";
 
         input {
             leaf ifname {
