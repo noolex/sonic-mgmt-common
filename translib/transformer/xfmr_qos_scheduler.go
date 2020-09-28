@@ -152,14 +152,11 @@ func getIntfsBySPName(sp_name string) ([]string) {
 
         keys, _ := d.GetKeys(dbSpec)
         for _, key := range keys {
-            log.Info("key: ", key)
             qCfg, _ := d.GetEntry(dbSpec, key)
-            log.Info("qCfg: ", qCfg)
             sched , ok := qCfg.Field["scheduler"] 
             if !ok {
                 continue
             }
-            log.Info("sched: ", sched)
 
             sched = DbLeafrefToString(sched, "SCHEDULER")
 
@@ -167,8 +164,6 @@ func getIntfsBySPName(sp_name string) ([]string) {
 
             if str[0] == sp_name {
                 intf_name := key.Get(0)
-
-                log.Info("intf_name added to the referenece list: ", intf_name)
 
                 s = append(s, intf_name)  
             }
@@ -300,8 +295,6 @@ func get_schedulers_by_sp_name(sp_name string) ([]string) {
     ts := &db.TableSpec{Name: "SCHEDULER"}
     keys, _ := d.GetKeys(ts);
 
-    log.Info("keys: ", keys)
-
     for _, key := range keys {
         if sp_name == "" || 
            key.Comp[0] == sp_name ||
@@ -329,7 +322,7 @@ func qos_scheduler_delete_all_sp(inParams XfmrParams) (map[string]map[string]db.
 
     /* update "scheduler" table */
     sched_entry := make(map[string]db.Value)
-
+    var sched_del bool = false
     for _, sched_key := range sched_keys {
         str := strings.Split(sched_key, "@")
         sp_name := str[0]
@@ -338,13 +331,14 @@ func qos_scheduler_delete_all_sp(inParams XfmrParams) (map[string]map[string]db.
         if isSchedulerPolicyInUse(sp_name) {
              continue
         }
-
+        sched_del = true
         sched_entry[sched_key] = db.Value{Field: make(map[string]string)}
     }
 
     log.Info("qos_scheduler_delete_all_sp ")
-    res_map["SCHEDULER"] = sched_entry
-
+    if sched_del {
+        res_map["SCHEDULER"] = sched_entry
+    }
     // no need to clean Queue DB as only unused scheduler policy is allowed to be deleted
 
     return res_map, err
@@ -570,14 +564,16 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
             }
             rtTblMap[key].Field["scheduler"] = ""
         }
-
-        if  seq != SCHEDULER_PORT_SEQUENCE {
-            res_map["QUEUE"] = rtTblMap
-        } else {
-            res_map["PORT_QOS_MAP"] = rtTblMap
+        if len(keys) != 0 {
+            if  seq != SCHEDULER_PORT_SEQUENCE {
+                res_map["QUEUE"] = rtTblMap
+            } else {
+                res_map["PORT_QOS_MAP"] = rtTblMap
+            }
         }
     }
 
+    log.Infof("qos_scheduler_delete_xfmr --> res_map %v", res_map)
     return res_map, err
 
 }
