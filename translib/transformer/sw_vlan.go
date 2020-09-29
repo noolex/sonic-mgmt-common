@@ -1409,11 +1409,7 @@ func fillDBSwitchedVlanInfoForIntf(d *db.DB, ifName *string, vlanMemberMap map[s
     log.Info("fillDBSwitchedVlanInfoForIntf() called!")
     var err error
 
-    vlanMemberTable, err := d.GetTable(&db.TableSpec{Name: VLAN_MEMBER_TN})
-    if err != nil {
-        return err
-    }
-    vlanMemberKeys, err := vlanMemberTable.GetKeys()
+    vlanMemberKeys, err := d.GetKeysByPattern(&db.TableSpec{Name: VLAN_MEMBER_TN}, "*"+*ifName)
     if err != nil {
         return err
     }

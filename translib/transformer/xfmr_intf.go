@@ -998,7 +998,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	      }
 		}
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
-        tblList = append(tblList, intTbl.CountersHdl.CountersTN)
+        tblList = append(tblList, "NONE")
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state") {
@@ -3256,7 +3256,10 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
     }
     log.V(3).Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
 
-    keys,err := doGetAllIpKeys(dbCl, &db.TableSpec{Name:tblName})
+    keys, err := doGetIntfIpKeys(dbCl, tblName , ifName)
+    if log.V(3) {
+	log.Infof("Found %d keys for (%v)(%v)", len(keys), tblName, ifName)
+    }
     if( err != nil) {
         return intfIpMap, err
     }
@@ -3549,23 +3552,11 @@ func validIP(ip net.IP) bool {
     return true
 }
 
-/* Get all keys for given interface tables */
-func doGetAllIpKeys(d *db.DB, dbSpec *db.TableSpec) ([]db.Key, error) {
-    var keys []db.Key
-    intfTable, err := d.GetTable(dbSpec)
-    if err != nil {
-        return keys, err
-    }
-    keys, err = intfTable.GetKeys()
-    log.Infof("Found %d INTF table keys", len(keys))
-
-    return keys, err
-}
-
 /* Get all IP keys for given interface */
 func doGetIntfIpKeys(d *db.DB, tblName string, intfName string) ([]db.Key, error) {
-    ipKeys, err := d.GetKeys(&db.TableSpec{Name: tblName+"|"+intfName})
-    log.Info("doGetIntfIpKeys for interface: ", intfName, " - ", ipKeys)
+    ts := db.TableSpec{Name: tblName + d.Opts.KeySeparator + intfName}
+    ipKeys, err := d.GetKeys(&ts)
+    log.Infof("doGetIntfIpKeys for %s with %v - %v", intfName, ts, ipKeys)
     return ipKeys, err
 }
 
