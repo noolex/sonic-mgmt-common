@@ -31,6 +31,12 @@ import (
 
 const MAX_FLOWGROUPS = 253
 
+var getFeatureName = map[string]string {
+    "IFA": "IFA",
+    "DROPMONITOR": "Drop Monitor",
+    "TAILSTAMPING": "Tailstamping",
+}
+
 func log_request_info( vc * CustValidationCtxt, func_name string ) {
   log.Info(func_name, ":" ,
            " operation: ", vc.CurCfg.VOp,
@@ -718,15 +724,15 @@ func(t * CustomValidation) ValidateFeatureStatus(vc * CustValidationCtxt) CVLErr
             errMsg := ""
             appTag := ""
             if (featuresInfo["op-status"] == "INSUFFICIENT_RESOURCES") {
-                errMsg = "Insufficient Resources, feature can not be enabled."
+                errMsg = fmt.Sprintf("Insufficient Resources, %v feature can not be enabled.", getFeatureName[thisFeature[1]])
                 appTag = "insufficient-resources"
             } else {
-                errMsg = "Feature is unsupported"
+                errMsg = fmt.Sprintf("%v feature is not supported.", getFeatureName[thisFeature[1]])
                 appTag = "feature-unsupported"
             }
             return CVLErrorInfo{
                 ErrCode: CVL_SEMANTIC_ERROR,
-                ConstraintErrMsg: fmt.Sprintf("Failed to enable feature: %s", thisFeature[1]),
+                ConstraintErrMsg: errMsg,
                 CVLErrDetails : errMsg,
                 ErrAppTag : appTag,
             }
