@@ -24,7 +24,6 @@ import (
 	"sync"
 )
 
-//Map of map[uri][dbKey]
 var dbTblKeyGetCache sync.Map
 
 type KeySpec struct {

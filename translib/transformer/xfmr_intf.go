@@ -73,12 +73,12 @@ func init () {
     XlateFuncBind("DbToYang_subintf_ipv6_tbl_key_xfmr", DbToYang_subintf_ipv6_tbl_key_xfmr)
     XlateFuncBind("YangToDb_subintf_ip_addr_key_xfmr", YangToDb_subintf_ip_addr_key_xfmr)
     XlateFuncBind("DbToYang_subintf_ip_addr_key_xfmr", DbToYang_subintf_ip_addr_key_xfmr)
-    XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
+    /* XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
     XlateFuncBind("YangToDb_igmp_tbl_key_xfmr", YangToDb_igmp_tbl_key_xfmr)
     XlateFuncBind("DbToYang_igmp_mcastgrpaddr_fld_xfmr", DbToYang_igmp_mcastgrpaddr_fld_xfmr)
     XlateFuncBind("YangToDb_igmp_mcastgrpaddr_fld_xfmr", YangToDb_igmp_mcastgrpaddr_fld_xfmr)
     XlateFuncBind("DbToYang_igmp_srcaddr_fld_xfmr", DbToYang_igmp_srcaddr_fld_xfmr)
-    XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr) */
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
     XlateFuncBind("rpc_oc_clear_counters", rpc_oc_clear_counters)
     XlateFuncBind("rpc_clear_ip", rpc_clear_ip)
@@ -359,23 +359,42 @@ var intf_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
     return err
 }
 
+// GetCountOfAddrType helper function to get a count of IP/IPv6 address 
+func GetCountOfAddrType (ipKeys []db.Key, matchStr string) int { 
+   count := 0
+
+   for key := range ipKeys {
+       ipAddr := ipKeys[key].Get(1)
+        
+       if strings.Contains(ipAddr, matchStr) {
+           count++
+       }
+   }
+   return count
+}
+
 // ValidateIntfProvisionedForRelay helper function to validate IP address deletion if DHCP relay is provisioned
 func ValidateIntfProvisionedForRelay(d *db.DB, ifName string, prefixIp string) (bool, error) {
    var tblList string
 
    intfType, _, ierr := getIntfTypeByName(ifName)
    if intfType == IntfTypeUnset || ierr != nil {
-       log.Info("getRelayAgentIntfTblByType - Invalid interface type IntfTypeUnset");
+       log.Info("ValidateIntfProvisionedForRelay - Invalid interface type IntfTypeUnset");
        return false, errors.New("Invalid InterfaceType");
    }
 
+   // get all the IP addresses on this interface, refer to the intf table name
    intTbl := IntfTypeTblMap[intfType]
+   tblList = intTbl.cfgDb.intfTN
 
-   if (intfType == IntfTypeEthernet) || intfType == IntfTypePortChannel {
-       tblList = intTbl.cfgDb.intfTN
-   } else if intfType == IntfTypeVlan {
+   ipKeys, _ := doGetIntfIpKeys(d, tblList, ifName)
+   numIpv6 := GetCountOfAddrType(ipKeys, ":")
+
+   // for VLAN - DHCP info is stored in the VLAN Table
+   if intfType == IntfTypeVlan {
        tblList = intTbl.cfgDb.portTN
    }
+
    entry, dbErr := d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
    if dbErr != nil {
      log.Warning("Failed to read entry from config DB, " + tblList + " " + ifName)
@@ -389,7 +408,7 @@ func ValidateIntfProvisionedForRelay(d *db.DB, ifName string, prefixIp string) (
        if len(entry.Field["dhcp_servers@"]) > 0 {
            return true, nil
        }
-   } else if strings.Contains(prefixIp, ":") || strings.Contains(prefixIp, "ipv6"){
+   } else if (strings.Contains(prefixIp, ":") && numIpv6 <2) || strings.Contains(prefixIp, "ipv6"){
    //check if dhcpv6_sever is provisioned for ipv6
        log.V(2).Info("ValidateIntfProvisionedForRelay  - IPv6Check")
        log.V(2).Info(entry)
@@ -529,6 +548,11 @@ func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfT
             ifIpMap, _ = getIntfIpByName(d, intTbl.cfgDb.intfTN, *ifName, true, false, "")
 
             if(!utlCheckSecondaryIPConfigured(ifIpMap)) {
+                dhcpProv, _ :=ValidateIntfProvisionedForRelay(d, *ifName, *ipPrefix)
+                if dhcpProv {
+                   errStr := "IP address cannot be deleted. DHCP Relay is configured on the interface."
+                   return tlerr.InvalidArgsError {Format: errStr}
+                }
                 err := d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, *ipPrefix}})
                 if err != nil {
                     return err
@@ -538,6 +562,11 @@ func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfT
             }
         }
     } else {
+        dhcpProv, _ :=ValidateIntfProvisionedForRelay(d, *ifName, *ipPrefix)
+        if dhcpProv {
+           errStr := "IP address cannot be deleted. DHCP Relay is configured on the interface."
+           return tlerr.InvalidArgsError {Format: errStr}
+        }
         err := d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName, *ipPrefix}})
         if err != nil {
             return err
@@ -969,7 +998,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	      }
 		}
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
-        tblList = append(tblList, intTbl.CountersHdl.CountersTN)
+        tblList = append(tblList, "NONE")
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state") {
@@ -1983,11 +2012,12 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         }
     }
 
-    vlanIntfcount := 0
-    _ = interfaceIPcount(tblName, d, &ifName, &vlanIntfcount)
+    vlanIntfCount := 0
+    _ = interfaceIPcount(tblName, d, &ifName, &vlanIntfCount)
     var data db.Value
 
     // There is atleast one IP Address Configured on Vlan Intf
+    // Add the key "<ifname>|<IP>" to the Map
     if len(intfIpMap) > 0 {
         if _, ok := vlanIntfmap[tblName]; !ok {
             vlanIntfmap[tblName] = make (map[string]db.Value)
@@ -2000,27 +2030,30 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
     }
 
     // Case-1: Last IP Address getting deleted on Vlan Interface
-    // Case-2: Interface Vlan getting deleted with no IP addresses configured
-    if (vlanIntfcount - len(intfIpMap)) == 1 {
+    // Case-2: Interface Vlan getting deleted with L3 Attributes Present
+    if (vlanIntfCount - len(intfIpMap)) == 1 {
+        sagIpKey, _ := d.GetKeysByPattern(&db.TableSpec{Name: "SAG"}, ifName+"|*")
         IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
         if err != nil {
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
         }
         IntfMap := IntfMapObj.Field
-        // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>" (or)
-        if len(IntfMap) == 1 {
-            if _, ok := vlanIntfmap[tblName]; !ok {
-                vlanIntfmap[tblName] = make (map[string]db.Value)
-	    }
+        // NULL indicates atleast one a) IP Address Config or b) SAG IP Config
+        // So delete only when it is the Last IP and no SAG Config
+        if len(IntfMap) == 1 &&   len(sagIpKey) == 0 {
             if _, ok := IntfMap["NULL"]; ok {
+                if _, ok := vlanIntfmap[tblName]; !ok {
+                    vlanIntfmap[tblName] = make (map[string]db.Value)
+                }
                 vlanIntfmap[tblName][ifName] = data
             }
         }
         // Case-2: If deletion at parent container(routedVlanIntf)
-        if routedVlanIntf == nil {
+        // Delete it only when no SAG Config is present
+        if routedVlanIntf == nil &&  len(sagIpKey) == 0 {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
-	    }
+            }
             vlanIntfmap[tblName][ifName] = data
         }
     }
@@ -2467,12 +2500,10 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     }
 
     if inParams.oper == DELETE {
-       dhcpProv, dhcpErr :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
+       dhcpProv, _ :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
        if dhcpProv {
            errStr := "IP address cannot be deleted. DHCP Relay is configured on the interface."
-           return subIntfmap, errors.New(errStr)
-       } else if dhcpErr !=nil {
-           return subIntfmap, dhcpErr
+           return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
        }
     }
 
@@ -2750,12 +2781,10 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
     if intfObj.RoutedVlan == nil {
         // Handling the scenario for Interface instance delete at interfaces/interface[name] level or subinterfaces container level
         if inParams.oper == DELETE {
-           dhcpProv, dhcpErr :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
+           dhcpProv, _ :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
            if dhcpProv {
                errStr := "IP address cannot be deleted. DHCP Relay is configured on the interface"
-               return vlanIntfmap, errors.New(errStr)
-            } else if dhcpErr !=nil {
-               return vlanIntfmap, dhcpErr
+               return vlanIntfmap, tlerr.InvalidArgsError {Format: errStr}
             }
             log.Info("YangToDb_routed_vlan_ip_addr_xfmr: Top level Interface instance delete or routed-vlan container delete for Interface: ", ifName)
             return routed_vlan_ip_addr_del(inParams.d, ifName, tblName, nil)
@@ -2768,12 +2797,10 @@ var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
 
     vlanIntfObj := intfObj.RoutedVlan
     if inParams.oper == DELETE {
-        dhcpProv, dhcpErr :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
+        dhcpProv, _ :=ValidateIntfProvisionedForRelay(inParams.d, ifName, prefixType)
         if dhcpProv {
             errStr := "IP address cannot be deleted. DHCP Relay is configured on the interface."
-            return vlanIntfmap, errors.New(errStr)
-        } else if dhcpErr !=nil {
-            return vlanIntfmap, dhcpErr
+            return vlanIntfmap, tlerr.InvalidArgsError {Format: errStr}
         }
         return routed_vlan_ip_addr_del(inParams.d, ifName, tblName, vlanIntfObj)
     }
@@ -3229,7 +3256,10 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
     }
     log.V(3).Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
 
-    keys,err := doGetAllIpKeys(dbCl, &db.TableSpec{Name:tblName})
+    keys, err := doGetIntfIpKeys(dbCl, tblName , ifName)
+    if log.V(3) {
+	log.Infof("Found %d keys for (%v)(%v)", len(keys), tblName, ifName)
+    }
     if( err != nil) {
         return intfIpMap, err
     }
@@ -3522,23 +3552,11 @@ func validIP(ip net.IP) bool {
     return true
 }
 
-/* Get all keys for given interface tables */
-func doGetAllIpKeys(d *db.DB, dbSpec *db.TableSpec) ([]db.Key, error) {
-    var keys []db.Key
-    intfTable, err := d.GetTable(dbSpec)
-    if err != nil {
-        return keys, err
-    }
-    keys, err = intfTable.GetKeys()
-    log.Infof("Found %d INTF table keys", len(keys))
-
-    return keys, err
-}
-
 /* Get all IP keys for given interface */
 func doGetIntfIpKeys(d *db.DB, tblName string, intfName string) ([]db.Key, error) {
-    ipKeys, err := d.GetKeys(&db.TableSpec{Name: tblName+"|"+intfName})
-    log.Info("doGetIntfIpKeys for interface: ", intfName, " - ", ipKeys)
+    ts := db.TableSpec{Name: tblName + d.Opts.KeySeparator + intfName}
+    ipKeys, err := d.GetKeys(&ts)
+    log.Infof("doGetIntfIpKeys for %s with %v - %v", intfName, ts, ipKeys)
     return ipKeys, err
 }
 
@@ -4290,7 +4308,19 @@ func retrievePortChannelAssociatedWithIntf(inParams *XfmrParams, ifName *string)
 
 /* Get default speed from valid speeds.  Max valid speed should be the default speed.*/
 func validateSpeed(d *db.DB, ifName string, speed string) error {
-    var err error
+
+    intfType, _, err := getIntfTypeByName(ifName)
+    if err != nil {
+        errStr := "Invalid Interface"
+        err = tlerr.InvalidArgsError{Format: errStr}
+        return err
+    }
+
+    /* No validation possible for MGMT interface */
+    if IntfTypeMgmt == intfType {
+        log.Info("Management port ",ifName, " skipped speed validation.")
+        return nil
+    }
 
     portEntry, err := d.GetEntry(&db.TableSpec{Name: "PORT"}, db.Key{Comp: []string{ifName}})
     if(err != nil) {
@@ -4904,7 +4934,7 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     return res_map, nil
 }
 
-var YangToDb_igmp_mcastgrpaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+/* var YangToDb_igmp_mcastgrpaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	log.Info("YangToDb_igmp_mcastgrpaddr_xfmr: ", inParams.key)
         res_map["enable"] = "true"
@@ -4983,5 +5013,5 @@ var DbToYang_igmp_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[
     var err error
 
     return nil, err
-}
+} */
 

@@ -409,8 +409,8 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
     }
 
     if err, ok := routeDict["warning"] ; ok {
-        log.Errorf ("\"%s\" VTYSH-cmd execution failed with error-msg ==> \"%s\" !!", cmd, err)
-        return nil, errors.New("Internal error!")
+        log.Infof ("\"%s\" VTYSH-cmd execution returned warning-msg ==> \"%s\" !!", cmd, err)
+        return json.Marshal(&result)
     }
 
     for ipAddr := range routeDict {

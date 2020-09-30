@@ -29,6 +29,11 @@ module sonic-system-logging {
     import sonic-mgmt-port {
         prefix smgmt;
     }
+
+    import sonic-mgmt-vrf {
+        prefix m-vrf;
+    }
+
     organization
         "SONiC";
 
@@ -82,6 +87,10 @@ module sonic-system-logging {
                         type leafref {
                             path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
                        }
+                    }
+                    must "(current() != 'mgmt') or (/m-vrf:sonic-mgmt-vrf/m-vrf:MGMT_VRF_CONFIG/m-vrf:MGMT_VRF_CONFIG_LIST[m-vrf:vrf_global_name='vrf_global']/m-vrf:mgmtVrfEnabled = 'true')" {
+                        error-message "Management VRF not configured";
+                        error-app-tag mgmt-vrf-not-enabled;
                     }
                 }
 

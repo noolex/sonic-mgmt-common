@@ -73,7 +73,7 @@ func init () {
 	// Watermark Configuration (Telemetry) 
     XlateFuncBind("YangToDb_telemetry_watermark_key_xfmr", YangToDb_telemetry_watermark_key_xfmr)
     XlateFuncBind("DbToYang_telemetry_watermark_key_xfmr", DbToYang_telemetry_watermark_key_xfmr)
-
+    XlateFuncBind("qos_post_xfmr", qos_post_xfmr)
 
 }
 
@@ -89,7 +89,6 @@ var rpc_watermarks_clear_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
                         Status_detail []string`json:"status-detail"`
                 } `json:"openconfig-qos-ext:output"`
         }
-
         var operand struct {
                 Input struct {
                      Buffer string `json:"buffer"`
@@ -164,9 +163,6 @@ func watermarks_clear_operation(exec_cmd string) ([]byte, error) {
         result.Output.Status_detail  = out_list 
         return json.Marshal(&result)
 }
-
-
-
 
 var DbToYang_tam_threshold_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
@@ -1985,4 +1981,189 @@ var rpc_oc_clear_threshold_breach RpcCallpoint = func(body []byte, dbs [db.MaxDB
     result.Output.Status = 0
     result.Output.Status_detail = "Success: Cleared threshold breaches"
     return json.Marshal(&result)
+}
+
+func qos_interface_post_xfmr (inParams XfmrParams, retDbDataMap map[string]map[string]db.Value, ifName string) (error) {
+    
+    qos_port_tbl := "PORT_QOS_MAP"
+    if ifName == "CPU" {
+        if _, ok :=  retDbDataMap[qos_port_tbl]; ok {
+            log.Infof("qos_post_xfmr - Skip CPU delete")
+            delete(retDbDataMap[qos_port_tbl], ifName)
+        }
+        return nil
+    }
+    if _, ok := (*inParams.dbDataMap)[db.ConfigDB][qos_port_tbl][ifName]; ok {
+        retDbDataMap[qos_port_tbl][ifName] = db.Value{Field: make(map[string]string)}
+    } else if strings.HasPrefix(ifName, "Vlan") || strings.HasPrefix(ifName, "PortChannel") {
+        log.Info("qos_post_xfmr - Update Vlan or PortChannel to delete, ifName ", ifName)
+        entry, err := inParams.d.GetEntry(&db.TableSpec{Name:qos_port_tbl}, db.Key{Comp: []string{ifName}})
+        if err != nil || entry.IsPopulated() {
+            if _, ok := retDbDataMap[qos_port_tbl]; !ok {
+                retDbDataMap[qos_port_tbl] = make(map[string]db.Value)
+            }
+            retDbDataMap[qos_port_tbl][ifName] = db.Value{Field: make(map[string]string)}
+        }
+    }
+
+    return nil
+}
+
+func qos_queue_post_xfmr (inParams XfmrParams, retDbDataMap map[string]map[string]db.Value, dbQKey db.Key) (error) {
+
+    qCfg, _ := inParams.d.GetEntry(&db.TableSpec{Name:"QUEUE"}, dbQKey)
+    var q_sched_present bool = false
+    _, ok := qCfg.Field["scheduler"]
+    if ok {
+        q_sched_present = true
+    }
+
+    var qKey_str string = dbQKey.Get(0) + "|" + dbQKey.Get(1)
+    if strings.Contains(qKey_str, "CPU") {
+        delete(retDbDataMap["QUEUE"], qKey_str)
+        log.Info("qos_post_xfmr- Skip delete CPU QUEUE Settings - ", qKey_str)
+        return nil
+    }
+
+    log.Info("qos_post_xfmr- Update QUEUE with wred_policy - ", qKey_str)
+    if _, ok := retDbDataMap["QUEUE"][qKey_str]; !ok {
+        retDbDataMap["QUEUE"][qKey_str] = db.Value{Field: make(map[string]string)}
+    }
+
+    /* If only WRED field, then delete QUEUE entry else delete only wred_profile */
+    if q_sched_present {
+       retDbDataMap["QUEUE"][qKey_str].Field["wred_profile"] = ""
+    } else {
+       retDbDataMap["QUEUE"][qKey_str] = db.Value{Field: make(map[string]string)}
+    }
+
+    return nil
+}
+var qos_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+
+    log.Info("qos_post_xfmr - inParams.uri: ", inParams.uri)
+
+    if (inParams.dbDataMap != nil) {
+        retDbDataMap := (*inParams.dbDataMap)[db.ConfigDB]
+        if inParams.oper == DELETE {
+            log.Info(" qos_post_xfmr - Received retDbDataMap from xfmrs ", retDbDataMap)
+            requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
+
+            if (requestUriPath == "/openconfig-qos:qos/interfaces/interface" ||
+                requestUriPath ==  "/openconfig-qos:qos/interfaces" ||
+                requestUriPath ==  "/openconfig-qos:qos") {
+
+                pathInfo := NewPathInfo(inParams.uri)
+                ifName := pathInfo.Var("interface-id");
+
+                log.Info("qos_post_xfmr - Uri ifName: ", ifName);
+
+                if len(ifName) != 0 {
+                   dbifName := utils.GetNativeNameFromUIName(&ifName)
+                   ifName = *dbifName
+                }
+                /* DELETE at interface/interfaces/qos will trigger every sub trees. 
+                 * Infra will not include direct fields like interface-maps to clear. 
+                 * We need to include map fileds or delete fileds return from other subtrees.
+                 * Delete interface can remove PORT_QOS_MAP entry. Overwirte map entry with 
+                 * empty fileds to clear everything.
+                 * 
+                 * 
+                 * To flush maps on Vlan, Portchannel add explicity port_qos_map entry
+                 * CPU is assigned with copp, do not allow delete. 
+                 */
+                qos_port_tbl := "PORT_QOS_MAP"
+
+                if len(ifName) != 0 {
+                   qos_interface_post_xfmr(inParams, retDbDataMap, ifName)
+                } else {
+                    /* Delete all port_qos_map entries */
+                    mapIntfKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:qos_port_tbl})
+                    if len(mapIntfKeys) > 0 {
+                        for _, mapIntfKey := range mapIntfKeys {
+                            k_ifName := mapIntfKey.Get(0)
+                            if_name := utils.GetUINameFromNativeName(&k_ifName)
+                            key := *if_name
+                            qos_interface_post_xfmr(inParams, retDbDataMap, key)
+                        }
+                    }
+                }
+            }
+            /* QUEUE table has 2 fields scheduler and wred_policy.  
+             * Scheduler will be deleted from interface/schduelr-policy, should not delete entire QUEUE table 
+             * by request /openconfig-qos:qos/queues/queue or /openconfig-qos:qos/queues
+             * Delete only wred_policy
+             * From Xfmr we can get empty QUEUE map. Should avoid because it clears COPP configs
+             */
+            if (requestUriPath == "/openconfig-qos:qos/queues/queue" ||
+                requestUriPath ==  "/openconfig-qos:qos/queues" ||
+                requestUriPath ==  "/openconfig-qos:qos") {
+                log.Info("qos_post_xfmr - Delete Queues/queue, Updated retDbDataMap: ", retDbDataMap)
+                for table, keyInstance := range retDbDataMap {
+                    if table != "QUEUE" {
+                        continue
+                    }
+
+                    if requestUriPath == "/openconfig-qos:qos/queues/queue" {
+                        for dbKey := range keyInstance {
+                            if strings.Contains(dbKey, "CPU") {
+                                return retDbDataMap, tlerr.NotSupported("Operation Not Supported")
+                            } else {
+                                s := strings.Split(dbKey, "|")
+                                qKey := db.Key{Comp: []string{s[0], s[1]}}
+                                qos_queue_post_xfmr(inParams, retDbDataMap, qKey)
+                            }
+                        }
+                    } else {
+                        log.Info("qos_post_xfmr - Delete all queues wred_policy")
+                        qKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"QUEUE"})
+                        if len(qKeys) > 0 {
+                            for _, qKey := range qKeys {
+                                qos_queue_post_xfmr(inParams, retDbDataMap, qKey)
+                            }
+                        }
+                        /* To Avoid CPU copp scheduler cleanup on queue */
+                        if len(retDbDataMap["QUEUE"]) == 0 {
+                            log.Info("qos_post_xfmr- Remove empty QUEUE table, to avoid COPP configs remove")
+                            delete(retDbDataMap, "QUEUE")
+                        }
+                    }
+                }
+            }
+
+            if (requestUriPath ==  "/openconfig-qos:qos") {
+                log.Info("qos_post_xfmr - Updates retDbDataMap while schduler ", retDbDataMap)
+                log.Info("qos_post_xfmr - Delete All schedulers except copp")
+                sKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"SCHEDULER"})
+                if len(sKeys) > 0 {
+                    for _, sKey := range sKeys {
+                        var sKey_str string = sKey.Get(0) 
+                        if strings.Contains(sKey_str, "copp-scheduler-policy") {
+                            log.Info("qos_post_xfmr - Skip add CPU copp scheduler to delete - ", sKey_str)
+                            continue
+                        }
+
+                        log.Info("qos_post_xfmr: Update scheduler to delete - ", sKey_str)
+                        if _, ok := retDbDataMap["SCHEDULER"]; !ok {
+                            retDbDataMap["SCHEDULER"] = make(map[string]db.Value)
+                        }
+
+                        if _, ok := retDbDataMap["SCHEDULER"][sKey_str]; !ok {
+                            retDbDataMap["SCHEDULER"][sKey_str] = db.Value{Field: make(map[string]string)}
+                        }
+                    }
+                }
+                /* Avoid Delete Copp scheduler policy */
+                if _, ok := retDbDataMap["SCHEDULER"]; ok {
+                    if len(retDbDataMap["SCHEDULER"]) == 0 {
+                        log.Info("qos_post_xfmr- Remove empty SCHEDULER table, to avoid COPP configs remove")
+                        delete(retDbDataMap, "SCHEDULER")
+                    }
+                }
+            }
+        }
+        log.Infof("qos_post_xfmr- Return result : %v", retDbDataMap)
+        return retDbDataMap, nil
+    }
+    return nil, nil
 }

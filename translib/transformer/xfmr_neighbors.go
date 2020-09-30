@@ -47,6 +47,8 @@ func init () {
     XlateFuncBind("rpc_clear_neighbors", rpc_clear_neighbors)
     XlateFuncBind("Subscribe_neigh_tbl_get_all_ipv4_xfmr", Subscribe_neigh_tbl_get_all_ipv4_xfmr)
     XlateFuncBind("Subscribe_neigh_tbl_get_all_ipv6_xfmr", Subscribe_neigh_tbl_get_all_ipv6_xfmr)
+    XlateFuncBind("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr", Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr)
+    XlateFuncBind("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr", Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr)
     XlateFuncBind("YangToDb_neighbor_global_key_xfmr", YangToDb_neighbor_global_key_xfmr)
 }
 
@@ -410,6 +412,68 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
     result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
+    return result, nil
+}
+
+var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: pathInfo ", pathInfo)
+
+    result.dbDataMap = make(RedisDbMap)
+    result.isVirtualTbl = false
+
+    intfNameRcvd := pathInfo.Var("name")
+    if intfNameRcvd == "" {
+        errStr := "Empty interface name received"
+        log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    ipAddrRcvd := pathInfo.Var("ip")
+    if ipAddrRcvd == "" {
+        errStr := "Empty ip address received"
+        log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    neighIntfTbl := "NEIGH"
+    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+
+    log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
+    return result, nil
+}
+
+var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var result XfmrSubscOutParams
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: pathInfo ", pathInfo)
+
+    result.dbDataMap = make(RedisDbMap)
+    result.isVirtualTbl = false
+
+    intfNameRcvd := pathInfo.Var("name")
+    if intfNameRcvd == "" {
+        errStr := "Empty interface name received"
+        log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    ipAddrRcvd := pathInfo.Var("ip")
+    if ipAddrRcvd == "" {
+        errStr := "Empty ip address received"
+        log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        return result, tlerr.New(errStr)
+    }
+
+    neighIntfTbl := "NEIGH"
+    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+
+    log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
 }
 

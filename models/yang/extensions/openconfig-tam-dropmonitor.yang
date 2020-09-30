@@ -108,7 +108,7 @@ submodule openconfig-tam-dropmonitor {
 
     grouping tam-dropmonitor-global-state {
         description
-          "TODO:";
+          "Operational state container for global container";
     }
 
     grouping tam-dropmonitor-global-config-top {
@@ -116,7 +116,7 @@ submodule openconfig-tam-dropmonitor {
           "switch-wide configuration for drop-monitor";
         container global {
             description
-              "TODO:";
+              "top-level container for drop-monitor global configuration";
             container config {
                 description
                   "Container holding the dropmonitor config";
@@ -137,11 +137,11 @@ submodule openconfig-tam-dropmonitor {
           "Top-level grouping for dropmonitor";
         container dropmonitor {
             description
-              "TODO:";
+              "top-level container for tam dropmonitor configuration";
             uses tam-dropmonitor-global-config-top;
             container dropmonitor-sessions {
                 description
-                  "top-level container for tam dropmonitor configuration";
+                  "top-level container for tam dropmonitor sessions";
                 list dropmonitor-session {
                     key "name";
                     description

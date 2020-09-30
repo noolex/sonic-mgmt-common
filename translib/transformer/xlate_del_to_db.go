@@ -584,7 +584,6 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		errStr := fmt.Sprintf("Parent table does not exist for uri(%v)", uri)
 		return tlerr.InternalError{Format: errStr}
 	}
-
 	for i := 0; i < MAXOPER; i++ {
 		resultMap[i] = make(map[db.DBNum]map[string]map[string]db.Value)
 	}

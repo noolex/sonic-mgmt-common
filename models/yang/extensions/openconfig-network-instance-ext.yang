@@ -192,5 +192,8 @@ module openconfig-network-instance-ext {
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:local-aggregates {
       deviate not-supported;
   }
-  
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp {
+      deviate not-supported;
+  }
 }

@@ -733,6 +733,18 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
         dscp_configured = true
     }
 
+    var NVO_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "EVPN_NVO"}
+    dbvNvo, err := reqP.db.GetEntry(NVO_TABLE_TS, db.Key{[]string{"nvo1"}})
+    var nvoCreated bool
+    nvoCreated = false
+
+    if err == nil { //&& dbvNvo.IsPopulated() {
+        nvoCreated = true
+        if log.V(3) {
+            log.Info("NVO already created. NVO:",dbvNvo)
+        }
+    }
+
 	if vxlanIntfName != "" {
 		var VXLAN_TUNNEL_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL"}
 		dbv, err := reqP.db.GetEntry(VXLAN_TUNNEL_TABLE_TS, db.Key{[]string{vxlanIntfName}})
@@ -867,7 +879,9 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 		dbV2.Field["source_vtep"] = *(reqP.intfObject.Name)
 		evpnNvoTblMap["nvo1"] = dbV2
 		res_map["VXLAN_TUNNEL"] = vxlanTunnelTblMap
-		res_map["EVPN_NVO"] = evpnNvoTblMap
+        if !nvoCreated {
+            res_map["EVPN_NVO"] = evpnNvoTblMap
+        }
 	}
 	
 	if log.V(3) {
@@ -1466,13 +1480,22 @@ var YangToDb_vxlan_vni_instance_subtree_xfmr SubTreeXfmrYangToDb = func(inParams
 					}
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := inParams.d.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
+                    log.Infof("DELETE operation: vrf:%v, vniid:%v ",niName, vniIdKeyStr)
 					if err != nil {
 						return res_map, err
 					}
 					if vrfEntry.Has("vni") {
 						vniIdStr := vrfEntry.Get("vni")
+                        if ( (vniIdKeyStr != "") && (vniIdKeyStr != vniIdStr) ) {
+                            log.Infof("VNI ID:%v != VNI ID:%v in vrf:%v DB ",vniIdKeyStr, vniIdStr, niName)
+                            return res_map,tlerr.NotFound("Resource not found")
+                        }
+
 						vniNum, _ := strconv.ParseUint(vniIdStr, 10, 32)
 						vniId = uint32(vniNum)
+                    } else if (vniIdKeyStr != "") {
+                        log.Infof("VNI ID:%v not found in  vrf:%v DB; no vni mapped to VRF",vniIdKeyStr, niName)
+                        return res_map,tlerr.NotFound("Resource not found")
 					}
 				}
 			}
@@ -1758,6 +1781,7 @@ var Subscribe_vxlan_vni_instance_subtree_xfmr SubTreeXfmrSubscribe = func (inPar
         tblName = "VXLAN_TUNNEL_MAP"
     } else if strings.HasPrefix(niName, "Vrf") {
         tblName = "VRF"
+        result.isVirtualTbl = true
         result.needCache = true
     } else {
         return result,nil

@@ -124,7 +124,7 @@ submodule openconfig-tam-ifa {
             list ifa-session {
                 key "name";
                 description
-                  "Uniqueuly identifies a flow-group";
+                  "Uniquely identifies a flow-group";
                 leaf name {
                     type leafref {
                         path "../config/name";
