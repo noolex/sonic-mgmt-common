@@ -23,6 +23,7 @@ import (
 
 func init () {
 
+    XlateFuncBind("ospfv2_validate_proto", validate_ospfv2_protocol)
     XlateFuncBind("YangToDb_ospfv2_router_tbl_key_xfmr", YangToDb_ospfv2_router_tbl_key_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_tbl_key_xfmr", DbToYang_ospfv2_router_tbl_key_xfmr)
     XlateFuncBind("YangToDb_ospfv2_router_enable_fld_xfmr", YangToDb_ospfv2_router_enable_fld_xfmr)
@@ -86,6 +87,13 @@ func init () {
     XlateFuncBind("YangToDb_ospfv2_interface_name_fld_xfmr", YangToDb_ospfv2_interface_name_fld_xfmr)
     XlateFuncBind("DbToYang_ospfv2_interface_name_fld_xfmr", DbToYang_ospfv2_interface_name_fld_xfmr)
 
+}
+
+func validate_ospfv2_protocol(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    proto := pathInfo.Var("name#2")
+    protoId := pathInfo.Var("identifier")
+    return protoId == "OSPF" && proto == "ospfv2"
 }
 
 func getOspfUriPath(inParams *XfmrParams) (string, error) {

@@ -1570,7 +1570,7 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 	} else if strings.HasPrefix(niName, "Vrf") {
 		tblName = "VRF"
 	} else {
-		log.Errorf("Invalid Network Instance name: %s", niName)
+		log.Warningf("Invalid Network Instance name: %s", niName)
 		return tlerr.InvalidArgs("Invalid Network Instance name: %s", niName)
 	}
 
