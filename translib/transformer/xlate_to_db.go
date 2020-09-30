@@ -397,7 +397,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 						continue
 					}
 
-					if childNode.yangDataType == YANG_LIST || childNode.yangDataType == YANG_CONTAINER {
+					if (childNode.yangDataType == YANG_LIST || childNode.yangDataType == YANG_CONTAINER) && !childNode.yangEntry.ReadOnly() {
 						var tblList []string
 						tblList = append(tblList, childUri)
 						err := dbMapDefaultFieldValFill(xlateParams, tblList)
@@ -424,9 +424,9 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 								oper := xlateParams.oper
 								if len(childNode.defVal) > 0 {
 									if tblXfmrPresent {
-										chldTblNm, _ := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParamsTblXfmr )
+										chldTblNm, ctErr := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParamsTblXfmr )
 										xfmrLogInfoAll("Table transformer %v for xpath %v returned table %v", *childNode.xfmrTbl, childXpath, chldTblNm)
-										if chldTblNm != tblName {
+										if ctErr != nil || chldTblNm != tblName {
 											continue
 										}
 									}
@@ -445,9 +445,9 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 									}
 									oper = DELETE
 									if tblXfmrPresent {
-										chldTblNm, _ := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParamsTblXfmr )
+										chldTblNm, ctErr := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParamsTblXfmr )
 										xfmrLogInfoAll("Table transformer %v for xpath %v returned table %v", *childNode.xfmrTbl, childXpath, chldTblNm)
-										if chldTblNm != tblName {
+										if ctErr != nil || chldTblNm != tblName {
 											continue
 										}
 									}
@@ -476,6 +476,13 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 							} else if len(childNode.fieldName) > 0 {
 								var xfmrErr error
 								if _, ok := xDbSpecMap[tblName+"/"+childNode.fieldName]; ok {
+									if tblXfmrPresent {
+										chldTblNm, ctErr := tblNameFromTblXfmrGet(*childNode.xfmrTbl, inParamsTblXfmr)
+										xfmrLogInfoAll("Table transformer %v for xpath %v returned table %v", *childNode.xfmrTbl, childXpath, chldTblNm)
+										if ctErr != nil || chldTblNm != tblName {
+											continue
+										}
+									}
 									// Fill default value only if value is not available in result Map
 									// else we overwrite the value filled in resultMap with default value
 									_, ok = xlateParams.result[tblName][dbKey].Field[childNode.fieldName]
@@ -487,6 +494,9 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 												log.Warningf("Default/AuxMap Value filling. Received error %v from %v", err, childNode.fieldName)
 											}
 										} else {
+											if xlateParams.oper != REPLACE {
+												continue
+											}
 											dataToDBMapAdd(tblName, dbKey, xlateParams.yangAuxValMap, childNode.fieldName, "")
 										}
 									}
@@ -1123,7 +1133,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 
 				xfmrLogInfoAll("Check parent table for uri: %v", curUri)
 				// Get Table and Key only for yang list instances
-				xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache)
+				xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache, nil)
 				if xerr != nil {
 					log.Warningf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
 					err = xerr
@@ -1214,7 +1224,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			return true, nil
 		}
 
-		xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
+		xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache, nil)
 		if xerr != nil {
 			log.Warningf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 			return false, xerr
@@ -1272,7 +1282,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		// Get table for parent xpath
 		parentTable, perr := dbTableFromUriGet(d, ygRoot, oper, parentUri, uri, nil, txCache)
 		// Get table for current xpath
-		xpathKeyExtRet, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache)
+		xpathKeyExtRet, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache, nil)
 		curKey := xpathKeyExtRet.dbKey
 		curTable := xpathKeyExtRet.tableName
 		if len(curTable) > 0 {

@@ -85,6 +85,7 @@ module sonic-device-metadata {
 					type enumeration {
 						enum unified;
 						enum separated;
+						enum split;
 					}
 				}
 

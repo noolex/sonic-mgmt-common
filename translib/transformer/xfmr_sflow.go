@@ -78,6 +78,10 @@ const (
 
     /* Unsupported Sampling URIs */
     SAMPLING_IPFIX = "openconfig-sampling:sampling/ipfix"
+
+    /* IPv4/v6 localhost address */
+    IPV4_LOCALHOST = "127.0.0.1"
+    IPV6_LOCALHOST = "::1"
 )
 
 type Sflow struct {
@@ -200,7 +204,8 @@ func makeColKey(uri string) (string) {
 }
 
 func validColIP (ip string) bool {
-    return validIPv4(ip) || validIPv6(ip)
+    /* Allow localhost address for debugging purposes */
+    return ip == IPV4_LOCALHOST || ip == IPV6_LOCALHOST || validIPv4(ip) || validIPv6(ip)
 }
 
 var YangToDb_sflow_collector_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {

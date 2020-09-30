@@ -202,7 +202,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 		retdbFormat = fillSonicKeySpec(xpath, tableName, keyStr)
 	} else {
 		/* Extract the xpath and key from input xpath */
-		retData, _ := xpathKeyExtract(nil, ygRoot, GET, uri, requestUri, nil, txCache)
+		retData, _ := xpathKeyExtract(nil, ygRoot, GET, uri, requestUri, nil, txCache, nil)
 		retdbFormat = FillKeySpecs(retData.xpath, retData.dbKey, &retdbFormat)
 	}
 
@@ -340,7 +340,6 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 	var yangDefValMap = make(map[string]map[string]db.Value)
 	var yangAuxValMap = make(map[string]map[string]db.Value)
 	dbTblKeyGetCache = sync.Map{}
-	keyXfmrCache = sync.Map{}
 	switch opcode {
 	case CREATE:
 		xfmrLogInfo("CREATE case")
@@ -370,7 +369,6 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 			log.Warning("Data translation from yang to db failed for delete request.")
 		}
 	}
-	keyXfmrCache = sync.Map{}
 	dbTblKeyGetCache = sync.Map{}
 	return result, yangDefValMap, yangAuxValMap, err
 }
@@ -379,7 +377,6 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	var err error
 	var payload []byte
 	xfmrLogInfo("received xpath = " + uri)
-	keyXfmrCache = sync.Map{}
 	dbTblKeyGetCache = sync.Map{}
 	requestUri := uri
 	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
@@ -397,7 +394,6 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 
 	isEmptyPayload := false
 	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache)
-	keyXfmrCache = sync.Map{}
 	dbTblKeyGetCache = sync.Map{}
 	if err != nil {
 		return payload, true, err
@@ -500,6 +496,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 		}
 	}
 	inParamsForGet = formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, xpath, GET, "", "", &dbData, txCache, nil, false)
+	inParamsForGet.xfmrKeyCache = make(map[string]string)
 	payload, isEmptyPayload, err := dbDataToYangJsonCreate(inParamsForGet)
 	xfmrLogInfo("Payload generated : " + payload)
 
@@ -772,7 +769,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 	   }
 
            xpath_dbno := xpathData.dbIndex
-           retData, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, txCache)
+           retData, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, txCache, nil)
            if ((len(xpathData.xfmrFunc) == 0) && ((xPathKeyExtractErr != nil) || ((len(strings.TrimSpace(retData.dbKey)) == 0) || (len(strings.TrimSpace(retData.tableName)) == 0)))) {
                log.Warning("Error while extracting DB table/key for uri", path, "error - ", xPathKeyExtractErr)
                err = xPathKeyExtractErr

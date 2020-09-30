@@ -2946,7 +2946,18 @@ func ospfv2_fill_router_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance_
                             if _linkId, ok := link_info["Designated Router address"].(string); ok {
                                 link_state.LinkId = &_linkId
                             }
+                            if _linkId, ok := link_info["Neighboring Router ID"].(string); ok {
+                                link_state.LinkId = &_linkId
+                            }
+                            if _linkId, ok := link_info["Net"].(string); ok {
+                                link_state.LinkId = &_linkId
+                            }
                             if _linkData, ok := link_info["Router Interface address"].(string); ok {
+                                var tempStr ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_LsaExt_RouterLsa_State_LinkInformationList_LinkInformation_State_LinkData_Union_String
+                                tempStr.String = _linkData
+                                link_state.LinkData = &tempStr
+                            }
+                            if _linkData, ok := link_info["Network Mask"].(string); ok {
                                 var tempStr ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_LsaExt_RouterLsa_State_LinkInformationList_LinkInformation_State_LinkData_Union_String
                                 tempStr.String = _linkData
                                 link_state.LinkData = &tempStr

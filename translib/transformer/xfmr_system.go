@@ -11,6 +11,9 @@ import (
     "errors"
     log "github.com/golang/glog"
     ygot "github.com/openconfig/ygot/ygot"
+    "math/rand"
+    "github.com/tredoe/osutil/user/crypt/sha512_crypt"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 const (
@@ -20,6 +23,7 @@ const (
     PROC_TBL = "PROCESS_STATS"
     SYSMEM_KEY = "SYS_MEM"
     HOSTNAME_KEY = "HOSTNAME"
+    CHARSET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 func init () {
@@ -438,6 +442,33 @@ var Subscribe_sys_aaa_auth_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscI
     return result, err
 }
 
+func getSalt(seed []byte) ([]byte){
+    saltRes := "$6$"+string(seed)
+    return []byte(saltRes)
+}
+
+func getSeed() ([]byte){
+    seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+    seed := make([]byte, 16)
+    for i := range seed {
+        seed[i] = CHARSET[seededRand.Intn(len(CHARSET))]
+    }
+    return seed
+}
+func getHashedPassword(userPassword string) (string,error) {
+    seededRand := getSeed()
+    salt := getSalt(seededRand)
+    // use salt to hash user-supplied password
+    c := sha512_crypt.New()
+    hash, err := c.Generate([]byte(userPassword), salt)
+    if err != nil {
+        log.Infof("error hashing user's supplied password: %s\n", err)
+        return "", err
+    }
+    return string(hash), nil
+}
+
+
 var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error){
     log.Info("SubtreeXfmrFunc - Uri SYS AUTH: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
@@ -452,6 +483,7 @@ var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     }
     var status bool
     var err_str string
+    var err error
     if _ , _ok := inParams.txCache.Load(userName);!_ok {
 	    inParams.txCache.Store(userName, userName)
     } else {
@@ -480,10 +512,22 @@ var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         }
     } else {
         if value,present := usersObj.User[userName]; present {
-	    log.Info("User:",*(value.Config.Username))
+           hashedPwd := *(value.Config.PasswordHashed)
+           clearPwd := *(value.Config.Password)
+           if (len(clearPwd) != 0) && (len(hashedPwd) != 0){
+               errStr := "Clear text password and Hashed password entered for user "+userName
+               log.Error(errStr)
+               return nil, tlerr.InvalidArgsError{Format:errStr}
+           }
+           if len(clearPwd) != 0 {
+               hashedPwd,err = getHashedPassword(clearPwd)
+               if err != nil {
+                   return nil, err
+               }
+           }
 	    temp := value.Config.Role.(*ocbinds.OpenconfigSystem_System_Aaa_Authentication_Users_User_Config_Role_Union_String)
 	    log.Info("Role:",temp.String)
-            status, err_str = hostAccountUserMod(*(value.Config.Username), temp.String, *(value.Config.PasswordHashed))
+            status, err_str = hostAccountUserMod(*(value.Config.Username), temp.String, hashedPwd)
             if (status) {
                 d, err := db.NewDB(getDBOptions(db.ConfigDB))
                 if err != nil {
@@ -495,7 +539,7 @@ var YangToDb_sys_aaa_auth_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 userTable := &db.TableSpec{Name: USER_TABLE}
                 key :=db.Key{Comp: []string{*(value.Config.Username)}}
                 userInfo := db.Value {Field: map[string]string{}}
-                (&userInfo).Set("password", *(value.Config.PasswordHashed))
+                (&userInfo).Set("password", hashedPwd)
                 (&userInfo).Set("role@", temp.String)
                 err = d.CreateEntry(userTable, key, userInfo)
                 if err != nil {

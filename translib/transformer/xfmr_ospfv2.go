@@ -574,6 +574,95 @@ func ospfGetRouterPolicyRangeObject(inParams *XfmrParams, vrfName string, areaId
     return rangeObj, objKey, ending, nil
 }
 
+func ospfGetRouterPassiveIntfList(inParams *XfmrParams, vrfName string) (* map[ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_PassiveInterfaces_PassiveInterface_Key]*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_PassiveInterfaces_PassiveInterface, string, bool, error) {
+    log.Infof("ospfGetRouterPassiveIntfList: get vrf %s list", vrfName)
+    ending := false
+
+    globalObj, objKey, ending, err := ospfGetRouterGlobalObject(inParams, vrfName)
+    if (globalObj == nil) {
+        return nil, objKey, ending, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 router global object ends"
+        log.Info("ospfGetRouterPassiveIntfList: ", errStr)
+        return nil, objKey, ending, errors.New(errStr)
+    }
+
+    if (globalObj.PassiveInterfaces == nil) {
+        errStr := "Ospfv2 router passive interfaces object ends"
+        log.Info("ospfGetRouterPassiveIntfList: ", errStr)
+        return nil, objKey, ending, errors.New(errStr)
+    }
+
+    passIntfListObj := &globalObj.PassiveInterfaces.PassiveInterface
+    if (passIntfListObj == nil) {
+        errStr := "Ospfv2 passive list not present"
+        log.Info("ospfGetRouterPassiveIntfList: ", errStr)
+        return nil, objKey, false, errors.New(errStr)
+    }
+
+    if (len(globalObj.PassiveInterfaces.PassiveInterface) == 0) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterPassiveIntfList: found entry %s ending %t", objKey, ending)
+    return passIntfListObj, objKey, ending, nil
+}
+
+
+func ospfGetRouterPassiveIntfObject(inParams *XfmrParams, vrfName string, ifName string, ifAddr string) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_PassiveInterfaces_PassiveInterface, string, bool, error) {
+    log.Infof("ospfGetRouterPassiveIntfObject: get vrf %s ifName %s ifAddr %s object.",  vrfName, ifName, ifAddr)
+    ending := false
+
+    passIntfListObj, objKey, ending, err := ospfGetRouterPassiveIntfList(inParams, vrfName)
+    if (passIntfListObj == nil) {
+        return nil, objKey, false, err
+    }
+
+    if (ending) {
+        errStr := "Ospfv2 area pass interfacelist object ends"
+        log.Info("ospfGetRouterPassiveIntfObject: ", errStr)
+        return nil, objKey, ending, errors.New(errStr)
+    }
+
+    ending = false
+    var passIntfObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_PassiveInterfaces_PassiveInterface
+    for passIfKey, passIntfObjElt := range *passIntfListObj {
+        if (ifName != "") {
+            if (passIfKey.Name == ifName && passIfKey.Address == ifAddr) {
+                passIntfObj = passIntfObjElt
+                objKey += "|" + passIfKey.Name + "|" + passIfKey.Address
+                break
+            }
+        } else if (passIntfObjElt != nil) {
+            passIntfObj = passIntfObjElt
+            objKey += "|" + passIfKey.Name + "|" + passIfKey.Address
+            break
+        }
+    }
+
+    if (passIntfObj == nil) {
+        if (ifName != "") {
+            errStr := "Requested passive interface not present"
+            log.Info("ospfGetRouterPassiveIntfObject: ", errStr)
+            return nil, objKey, false, errors.New(errStr)
+        }
+
+        ending = true
+        errStr := "Interface not present in passive interface list"
+        log.Info("ospfGetRouterPassiveIntfObject: ", errStr)
+        return nil, objKey, ending, errors.New(errStr)
+    }
+
+    ending = false
+    if (passIntfObj.Config == nil) {
+        ending = true
+    }
+
+    log.Infof("ospfGetRouterPassiveIntfObject: found entry %s ending %t", objKey, ending)
+    return passIntfObj, objKey, ending, nil
+}
 
 func ospfGetAreaStringFromAreaId(areaIdObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Config_Identifier_Union)(string, error) {
 
@@ -2730,11 +2819,47 @@ func ospf_get_table_entry(inParams *XfmrParams, tblName string, tblKey string) (
     return tblEntry, nil
 }
 
+func ospf_get_table_entry_field(inParams *XfmrParams, tblName string, tblKey string, fieldName string) (bool, string, error) {
+
+    var tblEntry db.Value
+    var err error
+    log.Infof("ospf_get_table_entry_field: tblName %s tblKey %s fieldName %s", tblName, tblKey, fieldName)
+
+    if (tblName == "" || tblKey == "" || fieldName == "") {
+        errStr := "Empty Table name or tblkey or fieldname parameter"
+        log.Info("ospf_get_table_entry_field: ", errStr)
+        return false, "", errors.New(errStr)
+    }
+
+    var tblSpec *db.TableSpec = &db.TableSpec{Name: tblName}
+    tblData, err1 := configDbPtr.GetTable(tblSpec)
+    if (err1 != nil) {
+        log.Info("ospf_get_table_entry_field: GetTable err ", err1)
+        return false, "", err1
+    }
+
+    tblEntry, err = tblData.GetEntry(db.Key{[]string{tblKey}})
+    if (err != nil) {
+        log.Info("ospf_get_table_entry_field: table data GetEntry failed")
+        return false, "", nil
+    }
+
+    if (len(tblEntry.Field) == 0) {
+        errStr := "Empty table entry"
+        log.Info("ospf_get_table_entry_field: ", errStr)
+        return false, "", nil
+    }
+
+    fieldValue := (&tblEntry).Get(fieldName)
+    log.Infof("ospf_get_table_entry_field: field %s value is %s.", fieldName, fieldValue)
+    return true, fieldValue, nil
+}
+
+
 func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
 
     var err error
     log.Info("ospfv2_config_post_xfmr: --------- ospf post xfmr ----------")
-    log.Info("ospfv2_config_post_xfmr: input respmap ", *ospfRespMap)
 
     err = nil
     rcvdUri, uriErr := getOspfUriPath(inParams)
@@ -2749,6 +2874,12 @@ func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[s
         return nil
     }
 
+    log.Info("ospfv2_config_post_xfmr: inParams subOpDataMap ", inParams.subOpDataMap)
+    for subop, opData := range inParams.subOpDataMap {
+        log.Infof("ospfv2_config_post_xfmr: input subop %d subOpData %v", subop, *opData)
+    }
+    log.Info("ospfv2_config_post_xfmr: input respmap ", *ospfRespMap)
+
     if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
         log.Info("ospfv2_config_post_xfmr for ADD/UPDATE/REPLACE operation ", inParams.oper)
 
@@ -2756,6 +2887,14 @@ func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[s
         if (err != nil) {
             log.Info("ospfv2_config_post_xfmr: ospf_auto_create_ospf_router_area failed ", err)
             return err
+        }
+
+        if (ospfObj != nil && ospfObj.Global != nil) {
+            err = ospf_add_del_passive_interface_config(inParams, ospfRespMap)
+            if (err != nil) {
+                log.Info("ospfv2_config_post_xfmr: passive intf add failed ", err)
+                return err
+            }
         }
 
     } else if inParams.oper == DELETE {
@@ -2769,6 +2908,7 @@ func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[s
                 log.Info("ospfv2_config_post_xfmr: delete_ospf_interfaces_for_vrf failed ", err)
                 return err
             }
+
         } else {
             if (strings.Contains(rcvdUri, "route-distribution-policies")) {
                 /* ospf router redistribute delete */
@@ -2795,11 +2935,25 @@ func ospfv2_config_post_xfmr(inParams *XfmrParams, ospfRespMap *map[string]map[s
                     return err
                 }
             }
+
+            if (strings.HasSuffix(rcvdUri, "ospfv2/global/config/passive-interface-default") ||
+                strings.Contains(rcvdUri, "ospfv2/global/passive-interfaces") ||
+                strings.Contains(rcvdUri, "ospfv2/global/passive-interfaces/passive-interface")) {
+                err = ospf_add_del_passive_interface_config(inParams, ospfRespMap)
+                if (err != nil) {
+                    log.Info("ospfv2_config_post_xfmr: passive intf del failed ", err)
+                    return err
+                }
+            }
         }
     }
 
-    log.Info("ospfv2_config_post_xfmr: return with respmap ", *ospfRespMap)
-    return err
+    log.Info("ospfv2_config_post_xfmr: return subOpDataMap ", inParams.subOpDataMap)
+    for subop, opData := range inParams.subOpDataMap {
+        log.Infof("ospfv2_config_post_xfmr: return subop %d subOpData %v", subop, *opData)
+    }
+    log.Info("ospfv2_config_post_xfmr: return respmap ", *ospfRespMap)
+    return nil
 }
 
 
@@ -3409,6 +3563,209 @@ func validate_ospf_router_vlmd_auth_delete(inParams *XfmrParams, ospfRespMap *ma
             }
         } else {
             log.Info("validate_ospf_router_vlmd_auth_delete: inParams.key empty")
+        }
+    }
+
+    return nil
+}
+
+func ospf_delete_all_pass_intf_config(inParams *XfmrParams, vrfName string, ifName string, ifAddr string, ospfRespMap *map[string]map[string]db.Value) (error) {
+    var err error
+    log.Infof("ospf_delete_all_pass_intf_config: vrf %s ifName %s ifAddr %s.", vrfName, ifName, ifAddr)
+
+    passIntfTblName := "OSPFV2_ROUTER_PASSIVE_INTERFACE"
+    passIntfTblKey := vrfName + "|" + ifName + "|" + ifAddr
+
+    err = ospf_delete_table_entry(inParams, passIntfTblName, passIntfTblKey, ospfRespMap)
+    if err != nil {
+        log.Info("ospf_delete_all_pass_intf_config: entry delete failed ", err)
+    }
+
+    log.Info("ospf_delete_all_pass_intf_config: success for ", passIntfTblKey)
+    return nil
+}
+
+func ospf_add_del_passive_interface_config(inParams *XfmrParams, ospfRespMap *map[string]map[string]db.Value) (error) {
+
+    log.Infof("ospf_add_del_passive_interface_config: post xfmr operation %d.", inParams.oper)
+
+    globalObj, objKey, ending, _ := ospfGetRouterGlobalObject(inParams, "")
+    if (globalObj == nil || ending) {
+        log.Info("ospf_add_del_passive_interface_config: not ospf global obj request")
+        return nil
+    }
+
+    objKeyList := strings.Split(objKey, "|")
+    if (len(objKeyList) < 1) {
+        log.Info("ospf_add_del_passive_interface_config: invalid obj key", objKey)
+        return nil
+    }
+
+    vrfName := objKeyList[0]
+    if (vrfName == "") {
+        log.Info("ospf_add_del_passive_interface_config: empty vrf name")
+        return nil
+    }
+
+    ospfTblName := "OSPFV2_ROUTER"
+    ospfTblKey := vrfName
+    fieldName := "passive-interface-default"
+
+    dfltCfgPresent, fieldValue, _ := ospf_get_table_entry_field(inParams, ospfTblName, ospfTblKey, fieldName)
+    log.Infof("ospf_add_del_passive_interface_config: dfltCfgPresent %t fieldValue %s.", dfltCfgPresent, fieldValue)
+
+    currPassIfDefault := false
+    if (dfltCfgPresent && fieldValue == "") {
+        dfltCfgPresent = false
+    }
+    if (dfltCfgPresent && fieldValue == "true") {
+        currPassIfDefault = true
+    }
+    log.Infof("ospf_add_del_passive_interface_config: dfltCfgPresent %t currPassIfDefault %t", dfltCfgPresent, currPassIfDefault)
+
+    if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
+
+        if (globalObj.Config != nil && globalObj.Config.PassiveInterfaceDefault != nil) {
+            log.Info("ospf_add_del_passive_interface_config: pass intf default add request")
+
+            newPassIfDefault := *globalObj.Config.PassiveInterfaceDefault
+            log.Infof("ospf_add_del_passive_interface_config: curr %t new %t", currPassIfDefault, newPassIfDefault)
+
+            passIntfTblName := "OSPFV2_ROUTER_PASSIVE_INTERFACE"
+            passIntfTblKey := vrfName + "|*|*"
+
+            if (dfltCfgPresent) {
+                if (currPassIfDefault == newPassIfDefault) {
+                    log.Info("ospf_add_del_passive_interface_config: config same as existing")
+                    return nil
+                }
+            }
+
+            passIfsPresent, _ := ospf_table_entry_present(inParams, passIntfTblName, passIntfTblKey)
+            if (passIfsPresent) {
+                errStr := "Please unconfigure all passive interface configurations first"
+                log.Info("ospf_add_del_passive_interface_config: ", errStr)
+                return tlerr.New(errStr)
+            }
+
+            log.Info("ospf_add_del_passive_interface_config: pass if default allowed")
+            return nil
+        }
+
+        if (globalObj.PassiveInterfaces != nil) {
+            log.Info("ospf_add_del_passive_interface_config: pass intf name add request")
+
+            passIntfObj, objKey, ending, _ := ospfGetRouterPassiveIntfObject(inParams, "", "", "")
+            if (passIntfObj == nil || ending) {
+                log.Info("ospf_add_del_passive_interface_config: pass intf object not found")
+                return nil
+            }
+
+            if (passIntfObj.Config == nil) {
+                log.Info("ospf_add_del_passive_interface_config: pass intf object config not found")
+                return nil
+            }
+
+            passIfTblName := "OSPFV2_ROUTER_PASSIVE_INTERFACE"
+            passIfTblKey := objKey
+            fieldName := "non-passive"
+
+            npCfgPresent, fieldValue, _ := ospf_get_table_entry_field(inParams, passIfTblName, passIfTblKey, fieldName)
+            log.Infof("ospf_add_del_passive_interface_config: npCfgPresent %t nonpassive %s.", npCfgPresent, fieldValue)
+
+            currNonPassive := false
+            if (npCfgPresent && fieldValue == "") {
+                npCfgPresent = false
+            }
+            if (npCfgPresent && fieldValue == "true") {
+                currNonPassive = true
+            }
+            log.Info("ospf_add_del_passive_interface_config: npCfgPresent %t currNonPassive %t",npCfgPresent, currNonPassive)
+
+            newNonPassive := false
+            if (passIntfObj.Config.NonPassive != nil) {
+                newNonPassive = *passIntfObj.Config.NonPassive
+                log.Info("ospf_add_del_passive_interface_config: newNonPassive ", newNonPassive)
+            }
+
+            if (npCfgPresent && currNonPassive == newNonPassive) {
+                log.Info("ospf_add_del_passive_interface_config: interface passive type same ", newNonPassive)
+                return nil
+            }
+
+            if (dfltCfgPresent && currPassIfDefault) {
+                if (newNonPassive) {
+                    log.Info("ospf_add_del_passive_interface_config: setting interface type to non-passive")
+                } else {
+                    log.Info("ospf_add_del_passive_interface_config: setting interface type to passive")
+                    errStr := "Only non passive type config is allowed with passive-interface default"
+                    log.Info("ospf_add_del_passive_interface_config: ", errStr)
+                    return tlerr.New(errStr)
+                }
+            } else {
+                if (newNonPassive) {
+                    errStr := "Non Passive interface config allowed only with passive-interface default"
+                    log.Info("ospf_add_del_passive_interface_config: ", errStr)
+                    return tlerr.New(errStr)
+                } else {
+                    log.Info("ospf_add_del_passive_interface_config: setting interface type to passive")
+                }
+            }
+
+            if (passIntfObj.Config.NonPassive == nil) {
+                log.Info("ospf_add_del_passive_interface_config: auto add non-passive as false")
+                err := ospf_update_table_entry(inParams, inParams.oper, passIfTblName, passIfTblKey, fieldName, "false", ospfRespMap)
+                if (err != nil) {
+                    errStr := "Auto update of nonpassive attribute as false failed"
+                    log.Info("ospf_add_del_passive_interface_config: ", err)
+                    return tlerr.New(errStr)
+                }
+            }
+
+            log.Info("ospf_add_del_passive_interface_config: passive interface update allowed")
+        }
+
+    } else if (inParams.oper == DELETE) {
+        log.Info("ospf_add_del_passive_interface_config: unconfig passive intf default")
+
+        rcvdUri, uriErr := getOspfUriPath(inParams)
+        if (uriErr != nil) {
+            log.Info("ospf_add_del_passive_interface_config: getOspfUriPath failed ", uriErr)
+            return nil
+        }
+
+        if (strings.HasSuffix(rcvdUri, "ospfv2/global/config/passive-interface-default")) {
+            log.Info("ospf_add_del_passive_interface_config: pass intf default del request")
+
+            if (dfltCfgPresent) {
+                passIntfTblName := "OSPFV2_ROUTER_PASSIVE_INTERFACE"
+                passIntfTblKey := vrfName + "|*|*"
+
+                passIfsPresent, _ := ospf_table_entry_present(inParams, passIntfTblName, passIntfTblKey)
+                if (passIfsPresent) {
+                    errStr := "Please unconfigure all passive interface configurations first"
+                    log.Info("ospf_add_del_passive_interface_config: ", errStr)
+                    return tlerr.New(errStr)
+                }
+
+                err := ospf_delete_all_pass_intf_config(inParams, vrfName, "*", "*", ospfRespMap)
+                if (err != nil) {
+                    log.Info("ospf_add_del_passive_interface_config: passive intf config del failed ", err)
+                    return err
+                }
+            }
+        }
+
+        if (strings.Contains(rcvdUri, "ospfv2/global/passive-interfaces")) {
+            log.Info("ospf_add_del_passive_interface_config: pass intf name  del request")
+
+            if (strings.HasSuffix(rcvdUri, "config/non-passive")) {
+                errStr := "Passive interface type delete not allowed, try deleting passive interface"
+                log.Info("ospf_add_del_passive_interface_config: ", errStr)
+                return tlerr.New(errStr)
+            }
+
+            log.Info("ospf_add_del_passive_interface_config: pasive interface deleted allowed")
         }
     }
 

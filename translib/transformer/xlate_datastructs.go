@@ -21,11 +21,10 @@ package transformer
 import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/openconfig/ygot/ygot"
-    "sync"
+	"sync"
 )
 
 //Map of map[uri][dbKey]
-var keyXfmrCache sync.Map
 var dbTblKeyGetCache sync.Map
 
 type KeySpec struct {
@@ -76,6 +75,7 @@ type xlateFromDbParams struct {
 	tblKey string
 	resultMap map[string]interface{}
 	validate bool
+    xfmrKeyCache map[string]string
 }
 
 type xlateToParams struct {
@@ -99,5 +99,5 @@ type xlateToParams struct {
         tableName string
         yangDefValMap map[string]map[string]db.Value
         yangAuxValMap map[string]map[string]db.Value
+		xfmrKeyCache map[string]string
 }
-

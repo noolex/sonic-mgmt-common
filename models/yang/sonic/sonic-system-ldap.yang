@@ -190,7 +190,12 @@ module sonic-system-ldap {
 				}
 				
 				leaf bindpw {
-					type string;
+					type string {
+            pattern "[^ ]*" {
+                error-message 'Invalid bind password (Valid chars are ASCII printable except SPACE)';
+                error-app-tag ldap-invalid-bindpw-value;
+            }
+					}
 		      description
 		        "Credentials with which to bind to the LDAP server. Only used with
 		         bind-dn.";

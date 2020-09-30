@@ -22,6 +22,7 @@ package custom_validation
 import (
     "github.com/go-redis/redis/v7"
     "strings"
+    "strconv"
     "fmt"
     log "github.com/golang/glog"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
@@ -78,7 +79,7 @@ func CheckUsage(vc * CustValidationCtxt, identity string, name string) (map[stri
      var used bool
      var c string
      var collectors = make(map[string]string)
-     
+
      if ((identity == "collector") || (identity == "sample-rate")) {
          c, used = CheckInSessions(vc, "TAM_IFA_SESSIONS_TABLE",identity,name)
          collectors["ifa"] = c
@@ -87,7 +88,7 @@ func CheckUsage(vc * CustValidationCtxt, identity string, name string) (map[stri
          }
          c, used = CheckInSessions(vc, "TAM_DROPMONITOR_SESSIONS_TABLE",identity,name)
          collectors["dropmonitor"] = c
-         if used { 
+         if used {
              return collectors, used
          }
      } else if identity == "flowgroup" {
@@ -98,12 +99,12 @@ func CheckUsage(vc * CustValidationCtxt, identity string, name string) (map[stri
          }
          c, used = CheckInSessions(vc, "TAM_DROPMONITOR_SESSIONS_TABLE",identity,name)
          collectors["dropmonitor"] = c
-         if used { 
+         if used {
              return collectors, used
          }
          c, used = CheckInSessions(vc, "TAM_TAILSTAMPING_SESSIONS_TABLE",identity,name)
          collectors["tailstamping"] = c
-         if used { 
+         if used {
              return collectors, used
          }
      }
@@ -119,7 +120,7 @@ func(t * CustomValidation) CollectorValidation(vc * CustValidationCtxt) CVLError
         log.Info("CollectorValidation error getting old value:", err);
         return CVLErrorInfo{ErrCode: CVL_ERROR}
     }
-    
+
     thisCollector := strings.Split(vc.CurCfg.Key, "|")[1]
     if ((val != "") && (vc.CurCfg.VOp != OP_DELETE)) {
         return CVLErrorInfo{
@@ -204,6 +205,7 @@ func(t * CustomValidation) FlowgroupValidation(vc * CustValidationCtxt) CVLError
      }
 
      thisFlowgroup := strings.Split(vc.CurCfg.Key, "|")[1]
+/*
      if ((val != "") && (vc.CurCfg.VOp != OP_DELETE)) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
@@ -212,7 +214,7 @@ func(t * CustomValidation) FlowgroupValidation(vc * CustValidationCtxt) CVLError
              ErrAppTag : "flowgroup-already-exist",
          }
      }
-
+*/
      if ((val == "") && (vc.CurCfg.VOp == OP_DELETE)) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
@@ -250,13 +252,23 @@ func(t * CustomValidation) UniqueidValidation(vc * CustValidationCtxt) CVLErrorI
              }
          }
      }
-
+/*
      if ((currentSet[currentId]) && (vc.CurCfg.VOp != OP_DELETE)) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
              ConstraintErrMsg: fmt.Sprintf("Flowgroup with id '%s' is already created.", currentId),
              CVLErrDetails : "Flowgroup id exists.",
              ErrAppTag : "flowgroup-id-already-exist",
+         }
+     }
+*/
+     id, _ := strconv.Atoi(currentId)
+     if (((id < 2) || (id > 254)) && (vc.CurCfg.VOp != OP_DELETE)) {
+         return CVLErrorInfo{
+             ErrCode: CVL_SEMANTIC_ERROR,
+             ConstraintErrMsg: fmt.Sprintf("Invalid flowgroup id(%s), allowed range is 2-254.", currentId),
+             CVLErrDetails : "Invalid flowgroup id.",
+             ErrAppTag : "invalid-flowgroup-id",
          }
      }
 
@@ -337,31 +349,29 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
                      }
                  }
              }
-
-			if (vc.CurCfg.VOp != OP_DELETE) {
-				// Check for protocol of the collector, for IFA, it must be UDP
-				tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
-				proto, er := vc.RClient.HGet(tableName, "protocol").Result()
-				if (er != nil) {
-					log.Info("******========****** Error in Collector protocol query : ", er)
-					return CVLErrorInfo{
+             if (vc.CurCfg.VOp != OP_DELETE) {
+                 // Check for protocol of the collector, for IFA, it must be UDP
+                 tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
+                 proto, er := vc.RClient.HGet(tableName, "protocol").Result()
+                 if (er != nil) {
+                     log.Info("******========****** Error in Collector protocol query : ", er)
+                     return CVLErrorInfo{
                          ErrCode: CVL_SEMANTIC_ERROR,
                          ConstraintErrMsg: fmt.Sprintf(" Error in Collector protocol query '%s'", c),
                          CVLErrDetails : "Unknown internal error.",
                          ErrAppTag : "unknown-internal-error",
-					}
-				}
-				if (proto != "UDP") {
-					log.Info("******========****** Unsupported collector protocol for IFA : ", proto)
-					return CVLErrorInfo{
+                     }
+                 }
+                 if (proto != "UDP") {
+                     log.Info("******========****** Unsupported collector protocol for IFA : ", proto)
+                     return CVLErrorInfo{
                          ErrCode: CVL_SEMANTIC_ERROR,
                          ConstraintErrMsg: fmt.Sprintf("IFA supports only UDP protocol for collectors. Collector '%s' uses '%s'.", thisCollector, proto),
                          CVLErrDetails : "Invalid Collector protocol for IFA.",
                          ErrAppTag : "invalid-collector-protocol",
-					}
-				}
-
-			}
+                     }
+                 }
+             }
          }
      }
 
@@ -399,9 +409,9 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
      }
 
      // make sure flowgroup bound to port in case of sampler configured
-	
-	// Temporarily suspending this error checking to evaluate pre-configuration
-	/*
+
+// Temporarily suspending this error checking to evaluate pre-configuration
+/*
      if ((vc.CurCfg.VOp != OP_DELETE) && sampler_exists) {
          inPorts, _ := vc.RClient.HGet("ACL_RULE|TAM|"+thisFlowgroup, "IN_PORTS@").Result()
          if (inPorts == "") {
@@ -413,8 +423,7 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
              }
          }
      }
-	*/
-
+*/
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -483,37 +492,36 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
                      }
                  }
              }
-			 if (vc.CurCfg.VOp != OP_DELETE) {
-				// Check for protocol of the collector, for DropMonitor, it must be UDP
-				tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
-				proto, er := vc.RClient.HGet(tableName, "protocol").Result()
-				if (er != nil) {
-					log.Info("******========****** Error in Collector protocol query : ", er)
-					return CVLErrorInfo{
+             if (vc.CurCfg.VOp != OP_DELETE) {
+                 // Check for protocol of the collector, for DropMonitor, it must be UDP
+                 tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
+                 proto, er := vc.RClient.HGet(tableName, "protocol").Result()
+                 if (er != nil) {
+                     log.Info("******========****** Error in Collector protocol query : ", er)
+                     return CVLErrorInfo{
                          ErrCode: CVL_SEMANTIC_ERROR,
                          ConstraintErrMsg: fmt.Sprintf(" Error in Collector protocol query '%s'", c),
                          CVLErrDetails : "Unknown internal error.",
                          ErrAppTag : "unknown-internal-error",
-					}
-				}
-				if (proto != "UDP") {
-					log.Info("******========****** Unsupported collector protocol for DropMonitor : ", proto)
-					return CVLErrorInfo{
+                     }
+                 }
+                 if (proto != "UDP") {
+                     log.Info("******========****** Unsupported collector protocol for DropMonitor : ", proto)
+                     return CVLErrorInfo{
                          ErrCode: CVL_SEMANTIC_ERROR,
                          ConstraintErrMsg: fmt.Sprintf("DropMonitor supports only UDP protocol for collectors. Collector '%s' uses '%s'.", thisCollector, proto),
                          CVLErrDetails : "Invalid Collector protocol for DropMonitor.",
                          ErrAppTag : "invalid-collector-protocol",
-					}
-				}
-			}
-
+                     }
+                 }
+             }
          }
      }
 
      // make sure flowgroup bound to port in case of sampler configured
 
-	// Temporarily suspending this error checking to evaluate pre-configuration
-	/*
+// Temporarily suspending this error checking to evaluate pre-configuration
+/*
      if (vc.CurCfg.VOp != OP_DELETE) {
          inPorts, _ := vc.RClient.HGet("ACL_RULE|TAM|"+thisFlowgroup, "IN_PORTS@").Result()
          if (inPorts == "") {
@@ -525,8 +533,7 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
              }
          }
      }
-	*/
-
+*/
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 

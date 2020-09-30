@@ -189,7 +189,18 @@ var YangToDb_mclag_unique_ip_enable_fld_xfmr FieldXfmrYangToDb = func(inParams X
     if (uniqueIpEnable == ocbinds.OpenconfigMclag_Mclag_VlanInterfaces_VlanInterface_Config_UniqueIpEnable_ENABLE) {
         res_map["unique_ip"] = "enable"
     } else {
-        res_map["unique_ip"] = ""
+	if (inParams.oper == DELETE) {
+        	tblName := "MCLAG_UNIQUE_IP"
+		pathInfo := NewPathInfo(inParams.uri)
+        	tblKey := pathInfo.Var("name")
+		log.Infof("YangToDb_mclag_unique_ip_enable_fld_xfmr Delete tblKey %v", tblKey)
+		subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        	subIntfmap_del := make(map[string]map[string]db.Value)
+        	subIntfmap_del[tblName] = make(map[string]db.Value)
+        	subIntfmap_del[tblName][tblKey] = db.Value{}
+        	subOpMap[db.ConfigDB] = subIntfmap_del
+        	inParams.subOpDataMap[DELETE] = &subOpMap
+        }
     }
 
 	log.Infof("DbToYang_mclag_unique_ip_enable_fld_xfmr --> result: %v", res_map)

@@ -479,12 +479,15 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     } else if validTempName(&key) {
         result.dbDataMap = RedisDbMap{db.StateDB: {TEMP_TBL:{key:{}}}}
     } else if validXcvrName(&key) {
+        // Convert the interface name (if needed) for proper DB access
+        key = *(utils.GetNativeNameFromUIName(&key))
         result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{key:{}}}}
     } else {
         ifName := getIfName(key);
         if len(ifName) > 1 {
             result.dbDataMap = RedisDbMap{db.ConfigDB:{BREAKOUT_TBL:{ifName:{}}}}
         } else {
+            log.Info("Invalid component name ", key)
             return result, errors.New("Invalid component name")
         }
     }
@@ -1292,6 +1295,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 comp_cnt++
             }
+            dpbCaps := getCapabilities()
+            for _, prt := range dpbCaps {
+                pf_comp, _ = pf_cpts.NewComponent(prt.Port)
+                log.Info("DPB Adding ", prt.Port)
+                ygot.BuildEmptyTree(pf_comp)
+                //err = fillDpbData(pf_comp, prt.Port, targetUriPath, d)
+                //log.Info(err)
+            }
             return err
         } else {
             if matchStr == "system eeprom" {
@@ -1359,7 +1370,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 ygot.BuildEmptyTree(pf_comp)
                 err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+            } else if len(getIfName(compName)) > 1 {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name ", compName)
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
             } else {
+                log.Info("Invalid Component Name: ", compName)
                 err = errors.New("Invalid component name")
             }
         }
@@ -1428,6 +1447,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             ygot.BuildEmptyTree(pf_comp.State.Temperature)
             err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
         } else {
+            log.Info("Invalid Component Name: ", compName)
             err = errors.New("Invalid component name ")
         }
 
@@ -1495,7 +1515,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
               }
               ygot.BuildEmptyTree(pf_comp)
               err = fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
+            } else if len(getIfName(compName)) > 1 {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name", compName)
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
             } else {
+                log.Info("Invalid Component Name: ", compName)
                 err = errors.New("Invalid input component name")
             }
         } else {
@@ -1798,9 +1826,13 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
             return err
         }
 
-        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
-        if fanInfo.Status {
-            fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
+        if fanInfo.Presence {
+            if fanInfo.Status {
+                fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+            } else {
+                fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+            }
         }
 
         if fanInfo.Model_Name != "" {
