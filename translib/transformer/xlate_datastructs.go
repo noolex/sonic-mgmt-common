@@ -21,9 +21,10 @@ package transformer
 import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/openconfig/ygot/ygot"
+    "regexp"
 )
 
-
+var rgpIpv6, rgpMac, rgpIsMac, rgpKeyExtract, rgpSncKeyExtract, rgpSplitUri *regexp.Regexp
 
 type tblKeyCache struct {
 	dbKey string

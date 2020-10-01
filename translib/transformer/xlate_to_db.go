@@ -24,7 +24,6 @@ import (
     "os"
     "reflect"
     "strings"
-    "regexp"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -1066,7 +1065,6 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 	var cdb db.DBNum
         uriList := splitUri(uri)
         parentTblExists := true
-        rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
         curUri := "/"
         yangType := ""
 	xpath, _, _ := XfmrRemoveXPATHPredicates(uri)
@@ -1093,7 +1091,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		curUri += uriList[idx]
 
 		/* Check for parent table for oc- yang lists*/
-                keyList := rgp.FindAllString(path, -1)
+                keyList := rgpKeyExtract.FindAllString(path, -1)
 		if len(keyList) > 0 {
 
 			//Check for subtree existence

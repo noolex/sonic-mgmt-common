@@ -285,18 +285,15 @@ func isSonicYang(path string) bool {
 }
 
 func hasIpv6AddString(val string) bool {
-        re_comp := regexp.MustCompile(`(([^:]+:){6}(([^:]+:[^:]+)|(.*\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?`)
-	return re_comp.MatchString(val)
+	return rgpIpv6.MatchString(val)
 }
 
 func hasMacAddString(val string) bool {
-        re_comp := regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
-	return re_comp.MatchString(val)
+	return rgpMac.MatchString(val)
 }
 
 func isMacAddString(val string) bool {
-        re_comp := regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
-	return re_comp.MatchString(val)
+	return rgpIsMac.MatchString(val)
 }
 
 func getYangTerminalNodeTypeName(xpathPrefix string, keyName string) string {
@@ -617,13 +614,21 @@ func replacePrefixWithModuleName(xpath string) (string) {
 	return xpath
 }
 
+func initRegex() {
+	rgpKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
+	rgpIpv6 = regexp.MustCompile(`(([^:]+:){6}(([^:]+:[^:]+)|(.*\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?`)
+	rgpMac = regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
+	rgpIsMac = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
+	rgpSncKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
+	rgpSplitUri = regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
+
+}
 
 /* Extract key vars, create db key and xpath */
 func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}, xfmrTblKeyCache map[string]tblKeyCache) (xpathTblKeyExtractRet, error) {
 	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)
 	 var retData xpathTblKeyExtractRet
 	 keyStr    := ""
-	 rgp       := regexp.MustCompile(`\[([^\[\]]*)\]`)
 	 curPathWithKey := ""
 	 cdb := db.ConfigDB
 	 var dbs [db.MaxDB]*db.DB
@@ -719,7 +724,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 There should be key-transformer, if not then the yang key leaves
 					 will be concatenated with respective default DB type key-delimiter
 					 */
-					 for idx, kname := range rgp.FindAllString(k, -1) {
+					 for idx, kname := range rgpKeyExtract.FindAllString(k, -1) {
 						 if idx > 0 { keyStr += keySeparator }
 						 keyl := strings.TrimRight(strings.TrimLeft(kname, "["), "]")
 						 keys := strings.Split(keyl, "=")
@@ -870,7 +875,6 @@ func sonicXpathKeyExtract(path string) (string, string, string) {
 			 xfmrLogInfoAll("Field Name : %v", fldNm)
 		 }
 	 }
-	 rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
 	 pathsubStr := strings.Split(path , "/")
 	 if len(pathsubStr) > SONIC_TABLE_INDEX  {
 		 if strings.Contains(pathsubStr[2], "[") {
@@ -898,7 +902,7 @@ func sonicXpathKeyExtract(path string) (string, string, string) {
 				 lpath = "/" + strings.Join(pathLst[:SONIC_FIELD_INDEX-1], "/")
 				 xfmrLogInfoAll("path after removing the field portion %v", lpath)
 			 }
-			 for i, kname := range rgp.FindAllString(lpath, -1) {
+			 for i, kname := range rgpSncKeyExtract.FindAllString(lpath, -1) {
 				 if i > 0 {
 					 keyStr += dbOpts.KeySeparator
 				 }
@@ -1211,8 +1215,7 @@ func splitUri(uri string) []string {
 	if !strings.HasPrefix(uri, "/") {
 		uri = "/" + uri
 	}
-	rgp := regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
-	pathList := rgp.FindAllString(uri, -1)
+	pathList := rgpSplitUri.FindAllString(uri, -1)
 	for i, kname := range pathList {
 		//xfmrLogInfoAll("uri path elems: %v", kname)
 		if strings.HasPrefix(kname, "/") {

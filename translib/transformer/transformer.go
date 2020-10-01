@@ -86,6 +86,7 @@ func init() {
     if err != nil {
 	    fmt.Fprintln(os.Stderr, err)
     }
+    initRegex()
 }
 
 func initYangModelsPath() {
