@@ -1047,7 +1047,7 @@ func pim_hdl_post_xfmr (inParams *XfmrParams, retDbDataMap *map[string]map[strin
     var err error
 
     if inParams.oper == DELETE {
-        xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
         pathInfo := NewPathInfo(inParams.requestUri)
         niName := pathInfo.Var("name")
         if len(niName) == 0 {return err}

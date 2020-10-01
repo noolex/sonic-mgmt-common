@@ -165,7 +165,7 @@ func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr s
 
 func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
     var err error
-    xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
     pathInfo := NewPathInfo(inParams.requestUri)
     niName := pathInfo.Var("name")
     if len(niName) == 0 {return err}
@@ -712,7 +712,7 @@ var YangToDb_bgp_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     log.Info("URI VRF ", niName)
 
     if inParams.oper == DELETE && niName == "default" {
-        xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
         switch xpath {
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp": fallthrough
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global": fallthrough

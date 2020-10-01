@@ -23,6 +23,13 @@ import (
     "github.com/openconfig/ygot/ygot"
 )
 
+
+
+type tblKeyCache struct {
+	dbKey string
+	dbTblList []string
+}
+
 type KeySpec struct {
         DbNum db.DBNum
         Ts    db.TableSpec
@@ -71,7 +78,7 @@ type xlateFromDbParams struct {
 	tblKey string
 	resultMap map[string]interface{}
 	validate bool
-    xfmrKeyCache map[string]string
+	xfmrDbTblKeyCache map[string]tblKeyCache
 	dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool
 }
 
@@ -96,6 +103,6 @@ type xlateToParams struct {
         tableName string
         yangDefValMap map[string]map[string]db.Value
         yangAuxValMap map[string]map[string]db.Value
-		xfmrKeyCache map[string]string
-		dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool
+	xfmrDbTblKeyCache map[string]tblKeyCache
+	dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool
 }

@@ -24,7 +24,7 @@ import (
 )
 
 func xfmrHandlerFunc(inParams XfmrParams) (error) {
-	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
+	xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.uri)
 	xfmrLogInfoAll("Subtree transformer function(\"%v\") invoked for yang path(\"%v\").", xYangSpecMap[xpath].xfmrFunc, xpath)
 	if inParams.uri != inParams.requestUri {
 		_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
@@ -104,7 +104,7 @@ func keyXfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (map[string]inte
 }
 
 func validateHandlerFunc(inParams XfmrParams) (bool) {
-	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
+	xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.uri)
 	ret, err := XlateFuncCall(xYangSpecMap[xpath].validateFunc, inParams)
 	if err != nil {
 		return false
@@ -112,8 +112,17 @@ func validateHandlerFunc(inParams XfmrParams) (bool) {
 	return ret[0].Interface().(bool)
 }
 
-func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams) ([]string, error) {
+func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams, xfmrTblKeyCache map[string]tblKeyCache) ([]string, error) {
+
 	xfmrLogInfoAll("Received inParams %v, table transformer function name %v", inParams, xfmrTblFunc)
+	if xfmrTblKeyCache != nil {
+		if tkCache, _ok := xfmrTblKeyCache[inParams.uri]; _ok {
+			if len(tkCache.dbTblList) > 0 {
+				return tkCache.dbTblList, nil
+			}
+		}
+	}
+
 	var retTblLst []string
 	ret, err := XlateFuncCall(xfmrTblFunc, inParams)
 	if err != nil {
@@ -135,6 +144,11 @@ func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams) ([]string, erro
 			retTblLst = ret[TBL_XFMR_RET_VAL_INDX].Interface().([]string)
 		}
 	}
+	if xfmrTblKeyCache != nil {
+		tkCache := xfmrTblKeyCache[inParams.uri]
+		tkCache.dbTblList = retTblLst
+	}
+
 	return retTblLst, err
 }
 

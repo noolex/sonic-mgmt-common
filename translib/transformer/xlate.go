@@ -489,7 +489,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 			}
 		}
 	} else {
-	        lxpath, _ := XfmrRemoveXPATHPredicates(uri)
+	        lxpath, _, _ := XfmrRemoveXPATHPredicates(uri)
 		xpath = lxpath
 		if _, ok := xYangSpecMap[xpath]; ok {
 			cdb = xYangSpecMap[xpath].dbIndex
@@ -497,7 +497,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	}
 	dbTblKeyGetCache := inParamsForGet.dbTblKeyGetCache
 	inParamsForGet = formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, xpath, GET, "", "", &dbData, txCache, nil, false)
-	inParamsForGet.xfmrKeyCache = make(map[string]string)
+	inParamsForGet.xfmrDbTblKeyCache = make(map[string]tblKeyCache)
 	inParamsForGet.dbTblKeyGetCache = dbTblKeyGetCache
 	payload, isEmptyPayload, err := dbDataToYangJsonCreate(inParamsForGet)
 	xfmrLogInfo("Payload generated : " + payload)
@@ -721,7 +721,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 
        for {
            done := true
-           xpath, predc_err := XfmrRemoveXPATHPredicates(path)
+           xpath, _, predc_err := XfmrRemoveXPATHPredicates(path)
            if predc_err != nil {
                log.Warningf("cannot convert request Uri to yang xpath - %v, %v", path, predc_err)
                err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
@@ -820,7 +820,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 }
 
 func IsTerminalNode(uri string) (bool, error) {
-	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
 	if xpathData, ok := xYangSpecMap[xpath]; ok {
 		if !xpathData.hasNonTerminalNode {
 			return true, nil
@@ -836,7 +836,7 @@ func IsTerminalNode(uri string) (bool, error) {
 
 func IsLeafNode(uri string) bool {
 	result := false
-	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
 	if err != nil {
 		log.Warningf("For uri - %v, couldn't convert to xpath - %v", uri, err)
 		return result
