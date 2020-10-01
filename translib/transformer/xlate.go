@@ -382,6 +382,8 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
                 dbresult[i] = make(map[string]map[string]db.Value)
 	}
 
+	inParamsForGet.dbTblKeyGetCache = make(map[db.DBNum]map[string]map[string]bool)
+
 	for _, spec := range *keySpec {
 		err := TraverseDb(dbs, spec, &dbresult, nil, inParamsForGet.dbTblKeyGetCache)
 		if err != nil {
@@ -490,8 +492,10 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 			cdb = xYangSpecMap[xpath].dbIndex
 		}
 	}
+	dbTblKeyGetCache := inParamsForGet.dbTblKeyGetCache
 	inParamsForGet = formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, xpath, GET, "", "", &dbData, txCache, nil, false)
 	inParamsForGet.xfmrKeyCache = make(map[string]string)
+	inParamsForGet.dbTblKeyGetCache = dbTblKeyGetCache
 	payload, isEmptyPayload, err := dbDataToYangJsonCreate(inParamsForGet)
 	xfmrLogInfo("Payload generated : " + payload)
 

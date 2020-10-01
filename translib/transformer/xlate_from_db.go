@@ -699,6 +699,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 		if xYangSpecMap[xpath].hasChildSubTree {
 			linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, curUri, requestUri, xpath, inParamsForGet.oper, tbl, dbKey, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
 			linParamsForGet.xfmrKeyCache = inParamsForGet.xfmrKeyCache
+			linParamsForGet.dbTblKeyGetCache = inParamsForGet.dbTblKeyGetCache
 			yangDataFill(linParamsForGet)
 			curMap = linParamsForGet.resultMap
 			dbDataMap = linParamsForGet.dbDataMap
@@ -719,6 +720,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 			curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
 			linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, curUri, requestUri, curXpath, inParamsForGet.oper, tbl, dbKey, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
 			linParamsForGet.xfmrKeyCache = inParamsForGet.xfmrKeyCache
+			linParamsForGet.dbTblKeyGetCache = inParamsForGet.dbTblKeyGetCache
 			yangDataFill(linParamsForGet)
 			curMap = linParamsForGet.resultMap
 			dbDataMap = linParamsForGet.dbDataMap
@@ -996,6 +998,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					cmap2 := make(map[string]interface{})
 					linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, chldXpath, inParamsForGet.oper, chtbl, tblKey, dbDataMap, inParamsForGet.txCache, cmap2, inParamsForGet.validate)
 					linParamsForGet.xfmrKeyCache = inParamsForGet.xfmrKeyCache
+					linParamsForGet.dbTblKeyGetCache = inParamsForGet.dbTblKeyGetCache
 					err  = yangDataFill(linParamsForGet)
 					cmap2 = linParamsForGet.resultMap
 					dbDataMap = linParamsForGet.dbDataMap
@@ -1017,15 +1020,15 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					inParamsForGet.curDb = cdb
 					if len(xYangSpecMap[chldXpath].xfmrFunc) > 0 {
 						if (len(xYangSpecMap[xpath].xfmrFunc) == 0) ||
-						   (len(xYangSpecMap[xpath].xfmrFunc) > 0   &&
-						   (xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
-							   inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
-							   err := xfmrHandlerFunc(inParams)
-							   if err != nil {
-								   xfmrLogInfoAll("Error returned by %v: %v", xYangSpecMap[chldXpath].xfmrFunc, err)
-							   }
-							   inParamsForGet.dbDataMap = dbDataMap
-							   inParamsForGet.ygRoot = ygRoot
+						(len(xYangSpecMap[xpath].xfmrFunc) > 0   &&
+						(xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
+							inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
+							err := xfmrHandlerFunc(inParams)
+							if err != nil {
+								xfmrLogInfoAll("Error returned by %v: %v", xYangSpecMap[chldXpath].xfmrFunc, err)
+							}
+							inParamsForGet.dbDataMap = dbDataMap
+							inParamsForGet.ygRoot = ygRoot
 						}
 						if !xYangSpecMap[chldXpath].hasChildSubTree {
 							continue
@@ -1045,6 +1048,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					}
 					linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, chldXpath, inParamsForGet.oper, lTblName, xpathKeyExtRet.dbKey, dbDataMap, inParamsForGet.txCache, resultMap, inParamsForGet.validate)
 					linParamsForGet.xfmrKeyCache = inParamsForGet.xfmrKeyCache
+					linParamsForGet.dbTblKeyGetCache = inParamsForGet.dbTblKeyGetCache
 					yangListDataFill(linParamsForGet, false)
 					resultMap = linParamsForGet.resultMap
 					dbDataMap = linParamsForGet.dbDataMap
