@@ -944,15 +944,11 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 								if _, keyPresent := dbTblData[tblKey]; keyPresent {
 									qdbMapHasTblKeyData = true;
 								}
-								dbgMsg := fmt.Sprintf("(already queried) table:%v, key:%v, uri:%v", chtbl, childDBKey, chldUri)
-								dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
 							}
 						}
 
 						if !qdbMapHasTblData || (terminalNodeGet && qdbMapHasTblData && !qdbMapHasTblKeyData) {
 						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, childDBKey, cdb, dbs, inParamsForGet.dbTblKeyGetCache)
-						dbgMsg := fmt.Sprintf("(-*- first-time query) table:%v, key:%v, uri:%v", chtbl, childDBKey, chldUri)
-						dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
 						if err == nil {
 							mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
 							inParamsForGet.dbDataMap = dbDataMap

@@ -33,7 +33,6 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     log "github.com/golang/glog"
     "sync"
-	"os"
 )
 
 /* Create db key from data xpath(request) */
@@ -1349,14 +1348,6 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 	return leafListInstVal, err
 }
 
-func dbgPrint(fname, msg string) {
-	fp, err := os.OpenFile(fname, os.O_WRONLY|os.O_APPEND, 0644)
-    if err != nil {
-        return
-    }
-    defer fp.Close()
-    fmt.Fprintf (fp, "msg: %v\r\n", msg)
-}
 /* FUNCTIONS RESERVED FOR FUTURE USE. DO ONT DELETE */
 /***************************************************************************************************
 
