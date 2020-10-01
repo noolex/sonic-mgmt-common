@@ -78,6 +78,7 @@ func getDefaultModelsList () ([]string) {
 
 func init() {
 	initYangModelsPath()
+	initRegex()
         ocList := getOcModelsList()
 	yangFiles := getDefaultModelsList()
         yangFiles = append(yangFiles, ocList...)
@@ -86,7 +87,6 @@ func init() {
     if err != nil {
 	    fmt.Fprintln(os.Stderr, err)
     }
-    initRegex()
 }
 
 func initYangModelsPath() {
