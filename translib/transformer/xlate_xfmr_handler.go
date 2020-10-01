@@ -145,8 +145,12 @@ func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams, xfmrTblKeyCache
 		}
 	}
 	if xfmrTblKeyCache != nil {
+		if _, _ok := xfmrTblKeyCache[inParams.uri]; !_ok {
+			xfmrTblKeyCache[inParams.uri] = tblKeyCache{}
+		}
 		tkCache := xfmrTblKeyCache[inParams.uri]
 		tkCache.dbTblList = retTblLst
+		xfmrTblKeyCache[inParams.uri] = tkCache
 	}
 
 	return retTblLst, err

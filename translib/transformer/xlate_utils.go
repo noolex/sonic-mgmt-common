@@ -713,8 +713,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 keyStr = ret
 					 }
 					 if xfmrTblKeyCache != nil {
+						 if _, _ok := xfmrTblKeyCache[curPathWithKey]; !_ok {
+							 xfmrTblKeyCache[curPathWithKey] = tblKeyCache{}
+						 }
 						 tkCache := xfmrTblKeyCache[curPathWithKey]
 						 tkCache.dbKey = keyStr
+						 xfmrTblKeyCache[curPathWithKey] = tkCache
 					 }
 				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
@@ -761,8 +765,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr = ret
 				 }
 				 if xfmrTblKeyCache != nil {
+					 if _, _ok := xfmrTblKeyCache[curPathWithKey]; !_ok {
+						 xfmrTblKeyCache[curPathWithKey] = tblKeyCache{}
+					 }
 					 tkCache := xfmrTblKeyCache[curPathWithKey]
 					 tkCache.dbKey = keyStr
+					 xfmrTblKeyCache[curPathWithKey] = tkCache
 				 }
 			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {
