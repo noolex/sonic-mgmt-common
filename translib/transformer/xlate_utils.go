@@ -662,6 +662,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 		 keySeparator = xpathInfo.delim
 	 }
 	 xpathList := strings.Split(retData.xpath, "/")
+	 xpathList = xpathList[1:]
 	 yangXpath := ""
 	 xfmrLogInfoAll("path elements are : %v", pathList)
 	 for i, k := range pathList {
