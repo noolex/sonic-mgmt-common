@@ -4388,7 +4388,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     memMap := make(map[string]map[string]db.Value)
 
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, err := getYangPathFromUri(inParams.requestUri)
+    requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     if err != nil {
         return memMap, err
     }
@@ -4411,11 +4411,21 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     intfObj := intfsObj.Interface[uriIfName]
+
     // Need to differentiate between config container delete and any attribute other than aggregate-id delete
-    if intfObj.Ethernet == nil  || intfObj.Ethernet.Config == nil || (intfObj.Ethernet.Config != nil &&
-       targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
-        // Delete entire ethernet container for Interface
-        if inParams.oper == DELETE {
+    if inParams.oper == DELETE {
+    /* Handles 3 cases
+       case 1: Deletion request at top-level container / list
+       case 2: Deletion request at ethernet container level
+       case 3: Deletion request at ethernet/config container level */
+
+        //case 1
+        if intfObj.Ethernet == nil ||
+          //case 2
+          intfObj.Ethernet.Config == nil ||
+            //case 3
+            (intfObj.Ethernet.Config != nil && requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
+
             // Delete all the Vlans for Interface and member port removal from port-channel
             lagId, err := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
             if lagId != nil {
@@ -4440,8 +4450,6 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 memMap[tblName][intfKey] = value
             }
             return memMap, err
-        } else {
-            return nil, errors.New("Invalid request!")
         }
     }
 
