@@ -473,7 +473,7 @@ func tableNameAndKeyFromDbMapGet(dbDataMap map[string]map[string]db.Value) (stri
     return tableName, tableKey, nil
 }
 
-func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string, cdb db.DBNum, dbs [db.MaxDB]*db.DB) (map[db.DBNum]map[string]map[string]db.Value, error) {
+func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string, cdb db.DBNum, dbs [db.MaxDB]*db.DB, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool) (map[db.DBNum]map[string]map[string]db.Value, error) {
 	var err error
 	dbresult  := make(RedisDbMap)
 	dbresult[cdb] = make(map[string]map[string]db.Value)
@@ -492,7 +492,7 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 
 		dbFormat.Key.Comp = append(dbFormat.Key.Comp, tblKey)
 	}
-	err = TraverseDb(dbs, dbFormat, &dbresult, nil)
+	err = TraverseDb(dbs, dbFormat, &dbresult, nil, dbTblKeyGetCache)
 	if err != nil {
 		log.Warningf("TraverseDb() didn't fetch data for tbl(DB num) %v(%v) for xpath %v", tblName, cdb, xpath)
 		return nil, err
@@ -507,7 +507,7 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 }
 
 // Assumption: All tables are from the same DB
-func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value) error {
+func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool) error {
     // skip the query if the table is already visited
     if _,ok := (*dbDataMap)[inParams.curDb][tbl]; ok {
        if len(inParams.key) > 0 {
@@ -526,8 +526,7 @@ func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBN
 	if !xYangSpecMap[xpath].hasNonTerminalNode  && len(inParams.key) > 0 {
 		terminalNodeGet = true
 	}
-	if queriedDbDataIntf, getOk := dbTblKeyGetCache.Load(inParams.curDb); getOk {
-		qdbMap := queriedDbDataIntf.(map[string]map[string]bool)
+	if qdbMap, getOk := dbTblKeyGetCache[inParams.curDb]; getOk {
 		if dbTblData, tblPresent := qdbMap[tbl]; tblPresent {
 			qdbMapHasTblData = true
 			if _, keyPresent := dbTblData[inParams.key]; keyPresent {
@@ -537,15 +536,10 @@ func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBN
 	}
 
 	if !qdbMapHasTblData || (terminalNodeGet && qdbMapHasTblData && !qdbMapHasTblKeyData) {
-		dbgMsg  := fmt.Sprintf("(-*- dbDataFromTblXfmrGet first-time query) table:%v, key:%v, uri:%v", tbl, inParams.key, inParams.uri)
-		dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
-    curDbDataMap, err := fillDbDataMapForTbl(inParams.uri, xpath, tbl, inParams.key, inParams.curDb, inParams.dbs)
-    if err == nil {
-        mapCopy((*dbDataMap)[inParams.curDb], curDbDataMap[inParams.curDb])
-    }
-	} else {
-		dbgMsg := fmt.Sprintf("(dbDataFromTblXfmrGet already queried) table:%v, key:%v, uri:%v", tbl, inParams.key, inParams.uri)
-		dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
+		curDbDataMap, err := fillDbDataMapForTbl(inParams.uri, xpath, tbl, inParams.key, inParams.curDb, inParams.dbs, dbTblKeyGetCache)
+		if err == nil {
+			mapCopy((*dbDataMap)[inParams.curDb], curDbDataMap[inParams.curDb])
+		}
 	}
     return nil
 }
@@ -576,7 +570,7 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 			inParamsForGet.ygRoot = ygRoot
 			if len(tblList) != 0 {
 				for _, curTbl := range tblList {
-					dbDataFromTblXfmrGet(curTbl, inParams, dbDataMap)
+					dbDataFromTblXfmrGet(curTbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache)
 					inParamsForGet.dbDataMap = dbDataMap
 					inParamsForGet.ygRoot = ygRoot
 				}
@@ -704,6 +698,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 		}
 		if xYangSpecMap[xpath].hasChildSubTree {
 			linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, curUri, requestUri, xpath, inParamsForGet.oper, tbl, dbKey, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
+			linParamsForGet.xfmrKeyCache = inParamsForGet.xfmrKeyCache
 			yangDataFill(linParamsForGet)
 			curMap = linParamsForGet.resultMap
 			dbDataMap = linParamsForGet.dbDataMap
@@ -723,6 +718,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 			}
 			curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
 			linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, curUri, requestUri, curXpath, inParamsForGet.oper, tbl, dbKey, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
+			linParamsForGet.xfmrKeyCache = inParamsForGet.xfmrKeyCache
 			yangDataFill(linParamsForGet)
 			curMap = linParamsForGet.resultMap
 			dbDataMap = linParamsForGet.dbDataMap
@@ -940,8 +936,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 							childDBKey      = tblKey
 							terminalNodeGet = true
 						}
-						if queriedDbDataIntf, getOk := dbTblKeyGetCache.Load(cdb); getOk {
-							qdbMap := queriedDbDataIntf.(map[string]map[string]bool)
+						if qdbMap, getOk := inParamsForGet.dbTblKeyGetCache[cdb]; getOk {
 							if dbTblData, tblPresent := qdbMap[chtbl]; tblPresent {
 								qdbMapHasTblData = true
 								if _, keyPresent := dbTblData[tblKey]; keyPresent {
@@ -953,7 +948,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 						}
 
 						if !qdbMapHasTblData || (terminalNodeGet && qdbMapHasTblData && !qdbMapHasTblKeyData) {
-						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, childDBKey, cdb, dbs)
+						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, childDBKey, cdb, dbs, inParamsForGet.dbTblKeyGetCache)
 						dbgMsg := fmt.Sprintf("(-*- first-time query) table:%v, key:%v, uri:%v", chtbl, childDBKey, chldUri)
 						dbgPrint("/tmp/dbTblKeyCache.log", dbgMsg)
 						if err == nil {
@@ -976,7 +971,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 							if len(tblList) == 0 {
 								continue
 							}
-							dbDataFromTblXfmrGet(tblList[0], inParams, dbDataMap)
+							dbDataFromTblXfmrGet(tblList[0], inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache)
 							inParamsForGet.dbDataMap = dbDataMap
 							inParamsForGet.ygRoot = ygRoot
 							chtbl = tblList[0]
@@ -1000,6 +995,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					}
 					cmap2 := make(map[string]interface{})
 					linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, chldXpath, inParamsForGet.oper, chtbl, tblKey, dbDataMap, inParamsForGet.txCache, cmap2, inParamsForGet.validate)
+					linParamsForGet.xfmrKeyCache = inParamsForGet.xfmrKeyCache
 					err  = yangDataFill(linParamsForGet)
 					cmap2 = linParamsForGet.resultMap
 					dbDataMap = linParamsForGet.dbDataMap
@@ -1041,13 +1037,14 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 						lTblName = *ynode.tableName
 					}
 					if _, ok := (*dbDataMap)[cdb][lTblName]; !ok && len(lTblName) > 0 {
-						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, lTblName, "", cdb, dbs)
+						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, lTblName, "", cdb, dbs, inParamsForGet.dbTblKeyGetCache)
 						if err == nil {
 							mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
 							inParamsForGet.dbDataMap = dbDataMap
 						}
 					}
 					linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, chldXpath, inParamsForGet.oper, lTblName, xpathKeyExtRet.dbKey, dbDataMap, inParamsForGet.txCache, resultMap, inParamsForGet.validate)
+					linParamsForGet.xfmrKeyCache = inParamsForGet.xfmrKeyCache
 					yangListDataFill(linParamsForGet, false)
 					resultMap = linParamsForGet.resultMap
 					dbDataMap = linParamsForGet.dbDataMap
@@ -1159,7 +1156,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						}
 						if !tableXfmrFlag {
                                                       for _, tbl := range tblList {
-                                                               dbDataFromTblXfmrGet(tbl, inParams, dbDataMap)
+                                                               dbDataFromTblXfmrGet(tbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache)
 							       inParamsForGet.dbDataMap = dbDataMap
 							       inParamsForGet.ygRoot = ygRoot
                                                       }

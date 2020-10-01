@@ -29,7 +29,6 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
-	"sync"
 )
 
 const (
@@ -88,14 +87,14 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 	return result, nil
 }
 
-func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key) error {
+func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool) error {
 	var dataMap = make(RedisDbMap)
 
 	for i := db.ApplDB; i < db.MaxDB; i++ {
 		dataMap[i] = make(map[string]map[string]db.Value)
 	}
 
-	err := traverseDbHelper(dbs, spec, &dataMap, parentKey)
+	err := traverseDbHelper(dbs, spec, &dataMap, parentKey, dbTblKeyGetCache)
 	if err != nil {
 		log.Warning("Couldn't get data from traverseDbHelper")
 		return err
@@ -119,7 +118,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 	return nil
 }
 
-func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key) error {
+func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool) error {
 	var err error
 	var dbOpts db.Options = getDBOptions(spec.DbNum)
 
@@ -133,7 +132,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 			queriedDbTblInfo := make(map[string]bool)
 			queriedDbTblInfo[strings.Join(spec.Key.Comp, separator)] = true
 			queriedDbInfo[spec.Ts.Name] = queriedDbTblInfo
-			dbTblKeyGetCache.Store(spec.DbNum,queriedDbInfo)
+			dbTblKeyGetCache[spec.DbNum] = queriedDbInfo
 			if err != nil {
 				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
@@ -147,7 +146,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		}
 		if len(spec.Child) > 0 {
 			for _, ch := range spec.Child {
-				err = traverseDbHelper(dbs, ch, result, &spec.Key)
+				err = traverseDbHelper(dbs, ch, result, &spec.Key, dbTblKeyGetCache)
 			}
 		}
 	} else {
@@ -167,14 +166,14 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 					}
 				}
 				spec.Key = keys[i]
-                                err = traverseDbHelper(dbs, spec, result, parentKey)
+                                err = traverseDbHelper(dbs, spec, result, parentKey, dbTblKeyGetCache)
                                 if err != nil {
                                         log.Warningf("Traversal didn't fetch for : %v", err)
                                 }
 			}
 		} else if len(spec.Child) > 0 {
                         for _, ch := range spec.Child {
-                                err = traverseDbHelper(dbs, ch, result, &spec.Key)
+                                err = traverseDbHelper(dbs, ch, result, &spec.Key, dbTblKeyGetCache)
                         }
                 }
 	}
@@ -339,7 +338,6 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 	var result = make(map[int]RedisDbMap)
 	var yangDefValMap = make(map[string]map[string]db.Value)
 	var yangAuxValMap = make(map[string]map[string]db.Value)
-	dbTblKeyGetCache = sync.Map{}
 	switch opcode {
 	case CREATE:
 		xfmrLogInfo("CREATE case")
@@ -369,15 +367,14 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 			log.Warning("Data translation from yang to db failed for delete request.")
 		}
 	}
-	dbTblKeyGetCache = sync.Map{}
 	return result, yangDefValMap, yangAuxValMap, err
 }
 
 func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, txCache interface{}) ([]byte, bool, error) {
 	var err error
 	var payload []byte
+	var inParamsForGet xlateFromDbParams
 	xfmrLogInfo("received xpath = " + uri)
-	dbTblKeyGetCache = sync.Map{}
 	requestUri := uri
 	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
 	var dbresult = make(RedisDbMap)
@@ -386,15 +383,14 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	}
 
 	for _, spec := range *keySpec {
-		err := TraverseDb(dbs, spec, &dbresult, nil)
+		err := TraverseDb(dbs, spec, &dbresult, nil, inParamsForGet.dbTblKeyGetCache)
 		if err != nil {
 			log.Warning("TraverseDb() didn't fetch data.")
 		}
 	}
 
 	isEmptyPayload := false
-	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache)
-	dbTblKeyGetCache = sync.Map{}
+	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache, inParamsForGet)
 	if err != nil {
 		return payload, true, err
 	}
@@ -402,13 +398,12 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	return payload, isEmptyPayload, err
 }
 
-func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data RedisDbMap, txCache interface{}) ([]byte, bool, error) {
+func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data RedisDbMap, txCache interface{}, inParamsForGet xlateFromDbParams) ([]byte, bool, error) {
 
 	var err error
 	var result []byte
 	var dbData = make(RedisDbMap)
 	var cdb db.DBNum = db.ConfigDB
-	var inParamsForGet xlateFromDbParams
 	var xpath string
 
 	dbData = data

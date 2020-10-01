@@ -142,7 +142,7 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 
 	xfmrLogInfoAll("tblList(%v), tbl(%v), key(%v)  for uri (\"%v\")", tblList, xlateParams.tableName,  xlateParams.keyName, xlateParams.uri)
 	for _, tbl := range(tblList) {
-		curDbDataMap, ferr := fillDbDataMapForTbl(xlateParams.uri, xlateParams.xpath, tbl, keyName, cdb, dbs)
+		curDbDataMap, ferr := fillDbDataMapForTbl(xlateParams.uri, xlateParams.xpath, tbl, keyName, cdb, dbs, xlateParams.dbTblKeyGetCache)
 		if ((ferr == nil) && len(curDbDataMap) > 0) {
 			mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
 		}
