@@ -132,6 +132,9 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 			queriedDbTblInfo := make(map[string]bool)
 			queriedDbTblInfo[strings.Join(spec.Key.Comp, separator)] = true
 			queriedDbInfo[spec.Ts.Name] = queriedDbTblInfo
+			if dbTblKeyGetCache == nil {
+				dbTblKeyGetCache = make(map[db.DBNum]map[string]map[string]bool)
+			}
 			dbTblKeyGetCache[spec.DbNum] = queriedDbInfo
 			if err != nil {
 				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
