@@ -1689,7 +1689,7 @@ module openconfig-ospfv2-ext {
       description
         "list of nexthops";
       list next-hops {
-        key "next-hop out-interface";   
+        key "next-hop out-interface area-id";   
 
         leaf next-hop {
           type leafref {
@@ -1704,8 +1704,17 @@ module openconfig-ospfv2-ext {
             path "../state/out-interface";
           }
           description
-            "Outgoing interface name";
+            "outgoing interface name";
         }
+
+        leaf area-id {
+          type leafref {
+            path "../state/area-id";
+          }
+          description
+            "area-id of the outgoing interface";
+        }
+
         description
           "List of OSPFv2 nexthops with ecmp legs";
         container state {
