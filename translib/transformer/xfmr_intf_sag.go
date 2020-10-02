@@ -75,7 +75,9 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
     if intfObj.RoutedVlan == nil {
 	    if inParams.oper == DELETE {
-	        return nil, nil
+          log.Info("Top level Interface instance delete for SAG: ", ifName)
+          //return intf_sag_ip_del(inParams, ifName)
+          return nil, nil
 	    }
         errStr := "RoutedVlan node is not set"
         log.Info("YangToDb_intf_sag_ip_xfmr: " + errStr)
@@ -265,6 +267,36 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 
   return subIntfmap, err
 }
+
+/*
+func intf_sag_ip_del(inParams XfmrParams , ifName string) (map[string]map[string]db.Value, error) {
+    var err error
+    vlanIntfmap := make(map[string]map[string]db.Value)
+
+    sagIPv4Key := ifName + "|IPv4"
+		sagIPv4Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv4Key}})
+
+    sagIPv6Key := ifName + "|IPv6"
+		sagIPv6Entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:"SAG"}, db.Key{Comp: []string{sagIPv6Key}})
+
+    if sagIPv4Entry.IsPopulated() || sagIPv6Entry.IsPopulated() {
+        vlanIntfmap["SAG"] = make(map[string]db.Value)
+        vlanIntfmap["VLAN_INTERFACE"] = make(map[string]db.Value)
+        vlanIntfmap["VLAN_INTERFACE"][ifName] = db.Value{}        
+    }
+
+    if sagIPv4Entry.IsPopulated() {
+        vlanIntfmap["SAG"][sagIPv4Key] = db.Value{}
+    }
+
+    if sagIPv6Entry.IsPopulated() {
+        vlanIntfmap["SAG"][sagIPv6Key] = db.Value{}
+    }
+
+    log.Info("intf_sag_ip_del: Delete SAG IP address list ", vlanIntfmap,  " ", err)
+    return vlanIntfmap, err
+}
+*/
 
 var DbToYang_intf_sag_ip_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (error) {
     var err error

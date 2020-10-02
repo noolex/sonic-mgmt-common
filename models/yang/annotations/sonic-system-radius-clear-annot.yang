@@ -1,0 +1,17 @@
+module sonic-system-radius-clear-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/ssradius-clear-annot";
+
+    prefix ssradius-clear-annot;
+
+    import sonic-system-radius-clear { prefix ssys-clear; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /ssys-clear:clear-radius {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_clear_radius";
+        }
+    }
+}

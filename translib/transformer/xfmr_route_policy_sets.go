@@ -31,19 +31,24 @@ var MATCH_SET_ACTION_MAP = map[string]string{
 }
 
 func init () {
-    XlateFuncBind("YangToDb_prefix_empty_set_name_fld_xfmr", YangToDb_prefix_empty_set_name_fld_xfmr)
     XlateFuncBind("YangToDb_prefix_set_name_fld_xfmr", YangToDb_prefix_set_name_fld_xfmr)
     XlateFuncBind("DbToYang_prefix_set_name_fld_xfmr", DbToYang_prefix_set_name_fld_xfmr)
     XlateFuncBind("YangToDb_prefix_set_mode_fld_xfmr", YangToDb_prefix_set_mode_fld_xfmr)
     XlateFuncBind("DbToYang_prefix_set_mode_fld_xfmr", DbToYang_prefix_set_mode_fld_xfmr)
     XlateFuncBind("YangToDb_prefix_key_xfmr", YangToDb_prefix_key_xfmr)
     XlateFuncBind("DbToYang_prefix_key_xfmr", DbToYang_prefix_key_xfmr)
-    XlateFuncBind("YangToDb_prefix_action_fld_xfmr", YangToDb_prefix_action_fld_xfmr)
+    XlateFuncBind("YangToDb_prefix_action_fld_xfmr", YangToDb_defined_sets_action_fld_xfmr)
     XlateFuncBind("DbToYang_prefix_action_fld_xfmr", DbToYang_prefix_action_fld_xfmr)
-    XlateFuncBind("YangToDb_prefix_empty_ip_prefix_fld_xfmr", YangToDb_prefix_empty_ip_prefix_fld_xfmr)
+    XlateFuncBind("YangToDb_community_action_fld_xfmr", YangToDb_defined_sets_action_fld_xfmr)
+    XlateFuncBind("DbToYang_community_action_fld_xfmr", DbToYang_community_action_fld_xfmr)
+    XlateFuncBind("YangToDb_ext_community_action_fld_xfmr", YangToDb_defined_sets_action_fld_xfmr)
+    XlateFuncBind("DbToYang_ext_community_action_fld_xfmr", DbToYang_ext_community_action_fld_xfmr)
+    XlateFuncBind("YangToDb_as_path_action_fld_xfmr", YangToDb_defined_sets_action_fld_xfmr)
+    XlateFuncBind("DbToYang_as_path_action_fld_xfmr", DbToYang_as_path_action_fld_xfmr)
+    XlateFuncBind("YangToDb_prefix_seq_no_fld_xfmr", YangToDb_prefix_seq_no_fld_xfmr)
+    XlateFuncBind("DbToYang_prefix_seq_no_fld_xfmr", DbToYang_prefix_seq_no_fld_xfmr)
     XlateFuncBind("YangToDb_prefix_ip_prefix_fld_xfmr", YangToDb_prefix_ip_prefix_fld_xfmr)
     XlateFuncBind("DbToYang_prefix_ip_prefix_fld_xfmr", DbToYang_prefix_ip_prefix_fld_xfmr)
-    XlateFuncBind("YangToDb_prefix_empty_masklength_range_fld_xfmr", YangToDb_prefix_empty_masklength_range_fld_xfmr)
     XlateFuncBind("YangToDb_prefix_masklength_range_fld_xfmr", YangToDb_prefix_masklength_range_fld_xfmr)
     XlateFuncBind("DbToYang_prefix_masklength_range_fld_xfmr", DbToYang_prefix_masklength_range_fld_xfmr)
 
@@ -65,7 +70,7 @@ func init () {
     XlateFuncBind("DbToYang_as_path_set_name_fld_xfmr", DbToYang_as_path_set_name_fld_xfmr)
 }
 
-var YangToDb_prefix_action_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+var YangToDb_defined_sets_action_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 
     res_map := make(map[string]string)
     var err error
@@ -78,7 +83,7 @@ var YangToDb_prefix_action_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
     }
 
     action, _ := inParams.param.(ocbinds.E_OpenconfigRoutingPolicyExt_RoutingPolicyExtActionType)
-    log.Info("YangToDb_prefix_action_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " route-operation: ", action)
+    log.Info("YangToDb_defined_sets_action_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " route-operation: ", action)
     if action == ocbinds.OpenconfigRoutingPolicyExt_RoutingPolicyExtActionType_PERMIT {
         res_map["action"] = "permit"
     } else if action == ocbinds.OpenconfigRoutingPolicyExt_RoutingPolicyExtActionType_DENY {
@@ -96,8 +101,8 @@ var DbToYang_prefix_action_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
 
     pTbl := data["PREFIX"]
     if _, ok := pTbl[inParams.key]; !ok {
-        log.Info("DbToYang_route_map_action_policy_result_xfmr table not found : ", inParams.key)
-        return result, errors.New("Policy definition table not found : " + inParams.key)
+        log.Info("DbToYang_prefix_action_fld_xfmr table not found : ", inParams.key)
+        return result, errors.New("Prefix table not found : " + inParams.key)
     }
     niInst := pTbl[inParams.key]
     route_operation, ok := niInst.Field["action"]
@@ -113,12 +118,82 @@ var DbToYang_prefix_action_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
     return result, err
 }
 
+var DbToYang_community_action_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
 
-var YangToDb_prefix_empty_set_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_community_action_fld_xfmr", data, "inParams : ", inParams)
 
-    log.Info("YangToDb_prefix_empty_set_name_fld_xfmr: ", inParams.key)
-    return res_map, nil
+    pTbl := data["COMMUNITY_SET"]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_community_action_fld_xfmr table not found : ", inParams.key)
+        return result, errors.New("Community table not found : " + inParams.key)
+    }
+    niInst := pTbl[inParams.key]
+    route_operation, ok := niInst.Field["action"]
+    if ok {
+        if route_operation == "permit" {
+            result["action"] = "PERMIT"
+        } else {
+            result["action"] = "DENY"
+        }
+    } else {
+        log.Info("DbToYang_community_action_fld_xfmr field not found in DB")
+    }
+    return result, err
+}
+
+var DbToYang_ext_community_action_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_ext_community_action_fld_xfmr", data, "inParams : ", inParams)
+
+    pTbl := data["EXTENDED_COMMUNITY_SET"]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_ext_community_action_fld_xfmr table not found : ", inParams.key)
+        return result, errors.New("Extended community table not found : " + inParams.key)
+    }
+    niInst := pTbl[inParams.key]
+    route_operation, ok := niInst.Field["action"]
+    if ok {
+        if route_operation == "permit" {
+            result["action"] = "PERMIT"
+        } else {
+            result["action"] = "DENY"
+        }
+    } else {
+        log.Info("DbToYang_ext_community_action_fld_xfmr field not found in DB")
+    }
+    return result, err
+}
+
+var DbToYang_as_path_action_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.Info("DbToYang_as_path_action_fld_xfmr", data, "inParams : ", inParams)
+
+    pTbl := data["AS_PATH_SET"]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_as_path_action_fld_xfmr table not found : ", inParams.key)
+        return result, errors.New("AS-PATH table not found : " + inParams.key)
+    }
+    niInst := pTbl[inParams.key]
+    route_operation, ok := niInst.Field["action"]
+    if ok {
+        if route_operation == "permit" {
+            result["action"] = "PERMIT"
+        } else {
+            result["action"] = "DENY"
+        }
+    } else {
+        log.Info("DbToYang_as_path_action_fld_xfmr field not found in DB")
+    }
+    return result, err
 }
 
 var YangToDb_prefix_set_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -133,7 +208,6 @@ var DbToYang_prefix_set_name_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
     res_map := make(map[string]interface{})
     var err error
     log.Info("DbToYang_prefix_set_name_fld_xfmr: ", inParams.key)
-    /*name attribute corresponds to key in redis table*/
     key := inParams.key
     log.Info("DbToYang_prefix_set_name_fld_xfmr: ", key)
     setTblKey := strings.Split(key, "|")
@@ -180,7 +254,7 @@ func prefix_set_mode_get_by_set_name (d *db.DB , setName string, tblName string)
     log.Info("prefix_set_mode_get_by_set_name  ", db.Key{Comp: []string{setName}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{setName}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        log.Info("No Entry found e = ", err)
         return "", err
     }
     mode, ok := dbEntry.Field["mode"]
@@ -210,7 +284,7 @@ var YangToDb_prefix_set_mode_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPara
     setName := pathInfo.Var("name")
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
     is_prefixes_exits := prefixes_exits_by_set_name (inParams.d, setName, "PREFIX")
@@ -251,6 +325,7 @@ var DbToYang_prefix_set_mode_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
 var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
     var setName string
+    var seqNo string
     var ipPrefix string
     var masklenrange string
     var prefixTblKey string
@@ -269,12 +344,13 @@ var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string
         //   return prefix_del_by_set_name (inParams.d, setName, "PREFIX")
         return "NULL", nil
     } else {
-        if len(pathInfo.Vars) < 3 {
+        if len(pathInfo.Vars) < 4 {
             err = errors.New("Invalid xpath, key attributes not found")
-            log.Error("YangToDb_prefix_key_xfmr: Prefix keys are Missing, numKeys ", len(pathInfo.Vars))
+            log.Info("YangToDb_prefix_key_xfmr: Prefix keys are Missing, numKeys ", len(pathInfo.Vars))
             return prefixTblKey, err
         }
         setName = pathInfo.Var("name")
+        seqNo = pathInfo.Var("sequence-number")
         ipPrefix = pathInfo.Var("ip-prefix")
         masklenrange = pathInfo.Var("masklength-range")
 
@@ -282,6 +358,12 @@ var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string
             err = errors.New("YangToDb_prefix_key_xfmr: Prefix set name is missing");
             log.Info("YangToDb_prefix_key_xfmr: Prefix set name is Missing")
             return setName, err
+        }
+
+        if len(seqNo) == 0 {
+            err = errors.New("sequence-number is missing");
+            log.Info("YangToDb_prefix_key_xfmr: sequence-number is Missing")
+            return ipPrefix, err
         }
 
         if len(ipPrefix) == 0 {
@@ -296,7 +378,8 @@ var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string
             return masklenrange, err
         }
 
-        log.Info("YangToDb_prefix_key_xfmr: in prefix: ", ipPrefix)
+        log.Info("YangToDb_prefix_key_xfmr: PrefixSetName: ", setName, " Sequence-number: ", seqNo,
+                 " IP-Prefix: ", ipPrefix, " MaskLenRange: ", masklenrange)
 
         if masklenrange != "exact" {
             prefix_mask := strings.Split(ipPrefix, "/")
@@ -314,7 +397,7 @@ var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string
                 return ipPrefix, err
             }
         }
-        prefixTblKey = setName + "|" + ipPrefix + "|" + masklenrange
+        prefixTblKey = setName + "|" + seqNo + "|" + ipPrefix + "|" + masklenrange
     }
     log.Info("YangToDb_prefix_key_xfmr: prefixTblKey: ", prefixTblKey)
 
@@ -328,22 +411,42 @@ var DbToYang_prefix_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[st
     log.Info("DbToYang_prefix_key_xfmr: ", key)
 
     prefixTblKey := strings.Split(key, "|")
-    ipPrefix     := prefixTblKey[1]
-    masklenrange := prefixTblKey[2]
+    seqNo        := prefixTblKey[1]
+    ipPrefix     := prefixTblKey[2]
+    masklenrange := prefixTblKey[3]
 
+    if _seqno_u64, err := strconv.ParseUint(seqNo, 10, 32) ; err == nil {
+        rmap["sequence-number"] = uint32(_seqno_u64)
+    }
     rmap["ip-prefix"] = ipPrefix
     rmap["masklength-range"] = masklenrange
 
-    log.Info("DbToYang_prefix_key_xfmr:  ipPrefix ", ipPrefix , "masklength-range ", masklenrange)
+    log.Info("DbToYang_prefix_key_xfmr: sequence-number: ", seqNo, " ipPrefix ", ipPrefix , "masklength-range ", masklenrange)
 
     return rmap, nil
 }
 
-var YangToDb_prefix_empty_ip_prefix_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+var YangToDb_prefix_seq_no_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
-    log.Info("YangToDb_prefix_empty_ip_prefix_fld_xfmr: ", inParams.key)
+    log.Info("YangToDb_prefix_seq_no_fld_xfmr: ", inParams.key)
+    res_map["NULL"] = "NULL"
     return res_map, nil
+}
+
+var DbToYang_prefix_seq_no_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+    var err error
+    log.Info("DbToYang_prefix_seq_no_fld_xfmr: ", inParams.key)
+    key := inParams.key
+    prefixKey := strings.Split(key, "|")
+    seqNo := prefixKey[1]
+
+    if _seqno_u64, err := strconv.ParseUint(seqNo, 10, 32) ; err == nil {
+        res_map["sequence-number"] = uint32(_seqno_u64)
+    }
+    log.Info("prefix-set/prefix/config/sequence-number ", res_map)
+    return res_map, err
 }
 
 var YangToDb_prefix_ip_prefix_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -358,21 +461,13 @@ var DbToYang_prefix_ip_prefix_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
     res_map := make(map[string]interface{})
     var err error
     log.Info("DbToYang_prefix_ip_prefix_fld_xfmr: ", inParams.key)
-    /*name attribute corresponds to key in redis table*/
     key := inParams.key
     prefixKey := strings.Split(key, "|")
-    ip_prefix := prefixKey[1]
+    ip_prefix := prefixKey[2]
 
     res_map["ip-prefix"] = ip_prefix
     log.Info("prefix-set/prefix/config/ip-prefix ", res_map)
     return res_map, err
-}
-
-var YangToDb_prefix_empty_masklength_range_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
-
-    log.Info("YangToDb_prefix_empty_masklength_range_fld_xfmr: ", inParams.key)
-    return res_map, nil
 }
 
 var YangToDb_prefix_masklength_range_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -387,10 +482,9 @@ var DbToYang_prefix_masklength_range_fld_xfmr FieldXfmrDbtoYang = func(inParams 
     res_map := make(map[string]interface{})
     var err error
     log.Info("DbToYang_prefix_masklength_range_fld_xfmr: ", inParams.key)
-    /*name attribute corresponds to key in redis table*/
     key := inParams.key
     prefixKey := strings.Split(key, "|")
-    mask := prefixKey[2]
+    mask := prefixKey[3]
 
     res_map["masklength-range"] = mask
     log.Info("prefix-set/prefix/config/masklength-range ", res_map)
@@ -409,7 +503,6 @@ var DbToYang_community_set_name_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrP
     res_map := make(map[string]interface{})
     var err error
     log.Info("DbToYang_community_set_name_fld_xfmr: ", inParams.key)
-    /*name attribute corresponds to key in redis table*/
     key := inParams.key
     log.Info("DbToYang_community_set_name_fld_xfmr: ", key)
     setTblKey := strings.Split(key, "|")
@@ -428,7 +521,7 @@ func community_set_match_options_get_by_set_name (d *db.DB , setName string, tbl
     log.Info("community_set_match_options_get_by_set_name: key  ", db.Key{Comp: []string{setName}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{setName}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        log.Info("No Entry found e = ", err)
         return "", err
     }
     match_action, ok := dbEntry.Field["match_action"]
@@ -457,7 +550,7 @@ var YangToDb_community_match_set_options_fld_xfmr FieldXfmrYangToDb = func(inPar
     pathInfo := NewPathInfo(inParams.uri)
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
-        log.Error("Invalid Key length", len(pathInfo.Vars))
+        log.Info("Invalid Key length", len(pathInfo.Vars))
         return res_map, err
     }
 
@@ -465,7 +558,7 @@ var YangToDb_community_match_set_options_fld_xfmr FieldXfmrYangToDb = func(inPar
     log.Info("YangToDb_community_match_set_options_fld_xfmr: setName ", setName)
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
 
@@ -514,7 +607,7 @@ func community_set_type_get_by_set_name (d *db.DB , setName string, tblName stri
     log.Info("community_set_type_get_by_set_name: key  ", db.Key{Comp: []string{setName}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{setName}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        log.Info("No Entry found e = ", err)
         return "", err
     }
     prev_type, ok := dbEntry.Field["set_type"]
@@ -535,7 +628,7 @@ func community_set_is_community_members_exits (d *db.DB , setName string, tblNam
     log.Info("community_set_is_community_members_exits: key  ", db.Key{Comp: []string{setName}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{setName}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        log.Info("No Entry found e = ", err)
         return false, err
     }
 
@@ -568,7 +661,7 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
     pathInfo := NewPathInfo(inParams.uri)
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
-        log.Error("Invalid Key length", len(pathInfo.Vars))
+        log.Info("Invalid Key length", len(pathInfo.Vars))
         return res_map, err
     }
 
@@ -576,7 +669,7 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
     log.Info("YangToDb_community_member_fld_xfmr: setName ", setName)
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
     is_member_exits, _ := community_set_is_community_members_exits (inParams.d, setName, "COMMUNITY_SET", "community_member@");
@@ -628,7 +721,7 @@ var YangToDb_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
         if ((len(prev_type) > 0) && (prev_type != new_type)){
             log.Error("YangToDb_community_member_fld_xfmr: Type Difference Error, previous", prev_type, " newType: ", new_type)
             if inParams.oper == DELETE {
-                return res_map, tlerr.InvalidArgs("Can't find community-list") 
+                return res_map, tlerr.InvalidArgs("Can't find community-list")
             }
             err = errors.New("Type difference, Quit Operation");
             return res_map, err
@@ -702,7 +795,6 @@ var DbToYang_ext_community_set_name_fld_xfmr FieldXfmrDbtoYang = func(inParams X
     res_map := make(map[string]interface{})
     var err error
     log.Info("DbToYang_ext_community_set_name_fld_xfmr: ", inParams.key)
-    /*name attribute corresponds to key in redis table*/
     key := inParams.key
     log.Info("DbToYang_ext_community_set_name_fld_xfmr: ", key)
     setTblKey := strings.Split(key, "|")
@@ -730,7 +822,7 @@ var YangToDb_ext_community_match_set_options_fld_xfmr FieldXfmrYangToDb = func(i
     pathInfo := NewPathInfo(inParams.uri)
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
-        log.Error("Invalid Key length", len(pathInfo.Vars))
+        log.Info("Invalid Key length", len(pathInfo.Vars))
         return res_map, err
     }
 
@@ -738,7 +830,7 @@ var YangToDb_ext_community_match_set_options_fld_xfmr FieldXfmrYangToDb = func(i
     log.Info("YangToDb_ext_community_match_set_options_fld_xfmr: setName ", setName)
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
 
@@ -795,7 +887,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
     pathInfo := NewPathInfo(inParams.uri)
     if len(pathInfo.Vars) <  1 {
         err = errors.New("Invalid Key length");
-        log.Error("Invalid Key length", len(pathInfo.Vars))
+        log.Info("Invalid Key length", len(pathInfo.Vars))
         return res_map, err
     }
 
@@ -803,7 +895,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
     log.Info("YangToDb_ext_community_member_fld_xfmr: setName ", setName)
     if len(setName) == 0 {
         err = errors.New("set name is missing");
-        log.Error("Set Name is Missing")
+        log.Info("Set Name is Missing")
         return res_map, err
     }
     is_member_exits, _ := community_set_is_community_members_exits (inParams.d, setName, "EXTENDED_COMMUNITY_SET", "community_member@");
@@ -838,7 +930,7 @@ var YangToDb_ext_community_member_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
         if ((len(prev_type) > 0) && (prev_type != new_type)){
             log.Error("YangToDb_ext_community_member_fld_xfmr: Type Difference Error, previous", prev_type, " newType: ", new_type)
             if inParams.oper == DELETE {
-                return res_map, tlerr.InvalidArgs("Can't find extcommunity-list") 
+                return res_map, tlerr.InvalidArgs("Can't find extcommunity-list")
             }
             err = errors.New("Type difference, Quit Operation");
             return res_map, err
@@ -899,7 +991,6 @@ var YangToDb_as_path_set_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 var DbToYang_as_path_set_name_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
     var err error
-    /*name attribute corresponds to key in redis table*/
     key := inParams.key
     log.Info("DbToYang_as_path_set_name_fld_xfmr: ", key)
     setTblKey := strings.Split(key, "|")

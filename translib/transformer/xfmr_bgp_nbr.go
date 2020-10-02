@@ -173,8 +173,9 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     }
 
     tblList = append(tblList, "BGP_NEIGHBOR")
+    _ , present := inParams.txCache.Load(vrf)
     if inParams.dbDataMap != nil {
-        if _ , present := inParams.txCache.Load(vrf);!present {
+        if !present {
             inParams.txCache.Store(vrf, vrf)
         } else {
             if log.V(3) {
@@ -185,11 +186,24 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     }
     if len(nbrAddr) != 0 {
         key := vrf + "|" + nbrAddr
+        /* For dynamic BGP nbrs, if isVirtualTbl not set, infra will try to get from config DB and fails
+           with Resource not found. For now for any specific nbr requests, check and set isVirtualTble.
+           From xfmr infra looks like when parent table key check happens the dbDataMap is nil. So for this
+           condition, and if cache is not updated set the virtual table */
+        if (inParams.dbDataMap == nil && !present) {
+            reqUriPath, _ := getYangPathFromUri(inParams.requestUri)
+            if strings.HasPrefix(reqUriPath, "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor") {
+                *inParams.isVirtualTbl = true
+                if log.V(3) {
+                    log.Info("bgp_nbr_tbl_xfmr specific nbr get, set isVirtualTbl to true:", " ReqURI: ", inParams.requestUri)
+                }
+            }
+            return tblList, nil
+        }
         if (inParams.dbDataMap != nil) {
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"]; !ok {
                 (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"] = make(map[string]db.Value)
             }
-
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"][key]; !ok {
                 nbrCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR"}
                 nbrEntryKey := db.Key{Comp: []string{vrf, nbrAddr}}
@@ -602,14 +616,40 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
     }
 
     tblList = append(tblList, "BGP_NEIGHBOR_AF")
+    /* to avoid this dbmap getting called, for same nbr, cache the nbr and check it,
+       if its present in cache, do not do anything */
+    _ , present := inParams.txCache.Load(nbrAddr)
+    if inParams.dbDataMap != nil {
+        if !present {
+            inParams.txCache.Store(nbrAddr, nbrAddr)
+        } else {
+            if log.V(3) {
+                log.Info("bgp_af_nbr_tbl_xfmr : repetitive table update is avoided for target URI:", inParams.uri)
+            }
+            return tblList, nil
+        }
+    }
 
     if len(afiSafiName) != 0 {
-        _, afiSafiNameDbStr, ok := get_afi_safi_name_enum_dbstr_for_ocstr (afiSafiName) ; if !ok {
+        afiSafiEnum, afiSafiNameDbStr, ok := get_afi_safi_name_enum_dbstr_for_ocstr (afiSafiName) ; if !ok {
              err_str := "AFI-SAFI : " + afiSafiName + " not supported"
              err := errors.New(err_str); log.Info(err_str)
              return nil_tblList, err
         }
-
+        /* For dynamic BGP nbrs, if isVirtualTbl not set, infra will try to get from config DB and fails
+           with Resource not found. For now for any specific afi-safi requests, check and set isVirtualTble.
+           From xfmr infra looks like when parent table key check happens the dbDataMap is nil. So for this
+           condition, and if cache is not updated set the virtual table */
+        if (inParams.dbDataMap == nil && !present) {
+            reqUriPath, _ := getYangPathFromUri(inParams.requestUri)
+            if strings.HasPrefix(reqUriPath, "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/afi-safi") {
+                *inParams.isVirtualTbl = true
+                if log.V(3) {
+                    log.Info("bgp_af_nbr_tbl_xfmr specific afi-safi get, set isVirtualTbl to true:", " ReqURI: ", inParams.requestUri)
+                }
+            }
+            return tblList , nil
+        }
         if (inParams.dbDataMap != nil) {
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"]; !ok {
                 (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"] = make(map[string]db.Value)
@@ -621,6 +661,11 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
                 entryValue, err := inParams.d.GetEntry(nbrAfCfgTblTs, nbrAfEntryKey) ; if err == nil {
                     (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"][key] = entryValue
                 }
+            }
+            if strings.Contains(afiSafiName, "L2VPN_EVPN") {
+                util_fill_bgp_nbr_info_for_evpn_from_frr_info (inParams, vrf, nbrAddr)
+            } else {
+                util_fill_bgp_nbr_info_per_af_from_frr_info (inParams, vrf, nbrAddr, afiSafiEnum)
             }
         }
     } else {
@@ -1206,19 +1251,20 @@ func fill_nbr_state_timers_info (nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataVal
             _keepaliveInterval := (value.(float64))/1000
             nbrTimersState.KeepaliveInterval = &_keepaliveInterval
         }
-    }
-    if cfgDbEntry, cfgdb_get_err := get_spec_nbr_cfg_tbl_entry (cfgDb, nbr_key) ; cfgdb_get_err == nil {
-        if value, ok := cfgDbEntry["conn_retry"] ; ok {
-            _connectRetry, _ := strconv.ParseFloat(value, 64)
+
+        if value, ok := frrNbrDataJson["minBtwnAdvertisementRunsTimerMsecs"] ; ok {
+            _minimumAdvertisementInterval := (value.(float64))/1000
+            nbrTimersState.MinimumAdvertisementInterval = &_minimumAdvertisementInterval
+        }
+
+        if value, ok := frrNbrDataJson["connectRetryTimer"] ; ok {
+            _connectRetry := value.(float64)
             nbrTimersState.ConnectRetry = &_connectRetry
         }
-        if value, ok := cfgDbEntry["holdtime"] ; ok {
-            _holdTime, _ := strconv.ParseFloat(value, 64)
+
+        if value, ok := frrNbrDataJson["bgpTimerConfiguredHoldTimeMsecs"] ; ok {
+            _holdTime := (value.(float64))/1000
             nbrTimersState.HoldTime = &_holdTime
-        }
-        if value, ok := cfgDbEntry["min_adv_interval"] ; ok {
-            _minimumAdvertisementInterval, _ := strconv.ParseFloat(value, 64)
-            nbrTimersState.MinimumAdvertisementInterval = &_minimumAdvertisementInterval
         }
     }
 
@@ -1574,6 +1620,8 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
                    nbr_af_key.niName, nbr_af_key.nbrAddr, afiSafi_cmd, nbr_cmd_err, vtysh_cmd)
         return nil
     }
+    if _, ok := nbrMapJson["bgpNoSuchNeighbor"] ; ok {return nil}
+
     if net.ParseIP(nbr_af_key.nbrAddr) != nil {
         nbrKey = net.ParseIP(nbr_af_key.nbrAddr).String()
     }

@@ -39,7 +39,9 @@ func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{},
     var stormKey string
     result := make(map[string]interface{})
     stormKey = inParams.key
-    log.Infof("DbToYang_storm_type_key_xfmr: key:%s stormKey:%s", inParams.key,stormKey)
+    if log.V(3) {
+        log.Infof("DbToYang_storm_type_key_xfmr: key:%s stormKey:%s", inParams.key,stormKey)
+    }
 
     stormVals := strings.Split(stormKey,"|")
     if (stormVals[1] == "broadcast") {
@@ -54,7 +56,9 @@ func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{},
     }
     result["ifname"] = stormVals[0]
 
-    log.Info(result)
+    if log.V(3) {
+        log.Info(result)
+    }
 
     return result, nil
 }
@@ -64,8 +68,12 @@ var YangToDb_storm_type_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (st
     pathInfo := NewPathInfo(inParams.uri)
     intfName := pathInfo.Var("name")
     stormType := pathInfo.Var("storm-type")
-    log.Infof("Entering YangToDb_storm_type_key_xfmr intf:%s storm-type:%s",intfName,stormType)
-    if (stormType == "BROADCAST") {
+    if log.V(3) {
+        log.Infof("Entering YangToDb_storm_type_key_xfmr intf:%s storm-type:%s",intfName,stormType)
+    }
+    if (stormType == "") {
+        return "", nil
+    } else if (stormType == "BROADCAST") {
         stormKey = intfName+"|"+"broadcast"
     } else if (stormType == "UNKNOWN_UNICAST") {
         stormKey = intfName+"|"+"unknown-unicast"
@@ -75,7 +83,9 @@ var YangToDb_storm_type_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (st
         log.Errorf("Invalid storm-type:%s",stormType)
         return "", tlerr.InvalidArgs("Invalid storm-type: %s", stormType)
     }
-    log.Infof("Returning stormKey:%s",stormKey)
+    if log.V(3) {
+        log.Infof("Returning stormKey:%s",stormKey)
+    }
     return stormKey, nil
 }
 
@@ -83,7 +93,9 @@ func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, er
     var stormKey string
     result := make(map[string]interface{})
     stormKey = inParams.key
-    log.Infof("DbToYang_storm_value_xfmr: key:%s stormKey:%s", inParams.key,stormKey)
+    if log.V(3) {
+        log.Infof("DbToYang_storm_value_xfmr: key:%s stormKey:%s", inParams.key,stormKey)
+    }
 
     stormVals := strings.Split(stormKey,"|")
     if (stormVals[1] == "broadcast") {
@@ -106,12 +118,16 @@ func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, er
         log.Error("Error ", err)
         return result, tlerr.NotFound("Resource Not Found")
     }
-    log.Info(result)
+    if log.V(3) {
+        log.Info(result)
+    }
     return result, nil
 }
 
 var YangToDb_storm_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    log.Info("Entering YangToDb_storm_value_xfmr")
+    if log.V(3) {
+        log.Info("Entering YangToDb_storm_value_xfmr")
+    }
     res_map := make(map[string]string)
     return res_map, nil
 }

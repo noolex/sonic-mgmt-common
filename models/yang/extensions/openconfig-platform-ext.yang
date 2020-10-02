@@ -10,6 +10,7 @@ module openconfig-platform-ext {
     import openconfig-extensions { prefix "oc-ext"; }
     import openconfig-platform { prefix oc-pf; }
     import openconfig-platform-transceiver { prefix oc-transceiver; }
+    import openconfig-platform-types {prefix oc-pf-types; }
     import ietf-yang-types {
         prefix yang;
     }
@@ -22,12 +23,27 @@ module openconfig-platform-ext {
 
     oc-ext:openconfig-version "0.12.2";
 
+    revision 2020-09-03 {
+        description
+            "Add RS and FC fec types for forward error correction";
+    reference "0.12.3";
+    }
+
     revision 2019-10-11 {
         description
             "Initial revision.";
         reference "0.12.2";
     }
 
+    identity FEC_RS {
+        base oc-pf-types:FEC_MODE_TYPE;
+        description "FEC is set to RS (Reed-Solomon code).";
+    }
+
+    identity FEC_FC {
+        base oc-pf-types:FEC_MODE_TYPE;
+        description "FEC is set to FC (Fire code).";
+    }
 
     grouping platform-ext-software-state {
         description "Platform software fields";
@@ -302,6 +318,25 @@ module openconfig-platform-ext {
         leaf vendor-oui{
             type string;
             description "OUI of the xcvr module vendor";
+        }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:power-supply/oc-pf:state {
+        description "Additional fields for power-supply component";
+        leaf power-type {
+            type enumeration {
+                enum VOLT_AC {
+                    value 1;
+                    description
+                        "A measure of the eletric potential (alternating current).";
+                }
+                enum VOLT_DC {
+                    value 2;
+                    description
+                        "A measure of the eletric potential (direct current).";
+                }
+            }
+            description "Type of power (AC/DC).";
         }
     }
 
