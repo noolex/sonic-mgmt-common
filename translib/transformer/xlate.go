@@ -500,7 +500,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	inParamsForGet.xfmrDbTblKeyCache = make(map[string]tblKeyCache)
 	inParamsForGet.dbTblKeyGetCache = dbTblKeyGetCache
 	payload, isEmptyPayload, err := dbDataToYangJsonCreate(inParamsForGet)
-	xfmrLogInfo("Payload generated : " + payload)
+	xfmrLogInfoAll("Payload generated : " + payload)
 
 	if err != nil {
 		log.Warning("Couldn't create json response from DB data.")
