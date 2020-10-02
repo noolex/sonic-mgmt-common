@@ -249,6 +249,7 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
         err = hdl_del_post_xfmr(inParams, data)
         return err
     }
+
     tblName := "BGP_GLOBALS"
     for key := range inParams.yangDefValMap[tblName] {
         entry := (*data)[tblName][key]

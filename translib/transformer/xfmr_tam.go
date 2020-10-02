@@ -922,9 +922,7 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                 }
                 if (flowgroup.Config.Priority != nil) {
                     priority = strconv.FormatInt(int64(*(flowgroup.Config.Priority)), 10)
-                    if (priority != "100") {
-                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
-                    }
+                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
                 }
 
                 // IPv4

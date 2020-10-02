@@ -3084,6 +3084,13 @@ module openconfig-network-instance-annot {
   /*-------- OSPFV2_ROUTER --------*/
 
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2" {
+    deviate add {
+      sonic-ext:get-validate "ospfv2_validate_proto";  
+    }
+  }
+
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" {
     deviate add {
       sonic-ext:db-name "CONFIG_DB";
@@ -3697,6 +3704,13 @@ module openconfig-network-instance-annot {
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:areas/oc-netinst:area/oc-netinst:virtual-links/oc-netinst:virtual-link/oc-netinst:state" {
     deviate add {
       sonic-ext:subtree-transformer "ospfv2_vlink_state_xfmr";
+    }
+  }
+
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:pim" {
+    deviate add {
+      sonic-ext:get-validate "pim_validate_proto";  
     }
   }
 
