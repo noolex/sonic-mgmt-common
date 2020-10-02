@@ -133,7 +133,15 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) error {
         return tlerr.NotSupported("Operation Not Supported")
     }
 
-    if enabledStpVlans < max_stp_instances {
+    vlanRangeCount := 0
+    if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
+        // Needed for Vlan-range create
+        if internalStpVlanTable, found := (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB]["STP_VLAN"]; found {
+            vlanRangeCount = len(internalStpVlanTable)
+        }
+    }
+
+    if enabledStpVlans + vlanRangeCount < max_stp_instances {
         fDelay := (&stpGlobalDBEntry).Get("forward_delay")
         helloTime := (&stpGlobalDBEntry).Get("hello_time")
         maxAge := (&stpGlobalDBEntry).Get("max_age")
@@ -159,8 +167,8 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) error {
             inParams.subOpDataMap[inParams.oper] = &subOpMap
         }
     } else {
-        log.Info("Exceeds MAX_STP_INSTANCE(%d), Disable STP for this vlan",max_stp_instances)
-        return tlerr.NotSupported("Error - exceeds maximum spanning-tree instances(%d) supported, disable STP for this vlan",max_stp_instances)
+        log.Info("Exceeds MAX_STP_INSTANCE(%d), Disable STP for vlans exceeding the limit [%d/%d]",max_stp_instances, enabledStpVlans, vlanRangeCount)
+        return tlerr.NotSupported("Error - exceeds maximum spanning-tree instances(%d) supported",max_stp_instances)
     }
     return nil
 }

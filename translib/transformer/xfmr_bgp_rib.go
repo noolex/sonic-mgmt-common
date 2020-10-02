@@ -2609,7 +2609,7 @@ func get_rpc_show_bgp_sub_cmd_ (mapData map[string]interface{}) (bool, string, s
 
 var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     log.Info("In rpc_show_bgp")
-    var cmd, vrf_name, af_str string
+    var cmd, vrf_name, af_str, af_summ_str string
     var err error
     var mapData map[string]interface{}
     err = json.Unmarshal(body, &mapData)
@@ -2636,8 +2636,12 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
     if value, ok := mapData["address-family"].(string) ; ok {
         if value == "IPV4_UNICAST" {
             af_str = " ipv4 "
+            af_summ_str = " ipv4 unicast "
         }else if value == "IPV6_UNICAST" {
             af_str = " ipv6 "
+            af_summ_str = " ipv6 unicast "
+        }else if value == "L2VPN_EVPN" {
+            af_summ_str = " l2vpn evpn "
         }
     }
 
@@ -2647,7 +2651,11 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
         return nil, errors.New(dbg_err_str)
     }
 
-    cmd = "show ip bgp" + vrf_name + af_str + subCmd
+    if subCmd != "summary json" {
+        cmd = "show ip bgp" + vrf_name + af_str + subCmd
+    } else {
+        cmd = "show bgp" + vrf_name + af_summ_str + subCmd
+    }
 
     cmd = strings.TrimSuffix(cmd, " ")
 
@@ -2677,9 +2685,9 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
         return json.Marshal(&result)
     }
 
-    for aftype := range summaryDict {
-        summaryMapJson := summaryDict[aftype].(map[string]interface{})
-        if peers, ok := summaryMapJson["peers"].(map[string]interface{}) ; ok {
+    //for aftype := range summaryDict {
+        //summaryMapJson := summaryDict[aftype].(map[string]interface{})
+        if peers, ok := summaryDict["peers"].(map[string]interface{}) ; ok {
              updIfNbrs := make(map[string]string)
              for nbrName := range peers {
                  if net.ParseIP(nbrName) != nil {continue}
@@ -2694,7 +2702,7 @@ var rpc_show_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
                  delete(peers, nbrIf)
              }
         }
-    }
+    //}
 
     modifiedSummary, err := json.Marshal(&summaryDict)
     if err != nil {

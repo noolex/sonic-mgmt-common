@@ -509,7 +509,7 @@ var DbToYang_ipv4_mroute_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
     cmnLog := "GET: xfmr for IP-Mroute (IPv4-Multicast) State"
 
     aftsObj, niName, _, _, getErr := getIpRoot(inParams) ; if (getErr != nil) {
-        log.Errorf ("%s failed !! Error:%s", cmnLog, getErr);
+        log.Warningf ("%s failed !! Error:%s", cmnLog, getErr);
         return operErr
     }
 
