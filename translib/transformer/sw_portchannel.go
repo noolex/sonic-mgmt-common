@@ -712,10 +712,16 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
     intTbl := IntfTypeTblMap[IntfTypePortChannel]
     subOpMap[db.ConfigDB] = resMap
     inParams.subOpDataMap[DELETE] = &subOpMap
-    /* Validate given PortChannel exits */
-    err = validatePortChannel(inParams.d, *lagName)
-    if err != nil {
-        return err
+    /* Validate given PortChannel exists */
+    intfType, _, ierr := getIntfTypeByName(*lagName)
+    if ierr != nil || intfType != IntfTypePortChannel {
+        return tlerr.InvalidArgsError{Format:"Invalid PortChannel: " + *lagName}
+    }
+
+    entry, err := inParams.d.GetEntry(&db.TableSpec{Name:PORTCHANNEL_TABLE}, db.Key{Comp: []string{*lagName}})
+    if err != nil || !entry.IsPopulated() {
+        // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+        return nil
     }
 
     /* Restrict deletion if iface configured as member-port of any Vlan */

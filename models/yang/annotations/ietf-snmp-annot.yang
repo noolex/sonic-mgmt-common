@@ -167,6 +167,7 @@ module ietf-snmp-annot {
     deviation /snmp:snmp/snmp:target/snmp:tag {
       deviate add {
         sonic-ext:field-name "tag";
+        sonic-ext:field-transformer "snmp_tag_name_xfmr";
       }
     }
 

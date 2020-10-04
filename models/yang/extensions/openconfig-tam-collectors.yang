@@ -96,7 +96,7 @@ submodule openconfig-tam-collectors {
                 key "name";
 
                 description
-                  "Uniqueuly identifies a collector and
+                  "Uniquely identifies a collector and
                    is used for reference from elsewhere";
 
                 leaf name {

@@ -9,11 +9,24 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_intf_pfc_xfmr", YangToDb_qos_intf_pfc_xfmr)
     XlateFuncBind("DbToYang_qos_intf_pfc_xfmr", DbToYang_qos_intf_pfc_xfmr)
     XlateFuncBind("Subscribe_qos_intf_pfc_xfmr", Subscribe_qos_intf_pfc_xfmr)
+}
+
+func isQosPortDbEntryFound(d *db.DB, if_name string, table string) (bool) {
+
+    if d == nil {
+        log.Infof("unable to get configDB")
+        return false
+    }
+
+    dbspec := &db.TableSpec { Name: table }
+    _, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
+    return err == nil
 }
 
 func doGetIntfPfcPriority(d *db.DB, if_name string) (string) {
@@ -35,11 +48,11 @@ func doGetIntfPfcPriority(d *db.DB, if_name string) (string) {
     pfc_enable, ok := dbEntry.Field["pfc_enable"]
     if ok {
         log.Info("pfc_enable ", pfc_enable)
-        return pfc_enable;
+        return pfc_enable
     } else {
         log.Info("No pfc_enable ")
     }
-    return "";
+    return ""
 }
 
 func doGetIntfPfcAsymmetricCfg(d *db.DB, if_name string) (bool) {
@@ -62,20 +75,21 @@ func doGetIntfPfcAsymmetricCfg(d *db.DB, if_name string) (bool) {
     pfc_asym, ok := dbEntry.Field["pfc_asym"]
     if ok && (pfc_asym == "on") {
         log.Info("pfc_asym ", pfc_asym)
-        return true;
+        return true
     } else {
         log.Info("No PFC Asymmetric ")
     }
-    return false;
+    return false
 }
 
 
 func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     res_map := make(map[string]map[string]db.Value)
+    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
     log.Info("qos_intf_pfc_delete_xfmr: ", inParams.ygRoot, inParams.uri)
-    log.Info("inParams: ", inParams)
+    log.Info("inParams.uri: ", inParams.uri)
 
     pathInfo := NewPathInfo(inParams.uri)
     ifname := pathInfo.Var("interface-id")
@@ -84,7 +98,25 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
     dbkey := if_name
     log.Info("qos_intf_pfc_delete_xfmr: ", if_name)
 
+    portQosMapEntry := isQosPortDbEntryFound(inParams.d, if_name, "PORT_QOS_MAP")
+    portEntry := isQosPortDbEntryFound(inParams.d, if_name, "PORT")
+
+    requestUriPath, err := getYangPathFromUri(inParams.requestUri)
+    if (requestUriPath == "/openconfig-qos:qos/interfaces/interface" ||
+        requestUriPath ==  "/openconfig-qos:qos/interfaces" ||
+        requestUriPath ==  "/openconfig-qos:qos") {
+        if !strings.HasPrefix(if_name, "Eth") {
+            log.Info("qos_intf_pfc_delete_xfmr: Not Ethernet interface ", if_name)
+            return res_map, err
+        }
+    } else if !portQosMapEntry && !portEntry {
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        return res_map, err
+    }
     targetUriPath, err := getYangPathFromUri(inParams.uri)
+    if (targetUriPath == "/openconfig-qos:qos/interfaces/interface/pfc") {
+        targetUriPath  = "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc"
+    }
     log.Info("targetUriPath: ",  targetUriPath)
 
     if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority") {
@@ -96,8 +128,8 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
         if len(pfc_enable) != 0 {
             prev_pfc_fld = true
         } else {
-            log.Info("res_map: ", res_map)
             log.Info("qos_intf_pfc_delete_xfmr: No pfc_enable field to delete ")
+            err = tlerr.NotFoundError{Format:"Resource not found"}
             return res_map, err
         }
         log.Info("qos_intf_pfc_delete_xfmr : present_pfc_enable - ",
@@ -139,7 +171,7 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
         return res_map, err
     }
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities"){
+    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities") && portQosMapEntry {
         log.Info("qos_intf_pfc_delete_xfmr: Delete all priorities")
         portQosMapTblMap := make(map[string]db.Value)
         entry := db.Value{Field: make(map[string]string)}
@@ -152,15 +184,27 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
     }
 
     if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/config") ||
-    (targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc") {
+       (targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc") && portEntry {
+
         portTblMap := make(map[string]db.Value)
         entry := db.Value{Field: make(map[string]string)}
         entry.Set("pfc_asym",  "off")
         portTblMap[dbkey] = entry
         res_map["PORT"] = portTblMap
+        if _, ok := subOpMap[db.ConfigDB]; !ok {
+            subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        }
+        if _, ok := subOpMap[db.ConfigDB]["PORT"]; !ok {
+            subOpMap[db.ConfigDB]["PORT"] = make(map[string]db.Value)
+        }
+        subOpMap[db.ConfigDB]["PORT"][if_name] = db.Value{Field: make(map[string]string)}
+        subOpMap[db.ConfigDB]["PORT"][if_name].Field["pfc_asym"] = "off"
+
+        inParams.subOpDataMap[UPDATE] = &subOpMap
+
     }
 
-    if targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc" {
+    if targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc" && portQosMapEntry {
         portQosMapTblMap := make(map[string]db.Value)
         entry := db.Value{Field: make(map[string]string)}
         entry.Set("pfc_enable",  "")
@@ -223,19 +267,9 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 portTblMap[dbkey] = entry
                 res_map["PORT"] = portTblMap
             } else {
-                /* entry.Set("pfc_asym",  "off")
+                entry.Set("pfc_asym",  "off")
                 portTblMap[dbkey] = entry
-                res_map["PORT"] = portTblMap */
-                if _, ok := subOpMap[db.ConfigDB]; !ok {
-                    subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-                }
-                if _, ok := subOpMap[db.ConfigDB]["PORT"]; !ok {
-                    subOpMap[db.ConfigDB]["PORT"] = make(map[string]db.Value)
-                }
-                subOpMap[db.ConfigDB]["PORT"][if_name] = db.Value{Field: make(map[string]string)}
-                subOpMap[db.ConfigDB]["PORT"][if_name].Field["pfc_asym"] = "off"
-
-                inParams.subOpDataMap[DELETE] = &subOpMap
+                res_map["PORT"] = portTblMap
             }
         }
     }

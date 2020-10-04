@@ -169,9 +169,9 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
                     }
                 } else {
                     if (len(tblDt) >  1) {
-                        log.Errorf("More than one DB key found for subscription path - %v", path)
+                        log.Warningf("More than one DB key found for subscription path - %v", path)
                     } else {
-                        log.Errorf("No DB key found for subscription path - %v", path)
+                        log.Warningf("No DB key found for subscription path - %v", path)
                     }
                     return &notifOpts, nil, err
                 }
@@ -197,7 +197,7 @@ func (app *CommonApp) processCreate(d *db.DB) (SetResponse, error) {
 	targetType := reflect.TypeOf(*app.ygotTarget)
 	log.Infof("processCreate: Target object is a <%s> of Type: %s", targetType.Kind().String(), targetType.Elem().Name())
 	if err = app.processCommon(d, CREATE); err != nil {
-		log.Error(err)
+		log.Warning(err)
 		resp = SetResponse{ErrSrc: AppErr}
 	}
 
@@ -209,7 +209,7 @@ func (app *CommonApp) processUpdate(d *db.DB) (SetResponse, error) {
 	var resp SetResponse
 	log.Info("processUpdate:path =", app.pathInfo.Path)
 	if err = app.processCommon(d, UPDATE); err != nil {
-		log.Error(err)
+		log.Warning(err)
 		resp = SetResponse{ErrSrc: AppErr}
 	}
 
@@ -221,7 +221,7 @@ func (app *CommonApp) processReplace(d *db.DB) (SetResponse, error) {
 	var resp SetResponse
 	log.Info("processReplace:path =", app.pathInfo.Path)
 	if err = app.processCommon(d, REPLACE); err != nil {
-		log.Error(err)
+		log.Warning(err)
 		resp = SetResponse{ErrSrc: AppErr}
 	}
 	return resp, err
@@ -234,7 +234,7 @@ func (app *CommonApp) processDelete(d *db.DB) (SetResponse, error) {
 	log.Infof("processDelete:path = %s, deleteEmptyEntry = %v", app.pathInfo.Path, app.deleteEmptyEntry)
 
 	if err = app.processCommon(d, DELETE); err != nil {
-		log.Error(err)
+		log.Warning(err)
 		resp = SetResponse{ErrSrc: AppErr}
 	}
 
@@ -259,12 +259,12 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
             isEmptyPayload  := false
 	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
 	    if err != nil {
-		    log.Error("transformer.GetAndXlateFromDB failure. error:", err)
+		    log.Warning("transformer.GetAndXlateFromDB() returned : ", err)
 		    resPayload = payload
 		    break
             }
 	    if strings.HasPrefix(app.pathInfo.Path, "/sonic") && isEmptyPayload {
-		    log.Info("transformer.transformer.GetAndXlateFromDB returned EmptyPayload")
+		    log.Info("transformer.GetAndXlateFromDB() returned EmptyPayload")
 		    resPayload = payload
 		    break
 	    }
@@ -297,7 +297,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    if targetObj != nil {
 		    err = ocbinds.Unmarshal(payload, targetObj)
 		    if err != nil {
-			    log.Error("ocbinds.Unmarshal()  failed. error:", err)
+			    log.Warning("ocbinds.Unmarshal()  returned : ", err)
 			    resPayload = payload
 			    break
 		    }
@@ -329,14 +329,14 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 				    var mrgErr error
 				    resYgot, mrgErr = ygot.MergeStructs(xfmrYgotRoot.(*ocbinds.Device),(*app.ygotRoot).(*ocbinds.Device))
 				    if mrgErr != nil {
-					    log.Error("Error in ygot.MergeStructs: ", mrgErr)
+					    log.Warning("Error in ygot.MergeStructs: ", mrgErr)
 				    }
 			    }
 		    }
 		    if resYgot != nil {
 			    resPayload, err = generateGetResponsePayload(app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget)
 			    if err != nil {
-				    log.Error("generateGetResponsePayload()  failed")
+				    log.Warning("generateGetResponsePayload() couldn't generate payload.")
 				    resPayload = payload
 			    }
 		    } else {
@@ -377,7 +377,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 
 
 	if err != nil {
-		log.Error(err)
+		log.Warning(err)
 		return keys, err
 	}
 	app.cmnAppTableMap = result
@@ -392,7 +392,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 
 	moduleNm, err := transformer.GetModuleNmFromPath(app.pathInfo.Path)
         if (err != nil) || (len(moduleNm) == 0) {
-                log.Error("GetModuleNmFromPath() failed")
+                log.Warning("GetModuleNmFromPath() couldn't fetch module name.")
                 return keys, err
         }
 
@@ -410,7 +410,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	if len(resultTblList) > 0 {
 		depTbls := transformer.GetTablesToWatch(resultTblList, moduleNm)
 		if len(depTbls) == 0 {
-			log.Errorf("Failure to get Tables to watch for module %v", moduleNm)
+			log.Warningf("Couldn't get Tables to watch for module %v", moduleNm)
 			err = errors.New("GetTablesToWatch returned empty slice")
 			return keys, err
 		}
@@ -529,7 +529,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						log.Info("Processing Table row ", resTblRw)
 						err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
 						if err != nil {
-							log.Error("CREATE case - d.ModEntry() failure")
+							log.Warning("CREATE case - d.ModEntry() failure")
 							return err
 						}
 					} else {
@@ -542,7 +542,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						log.Info("Processing Table row ", tblRw)
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
-							log.Error("CREATE case - d.CreateEntry() failure")
+							log.Warning("CREATE case - d.CreateEntry() failure")
 							return err
 						}
 					}
@@ -556,7 +556,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						resTblRw = checkAndProcessLeafList(existingEntry, tblRw, UPDATE, d, tblNm, tblKey)
 						err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
 						if err != nil {
-							log.Error("UPDATE case - d.ModEntry() failure")
+							log.Warning("UPDATE case - d.ModEntry() failure")
 							return err
 						}
 					} else {
@@ -571,7 +571,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						log.Info("Processing Table row ", tblRw)
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
-							log.Error("UPDATE case - d.CreateEntry() failure")
+							log.Warning("UPDATE case - d.CreateEntry() failure")
 							return err
 						}
 					}
@@ -601,7 +601,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 							log.Info("Since its partial replace modifying fields - ", tblRw)
 							err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 							if err != nil {
-								log.Error("REPLACE case - d.ModEntry() failure")
+								log.Warning("REPLACE case - d.ModEntry() failure")
 								return err
 							}
 							if auxRwOk {
@@ -609,7 +609,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 									log.Info("Since its partial replace delete aux fields - ", auxRw)
 									err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, auxRw)
 									if err != nil {
-										log.Error("REPLACE case - d.DeleteEntryFields() failure")
+										log.Warning("REPLACE case - d.DeleteEntryFields() failure")
 										return err
 									}
 								}
@@ -617,7 +617,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						} else {
 							err := d.SetEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 							if err != nil {
-								log.Error("REPLACE case - d.SetEntry() failure")
+								log.Warning("REPLACE case - d.SetEntry() failure")
 								return err
 							}
 						}
@@ -625,7 +625,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						log.Info("Entry doesn't exist hence create it.")
 						err = d.CreateEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, tblRw)
 						if err != nil {
-							log.Error("REPLACE case - d.CreateEntry() failure")
+							log.Warning("REPLACE case - d.CreateEntry() failure")
 							return err
 						}
 					}
@@ -656,7 +656,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 	/* Retrieve module Name */
 	moduleNm, err = transformer.GetModuleNmFromPath(app.pathInfo.Path)
 	if (err != nil) || (len(moduleNm) == 0) {
-		log.Error("GetModuleNmFromPath() failed")
+		log.Warning("GetModuleNmFromPath() failed")
 		return err
 	}
 	log.Info("getModuleNmFromPath() returned module name = ", moduleNm)
@@ -673,7 +673,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 					ordTblList = transformer.GetOrdTblList(tblNm, moduleNm)
 				}
 				if len(ordTblList) == 0 {
-					log.Error("GetOrdTblList returned empty slice")
+					log.Warning("GetOrdTblList returned empty slice")
 					err = errors.New("GetOrdTblList returned empty slice. Insufficient information to process request")
 					return err
 				}
@@ -759,7 +759,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 								log.Info("Last field gets deleted, add NULL field to keep an db entry")
 								err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, nullTblRw)
 								if err != nil {
-									log.Error("UPDATE case - d.ModEntry() failure")
+									log.Warning("UPDATE case - d.ModEntry() failure")
 									return err
 								}
 							}
@@ -767,7 +767,7 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 						/* deleted fields */
 						err := d.DeleteEntryFields(cmnAppTs, db.Key{Comp: []string{tblKey}}, resTblRw)
 						if err != nil {
-							log.Error("DELETE case - d.DeleteEntryFields() failure")
+							log.Warning("DELETE case - d.DeleteEntryFields() failure")
 							return err
 						}
 					}

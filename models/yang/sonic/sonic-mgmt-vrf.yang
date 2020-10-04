@@ -2,6 +2,10 @@ module sonic-mgmt-vrf {
     namespace "http://github.com/Azure/sonic-mgmt-vrf";
     prefix mgmt-vrf;
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -10,6 +14,12 @@ module sonic-mgmt-vrf {
 
     description
         "SONIC MGMT VRF";
+
+    revision 2020-09-14 {
+        description
+            "Only allow 1 entry in MGMT VRF TABLE,
+             and the only key allowed is vrf_global";
+    }
 
     revision 2020-07-14 {
         description
@@ -27,9 +37,13 @@ module sonic-mgmt-vrf {
 
             list MGMT_VRF_CONFIG_LIST {
                 key "vrf_global_name";
+                max-elements 1;
 
                 leaf vrf_global_name {
-                    type string;
+                    type enumeration {
+                        enum vrf_global;
+                    }
+ 
                     description
                         "Internal management vrf name for SONiC";
                 }   
@@ -47,6 +61,8 @@ module sonic-mgmt-vrf {
                     description
                         "This is set to true when data interfaces are associated with management VRF for in-band management";
                 }
+
+                sonic-ext:custom-validation ValidateBeforeMgmtVrfDelete;
             }
         }
     }

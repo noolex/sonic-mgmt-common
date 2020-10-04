@@ -9,6 +9,7 @@ import (
     "io/ioutil"
     "encoding/json"
     "fmt"
+    "strconv"
     "strings"
     "errors"
 )
@@ -45,9 +46,8 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     var configDB *db.DB
     var mapData map[string]interface{}
     var active_profile string
-    var default_cfg_port_speed string
     var cfg_port string
-    var testCode bool
+    var default_cfg_port_speed string
     var errStr string
     var port_cfg map[string]string
 
@@ -111,7 +111,7 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
         errStr = fmt.Sprintf("Unable to fetch DEVICE_METADATA from ConfigDB. Error=%v", err)
         return errResponse(errStr)
     }
-    if !testCode && !device_metadata.Has("default_config_profile") {
+    if !device_metadata.Has("default_config_profile") {
         active_profile = "l3"
         log.Errorf("Default config profile information not found. Defaulting to l3.")
     } else {
@@ -161,9 +161,6 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
         if port_cfg, ok = cfg_port_table[cfg_port]; ok {
             if _, ok := port_cfg["speed"]; ok {
                  default_cfg_port_speed = port_cfg["speed"]
-            } else {
-                 errStr = fmt.Sprintf("Failed to read default speed value for port %v", cfg_port)
-                 return errResponse(errStr)
             }
             if _, ok := port_cfg["mtu"]; ok {
                  portValue.Set("mtu", port_cfg["mtu"])
@@ -275,15 +272,17 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     if is_broken_port && port_entry.Has("speed") {
         portValue.Set("speed", port_entry.Field["speed"])
     } else {
-        /* Read values from default config file */
-        dflt_speed, err := getDefaultBreakoutModeSpeed(port_str)
-        if err == nil {
-            portValue.Set("speed", dflt_speed)
-        } else {
-            if testCode {
-              default_cfg_port_speed = port_entry.Field["speed"]
+        dflt_speed_int := getDefaultSpeed(configDB, port_str)
+        if dflt_speed_int == 0 {
+            if default_cfg_port_speed != "" {
+                portValue.Set("speed", default_cfg_port_speed)
+            } else {
+                errStr = fmt.Sprintf("Could not determine the default speed for the port %v", port_str)
+                return errResponse(errStr)
             }
-            portValue.Set("speed", default_cfg_port_speed)
+        } else {
+            speed_str := strconv.FormatInt(int64(dflt_speed_int), 10)
+            portValue.Set("speed", speed_str)
         }
     }
     // Read other configuration parameters from the PORT table
