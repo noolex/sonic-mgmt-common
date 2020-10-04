@@ -138,10 +138,10 @@ func loadYangModules(files ...string) error {
 		}
 	}
 
-	sonic_entries       := make([]*yang.Entry, len(names))
+	sonic_entries       := make([]*yang.Entry, 0)
 	oc_entries          := make(map[string]*yang.Entry)
-	oc_annot_entries    := make([]*yang.Entry, len(names))
-	sonic_annot_entries := make([]*yang.Entry, len(names))
+	oc_annot_entries    := make([]*yang.Entry, 0)
+	sonic_annot_entries := make([]*yang.Entry, 0)
 
 	for _, n := range names {
 		if strings.Contains(n, "annot") && strings.Contains(n, "sonic") {

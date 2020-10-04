@@ -356,11 +356,13 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		}
 
 	case DELETE:
+		keyXfmrCache = make(map[string]string)
 		xfmrLogInfo("DELETE case")
 		err = dbMapDelete(d, yg, opcode, path, requestUri, jsonData, result, txCache, skipOrdTbl)
 		if err != nil {
 			log.Warning("Data translation from yang to db failed for delete request.")
 		}
+		keyXfmrCache = make(map[string]string)
 	}
 	return result, yangDefValMap, yangAuxValMap, err
 }
@@ -369,7 +371,6 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	var err error
 	var payload []byte
 	xfmrLogInfo("received xpath = " + uri)
-
 	requestUri := uri
 	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
 	var dbresult = make(RedisDbMap)
@@ -655,7 +656,7 @@ func CallRpcMethod(path string, body []byte, dbs [db.MaxDB]*db.DB) ([]byte, erro
 			err = data[1].Interface().(error)
 		}
 	} else {
-		log.Error("No tsupported RPC", path)
+		log.Warning("Not supported RPC", path)
 		err = tlerr.NotSupported("Not supported RPC")
 	}
 	return ret, err

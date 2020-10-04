@@ -479,6 +479,8 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     } else if validTempName(&key) {
         result.dbDataMap = RedisDbMap{db.StateDB: {TEMP_TBL:{key:{}}}}
     } else if validXcvrName(&key) {
+        // Convert the interface name (if needed) for proper DB access
+        key = *(utils.GetNativeNameFromUIName(&key))
         result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{key:{}}}}
     } else {
         ifName := getIfName(key);
@@ -1824,9 +1826,13 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
             return err
         }
 
-        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
-        if fanInfo.Status {
-            fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
+        if fanInfo.Presence {
+            if fanInfo.Status {
+                fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+            } else {
+                fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+            }
         }
 
         if fanInfo.Model_Name != "" {

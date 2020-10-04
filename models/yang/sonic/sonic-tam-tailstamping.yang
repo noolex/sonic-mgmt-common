@@ -35,6 +35,21 @@ module sonic-tam-tailstamping {
     // feature statements
     // identity statements
     // typedef statements
+    typedef ts-node-type {
+        type enumeration {
+            enum NORMAL {
+                description
+                  "The switch acts as an normal tailstamping node for the specific flow";
+            }
+            enum IFA {
+                description
+                  "The switch acts as an IFA node for the specific flow";
+            }
+        }
+        description
+          "Tailstamping node selection for the specific flow";
+    }
+
     // grouping statements
     // data definition statements
     container sonic-tam-tailstamping {
@@ -74,6 +89,11 @@ module sonic-tam-tailstamping {
                     mandatory true;
                     description
                       "Flowgroup name";
+                }
+                leaf node-type {
+                    type ts-node-type;
+                    description
+                      "Tail Stamping node selection for the specific session";
                 }
             }
         }

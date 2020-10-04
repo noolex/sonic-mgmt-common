@@ -41,6 +41,12 @@ module openconfig-bgp-evpn-ext {
         "If set to true, advertise default gateway";
     }
 
+    leaf advertise-svi-ip {
+      type boolean;
+      description
+        "If set to true, advertise SVI MACIP routes";
+    }
+
     leaf route-distinguisher {
       type oc-ni-types:route-distinguisher;
       description

@@ -133,7 +133,15 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) error {
         return tlerr.NotSupported("Operation Not Supported")
     }
 
-    if enabledStpVlans < max_stp_instances {
+    vlanRangeCount := 0
+    if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
+        // Needed for Vlan-range create
+        if internalStpVlanTable, found := (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB]["STP_VLAN"]; found {
+            vlanRangeCount = len(internalStpVlanTable)
+        }
+    }
+
+    if enabledStpVlans + vlanRangeCount < max_stp_instances {
         fDelay := (&stpGlobalDBEntry).Get("forward_delay")
         helloTime := (&stpGlobalDBEntry).Get("hello_time")
         maxAge := (&stpGlobalDBEntry).Get("max_age")
@@ -159,8 +167,8 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) error {
             inParams.subOpDataMap[inParams.oper] = &subOpMap
         }
     } else {
-        log.Info("Exceeds MAX_STP_INSTANCE(%d), Disable STP for this vlan",max_stp_instances)
-        return tlerr.NotSupported("Error - exceeds maximum spanning-tree instances(%d) supported, disable STP for this vlan",max_stp_instances)
+        log.Info("Exceeds MAX_STP_INSTANCE(%d), Disable STP for vlans exceeding the limit [%d/%d]",max_stp_instances, enabledStpVlans, vlanRangeCount)
+        return tlerr.NotSupported("Error - exceeds maximum spanning-tree instances(%d) supported",max_stp_instances)
     }
     return nil
 }
@@ -1216,7 +1224,8 @@ func deleteVlanIntfAndMembers(inParams *XfmrParams, vlanName *string) error {
     if err != nil {
         errStr := "Retrieving data from VLAN table for VLAN: " + *vlanName + " failed!"
         log.Error(errStr)
-        return errors.New(errStr)
+        // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+        return nil
     }
     /* Validation is needed, if oper is not DELETE. Cleanup for sub-interfaces is done as part of Delete. */
     if inParams.oper != DELETE {
@@ -1400,11 +1409,7 @@ func fillDBSwitchedVlanInfoForIntf(d *db.DB, ifName *string, vlanMemberMap map[s
     log.Info("fillDBSwitchedVlanInfoForIntf() called!")
     var err error
 
-    vlanMemberTable, err := d.GetTable(&db.TableSpec{Name: VLAN_MEMBER_TN})
-    if err != nil {
-        return err
-    }
-    vlanMemberKeys, err := vlanMemberTable.GetKeys()
+    vlanMemberKeys, err := d.GetKeysByPattern(&db.TableSpec{Name: VLAN_MEMBER_TN}, "*"+*ifName)
     if err != nil {
         return err
     }

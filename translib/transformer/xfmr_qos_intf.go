@@ -101,8 +101,8 @@ func getAndValidateSchedulerIds(if_name string, sp_name string) ([]string, error
         if strings.Compare(sp_name, spname) == 0 {
             entry, err := d.GetEntry(&db.TableSpec{Name: "SCHEDULER"}, key)
             if err == nil {
-                if entry.Has("meter-type") {
-                    meter_type := entry.Get("meter-type")
+                if entry.Has("meter_type") {
+                    meter_type := entry.Get("meter_type")
                     if if_name == "CPU" && meter_type == "BYTES" {
                         errStr := "Invalid scheduler policy meter type for CPU"
                         err = tlerr.InternalError{Format: errStr}
@@ -388,7 +388,7 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
     var err error
     res_map := make(map[string]map[string]db.Value)
 
-    log.Info("os_intf_sched_policy_delete: ", inParams.ygRoot, inParams.uri)
+    log.Info("qos_intf_sched_policy_delete: ", inParams.ygRoot, inParams.uri)
 
     queueTblMap := make(map[string]db.Value)
     portQosTblMap := make(map[string]db.Value)
@@ -397,6 +397,11 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
     d :=  inParams.d
     if d == nil  {
         log.Infof("unable to get configDB")
+        return res_map, err
+    }
+
+    if !strings.HasPrefix(if_name, "Eth") {
+        log.Infof("Not allowd to delete copp-scheduler-policy on CPU port")
         return res_map, err
     }
 
@@ -454,9 +459,7 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
         res_map["PORT_QOS_MAP"] = portQosTblMap
     }
 
-    log.Info("res_map: ", res_map)
-
-    log.Info("os_intf_sched_policy_delete: End ", inParams.ygRoot, inParams.uri)
+    log.Info("qos_intf_sched_policy_delete: End res_map ", res_map)
     return res_map, err
 
 }
@@ -532,7 +535,10 @@ var DbToYang_qos_intf_sched_policy_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 
 /* Given a scheduler name, (no sequence), check its MAX cir or pir against the port speed */
 func check_port_speed_and_scheduler(inParams XfmrParams, sp_name string, intf string) bool{
-
+    /* CPU port not there in PORT table, Copp scheduler can not be removed */
+    if intf == "CPU" {
+       return true 
+    }
     dbSpec := &db.TableSpec{Name: "PORT"}
     portCfg, _ := inParams.d.GetEntry(dbSpec, db.Key{Comp: []string{intf}})
     speed, ok := portCfg.Field["speed"]

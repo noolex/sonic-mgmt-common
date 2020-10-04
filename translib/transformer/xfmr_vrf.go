@@ -223,6 +223,17 @@ func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName st
         return err
 }
 
+
+func checkOspfv2CfgExistOnIntf(inParams *XfmrParams, intfName string) (bool) {
+
+    if (intfName == "") {
+        log.Info("checkOspfv2CfgExistOnIntf: empty intfName parameter")
+        return false
+    }
+
+    return ospf_interface_config_present(inParams, intfName)
+}
+
 func xfmr_set_default_vrf_configDb() error {
         log.Info ("xfmr_set_default_vrf_configDb")
 
@@ -294,8 +305,6 @@ func init() {
         XlateFuncBind("DbToYang_network_instance_type_field_xfmr", DbToYang_network_instance_type_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_mtu_field_xfmr", YangToDb_network_instance_mtu_field_xfmr)
         XlateFuncBind("DbToYang_network_instance_mtu_field_xfmr", DbToYang_network_instance_mtu_field_xfmr)
-        XlateFuncBind("YangToDb_network_instance_description_field_xfmr", YangToDb_network_instance_description_field_xfmr)
-        XlateFuncBind("DbToYang_network_instance_description_field_xfmr", DbToYang_network_instance_description_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_router_id_field_xfmr", YangToDb_network_instance_router_id_field_xfmr)
         XlateFuncBind("DbToYang_network_instance_router_id_field_xfmr", DbToYang_network_instance_router_id_field_xfmr)
         XlateFuncBind("YangToDb_network_instance_route_distinguisher_field_xfmr", YangToDb_network_instance_route_distinguisher_field_xfmr)
@@ -390,12 +399,11 @@ var YangToDb_network_instance_enabled_field_xfmr FieldXfmrYangToDb = func(inPara
                 return res_map, errors.New("Network instance not set")
         }
 
-        if strings.HasPrefix(inParams.key, "Vlan") {
-            log.Infof("YangToDb Vlan key %s, do not add fallback attriubtes.", inParams.key)
-            return res_map, err
-        }
-
         pathInfo := NewPathInfo(inParams.uri)
+
+        if strings.HasPrefix(pathInfo.Var("name"), "Vlan") {
+                return res_map, err
+        }
 
         if len(pathInfo.Vars) < 1 {
                 /* network instance table has 1 key "name" */
@@ -609,8 +617,9 @@ var DbToYang_network_instance_name_field_xfmr KeyXfmrDbToYang = func(inParams Xf
                 } else if ((strings.HasPrefix(inParams.key, "vrf_global")) &&
                            (isMgmtVrfDbTbl(inParams))) {
                         res_map["name"] = "mgmt"
+                } else if (strings.HasPrefix(inParams.key, "Vlan")) {
+                        res_map["name"] =  inParams.key
                 }
-
         } else {
                 log.Info("DbToYang_network_instance_name_field_xfmr, empty key")
         }
@@ -684,26 +693,6 @@ var DbToYang_network_instance_mtu_field_xfmr KeyXfmrDbToYang = func(inParams Xfm
         var err error
 
         log.Info("DbToYang_network_instance_mtu_field_xfmr")
-
-        return res_map, err
-}
-
-// YangToDb_network_instance_description_field_xfmr is a YangToDb Field transformer for description in the top level network instance config
-var YangToDb_network_instance_description_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-        res_map := make(map[string]string)
-        var err error
-
-        log.Info("YangToDb_network_instance_description_field_xfmr")
-
-        return res_map, err
-}
-
-// DbToYang_network_instance_description_field_xfmr is a DbToYang Field transformer for description in the top level network instance config
-var DbToYang_network_instance_description_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-        res_map := make(map[string]interface{})
-        var err error
-
-        log.Info("DbToYang_network_instance_description_field_xfmr")
 
         return res_map, err
 }
@@ -880,6 +869,13 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                                     return res_map, err
                                 }
 
+                                if checkOspfv2CfgExistOnIntf(&inParams, intfName[0]) {
+                                    errStr = "Interface " + *convUIName + " has OSPFv2 configurations"
+                                    log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                                    err = tlerr.InvalidArgsError{Format: errStr}
+                                    return res_map, err
+                                }
+
                                 /* Now add this interface to res_map */
                                 _, ok := res_map[tblName]
                                 if !ok {
@@ -993,6 +989,16 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
             } else {
                 err = validateL3ConfigExists(inParams.d, ifName)
             }
+
+            if err == nil {
+                // verify if interface has ospfv2 configs
+                if checkOspfv2CfgExistOnIntf(&inParams, *ifName) {
+                    errStr = "Interface " + intfId + " has OSPFv2 configurations"
+                    log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                }
+            }
+
             if err != nil {
                 return res_map, err
             }
@@ -1008,6 +1014,14 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 			    err = tlerr.InvalidArgsError{Format: errStr}
 			    return res_map, err
 		    }
+
+                // verify if interface has ospfv2 configs
+                if checkOspfv2CfgExistOnIntf(&inParams, *ifName) {
+                    errStr = "Interface " + intfId + " has OSPFv2 configurations"
+                    log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    return res_map, err
+                }
 	}
 
         if chekIfSagExistOnIntf(inParams.d, *ifName) {
@@ -1026,6 +1040,14 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
         if checkPimCfgExistOnIntf(inParams.d, *ifName) {
             errStr = "Interface " + intfId + " has PIM configurations"
+            log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
+            err = tlerr.InvalidArgsError{Format: errStr}
+            return res_map, err
+        }
+
+        // verify if interface has ospfv2 configs
+        if checkOspfv2CfgExistOnIntf(&inParams, *ifName) {
+            errStr = "Interface " + intfId + " has OSPFv2 configurations"
             log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr)
             err = tlerr.InvalidArgsError{Format: errStr}
             return res_map, err

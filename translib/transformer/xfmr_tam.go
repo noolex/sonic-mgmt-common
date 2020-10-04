@@ -245,25 +245,23 @@ func createTamTable(dataMap map[string]map[string]db.Value) {
    dataMap["ACL_TABLE"]["TAM"].Field["type"] = "TAM"
 }
 
-func anyTamFeaturesActive(d *db.DB) (bool) {
-    ifaEnabled := false
-    modEnabled := false
-    tsEnabled := false
+func getActiveFeatureCount(d *db.DB) (int) {
+    count := 0
 
     var TAM_STATE_FEATURES_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "TAM_STATE_FEATURES_TABLE"}
     ifaEntry, _ := d.GetEntry(TAM_STATE_FEATURES_TABLE_TS, db.Key{Comp: []string{"IFA"}})
     if (ifaEntry.Field["op-status"] == "ACTIVE") {
-        ifaEnabled = true
+        count = count + 1
     }
     modEntry, _ := d.GetEntry(TAM_STATE_FEATURES_TABLE_TS, db.Key{Comp: []string{"DROPMONITOR"}})
     if (modEntry.Field["op-status"] == "ACTIVE") {
-        modEnabled = true
+        count = count + 1
     }
     tsEntry, _ := d.GetEntry(TAM_STATE_FEATURES_TABLE_TS, db.Key{Comp: []string{"TAILSTAMPING"}})
     if (tsEntry.Field["op-status"] == "ACTIVE") {
-        tsEnabled = true
+        count = count + 1
     }
-    return (ifaEnabled || modEnabled || tsEnabled)
+    return count
 }
 
 func getFeatureDetails(featuresMap map[string]db.Value, feature string) (bool, bool) {
@@ -350,36 +348,55 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
             }
         }
     } else {
-        var TAM_FLOWGROUP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "TAM_FLOWGROUP_TABLE"}
-        flowGroupTable, err := configDbPtr.GetTable(TAM_FLOWGROUP_TABLE_TS)
-        if (err == nil) {
+       if ((template == FLOWGROUP_CFG_TEMPLATE) || (template == FLOWGROUPS_TEMPLATE) || (template == FEATURES_TEMPLATE)) {
+            var TAM_FLOWGROUP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "TAM_FLOWGROUP_TABLE"}
+            flowGroupTable, err := configDbPtr.GetTable(TAM_FLOWGROUP_TABLE_TS)
+            if (err != nil) {
+                log.Error("Failed to get table: TAM_FLOWGROUP_TABLE in CONFIG_DB")
+            }
             flowGroupsKeys, _ := flowGroupTable.GetKeys()
-            anyFeaturesActive := anyTamFeaturesActive(stateDbPtr)
-            if ((len(flowGroupsKeys) == 1) && !anyFeaturesActive) {
-                if (key != "") {
-                    found := false
-                    for _, r := range flowGroupsKeys {
-                        if (key == r.Get(0)) {
-                            found = true
-                            break
-                        }
-                    }
-                    if (found) {
-                        // delete TAM Table
-                        resMap := make(map[string]map[string]db.Value)
-                        aclTableMap := make(map[string]db.Value)
-                        aclTableDbValues := db.Value{Field: map[string]string{}}
-                        aclTableMap["TAM"] = aclTableDbValues
-                        resMap["ACL_TABLE"] = aclTableMap
-                        if inParams.subOpDataMap[method] != nil && (*inParams.subOpDataMap[method])[db.ConfigDB] != nil {
-                            delete((*inParams.subOpDataMap[method])[db.ConfigDB], "ACL_RULE")
-                            mapCopy((*inParams.subOpDataMap[method])[db.ConfigDB], resMap)
-                        } else {
-                            updateMap[db.ConfigDB]["ACL_TABLE"] = make(map[string]db.Value)
-                            updateMap[db.ConfigDB]["ACL_TABLE"]["TAM"] = db.Value{Field: make(map[string]string)}
-                            inParams.subOpDataMap[method] = &updateMap
-                        }
-                    }
+            activeFlowGroupCount := len(flowGroupsKeys)
+            activeFeaturesCount := getActiveFeatureCount(stateDbPtr)
+
+            features := (*inParams.dbDataMap)[db.ConfigDB]["TAM_FEATURES_TABLE"]
+            modExists, modEnabled := getFeatureDetails(features, "DROPMONITOR")
+            ifaExists, ifaEnabled := getFeatureDetails(features, "IFA")
+            tsExists, tsEnabled := getFeatureDetails(features, "TAILSTAMPING")
+
+            if (modExists && !modEnabled) {
+                activeFeaturesCount = activeFeaturesCount - 1
+            }
+            if (ifaExists && !ifaEnabled) {
+                activeFeaturesCount = activeFeaturesCount - 1
+            }
+            if (tsExists && !tsEnabled) {
+                activeFeaturesCount = activeFeaturesCount - 1
+            }
+            if (template == FLOWGROUP_CFG_TEMPLATE) {
+               for _, r := range flowGroupsKeys {
+                   if (key == r.Get(0)) {
+                       activeFlowGroupCount = activeFlowGroupCount - 1
+                       break
+                   }
+                }
+            }
+            if (template == FLOWGROUPS_TEMPLATE) {
+                activeFlowGroupCount = 0
+            }
+            if ((activeFlowGroupCount <= 0) && (activeFeaturesCount <= 0)) {
+                // delete TAM Table
+                resMap := make(map[string]map[string]db.Value)
+                aclTableMap := make(map[string]db.Value)
+                aclTableDbValues := db.Value{Field: map[string]string{}}
+                aclTableMap["TAM"] = aclTableDbValues
+                resMap["ACL_TABLE"] = aclTableMap
+                if inParams.subOpDataMap[method] != nil && (*inParams.subOpDataMap[method])[db.ConfigDB] != nil {
+                    delete((*inParams.subOpDataMap[method])[db.ConfigDB], "ACL_RULE")
+                    mapCopy((*inParams.subOpDataMap[method])[db.ConfigDB], resMap)
+                } else {
+                    updateMap[db.ConfigDB]["ACL_TABLE"] = make(map[string]db.Value)
+                    updateMap[db.ConfigDB]["ACL_TABLE"]["TAM"] = db.Value{Field: make(map[string]string)}
+                    inParams.subOpDataMap[method] = &updateMap
                 }
             }
         }
@@ -484,6 +501,9 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
                     }
                 } else if (feature == "tailstamp") {
                     updateMap[db.ConfigDB]["ACL_RULE"][aclKey].Field["PACKET_ACTION"] = "INT_INSERT"
+                    if (v.Get("node-type") == "IFA") {
+                        updateMap[db.ConfigDB]["ACL_RULE"][aclKey].Field["TAM_INT_TYPE"] = "IFA"
+                    }
                 } else {
                     updateMap[db.ConfigDB]["ACL_RULE"][aclKey].Field["PACKET_ACTION"] = "MONITOR_DROPS"
                 }
@@ -902,9 +922,7 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                 }
                 if (flowgroup.Config.Priority != nil) {
                     priority = strconv.FormatInt(int64(*(flowgroup.Config.Priority)), 10)
-                    if (priority != "100") {
-                        updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
-                    }
+                    updateMap[db.ConfigDB]["ACL_RULE"][entry_key].Field["PRIORITY"] = priority
                 }
 
                 // IPv4

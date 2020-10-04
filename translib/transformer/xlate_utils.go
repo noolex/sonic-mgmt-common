@@ -658,6 +658,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 xfmrLogInfoAll("path elements are : %v", pathList)
 	 for _, k := range pathList {
 		 curPathWithKey += k
+		 callKeyXfmr := true
 		 yangXpath, _ := XfmrRemoveXPATHPredicates(curPathWithKey)
 		 xpathInfo, ok := xYangSpecMap[yangXpath]
 		 if ok {
@@ -675,6 +676,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr += keySeparator
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
+				 if oper == DELETE {
+					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
+						callKeyXfmr = false
+					}
+				 }
+				 if callKeyXfmr {
 					 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 					 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 					 if oper == GET {
@@ -694,6 +701,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 }
 						 keyStr = ret
 					 }
+					 if oper == DELETE {
+						keyXfmrCache[curPathWithKey] = keyStr
+					 }
+				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
 					 keyStr += *xYangSpecMap[yangXpath].keyName
 				 } else {
@@ -709,6 +720,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
+				 if oper == DELETE {
+					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
+						callKeyXfmr = false
+					}
+				 }
+			   if callKeyXfmr {
 				 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 				 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 				 if oper == GET {
@@ -728,6 +745,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 					 keyStr = ret
 				 }
+				 if oper == DELETE {
+					keyXfmrCache[curPathWithKey] = keyStr
+				 }
+			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {
 				 keyStr += *xYangSpecMap[yangXpath].keyName
 			 }

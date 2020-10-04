@@ -30,7 +30,6 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
-	"github.com/kylelemons/godebug/pretty"
 	gnmipb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/goyang/pkg/yang"
 	"github.com/openconfig/ygot/ygot"
@@ -69,14 +68,6 @@ const (
 )
 
 func init() {
-	XlateFuncBind("YangToDb_igmp_snooping_key_xfmr", YangToDb_igmp_snooping_key_xfmr)
-	XlateFuncBind("DbToYang_igmp_snooping_key_xfmr", DbToYang_igmp_snooping_key_xfmr)
-	XlateFuncBind("YangToDb_igmp_snooping_mrouter_config_key_xfmr", YangToDb_igmp_snooping_mrouter_config_key_xfmr)
-	XlateFuncBind("DbToYang_igmp_snooping_mrouter_config_key_xfmr", DbToYang_igmp_snooping_mrouter_config_key_xfmr)
-	XlateFuncBind("YangToDb_igmp_snooping_static_group_config_key_xfmr", YangToDb_igmp_snooping_static_group_config_key_xfmr)
-	XlateFuncBind("DbToYang_igmp_snooping_static_group_config_key_xfmr", DbToYang_igmp_snooping_static_group_config_key_xfmr)
-	XlateFuncBind("YangToDb_igmp_snooping_static_member_state_key_xfmr", YangToDb_igmp_snooping_static_member_state_key_xfmr)
-	XlateFuncBind("DbToYang_igmp_snooping_static_member_state_key_xfmr", DbToYang_igmp_snooping_static_member_state_key_xfmr)
 	XlateFuncBind("YangToDb_igmp_snooping_subtree_xfmr", YangToDb_igmp_snooping_subtree_xfmr)
 	XlateFuncBind("DbToYang_igmp_snooping_subtree_xfmr", DbToYang_igmp_snooping_subtree_xfmr)
     XlateFuncBind("Subscribe_igmp_snooping_subtree_xfmr", Subscribe_igmp_snooping_subtree_xfmr)
@@ -95,61 +86,6 @@ type reqProcessor struct {
 	intfStateObj  *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_IgmpSnooping_Interfaces_Interface_State
 	intfStaticObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_IgmpSnooping_Interfaces_Interface_Staticgrps
 	targetNode    *yang.Entry
-}
-
-var YangToDb_igmp_snooping_static_member_state_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-	fmt.Println("YangToDb_igmp_snooping_static_member_state_key_xfmr ==> ", inParams)
-	return "", nil
-}
-
-var DbToYang_igmp_snooping_static_member_state_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	fmt.Println("DbToYang_igmp_snooping_static_member_state_key_xfmr ==> ", inParams)
-	rmap := make(map[string]interface{})
-	return rmap, nil
-}
-
-var YangToDb_igmp_snooping_static_group_config_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-	fmt.Println("YangToDb_igmp_snooping_static_group_config_key_xfmr ==> ", inParams)
-	return "", nil
-}
-
-var DbToYang_igmp_snooping_static_group_config_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	fmt.Println("DbToYang_igmp_snooping_static_group_config_key_xfmr ==> ", inParams)
-	rmap := make(map[string]interface{})
-	return rmap, nil
-}
-
-var YangToDb_igmp_snooping_mrouter_config_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-	fmt.Println("YangToDb_igmp_snooping_mrouter_config_key_xfmr ==> ", inParams)
-	return "", nil
-}
-
-var DbToYang_igmp_snooping_mrouter_config_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	fmt.Println("DbToYang_igmp_snooping_mrouter_config_key_xfmr ==> ", inParams)
-	rmap := make(map[string]interface{})
-	return rmap, nil
-}
-
-var YangToDb_igmp_snooping_mrouter_state_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-	fmt.Println("YangToDb_igmp_snooping_mrouter_state_key_xfmr ==> ", inParams)
-	return "", nil
-}
-
-var DbToYang_igmp_snooping_mrouter_state_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	fmt.Println("DbToYang_igmp_snooping_mrouter_state_key_xfmr ==> ", inParams)
-	rmap := make(map[string]interface{})
-	return rmap, nil
-}
-
-var YangToDb_igmp_snooping_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-	fmt.Println("YangToDb_igmp_snooping_key_xfmr ==> ", inParams)
-	return "", nil
-}
-
-var DbToYang_igmp_snooping_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-	fmt.Println("DbToYang_igmp_snooping_key_xfmr ==> ", inParams)
-	rmap := make(map[string]interface{})
-	return rmap, nil
 }
 
 func getYangNode(path *gnmipb.Path) (*yang.Entry, error) {
@@ -247,22 +183,14 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 						fmt.Println("DB error in GetEntry => ", err)
 					}
 
-					fmt.Println("handleDeleteReq - printing db mRouterDbTbl data")
-					pretty.Print(mRouterDbTbl)
-
 					mrouterKeys, _ := mRouterDbTbl.GetKeys()
-					fmt.Println("handleDeleteReq - printing db table mRouterDbTbl keys")
-					pretty.Print(mrouterKeys)
 
 					for j := range mrouterKeys {
-						mrouterDbV, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
+						_, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
 						if err != nil {
 							fmt.Println("mRouterDbTbl.GetEntry fails => ", err)
 							continue
 						}
-						fmt.Println("handleDeleteReq - printing db table mrouterDbVEntry")
-						pretty.Print(mrouterDbV)
-
 						if igmpsKey != mrouterKeys[j].Comp[0] {
 							continue
 						}
@@ -281,22 +209,14 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 						fmt.Println("DB error in GetEntry => ", err)
 					}
 
-					fmt.Println("handleDeleteReq - printing db staticGrDbTbl data")
-					pretty.Print(staticGrpDbTbl)
-
 					staticGrpKeys, _ := staticGrpDbTbl.GetKeys()
-					fmt.Println("handleDeleteReq - printing db table staticGrpKeys keys")
-					pretty.Print(staticGrpKeys)
 
 					for k := range staticGrpKeys {
-						staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
+						_, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 						if err != nil {
 							fmt.Println("staticGrpDbTbl memeber - GetEntry fails => ", err)
 							continue
 						}
-						fmt.Println("handleDeleteReq - printing db table staticGrpKeysEntry")
-						pretty.Print(staticGrpDbV)
-
 						if igmpsKey != staticGrpKeys[k].Comp[0] {
 							continue
 						}
@@ -316,20 +236,14 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 						fmt.Println("handleDeleteReq - DB error in CFG_L2MC_STATIC_GROUP_TABLE_TS - GetTable => ", err)
 						return nil, err
 					}
-					fmt.Println("handleDeleteReq - printing db staticGrDbTbl data")
-					pretty.Print(staticGrpDbTbl)
 
 					staticGrpKeys, _ = staticGrpDbTbl.GetKeys()
-					fmt.Println("handleDeleteReq - printing db table staticGrpKeys keys")
-					pretty.Print(staticGrpKeys)
 					// fetch all group entries from the db and delete the entries matches with the given grpKey
 					for k := range staticGrpKeys {
-						staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
+						_, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 						if err != nil {
 							fmt.Println("staticGrpDbTbl.GetEntry fails => ", err)
 						}
-						fmt.Println("handleDeleteReq - printing db table staticGrpKeysEntry")
-						pretty.Print(staticGrpDbV)
 
 						if igmpsKey != staticGrpKeys[k].Comp[0] {
 							continue
@@ -405,12 +319,8 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 								fmt.Println("DB error in GetEntry => ", err)
 								return nil, err
 							}
-							fmt.Println("handleDeleteReq - printing db staticGrDbTbl data")
-							pretty.Print(staticGrpDbTbl)
 
 							staticGrpKeys, _ := staticGrpDbTbl.GetKeys()
-							fmt.Println("handleDeleteReq - printing db table staticGrpKeys keys")
-							pretty.Print(staticGrpKeys)
 							// fetch all group entries from the db and delete the entries matches with the given grpKey
 							for k := range staticGrpKeys {
 								if staticGrpKeys[k].Comp[1] == grpKey.Group {
@@ -459,8 +369,8 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 		}
 	}
 
-	fmt.Println(" handleDeleteReq ============> res_map")
-	pretty.Print(res_map)
+	/* fmt.Println(" handleDeleteReq ============> res_map")
+	pretty.Print(res_map) */
 
 	return &res_map, nil
 }
@@ -615,8 +525,8 @@ func (reqP *reqProcessor) handleCRUReq(inParams XfmrParams) (*map[string]map[str
 		}
 	}
 
-	fmt.Println(" handleCRUReq ============> printing  res_map ")
-	pretty.Print(res_map)
+	/* fmt.Println(" handleCRUReq ============> printing  res_map ")
+	pretty.Print(res_map) */
 
 	return &res_map, nil
 }
@@ -678,8 +588,8 @@ var YangToDb_igmp_snooping_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 		return nil, err
 	}
 
-	fmt.Println("YangToDb_igmp_snooping_subtree_xfmr ==> printing IGMPSnooping object request ==> ")
-	pretty.Print(*reqP.igmpsObj)
+	/* fmt.Println("YangToDb_igmp_snooping_subtree_xfmr ==> printing IGMPSnooping object request ==> ")
+	pretty.Print(*reqP.igmpsObj) */
 
 	res_map, err := reqP.translateToDb(inParams)
 
@@ -717,11 +627,6 @@ var DbToYang_igmp_snooping_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 		return err
 	}
 
-	if reqP.igmpsObj != nil {
-		fmt.Println("DbToYang_igmp_snooping_subtree_xfmr ==> printing IGMPSnooping object request ==> ")
-		pretty.Print(*reqP.igmpsObj)
-	}
-
 	// get the target node
 	reqP.targetNode, err = getYangNode(reqP.uriPath)
 	if err != nil {
@@ -744,21 +649,13 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 			if staticGrpDbTbl, err = reqP.db.GetTable(CFG_L2MC_STATIC_MEMBER_TABLE_TS); err != nil {
 				fmt.Println("DB error in GetEntry => ", err)
 			}
-
-			fmt.Println("unMarshalStaticGrpConfigObj - printing db staticGrDbTbl data")
-			pretty.Print(staticGrpDbTbl)
-
 			staticGrpKeys, _ := staticGrpDbTbl.GetKeys()
-			fmt.Println("unMarshalStaticGrpConfigObj - printing db table staticGrpKeys keys")
-			pretty.Print(staticGrpKeys)
 
 			for k := range staticGrpKeys {
-				staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
+				_, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 				if err != nil {
 					return err
 				}
-				fmt.Println("unMarshalStaticGrpConfigObj - printing db table staticGrpKeysEntry")
-				pretty.Print(staticGrpDbV)
 
 				if *reqP.intfConfigObj.Name != staticGrpKeys[k].Comp[0] || grpKey.Group != staticGrpKeys[k].Comp[1] {
 					continue
@@ -810,16 +707,12 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 					fmt.Println("DB error in GetEntry => ", err)
 				}
 				staticGrpKeys, _ := staticGrpDbTbl.GetKeys()
-				fmt.Println("unMarshalStaticGrpStateObj - printing db table staticGrpKeys keys")
-				pretty.Print(staticGrpKeys)
 
 				for k := range staticGrpKeys {
-					staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
+					_, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 					if err != nil {
 						return err
 					}
-					fmt.Println("unMarshalStaticGrpStateObj - printing db table staticGrpKeysEntry")
-					pretty.Print(staticGrpDbV)
 
 					if *reqP.intfStateObj.Name != staticGrpKeys[k].Comp[0] || grpKey.SourceAddr != staticGrpKeys[k].Comp[1] || grpKey.Group != staticGrpKeys[k].Comp[2] {
 						continue
@@ -850,32 +743,17 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 		var staticGrpDbTbl db.Table
 		var err error
 		var srcAddr string
-		fmt.Println("printing db type")
-		pretty.Print(reqP.dbs[0])
-		fmt.Println("printing ALL db type")
-		pretty.Print(reqP.dbs)
-		fmt.Println("printing trans db type")
-		pretty.Print(reqP.db)
 
 		if staticGrpDbTbl, err = reqP.db.GetTable(CFG_L2MC_STATIC_MEMBER_TABLE_TS); err != nil {
 			fmt.Println("DB error in GetEntry => ", err)
 		}
 
-		fmt.Println("unMarshalStaticGrpConfigObj - printing db staticGrDbTbl data")
-		pretty.Print(staticGrpDbTbl)
-
 		staticGrpKeys, _ := staticGrpDbTbl.GetKeys()
-		fmt.Println("unMarshalStaticGrpConfigObj - printing db table staticGrpKeys keys")
-		pretty.Print(staticGrpKeys)
-
 		for k := range staticGrpKeys {
-			staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
+			_, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 			if err != nil {
 				return err
 			}
-			fmt.Println("unMarshalStaticGrpConfigObj - printing db table staticGrpKeysEntry")
-			pretty.Print(staticGrpDbV)
-
 			if *reqP.intfConfigObj.Name != staticGrpKeys[k].Comp[0] {
 				continue
 			}
@@ -906,22 +784,16 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
             fmt.Println("DB error in GetEntry => ", err) 
         }
 
-        fmt.Println("unMarshalStaticGrpStateObj - printing db staticGrpDbTbl data")
-        pretty.Print(staticGrpDbTbl)
+        /* fmt.Println("unMarshalStaticGrpStateObj - printing db staticGrpDbTbl data")
+        pretty.Print(staticGrpDbTbl) */
 
 		staticGrpKeys, _ = staticGrpDbTbl.GetKeys()
-		fmt.Println("unMarshalStaticGrpStateObj - printing db table staticGrpKeys keys")
-		pretty.Print(staticGrpKeys)
-
 		for k := range staticGrpKeys {
-			staticGrpDbV, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
+			_, err := staticGrpDbTbl.GetEntry(staticGrpKeys[k])
 			if err != nil {
 				return err
 			}
-			fmt.Println("unMarshalStaticGrpStateObj - printing db table staticGrpKeysEntry")
-			pretty.Print(staticGrpDbV)
 
-            fmt.Println("unMarshalStaticGrpStateObj-1- ", reqP.intfConfigObj)
 			if *reqP.intfConfigObj.Name != staticGrpKeys[k].Comp[0] {
 				continue
 			}
@@ -959,20 +831,12 @@ func (reqP *reqProcessor) unMarshalMrouterState() error {
 		fmt.Println("DB error in GetEntry => ", err)
 	}
 
-	fmt.Println("unMarshalMrouterState - printing db mRouterDbTbl data")
-	pretty.Print(mRouterDbTbl)
-
 	mrouterKeys, _ := mRouterDbTbl.GetKeys()
-	fmt.Println("unMarshalMrouterState - printing db table mRouterDbTbl keys")
-	pretty.Print(mrouterKeys)
-
 	for j := range mrouterKeys {
-		mrouterDbV, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
+		_, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
 		if err != nil {
 			return err
 		}
-		fmt.Println("unMarshalMrouterState - printing db table mrouterDbVEntry")
-		pretty.Print(mrouterDbV)
 
 		if *reqP.intfStateObj.Name != mrouterKeys[j].Comp[0] {
 			continue
@@ -995,22 +859,13 @@ func (reqP *reqProcessor) unMarshalMrouterConfig() error {
 	if mRouterDbTbl, err = reqP.db.GetTable(CFG_L2MC_MROUTER_TABLE_TS); err != nil {
 		fmt.Println("DB error in GetEntry => ", err)
 	}
-
-	fmt.Println("unMarshalMrouterConfig - printing db mRouterDbTbl data")
-	pretty.Print(mRouterDbTbl)
-
 	mrouterKeys, _ := mRouterDbTbl.GetKeys()
-	fmt.Println("unMarshalMrouterConfig - printing db table mRouterDbTbl keys")
-	pretty.Print(mrouterKeys)
 
 	for j := range mrouterKeys {
-		mrouterDbV, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
+		_, err := mRouterDbTbl.GetEntry(mrouterKeys[j])
 		if err != nil {
 			return err
 		}
-		fmt.Println("unMarshalMrouterConfig - printing db table mrouterDbVEntry")
-		pretty.Print(mrouterDbV)
-
 		if *reqP.intfConfigObj.Name != mrouterKeys[j].Comp[0] {
 			continue
 		}
@@ -1129,12 +984,10 @@ func (reqP *reqProcessor) unMarshalIGMPSnoopingIntf(objType int) error {
 		fmt.Println("DB error in GetEntry => ", dbErr)
 	}
 
-	fmt.Println("translateToYgotObj - printing db data")
-	pretty.Print(l2McDbTbl)
+	/* fmt.Println("translateToYgotObj - printing db data")
+	pretty.Print(l2McDbTbl) */
 
 	l2McKeys, _ := l2McDbTbl.GetKeys()
-	fmt.Println("translateToYgotObj - printing db table keys")
-	pretty.Print(l2McKeys)
 
 	for i := range l2McKeys {
 		dbV, err := l2McDbTbl.GetEntry(l2McKeys[i])
@@ -1292,8 +1145,8 @@ func (reqP *reqProcessor) translateToYgotObj() error {
 		}
 	}
 
-	fmt.Println("translateToYgotObj printing ygot object after unmarshalled ==> ")
-	pretty.Print(reqP.igmpsObj)
+	/* fmt.Println("translateToYgotObj printing ygot object after unmarshalled ==> ")
+	pretty.Print(reqP.igmpsObj) */
 
 	return err
 }

@@ -23,6 +23,7 @@ import (
 
 func init () {
 
+    XlateFuncBind("ospfv2_validate_proto", validate_ospfv2_protocol)
     XlateFuncBind("YangToDb_ospfv2_router_tbl_key_xfmr", YangToDb_ospfv2_router_tbl_key_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_tbl_key_xfmr", DbToYang_ospfv2_router_tbl_key_xfmr)
     XlateFuncBind("YangToDb_ospfv2_router_enable_fld_xfmr", YangToDb_ospfv2_router_enable_fld_xfmr)
@@ -86,6 +87,13 @@ func init () {
     XlateFuncBind("YangToDb_ospfv2_interface_name_fld_xfmr", YangToDb_ospfv2_interface_name_fld_xfmr)
     XlateFuncBind("DbToYang_ospfv2_interface_name_fld_xfmr", DbToYang_ospfv2_interface_name_fld_xfmr)
 
+}
+
+func validate_ospfv2_protocol(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    proto := pathInfo.Var("name#2")
+    protoId := pathInfo.Var("identifier")
+    return protoId == "OSPF" && proto == "ospfv2"
 }
 
 func getOspfUriPath(inParams *XfmrParams) (string, error) {
@@ -1727,9 +1735,9 @@ var YangToDb_ospfv2_router_area_vl_authentication_key_fld_xfmr FieldXfmrYangToDb
             authKeyStr = *(inParams.param.(*string))
         }
 
-        encLen := ospf_get_password_encryption_length()
-        if (encryptedKey && keyLength < 2*encLen) {
-            errStr := fmt.Sprintf("Encrypted authentication key shall be min %d charater long", encLen)
+        encLen := ospf_get_min_encryption_length()
+        if (encryptedKey && keyLength < encLen) {
+            errStr := fmt.Sprintf("Encrypted authentication key shall be min %d character long", encLen)
             log.Info("YangToDb_ospfv2_router_area_vl_authentication_key_fld_xfmr: " + errStr)
             return res_map, tlerr.New(errStr)
         }
@@ -1939,9 +1947,9 @@ var YangToDb_ospfv2_router_area_vlmd_auth_md5_key_fld_xfmr FieldXfmrYangToDb = f
             md5KeyStr = *(inParams.param.(*string))
         }
 
-        encLen := ospf_get_password_encryption_length()
-        if (encryptedKey && keyLength < 2*encLen) {
-            errStr := fmt.Sprintf("Encrypted authentication key shall be min %d charater long", encLen)
+        encLen := ospf_get_min_encryption_length()
+        if (encryptedKey && keyLength < encLen) {
+            errStr := fmt.Sprintf("Encrypted authentication key shall be min %d character long", encLen)
             log.Info("YangToDb_ospfv2_router_area_vlmd_auth_md5_key_fld_xfmr: " + errStr)
             return res_map, tlerr.New(errStr)
         }
@@ -2853,6 +2861,77 @@ func ospf_get_table_entry_field(inParams *XfmrParams, tblName string, tblKey str
     fieldValue := (&tblEntry).Get(fieldName)
     log.Infof("ospf_get_table_entry_field: field %s value is %s.", fieldName, fieldValue)
     return true, fieldValue, nil
+}
+
+
+func ospf_config_present(inParams *XfmrParams, tblName string, tblKey string, ignoreFieldMap []string) (bool, error) {
+
+    log.Infof("ospf_config_present: tblName %s tblKey %s ignoreFieldMap %v", tblName, tblKey, ignoreFieldMap)
+
+    if (tblName == "" || tblKey == "") {
+        errStr := "Empty Table name or key parameter"
+        log.Info("ospf_config_present: ", errStr)
+        return false, nil
+    }
+
+    inKeyList := strings.Split(tblKey, "|")
+    inKeyLen := len(inKeyList)
+
+    var tblSpec *db.TableSpec = &db.TableSpec{Name: tblName}
+    tblData, err1 := configDbPtr.GetTable(tblSpec)
+    if (err1 != nil) {
+        log.Error("ospf_config_present: GetTable failed for ", tblName)
+        return false, err1
+    }
+
+    dbTblKeys, err2 := tblData.GetKeys()
+    if (err2 != nil) {
+        log.Info("ospf_config_present: get keys failed ", err2)
+        return false, err2
+    }
+
+    for _, dbTblKey := range dbTblKeys {
+        dbTblKeyLen := dbTblKey.Len()
+        if (inKeyLen > dbTblKeyLen) {
+            log.Infof("ospf_config_present: inkey length %d greater than dbkey %d", inKeyLen, dbTblKeyLen)
+            continue
+        }
+
+        keyMatched := true
+        if (tblKey != "*" ) {
+            for idx, inKey := range inKeyList {
+                if (inKey != "*") {
+                    if (inKey != dbTblKey.Get(idx)) {
+                        keyMatched = false
+                        break
+                    }
+                }
+            }
+        }
+
+        if (!keyMatched) {
+            continue
+        }
+
+        tblEntry, err := tblData.GetEntry(dbTblKey)
+        if (err != nil) {
+            log.Info("ospf_config_present: table data GetEntry failed")
+            continue
+        }
+
+        for fieldName := range tblEntry.Field {
+           for _, ignoreFieldName := range ignoreFieldMap {
+               if (fieldName == ignoreFieldName) {
+                  continue
+               }
+               log.Info("ospf_config_present: config present for ", dbTblKey)
+               return true, nil
+           }
+        }
+    }
+
+    log.Info("ospf_config_present: config not present for ", tblKey)
+    return false, nil
 }
 
 
@@ -3869,10 +3948,16 @@ func ospf_remove_escape_sequence(inStr string) (string) {
     return outStr
 }
 
-func ospf_get_password_encryption_length() (int) {
-    passwdEncLen := 16
-    log.Info("ospf_get_password_encryption_length: passwdEncLen ", passwdEncLen)
-    return passwdEncLen
+func ospf_get_password_max_length() (int) {
+    passwdMaxLen := 16
+    log.Info("ospf_get_password_max_length: passwdMaxLen ", passwdMaxLen)
+    return passwdMaxLen
+}
+
+func ospf_get_min_encryption_length() (int) {
+    minEncLen := 2 * ospf_get_password_max_length()
+    log.Info("ospf_get_min_encryption_length: minEncLen ", minEncLen)
+    return minEncLen
 }
 
 func ospf_encrypt_password(passwordStr string, localEncryption bool) (string, error) {
@@ -3899,8 +3984,8 @@ func ospf_encrypt_password(passwordStr string, localEncryption bool) (string, er
         return encryptedPasswd, nil
     }
 
-    encLen := ospf_get_password_encryption_length()
-    cmd := fmt.Sprintf("show bgp encrypt %s max-length %d json", passwordStr, encLen)
+    passwdMaxLen := ospf_get_password_max_length()
+    cmd := fmt.Sprintf("show bgp encrypt %s max-length %d json", passwordStr, passwdMaxLen)
     jsonOutput, cmdErr := exec_vtysh_cmd (cmd)
     if (cmdErr != nil) {
         errStr := "Failed to generate password encryption"

@@ -40,6 +40,21 @@ submodule openconfig-tam-tailstamping {
           "Tailstamping feature";
     }
 
+    typedef ts-node-type {
+        type enumeration {
+            enum IFA {
+                description
+                  "The switch acts as an IFA node for the specific flow";
+            }
+            enum NORMAL {
+                description
+                  "The switch acts as an normal tailstamping node for the specific flow";
+            }
+        }
+        description
+          "Tailstamping node selection for the specific flow";
+    }
+
     // typedef statements
     // grouping statements
     grouping tam-tailstamping-config {
@@ -64,6 +79,12 @@ submodule openconfig-tam-tailstamping {
             mandatory true;
             description
               "FlowGroup to be used for this Tailstamping session";
+        }
+        leaf node-type {
+            type ts-node-type;
+            default "NORMAL";
+            description
+              "Node type selection for the specific session";
         }
     }
 

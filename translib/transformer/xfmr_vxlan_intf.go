@@ -733,6 +733,18 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
         dscp_configured = true
     }
 
+    var NVO_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "EVPN_NVO"}
+    dbvNvo, err := reqP.db.GetEntry(NVO_TABLE_TS, db.Key{[]string{"nvo1"}})
+    var nvoCreated bool
+    nvoCreated = false
+
+    if err == nil { //&& dbvNvo.IsPopulated() {
+        nvoCreated = true
+        if log.V(3) {
+            log.Info("NVO already created. NVO:",dbvNvo)
+        }
+    }
+
 	if vxlanIntfName != "" {
 		var VXLAN_TUNNEL_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL"}
 		dbv, err := reqP.db.GetEntry(VXLAN_TUNNEL_TABLE_TS, db.Key{[]string{vxlanIntfName}})
@@ -867,7 +879,9 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 		dbV2.Field["source_vtep"] = *(reqP.intfObject.Name)
 		evpnNvoTblMap["nvo1"] = dbV2
 		res_map["VXLAN_TUNNEL"] = vxlanTunnelTblMap
-		res_map["EVPN_NVO"] = evpnNvoTblMap
+        if !nvoCreated {
+            res_map["EVPN_NVO"] = evpnNvoTblMap
+        }
 	}
 	
 	if log.V(3) {
@@ -1556,7 +1570,7 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 	} else if strings.HasPrefix(niName, "Vrf") {
 		tblName = "VRF"
 	} else {
-		log.Errorf("Invalid Network Instance name: %s", niName)
+		log.Warningf("Invalid Network Instance name: %s", niName)
 		return tlerr.InvalidArgs("Invalid Network Instance name: %s", niName)
 	}
 
@@ -1634,6 +1648,13 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 					mapNameList := strings.Split(dbkey.Get(1), "_")
 					vniNum, _ := strconv.ParseUint(mapNameList[1], 10, 32)
 					vniId = uint32(vniNum)
+					dbVlanName := mapNameList[2]
+                    if (strings.Compare(niName, dbVlanName) != 0) {
+                        continue
+                    } 
+                    if log.V(3) {
+	                    log.Infof("Matching niName:%v dbVlanName:%v", niName, dbVlanName)
+                    }
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := configDb.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
 					if err != nil {

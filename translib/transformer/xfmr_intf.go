@@ -56,6 +56,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_eth_auto_neg_xfmr", DbToYang_intf_eth_auto_neg_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_fec_xfmr", DbToYang_intf_eth_port_fec_xfmr)
+    XlateFuncBind("DbToYang_intf_eth_port_unreliable_los_xfmr", DbToYang_intf_eth_port_unreliable_los_xfmr)
     XlateFuncBind("YangToDb_intf_eth_port_config_xfmr", YangToDb_intf_eth_port_config_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_config_xfmr", DbToYang_intf_eth_port_config_xfmr)
     XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
@@ -72,12 +73,12 @@ func init () {
     XlateFuncBind("DbToYang_subintf_ipv6_tbl_key_xfmr", DbToYang_subintf_ipv6_tbl_key_xfmr)
     XlateFuncBind("YangToDb_subintf_ip_addr_key_xfmr", YangToDb_subintf_ip_addr_key_xfmr)
     XlateFuncBind("DbToYang_subintf_ip_addr_key_xfmr", DbToYang_subintf_ip_addr_key_xfmr)
-    XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
+    /* XlateFuncBind("DbToYang_igmp_tbl_key_xfmr", DbToYang_igmp_tbl_key_xfmr)
     XlateFuncBind("YangToDb_igmp_tbl_key_xfmr", YangToDb_igmp_tbl_key_xfmr)
     XlateFuncBind("DbToYang_igmp_mcastgrpaddr_fld_xfmr", DbToYang_igmp_mcastgrpaddr_fld_xfmr)
     XlateFuncBind("YangToDb_igmp_mcastgrpaddr_fld_xfmr", YangToDb_igmp_mcastgrpaddr_fld_xfmr)
     XlateFuncBind("DbToYang_igmp_srcaddr_fld_xfmr", DbToYang_igmp_srcaddr_fld_xfmr)
-    XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr)
+    XlateFuncBind("YangToDb_igmp_srcaddr_fld_xfmr", YangToDb_igmp_srcaddr_fld_xfmr) */
     XlateFuncBind("rpc_clear_counters", rpc_clear_counters)
     XlateFuncBind("rpc_oc_clear_counters", rpc_oc_clear_counters)
     XlateFuncBind("rpc_clear_ip", rpc_clear_ip)
@@ -86,7 +87,6 @@ func init () {
     XlateFuncBind("intf_pre_xfmr", intf_pre_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_ip_addr_xfmr", YangToDb_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("DbToYang_routed_vlan_ip_addr_xfmr", DbToYang_routed_vlan_ip_addr_xfmr)
-    XlateFuncBind("DbToYang_intf_description_xfmr", DbToYang_intf_description_xfmr)
     XlateFuncBind("Subscribe_intf_ip_addr_xfmr", Subscribe_intf_ip_addr_xfmr)
     XlateFuncBind("Subscribe_routed_vlan_ip_addr_xfmr", Subscribe_routed_vlan_ip_addr_xfmr)
 }
@@ -97,6 +97,7 @@ const (
     PORT_ADMIN_STATUS  = "admin_status"
     PORT_SPEED         = "speed"
     PORT_FEC           = "fec"
+    PORT_UNRELIABLE_LOS = "override_unreliable_los"
     PORT_LANES         = "lanes"
     PORT_DESC          = "description"
     PORT_OPER_STATUS   = "oper_status"
@@ -171,7 +172,7 @@ var IntfTypeTblMap = map[E_InterfaceType]IntfTblData {
     },
     IntfTypeLoopback : IntfTblData {
        cfgDb:TblData{portTN:"LOOPBACK", intfTN: "LOOPBACK_INTERFACE", keySep: PIPE},
-       appDb:TblData{intfTN: "INTF_TABLE", keySep: COLON},
+       appDb:TblData{portTN:"LOOPBACK_TABLE", intfTN: "INTF_TABLE", keySep: COLON},
    },
 }
 
@@ -202,6 +203,12 @@ var yangToDbFecMap = map[ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE] string
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_AUTO     : "default",
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_RS       : "rs",
     ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_FC       : "fc",
+}
+
+var yangToDbLosMap = map[ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE] string {
+    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF  : "off",
+    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_ON   : "on",
+    ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_AUTO : "auto",
 }
 
 type E_InterfaceType  int64
@@ -991,9 +998,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	      }
 		}
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
-        tblList = append(tblList, intTbl.CountersHdl.CountersTN)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/description") {
-	tblList = append(tblList, intTbl.cfgDb.portTN)
+        tblList = append(tblList, "NONE")
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state") {
@@ -1567,6 +1572,47 @@ func getDbToYangFec(fec string) (ocbinds.E_OpenconfigPlatformTypes_FEC_MODE_TYPE
     return portFec, err
 }
 
+var DbToYang_intf_eth_port_unreliable_los_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    intfType, _, ierr := getIntfTypeByName(inParams.key)
+    if intfType == IntfTypeUnset || ierr != nil {
+        log.Info("DbToYang_intf_eth_port_unreliable_los_xfmr - Invalid interface type IntfTypeUnset");
+        return result, errors.New("Invalid interface type IntfTypeUnset");
+    }
+    if IntfTypeEthernet != intfType {
+           return result, nil
+    }
+    intTbl := IntfTypeTblMap[intfType]
+
+    tblName, _ := getPortTableNameByDBId(intTbl, inParams.curDb)
+    pTbl := data[tblName]
+    prtInst := pTbl[inParams.key]
+    los, ok := prtInst.Field[PORT_UNRELIABLE_LOS]
+    portLos := ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF
+    if ok {
+        portLos, err = getDbToYangLos(los)
+        result["port-unreliable-los"] = ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE.ΛMap(portLos)["E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE"][int64(portLos)].Name
+    } else {
+        log.Info("Unreliable los field not found in DB")
+    }
+    return result, err
+}
+
+func getDbToYangLos(los string) (ocbinds.E_OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE, error) {
+    portLos := ocbinds.OpenconfigIfEthernetExt2_UNRELIABLE_LOS_MODE_TYPE_UNRELIABLE_LOS_MODE_OFF
+    var err error = errors.New("Unreliable los mode not found in db")
+    for k, v := range yangToDbLosMap {
+        if los == v {
+            portLos = k
+            err = nil
+        }
+    }
+    return portLos, err
+}
+
 func getDbToYangSpeed (speed string) (ocbinds.E_OpenconfigIfEthernet_ETHERNET_SPEED, error) {
     portSpeed := ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN
     var err error = errors.New("Not found in port speed map")
@@ -1687,7 +1733,6 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 
     if idx != "0"  {
         errStr := "Invalid sub-interface index: " + idx
-        log.Error(errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return idx, err
     }
@@ -1769,11 +1814,15 @@ func intf_ip_addr_del (d *db.DB , ifName string, tblName string, subIntf *ocbind
                             if ok && secVal == "true" {
                                 if isSec {
                                     intfIpMap[k] = v
+                                } else {
+                                    errStr := "No such address (" + k + ") configured on this interface as primary address"
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
                                 }
                             } else {
                                 if isSec {
                                     log.Errorf("Secondary IPv4 Address : %s for interface : %s doesn't exist!", ip, ifName)
-                                    return nil, nil
+                                    errStr := "No such address (" + k + ") configured on this interface as secondary address"
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
                                 }
                                 // Primary IPv4 delete
                                 ifIpMap, _ := getIntfIpByName(d, tblName, ifName, true, false, "")
@@ -1963,11 +2012,12 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
         }
     }
 
-    vlanIntfcount := 0
-    _ = interfaceIPcount(tblName, d, &ifName, &vlanIntfcount)
+    vlanIntfCount := 0
+    _ = interfaceIPcount(tblName, d, &ifName, &vlanIntfCount)
     var data db.Value
 
     // There is atleast one IP Address Configured on Vlan Intf
+    // Add the key "<ifname>|<IP>" to the Map
     if len(intfIpMap) > 0 {
         if _, ok := vlanIntfmap[tblName]; !ok {
             vlanIntfmap[tblName] = make (map[string]db.Value)
@@ -1980,27 +2030,30 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
     }
 
     // Case-1: Last IP Address getting deleted on Vlan Interface
-    // Case-2: Interface Vlan getting deleted with no IP addresses configured
-    if (vlanIntfcount - len(intfIpMap)) == 1 {
+    // Case-2: Interface Vlan getting deleted with L3 Attributes Present
+    if (vlanIntfCount - len(intfIpMap)) == 1 {
+        sagIpKey, _ := d.GetKeysByPattern(&db.TableSpec{Name: "SAG"}, ifName+"|*")
         IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:tblName+"|"+ifName})
         if err != nil {
             return nil, errors.New("Entry "+tblName+"|"+ifName+" missing from ConfigDB")
         }
         IntfMap := IntfMapObj.Field
-        // Case-1: If there one last L3 attribute present under "VLAN_INTERFACE|<Vlan>" (or)
-        if len(IntfMap) == 1 {
-            if _, ok := vlanIntfmap[tblName]; !ok {
-                vlanIntfmap[tblName] = make (map[string]db.Value)
-	    }
+        // NULL indicates atleast one a) IP Address Config or b) SAG IP Config
+        // So delete only when it is the Last IP and no SAG Config
+        if len(IntfMap) == 1 &&   len(sagIpKey) == 0 {
             if _, ok := IntfMap["NULL"]; ok {
+                if _, ok := vlanIntfmap[tblName]; !ok {
+                    vlanIntfmap[tblName] = make (map[string]db.Value)
+                }
                 vlanIntfmap[tblName][ifName] = data
             }
         }
         // Case-2: If deletion at parent container(routedVlanIntf)
-        if routedVlanIntf == nil {
+        // Delete it only when no SAG Config is present
+        if routedVlanIntf == nil &&  len(sagIpKey) == 0 {
             if _, ok := vlanIntfmap[tblName]; !ok {
                 vlanIntfmap[tblName] = make (map[string]db.Value)
-	    }
+            }
             vlanIntfmap[tblName][ifName] = data
         }
     }
@@ -3170,7 +3223,8 @@ func deleteLoopbackIntf(inParams *XfmrParams, loName *string) error {
     if err != nil || !IntfMapObj.IsPopulated() {
         errStr := "Retrieving data from LOOPBACK table for Loopback: " + *loName + " failed!"
         log.Errorf(errStr)
-        return tlerr.InvalidArgsError{Format:errStr}
+        // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+        return nil
     }
     /* Validate L3 config only if operation is not delete */
     if inParams.oper != DELETE {
@@ -3202,7 +3256,10 @@ func getIntfIpByName(dbCl *db.DB, tblName string, ifName string, ipv4 bool, ipv6
     }
     log.V(3).Info("Updating Interface IP Info from DB to Internal DS for Interface Name : ", ifName)
 
-    keys,err := doGetAllIpKeys(dbCl, &db.TableSpec{Name:tblName})
+    keys, err := doGetIntfIpKeys(dbCl, tblName , ifName)
+    if log.V(3) {
+	log.Infof("Found %d keys for (%v)(%v)", len(keys), tblName, ifName)
+    }
     if( err != nil) {
         return intfIpMap, err
     }
@@ -3495,23 +3552,11 @@ func validIP(ip net.IP) bool {
     return true
 }
 
-/* Get all keys for given interface tables */
-func doGetAllIpKeys(d *db.DB, dbSpec *db.TableSpec) ([]db.Key, error) {
-    var keys []db.Key
-    intfTable, err := d.GetTable(dbSpec)
-    if err != nil {
-        return keys, err
-    }
-    keys, err = intfTable.GetKeys()
-    log.Infof("Found %d INTF table keys", len(keys))
-
-    return keys, err
-}
-
 /* Get all IP keys for given interface */
 func doGetIntfIpKeys(d *db.DB, tblName string, intfName string) ([]db.Key, error) {
-    ipKeys, err := d.GetKeys(&db.TableSpec{Name: tblName+"|"+intfName})
-    log.Info("doGetIntfIpKeys for interface: ", intfName, " - ", ipKeys)
+    ts := db.TableSpec{Name: tblName + d.Opts.KeySeparator + intfName}
+    ipKeys, err := d.GetKeys(&ts)
+    log.Infof("doGetIntfIpKeys for %s with %v - %v", intfName, ts, ipKeys)
     return ipKeys, err
 }
 
@@ -4336,7 +4381,7 @@ func getDefaultSpeed(d *db.DB, ifName string) int {
 }
 
 
-// YangToDb_intf_eth_port_config_xfmr handles port-speed, fec, auto-neg and aggregate-id config.
+// YangToDb_intf_eth_port_config_xfmr handles port-speed, fec, unreliable-los, auto-neg and aggregate-id config.
 var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     var lagStr string
@@ -4452,8 +4497,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                     log.Infof("%s is member of %s", ifName, *lagId)
                 }
                 if lagId == nil || err != nil {
-                    errStr := "Retrieveing PortChannel associated with Interface: " + ifName + " failed!"
-                    return nil, errors.New(errStr)
+                    return nil, nil
                 }
                 lagStr = *lagId
        }/* End of switch case */
@@ -4469,44 +4513,41 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
        }
     }
     /* Handle PortSpeed config */
-    if (strings.Contains(inParams.requestUri, "port-speed")) {
+    if intfObj.Ethernet.Config.PortSpeed != 0 {
         if isPortGroupMember(ifName) {
             err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
         }
-        if intfObj.Ethernet.Config.PortSpeed != 0 {
-            res_map := make(map[string]string)
-            value := db.Value{Field: res_map}
-            intTbl := IntfTypeTblMap[intfType]
+        res_map := make(map[string]string)
+        value := db.Value{Field: res_map}
+        intTbl := IntfTypeTblMap[intfType]
 
-            portSpeed := intfObj.Ethernet.Config.PortSpeed
-            val, ok := intfOCToSpeedMap[portSpeed]
-            if ok {
+        portSpeed := intfObj.Ethernet.Config.PortSpeed
+        val, ok := intfOCToSpeedMap[portSpeed]
+        if ok {
+            err = validateSpeed(inParams.d, ifName, val)
+            if err == nil {
+                res_map[PORT_SPEED] = val
+            }
+        } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+            defSpeed := getDefaultSpeed(inParams.d, ifName)
+            log.Info(" defSpeed  ", defSpeed)
+            if defSpeed != 0 {
+                val = strconv.FormatInt(int64(defSpeed), 10)
                 err = validateSpeed(inParams.d, ifName, val)
                 if err == nil {
                     res_map[PORT_SPEED] = val
                 }
-            } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
-                defSpeed := getDefaultSpeed(inParams.d, ifName)
-                log.Info(" defSpeed  ", defSpeed)
-                if defSpeed != 0 {
-                    val = strconv.FormatInt(int64(defSpeed), 10)
-                    err = validateSpeed(inParams.d, ifName, val)
-                    if err == nil {
-                        res_map[PORT_SPEED] = val
-                    }
-                } else {
-                    err = tlerr.NotSupported("Default speed not available")
-                }
             } else {
-                err = tlerr.InvalidArgs("Invalid speed %s", val)
+                err = tlerr.NotSupported("Default speed not available")
             }
-
-            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
-                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
-            }
-            memMap[intTbl.cfgDb.portTN][ifName] = value
-
+        } else {
+            err = tlerr.InvalidArgs("Invalid speed %s", val)
         }
+
+        if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
+            memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+        }
+        memMap[intTbl.cfgDb.portTN][ifName] = value
     }
 
     /* Handle Port FEC config */
@@ -4563,6 +4604,32 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
             }
             log.Infof("Finishing map assign  %s", fec_val)
+            memMap[intTbl.cfgDb.portTN][ifName] = value
+        }
+    }
+
+    /* unreliable los mode */
+    if (strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-unreliable-los")) {
+        res_map := make(map[string]string)
+        value := db.Value{Field: res_map}
+        intTbl := IntfTypeTblMap[intfType]
+
+        portLos := intfObj.Ethernet.Config.PortUnreliableLos
+
+        los_val, ok := yangToDbLosMap[portLos]
+
+        if !ok {
+            err = tlerr.InvalidArgs("Invalid unreliable los %s", portLos)
+            log.Errorf("Did not find valid unreliable los configuration entry")
+        } else {
+            /* Need the number of lanes */
+            log.Infof("Configuring unreliable los of port %s to %s", ifName, los_val)
+            res_map[PORT_UNRELIABLE_LOS] = los_val
+            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
+                log.Infof("Creating map entry", los_val)
+                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+            }
+            log.Infof("Finishing map assign  %s", los_val)
             memMap[intTbl.cfgDb.portTN][ifName] = value
         }
     }
@@ -4864,7 +4931,7 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     return res_map, nil
 }
 
-var YangToDb_igmp_mcastgrpaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+/* var YangToDb_igmp_mcastgrpaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	log.Info("YangToDb_igmp_mcastgrpaddr_xfmr: ", inParams.key)
         res_map["enable"] = "true"
@@ -4943,40 +5010,5 @@ var DbToYang_igmp_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[
     var err error
 
     return nil, err
-}
-
-var DbToYang_intf_description_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    var err error
-    result := make(map[string]interface{})
-
-    data := (*inParams.dbDataMap)[db.ConfigDB]
-
-    intfType, _, ierr := getIntfTypeByName(inParams.key)
-    if intfType == IntfTypeUnset || ierr != nil {
-        log.Info("DbToYang_intf_description_xfmr - Invalid interface type IntfTypeUnset");
-        return result, errors.New("Invalid interface type IntfTypeUnset");
-    }
-    if IntfTypeVxlan == intfType {
-            return result, nil
-    }
-    intTbl := IntfTypeTblMap[intfType]
-
-    tblName, _ := getPortTableNameByDBId(intTbl, db.ConfigDB)
-    if _, ok := data[tblName]; !ok {
-        log.Info("DbToYang_intf_description_xfmr table not found : ", tblName)
-        return result, errors.New("table not found : " + tblName)
-    }
-
-    pTbl := data[tblName]
-    if _, ok := pTbl[inParams.key]; !ok {
-        log.Info("DbToYang_intf_description_xfmr Interface not found : ", inParams.key)
-        return result, errors.New("Interface not found : " + inParams.key)
-    }
-    prtInst := pTbl[inParams.key]
-    descStr := prtInst.Field["description"]
-
-    result["description"] = descStr
-
-    return result, err
-}
+} */
 

@@ -894,6 +894,7 @@ module openconfig-bgp-ext {
       "Configuration data for allow own AS under neighbor group address family";
       leaf enabled {
           type boolean;
+          default false;
           description
               "This leaf indicates whether to accept as-path update with local AS present in it.";
       }
@@ -977,6 +978,7 @@ module openconfig-bgp-ext {
       "Configuration data for route flap damping under global level";
       leaf enabled {
           type boolean;
+          default false;
           description
               "This leaf indicates whether route flap damping is enabled for
               this AFI-SAFI";
@@ -2572,5 +2574,20 @@ deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:p
           default 60;
       }
   }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:timers/oc-netinst:config/oc-netinst:minimum-advertisement-interval {
+      sonic-codegen:lint-ignore "Deviated to be aligned with other vendors.";
+      deviate replace {
+          default 0;
+      }
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:timers/oc-netinst:config/oc-netinst:minimum-advertisement-interval {
+      sonic-codegen:lint-ignore "Deviated to be aligned with other vendors.";
+      deviate replace {
+          default 0;
+      }
+  }
+
 
 }
