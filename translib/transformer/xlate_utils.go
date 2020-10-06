@@ -658,6 +658,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 xfmrLogInfoAll("path elements are : %v", pathList)
 	 for _, k := range pathList {
 		 curPathWithKey += k
+		 callKeyXfmr := true
 		 yangXpath, _ := XfmrRemoveXPATHPredicates(curPathWithKey)
 		 xpathInfo, ok := xYangSpecMap[yangXpath]
 		 if ok {
@@ -675,6 +676,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr += keySeparator
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
+				 if oper == DELETE {
+					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
+						callKeyXfmr = false
+					}
+				 }
+				 if callKeyXfmr {
 					 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 					 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 					 if oper == GET {
@@ -694,6 +701,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 }
 						 keyStr = ret
 					 }
+					 if oper == DELETE {
+						keyXfmrCache[curPathWithKey] = keyStr
+					 }
+				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
 					 keyStr += *xYangSpecMap[yangXpath].keyName
 				 } else {
@@ -709,6 +720,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
+				 if oper == DELETE {
+					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
+						callKeyXfmr = false
+					}
+				 }
+			   if callKeyXfmr {
 				 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 				 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 				 if oper == GET {
@@ -728,6 +745,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 					 keyStr = ret
 				 }
+				 if oper == DELETE {
+					keyXfmrCache[curPathWithKey] = keyStr
+				 }
+			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {
 				 keyStr += *xYangSpecMap[yangXpath].keyName
 			 }
@@ -1272,15 +1293,33 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 	err := fmt.Errorf("Unable to extract leaf-list instance value for uri - %v", uri)
 
 	xpath, xerr := XfmrRemoveXPATHPredicates(uri)
-	specInfo, ok := xYangSpecMap[xpath]
-	if !ok {
-		return leafListInstVal, xerr
-	}
-
-	yangType = yangTypeGet(specInfo.yangEntry)
-	if !(yangType == YANG_LEAF_LIST) {
-		return leafListInstVal, err
-	}
+        if !isSonicYang(uri) {
+                specInfo, ok := xYangSpecMap[xpath]
+                if !ok {
+                        return leafListInstVal, xerr
+                }
+                yangType = yangTypeGet(specInfo.yangEntry)
+                if !(yangType == YANG_LEAF_LIST) {
+                        return leafListInstVal, err
+                }
+        } else {
+                tokens:= strings.Split(xpath, "/")
+                fieldName := ""
+                tableName := ""
+                if len(tokens) > SONIC_FIELD_INDEX {
+                        fieldName = tokens[SONIC_FIELD_INDEX]
+                        tableName = tokens[SONIC_TABLE_INDEX]
+                }
+                dbSpecField := tableName + "/" + fieldName
+                _, ok := xDbSpecMap[dbSpecField]
+                if ok {
+                        yangType := xDbSpecMap[dbSpecField].fieldType
+                        // terminal node case
+                        if !(yangType == YANG_LEAF_LIST) {
+                                return leafListInstVal, err
+                        }
+                }
+        }
 
 	//Check if uri has Leaf-list value
 	if ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {

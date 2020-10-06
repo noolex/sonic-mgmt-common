@@ -9,6 +9,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
     "encoding/json"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     log "github.com/golang/glog"
 )
 
@@ -55,7 +56,9 @@ var rpc_clear_fdb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     }
     if value, ok := mapData["PORT"].(string) ; ok {
         valLst[0]= "PORT"
-        valLst[1] = value
+        /* If Alias mode is enabled, get native name from alias name */
+        cvtdName := utils.GetNativeNameFromUIName(&value)
+        valLst[1] = *cvtdName
     }
     data, err = json.Marshal(valLst)
 
@@ -149,6 +152,27 @@ func getFdbMacTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbinds
     return fdbMacTableObj
 }
 
+func validateMacAddr (macAdd string) string {
+    macAddr := strings.ToLower(macAdd)
+    errStr := ""
+    if macAddr == "00:00:00:00:00:00" {
+        errStr = "Invalid (Zero) MAC address"
+    } else if macAddr == "ff:ff:ff:ff:ff:ff" {
+        errStr = "Invalid (Broadcast) MAC address"
+    } else {
+        macSplit := strings.Split(macAddr, ":")
+        macHi, err := strconv.ParseUint(macSplit[0], 16, 8)
+        if err != nil {
+            errStr = "Invalid MAC address"
+        } else if macHi & 0x01 == 0x01 {
+            errStr = "Invalid (Multicast) MAC address"
+        } else {
+            return errStr
+        }
+    }
+    return errStr
+}
+
 var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     pathInfo := NewPathInfo(inParams.uri)
     macAddr := pathInfo.Var("mac-address")
@@ -161,15 +185,24 @@ var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
     }
 
     if strings.HasPrefix(instance, "Vrf") || strings.HasPrefix(instance, "mgmt") {
-        log.Error("YangToDb_fdb_mac_table_xfmr Failed to OP:",inParams.oper," FDB on VRF:", instance)
+        log.Info("YangToDb_fdb_mac_table_xfmr Ignoring OP:",inParams.oper," for FDB on VRF:", instance)
         return nil, err
     }
 
     log.Info("YangToDb_fdb_mac_table_xfmr =>", inParams)
 
-    key := "Vlan" + vlan + "|" + macAddr
     var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
     var fdbTblMap map[string]db.Value = make(map[string]db.Value)
+
+    if len(pathInfo.Vars) < 3  {
+        if (inParams.oper == DELETE) {
+           /* For parent level DELETE just return FDB table" */
+           res_map["FDB"] = fdbTblMap
+           return res_map, nil
+        }
+    }
+
+    key := "Vlan" + vlan + "|" + macAddr
     dbV := db.Value{Field: make(map[string]string)}
 
     macTbl := getFdbMacTableRoot(inParams.ygRoot, instance, true)
@@ -188,6 +221,11 @@ var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         fallthrough
     case UPDATE:
         if targetUriPath == "/openconfig-network-instance:network-instances/network-instance/fdb/mac-table/entries/entry/interface/interface-ref/config"{
+            errStr := validateMacAddr(macAddr)
+            if errStr != "" {
+                log.Error(errStr)
+                return nil, tlerr.InvalidArgsError{Format:errStr}
+            }
             vlanId, _ := strconv.Atoi(vlan)
             var mcEntryKey ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Fdb_MacTable_Entries_Entry_Key
             mcEntryKey.MacAddress = macAddr

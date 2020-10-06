@@ -236,7 +236,7 @@ func getRelayCountersFromFile (fileName string, counterObj interface{}) error {
     jsonFile, err := os.Open(tmpFileName)
     if err != nil {
         log.Warningf("opening of dhcp counters json file failed")
-        errStr := "Information not available"
+        errStr := "Counters Information not available"
         terr := tlerr.NotFoundError{Format: errStr}
         return terr
     }
@@ -249,7 +249,7 @@ func getRelayCountersFromFile (fileName string, counterObj interface{}) error {
     err = json.Unmarshal(byteValue, counterObj)
     if err != nil {
         log.Warningf("unmarshal of the json counters failed")
-        errStr := "json.Unmarshal failed"
+        errStr := "Unmarshal of counters file failed"
         terr := tlerr.InternalError{Format: errStr}
         return terr
     }
@@ -532,7 +532,8 @@ func getDhcpDataFromDb(aliasName string, relayAgentObj *ocbinds.OpenconfigRelayA
    }
    if entry.Has("dhcp_relay_src_intf")  {
      srcIntf := entry.Get("dhcp_relay_src_intf")
-     raObj.Config.SrcIntf = &srcIntf
+     srcIntfName := *utils.GetUINameFromNativeName(&srcIntf)
+     raObj.Config.SrcIntf = &srcIntfName
    }
    if entry.Has("dhcp_relay_vrf_select")  {
       vrfSelectVal := entry.Get("dhcp_relay_vrf_select")
@@ -617,7 +618,8 @@ func getDhcpv6DataFromDb(aliasName string, relayAgentObj *ocbinds.OpenconfigRela
    }
    if entry.Has("dhcpv6_relay_src_intf")  {
       srcIntf := entry.Get("dhcpv6_relay_src_intf")
-      raObj.Config.SrcIntf = &srcIntf
+      srcIntfName := *utils.GetUINameFromNativeName(&srcIntf)
+      raObj.Config.SrcIntf = &srcIntfName
    }
    if entry.Has("dhcpv6_relay_vrf_select")  {
       vrfSelectVal := entry.Get("dhcpv6_relay_vrf_select")
@@ -637,19 +639,17 @@ func getDhcpv6DataFromDb(aliasName string, relayAgentObj *ocbinds.OpenconfigRela
 //Helper function to fetch relay info for a given interface
 func getRelayAgentInfoForInterface (ifName string, inParams XfmrParams, relayAgentObj *ocbinds.OpenconfigRelayAgent_RelayAgent) error {
    var err error
-   var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
 
    if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent/dhcpv6")) {
-       err = getDhcpv6DataFromDb(ifName, relayAgentObj, configDb)
+       err = getDhcpv6DataFromDb(ifName, relayAgentObj, inParams.d)
    } else if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent/dhcp")) {
-       err = getDhcpDataFromDb(ifName, relayAgentObj, configDb)
+       err = getDhcpDataFromDb(ifName, relayAgentObj, inParams.d)
    } else if (strings.HasPrefix(inParams.requestUri, "/openconfig-relay-agent:relay-agent")) {
        //top most level so display v4 and v6 data
-       _ = getDhcpDataFromDb(ifName, relayAgentObj, configDb)
-       _ = getDhcpv6DataFromDb(ifName, relayAgentObj, configDb)
+       _ = getDhcpDataFromDb(ifName, relayAgentObj, inParams.d)
+       _ = getDhcpv6DataFromDb(ifName, relayAgentObj, inParams.d)
    }
 
-   configDb.DeleteDB()
    return err
 }
 
@@ -766,13 +766,26 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
        ifName := *utils.GetNativeNameFromUIName(&aliasName)
 
        if ifName == "" {
-           errStr := "ifName is NULL"
+           errStr := "Interface name is not specified"
            err = tlerr.InvalidArgsError{Format: errStr}
            return err
        }
 
        tblList = getRelayAgentIntfTblByType(ifName)
        log.Info("replaceDhcpObjectAttributes tblList: ", tblList)
+
+       intfObj := relayAgentObj.Dhcp.Interfaces
+       intf := intfObj.Interface[aliasName]
+
+       entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
+
+       //continue only if there is data to proceed 
+       if !entry.Has("dhcp_servers@") && (len(intf.Config.HelperAddress)==0){
+           //DHCP address is not already provisioned and is not being provisioned either
+           errStr := "DHCP Relay address is not configured on the interface"
+           err = tlerr.InvalidArgsError{Format: errStr}
+           return err
+       }
 
        ipTbl := tblList
        if ( ipTbl == "VLAN") {
@@ -788,9 +801,6 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
        if !ok {
           updateMap[db.ConfigDB][tblList][ifName] = db.Value{Field: make(map[string]string)}
        }
-
-       intfObj := relayAgentObj.Dhcp.Interfaces
-       intf := intfObj.Interface[aliasName]
 
        log.V(2).Info("intf:", intf)
 
@@ -814,7 +824,7 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
        
         if (!getIntfIpInfo(inParams.d, ipTbl, ifName, true, false)) {
           if !(strings.HasPrefix(ifName, "Vlan") && ipConf) {
-             errStr := "Dhcp Relay config not allowed on a non routing interface."
+             errStr := "DHCP Relay config not allowed on a non routing interface."
              err :=  tlerr.InvalidArgsError{Format: errStr}
              return err
           }
@@ -847,7 +857,7 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
             log.V(2).Info("entry:", entry)
             if (!entry.Has("dhcp_relay_src_intf")) {
                if (intf.Config.SrcIntf == nil) {
-                errStr := "Src Intf needs to be configured before enabling link-select"
+                errStr := "Source interface needs to be configured before enabling link-select"
                 err = tlerr.InvalidArgsError{Format: errStr}
                 return err
                }
@@ -871,11 +881,12 @@ func replaceDhcpObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.Op
              ipTbl = "VLAN_INTERFACE"
           }
           if (!getIntfIpInfo(inParams.d, ipTbl, *intf.Config.SrcIntf, true, false)) {
-          errStr := "No IP address configured on the source interface"
+          errStr := "IP address is not configured on the source interface"
           err :=  tlerr.InvalidArgsError{Format: errStr}
           return err
         }
-	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_src_intf"] = *intf.Config.SrcIntf
+	srcIntfName := *utils.GetNativeNameFromUIName(intf.Config.SrcIntf)
+	updateMap[db.ConfigDB][tblList][ifName].Field["dhcp_relay_src_intf"] = srcIntfName
 	}
 
 	//vrf
@@ -933,7 +944,7 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
    for aliasName := range relayAgentObj.Dhcpv6.Interfaces.Interface {
 
        if aliasName == "" {
-           errStr := "ifName is NULL"
+           errStr := "Interface name is NULL"
            err = tlerr.InvalidArgsError{Format: errStr}
            return err
        }
@@ -942,6 +953,19 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
 
        tblList = getRelayAgentIntfTblByType(ifName)
        log.Info("replaceDhcpV6ObjectAttributes, tblList: ", tblList)
+
+       intfObj := relayAgentObj.Dhcpv6.Interfaces
+       intf := intfObj.Interface[aliasName]
+
+       entry, _ := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
+
+       //continue only if there is data to proceed 
+       if !entry.Has("dhcpv6_servers@") && (len(intf.Config.HelperAddress)==0){
+           //DHCP address is not already provisioned and is not being provisioned either
+           errStr := "DHCP Relay address is not configured on the interface"
+           err = tlerr.InvalidArgsError{Format: errStr}
+           return err
+       }
 
        if updateMap[db.ConfigDB][tblList] == nil {
          //allocate only for the first time
@@ -952,9 +976,6 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
        if !ok {
           updateMap[db.ConfigDB][tblList][ifName] = db.Value{Field: make(map[string]string)}
        }
-
-       intfObj := relayAgentObj.Dhcpv6.Interfaces
-       intf := intfObj.Interface[aliasName]
 
        log.V(2).Info("intf:", intf)
 
@@ -982,7 +1003,7 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
         }
         if (!getIntfIpInfo(inParams.d, ipTbl, ifName, false, true)) {
           if !(strings.HasPrefix(ifName, "Vlan") && ipConf) {
-             errStr := "IPv6 address not configured on this interface."
+             errStr := "IPv6 address not configured on the interface."
              err :=  tlerr.InvalidArgsError{Format: errStr}
              return err
           }
@@ -1018,12 +1039,13 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
               tblName = "VLAN_INTERFACE"
            }
            if (!getIntfIpInfo(inParams.d, tblName, *intf.Config.SrcIntf, false, true)) {
-           errStr := "No IPv6 address configured on the source interface"
+           errStr := "IPv6 address is not configured on the source interface"
            err :=  tlerr.InvalidArgsError{Format: errStr}
            return err
            }
 
-	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = *intf.Config.SrcIntf
+	   srcIntfName := *utils.GetNativeNameFromUIName(intf.Config.SrcIntf)
+	   updateMap[db.ConfigDB][tblList][ifName].Field["dhcpv6_relay_src_intf"] = srcIntfName
        }
 
        //vrf
@@ -1068,7 +1090,6 @@ func replaceDhcpV6ObjectAttributes (inParams XfmrParams, relayAgentObj *ocbinds.
 func deleteRelayAgentObjectAttributes(inParams XfmrParams, aliasName string) error {
    var tblList string   
    var fieldStr [] string
-   var configDb, _ = db.NewDB(getDBOptions(db.ConfigDB))
    var helperAddress string
    var index uint8
    var err error
@@ -1089,10 +1110,9 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, aliasName string) err
    tblList = getRelayAgentIntfTblByType(ifName)
    log.V(2).Info(tblList)
 
-   entry, dbErr := configDb.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
-   configDb.DeleteDB()
+   entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:tblList}, db.Key{Comp: []string{ifName}})
    if dbErr != nil {
-     errStr := "Failed to read dhcp relay obj from config DB, " + tblList + " " + ifName
+     errStr := "Failed to read DHCP relay obj from config DB, " + tblList + " " + ifName
      err = tlerr.InvalidArgsError{Format: errStr}
      return err
    }
@@ -1179,7 +1199,7 @@ func deleteRelayAgentObjectAttributes(inParams XfmrParams, aliasName string) err
        log.V(2).Info("entry:", entry)
        if entry.IsPopulated() {
           if (entry.Field["dhcp_relay_link_select"]) == "enable" {
-             errStr := "Cannot remove src-intf when link-select is enabled"
+             errStr := "Cannot remove source-interface when link-select is enabled"
              err = tlerr.InvalidArgsError{Format: errStr}
              return err
           }

@@ -10,11 +10,12 @@ submodule openconfig-tam-flowgroups {
     import openconfig-extensions {
         prefix oc-ext;
     }
-    import openconfig-inet-types {
-        prefix oc-inet;
-    }
     import openconfig-packet-match {
         prefix oc-pkt-match-types;
+    }
+
+    import openconfig-interfaces {
+        prefix "oc-if";
     }
 
     // meta
@@ -55,7 +56,9 @@ submodule openconfig-tam-flowgroups {
               "Flow Group name, for reference from elsewhere";
         }
         leaf id {
-            type uint32;
+             type uint32 {
+                range "1..254";
+             }
             mandatory true;
             description
               "Flowgroup identifier to be used in all dataplane
@@ -69,6 +72,13 @@ submodule openconfig-tam-flowgroups {
             description
               "Indicates the priority of this flowgroup, and used when the
                specified match criterion is used for packet matching";
+        }
+        leaf-list interfaces {
+            type leafref {
+                path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            }
+            description
+              "List of interfaces associated to the flowgroup.";
         }
     }
 
@@ -102,7 +112,7 @@ submodule openconfig-tam-flowgroups {
             list flowgroup {
                 key "name";
                 description
-                  "Uniqueuly identifies a flow-group";
+                  "Uniquely identifies a flow-group";
                 leaf name {
                     type leafref {
                         path "../config/name";
@@ -134,5 +144,31 @@ submodule openconfig-tam-flowgroups {
 // data definition statements
 // augment statements
 // rpc statements
+	rpc clear-flowgroup-counters {
+		description
+			"Clear the counters of the flowgroup";
+		input {
+			leaf name {
+				type string;
+				description
+					"Name of the flowgroup for which the counters need to be cleared;
+                     when not supplied, all the Flowgroup counters are cleared";
+			}
+
+		}
+		output {
+			leaf status {
+				type int32;
+				description
+					"The status of the operation execution request.";
+			}
+			leaf-list status-detail {
+				type string;
+				description "The detailed status of the operation execution request.";
+			}
+		}
+	}
+
+
 // notification statements
 }

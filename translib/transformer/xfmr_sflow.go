@@ -78,6 +78,10 @@ const (
 
     /* Unsupported Sampling URIs */
     SAMPLING_IPFIX = "openconfig-sampling:sampling/ipfix"
+
+    /* IPv4/v6 localhost address */
+    IPV4_LOCALHOST = "127.0.0.1"
+    IPV6_LOCALHOST = "::1"
 )
 
 type Sflow struct {
@@ -172,7 +176,7 @@ var YangToDb_sflow_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[str
     }
 
     if sflowObj.Sflow.Config.Agent != nil {
-        global_map[SFLOW_GLOBAL_KEY].Field[SFLOW_AGENT_KEY] = *(sflowObj.Sflow.Config.Agent)
+        global_map[SFLOW_GLOBAL_KEY].Field[SFLOW_AGENT_KEY] = *utils.GetNativeNameFromUIName(sflowObj.Sflow.Config.Agent)
     }
 
     res_map[SFLOW_GLOBAL_TBL] = global_map
@@ -199,6 +203,11 @@ func makeColKey(uri string) (string) {
     return name
 }
 
+func validColIP (ip string) bool {
+    /* Allow localhost address for debugging purposes */
+    return ip == IPV4_LOCALHOST || ip == IPV6_LOCALHOST || validIPv4(ip) || validIPv6(ip)
+}
+
 var YangToDb_sflow_collector_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
     var err error
     res_map := make(map[string]map[string]db.Value)
@@ -220,18 +229,24 @@ var YangToDb_sflow_collector_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
         ip := NewPathInfo(inParams.uri).Var("address")
         port := NewPathInfo(inParams.uri).Var("port")
         vrf := NewPathInfo(inParams.uri).Var("vrf")
+        if !validColIP(ip) {
+            return res_map, tlerr.InvalidArgs("Invalid collector IP")
+        }
         col_map[key] = db.Value{Field: make(map[string]string)}
         col_map[key].Field[SFLOW_COL_IP_KEY] = ip
         col_map[key].Field[SFLOW_COL_PORT_KEY] = port
         col_map[key].Field[SFLOW_COL_VRF_KEY] = vrf
     } else {
         for col := range sflowObj.Sflow.Collectors.Collector {
+            if !validColIP(col.Address) {
+                return res_map, tlerr.InvalidArgs("Invalid collector IP")
+            }
             port := strconv.FormatUint(uint64(col.Port), 10)
             key = col.Address +  "_" + port +  "_" + col.Vrf
             col_map[key] = db.Value{Field: make(map[string]string)}
             col_map[key].Field[SFLOW_COL_IP_KEY] = col.Address
             col_map[key].Field[SFLOW_COL_PORT_KEY] = port
-            col_map[key].Field[SFLOW_COL_VRF_KEY] = DEFAULT_VRF_NAME
+            col_map[key].Field[SFLOW_COL_VRF_KEY] = col.Vrf
         }
     }
 
@@ -393,7 +408,7 @@ func fillSflowInfo (sflow *ocbinds.OpenconfigSampling_Sampling_Sflow,
     }
 
     if sfInfo.Agent != "" {
-        state.Agent = &sfInfo.Agent
+        state.Agent = utils.GetUINameFromNativeName(&sfInfo.Agent)
         config.Agent = state.Agent
     }
 

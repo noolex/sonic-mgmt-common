@@ -150,6 +150,49 @@ func getThresholdTypeId(v db.Value, name string) ocbinds.E_OpenconfigSystemCrm_S
     return ocbinds.OpenconfigSystemCrm_SystemCrmThresholdType_UNSET
 }
 
+// Open a new DB connection if it's unavailable from the common pool
+// Note:
+// In the case of DELETE operations, the connection pool is empty
+// In the case of GET operations, both CONFIG_DB and COUNTERS_DB are available
+func openDB(inParams XfmrParams, id db.DBNum) (*db.DB) {
+    var d *db.DB
+
+    if id >= db.MaxDB {
+        log.Infof("ERR: CRM: Invalid DB(%v)", id)
+        return nil
+    }
+    if inParams.dbs[id] != nil {
+        d = inParams.dbs[id]
+    } else {
+        log.Infof("DBG: CRM: NEW DB(%v)", id)
+        d, _ = db.NewDB(db.Options { DBNo : id })
+    }
+    switch (id) {
+    case db.ConfigDB:
+        d.Opts.KeySeparator = "|"
+        d.Opts.TableNameSeparator = "|"
+    default:
+        d.Opts.KeySeparator = ":"
+        d.Opts.TableNameSeparator = ":"
+    }
+    return d
+}
+
+// Close DB connection if it's not from the common pool
+// Note:
+// In the case of DELETE operations, the connection pool is empty
+// In the case of GET operations, both CONFIG_DB and COUNTERS_DB are available
+func closeDB(inParams XfmrParams, d *db.DB) error {
+    if d != nil {
+        id := d.Opts.DBNo
+        if inParams.dbs[id] == nil {
+            log.Infof("DBG: CRM: DEL DB(%v)", id)
+            d.DeleteDB()
+        }
+    }
+    return nil
+}
+
 var DbToYang_crm_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
 
     var info CrmThreshold
@@ -163,15 +206,14 @@ var DbToYang_crm_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) err
     inParams.key = "Config"
     tbl := db.TableSpec { Name: inParams.table }
     key := db.Key { Comp : [] string { inParams.key } }
-    d := inParams.dbs[db.ConfigDB]
-    d.Opts.KeySeparator = "|"
-    d.Opts.TableNameSeparator = "|"
+    d := openDB(inParams, db.ConfigDB)
+    defer closeDB(inParams, d)
 
     val, err := d.GetEntry(&tbl, key)
 
     if err != nil {
-        log.Infof("ERR: unable to get entry from database")
-        return err
+        log.Info("unable to get CRM config entry from database")
+        return nil
     }
 
     uri := ""
@@ -537,8 +579,6 @@ var YangToDb_crm_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
 
     value := db.Value {make(map[string]string)}
     cfgMap := make(map[string]map[string]db.Value)
-    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
-    subOpMap_del := make(map[string]map[string]db.Value)
 
     log.Infof("+++ YangToDb: crm_config_xfmr (%v) +++", inParams.uri)
 
@@ -550,10 +590,11 @@ var YangToDb_crm_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
     if strings.Contains(inParams.uri, "crm/config") {
         if inParams.oper == DELETE {
             value.Field["polling_interval"] = ""
-            subOpMap_del[tblName] = make(map[string]db.Value)
-            subOpMap_del[tblName][keyName] = value
-            subOpMap[db.ConfigDB] = subOpMap_del
-            inParams.subOpDataMap[DELETE] = &subOpMap
+            t := db.TableSpec { Name: tblName }
+            k := db.Key { Comp : [] string { keyName } }
+            d := openDB(inParams, db.ConfigDB)
+            d.DeleteEntryFields(&t, k, value)
+            closeDB(inParams, d)
         } else {
             dev := (*inParams.ygRoot).(*ocbinds.Device)
             cfg := dev.System.Crm.Config
@@ -765,10 +806,11 @@ var YangToDb_crm_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
             log.Infof("skipping unknown uri '%v'...", uri)
         }
 
-        subOpMap_del[tblName] = make(map[string]db.Value)
-        subOpMap_del[tblName][keyName] = value
-        subOpMap[db.ConfigDB] = subOpMap_del
-        inParams.subOpDataMap[DELETE] = &subOpMap
+        t := db.TableSpec { Name: tblName }
+        k := db.Key { Comp : [] string { keyName } }
+        d := openDB(inParams, db.ConfigDB)
+        d.DeleteEntryFields(&t, k, value)
+        closeDB(inParams, d)
     } else {
 
         dev := (*inParams.ygRoot).(*ocbinds.Device)
@@ -1095,7 +1137,10 @@ var DbToYang_crm_stats_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
     devObj := (*inParams.ygRoot).(*ocbinds.Device)
     ygot.BuildEmptyTree(devObj.System.Crm.Statistics)
 
-    return getCrmStats(inParams.dbs[db.CountersDB], devObj.System.Crm.Statistics)
+    d := openDB(inParams, db.CountersDB)
+    e := getCrmStats(d, devObj.System.Crm.Statistics)
+    closeDB(inParams, d)
+    return e
 }
 
 
@@ -1280,7 +1325,10 @@ var DbToYang_crm_acl_stats_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     devObj := (*inParams.ygRoot).(*ocbinds.Device)
     ygot.BuildEmptyTree(devObj.System.Crm.AclStatistics)
 
-    return getCrmAclStats(inParams.dbs[db.CountersDB], devObj.System.Crm.AclStatistics)
+    d := openDB(inParams, db.CountersDB)
+    e := getCrmAclStats(d, devObj.System.Crm.AclStatistics)
+    closeDB(inParams, d)
+    return e
 }
 
 func getCrmAclTableStats (d *db.DB, stats *ocbinds.OpenconfigSystem_System_Crm_AclTableStatistics) (error) {
@@ -1344,7 +1392,10 @@ var DbToYang_crm_acl_table_stats_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     devObj := (*inParams.ygRoot).(*ocbinds.Device)
     ygot.BuildEmptyTree(devObj.System.Crm.AclTableStatistics)
 
-    return getCrmAclTableStats(inParams.dbs[db.CountersDB], devObj.System.Crm.AclTableStatistics)
+    d := openDB(inParams, db.CountersDB)
+    e := getCrmAclTableStats(d, devObj.System.Crm.AclTableStatistics)
+    closeDB(inParams, d)
+    return e
 }
 
 var Subscribe_crm_config_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {

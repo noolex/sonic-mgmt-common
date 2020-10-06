@@ -33,7 +33,10 @@ module sonic-wred-profile {
                 sonic-ext:custom-validation ValidateAtLeastOneColorEnabled;
 
                 leaf name{
-                    type string;
+                    type string {
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+                        length 1..32;
+                    }
                 }
 
                 leaf yellow_min_threshold {

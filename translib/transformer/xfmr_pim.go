@@ -14,6 +14,7 @@ import (
 )
 
 func init () {
+    XlateFuncBind("pim_validate_proto", validate_pim_protocol)
     XlateFuncBind("YangToDb_pim_gbl_tbl_key_xfmr", YangToDb_pim_gbl_tbl_key_xfmr)
     XlateFuncBind("DbToYang_pim_intf_tbl_key_xfmr", DbToYang_pim_intf_tbl_key_xfmr)
     XlateFuncBind("YangToDb_pim_intf_tbl_key_xfmr", YangToDb_pim_intf_tbl_key_xfmr)
@@ -28,6 +29,13 @@ func init () {
     XlateFuncBind("Subscribe_pim_tib_state_xfmr", Subscribe_pim_tib_state_xfmr)
     XlateFuncBind("rpc_show_pim", rpc_show_pim)
     XlateFuncBind("rpc_clear_pim", rpc_clear_pim)
+}
+
+func validate_pim_protocol(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    proto := pathInfo.Var("name#2")
+    protoId := pathInfo.Var("identifier")
+    return protoId == "PIM" && proto == "pim"
 }
 
 func pim_exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {

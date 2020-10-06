@@ -22,10 +22,20 @@ package custom_validation
 import (
     "github.com/go-redis/redis/v7"
     "strings"
+    "reflect"
+    "strconv"
     "fmt"
     log "github.com/golang/glog"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 )
+
+const MAX_FLOWGROUPS = 253
+
+var getFeatureName = map[string]string {
+    "IFA": "IFA",
+    "DROPMONITOR": "Drop Monitor",
+    "TAILSTAMPING": "Tailstamping",
+}
 
 func log_request_info( vc * CustValidationCtxt, func_name string ) {
   log.Info(func_name, ":" ,
@@ -74,11 +84,38 @@ func CheckInSessions(vc * CustValidationCtxt, table string, identity string, nam
      return collector, used
 }
 
+func getFlowGroups(vc * CustValidationCtxt, table string, flowGroup string) (string, bool) {
+    matched := false
+    matchedFlow := ""
+    sessions, err := vc.RClient.Keys(table+"|*").Result()
+    if (err == nil) {
+        testGroup, err := vc.RClient.HGetAll("ACL_RULE|TAM|"+flowGroup).Result()
+        if (err == nil) {
+            for _, sessionKey := range sessions {
+                entry, err := vc.RClient.HGetAll(sessionKey).Result()
+                if (err == nil) {
+                    currentFlow := entry["flowgroup"]
+                    if (currentFlow != flowGroup) {
+                        currentGroup, err := vc.RClient.HGetAll("ACL_RULE|TAM|"+currentFlow).Result()
+                        if (err == nil) {
+                            delete(currentGroup, "PACKET_ACTION")
+                            matched = reflect.DeepEqual(testGroup, currentGroup)
+                            matchedFlow = currentFlow
+                            break
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return matchedFlow, matched
+}
+
 func CheckUsage(vc * CustValidationCtxt, identity string, name string) (map[string]string, bool) {
      var used bool
      var c string
      var collectors = make(map[string]string)
-     
+
      if ((identity == "collector") || (identity == "sample-rate")) {
          c, used = CheckInSessions(vc, "TAM_IFA_SESSIONS_TABLE",identity,name)
          collectors["ifa"] = c
@@ -87,7 +124,7 @@ func CheckUsage(vc * CustValidationCtxt, identity string, name string) (map[stri
          }
          c, used = CheckInSessions(vc, "TAM_DROPMONITOR_SESSIONS_TABLE",identity,name)
          collectors["dropmonitor"] = c
-         if used { 
+         if used {
              return collectors, used
          }
      } else if identity == "flowgroup" {
@@ -98,12 +135,12 @@ func CheckUsage(vc * CustValidationCtxt, identity string, name string) (map[stri
          }
          c, used = CheckInSessions(vc, "TAM_DROPMONITOR_SESSIONS_TABLE",identity,name)
          collectors["dropmonitor"] = c
-         if used { 
+         if used {
              return collectors, used
          }
          c, used = CheckInSessions(vc, "TAM_TAILSTAMPING_SESSIONS_TABLE",identity,name)
          collectors["tailstamping"] = c
-         if used { 
+         if used {
              return collectors, used
          }
      }
@@ -119,7 +156,7 @@ func(t * CustomValidation) CollectorValidation(vc * CustValidationCtxt) CVLError
         log.Info("CollectorValidation error getting old value:", err);
         return CVLErrorInfo{ErrCode: CVL_ERROR}
     }
-    
+
     thisCollector := strings.Split(vc.CurCfg.Key, "|")[1]
     if ((val != "") && (vc.CurCfg.VOp != OP_DELETE)) {
         return CVLErrorInfo{
@@ -204,6 +241,7 @@ func(t * CustomValidation) FlowgroupValidation(vc * CustValidationCtxt) CVLError
      }
 
      thisFlowgroup := strings.Split(vc.CurCfg.Key, "|")[1]
+/*
      if ((val != "") && (vc.CurCfg.VOp != OP_DELETE)) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
@@ -212,7 +250,7 @@ func(t * CustomValidation) FlowgroupValidation(vc * CustValidationCtxt) CVLError
              ErrAppTag : "flowgroup-already-exist",
          }
      }
-
+*/
      if ((val == "") && (vc.CurCfg.VOp == OP_DELETE)) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
@@ -231,6 +269,36 @@ func(t * CustomValidation) FlowgroupValidation(vc * CustValidationCtxt) CVLError
              ErrAppTag : "flowgroup-in-use",
          }
      }
+
+     if (vc.CurCfg.VOp != OP_DELETE) { 
+         var nokey []string
+         ls := redis.NewScript(`return #redis.call('KEYS', "TAM_FLOWGROUP_TABLE|*")`)
+
+         //Get current coutnt from Redis
+         redisEntries, err := ls.Run(vc.RClient, nokey).Result()
+         if err != nil {
+             return CVLErrorInfo{ErrCode: CVL_SEMANTIC_ERROR}
+         }
+
+         flowsCount := int(redisEntries.(int64))
+         //Get count from user request
+         for idx := 0; idx < len(vc.ReqData); idx++ {
+             if (vc.ReqData[idx].VOp == OP_CREATE) && (strings.HasPrefix(vc.ReqData[idx].Key, "TAM_FLOWGROUP_TABLE|")) {
+                 flowsCount = flowsCount + 1
+             }
+         }
+
+         // max flowgroups
+         if (flowsCount > MAX_FLOWGROUPS) {
+             return CVLErrorInfo{
+                 ErrCode: CVL_SEMANTIC_ERROR,
+                 ConstraintErrMsg: fmt.Sprintf("Maximum number (%d) of flowgroups are already created.", MAX_FLOWGROUPS),
+                 CVLErrDetails: "Config Validation Syntax Error",
+                 ErrAppTag: "too-many-elements",
+             }
+         }
+     }
+
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -250,13 +318,23 @@ func(t * CustomValidation) UniqueidValidation(vc * CustValidationCtxt) CVLErrorI
              }
          }
      }
-
+/*
      if ((currentSet[currentId]) && (vc.CurCfg.VOp != OP_DELETE)) {
          return CVLErrorInfo{
              ErrCode: CVL_SEMANTIC_ERROR,
              ConstraintErrMsg: fmt.Sprintf("Flowgroup with id '%s' is already created.", currentId),
              CVLErrDetails : "Flowgroup id exists.",
              ErrAppTag : "flowgroup-id-already-exist",
+         }
+     }
+*/
+     id, _ := strconv.Atoi(currentId)
+     if (((id < 2) || (id > 254)) && (vc.CurCfg.VOp != OP_DELETE)) {
+         return CVLErrorInfo{
+             ErrCode: CVL_SEMANTIC_ERROR,
+             ConstraintErrMsg: fmt.Sprintf("Invalid flowgroup id(%s), allowed range is 2-254.", currentId),
+             CVLErrDetails : "Invalid flowgroup id.",
+             ErrAppTag : "invalid-flowgroup-id",
          }
      }
 
@@ -337,31 +415,29 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
                      }
                  }
              }
-
-			if (vc.CurCfg.VOp != OP_DELETE) {
-				// Check for protocol of the collector, for IFA, it must be UDP
-				tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
-				proto, er := vc.RClient.HGet(tableName, "protocol").Result()
-				if (er != nil) {
-					log.Info("******========****** Error in Collector protocol query : ", er)
-					return CVLErrorInfo{
+             if (vc.CurCfg.VOp != OP_DELETE) {
+                 // Check for protocol of the collector, for IFA, it must be UDP
+                 tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
+                 proto, er := vc.RClient.HGet(tableName, "protocol").Result()
+                 if (er != nil) {
+                     log.Info("******========****** Error in Collector protocol query : ", er)
+                     return CVLErrorInfo{
                          ErrCode: CVL_SEMANTIC_ERROR,
                          ConstraintErrMsg: fmt.Sprintf(" Error in Collector protocol query '%s'", c),
                          CVLErrDetails : "Unknown internal error.",
                          ErrAppTag : "unknown-internal-error",
-					}
-				}
-				if (proto != "UDP") {
-					log.Info("******========****** Unsupported collector protocol for IFA : ", proto)
-					return CVLErrorInfo{
+                     }
+                 }
+                 if (proto != "UDP") {
+                     log.Info("******========****** Unsupported collector protocol for IFA : ", proto)
+                     return CVLErrorInfo{
                          ErrCode: CVL_SEMANTIC_ERROR,
                          ConstraintErrMsg: fmt.Sprintf("IFA supports only UDP protocol for collectors. Collector '%s' uses '%s'.", thisCollector, proto),
                          CVLErrDetails : "Invalid Collector protocol for IFA.",
                          ErrAppTag : "invalid-collector-protocol",
-					}
-				}
-
-			}
+                     }
+                 }
+             }
          }
      }
 
@@ -399,9 +475,9 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
      }
 
      // make sure flowgroup bound to port in case of sampler configured
-	
-	// Temporarily suspending this error checking to evaluate pre-configuration
-	/*
+
+// Temporarily suspending this error checking to evaluate pre-configuration
+/*
      if ((vc.CurCfg.VOp != OP_DELETE) && sampler_exists) {
          inPorts, _ := vc.RClient.HGet("ACL_RULE|TAM|"+thisFlowgroup, "IN_PORTS@").Result()
          if (inPorts == "") {
@@ -413,8 +489,19 @@ func(t * CustomValidation) IfaSessionValidation(vc * CustValidationCtxt) CVLErro
              }
          }
      }
-	*/
+*/
 
+     if (vc.CurCfg.VOp != OP_DELETE) {
+         flow, isMatched := getFlowGroups(vc, "TAM_IFA_SESSIONS_TABLE", thisFlowgroup)
+         if (isMatched) {
+             return CVLErrorInfo{
+                 ErrCode: CVL_SEMANTIC_ERROR,
+                 ConstraintErrMsg: fmt.Sprintf("Flowgroup (%v) with similar match criterion is already in use.", flow),
+                 CVLErrDetails : "operation-not-allowed",
+                 ErrAppTag : "operation-not-allowed",
+             }
+         }
+     }
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -483,49 +570,59 @@ func(t * CustomValidation) DropMonitorSessionValidation(vc * CustValidationCtxt)
                      }
                  }
              }
-			 if (vc.CurCfg.VOp != OP_DELETE) {
-				// Check for protocol of the collector, for DropMonitor, it must be UDP
-				tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
-				proto, er := vc.RClient.HGet(tableName, "protocol").Result()
-				if (er != nil) {
-					log.Info("******========****** Error in Collector protocol query : ", er)
-					return CVLErrorInfo{
+             if (vc.CurCfg.VOp != OP_DELETE) {
+                 // Check for protocol of the collector, for DropMonitor, it must be UDP
+                 tableName := "TAM_COLLECTORS_TABLE|"+thisCollector;
+                 proto, er := vc.RClient.HGet(tableName, "protocol").Result()
+                 if (er != nil) {
+                     log.Info("******========****** Error in Collector protocol query : ", er)
+                     return CVLErrorInfo{
                          ErrCode: CVL_SEMANTIC_ERROR,
                          ConstraintErrMsg: fmt.Sprintf(" Error in Collector protocol query '%s'", c),
                          CVLErrDetails : "Unknown internal error.",
                          ErrAppTag : "unknown-internal-error",
-					}
-				}
-				if (proto != "UDP") {
-					log.Info("******========****** Unsupported collector protocol for DropMonitor : ", proto)
-					return CVLErrorInfo{
+                     }
+                 }
+                 if (proto != "UDP") {
+                     log.Info("******========****** Unsupported collector protocol for DropMonitor : ", proto)
+                     return CVLErrorInfo{
                          ErrCode: CVL_SEMANTIC_ERROR,
                          ConstraintErrMsg: fmt.Sprintf("DropMonitor supports only UDP protocol for collectors. Collector '%s' uses '%s'.", thisCollector, proto),
                          CVLErrDetails : "Invalid Collector protocol for DropMonitor.",
                          ErrAppTag : "invalid-collector-protocol",
-					}
-				}
-			}
-
+                     }
+                 }
+             }
          }
      }
 
      // make sure flowgroup bound to port in case of sampler configured
 
-	// Temporarily suspending this error checking to evaluate pre-configuration
-	/*
+// Temporarily suspending this error checking to evaluate pre-configuration
+/*
      if (vc.CurCfg.VOp != OP_DELETE) {
          inPorts, _ := vc.RClient.HGet("ACL_RULE|TAM|"+thisFlowgroup, "IN_PORTS@").Result()
          if (inPorts == "") {
              return CVLErrorInfo{
                  ErrCode: CVL_SEMANTIC_ERROR,
-                 ConstraintErrMsg: fmt.Sprintf("No ports are bound the flowgroup '%s'.", thisFlowgroup),
+                 ConstraintErrMsg: fmt.Sprintf("No ports are bound to the flowgroup '%s'.", thisFlowgroup),
                  CVLErrDetails : "Port(s) are not bound to the flowgroup",
                  ErrAppTag : "ports-not-bound-to-flowgroup",
              }
          }
      }
-	*/
+*/
+     if (vc.CurCfg.VOp != OP_DELETE) {
+         flow, isMatched := getFlowGroups(vc, "TAM_DROPMONITOR_SESSIONS_TABLE", thisFlowgroup)
+         if (isMatched) {
+             return CVLErrorInfo{
+                 ErrCode: CVL_SEMANTIC_ERROR,
+                 ConstraintErrMsg: fmt.Sprintf("Flowgroup (%v) with similar match criterion is already in use.", flow),
+                 CVLErrDetails : "operation-not-allowed",
+                 ErrAppTag : "operation-not-allowed",
+             }
+         }
+     }
 
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
@@ -580,6 +677,18 @@ func(t * CustomValidation) TailstampingSessionValidation(vc * CustValidationCtxt
          }
      }
 
+     if (vc.CurCfg.VOp != OP_DELETE) {
+         flow, isMatched := getFlowGroups(vc, "TAM_TAILSTAMPING_SESSIONS_TABLE", thisFlowgroup)
+         if ((vc.CurCfg.VOp != OP_DELETE) && isMatched) {
+             return CVLErrorInfo{
+                 ErrCode: CVL_SEMANTIC_ERROR,
+                 ConstraintErrMsg: fmt.Sprintf("Flowgroup (%v) with similar match criterion is already in use.", flow),
+                 CVLErrDetails : "operation-not-allowed",
+                 ErrAppTag : "operation-not-allowed",
+             }
+         }
+     }
+
      return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
@@ -615,15 +724,15 @@ func(t * CustomValidation) ValidateFeatureStatus(vc * CustValidationCtxt) CVLErr
             errMsg := ""
             appTag := ""
             if (featuresInfo["op-status"] == "INSUFFICIENT_RESOURCES") {
-                errMsg = "Insufficient Resources, feature can not be enabled."
+                errMsg = fmt.Sprintf("Insufficient Resources, %v feature can not be enabled.", getFeatureName[thisFeature[1]])
                 appTag = "insufficient-resources"
             } else {
-                errMsg = "Feature is unsupported"
+                errMsg = fmt.Sprintf("%v feature is not supported.", getFeatureName[thisFeature[1]])
                 appTag = "feature-unsupported"
             }
             return CVLErrorInfo{
                 ErrCode: CVL_SEMANTIC_ERROR,
-                ConstraintErrMsg: fmt.Sprintf("Failed to enable feature: %s", thisFeature[1]),
+                ConstraintErrMsg: errMsg,
                 CVLErrDetails : errMsg,
                 ErrAppTag : appTag,
             }

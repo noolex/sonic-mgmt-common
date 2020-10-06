@@ -16,4 +16,9 @@ module openconfig-qos-ext-annot {
       }
     }
 
+    deviation /oc-qos-ext:clear-threshold-breach {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_oc_clear_threshold_breach";
+        }
+    }
 }

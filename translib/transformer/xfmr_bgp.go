@@ -109,49 +109,227 @@ func init () {
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
 }
 
-func bgp_hdl_post_xfmr(inParams *XfmrParams, bgpRespMap *map[string]map[string]db.Value) (error) {
-    var err error
+func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, key string, fieldName string, fieldValue string, 
+                                        entry db.Value) {
+    /* If Default field exists in yangDefValMap, return */
+    defValEntry := inParams.yangDefValMap[tblName][key]
+    if defValEntry.Has(fieldName) {
+        return
+    }
+    /* If default field exists in dbDataMap table entry, return */
+    if entry.IsPopulated() && entry.Has(fieldName) {
+        return
+    }
+    inParams.yangDefValMap[tblName][key].Field[fieldName] = fieldValue
+}
 
-    if inParams.oper == DELETE {
+func hdl_post_xfmr_bgp_nbr_del(inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {
+    if log.V(3) {
+        log.Info ("In Post-Transformer to fill BGP_NEIGHBOR keys, while handling DELETE-OP for URI : ",
+                  inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
+    }
+
+    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR"}, niName+"|*")
+    for _, bgpTblKey := range bgpTblKeys {
+        if _, ok := (*retDbDataMap)["BGP_NEIGHBOR"]; !ok {
+            (*retDbDataMap)["BGP_NEIGHBOR"] = make(map[string]db.Value)
+        }
+
+        key := bgpTblKey.Get(0) + "|" + bgpTblKey.Get(1)
+        (*retDbDataMap)["BGP_NEIGHBOR"][key] = db.Value{}
+    }
+    if log.V(3) {
+        log.Info ("After Post-Transformer BGP_NEIGHBOR handler ==> retDbDataMap : ", (*retDbDataMap))
+    }
+}
+
+func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr string, retDbDataMap *map[string]map[string]db.Value) {
+    if log.V(3) {
+        log.Info ("In Post-Transformer to fill BGP_NEIGHBOR_AF keys, while handling DELETE-OP for URI : ",
+                  inParams.requestUri, " ; VRF : ", niName, " ; nbrAddr: ", nbrAddr, " ; Incoming DB-Datamap : ", (*retDbDataMap))
+    }
+
+    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR_AF"}, niName+"|"+nbrAddr+"|*")
+    for _, bgpTblKey := range bgpTblKeys {
+        if _, ok := (*retDbDataMap)["BGP_NEIGHBOR_AF"]; !ok {
+            (*retDbDataMap)["BGP_NEIGHBOR_AF"] = make(map[string]db.Value)
+        }
+
+        key := bgpTblKey.Get(0) + "|" + bgpTblKey.Get(1) + "|" + bgpTblKey.Get(2)
+        (*retDbDataMap)["BGP_NEIGHBOR_AF"][key] = db.Value{}
+    }
+    if log.V(3) {
+        log.Info ("After Post-Transformer BGP_NEIGHBOR_AF handler ==> retDbDataMap : ", (*retDbDataMap))
+    }
+}
+
+func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
+    var err error
+    xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    pathInfo := NewPathInfo(inParams.requestUri)
+    niName := pathInfo.Var("name")
+    if len(niName) == 0 {return err}
+    switch xpath {
+        case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors": fallthrough
+        case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor":
+            /* Infra has a limitation to handle this parent level delete when there is a table xfmr function for a neighbor, 
+             * so, handle as part of post xfmr function */
+            nbrAddr   := pathInfo.Var("neighbor-address")
+            if len(nbrAddr) == 0 {
+                hdl_post_xfmr_bgp_nbr_del(inParams, niName, data)
+                return err
+            }
+        case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis": fallthrough
+        case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/afi-safi":
+            /* Infra has a limitation to handle this parent level delete when there is a table xfmr function for a neighbor, 
+             * so, handle as part of post xfmr function */
+            nbrAddr   := pathInfo.Var("neighbor-address")
+            afiSafiName := pathInfo.Var("afi-safi-name")
+            if len(nbrAddr) != 0 && len(afiSafiName) == 0 {
+                util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
+                hdl_post_xfmr_bgp_nbr_af_del(inParams, niName, nbrAddr, data)
+                return err
+            }
+    }
+
+    if (inParams.subOpDataMap[UPDATE] == nil) {
         return err
     }
 
+    specInfo, ok := xYangSpecMap[xpath]
+    if !ok {
+       return err
+    }
+    yangType := yangTypeGet(specInfo.yangEntry)
+    if !(yangType == YANG_LEAF) {
+        return err
+    }
+    if log.V(3) {
+        log.Info("bgp_hdl_post_xfmr: Yang sub op data map ",
+                (*inParams.subOpDataMap[UPDATE])[db.ConfigDB])
+    }
+    subOpUpdMap := (*inParams.subOpDataMap[UPDATE])[db.ConfigDB]
+    bgpNbrTbl := "BGP_NEIGHBOR"
+    bgpNbrAfTbl := "BGP_NEIGHBOR_AF"
+    if len(subOpUpdMap[bgpNbrTbl]) == 0 && len(subOpUpdMap[bgpNbrAfTbl]) == 0 {
+        return err
+    }
+    subOpDelMap := make(map[db.DBNum]map[string]map[string]db.Value)
+    subOpDelMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+    inParams.subOpDataMap[DELETE] = &subOpDelMap
+    nbrTbls := []string{bgpNbrTbl, bgpNbrAfTbl}
+    for _, tbl := range nbrTbls {
+        if (len(subOpUpdMap[tbl]) == 0) {
+            continue
+        }
+        subOpDelMap[db.ConfigDB][tbl] = make(map[string]db.Value)
+        for key, val := range subOpUpdMap[tbl] {
+           (*inParams.subOpDataMap[DELETE])[db.ConfigDB][tbl][key] = val
+        }
+        subOpUpdMap[tbl] = make(map[string]db.Value)
+    }
+    if log.V(3) {
+        log.Info("bgp_hdl_post_xfmr: Yang UPDATE sub op data map ",
+                (*inParams.subOpDataMap[UPDATE])[db.ConfigDB])
+        log.Info("bgp_hdl_post_xfmr: Yang DELETE sub op data map ",
+                (*inParams.subOpDataMap[DELETE])[db.ConfigDB])
+    }
+    return err
+}
+
+func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
+    var err error
+
+    if log.V(3) {
+        log.Info("bgp_hdl_post_xfmr: Yang default value map ", inParams.yangDefValMap)
+        log.Info("bgp_hdl_post_xfmr: Yang DB data map ", data)
+    }
+
+    if inParams.oper == DELETE {
+        err = hdl_del_post_xfmr(inParams, data)
+        return err
+    }
+
+    tblName := "BGP_GLOBALS"
+    for key := range inParams.yangDefValMap[tblName] {
+        entry := (*data)[tblName][key]
+        bgp_validate_and_set_default_value(inParams, tblName, key, "always_compare_med", "false", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "ignore_as_path_length", "false", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "external_compare_router_id", "false", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "log_nbr_state_changes", "true", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "load_balance_mp_relax", "false", entry)
+    }
+
+    /* Dont set the fields with default values for BGP neighbor and neighbor AF tables from infra as it 
+     * impacts the configs inheritance from PG when nbr is part of the PG, the default values are expected 
+     * to be initialised as part of BGP neighbor creation in bgpcfgd */
+    delete (inParams.yangDefValMap, "BGP_NEIGHBOR")
+    delete (inParams.yangDefValMap, "BGP_NEIGHBOR_AF")
+
+    tblName = "BGP_PEER_GROUP"
+    for key := range inParams.yangDefValMap[tblName] {
+        entry := (*data)[tblName][key]
+        yang_def_entry := inParams.yangDefValMap[tblName][key]
+        /* Dont push the default values of keepalive & holdtime fields as this impacts
+         * the global keepalive/holdtime values inheritance */
+        if yang_def_entry.Has("keepalive") {
+            delete (yang_def_entry.Field, "keepalive")
+        }
+        if yang_def_entry.Has("holdtime") {
+            delete (yang_def_entry.Field, "holdtime")
+        }
+        bgp_validate_and_set_default_value(inParams, tblName, key, "min_adv_interval", "0", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "conn_retry", "30", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "passive_mode", "false", entry)
+        bgp_validate_and_set_default_value(inParams, tblName, key, "ebgp_multihop", "false", entry)
+    }
+
     /* Remove the invalid default values for BGP address family */
-    for key := range inParams.yangDefValMap["BGP_GLOBALS_AF"] {
+    tbl := inParams.yangDefValMap["BGP_GLOBALS_AF"]
+    for key := range tbl {
+        entry := tbl[key]
+        if !(strings.Contains(key, "ipv4_unicast")) && entry.Has("route_flap_dampen") {
+             /* Route flap dampening is supported only for IPv4 AF. */
+             delete (entry.Field, "route_flap_dampen")
+        }
         if strings.Contains(key, "l2vpn_evpn") {
-            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ebgp_paths"] != "" {
-               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ebgp_paths")
+            if entry.Has("max_ebgp_paths") {
+               delete (entry.Field, "max_ebgp_paths")
             }
-            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["max_ibgp_paths"] != "" {
-               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "max_ibgp_paths")
+            if entry.Has("max_ibgp_paths") {
+               delete (entry.Field, "max_ibgp_paths")
             }
         } else if (strings.Contains(key, "ipv4_unicast") ||
                    strings.Contains(key, "ipv6_unicast")) {
-            if inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field["advertise-default-gw"] != "" {
-               delete (inParams.yangDefValMap["BGP_GLOBALS_AF"][key].Field, "advertise-default-gw")
+            if entry.Has("advertise-default-gw") {
+               delete (entry.Field, "advertise-default-gw")
             }
         }
     }
 
-    for key := range inParams.yangDefValMap["BGP_NEIGHBOR_AF"] {
+    tblName = "BGP_PEER_GROUP_AF"
+    tbl = inParams.yangDefValMap[tblName]
+    for key := range tbl {
+        entry := tbl[key]
         if strings.Contains(key, "l2vpn_evpn") {
-            if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["rrclient"] != "" {
-               delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "rrclient")
+            if entry.Has("rrclient") {
+               delete (entry.Field, "rrclient")
             }
-            if inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field["send_community"] != "" {
-               delete (inParams.yangDefValMap["BGP_NEIGHBOR_AF"][key].Field, "send_community")
+            if entry.Has("send_community") {
+               delete (entry.Field, "send_community")
             }
+        } else if (strings.Contains(key, "ipv4_unicast") ||
+                   strings.Contains(key, "ipv6_unicast"))  {
+            dbMapEntry := (*data)[tblName][key]
+            bgp_validate_and_set_default_value(inParams, tblName, key, "send_default_route", "false", dbMapEntry)
+            bgp_validate_and_set_default_value(inParams, tblName, key, "max_prefix_warning_only", "false", dbMapEntry)
         }
     }
 
-    for key := range inParams.yangDefValMap["BGP_PEER_GROUP_AF"] {
-        if strings.Contains(key, "l2vpn_evpn") {
-            if inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field["rrclient"] != "" {
-               delete (inParams.yangDefValMap["BGP_PEER_GROUP_AF"][key].Field, "rrclient")
-            }
-        }
+    if log.V(3) {
+        log.Info("bgp_hdl_post_xfmr: updated Yang default value map ", inParams.yangDefValMap)
+        log.Info("bgp_hdl_post_xfmr: updated Yang DB data map ", data)
     }
-
     return err
 }
 
@@ -886,11 +1064,6 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     if value, ok := mapData["address"].(string) ; ok {
         if value != "" {
             ip_address = value + " "
-            if dampvalue, ok := mapData["dampening"].(bool) ; ok {
-               if dampvalue {
-                  ip_address = value + " "
-               }
-            }
         }
     }
 
@@ -910,7 +1083,7 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
     if value, ok := mapData["prefix"].(string) ; ok {
         if value != "" {
             prefix = "prefix " + value + " "
-
+            af_str = ""
             if dampvalue, ok := mapData["dampening"].(bool) ; ok {
                if dampvalue {
                   prefix = value + " "
@@ -951,68 +1124,67 @@ var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte
 
     log.Info("In rpc_clear_bgp ", clear_all, vrf_name, af_str, all, ip_address, intf, asn, prefix, peer_group, dampening, in, out, soft)
 
-    if !is_evpn {
-        cmdbase = "clear ip bgp "
-    } else {
+    if clear_all != "" && dampening == "" {
+        cmdbase = "clear bgp "
+    } else if is_evpn {
         cmdbase = "clear bgp l2vpn "
-    }
-    if clear_all != "" {
-        cmd = cmdbase + clear_all
     } else {
-        cmd = cmdbase
-        if vrf_name != "" {
-            cmd = cmdbase + vrf_name
-        }
-
-        if af_str != "" {
-            cmd = cmd + af_str
-        }
-
-        if dampening != "" {
-            cmd = cmd + dampening
-        }
-
-        if ip_address != "" {
-            cmd = cmd + ip_address
-        }
-
-        if intf != "" {
-            cmd = cmd + intf
-        }
-
-        if prefix != "" {
-            cmd = cmd + prefix
-        }
-
-        if peer_group != "" {
-            cmd = cmd + peer_group
-        }
-
-        if external != "" {
-            cmd = cmd + external
-        }
-
-        if asn != "" {
-            cmd = cmd + asn
-        }
-
-        if all != "" {
-            cmd = cmd + all
-        }
-
-        if soft != "" {
-            cmd = cmd + soft
-        }
-
-        if in != "" {
-            cmd = cmd + in
-        }
-
-        if out != "" {
-            cmd = cmd + out
-        }
-
+        cmdbase = "clear ip bgp "
     }
+
+    cmd = cmdbase
+    if vrf_name != "" {
+        cmd = cmdbase + vrf_name
+    }
+
+    if af_str != "" {
+        cmd = cmd + af_str
+    }
+
+    if dampening != "" {
+        cmd = cmd + dampening
+    }
+
+    if ip_address != "" {
+        cmd = cmd + ip_address
+    }
+
+    if intf != "" {
+        cmd = cmd + intf
+    }
+
+    if prefix != "" {
+        cmd = cmd + prefix
+    }
+
+    if peer_group != "" {
+        cmd = cmd + peer_group
+    }
+
+    if external != "" {
+        cmd = cmd + external
+    }
+
+    if asn != "" {
+        cmd = cmd + asn
+    }
+
+    if all != "" {
+        cmd = cmd + all
+    }
+
+    if soft != "" {
+        cmd = cmd + soft
+    }
+
+    if in != "" {
+        cmd = cmd + in
+    }
+
+    if out != "" {
+        cmd = cmd + out
+    }
+
     cmd = strings.TrimSuffix(cmd, " ")
     exec_vtysh_cmd (cmd)
     status = "Success"

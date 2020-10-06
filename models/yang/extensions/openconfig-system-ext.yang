@@ -21,7 +21,7 @@ module openconfig-system-ext {
     // meta
     organization "OpenConfig working group";
 
-    oc-ext:openconfig-version "0.9.0";
+    oc-ext:openconfig-version "0.10.0";
 
     contact
         "OpenConfig working group
@@ -29,6 +29,12 @@ module openconfig-system-ext {
 
     description
         "Model for managing TACACS+ configurations .";
+
+    revision 2020-09-02 {
+        description
+            "Added the VRF name for DNS nameserver.";
+        reference "0.10.0";
+    }
 
     revision 2020-06-29 {
         description
@@ -149,12 +155,6 @@ module openconfig-system-ext {
             default 5;
             description "The global authentication timeout";
         }
-        leaf retransmit-attempts {
-            type uint8;
-            description
-                "Number of times the system may resend a request to the
-                RADIUS server when it is unresponsive";
-        }
         leaf source-interface {
             type leafref {
                 path "/oc-if:interfaces/oc-if:interface/oc-if:name";
@@ -239,6 +239,17 @@ module openconfig-system-ext {
         }
     }
 
+    grouping system-ext-dns-server-config {
+        description "Grouping for DNS server configuration";
+        leaf vrf-name {
+            type leafref {
+                path "/oc-ni:network-instances/oc-ni:network-instance/oc-ni:name";
+            }
+            description
+                "VRF name";
+        }
+    }
+
     augment "/oc-sys:system/oc-sys:dns/oc-sys:config" {
         description "Additional fields for DNS config";
         uses system-ext-dns-source-config;
@@ -248,6 +259,17 @@ module openconfig-system-ext {
         description "Additional fields for DNS state";
         uses system-ext-dns-source-config;
     }
+
+    augment "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:config" {
+        description "Additional fields for DNS server config";
+        uses system-ext-dns-server-config;
+    }
+
+    augment "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state" {
+        description "Additional fields for DNS server state";
+        uses system-ext-dns-server-config;
+    }
+
 
     typedef server-address {
         type inet:host;

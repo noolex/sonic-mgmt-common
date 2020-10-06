@@ -128,6 +128,7 @@ const (
    PSU_OUTPUT_CURRENT         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-current"
    PSU_OUTPUT_POWER           = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-power"
    PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
+   PSU_VOLT_TYPE             = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
 
    /** Supported Fan URIs **/
    FAN_SPEED                  = "/openconfig-platform:components/component/fan/state/openconfig-platform-fan:speed"
@@ -279,6 +280,7 @@ type PSU struct {
     Serial_Number       string
     Status              bool
     Status_Led          string
+    Volt_Type           string
 }
 
 type Fan struct {
@@ -489,6 +491,7 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
         if len(ifName) > 1 {
             result.dbDataMap = RedisDbMap{db.ConfigDB:{BREAKOUT_TBL:{ifName:{}}}}
         } else {
+            log.Info("Invalid component name ", key)
             return result, errors.New("Invalid component name")
         }
     }
@@ -509,41 +512,72 @@ var DbToYang_pfm_components_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     return errors.New("Component not supported")
 }
 
-var YangToDb_pfm_components_transceiver_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+var YangToDb_pfm_components_transceiver_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
 
-  log.Infof("+++ YangToDb_pfm_components_transceiver_xfmr: uri='%v' +++", inParams.uri)
+  value := db.Value {make(map[string]string)}
+  cfgMap := make(map[string]map[string]db.Value)
 
-  /* var err error */
-  res_map := make(map[string]string)
+  log.Infof("+++ YangToDb_pfm_components_transceiver_xfmr (requestUri=%v) +++", inParams.requestUri)
 
-  /* pretty.Print(inParams.param) */
-
-  name := inParams.key
+  name := NewPathInfo(inParams.uri).Var("name")
+  tblName := PORT_TBL
+  keyName := name
   if utils.IsAliasModeEnabled() {
-    name = *(utils.GetNativeNameFromUIName(&name))
+    keyName = *(utils.GetNativeNameFromUIName(&keyName))
   }
-  log.Infof("---> name: '%v'", name)
+  log.Infof("name: '%v' --> '%v'", name, keyName)
 
-  inParams.table = PORT_TBL
-  inParams.key   = name
-  inParams.curDb = db.ApplDB
-  inParams.d = inParams.dbs[db.ApplDB]
+  t := db.TableSpec { Name: tblName }
+  k := db.Key { Comp : [] string { keyName } }
+  d := inParams.dbs[db.ApplDB]
+  if d == nil {
+    d, _ = db.NewDB(db.Options { DBNo : db.ApplDB })
+    inParams.dbs[db.ApplDB] = d
+  }
+  d.Opts.KeySeparator = ":"
+  d.Opts.TableNameSeparator = ":"
 
-  st, _ := inParams.param.(*ocbinds.OpenconfigPlatform_Components_Component_Transceiver_Config)
-  /* pretty.Print(st) */
-  log.Infof("st = %v", st)
+  inParams.table = tblName
+  inParams.key = keyName
 
-  if st.LbHostSideInputEnable != nil {
-    res_map["host_side_input_loopback_enable"] = *st.LbHostSideInputEnable
+  /* As of now, updating ApplDB does not seem to be supported in REST/KLISH
+   * And hence, we'll use direct DB access right here
+   */
+  if inParams.oper == DELETE {
+    if strings.Contains(inParams.requestUri, "lb-host-side-input-enable") {
+      value.Field["host_side_input_loopback_enable"] = ""
+    } else if strings.Contains(inParams.requestUri, "lb-host-side-output-enable") {
+      value.Field["host_side_output_loopback_enable"] = ""
+    } else if strings.Contains(inParams.requestUri, "lb-media-side-input-enable") {
+      value.Field["media_side_input_loopback_enable"] = ""
+    } else if strings.Contains(inParams.requestUri, "lb-media-side-output-enable") {
+      value.Field["media_side_output_loopback_enable"] = ""
+    } else {
+      value.Field["host_side_input_loopback_enable"] = ""
+      value.Field["host_side_output_loopback_enable"] = ""
+      value.Field["media_side_input_loopback_enable"] = ""
+      value.Field["media_side_output_loopback_enable"] = ""
+    }
+    d.DeleteEntryFields(&t, k, value)
+  } else {
+    cfg, _ := inParams.param.(*ocbinds.OpenconfigPlatform_Components_Component_Transceiver_Config)
+
+    if cfg.LbHostSideInputEnable != nil {
+      value.Field["host_side_input_loopback_enable"] = *cfg.LbHostSideInputEnable
+    }
+    if cfg.LbHostSideOutputEnable != nil {
+      value.Field["host_side_output_loopback_enable"] = *cfg.LbHostSideOutputEnable
+    }
+    if cfg.LbMediaSideInputEnable != nil {
+      value.Field["media_side_input_loopback_enable"] = *cfg.LbMediaSideInputEnable
+    }
+    if cfg.LbMediaSideOutputEnable != nil {
+      value.Field["media_side_output_loopback_enable"] = *cfg.LbMediaSideOutputEnable
+    }
+    d.SetEntry(&t, k, value)
   }
 
-  if st.LbMediaSideInputEnable != nil {
-    res_map["media_side_input_loopback_enable"] = *st.LbMediaSideInputEnable
-  }
-
-  log.Infof("---> res_map: '%v'", res_map)
-
-  return res_map, nil
+  return cfgMap, nil
 }
 
 func getSoftwareVersion() string {
@@ -1294,6 +1328,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 comp_cnt++
             }
+            dpbCaps := getCapabilities()
+            for _, prt := range dpbCaps {
+                pf_comp, _ = pf_cpts.NewComponent(prt.Port)
+                log.Info("DPB Adding ", prt.Port)
+                ygot.BuildEmptyTree(pf_comp)
+                //err = fillDpbData(pf_comp, prt.Port, targetUriPath, d)
+                //log.Info(err)
+            }
             return err
         } else {
             if matchStr == "system eeprom" {
@@ -1361,7 +1403,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 }
                 ygot.BuildEmptyTree(pf_comp)
                 err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+            } else if len(getIfName(compName)) > 1 {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name ", compName)
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
             } else {
+                log.Info("Invalid Component Name: ", compName)
                 err = errors.New("Invalid component name")
             }
         }
@@ -1430,6 +1480,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             ygot.BuildEmptyTree(pf_comp.State.Temperature)
             err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
         } else {
+            log.Info("Invalid Component Name: ", compName)
             err = errors.New("Invalid component name ")
         }
 
@@ -1497,7 +1548,15 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
               }
               ygot.BuildEmptyTree(pf_comp)
               err = fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
+            } else if len(getIfName(compName)) > 1 {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name", compName)
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
             } else {
+                log.Info("Invalid Component Name: ", compName)
                 err = errors.New("Invalid input component name")
             }
         } else {
@@ -1540,6 +1599,7 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     psuInfo.Output_Current = psuEntry.Get("output_current")
     psuInfo.Output_Voltage = psuEntry.Get("output_voltage")
     psuInfo.Output_Power = psuEntry.Get("output_power")
+    psuInfo.Volt_Type = psuEntry.Get("type")
 
     psuInfo.Presence = false
     if psuEntry.Get("presence") == "true" {
@@ -1583,6 +1643,12 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
                 psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
             }
 
+            if psuInfo.Volt_Type == "AC" {
+                psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_AC
+            } else if psuInfo.Volt_Type == "DC" {
+                psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_DC
+            }
+
             if err != nil {
                 log.Info("float data error")
                 return err
@@ -1590,9 +1656,13 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             return err
         }
         psuEepromState.Empty = &empty
-        psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
-        if psuInfo.Status {
-            psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
+        if psuInfo.Presence {
+            if psuInfo.Status {
+                psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+            } else {
+                psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+            }
         }
 
         if psuInfo.Model_Name != "" {
@@ -1628,6 +1698,13 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     case PSU_OUTPUT_POWER:
         if psuInfo.Output_Power != "" {
             psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+        }
+    case PSU_VOLT_TYPE:
+        psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_UNSET
+        if psuInfo.Volt_Type == "AC" {
+            psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_AC
+        } else if psuInfo.Volt_Type == "DC" {
+            psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_DC
         }
     case COMP_LED_STATUS:
         if psuInfo.Status_Led != "" {
@@ -1667,7 +1744,7 @@ func validPsuName(name *string) bool {
     if name == nil || *name == "" {
         return false
     }
-    valid, _ := regexp.MatchString("PSU [1-9][0-9]*\\b", *name)
+    valid, _ := regexp.MatchString("PSU [1-9][0-9]*$", *name)
     return valid
 }
 
@@ -1706,8 +1783,8 @@ func validFanName(name *string) (bool) {
     if name == nil || *name == "" {
         return false
     }
-    valid, _ := regexp.MatchString("FAN [1-9][0-9]*\\b", *name)
-    return valid
+    validFan, _ := regexp.MatchString("(PSU [1-9][0-9]* ){0,1}FAN [1-9][0-9]*$", *name)
+    return validFan
 }
 
 func getSysFanFromDb(name string, d *db.DB) (Fan, error) {
@@ -1782,9 +1859,13 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
             return err
         }
 
-        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
-        if fanInfo.Status {
-            fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+        fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
+        if fanInfo.Presence {
+            if fanInfo.Status {
+                fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
+            } else {
+                fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_INACTIVE
+            }
         }
 
         if fanInfo.Model_Name != "" {
@@ -2809,7 +2890,7 @@ func validTempName(name *string) bool {
     if name == nil || *name == "" {
         return false
     }
-    valid, _ := regexp.MatchString("TEMP [1-9][0-9]*\\b", *name)
+    valid, _ := regexp.MatchString("TEMP [1-9][0-9]*$", *name)
     return valid
 }
 
