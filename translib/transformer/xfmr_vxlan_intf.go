@@ -1107,7 +1107,7 @@ var DbToYang_intf_vxlan_qosmode_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrP
 	ifName := pathInfo.Var("name")
 	data := (*inParams.dbDataMap)[inParams.curDb]
 
-	log.Infof("DbToYang_intf_vxlan_qosmode_fld_xfmr: key: %v, data: %v", ifName, data)
+	log.V(3).Infof("DbToYang_intf_vxlan_qosmode_fld_xfmr: key: %v, data: %v", ifName, data)
 	if len(data) > 0 {
 		dbv := data["VXLAN_TUNNEL"][ifName]
         qosModeStr := dbv.Field["qos-mode"]
