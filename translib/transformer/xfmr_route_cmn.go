@@ -19,7 +19,7 @@ func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
     var err error
     oper_err := errors.New("Operational error")
 
-    log.Infof("Going to connect UDS socket call to reach FRR for VTYSH-cmd ==> \"%s\" execution", vtysh_cmd)
+    log.V(3).Infof("Going to connect UDS socket call to reach FRR for VTYSH-cmd ==> \"%s\" execution", vtysh_cmd)
     conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sock_addr, "unix"})
     if err != nil {
         log.Infof("Failed to connect proxy server: %s\n", err)
