@@ -327,6 +327,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 			    } else if !areEqual(xfmrYgotRoot, origYgotRoot) {
 				    // Merge the ygotRoots filled by transformer and app.ygotRoot used to Unmarshal the payload (required as Unmarshal does replace operation on ygotRoot)
 				    var mrgErr error
+				    log.Info("merge original and xfmr ygot")
 				    resYgot, mrgErr = ygot.MergeStructs(xfmrYgotRoot.(*ocbinds.Device),(*app.ygotRoot).(*ocbinds.Device))
 				    if mrgErr != nil {
 					    log.Warning("Error in ygot.MergeStructs: ", mrgErr)
