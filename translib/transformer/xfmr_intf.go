@@ -997,6 +997,18 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	        log.Info("VXLAN_TUNNEL testing ==> TARGET err ==>", errIntf)
 	      }
 		}
+    } else if intfType != IntfTypeEthernet &&
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
+        //Checking interface type at container level, if not Ethernet type return nil
+        return nil, nil
+    } else if intfType != IntfTypePortChannel &&
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation") {
+        //Checking interface type at container level, if not PortChannel type return nil
+        return nil, nil
+    } else if intfType != IntfTypeVlan &&
+        strings.HasPrefix(targetUriPath, "openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") {
+        //Checking interface type at container level, if not Vlan type return nil
+        return nil, nil
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, "NONE")
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state") ||
@@ -1434,7 +1446,7 @@ var DbToYang_intf_oper_status_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
         log.Info("DbToYang_intf_oper_status_xfmr - Invalid interface type IntfTypeUnset");
         return result, errors.New("Invalid interface type IntfTypeUnset");
     }
-    if IntfTypeVxlan == intfType {
+    if IntfTypeVxlan == intfType || IntfTypeVlan == intfType || IntfTypeLoopback == intfType {
 	    return result, nil
     }
     intTbl := IntfTypeTblMap[intfType]
@@ -1479,7 +1491,7 @@ var DbToYang_intf_eth_auto_neg_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
         log.Info("DbToYang_intf_eth_auto_neg_xfmr - Invalid interface type IntfTypeUnset");
         return result, errors.New("Invalid interface type IntfTypeUnset");
     }
-    if IntfTypeVxlan == intfType {
+    if IntfTypeMgmt != intfType && IntfTypeEthernet != intfType {
 	    return result, nil
     }
     intTbl := IntfTypeTblMap[intfType]
