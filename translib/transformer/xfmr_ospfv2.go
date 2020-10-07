@@ -2920,11 +2920,17 @@ func ospf_config_present(inParams *XfmrParams, tblName string, tblKey string, ig
         }
 
         for fieldName := range tblEntry.Field {
+           fieldNameIgnore := false 
            for _, ignoreFieldName := range ignoreFieldMap {
                if (fieldName == ignoreFieldName) {
-                  continue
+                   fieldNameIgnore = true
+                   break
                }
-               log.Info("ospf_config_present: config present for ", dbTblKey)
+           }
+
+           if (!fieldNameIgnore) {
+               log.Infof("ospf_config_present: config present with key %v tblEntry %v", dbTblKey, tblEntry)
+               log.Infof("ospf_config_present: config %s present in record %v", fieldName, dbTblKey)
                return true, nil
            }
         }
