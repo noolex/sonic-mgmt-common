@@ -105,7 +105,6 @@ func isMgmtVrfDbTbl (inParams XfmrParams) (bool) {
 /* Check if this is "VRF" table */
 func isVrfDbTbl (inParams XfmrParams) (bool)  {
         data := (*inParams.dbDataMap)[inParams.curDb]
-        log.Info("isVrfDbTbl: ", data, "inParams :", inParams)
 
         vrfTbl := data["VRF"]
         if (vrfTbl != nil) {
@@ -118,7 +117,8 @@ func isVrfDbTbl (inParams XfmrParams) (bool)  {
 /* Check if "mgmtVrfEnabled" is set to true in the "MGMT_VRF_CONFIG" table */
 func mgmtVrfEnabledInDb (inParams XfmrParams) (string) {
         data := (*inParams.dbDataMap)[inParams.curDb]
-        log.V(3).Info("mgmtVrfEnabledInDb ")
+
+        log.V(3).Infof("mgmtVrfEnabledInDb key: %v", inParams.key)
 
         mgmtTbl := data["MGMT_VRF_CONFIG"]
         mgmtVrf := mgmtTbl[inParams.key]
@@ -442,13 +442,14 @@ var DbToYang_network_instance_enabled_field_xfmr FieldXfmrDbtoYang = func(inPara
         res_map := make(map[string]interface{})
         var err error
 
-        log.Info("DbToYang_network_instance_enabled_field_xfmr: ")
-
-        if (mgmtVrfEnabledInDb(inParams) == "true") {
-                res_map["enabled"] = true
-        } else if (mgmtVrfEnabledInDb(inParams) == "false") {
-                res_map["enabled"] = false
+        if (inParams.key == "vrf_global") {
+                if (mgmtVrfEnabledInDb(inParams) == "true") {
+                        res_map["enabled"] = true
+                } else {
+                        res_map["enabled"] = false
+                }
         }
+
         return res_map, err
 }
 
@@ -605,7 +606,7 @@ var DbToYang_network_instance_name_field_xfmr KeyXfmrDbToYang = func(inParams Xf
         res_map := make(map[string]interface{})
         var err error
 
-        log.Info("DbToYang_network_instance_name_field_xfmr")
+        log.V(3).Infof("DbToYang_network_instance_name_field_xfmr, key %v", inParams.key)
 
         if (inParams.key != "") {
                 if (((inParams.key == "default") ||
@@ -640,7 +641,7 @@ var DbToYang_network_instance_type_field_xfmr KeyXfmrDbToYang = func(inParams Xf
         res_map := make(map[string]interface{})
         var err error
 
-        log.Info("DbToYang_network_instance_type_field_xfmr")
+        log.V(3).Infof("DbToYang_network_instance_type_field_xfmr, key %v", inParams.key)
 
         if (((inParams.key == "vrf_global") && (isMgmtVrfDbTbl(inParams))) ||
              ((strings.HasPrefix(inParams.key, "Vrf")) && ((isVrfDbTbl(inParams))))) {
