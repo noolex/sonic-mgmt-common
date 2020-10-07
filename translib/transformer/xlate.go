@@ -489,7 +489,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	}
 	inParamsForGet = formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, xpath, GET, "", "", &dbData, txCache, nil, false)
 	payload, isEmptyPayload, err := dbDataToYangJsonCreate(inParamsForGet)
-	xfmrLogInfo("Payload generated : " + payload)
+	xfmrLogInfoAll("Payload generated : " + payload)
 
 	if err != nil {
 		log.Warning("Couldn't create json response from DB data.")
