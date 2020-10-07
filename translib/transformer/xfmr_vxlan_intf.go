@@ -1754,7 +1754,7 @@ var DbToYang_vlan_nd_suppress_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
 	vlanIdStr := pathInfo.Var("name")
 	data := (*inParams.dbDataMap)[inParams.curDb]
 
-	log.Infof("vlan_nd_suppress_fld_xfmr: key: %v, data: %v", vlanIdStr, data)
+	log.V(3).Infof("vlan_nd_suppress_fld_xfmr: key: %v, data: %v", vlanIdStr, data)
 	if len(data) > 0 {
 		val := data["SUPPRESS_VLAN_NEIGH"][vlanIdStr]
 		if val.Get("suppress") == "on" {
