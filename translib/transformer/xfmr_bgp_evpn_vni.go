@@ -119,7 +119,7 @@ var bgp_evpn_vni_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string,
         
         dbkey := "default|L2VPN_EVPN|" + key
 
-        log.Info(dbkey)
+        log.V(5).Info(dbkey)
 
         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"][dbkey]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"][dbkey] = db.Value{Field: make(map[string]string)}
@@ -189,9 +189,9 @@ var YangToDb_bgp_evpn_vni_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
 	return afName, err
     }
 
-    log.Info("URI VRF ", vrfName)
-    log.Info("URI VNI NUMBER ", vniNumber)
-    log.Info("URI AFI SAFI ", afName)
+    log.V(3).Info("URI VRF ", vrfName)
+    log.V(3).Info("URI VNI NUMBER ", vniNumber)
+    log.V(3).Info("URI AFI SAFI ", afName)
 
     vniTableKey := vrfName + "|" + afName + "|" + vniNumber
 

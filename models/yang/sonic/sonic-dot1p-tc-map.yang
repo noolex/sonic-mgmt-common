@@ -30,7 +30,10 @@ module sonic-dot1p-tc-map {
 				sonic-ext:map-leaf "dot1p tc_num"; //every key:value pair is mapped to list keys, e.g. "1":"7" ==> dot1p=1, tc_num=7
 
 				leaf name {
-					type string;
+                    type string {
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+                        length 1..32;
+                    }
 				}
 
 				list DOT1P_TO_TC_MAP { //this is list inside list for storing mapping between two fields

@@ -23,6 +23,9 @@ import (
     "github.com/openconfig/ygot/ygot"
 )
 
+//Map of map[uri][dbKey]
+var keyXfmrCache map[string]string
+
 type KeySpec struct {
         DbNum db.DBNum
         Ts    db.TableSpec

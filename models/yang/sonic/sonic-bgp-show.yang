@@ -14,6 +14,11 @@ module sonic-bgp-show {
     description
         "SONiC yang for RPC based BGP show.";
 
+    revision 2020-08-25 {
+        description
+            "Added DAMPENING attribute in query-type";
+    }
+
     revision 2020-07-25 {
         description
             "Add SUMMARY attribute in query-type";
@@ -67,6 +72,25 @@ module sonic-bgp-show {
             }
             enum SUMMARY {
                 description "To query the BGP neighbors information";
+            }
+            enum DAMPENING {
+                description "To query the dampen BGP routes and parameters";
+            }
+        }
+    }
+
+    typedef dampening-option-type {
+        description "Query type that specifies the various dampening queries like flap-stats, dampened-path and parameters";
+
+        type enumeration {
+            enum DAMPENED-PATHS {
+                 description "To query the dampened paths";
+            }
+            enum FLAP-STATISTICS {
+                 description "To query the flap-statistics";
+            }
+            enum PARAMETERS {
+                 description "To query the parameters";
             }
         }
     }
@@ -185,6 +209,16 @@ module sonic-bgp-show {
                         description "True : to fetch BGP routes that matches this route-map";
                     }
                 }
+                case dampening {
+                    description
+                        "query-type attribute should be DAMPENING. Fetch the dampening routes and its parameters";
+
+                    leaf dampening {
+                        type dampening-option-type;
+                        description "Dampening fetch options like  dampening routes and its parameters";
+                    }
+                }
+
             }
         }
 

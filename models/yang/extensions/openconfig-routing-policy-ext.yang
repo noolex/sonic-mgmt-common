@@ -25,7 +25,19 @@ module openconfig-routing-policy-ext {
         "This module describes a YANG model for routing policy
         configuration extensions.";
 
-    oc-ext:openconfig-version "0.1.2";
+    oc-ext:openconfig-version "0.1.4";
+
+    revision "2020-09-11" {
+        description
+            "Added Sequence number support for IP Prefix list.";
+        reference "0.1.4";
+    }
+
+    revision "2020-09-01" {
+        description
+            "Added the ipv6 prefix set in routing policy conditions.";
+        reference "0.1.3";
+    }
 
     revision "2020-06-23" {
         description
@@ -216,6 +228,20 @@ module openconfig-routing-policy-ext {
         }
     }
 
+    grouping routing-policy-ext-prefix-set-config {
+        description
+            "Configuration data for ipv6 prefix set definitions.";
+
+        leaf ipv6-prefix-set {
+            type leafref {
+                path "/oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:config/oc-rpol:name";
+            }
+            description
+                "Leaf reference of the ipv6 prefix set name";
+        }
+    }
+
+
     grouping routing-policy-ext-match-network-instance-config {
         description
             "Configuration data for match network instance.";
@@ -251,6 +277,85 @@ module openconfig-routing-policy-ext {
         }
     }
 
+    grouping routing-policy-ext-prefix-config {
+        description
+            "Configuration data for prefix definitions";
+
+        leaf sequence-number {
+            type uint32 {
+                range "1..4294967295";
+            }
+            description
+                "The sequence number determines the order in which prefix-list entries are applied. It must be unique
+                 for each prefix in a prefix-list. Target devices should apply the prefixes in ascending order determined
+                 by sequence no (low to high), rather than relying only on order in the list.";
+        }
+
+        uses oc-rpol:prefix-config;
+        uses routing-policy-ext-action-config;
+    }
+
+    grouping routing-policy-ext-prefix-state {
+        description
+            "Operational state data for prefix definitions";
+    }
+
+    grouping routing-policy-ext-prefix-top {
+        description
+            "Top-level grouping for prefixes in a prefix list";
+
+        container prefixes-ext {
+            description
+                "Enclosing container for the list of prefixes in a policy prefix list";
+
+            list prefix {
+                key "sequence-number ip-prefix masklength-range";
+                description
+                    "List of prefixes in the prefix set";
+
+                leaf sequence-number {
+                    type leafref {
+                        path "../config/sequence-number";
+                    }
+                    description
+                        "Reference to the sequence-number.";
+                }
+
+                leaf ip-prefix {
+                    type leafref {
+                        path "../config/ip-prefix";
+                    }
+                    description
+                        "Reference to the ip-prefix.";
+                }
+
+                leaf masklength-range {
+                    type leafref {
+                        path "../config/masklength-range";
+                    }
+                    description
+                        "Reference to the masklength-range.";
+                }
+
+                container config {
+                    description
+                        "Configuration data for prefix definition";
+
+                    uses routing-policy-ext-prefix-config;
+                }
+
+                container state {
+                    config false;
+
+                    description
+                        "Operational state data for prefix definition";
+
+                    uses routing-policy-ext-prefix-config;
+                    uses routing-policy-ext-prefix-state;
+                }
+            }
+        }
+    }
 
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions{
       description
@@ -350,7 +455,18 @@ module openconfig-routing-policy-ext {
           "Policy definition extensions for tag match configs";
         uses routing-policy-ext-tag-set-config;
     }
- 
+  
+    augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-prefix-set/oc-rpol:config {
+      description
+          "Policy definition extensions for prefix match configs";
+        uses routing-policy-ext-prefix-set-config;
+    }
+    
+    augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-prefix-set/oc-rpol:state{
+      description
+          "Policy definition extensions for prefix match configs";
+        uses routing-policy-ext-prefix-set-config;
+    }
 
     deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:config/oc-rpol:tag-set {
         deviate not-supported;
@@ -372,16 +488,13 @@ module openconfig-routing-policy-ext {
         deviate not-supported;
     }
 
-    augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:config {
-      description
-          "IP prefix set extensions";
-        uses routing-policy-ext-action-config;
+    deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes {
+        deviate not-supported;
     }
 
-    augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes/oc-rpol:prefix/oc-rpol:state {
+    augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set {
       description
           "IP prefix set extensions";
-        uses routing-policy-ext-action-config;
+        uses routing-policy-ext-prefix-top;
     }
 }
-

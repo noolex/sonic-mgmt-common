@@ -286,15 +286,17 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
                    } else {
                         output = string(syslog1) + string(syslog)
                    }
-                   _output := strings.TrimSuffix(output,"\n")
-                   out_list = strings.Split(_output,"\n")
-                   total := len(out_list)
+              } else {
+                   output = string(syslog)
+              }
+              _output := strings.TrimSuffix(output,"\n")
+              out_list = strings.Split(_output,"\n")
+              total := len(out_list)
 
-                   if num_lines > 0 && num_lines < total {
-                        exec.Output.Result = out_list[total-num_lines:]
-                   } else {
-                        exec.Output.Result = out_list
-                   }
+              if num_lines > 0 && num_lines < total {
+                    exec.Output.Result = out_list[total-num_lines:]
+              } else {
+                    exec.Output.Result = out_list
               }
            }
         } else {

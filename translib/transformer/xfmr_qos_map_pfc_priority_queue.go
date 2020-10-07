@@ -88,8 +88,24 @@ var YangToDb_qos_pfc_priority_queue_xfmr SubTreeXfmrYangToDb = func(inParams Xfm
     }
 
     entry_key := (uint8)(entry_key_int)
-
     log.Info("entry_key : ", entry_key)
+
+    str := qos_map_oc_yang_key_map[map_type]
+    log.Info("key string: " , str)
+    if (inParams.oper == CREATE || inParams.oper == UPDATE ) && 
+        strings.Contains(inParams.requestUri, "-entry[" + str + "=") {
+        mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
+        if err == nil { 
+            _, ok := mapCfg.Field[entry_key_str]
+            if !ok {
+                log.Info("Entry not exist; cannot create it with key in URI itself")
+                err = tlerr.NotFound("Resource not found")
+                return res_map, err
+            }
+        }
+    }
+
+
     entry, ok := mapObj.PfcPriorityQueueMapEntries.PfcPriorityQueueMapEntry[entry_key]
     if !ok  {
         log.Info("entry is nil.")

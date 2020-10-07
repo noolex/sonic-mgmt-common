@@ -104,22 +104,42 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
     aliasName, ok := portEntry.Field["alias"]
     if !ok {
         // don't return error, keep populating data structures
-        log.Infof("Alias field not present for port: %s", portName)
+        log.V(3).Infof("Alias field not present for port: %s", portName)
         return
     }
     existingAliasName, ok := ifNameAliasMap.Load(portName)
     if ok {
-        log.Errorf("Alias name : %s already present for %s, updating with new alias name : %s", existingAliasName.(string), portName, aliasName)
+        log.V(3).Infof("Alias name : %s already present for %s, updating with new alias name : %s", existingAliasName.(string), portName, aliasName)
     }
     ifNameAliasMap.Store(portName, aliasName)
 
     existingIfName, ok := aliasIfNameMap.Load(aliasName)
     if ok {
-        log.Errorf("Port name : %s already present for %s, updating with new port name : %s", existingIfName.(string), aliasName, portName)
+        log.V(3).Infof("Port name : %s already present for %s, updating with new port name : %s", existingIfName.(string), aliasName, portName)
     }
     aliasIfNameMap.Store(aliasName, portName)
-    log.Infof("alias cache updated %s <==> %s", portName, aliasName)
+    log.V(3).Infof("alias cache updated %s <==> %s", portName, aliasName)
 }
+
+func deleteFromCacheForPort(portKey *db.Key) {
+    portName := portKey.Get(0)
+
+    aliasName, ok := ifNameAliasMap.Load(portName)
+    if !ok {
+        log.V(3).Infof("Port name %s not in Alias cache", portName)
+        return
+    }
+    ifNameAliasMap.Delete(portName)
+
+    _, _ok := aliasIfNameMap.Load(aliasName)
+    if !_ok {
+        log.V(3).Infof("Alias name %s for corresponding Port name %s not in Alias cache", aliasName, portName)
+        return
+    }
+    aliasIfNameMap.Delete(aliasName)
+    log.V(3).Infof("Deleted %s <==> %s from alias cache", portName, aliasName)
+}
+
 
 func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
     log.V(3).Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
@@ -127,6 +147,8 @@ func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) err
     switch event {
     case db.SEventHSet, db.SEventHDel:
         updateCacheForPort(key, d)
+    case db.SEventDel:
+        deleteFromCacheForPort(key)
     }
     return nil
 }
@@ -192,11 +214,11 @@ func updateAliasFromDB(key *db.Key, d *db.DB) {
     if !ok {
         // don't return error, keep populating data structures
         aliasMode = false
-        log.Infof("intf_naming_mode not present, disabling alias mode")
+        log.V(3).Infof("intf_naming_mode not present, disabling alias mode")
         return
     }
     aliasMode = (aliasVal == "standard")
-    log.Infof("aliasMode set to %v", aliasMode);
+    log.V(3).Infof("aliasMode set to %v", aliasMode);
 }
 
 func devMetaNotifSubscribe() {
@@ -274,7 +296,7 @@ func GetNativeNameFromUIName(uiName *string) *string {
 		}
 	}
 	ret := strings.Join(converted, ",")
-	log.Infof("%s => %s", *uiName, ret)
+	log.V(3).Infof("%s => %s", *uiName, ret)
 
 	return &ret
 }
@@ -296,7 +318,7 @@ func GetUINameFromNativeName(ifName *string) *string {
 		}
 	}
 	ret := strings.Join(converted, ",")
-	log.Infof("%s => %s", *ifName, ret)
+	log.V(3).Infof("%s => %s", *ifName, ret)
 
 	return &ret
 }

@@ -38,6 +38,19 @@ func init() {
   XlateFuncBind("rpc_clear_qos_pfc", rpc_clear_qos_pfc)
 }
 
+func isPfcWdEntryFound(d *db.DB, if_name string) (bool) {
+
+    if d == nil {
+        log.Infof("unable to get configDB")
+        return false
+    }
+
+    dbspec := &db.TableSpec { Name: "PFC_WD" }
+    _, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
+    return err == nil
+}
+
+
 var YangToDb_flex_counter_key_xfmr = func(inParams XfmrParams) (string, error) {
     log.Info("YangToDb_flex_counter_key_xfmr            uri: ", inParams.uri)
 
@@ -214,7 +227,43 @@ var YangToDb_qos_intf_pfcwd_st_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
     ifname := pathInfo.Var("interface-id")
     db_if_name := utils.GetNativeNameFromUIName(&ifname)
     if_name := *db_if_name
-    log.Info("YangToDb_qos_intf_pfcwd_st_xfmr         ifname :", if_name)
+    log.Info("YangToDb_qos_intf_pfcwd_st_xfmr ifname :", if_name)
+    if (inParams.oper == DELETE) {
+        isEntry := isPfcWdEntryFound(inParams.d, if_name)
+
+        requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
+        if (requestUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc" ||
+            requestUriPath ==  "/openconfig-qos:qos/interfaces/interface/pfc" ||
+            requestUriPath ==  "/openconfig-qos:qos/interfaces/interface" ||
+            requestUriPath ==  "/openconfig-qos:qos/interfaces" ||
+            requestUriPath ==  "/openconfig-qos:qos") {
+            if !isEntry {
+                log.Info("YangToDb_qos_intf_pfcwd_st_xfmr: No Entry, res_map: ", res_map)
+                return res_map, err
+            }
+
+            dbkey := if_name
+            pfcwdTblMap := make(map[string]db.Value)
+            entry := db.Value{Field: make(map[string]string)}
+            pfcwdTblMap[dbkey] = entry
+            res_map["PFC_WD"] = pfcwdTblMap
+            log.Info("YangToDb_qos_intf_pfcwd_st_xfmr: ", res_map)
+            return res_map, err
+        } else if((requestUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/watchdog") ||
+                  (requestUriPath == "/openconfig-qos:qos/interfaces/interface/pfc/watchdog")){
+            if !isEntry {
+              err = tlerr.NotFoundError{Format:"Resource not found"}
+              return res_map, err
+            }
+            dbkey := if_name
+            pfcwdTblMap := make(map[string]db.Value)
+            entry := db.Value{Field: make(map[string]string)}
+            pfcwdTblMap[dbkey] = entry
+            res_map["PFC_WD"] = pfcwdTblMap
+            log.Info("YangToDb_qos_intf_pfcwd_st_xfmr : ", res_map)
+            return res_map, err
+        }
+    }
 
     qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
     if qosIntfsObj == nil {

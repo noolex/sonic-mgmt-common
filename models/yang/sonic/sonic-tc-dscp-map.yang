@@ -31,7 +31,10 @@ module sonic-tc-dscp-map {
 				sonic-ext:map-leaf "tc dscp"; //every key:value pair is mapped to list keys, e.g. "1":"7" ==> tc=1, dscp=7
 
 				leaf name {
-					type string;
+                    type string {
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,31})';
+                        length 1..32;
+                    }
 				}
 
 				list TC_TO_DSCP_MAP { //this is list inside list for storing mapping between two fields

@@ -584,7 +584,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		errStr := fmt.Sprintf("Parent table does not exist for uri(%v)", uri)
 		return tlerr.InternalError{Format: errStr}
 	}
-
+	keyXfmrCache = make(map[string]string)
 	for i := 0; i < MAXOPER; i++ {
 		resultMap[i] = make(map[db.DBNum]map[string]map[string]db.Value)
 	}
@@ -844,7 +844,7 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 							if valErr == nil {
 								dbFldVal, err = unmarshalJsonToDbData(xDbSpecMap[dbSpecField].dbEntry, dbSpecField, fieldName, leafListInstVal)
 								if err != nil {
-									log.Errorf("Failed to unmarshal Json to DbData: path(\"%v\") error (\"%v\").", dbSpecField, err)
+									log.Warningf("Couldn't unmarshal Json to DbData: path(\"%v\") error (\"%v\").", dbSpecField, err)
 									return err
 								}
 							}
