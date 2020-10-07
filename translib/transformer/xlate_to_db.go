@@ -1131,7 +1131,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 
 				xfmrLogInfoAll("Check parent table for uri: %v", curUri)
 				// Get Table and Key only for yang list instances
-				xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, subOpDataMap, txCache, nil)
+				xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, curUri, uri, nil, subOpDataMap, txCache, nil)
 				if xerr != nil {
 					log.Warningf("Failed to get table and key for uri: %v err: %v", curUri, xerr)
 					err = xerr
@@ -1222,7 +1222,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 			return true, nil
 		}
 
-		xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache, nil)
+		xpathKeyExtRet, xerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, subOpDataMap, txCache, nil)
 		if xerr != nil {
 			log.Warningf("xpathKeyExtract failed err: %v, table %v, key %v", xerr, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 			return false, xerr
@@ -1280,7 +1280,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		// Get table for parent xpath
 		parentTable, perr := dbTableFromUriGet(d, ygRoot, oper, parentUri, uri, nil, txCache, nil)
 		// Get table for current xpath
-		xpathKeyExtRet, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, subOpDataMap, txCache, nil)
+		xpathKeyExtRet, cerr := xpathKeyExtract(d, ygRoot, oper, uri, uri, nil, subOpDataMap, txCache, nil)
 		curKey := xpathKeyExtRet.dbKey
 		curTable := xpathKeyExtRet.tableName
 		if len(curTable) > 0 {

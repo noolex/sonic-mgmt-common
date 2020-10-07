@@ -708,7 +708,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 			inParamsForGet.ygRoot = ygRoot
 		}
 	} else {
-		xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, curUri, requestUri, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
+		xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, curUri, requestUri, dbDataMap, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
 		keyFromCurUri := xpathKeyExtRet.dbKey
 		inParamsForGet.ygRoot = ygRoot
 		if dbKey == keyFromCurUri || keyFromCurUri == "" {
@@ -894,7 +894,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 				cdb := xYangSpecMap[chldXpath].dbIndex
 				inParamsForGet.curDb = cdb
 				if len(xYangSpecMap[chldXpath].validateFunc) > 0 && !validate {
-					xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
+					xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, dbDataMap, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
 					inParamsForGet.ygRoot = ygRoot
 					// TODO - handle non CONFIG-DB
 					inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, xpathKeyExtRet.dbKey, dbDataMap, nil, nil, txCache)
@@ -924,7 +924,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					}
 					inParamsForGet.resultMap = resultMap
 				} else if chldYangType == YANG_CONTAINER {
-					xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
+					xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, dbDataMap, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
 					tblKey := xpathKeyExtRet.dbKey
 					chtbl := xpathKeyExtRet.tableName
 					inParamsForGet.ygRoot = ygRoot
@@ -1010,7 +1010,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					inParamsForGet.dbDataMap = dbDataMap
 					inParamsForGet.ygRoot = ygRoot
 				} else if chldYangType ==  YANG_LIST {
-					xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
+					xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, dbDataMap, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
 					inParamsForGet.ygRoot = ygRoot
 					cdb = xYangSpecMap[chldXpath].dbIndex
 					inParamsForGet.curDb = cdb
@@ -1086,7 +1086,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 	if isSonicYang(uri) {
 		return directDbToYangJsonCreate(inParamsForGet)
 	} else {
-		xpathKeyExtRet, _ := xpathKeyExtract(d, ygRoot, GET, uri, requestUri, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
+		xpathKeyExtRet, _ := xpathKeyExtract(d, ygRoot, GET, uri, requestUri, dbDataMap, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
 
 		inParamsForGet.xpath = xpathKeyExtRet.xpath
 		inParamsForGet.tbl = xpathKeyExtRet.tableName
