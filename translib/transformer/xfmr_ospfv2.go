@@ -1106,7 +1106,7 @@ func ospfGetUIIntfName(ifName string) (string, error) {
    }
 
    uiNamePtr := utils.GetUINameFromNativeName(&ifName)
-   log.Infof("ospfGetUIIntfName: ifName %s uiName %s.", ifName, *uiNamePtr)
+   log.V(3).Infof("ospfGetUIIntfName: ifName %s uiName %s.", ifName, *uiNamePtr)
    return *uiNamePtr, nil
 }
 

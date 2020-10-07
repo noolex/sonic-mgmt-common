@@ -710,7 +710,7 @@ var YangToDb_bgp_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
         return "", errors.New("Protocol Name is missing")
     }
 
-    log.Info("URI VRF ", niName)
+    log.V(3).Info("URI VRF ", niName)
 
     if inParams.oper == DELETE && niName == "default" {
         xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
@@ -863,7 +863,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 
 	key := niName + "|" + afi
 	
-	log.Info("AFI key: ", key)
+	log.V(3).Info("AFI key: ", key)
 
     return key, nil
 }

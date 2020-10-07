@@ -16,7 +16,7 @@ func init () {
 var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList []string
 
-    log.Info("network_instance_protocols_protocol_table_name_xfmr")
+    log.V(3).Info("network_instance_protocols_protocol_table_name_xfmr")
     if (inParams.oper == GET) {
         pathInfo := NewPathInfo(inParams.uri)
         niName := pathInfo.Var("name")
