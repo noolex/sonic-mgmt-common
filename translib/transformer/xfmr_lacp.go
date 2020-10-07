@@ -26,7 +26,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
     "os/exec"
-
+    "time"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
 )
@@ -350,7 +350,9 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
 
         ygot.BuildEmptyTree(lacpIntfsObj)
 
+        /*
         var lagTblTs = &db.TableSpec{Name: "LAG_TABLE"}
+
         var appDb = inParams.dbs[db.ApplDB]
         tbl, err := appDb.GetTable(lagTblTs)
 
@@ -359,6 +361,18 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
             return err
         }
         keys, _ := tbl.GetKeys()
+        */
+        start := time.Now()
+
+        keys, err := inParams.dbs[db.ApplDB].GetKeysByPattern(&db.TableSpec{Name: "LAG_TABLE"}, "PortChannel*")
+        if err != nil {
+            log.Error("App-DB get for list of portchannels failed!")
+            return err
+        }
+
+        ts := time.Since(start)
+        log.Infof("GetTable and GetKeys took %s", ts)
+
         for _, key := range keys {
            ifKey := key.Get(0)
 
