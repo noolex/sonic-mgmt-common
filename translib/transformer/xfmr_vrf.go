@@ -105,9 +105,6 @@ func isMgmtVrfDbTbl (inParams XfmrParams) (bool) {
 /* Check if this is "VRF" table */
 func isVrfDbTbl (inParams XfmrParams) (bool)  {
         data := (*inParams.dbDataMap)[inParams.curDb]
-        if log.V(3) {
-            log.Info("isVrfDbTbl: ", data, "inParams :", inParams)
-        }
 
         vrfTbl := data["VRF"]
         if (vrfTbl != nil) {

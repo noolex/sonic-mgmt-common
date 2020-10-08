@@ -492,14 +492,10 @@ var DbToYang_bgp_advertise_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
     log.Info(inParams.key)
 
     data := (*inParams.dbDataMap)[inParams.curDb]
-    if log.V(3) {
-        log.Info("DbToYang_bgp_advertise_fld_xfmr : ", data, "inParams : ", inParams)
-    }
+    log.V(3).Info("DbToYang_bgp_advertise_fld_xfmr : ", data, "inParams : ", inParams)
 
     pTbl := data["BGP_GLOBALS_AF"]
-    if log.V(3) {
-        log.Info("Table: ", pTbl)
-    }
+    log.V(3).Info("Table: ", pTbl)
 
     if _, ok := pTbl[inParams.key]; !ok {
         log.Info("DbToYang_bgp_advertise_fld_xfmr BGP AF not found : ", inParams.key)
