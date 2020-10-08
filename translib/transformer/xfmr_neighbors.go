@@ -64,14 +64,14 @@ const (
 )
 
 const (
-    NIP  = 0
-    NIPI = 1
-    NIPSI = 2
-    NIPSL = 3
-    NIPv6   = 0
-    NIPIv6  = 1
-    NIPSIv6 = 2
-    NIPSLv6 = 3
+    PREFIX  = 0
+    PREFIX_IP = 1
+    PREFIX_STATE_IP = 2
+    PREFIX_STATE_LL = 3
+    PREFIXv6   = 0
+    PREFIX_IPv6  = 1
+    PREFIX_STATE_IPv6 = 2
+    PREFIX_STATE_LLv6 = 3
 )
 
 var YangToDb_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
@@ -651,7 +651,6 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
     intfNameRcvd := pathInfo.Var("name")
     nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
-    log.Info("Interface Name(Standard, Native): ", intfNameRcvd, ", ", *nativeIntfName)
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
@@ -694,18 +693,18 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         keyPattern = *nativeIntfName + ":*"
     }
 
-    log.Info("KeyPattern: ", keyPattern)
+    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", *nativeIntfName, "),  keyPattern: ", keyPattern)
     keys, _ := appDb.GetKeysByPattern(neighTblTs, keyPattern)
 
     /* avoid string comparison in the loop and figure the msgType here*/
     if strings.HasPrefix(targetUriPath, NEIGH_IPv4_PREFIX_STATE_LL) {
-        msgType = NIPSL
+        msgType = PREFIX_STATE_LL
     } else if strings.HasPrefix(targetUriPath, NEIGH_IPv4_PREFIX_STATE_IP) {
-        msgType = NIPSI
+        msgType = PREFIX_STATE_IP
     } else if strings.HasPrefix(targetUriPath, NEIGH_IPv4_PREFIX_IP) {
-        msgType = NIPI
+        msgType = PREFIX_IP
     } else if strings.HasPrefix(targetUriPath, NEIGH_IPv4_PREFIX) {
-        msgType = NIP
+        msgType = PREFIX
     }
 
     for _, key := range keys {
@@ -724,13 +723,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         }
 
         linkAddr := entry.Field["neigh"]
-        addrFamily := entry.Field["family"]
 
-        if (addrFamily != "IPv4") {
-                continue
-        }
-
-        if msgType == NIPSL {
+        if msgType == PREFIX_STATE_LL {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
                 if err != nil {
@@ -741,7 +735,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.LinkLayerAddress = &linkAddr
             break
-        } else if msgType == NIPSI {
+        } else if msgType == PREFIX_STATE_IP {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
                 if err != nil {
@@ -752,7 +746,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             break
-        } else if msgType == NIPI {
+        } else if msgType == PREFIX_IP {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
                 if err != nil {
@@ -764,7 +758,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
             break
-        } else if msgType == NIP {
+        } else if msgType == PREFIX {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
                 if err != nil {
@@ -793,10 +787,8 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_Neighbors_Neighbor
 
-
     intfNameRcvd := pathInfo.Var("name")
     nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
-    log.Info("Interface Name(Standard, Native): ", intfNameRcvd, ", ", *nativeIntfName)
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
@@ -838,18 +830,18 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     } else {
         keyPattern = *nativeIntfName + ":*"
     }
-    log.Info("KeyPattern: ", keyPattern)
+    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", *nativeIntfName, "),  keyPattern: ", keyPattern)
     keys, _ := appDb.GetKeysByPattern(neighTblTs, keyPattern)
 
     /* avoid string comparison in the loop and figure the msgType here*/
     if strings.HasPrefix(targetUriPath, NEIGH_IPv6_PREFIX_STATE_LL) {
-        msgType = NIPSLv6
+        msgType = PREFIX_STATE_LLv6
     } else if strings.HasPrefix(targetUriPath, NEIGH_IPv6_PREFIX_STATE_IP) {
-        msgType = NIPSIv6
+        msgType = PREFIX_STATE_IPv6
     } else if strings.HasPrefix(targetUriPath, NEIGH_IPv6_PREFIX_IP) {
-        msgType = NIPIv6
+        msgType = PREFIX_IPv6
     } else if strings.HasPrefix(targetUriPath, NEIGH_IPv6_PREFIX) {
-        msgType = NIPv6
+        msgType = PREFIXv6
     }
 
     for _, key := range keys {
@@ -871,16 +863,8 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         }
 
         linkAddr := entry.Field["neigh"]
-        addrFamily := entry.Field["family"]
 
-        /*The transformer returns complete table regardless of the interface.
-          First check if the interface and IP of this redis entry matches one
-          available in the received URI
-        */
-        if (addrFamily != "IPv6") {
-                continue
-        }
-         if msgType == NIPSLv6 {
+        if msgType == PREFIX_STATE_LLv6 {
             if neighObj, ok = subIntfObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
                 if err != nil {
@@ -891,7 +875,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.LinkLayerAddress = &linkAddr
             break
-        } else if msgType == NIPSIv6 {
+        } else if msgType == PREFIX_STATE_IPv6 {
             if neighObj, ok = subIntfObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
                 if err != nil {
@@ -902,7 +886,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             break
-        } else if msgType == NIPIv6 {
+        } else if msgType == PREFIX_IPv6 {
             if neighObj, ok = subIntfObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
                 if err != nil {
@@ -914,7 +898,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
             break
-        } else if msgType == NIPv6 {
+        } else if msgType == PREFIXv6 {
             if neighObj, ok = subIntfObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
                 if err != nil {
