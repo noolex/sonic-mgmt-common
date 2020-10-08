@@ -189,10 +189,6 @@ var YangToDb_bgp_evpn_vni_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
 	return afName, err
     }
 
-    log.V(3).Info("URI VRF ", vrfName)
-    log.V(3).Info("URI VNI NUMBER ", vniNumber)
-    log.V(3).Info("URI AFI SAFI ", afName)
-
     vniTableKey := vrfName + "|" + afName + "|" + vniNumber
 
     log.Info("YangToDb_bgp_evpn_vni_key_xfmr: vniTableKey:", vniTableKey)
