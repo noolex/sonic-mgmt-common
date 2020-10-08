@@ -208,7 +208,7 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
         log.Info("VRF Name is Missing")
         return niName, err
     }
-    if strings.Contains(niName, "Vlan") {
+    if strings.Contains(niName, "Vlan") || strings.Contains(niName, "mgmt") {
         err = errors.New("Unsupported network-instance " + niName);
         log.Info("Unsupported network-instance " + niName)
         return niName, err
@@ -275,7 +275,7 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
         log.Info("VRF Name is Missing")
         return rmap, err
     }
-    if strings.Contains(niName, "Vlan") {
+    if strings.Contains(niName, "Vlan") || strings.Contains(niName, "mgmt") {
         err = errors.New("Unsupported network-instance " + niName);
         log.Info("Unsupported network-instance " + niName)
         return rmap, err
