@@ -354,9 +354,13 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
         if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/afts") && strings.HasPrefix(keyName, "Vlan") {
             return tblList, err
         }
-        if ((targetUriPath == "/openconfig-network-instance:network-instances/network-instance/table-connections") && 
-            (strings.HasPrefix(keyName, "Vlan") || strings.HasPrefix(keyName, "mgmt"))) {
-            return tblList, err
+        if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/table-connections")  {
+            if (strings.HasPrefix(keyName, "Vlan") || strings.HasPrefix(keyName, "mgmt")) {
+                return tblList, err
+            } else {
+                tblList = append(tblList, "NONE")
+                return tblList, err
+            }
         }
 
         /* get internal network instance name in order to fetch the DB table name */
@@ -505,9 +509,7 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
         /* Get key for the respective table based on the network instance key "name" */
         vrfTbl_key = getVrfTblKeyByName(pathInfo.Var("name"))
 
-        if log.V(3) {
-            log.Info("YangToDb_network_instance_table_key_xfmr: ", vrfTbl_key)
-        }
+        log.Info("YangToDb_network_instance_table_key_xfmr: ", vrfTbl_key)
 
         /* Validate:
          * - if management VRF is used by TACACS+ server or in-band data interfaces, deletion is not allowed

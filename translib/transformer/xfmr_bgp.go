@@ -861,9 +861,9 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 	    return afName, err
     }
 
-	key := niName + "|" + afi
+    key := niName + "|" + afi
 
-	log.V(3).Info("AFI key: ", key)
+    log.Info("YangToDb_bgp_gbl_afi_safi_key_xfmr: AFI key: ", key)
 
     return key, nil
 }

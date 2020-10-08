@@ -256,9 +256,7 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 
     key := niName + "|" + source + "|" + destination + "|" + family 
 
-    if log.V(3) {
-        log.Info("TableConnection key: ", key)
-    }
+    log.Info("YangToDb_route_table_conn_key_xfmr: TableConnection key: ", key)
 
     return key, nil
 }
