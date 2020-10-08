@@ -862,7 +862,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     }
 
 	key := niName + "|" + afi
-	
+
 	log.V(3).Info("AFI key: ", key)
 
     return key, nil
@@ -871,7 +871,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     rmap := make(map[string]interface{})
     entry_key := inParams.key
-    log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: ", entry_key)
+    log.V(3).Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: ", entry_key)
     pathInfo := NewPathInfo(inParams.uri)
     niName := pathInfo.Var("name")
 
@@ -879,7 +879,7 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     if len(mpathKey) < 2 {return rmap, nil}
     if (mpathKey[0] != niName) {
         err := errors.New("Vrf name mismatch")
-        log.Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
+        log.V(3).Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
         return rmap, err
     }
 
@@ -887,18 +887,18 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
 
     switch mpathKey[1] {
         case "ipv4_unicast":
-		afi = "IPV4_UNICAST"
+            afi = "IPV4_UNICAST"
 	case "ipv6_unicast":
-		afi = "IPV6_UNICAST"
+            afi = "IPV6_UNICAST"
 	case "l2vpn_evpn":
-		afi = "L2VPN_EVPN"
-    default:
-        return rmap, nil
-	}
+            afi = "L2VPN_EVPN"
+        default:
+            return rmap, nil
+    }
 
     rmap["afi-safi-name"] = afi
 
-	log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: rmap:", rmap)
+    log.V(3).Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: rmap:", rmap)
     return rmap, nil
 }
 

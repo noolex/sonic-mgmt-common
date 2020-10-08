@@ -231,7 +231,7 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     } else if strings.Contains(afName, "IPV6") {
         family = "ipv6"
     } else {
-        log.Info("Unsupported address-family " + afName)
+        log.V(3).Info("Unsupported address-family " + afName)
         return family, errors.New("Unsupported address-family " + afName)
     }
 
@@ -251,7 +251,7 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     if strings.Contains(dstProto, "BGP") {
         destination = "bgp"
     } else {
-        log.Info("Unsupported protocol " + dstProto)
+        log.V(3).Info("Unsupported protocol " + dstProto)
         return family, errors.New("Unsupported protocol " + dstProto)
     }
 
@@ -272,19 +272,19 @@ var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     niName     :=  pathInfo.Var("name")
     if len(niName) == 0 {
         err = errors.New("vrf name is missing");
-        log.Info("VRF Name is Missing")
+        log.V(3).Info("VRF Name is Missing")
         return rmap, err
     }
     if strings.Contains(niName, "Vlan") || strings.Contains(niName, "mgmt") {
         err = errors.New("Unsupported network-instance " + niName);
-        log.Info("Unsupported network-instance " + niName)
+        log.V(3).Info("Unsupported network-instance " + niName)
         return rmap, err
     }
 
     key := strings.Split(entry_key, "|")
     if(key[0] != niName) {
         err = errors.New("vrf name is mismatch");
-        log.Info("VRF Name is Mismatch")
+        log.V(3).Info("VRF Name is Mismatch")
         return rmap, err
     }
     source := key[1]
