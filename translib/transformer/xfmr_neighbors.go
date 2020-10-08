@@ -655,7 +655,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
-        log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        log.Info("DbToYang_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
         return nil
     }
 
