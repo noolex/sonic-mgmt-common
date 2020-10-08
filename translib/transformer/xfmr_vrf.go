@@ -354,10 +354,10 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
         if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/tables") {
             return tblList, err
         }
-        if (targetUriPath == "/oc-netinst:network-instances/network-instance/afts") && strings.HasPrefix(keyName, "Vlan") {
+        if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/afts") && strings.HasPrefix(keyName, "Vlan") {
             return tblList, err
         }
-        if ((targetUriPath == "/openconfig-network-instance:network-instances/network-instance/table-connections") ||
+        if ((targetUriPath == "/openconfig-network-instance:network-instances/network-instance/table-connections") && 
             (strings.HasPrefix(keyName, "Vlan") || strings.HasPrefix(keyName, "mgmt"))) {
             return tblList, err
         }
