@@ -4,6 +4,7 @@ import (
     "errors"
     "strings"
     "strconv"
+    "sync"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
@@ -241,9 +242,19 @@ var YangToDb_fdb_mac_table_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
     return nil, err
 }
 
-func getOidToIntfNameMap (d *db.DB) (map[string]string, error) {
+func getOidToIntfNameMap (d *db.DB, cache *sync.Map) (map[string]string, error) {
     tblTs := &db.TableSpec{Name:"COUNTERS_PORT_NAME_MAP"}
     oidToIntf :=  make(map[string]string)
+
+    oidInfMapCache , present := cache.Load("oidInfMap")
+    if (!present) {
+        xfmrLogInfoAll("Need to fetch OidToIntfNameMap and cache ")
+    } else {
+        xfmrLogInfoAll("fdb Restore OidToIntfNameMap from cache ")
+        oidToIntf = oidInfMapCache.(map[string]string)
+        return oidToIntf, nil
+    }
+
     intfOidEntry, err := d.GetMapAll(tblTs)
     if err != nil || !intfOidEntry.IsPopulated() {
         log.Error("Reading Port OID map failed.", err)
@@ -253,13 +264,30 @@ func getOidToIntfNameMap (d *db.DB) (map[string]string, error) {
         oidToIntf[oid] = intf
     }
 
+    xfmrLogInfoAll("Storing OidToIntfNameMap in Cache")
+    cache.Store("oidInfMap", oidToIntf)
+
     return oidToIntf, nil
 }
 
-func getASICStateMaps (d *db.DB) (map[string]string, map[string]string, map[string]map[string]db.Value, error) {
+func getASICStateMaps (d *db.DB, cache *sync.Map) (map[string]string, map[string]string, map[string]map[string]db.Value, error) {
     oidTOVlan := make(map[string]string)
     brPrtOidToIntfOid := make(map[string]string)
     fdbMap := make(map[string]map[string]db.Value)
+
+   oidToVlanCache , vlanPresent := cache.Load("oidToVlan")
+   brPrtOidToIntfOidCache, brPortPresent := cache.Load("brPrtOidToIntfOid")
+   fdbMapCache, fdbPresent := cache.Load("fdbMap")
+   if (!vlanPresent || !brPortPresent || !fdbPresent ) {
+        xfmrLogInfoAll("Need to fetch ASICStateMaps and cache  vlanPresent:%v brPortPresent:%v fdbPresent:%v", vlanPresent, brPortPresent, fdbPresent)
+   } else {
+        xfmrLogInfoAll("fdb Restore ASICStateMaps from cache ")
+        oidTOVlan = oidToVlanCache.(map[string]string) 
+        brPrtOidToIntfOid = brPrtOidToIntfOidCache.(map[string]string)
+        fdbMap = fdbMapCache.(map[string]map[string]db.Value)
+        return oidTOVlan, brPrtOidToIntfOid, fdbMap, nil
+   }
+
 
     tblName := "ASIC_STATE"
     vlanPrefix := "SAI_OBJECT_TYPE_VLAN"
@@ -317,6 +345,11 @@ func getASICStateMaps (d *db.DB) (map[string]string, map[string]string, map[stri
             continue
         }
     }
+
+    xfmrLogInfoAll("Storing ASICStateMaps in Cache")
+    cache.Store("oidToVlan", oidTOVlan)
+    cache.Store("brPrtOidToIntfOid", brPrtOidToIntfOid)
+    cache.Store("fdbMap", fdbMap) 
     return oidTOVlan, brPrtOidToIntfOid, fdbMap, nil
 }
 
@@ -325,8 +358,8 @@ func fdbMacTableGetAll (inParams XfmrParams) error {
     pathInfo := NewPathInfo(inParams.uri)
     instance := pathInfo.Var("name")
     macTbl := getFdbMacTableRoot(inParams.ygRoot, instance, true)
-    oidToVlan, brPrtOidToIntfOid, fdbMap, _ := getASICStateMaps(inParams.dbs[db.AsicDB])
-    OidInfMap,_  := getOidToIntfNameMap(inParams.dbs[db.CountersDB])
+    oidToVlan, brPrtOidToIntfOid, fdbMap, _ := getASICStateMaps(inParams.dbs[db.AsicDB], inParams.txCache)
+    OidInfMap,_  := getOidToIntfNameMap(inParams.dbs[db.CountersDB], inParams.txCache)
 
     ygot.BuildEmptyTree(macTbl.Entries)
 
@@ -447,13 +480,16 @@ var DbToYang_fdb_mac_table_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams)
     instance := pathInfo.Var("name")
     vlan := pathInfo.Var("vlan")
     macAddress := pathInfo.Var("mac-address")
+    nivlan := ""
 
     if strings.HasPrefix(instance, "Vrf") {
         return nil
+    } else if strings.HasPrefix(instance, "Vlan") {
+        nivlan = instance
     }
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
-    log.Info("targetUriPath is ", targetUriPath)
+    log.Info("Incoming uri:%v targetUriPath %v ", inParams.uri, targetUriPath)
 
     macTbl := getFdbMacTableRoot(inParams.ygRoot, instance, true)
     if macTbl == nil {
@@ -462,19 +498,24 @@ var DbToYang_fdb_mac_table_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams)
     }
 
     ygot.BuildEmptyTree(macTbl)
-    if vlan == "" || macAddress == "" {
+
+    if vlan == "" && nivlan != "" {
+       vlan = nivlan
+    }
+
+    if vlan == "" && macAddress == "" {
         err = fdbMacTableGetAll (inParams)
     } else {
         vlanString := strings.HasPrefix(vlan, "Vlan")
         if (vlanString) {
             vlan = strings.Replace(vlan, "", "Vlan", 1)
         }
-        oidToVlan, brPrtOidToIntfOid, fdbMap, err := getASICStateMaps(inParams.dbs[db.AsicDB])
+        oidToVlan, brPrtOidToIntfOid, fdbMap, err := getASICStateMaps(inParams.dbs[db.AsicDB], inParams.txCache)
         if err != nil {
             log.Error("getASICStateMaps failed.")
             return err
         }
-        oidInfMap,_  := getOidToIntfNameMap(inParams.dbs[db.CountersDB])
+        oidInfMap,_  := getOidToIntfNameMap(inParams.dbs[db.CountersDB],    inParams.txCache)
         err = fdbMacTableGetEntry(inParams, vlan, macAddress, oidInfMap, oidToVlan, brPrtOidToIntfOid, fdbMap, macTbl)
         if err != nil {
             log.Error("Failed to fetch MAC table entry; err=%v", err)
@@ -498,7 +539,7 @@ var DbToYang_fdb_mac_table_count_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
     }
     ygot.BuildEmptyTree(fdbTbl)
 
-    oidToVlan, _, fdbMap, _ := getASICStateMaps(inParams.dbs[db.AsicDB])
+    oidToVlan, _, fdbMap, _ := getASICStateMaps(inParams.dbs[db.AsicDB], inParams.txCache)
     for vlanOid, vlanEntry := range fdbMap {
         if _, ok  := oidToVlan[vlanOid]; !ok {
             continue
