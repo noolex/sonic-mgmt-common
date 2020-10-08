@@ -997,6 +997,18 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	        log.Info("VXLAN_TUNNEL testing ==> TARGET err ==>", errIntf)
 	      }
 		}
+    } else if intfType != IntfTypeEthernet &&
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
+        //Checking interface type at container level, if not Ethernet type return nil
+        return nil, nil
+    } else if intfType != IntfTypePortChannel &&
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation") {
+        //Checking interface type at container level, if not PortChannel type return nil
+        return nil, nil
+    } else if intfType != IntfTypeVlan &&
+        strings.HasPrefix(targetUriPath, "openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") {
+        //Checking interface type at container level, if not Vlan type return nil
+        return nil, nil
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, "NONE")
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state") ||
@@ -1434,7 +1446,7 @@ var DbToYang_intf_oper_status_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
         log.Info("DbToYang_intf_oper_status_xfmr - Invalid interface type IntfTypeUnset");
         return result, errors.New("Invalid interface type IntfTypeUnset");
     }
-    if IntfTypeVxlan == intfType {
+    if IntfTypeVxlan == intfType || IntfTypeVlan == intfType || IntfTypeLoopback == intfType {
 	    return result, nil
     }
     intTbl := IntfTypeTblMap[intfType]
@@ -1479,7 +1491,7 @@ var DbToYang_intf_eth_auto_neg_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
         log.Info("DbToYang_intf_eth_auto_neg_xfmr - Invalid interface type IntfTypeUnset");
         return result, errors.New("Invalid interface type IntfTypeUnset");
     }
-    if IntfTypeVxlan == intfType {
+    if IntfTypeMgmt != intfType && IntfTypeEthernet != intfType {
 	    return result, nil
     }
     intTbl := IntfTypeTblMap[intfType]
@@ -4388,7 +4400,7 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     memMap := make(map[string]map[string]db.Value)
 
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, err := getYangPathFromUri(inParams.requestUri)
+    requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     if err != nil {
         return memMap, err
     }
@@ -4411,11 +4423,21 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     intfObj := intfsObj.Interface[uriIfName]
+
     // Need to differentiate between config container delete and any attribute other than aggregate-id delete
-    if intfObj.Ethernet == nil  || intfObj.Ethernet.Config == nil || (intfObj.Ethernet.Config != nil &&
-       targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
-        // Delete entire ethernet container for Interface
-        if inParams.oper == DELETE {
+    if inParams.oper == DELETE {
+    /* Handles 3 cases
+       case 1: Deletion request at top-level container / list
+       case 2: Deletion request at ethernet container level
+       case 3: Deletion request at ethernet/config container level */
+
+        //case 1
+        if intfObj.Ethernet == nil ||
+          //case 2
+          intfObj.Ethernet.Config == nil ||
+            //case 3
+            (intfObj.Ethernet.Config != nil && requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
+
             // Delete all the Vlans for Interface and member port removal from port-channel
             lagId, err := retrievePortChannelAssociatedWithIntf(&inParams, &ifName)
             if lagId != nil {
@@ -4440,8 +4462,6 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                 memMap[tblName][intfKey] = value
             }
             return memMap, err
-        } else {
-            return nil, errors.New("Invalid request!")
         }
     }
 
