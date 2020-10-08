@@ -105,6 +105,9 @@ func isMgmtVrfDbTbl (inParams XfmrParams) (bool) {
 /* Check if this is "VRF" table */
 func isVrfDbTbl (inParams XfmrParams) (bool)  {
         data := (*inParams.dbDataMap)[inParams.curDb]
+        if log.V(3) {
+            log.Info("isVrfDbTbl: ", data, "inParams :", inParams)
+        }
 
         vrfTbl := data["VRF"]
         if (vrfTbl != nil) {
@@ -117,7 +120,6 @@ func isVrfDbTbl (inParams XfmrParams) (bool)  {
 /* Check if "mgmtVrfEnabled" is set to true in the "MGMT_VRF_CONFIG" table */
 func mgmtVrfEnabledInDb (inParams XfmrParams) (string) {
         data := (*inParams.dbDataMap)[inParams.curDb]
-
         log.V(3).Infof("mgmtVrfEnabledInDb key: %v", inParams.key)
 
         mgmtTbl := data["MGMT_VRF_CONFIG"]
@@ -345,6 +347,17 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
                         log.Info("network_instance_table_name_xfmr, for key name not present")
                         return tblList, errors.New("Empty network instance name")
                 }
+        }
+
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+        log.V(3).Info("network_instance_table_name_xfmr request URI: ", targetUriPath)
+        if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/tables") {
+            return tblList, err
+        }
+        if (((targetUriPath == "/openconfig-network-instance:network-instances/network-instance/table-connections") ||
+            (targetUriPath == "/oc-netinst:network-instances/network-instance/afts")) &&
+            (strings.HasPrefix(keyName, "Vlan"))) {
+            return tblList, err
         }
 
         /* get internal network instance name in order to fetch the DB table name */

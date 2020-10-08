@@ -872,14 +872,21 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     rmap := make(map[string]interface{})
     entry_key := inParams.key
     log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: ", entry_key)
+    pathInfo := NewPathInfo(inParams.uri)
+    niName := pathInfo.Var("name")
 
     mpathKey := strings.Split(entry_key, "|")
     if len(mpathKey) < 2 {return rmap, nil}
+    if (mpathKey[0] != niName) {
+        err := errors.New("Vrf name mismatch")
+        log.Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
+        return rmap, err
+    }
 
-	afi := ""
+    afi := ""
 
-	switch mpathKey[1] {
-	case "ipv4_unicast":
+    switch mpathKey[1] {
+        case "ipv4_unicast":
 		afi = "IPV4_UNICAST"
 	case "ipv6_unicast":
 		afi = "IPV6_UNICAST"

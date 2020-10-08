@@ -203,18 +203,23 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     pathInfo := NewPathInfo(inParams.uri)
 
     niName     :=  pathInfo.Var("name")
+    if len(niName) == 0 {
+        err = errors.New("vrf name is missing");
+        log.Info("VRF Name is Missing")
+        return niName, err
+    }
+    if strings.Contains(niName, "Vlan") {
+        err = errors.New("Unsupported network-instance " + niName);
+        log.Info("Unsupported network-instance " + niName)
+        return niName, err
+    }
+
     srcProto   := pathInfo.Var("src-protocol")
     dstProto   := pathInfo.Var("dst-protocol")
     afName     := pathInfo.Var("address-family")
 
     if len(pathInfo.Vars) < 3 {
         return "", nil
-    }
-
-    if len(niName) == 0 {
-        err = errors.New("vrf name is missing");
-        log.Info("VRF Name is Missing")
-        return niName, err
     }
 
     var family string
@@ -258,11 +263,30 @@ var YangToDb_route_table_conn_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 }
 
 var DbToYang_route_table_conn_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
     rmap := make(map[string]interface{})
     entry_key := inParams.key
     log.Info("DbToYang_route_table_conn_key_xfmr: ", entry_key)
 
+    pathInfo := NewPathInfo(inParams.uri)
+    niName     :=  pathInfo.Var("name")
+    if len(niName) == 0 {
+        err = errors.New("vrf name is missing");
+        log.Info("VRF Name is Missing")
+        return rmap, err
+    }
+    if strings.Contains(niName, "Vlan") {
+        err = errors.New("Unsupported network-instance " + niName);
+        log.Info("Unsupported network-instance " + niName)
+        return rmap, err
+    }
+
     key := strings.Split(entry_key, "|")
+    if(key[0] != niName) {
+        err = errors.New("vrf name is mismatch");
+        log.Info("VRF Name is Mismatch")
+        return rmap, err
+    }
     source := key[1]
     destination := key[2]
     family := key[3]
