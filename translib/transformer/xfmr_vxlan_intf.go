@@ -1107,7 +1107,7 @@ var DbToYang_intf_vxlan_qosmode_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrP
 	ifName := pathInfo.Var("name")
 	data := (*inParams.dbDataMap)[inParams.curDb]
 
-	log.Infof("DbToYang_intf_vxlan_qosmode_fld_xfmr: key: %v, data: %v", ifName, data)
+	log.V(3).Infof("DbToYang_intf_vxlan_qosmode_fld_xfmr: key: %v, data: %v", ifName, data)
 	if len(data) > 0 {
 		dbv := data["VXLAN_TUNNEL"][ifName]
         qosModeStr := dbv.Field["qos-mode"]
@@ -1570,7 +1570,7 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 	} else if strings.HasPrefix(niName, "Vrf") {
 		tblName = "VRF"
 	} else {
-		log.Errorf("Invalid Network Instance name: %s", niName)
+		log.Warningf("Invalid Network Instance name: %s", niName)
 		return tlerr.InvalidArgs("Invalid Network Instance name: %s", niName)
 	}
 
@@ -1648,6 +1648,13 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 					mapNameList := strings.Split(dbkey.Get(1), "_")
 					vniNum, _ := strconv.ParseUint(mapNameList[1], 10, 32)
 					vniId = uint32(vniNum)
+					dbVlanName := mapNameList[2]
+                    if (strings.Compare(niName, dbVlanName) != 0) {
+                        continue
+                    } 
+                    if log.V(3) {
+	                    log.Infof("Matching niName:%v dbVlanName:%v", niName, dbVlanName)
+                    }
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := configDb.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
 					if err != nil {
@@ -1747,7 +1754,7 @@ var DbToYang_vlan_nd_suppress_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
 	vlanIdStr := pathInfo.Var("name")
 	data := (*inParams.dbDataMap)[inParams.curDb]
 
-	log.Infof("vlan_nd_suppress_fld_xfmr: key: %v, data: %v", vlanIdStr, data)
+	log.V(3).Infof("vlan_nd_suppress_fld_xfmr: key: %v, data: %v", vlanIdStr, data)
 	if len(data) > 0 {
 		val := data["SUPPRESS_VLAN_NEIGH"][vlanIdStr]
 		if val.Get("suppress") == "on" {

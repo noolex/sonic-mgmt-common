@@ -23,6 +23,7 @@ import (
 
 func init () {
 
+    XlateFuncBind("ospfv2_validate_proto", validate_ospfv2_protocol)
     XlateFuncBind("YangToDb_ospfv2_router_tbl_key_xfmr", YangToDb_ospfv2_router_tbl_key_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_tbl_key_xfmr", DbToYang_ospfv2_router_tbl_key_xfmr)
     XlateFuncBind("YangToDb_ospfv2_router_enable_fld_xfmr", YangToDb_ospfv2_router_enable_fld_xfmr)
@@ -86,6 +87,13 @@ func init () {
     XlateFuncBind("YangToDb_ospfv2_interface_name_fld_xfmr", YangToDb_ospfv2_interface_name_fld_xfmr)
     XlateFuncBind("DbToYang_ospfv2_interface_name_fld_xfmr", DbToYang_ospfv2_interface_name_fld_xfmr)
 
+}
+
+func validate_ospfv2_protocol(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    proto := pathInfo.Var("name#2")
+    protoId := pathInfo.Var("identifier")
+    return protoId == "OSPF" && proto == "ospfv2"
 }
 
 func getOspfUriPath(inParams *XfmrParams) (string, error) {
@@ -1098,7 +1106,7 @@ func ospfGetUIIntfName(ifName string) (string, error) {
    }
 
    uiNamePtr := utils.GetUINameFromNativeName(&ifName)
-   log.Infof("ospfGetUIIntfName: ifName %s uiName %s.", ifName, *uiNamePtr)
+   log.V(3).Infof("ospfGetUIIntfName: ifName %s uiName %s.", ifName, *uiNamePtr)
    return *uiNamePtr, nil
 }
 
@@ -2912,11 +2920,17 @@ func ospf_config_present(inParams *XfmrParams, tblName string, tblKey string, ig
         }
 
         for fieldName := range tblEntry.Field {
+           fieldNameIgnore := false 
            for _, ignoreFieldName := range ignoreFieldMap {
                if (fieldName == ignoreFieldName) {
-                  continue
+                   fieldNameIgnore = true
+                   break
                }
-               log.Info("ospf_config_present: config present for ", dbTblKey)
+           }
+
+           if (!fieldNameIgnore) {
+               log.Infof("ospf_config_present: config present with key %v tblEntry %v", dbTblKey, tblEntry)
+               log.Infof("ospf_config_present: config %s present in record %v", fieldName, dbTblKey)
                return true, nil
            }
         }
