@@ -1980,7 +1980,8 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
                             } else {
                                 if isSec {
                                     log.Errorf("Secondary IPv4 Address : %s for interface : %s doesn't exist!", ip, ifName)
-                                    return nil, nil
+                                    errStr := "No such address (" + ip + ") configured on this interface as secondary address"
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
                                 }
                                 // Primary IPv4 delete
                                 ifIpMap, _ := getIntfIpByName(d, tblName, ifName, true, false, "")
