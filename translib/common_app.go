@@ -23,6 +23,7 @@ import (
 	"strings"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
+	"github.com/openconfig/ygot/ytypes"
 	"github.com/openconfig/ygot/util"
 	"reflect"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
@@ -249,15 +250,11 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
     txCache := new(sync.Map)
 
     for {
-	    // Keep a copy of the ygotRoot and let Transformer use this copy of ygotRoot
-	    origYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
-	    xfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
-
-	    // keep the copy of xfmrYgotRoot to get around the ygot.DeepCopy bug - not able to clone empty map
 	    origXfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
 
-            isEmptyPayload  := false
-	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &xfmrYgotRoot, dbs, txCache)
+        isEmptyPayload  := false
+		appYgotStruct := (*app.ygotRoot).(ygot.GoStruct)        
+	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &appYgotStruct, dbs, txCache)
 	    if err != nil {
 		    log.Warning("transformer.GetAndXlateFromDB() returned : ", err)
 		    resPayload = payload
@@ -295,7 +292,8 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		    }
 	    }
 	    if targetObj != nil {
-		    err = ocbinds.Unmarshal(payload, targetObj)
+	    	updateListEntriesOpt := ytypes.AllowUpdateInListMap{}
+		    err = ocbinds.Unmarshal(payload, targetObj, &updateListEntriesOpt)
 		    if err != nil {
 			    log.Warning("ocbinds.Unmarshal()  returned : ", err)
 			    resPayload = payload
@@ -304,11 +302,10 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 
 		    resYgot := (*app.ygotRoot)
 		    if !strings.HasPrefix(app.pathInfo.Path, "/sonic") {
-			    // if payload is empty, no need to invoke merge-struct
 			    if isEmptyPayload {
-				    if areEqual(xfmrYgotRoot, origXfmrYgotRoot) {
-					    log.Info("Original and Xfmr YgotRoot are equal.")
-					    // No data available in xfmrYgotRoot.
+				    if areEqual(appYgotStruct, origXfmrYgotRoot) {
+					    log.Info("origXfmrYgotRoot and appYgotStruct are equal.")
+					    // No data available in appYgotStruct.
 					    if transformer.IsLeafNode(app.pathInfo.Path) {
 						    //if leaf not exist in DB subtree won't fill ygotRoot, as per RFC return err
 						    resPayload = payload
@@ -323,14 +320,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 					    break
 
 				    }
-				    resYgot = xfmrYgotRoot
-			    } else if !areEqual(xfmrYgotRoot, origYgotRoot) {
-				    // Merge the ygotRoots filled by transformer and app.ygotRoot used to Unmarshal the payload (required as Unmarshal does replace operation on ygotRoot)
-				    var mrgErr error
-				    resYgot, mrgErr = ygot.MergeStructs(xfmrYgotRoot.(*ocbinds.Device),(*app.ygotRoot).(*ocbinds.Device))
-				    if mrgErr != nil {
-					    log.Warning("Error in ygot.MergeStructs: ", mrgErr)
-				    }
+				    resYgot = appYgotStruct
 			    }
 		    }
 		    if resYgot != nil {
