@@ -259,7 +259,6 @@ func getOidToIntfNameMap (d *db.DB) (map[string]string, error) {
 func getASICStateMaps (inParams XfmrParams, vlanIdArg string) (map[string]map[string]db.Value, error) {
     oidTOVlan := make(map[string]string)
     brPrtOidToIntfOid := make(map[string]string)
-    oidInfMap := make(map[string]string)
     fdbMap := make(map[string]map[string]db.Value)
     d := inParams.dbs[db.AsicDB]
 
@@ -341,7 +340,7 @@ func getASICStateMaps (inParams XfmrParams, vlanIdArg string) (map[string]map[st
         log.Error("Get Keys from ASIC_STATE FDB table failed.", tblErr);
         return fdbMap, tblErr
     }
-    oidInfMap,_  = getOidToIntfNameMap(inParams.dbs[db.CountersDB])
+    oidInfMap,_ := getOidToIntfNameMap(inParams.dbs[db.CountersDB])
     for _, key := range keys {
         if log.V(3) {
             log.Infof("getASICStateMaps FDB :%v", key)
