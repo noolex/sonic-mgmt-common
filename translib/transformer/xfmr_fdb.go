@@ -376,11 +376,10 @@ func getASICStateMaps (inParams XfmrParams, vlanIdArg string) (map[string]map[st
         if entry.Has("SAI_FDB_ENTRY_ATTR_BRIDGE_PORT_ID") {
             intfOid := findInMap(brPrtOidToIntfOid, entry.Get("SAI_FDB_ENTRY_ATTR_BRIDGE_PORT_ID"))
             if intfOid != "" {
-                intfName := new(string)
-                *intfName = findInMap(oidInfMap, intfOid)
-                if *intfName != "" {
+                intfName := findInMap(oidInfMap, intfOid)
+                if intfName != "" {
                     /* If Alias mode is enabled, get alias name from native name */
-                    cvtdName := utils.GetUINameFromNativeName(intfName)
+                    cvtdName := utils.GetUINameFromNativeName(&intfName)
                     entry.Field["INTF_NAME"] = *cvtdName
                 }
             }
@@ -472,15 +471,14 @@ func fdbMacTableGetEntry(inParams XfmrParams, vlan string,  macAddress string, f
     }
 
     if *fdbEntryRemoteIpAddress == "0.0.0.0" {
-        if  entry.Has("INTF_NAME") {
-            var cvtdName = new(string)
-            *cvtdName = entry.Get("INTF_NAME")
+        if entry.Has("INTF_NAME") {
+            ifName := entry.Get("INTF_NAME")
             ygot.BuildEmptyTree(mcEntry.Interface)
             ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef)
             ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef.Config)
-            mcEntry.Interface.InterfaceRef.Config.Interface = cvtdName
+            mcEntry.Interface.InterfaceRef.Config.Interface = &ifName
             ygot.BuildEmptyTree(mcEntry.Interface.InterfaceRef.State)
-            mcEntry.Interface.InterfaceRef.State.Interface = cvtdName
+            mcEntry.Interface.InterfaceRef.State.Interface = &ifName
         }
     } else {
         ygot.BuildEmptyTree(mcEntry.Peer)
