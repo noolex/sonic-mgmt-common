@@ -1,6 +1,6 @@
 diff -ruN ygot-dir-orig/ygot/generator/generator.go ygot-dir/ygot/generator/generator.go
---- ygot-dir-orig/ygot/generator/generator.go	2020-08-13 14:32:22.714922000 -0700
-+++ ygot-dir/ygot/generator/generator.go	2020-08-13 17:37:35.535882000 -0700
+--- ygot-dir-orig/ygot/generator/generator.go	2020-10-07 14:33:58.430343000 -0700
++++ ygot-dir/ygot/generator/generator.go	2020-10-07 14:39:28.216019000 -0700
 @@ -109,7 +109,7 @@
  }
  
@@ -11,8 +11,8 @@ diff -ruN ygot-dir-orig/ygot/generator/generator.go ygot-dir/ygot/generator/gene
  		b.WriteString(s)
  	}
 diff -ruN ygot-dir-orig/ygot/genutil/common.go ygot-dir/ygot/genutil/common.go
---- ygot-dir-orig/ygot/genutil/common.go	2020-08-13 14:32:22.699571000 -0700
-+++ ygot-dir/ygot/genutil/common.go	2020-08-13 17:37:35.529751000 -0700
+--- ygot-dir-orig/ygot/genutil/common.go	2020-10-07 14:33:58.413742000 -0700
++++ ygot-dir/ygot/genutil/common.go	2020-10-07 14:39:28.209134000 -0700
 @@ -18,9 +18,9 @@
  
  import (
@@ -35,8 +35,8 @@ diff -ruN ygot-dir-orig/ygot/genutil/common.go ygot-dir/ygot/genutil/common.go
  		b.WriteString(s)
  	}
 diff -ruN ygot-dir-orig/ygot/util/debug.go ygot-dir/ygot/util/debug.go
---- ygot-dir-orig/ygot/util/debug.go	2020-08-13 14:32:22.504536000 -0700
-+++ ygot-dir/ygot/util/debug.go	2020-08-13 17:37:35.294974000 -0700
+--- ygot-dir-orig/ygot/util/debug.go	2020-10-07 14:33:58.180210000 -0700
++++ ygot-dir/ygot/util/debug.go	2020-10-07 14:39:27.958731000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -73,8 +73,8 @@ diff -ruN ygot-dir-orig/ygot/util/debug.go ygot-dir/ygot/util/debug.go
  	if len(yt.Pattern) != 0 {
  		out += fmt.Sprintf(", Pattern: %s", strings.Join(yt.Pattern, " or "))
 diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
---- ygot-dir-orig/ygot/util/path.go	2020-08-13 14:32:22.515967000 -0700
-+++ ygot-dir/ygot/util/path.go	2020-08-13 17:37:35.298993000 -0700
+--- ygot-dir-orig/ygot/util/path.go	2020-10-07 14:33:58.191131000 -0700
++++ ygot-dir/ygot/util/path.go	2020-10-07 14:39:27.963831000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -168,8 +168,8 @@ diff -ruN ygot-dir-orig/ygot/util/path.go ygot-dir/ygot/util/path.go
  }
  
 diff -ruN ygot-dir-orig/ygot/util/reflect.go ygot-dir/ygot/util/reflect.go
---- ygot-dir-orig/ygot/util/reflect.go	2020-08-13 14:32:22.520091000 -0700
-+++ ygot-dir/ygot/util/reflect.go	2020-08-13 19:49:31.030310000 -0700
+--- ygot-dir-orig/ygot/util/reflect.go	2020-10-07 14:33:58.196912000 -0700
++++ ygot-dir/ygot/util/reflect.go	2020-10-07 14:39:27.968355000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -281,8 +281,8 @@ diff -ruN ygot-dir-orig/ygot/util/reflect.go ygot-dir/ygot/util/reflect.go
  }
  
 diff -ruN ygot-dir-orig/ygot/ygen/codegen.go ygot-dir/ygot/ygen/codegen.go
---- ygot-dir-orig/ygot/ygen/codegen.go	2020-08-13 14:32:22.650945000 -0700
-+++ ygot-dir/ygot/ygen/codegen.go	2020-08-13 17:37:35.511938000 -0700
+--- ygot-dir-orig/ygot/ygen/codegen.go	2020-10-07 14:33:58.356199000 -0700
++++ ygot-dir/ygot/ygen/codegen.go	2020-10-07 14:39:28.185922000 -0700
 @@ -15,6 +15,10 @@
  // Package ygen contains a library to generate Go structs from a YANG model.
  // The Goyang parsing library is used to parse YANG. The output can consider
@@ -304,8 +304,8 @@ diff -ruN ygot-dir-orig/ygot/ygen/codegen.go ygot-dir/ygot/ygen/codegen.go
  		default:
  			errs = util.AppendErr(errs, fmt.Errorf("unknown type of entry %v in findMappableEntities for %s", e.Kind, e.Path()))
 diff -ruN ygot-dir-orig/ygot/ygen/genstate.go ygot-dir/ygot/ygen/genstate.go
---- ygot-dir-orig/ygot/ygen/genstate.go	2020-08-13 14:32:22.660332000 -0700
-+++ ygot-dir/ygot/ygen/genstate.go	2020-08-13 17:37:35.515720000 -0700
+--- ygot-dir-orig/ygot/ygen/genstate.go	2020-10-07 14:33:58.365616000 -0700
++++ ygot-dir/ygot/ygen/genstate.go	2020-10-07 14:39:28.190329000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -373,8 +373,8 @@ diff -ruN ygot-dir-orig/ygot/ygen/genstate.go ygot-dir/ygot/ygen/genstate.go
  	}
  
 diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/struct_validation_map.go
---- ygot-dir-orig/ygot/ygot/struct_validation_map.go	2020-08-13 14:32:22.553900000 -0700
-+++ ygot-dir/ygot/ygot/struct_validation_map.go	2020-08-13 17:37:35.350780000 -0700
+--- ygot-dir-orig/ygot/ygot/struct_validation_map.go	2020-10-07 14:33:58.231818000 -0700
++++ ygot-dir/ygot/ygot/struct_validation_map.go	2020-10-07 14:39:28.015324000 -0700
 @@ -19,6 +19,10 @@
  //	  to return pointers to a type.
  //	- Renders structs to other output formats such as JSON, or gNMI
@@ -513,8 +513,8 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
 +	return nil, fmt.Errorf("No match found in the existingKeys map.")
 +}
 diff -ruN ygot-dir-orig/ygot/ytypes/container.go ygot-dir/ygot/ytypes/container.go
---- ygot-dir-orig/ygot/ytypes/container.go	2020-08-13 14:32:22.584218000 -0700
-+++ ygot-dir/ygot/ytypes/container.go	2020-08-13 17:37:35.429579000 -0700
+--- ygot-dir-orig/ygot/ytypes/container.go	2020-10-07 14:33:58.269626000 -0700
++++ ygot-dir/ygot/ytypes/container.go	2020-10-07 14:39:28.087198000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -552,7 +552,100 @@ diff -ruN ygot-dir-orig/ygot/ytypes/container.go ygot-dir/ygot/ytypes/container.
  
  	return util.UniqueErrors(errors)
  }
-@@ -217,7 +228,10 @@
+@@ -138,6 +149,92 @@
+ 	return unmarshalStruct(schema, parent, jt, enc, opts...)
+ }
+ 
++// unmarshalKeyFieldsInStruct unmarshals a JSON tree into a struct only for the Key fields.
++// schema is the YANG schema of the node corresponding to the struct being unmarshalled into.
++// mapParent is the interface which of type map holds this parent struct with the key 
++// parent is the parent struct, which must be a struct ptr.
++// jsonTree is a JSON data tree which must be a map[string]interface{}.
++func unmarshalKeyFieldsInStruct (schema *yang.Entry, mapParent interface{}, parent interface{}, jsonTree map[string]interface{}, enc Encoding, opts ...UnmarshalOpt) error {
++	destv := reflect.ValueOf(parent).Elem()
++
++	keySet := make(map[string]bool)
++	listKeyType := reflect.TypeOf(mapParent).Key()
++	if util.IsTypeStruct(listKeyType) {
++		newKey := reflect.New(listKeyType).Elem()
++		for i := 0; i < newKey.NumField(); i++ {
++			keySet[listKeyType.Field(i).Name] = true
++		}
++	} else {
++		if fName, err := schemaNameToFieldName(destv, schema.Key); err == nil {
++			keySet[fName] = true
++		}
++	}
++			
++	// Range over the parent struct fields. For each field, check if the data
++	// is present in the JSON tree and if so unmarshal it into the field.
++	for i := 0; i < destv.NumField(); i++ {
++		f := destv.Field(i)
++		ft := destv.Type().Field(i)
++		if _, ok := keySet[ft.Name]; !ok {
++			continue
++		} 
++		// Skip annotation fields since they do not have a schema.
++		// TODO(robjs): Implement unmarshalling annotations.
++		if util.IsYgotAnnotation(ft) {
++			continue
++		}
++
++		cschema, err := util.ChildSchema(schema, ft)
++		if err != nil {
++			return err
++		}
++		if cschema == nil {
++			return fmt.Errorf("unmarshalContainer could not find schema for type %T, field name %s", parent, ft.Name)
++		}
++		jsonValue, err := getJSONTreeValForField(schema, cschema, ft, jsonTree)
++		if err != nil {
++			return err
++		}
++		// Store the data tree path of the current field. These will be used
++		// at the end to ensure that there are no excess elements in the JSON
++		// tree not covered by any data path.
++		sp, err := dataTreePaths(schema, cschema, ft)
++		if err != nil {
++			return err
++		}
++		if jsonValue == nil {
++			util.DbgPrint("field %s paths %v not present in tree", ft.Name, sp)
++			continue
++		}
++
++		util.DbgPrint("populating field %s type %s with paths %v.", ft.Name, ft.Type, sp)
++		// Only create a new field if it is nil, otherwise update just the
++		// fields that are in the data tree being passed to unmarshal, and
++		// preserve all other existing values.
++		if util.IsNilOrInvalidValue(f) {
++			makeField(destv, ft)
++		}
++
++		p := parent
++		switch {
++		case util.IsUnkeyedList(cschema):
++			// For unkeyed list, we must pass in the addr of the slice to be
++			// able to append to it.
++			p = f.Addr().Interface()
++		case cschema.IsContainer() || cschema.IsList():
++			// For list and container, the new parent is the field we just
++			// created. For leaf and leaf-list, the parent is still the
++			// current container.
++			p = f.Interface()
++		}
++		if err := unmarshalGeneric(cschema, p, jsonValue, enc, opts...); err != nil {
++			return err
++		}
++	}
++	
++	return nil
++}
++
+ // unmarshalStruct unmarshals a JSON tree into a struct.
+ //   schema is the YANG schema of the node corresponding to the struct being
+ //     unmarshalled into.
+@@ -217,7 +314,10 @@
  		}
  	}
  
@@ -565,8 +658,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/container.go ygot-dir/ygot/ytypes/container.
  }
  
 diff -ruN ygot-dir-orig/ygot/ytypes/leaf.go ygot-dir/ygot/ytypes/leaf.go
---- ygot-dir-orig/ygot/ytypes/leaf.go	2020-08-13 14:32:22.597341000 -0700
-+++ ygot-dir/ygot/ytypes/leaf.go	2020-08-13 17:37:35.434822000 -0700
+--- ygot-dir-orig/ygot/ytypes/leaf.go	2020-10-07 14:33:58.296548000 -0700
++++ ygot-dir/ygot/ytypes/leaf.go	2020-10-07 14:39:28.096999000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -783,8 +876,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/leaf.go ygot-dir/ygot/ytypes/leaf.go
 +}
 \ No newline at end of file
 diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
---- ygot-dir-orig/ygot/ytypes/list.go	2020-08-13 14:32:22.607748000 -0700
-+++ ygot-dir/ygot/ytypes/list.go	2020-08-13 17:37:35.440137000 -0700
+--- ygot-dir-orig/ygot/ytypes/list.go	2020-10-07 14:33:58.308948000 -0700
++++ ygot-dir/ygot/ytypes/list.go	2020-10-08 16:53:19.657274000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -795,7 +888,15 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  package ytypes
  
  import (
-@@ -217,6 +220,9 @@
+@@ -22,6 +25,7 @@
+ 	"github.com/kylelemons/godebug/pretty"
+ 	"github.com/openconfig/goyang/pkg/yang"
+ 	"github.com/openconfig/ygot/util"
++	log "github.com/golang/glog"
+ )
+ 
+ // Refer to: https://tools.ietf.org/html/rfc6020#section-7.8.
+@@ -217,6 +221,9 @@
  		if len(schema.Key) == 0 {
  			return fmt.Errorf("list %s with config set must have a key", schema.Name)
  		}
@@ -805,7 +906,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  		keys := strings.Fields(schema.Key)
  		keysMissing := make(map[string]bool)
  		for _, v := range keys {
-@@ -232,6 +238,7 @@
+@@ -232,6 +239,7 @@
  		}
  	}
  
@@ -813,7 +914,62 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  	return nil
  }
  
-@@ -350,7 +357,9 @@
+@@ -317,6 +325,9 @@
+ 		return fmt.Errorf("unmarshalList for %s parent type %T, has bad field type %v", listElementType, parent, listElementType)
+ 	}
+ 
++	isListUpdate := (util.IsTypeMap(t) && isAllowUpdateInListMap(opts))
++	mapV := reflect.ValueOf(parent)
++	
+ 	// Iterate over JSON list. Each JSON list element is a map with the field
+ 	// name as the key. The JSON values must be unmarshaled and inserted into
+ 	// the new struct list element. When all fields of the new element have been
+@@ -330,16 +341,41 @@
+ 		jt := le.(map[string]interface{})
+ 		newVal := reflect.New(listElementType.Elem())
+ 		util.DbgPrint("creating a new list element val of type %v", newVal.Type())
+-		if err := unmarshalStruct(schema, newVal.Interface(), jt, enc, opts...); err != nil {
+-			return err
++		if !isListUpdate {
++			if err := unmarshalStruct(schema, newVal.Interface(), jt, enc, opts...); err != nil {
++				return err
++			}
+ 		}
+-
++		
+ 		switch {
+ 		case util.IsTypeMap(t):
++			if isListUpdate {
++				if err = unmarshalKeyFieldsInStruct(schema, parent, newVal.Interface(), jt, enc, opts...); err != nil {
++					log.Warning ("Error in unmarshaling key fields: ", err, " and the structure type: ", newVal.Type())
++					pretty.Print(newVal.Interface())
++					pretty.Print(jt)
++					log.Info("Error in unmarshaling: schema key: ", schema.Key, " - parent type : ", reflect.TypeOf(parent), " - key type", reflect.TypeOf(parent).Key())
++					return err
++				}
++			}
+ 			newKey, err := makeKeyForInsert(schema, parent, newVal)
+ 			if err != nil {
+ 				return err
+ 			}
++			if isListUpdate {
++				if listKV := mapV.MapIndex(newKey); listKV.IsValid() {
++					if log.V(6) {
++						log.Info("Unmarshaling: key's type: ",newKey.Type()," with value: ", newKey, " already exist in the map for the structure: ", listKV.Type())
++						log.Info("Unmarshaling: schema.Key: ",schema.Key," - parent type : ", reflect.TypeOf(parent), " - key type", reflect.TypeOf(parent).Key())
++						pretty.Print(listKV.Interface())
++						pretty.Print(jt)
++					}
++					newVal = listKV
++				}
++				if err := unmarshalStruct(schema, newVal.Interface(), jt, enc, opts...); err != nil {
++					return err
++				}
++			}
+ 			err = util.InsertIntoMap(parent, newKey.Interface(), newVal.Interface())
+ 		case util.IsTypeSlicePtr(t):
+ 			err = util.InsertIntoSlice(parent, newVal.Interface())
+@@ -350,7 +386,9 @@
  			return err
  		}
  	}
@@ -824,7 +980,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  
  	return nil
  }
-@@ -394,11 +403,91 @@
+@@ -394,11 +432,91 @@
  		if util.IsValuePtr(fv) {
  			ft = ft.Elem()
  		}
@@ -918,7 +1074,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  		return util.InsertIntoStruct(val.Interface(), fn, nv.Interface())
  	}
  
-@@ -494,6 +583,9 @@
+@@ -494,6 +612,9 @@
  	}
  
  	// TODO(yusufsn): When the key is a leafref, its target should be filled out.
@@ -929,8 +1085,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  	if err != nil {
  		return nil, fmt.Errorf("failed to create map value for insert, root %T, keys %v: %v", root, keys, err)
 diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
---- ygot-dir-orig/ygot/ytypes/node.go	2020-08-13 14:32:22.611871000 -0700
-+++ ygot-dir/ygot/ytypes/node.go	2020-08-13 17:37:35.445148000 -0700
+--- ygot-dir-orig/ygot/ytypes/node.go	2020-10-07 14:33:58.312963000 -0700
++++ ygot-dir/ygot/ytypes/node.go	2020-10-07 14:39:28.108244000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -971,8 +1127,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
  		if err != nil {
  			return nil, err
 diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_type.go
---- ygot-dir-orig/ygot/ytypes/string_type.go	2020-08-13 14:32:22.614869000 -0700
-+++ ygot-dir/ygot/ytypes/string_type.go	2020-08-13 17:37:35.449572000 -0700
+--- ygot-dir-orig/ygot/ytypes/string_type.go	2020-10-07 14:33:58.316659000 -0700
++++ ygot-dir/ygot/ytypes/string_type.go	2020-10-07 14:39:28.114313000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -1064,8 +1220,8 @@ diff -ruN ygot-dir-orig/ygot/ytypes/string_type.go ygot-dir/ygot/ytypes/string_t
  
  // fixYangRegexp takes a pattern regular expression from a YANG module and
 diff -ruN ygot-dir-orig/ygot/ytypes/unmarshal.go ygot-dir/ygot/ytypes/unmarshal.go
---- ygot-dir-orig/ygot/ytypes/unmarshal.go	2020-08-13 14:32:22.621934000 -0700
-+++ ygot-dir/ygot/ytypes/unmarshal.go	2020-08-13 17:37:35.453327000 -0700
+--- ygot-dir-orig/ygot/ytypes/unmarshal.go	2020-10-07 14:33:58.323984000 -0700
++++ ygot-dir/ygot/ytypes/unmarshal.go	2020-10-07 14:39:28.119718000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -1076,7 +1232,21 @@ diff -ruN ygot-dir-orig/ygot/ytypes/unmarshal.go ygot-dir/ygot/ytypes/unmarshal.
  package ytypes
  
  import (
-@@ -81,7 +84,10 @@
+@@ -39,6 +42,13 @@
+ // IsUnmarshalOpt marks IgnoreExtraFields as a valid UnmarshalOpt.
+ func (*IgnoreExtraFields) IsUnmarshalOpt() {}
+ 
++// AllowUpdateInListMap is an unmarshal option to update the key and value
++// if it is present in the list map already
++type AllowUpdateInListMap struct{}
++
++// IsUnmarshalOpt marks AllowUpdateInListMap as a valid UnmarshalOpt.
++func (*AllowUpdateInListMap) IsUnmarshalOpt() {}
++
+ // Unmarshal recursively unmarshals JSON data tree in value into the given
+ // parent, using the given schema. Any values already in the parent that are
+ // not present in value are preserved. If provided schema is a leaf or leaf
+@@ -81,7 +91,10 @@
  	if schema == nil {
  		return fmt.Errorf("nil schema for parent type %T, value %v (%T)", parent, value, value)
  	}
@@ -1088,9 +1258,24 @@ diff -ruN ygot-dir-orig/ygot/ytypes/unmarshal.go ygot-dir/ygot/ytypes/unmarshal.
  
  	if enc == GNMIEncoding && !(schema.IsLeaf() || schema.IsLeafList()) {
  		return errors.New("unmarshalling a non leaf node isn't supported in GNMIEncoding mode")
+@@ -112,3 +125,14 @@
+ 	}
+ 	return false
+ }
++
++// isAllowUpdateInListMap determines whether the supplied slice of UnmarshalOpts contains
++// the AllowUpdateInListMap option.
++func isAllowUpdateInListMap(opts []UnmarshalOpt) bool {
++	for _, o := range opts {
++		if _, ok := o.(*AllowUpdateInListMap); ok {
++			return true
++		}
++	}
++	return false
++}
 diff -ruN ygot-dir-orig/ygot/ytypes/validate.go ygot-dir/ygot/ytypes/validate.go
---- ygot-dir-orig/ygot/ytypes/validate.go	2020-08-13 14:32:22.637048000 -0700
-+++ ygot-dir/ygot/ytypes/validate.go	2020-08-13 17:37:35.457999000 -0700
+--- ygot-dir-orig/ygot/ytypes/validate.go	2020-10-07 14:33:58.340787000 -0700
++++ ygot-dir/ygot/ytypes/validate.go	2020-10-07 14:39:28.123357000 -0700
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
