@@ -93,7 +93,6 @@ func getVrfTblKeyByName (name string) (string) {
 /* Check if this is "MGMT_VRF_CONFIG" */
 func isMgmtVrfDbTbl (inParams XfmrParams) (bool) {
         data := (*inParams.dbDataMap)[inParams.curDb]
-        log.Info("isMgmtVrfDbTbl ", data, "inParams :", inParams)
 
         mgmtTbl := data["MGMT_VRF_CONFIG"]
         if (mgmtTbl != nil) {
@@ -106,7 +105,6 @@ func isMgmtVrfDbTbl (inParams XfmrParams) (bool) {
 /* Check if this is "VRF" table */
 func isVrfDbTbl (inParams XfmrParams) (bool)  {
         data := (*inParams.dbDataMap)[inParams.curDb]
-        log.Info("isVrfDbTbl: ", data, "inParams :", inParams)
 
         vrfTbl := data["VRF"]
         if (vrfTbl != nil) {
@@ -119,7 +117,7 @@ func isVrfDbTbl (inParams XfmrParams) (bool)  {
 /* Check if "mgmtVrfEnabled" is set to true in the "MGMT_VRF_CONFIG" table */
 func mgmtVrfEnabledInDb (inParams XfmrParams) (string) {
         data := (*inParams.dbDataMap)[inParams.curDb]
-        log.Info("mgmtVrfEnabledInDb ", data, "inParams :", inParams)
+        log.V(3).Infof("mgmtVrfEnabledInDb key: %v", inParams.key)
 
         mgmtTbl := data["MGMT_VRF_CONFIG"]
         mgmtVrf := mgmtTbl[inParams.key]
@@ -326,7 +324,7 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
         var tblList []string
         var err error
 
-        log.Info("network_instance_table_name_xfmr")
+        log.V(3).Info("network_instance_table_name_xfmr")
 
         nwInstObj := getNwInstRoot(inParams.ygRoot)
 
@@ -346,6 +344,15 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
                         log.Info("network_instance_table_name_xfmr, for key name not present")
                         return tblList, errors.New("Empty network instance name")
                 }
+        }
+
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+        log.V(3).Info("network_instance_table_name_xfmr request URI: ", targetUriPath)
+        if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/tables") {
+            return tblList, err
+        }
+        if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/afts") && strings.HasPrefix(keyName, "Vlan") {
+            return tblList, err
         }
 
         /* get internal network instance name in order to fetch the DB table name */
@@ -381,8 +388,7 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
                 tblList = append(tblList, NwInstTblNameMapWithName[intNwInstName])
         }
 
-        log.Info("network_instance_table_name_xfmr, OP ", inParams.oper)
-        log.Info("network_instance_table_name_xfmr,  DB table name ", tblList)
+        log.V(3).Info("network_instance_table_name_xfmr, OP ", inParams.oper, " DB table name ", tblList)
 
         return tblList, err
 }
@@ -444,13 +450,14 @@ var DbToYang_network_instance_enabled_field_xfmr FieldXfmrDbtoYang = func(inPara
         res_map := make(map[string]interface{})
         var err error
 
-        log.Info("DbToYang_network_instance_enabled_field_xfmr: ")
-
-        if (mgmtVrfEnabledInDb(inParams) == "true") {
-                res_map["enabled"] = true
-        } else if (mgmtVrfEnabledInDb(inParams) == "false") {
-                res_map["enabled"] = false
+        if (inParams.key == "vrf_global") {
+                if (mgmtVrfEnabledInDb(inParams) == "true") {
+                        res_map["enabled"] = true
+                } else {
+                        res_map["enabled"] = false
+                }
         }
+
         return res_map, err
 }
 
@@ -463,7 +470,9 @@ func ValidateInbandMgmtConfigOnMgmtVRF(d *db.DB) error {
     if err != nil {
         return err
     }
-    log.Infof("ValidateInbandMgmtConfigOnMgmtVRF")
+    if log.V(3) {
+        log.Infof("ValidateInbandMgmtConfigOnMgmtVRF")
+    }
     mgmt_vrf_enabled := (&dbEntry).Get("mgmtVrfEnabled")
     if mgmt_vrf_enabled == "" {
         return err
@@ -504,7 +513,7 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
                 return vrfTbl_key, err
             }
             requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
-            log.Info("YangToDb_network_instance_table_key_xfmr request URI: ", requestUriPath)
+            log.V(3).Info("YangToDb_network_instance_table_key_xfmr request URI: ", requestUriPath)
             if ((requestUriPath == "/openconfig-network-instance:network-instances/network-instance") ||
                 (requestUriPath == "/openconfig-network-instance:network-instances")) {
                 // Validate only for mgmt VRF delete
@@ -557,7 +566,9 @@ var DbToYang_network_instance_table_key_xfmr KeyXfmrDbToYang = func(inParams Xfm
         res_map := make(map[string]interface{})
         var err error
 
-        log.Info("DbToYang_network_instance_table_key_xfmr: ", inParams.key)
+        if log.V(3) {
+            log.Info("DbToYang_network_instance_table_key_xfmr: ", inParams.key)
+        }
 
          if (inParams.key != "") {
                 if ((inParams.key == "default") || (strings.HasPrefix(inParams.key, "Vrf")) || (strings.HasPrefix(inParams.key, "Vlan"))) {
@@ -566,7 +577,9 @@ var DbToYang_network_instance_table_key_xfmr KeyXfmrDbToYang = func(inParams Xfm
                         res_map["name"] = "mgmt"
                 }
         } else {
-                log.Info("DbToYang_network_instance_table_key_xfmr, empty key")
+                if log.V(3) {
+                    log.Info("DbToYang_network_instance_table_key_xfmr, empty key")
+                }
         }
 
         return  res_map, err
@@ -577,8 +590,6 @@ var YangToDb_network_instance_name_key_xfmr FieldXfmrYangToDb = func(inParams Xf
         res_map := make(map[string]string)
         var err error
 
-        log.Info("YangToDb_network_instance_name_key_xfmr")
-
         return res_map, err
 }
 
@@ -587,7 +598,9 @@ var YangToDb_network_instance_name_field_xfmr FieldXfmrYangToDb = func(inParams 
         res_map := make(map[string]string)
         var err error
 
-        log.Info("YangToDb_network_instance_name_field_xfmr")
+        if log.V(3) {
+            log.Info("YangToDb_network_instance_name_field_xfmr")
+        }
 
         if inParams.key != "" && strings.HasPrefix(inParams.key, "Vlan") {
             vlanIdStr := strings.TrimPrefix(inParams.key, "Vlan")
@@ -607,7 +620,9 @@ var DbToYang_network_instance_name_field_xfmr KeyXfmrDbToYang = func(inParams Xf
         res_map := make(map[string]interface{})
         var err error
 
-        log.Info("DbToYang_network_instance_name_field_xfmr")
+        if log.V(3) {
+            log.Infof("DbToYang_network_instance_name_field_xfmr, key %v", inParams.key)
+        }
 
         if (inParams.key != "") {
                 if (((inParams.key == "default") ||
@@ -632,8 +647,6 @@ var YangToDb_network_instance_type_field_xfmr FieldXfmrYangToDb = func(inParams 
         res_map := make(map[string]string)
         var err error
 
-        log.Info("YangToDb_network_instance_type_field_xfmr")
-
         return res_map, err
 }
 
@@ -642,7 +655,9 @@ var DbToYang_network_instance_type_field_xfmr KeyXfmrDbToYang = func(inParams Xf
         res_map := make(map[string]interface{})
         var err error
 
-        log.Info("DbToYang_network_instance_type_field_xfmr")
+        if log.V(3) {
+            log.Infof("DbToYang_network_instance_type_field_xfmr, key %v", inParams.key)
+        }
 
         if (((inParams.key == "vrf_global") && (isMgmtVrfDbTbl(inParams))) ||
              ((strings.HasPrefix(inParams.key, "Vrf")) && ((isVrfDbTbl(inParams))))) {
@@ -662,8 +677,6 @@ var YangToDb_network_instance_enabled_addr_family_field_xfmr FieldXfmrYangToDb =
         res_map := make(map[string]string)
         var err error
 
-        log.Info("YangToDb_network_instance_enabled_addr_fam_field_xfmr")
-
         return res_map, err
 }
 
@@ -671,8 +684,6 @@ var YangToDb_network_instance_enabled_addr_family_field_xfmr FieldXfmrYangToDb =
 var DbToYang_network_instance_enabled_addr_family_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
-
-        log.Info("DbToYang_network_instance_enabled_addr_fam_field_xfmr")
 
         return res_map, err
 }
@@ -682,8 +693,6 @@ var YangToDb_network_instance_mtu_field_xfmr FieldXfmrYangToDb = func(inParams X
         res_map := make(map[string]string)
         var err error
 
-        log.Info("YangToDb_network_instance_mtu_field_xfmr")
-
         return res_map, err
 }
 
@@ -691,8 +700,6 @@ var YangToDb_network_instance_mtu_field_xfmr FieldXfmrYangToDb = func(inParams X
 var DbToYang_network_instance_mtu_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
-
-        log.Info("DbToYang_network_instance_mtu_field_xfmr")
 
         return res_map, err
 }
@@ -702,8 +709,6 @@ var YangToDb_network_instance_router_id_field_xfmr FieldXfmrYangToDb = func(inPa
         res_map := make(map[string]string)
         var err error
 
-        log.Info("YangToDb_network_instance_router_id_field_xfmr")
-
         return res_map, err
 }
 
@@ -711,8 +716,6 @@ var YangToDb_network_instance_router_id_field_xfmr FieldXfmrYangToDb = func(inPa
 var DbToYang_network_instance_router_id_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
-
-        log.Info("DbToYang_network_instance_router_id_field_xfmr")
 
         return res_map, err
 }
@@ -722,8 +725,6 @@ var YangToDb_network_instance_route_distinguisher_field_xfmr FieldXfmrYangToDb =
         res_map := make(map[string]string)
         var err error
 
-        log.Info("YangToDb_network_instance_route_distinguisher_field_xfmr")
-
         return res_map, err
 }
 
@@ -731,8 +732,6 @@ var YangToDb_network_instance_route_distinguisher_field_xfmr FieldXfmrYangToDb =
 var DbToYang_network_instance_route_distinguisher_field_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         res_map := make(map[string]interface{})
         var err error
-
-        log.Info("DbToYang_network_instance_route_distinguisher_field_xfmr")
 
         return res_map, err
 }
@@ -789,13 +788,12 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         res_map := make(map[string]map[string]db.Value)
         var fieldOtherThanVrf bool
 
-        log.Infof("YangToDb_network_instance_interface_binding_subtree_xfmr: ygRoot %v uri %v", inParams.ygRoot, inParams.uri)
-
         pathInfo := NewPathInfo(inParams.uri)
 
         targetUriPath, err := getYangPathFromUri(pathInfo.Path)
 
-        log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: targetUri ", targetUriPath)
+        log.V(3).Infof("YangToDb_network_instance_interface_binding_subtree_xfmr: targetUri %v ygRoot %v uri %v",
+                       targetUriPath, inParams.ygRoot, inParams.uri)
 
         /* get the name at the top network-instance table level, this is the key */
         keyName := pathInfo.Var("name")
@@ -1107,11 +1105,9 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 
         var err error
 
-        log.Info("DbToYang_network_instance_interface_binding_subtree_xfmr:")
-
         nwInstTree := getNwInstRoot(inParams.ygRoot)
 
-        log.Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: ygRoot %v ", nwInstTree)
+        log.V(3).Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: ygRoot %v ", nwInstTree)
 
         pathInfo := NewPathInfo(inParams.uri)
 
@@ -1121,11 +1117,10 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 
         ifUIName := utils.GetUINameFromNativeName(&pathIntfId)
 
-        log.Infof("DbToYang_network_instance_interface_binding_subtree_xfmr, key(:%v) id(:%v)", pathNwInstName, *ifUIName)
-
         targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
-        log.Info("DbToYang_network_instance_interface_binding_subtree_xfmr, targeturiPath: ", targetUriPath)
+        log.V(3).Infof("DbToYang_network_instance_interface_binding_subtree_xfmr, key(:%v) id(:%v) targeturiPath %v", 
+                       pathNwInstName, *ifUIName, targetUriPath)
 
         /* If nwInst name and intf Id are given, get the db entry directly, else go through all interface tables */
         if ((pathNwInstName != "") && (pathIntfId != "")) {
@@ -1138,7 +1133,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                 intTbl := IntfTypeTblMap[intf_type]
                 intf_tbl_name, _ :=  getIntfTableNameByDBId(intTbl, inParams.curDb)
 
-                log.Info("DbToYang_network_instance_interface_binding_subtree_xfmr: intf tbl name: ", intf_tbl_name)
+                log.V(3).Info("DbToYang_network_instance_interface_binding_subtree_xfmr: intf tbl name: ", intf_tbl_name)
 
                 intfTable := &db.TableSpec{Name: intf_tbl_name}
                 intfEntry, err1 := inParams.d.GetEntry(intfTable, db.Key{Comp: []string{pathIntfId}})
@@ -1183,7 +1178,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 
                 intfData.State.Id =  intfData.Id
 
-                log.Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: vrf_name %v intf %v ygRoot %v ", 
+                log.V(3).Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: vrf_name %v intf %v ygRoot %v ", 
                           vrfName_str, *ifUIName, nwInstTree)
         } else {
                 for _, tblName := range intf_tbl_name_list {
@@ -1224,7 +1219,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                                         }
                                 }
 
-                                log.Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: nwInst %v vrfname_str %v",
+                                log.V(3).Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: nwInst %v vrfname_str %v",
                                           pathNwInstName, vrfName_str)
 
                                 /* add the VRF name to the nwInstTree if not already there */
@@ -1259,7 +1254,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                                 intfData.Config.Id = intfData.Id
                                 intfData.State.Id = intfData.Id
 
-                                log.Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: vrf_name %v intf %v ygRoot %v",
+                                log.V(3).Infof("DbToYang_network_instance_interface_binding_subtree_xfmr: vrf_name %v intf %v ygRoot %v",
                                           vrfName_str, *ifUIName, nwInstTree)
                         }
                 }

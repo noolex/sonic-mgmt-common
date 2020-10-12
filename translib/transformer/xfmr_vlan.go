@@ -153,6 +153,24 @@ var DbToYang_netinst_vlans_subtree_xfmr SubTreeXfmrDbToYang = func (inParams Xfm
         VlansVlanObj := vlansObj.Vlan[vlanId]
         err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry)
     } else {
+           if strings.HasPrefix(niName, "Vlan") {
+               dbEntry, derr := inParams.d.GetEntry(dbspec, db.Key{Comp: []string{niName}})
+               if derr != nil {
+                   log.Infof(" dbEntry get failure for Key %s", niName)
+                   return errors.New("Operational Error")
+               }
+               vlanName = niName
+               vlanIdStr := dbEntry.Field["vlanid"]
+               vlanId64, _ := strconv.ParseUint(vlanIdStr, 10, 16)
+               vlanId = uint16(vlanId64)
+
+               VlansVlanObj, _ := vlansObj.NewVlan(vlanId)
+               if err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry); err != nil {
+                   log.Error("dbToYangFillVlanEntry failure for %s", vlanName)
+               }
+               return err
+           }
+
            var keys []db.Key
            if keys, err = inParams.d.GetKeys(&db.TableSpec{Name:tblName, CompCt:2} ); err != nil {
                 return errors.New("Operational Error")
@@ -169,12 +187,6 @@ var DbToYang_netinst_vlans_subtree_xfmr SubTreeXfmrDbToYang = func (inParams Xfm
                 vlanId64, _ := strconv.ParseUint(vlanIdStr, 10, 16)
                 vlanId = uint16(vlanId64)
 
-                // if network instance is vlan, return nil for other vlans.
-                if strings.HasPrefix(niName, "Vlan") &&
-                    vlanName != niName {
-                    log.Infof("vlan_tbl_key_xfmr: vlanTbl_key %s, ntwk_inst %s ", vlanName, niName)
-                    continue
-                }
                 VlansVlanObj, _ := vlansObj.NewVlan(vlanId)
                 if err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry); err != nil {
                     log.Error("dbToYangFillVlanEntry failure for %s", vlanName)

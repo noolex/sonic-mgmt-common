@@ -364,7 +364,7 @@ var DbToYang_bgp_nbr_asn_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) 
     result := make(map[string]interface{})
 
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_bgp_nbr_asn_fld_xfmr : ", data, "inParams : ", inParams)
+    log.V(3).Info("DbToYang_bgp_nbr_asn_fld_xfmr : ", data, "inParams : ", inParams)
 
     pTbl := data["BGP_NEIGHBOR"]
     if _, ok := pTbl[inParams.key]; !ok {
@@ -438,7 +438,7 @@ var DbToYang_bgp_nbr_peer_type_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPa
     result := make(map[string]interface{})
 
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_bgp_nbr_peer_type_fld_xfmr : ", data, "inParams : ", inParams)
+    log.V(3).Info("DbToYang_bgp_nbr_peer_type_fld_xfmr : ", data, "inParams : ", inParams)
 
     pTbl := data["BGP_NEIGHBOR"]
     if _, ok := pTbl[inParams.key]; !ok {
@@ -496,7 +496,7 @@ var DbToYang_bgp_nbr_tx_add_paths_fld_xfmr FieldXfmrDbtoYang = func(inParams Xfm
     result := make(map[string]interface{})
 
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_bgp_nbr_tx_add_paths_fld_xfmr: ", data, "inParams : ", inParams)
+    log.V(3).Info("DbToYang_bgp_nbr_tx_add_paths_fld_xfmr: ", data, "inParams : ", inParams)
 
     pTbl := data["BGP_NEIGHBOR_AF"]
     if _, ok := pTbl[inParams.key]; !ok {
@@ -788,7 +788,9 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
     var vrfName string
     var emptyAfName string
 
-    log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr***", inParams.uri)
+    if log.V(3) {
+        log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr***", inParams.uri)
+    }
     pathInfo := NewPathInfo(inParams.uri)
 
     vrfName    =  pathInfo.Var("name")
@@ -860,7 +862,9 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
 
     var nbrAfKey string = vrfName + "|" + pNbr + "|" + afName
 
-    log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr: nbrAfKey:", nbrAfKey)
+    if log.V(3) {
+        log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr: nbrAfKey:", nbrAfKey)
+    }
     return nbrAfKey, nil
 }
 
@@ -868,7 +872,9 @@ var DbToYang_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
    var afName string
     rmap := make(map[string]interface{})
     entry_key := inParams.key
-    log.Info("DbToYang_bgp_af_nbr_proto_tbl_key_xfmr: ", entry_key)
+    if log.V(3) {
+        log.Info("DbToYang_bgp_af_nbr_proto_tbl_key_xfmr: ", entry_key)
+    }
 
     nbrAfKey := strings.Split(entry_key, "|")
     if len(nbrAfKey) < 3 {return rmap, nil}
@@ -1781,7 +1787,7 @@ var DbToYang_bgp_nbr_community_type_fld_xfmr FieldXfmrDbtoYang = func(inParams X
     result := make(map[string]interface{})
 
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_bgp_nbr_community_type_fld_xfmr : ", data, "inParams : ", inParams)
+    log.V(3).Info("DbToYang_bgp_nbr_community_type_fld_xfmr : ", data, "inParams : ", inParams)
 
     pTbl := data["BGP_NEIGHBOR_AF"]
     if _, ok := pTbl[inParams.key]; !ok {
@@ -1845,7 +1851,7 @@ var DbToYang_bgp_nbr_orf_type_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
     result := make(map[string]interface{})
 
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_bgp_nbr_orf_type_fld_xfmr : ", data, "inParams : ", inParams)
+    log.V(3).Info("DbToYang_bgp_nbr_orf_type_fld_xfmr : ", data, "inParams : ", inParams)
 
     pTbl := data["BGP_NEIGHBOR_AF"]
     if _, ok := pTbl[inParams.key]; !ok {

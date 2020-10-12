@@ -119,7 +119,8 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
     }
     log.Info("targetUriPath: ",  targetUriPath)
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority") {
+    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority") ||
+       strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/pfc/pfc-priorities/pfc-priority") {
         pfc_priority := pathInfo.Var("dot1p")
         log.Info("qos_intf_pfc_delete_xfmr: Delete by priority", pfc_priority)
         pfc_enable := doGetIntfPfcPriority(inParams.d, if_name)
@@ -171,7 +172,9 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
         return res_map, err
     }
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities") && portQosMapEntry {
+    log.Info("targetUriPath: ",  targetUriPath)
+    if (strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/pfc/pfc-priorities")) && portQosMapEntry {
         log.Info("qos_intf_pfc_delete_xfmr: Delete all priorities")
         portQosMapTblMap := make(map[string]db.Value)
         entry := db.Value{Field: make(map[string]string)}
@@ -184,6 +187,7 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
     }
 
     if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/config") ||
+       strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/pfc/config") ||
        (targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc") && portEntry {
 
         portTblMap := make(map[string]db.Value)

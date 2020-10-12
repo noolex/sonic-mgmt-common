@@ -4,6 +4,7 @@ import (
     "strings"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_queue_key_xfmr", YangToDb_qos_queue_key_xfmr)
@@ -93,7 +94,12 @@ var YangToDb_qos_queue_wred_profile_fld_xfmr FieldXfmrYangToDb = func(inParams X
 	if wred_name == "" {
         log.Error("wred name is Missing")
         return res_map, err
-	}
+    }
+
+    if strings.Contains(q_name, "CPU") {
+        log.Error("wred policy on CPU queue not supported")
+        return res_map, tlerr.NotSupported("WRED Policy on CPU queue not supported")
+    }
 
     log.Info("YangToDb_qos_queue_wred_profile_fld_xfmr - WRED ", wred_name)
 
