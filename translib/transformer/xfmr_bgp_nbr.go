@@ -811,7 +811,9 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
     var vrfName string
     var emptyAfName string
 
-    log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr***", inParams.uri)
+    if log.V(3) {
+        log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr***", inParams.uri)
+    }
     pathInfo := NewPathInfo(inParams.uri)
 
     vrfName    =  pathInfo.Var("name")
@@ -883,7 +885,9 @@ var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
 
     var nbrAfKey string = vrfName + "|" + pNbr + "|" + afName
 
-    log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr: nbrAfKey:", nbrAfKey)
+    if log.V(3) {
+        log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr: nbrAfKey:", nbrAfKey)
+    }
     return nbrAfKey, nil
 }
 
@@ -891,7 +895,9 @@ var DbToYang_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
    var afName string
     rmap := make(map[string]interface{})
     entry_key := inParams.key
-    log.Info("DbToYang_bgp_af_nbr_proto_tbl_key_xfmr: ", entry_key)
+    if log.V(3) {
+        log.Info("DbToYang_bgp_af_nbr_proto_tbl_key_xfmr: ", entry_key)
+    }
 
     nbrAfKey := strings.Split(entry_key, "|")
     if len(nbrAfKey) < 3 {return rmap, nil}

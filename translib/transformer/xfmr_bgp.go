@@ -594,7 +594,7 @@ var YangToDb_bgp_gbl_afi_safi_field_xfmr FieldXfmrYangToDb = func(inParams XfmrP
 
     log.Info("YangToDb_bgp_gbl_afi_safi_field_xfmr")
     rmap["NULL"] = "NULL"
-    
+
     return rmap, err
 }
 
@@ -631,7 +631,7 @@ var YangToDb_bgp_dyn_neigh_listen_field_xfmr FieldXfmrYangToDb = func(inParams X
 
     log.Info("YangToDb_bgp_dyn_neigh_listen_field_xfmr")
     rmap["NULL"] = "NULL"
-    
+
     return rmap, err
 }
 
@@ -641,7 +641,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_field_xfmr FieldXfmrYangToDb = func(inParams 
 
     log.Info("YangToDb_bgp_gbl_afi_safi_addr_field_xfmr")
     rmap["NULL"] = "NULL"
-    
+
     return rmap, err
 }
 
@@ -664,7 +664,7 @@ var DbToYang_bgp_dyn_neigh_listen_field_xfmr FieldXfmrDbtoYang = func(inParams X
 var DbToYang_bgp_gbl_afi_safi_addr_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     rmap := make(map[string]interface{})
     var err error
-    
+
     entry_key := inParams.key
     log.Info("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr: ", entry_key)
 
@@ -758,13 +758,13 @@ var YangToDb_bgp_dyn_neigh_listen_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
     if !strings.Contains(bgpId,"BGP") {
         return "", errors.New("BGP ID is missing")
     }
-    
+
     if len(protoName) == 0 {
         return "", errors.New("Protocol Name is missing")
     }
 
 	key := niName + "|" + prefix
-	
+
 	log.Info("YangToDb_bgp_dyn_neigh_listen_key_xfmr key: ", key)
 
     return key, nil
@@ -806,7 +806,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     if !strings.Contains(bgpId,"BGP") {
         return afi, errors.New("BGP ID is missing")
     }
-    
+
     if len(protoName) == 0 {
         return afi, errors.New("Protocol Name is missing")
     }
@@ -826,25 +826,25 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
         afName = "IPV4_UNICAST"
         if strings.Contains(inParams.uri, "ipv6-unicast") ||
            strings.Contains(inParams.uri, "l2vpn-evpn") {
-		    err = errors.New("IPV4_UNICAST supported only on ipv4-config container")
-		    log.Info("IPV4_UNICAST supported only on ipv4-config container: ", afName);
-		    return afName, err
+           err = errors.New("IPV4_UNICAST supported only on ipv4-config container")
+           log.Info("IPV4_UNICAST supported only on ipv4-config container: ", afName);
+           return afName, err
         }
     } else if strings.Contains(afName, "IPV6_UNICAST") {
         afName = "IPV6_UNICAST"
         if strings.Contains(inParams.uri, "ipv4-unicast") ||
            strings.Contains(inParams.uri, "l2vpn-evpn") {
-		    err = errors.New("IPV6_UNICAST supported only on ipv6-config container")
-		    log.Info("IPV6_UNICAST supported only on ipv6-config container: ", afName);
-		    return afName, err
+           err = errors.New("IPV6_UNICAST supported only on ipv6-config container")
+           log.Info("IPV6_UNICAST supported only on ipv6-config container: ", afName);
+           return afName, err
         }
     } else if strings.Contains(afName, "L2VPN_EVPN") {
         afName = "L2VPN_EVPN"
         if strings.Contains(inParams.uri, "ipv6-unicast") ||
            strings.Contains(inParams.uri, "ipv4-unicast") {
-		    err = errors.New("L2VPN_EVPN supported only on l2vpn-evpn container")
-		    log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName);
-		    return afName, err
+           err = errors.New("L2VPN_EVPN supported only on l2vpn-evpn container")
+           log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName);
+           return afName, err
         }
     } else  {
 	    err = errors.New("Unsupported AFI SAFI")
@@ -852,43 +852,51 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 	    return afName, err
     }
 
-	key := niName + "|" + afi
-	
-	log.V(3).Info("AFI key: ", key)
+    key := niName + "|" + afi
+
+    log.Info("YangToDb_bgp_gbl_afi_safi_key_xfmr: AFI key: ", key)
 
     return key, nil
 }
 
 var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
-    log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: ", entry_key)
+    pathInfo := NewPathInfo(inParams.uri)
+    niName := pathInfo.Var("name")
 
-    mpathKey := strings.Split(entry_key, "|")
-    if len(mpathKey) < 2 {return rmap, nil}
+    mpathKey := strings.Split(inParams.key, "|")
+    if len(mpathKey) < 2 {return nil, nil}
+    if (mpathKey[0] != niName) {
+        if log.V(3) {
+           log.Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
+        }
+        return nil, nil 
+    }
 
-	afi := ""
+    afi := ""
 
-	switch mpathKey[1] {
-	case "ipv4_unicast":
-		afi = "IPV4_UNICAST"
+    switch mpathKey[1] {
+        case "ipv4_unicast":
+            afi = "IPV4_UNICAST"
 	case "ipv6_unicast":
-		afi = "IPV6_UNICAST"
+            afi = "IPV6_UNICAST"
 	case "l2vpn_evpn":
-		afi = "L2VPN_EVPN"
-    default:
-        return rmap, nil
-	}
+            afi = "L2VPN_EVPN"
+        default:
+            return nil, nil
+    }
 
+    rmap := make(map[string]interface{})
     rmap["afi-safi-name"] = afi
 
-	log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: rmap:", rmap)
+    if log.V(3) {
+        log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: key: ", inParams.key, "rmap: ", rmap)
+    }
     return rmap, nil
 }
 
 var YangToDb_bgp_global_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
-	log.Info("YangToDb_bgp_global_subtree_xfmr:", inParams.oper)
+    log.Info("YangToDb_bgp_global_subtree_xfmr:", inParams.oper)
     if inParams.oper == DELETE {
         return nil, errors.New("Invalid request")
     }
@@ -902,9 +910,9 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
     niName := pathInfo.Var("name")
     bgpId := pathInfo.Var("identifier")
     protoName := pathInfo.Var("name#2")
-	afName := pathInfo.Var("afi-safi-name")
-	prefix := pathInfo.Var("prefix")
-	afi := ""
+    afName := pathInfo.Var("afi-safi-name")
+    prefix := pathInfo.Var("prefix")
+    afi := ""
     var err error
 
     if len(pathInfo.Vars) < 5 {
@@ -918,7 +926,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
     if !strings.Contains(bgpId,"BGP") {
         return afi, errors.New("BGP ID is missing")
     }
-    
+
     if len(protoName) == 0 {
         return afi, errors.New("Protocol Name is missing")
     }
@@ -965,7 +973,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
     }
 
 	key := niName + "|" + afi + "|" + prefix
-	
+
 	log.Info("YangToDb_bgp_gbl_afi_safi_addr_key_xfmr AFI key: ", key)
 
     return key, nil
