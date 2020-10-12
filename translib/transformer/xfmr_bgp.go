@@ -87,12 +87,13 @@ func util_bgp_get_ui_ifname_from_native_ifname (pIfname *string) {
 }
 
 func init () {
-    XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
+    XlateFuncBind("validate_bgp_proto", validate_bgp_proto)
     XlateFuncBind("YangToDb_bgp_gbl_tbl_key_xfmr", YangToDb_bgp_gbl_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_tbl_key_xfmr", DbToYang_bgp_gbl_tbl_key_xfmr)
     XlateFuncBind("YangToDb_bgp_local_asn_fld_xfmr", YangToDb_bgp_local_asn_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_local_asn_fld_xfmr", DbToYang_bgp_local_asn_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_state_xfmr", DbToYang_bgp_gbl_state_xfmr)
+    XlateFuncBind("bgp_gbl_afi_safi_tbl_xfmr", bgp_gbl_afi_safi_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_afi_safi_field_xfmr", YangToDb_bgp_gbl_afi_safi_field_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_afi_safi_field_xfmr", DbToYang_bgp_gbl_afi_safi_field_xfmr)
 	XlateFuncBind("YangToDb_bgp_dyn_neigh_listen_key_xfmr", YangToDb_bgp_dyn_neigh_listen_key_xfmr)
@@ -107,6 +108,13 @@ func init () {
 	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
+}
+
+func validate_bgp_proto(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    proto := pathInfo.Var("name#2")
+    protoId := pathInfo.Var("identifier")
+    return protoId == "BGP" && proto == "bgp"
 }
 
 func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, key string, fieldName string, fieldValue string, 
@@ -333,44 +341,6 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
     return err
 }
 
-var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
-    var tblList, nil_tblList []string
-
-    log.Info("bgp_gbl_tbl_xfmr: ", inParams.uri)
-    pathInfo := NewPathInfo(inParams.uri)
-
-    vrf := pathInfo.Var("name")
-    bgpId := pathInfo.Var("identifier")
-    protoName := pathInfo.Var("name#2")
-
-    if len(pathInfo.Vars) <  3 {
-        err := errors.New("Invalid Key length");
-        log.Info("Invalid Key length", len(pathInfo.Vars))
-        return nil_tblList, err
-    }
-
-    if len(vrf) == 0 {
-        err_str := "VRF name is missing"
-        err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
-    }
-    if !strings.Contains(bgpId,"BGP") {
-        err_str := "BGP ID is missing"
-        err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
-    }
-    if len(protoName) == 0 {
-        err_str := "Protocol Name is Missing"
-        err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
-    }
-
-    tblList = append(tblList, "BGP_GLOBALS")
-
-    return tblList, nil
-}
-
-
 func bgp_global_get_local_asn(d *db.DB , niName string, tblName string) (string, error) {
     var err error
 
@@ -595,6 +565,27 @@ var DbToYang_bgp_gbl_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     return err;
+}
+
+var bgp_gbl_afi_safi_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
+    var err error
+    var tblList, nil_tblList []string
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    if log.V(3) {
+        log.Info("bgp_gbl_afi_safi_tbl_xfmr: VRF", pathInfo.Var("name"), "target URI:", inParams.uri,"AFi-SAFI", afiSafiName)
+    }
+    if len(afiSafiName) != 0 && !strings.Contains(afiSafiName, "L2VPN_EVPN") &&
+       (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/"+
+                         "bgp/global/afi-safis/afi-safi/l2vpn-evpn") {
+           log.Info("bgp_gbl_afi_safi_tbl_xfmr: URI ", inParams.uri, "target URI ", targetUriPath)
+           return nil_tblList, err
+    }
+
+    tblList = append(tblList, "BGP_GLOBALS_AF")
+    return tblList, nil
 }
 
 var YangToDb_bgp_gbl_afi_safi_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {

@@ -573,15 +573,38 @@ var DbToYang_bgp_nbr_afi_safi_name_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
 }
 
 var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
+    var err error
     var tblList, nil_tblList []string
 
     pathInfo := NewPathInfo(inParams.uri)
-
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    if len(afiSafiName) != 0 {
+        switch targetUriPath {
+            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/"+
+                                               "bgp/neighbors/neighbor/afi-safis/afi-safi/l2vpn-evpn":
+                if !strings.Contains(afiSafiName, "L2VPN_EVPN") {
+                    log.Info("bgp_af_nbr_tbl_xfmr : Ignored: URI", inParams.uri, "target URI", targetUriPath)
+                    return nil_tblList, err
+                }
+            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/"+
+                                               "bgp/neighbors/neighbor/afi-safis/afi-safi/ipv4-unicast":
+               if !strings.Contains(afiSafiName, "IPV4_UNICAST") {
+                    log.Info("bgp_af_nbr_tbl_xfmr : Ignored: URI", inParams.uri, "target URI", targetUriPath)
+                    return nil_tblList, err
+               }
+            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/"+
+                                               "bgp/neighbors/neighbor/afi-safis/afi-safi/ipv6-unicast":
+                if !strings.Contains(afiSafiName, "IPV6_UNICAST") {
+                    log.Info("bgp_af_nbr_tbl_xfmr : Ignored: URI", inParams.uri, "target URI", targetUriPath)
+                    return nil_tblList, err
+                }
+        }
+    }
     vrf := pathInfo.Var("name")
     bgpId := pathInfo.Var("identifier")
     protoName := pathInfo.Var("name#2")
     nbrAddr := pathInfo.Var("neighbor-address")
-    afiSafiName := pathInfo.Var("afi-safi-name")
 
     if len(pathInfo.Vars) <  4 {
         err := errors.New("Invalid Key length");
