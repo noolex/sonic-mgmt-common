@@ -91,6 +91,52 @@ func DbToYang_mac_dampening_state_field_xfmr (inParams XfmrParams) (map[string]i
     return res_map,nil
 }
 
+
+func getBridgePortOidIntfMap (inParams XfmrParams) (map[string]string, error) {
+    bpOidIntfMap := make(map[string]string)
+    d := inParams.dbs[db.AsicDB]
+
+    tempTxCache , present := inParams.txCache.Load("BPTOINTFOID")
+    if present {
+        bpCache,_ := tempTxCache.(map[string]string)
+        bpOidIntfMap = bpCache
+        if log.V(3) {
+            log.Infof("getBridgePortOidIntfMap - cache present BP cache: %v", bpOidIntfMap)
+        }
+        return bpOidIntfMap, nil
+    }
+
+    tblName := "ASIC_STATE"
+    bridgePortPrefix := "SAI_OBJECT_TYPE_BRIDGE_PORT"
+
+    keys, tblErr := d.GetKeysByPattern(&db.TableSpec{Name: tblName, CompCt:2}, bridgePortPrefix+":*")
+    if tblErr != nil {
+        log.Error("Get Keys from ASIC_STATE bridge port table failed.", tblErr);
+        return bpOidIntfMap, tblErr
+    }
+    if log.V(3) {
+        log.Infof("getBridgePortOidIntfMap bridge port keys :%v", keys)
+    }
+    for _, key := range keys {
+        brPKey := key.Comp[1]
+        entry, dbErr := d.GetEntry(&db.TableSpec{Name:tblName}, key)
+        if dbErr != nil {
+            log.Error("DB GetEntry failed for key : ", key)
+            continue
+        }
+        if entry.Has("SAI_BRIDGE_PORT_ATTR_PORT_ID") {
+            bpOidIntfMap[brPKey] = entry.Get("SAI_BRIDGE_PORT_ATTR_PORT_ID")
+        }
+    }
+    if log.V(3) {
+        log.Infof("getBridgePortOidIntfMap Port OID to Intf OID :%v", bpOidIntfMap)
+    }
+
+    xfmrLogInfoAll("Storing ASICStateMaps in Cache")
+    inParams.txCache.Store("BPTOINTFOID", bpOidIntfMap)
+    return bpOidIntfMap, nil 
+}
+
 var YangToDb_mac_dampening_config_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("YangToDb_mac_dampening_config_subtree_xfmr:pathInfo:",pathInfo)
@@ -98,12 +144,12 @@ var YangToDb_mac_dampening_config_subtree_xfmr SubTreeXfmrYangToDb = func(inPara
     log.Info("YangToDb_mac_dampening_config_subtree_xfmr:instance:",instance)
     targetUriPath, err  := getYangPathFromUri(inParams.uri)
     if err != nil {
-        log.Error("getASICStateMaps failed.")
+        log.Error("YangToDb_mac_dampening_config_subtree_xfmr get uri failed.")
         return nil, err
     }
     log.Info("YangToDb_mac_dampening_config_subtree_xfmr:targetUriPath:",targetUriPath)
 
-    if strings.HasPrefix(instance, "Vrf") || strings.HasPrefix(instance, "mgmt") {
+    if !strings.EqualFold(instance, "default")  {
         log.Info("YangToDb_mac_dampening_config_subtree_xfmr Ignoring OP:",inParams.oper," for FDB on VRF:", instance)
         return nil, err
     }
@@ -115,15 +161,14 @@ var YangToDb_mac_dampening_config_subtree_xfmr SubTreeXfmrYangToDb = func(inPara
 
 var DbToYang_mac_dampening_config_subtree_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
-    log.Info("DbToYang_mac_dampening_config_subtree_xfmr:inParams:",inParams)
     pathInfo := NewPathInfo(inParams.uri)
-    log.Info("DbToYang_mac_dampening_config_subtree_xfmr:pathInfo:",pathInfo)
     instance := pathInfo.Var("name")
-    log.Info("DbToYang_mac_dampening_config_subtree_xfmr:instance:",instance)
-    if strings.HasPrefix(instance, "Vrf") {
-        log.Info("DbToYang_mac_dampening_config_subtree_xfmr:vrf")
+
+    if !strings.EqualFold(instance, "default")  {
+        log.Info("DbToYang_mac_dampening_config_subtree_xfmr:", instance)
         return nil
     }
+    log.Info("DbToYang_mac_dampening_config_subtree_xfmr:instance:",instance)
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     log.Info("DbToYang_mac_dampening_config_subtree_xfmr:targetUriPath",targetUriPath)
@@ -172,12 +217,12 @@ var YangToDb_mac_dampening_state_subtree_xfmr SubTreeXfmrYangToDb = func(inParam
     log.Info("YangToDb_mac_dampening_state_subtree_xfmr:instance:",instance)
     targetUriPath, err  := getYangPathFromUri(inParams.uri)
     if err != nil {
-        log.Error("getASICStateMaps failed.")
+        log.Error("get uri failed.")
         return nil, err
     }
     log.Info("YangToDb_mac_dampening_state_subtree_xfmr:targetUriPath:",targetUriPath)
 
-    if strings.HasPrefix(instance, "Vrf") || strings.HasPrefix(instance, "mgmt") {
+    if !strings.EqualFold(instance, "default")  {
         log.Info("YangToDb_mac_dampening_state_subtree_xfmr Ignoring OP:",inParams.oper," for FDB on VRF:", instance)
         return nil, err
     }
@@ -188,15 +233,13 @@ var YangToDb_mac_dampening_state_subtree_xfmr SubTreeXfmrYangToDb = func(inParam
 
 var DbToYang_mac_dampening_state_subtree_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
-    log.Info("YangToDb_mac_dampening_state_subtree_xfmr:inParams:",inParams)
     pathInfo := NewPathInfo(inParams.uri)
-    log.Info("DbToYang_mac_dampening_state_subtree_xfmr:pathInfo:",pathInfo)
     instance := pathInfo.Var("name")
-    log.Info("DbToYang_mac_dampening_state_subtree_xfmr:instance:",instance)
-    if strings.HasPrefix(instance, "Vrf") {
-        log.Info("DbToYang_mac_dampening_state_subtree_xfmr:vrf")
+    if !strings.EqualFold(instance, "default")  {
+        log.Info("DbToYang_mac_dampening_state_subtree_xfmr:", instance)
         return nil
     }
+    log.Info("DbToYang_mac_dampening_state_subtree_xfmr:instance:",instance)
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     log.Info("DbToYang_mac_dampening_state_subtree_xfmr:targetUriPath:",targetUriPath)
@@ -226,7 +269,7 @@ func getMACDampIntfNames(inParams XfmrParams, d *db.DB) ([]string, error) {
     var iflist []string
     tblName := "MAC_DAMP_TABLE"
     retstr := ""
-    OidInfMap,_  := getOidToIntfNameMap(inParams.dbs[db.CountersDB], inParams.txCache)
+    OidInfMap,_  := getOidToIntfNameMap(inParams.dbs[db.CountersDB])
     //log.Info("OidInfMap: ",OidInfMap)
     keys, tblErr := d.GetKeys(&db.TableSpec{Name:tblName} )
     //log.Info("keys: ",keys)
@@ -237,7 +280,7 @@ func getMACDampIntfNames(inParams XfmrParams, d *db.DB) ([]string, error) {
     if brPrtOidToIntfOid == nil {
         return iflist,tblErr
     }
-    _, brPrtOidToIntfOid,_,_ = getASICStateMaps(inParams.dbs[db.AsicDB], inParams.txCache)
+    brPrtOidToIntfOid,_ = getBridgePortOidIntfMap(inParams)
     //log.Info("brPrtOidToIntfOid: ",brPrtOidToIntfOid)
     for _, key := range keys {
         //log.Info("key:",key)
