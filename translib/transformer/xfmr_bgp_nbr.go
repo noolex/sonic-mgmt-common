@@ -301,11 +301,18 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
 }
 
 var DbToYang_bgp_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
+    pathInfo := NewPathInfo(inParams.uri)
+    vrfName  :=  pathInfo.Var("name")
 
-    nbrKey := strings.Split(entry_key, "|")
-    if len(nbrKey) < 2 {return rmap, nil}
+    nbrKey := strings.Split(inParams.key, "|")
+    if len(nbrKey) < 2 {return nil, nil}
+
+    if vrfName != nbrKey[0] {
+	return nil, nil
+    }
+
+    rmap := make(map[string]interface{})
+
 
     nbrName:= nbrKey[1]
     util_bgp_get_ui_ifname_from_native_ifname (&nbrName)
@@ -784,11 +791,19 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
 
 var DbToYang_bgp_af_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     var afName string
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
+    pathInfo := NewPathInfo(inParams.uri)
+    vrfName  :=  pathInfo.Var("name")
+    nbr	     := pathInfo.Var("neighbor-address")
 
-    nbrAfKey := strings.Split(entry_key, "|")
-    if len(nbrAfKey) < 3 {return rmap, nil}
+    nbrAfKey := strings.Split(inParams.key, "|")
+    if len(nbrAfKey) < 3 {return nil, nil}
+
+    if (vrfName != nbrAfKey[0]) || (nbr != nbrAfKey[1]) {
+	return nil, nil
+    }
+
+    rmap := make(map[string]interface{})
+
 
     switch nbrAfKey[2] {
         case "ipv4_unicast":
