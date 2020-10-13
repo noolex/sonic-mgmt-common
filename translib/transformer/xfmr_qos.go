@@ -533,37 +533,37 @@ func populateQCounters (inParams XfmrParams, targetUriPath string, oid string, c
 
         err = getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
         if err == nil {
-            err = getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.Watermark)
-            err = getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
+            getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.Watermark)
+            getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
             counter_percent := uint8(*count)
             counter.WatermarkPercent = &counter_percent
         }
 
         err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
         if err == nil {
-            err = getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.PersistentWatermark)
-            err = getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
+            getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.PersistentWatermark)
+            getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
             counter_percent := uint8(*count)
             counter.PersistentWatermarkPercent = &counter_percent
         }
 
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/watermark":
-        err = getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
+        getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
         err = getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.Watermark)
 
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/watermark-percent":
-        err = getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
+        getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
         err = getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
         counter_percent := uint8(*count)
         counter.WatermarkPercent = &counter_percent
     // persisten-watermark resides on separate DB table
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/persistent-watermark":
-        err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
+        getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
         err = getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.PersistentWatermark)
 
     // persisten-watermark resides on separate DB table
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/persistent-watermark-percent":
-        err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
+        getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
         err = getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
         counter_percent := uint8(*count)
         counter.PersistentWatermarkPercent = &counter_percent
