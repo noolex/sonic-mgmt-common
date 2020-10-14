@@ -134,6 +134,27 @@ module openconfig-network-instance-annot {
       }
     }
 
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:mac-dampening {
+        deviate add {
+            sonic-ext:table-name "MAC_DAMPENING";
+            sonic-ext:key-transformer "mac_dampening_config_key_xfmr";
+        }
+    }
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:mac-dampening/oc-netinst-ext:config/oc-netinst-ext:global {
+        deviate add {
+            sonic-ext:field-name "config";
+            sonic-ext:field-transformer "mac_dampening_config_value_xfmr";
+        }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:mac-dampening/oc-netinst-ext:state {
+        deviate add {
+            sonic-ext:table-name "MAC_DAMP_TABLE";
+            sonic-ext:db-name "ASIC_DB";
+            sonic-ext:subtree-transformer "mac_dampening_state_subtree_xfmr";
+        }
+    }
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols {
         deviate add {
             sonic-ext:table-name "NONE";
