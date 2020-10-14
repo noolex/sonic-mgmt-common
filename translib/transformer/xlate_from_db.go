@@ -507,7 +507,7 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 }
 
 // Assumption: All tables are from the same DB
-func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool) error {
+func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool, xpath string) error {
     // skip the query if the table is already visited
     if _,ok := (*dbDataMap)[inParams.curDb][tbl]; ok {
        if len(inParams.key) > 0 {
@@ -518,7 +518,6 @@ func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBN
           return nil
        }
     }
-    xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.uri)
 
 	terminalNodeGet  := false
 	qdbMapHasTblData := false
@@ -570,7 +569,7 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 			inParamsForGet.ygRoot = ygRoot
 			if len(tblList) != 0 {
 				for _, curTbl := range tblList {
-					dbDataFromTblXfmrGet(curTbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache)
+					dbDataFromTblXfmrGet(curTbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache, xpath)
 					inParamsForGet.dbDataMap = dbDataMap
 					inParamsForGet.ygRoot = ygRoot
 				}
@@ -962,7 +961,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 							if len(tblList) == 0 {
 								continue
 							}
-							dbDataFromTblXfmrGet(tblList[0], inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache)
+							dbDataFromTblXfmrGet(tblList[0], inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache, chldXpath)
 							inParamsForGet.dbDataMap = dbDataMap
 							inParamsForGet.ygRoot = ygRoot
 							chtbl = tblList[0]
@@ -1149,7 +1148,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						}
 						if !tableXfmrFlag {
                                                       for _, tbl := range tblList {
-                                                               dbDataFromTblXfmrGet(tbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache)
+                                                               dbDataFromTblXfmrGet(tbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache, xpathKeyExtRet.xpath)
 							       inParamsForGet.dbDataMap = dbDataMap
 							       inParamsForGet.ygRoot = ygRoot
                                                       }
