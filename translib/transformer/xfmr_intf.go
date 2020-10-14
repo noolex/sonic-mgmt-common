@@ -941,6 +941,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     intTbl := IntfTypeTblMap[intfType]
     log.Info("TableXfmrFunc - targetUriPath : ", targetUriPath)
 
+    subIfUri := "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/"
+    rvlanUri := "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/"
+
     if IntfTypeVxlan == intfType {
 	//handle VXLAN interface.
 	intfsObj := getIntfsRoot(inParams.ygRoot)
@@ -1021,10 +1024,20 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     } else if strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/openconfig-interfaces-ext:nat-zone/state")||
         strings.HasPrefix(targetUriPath,"/openconfig-interfaces:interfaces/interface/nat-zone/state") {
         tblList = append(tblList, intTbl.appDb.intfTN)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/ospfv2") ||
-        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/ospfv2/if-addresses/config") ||
-        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2") {
-        tblList = append(tblList, intTbl.cfgDb.intfTN)
+    } else if strings.HasPrefix(targetUriPath, subIfUri + "ipv4/ospfv2/if-addresses/md-authentications") ||
+        strings.HasPrefix(targetUriPath, rvlanUri + "ipv4/ospfv2/if-addresses/md-authentications") ||
+        strings.HasPrefix(targetUriPath, subIfUri + "openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2/if-addresses/md-authentications") ||
+        strings.HasPrefix(targetUriPath, rvlanUri + "openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2/if-addresses/md-authentications") {
+        tblList = append(tblList, "NONE")
+        log.Info("intf_table_xfmr - ospf md auth uri return table ", tblList)
+    } else if strings.HasPrefix(targetUriPath, subIfUri + "ipv4/ospfv2") ||
+        strings.HasPrefix(targetUriPath, rvlanUri + "ipv4/ospfv2") ||
+        strings.HasPrefix(targetUriPath, subIfUri + "ipv4/ospfv2/if-addresses/config") ||
+        strings.HasPrefix(targetUriPath, rvlanUri + "ipv4/ospfv2/if-addresses/config") ||
+        strings.HasPrefix(targetUriPath, subIfUri + "openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2") ||
+        strings.HasPrefix(targetUriPath, rvlanUri + "openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2") {
+        tblList = append(tblList, "NONE")
+        log.Info("intf_table_xfmr - ospf uri return table ", tblList)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/config") ||
@@ -1967,7 +1980,8 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
                             } else {
                                 if isSec {
                                     log.Errorf("Secondary IPv4 Address : %s for interface : %s doesn't exist!", ip, ifName)
-                                    return nil, nil
+                                    errStr := "No such address (" + ip + ") configured on this interface as secondary address"
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
                                 }
                                 // Primary IPv4 delete
                                 ifIpMap, _ := getIntfIpByName(d, tblName, ifName, true, false, "")

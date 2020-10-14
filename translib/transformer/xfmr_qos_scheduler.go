@@ -217,7 +217,7 @@ func isLastSchedulerField(sched_key string, attr string) (bool) {
     d, err := db.NewDB(getDBOptions(db.ConfigDB))
 
     if err != nil {
-        log.Infof("getSchedulerIds, unable to get configDB, error %v", err)
+        log.Infof("isLastSchedulerField, unable to get configDB, error %v", err)
         return false
     }
 
@@ -245,7 +245,7 @@ func isLastSchedulerFields(sched_key string, attrs []string) (bool) {
     d, err := db.NewDB(getDBOptions(db.ConfigDB))
 
     if err != nil {
-        log.Infof("getSchedulerIds, unable to get configDB, error %v", err)
+        log.Infof("isLastSchedulerFields, unable to get configDB, error %v", err)
         return false
     }
 
@@ -291,10 +291,15 @@ func get_schedulers_by_sp_name(sp_name string) ([]string) {
 
 
     defer d.DeleteDB()
-
+    var keyPattern string
     ts := &db.TableSpec{Name: "SCHEDULER"}
-    keys, _ := d.GetKeys(ts);
+    if sp_name == "" {
+        keyPattern = "*"
+    } else {
+        keyPattern = sp_name + "@*"
+    }
 
+    keys, _ := d.GetKeysByPattern(ts, keyPattern)
     for _, key := range keys {
         if sp_name == "" || 
            key.Comp[0] == sp_name ||
@@ -920,11 +925,19 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     // Scheduler
+    var keyPattern string
     dbSpec := &db.TableSpec{Name: "SCHEDULER"}
+    if sp_name == "" {
+        keyPattern = "*"
+    } else {
+        keyPattern = sp_name + "@*"
+    }
 
-    keys, _ := inParams.dbs[db.ConfigDB].GetKeys(dbSpec)
+    keys, _ := inParams.dbs[db.ConfigDB].GetKeysByPattern(dbSpec, keyPattern)
     for  _, key := range keys {
-        log.Info("current key: ", key)
+        if log.V(3) {
+            log.Info("current key: ", key)
+        }
         if len(key.Comp) < 1 {
             continue
         }
@@ -940,7 +953,6 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
             spseq = "0"
         }
 
-        log.Infof("Check sp_name %v key spname %v ", sp_name, spname)
         if sp_name != "" && strings.Compare(sp_name, spname) != 0 {
             continue
         }
@@ -953,7 +965,9 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
         tmp, _ := strconv.ParseUint(spseq, 10, 32)
         seq = (uint32) (tmp)
 
-        log.Infof("Fill scheduler policy in scheduler: spname %v spseq %v", spname, spseq)
+        if log.V(3) {
+            log.Infof("Fill scheduler policy in scheduler: spname %v spseq %v", spname, spseq)
+        }
         spObj, ok := qosObj.SchedulerPolicies.SchedulerPolicy[spname]
         if !ok {
             spObj, _ = qosObj.SchedulerPolicies.NewSchedulerPolicy(spname)
@@ -993,8 +1007,10 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
         }
 
         schedCfg, _ := inParams.dbs[db.ConfigDB].GetEntry(dbSpec, key)
-        log.Info("current entry: ", schedCfg)
 
+        if log.V(3) {
+            log.Info("current entry: ", schedCfg)
+        }
         if val, exist := schedCfg.Field["cbs"]; exist {
             tmp,_ = strconv.ParseUint(val, 10, 32)
             bc := uint32(tmp)
