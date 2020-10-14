@@ -23,16 +23,15 @@ import (
     log "github.com/golang/glog"
 )
 
-func xfmrHandlerFunc(inParams XfmrParams) (error) {
-	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
-	xfmrLogInfoAll("Subtree transformer function(\"%v\") invoked for yang path(\"%v\").", xYangSpecMap[xpath].xfmrFunc, xpath)
+func xfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (error) {
+	xfmrLogInfoAll("Received inParams %v Subtree function name %v", inParams, xfmrFuncNm)
 	if inParams.uri != inParams.requestUri {
 		_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
 		if yerr != nil {
 			xfmrLogInfoAll("Failed to generate the ygot Node for uri(\"%v\") err(%v).", inParams.uri, yerr)
 		}
 	}
-	ret, err := XlateFuncCall(dbToYangXfmrFunc(xYangSpecMap[xpath].xfmrFunc), inParams)
+	ret, err := XlateFuncCall(dbToYangXfmrFunc(xfmrFuncNm), inParams)
 	if err != nil {
 		xfmrLogInfoAll("Failed to retrieve data for xpath(\"%v\") err(%v).", inParams.uri, err)
 		return err
@@ -42,7 +41,7 @@ func xfmrHandlerFunc(inParams XfmrParams) (error) {
 		if ret[DBTY_SBT_XFMR_RET_ERR_INDX].Interface() != nil {
 			err = ret[DBTY_SBT_XFMR_RET_ERR_INDX].Interface().(error)
 			if err != nil {
-				log.Warningf("Transformer function(\"%v\") returned error - %v.", xYangSpecMap[xpath].xfmrFunc, err)
+				log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
 			}
 		}
         }
@@ -103,9 +102,9 @@ func keyXfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (map[string]inte
         return retVal, nil
 }
 
-func validateHandlerFunc(inParams XfmrParams) (bool) {
-	xpath, _ := XfmrRemoveXPATHPredicates(inParams.uri)
-	ret, err := XlateFuncCall(xYangSpecMap[xpath].validateFunc, inParams)
+func validateHandlerFunc(inParams XfmrParams, validateFuncNm string) (bool) {
+	xfmrLogInfoAll("Received inParams %v, validate transformer function name %v", inParams, validateFuncNm)
+	ret, err := XlateFuncCall(validateFuncNm, inParams)
 	if err != nil {
 		return false
 	}

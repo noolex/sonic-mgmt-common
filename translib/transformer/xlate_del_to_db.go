@@ -524,7 +524,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 func allChildTblGetToDelete(xlateParams xlateToParams) (map[string]map[string]db.Value, error) {
 	var err error
 	subTreeResMap := make(map[string]map[string]db.Value)
-	xpath, _ := XfmrRemoveXPATHPredicates(xlateParams.requestUri)
+	xpath, _, _ := XfmrRemoveXPATHPredicates(xlateParams.requestUri)
 	spec, ok := xYangSpecMap[xpath]
 	isFirstCall := true
 	if !ok {

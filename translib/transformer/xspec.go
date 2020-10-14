@@ -447,7 +447,7 @@ func dbSpecXpathGet(inPath string) (string, error){
 	var err error
 	specPath   := ""
 
-	xpath, err := XfmrRemoveXPATHPredicates(inPath)
+	xpath, _, err := XfmrRemoveXPATHPredicates(inPath)
 	if err != nil {
 		log.Warningf("xpath conversion failed for(%v) \r\n", inPath)
 		return specPath, err
@@ -468,7 +468,7 @@ func dbSpecXpathGet(inPath string) (string, error){
 /* Convert a relative path to an absolute path */
 func relativeToActualPathGet(relPath string, entry *yang.Entry) string {
         actDbSpecPath := ""
-        xpath, err := XfmrRemoveXPATHPredicates(relPath)
+        xpath, _, err := XfmrRemoveXPATHPredicates(relPath)
         if err != nil {
                 return actDbSpecPath
         }
