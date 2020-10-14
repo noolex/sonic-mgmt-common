@@ -616,7 +616,7 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     if intfType != IntfTypePortChannel || err != nil {
         intfTypeStr := strconv.Itoa(int(intfType))
         errStr := "TableXfmrFunc - Invalid interface type: " + intfTypeStr
-        log.Error(errStr);
+        log.Warning(errStr);
         return errors.New(errStr);
     }
     /*Validate given PortChannel exists */
