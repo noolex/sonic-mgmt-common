@@ -872,19 +872,6 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
     pathInfo := NewPathInfo(inParams.uri)
     niName := pathInfo.Var("name")
 
-<<<<<<< HEAD
-    mpathKey := strings.Split(inParams.key, "|")
-    if len(mpathKey) < 2 {return nil, nil}
-    if (mpathKey[0] != niName) {
-        if log.V(3) {
-           log.Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
-        }
-        return nil, nil 
-    }
-||||||| merged common ancestors
-    mpathKey := strings.Split(entry_key, "|")
-    if len(mpathKey) < 2 {return rmap, nil}
-=======
     mpathKey := strings.Split(inParams.key, "|")
     if len(mpathKey) < 2 {return nil, nil}
     if (mpathKey[0] != niName) {
@@ -893,7 +880,6 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
         }
         return nil, nil
     }
->>>>>>> origin/broadcom_sonic_3.1.x_share
 
     afi := ""
 
