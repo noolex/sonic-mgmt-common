@@ -1649,7 +1649,7 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 					vniNum, _ := strconv.ParseUint(mapNameList[1], 10, 32)
 					vniId = uint32(vniNum)
 					if log.V(3) {
-					    log.Infof("Matching niName:%v dbVlanName:%v", niName, dbVlanName)
+					    log.Infof("Matching niName:%v dbkey:%v", niName, dbkey)
 					}
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := configDb.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
