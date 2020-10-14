@@ -689,7 +689,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 			(len(xYangSpecMap[parentXpath].xfmrFunc) > 0 && (xYangSpecMap[parentXpath].xfmrFunc != xYangSpecMap[xpath].xfmrFunc)))) {
 			xfmrLogInfoAll("Parent subtree already handled cur uri: %v", xpath)
 			inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, curUri, requestUri, GET, dbKey, dbDataMap, nil, nil, txCache)
-			err := xfmrHandlerFunc(inParams)
+			err := xfmrHandlerFunc(inParams, xYangSpecMap[xpath].xfmrFunc)
 			inParamsForGet.ygRoot = ygRoot
 			inParamsForGet.dbDataMap = dbDataMap
 			if err != nil {
@@ -732,7 +732,7 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 	return curMap, err
 }
 
-func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface{}, error) {
+func terminalNodeProcess(inParamsForGet xlateFromDbParams, terminalNodeQuery bool) (map[string]interface{}, error) {
 	xfmrLogInfoAll("Received xpath - %v, uri - %v, table - %v, table key - %v", inParamsForGet.xpath, inParamsForGet.uri, inParamsForGet.tbl, inParamsForGet.tblKey)
 	var err error
 	resFldValMap := make(map[string]interface{})
@@ -795,13 +795,7 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams) (map[string]interface
 				val, ok := (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName]
 				leafLstInstGetReq := false
 
-				ruriXpath, _, _ := XfmrRemoveXPATHPredicates(inParamsForGet.requestUri)
-				rYangType := ""
-				if rSpecInfo, rok := xYangSpecMap[ruriXpath]; rok {
-					rYangType = yangTypeGet(rSpecInfo.yangEntry)
-				}
-
-				if ((strings.HasSuffix(requestUri, "]")) || (strings.HasSuffix(requestUri, "]/"))) && (rYangType == YANG_LEAF_LIST) {
+				if terminalNodeQuery && ((strings.HasSuffix(requestUri, "]")) || (strings.HasSuffix(requestUri, "]/"))) {
 					xfmrLogInfoAll("Request URI is leaf-list instance GET - %v", requestUri)
 					leafLstInstGetReq = true
 				}
@@ -898,7 +892,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					inParamsForGet.ygRoot = ygRoot
 					// TODO - handle non CONFIG-DB
 					inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, xpathKeyExtRet.dbKey, dbDataMap, nil, nil, txCache)
-					res := validateHandlerFunc(inParams)
+					res := validateHandlerFunc(inParams, xYangSpecMap[chldXpath].validateFunc)
 					if !res {
 						continue
 					} else {
@@ -913,7 +907,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					if len(xYangSpecMap[xpath].xfmrFunc) > 0 {
 						continue
 					}
-					fldValMap, err := terminalNodeProcess(inParamsForGet)
+					fldValMap, err := terminalNodeProcess(inParamsForGet, false)
 					dbDataMap = inParamsForGet.dbDataMap
 					ygRoot = inParamsForGet.ygRoot
 					if err != nil {
@@ -980,7 +974,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 						(len(xYangSpecMap[xpath].xfmrFunc) > 0   &&
 						(xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
 							inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
-							err := xfmrHandlerFunc(inParams)
+							err := xfmrHandlerFunc(inParams, xYangSpecMap[chldXpath].xfmrFunc)
 							inParamsForGet.dbDataMap = dbDataMap
 							inParamsForGet.ygRoot = ygRoot
 							if err != nil {
@@ -1016,15 +1010,15 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					inParamsForGet.curDb = cdb
 					if len(xYangSpecMap[chldXpath].xfmrFunc) > 0 {
 						if (len(xYangSpecMap[xpath].xfmrFunc) == 0) ||
-						(len(xYangSpecMap[xpath].xfmrFunc) > 0   &&
-						(xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
-							inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
-							err := xfmrHandlerFunc(inParams)
-							if err != nil {
-								xfmrLogInfoAll("Error returned by %v: %v", xYangSpecMap[chldXpath].xfmrFunc, err)
-							}
-							inParamsForGet.dbDataMap = dbDataMap
-							inParamsForGet.ygRoot = ygRoot
+						   (len(xYangSpecMap[xpath].xfmrFunc) > 0   &&
+						   (xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
+							   inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
+							   err := xfmrHandlerFunc(inParams, xYangSpecMap[chldXpath].xfmrFunc)
+							   if err != nil {
+								   xfmrLogInfoAll("Error returned by %v: %v", xYangSpecMap[chldXpath].xfmrFunc, err)
+							   }
+							   inParamsForGet.dbDataMap = dbDataMap
+							   inParamsForGet.ygRoot = ygRoot
 						}
 						if !xYangSpecMap[chldXpath].hasChildSubTree {
 							continue
@@ -1115,7 +1109,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 			IsValidate := false
 			if len(xYangSpecMap[xpathKeyExtRet.xpath].validateFunc) > 0 {
 				inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, xpathKeyExtRet.dbKey, dbDataMap, nil, nil, txCache)
-				res := validateHandlerFunc(inParams)
+				res := validateHandlerFunc(inParams, xYangSpecMap[xpathKeyExtRet.xpath].validateFunc)
 				inParamsForGet.dbDataMap = dbDataMap
 				inParamsForGet.ygRoot = ygRoot
 				if !res {
@@ -1179,7 +1173,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 					}
 					if len(xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc) > 0 {
 						inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
-						fldSbtErr = xfmrHandlerFunc(inParams)
+						fldSbtErr = xfmrHandlerFunc(inParams, xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc)
 						if fldSbtErr != nil {
 							/*For request Uri pointing to leaf/leaf-list having subtree, error will be propagated
 							  to handle check of leaf/leaf-list-instance existence in Db , which will be performed 
@@ -1196,7 +1190,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						inParamsForGet.tbl = tbl
 						inParamsForGet.tblKey = key
 						var fldValMap map[string]interface{}
-						fldValMap, fldErr = terminalNodeProcess(inParamsForGet)
+						fldValMap, fldErr = terminalNodeProcess(inParamsForGet, true)
 						if ((fldErr != nil) || (len(fldValMap) == 0)) {
 							if fldErr == nil {
 								if yangType == YANG_LEAF {
@@ -1221,7 +1215,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 					}
 					if len(xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc) > 0 {
 						inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
-						err := xfmrHandlerFunc(inParams)
+						err := xfmrHandlerFunc(inParams, xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc)
 						if err != nil {
 							xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc, err)
 							return jsonData, true, err
@@ -1243,7 +1237,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 					isFirstCall := true
 					if len(xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc) > 0 {
 						inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
-						err := xfmrHandlerFunc(inParams)
+						err := xfmrHandlerFunc(inParams, xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc)
 						if err != nil {
 							if (((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) && (uri == requestUri)) {
 								// The error handling here is for the deferred resource check error being handled by the subtree for virtual table cases.

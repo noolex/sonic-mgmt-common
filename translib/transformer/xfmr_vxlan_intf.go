@@ -1636,7 +1636,7 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 			}
 		}
 	} else if (isSubtreeRequest(pathInfo.Template, "/openconfig-network-instance:network-instances/network-instance{name}/openconfig-vxlan:vxlan-vni-instances")) || (isSubtreeRequest(pathInfo.Template, "/openconfig-network-instance:network-instances/network-instance{}/openconfig-vxlan:vxlan-vni-instances")) {
-		dbKeys, err := configDb.GetKeys(&db.TableSpec{Name: tblName})
+		dbKeys, err := configDb.GetKeysByPattern(&db.TableSpec{Name: tblName}, "*" + niName)
 		if err != nil {
 			return err
 		}
@@ -1648,13 +1648,9 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 					mapNameList := strings.Split(dbkey.Get(1), "_")
 					vniNum, _ := strconv.ParseUint(mapNameList[1], 10, 32)
 					vniId = uint32(vniNum)
-					dbVlanName := mapNameList[2]
-                    if (strings.Compare(niName, dbVlanName) != 0) {
-                        continue
-                    } 
-                    if log.V(3) {
-	                    log.Infof("Matching niName:%v dbVlanName:%v", niName, dbVlanName)
-                    }
+					if log.V(3) {
+					    log.Infof("Matching niName:%v dbkey:%v", niName, dbkey)
+					}
 				} else if strings.HasPrefix(niName, "Vrf") {
 					vrfEntry, err := configDb.GetEntry(&db.TableSpec{Name: tblName}, db.Key{Comp: []string{niName}})
 					if err != nil {

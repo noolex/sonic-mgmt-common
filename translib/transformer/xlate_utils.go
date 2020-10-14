@@ -35,6 +35,16 @@ import (
     "sync"
 )
 
+func initRegex() {
+	rgpKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
+	rgpIpv6 = regexp.MustCompile(`(([^:]+:){6}(([^:]+:[^:]+)|(.*\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?`)
+	rgpMac = regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
+	rgpIsMac = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
+	rgpSncKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
+	rgpSplitUri = regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
+
+}
+
 /* Create db key from data xpath(request) */
 func keyCreate(keyPrefix string, xpath string, data interface{}, dbKeySep string) string {
 	_, ok := xYangSpecMap[xpath]
@@ -182,10 +192,12 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableNa
 
 	/* if uri contins key, use it else use xpath */
 	if strings.Contains(uri, "[") {
-		uriXpath, _, _ := XfmrRemoveXPATHPredicates(uri)
-		if (uriXpath == xpath  && (strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/"))) {
-                        uriWithKeyCreate = false
-                }
+		if strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/") {
+			uriXpath, _, _ := XfmrRemoveXPATHPredicates(uri)
+			if uriXpath == xpath {
+				uriWithKeyCreate = false
+			}
+		}
 		uriWithKey  = fmt.Sprintf("%v", uri)
 	}
 
@@ -614,15 +626,6 @@ func replacePrefixWithModuleName(xpath string) (string) {
 	return xpath
 }
 
-func initRegex() {
-	rgpKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
-	rgpIpv6 = regexp.MustCompile(`(([^:]+:){6}(([^:]+:[^:]+)|(.*\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?`)
-	rgpMac = regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
-	rgpIsMac = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
-	rgpSncKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
-	rgpSplitUri = regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
-
-}
 
 /* Extract key vars, create db key and xpath */
 func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subOpDataMap map[int]*RedisDbMap, txCache interface{}, xfmrTblKeyCache map[string]tblKeyCache) (xpathTblKeyExtractRet, error) {
@@ -840,7 +843,7 @@ func dbKeyFromAnnotGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
 	cdb := db.ConfigDB
 	var dbs [db.MaxDB]*db.DB
 
-	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
+	 xPath, _, _ := XfmrRemoveXPATHPredicates(uri)
 	 xpathInfo, ok := xYangSpecMap[xPath]
 	 if !ok {
 		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", xPath)
