@@ -308,10 +308,11 @@ var DbToYang_bgp_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (m
     if len(nbrKey) < 2 {return nil, nil}
 
     if vrfName != nbrKey[0] {
-       return nil, nil
+        return nil, nil
     }
 
     rmap := make(map[string]interface{})
+
 
     nbrName:= nbrKey[1]
     util_bgp_get_ui_ifname_from_native_ifname (&nbrName)
@@ -585,11 +586,11 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/
-    // Ignore the above prefix of length 116
+    // Ignore the above prefix of length 116 to save the string compare time
     targetUriPath = targetUriPath[116:]
     afiSafiName := pathInfo.Var("afi-safi-name")
     if log.V(3) {
-        log.Info("bgp_af_nbr_tbl_xfmr: URI:", inParams.uri, "AFI-SAFI ", afiSafiName, "target URI ",
+        log.Info("bgp_af_nbr_tbl_xfmr: URI ", inParams.uri, " AFI-SAFI ", afiSafiName, " target URI ",
                  targetUriPath)
     }
 
@@ -598,29 +599,27 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
             case "afi-safi/l2vpn-evpn":
                 if !strings.Contains(afiSafiName, "L2VPN_EVPN") {
                     if log.V(3) {
-                        log.Info("bgp_af_nbr_tbl_xfmr : Ignored: l2vpn-evpn AF URI", inParams.uri)
+                        log.Info("bgp_af_nbr_tbl_xfmr : ignored: l2vpn-evpn AF URI ", inParams.uri)
                     }
                     return tblList, err
                 }
             case "afi-safi/ipv4-unicast":
                if !strings.Contains(afiSafiName, "IPV4_UNICAST") {
                     if log.V(3) {
-                        log.Info("bgp_af_nbr_tbl_xfmr : Ignored: ipv4-unicast AF URI", inParams.uri)
+                        log.Info("bgp_af_nbr_tbl_xfmr : ignored: ipv4-unicast AF URI ", inParams.uri)
                     }
                     return tblList, err
                }
             case "afi-safi/ipv6-unicast":
                 if !strings.Contains(afiSafiName, "IPV6_UNICAST") {
                     if log.V(3) {
-                        log.Info("bgp_af_nbr_tbl_xfmr : Ignored: ipv6-unicast AF URI", inParams.uri)
+                        log.Info("bgp_af_nbr_tbl_xfmr : ignored: ipv6-unicast AF URI ", inParams.uri)
                     }
                     return tblList, err
                 }
         }
     }
     vrf := pathInfo.Var("name")
-    bgpId := pathInfo.Var("identifier")
-    protoName := pathInfo.Var("name#2")
     nbrAddr := pathInfo.Var("neighbor-address")
 
     if len(pathInfo.Vars) <  4 {
@@ -631,16 +630,6 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
 
     if len(vrf) == 0 {
         err_str := "VRF name is missing"
-        err := errors.New(err_str); log.Info(err_str)
-        return tblList, err
-    }
-    if !strings.Contains(bgpId,"BGP") {
-        err_str := "BGP ID is missing"
-        err := errors.New(err_str); log.Info(err_str)
-        return tblList, err
-    }
-    if len(protoName) == 0 {
-        err_str := "Protocol Name is Missing"
         err := errors.New(err_str); log.Info(err_str)
         return tblList, err
     }
@@ -803,16 +792,17 @@ var DbToYang_bgp_af_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams)
     var afName string
     pathInfo := NewPathInfo(inParams.uri)
     vrfName  :=  pathInfo.Var("name")
-    nbr             := pathInfo.Var("neighbor-address")
+    nbr      := pathInfo.Var("neighbor-address")
 
     nbrAfKey := strings.Split(inParams.key, "|")
     if len(nbrAfKey) < 3 {return nil, nil}
 
     if (vrfName != nbrAfKey[0]) || (nbr != nbrAfKey[1]) {
-       return nil, nil
+        return nil, nil
     }
 
     rmap := make(map[string]interface{})
+
 
     switch nbrAfKey[2] {
         case "ipv4_unicast":

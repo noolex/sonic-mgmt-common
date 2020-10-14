@@ -379,6 +379,7 @@ var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     return tblList, nil
 }
 
+
 func bgp_global_get_local_asn(d *db.DB , niName string, tblName string) (string, error) {
     var err error
 
@@ -612,16 +613,16 @@ var bgp_gbl_afi_safi_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/
-    // Ignore the above prefix of length 104
+    // Ignore the above prefix of length 104 to save the string compare time
     targetUriPath = targetUriPath[104:]
     afiSafiName := pathInfo.Var("afi-safi-name")
     if log.V(3) {
-        log.Info("bgp_gbl_afi_safi_tbl_xfmr: VRF", pathInfo.Var("name"), "URI:", 
-                inParams.uri,"AFi-SAFI", afiSafiName, "Target URI", targetUriPath)
+        log.Info("bgp_gbl_afi_safi_tbl_xfmr: VRF ", pathInfo.Var("name"), " URI ", 
+                inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath)
     }
     if len(afiSafiName) != 0 && (afiSafiName != "L2VPN_EVPN") && (targetUriPath == "afi-safi/l2vpn-evpn") {
         if log.V(3) {
-            log.Info("bgp_gbl_afi_safi_tbl_xfmr: ignored URI ", inParams.uri, "target URI ", targetUriPath)
+            log.Info("bgp_gbl_afi_safi_tbl_xfmr: ignored URI ", inParams.uri, " target URI ", targetUriPath)
         }
         return tblList, err
     }

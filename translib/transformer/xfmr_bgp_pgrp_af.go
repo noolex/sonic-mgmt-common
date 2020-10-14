@@ -11,6 +11,7 @@ import (
 
 
 func init () {
+    XlateFuncBind("bgp_af_pgrp_tbl_xfmr", bgp_af_pgrp_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_af_pgrp_tbl_key_xfmr", YangToDb_bgp_af_pgrp_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_af_pgrp_tbl_key_xfmr", DbToYang_bgp_af_pgrp_tbl_key_xfmr)
     XlateFuncBind("YangToDb_bgp_pgrp_afi_safi_name_fld_xfmr", YangToDb_bgp_pgrp_afi_safi_name_fld_xfmr)
@@ -26,6 +27,56 @@ func init () {
     XlateFuncBind("DbToYang_bgp_pgrp_tx_add_paths_fld_xfmr", DbToYang_bgp_pgrp_tx_add_paths_fld_xfmr)
 }
 
+var bgp_af_pgrp_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
+    var err error
+    var tblList []string
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/peer-groups/peer-group/afi-safis/
+    // Ignore the above prefix of length 116 to save the string compare time
+    pGrpName   := pathInfo.Var("peer-group-name")
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    targetUriPath = targetUriPath[120:]
+    if log.V(3) {
+        log.Info("bgp_af_pgrp_tbl_xfmr: URI ", inParams.uri, " AFI-SAFI ", afiSafiName, " target URI ",
+                 targetUriPath)
+    }
+    if len(afiSafiName) != 0 {
+        switch targetUriPath {
+            case "afi-safi/l2vpn-evpn":
+                if !strings.Contains(afiSafiName, "L2VPN_EVPN") {
+                    if log.V(3) {
+                        log.Info("bgp_af_pgrp_tbl_xfmr: ignored: l2vpn-evpn AF URI ", inParams.uri)
+                    }
+                    return tblList, err
+                }
+            case "afi-safi/ipv4-unicast":
+               if !strings.Contains(afiSafiName, "IPV4_UNICAST") {
+                    if log.V(3) {
+                        log.Info("bgp_af_pgrp_tbl_xfmr: ignored: ipv4-unicast AF URI ", inParams.uri)
+                    }
+                    return tblList, err
+               }
+            case "afi-safi/ipv6-unicast":
+                if !strings.Contains(afiSafiName, "IPV6_UNICAST") {
+                    if log.V(3) {
+                        log.Info("bgp_af_pgrp_tbl_xfmr: ignored: ipv6-unicast AF URI ", inParams.uri)
+                    }
+                    return tblList, err
+                }
+        }
+    }
+
+    if len(pGrpName) == 0 {
+        err_str := "Peer group name is missing"
+        err := errors.New(err_str); log.Info(err_str)
+        return tblList, err
+    }
+
+    tblList = append(tblList, "BGP_PEER_GROUP_AF")
+    return tblList, nil
+}
 var YangToDb_bgp_pgrp_afi_safi_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
@@ -104,7 +155,7 @@ var YangToDb_bgp_af_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
     if len(afName) == 0 {
         err = errors.New("AFI SAFI is missing")
         log.Info("AFI SAFI is Missing")
-        return pGrpName, err
+        return afName, err
     }
 
     if strings.Contains(afName, "IPV4_UNICAST") {
