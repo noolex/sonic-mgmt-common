@@ -308,11 +308,10 @@ var DbToYang_bgp_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (m
     if len(nbrKey) < 2 {return nil, nil}
 
     if vrfName != nbrKey[0] {
-	return nil, nil
+       return nil, nil
     }
 
     rmap := make(map[string]interface{})
-
 
     nbrName:= nbrKey[1]
     util_bgp_get_ui_ifname_from_native_ifname (&nbrName)
@@ -581,30 +580,41 @@ var DbToYang_bgp_nbr_afi_safi_name_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
 
 var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var err error
-    var tblList, nil_tblList []string
+    var tblList []string
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/
+    // Ignore the above prefix of length 116
+    targetUriPath = targetUriPath[116:]
     afiSafiName := pathInfo.Var("afi-safi-name")
+    if log.V(3) {
+        log.Info("bgp_af_nbr_tbl_xfmr: URI:", inParams.uri, "AFI-SAFI ", afiSafiName, "target URI ",
+                 targetUriPath)
+    }
+
     if len(afiSafiName) != 0 {
         switch targetUriPath {
-            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/"+
-                                               "bgp/neighbors/neighbor/afi-safis/afi-safi/l2vpn-evpn":
+            case "afi-safi/l2vpn-evpn":
                 if !strings.Contains(afiSafiName, "L2VPN_EVPN") {
-                    log.Info("bgp_af_nbr_tbl_xfmr : Ignored: URI", inParams.uri, "target URI", targetUriPath)
-                    return nil_tblList, err
+                    if log.V(3) {
+                        log.Info("bgp_af_nbr_tbl_xfmr : Ignored: l2vpn-evpn AF URI", inParams.uri)
+                    }
+                    return tblList, err
                 }
-            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/"+
-                                               "bgp/neighbors/neighbor/afi-safis/afi-safi/ipv4-unicast":
+            case "afi-safi/ipv4-unicast":
                if !strings.Contains(afiSafiName, "IPV4_UNICAST") {
-                    log.Info("bgp_af_nbr_tbl_xfmr : Ignored: URI", inParams.uri, "target URI", targetUriPath)
-                    return nil_tblList, err
+                    if log.V(3) {
+                        log.Info("bgp_af_nbr_tbl_xfmr : Ignored: ipv4-unicast AF URI", inParams.uri)
+                    }
+                    return tblList, err
                }
-            case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/"+
-                                               "bgp/neighbors/neighbor/afi-safis/afi-safi/ipv6-unicast":
+            case "afi-safi/ipv6-unicast":
                 if !strings.Contains(afiSafiName, "IPV6_UNICAST") {
-                    log.Info("bgp_af_nbr_tbl_xfmr : Ignored: URI", inParams.uri, "target URI", targetUriPath)
-                    return nil_tblList, err
+                    if log.V(3) {
+                        log.Info("bgp_af_nbr_tbl_xfmr : Ignored: ipv6-unicast AF URI", inParams.uri)
+                    }
+                    return tblList, err
                 }
         }
     }
@@ -616,28 +626,28 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
     if len(pathInfo.Vars) <  4 {
         err := errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))
-        return nil_tblList, err
+        return tblList, err
     }
 
     if len(vrf) == 0 {
         err_str := "VRF name is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if !strings.Contains(bgpId,"BGP") {
         err_str := "BGP ID is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if len(protoName) == 0 {
         err_str := "Protocol Name is Missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if len(nbrAddr) == 0 {
         err_str := "Neighbor Address is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
 
     if (inParams.oper != GET) {
@@ -664,7 +674,7 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
         afiSafiEnum, afiSafiNameDbStr, ok := get_afi_safi_name_enum_dbstr_for_ocstr (afiSafiName) ; if !ok {
              err_str := "AFI-SAFI : " + afiSafiName + " not supported"
              err := errors.New(err_str); log.Info(err_str)
-             return nil_tblList, err
+             return tblList, err
         }
         /* For dynamic BGP nbrs, if isVirtualTbl not set, infra will try to get from config DB and fails
            with Resource not found. For now for any specific afi-safi requests, check and set isVirtualTble.
@@ -793,17 +803,16 @@ var DbToYang_bgp_af_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams)
     var afName string
     pathInfo := NewPathInfo(inParams.uri)
     vrfName  :=  pathInfo.Var("name")
-    nbr	     := pathInfo.Var("neighbor-address")
+    nbr             := pathInfo.Var("neighbor-address")
 
     nbrAfKey := strings.Split(inParams.key, "|")
     if len(nbrAfKey) < 3 {return nil, nil}
 
     if (vrfName != nbrAfKey[0]) || (nbr != nbrAfKey[1]) {
-	return nil, nil
+       return nil, nil
     }
 
     rmap := make(map[string]interface{})
-
 
     switch nbrAfKey[2] {
         case "ipv4_unicast":
