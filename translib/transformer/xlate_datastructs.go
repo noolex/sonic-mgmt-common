@@ -21,7 +21,10 @@ package transformer
 import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/openconfig/ygot/ygot"
+    "regexp"
 )
+
+var rgpIpv6, rgpMac, rgpIsMac, rgpKeyExtract, rgpSncKeyExtract, rgpSplitUri *regexp.Regexp
 
 //Map of map[uri][dbKey]
 var keyXfmrCache map[string]string
