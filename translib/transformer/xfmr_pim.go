@@ -997,25 +997,21 @@ func hdl_post_xfmr_pim_globals_del_ (inParams *XfmrParams, niName string, retDbD
     log.Info ("In PIM Post-Transformer to fill PIM_GLOBALS keys, while handling DELETE-OP for URI : ",
               inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
 
-    gblTblKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PIM_GLOBALS"})
-
-    matchingKeyFound := false
-    for _, gblTblKey := range gblTblKeys {
-        if gblTblKey.Len() < 2 {continue}
-        if !((gblTblKey.Get(0) == niName) && (gblTblKey.Get(1) == "ipv4")) {continue}
-        matchingKeyFound = true
-
-        if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; !ok {
-            (*retDbDataMap)["PIM_GLOBALS"] = make(map[string]db.Value)
-        }
-
-        key := gblTblKey.Get(0) + "|" + gblTblKey.Get(1)
-        (*retDbDataMap)["PIM_GLOBALS"][key] = db.Value{}
-    }
-
-    if !matchingKeyFound {
+    gblTblKeys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{Name:"PIM_GLOBALS"}, db.Key {[]string{niName, "ipv4"}})
+    if ((tblErr != nil) || (len(gblTblKeys) == 0)) {
         if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; ok && len((*retDbDataMap)["PIM_GLOBALS"]) == 0 {
             delete ((*retDbDataMap), "PIM_GLOBALS")
+        }
+    } else {
+        for _, gblTblKey := range gblTblKeys {
+            if gblTblKey.Len() < 2 {continue}
+
+            if _, ok := (*retDbDataMap)["PIM_GLOBALS"]; !ok {
+                (*retDbDataMap)["PIM_GLOBALS"] = make(map[string]db.Value)
+            }
+
+            key := gblTblKey.Get(0) + "|" + gblTblKey.Get(1)
+            (*retDbDataMap)["PIM_GLOBALS"][key] = db.Value{}
         }
     }
 
@@ -1026,25 +1022,21 @@ func hdl_post_xfmr_pim_intfs_del_ (inParams *XfmrParams, niName string, retDbDat
     log.Info ("In PIM Post-Transformer to fill PIM_INTERFACE keys, while handling DELETE-OP for URI : ",
               inParams.requestUri, " ; VRF : ", niName, " ; Incoming DB-Datamap : ", (*retDbDataMap))
 
-    intfTblKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PIM_INTERFACE"})
-
-    matchingKeyFound := false
-    for _, intfTblKey := range intfTblKeys {
-        if intfTblKey.Len() < 3 {continue}
-        if !((intfTblKey.Get(0) == niName) && (intfTblKey.Get(1) == "ipv4")) {continue}
-        matchingKeyFound = true
-
-        if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; !ok {
-            (*retDbDataMap)["PIM_INTERFACE"] = make(map[string]db.Value)
-        }
-
-        key := intfTblKey.Get(0) + "|" + intfTblKey.Get(1) + "|" + intfTblKey.Get(2)
-        (*retDbDataMap)["PIM_INTERFACE"][key] = db.Value{}
-    }
-
-    if !matchingKeyFound {
+    intfTblKeys, tblErr := inParams.d.GetKeysPattern(&db.TableSpec{Name:"PIM_INTERFACE"}, db.Key {[]string{niName, "ipv4", "*"}})
+    if ((tblErr != nil) || (len(intfTblKeys) == 0)) {
         if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; ok && len((*retDbDataMap)["PIM_INTERFACE"]) == 0 {
             delete ((*retDbDataMap), "PIM_INTERFACE")
+        }
+    } else {
+        for _, intfTblKey := range intfTblKeys {
+            if intfTblKey.Len() < 3 {continue}
+
+            if _, ok := (*retDbDataMap)["PIM_INTERFACE"]; !ok {
+                (*retDbDataMap)["PIM_INTERFACE"] = make(map[string]db.Value)
+            }
+
+            key := intfTblKey.Get(0) + "|" + intfTblKey.Get(1) + "|" + intfTblKey.Get(2)
+            (*retDbDataMap)["PIM_INTERFACE"][key] = db.Value{}
         }
     }
 
