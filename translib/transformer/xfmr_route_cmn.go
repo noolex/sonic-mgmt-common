@@ -41,7 +41,9 @@ func exec_vtysh_cmd (vtysh_cmd string) (map[string]interface{}, error) {
     var outputJson map[string]interface{}
     err = json.NewDecoder(conn).Decode(&outputJson)
     if err != nil {
-        log.Errorf("Not able to decode vtysh json output: %s\n", err)
+        if err != io.EOF {
+            log.Errorf("Not able to decode vtysh json output: %s\n", err)
+        }
         return nil, oper_err
     }
 
