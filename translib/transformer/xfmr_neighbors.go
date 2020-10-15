@@ -413,6 +413,8 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
+
     ipAddrRcvd := pathInfo.Var("ip")
     if ipAddrRcvd == "" {
         errStr := "Empty ipAddrRcvd"
@@ -420,9 +422,9 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := *nativeIntfName + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
