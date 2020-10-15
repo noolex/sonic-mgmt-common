@@ -1195,17 +1195,7 @@ func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error)
 }
 
 func splitUri(uri string) []string {
-	if !strings.HasPrefix(uri, "/") {
-		uri = "/" + uri
-	}
-	rgp := regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
-	pathList := rgp.FindAllString(uri, -1)
-	for i, kname := range pathList {
-		//xfmrLogInfoAll("uri path elems: %v", kname)
-		if strings.HasPrefix(kname, "/") {
-			pathList[i] = kname[1:]
-		}
-	}
+	pathList := SplitPath(uri)
 	xfmrLogInfoAll("uri: %v ", uri)
 	xfmrLogInfoAll("uri path elems: %v", pathList)
 	return pathList
