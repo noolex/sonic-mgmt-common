@@ -1814,6 +1814,9 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         if(inParams.dbDataMap != nil) {
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
                 (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
+            } else {
+                tblList = append(tblList, tbl_name)
+                return tblList, nil
             }
 
             intfKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"PORT"})

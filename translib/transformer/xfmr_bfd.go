@@ -1107,6 +1107,8 @@ var bfd_mhop_session_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
     if (inParams.dbDataMap != nil) {
         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_MULTI_HOP"]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_MULTI_HOP"] = make(map[string]db.Value)
+        } else {
+            return tblList,nil
         }
     } else {
         if found := get_bfd_cfg_tbl_entry(inParams, "BFD_PEER_MULTI_HOP") ; !found {
@@ -1184,6 +1186,8 @@ var bfd_shop_session_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
     if (inParams.dbDataMap != nil) {
         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_SINGLE_HOP"]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_SINGLE_HOP"] = make(map[string]db.Value)
+        } else {
+            return tblList,nil
         }
     } else {
         if found := get_bfd_cfg_tbl_entry(inParams, "BFD_PEER_SINGLE_HOP") ; !found {

@@ -3305,6 +3305,12 @@ var ospfv2_router_area_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]s
         }*/
     } else {
         if(inParams.dbDataMap != nil) {
+            if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["OSPFV2_ROUTER_AREA"]; !ok {
+                (*inParams.dbDataMap)[db.ConfigDB]["OSPFV2_ROUTER_AREA"] = make(map[string]db.Value)
+            } else {
+                return tblList, nil
+            }
+
             cmd := "show ip ospf vrf" + " " + vrf + " " + "json"
             output_state, cmd_err := exec_vtysh_cmd (cmd)
             if cmd_err != nil {
@@ -3319,9 +3325,6 @@ var ospfv2_router_area_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]s
                         log.Warningf("Does not contain any area")
                         err = errors.New("Does not contain any area");
                         return tblList, err
-                    }
-                    if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["OSPFV2_ROUTER_AREA"]; !ok {
-                        (*inParams.dbDataMap)[db.ConfigDB]["OSPFV2_ROUTER_AREA"] = make(map[string]db.Value)
                     }
 
                     for key = range areas_map {
