@@ -4590,9 +4590,9 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
                     log.Infof("Looking for non default FEC")
                     /* Check if fec is valid */
                     if !utils.Is_fec_mode_valid(ifName, lane_count, port_speed, fec_val) {
-                        err = tlerr.NotSupported("FEC mode not supported %s", fec_val)
+                        err = tlerr.NotSupported("FEC mode %s not supported on interface %s", strings.ToUpper(fec_val), ifName)
                         log.Infof("Fec support check failed")
-                        return nil, errors.New("FEC not supported on interface: " + fec_val)
+                        return nil, err
                     } else {
                         res_map[PORT_FEC] = fec_val
                         log.Infof("Validated fec of %s", fec_val)
