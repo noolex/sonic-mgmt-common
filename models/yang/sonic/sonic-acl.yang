@@ -161,6 +161,8 @@ module sonic-acl {
                     type enumeration {
                         enum FORWARD;
                         enum DROP;
+                        enum TRANSIT;
+                        enum DISCARD;
                         enum REDIRECT;
                         enum INT_INSERT;
                         enum INT_DELETE;
@@ -202,9 +204,6 @@ module sonic-acl {
                     when "(/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'TAM') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3V6')";
                     type uint8;
                 }
-
-
-
 
                 leaf ETHER_TYPE {
                     must "(((/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'TAM')) and (current() = '0x800')) or " +

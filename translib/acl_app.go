@@ -899,9 +899,15 @@ func (app *AclApp) convertInternalToOCAclRuleProperties(ruleData db.Value, aclTy
 			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "DO_NOT_NAT" {
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT
 				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT
-			} else {
+			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "DROP" {
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
 				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
+			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "DISCARD" {
+				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DISCARD
+				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DISCARD
+			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "TRANSIT" {
+				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_TRANSIT
+				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_TRANSIT
 			}
 		} else if ACL_RULE_ICMP_TYPE == ruleKey {
 			data, _ := strconv.ParseUint(ruleData.Get(ruleKey), 10, 8)
@@ -2015,8 +2021,12 @@ func convertOCToInternalInputAction(ruleData db.Value, aclName string, ruleIndex
 			ruleData.Field[ACL_RULE_PACKET_ACTION] = "DROP"
 		case ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT:
 			ruleData.Field[ACL_RULE_PACKET_ACTION] = "DO_NOT_NAT"
+		case ocbinds.OpenconfigAcl_FORWARDING_ACTION_DISCARD:
+			ruleData.Field[ACL_RULE_PACKET_ACTION] = "DISCARD"
+		case ocbinds.OpenconfigAcl_FORWARDING_ACTION_TRANSIT:
+			ruleData.Field[ACL_RULE_PACKET_ACTION] = "TRANSIT"
 		default:
-			return tlerr.NotSupported("input-interface not supported")
+			return tlerr.NotSupported("packet-action not supported")
 		}
 	}
 
