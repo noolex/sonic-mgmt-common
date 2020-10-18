@@ -86,6 +86,41 @@ func util_bgp_get_ui_ifname_from_native_ifname (pIfname *string) {
     }
 }
 
+type E_BGP_FRR_JSON_CACHE_TYPE string
+const (
+    bgpFrrJsonCache_t E_BGP_FRR_JSON_CACHE_TYPE = "BGP_FRR_JSON"
+    bgpFrrJsonCacheAllVrfNbrs_t E_BGP_FRR_JSON_CACHE_TYPE = "BGP_FRR_JSON_ALL_VRF_NBRS"
+    bgpFrrJsonCacheAllVrfIpv4Nbrs_t E_BGP_FRR_JSON_CACHE_TYPE = "BGP_FRR_JSON_ALL_VRF_IPV4_NBRS"
+    bgpFrrJsonCacheAllVrfIpv6Nbrs_t E_BGP_FRR_JSON_CACHE_TYPE = "BGP_FRR_JSON_ALL_VRF_IPV6_NBRS"
+)
+
+type _bgp_frr_json_cache_nbr_key struct {
+    niName string
+    nbrAddr string
+}
+
+func utl_bgp_exec_vtysh_cmd (vtyshCmd string, inParams XfmrParams, cmdType E_BGP_FRR_JSON_CACHE_TYPE, cmdArgs interface{}) (map[string]interface{}, error) {
+    cache, bgpFrrJsonCachePresent := inParams.txCache.Load(bgpFrrJsonCache_t)
+    if bgpFrrJsonCachePresent {
+        bgpFrrJsonCache, _ := cache.(map[E_BGP_FRR_JSON_CACHE_TYPE]map[string]interface{})
+        switch cmdType {
+            case bgpFrrJsonCacheAllVrfNbrs_t:
+                args := cmdArgs.(_bgp_frr_json_cache_nbr_key)
+                return bgpFrrJsonCache[bgpFrrJsonCacheAllVrfNbrs_t][args.niName].(map[string]interface{}), nil
+        }
+    }
+    return exec_vtysh_cmd (vtyshCmd)
+}
+
+func utl_bgp_fetch_and_cache_frr_json (inParams XfmrParams) {
+    bgpFrrJsonCache := make(map[E_BGP_FRR_JSON_CACHE_TYPE]map[string]interface{})
+    bgpFrrJsonCache[bgpFrrJsonCacheAllVrfNbrs_t] = make(map[string]interface{})
+    bgpFrrJsonCache[bgpFrrJsonCacheAllVrfNbrs_t], _ = exec_vtysh_cmd ("show ip bgp vrf all neighbors json")
+    bgpFrrJsonCache[bgpFrrJsonCacheAllVrfIpv4Nbrs_t], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv4 neighbors json")
+    bgpFrrJsonCache[bgpFrrJsonCacheAllVrfIpv6Nbrs_t], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv6 neighbors json")
+    inParams.txCache.Store(bgpFrrJsonCache_t, bgpFrrJsonCache)
+}
+
 func init () {
     XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_tbl_key_xfmr", YangToDb_bgp_gbl_tbl_key_xfmr)
