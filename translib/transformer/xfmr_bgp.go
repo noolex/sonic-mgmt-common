@@ -878,7 +878,7 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
         if log.V(3) {
            log.Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
         }
-        return nil, nil 
+        return nil, nil
     }
 
     afi := ""
