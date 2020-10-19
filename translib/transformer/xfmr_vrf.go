@@ -352,7 +352,9 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
         if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/tables") {
             return tblList, err
         }
-        if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/openconfig-aft:afts") && strings.HasPrefix(keyName, "Vlan") {
+        if ((targetUriPath == "/openconfig-network-instance:network-instances/network-instance/openconfig-aft:afts") ||
+            (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/interfaces")) && 
+            (strings.HasPrefix(keyName, "Vlan")) {
             return tblList, err
         }
 
@@ -1159,11 +1161,6 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 
     /* Get network instance name and interface Id */
     niName := pathInfo.Var("name")
-
-    if (strings.HasPrefix(niName, "Vlan")) {
-       return nil
-    }
-
     ifUIName := pathInfo.Var("id")
 
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
