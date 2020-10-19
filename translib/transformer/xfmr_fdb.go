@@ -16,6 +16,8 @@ import (
 func init () {
     XlateFuncBind("YangToDb_fdb_mac_table_xfmr", YangToDb_fdb_mac_table_xfmr)
     XlateFuncBind("DbToYang_fdb_mac_table_xfmr", DbToYang_fdb_mac_table_xfmr)
+    XlateFuncBind("YangToDb_mac_aging_time_xfmr", YangToDb_mac_aging_time_xfmr)
+    XlateFuncBind("DbToYang_mac_aging_time_xfmr", DbToYang_mac_aging_time_xfmr)
     XlateFuncBind("rpc_clear_fdb", rpc_clear_fdb)
     XlateFuncBind("DbToYang_fdb_mac_table_count_xfmr", DbToYang_fdb_mac_table_count_xfmr)
     XlateFuncBind("Subscribe_fdb_mac_table_xfmr", Subscribe_fdb_mac_table_xfmr)
@@ -26,6 +28,7 @@ const (
     SONIC_ENTRY_TYPE_STATIC  = "SAI_FDB_ENTRY_TYPE_STATIC"
     SONIC_ENTRY_TYPE_DYNAMIC = "SAI_FDB_ENTRY_TYPE_DYNAMIC"
     ENTRY_TYPE               = "entry-type"
+    DEFAULT_MAC_AGING_TIME   = "600"
 )
 
 var FDB_ENTRY_TYPE_MAP = map[string]string{
@@ -600,5 +603,117 @@ var Subscribe_fdb_mac_table_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscO
     result.nOpts.pType = OnChange
     log.Info("Returning Subscribe_fdb_mac_table_xfmr, result:", result)
     return result, err
+}
+
+var DbToYang_mac_aging_time_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    pathInfo := NewPathInfo(inParams.uri)
+    instance := pathInfo.Var("name")
+
+    if (instance != "default") {
+        if log.V(3) {
+            log.Info("DbToYang_mac_aging_time_xfmr Ignoring GET for MAC-aging on ", instance)
+            return err
+        }
+    }
+    fdbTbl := getFdbRoot(inParams.ygRoot, instance, true)
+    if fdbTbl == nil {
+        log.Error("DbToYang_mac_aging_time_xfmr - getFdbRoot returned nil, for URI: ", inParams.uri)
+        return errors.New("Not able to get FDB root.");
+    }
+    ygot.BuildEmptyTree(fdbTbl)
+
+    var configDB = inParams.dbs[db.ConfigDB]
+    var switchTable = &db.TableSpec{Name: "SWITCH"}
+    switchTbl, err := configDB.GetTable(switchTable)
+    if err != nil {
+        log.Error("DbToYang_mac_aging_time_xfmr Can't get table SWITCH")
+        return err
+    }
+
+    keys, err := switchTbl.GetKeys()
+    if err != nil {
+        log.Error("DbToYang_mac_aging_time_xfmr Can't get keys from table")
+        return  err
+    }
+    var macKeyCode,macAgingValue string
+    for _, key := range keys {
+        macKeyCode = key.Get(0)
+        macAgingEntry, err := switchTbl.GetEntry(db.Key{Comp: []string{macKeyCode}})
+        if err != nil {
+            log.Error("Can't get entry with key: ", macKeyCode)
+            return err
+        }
+
+        if macAgingEntry.Has("fdb_aging_time") {
+            macAgingValue = macAgingEntry.Get("fdb_aging_time")
+        }
+    }
+    macAgingValueInt, _ := strconv.Atoi(macAgingValue)
+    macAgingTable := fdbTbl.Config
+    macVal := uint32(macAgingValueInt)
+    macAgingTable.MacAgingTime = &macVal
+
+    return err
+}
+
+
+var YangToDb_mac_aging_time_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    var err error
+    pathInfo := NewPathInfo(inParams.uri)
+    instance := pathInfo.Var("name")
+    targetUriPath, err  := getYangPathFromUri(inParams.uri)
+    if err != nil {
+        log.Error(" YangToDb_mac_aging_time_xfmr get targetUriPath failed.")
+        return nil, err
+    }
+
+    if (instance != "default") {
+        errStr := "Operation: "+strconv.Itoa(inParams.oper)+" not allowed for MAC aging-time on: "+instance
+        log.Error(errStr)
+        if inParams.oper != DELETE {
+            return nil, tlerr.InvalidArgsError{Format:errStr}
+        }
+        return nil, err
+    }
+
+    var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
+    var switchMap map[string]db.Value = make(map[string]db.Value)
+
+    key := "switch"
+    dbV := db.Value{Field: make(map[string]string)}
+
+    switch inParams.oper {
+    case DELETE:
+        tblName := "SWITCH"
+        tblKey := "switch"
+        subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        subOpMap[db.ConfigDB][tblName] = make(map[string]db.Value)
+        subOpMap[db.ConfigDB][tblName][tblKey] = db.Value{Field: make(map[string]string)}
+        subOpMap[db.ConfigDB][tblName][tblKey].Field["fdb_aging_time"] = DEFAULT_MAC_AGING_TIME
+
+        inParams.subOpDataMap[UPDATE] = &subOpMap
+        return nil, nil
+
+    case CREATE:
+        fallthrough
+    case UPDATE:
+        if targetUriPath == "/openconfig-network-instance:network-instances/network-instance/fdb/config"{
+            fdbTbl := getFdbRoot(inParams.ygRoot, instance, true)
+            if fdbTbl == nil {
+                log.Error("YangToDb_mac_aging_time_xfmr - getFdbRoot returned nil, for URI: ", inParams.uri)
+                return nil, errors.New("Not able to get FDB root.");
+            }
+            ygot.BuildEmptyTree(fdbTbl)
+            macAgingTime := fdbTbl.Config.MacAgingTime
+            macAgT := strconv.Itoa(int(*macAgingTime))
+            dbV.Field["fdb_aging_time"] = macAgT
+            switchMap[key] = dbV
+            res_map["SWITCH"] = switchMap
+            return res_map, nil
+        }
+    }
+    return nil, err
 }
 
