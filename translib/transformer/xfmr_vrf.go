@@ -1159,6 +1159,11 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 
     /* Get network instance name and interface Id */
     niName := pathInfo.Var("name")
+
+    if (strings.HasPrefix(niName, "Vlan")) {
+       return nil
+    }
+
     ifUIName := pathInfo.Var("id")
 
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
