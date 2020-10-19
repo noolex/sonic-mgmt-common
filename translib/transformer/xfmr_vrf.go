@@ -433,7 +433,7 @@ var YangToDb_network_instance_enabled_field_xfmr FieldXfmrYangToDb = func(inPara
         enabled, _ := inParams.param.(*bool)
 
         var enStr string
-        if *enabled {
+        if enabled != nil && *enabled {
                 enStr = "true"
         } else {
                 enStr = "false"
