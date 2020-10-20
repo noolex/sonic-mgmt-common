@@ -93,7 +93,6 @@ func init () {
     XlateFuncBind("YangToDb_bgp_local_asn_fld_xfmr", YangToDb_bgp_local_asn_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_local_asn_fld_xfmr", DbToYang_bgp_local_asn_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_state_xfmr", DbToYang_bgp_gbl_state_xfmr)
-    XlateFuncBind("bgp_gbl_afi_safi_tbl_xfmr", bgp_gbl_afi_safi_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_afi_safi_field_xfmr", YangToDb_bgp_gbl_afi_safi_field_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_afi_safi_field_xfmr", DbToYang_bgp_gbl_afi_safi_field_xfmr)
 	XlateFuncBind("YangToDb_bgp_dyn_neigh_listen_key_xfmr", YangToDb_bgp_dyn_neigh_listen_key_xfmr)
@@ -108,20 +107,22 @@ func init () {
 	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
-    XlateFuncBind("bgp_gbl_af_validate_l2vpn_evpn", bgp_gbl_af_validate_l2vpn_evpn)
+    XlateFuncBind("bgp_validate_gbl_af", bgp_validate_gbl_af)
 }
 
-func bgp_gbl_af_validate_l2vpn_evpn(inParams XfmrParams) bool {
+func bgp_validate_gbl_af (inParams XfmrParams) bool {
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/
-    // Ignore the above prefix of length 104 to save the string compare time
-    targetUriPath = targetUriPath[104:]
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/afi-safi/
+    // Ignore the above prefix of length 113 to save the string compare time
+    targetUriPath = targetUriPath[113:]
     afiSafiName := pathInfo.Var("afi-safi-name")
-    if len(afiSafiName) != 0 && (afiSafiName != "L2VPN_EVPN") {
-        log.Info("bgp_gbl_af_validate_l2vpn_evpn: ignored VRF ", pathInfo.Var("name"), " URI ", 
-            inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath)
+    if (targetUriPath == "l2vpn-evpn") && (afiSafiName != "L2VPN_EVPN") {
+        if log.V(3) {
+            log.Info("bgp_validate_gbl_af: ignored VRF ", pathInfo.Var("name"), " URI ",
+                     inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath)
+        }
         return false
     }
     return true
@@ -618,31 +619,6 @@ var DbToYang_bgp_gbl_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     return err;
-}
-
-var bgp_gbl_afi_safi_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
-    var err error
-    var tblList []string
-
-    pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/
-    // Ignore the above prefix of length 104 to save the string compare time
-    targetUriPath = targetUriPath[104:]
-    afiSafiName := pathInfo.Var("afi-safi-name")
-    if log.V(3) {
-        log.Info("bgp_gbl_afi_safi_tbl_xfmr: VRF ", pathInfo.Var("name"), " URI ", 
-                inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath)
-    }
-    if len(afiSafiName) != 0 && (afiSafiName != "L2VPN_EVPN") && (targetUriPath == "afi-safi/l2vpn-evpn") {
-        if log.V(3) {
-            log.Info("bgp_gbl_afi_safi_tbl_xfmr: ignored URI ", inParams.uri, " target URI ", targetUriPath)
-        }
-        return tblList, err
-    }
-
-    tblList = append(tblList, "BGP_GLOBALS_AF")
-    return tblList, nil
 }
 
 var YangToDb_bgp_gbl_afi_safi_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {

@@ -22,36 +22,35 @@ func init () {
     XlateFuncBind("DbToYang_bgp_pgrp_orf_type_fld_xfmr", DbToYang_bgp_pgrp_orf_type_fld_xfmr)
     XlateFuncBind("YangToDb_bgp_pgrp_tx_add_paths_fld_xfmr", YangToDb_bgp_pgrp_tx_add_paths_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_pgrp_tx_add_paths_fld_xfmr", DbToYang_bgp_pgrp_tx_add_paths_fld_xfmr)
-    XlateFuncBind("bgp_pgrp_af_validate_ipv4_unicast", bgp_pgrp_af_validate_ipv4_unicast)
-    XlateFuncBind("bgp_pgrp_af_validate_ipv6_unicast", bgp_pgrp_af_validate_ipv6_unicast)
-    XlateFuncBind("bgp_pgrp_af_validate_l2vpn_evpn", bgp_pgrp_af_validate_l2vpn_evpn)
+    XlateFuncBind("bgp_validate_pgrp_af", bgp_validate_pgrp_af)
 }
 
-func bgp_util_pgrp_af_validate(inParams XfmrParams, afiSafiNameChk string) bool {
+func bgp_validate_pgrp_af(inParams XfmrParams) bool {
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/peer-groups/peer-group/afi-safis/
-    // Ignore the above prefix of length 116 to save the string compare time
-    targetUriPath = targetUriPath[120:]
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/peer-groups/peer-group/afi-safis/afi-safi/
+    // Ignore the above prefix of length 129 to save the string compare time
+    targetUriPath = targetUriPath[129:]
     afiSafiName := pathInfo.Var("afi-safi-name")
-    if len(afiSafiName) != 0 && (afiSafiName != afiSafiNameChk) {
-        log.Info("bgp_util_pgrp_af_validate SKIPPED: VRF ", pathInfo.Var("name"), " URI ",
-            inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath, "afiSafiNameChk", afiSafiNameChk)
-        return false
+    if log.V(3) {
+        log.Info("bgp_util_pgrp_af_validate : VRF ", pathInfo.Var("name"), " URI ",
+                 inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath)
+    }
+    switch targetUriPath {
+        case "ipv4-unicast":
+            if afiSafiName != "IPV4_UNICAST" { 
+                log.Info("bgp_util_pgrp_af_validate :SKIPPED")
+                return false }
+        case "ipv6-unicast":
+            if afiSafiName != "IPV6_UNICAST" { 
+                log.Info("bgp_util_pgrp_af_validate :SKIPPED")
+                return false }
+        case "l2vpn-evpn":
+            if afiSafiName != "L2VPN_EVPN" { 
+                log.Info("bgp_util_pgrp_af_validate :SKIPPED")
+                return false }
     }
     return true
-}
-
-func bgp_pgrp_af_validate_ipv4_unicast(inParams XfmrParams) bool {
-    return (bgp_util_pgrp_af_validate(inParams, "IPV4_UNICAST"))
-}
-
-func bgp_pgrp_af_validate_ipv6_unicast(inParams XfmrParams) bool {
-    return (bgp_util_pgrp_af_validate(inParams, "IPV6_UNICAST"))
-}
-
-func bgp_pgrp_af_validate_l2vpn_evpn(inParams XfmrParams) bool {
-    return (bgp_util_pgrp_af_validate(inParams, "L2VPN_EVPN"))
 }
 
 var YangToDb_bgp_pgrp_afi_safi_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {

@@ -44,10 +44,37 @@ func init () {
     XlateFuncBind("DbToYang_bgp_nbr_tx_add_paths_fld_xfmr", DbToYang_bgp_nbr_tx_add_paths_fld_xfmr)
     XlateFuncBind("YangToDb_bgp_nbrs_nbr_auth_password_xfmr", YangToDb_bgp_nbrs_nbr_auth_password_xfmr)
     XlateFuncBind("DbToYang_bgp_nbrs_nbr_auth_password_xfmr", DbToYang_bgp_nbrs_nbr_auth_password_xfmr)
-    XlateFuncBind("bgp_nbr_af_validate_ipv4_unicast", bgp_nbr_af_validate_ipv4_unicast)
-    XlateFuncBind("bgp_nbr_af_validate_ipv6_unicast", bgp_nbr_af_validate_ipv6_unicast)
-    XlateFuncBind("bgp_nbr_af_validate_l2vpn_evpn", bgp_nbr_af_validate_l2vpn_evpn)
+    XlateFuncBind("bgp_validate_nbr_af", bgp_validate_nbr_af)
 }
+
+func bgp_validate_nbr_af(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/afi-safi/
+    // Ignore the above prefix of length 125 to save the string compare time
+    targetUriPath = targetUriPath[125:]
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    if log.V(0) {
+        log.Info("bgp_validate_nbr_af: VRF ", pathInfo.Var("name"), " URI ",
+                 inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath)
+    }
+    switch targetUriPath {
+        case "ipv4-unicast":
+            if afiSafiName != "IPV4_UNICAST" {
+                log.Info("bgp_validate_nbr_af :SKIPPED")
+                return false }
+        case "ipv6-unicast":
+            if afiSafiName != "IPV6_UNICAST" {
+                log.Info("bgp_validate_nbr_af :SKIPPED")
+                return false }
+        case "l2vpn-evpn":
+            if afiSafiName != "L2VPN_EVPN" {
+                log.Info("bgp_validate_nbr_af :SKIPPED")
+                return false }
+    }
+    return true
+}
+
 
 func bgp_util_nbr_af_validate(inParams XfmrParams, afiSafiNameChk string) bool {
     pathInfo := NewPathInfo(inParams.uri)
