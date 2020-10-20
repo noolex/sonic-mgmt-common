@@ -114,9 +114,9 @@ func bgp_validate_gbl_af (inParams XfmrParams) bool {
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/afi-safi/
-    // Ignore the above prefix of length 113 to save the string compare time
-    targetUriPath = targetUriPath[113:]
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/openconfig-bgp:bgp/global/afi-safis/afi-safi/
+    // Ignore the above prefix of length 128 to save the string compare time
+    targetUriPath = targetUriPath[128:]
     afiSafiName := pathInfo.Var("afi-safi-name")
     if (targetUriPath == "l2vpn-evpn") && (afiSafiName != "L2VPN_EVPN") {
         if log.V(3) {

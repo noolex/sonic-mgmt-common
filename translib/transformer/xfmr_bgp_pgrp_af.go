@@ -28,9 +28,9 @@ func init () {
 func bgp_validate_pgrp_af(inParams XfmrParams) bool {
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/peer-groups/peer-group/afi-safis/afi-safi/
-    // Ignore the above prefix of length 129 to save the string compare time
-    targetUriPath = targetUriPath[129:]
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/openconfig-bgp:bgp/peer-groups/peer-group/afi-safis/afi-safi/
+    // Ignore the above prefix of length 144 to save the string compare time
+    targetUriPath = targetUriPath[144:]
     afiSafiName := pathInfo.Var("afi-safi-name")
     if log.V(3) {
         log.Info("bgp_util_pgrp_af_validate : VRF ", pathInfo.Var("name"), " URI ",
@@ -38,17 +38,11 @@ func bgp_validate_pgrp_af(inParams XfmrParams) bool {
     }
     switch targetUriPath {
         case "ipv4-unicast":
-            if afiSafiName != "IPV4_UNICAST" { 
-                log.Info("bgp_util_pgrp_af_validate :SKIPPED")
-                return false }
+            if afiSafiName != "IPV4_UNICAST" { return false }
         case "ipv6-unicast":
-            if afiSafiName != "IPV6_UNICAST" { 
-                log.Info("bgp_util_pgrp_af_validate :SKIPPED")
-                return false }
+            if afiSafiName != "IPV6_UNICAST" { return false }
         case "l2vpn-evpn":
-            if afiSafiName != "L2VPN_EVPN" { 
-                log.Info("bgp_util_pgrp_af_validate :SKIPPED")
-                return false }
+            if afiSafiName != "L2VPN_EVPN" { return false }
     }
     return true
 }

@@ -50,57 +50,23 @@ func init () {
 func bgp_validate_nbr_af(inParams XfmrParams) bool {
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/afi-safi/
-    // Ignore the above prefix of length 125 to save the string compare time
-    targetUriPath = targetUriPath[125:]
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/openconfig-bgp:bgp/neighbors/neighbor/afi-safis/afi-safi/
+    // Ignore the above prefix of length 140 to save the string compare time
+    targetUriPath = targetUriPath[140:]
     afiSafiName := pathInfo.Var("afi-safi-name")
-    if log.V(0) {
+    if log.V(3) {
         log.Info("bgp_validate_nbr_af: VRF ", pathInfo.Var("name"), " URI ",
                  inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath)
     }
     switch targetUriPath {
         case "ipv4-unicast":
-            if afiSafiName != "IPV4_UNICAST" {
-                log.Info("bgp_validate_nbr_af :SKIPPED")
-                return false }
+            if afiSafiName != "IPV4_UNICAST" { return false }
         case "ipv6-unicast":
-            if afiSafiName != "IPV6_UNICAST" {
-                log.Info("bgp_validate_nbr_af :SKIPPED")
-                return false }
+            if afiSafiName != "IPV6_UNICAST" { return false }
         case "l2vpn-evpn":
-            if afiSafiName != "L2VPN_EVPN" {
-                log.Info("bgp_validate_nbr_af :SKIPPED")
-                return false }
+            if afiSafiName != "L2VPN_EVPN" { return false }
     }
     return true
-}
-
-
-func bgp_util_nbr_af_validate(inParams XfmrParams, afiSafiNameChk string) bool {
-    pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/
-    //     // Ignore the above prefix of length 116 to save the string compare time
-    targetUriPath = targetUriPath[116:]
-    afiSafiName := pathInfo.Var("afi-safi-name")
-    if len(afiSafiName) != 0 && (afiSafiName != afiSafiNameChk) {
-        log.Info("bgp_util_nbr_af_validate SKIPPED: VRF ", pathInfo.Var("name"), " URI ", 
-            inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath, "afiSafiNameChk", afiSafiNameChk)
-        return false
-    }
-    return true
-}
-
-func bgp_nbr_af_validate_ipv4_unicast(inParams XfmrParams) bool {
-    return (bgp_util_nbr_af_validate (inParams, "IPV4_UNICAST"))
-}
-
-func bgp_nbr_af_validate_ipv6_unicast(inParams XfmrParams) bool {
-    return (bgp_util_nbr_af_validate (inParams, "IPV6_UNICAST"))
-}
-
-func bgp_nbr_af_validate_l2vpn_evpn(inParams XfmrParams) bool {
-    return (bgp_util_nbr_af_validate (inParams, "L2VPN_EVPN"))
 }
 
 func util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams XfmrParams, vrf string, nbrAddr string,
