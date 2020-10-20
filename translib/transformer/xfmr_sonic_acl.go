@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "github.com/Azure/sonic-mgmt-common/translib/utils"
+	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	"github.com/go-redis/redis/v7"
 	log "github.com/golang/glog"
 	"strings"
@@ -52,47 +52,37 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 	err = json.Unmarshal(body, &inputParams)
 	if err != nil {
 		log.Info("Failed to unmarshall given input data")
-		result.Output.Status = "INVALID_PAYLOAD"
-		result.Output.Status_detail = "Failed to unmarshall given input data"
 		json, _ := json.Marshal(&result)
-		return json, tlerr.InvalidArgs("INVALID_PAYLOAD")
+		return json, tlerr.InvalidArgs("Failed to extract input data")
 	}
 
 	if input, err := inputParams["sonic-acl:input"]; err {
 		inputParams = input.(map[string]interface{})
 	} else {
-		result.Output.Status = "INVALID_PAYLOAD"
-		result.Output.Status_detail = "No input"
 		json, _ := json.Marshal(&result)
-		return json, tlerr.InvalidArgs("INVALID_PAYLOAD")
+		return json, tlerr.InvalidArgs("No input")
 	}
 
 	log.Info("Input=", inputParams)
 	entry, err := dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name: "HARDWARE"},
 		db.Key{Comp: []string{"ACCESS_LIST"}})
 	if err != nil {
-		result.Output.Status = "FAILED"
-		result.Output.Status_detail = "Table not found in the database"
 		json, _ := json.Marshal(&result)
-		return json, tlerr.InvalidArgs("ACL_NOT_FOUND")
+		return json, tlerr.InvalidArgs("ACL not found")
 	}
 
 	//log.Info("Value=", entry)
 	counter_mode, found := entry.Field["COUNTER_MODE"]
 	if !found {
-		result.Output.Status = "FAILED"
-		result.Output.Status_detail = "Counter mode not set"
 		json, _ := json.Marshal(&result)
-		return json, tlerr.New("FAILED")
+		return json, tlerr.New("Counter mode not set")
 	}
 	log.Info("Counter mode is ", counter_mode)
 
 	acl_type, found := inputParams["type"]
 	if !found {
-		result.Output.Status = "INVALID_PAYLOAD"
-		result.Output.Status_detail = "ACL Type missing"
 		json, _ := json.Marshal(&result)
-		return json, tlerr.InvalidArgs("INVALID_PAYLOAD")
+		return json, tlerr.InvalidArgs("ACL Type missing")
 	}
 	acl_type_str := fmt.Sprintf("%v", acl_type)
 
@@ -101,10 +91,8 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 	if found {
 		intf_str = fmt.Sprintf("%v", intf)
 		if !strings.EqualFold(counter_mode, "per-interface-rule") {
-			result.Output.Status = "COUNTER_MODE_MISMATCH"
-			result.Output.Status_detail = "Counter mode is set to per-entry. Per interface counters not available"
 			json, _ := json.Marshal(&result)
-			return json, tlerr.InvalidArgs("COUNTER_MODE_MISMATCH")
+			return json, tlerr.InvalidArgs("Counter mode is set to per-entry. Per interface counters not available")
 		}
 	}
 
@@ -118,10 +106,8 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 		acltable := &db.TableSpec{Name: "ACL_TABLE"}
 		acls, err := dbs[db.ConfigDB].GetKeys(acltable)
 		if nil != err {
-			result.Output.Status = "FAILED"
-			result.Output.Status_detail = "Error getting ACLs from database"
 			json, _ := json.Marshal(&result)
-			return json, tlerr.New("FAILED")
+			return json, tlerr.New("Error getting ACLs from database")
 		}
 
 		acls_list = make([]string, 0, len(acls))
@@ -138,15 +124,11 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 		if ok {
 			acls_list = append(acls_list, aclname_str)
 		} else if nil == data {
-			result.Output.Status = "ACL_NOT_FOUND"
-			result.Output.Status_detail = "ACL Not found"
 			json, _ := json.Marshal(&result)
-			return json, tlerr.New("ACL_NOT_FOUND")
+			return json, tlerr.New("ACL Not found")
 		} else {
-			result.Output.Status = "ACL_TYPE_MISMATCH"
-			result.Output.Status_detail = "ACL name and type mismatch"
 			json, _ := json.Marshal(&result)
-			return json, tlerr.New("ACL_TYPE_MISMATCH")
+			return json, tlerr.New("ACL name and type mismatch")
 		}
 		log.Info(data)
 
@@ -168,8 +150,6 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 				}
 			}
 			if len(intf_list) == 0 {
-				result.Output.Status = "ACL_BINDING_NOT_FOUND"
-				result.Output.Status_detail = "ACL not applied"
 				json, _ := json.Marshal(&result)
 				return json, tlerr.NotFound("ACL not applied to specified interface")
 			}
@@ -200,12 +180,12 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 		result.Output.Status = "FAILED"
 		result.Output.Status_detail = "Error loading lua script"
 		json, _ := json.Marshal(&result)
-		return json, tlerr.New("FAILED")
+		return json, tlerr.New("Error loading lua script")
 	}
 
-    nativeNames := strings.Join(intf_list, ",")
-    nativeNames = *utils.GetNativeNameFromUIName(&nativeNames)
-    intf_list = strings.Split(nativeNames, ",")
+	nativeNames := strings.Join(intf_list, ",")
+	nativeNames = *utils.GetNativeNameFromUIName(&nativeNames)
+	intf_list = strings.Split(nativeNames, ",")
 	log.Infof("ACLs to clear is %v", acls_list)
 	log.Infof("Intfs to clear is %v", intf_list)
 	//log.Infof("Lua is %v", lua_script_clear)
@@ -235,10 +215,8 @@ var rpc_clear_acl_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB
 		data, err := dbs[db.CountersDB].RunScript(lua_script_clear, nokey, args...).Result()
 		if nil != err {
 			log.Error(err)
-			result.Output.Status = "FAILED"
-			result.Output.Status_detail = "Error running lua script"
 			json, _ := json.Marshal(&result)
-			return json, tlerr.New("FAILED")
+			return json, tlerr.New("Error running lua script")
 		} else {
 			log.Info("Cleared counters for ", data)
 		}
