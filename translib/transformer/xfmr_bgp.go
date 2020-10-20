@@ -158,13 +158,19 @@ func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr s
                   inParams.requestUri, " ; VRF : ", niName, " ; nbrAddr: ", nbrAddr, " ; Incoming DB-Datamap : ", (*retDbDataMap))
     }
 
-    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR_AF"}, niName+"|"+nbrAddr+"|*")
+    /* The nbrAddr can be in native(Ethernet0) or standard (Eth1/1) format,
+       for DB access it has to be in native format. Convert wherever needed.
+       Also xfmr infra expecting DBDatamap to have this key in user give format
+       So make sure returned key is in that format.  */
+    nativeNbr := nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbr)
+    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR_AF"}, niName+"|"+nativeNbr+"|*")
     for _, bgpTblKey := range bgpTblKeys {
         if _, ok := (*retDbDataMap)["BGP_NEIGHBOR_AF"]; !ok {
             (*retDbDataMap)["BGP_NEIGHBOR_AF"] = make(map[string]db.Value)
         }
 
-        key := bgpTblKey.Get(0) + "|" + bgpTblKey.Get(1) + "|" + bgpTblKey.Get(2)
+        key := bgpTblKey.Get(0) + "|" + nbrAddr + "|" + bgpTblKey.Get(2)
         (*retDbDataMap)["BGP_NEIGHBOR_AF"][key] = db.Value{}
     }
     if log.V(3) {
@@ -195,7 +201,6 @@ func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
             nbrAddr   := pathInfo.Var("neighbor-address")
             afiSafiName := pathInfo.Var("afi-safi-name")
             if len(nbrAddr) != 0 && len(afiSafiName) == 0 {
-                util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
                 hdl_post_xfmr_bgp_nbr_af_del(inParams, niName, nbrAddr, data)
                 return err
             }
@@ -912,7 +917,7 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
         if log.V(3) {
            log.Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
         }
-        return nil, nil 
+        return nil, nil
     }
 
     afi := ""
