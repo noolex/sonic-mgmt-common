@@ -457,7 +457,6 @@ module openconfig-acl-ext {
             type identityref {
                 base oc-acl:ACL_TYPE;
             }   
-            must '(current() = "ACL_IPV4") or (current() = "ACL_IPV6")';
             description
                 "Reference to the ACL set type applied on ingress";
         }
