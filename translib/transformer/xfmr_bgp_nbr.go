@@ -33,8 +33,6 @@ func init () {
     XlateFuncBind("DbToYang_bgp_nbr_asn_fld_xfmr", DbToYang_bgp_nbr_asn_fld_xfmr)
     XlateFuncBind("YangToDb_bgp_nbr_afi_safi_name_fld_xfmr", YangToDb_bgp_nbr_afi_safi_name_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_nbr_afi_safi_name_fld_xfmr", DbToYang_bgp_nbr_afi_safi_name_fld_xfmr)
-    XlateFuncBind("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr", YangToDb_bgp_af_nbr_proto_tbl_key_xfmr)
-    XlateFuncBind("DbToYang_bgp_af_nbr_proto_tbl_key_xfmr", DbToYang_bgp_af_nbr_proto_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_nbrs_nbr_state_xfmr", DbToYang_bgp_nbrs_nbr_state_xfmr)
     XlateFuncBind("Subscribe_bgp_nbrs_nbr_state_xfmr", Subscribe_bgp_nbrs_nbr_state_xfmr)
     XlateFuncBind("DbToYang_bgp_nbrs_nbr_af_state_xfmr", DbToYang_bgp_nbrs_nbr_af_state_xfmr)
@@ -46,8 +44,37 @@ func init () {
     XlateFuncBind("DbToYang_bgp_nbr_tx_add_paths_fld_xfmr", DbToYang_bgp_nbr_tx_add_paths_fld_xfmr)
     XlateFuncBind("YangToDb_bgp_nbrs_nbr_auth_password_xfmr", YangToDb_bgp_nbrs_nbr_auth_password_xfmr)
     XlateFuncBind("DbToYang_bgp_nbrs_nbr_auth_password_xfmr", DbToYang_bgp_nbrs_nbr_auth_password_xfmr)
+    XlateFuncBind("bgp_nbr_af_validate_ipv4_unicast", bgp_nbr_af_validate_ipv4_unicast)
+    XlateFuncBind("bgp_nbr_af_validate_ipv6_unicast", bgp_nbr_af_validate_ipv6_unicast)
+    XlateFuncBind("bgp_nbr_af_validate_l2vpn_evpn", bgp_nbr_af_validate_l2vpn_evpn)
 }
 
+func bgp_util_nbr_af_validate(inParams XfmrParams, afiSafiNameChk string) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/
+    //     // Ignore the above prefix of length 116 to save the string compare time
+    targetUriPath = targetUriPath[116:]
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    if len(afiSafiName) != 0 && (afiSafiName != afiSafiNameChk) {
+        log.Info("bgp_util_nbr_af_validate SKIPPED: VRF ", pathInfo.Var("name"), " URI ", 
+            inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath, "afiSafiNameChk", afiSafiNameChk)
+        return false
+    }
+    return true
+}
+
+func bgp_nbr_af_validate_ipv4_unicast(inParams XfmrParams) bool {
+    return (bgp_util_nbr_af_validate (inParams, "IPV4_UNICAST"))
+}
+
+func bgp_nbr_af_validate_ipv6_unicast(inParams XfmrParams) bool {
+    return (bgp_util_nbr_af_validate (inParams, "IPV6_UNICAST"))
+}
+
+func bgp_nbr_af_validate_l2vpn_evpn(inParams XfmrParams) bool {
+    return (bgp_util_nbr_af_validate (inParams, "L2VPN_EVPN"))
+}
 
 func util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams XfmrParams, vrf string, nbrAddr string,
                                                      afiSafiType ocbinds.E_OpenconfigBgpTypes_AFI_SAFI_TYPE,
@@ -837,118 +864,6 @@ var DbToYang_bgp_af_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams)
 
     rmap := make(map[string]interface{})
 
-
-    switch nbrAfKey[2] {
-        case "ipv4_unicast":
-            afName = "IPV4_UNICAST"
-        case "ipv6_unicast":
-            afName = "IPV6_UNICAST"
-        case "l2vpn_evpn":
-            afName = "L2VPN_EVPN"
-       default:
-            return rmap, nil
-    }
-
-    rmap["afi-safi-name"]   = afName
-
-    return rmap, nil
-}
-
-var YangToDb_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    var err error
-    var vrfName string
-    var emptyAfName string
-
-    if log.V(3) {
-        log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr***", inParams.uri)
-    }
-    pathInfo := NewPathInfo(inParams.uri)
-
-    vrfName    =  pathInfo.Var("name")
-    bgpId      := pathInfo.Var("identifier")
-    protoName  := pathInfo.Var("name#2")
-    pNbr   := pathInfo.Var("neighbor-address")
-    afName     := pathInfo.Var("afi-safi-name")
-
-    if len(pathInfo.Vars) <  4 {
-        err = errors.New("Invalid Key length");
-        log.Info("Invalid Key length", len(pathInfo.Vars))
-        return vrfName, err
-    }
-
-    if len(vrfName) == 0 {
-        err = errors.New("vrf name is missing");
-        log.Info("VRF Name is Missing")
-        return vrfName, err
-    }
-    if !strings.Contains(bgpId,"BGP") {
-        err = errors.New("BGP ID is missing");
-        log.Info("BGP ID is missing")
-        return bgpId, err
-    }
-    if len(protoName) == 0 {
-        err = errors.New("Protocol Name is missing");
-        log.Info("Protocol Name is Missing")
-        return protoName, err
-    }
-    if len(pNbr) == 0 {
-        err = errors.New("Neighbor missing")
-        log.Info("Neighbo Missing")
-        return pNbr, err
-    }
-    if len(afName) == 0 {
-        err = errors.New("AFI SAFI is missing")
-        return afName, err
-    }
-
-    if strings.Contains(afName, "IPV4_UNICAST") {
-        afName = "ipv4_unicast"
-        if strings.Contains(inParams.uri, "ipv6-unicast") ||
-           strings.Contains(inParams.uri, "l2vpn-evpn") {
-		err = errors.New("IPV4_UNICAST supported only on ipv4-config container")
-		log.Info("IPV4_UNICAST supported only on ipv4-config container: ", afName);
-		return emptyAfName, err
-        }
-    } else if strings.Contains(afName, "IPV6_UNICAST") {
-        afName = "ipv6_unicast"
-        if strings.Contains(inParams.uri, "ipv4-unicast") ||
-           strings.Contains(inParams.uri, "l2vpn-evpn") {
-		err = errors.New("IPV6_UNICAST supported only on ipv6-config container")
-		log.Info("IPV6_UNICAST supported only on ipv6-config container: ", afName);
-		return emptyAfName, err
-        }
-    } else if strings.Contains(afName, "L2VPN_EVPN") {
-        afName = "l2vpn_evpn"
-        if strings.Contains(inParams.uri, "ipv6-unicast") ||
-           strings.Contains(inParams.uri, "ipv4-unicast") {
-		err = errors.New("L2VPN_EVPN supported only on l2vpn-evpn container")
-		log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName);
-		return emptyAfName, err
-        }
-    } else  {
-	err = errors.New("Unsupported AFI SAFI")
-	log.Info("Unsupported AFI SAFI ", afName);
-	return emptyAfName, err
-    }
-
-    var nbrAfKey string = vrfName + "|" + pNbr + "|" + afName
-
-    if log.V(3) {
-        log.Info("YangToDb_bgp_af_nbr_proto_tbl_key_xfmr: nbrAfKey:", nbrAfKey)
-    }
-    return nbrAfKey, nil
-}
-
-var DbToYang_bgp_af_nbr_proto_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-   var afName string
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
-    if log.V(3) {
-        log.Info("DbToYang_bgp_af_nbr_proto_tbl_key_xfmr: ", entry_key)
-    }
-
-    nbrAfKey := strings.Split(entry_key, "|")
-    if len(nbrAfKey) < 3 {return rmap, nil}
 
     switch nbrAfKey[2] {
         case "ipv4_unicast":

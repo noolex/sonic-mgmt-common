@@ -185,7 +185,7 @@ module openconfig-network-instance-annot {
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global {
         deviate add {
             sonic-ext:db-name "CONFIG_DB";
-            sonic-ext:table-transformer "bgp_gbl_tbl_xfmr";
+            sonic-ext:table-name "BGP_GLOBALS";
             sonic-ext:key-transformer "bgp_gbl_tbl_key_xfmr";
         }
     }
@@ -688,25 +688,25 @@ module openconfig-network-instance-annot {
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi {
       deviate add {
         sonic-ext:db-name "CONFIG_DB";
-        sonic-ext:table-transformer "bgp_af_pgrp_tbl_xfmr";
+        sonic-ext:table-name "BGP_PEER_GROUP_AF";
         sonic-ext:key-transformer "bgp_af_pgrp_tbl_key_xfmr";
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn {
       deviate add {
-        sonic-ext:key-transformer "bgp_af_pgrp_proto_tbl_key_xfmr";
+        sonic-ext:get-validate "bgp_pgrp_af_validate_l2vpn_evpn";
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast {
       deviate add {
-        sonic-ext:key-transformer "bgp_af_pgrp_proto_tbl_key_xfmr";
+        sonic-ext:get-validate "bgp_pgrp_af_validate_ipv4_unicast";
       }
     }
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast {
       deviate add {
-        sonic-ext:key-transformer "bgp_af_pgrp_proto_tbl_key_xfmr";
+        sonic-ext:get-validate "bgp_pgrp_af_validate_ipv6_unicast";
       }
     }
 
@@ -934,8 +934,14 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi {
       deviate add {
-        sonic-ext:table-transformer "bgp_gbl_afi_safi_tbl_xfmr";
+        sonic-ext:table-name "BGP_GLOBALS_AF"
         sonic-ext:key-transformer "bgp_gbl_afi_safi_key_xfmr";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn {
+      deviate add {
+        sonic-ext:get-validate "bgp_gbl_af_validate_l2vpn_evpn";  
       }
     }
 
@@ -1842,18 +1848,18 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn {
       deviate add {
-        sonic-ext:key-transformer "bgp_af_nbr_proto_tbl_key_xfmr";
+        sonic-ext:get-validate "bgp_nbr_af_validate_l2vpn_evpn";  
       }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast {
       deviate add {
-        sonic-ext:key-transformer "bgp_af_nbr_proto_tbl_key_xfmr";
+        sonic-ext:get-validate "bgp_nbr_af_validate_ipv4_unicast";  
       }
     }
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast {
       deviate add {
-        sonic-ext:key-transformer "bgp_af_nbr_proto_tbl_key_xfmr";
+        sonic-ext:get-validate "bgp_nbr_af_validate_ipv6_unicast";  
       }
     }
 

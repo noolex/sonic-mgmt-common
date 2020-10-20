@@ -108,6 +108,23 @@ func init () {
 	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
+    XlateFuncBind("bgp_gbl_af_validate_l2vpn_evpn", bgp_gbl_af_validate_l2vpn_evpn)
+}
+
+func bgp_gbl_af_validate_l2vpn_evpn(inParams XfmrParams) bool {
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/
+    // Ignore the above prefix of length 104 to save the string compare time
+    targetUriPath = targetUriPath[104:]
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    if len(afiSafiName) != 0 && (afiSafiName != "L2VPN_EVPN") {
+        log.Info("bgp_gbl_af_validate_l2vpn_evpn: ignored VRF ", pathInfo.Var("name"), " URI ", 
+            inParams.uri," AFi-SAFI ", afiSafiName, " Target URI ", targetUriPath)
+        return false
+    }
+    return true
 }
 
 func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, key string, fieldName string, fieldValue string, 
