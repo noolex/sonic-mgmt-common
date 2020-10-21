@@ -939,9 +939,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 
     intfType, _, ierr := getIntfTypeByName(ifName)
     if intfType == IntfTypeUnset || ierr != nil {
-        if log.V(3) {
-            log.Info("TableXfmrFunc - Invalid interface type IntfTypeUnset");
-        }
         return tblList, errors.New("Invalid interface type IntfTypeUnset");
     }
     intTbl := IntfTypeTblMap[intfType]
