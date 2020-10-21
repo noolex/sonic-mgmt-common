@@ -49,10 +49,10 @@ func init () {
 
 func bgp_validate_nbr_af(inParams XfmrParams) bool {
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/openconfig-bgp:bgp/neighbors/neighbor/afi-safis/afi-safi/
-    // Ignore the above prefix of length 140 to save the string compare time
-    targetUriPath = targetUriPath[140:]
+    targetUriPath,_,_ := XfmrRemoveXPATHPredicates(inParams.uri)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/afi-safi/
+    // Ignore the above prefix of length 125 to save the string compare time
+    targetUriPath = targetUriPath[125:]
     afiSafiName := pathInfo.Var("afi-safi-name")
     if log.V(3) {
         log.Info("bgp_validate_nbr_af: VRF ", pathInfo.Var("name"), " URI ",

@@ -27,10 +27,10 @@ func init () {
 
 func bgp_validate_pgrp_af(inParams XfmrParams) bool {
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/openconfig-bgp:bgp/peer-groups/peer-group/afi-safis/afi-safi/
-    // Ignore the above prefix of length 144 to save the string compare time
-    targetUriPath = targetUriPath[144:]
+    targetUriPath,_,_ := XfmrRemoveXPATHPredicates(inParams.uri)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/peer-groups/peer-group/afi-safis/afi-safi/
+    // Ignore the above prefix of length 129 to save the string compare time
+    targetUriPath = targetUriPath[129:]
     afiSafiName := pathInfo.Var("afi-safi-name")
     if log.V(3) {
         log.Info("bgp_util_pgrp_af_validate : VRF ", pathInfo.Var("name"), " URI ",
