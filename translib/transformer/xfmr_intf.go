@@ -1034,7 +1034,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         strings.HasPrefix(targetUriPath, "openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") {
         //Checking interface type at container level, if not Vlan type return nil
         return nil, nil
-    } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vxlan:vxlan-if") && intfType!= IntfTypeVxlan {
+    } else if  intfType != IntfTypeVxlan && 
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vxlan:vxlan-if") {
+        //Checking interface type at container level, if not Vxlan type return nil
         return nil, nil
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, "NONE")
@@ -1162,9 +1164,6 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
 }
 
 var DbToYang_intf_name_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    if log.V(3) {
-        log.Info("Entering DbToYang_intf_name_xfmr")
-    }
     res_map := make(map[string]interface{})
 
     pathInfo := NewPathInfo(inParams.uri)
@@ -4868,7 +4867,6 @@ var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     if log.V(3) {
         log.Info("inParams.requestUri: ", requestUriPath)
-        log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr")
     }
 
     inst_key = ifName
