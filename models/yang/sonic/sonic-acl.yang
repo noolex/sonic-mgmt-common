@@ -105,6 +105,7 @@ module sonic-acl {
                 }
 
                 leaf type {
+                    mandatory true;
                     sonic-ext:custom-validation ValidateLeafConstant;
                     type enumeration {
                         enum MIRROR;

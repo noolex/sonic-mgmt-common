@@ -439,7 +439,7 @@ var DbToYang_bfd_shop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
 
     cmn_log := "GET: xfmr for BFD peers state"
     pathInfo := NewPathInfo(inParams.uri)
-    log.Errorf("pathInfo", pathInfo)
+    log.Infof("pathInfo: %v", pathInfo)
 
     bfd_obj, get_err := bfd_get_shop_root (inParams, cmn_log);
     if get_err != nil {

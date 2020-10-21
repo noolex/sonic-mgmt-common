@@ -1715,7 +1715,7 @@ var DbToYang_sw_vlans_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (err
 	} else {
 	    intfTypeStr := strconv.Itoa(int(intfType))
 	    errStr := "TableXfmrFunc - Invalid interface type" + intfTypeStr
-	    log.Error(errStr);
+	    log.Warning(errStr);
 	    return errors.New(errStr);
 	}
     }

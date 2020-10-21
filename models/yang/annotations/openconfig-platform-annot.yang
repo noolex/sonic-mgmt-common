@@ -55,6 +55,7 @@ module openconfig-platform-annot {
     }
     deviation /oc-platform:components/oc-platform:component/oc-transceiver:transceiver {
       deviate add {
+        sonic-ext:db-name "CONFIG_DB";
         sonic-ext:subtree-transformer "pfm_components_transceiver_xfmr";
       }
     }

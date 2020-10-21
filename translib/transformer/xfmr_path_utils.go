@@ -90,6 +90,34 @@ func readUntil(r *strings.Reader, delim byte) string {
         return buff.String()
 }
 
+// SplitPath splits the ygot path into parts.
+func SplitPath(path string) []string {
+	var parts []string
+	var start int
+	var inEscape, inKey bool
+
+	path = strings.TrimPrefix(path, "/")
+
+	for i, c := range path {
+		switch {
+		case inEscape:
+			inEscape = false
+		case c == '\'':
+			inEscape = true
+		case c == '[':
+			inKey = true
+		case c == ']':
+			inKey = false
+		case c == '/' && !inEscape && !inKey:
+			parts = append(parts, path[start:i])
+			start = i + 1
+		}
+	}
+
+	parts = append(parts, path[start:])
+	return parts
+}
+
 func RemoveXPATHPredicates(s string) (string, error) {
 	var b bytes.Buffer
 	for i := 0; i < len(s); {

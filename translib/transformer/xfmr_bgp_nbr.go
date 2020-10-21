@@ -12,6 +12,11 @@ import (
     log "github.com/golang/glog"
     "net"
 )
+/* NOTE: */
+/* The BGP unnumbered nbr can be in native(Ethernet0) or standard (Eth1/1) format,
+   for DB access it has to be in native format. Convert wherever needed.
+   Also xfmr infra expecting DBDatamap to have this key in user give format
+   So make sure returned key is in that format.  */
 
 func init () {
     XlateFuncBind("bgp_nbr_tbl_xfmr", bgp_nbr_tbl_xfmr)
@@ -47,13 +52,19 @@ func init () {
 func util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams XfmrParams, vrf string, nbrAddr string,
                                                      afiSafiType ocbinds.E_OpenconfigBgpTypes_AFI_SAFI_TYPE,
                                                      peerData map[string]interface {}) {
+    /* The nbrAddr can be in native(Ethernet0) or standard (Eth1/1) format,
+       for DB access it has to be in native format. Convert wherever needed.
+       Also xfmr infra expecting DBDatamap to have this key in user give format
+       So make sure returned key is in that format.  */
     afiSafiDbType := "ipv4_unicast"
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {afiSafiDbType = "ipv6_unicast"}
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_L2VPN_EVPN {afiSafiDbType = "l2vpn_evpn"}
 
     key := vrf + "|" + nbrAddr + "|" + afiSafiDbType
     nbrAfCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR_AF"}
-    nbrAfEntryKey := db.Key{Comp: []string{vrf, nbrAddr, afiSafiDbType}}
+    nativeNbr := nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname(&nativeNbr)
+    nbrAfEntryKey := db.Key{Comp: []string{vrf, nativeNbr, afiSafiDbType}}
     entryValue, _ := inParams.d.GetEntry(nbrAfCfgTblTs, nbrAfEntryKey)
     (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"][key] = entryValue
 
@@ -90,10 +101,19 @@ func util_fill_bgp_nbr_info_per_af_from_frr_info (inParams XfmrParams, vrf strin
     }
 
     if len(nbrAddr) != 0 {
-        peerData, ok := peers[nbrAddr].(map[string]interface{}) ; if !ok {return}
+        /* FRR json output the nbr address(for unnumbered case) will be in native format(Ethernet0).
+           So access to that has to be in native format, the nbr address can be native or standard
+           convert to native and access FRR data.*/
+        nativeNbr := nbrAddr
+        util_bgp_get_native_ifname_from_ui_ifname(&nativeNbr)
+        peerData, ok := peers[nativeNbr].(map[string]interface{}) ; if !ok {return}
         util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams, vrf, nbrAddr, afiSafiType, peerData)
     } else {
         for peer, peerData := range peers {
+            /* FRR json output the nbr address(for unnumbered case) will be in native format(Ethernet0).
+               below function needs it in user give way (can be Ethernet0 or Eth1/1). So convert from
+               native format and pass it */
+            util_bgp_get_ui_ifname_from_native_ifname (&peer)
             util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams, vrf, peer, afiSafiType, peerData.(map[string]interface{}))
         }
     }
@@ -117,10 +137,13 @@ func util_fill_bgp_nbr_info_for_evpn_from_frr_info (inParams XfmrParams, vrf str
     }
 
     if len(nbrAddr) != 0 {
-        peerData, ok := peers[nbrAddr].(map[string]interface{}) ; if !ok {return}
+        nativeNbr := nbrAddr
+        util_bgp_get_native_ifname_from_ui_ifname(&nativeNbr)
+        peerData, ok := peers[nativeNbr].(map[string]interface{}) ; if !ok {return}
         util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams, vrf, nbrAddr, ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_L2VPN_EVPN, peerData)
     } else {
         for peer, peerData := range peers {
+            util_bgp_get_ui_ifname_from_native_ifname (&peer)
             util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams, vrf, peer, ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_L2VPN_EVPN, peerData.(map[string]interface{}))
         }
     }
@@ -143,7 +166,6 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     bgpId      := pathInfo.Var("identifier")
     protoName  := pathInfo.Var("name#2")
     nbrAddr   := pathInfo.Var("neighbor-address")
-    util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
 
     if len(pathInfo.Vars) <  3 {
         err := errors.New("Invalid Key length");
@@ -205,6 +227,10 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
             return tblList, nil
         }
     }
+    /* The nbrAddr can be in native(Ethernet0) or standard (Eth1/1) format,
+       for DB access it has to be in native format. Convert wherever needed.
+       Also xfmr infra expecting DBDatamap to have this key in user give format
+       So make sure returned key is in that format.  */
     if len(nbrAddr) != 0 {
         key := vrf + "|" + nbrAddr
         /* For dynamic BGP nbrs, if isVirtualTbl not set, infra will try to get from config DB and fails
@@ -227,7 +253,9 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
             }
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"][key]; !ok {
                 nbrCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR"}
-                nbrEntryKey := db.Key{Comp: []string{vrf, nbrAddr}}
+                nativeNbr := nbrAddr
+                util_bgp_get_native_ifname_from_ui_ifname(&nativeNbr)
+                nbrEntryKey := db.Key{Comp: []string{vrf, nativeNbr}}
                 entryValue, err := inParams.d.GetEntry(nbrCfgTblTs, nbrEntryKey) ; if err == nil {
                     (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"][key] = entryValue
                 }
@@ -237,17 +265,16 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
         }
     } else {
         if(inParams.dbDataMap != nil) {
-            nbrKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"BGP_NEIGHBOR"})
+            nbrKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name:"BGP_NEIGHBOR"}, vrf+"|*")
             if len(nbrKeys) > 0 {
                 if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"] = make(map[string]db.Value)
                 }
                 for _, nkey := range nbrKeys {
-                    if nkey.Get(0) != vrf {
-                        continue
-                    }
 
-                    key := nkey.Get(0) + "|" + nkey.Get(1)
+                    uiNbr := nkey.Get(1)
+                    util_bgp_get_ui_ifname_from_native_ifname(&uiNbr)
+                    key := nkey.Get(0) + "|" + uiNbr
                     if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR"][key]; !ok {
                         nbrCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR"}
                         nbrEntryKey := db.Key{Comp: []string{nkey.Get(0), nkey.Get(1)}}
@@ -312,7 +339,6 @@ var YangToDb_bgp_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
             return nbrAddr, err
         }
     }
-    util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
 
     var pNbrKey string = vrfName + "|" + nbrAddr
     if log.V(3) {
@@ -368,6 +394,7 @@ var YangToDb_bgp_nbr_asn_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 
     nbrCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR"}
     /* Form the key */
+    util_bgp_get_native_ifname_from_ui_ifname(&pNbrAddr)
     neigh_key := db.Key{Comp: []string{vrf, pNbrAddr}}
 
     entryValue, err := inParams.d.GetEntry(nbrCfgTblTs, neigh_key)
@@ -439,6 +466,8 @@ var YangToDb_bgp_nbr_peer_type_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPa
  
     nbrCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR"}
     /* Form the key */
+    /* DB access convert nbr to native format */
+    util_bgp_get_native_ifname_from_ui_ifname(&pNbrAddr)
     neigh_key := db.Key{Comp: []string{vrf, pNbrAddr}}
 
     entryValue, err := inParams.d.GetEntry(nbrCfgTblTs, neigh_key) 
@@ -657,6 +686,10 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
             return tblList, nil
         }
     }
+    /* The nbrAddr can be in native(Ethernet0) or standard (Eth1/1) format,
+       for DB access it has to be in native format. Convert wherever needed.
+       Also xfmr infra expecting DBDatamap to have this key in user give format
+       So make sure returned key is in that format.  */
 
     if len(afiSafiName) != 0 {
         afiSafiEnum, afiSafiNameDbStr, ok := get_afi_safi_name_enum_dbstr_for_ocstr (afiSafiName) ; if !ok {
@@ -685,7 +718,9 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
             key := vrf + "|" + nbrAddr + "|" + afiSafiNameDbStr
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"][key]; !ok {
                 nbrAfCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR_AF"}
-                nbrAfEntryKey := db.Key{Comp: []string{vrf, nbrAddr, afiSafiNameDbStr}}
+                nativeNbr := nbrAddr
+                util_bgp_get_native_ifname_from_ui_ifname(&nativeNbr)
+                nbrAfEntryKey := db.Key{Comp: []string{vrf, nativeNbr, afiSafiNameDbStr}}
                 entryValue, err := inParams.d.GetEntry(nbrAfCfgTblTs, nbrAfEntryKey) ; if err == nil {
                     (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"][key] = entryValue
                 }
@@ -698,14 +733,15 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, e
         }
     } else {
         if(inParams.dbDataMap != nil) {
-            nbrKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"BGP_NEIGHBOR_AF"})
+            nativeNbr := nbrAddr
+            util_bgp_get_native_ifname_from_ui_ifname(&nativeNbr)
+            nbrKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name:"BGP_NEIGHBOR_AF"}, vrf+"|"+nativeNbr+"|*")
             if len(nbrKeys) > 0 {
                 if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"] = make(map[string]db.Value)
                 }
                 for _, nkey := range nbrKeys {
-                    if nkey.Get(0) != vrf || nkey.Get(1) != nbrAddr {continue}
-                    key := nkey.Get(0) + "|" + nkey.Get(1) + "|" + nkey.Get(2)
+                    key := nkey.Get(0) + "|" + nbrAddr + "|" + nkey.Get(2)
                     if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_NEIGHBOR_AF"][key]; !ok {
                         nbrCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR_AF"}
                         nbrEntryKey := db.Key{Comp: []string{nkey.Get(0), nkey.Get(1), nkey.Get(2)}}
@@ -777,8 +813,6 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
 	log.Info("Unsupported AFI SAFI ", afName);
 	return afName, err
     }
-
-    util_bgp_get_native_ifname_from_ui_ifname (&nbr)
 
     var nbrAfKey string = vrfName + "|" + nbr + "|" + afName
     if log.V(3) {
@@ -939,8 +973,11 @@ type _xfmr_bgp_nbr_state_key struct {
 func get_spec_nbr_cfg_tbl_entry (cfgDb *db.DB, nbr_key *_xfmr_bgp_nbr_state_key) (map[string]string, error) {
     var err error
 
+    /* For DB access nbr has to be in native(Ethernet0) format, convert it */
+    nativeNbr:= nbr_key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname(&nativeNbr)
     nbrCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR"}
-    nbrEntryKey := db.Key{Comp: []string{nbr_key.niName, nbr_key.nbrAddr}}
+    nbrEntryKey := db.Key{Comp: []string{nbr_key.niName, nativeNbr}}
 
     var entryValue db.Value
     if entryValue, err = cfgDb.GetEntry(nbrCfgTblTs, nbrEntryKey) ; err != nil {
@@ -1573,8 +1610,10 @@ func validate_nbr_af_state_get (inParams XfmrParams, dbg_log string) (*ocbinds.O
 func get_spec_nbr_af_cfg_tbl_entry (cfgDb *db.DB, key *_xfmr_bgp_nbr_af_state_key) (map[string]string, error) {
     var err error
 
+    nativeNbr:= key.nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname(&nativeNbr)
     nbrAfCfgTblTs := &db.TableSpec{Name: "BGP_NEIGHBOR_AF"}
-    nbrAfEntryKey := db.Key{Comp: []string{key.niName, key.nbrAddr, key.afiSafiNameDbStr}}
+    nbrAfEntryKey := db.Key{Comp: []string{key.niName, nativeNbr, key.afiSafiNameDbStr}}
 
     var entryValue db.Value
     if entryValue, err = cfgDb.GetEntry(nbrAfCfgTblTs, nbrAfEntryKey) ; err != nil {
@@ -1595,6 +1634,8 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
     }
 
     nbrKey := nbr_af_key.nbrAddr
+    /* For accessing nbr info from FRR json output, nbr has to to be in native
+       format, convert it. The nbr key in the ygot will be still in user given format */
     util_bgp_get_native_ifname_from_ui_ifname (&nbrKey)
     var afiSafi_cmd string
     var frrJsonCacheQueryType E_BGP_FRR_JSON_CACHE_QUERY_TYPE
