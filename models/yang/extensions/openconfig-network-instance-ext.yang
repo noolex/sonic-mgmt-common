@@ -7,10 +7,8 @@ module openconfig-network-instance-ext {
 
   prefix "oc-netinst-ext";
   
-  import ietf-yang-types {
-        prefix ietf;
-    }  
-
+  import ietf-yang-types { prefix ietf; }
+  import sonic-codegen { prefix sonic-codegen; }
   // import some basic types
   import openconfig-network-instance { prefix "oc-netinst"; }
   import openconfig-extensions { prefix oc-ext; }
@@ -27,6 +25,12 @@ module openconfig-network-instance-ext {
         configuration extensions.";
 
   oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-10-05" {
+    description
+      "Deviating range and default value for mac-aging-time.";
+    reference "0.1.1";
+  }
 
   revision "2020-05-26" {
     description
@@ -259,5 +263,19 @@ module openconfig-network-instance-ext {
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp {
       deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:config/oc-netinst:mac-aging-time {
+      sonic-codegen:lint-ignore "Deviated to be aligned with other vendors.";
+      deviate replace {
+          type uint32 {
+              range 0..1000000{
+                  error-message "Invalid MAC-aging value 0-1000000";
+              }
+          }
+      }
+      deviate add {
+          default 600;
+      }
   }
 }

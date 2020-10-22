@@ -654,7 +654,7 @@ var system_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[st
 
 	retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
     if inParams.oper == DELETE {
-    	xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    	xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
     	log.Info("system_post_xfmr xpath: ", xpath)
     	if strings.HasSuffix(xpath, "/server-group") || strings.HasSuffix(xpath, "/server-groups") ||
 	    	strings.HasSuffix(xpath, "/aaa") || strings.HasSuffix(xpath, "/openconfig-system:system") {  

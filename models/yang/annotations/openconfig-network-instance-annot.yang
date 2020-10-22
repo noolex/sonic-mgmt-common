@@ -128,6 +128,12 @@ module openconfig-network-instance-annot {
       }
     }
 
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:config/oc-netinst:mac-aging-time {
+      deviate add {
+            sonic-ext:subtree-transformer "mac_aging_time_xfmr";
+      }
+    }
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:state {
       deviate add {
             sonic-ext:subtree-transformer "fdb_mac_table_count_xfmr";

@@ -12,10 +12,11 @@ import (
 func get_map_entry_by_map_name(d *db.DB, map_type string, map_name string) (db.Value, error) {
 
     ts := &db.TableSpec{Name: map_type}
-    keys, _ := d.GetKeys(ts);
+    if log.V(3) {
+        keys, _ := d.GetKeys(ts);
 
-    log.Info("keys: ", keys)
-
+        log.Info("keys: ", keys)
+    }
     entry, err := d.GetEntry(ts, db.Key{Comp: []string{map_name}})
     if err != nil {
         log.Info("not able to find the map entry in DB ", map_name)
@@ -209,8 +210,9 @@ func qos_map_delete_all_map(inParams XfmrParams, map_type string) (map[string]ma
     ts := &db.TableSpec{Name: map_type}
     keys, _ := inParams.d.GetKeys(ts);
 
-    log.Info("keys: ", keys)
-
+    if log.V(3) {
+        log.Info("keys: ", keys)
+    }
     /* update "map" table */
     rtTblMap := make(map[string]db.Value)
 
@@ -218,9 +220,6 @@ func qos_map_delete_all_map(inParams XfmrParams, map_type string) (map[string]ma
         // validation: skip in-used map 
 
         map_name := key.Comp[0]
-        if isMapInUse(inParams.d, map_type, map_name) {
-             continue
-        }
 
         rtTblMap[map_name] = db.Value{Field: make(map[string]string)}
     }
@@ -229,57 +228,6 @@ func qos_map_delete_all_map(inParams XfmrParams, map_type string) (map[string]ma
     res_map[map_type] = rtTblMap
 
     return res_map, err
-}
-
-func getIntfsByMapName(d *db.DB, map_type string, map_name string) ([]string) {
-    var s []string
-
-    log.Info("map_name ", map_name)
-
-
-    // PORT_QOS_MAP
-    tbl_list := []string{"PORT_QOS_MAP"}
-
-    for  _, tbl_name := range tbl_list {
-
-        dbSpec := &db.TableSpec{Name: tbl_name}
-
-        keys, _ := d.GetKeys(dbSpec)
-        for _, key := range keys {
-            log.Info("key: ", key)
-            qCfg, _ := d.GetEntry(dbSpec, key)
-            log.Info("qCfg: ", qCfg)
-            mapref , ok := qCfg.Field[map_type] 
-            if !ok {
-                continue
-            }
-            log.Info("mapref: ", mapref)
-
-            mapref = DbLeafrefToString(mapref, map_type)
-
-            if mapref == map_name {
-                intf_name := key.Get(0)
-
-                log.Info("intf_name added to the referenece list: ", intf_name)
-
-                s = append(s, intf_name)  
-            }
-        }
-    }
-
-    return s
-}
-
-func isMapInUse(d *db.DB, map_type string, map_name string)(bool) {
-    // read intfs refering to the map
-    intfs := getIntfsByMapName(d, map_type, map_name)
-    if  len(intfs) == 0 {
-        log.Info("No active user of the map: ", map_name)
-        return false
-    }
-    
-    log.Info("map is in use: ", map_name)
-    return true
 }
 
 func qos_map_delete_by_map_name(inParams XfmrParams, map_type string,  map_name string) (map[string]map[string]db.Value, error) {
@@ -296,13 +244,6 @@ func qos_map_delete_by_map_name(inParams XfmrParams, map_type string,  map_name 
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     log.Info("targetUriPath: ",  targetUriPath)
-
-    // validation
-    if isMapInUse(inParams.d, map_type, map_name) {
-        err = tlerr.InternalError{Format:"Disallow to delete an active map"}
-        log.Info("Disallow to delete an active map: ", map_name)
-        return res_map, err
-    }
 
     /* update "map" table */
     rtTblMap := make(map[string]db.Value)
