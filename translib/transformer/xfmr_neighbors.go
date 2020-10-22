@@ -1299,9 +1299,16 @@ func clear_ip(ip string, fam_switch string, vrf string, d *db.DB) string {
     log.Info("In clear_ip()")
     intfVrfMap := getIntfVrfMapping(d)
     for intfName, vrfName := range intfVrfMap {
-        log.Info("vrfFound: ", vrfName, " vrfRcvd: ", vrf)
         if (vrf != vrfName) {
-            if (vrf != "all") {
+            if (vrf == "all") { //flush ip from all vrfs in this case
+                log.Info("Executing: ip ", fam_switch, " neigh ", "flush ", ip)
+                _, err = exec.Command("ip", fam_switch, "neigh", "flush", ip).Output()
+                if err != nil {
+                    log.Error("clear_ip(): ", err)
+                    return "% Error: Internal error"
+                }
+                break
+            } else {
                 continue
             }
         }
