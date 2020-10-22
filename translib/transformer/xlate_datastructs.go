@@ -24,7 +24,7 @@ import (
     "regexp"
 )
 
-var rgpIpv6, rgpMac, rgpIsMac, rgpKeyExtract, rgpSncKeyExtract, rgpSplitUri *regexp.Regexp
+var rgpIpv6, rgpMac, rgpIsMac, rgpKeyExtract, rgpSncKeyExtract *regexp.Regexp
 
 //Map of map[uri][dbKey]
 var keyXfmrCache map[string]string
