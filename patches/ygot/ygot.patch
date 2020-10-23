@@ -374,7 +374,7 @@ diff -ruN ygot-dir-orig/ygot/ygen/genstate.go ygot-dir/ygot/ygen/genstate.go
  
 diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/struct_validation_map.go
 --- ygot-dir-orig/ygot/ygot/struct_validation_map.go	2020-10-07 14:33:58.231818000 -0700
-+++ ygot-dir/ygot/ygot/struct_validation_map.go	2020-10-07 14:39:28.015324000 -0700
++++ ygot-dir/ygot/ygot/struct_validation_map.go	2020-10-19 15:26:49.518186000 -0700
 @@ -19,6 +19,10 @@
  //	  to return pointers to a type.
  //	- Renders structs to other output formats such as JSON, or gNMI
@@ -386,7 +386,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  package ygot
  
  import (
-@@ -336,20 +340,6 @@
+@@ -336,31 +340,12 @@
  // EmitJSON takes an input ValidatedGoStruct (produced by ygen with validation enabled)
  // and serialises it to a JSON string. By default, produces the Internal format JSON.
  func EmitJSON(s ValidatedGoStruct, opts *EmitJSONConfig) (string, error) {
@@ -407,7 +407,19 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  	v, err := makeJSON(s, opts)
  	if err != nil {
  		return "", err
-@@ -525,7 +515,6 @@
+ 	}
+ 
+-	indent := indentString
+-	if opts != nil && opts.Indent != "" {
+-		indent = opts.Indent
+-	}
+-
+-	j, err := json.MarshalIndent(v, "", indent)
++	j, err := json.Marshal(v)
+ 	if err != nil {
+ 		return "", fmt.Errorf("JSON marshalling error: %v", err)
+ 	}
+@@ -525,7 +510,6 @@
  	for i := 0; i < srcVal.NumField(); i++ {
  		srcField := srcVal.Field(i)
  		dstField := dstVal.Field(i)
@@ -415,7 +427,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  		switch srcField.Kind() {
  		case reflect.Ptr:
  			if err := copyPtrField(dstField, srcField); err != nil {
-@@ -555,7 +544,13 @@
+@@ -555,7 +539,13 @@
  				dstField.Set(srcField)
  			}
  		default:
@@ -430,7 +442,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  		}
  	}
  	return nil
-@@ -595,6 +590,7 @@
+@@ -595,6 +585,7 @@
  			return err
  		}
  		dstField.Set(d)
@@ -438,7 +450,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  		return nil
  	}
  
-@@ -608,6 +604,7 @@
+@@ -608,6 +599,7 @@
  	p := reflect.New(srcField.Type().Elem())
  	p.Elem().Set(srcField.Elem())
  	dstField.Set(p)
@@ -446,7 +458,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  	return nil
  }
  
-@@ -636,6 +633,7 @@
+@@ -636,6 +628,7 @@
  		return err
  	}
  	dstField.Set(d)
@@ -454,7 +466,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  	return nil
  }
  
-@@ -645,6 +643,7 @@
+@@ -645,6 +638,7 @@
  // key is populated in srcField and dstField, their contents are merged if they
  // do not overlap, otherwise an error is returned.
  func copyMapField(dstField, srcField reflect.Value) error {
@@ -462,7 +474,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  	if !util.IsValueMap(srcField) {
  		return fmt.Errorf("received a non-map type in src map field: %v", srcField.Kind())
  	}
-@@ -664,8 +663,6 @@
+@@ -664,8 +658,6 @@
  	}
  
  	srcKeys := srcField.MapKeys()
@@ -471,7 +483,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  	nm := reflect.MakeMapWithSize(reflect.MapOf(m.key, m.value), srcField.Len())
  
  	mapsToMap := []struct {
-@@ -673,20 +670,24 @@
+@@ -673,20 +665,24 @@
  		field reflect.Value
  	}{
  		{srcKeys, srcField},
@@ -499,7 +511,7 @@ diff -ruN ygot-dir-orig/ygot/ygot/struct_validation_map.go ygot-dir/ygot/ygot/st
  			}
  
  			if err := copyStruct(d.Elem(), v.Elem()); err != nil {
-@@ -804,3 +805,12 @@
+@@ -804,3 +800,12 @@
  	}
  	return true, nil
  }

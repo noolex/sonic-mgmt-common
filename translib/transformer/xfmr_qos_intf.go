@@ -115,12 +115,12 @@ func getAndValidateSchedulerIds(if_name string, sp_name string) ([]string, error
             if err == nil {
                 if entry.Has("meter_type") {
                     meter_type := entry.Get("meter_type")
-                    if if_name == "CPU" && meter_type == "BYTES" {
+                    if if_name == "CPU" && meter_type == "bytes" {
                         errStr := "Invalid scheduler policy meter type for CPU"
                         err = tlerr.InternalError{Format: errStr}
                         return sched_ids, err
                     }
-                    if if_name != "CPU" && meter_type == "PACKETS" {
+                    if if_name != "CPU" && meter_type == "packets" {
                         errStr := "Invalid scheduler policy meter type for " + if_name
                         err = tlerr.InternalError{Format: errStr}
                         return sched_ids, err
