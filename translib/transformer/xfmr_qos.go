@@ -362,15 +362,14 @@ func getQosOffsetCounters(entry *db.Value, entry_backup *db.Value, attr string, 
     return err
 }
 
-func getPersistentWatermark(d *db.DB, oid string, stat_key string, counter **uint64)  (error) {
+func getPersistentWatermark(d *db.DB, oid string, entry *db.Value)  (error) {
+    var err error
     ts := &db.TableSpec{Name: "PERSISTENT_WATERMARKS"}
-    entry, err := d.GetEntry(ts, db.Key{Comp: []string{oid}})
+    *entry, err = d.GetEntry(ts, db.Key{Comp: []string{oid}})
     if err != nil {
         log.Info("getPersistentWatermark: not able to find the oid entry in DB ")
         return err
     }
-
-    err = getQosCounters(&entry, stat_key, counter)
 
     return err
 }
@@ -405,15 +404,14 @@ func resetPersistentWatermark(d *db.DB, oid string, count_type string, buff_type
     return cerr
 }
 
-func getUserWatermark(d *db.DB, oid string, stat_key string, counter **uint64)  (error) {
+func getUserWatermark(d *db.DB, oid string, entry *db.Value)  (error) {
+    var err error
     ts := &db.TableSpec{Name: "USER_WATERMARKS"}
-    entry, err := d.GetEntry(ts, db.Key{Comp: []string{oid}})
+    *entry, err = d.GetEntry(ts, db.Key{Comp: []string{oid}})
     if err != nil {
         log.Info("getUserWatermark: not able to find the oid entry in DB ")
         return err
     }
-
-    err = getQosCounters(&entry, stat_key, counter)
 
     return err
 }
@@ -486,21 +484,18 @@ func getQueueSpecificCounterAttr(targetUriPath string, entry *db.Value, entry_ba
     return false, nil
 }
 
-func populateQCounters (inParams XfmrParams, targetUriPath string, oid string, counter *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Output_Queues_Queue_State) (error) {
-
-    var err error
-    var count *uint64
-
+func getCounterAndBackupByOid(inParams XfmrParams, oid string, entry *db.Value, entry_backup *db.Value) (error) {
+   
+    var dbErr error
     cntTs := &db.TableSpec{Name: "COUNTERS"}
-    entry, dbErr := inParams.dbs[inParams.curDb].GetEntry(cntTs, db.Key{Comp: []string{oid}})
+    *entry, dbErr = inParams.dbs[inParams.curDb].GetEntry(cntTs, db.Key{Comp: []string{oid}})
     if dbErr != nil {
-        log.Info("populateQCounters : not able to find the oid entry in DB Counters table")
+        log.Info("getCounterAndBackupByOid : not able to find the oid entry in DB Counters table")
         return dbErr
     }
 
-    CounterData := entry
     cntTs_cp := &db.TableSpec { Name: "COUNTERS_BACKUP" }
-    entry_backup, dbErr := inParams.dbs[inParams.curDb].GetEntry(cntTs_cp, db.Key{Comp: []string{oid}})
+    *entry_backup, dbErr = inParams.dbs[inParams.curDb].GetEntry(cntTs_cp, db.Key{Comp: []string{oid}})
     if dbErr != nil {
         m := make(map[string]string)
         /* Frame backup data with 0 as counter values */
@@ -508,59 +503,79 @@ func populateQCounters (inParams XfmrParams, targetUriPath string, oid string, c
             m[attr] = "0"
         }
         m["LAST_CLEAR_TIMESTAMP"] = "0"
-        entry_backup = db.Value{Field: m}
+        *entry_backup = db.Value{Field: m}
     }
-    CounterBackUpData := entry_backup
 
+    return nil
+}
+
+ 
+func populateQCounters (inParams XfmrParams, targetUriPath string, oid string, counter *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Output_Queues_Queue_State) (error) {
+
+    var err error
+    var count *uint64
+    var entry db.Value
+    var entry_backup db.Value
     switch (targetUriPath) {
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state":
+        dbErr := getCounterAndBackupByOid(inParams,oid, &entry, &entry_backup)
+        if dbErr != nil {
+            log.Info("populateQCounters : not able to find the oid entry in DB Counters table")
+            return dbErr
+        }
+
         for _, attr := range qCounterTblAttr {
             uri := targetUriPath + "/" + attr
-            if ok, err := getQueueSpecificCounterAttr(uri, &CounterData, &CounterBackUpData, counter); !ok || err != nil {
+            if ok, err := getQueueSpecificCounterAttr(uri, &entry, &entry_backup, counter); !ok || err != nil {
                 log.Info("Get Counter URI failed :", uri)
             }
         }
 
+        err = getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
         if err == nil {
-            err = getUserWatermark(inParams.dbs[inParams.curDb], oid, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.Watermark)
-        }
-
-        if err == nil {
-            err = getUserWatermark(inParams.dbs[inParams.curDb], oid, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
+            getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.Watermark)
+            getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
             counter_percent := uint8(*count)
             counter.WatermarkPercent = &counter_percent
         }
 
+        err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
         if err == nil {
-            err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.PersistentWatermark)
-        }
-
-        if err == nil {
-            err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
+            getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.PersistentWatermark)
+            getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
             counter_percent := uint8(*count)
             counter.PersistentWatermarkPercent = &counter_percent
         }
 
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/watermark":
-        err = getUserWatermark(inParams.dbs[inParams.curDb], oid, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.Watermark)
+        getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
+        err = getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.Watermark)
 
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/watermark-percent":
-        err = getUserWatermark(inParams.dbs[inParams.curDb], oid, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
+        getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
+        err = getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
         counter_percent := uint8(*count)
         counter.WatermarkPercent = &counter_percent
     // persisten-watermark resides on separate DB table
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/persistent-watermark":
-        err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.PersistentWatermark)
+        getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
+        err = getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.PersistentWatermark)
 
     // persisten-watermark resides on separate DB table
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/persistent-watermark-percent":
-        err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
+        getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
+        err = getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
         counter_percent := uint8(*count)
         counter.PersistentWatermarkPercent = &counter_percent
 
     default:
         log.Info("Entering default branch")
-        _, err = getQueueSpecificCounterAttr(targetUriPath, &CounterData, &CounterBackUpData, counter)
+        dbErr := getCounterAndBackupByOid(inParams, oid, &entry, &entry_backup)
+        if dbErr != nil {
+            log.Info("populateQCounters : not able to find the oid entry in DB Counters table")
+            return dbErr
+        }
+        _, err = getQueueSpecificCounterAttr(targetUriPath, &entry, &entry_backup, counter)
     }
 
     return err
@@ -626,7 +641,7 @@ func getQType (queueTypeMap db.Value, oid string) (string) {
     }
 }
 
-func getPriorityGroupSpecificCounterAttr(targetUriPath string, d *db.DB, oid string, counter *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Input_PriorityGroups_PriorityGroup_State) (bool, error) {
+func getPriorityGroupSpecificCounterAttr(targetUriPath string, per_entry *db.Value, user_entry *db.Value, counter *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Input_PriorityGroups_PriorityGroup_State) (bool, error) {
 
     var e error
     var count *uint64
@@ -634,31 +649,31 @@ func getPriorityGroupSpecificCounterAttr(targetUriPath string, d *db.DB, oid str
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/headroom-watermark":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/headroom-watermark":
-        e = getUserWatermark(d, oid, "SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES", &counter.HeadroomWatermark)
+        e = getQosCounters(user_entry, "SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES", &counter.HeadroomWatermark)
         return true, e
 
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/headroom-persistent-watermark":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/headroom-persistent-watermark":
-        e = getPersistentWatermark(d, oid, "SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES", &counter.HeadroomPersistentWatermark)
+        e = getQosCounters(per_entry, "SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES", &counter.HeadroomPersistentWatermark)
         return true, e
 
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/shared-watermark":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/shared-watermark":
-        e = getUserWatermark(d, oid, "SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES", &counter.SharedWatermark)
+        e = getQosCounters(user_entry, "SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES", &counter.SharedWatermark)
         return true, e
 
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/shared-persistent-watermark":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/shared-persistent-watermark":
-        e = getPersistentWatermark(d, oid, "SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES", &counter.SharedPersistentWatermark)
+        e = getQosCounters(per_entry, "SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES", &counter.SharedPersistentWatermark)
         return true, e
 
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/headroom-watermark-percent":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/headroom-watermark-percent":
-        e = getUserWatermark(d, oid, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK", &count)
+        e = getQosCounters(user_entry, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK", &count)
         counter_percent := uint8(*count)
         counter.HeadroomWatermarkPercent = &counter_percent
     return true, e
@@ -666,7 +681,7 @@ func getPriorityGroupSpecificCounterAttr(targetUriPath string, d *db.DB, oid str
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/headroom-persistent-watermark-percent":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/headroom-persistent-watermark-percent":
-        e = getPersistentWatermark(d, oid, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK", &count)
+        e = getQosCounters(per_entry, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK", &count)
         counter_percent := uint8(*count)
         counter.HeadroomPersistentWatermarkPercent = &counter_percent
         return true, e
@@ -674,7 +689,7 @@ func getPriorityGroupSpecificCounterAttr(targetUriPath string, d *db.DB, oid str
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/shared-watermark-percent":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/shared-watermark-percent":
-        e = getUserWatermark(d, oid, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK", &count)
+        e = getQosCounters(user_entry, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK", &count)
         counter_percent := uint8(*count)
         counter.SharedWatermarkPercent = &counter_percent
         return true, e
@@ -682,7 +697,7 @@ func getPriorityGroupSpecificCounterAttr(targetUriPath string, d *db.DB, oid str
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/shared-persistent-watermark-percent":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/shared-persistent-watermark-percent":
-        e = getPersistentWatermark(d, oid, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK", &count)
+        e = getQosCounters(per_entry, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK", &count)
         counter_percent := uint8(*count)
         counter.SharedPersistentWatermarkPercent = &counter_percent
         return true, e
@@ -696,21 +711,33 @@ func getPriorityGroupSpecificCounterAttr(targetUriPath string, d *db.DB, oid str
 func populatePriorityGroupCounters (inParams XfmrParams, targetUriPath string, oid string, counter *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Input_PriorityGroups_PriorityGroup_State) (error) {
 
     var err error
+    var per_entry db.Value
+    var user_entry db.Value
+    err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &per_entry)
+    if err != nil {
+        log.Info("populatePriorityGroupCounters: Get Persistent Entry failed ")
+        return err
+    }
+
+    err = getUserWatermark(inParams.dbs[inParams.curDb], oid, &user_entry)
+    if err != nil {
+        log.Info("populatePriorityGroupCounters: Get User Entry failed ")
+        return err
+    }
+
     switch (targetUriPath) {
     case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state":
         fallthrough
     case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state":
-        log.Info("Entering priority-group-state table")
         for _, attr := range pgCounterTblAttr {
             uri := targetUriPath + "/" + attr
-            if ok, err := getPriorityGroupSpecificCounterAttr(uri, inParams.dbs[inParams.curDb], oid, counter); !ok || err != nil {
+            if ok, err := getPriorityGroupSpecificCounterAttr(uri, &per_entry, &user_entry, counter); !ok || err != nil {
                 log.Info("Get Counter URI failed :", uri)
             }
         }
     
     default:
-        log.Info("Entering default branch")
-        _, err = getPriorityGroupSpecificCounterAttr(targetUriPath, inParams.dbs[inParams.curDb], oid, counter)
+        _, err = getPriorityGroupSpecificCounterAttr(targetUriPath, &per_entry, &user_entry, counter)
     }
 
     return err
@@ -1030,11 +1057,30 @@ var DbToYang_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrDbToYang = func(inP
         }
     }
 
-    queueOidMap, _ := doGetAllQueueOidMap(inParams.dbs[inParams.curDb]);
+    var queueOidMap db.Value
+    var present bool
+    oidMap, present := inParams.txCache.Load("COUNTERS_QUEUE_NAME_MAP")
+    if !present {
+        queueOidMap, _ = doGetAllQueueOidMap(inParams.dbs[inParams.curDb]);
+        inParams.txCache.Store("COUNTERS_QUEUE_NAME_MAP", queueOidMap)
+        log.V(3).Info("Loading queueOidMap")
+    } else {
+        queueOidMap = oidMap.(db.Value)
+        log.V(3).Info("Reuse queueOidMap")
+    }
 
     queueOidMapFields := queueOidMap.Field
 
-    queueTypeMap, _ := doGetAllQueueTypeMap(inParams.dbs[inParams.curDb]);
+    var queueTypeMap db.Value
+    typeMap, present := inParams.txCache.Load("COUNTERS_QUEUE_TYPE_MAP")
+    if !present {
+        queueTypeMap, _ = doGetAllQueueTypeMap(inParams.dbs[inParams.curDb]);
+        inParams.txCache.Store("COUNTERS_QUEUE_TYPE_MAP", queueTypeMap)
+        log.V(3).Info("Loading queueTypeMap")
+    } else {
+        queueTypeMap = typeMap.(db.Value)
+        log.V(3).Info("Reuse queueTypeMap")
+    }
 
     for keyString, oid := range queueOidMapFields {
         s := strings.Split(keyString, ":")
@@ -1281,7 +1327,17 @@ var DbToYang_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrDbToYang = func(in
         }
     }
 
-    priorityGroupMap, _ := doGetAllPriorityGroupOidMap(inParams.dbs[inParams.curDb]);
+    var priorityGroupMap db.Value
+    var present bool
+    pgMap, present := inParams.txCache.Load("COUNTERS_PG_NAME_MAP")
+    if !present {
+        priorityGroupMap, _ = doGetAllPriorityGroupOidMap(inParams.dbs[inParams.curDb]);
+        inParams.txCache.Store("COUNTERS_PG_NAME_MAP", priorityGroupMap)
+        log.V(3).Info("Loading priorityGroupMap")
+    } else {
+        priorityGroupMap = pgMap.(db.Value)
+        log.V(3).Info("Reuse priorityGroupMap")
+    }
 
     priorityGroupMapFields := priorityGroupMap.Field
 
@@ -1715,15 +1771,17 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     ifName := pathInfo.Var("interface-id");
-
-    log.Info("qos_intf_table_xfmr - Uri: ", inParams.uri, " requestUri ", inParams.requestUri, " targetUriPath ", targetUriPath);
-    log.Info("qos_intf_table_xfmr - Uri ifName: ", ifName);
-
+    if log.V(3) {
+        log.Info("qos_intf_table_xfmr - Uri: ", inParams.uri, " requestUri ", inParams.requestUri, 
+                 " targetUriPath ", targetUriPath, " ifName ", ifName);
+    }
     tbl_name := "QOS_PORT"
     if len(ifName) != 0 {
         dbifName := utils.GetNativeNameFromUIName(&ifName)
         key = ifName
-        log.Info("qos_intf_table_xfmr - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
+        if log.V(3) {
+            log.Info("qos_intf_table_xfmr - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
+        }
         if strings.HasPrefix(*dbifName, "Eth") {
             tbl_name = "PORT"
         } else if strings.HasPrefix(*dbifName, "CPU") {
@@ -1750,7 +1808,9 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
     } else {
         tbl_name := "QOS_PORT"
         *inParams.isVirtualTbl = true
-        log.Info("TableXfmrFunc - intf_table_xfmr Intf key is not present, curr DB ", inParams.curDb)
+        if log.V(3) {
+            log.Info("TableXfmrFunc - intf_table_xfmr Intf key is not present, curr DB ", inParams.curDb)
+        }
         if(inParams.dbDataMap != nil) {
             if _, ok := (*inParams.dbDataMap)[db.ConfigDB][tbl_name]; !ok {
                 (*inParams.dbDataMap)[db.ConfigDB][tbl_name] = make(map[string]db.Value)
@@ -1798,24 +1858,22 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
 var YangToDb_qos_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
     var ifName string
-    log.Info("Entering YangToDb_qos_intf_tbl_key_xfmr Uri ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
     ifName = pathInfo.Var("interface-id")
-    log.Info("YangToDb_qos_intf_tbl_key_xfmr - interface ", ifName)
+    if log.V(3) {
+        log.Info("Entering YangToDb_qos_intf_tbl_key_xfmr Uri ", inParams.uri, " interface ", ifName)
+    }
     return ifName, err
 }
 
 var DbToYang_qos_intf_tbl_key_xfmr  KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_qos_intf_tbl_key_xfmr ", inParams.uri)
-
     res_map := make(map[string]interface{})
-
-    log.Info("Interface Name = ", inParams.key)
 
     ifName := utils.GetUINameFromNativeName(&inParams.key)
     res_map["interface-id"] = *ifName
-    log.Info("res_map = ", res_map)
-    log.Info("Entering DbToYang_qos_intf_tbl_key_xfmr - End ", inParams.uri)
+    if log.V(3) {
+       log.Info("Entering DbToYang_qos_intf_tbl_key_xfmr - End ", inParams.uri, " ifName ", *ifName, " res_map ", res_map)
+    }
     return res_map, nil
 }
 
@@ -1838,7 +1896,9 @@ var DbToYang_qos_intf_intf_id_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
 var YangToDb_qos_intf_intfref_intf_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
-    log.Info("YangToDb_qos_intf_intfref_intf_fld_xfmr: ", inParams.key)
+    if log.V(3) {
+        log.Info("YangToDb_qos_intf_intfref_intf_fld_xfmr: ", inParams.key)
+    }
     requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
     if (inParams.oper != GET && requestUriPath == "/openconfig-qos:qos/interfaces/interface/interface-ref" ) {
         return res_map, tlerr.NotSupported("Operation Not Supported")
@@ -1848,25 +1908,30 @@ var YangToDb_qos_intf_intfref_intf_fld_xfmr FieldXfmrYangToDb = func(inParams Xf
 }
 
 var DbToYang_qos_intf_intfref_intf_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_qos_intf_intfref_intf_fld_xfmr ", inParams.uri)
     res_map := make(map[string]interface{})
-    log.Info("Interface Name = ", inParams.key)
     ifName := utils.GetUINameFromNativeName(&inParams.key)
     res_map["interface"] = *ifName
+    if log.V(3) {
+        log.Info("Entering DbToYang_qos_intf_intfref_intf_fld_xfmr - End ", inParams.uri, " ifName ", *ifName, " res_map ", res_map)
+    }
     return res_map, nil
 }
 
 var YangToDb_wred_profile_name_empty_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
-    log.Info("YangToDb_wred_profile_name_empty_fld_xfmr: ", inParams.key)
+    if log.V(3) {
+       log.Info("YangToDb_wred_profile_name_empty_fld_xfmr: ", inParams.key)
+    }
     return res_map, nil
 }
 
 var YangToDb_wred_profile_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
 
-    log.Info("YangToDb_wred_profile_name_fld_xfmr: ", inParams.key)
+    if log.V(3) {
+       log.Info("YangToDb_wred_profile_name_fld_xfmr: ", inParams.key)
+    }
     res_map["NULL"] = "NULL"
     return res_map, nil
 }
@@ -1874,7 +1939,6 @@ var YangToDb_wred_profile_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPa
 var DbToYang_wred_profile_name_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
     var err error
-    log.Info("DbToYang_wred_profile_name_fld_xfmr: ", inParams.key)
     /*name attribute corresponds to key in redis table*/
     key := inParams.key
     log.Info("DbToYang_wred_profile_name_fld_xfmr: ", key)
@@ -1930,11 +1994,9 @@ var YangToDb_qos_threshold_breach_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
 }
 
 var DbToYang_qos_threshold_breach_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_qos_threshold_breach_key_xfmr ", inParams.uri)
     var id string
     res_map := make(map[string]interface{})
 
-    log.Info("breach_id = ", inParams.key)
     if strings.Contains(inParams.key, ":") {
        id = strings.Split(inParams.key, ":")[1]
     } else {
@@ -1942,7 +2004,7 @@ var DbToYang_qos_threshold_breach_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
     }
 
     res_map["id"] = id
-    log.Info("res_map = ", res_map)
+    log.Info("DbToYang_qos_threshold_breach_key_xfmr ", inParams.uri, "breach_id = ", inParams.key, "res_map - ", res_map)
     return res_map, nil
 }
 
@@ -2132,7 +2194,7 @@ var qos_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
             }
 
             if (requestUriPath ==  "/openconfig-qos:qos") {
-                log.Info("qos_post_xfmr - Updates retDbDataMap while schduler ", retDbDataMap)
+                log.Info("qos_post_xfmr - Updates retDbDataMap while scheduler ", retDbDataMap)
                 log.Info("qos_post_xfmr - Delete All schedulers except copp")
                 sKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name:"SCHEDULER"})
                 if len(sKeys) > 0 {

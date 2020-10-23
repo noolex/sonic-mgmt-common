@@ -1292,17 +1292,20 @@ var YangToDb_ospfv2_router_area_tbl_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
 
 
 var DbToYang_ospfv2_router_area_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    res_map := make(map[string]interface{})
-    entry_key := inParams.key
-    log.Info("DbToYang_ospfv2_router_area_tbl_key: entry key - ", entry_key)
+    pathInfo := NewPathInfo(inParams.uri)
+    niName   :=  pathInfo.Var("name")
 
-    areaTableKeys := strings.Split(entry_key, "|")
+    areaTableKeys := strings.Split(inParams.key, "|")
 
-    if len(areaTableKeys) >= 2 {
-       res_map["identifier"] = areaTableKeys[1]
+    if (len(areaTableKeys) < 2) || niName != areaTableKeys[0] {
+	return nil, nil
     }
 
-    log.Info("DbToYang_ospfv2_router_area_tbl_key: res_map - ", res_map)
+    res_map := make(map[string]interface{})
+
+    res_map["identifier"] = areaTableKeys[1]
+
+    log.Info("DbToYang_ospfv2_router_area_tbl_key: entry key:", inParams.key, " res_map:", res_map)
     return res_map, nil
 }
 
@@ -1383,11 +1386,18 @@ var YangToDb_ospfv2_router_area_policy_tbl_key_xfmr KeyXfmrYangToDb = func(inPar
 
 
 var DbToYang_ospfv2_router_area_policy_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    res_map := make(map[string]interface{})
-    entry_key := inParams.key
-    log.Info("DbToYang_ospfv2_router_area_policy_tbl_key: entry key - ", entry_key)
+    pathInfo := NewPathInfo(inParams.uri)
 
-    areaTableKeys := strings.Split(entry_key, "|")
+    niName    :=  pathInfo.Var("name")
+
+    areaTableKeys := strings.Split(inParams.key, "|")
+
+    if niName != areaTableKeys[0] {
+	return nil, nil
+    }
+    res_map := make(map[string]interface{})
+    log.Info("DbToYang_ospfv2_router_area_policy_tbl_key: entry key - ", inParams.key)
+
 
     if len(areaTableKeys) >= 2 {
        res_map["src-area"] = areaTableKeys[1]
