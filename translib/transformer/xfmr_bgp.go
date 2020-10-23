@@ -155,7 +155,7 @@ func utl_bgp_exec_vtysh_cmd (vtyshCmd string, inParams XfmrParams, cmdType E_BGP
     return exec_vtysh_cmd (vtyshCmd)
 }
 
-func utl_bgp_fetch_and_cache_frr_json (inParams XfmrParams, niName string) {
+func utl_bgp_fetch_and_cache_frr_json (inParams *XfmrParams, niName string) {
     bgpFrrJsonCache := make(map[E_BGP_FRR_JSON_CACHE_TYPE]map[string]interface{})
     if niName != "" {
         bgpFrrJsonCache[bgpFrrJsonCacheSpecificVrfSummary_t], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " summary json")
@@ -210,6 +210,33 @@ func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, ke
         return
     }
     inParams.yangDefValMap[tblName][key].Field[fieldName] = fieldValue
+}
+
+var bgp_frr_json_cache_reqd_map = map[string]bool {
+    "/openconfig-network-instance:network-instances": true,
+    "/openconfig-network-instance:network-instances/network-instance": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor": true,
+}
+
+func bgp_hdl_pre_xfmr (inParams *XfmrParams) {
+    if (inParams.oper != GET) {return}
+
+    _ , bgpFrrJsonCachePresent := inParams.txCache.Load(bgpFrrJsonCache_t)
+    if !bgpFrrJsonCachePresent && inParams.dbDataMap != nil {
+        reqUriPathInfo := NewPathInfo(inParams.requestUri)
+        _niName := reqUriPathInfo.Var("name")
+        _nbrAddr := reqUriPathInfo.Var("neighbor-address")
+        reqUriXpath,_,_ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        if caching_reqd, found := bgp_frr_json_cache_reqd_map[reqUriXpath]; found && caching_reqd {
+            if _nbrAddr == "" { /* Ignoring get specific nbr case */
+                utl_bgp_fetch_and_cache_frr_json (inParams, _niName)
+            }
+        }
+    }
 }
 
 func hdl_post_xfmr_bgp_nbr_del(inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {

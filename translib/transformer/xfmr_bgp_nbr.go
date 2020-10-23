@@ -159,16 +159,6 @@ func fill_bgp_nbr_details_from_frr_info (inParams XfmrParams, vrf string, nbrAdd
     util_fill_bgp_nbr_info_for_evpn_from_frr_info (inParams, vrf, nbrAddr)
 }
 
-var bgp_frr_json_cache_reqd_map = map[string]bool {
-    "/openconfig-network-instance:network-instances": true,
-    "/openconfig-network-instance:network-instances/network-instance": true,
-    "/openconfig-network-instance:network-instances/network-instance/protocols": true,
-    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol": true,
-    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp": true,
-    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors": true,
-    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor": true,
-}
-
 var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList []string
     if log.V(3) {
@@ -210,20 +200,8 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
 
     tblList = append(tblList, "BGP_NEIGHBOR")
     _ , present := inParams.txCache.Load(vrf)
-    _ , bgpFrrJsonCachePresent := inParams.txCache.Load(bgpFrrJsonCache_t)
 
     if inParams.dbDataMap != nil {
-        if !bgpFrrJsonCachePresent {
-            reqUriPathInfo := NewPathInfo(inParams.requestUri)
-            _niName := reqUriPathInfo.Var("name")
-            _nbrAddr := reqUriPathInfo.Var("neighbor-address")
-            reqUriXpath,_,_ := XfmrRemoveXPATHPredicates(inParams.requestUri)
-            if caching_reqd, found := bgp_frr_json_cache_reqd_map[reqUriXpath]; found && caching_reqd {
-                if _nbrAddr == "" { /* Ignoring get specific nbr case */
-                    utl_bgp_fetch_and_cache_frr_json (inParams, _niName)
-                }
-            }
-        }
         if !present {
             inParams.txCache.Store(vrf, vrf)
         } else {
