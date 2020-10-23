@@ -900,10 +900,12 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
 
 var DbToYang_intf_tbl_key_xfmr  KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
 /* Code for DBToYang - Key xfmr. */
-    log.Info("Entering DbToYang_intf_tbl_key_xfmr")
+    if log.V(3) {
+        log.Info("Entering DbToYang_intf_tbl_key_xfmr")
+    }
     res_map := make(map[string]interface{})
 
-    log.Info("Interface Name = ", inParams.key)
+    log.Info("DbToYang_intf_tbl_key_xfmr: Interface Name = ", inParams.key)
     res_map["name"] = inParams.key
     return res_map, nil
 }
@@ -921,7 +923,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         log.Info("TableXfmrFunc - intf_table_xfmr Intf key is not present")
 
         if _, ok := dbIdToTblMap[inParams.curDb]; !ok {
-            log.Info("TableXfmrFunc - intf_table_xfmr db id entry not present")
+            if log.V(3) {
+                log.Info("TableXfmrFunc - intf_table_xfmr db id entry not present")
+            }
             return tblList, errors.New("Key not present")
         } else {
             return dbIdToTblMap[inParams.curDb], nil
@@ -935,7 +939,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 
     intfType, _, ierr := getIntfTypeByName(ifName)
     if intfType == IntfTypeUnset || ierr != nil {
-        log.Info("TableXfmrFunc - Invalid interface type IntfTypeUnset");
         return tblList, errors.New("Invalid interface type IntfTypeUnset");
     }
     intTbl := IntfTypeTblMap[intfType]
@@ -952,6 +955,10 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
  			if intfValObj.Config.Type != ocbinds.IETFInterfaces_InterfaceType_UNSET && intfValObj.Config.Type != ocbinds.IETFInterfaces_InterfaceType_IF_NVE {
  				return tblList, tlerr.InvalidArgs("Invalid Vxlan Interface type %d", intfValObj.Config.Type)
  			}
+                        if strings.HasPrefix(targetUriPath, rvlanUri)  ||
+                           strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation") {
+                            return tblList, tlerr.InvalidArgs("Invalid access to routed-vlan or aggregation - Interface %s", ifName)
+                        }
  		}
  	}
     }
@@ -961,7 +968,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 
 	} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config") {
 		if IntfTypeVxlan == intfType {
-	                log.Info("VXLAN_TUNNEL ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
+                        if log.V(3) {
+	                    log.Info("VXLAN_TUNNEL ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
+                        }
 			tblList = append(tblList, "VXLAN_TUNNEL")
 		} else {
 			tblList = append(tblList, intTbl.cfgDb.portTN)
@@ -973,10 +982,14 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 			// allowed for create
 			tblList = append(tblList, "VXLAN_TUNNEL")
 		} else if inParams.oper == 3 || inParams.oper == 4 {
-	      log.Info("VXLAN_TUNNEL testing ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
+              if log.V(3) {
+	          log.Info("VXLAN_TUNNEL testing ==> intfPathTmp ==> inParams.requestUri ==> ", inParams.requestUri)
+              }
 	      intfPathTmp, errIntf := getIntfUriPath(inParams.requestUri)
 	      if errIntf == nil && intfPathTmp != nil {
-	        log.Info("VXLAN_TUNNEL testing ==> intfPathTmp target string", intfPathTmp.Target)
+                if log.V(3) {
+	            log.Info("VXLAN_TUNNEL testing ==> intfPathTmp target string", intfPathTmp.Target)
+                }
 	        intfPathElem := intfPathTmp.Elem
 	        if len(intfPathElem) > 0 {
 	          targetIdx :=  len(intfPathElem)-1
@@ -985,7 +998,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
                       intfPathElem[targetIdx].Name == "config" || intfPathElem[targetIdx].Name == "source-vtep-ip" ||
                       intfPathElem[targetIdx].Name == "qos-mode" ||
                       intfPathElem[targetIdx].Name == "dscp" {
-	                log.Info("VXLAN_TUNNEL testing ==> TARGET FOUND ==>", intfPathElem[targetIdx].Name)
+                        if log.V(3) {
+	                    log.Info("VXLAN_TUNNEL testing ==> TARGET FOUND ==>", intfPathElem[targetIdx].Name)
+                        }
 	                _, errTmp := inParams.d.GetEntry(&db.TableSpec{Name:"VXLAN_TUNNEL"}, db.Key{Comp: []string{ifName}})
 	                if errTmp == nil {
 	                    tblList = append(tblList, "VXLAN_TUNNEL")
@@ -993,11 +1008,15 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	                    return tblList, tlerr.New("PUT / PATCH method not allowed to replace the existing Vxlan Interface %s", ifName)
 	                }
 	          } else {
-	            log.Info("VXLAN_TUNNEL testing ==> target not found - target node", intfPathElem[targetIdx].Name)
+                    if log.V(3) {
+	                log.Info("VXLAN_TUNNEL testing ==> target not found - target node", intfPathElem[targetIdx].Name)
+                    }
 	          }
 	        }
 	      } else {
-	        log.Info("VXLAN_TUNNEL testing ==> TARGET err ==>", errIntf)
+                if log.V(3) {
+	            log.Info("VXLAN_TUNNEL testing ==> TARGET err ==>", errIntf)
+                }
 	      }
 		}
     } else if intfType != IntfTypeEthernet &&
@@ -1011,6 +1030,10 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     } else if intfType != IntfTypeVlan &&
         strings.HasPrefix(targetUriPath, "openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan") {
         //Checking interface type at container level, if not Vlan type return nil
+        return nil, nil
+    } else if  intfType != IntfTypeVxlan && 
+        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vxlan:vxlan-if") {
+        //Checking interface type at container level, if not Vxlan type return nil
         return nil, nil
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, "NONE")
@@ -1029,7 +1052,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         strings.HasPrefix(targetUriPath, subIfUri + "openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2/if-addresses/md-authentications") ||
         strings.HasPrefix(targetUriPath, rvlanUri + "openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2/if-addresses/md-authentications") {
         tblList = append(tblList, "NONE")
-        log.Info("intf_table_xfmr - ospf md auth uri return table ", tblList)
+        if log.V(3) {
+            log.Info("intf_table_xfmr - ospf md auth uri return table ", tblList)
+        }
     } else if strings.HasPrefix(targetUriPath, subIfUri + "ipv4/ospfv2") ||
         strings.HasPrefix(targetUriPath, rvlanUri + "ipv4/ospfv2") ||
         strings.HasPrefix(targetUriPath, subIfUri + "ipv4/ospfv2/if-addresses/config") ||
@@ -1037,7 +1062,9 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         strings.HasPrefix(targetUriPath, subIfUri + "openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2") ||
         strings.HasPrefix(targetUriPath, rvlanUri + "openconfig-if-ip:ipv4/openconfig-ospfv2-ext:ospfv2") {
         tblList = append(tblList, "NONE")
-        log.Info("intf_table_xfmr - ospf uri return table ", tblList)
+        if log.V(3) {
+            log.Info("intf_table_xfmr - ospf uri return table ", tblList)
+        }
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/config") ||
@@ -1134,12 +1161,11 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
 }
 
 var DbToYang_intf_name_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_intf_name_xfmr")
     res_map := make(map[string]interface{})
 
     pathInfo := NewPathInfo(inParams.uri)
     ifName:= pathInfo.Var("name")
-    log.Info("Interface Name = ", ifName)
+    log.Info("DbToYang_intf_name_xfmr: Interface Name = ", ifName)
     res_map["name"] = ifName
     return res_map, nil
 }
@@ -1665,7 +1691,7 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]strin
         return tblList, errors.New("Invalid interface type IntfTypeUnset");
     }
 
-    if IntfTypeVlan == intfType {
+    if IntfTypeVlan == intfType || IntfTypeVxlan == intfType {
 	    return tblList, nil
     }
 
@@ -1676,15 +1702,18 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]strin
             (*inParams.dbDataMap)[db.ConfigDB]["SUBINTF_TBL"]["0"].Field["NULL"] = "NULL"
             tblList = append(tblList, "SUBINTF_TBL")
         }
-
-        log.Info("intf_subintfs_table_xfmr - Subinterface get operation ")
+        if log.V(3) {
+            log.Info("intf_subintfs_table_xfmr - Subinterface get operation ")
+        }
     }
 
     return tblList, nil
 }
 
 var Subscribe_intf_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-    log.Info("Entering Subscribe_intf_ip_addr_xfmr")
+    if log.V(3) {
+        log.Info("Entering Subscribe_intf_ip_addr_xfmr")
+    }
     var err error
     var result XfmrSubscOutParams
     result.dbDataMap = make(RedisDbMap)
@@ -1712,7 +1741,9 @@ var Subscribe_intf_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOu
 }
 
 var Subscribe_routed_vlan_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-    log.Info("Entering Subscribe_routed_vlan_ip_addr_xfmr")
+    if log.V(3) {
+        log.Info("Entering Subscribe_routed_vlan_ip_addr_xfmr")
+    }
     var err error
     var result XfmrSubscOutParams
     pathInfo := NewPathInfo(inParams.uri)
@@ -1772,7 +1803,9 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 
 var DbToYang_intf_subintfs_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
 
-    log.Info("Entering DbToYang_intf_subintfs_xfmr")
+    if log.V(3) {
+        log.Info("Entering DbToYang_intf_subintfs_xfmr")
+    }
 
     rmap := make(map[string]interface{})
     var err error
@@ -1783,7 +1816,9 @@ var DbToYang_intf_subintfs_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map
 }
 
 var YangToDb_subintf_ip_addr_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    log.Info("Entering YangToDb_subintf_ip_addr_key_xfmr")
+    if log.V(3) {
+        log.Info("Entering YangToDb_subintf_ip_addr_key_xfmr")
+    }
     var err error
     var inst_key string
     pathInfo := NewPathInfo(inParams.uri)
@@ -1793,7 +1828,9 @@ var YangToDb_subintf_ip_addr_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
 }
 
 var DbToYang_subintf_ip_addr_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_subintf_ip_addr_key_xfmr")
+    if log.V(3) {
+        log.Info("Entering DbToYang_subintf_ip_addr_key_xfmr")
+    }
     rmap := make(map[string]interface{})
     return rmap, nil
 }
@@ -3987,7 +4024,9 @@ var populatePortCounters PopulateIntfCounters = func (inParams XfmrParams, count
 
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
 
-    log.Info("PopulateIntfCounters : inParams.curDb : ", inParams.curDb, "D: ", inParams.d, "DB index : ", inParams.dbs[inParams.curDb])
+    if log.V(3) {
+        log.Info("PopulateIntfCounters : inParams.curDb : ", inParams.curDb, "D: ", inParams.d, "DB index : ", inParams.dbs[inParams.curDb])
+    }
     oid, oiderr := getIntfCountersTblKey(inParams.dbs[inParams.curDb], ifName)
     if oiderr != nil {
         log.Info(oiderr)
@@ -4253,7 +4292,9 @@ var DbToYang_intf_get_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     ifName := uriIfName
 
     sonicIfName := utils.GetNativeNameFromUIName(&ifName)
-    log.Infof("DbToYang_intf_get_counters_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    if log.V(3) {
+        log.Infof("DbToYang_intf_get_counters_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
+    }
     ifName = *sonicIfName
 
     targetUriPath, err := getYangPathFromUri(inParams.uri)
@@ -4296,7 +4337,9 @@ var DbToYang_intf_get_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
 
     err = intTbl.CountersHdl.PopulateCounters(inParams, state_counters)
-    log.Info("DbToYang_intf_get_counters_xfmr - ", state_counters)
+    if log.V(3) {
+        log.Info("DbToYang_intf_get_counters_xfmr - ", state_counters)
+    }
 
     return err
 }
@@ -4809,24 +4852,30 @@ var DbToYang_intf_eth_port_config_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
 
 // YangToDb_subintf_ipv6_tbl_key_xfmr is a YangToDB Key transformer for IPv6 config.
 var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    log.Info("Entering YangToDb_subintf_ipv6_tbl_key_xfmr")
+    if log.V(3) {
+        log.Info("Entering YangToDb_subintf_ipv6_tbl_key_xfmr")
+    }
 
     var err error
     var inst_key string
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("name")
 
-    log.Info("Intf name: ", ifName)
     requestUriPath, err := getYangPathFromUri(inParams.requestUri)
-    log.Info("inParams.requestUri: ", requestUriPath)
-    log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr")
+    if log.V(3) {
+        log.Info("inParams.requestUri: ", requestUriPath)
+    }
+
     inst_key = ifName
+    log.Info("YangToDb_subintf_ipv6_tbl_key_xfmr inst_key : ", inst_key)
     return inst_key, err
 }
 
 // DbToYang_subintf_ipv6_tbl_key_xfmr is a DbToYang key transformer for IPv6 config.
 var DbToYang_subintf_ipv6_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("Entering DbToYang_subintf_ipv6_tbl_key_xfmr")
+    if log.V(3) {
+        log.Info("Entering DbToYang_subintf_ipv6_tbl_key_xfmr")
+    }
 
     rmap := make(map[string]interface{})
     return rmap, nil

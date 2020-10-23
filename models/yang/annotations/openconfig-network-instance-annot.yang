@@ -386,28 +386,7 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes {
       deviate add {
-          sonic-ext:table-name "STATIC_ROUTE";
-          sonic-ext:key-transformer "static_routes_key_xfmr";
-          sonic-ext:get-validate "static_routes_validate_proto";
-      }
-    }
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static {
-      deviate add {
-          sonic-ext:key-transformer "static_routes_key_xfmr";
-      }
-    }
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:config/oc-netinst:prefix {
-      deviate add {
-          sonic-ext:field-transformer "static_routes_prefix_xfmr";
-      }
-    }
-
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop {
-      deviate add {
-          sonic-ext:key-transformer "static_routes_key_xfmr";
-          sonic-ext:subtree-transformer "static_routes_nexthop_xfmr";
+          sonic-ext:subtree-transformer "static_routes_subtree_xfmr";
       }
     }
 
@@ -997,6 +976,7 @@ module openconfig-network-instance-annot {
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections {
       deviate add {
         sonic-ext:table-name "NONE";
+        sonic-ext:get-validate "table_conns_validate_ni";  
       }
     }
 
