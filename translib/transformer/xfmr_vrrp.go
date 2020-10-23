@@ -41,6 +41,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_vlan_vrrp_xfmr", DbToYang_intf_vlan_vrrp_xfmr)
     XlateFuncBind("rpc_show_vrrp", rpc_show_vrrp)
   	XlateFuncBind("rpc_show_vrrp6", rpc_show_vrrp6)
+    XlateFuncBind("vrrp_alias_xfmr", vrrp_alias_xfmr)
 }
 
 type VrrpSummaryEntry struct {
@@ -2276,3 +2277,24 @@ var Subscribe_intf_vlan_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     result.nOpts.pType = OnChange
     return result, err
 }
+
+func vrrp_alias_xfmr(inParams XfmrDbParams) (string, error) {
+    if len(inParams.value) == 0 || !utils.IsAliasModeEnabled() {
+        return inParams.value, nil
+    }
+
+    ifNameList := strings.Split(inParams.value, ",")
+    log.Infof("vrrp_alias_xfmr:- Operation Type - %d Interface list - %s", inParams.oper, ifNameList)
+    var aliasList []string
+    for _, ifName := range ifNameList {
+        var convertedName *string
+        if inParams.oper == GET {
+            convertedName = utils.GetUINameFromNativeName(&ifName)
+        } else {
+            convertedName = utils.GetNativeNameFromUIName(&ifName)
+        }
+        aliasList = append(aliasList, *convertedName)
+    }
+    return strings.Join(aliasList, ","), nil
+}
+

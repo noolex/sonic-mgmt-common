@@ -2,6 +2,7 @@ package transformer
 
 import (
     "strings"
+    "strconv"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
@@ -29,16 +30,19 @@ func getSchedulerIds(sp_name string) ([]string, error) {
     defer d.DeleteDB()
 
     ts := &db.TableSpec{Name: "SCHEDULER"}
-    keys, err := d.GetKeys(ts)
+    keyStrPattern := sp_name + "*"
+    keys, err := d.GetKeysByPattern(ts, keyStrPattern)
     for  _, key := range keys {
         if len(key.Comp) < 1 {
             continue
         }
 
         key0 := key.Get(0)
-        log.Info("Key0 : ", key0)
+        if log.V(3) {
+            log.Info("Key0 : ", key0)
 
-        log.Info("Current key comp[0]: ", key.Comp[0])
+            log.Info("Current key comp[0]: ", key.Comp[0])
+        }
         var spname string;
         var spseq string;
 
@@ -50,9 +54,13 @@ func getSchedulerIds(sp_name string) ([]string, error) {
             spname = key.Comp[0]
             spseq = "0"
         }
-        log.Infof("sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+        if log.V(3) {
+            log.Infof("sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+        }
         if strings.Compare(sp_name, spname) == 0 {
-            log.Infof("Add sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+            if log.V(3) {
+                log.Infof("Add sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+            }
             sched_ids = append(sched_ids, spseq)
         }
     }
@@ -75,16 +83,19 @@ func getAndValidateSchedulerIds(if_name string, sp_name string) ([]string, error
     defer d.DeleteDB()
 
     ts := &db.TableSpec{Name: "SCHEDULER"}
-    keys, err := d.GetKeys(ts)
+    keyStrPattern := sp_name + "*"
+    keys, err := d.GetKeysByPattern(ts, keyStrPattern)
     for  _, key := range keys {
         if len(key.Comp) < 1 {
             continue
         }
 
         key0 := key.Get(0)
-        log.Info("Key0 : ", key0)
+        if log.V(3) {
+            log.Info("Key0 : ", key0)
 
-        log.Info("Current key comp[0]: ", key.Comp[0])
+            log.Info("Current key comp[0]: ", key.Comp[0])
+        }
         var spname string;
         var spseq string;
 
@@ -96,18 +107,20 @@ func getAndValidateSchedulerIds(if_name string, sp_name string) ([]string, error
             spname = key.Comp[0]
             spseq = "0"
         }
-        log.Infof("sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+        if log.V(3) {
+            log.Infof("sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+        }
         if strings.Compare(sp_name, spname) == 0 {
             entry, err := d.GetEntry(&db.TableSpec{Name: "SCHEDULER"}, key)
             if err == nil {
-                if entry.Has("meter-type") {
-                    meter_type := entry.Get("meter-type")
-                    if if_name == "CPU" && meter_type == "BYTES" {
+                if entry.Has("meter_type") {
+                    meter_type := entry.Get("meter_type")
+                    if if_name == "CPU" && meter_type == "bytes" {
                         errStr := "Invalid scheduler policy meter type for CPU"
                         err = tlerr.InternalError{Format: errStr}
                         return sched_ids, err
                     }
-                    if if_name != "CPU" && meter_type == "PACKETS" {
+                    if if_name != "CPU" && meter_type == "packets" {
                         errStr := "Invalid scheduler policy meter type for " + if_name
                         err = tlerr.InternalError{Format: errStr}
                         return sched_ids, err
@@ -118,7 +131,9 @@ func getAndValidateSchedulerIds(if_name string, sp_name string) ([]string, error
                     return sched_ids, err
                 }
             }
-            log.Infof("Add sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+            if log.V(3) {
+                log.Infof("Add sp_name %v spname %v spseq %v", sp_name, spname, spseq)
+            }
             sched_ids = append(sched_ids, spseq)
         }
     }
@@ -131,7 +146,7 @@ func qos_intf_prev_sched_policy_delete(inParams XfmrParams, if_name string) (map
     var err error
     res_map := make(map[string]map[string]db.Value)
 
-    log.Info("os_intf_sched_policy_delete: ", inParams.ygRoot, inParams.uri)
+    log.Info("qos_intf_prev_sched_policy_delete: ", inParams.ygRoot, inParams.uri)
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     
     queueTblMap := make(map[string]db.Value)
@@ -148,17 +163,20 @@ func qos_intf_prev_sched_policy_delete(inParams XfmrParams, if_name string) (map
     tbl_list := []string{"QUEUE", "PORT_QOS_MAP"}
     var port_sched bool
     var queue_sched bool
+    var keyPattern string
 
     for _, tbl_name := range tbl_list {
         dbSpec := &db.TableSpec{Name: tbl_name}
 
         if tbl_name == "PORT_QOS_MAP" {
             pTbl = &portQosTblMap
+            keyPattern = if_name
         } else {
             pTbl = &queueTblMap
+            keyPattern = if_name + "|*"
         }
 
-        keys, _ := d.GetKeys(dbSpec)
+        keys, _ := d.GetKeysByPattern(dbSpec, keyPattern)
         for  _, key := range keys {
             if len(key.Comp) < 1 {
                 continue
@@ -168,7 +186,9 @@ func qos_intf_prev_sched_policy_delete(inParams XfmrParams, if_name string) (map
 
             if strings.Compare(if_name, s[0]) == 0 {
                 qCfg, _ := d.GetEntry(dbSpec, key) 
-                log.Info("current entry: ", qCfg)
+                if log.V(3) {
+                    log.Info("current entry: ", qCfg)
+                }
                 _, ok := qCfg.Field["scheduler"] 
                 if ok {
                     // find a entry with a scheduler config, to be deleted
@@ -179,7 +199,9 @@ func qos_intf_prev_sched_policy_delete(inParams XfmrParams, if_name string) (map
                     } else {
                         port_sched = true
                     }
-                    log.Info("new key in rtTbl: ", new_key)
+                    if log.V(3) {
+                        log.Info("new key in rtTbl: ", new_key)
+                    }
                     _, ok := (*pTbl)[new_key]
                     if !ok {
                         (*pTbl)[new_key] = db.Value{Field: make(map[string]string)}
@@ -269,7 +291,7 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 
     sp_name_str := *sp_name
 
-    log.Info("YangToDb: sp_name: ", *sp_name)
+    log.Info("YangToDb_qos_intf_sched_policy_xfmr: sp_name: ", *sp_name)
 
 	// CPU scheduler policy name is fixed
 	if if_name == "CPU" && sp_name_str != "copp-scheduler-policy" {
@@ -286,7 +308,12 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 
     queueTblMap := make(map[string]db.Value)
     portQosTblMap := make(map[string]db.Value)
-    log.Info("YangToDb_qos_intf_sched_policy_xfmr: ", inParams.ygRoot, inParams.uri)
+
+    if !check_port_speed_and_scheduler(inParams, sp_name_str, if_name) {
+        err = tlerr.InternalError{Format:"PIR/CIR must be less than or equal to port speed"}
+        log.Info("PIR/CIR must be less than or equal to port speed")
+        return res_map, err
+    }
 
     // read scheduler policy and its schedulers (seq).
     scheduler_ids, err := getAndValidateSchedulerIds(if_name, sp_name_str)
@@ -330,7 +357,7 @@ var YangToDb_qos_intf_sched_policy_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 
     log.Info("res_map: ", res_map)
 
-    log.Info("YangToDb_qos_intf_sched_policy_xfmr: End ", inParams.ygRoot, inParams.uri)
+    log.Info("YangToDb_qos_intf_sched_policy_xfmr: End ")
     return res_map, err
 
 }
@@ -346,11 +373,16 @@ func doGetIntfSchedulerPolicy(d *db.DB, if_name string) (string) {
     }
 
     // QUEUE or PORT_QOS_MAP
+    var keyPattern string
     tbl_list := []string{"QUEUE", "PORT_QOS_MAP"}
     for _, tbl_name := range tbl_list {
         dbSpec := &db.TableSpec{Name: tbl_name}
-
-        keys, _ := d.GetKeys(dbSpec)
+        if tbl_name == "PORT_QOS_MAP" {
+            keyPattern = if_name
+        } else {
+            keyPattern = if_name + "|*"
+        }
+        keys, _ := d.GetKeysByPattern(dbSpec, keyPattern)
         for  _, key := range keys {
             if len(key.Comp) < 1 {
                 continue
@@ -360,13 +392,19 @@ func doGetIntfSchedulerPolicy(d *db.DB, if_name string) (string) {
 
             if strings.Compare(if_name, s[0]) == 0 {
                 qCfg, _ := d.GetEntry(dbSpec, key) 
-                log.Info("current entry: ", qCfg)
+                if log.V(3) {
+                    log.Info("current entry: ", qCfg)
+                }
                 sched, ok := qCfg.Field["scheduler"] 
-                log.Info("sched: ", sched)
                 if ok {
+                    if log.V(3) {
+                        log.Info("sched: ", sched)
+                    }
                     sched = DbLeafrefToString(sched, "SCHEDULER")
                     sp := strings.Split(sched, "@")
-                    log.Info("sp[0]: ", sp[0]);
+                    if log.V(3) {
+                        log.Info("sp[0]: ", sp[0]);
+                    }
                     return sp[0]
                 }
             }
@@ -381,7 +419,7 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
     var err error
     res_map := make(map[string]map[string]db.Value)
 
-    log.Info("os_intf_sched_policy_delete: ", inParams.ygRoot, inParams.uri)
+    log.Info("qos_intf_sched_policy_delete: ", inParams.ygRoot, inParams.uri)
 
     queueTblMap := make(map[string]db.Value)
     portQosTblMap := make(map[string]db.Value)
@@ -393,22 +431,31 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
         return res_map, err
     }
 
+    if !strings.HasPrefix(if_name, "Eth") {
+        log.Infof("Not allowd to delete copp-scheduler-policy on CPU port")
+        return res_map, err
+    }
+
     // QUEUE or PORT_QOS_MAP
     tbl_list := []string{"QUEUE", "PORT_QOS_MAP"}
     var port_sched bool
     var queue_sched bool
-
+    var keyPattern string
     for _, tbl_name := range tbl_list {
         dbSpec := &db.TableSpec{Name: tbl_name}
 
         if tbl_name == "PORT_QOS_MAP" {
             pTbl = &portQosTblMap
+            keyPattern = if_name
         } else {
             pTbl = &queueTblMap
+            keyPattern = if_name + "|*"
         }
 
-        keys, _ := d.GetKeys(dbSpec)
-        log.Info("keys: ", keys)
+        keys, _ := d.GetKeysByPattern(dbSpec, keyPattern)
+        if log.V(3) {
+            log.Info("keys: ", keys)
+        }
         for  _, key := range keys {
             if len(key.Comp) < 1 {
                 continue
@@ -417,8 +464,10 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
             s := strings.Split(key.Comp[0], "|")
 
             if strings.Compare(if_name, s[0]) == 0 {
-                qCfg, _ := d.GetEntry(dbSpec, key) 
-                log.Info("current entry: ", qCfg)
+                qCfg, _ := d.GetEntry(dbSpec, key)
+                if log.V(3) {
+                    log.Info("current entry: ", qCfg)
+                }
                 _, ok := qCfg.Field["scheduler"] 
                 if ok {
                     // find a entry with a scheduler config, to be deleted
@@ -429,7 +478,9 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
                     } else {
                         port_sched = true
                     }
-                    log.Info("new key in rtTbl: ", new_key)
+                    if log.V(3) {
+                        log.Info("new key in rtTbl: ", new_key)
+                    }
                     _, ok := (*pTbl)[new_key]
                     if !ok {
                         (*pTbl)[new_key] = db.Value{Field: make(map[string]string)}
@@ -447,9 +498,7 @@ func qos_intf_sched_policy_delete(inParams XfmrParams, if_name string) (map[stri
         res_map["PORT_QOS_MAP"] = portQosTblMap
     }
 
-    log.Info("res_map: ", res_map)
-
-    log.Info("os_intf_sched_policy_delete: End ", inParams.ygRoot, inParams.uri)
+    log.Info("qos_intf_sched_policy_delete: End res_map ", res_map)
     return res_map, err
 
 }
@@ -523,3 +572,59 @@ var DbToYang_qos_intf_sched_policy_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 }
 
 
+/* Given a scheduler name, (no sequence), check its MAX cir or pir against the port speed */
+func check_port_speed_and_scheduler(inParams XfmrParams, sp_name string, intf string) bool{
+    /* CPU port not there in PORT table, Copp scheduler can not be removed */
+    if intf == "CPU" {
+       return true 
+    }
+    dbSpec := &db.TableSpec{Name: "PORT"}
+    portCfg, _ := inParams.d.GetEntry(dbSpec, db.Key{Comp: []string{intf}})
+    speed, ok := portCfg.Field["speed"]
+    if !ok {
+       return false 
+    }
+    speed_Mbps, _ := strconv.ParseUint(speed, 10, 32)
+    speed_Bps := speed_Mbps * 1000 * 1000/8
+
+    // Scheduler
+    dbSpec = &db.TableSpec{Name: "SCHEDULER"}
+
+    keyPattern := sp_name + "*"
+    keys, _ := inParams.d.GetKeysByPattern(dbSpec, keyPattern)
+    for  _, key := range keys {
+        if len(key.Comp) < 1 {
+            continue
+        }
+        var spname string;
+
+        if strings.Contains(key.Comp[0], "@") {
+            s := strings.Split(key.Comp[0], "@")
+            spname = s[0]
+        } else {
+            spname = key.Comp[0]
+        }
+
+        if strings.Compare(sp_name, spname) != 0 {
+            continue
+        }
+
+        schedCfg, _ := inParams.d.GetEntry(dbSpec, key)
+        if val, exist := schedCfg.Field["pir"]; exist {
+            pir,_ := strconv.ParseUint(val, 10, 64)
+            log.Info("pir :", pir,  " speed_Bps: ", speed_Bps)
+            if pir > speed_Bps{
+                return false
+            }
+        }
+
+        if val, exist := schedCfg.Field["cir"]; exist {
+            cir,_ := strconv.ParseUint(val, 10, 64)
+            if cir > speed_Bps{
+                return false
+            }
+        }
+    }
+
+    return true
+}

@@ -30,6 +30,25 @@ module openconfig-acl-ext {
     }
 
     // augment statements
+    identity TRANSIT {
+        base oc-acl:FORWARDING_ACTION;
+        description
+            "Allow the packet to be forwarded. Do not allow the packets to be trapped to CPU.";
+    }
+
+    identity DISCARD {
+        base oc-acl:FORWARDING_ACTION;
+        description
+            "Drop packet without sending any ICMP error message. Do not allow the packets to be trapped to CPU.";
+    }
+
+    identity DO_NOT_NAT {
+       base oc-acl:FORWARDING_ACTION;
+       description
+         "Do not do NAT on the incoming packet";
+    }
+
+
     grouping acl-ext-ethernet-header-config {
         description
             "Grouping for Layer 2 header extension fields";
@@ -135,12 +154,6 @@ module openconfig-acl-ext {
             "The IP protocol number may be expressed as a valid protocol
             number (integer) or using a protocol type defined by the
             IP_PROTOCOL identity";
-    }
-
-    identity DO_NOT_NAT {
-       base oc-acl:FORWARDING_ACTION;
-       description
-         "Do not do NAT on the incoming packet";
     }
 
     deviation /oc-acl:acl/oc-acl:acl-sets/oc-acl:acl-set/oc-acl:acl-entries/oc-acl:acl-entry/oc-acl:ipv4/oc-acl:config/oc-acl:protocol {
@@ -457,7 +470,6 @@ module openconfig-acl-ext {
             type identityref {
                 base oc-acl:ACL_TYPE;
             }   
-            must '(current() = "ACL_IPV4") or (current() = "ACL_IPV6")';
             description
                 "Reference to the ACL set type applied on ingress";
         }

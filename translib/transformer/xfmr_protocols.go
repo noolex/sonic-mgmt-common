@@ -16,7 +16,7 @@ func init () {
 var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList []string
 
-    log.Info("network_instance_protocols_protocol_table_name_xfmr")
+    log.V(3).Info("network_instance_protocols_protocol_table_name_xfmr")
     if (inParams.oper == GET) {
         pathInfo := NewPathInfo(inParams.uri)
         niName := pathInfo.Var("name")
@@ -32,14 +32,6 @@ var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (in
                 (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["PIM|pim"].Field["NULL"] = "NULL"
                 (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["STATIC|static"] = db.Value{Field: make(map[string]string)}
                 (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["STATIC|static"].Field["NULL"] = "NULL"
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"] = db.Value{Field: make(map[string]string)}
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"].Field["NULL"] = "NULL"
-                cfg_tbl_updated = true
-            }
-            if ((strings.HasPrefix(niName, "all"))) {
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"] = db.Value{Field: make(map[string]string)}
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"].Field["NULL"] = "NULL"
                 cfg_tbl_updated = true
             }
             if ((niName == "default") || (strings.HasPrefix(niName, "Vlan"))) {

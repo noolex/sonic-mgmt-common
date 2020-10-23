@@ -18,4 +18,29 @@ module sonic-vrrp-annot {
 	        sonic-ext:rpc-callback "rpc_show_vrrp6";
         }
     }
+
+    deviation /svrrp:sonic-vrrp/svrrp:VRRP6_TRACK/svrrp:VRRP6_TRACK_LIST/svrrp:baseifname {
+        deviate add {
+            sonic-ext:value-transformer "vrrp_alias_xfmr";
+        }
+    }
+    
+    deviation /svrrp:sonic-vrrp/svrrp:VRRP_TRACK/svrrp:VRRP_TRACK_LIST/svrrp:baseifname {
+        deviate add {
+            sonic-ext:value-transformer "vrrp_alias_xfmr";
+        }
+    }
+
+    deviation /svrrp:sonic-vrrp/svrrp:VRRP/svrrp:VRRP_LIST/svrrp:ifname {
+        deviate add {
+            sonic-ext:value-transformer "vrrp_alias_xfmr";
+        }
+    }
+
+    deviation /svrrp:sonic-vrrp/svrrp:VRRP6/svrrp:VRRP6_LIST/svrrp:ifname {
+        deviate add {
+            sonic-ext:value-transformer "vrrp_alias_xfmr";
+        }
+    }
+
 }

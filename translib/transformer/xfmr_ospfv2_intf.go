@@ -230,7 +230,7 @@ func ospfFillIntfOspfObject(inParams *XfmrParams, uriIfName string)(*ocbinds.Ope
     if (uriIfName == "") {
         errStr := "Empty uri interface name"
         log.Info("ospfFillIntfOspfObject:", errStr)
-        return nil, "", tlerr.New(errStr)      
+        return nil, "", tlerr.New(errStr)
     }
 
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
@@ -423,11 +423,10 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
     savedSubOpMap := inParams.subOpDataMap[inParams.oper]
     inParams.subOpDataMap[inParams.oper] = nil
 
-    fieldNameList := []string { "area-id", "authentication-type", "authentication-key", "authentication-key",
-                                "authentication-key-id", "authentication-md5-key", "bfd-enable", "dead-interval",
-                                "hello-interval", "hello-multiplier", "metric", "mtu-ignore", "network-type",
-                                "dead-interval-minimal", "priority", "retransmission-interval", "transmit-delay",
-                                "authentication-key-encrypted" }
+    fieldNameList := []string { "area-id", "authentication-type", "authentication-key", "bfd-enable", 
+                                "dead-interval", "dead-interval-minimal", "hello-interval", "hello-multiplier",
+                                "metric", "mtu-ignore", "network-type", "priority", "retransmission-interval",
+                                "transmit-delay", "authentication-key-encrypted" }
 
     for intfAddrKey, intfAddrObj := range ospfObj.IfAddresses {
 
@@ -576,7 +575,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                      fieldName := "authentication-key"
 
                      dbVlaueStr := *(ospfCfgObj.AuthenticationKey)
-                     strippedStr := ospf_remove_escape_sequence(dbVlaueStr) 
+                     strippedStr := ospf_remove_escape_sequence(dbVlaueStr)
                      log.Infof("YangToDb_ospfv2_interface_subtree_xfmr: rcvd %s stripped %s", dbVlaueStr, strippedStr)
                      dbVlaueStr = strippedStr
                      log.Info("YangToDb_ospfv2_interface_subtree_xfmr: set db Auth key field to ", dbVlaueStr)
@@ -593,9 +592,9 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                          return ospfRespMap, tlerr.New(errStr)
                      }
 
-                     encLen := ospf_get_password_encryption_length()
-                     if (encryptedKey && keyLength < 2*encLen) {
-                         errStr := fmt.Sprintf("Encrypted authentication key shall be min %d charater long", encLen)
+                     encLen := ospf_get_min_encryption_length()
+                     if (encryptedKey && keyLength < encLen) {
+                         errStr := fmt.Sprintf("Encrypted authentication key shall be minimum %d character long", encLen)
                          log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
                          return ospfRespMap, tlerr.New(errStr)
                      }
@@ -618,6 +617,12 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
                  if (ospfCfgObj.BfdEnable != nil) {
                      fieldName := "bfd-enable"
+
+                     if (intfAddrKey != "0.0.0.0") {
+                         errStr := "Interface BFD config allowed only with interface IPv4 address 0.0.0.0"
+                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+                         return ospfRespMap, tlerr.New(errStr)
+                     }
 
                      var dbVlaueBool bool = *(ospfCfgObj.BfdEnable)
                      dbVlaueStr := "false"
@@ -687,6 +692,12 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                      fieldName := "network-type"
                      nw_type := ospfCfgObj.NetworkType
 
+                     if (intfAddrKey != "0.0.0.0") {
+                         errStr := "Interface network type config allowed only with interface IPv4 address 0.0.0.0"
+                         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+                         return ospfRespMap, tlerr.New(errStr)
+                     }
+
                      dbVlaueStr := "NULL"
                      switch (nw_type) {
                          case ocbinds.OpenconfigOspfTypes_OSPF_NETWORK_TYPE_BROADCAST_NETWORK:
@@ -740,6 +751,15 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
              log.Info("YangToDb_ospfv2_interface_subtree_xfmr: DELETE operation ", inParams.oper)
 
+             if (intfAddrKey != "0.0.0.0") {
+                 if (strings.HasSuffix(rcvdUri, "bfd-enable") ||
+                     strings.HasSuffix(rcvdUri, "network-type")) {
+                     errStr := "Interface network type and BFD unconfig allowed only with interface address 0.0.0.0"
+                     log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
+                     return ospfRespMap, tlerr.New(errStr)
+                 }
+             }
+
              if (ospfCfgObj != nil && !strings.HasSuffix(rcvdUri, "config")) {
                  log.Info("YangToDb_ospfv2_interface_subtree_xfmr: config individual field deletes")
 
@@ -749,6 +769,10 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                      if (strings.HasSuffix(rcvdUri,  fieldName)) {
                          log.Info("YangToDb_ospfv2_interface_subtree_xfmr: delete field ", fieldName)
                          intfUpdateMap[fieldName] = "NULL"
+
+                         if (fieldName == "authentication-key") {
+                             intfUpdateMap["authentication-key-encrypted"] = "NULL"
+                         }
                      }
                  }
 
@@ -809,7 +833,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
     ospfObj, _, err := ospfFillIntfOspfObject(&inParams, uriIfName)
     if (ospfObj == nil || err != nil){
         log.Info("DbToYang_ospfv2_interface_subtree_xfmr: Failed to fill ospf object")
-        return err 
+        return err
     }
 
     var ospfCfgObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_Config
@@ -824,9 +848,9 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
     }
 
     if (fillOneAddress != "") {
-        log.Infof("DbToYang_ospfv2_interface_subtree_xfmr: get one addr %s entry", fillOneAddress)   
+        log.Infof("DbToYang_ospfv2_interface_subtree_xfmr: get one addr %s entry", fillOneAddress)
     } else {
-        log.Infof("DbToYang_ospfv2_interface_subtree_xfmr: get all addr entries")   
+        log.Infof("DbToYang_ospfv2_interface_subtree_xfmr: get all addr entries")
     }
 
     intfTblName := "OSPFV2_INTERFACE"
@@ -845,6 +869,23 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
         return err
     }
 
+    intfAuthTblName := "OSPFV2_INTERFACE_MD_AUTHENTICATION"
+    var ospfIfAuthTblSpec *db.TableSpec = &db.TableSpec{Name: intfAuthTblName}
+    ospfIfAuthTblData, err := configDbPtr.GetTable(ospfIfAuthTblSpec)
+    if err != nil {
+        errStr := "Resource Not Found"
+        log.Error("DbToYang_ospfv2_interface_subtree_xfmr: OSPF Interface MdAuth Table data not found ", errStr)
+        return err
+    }
+
+    intfAuthTblKeys, err := ospfIfAuthTblData.GetKeys()
+    if err != nil {
+        errStr := "Resource Not Found"
+        log.Info("DbToYang_ospfv2_interface_subtree_xfmr: MdAuth get keys failed ", errStr)
+        return err
+    }
+
+
     ifName, err = ospfGetNativeIntfName(uriIfName)
     if (err != nil) {
         errStr := "Invalid OSPF interface name"
@@ -854,10 +895,12 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
 
     log.Info("DbToYang_ospfv2_interface_subtree_xfmr: Native ifName ", ifName)
 
-    fieldNameList := []string { "area-id", "authentication-type", "authentication-key", "authentication-key",
-                                "authentication-key-id", "authentication-md5-key", "bfd-enable", "dead-interval",
-                                "hello-interval", "hello-multiplier", "metric", "mtu-ignore", "network-type",
-                                "dead-interval-minimal", "priority", "retransmission-interval", "transmit-delay" }
+    fieldNameList := []string { "area-id", "authentication-type", "authentication-key", "bfd-enable",
+                                "dead-interval", "dead-interval-minimal", "hello-interval", "hello-multiplier",
+                                "metric", "mtu-ignore", "network-type", "priority", "retransmission-interval",
+                                "transmit-delay" }
+
+    authFieldNameList := []string { "authentication-md5-key" }
 
     var intfAddrObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses
 
@@ -873,16 +916,16 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
             if (keyIfAddress != fillOneAddress) {
                 continue
             }
-        } 
+        }
 
         intfAddrObj = nil
-        if intfAddrObj, found = ospfObj.IfAddresses[keyIfAddress]; !found {           
+        if intfAddrObj, found = ospfObj.IfAddresses[keyIfAddress]; !found {
             intfAddrObj, err2 = ospfObj.NewIfAddresses(keyIfAddress)
             if err2 != nil {
                 log.Error("DbToYang_ospfv2_interface_subtree_xfmr: Create new IfAddresses map elt failed ", keyIfAddress)
                 continue
             }
-            ygot.BuildEmptyTree(intfAddrObj) 
+            ygot.BuildEmptyTree(intfAddrObj)
         }
 
         if (intfAddrObj.Config == nil) {
@@ -921,19 +964,21 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
 
             fieldValue, ok := ospfIfEntry.Field[fieldName]
             if (!ok) {
-                log.Info("DbToYang_ospfv2_interface_subtree_xfmr: entry does not have field ", fieldName)
+                //log.Info("DbToYang_ospfv2_interface_subtree_xfmr: entry does not have field ", fieldName)
                 fieldValue = ""
             }
 
-            log.Info("DbToYang_ospfv2_interface_subtree_xfmr: fieldName ", fieldName)
-            log.Info("DbToYang_ospfv2_interface_subtree_xfmr: fieldValue ", fieldValue)
+            log.Infof("DbToYang_ospfv2_interface_subtree_xfmr: fieldName %s fieldValue %s.", fieldName, fieldValue)
 
             if (fieldName == "bfd-enable") {
                 enabled := false
                 if fieldValue == "true" {
-                   enabled = true
+                    enabled = true
                 }
-                ospfCfgObj.BfdEnable = &enabled
+
+                if fieldValue != "" {
+                    ospfCfgObj.BfdEnable = &enabled
+                }
             }
 
             if (fieldName == "mtu-ignore") {
@@ -941,7 +986,10 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
                 if fieldValue == "true" {
                    enabled = true
                 }
-                ospfCfgObj.MtuIgnore = &enabled
+
+                if fieldValue != "" {
+                    ospfCfgObj.MtuIgnore = &enabled
+                }
             }
 
             if (fieldName == "dead-interval-minimal") {
@@ -949,7 +997,10 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
                 if fieldValue == "true" {
                    enabled = true
                 }
-                ospfCfgObj.DeadIntervalMinimal = &enabled
+
+                if fieldValue != "" {
+                    ospfCfgObj.DeadIntervalMinimal = &enabled
+                }
             }
 
             if len(fieldValue) == 0 {
@@ -1035,6 +1086,74 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
             }
 
         } //readFieldNameList
+
+        for _, intfAuthTblKey := range intfAuthTblKeys {
+            keyIfAuthName := intfAuthTblKey.Get(0)
+            keyIfAuthAddress := intfAuthTblKey.Get(1)
+            keyIfAuthKeyId := intfAuthTblKey.Get(2)
+
+            if (keyIfAuthName != keyIfName || keyIfAuthAddress != keyIfAddress) {
+                continue
+            }
+
+            keyIdInt, err := strconv.Atoi(keyIfAuthKeyId)
+            if (err != nil || keyIdInt < 1 || keyIdInt > 255) {
+                log.Info("DbToYang_ospfv2_interface_subtree_xfmr: Invalid Auth Key Id ", keyIfAuthKeyId)
+                continue
+            }
+            keyIdUint8 := uint8(keyIdInt)
+
+            if (intfAddrObj.MdAuthentications == nil) {
+                var mdAuths ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_MdAuthentications
+                intfAddrObj.MdAuthentications = &mdAuths
+            }
+
+            var intfMdAuthObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_MdAuthentications_MdAuthentication
+
+            if intfMdAuthObj, found = intfAddrObj.MdAuthentications.MdAuthentication[keyIdUint8]; !found {
+                intfMdAuthObj, err2 = intfAddrObj.MdAuthentications.NewMdAuthentication(keyIdUint8)
+                if err2 != nil {
+                    log.Error("DbToYang_ospfv2_interface_subtree_xfmr: Create new IfAddresses map elt failed ", keyIfAuthAddress)
+                    continue
+                }
+                ygot.BuildEmptyTree(intfMdAuthObj)
+            }
+
+            if (intfMdAuthObj.Config == nil) {
+                var cfgObj ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_MdAuthentications_MdAuthentication_Config
+                intfMdAuthObj.Config = &cfgObj
+                ygot.BuildEmptyTree(intfMdAuthObj.Config)
+            }
+
+            intfMdAuthCfgObj := intfMdAuthObj.Config
+
+            ospfIfAuthEntry, err2 := ospfIfAuthTblData.GetEntry(intfAuthTblKey)
+            if (err2 != nil || len(ospfIfAuthEntry.Field) == 0) {
+                log.Info("DbToYang_ospfv2_interface_subtree_xfmr: get entry err for ", intfAuthTblKey)
+                continue
+            }
+
+            log.Info("DbToYang_ospfv2_interface_subtree_xfmr: ospf if md auth key ", intfAuthTblKey)
+            log.Info("DbToYang_ospfv2_interface_subtree_xfmr: ospf if md authEntry ", ospfIfAuthEntry)
+
+            for _, authFieldName := range authFieldNameList {
+
+                authFieldValue, ok := ospfIfAuthEntry.Field[authFieldName]
+                if (!ok) {
+                    //log.Info("DbToYang_ospfv2_interface_subtree_xfmr: mdauth entry does not have field ", authFieldName)
+                    authFieldValue = ""
+                }
+
+                log.Infof("DbToYang_ospfv2_interface_subtree_xfmr: authFieldName %s value %s", authFieldName, authFieldValue)
+
+                if (authFieldName == "authentication-md5-key") {
+                    intfMdAuthCfgObj.AuthenticationMd5Key = &authFieldValue
+                    encrypted := true
+                    intfMdAuthCfgObj.AuthenticationKeyEncrypted = &encrypted
+                }
+
+            } //readAuthFieldNameList
+        } //intfAuthTblKeys
 
         if (fillOneAddress != "") {
             log.Infof("DbToYang_ospfv2_interface_subtree_xfmr: found %s", fillOneAddress)
@@ -1543,7 +1662,7 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
                          fieldName := "authentication-md5-key"
 
                          dbVlaueStr := *(ospfAuthCfgObj.AuthenticationMd5Key)
-                         strippedStr := ospf_remove_escape_sequence(dbVlaueStr) 
+                         strippedStr := ospf_remove_escape_sequence(dbVlaueStr)
                          log.Infof("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: rcvd %s stripped %s", dbVlaueStr, strippedStr)
                          dbVlaueStr = strippedStr
 
@@ -1561,9 +1680,9 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
                              return ospfRespMap, tlerr.New(errStr)
                          }
 
-                         encLen := ospf_get_password_encryption_length()
-                         if (encryptedKey && keyLength < 2*encLen) {
-                             errStr := fmt.Sprintf("Encrypted authentication key shall be min %d charater long", encLen)
+                         encLen := ospf_get_min_encryption_length()
+                         if (encryptedKey && keyLength < encLen) {
+                             errStr := fmt.Sprintf("Encrypted authentication key shall be minimum %d character long", encLen)
                              log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: " + errStr)
                              return ospfRespMap, tlerr.New(errStr)
                          }
@@ -1610,6 +1729,10 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
                          if (strings.HasSuffix(rcvdUri,  fieldName)) {
                              log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: delete field ", fieldName)
                              intfUpdateMap[fieldName] = "NULL"
+
+                             if (fieldName == "authentication-md5-key") {
+                                 intfUpdateMap["authentication-key-encrypted"] = "NULL"
+                             }
                          }
                      }
 
@@ -1683,18 +1806,18 @@ var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(in
         if (intfAddrObjElt.MdAuthentications != nil) {
             for mdKeyId := range intfAddrObjElt.MdAuthentications.MdAuthentication {
                 fillOneKeyId = fmt.Sprintf("%d", mdKeyId)
-                break 
+                break
             }
         }
         break
     }
 
     if (fillOneAddress != "" || fillOneKeyId != "") {
-        log.Infof("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: get addr %s keyid %s.", fillOneAddress, fillOneKeyId)   
+        log.Infof("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: get addr %s keyid %s.", fillOneAddress, fillOneKeyId)
     } else {
-        log.Infof("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: get all addr and keys")   
-    }    
-    
+        log.Infof("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: get all addr and keys")
+    }
+
     intfTblName := "OSPFV2_INTERFACE_MD_AUTHENTICATION"
     var ospfIfTblSpec *db.TableSpec = &db.TableSpec{Name: intfTblName}
     ospfTblData, err := configDbPtr.GetTable(ospfIfTblSpec)
@@ -1743,7 +1866,7 @@ var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(in
                     continue
                 }
             }
-        } 
+        }
 
         keyIdInt, err := strconv.Atoi(keyIfKeyId)
         if (err != nil || keyIdInt < 1 || keyIdInt > 255) {
@@ -1754,21 +1877,21 @@ var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(in
 
         intfAddrObj = nil
         intfMdAuthObj = nil
-        
-        if intfAddrObj, found = ospfObj.IfAddresses[keyIfAddress]; !found {           
+
+        if intfAddrObj, found = ospfObj.IfAddresses[keyIfAddress]; !found {
             intfAddrObj, err2 = ospfObj.NewIfAddresses(keyIfAddress)
             if err2 != nil {
                 log.Error("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: Create new IfAddresses map elt failed ", keyIfAddress)
                 continue
             }
-            ygot.BuildEmptyTree(intfAddrObj) 
+            ygot.BuildEmptyTree(intfAddrObj)
             var mdAuths ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_MdAuthentications
-            intfAddrObj.MdAuthentications = & mdAuths         
+            intfAddrObj.MdAuthentications = & mdAuths
         }
-        
+
         if (intfAddrObj.MdAuthentications == nil) {
             var mdAuths ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_MdAuthentications
-            intfAddrObj.MdAuthentications = &mdAuths   
+            intfAddrObj.MdAuthentications = &mdAuths
         }
 
         if intfMdAuthObj, found = intfAddrObj.MdAuthentications.MdAuthentication[keyIdUint8]; !found {
@@ -1777,17 +1900,17 @@ var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(in
                 log.Error("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: Create new IfAddresses map elt failed ", keyIfAddress)
                 continue
             }
-            ygot.BuildEmptyTree(intfMdAuthObj)              
+            ygot.BuildEmptyTree(intfMdAuthObj)
         }
 
         if (intfMdAuthObj.Config == nil) {
             var cfgObj ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2_IfAddresses_MdAuthentications_MdAuthentication_Config
             intfMdAuthObj.Config = &cfgObj
-            ygot.BuildEmptyTree(intfMdAuthObj.Config) 
+            ygot.BuildEmptyTree(intfMdAuthObj.Config)
         }
 
         intfMdAuthCfgObj := intfMdAuthObj.Config
-        
+
         ospfIfEntry, err2 := ospfTblData.GetEntry(intfTblKey)
         if (err2 != nil || len(ospfIfEntry.Field) == 0) {
             log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: get entry err for ", intfTblKey)
@@ -1801,12 +1924,11 @@ var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(in
 
             fieldValue, ok := ospfIfEntry.Field[fieldName]
             if (!ok) {
-                log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: entry does not have field ", fieldName)
+                //log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: entry does not have field ", fieldName)
                 fieldValue = ""
             }
 
-            log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: fieldName ", fieldName)
-            log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: fieldValue ", fieldValue)
+            log.Infof("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: fieldName %s fieldValue %s.", fieldName, fieldValue)
 
             if (fieldName == "authentication-md5-key") {
                 intfMdAuthCfgObj.AuthenticationMd5Key = &fieldValue
@@ -1842,5 +1964,48 @@ func ospf_delete_all_interface_md_auth_config(inParams *XfmrParams, ifName strin
 
     log.Info("ospf_delete_all_interface_md_auth_config: success for ", ifName)
     return nil
+}
+
+
+func ospf_interface_config_present(inParams *XfmrParams, ifName string) (bool) {
+
+    var err error
+    log.Infof("ospf_interface_config_present: ifName %s", ifName)
+
+    if (ifName == "") {
+        log.Error("ospf_interface_config_present: empty intfName parameter")
+        return false
+    }
+
+    ifName, err = ospfGetNativeIntfName(ifName)
+    if (err != nil) {
+        log.Error("ospf_interface_config_present: get native interface name failed")
+        return false
+    }
+
+    intfTblName := "OSPFV2_INTERFACE"
+    intfTblKey := ifName + "|" + "*"
+
+    ignoreFieldMap := []string { "enable", "authentication-key-encrypted", "dead-interval-minimal" }
+
+    intfEntryPresent, _ := ospf_config_present(inParams, intfTblName, intfTblKey, ignoreFieldMap)
+    if (intfEntryPresent) {
+        log.Info("ospf_interface_config_present: ospf interface config present")
+        return true
+    }
+
+    intfAuthTblName := "OSPFV2_INTERFACE_MD_AUTHENTICATION"
+    intfAuthTblKey := ifName + "|" + "*" + "|" + "*"
+
+    ignoreFieldMap = []string { "enable", "authentication-key-encrypted" }
+
+    intfAuthEntryPresent, _ := ospf_config_present(inParams, intfAuthTblName, intfAuthTblKey, ignoreFieldMap)
+    if (intfAuthEntryPresent) {
+        log.Info("ospf_interface_config_present: ospf interface md auth config present")
+        return true
+    }
+
+    log.Info("ospf_interface_config_present: ospf interface config not present")
+    return false
 }
 

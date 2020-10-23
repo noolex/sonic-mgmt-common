@@ -356,11 +356,13 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		}
 
 	case DELETE:
+		keyXfmrCache = make(map[string]string)
 		xfmrLogInfo("DELETE case")
 		err = dbMapDelete(d, yg, opcode, path, requestUri, jsonData, result, txCache, skipOrdTbl)
 		if err != nil {
 			log.Warning("Data translation from yang to db failed for delete request.")
 		}
+		keyXfmrCache = make(map[string]string)
 	}
 	return result, yangDefValMap, yangAuxValMap, err
 }
@@ -369,7 +371,6 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	var err error
 	var payload []byte
 	xfmrLogInfo("received xpath = " + uri)
-
 	requestUri := uri
 	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
 	var dbresult = make(RedisDbMap)
@@ -480,7 +481,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 			}
 		}
 	} else {
-	        lxpath, _ := XfmrRemoveXPATHPredicates(uri)
+	        lxpath, _, _ := XfmrRemoveXPATHPredicates(uri)
 		xpath = lxpath
 		if _, ok := xYangSpecMap[xpath]; ok {
 			cdb = xYangSpecMap[xpath].dbIndex
@@ -488,7 +489,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	}
 	inParamsForGet = formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, xpath, GET, "", "", &dbData, txCache, nil, false)
 	payload, isEmptyPayload, err := dbDataToYangJsonCreate(inParamsForGet)
-	xfmrLogInfo("Payload generated : " + payload)
+	xfmrLogInfoAll("Payload generated : " + payload)
 
 	if err != nil {
 		log.Warning("Couldn't create json response from DB data.")
@@ -655,7 +656,7 @@ func CallRpcMethod(path string, body []byte, dbs [db.MaxDB]*db.DB) ([]byte, erro
 			err = data[1].Interface().(error)
 		}
 	} else {
-		log.Error("No tsupported RPC", path)
+		log.Warning("Not supported RPC", path)
 		err = tlerr.NotSupported("Not supported RPC")
 	}
 	return ret, err
@@ -709,7 +710,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 
        for {
            done := true
-           xpath, predc_err := XfmrRemoveXPATHPredicates(path)
+           xpath, _, predc_err := XfmrRemoveXPATHPredicates(path)
            if predc_err != nil {
                log.Warningf("cannot convert request Uri to yang xpath - %v, %v", path, predc_err)
                err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
@@ -808,7 +809,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 }
 
 func IsTerminalNode(uri string) (bool, error) {
-	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
 	if xpathData, ok := xYangSpecMap[xpath]; ok {
 		if !xpathData.hasNonTerminalNode {
 			return true, nil
@@ -824,7 +825,7 @@ func IsTerminalNode(uri string) (bool, error) {
 
 func IsLeafNode(uri string) bool {
 	result := false
-	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
 	if err != nil {
 		log.Warningf("For uri - %v, couldn't convert to xpath - %v", uri, err)
 		return result

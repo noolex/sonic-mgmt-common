@@ -277,7 +277,11 @@ func fill_classifier_details(class_name string, classifierTblVal db.Value, class
 func fill_copp_classifier_trap_details(class_name string, coppTrapTblVal db.Value, classEntry *ClassifierEntry) error {
 	classEntry.CLASSIFIER_NAME = class_name
 	classEntry.MATCH_TYPE = new(string)
-	*classEntry.MATCH_TYPE = "copp"
+	if class_name == "default" {
+		*classEntry.MATCH_TYPE = "any"
+	} else {
+		*classEntry.MATCH_TYPE = "copp"
+	}
 	if str_val, found := coppTrapTblVal.Field["trap_ids"]; found {
 		classEntry.TRAP_IDS = &str_val
 	}
@@ -388,6 +392,10 @@ var rpc_show_classifier RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 			}
 			if match_type != "" && match_type != "COPP" {
 				log.Infof("Not matching index:%v class_name:%v match_type:%v ", index, class_name, match_type)
+				continue
+			}
+			if match_type == "COPP" && class_name == "default" {
+				log.Infof("Not matching index:%v class_name:%v match_type:any ", index, class_name)
 				continue
 			}
 
@@ -503,7 +511,8 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 
 	if fill_state {
 		var state FlowStateEntry
-		err := fill_policy_class_state_info(policy_name, class_name, intf_name, stage, policy_type, dbs, &state)
+		err := fill_policy_class_state_info(policy_name, class_name, intf_name, stage, policy_type, dbs, &state,
+			policySectionInfo)
 		if err != nil {
 			return err
 		}
@@ -589,7 +598,7 @@ func get_counter_diff(currentVal db.Value, lastVal db.Value, field string) uint6
 }
 
 func fill_policy_class_state_info(policy_name string, class_name string, interface_name string, bind_dir string,
-	policy_type string, dbs [db.MaxDB]*db.DB, state *FlowStateEntry) error {
+	policy_type string, dbs [db.MaxDB]*db.DB, state *FlowStateEntry, policySectionInfo *PolicyFlowEntry) error {
 
 	countersDbPtr := dbs[db.CountersDB]
 
@@ -641,23 +650,44 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 			policer.STATUS = "Inactive"
 		}
 
-		appDbPtr := dbs[db.ApplDB]
-		var POLICER_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICER_TABLE"}
-		var policerTblVal db.Value
-		policerTblVal, err = appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
-		log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
-		if err == nil {
-			policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
-			policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
-			policer.OPERATIONAL_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
-			policer.OPERATIONAL_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
+		if interface_name != "CtrlPlane" {
+			appDbPtr := dbs[db.ApplDB]
+			var POLICER_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICER_TABLE"}
+			var policerTblVal db.Value
+			policerTblVal, err = appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
+			log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
+			if err == nil {
+				policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
+				policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
+				policer.OPERATIONAL_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
+				policer.OPERATIONAL_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
 
-			policer.UNITS = policerTblVal.Field["METER_TYPE"]
-			policer.COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"]
+				policer.UNITS = policerTblVal.Field["METER_TYPE"]
+				policer.COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"]
 
-			policer.CONFORMED_PACKET_ACTION = policerTblVal.Field["GREEN_PACKET_ACTION"]
-			policer.EXCEED_PACKET_ACTION = policerTblVal.Field["YELLOW_PACKET_ACTION"]
-			policer.VIOLATED_PACKET_ACTION = policerTblVal.Field["RED_PACKET_ACTION"]
+				policer.CONFORMED_PACKET_ACTION = policerTblVal.Field["GREEN_PACKET_ACTION"]
+				policer.EXCEED_PACKET_ACTION = policerTblVal.Field["YELLOW_PACKET_ACTION"]
+				policer.VIOLATED_PACKET_ACTION = policerTblVal.Field["RED_PACKET_ACTION"]
+			}
+		} else {
+			// CtrlPlane binding doesnt have info in AppDB
+			if policySectionInfo.SET_POLICER_CIR != nil {
+				policer.OPERATIONAL_CIR = *policySectionInfo.SET_POLICER_CIR
+			}
+			if policySectionInfo.SET_POLICER_CBS != nil {
+				policer.OPERATIONAL_CBS = *policySectionInfo.SET_POLICER_CBS
+			}
+			if policySectionInfo.SET_POLICER_PIR != nil {
+				policer.OPERATIONAL_PIR = *policySectionInfo.SET_POLICER_PIR
+			}
+			if policySectionInfo.SET_POLICER_PBS != nil {
+				policer.OPERATIONAL_PBS = *policySectionInfo.SET_POLICER_PBS
+			}
+			policer.UNITS = "bytes"
+			policer.COLOR_SOURCE = "color-blind"
+			policer.CONFORMED_PACKET_ACTION = "forward"
+			policer.EXCEED_PACKET_ACTION = "forward"
+			policer.VIOLATED_PACKET_ACTION = "drop"
 		}
 		state.POLICER = &policer
 	}
@@ -753,7 +783,7 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxD
 			if value == policy_name {
 				field_splits := strings.Split(field, "_")
 				policy_bind_dir := field_splits[0]
-				appliedPort.INTERFACE_NAME = policyBindKeys[index].Comp[0]
+				appliedPort.INTERFACE_NAME = *(utils.GetUINameFromNativeName(&policyBindKeys[index].Comp[0]))
 				appliedPort.STAGE = policy_bind_dir
 				policyEntry.APPLIED_INTERFACES = append(policyEntry.APPLIED_INTERFACES, appliedPort)
 				break
@@ -1113,7 +1143,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 				}
 			}
 
-			log.Infof("Interface:%v Policy:%v Type:%v Stage:%v", interface_name, value, field_splits[1], field_splits[0])
+			log.Infof("Interface:%v Policy:%v Type:%v Stage:%v", key.Comp[0], value, field_splits[1], field_splits[0])
 
 			var POLICY_SECTION_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
 			referingClassKeys, err := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{value, "*"}})

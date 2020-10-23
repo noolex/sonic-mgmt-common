@@ -408,5 +408,11 @@ module openconfig-tam-annot {
         sonic-ext:field-name "Packets";
       }
     }
+    
+    deviation /oc-tam:clear-flowgroup-counters {
+      deviate add {
+        sonic-ext:rpc-callback "rpc_clear_flowgroup_counters_cb";
+      }
+    }
 }
 

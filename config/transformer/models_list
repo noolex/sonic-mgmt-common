@@ -8,11 +8,13 @@ openconfig-platform-fan.yang
 openconfig-platform-fan-ext.yang
 openconfig-platform-transceiver.yang
 openconfig-interfaces.yang
+openconfig-interfaces-ext.yang
 openconfig-if-ip.yang
 openconfig-if-ethernet.yang
 openconfig-if-ethernet-ext.yang
 openconfig-if-ethernet-ext2.yang
 openconfig-interfaces-annot.yang
+openconfig-interfaces-ext-annot.yang
 openconfig-ztp.yang
 openconfig-ztp-annot.yang
 openconfig-network-instance.yang
@@ -120,6 +122,9 @@ openconfig-ip-helper-annot.yang
 sonic-ip-helper.yang
 sonic-ip-helper-annot.yang
 openconfig-switch-resource.yang
+openconfig-image-management.yang
+openconfig-image-management-annot.yang
+openconfig-qos-ext-annot.yang
 openconfig-tam-collectors.yang
 openconfig-tam-dropmonitor.yang
 openconfig-tam-features.yang
@@ -135,3 +140,7 @@ openconfig-neighbor.yang
 openconfig-neighbor-annot.yang
 openconfig-image-management.yang
 openconfig-image-management-annot.yang
+sonic-system-radius-clear.yang
+sonic-system-radius-clear-annot.yang
+sonic-bgp-neighbor.yang
+sonic-bgp-neighbor-annot.yang

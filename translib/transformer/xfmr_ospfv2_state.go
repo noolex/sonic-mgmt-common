@@ -71,13 +71,13 @@ func ospfv2_fill_only_global_state (output_state map[string]interface{},
 
     ospfv2Gbl_obj = ospfv2_obj.Global
     if ospfv2Gbl_obj == nil {
-        log.Errorf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
+        log.Warningf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
         return  oper_err
     }
 
     ospfv2GblState_obj = ospfv2Gbl_obj.State
     if ospfv2GblState_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2-Global-State container missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2-Global-State container missing", cmn_log)
         return oper_err
     }
 
@@ -183,7 +183,7 @@ func ospfv2_fill_global_timers_spf_state (output_state map[string]interface{},
 
     ospfv2Gbl_obj = ospfv2_obj.Global
     if ospfv2Gbl_obj == nil {
-        log.Errorf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
+        log.Warningf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
         return  oper_err
     }
 
@@ -191,7 +191,7 @@ func ospfv2_fill_global_timers_spf_state (output_state map[string]interface{},
         log.Info("OSPF global Timers is nil")
         ospfv2Timers_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_Timers)
         if nil == ospfv2Timers_obj {
-            log.Errorf("%s failed !! Error: Failed to create timers Tree under global", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create timers Tree under global", cmn_log)
             return oper_err
         }
         ygot.BuildEmptyTree(ospfv2Timers_obj)
@@ -205,7 +205,7 @@ func ospfv2_fill_global_timers_spf_state (output_state map[string]interface{},
 
     ospfv2GblTimersSpfState_obj = ospfv2Gbl_obj.Timers.Spf.State
     if ospfv2GblTimersSpfState_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2-Global-State container missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2-Global-State container missing", cmn_log)
         return  oper_err
     }
 
@@ -243,9 +243,7 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
     var prefixStr string
     var ospfv2Route *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route
     var ospfv2RouteState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State
-    var ospfv2Nexthop *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State_NextHopsList_NextHops
-    var ospfv2NexthopState *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_RouteTables_RouteTable_State_RouteTableState_Route_State_NextHopsList_NextHops_State
-    var nexthop_ip, nexthop_ifname string
+    var nexthop_ip, nexthop_ifname, nexthop_area_id string
     var ospfv2Zero bool = false
     var ospfv2One bool = true
     oper_err := errors.New("Operational error")
@@ -255,26 +253,26 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
 
     ospfv2RouteTables_obj = ospfv2_obj.RouteTables
     if ospfv2RouteTables_obj == nil {
-        log.Errorf("%s failed !! Error: OSPFv2 Route Tables container missing", cmn_log)
+        log.Warningf("%s failed !! Error: OSPFv2 Route Tables container missing", cmn_log)
         return  oper_err
     }
     if nil == ospfv2RouteTables_obj.RouteTable {
         log.Info("Creating route table for router LSA")
         _, err = ospfv2RouteTables_obj.NewRouteTable(ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_ROUTER_ROUTE_TABLE)
         if nil != err { 
-            log.Errorf("%s failed !! Error: Creating route table for router LSA failed", cmn_log)
+            log.Warningf("%s failed !! Error: Creating route table for router LSA failed", cmn_log)
             return  oper_err
         }
         log.Info("Creating route table for Network LSA")
         _, err = ospfv2RouteTables_obj.NewRouteTable(ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_NETWORK_ROUTE_TABLE)
         if nil != err { 
-            log.Errorf("%s failed !! Error: Creating route table for Network LSA failed", cmn_log)
+            log.Warningf("%s failed !! Error: Creating route table for Network LSA failed", cmn_log)
             return  oper_err
         }
         log.Info("Creating route table for external LSA")
         _, err = ospfv2RouteTables_obj.NewRouteTable(ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_EXTERNAL_ROUTE_TABLE)
         if nil != err { 
-            log.Errorf("%s failed !! Error: Creating route table for external LSA failed", cmn_log)
+            log.Warningf("%s failed !! Error: Creating route table for external LSA failed", cmn_log)
             return  oper_err
         }
     }
@@ -299,7 +297,7 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
                 ospfv2RouteTable_obj = nil
         }
         if (nil == ospfv2RouteTable_obj) {
-            log.Errorf("failed !! Error: RouteTable not found for routeType %s", route_info["routeType"])
+            log.Warningf("failed !! Error: RouteTable not found for routeType %s", route_info["routeType"])
             continue
         }
         if nil == ospfv2RouteTable_obj.State {
@@ -329,7 +327,7 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
             }
         }
         if nil == ospfv2Route {
-            log.Errorf(" failed !! Error,  prefix %s cannot be added in route table tree", prefixStr)
+            log.Warningf(" failed !! Error,  prefix %s cannot be added in route table tree", prefixStr)
             return  oper_err
         }  
         ospfv2RouteState = ospfv2Route.State
@@ -353,22 +351,18 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
                 if _ip, ok := nexthop["ip"].(string); ok {
                     nexthop_ip = fmt.Sprintf("%v",_ip)
                 }
+                if _area_id, ok := route_info["area"].(string); ok {
+                    nexthop_area_id = fmt.Sprintf("%v", _area_id)
+                } else if _area_id, ok := nexthop["area"].(string); ok {
+                    nexthop_area_id = fmt.Sprintf("%v", _area_id)
+                } else {
+                    nexthop_area_id = "0.0.0.0"
+                }
                 if _direct_intf, ok := nexthop["directly attached to"].(string); ok {
                     nexthop_ifname = fmt.Sprintf("%v",_direct_intf)
                     nexthop_ip = "0.0.0.0"
                 }
-                ospfv2Nexthop, err = ospfv2RouteState.NextHopsList.NewNextHops(nexthop_ip, nexthop_ifname)
-                if nil != ospfv2Nexthop {
-                    ygot.BuildEmptyTree(ospfv2Nexthop)
-                    ospfv2NexthopState = ospfv2Nexthop.State
-                    if _area_id, ok := route_info["area"].(string); ok {
-                        ospfv2NexthopState.AreaId = &_area_id
-                    } else {
-                        if area_id, ok := nexthop["area"].(string); ok {
-                            ospfv2NexthopState.AreaId = &area_id
-                        }      
-                    }
-                }
+                ospfv2RouteState.NextHopsList.NewNextHops(nexthop_ip, nexthop_ifname, nexthop_area_id)
             }
         }
         if _ia, ok := route_info["IA"].(bool); ok {
@@ -421,7 +415,7 @@ func ospfv2_fill_global_timers_lsa_generation_state (output_state map[string]int
 
     ospfv2Gbl_obj = ospfv2_obj.Global
     if ospfv2Gbl_obj == nil {
-        log.Errorf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
+        log.Warningf("%s failed !! Error: OSPFv2-Global container missing", cmn_log)
         return  oper_err
     }
 
@@ -429,7 +423,7 @@ func ospfv2_fill_global_timers_lsa_generation_state (output_state map[string]int
         log.Info("OSPF global Timers is nil")
         ospfv2Timers_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_Timers)
         if nil == ospfv2Timers_obj {
-            log.Errorf("%s failed !! Error: Failed to create timers Tree under global", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create timers Tree under global", cmn_log)
             return oper_err
         }
         ygot.BuildEmptyTree(ospfv2Timers_obj)
@@ -443,7 +437,7 @@ func ospfv2_fill_global_timers_lsa_generation_state (output_state map[string]int
 
     ospfv2GblTimersLsaGenState_obj = ospfv2Gbl_obj.Timers.LsaGeneration.State
     if ospfv2GblTimersLsaGenState_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2-Global-Timers Lsa generation State container missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2-Global-Timers Lsa generation State container missing", cmn_log)
         return  oper_err
     }
 
@@ -521,7 +515,7 @@ func ospfv2_get_or_create_area (output_state map[string]interface{},
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
         return  nil, nil, oper_err
     }
 
@@ -566,7 +560,7 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
         return  oper_err
     }
 
@@ -594,7 +588,7 @@ func ospfv2_fill_area_state (output_state map[string]interface{},
                 ospfv2AreaInfo_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_State)
                 ygot.BuildEmptyTree (ospfv2AreaInfo_obj)
                 if ospfv2AreaInfo_obj == nil {
-                    log.Errorf("%s failed !! Error: Area information missing", cmn_log)
+                    log.Warningf("%s failed !! Error: Area information missing", cmn_log)
                     return  oper_err
                 }
                 ospfv2Area_obj.State = ospfv2AreaInfo_obj
@@ -764,7 +758,7 @@ func ospfv2_fill_area_stub_state(ospfv2Area_obj *ocbinds.OpenconfigNetworkInstan
         log.Infof("state under area stub is  missing, add stub state for area ")
         stubState = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Stub_State)
         if stubState == nil {
-            log.Errorf("%s failed !! Error: Failed to create Stub State Tree under area", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Stub State Tree under area", cmn_log)
             return  oper_err
         }
         ygot.BuildEmptyTree (stubState)
@@ -811,7 +805,7 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
         return  oper_err
     }
     areaNameStr = fmt.Sprintf("%v",area_id)
@@ -829,7 +823,7 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
         log.Infof("Interfaces Tree under area is  missing, add new Interfaces tree for area %s", area_id)
         ospfv2Interfaces_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces)
         if ospfv2Interfaces_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create Interfaces Tree under area", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Interfaces Tree under area", cmn_log)
             return  oper_err
         }
         ygot.BuildEmptyTree (ospfv2Interfaces_obj)
@@ -851,7 +845,7 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
         ospfv2Neighbors_obj = 
             new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_NeighborsList)
         if ospfv2Neighbors_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create Neighbors Tree under Interface", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Neighbors Tree under Interface", cmn_log)
             return  oper_err
         }
         ygot.BuildEmptyTree (ospfv2Neighbors_obj)
@@ -1257,7 +1251,7 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
         return  oper_err
     }
     areaNameStr = fmt.Sprintf("%v",area_id)
@@ -1275,7 +1269,7 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
         log.Infof("Interfaces Tree under area is  missing, add new Interfaces tree for area %s", area_id)
         ospfv2Interfaces_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces)
         if ospfv2Interfaces_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create Interfaces Tree under area", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Interfaces Tree under area", cmn_log)
             return  oper_err
         }
         ygot.BuildEmptyTree (ospfv2Interfaces_obj)
@@ -1297,7 +1291,7 @@ func ospfv2_fill_interface_state (intf_info map[string]interface{},
         ospfv2InterfaceState_obj = 
             new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_State)
         if ospfv2InterfaceState_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create State under Interface", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create State under Interface", cmn_log)
             return  oper_err
         }
         ygot.BuildEmptyTree (ospfv2InterfaceState_obj)
@@ -1474,7 +1468,7 @@ func ospfv2_fill_interface_message_stats (output_state map[string]interface{},
         ospfv2IntfStats_obj = 
             new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_MessageStatistics)
         if ospfv2IntfStats_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create Message Statistics under Interface", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Message Statistics under Interface", cmn_log)
             return  oper_err
         }
         ygot.BuildEmptyTree (ospfv2IntfStats_obj)
@@ -1659,7 +1653,7 @@ func ospfv2_fill_interface_timers_state (intf_info map[string]interface{},
 
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
         return  nil, oper_err
     }
     areaNameStr = fmt.Sprintf("%v",area_id)
@@ -1677,7 +1671,7 @@ func ospfv2_fill_interface_timers_state (intf_info map[string]interface{},
         log.Infof("Interfaces Tree under area is  missing, add new Interfaces tree for area %s", area_id)
         ospfv2Interfaces_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces)
         if ospfv2Interfaces_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create Interfaces Tree under area", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Interfaces Tree under area", cmn_log)
             return  nil, oper_err
         }
         ygot.BuildEmptyTree (ospfv2Interfaces_obj)
@@ -1699,7 +1693,7 @@ func ospfv2_fill_interface_timers_state (intf_info map[string]interface{},
         ospfv2InterfaceTimers_obj = 
             new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_Timers)
         if ospfv2InterfaceTimers_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create Timers under Interface", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Timers under Interface", cmn_log)
             return  ospfv2Interface_obj, oper_err
         }
         ygot.BuildEmptyTree (ospfv2InterfaceTimers_obj)
@@ -1711,7 +1705,7 @@ func ospfv2_fill_interface_timers_state (intf_info map[string]interface{},
         ospfv2InterfaceTimersState_obj = 
             new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Interfaces_Interface_Timers_State)
         if ospfv2InterfaceTimersState_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create Timers State under Interface", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Timers State under Interface", cmn_log)
             return  ospfv2Interface_obj, oper_err
         }
         ygot.BuildEmptyTree (ospfv2InterfaceTimersState_obj)
@@ -1763,7 +1757,7 @@ var DbToYang_ospfv2_global_timers_spf_state_xfmr SubTreeXfmrDbToYang = func(inPa
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -1775,7 +1769,7 @@ var DbToYang_ospfv2_global_timers_spf_state_xfmr SubTreeXfmrDbToYang = func(inPa
     vtysh_cmd = "show ip ospf vrf " + vrfName + " json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
     
@@ -1815,7 +1809,7 @@ var DbToYang_ospfv2_global_timers_lsa_generation_state_xfmr SubTreeXfmrDbToYang 
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -1827,7 +1821,7 @@ var DbToYang_ospfv2_global_timers_lsa_generation_state_xfmr SubTreeXfmrDbToYang 
     vtysh_cmd = "show ip ospf vrf " + vrfName + " json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
     log.V(1).Infof("Payload received = %v", output_state)
@@ -1868,7 +1862,7 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -1880,13 +1874,13 @@ var DbToYang_ospfv2_route_table_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     vtysh_cmd = "show ip ospf vrf " + vrfName + " route json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
     
     log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
-        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        log.Warningf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
     }
     ospf_info := output_state[vrfName].(map[string]interface{})
@@ -1921,7 +1915,7 @@ var DbToYang_ospfv2_global_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -1933,7 +1927,7 @@ var DbToYang_ospfv2_global_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     vtysh_cmd = "show ip ospf vrf " + vrfName + " json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
 
@@ -1973,7 +1967,7 @@ var DbToYang_ospfv2_areas_area_state_xfmr SubTreeXfmrDbToYang = func(inParams Xf
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -1982,7 +1976,7 @@ var DbToYang_ospfv2_areas_area_state_xfmr SubTreeXfmrDbToYang = func(inParams Xf
     area_id :=pathInfo.Var("identifier#2")
     if(len(area_id) == 0) {
         log.Info("Area Id is not specified, key is missing")
-        log.Errorf ("%s failed !! Error", cmn_log);
+        log.Warningf ("%s failed !! Error", cmn_log);
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
@@ -1992,7 +1986,7 @@ var DbToYang_ospfv2_areas_area_state_xfmr SubTreeXfmrDbToYang = func(inParams Xf
     vtysh_cmd = "show ip ospf vrf " + vrfName + " json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
     
@@ -2040,7 +2034,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -2049,7 +2043,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     area_id :=pathInfo.Var("identifier#2")
     if(len(area_id) == 0) {
         log.Info("Area Id is not specified, key is missing")
-        log.Errorf ("%s failed !! Error", cmn_log);
+        log.Warningf ("%s failed !! Error", cmn_log);
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
@@ -2057,7 +2051,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     remote_rtr_id :=pathInfo.Var("remote-router-id")
     if(len(remote_rtr_id) == 0) {
         log.Info("Remote Rtr Id is not specified, key is missing")
-        log.Errorf ("%s failed !! Error", cmn_log);
+        log.Warningf ("%s failed !! Error", cmn_log);
         return  oper_err
     } else {
         log.Infof("remote rtr Id %s", remote_rtr_id)
@@ -2068,13 +2062,13 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     vtysh_cmd = "show ip ospf vrf " + vrfName + " json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
     log.V(1).Infof("Payload received = %v", output_state)
     
     if (nil == output_state || len(output_state) == 0) {
-        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        log.Warningf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
     }
     
@@ -2082,14 +2076,14 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     ospfv2Area_obj, _, err = ospfv2_get_or_create_area (ospf_info, ospfv2_obj, area_id, vrfName)
 
     if nil == ospfv2Area_obj {
-        log.Errorf("Failed to create a new area:%s, err=%s", area_id, err)
+        log.Warningf("Failed to create a new area:%s, err=%s", area_id, err)
         return oper_err
     }
 
     vtysh_cmd = "show ip ospf vrf " + vrfName + " interface json"
     output_interfaces, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf interfaces:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf interfaces:, err=%s", cmd_err)
       return  cmd_err
     }
     log.V(1).Infof("Payload received = %v", output_interfaces)
@@ -2098,7 +2092,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     vtysh_cmd = "show ip ospf vrf " + vrfName + " interface traffic json"
     output_interfaces_traffic, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf interfaces traffic:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf interfaces traffic:, err=%s", cmd_err)
       return  cmd_err
     }
     log.V(1).Infof("Payload received = %v", output_interfaces_traffic)
@@ -2108,7 +2102,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     vtysh_cmd = "show ip ospf vrf " + vrfName + " neighbor detail json"
     output_nbrs_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf neighbor detail:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf neighbor detail:, err=%s", cmd_err)
       return  cmd_err
     }
     
@@ -2181,7 +2175,7 @@ func  ospfv2_fill_vlink_neighbors_state (output_state map[string]interface{},  o
         ospfv2Neighbors_obj = 
             new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_VirtualLinks_VirtualLink_State_NeighborsList)
         if ospfv2Neighbors_obj == nil {
-            log.Errorf("%s failed !! Error: Failed to create Neighbors Tree under Vlink Interface", cmn_log)
+            log.Warningf("%s failed !! Error: Failed to create Neighbors Tree under Vlink Interface", cmn_log)
             return  oper_err
         }
         ygot.BuildEmptyTree (ospfv2Neighbors_obj)
@@ -2389,7 +2383,7 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -2398,7 +2392,7 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     area_id :=pathInfo.Var("identifier#2")
     if(len(area_id) == 0) {
         log.Info("Area Id is not specified, key is missing")
-        log.Errorf ("%s failed !! Error", cmn_log);
+        log.Warningf ("%s failed !! Error", cmn_log);
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
@@ -2408,13 +2402,13 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     vtysh_cmd = "show ip ospf vrf " + vrfName + " json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
     
     log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
-        log.Errorf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
+        log.Warningf ("output_state is nil. Received empty response from %s ", vtysh_cmd)
         return oper_err
     }
     
@@ -2422,7 +2416,7 @@ var DbToYang_ospfv2_stub_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     ospfv2Area_obj, area_info, err = ospfv2_get_or_create_area (ospf_info, ospfv2_obj, area_id, vrfName)
 
     if nil == ospfv2Area_obj {
-        log.Errorf("Failed to create a new area:%s, err=%s", area_id, err)
+        log.Warningf("Failed to create a new area:%s, err=%s", area_id, err)
         return oper_err
     }
 
@@ -2466,7 +2460,7 @@ var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -2475,7 +2469,7 @@ var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     area_id :=pathInfo.Var("identifier#2")
     if(len(area_id) == 0) {
         log.Info("Area Id is not specified, key is missing")
-        log.Errorf ("%s failed !! Error", cmn_log);
+        log.Warningf ("%s failed !! Error", cmn_log);
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
@@ -2485,7 +2479,7 @@ var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     log.Info(targetUriPath)
     ospfv2Areas_obj = ospfv2_obj.Areas
     if ospfv2Areas_obj == nil {
-        log.Errorf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
+        log.Warningf("%s failed !! Error: Ospfv2 areas list missing", cmn_log)
         return  oper_err
     }
     areaNameStr := fmt.Sprintf("%v", area_id)
@@ -2500,16 +2494,16 @@ var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
     ospfv2AreaLsdb_obj = ospfv2Area_obj.Lsdb
     if nil == ospfv2AreaLsdb_obj {
-        log.Errorf("Lsdb missing for area %s", areaNameStr)
+        log.Warningf("Lsdb missing for area %s", areaNameStr)
         return  oper_err
     }
 
     ospfv2AreaLsdbState_obj = ospfv2AreaLsdb_obj.State
     if nil == ospfv2AreaLsdbState_obj {
-        log.Errorf("Lsdb State missing for Lsdb in area %s, adding now", areaNameStr)
+        log.Infof("Lsdb State missing for Lsdb in area %s, adding now", areaNameStr)
         ospfv2AreaLsdbState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_State)
         if nil == ospfv2AreaLsdbState_obj {
-            log.Errorf("Lsdb State missing for Lsdb in area %s", areaNameStr)
+            log.Warningf("Lsdb State missing for Lsdb in area %s", areaNameStr)
             return  oper_err
         }
         ygot.BuildEmptyTree(ospfv2AreaLsdbState_obj)
@@ -2519,10 +2513,10 @@ var DbToYang_ospfv2_lsdb_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     ospfv2AreaLsdbState_obj.Identifier = &lsdbAreaId
     ospfv2AreaLsaTypes_obj = ospfv2AreaLsdb_obj.LsaTypes
     if nil == ospfv2AreaLsaTypes_obj {
-        log.Errorf("LsaTypes container missing for Lsdb in area %s, adding", areaNameStr)
+        log.Infof("LsaTypes container missing for Lsdb in area %s, adding", areaNameStr)
         ospfv2AreaLsaTypes_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes) 
         if nil == ospfv2AreaLsaTypes_obj {
-            log.Errorf("LsaTypes container missing for Lsdb in area %s, returning", areaNameStr)
+            log.Warningf("LsaTypes container missing for Lsdb in area %s, returning", areaNameStr)
             return  oper_err
         }
         ospfv2AreaLsdb_obj.LsaTypes = ospfv2AreaLsaTypes_obj
@@ -2561,27 +2555,27 @@ func ospfv2_fill_external_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstanc
     if nil == ospfv2AreaLsaType_obj {
         ospfv2AreaLsaType_obj, _ = ospfv2AreaLsaTypes_obj.NewLsaType(lsaType)
         if nil == ospfv2AreaLsaType_obj {
-            log.Errorf("Failed to create router Lsa for area %s", areaNameStr)
+            log.Warningf("Failed to create router Lsa for area %s", areaNameStr)
             return oper_err
         }
         ygot.BuildEmptyTree(ospfv2AreaLsaType_obj)
     }
     ospfv2Lsas_obj = ospfv2AreaLsaType_obj.Lsas
     if nil == ospfv2Lsas_obj {
-        log.Errorf("cannot find Lsas inside LsaType container")
+        log.Warningf("cannot find Lsas inside LsaType container")
         return oper_err
     }
     
     vtysh_cmd = "show ip ospf vrf " + vrfName + " database external json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf AsExternal database for vrf %s, err=%s", vrfName, cmd_err)
+      log.Warningf("Failed to fetch ospf AsExternal database for vrf %s, err=%s", vrfName, cmd_err)
       return  cmd_err
     }
 
     log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
-        log.Errorf("AsExternal LSA database fetched from backend is empty")
+        log.Warningf("AsExternal LSA database fetched from backend is empty")
         return oper_err
     }
 
@@ -2599,7 +2593,7 @@ func ospfv2_fill_external_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstanc
                 ygot.BuildEmptyTree(ospfv2Lsa_obj)
             }
             if nil == ospfv2Lsas_obj {
-                log.Errorf("cannot create Lsa inside Lsas container")
+                log.Warningf("cannot create Lsa inside Lsas container")
                 return oper_err
             }
             ospfv2_fill_lsa_header_information(lsa_info, ospfv2Lsa_obj.State)
@@ -2664,14 +2658,14 @@ func ospfv2_fill_summary_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
     if nil == ospfv2AreaLsaType_obj {
         ospfv2AreaLsaType_obj, _ = ospfv2AreaLsaTypes_obj.NewLsaType(lsaType)
         if nil == ospfv2AreaLsaType_obj {
-            log.Errorf("Failed to create router Lsa for area %s", areaNameStr)
+            log.Warningf("Failed to create router Lsa for area %s", areaNameStr)
             return oper_err
         }
         ygot.BuildEmptyTree(ospfv2AreaLsaType_obj)
     }
     ospfv2Lsas_obj = ospfv2AreaLsaType_obj.Lsas
     if nil == ospfv2Lsas_obj {
-        log.Errorf("cannot find Lsas inside LsaType container")
+        log.Warningf("cannot find Lsas inside LsaType container")
         return oper_err
     }
     if lsaType == ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_SUMMARY_IP_NETWORK_LSA {
@@ -2683,13 +2677,13 @@ func ospfv2_fill_summary_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
     }
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf Summary database for vrf %s, err=%s", vrfName, cmd_err)
+      log.Warningf("Failed to fetch ospf Summary database for vrf %s, err=%s", vrfName, cmd_err)
       return  cmd_err
     }
 
     log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
-        log.Errorf("Summary LSA database fetched from backend is empty")
+        log.Warningf("Summary LSA database fetched from backend is empty")
         return oper_err
     }
 
@@ -2716,7 +2710,7 @@ func ospfv2_fill_summary_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
                         ygot.BuildEmptyTree(ospfv2Lsa_obj)
                     }
                     if nil == ospfv2Lsas_obj {
-                        log.Errorf("cannot create Lsa inside Lsas container")
+                        log.Warningf("cannot create Lsa inside Lsas container")
                         return oper_err
                     }
                     ospfv2_fill_lsa_header_information(lsa_info, ospfv2Lsa_obj.State)
@@ -2767,26 +2761,26 @@ func ospfv2_fill_network_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
     if nil == ospfv2AreaLsaType_obj {
         ospfv2AreaLsaType_obj, _ = ospfv2AreaLsaTypes_obj.NewLsaType(ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_NETWORK_LSA)
         if nil == ospfv2AreaLsaType_obj {
-            log.Errorf("Failed to create router Lsa for area %s", areaNameStr)
+            log.Warningf("Failed to create router Lsa for area %s", areaNameStr)
             return oper_err
         }
         ygot.BuildEmptyTree(ospfv2AreaLsaType_obj)
     }
     ospfv2Lsas_obj = ospfv2AreaLsaType_obj.Lsas
     if nil == ospfv2Lsas_obj {
-        log.Errorf("cannot find Lsas inside LsaType container")
+        log.Warningf("cannot find Lsas inside LsaType container")
         return oper_err
     }
     vtysh_cmd = "show ip ospf vrf " + vrfName + " database network json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf network database for vrf %s, err=%s", vrfName, cmd_err)
+      log.Warningf("Failed to fetch ospf network database for vrf %s, err=%s", vrfName, cmd_err)
       return  cmd_err
     }
 
     log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
-        log.Errorf("Network LSA database fetched from backend is empty")
+        log.Warningf("Network LSA database fetched from backend is empty")
         return oper_err
     }
 
@@ -2813,7 +2807,7 @@ func ospfv2_fill_network_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance
                         ygot.BuildEmptyTree(ospfv2Lsa_obj)
                     }
                     if nil == ospfv2Lsas_obj {
-                        log.Errorf("cannot create Lsa inside Lsas container")
+                        log.Warningf("cannot create Lsa inside Lsas container")
                         return oper_err
                     }
                     ospfv2_fill_lsa_header_information(lsa_info, ospfv2Lsa_obj.State)
@@ -2865,26 +2859,26 @@ func ospfv2_fill_router_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance_
     if nil == ospfv2AreaLsaType_obj {
         ospfv2AreaLsaType_obj, _ = ospfv2AreaLsaTypes_obj.NewLsaType(ocbinds.OpenconfigOspfTypes_OSPF_LSA_TYPE_ROUTER_LSA)
         if nil == ospfv2AreaLsaType_obj {
-            log.Errorf("Failed to create router Lsa for area %s", areaNameStr)
+            log.Warningf("Failed to create router Lsa for area %s", areaNameStr)
             return oper_err
         }
         ygot.BuildEmptyTree(ospfv2AreaLsaType_obj)
     }
     ospfv2Lsas_obj = ospfv2AreaLsaType_obj.Lsas
     if nil == ospfv2Lsas_obj {
-        log.Errorf("cannot find Lsas inside LsaType container")
+        log.Warningf("cannot find Lsas inside LsaType container")
         return oper_err
     }
     vtysh_cmd = "show ip ospf vrf " + vrfName + " database router json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf router database for vrf %s, err=%s", vrfName, cmd_err)
+      log.Warningf("Failed to fetch ospf router database for vrf %s, err=%s", vrfName, cmd_err)
       return  cmd_err
     }
 
     log.V(1).Infof("Payload received = %v", output_state)
     if (nil == output_state || len(output_state) == 0) {
-        log.Errorf("Router LSA database fetched from backend is empty")
+        log.Warningf("Router LSA database fetched from backend is empty")
         return oper_err
     }
 
@@ -2911,7 +2905,7 @@ func ospfv2_fill_router_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance_
                         ygot.BuildEmptyTree(ospfv2Lsa_obj)
                     }
                     if nil == ospfv2Lsas_obj {
-                        log.Errorf("cannot create Lsa inside Lsas container")
+                        log.Warningf("cannot create Lsa inside Lsas container")
                         return oper_err
                     }
                     ospfv2_fill_lsa_header_information(lsa_info, ospfv2Lsa_obj.State)
@@ -2946,7 +2940,18 @@ func ospfv2_fill_router_lsa_state(ospfv2_obj *ocbinds.OpenconfigNetworkInstance_
                             if _linkId, ok := link_info["Designated Router address"].(string); ok {
                                 link_state.LinkId = &_linkId
                             }
+                            if _linkId, ok := link_info["Neighboring Router ID"].(string); ok {
+                                link_state.LinkId = &_linkId
+                            }
+                            if _linkId, ok := link_info["Net"].(string); ok {
+                                link_state.LinkId = &_linkId
+                            }
                             if _linkData, ok := link_info["Router Interface address"].(string); ok {
+                                var tempStr ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_LsaExt_RouterLsa_State_LinkInformationList_LinkInformation_State_LinkData_Union_String
+                                tempStr.String = _linkData
+                                link_state.LinkData = &tempStr
+                            }
+                            if _linkData, ok := link_info["Network Mask"].(string); ok {
                                 var tempStr ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Areas_Area_Lsdb_LsaTypes_LsaType_Lsas_LsaExt_RouterLsa_State_LinkInformationList_LinkInformation_State_LinkData_Union_String
                                 tempStr.String = _linkData
                                 link_state.LinkData = &tempStr
@@ -3115,7 +3120,7 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
 
@@ -3124,7 +3129,7 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     area_id =pathInfo.Var("identifier#2")
     if(len(area_id) == 0) {
         log.Info("Area Id is not specified, key is missing")
-        log.Errorf ("%s failed !! Error", cmn_log);
+        log.Warningf ("%s failed !! Error", cmn_log);
         return  oper_err
     } else {
         area_id = getAreaDotted(area_id)
@@ -3135,7 +3140,7 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     vtysh_cmd = "show ip ospf vrf " + vrfName + " neighbor detail json"
     output_nbrs_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf neighbor detail:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf neighbor detail:, err=%s", cmd_err)
       return  cmd_err
     }
     log.Info(output_nbrs_state) 
@@ -3143,7 +3148,7 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     vtysh_cmd = "show ip ospf vrf " + vrfName + " interface json"
     output_interfaces, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf interfaces:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf interfaces:, err=%s", cmd_err)
       return  cmd_err
     }
     
@@ -3152,7 +3157,7 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
     vtysh_cmd = "show ip ospf vrf " + vrfName + " interface traffic json"
     output_interfaces_traffic, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf interfaces traffic:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf interfaces traffic:, err=%s", cmd_err)
       return  cmd_err
     }
     
@@ -3207,7 +3212,7 @@ var DbToYang_ospfv2_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
     var ospfv2_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2
     ospfv2_obj, vrfName, err := getOspfv2Root (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Warningf ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
     log.Info(vrfName)
@@ -3220,7 +3225,7 @@ var DbToYang_ospfv2_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
     vtysh_cmd = "show ip ospf vrf " + vrfName + " json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+      log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
       return  cmd_err
     }
     
@@ -3303,7 +3308,7 @@ var ospfv2_router_area_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]s
             cmd := "show ip ospf vrf" + " " + vrf + " " + "json"
             output_state, cmd_err := exec_vtysh_cmd (cmd)
             if cmd_err != nil {
-                log.Errorf("Failed to fetch ospf global state:, err=%s", cmd_err)
+                log.Warningf("Failed to fetch ospf global state:, err=%s", cmd_err)
                 return  tblList, cmd_err
             }
             for _,value := range output_state {
@@ -3311,7 +3316,7 @@ var ospfv2_router_area_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]s
                 if value, ok := ospf_info["areas"]; ok {
                     areas_map := value.(map[string]interface {})
                     if(len(areas_map) == 0) {
-                        log.Errorf("Does not contain any area")
+                        log.Warningf("Does not contain any area")
                         err = errors.New("Does not contain any area");
                         return tblList, err
                     }

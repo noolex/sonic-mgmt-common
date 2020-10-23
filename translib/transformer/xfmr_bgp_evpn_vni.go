@@ -119,7 +119,7 @@ var bgp_evpn_vni_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string,
         
         dbkey := "default|L2VPN_EVPN|" + key
 
-        log.Info(dbkey)
+        log.V(5).Info(dbkey)
 
         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"][dbkey]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"][dbkey] = db.Value{Field: make(map[string]string)}
@@ -133,7 +133,7 @@ var YangToDb_bgp_evpn_vni_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
     var err error
     var vrfName string
 
-    log.Info("YangToDb_bgp_evpn_vni_key_xfmr ***", inParams.uri)
+    log.Info("YangToDb_bgp_evpn_vni_key_xfmr *** URI: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
     /* Key should contain, <vrf name, protocol name, afi-safi name, vni-number> */
@@ -189,24 +189,28 @@ var YangToDb_bgp_evpn_vni_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
 	return afName, err
     }
 
-    log.Info("URI VRF ", vrfName)
-    log.Info("URI VNI NUMBER ", vniNumber)
-    log.Info("URI AFI SAFI ", afName)
-
     vniTableKey := vrfName + "|" + afName + "|" + vniNumber
 
-    log.Info("YangToDb_bgp_evpn_vni_key_xfmr: vniTableKey:", vniTableKey)
+    log.Info("YangToDb_bgp_evpn_vni_key_xfmr: vniTable Uri:", inParams.uri, " Key:", vniTableKey)
     return vniTableKey, nil
 }
 
 var DbToYang_bgp_evpn_vni_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
-    log.Info("DbToYang_bgp_evpn_vni_key_xfmr: ", entry_key)
 
-    vniNumberKey := strings.Split(entry_key, "|")
+    pathInfo := NewPathInfo(inParams.uri)
+    vrfName  :=  pathInfo.Var("name")
+    afName   := pathInfo.Var("afi-safi-name")
+
+    vniNumberKey := strings.Split(inParams.key, "|")
+
+    if (vrfName != vniNumberKey[0]) || (afName != vniNumberKey[1]) {
+	return nil, nil
+    }
+    log.Info("DbToYang_bgp_evpn_vni_key_xfmr: uri:", inParams.uri, " Key:", inParams.key)
+
     vniNumber, _  := strconv.ParseFloat(vniNumberKey[2], 64)
 
+    rmap := make(map[string]interface{})
     rmap["vni-number"] = vniNumber
 
     log.Info("Rmap", rmap)
@@ -492,10 +496,15 @@ var DbToYang_bgp_advertise_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
     log.Info(inParams.key)
 
     data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_bgp_advertise_fld_xfmr : ", data, "inParams : ", inParams)
+    if log.V(3) {
+        log.Info("DbToYang_bgp_advertise_fld_xfmr : ", data, "inParams : ", inParams)
+    }
 
     pTbl := data["BGP_GLOBALS_AF"]
-    log.Info("Table: ", pTbl)
+    if log.V(3) {
+        log.Info("Table: ", pTbl)
+    }
+
     if _, ok := pTbl[inParams.key]; !ok {
         log.Info("DbToYang_bgp_advertise_fld_xfmr BGP AF not found : ", inParams.key)
         return result, errors.New("BGP AF not found : " + inParams.key)

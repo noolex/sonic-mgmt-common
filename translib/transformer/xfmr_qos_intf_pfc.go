@@ -9,6 +9,7 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 func init () {
     XlateFuncBind("YangToDb_qos_intf_pfc_xfmr", YangToDb_qos_intf_pfc_xfmr)
@@ -16,10 +17,19 @@ func init () {
     XlateFuncBind("Subscribe_qos_intf_pfc_xfmr", Subscribe_qos_intf_pfc_xfmr)
 }
 
+func isQosPortDbEntryFound(d *db.DB, if_name string, table string) (bool) {
+
+    if d == nil {
+        log.Infof("unable to get configDB")
+        return false
+    }
+
+    dbspec := &db.TableSpec { Name: table }
+    _, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
+    return err == nil
+}
+
 func doGetIntfPfcPriority(d *db.DB, if_name string) (string) {
-
-    log.Info("doGetIntfPfcPriority: if_name ", if_name)
-
     if d == nil {
         log.Infof("unable to get configDB")
         return ""
@@ -27,24 +37,27 @@ func doGetIntfPfcPriority(d *db.DB, if_name string) (string) {
 
     dbspec := &db.TableSpec { Name: "PORT_QOS_MAP" }
 
-    log.Info("doGetIntfPfcPriority  ", db.Key{Comp: []string{if_name}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
+        if log.V(3) {
+            log.Info("doGetIntfPfcPriority: if_name ", if_name, " No pfc_enable ")
+        }
+
         return ""
     }
     pfc_enable, ok := dbEntry.Field["pfc_enable"]
     if ok {
-        log.Info("pfc_enable ", pfc_enable)
-        return pfc_enable;
-    } else {
-        log.Info("No pfc_enable ")
+        if log.V(3) {
+            log.Info("doGetIntfPfcPriority: if_name ", if_name, " pfc_enable ", pfc_enable)
+        }
+        return pfc_enable
+    } else if log.V(3) {
+        log.Info("doGetIntfPfcPriority: if_name ", if_name, " No pfc_enable ")
     }
-    return "";
+    return ""
 }
 
 func doGetIntfPfcAsymmetricCfg(d *db.DB, if_name string) (bool) {
-
-    log.Info("doGetIntfPfcAsymmetricCfg: if_name ", if_name)
 
     if d == nil {
         log.Infof("unable to get configDB")
@@ -53,55 +66,78 @@ func doGetIntfPfcAsymmetricCfg(d *db.DB, if_name string) (bool) {
 
     dbspec := &db.TableSpec { Name: "PORT" }
 
-    log.Info("doGetIntfPfcAsmmetricCfg  ", db.Key{Comp: []string{if_name}})
     dbEntry, err := d.GetEntry(dbspec, db.Key{Comp: []string{if_name}})
     if err != nil {
-        log.Error("No Entry found e = ", err)
+        if log.V(3) {
+            log.Info("doGetIntfPfcAsymmetricCfg: if_name ", if_name, " No PFC Asymmetric ")
+        }
         return false
     }
     pfc_asym, ok := dbEntry.Field["pfc_asym"]
     if ok && (pfc_asym == "on") {
-        log.Info("pfc_asym ", pfc_asym)
-        return true;
-    } else {
-        log.Info("No PFC Asymmetric ")
+        if log.V(3) {
+            log.Info("doGetIntfPfcAsymmetricCfg: if_name ", if_name, " pfc_asym ", pfc_asym)
+        }
+        return true
+    } else if log.V(3) {
+        log.Info("doGetIntfPfcAsymmetricCfg: if_name ", if_name, " No PFC Asymmetric ")
     }
-    return false;
+    return false
 }
 
 
 func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
     res_map := make(map[string]map[string]db.Value)
+    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
-    log.Info("qos_intf_pfc_delete_xfmr: ", inParams.ygRoot, inParams.uri)
-    log.Info("inParams: ", inParams)
 
     pathInfo := NewPathInfo(inParams.uri)
     ifname := pathInfo.Var("interface-id")
     db_if_name := utils.GetNativeNameFromUIName(&ifname)
     if_name := *db_if_name
     dbkey := if_name
-    log.Info("qos_intf_pfc_delete_xfmr: ", if_name)
 
+    log.Info("qos_intf_pfc_delete_xfmr: ", inParams.ygRoot, inParams.uri, " if_name ", if_name)
+    portQosMapEntry := isQosPortDbEntryFound(inParams.d, if_name, "PORT_QOS_MAP")
+    portEntry := isQosPortDbEntryFound(inParams.d, if_name, "PORT")
+
+    requestUriPath, err := getYangPathFromUri(inParams.requestUri)
+    if (requestUriPath == "/openconfig-qos:qos/interfaces/interface" ||
+        requestUriPath ==  "/openconfig-qos:qos/interfaces" ||
+        requestUriPath ==  "/openconfig-qos:qos") {
+        if !strings.HasPrefix(if_name, "Eth") {
+            log.Info("qos_intf_pfc_delete_xfmr: Not Ethernet interface ", if_name)
+            return res_map, err
+        }
+    } else if !portQosMapEntry && !portEntry {
+        err = tlerr.NotFoundError{Format:"Resource not found"}
+        return res_map, err
+    }
     targetUriPath, err := getYangPathFromUri(inParams.uri)
-    log.Info("targetUriPath: ",  targetUriPath)
-
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority") {
+    if (targetUriPath == "/openconfig-qos:qos/interfaces/interface/pfc") {
+        targetUriPath  = "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc"
+    }
+    if log.V(3) {
+        log.Info("targetUriPath: ",  targetUriPath)
+    }
+    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority") ||
+       strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/pfc/pfc-priorities/pfc-priority") {
         pfc_priority := pathInfo.Var("dot1p")
-        log.Info("qos_intf_pfc_delete_xfmr: Delete by priority", pfc_priority)
         pfc_enable := doGetIntfPfcPriority(inParams.d, if_name)
         pfc_prio_disable := pfc_priority
         var prev_pfc_fld bool
         if len(pfc_enable) != 0 {
             prev_pfc_fld = true
         } else {
-            log.Info("res_map: ", res_map)
             log.Info("qos_intf_pfc_delete_xfmr: No pfc_enable field to delete ")
+            err = tlerr.NotFoundError{Format:"Resource not found"}
             return res_map, err
         }
-        log.Info("qos_intf_pfc_delete_xfmr : present_pfc_enable - ",
-                 pfc_enable,  "pfc_prio_disable - ", pfc_prio_disable)
+        if log.V(3) {
+            log.Info("qos_intf_pfc_delete_xfmr : present_pfc_enable - ",
+            pfc_enable,  "pfc_prio_disable - ", pfc_prio_disable)
+        }
         if len(pfc_enable) != 0 && len(pfc_prio_disable) != 0 {
             if strings.Contains(pfc_enable, pfc_prio_disable) {
                 pfc_enable = strings.Replace(pfc_enable, pfc_prio_disable + ",", "", 1)
@@ -111,10 +147,14 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
 
         pfc_enable = strings.TrimSuffix(pfc_enable, ",")
 
-        log.Info("YangToDb_qos_intf_pfc_xfmr : pfc_enable - ", pfc_enable)
+        if log.V(3) {
+            log.Info("YangToDb_qos_intf_pfc_xfmr : pfc_enable - ", pfc_enable)
+        }
 
         if prev_pfc_fld && (len(pfc_enable) != 0)  {
-            log.Info("YangToDb_qos_intf_pfc_xfmr : Update pfc_enable fld - ", pfc_enable)
+            if log.V(3) {
+                log.Info("YangToDb_qos_intf_pfc_xfmr : Update pfc_enable fld - ", pfc_enable)
+            }
             subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 
             if _, ok := subOpMap[db.ConfigDB]; !ok {
@@ -128,48 +168,62 @@ func qos_intf_pfc_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Val
 
             inParams.subOpDataMap[UPDATE] = &subOpMap
         } else if len(pfc_enable) == 0 {
-            log.Info("YangToDb_qos_intf_pfc_xfmr : Delete pfc_enable fld - ", pfc_enable)
+            if log.V(3) {
+                log.Info("YangToDb_qos_intf_pfc_xfmr : Delete pfc_enable fld - ", pfc_enable)
+            }
             portQosMapTblMap := make(map[string]db.Value)
             entry := db.Value{Field: make(map[string]string)}
             entry.Set("pfc_enable",  "")
             portQosMapTblMap[dbkey] = entry
             res_map["PORT_QOS_MAP"] = portQosMapTblMap
         }
-        log.Info("res_map: ", res_map)
+        log.Info("qos_intf_pfc_delete_xfmr: End, res_map: ", res_map)
         return res_map, err
     }
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities"){
-        log.Info("qos_intf_pfc_delete_xfmr: Delete all priorities")
+    if (strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities") ||
+        strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/pfc/pfc-priorities")) && portQosMapEntry {
         portQosMapTblMap := make(map[string]db.Value)
         entry := db.Value{Field: make(map[string]string)}
         entry.Set("pfc_enable",  "")
         portQosMapTblMap[dbkey] = entry
         res_map["PORT_QOS_MAP"] = portQosMapTblMap
 
-        log.Info("res_map: ", res_map)
+        log.Info("qos_intf_pfc_delete_xfmr: End, res_map: ", res_map)
         return res_map, err
     }
 
     if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/config") ||
-    (targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc") {
+       strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/pfc/config") ||
+       (targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc") && portEntry {
+
         portTblMap := make(map[string]db.Value)
         entry := db.Value{Field: make(map[string]string)}
         entry.Set("pfc_asym",  "off")
         portTblMap[dbkey] = entry
         res_map["PORT"] = portTblMap
+        if _, ok := subOpMap[db.ConfigDB]; !ok {
+            subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
+        }
+        if _, ok := subOpMap[db.ConfigDB]["PORT"]; !ok {
+            subOpMap[db.ConfigDB]["PORT"] = make(map[string]db.Value)
+        }
+        subOpMap[db.ConfigDB]["PORT"][if_name] = db.Value{Field: make(map[string]string)}
+        subOpMap[db.ConfigDB]["PORT"][if_name].Field["pfc_asym"] = "off"
+
+        inParams.subOpDataMap[UPDATE] = &subOpMap
+
     }
 
-    if targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc" {
+    if targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc" && portQosMapEntry {
         portQosMapTblMap := make(map[string]db.Value)
         entry := db.Value{Field: make(map[string]string)}
         entry.Set("pfc_enable",  "")
         portQosMapTblMap[dbkey] = entry
         res_map["PORT_QOS_MAP"] = portQosMapTblMap
     }
-    log.Info("res_map: ", res_map)
 
-    log.Info("qos_intf_pfc_delete_xfmr: End ")
+    log.Info("qos_intf_pfc_delete_xfmr: End, res_map: ", res_map)
 
     return res_map, err
 }
@@ -217,25 +271,14 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         entry := db.Value{Field: make(map[string]string)}
 
         if pfcConfig.Asymmetric != nil {
-            log.Info("YangToDb_qos_intf_pfc_xfmr: ", *pfcConfig.Asymmetric)
             if *pfcConfig.Asymmetric {
                 entry.Set("pfc_asym",  "on")
                 portTblMap[dbkey] = entry
                 res_map["PORT"] = portTblMap
             } else {
-                /* entry.Set("pfc_asym",  "off")
+                entry.Set("pfc_asym",  "off")
                 portTblMap[dbkey] = entry
-                res_map["PORT"] = portTblMap */
-                if _, ok := subOpMap[db.ConfigDB]; !ok {
-                    subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-                }
-                if _, ok := subOpMap[db.ConfigDB]["PORT"]; !ok {
-                    subOpMap[db.ConfigDB]["PORT"] = make(map[string]db.Value)
-                }
-                subOpMap[db.ConfigDB]["PORT"][if_name] = db.Value{Field: make(map[string]string)}
-                subOpMap[db.ConfigDB]["PORT"][if_name].Field["pfc_asym"] = "off"
-
-                inParams.subOpDataMap[DELETE] = &subOpMap
+                res_map["PORT"] = portTblMap
             }
         }
     }
@@ -256,10 +299,14 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
                 if data.Config.Enable != nil {
                     priority := strconv.FormatInt(int64(prio), 10)
                     if *data.Config.Enable {
-                        log.Info("YangToDb_qos_intf_pfc_xfmr : dbkey - ", dbkey, " Add Priority - ", priority)
+                        if log.V(3) {
+                            log.Info("YangToDb_qos_intf_pfc_xfmr : dbkey - ", dbkey, " Add Priority - ", priority)
+                        }
                         pfc_prio_enable = append(pfc_prio_enable, priority)
                     } else {
-                        log.Info("YangToDb_qos_intf_pfc_xfmr : dbkey - ", dbkey, " Del Priroity - ", priority)
+                        if log.V(3) {
+                            log.Info("YangToDb_qos_intf_pfc_xfmr : dbkey - ", dbkey, " Del Priroity - ", priority)
+                        }
                         pfc_prio_disable = append(pfc_prio_disable, priority)
                     }
                     pfc_cfg = true
@@ -272,9 +319,11 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
             pfc_enable := doGetIntfPfcPriority(inParams.d, if_name)
             if len(pfc_enable) != 0 {
                prev_pfc_fld = true
-            }
-            log.Info("YangToDb_qos_intf_pfc_xfmr : pfc_enable - ", pfc_enable, " pfc_prio_enable - ",
-                     pfc_prio_enable, " pfc_prio_disable - ", pfc_prio_disable)
+           }
+           if log.V(3) {
+               log.Info("YangToDb_qos_intf_pfc_xfmr : pfc_enable - ", pfc_enable, " pfc_prio_enable - ",
+               pfc_prio_enable, " pfc_prio_disable - ", pfc_prio_disable)
+           }
             if len(pfc_enable) != 0 {
                 for _, del_prio := range pfc_prio_disable {
                     if strings.Contains(pfc_enable, del_prio) {
@@ -295,16 +344,18 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
 
             pfc_enable = strings.TrimSuffix(pfc_enable, ",")
 
-            log.Info("YangToDb_qos_intf_pfc_xfmr : pfc_enable - ", pfc_enable)
-
+            if log.V(3) {
+                log.Info("YangToDb_qos_intf_pfc_xfmr : pfc_enable - ", pfc_enable)
+            }
             if len(pfc_enable) != 0 {
                 entry.Set("pfc_enable", pfc_enable)
                 portQosMapTblMap[dbkey] = entry
             }
 
             if prev_pfc_fld && len(pfc_enable) == 0 {
-                log.Info("YangToDb_qos_intf_pfc_xfmr : Delete pfc_enable fld - ", pfc_enable)
-
+                if log.V(3) {
+                    log.Info("YangToDb_qos_intf_pfc_xfmr : Delete pfc_enable fld - ", pfc_enable)
+                }
                 if _, ok := subOpMap[db.ConfigDB]; !ok {
                     subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
                 }
@@ -321,15 +372,16 @@ var YangToDb_qos_intf_pfc_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         }
     }
 
-    log.Info("res_map: ", res_map)
-    log.Info("YangToDb_qos_intf_pfc_xfmr: End ")
+    log.Info("YangToDb_qos_intf_pfc_xfmr: End, res_map: ", res_map)
     return res_map, err
 }
 
 func intf_pfc_priroity_cfg_attr_get (inParams XfmrParams, attrUri string, if_name string, dot1p string,
               prioCfgObj *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_PfcPriorities_PfcPriority_Config) error {
 
-    log.Info("intf_pfc_priroity_cfg_attr_get - if_name ", if_name, " dot1p " , dot1p, " attrUri ", attrUri)
+    if log.V(3) {
+       log.Info("intf_pfc_priroity_cfg_attr_get - if_name ", if_name, " dot1p " , dot1p, " attrUri ", attrUri)
+    }
     if prioCfgObj == nil {
         errStr := "Invalid params for PFC Config attr get."
         log.Info("intf_pfc_priroity_cfg_attr_get: " + errStr)
@@ -358,7 +410,6 @@ func intf_pfc_priroity_cfg_attr_get (inParams XfmrParams, attrUri string, if_nam
         pfc_p := uint8(pfc_prio)
         prioCfgObj.Dot1P = &pfc_p
         prioCfgObj.Enable = new(bool)
-        log.Info("intf_pfc_priroity_cfg_attr_get: ", pfc_enable, " dot1p ", dot1p)
         if strings.Contains(pfc_enable, dot1p) {
            *prioCfgObj.Enable = true
         } else {
@@ -373,7 +424,9 @@ func intf_pfc_priroity_cfg_attr_get (inParams XfmrParams, attrUri string, if_nam
 func intf_pfc_priroity_state_attr_get (inParams XfmrParams, attrUri string, if_name string, dot1p string,
               prioStateObj *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_PfcPriorities_PfcPriority_State) error {
 
-    log.Info("intf_pfc_priroity_state_attr_get - if_name ", if_name, " dot1p " , dot1p, " attrUri ", attrUri)
+    if log.V(3) {
+       log.Info("intf_pfc_priroity_state_attr_get - if_name ", if_name, " dot1p " , dot1p, " attrUri ", attrUri)
+    }
     if prioStateObj == nil {
         errStr := "Invalid params for PFC State attr get."
         log.Info("intf_pfc_priroity_state_attr_get: " + errStr)
@@ -407,7 +460,6 @@ func intf_pfc_priroity_state_attr_get (inParams XfmrParams, attrUri string, if_n
         pfc_prio, _ := strconv.Atoi(dot1p)
         pfc_p := uint8(pfc_prio)
         prioStateObj.Dot1P = &pfc_p
-        log.Info("intf_pfc_priroity_state_attr_get: ", pfc_enable, " dot1p ", dot1p)
         if strings.Contains(pfc_enable, dot1p) {
             *prioStateObj.Enable = true
         } else {
@@ -416,22 +468,33 @@ func intf_pfc_priroity_state_attr_get (inParams XfmrParams, attrUri string, if_n
     case "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-priorities/pfc-priority/state/statistics":
         pfc_prio, _ := strconv.Atoi(dot1p)
         pfc_p := uint8(pfc_prio)
-        getPfcStats (if_name, pfc_p, inParams.dbs[db.CountersDB], prioStateObj.Statistics)
+        getPfcStats (inParams, if_name, pfc_p, inParams.dbs[db.CountersDB], prioStateObj.Statistics)
     default:
         return nil
     }
     return nil
 }
 
-func getPfcQueueIDs(if_name string, dbs [db.MaxDB]*db.DB) ([]string) {
+func getPfcQueueIDs(inParams XfmrParams, if_name string, dbs [db.MaxDB]*db.DB) ([]string) {
     var     err  error
     q_list := []string{}
 
-    queueOidMapTs := &db.TableSpec{Name: "COUNTERS_QUEUE_NAME_MAP"}
-    queueCountInfo, err := dbs[db.CountersDB].GetMapAll(queueOidMapTs)
-    if err != nil {
-        log.Error("getPfcQueueIDs    err: ", err)
-        return q_list
+    var queueCountInfo db.Value
+    var present bool
+    oidMap, present := inParams.txCache.Load("COUNTERS_QUEUE_NAME_MAP")
+    if !present {
+        queueOidMapTs := &db.TableSpec{Name: "COUNTERS_QUEUE_NAME_MAP"}
+        queueCountInfo, err = inParams.d.GetMapAll(queueOidMapTs)
+        if err != nil {
+            log.Info("getPfcQueueIDs    err: ", err)
+            return q_list
+        }
+
+        inParams.txCache.Store("COUNTERS_QUEUE_NAME_MAP", queueCountInfo)
+        log.V(3).Info("Loading queueCountInfo")
+    } else {
+        queueCountInfo = oidMap.(db.Value)
+        log.V(3).Info("Reuse queueCountInfo ")
     }
 
     for queue, oid := range queueCountInfo.Field {
@@ -447,13 +510,12 @@ func getPfcQueueIDs(if_name string, dbs [db.MaxDB]*db.DB) ([]string) {
 
 var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
 
-    log.Info("DbToYang_qos_intf_pfc_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
 
     ifname := pathInfo.Var("interface-id")
     dbIfName := utils.GetNativeNameFromUIName(&ifname)
     if_name := *dbIfName
-    log.Info("DbToYang_qos_intf_pfc_xfmr: ", if_name)
+    log.Info("DbToYang_qos_intf_pfc_xfmr: ", inParams.uri, " if_name ", if_name)
     qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
     if qosIntfsObj == nil {
         return nil
@@ -471,7 +533,6 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
     ygot.BuildEmptyTree(intfObj.Pfc)
 
     targetUriPath, _ := getYangPathFromUri(inParams.uri)
-    log.Info("targetUriPath: ",  targetUriPath)
     if (targetUriPath == "/openconfig-qos:qos/interfaces/interface/pfc") {
        targetUriPath  = "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc"
     }
@@ -513,7 +574,6 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
            prioObj, ok := pfcPrioritiesTblObj.PfcPriority[dot1p_val]
            if !ok {
                prioObj, _ = pfcPrioritiesTblObj.NewPfcPriority(dot1p_val)
-               log.Info("NewPfcPriority: ", dot1p_val)
            }
            ygot.BuildEmptyTree(prioObj)
            ygot.BuildEmptyTree(prioObj.Config)
@@ -536,7 +596,7 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
        if queue != "" {
            q_list = append(q_list, queue)
        } else {
-           q_list = getPfcQueueIDs(ifname, inParams.dbs)
+           q_list = getPfcQueueIDs(inParams, ifname, inParams.dbs)
        }
 
        state_flag := strings.HasSuffix(targetUriPath, "state")
@@ -552,7 +612,6 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
            qObj, ok := pfcQueueTblObj.PfcQueue[q_val]
            if !ok {
                qObj, _ = pfcQueueTblObj.NewPfcQueue(q_val)
-               log.Info("NewPfcQueue: ", q_val)
            }
            ygot.BuildEmptyTree(qObj)
            if !state_flag && !stats_flag {
@@ -570,7 +629,7 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
            if !state_flag && !config_flag {
                ygot.BuildEmptyTree(qObj.Statistics)
 
-               if getPfcQueueStats(if_name, q_val, inParams.dbs[db.CountersDB], qObj.Statistics) != nil {
+               if getPfcQueueStats(inParams, if_name, q_val, inParams.dbs[db.CountersDB], qObj.Statistics) != nil {
                   log.Errorf("DbToYang_qos_intf_pfc_xfmr: Failed to read PFC stats for interface %s queue %s", if_name, q)
                   continue
                }
@@ -585,18 +644,14 @@ var Subscribe_qos_intf_pfc_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscI
     var err error
     var result XfmrSubscOutParams
 
-    log.Info("Subscribe_qos_intf_pfc_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
     ifname := pathInfo.Var("interface-id")
     dbIfName := utils.GetNativeNameFromUIName(&ifname)
     if_name := *dbIfName
-    log.Info("Subscribe_qos_intf_pfc_xfmr: ", if_name)
+    log.Info("Subscribe_qos_intf_pfc_xfmr: ", inParams.uri, " if_name ", if_name)
 
     result.dbDataMap = make(RedisDbMap)
-    log.Infof("Subscribe_qos_intf_pfc_xfmr path:%s; template:%s targetUriPath:%s key:%s",
-              pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{"PORT_QOS_MAP":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
     result.isVirtualTbl = true

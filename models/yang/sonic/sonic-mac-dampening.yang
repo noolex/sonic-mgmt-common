@@ -1,0 +1,61 @@
+module sonic-mac-dampening {
+    namespace "http://github.com/Azure/sonic-mac-dampening";
+    prefix smd;
+    yang-version 1.1;
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC MAC Dampening";
+
+    revision 2020-09-14 {
+        description
+            "Initial revision.";
+    }
+
+    container sonic-mac-dampening {
+
+        container MAC_DAMPENING{
+            list MAC_DAMPENING_LIST{
+                key "config";
+                leaf config {
+                    type enumeration {
+                        enum config;
+                    }
+                    description
+                        "mac_dampening DB key.";
+                }
+                leaf threshold {
+                    type uint8 {
+                        range "5..100" {
+                            error-message "threshold value out of range";
+                        }
+                    }
+                }
+            }
+        }
+        container MAC_DAMP_TABLE {
+            sonic-ext:db-name "ASIC_DB";
+            sonic-ext:key-delim ":";
+            config false;
+            description "asic db mac dampening disabled ports";
+            list MAC_DAMP_TABLE_LIST{
+                key "oid_str bridge_port_id";
+                leaf oid_str {
+                    type string;
+                }
+                leaf bridge_port_id {
+                    type string;
+                }
+            }
+        }
+    }
+}

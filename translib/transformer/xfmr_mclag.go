@@ -189,7 +189,18 @@ var YangToDb_mclag_unique_ip_enable_fld_xfmr FieldXfmrYangToDb = func(inParams X
     if (uniqueIpEnable == ocbinds.OpenconfigMclag_Mclag_VlanInterfaces_VlanInterface_Config_UniqueIpEnable_ENABLE) {
         res_map["unique_ip"] = "enable"
     } else {
-        res_map["unique_ip"] = ""
+	if (inParams.oper == DELETE) {
+        	tblName := "MCLAG_UNIQUE_IP"
+		pathInfo := NewPathInfo(inParams.uri)
+        	tblKey := pathInfo.Var("name")
+		log.Infof("YangToDb_mclag_unique_ip_enable_fld_xfmr Delete tblKey %v", tblKey)
+		subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        	subIntfmap_del := make(map[string]map[string]db.Value)
+        	subIntfmap_del[tblName] = make(map[string]db.Value)
+        	subIntfmap_del[tblName][tblKey] = db.Value{}
+        	subOpMap[db.ConfigDB] = subIntfmap_del
+        	inParams.subOpDataMap[DELETE] = &subOpMap
+        }
     }
 
 	log.Infof("DbToYang_mclag_unique_ip_enable_fld_xfmr --> result: %v", res_map)
@@ -203,7 +214,7 @@ var YangToDb_mclag_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xf
 	log.Info("YangToDb_mclag_interface_subtree_xfmr: ", inParams.ygRoot, inParams.uri)
 
 	mclagObj := getMclagRoot(inParams.ygRoot)
-	if mclagObj.Interfaces == nil {
+	if mclagObj == nil || mclagObj.Interfaces == nil {
 		return res_map, err
 	}
 
@@ -211,6 +222,16 @@ var YangToDb_mclag_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xf
 		if intf != nil {
 			var mclagdomainId int
 			if intf.Config != nil {
+                if intf.Config.MclagId  != nil {
+                    if strings.HasPrefix(*intf.Name, PORTCHANNEL) {
+                        poSplit := strings.Split(*intf.Name, PORTCHANNEL); 
+                        poId, _ := strconv.Atoi(poSplit[1])
+
+                        if (uint16(poId) != *intf.Config.MclagId) {
+						    return res_map, tlerr.NotSupported("Different MCLAG ID:%v and MCLAG porchannelId:%v for a given mclag interface:%v, needs to be same", *intf.Config.MclagId, poId, *intf.Name)
+                        }
+                    }
+                }
 				mclagdomainId = int(*intf.Config.MclagDomainId)
 			} else {
 				// DomainId info NOT available from URI or body. So make db query.
@@ -300,9 +321,15 @@ func fillMclagIntfDetails(inParams XfmrParams, ifname string, mclagdomainid stri
 
 	intfData.Name = &ifname
 
+    //mclagId would be same as the portchannel id
+    poSplit := strings.Split(ifname, PORTCHANNEL); 
+    poId, _ := strconv.Atoi(poSplit[1])
+    mclagId := uint16(poId)
+
 	if intfData.Config != nil {
 		intfData.Config.MclagDomainId = &did32
 		intfData.Config.Name = &ifname
+        intfData.Config.MclagId = &mclagId
 		log.Infof("fillMclagIntfDetails--> filled config container with domain:%v and Interface:%v", did32, ifname)
 	}
 
@@ -330,6 +357,7 @@ func fillMclagIntfDetails(inParams XfmrParams, ifname string, mclagdomainid stri
 
 		intfData.State.MclagDomainId = &did32
 		intfData.State.Name = &ifname
+        intfData.State.MclagId = &mclagId
 
 		if intfData.State.Local != nil {
 			intfData.State.Local.TrafficDisable = &trafficDisable
@@ -385,10 +413,11 @@ var Subscribe_mclag_interface_subtree_xfmr SubTreeXfmrSubscribe = func(inParams 
              log.Infof("Subscribe_mclag_interface_subtree_xfmr, unable to get configDB, error %v", err)
              return result, err
          }
-	     mclagIntfKeys, _ := cdb.GetKeysPattern(&db.TableSpec{Name: "MCLAG_INTERFACE"}, db.Key{[]string{"*", ifName}})
+         mclagIntfKeys, _ := cdb.GetKeysPattern(&db.TableSpec{Name: "MCLAG_INTERFACE"}, db.Key{[]string{"*", ifName}})
          log.Infof("keys %v ", mclagIntfKeys)
 	     if len(mclagIntfKeys) > 0 {
 	         for _, intfKey := range mclagIntfKeys {
+                 log.Infof("intfKey %v ", intfKey)
 	             if intfKey.Get(1) == ifName {
 	        	     domainId = intfKey.Get(0)
                      break

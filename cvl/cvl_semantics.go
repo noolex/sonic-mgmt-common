@@ -41,6 +41,31 @@ type YValidator struct {
 	//operation string     //Edit operation
 }
 
+type DepDataCallBack func(ctxt interface{}, redisKeys []string, redisKeyFilter, keyNames, pred, fields, count string) string
+type DepDataCountCallBack func(ctxt interface{}, redisKeyFilter, keyNames, pred, field string) float64
+
+var depDataCb DepDataCallBack = func(ctxt interface{}, redisKeys []string, redisKeyFilter, keyNames, pred, fields, count string) string {
+	c := ctxt.(*CVL)
+	return c.addDepYangData(redisKeys, redisKeyFilter, keyNames, pred, fields, "")
+}
+
+var depDataCountCb DepDataCountCallBack = func(ctxt interface{}, redisKeyFilter, keyNames, pred, field string) float64 {
+	if (pred != "") {
+		pred = "return (" + pred + ")"
+	}
+
+	redisEntries, err := luaScripts["count_entries"].Run(redisClient, []string{}, redisKeyFilter, keyNames, pred, field).Result()
+	count := float64(0)
+
+	if (err == nil) && (redisEntries.(int64) > 0) {
+		count = float64(redisEntries.(int64))
+	}
+
+	TRACE_LOG(TRACE_SEMANTIC, "depDataCountCb() with redisKeyFilter=%s, keyNames= %s, predicate=%s, fields=%s, returned = %v", redisKeyFilter, keyNames, pred, field, count)
+	
+	return count
+}
+
 //Generate leaf/leaf-list YANG data
 func (c *CVL) generateYangLeafData(tableName string, jsonNode *jsonquery.Node,
 parent *xmlquery.Node) CVLRetCode {
@@ -760,7 +785,7 @@ func (c *CVL) addDepYangData(redisKeys []string, redisKeyFilter,
 
 			for field := redisKey.FirstChild; field != nil;
 			field = field.NextSibling {
-				if (field.Data == fields) {
+				if (field.Data == fields && field.FirstChild != nil) {
 					//Single field requested
 					singleLeaf = singleLeaf + field.FirstChild.Data + ","
 					break
@@ -989,37 +1014,10 @@ func (c *CVL) validateMustExp(node *xmlquery.Node,
 	c.setOperation(op)
 
 	//Set xpath callback for retreiving dependent data
-	xpath.SetDepDataClbk(c, func(ctxt interface{}, redisKeys []string,
-	redisKeyFilter, keyNames, pred, fields, count string) string {
-		c := ctxt.(*CVL)
-
-		TRACE_LOG(TRACE_SEMANTIC, "validateMustExp(): calling addDepYangData()")
-		return c.addDepYangData(redisKeys, redisKeyFilter, keyNames, pred, fields, "")
-	})
+	xpath.SetDepDataClbk(c, depDataCb)
 
 	//Set xpath callback for retriving dependent data count
-	xpath.SetDepDataCntClbk(c, func(ctxt interface{},
-	redisKeyFilter, keyNames, pred, field string) float64 {
-
-		if (pred != "") {
-			pred = "return (" + pred + ")"
-		}
-
-		redisEntries, err := luaScripts["count_entries"].Run(redisClient,
-		[]string{}, redisKeyFilter, keyNames, pred, field).Result()
-
-		count := float64(0)
-
-		if (err == nil) && (redisEntries.(int64) > 0) {
-			count = float64(redisEntries.(int64))
-		}
-
-		TRACE_LOG(TRACE_SEMANTIC, "validateMustExp(): depDataCntClbk() with redisKeyFilter=%s, " +
-		"keyNames= %s, predicate=%s, fields=%s, returned = %v",
-		redisKeyFilter, keyNames, pred, field, count)
-
-		return count
-	})
+	xpath.SetDepDataCntClbk(c, depDataCountCb)
 
 	if (node == nil || node.FirstChild == nil) {
 		return CVLErrorInfo{
@@ -1105,12 +1103,7 @@ func (c *CVL) validateWhenExp(node *xmlquery.Node,
 	}
 
 	//Set xpath callback for retreiving dependent data
-	xpath.SetDepDataClbk(c, func(ctxt interface{}, redisKeys []string,
-	redisKeyFilter, keyNames, pred, fields, count string) string {
-		c := ctxt.(*CVL)
-		TRACE_LOG(TRACE_SEMANTIC, "validateWhenExp(): calling addDepYangData()")
-		return c.addDepYangData(redisKeys, redisKeyFilter, keyNames, pred, fields, "")
-	})
+	xpath.SetDepDataClbk(c, depDataCb)
 
 	if (node == nil || node.FirstChild == nil) {
 		return CVLErrorInfo{
@@ -1208,12 +1201,7 @@ func (c *CVL) validateLeafRef(node *xmlquery.Node,
 	}
 
 	//Set xpath callback for retreiving dependent data
-	xpath.SetDepDataClbk(c, func(ctxt interface{}, redisKeys []string,
-	redisKeyFilter, keyNames, pred, fields, count string) string {
-		c := ctxt.(*CVL)
-		TRACE_LOG(TRACE_SEMANTIC, "validateLeafRef(): calling addDepYangData()")
-		return c.addDepYangData(redisKeys, redisKeyFilter, keyNames, pred, fields, "")
-	})
+	xpath.SetDepDataClbk(c, depDataCb)
 
 	listNode := node
 	if (listNode == nil || listNode.FirstChild == nil) {

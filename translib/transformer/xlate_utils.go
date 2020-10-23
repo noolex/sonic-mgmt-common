@@ -35,6 +35,15 @@ import (
     "sync"
 )
 
+func initRegex() {
+	rgpKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
+	rgpIpv6 = regexp.MustCompile(`(([^:]+:){6}(([^:]+:[^:]+)|(.*\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?`)
+	rgpMac = regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
+	rgpIsMac = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
+	rgpSncKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
+
+}
+
 /* Create db key from data xpath(request) */
 func keyCreate(keyPrefix string, xpath string, data interface{}, dbKeySep string) string {
 	_, ok := xYangSpecMap[xpath]
@@ -182,10 +191,12 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableNa
 
 	/* if uri contins key, use it else use xpath */
 	if strings.Contains(uri, "[") {
-		uriXpath, _ := XfmrRemoveXPATHPredicates(uri)
-		if (uriXpath == xpath  && (strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/"))) {
-                        uriWithKeyCreate = false
-                }
+		if strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/") {
+			uriXpath, _, _ := XfmrRemoveXPATHPredicates(uri)
+			if uriXpath == xpath {
+				uriWithKeyCreate = false
+			}
+		}
 		uriWithKey  = fmt.Sprintf("%v", uri)
 	}
 
@@ -285,18 +296,15 @@ func isSonicYang(path string) bool {
 }
 
 func hasIpv6AddString(val string) bool {
-        re_comp := regexp.MustCompile(`(([^:]+:){6}(([^:]+:[^:]+)|(.*\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?`)
-	return re_comp.MatchString(val)
+	return rgpIpv6.MatchString(val)
 }
 
 func hasMacAddString(val string) bool {
-        re_comp := regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
-	return re_comp.MatchString(val)
+	return rgpMac.MatchString(val)
 }
 
 func isMacAddString(val string) bool {
-        re_comp := regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
-	return re_comp.MatchString(val)
+	return rgpIsMac.MatchString(val)
 }
 
 func getYangTerminalNodeTypeName(xpathPrefix string, keyName string) string {
@@ -575,32 +583,28 @@ func stripAugmentedModuleNames(xpath string) string {
         return path
 }
 
-func XfmrRemoveXPATHPredicates(inPath string) (string, error) {
-	xpath := inPath
-	if !strings.HasPrefix(inPath, "..") {
-		uriList := splitUri(inPath)
-		xpath = "/" + strings.Join(uriList, "/")
-	}
+func XfmrRemoveXPATHPredicates(uri string) (string, []string, error) {
+	var uriList []string
+	var pathList []string
+	uriList = SplitPath(uri)
 
-	// Strip keys from xpath
-	for {
-		si, ei := strings.IndexAny(xpath, "["), strings.Index(xpath, "]")
-		if si != -1 && ei != -1 {
-			if si < ei {
-				newpath := xpath[:si] + xpath[ei+1:]
-				xpath = newpath
-			} else {
-				return "", fmt.Errorf("Incorrect ordering of [] in %s , [ pos: %d, ] pos: %d", xpath, si, ei)
-			}
-		} else if si != -1 || ei != -1 {
-			return "", fmt.Errorf("Mismatched brackets within string %s, si:%d ei:%d", xpath, si, ei)
+	// Strip keys for xpath creation
+	for _, path := range uriList {
+		si := strings.Index(path, "[")
+		if si != -1 {
+			pathList = append(pathList, path[:si])
 		} else {
-			// No more keys available
-			break
+			pathList = append(pathList, path)
 		}
 	}
-	path := stripAugmentedModuleNames(xpath)
-	return path, nil
+
+	inPath := strings.Join(pathList, "/")
+	if !strings.HasPrefix(uri, "..") {
+		inPath = "/" + inPath
+	}
+
+	xpath := stripAugmentedModuleNames(inPath)
+	return xpath, uriList, nil
 }
 
 func replacePrefixWithModuleName(xpath string) (string) {
@@ -622,12 +626,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)
 	 var retData xpathTblKeyExtractRet
 	 keyStr    := ""
-	 rgp       := regexp.MustCompile(`\[([^\[\]]*)\]`)
 	 curPathWithKey := ""
 	 cdb := db.ConfigDB
 	 var dbs [db.MaxDB]*db.DB
 	 var err error
 	 var isUriForListInstance bool
+	 var pathList []string
 
 	 retData.xpath = ""
 	 retData.tableName = ""
@@ -635,7 +639,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 retData.isVirtualTbl = false
 
 	 isUriForListInstance = false
-	 retData.xpath, _ = XfmrRemoveXPATHPredicates(path)
+	 retData.xpath, pathList, _ = XfmrRemoveXPATHPredicates(path)
 	 xpathInfo, ok := xYangSpecMap[retData.xpath]
 	 if !ok {
 		log.Warningf("No entry found in xYangSpecMap for xpath %v.", retData.xpath)
@@ -654,11 +658,14 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 if len(xpathInfo.delim) > 0 {
 		 keySeparator = xpathInfo.delim
 	 }
-	 pathList := splitUri(path)
+	 xpathList := strings.Split(retData.xpath, "/")
+	 xpathList = xpathList[1:]
+	 yangXpath := ""
 	 xfmrLogInfoAll("path elements are : %v", pathList)
-	 for _, k := range pathList {
+	 for i, k := range pathList {
 		 curPathWithKey += k
-		 yangXpath, _ := XfmrRemoveXPATHPredicates(curPathWithKey)
+		 callKeyXfmr := true
+		 yangXpath += "/" + xpathList[i]
 		 xpathInfo, ok := xYangSpecMap[yangXpath]
 		 if ok {
 			 yangType := yangTypeGet(xpathInfo.yangEntry)
@@ -675,6 +682,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr += keySeparator
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
+				 if oper == DELETE {
+					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
+						callKeyXfmr = false
+					}
+				 }
+				 if callKeyXfmr {
 					 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 					 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 					 if oper == GET {
@@ -694,6 +707,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 }
 						 keyStr = ret
 					 }
+					 if oper == DELETE {
+						keyXfmrCache[curPathWithKey] = keyStr
+					 }
+				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
 					 keyStr += *xYangSpecMap[yangXpath].keyName
 				 } else {
@@ -701,7 +718,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 There should be key-transformer, if not then the yang key leaves
 					 will be concatenated with respective default DB type key-delimiter
 					 */
-					 for idx, kname := range rgp.FindAllString(k, -1) {
+					 for idx, kname := range rgpKeyExtract.FindAllString(k, -1) {
 						 if idx > 0 { keyStr += keySeparator }
 						 keyl := strings.TrimRight(strings.TrimLeft(kname, "["), "]")
 						 keys := strings.Split(keyl, "=")
@@ -709,6 +726,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
+				 if oper == DELETE {
+					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
+						callKeyXfmr = false
+					}
+				 }
+			   if callKeyXfmr {
 				 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 				 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 				 if oper == GET {
@@ -728,6 +751,10 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 					 keyStr = ret
 				 }
+				 if oper == DELETE {
+					keyXfmrCache[curPathWithKey] = keyStr
+				 }
+			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {
 				 keyStr += *xYangSpecMap[yangXpath].keyName
 			 }
@@ -763,7 +790,7 @@ func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
 	cdb := db.ConfigDB
 	var dbs [db.MaxDB]*db.DB
 
-	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
+	 xPath, _, _ := XfmrRemoveXPATHPredicates(uri)
 	 xpathInfo, ok := xYangSpecMap[xPath]
 	 if !ok {
 		 log.Warningf("No entry found in xYangSpecMap for xpath %v.", xPath)
@@ -789,7 +816,7 @@ func dbKeyFromAnnotGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
 	cdb := db.ConfigDB
 	var dbs [db.MaxDB]*db.DB
 
-	 xPath, _ := XfmrRemoveXPATHPredicates(uri)
+	 xPath, _, _ := XfmrRemoveXPATHPredicates(uri)
 	 xpathInfo, ok := xYangSpecMap[xPath]
 	 if !ok {
 		 log.Errorf("No entry found in xYangSpecMap for xpath %v.", xPath)
@@ -825,7 +852,7 @@ func sonicXpathKeyExtract(path string) (string, string, string) {
 	 xpath, keyStr, tableName, fldNm := "", "", "", ""
 	 var err error
 	 lpath := path
-	 xpath, err = XfmrRemoveXPATHPredicates(path)
+	 xpath, _, err = XfmrRemoveXPATHPredicates(path)
 	 if err != nil {
 		 return xpath, keyStr, tableName
 	 }
@@ -836,7 +863,6 @@ func sonicXpathKeyExtract(path string) (string, string, string) {
 			 xfmrLogInfoAll("Field Name : %v", fldNm)
 		 }
 	 }
-	 rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
 	 pathsubStr := strings.Split(path , "/")
 	 if len(pathsubStr) > SONIC_TABLE_INDEX  {
 		 if strings.Contains(pathsubStr[2], "[") {
@@ -864,7 +890,7 @@ func sonicXpathKeyExtract(path string) (string, string, string) {
 				 lpath = "/" + strings.Join(pathLst[:SONIC_FIELD_INDEX-1], "/")
 				 xfmrLogInfoAll("path after removing the field portion %v", lpath)
 			 }
-			 for i, kname := range rgp.FindAllString(lpath, -1) {
+			 for i, kname := range rgpSncKeyExtract.FindAllString(lpath, -1) {
 				 if i > 0 {
 					 keyStr += dbOpts.KeySeparator
 				 }
@@ -1174,17 +1200,7 @@ func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error)
 }
 
 func splitUri(uri string) []string {
-	if !strings.HasPrefix(uri, "/") {
-		uri = "/" + uri
-	}
-	rgp := regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
-	pathList := rgp.FindAllString(uri, -1)
-	for i, kname := range pathList {
-		//xfmrLogInfoAll("uri path elems: %v", kname)
-		if strings.HasPrefix(kname, "/") {
-			pathList[i] = kname[1:]
-		}
-	}
+	pathList := SplitPath(uri)
 	xfmrLogInfoAll("uri: %v ", uri)
 	xfmrLogInfoAll("uri path elems: %v", pathList)
 	return pathList
@@ -1271,16 +1287,34 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 	yangType := ""
 	err := fmt.Errorf("Unable to extract leaf-list instance value for uri - %v", uri)
 
-	xpath, xerr := XfmrRemoveXPATHPredicates(uri)
-	specInfo, ok := xYangSpecMap[xpath]
-	if !ok {
-		return leafListInstVal, xerr
-	}
-
-	yangType = yangTypeGet(specInfo.yangEntry)
-	if !(yangType == YANG_LEAF_LIST) {
-		return leafListInstVal, err
-	}
+	xpath, _, xerr := XfmrRemoveXPATHPredicates(uri)
+        if !isSonicYang(uri) {
+                specInfo, ok := xYangSpecMap[xpath]
+                if !ok {
+                        return leafListInstVal, xerr
+                }
+                yangType = yangTypeGet(specInfo.yangEntry)
+                if !(yangType == YANG_LEAF_LIST) {
+                        return leafListInstVal, err
+                }
+        } else {
+                tokens:= strings.Split(xpath, "/")
+                fieldName := ""
+                tableName := ""
+                if len(tokens) > SONIC_FIELD_INDEX {
+                        fieldName = tokens[SONIC_FIELD_INDEX]
+                        tableName = tokens[SONIC_TABLE_INDEX]
+                }
+                dbSpecField := tableName + "/" + fieldName
+                _, ok := xDbSpecMap[dbSpecField]
+                if ok {
+                        yangType := xDbSpecMap[dbSpecField].fieldType
+                        // terminal node case
+                        if !(yangType == YANG_LEAF_LIST) {
+                                return leafListInstVal, err
+                        }
+                }
+        }
 
 	//Check if uri has Leaf-list value
 	if ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
@@ -1434,7 +1468,7 @@ func checkIpV6AddrNotation(val string) bool {
 }
 
 func isYangLeaf(uri string) (bool, error) {
-	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
 	if err == nil {
 		if d, ok := xYangSpecMap[xpath]; ok {
 			if d.yangDataType == YANG_LEAF {

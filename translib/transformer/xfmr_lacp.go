@@ -26,7 +26,6 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
     "os/exec"
-    "time"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
 )
@@ -72,8 +71,16 @@ func getLacpData(ifKey string) (map[string]interface{}, error) {
 func fillLacpState(inParams XfmrParams, ifKey string, TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State) error {
     var runner_map map[string]interface{}
     var status bool
-    if runner_map, status = TeamdJson["runner"].(map[string]interface{}); !status {
+
+    setup_map := TeamdJson["setup"].(map[string]interface{})
+    if setup_map["runner_name"] != "lacp" {
         errStr := "LAG not in LACP mode"
+        log.Infof(errStr)
+        return tlerr.InvalidArgsError{Format:errStr}
+    }
+
+    if runner_map, status = TeamdJson["runner"].(map[string]interface{}); !status {
+        errStr := "LAG doesn't contain runner details"
         log.Infof(errStr)
         return tlerr.InvalidArgsError{Format:errStr}
     }
@@ -350,28 +357,11 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
 
         ygot.BuildEmptyTree(lacpIntfsObj)
 
-        /*
-        var lagTblTs = &db.TableSpec{Name: "LAG_TABLE"}
-
-        var appDb = inParams.dbs[db.ApplDB]
-        tbl, err := appDb.GetTable(lagTblTs)
-
-        if err != nil {
-            log.Error("App-DB get for list of portchannels failed!")
-            return err
-        }
-        keys, _ := tbl.GetKeys()
-        */
-        start := time.Now()
-
         keys, err := inParams.dbs[db.ApplDB].GetKeysByPattern(&db.TableSpec{Name: "LAG_TABLE"}, "PortChannel*")
         if err != nil {
             log.Error("App-DB get for list of portchannels failed!")
             return err
         }
-
-        ts := time.Since(start)
-        log.Infof("GetTable and GetKeys took %s", ts)
 
         for _, key := range keys {
            ifKey := key.Get(0)

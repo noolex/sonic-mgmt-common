@@ -436,7 +436,7 @@ var YangToDb_route_map_bgp_action_set_community SubTreeXfmrYangToDb = func(inPar
 
     rtPolDefObj := rtPolDefsObj.PolicyDefinitions.PolicyDefinition[rtPolicyName]
 
-    if rtPolDefObj.Statements == nil {
+    if rtPolDefObj.Statements == nil || rtPolDefObj.Statements.Statement == nil {
         if inParams.oper == DELETE {
             /* If parent level delete has triggered 
              * this child sub tree transfomer return success*/
@@ -717,7 +717,7 @@ var YangToDb_route_map_bgp_action_set_ext_community SubTreeXfmrYangToDb = func(i
     }
 
     rtPolDefObj := rtPolDefsObj.PolicyDefinitions.PolicyDefinition[rtPolicyName]
-    if rtPolDefObj.Statements == nil {
+    if rtPolDefObj.Statements == nil || rtPolDefObj.Statements.Statement == nil {
         if inParams.oper == DELETE {
             /* If parent level delete has triggered 
              * this child sub tree transfomer return success*/

@@ -57,7 +57,7 @@ submodule openconfig-tam-features {
                 }
                 enum INACTIVE {
                     description
-                      "Feature is suspended/inactive ";
+                      "Feature is suspended/inactive";
                 }
             // This enum is restricted here from the original
             // definition to remove the operation status enum
@@ -99,7 +99,7 @@ submodule openconfig-tam-features {
             list feature {
                 key "feature-ref";
                 description
-                  "Uniqueuly identifies a feature";
+                  "Uniquely identifies a feature";
 
                 leaf feature-ref {
                     type leafref {
@@ -136,7 +136,7 @@ submodule openconfig-tam-features {
                 key "feature-ref";
 
                 description
-                  "Uniqueuly identifies a feature";
+                  "Uniquely identifies a feature";
 
                 leaf feature-ref {
                     type leafref {

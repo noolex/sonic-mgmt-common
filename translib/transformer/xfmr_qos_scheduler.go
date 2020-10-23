@@ -13,14 +13,14 @@ func init () {
     XlateFuncBind("YangToDb_qos_scheduler_xfmr", YangToDb_qos_scheduler_xfmr)
     XlateFuncBind("DbToYang_qos_scheduler_xfmr", DbToYang_qos_scheduler_xfmr)
     XlateFuncBind("Subscribe_qos_scheduler_xfmr", Subscribe_qos_scheduler_xfmr)
- 
+
 }
 
 const (
     SCHEDULER_PORT_SEQUENCE string = "255"
     SCHEDULER_MIN_RATE_BPS uint64 =  4000
-    SCHEDULER_MIN_BURST_BYTES int =  256
-    SCHEDULER_MAX_BURST_BYTES int =  128000000
+    SCHEDULER_MIN_BURST_BYTES int =  250
+    SCHEDULER_MAX_BURST_BYTES int =  125000000
     SCHEDULER_MAX_RATE_PPS uint64 =  100000
     SCHEDULER_MAX_BURST_PACKETS int =  100000
 )
@@ -46,7 +46,7 @@ var Subscribe_qos_scheduler_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubsc
     result.dbDataMap = RedisDbMap{db.ConfigDB:{"SCHEDULER":{name+"@"+seq:{}}}}  // tablename & table-idx for the inParams.uri
     result.needCache = true
     result.nOpts = new(notificationOpts)
-    result.nOpts.mInterval = 0 
+    result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
     log.Info("Returning Subscribe_qos_scheduler_xfmr")
     return result, err
@@ -152,14 +152,11 @@ func getIntfsBySPName(sp_name string) ([]string) {
 
         keys, _ := d.GetKeys(dbSpec)
         for _, key := range keys {
-            log.Info("key: ", key)
             qCfg, _ := d.GetEntry(dbSpec, key)
-            log.Info("qCfg: ", qCfg)
-            sched , ok := qCfg.Field["scheduler"] 
+            sched , ok := qCfg.Field["scheduler"]
             if !ok {
                 continue
             }
-            log.Info("sched: ", sched)
 
             sched = DbLeafrefToString(sched, "SCHEDULER")
 
@@ -168,9 +165,7 @@ func getIntfsBySPName(sp_name string) ([]string) {
             if str[0] == sp_name {
                 intf_name := key.Get(0)
 
-                log.Info("intf_name added to the referenece list: ", intf_name)
-
-                s = append(s, intf_name)  
+                s = append(s, intf_name)
             }
         }
     }
@@ -179,13 +174,13 @@ func getIntfsBySPName(sp_name string) ([]string) {
 }
 
 func isSchedulerPolicyInUse(sp_name string)(bool) {
-    // read intfs refering to the scheduler profile 
+    // read intfs refering to the scheduler profile
     intfs := getIntfsBySPName(sp_name)
     if  len(intfs) == 0 {
         log.Info("No active user of the scheduler policy: ", sp_name)
         return false
     }
-    
+
     log.Info("scheduler policy is in use: ", sp_name)
     return true
 }
@@ -196,8 +191,8 @@ func isLastSchedulerInActivePolicy(sched_name string) (bool) {
         log.Info("sched_name error: ", sched_name)
         return false
     }
-    
-    // read intfs refering to the scheduler profile 
+
+    // read intfs refering to the scheduler profile
     intfs := getIntfsBySPName(s[0])
     if  len(intfs) == 0 {
         log.Info("No active user of the scheduler policy", s[0])
@@ -222,7 +217,7 @@ func isLastSchedulerField(sched_key string, attr string) (bool) {
     d, err := db.NewDB(getDBOptions(db.ConfigDB))
 
     if err != nil {
-        log.Infof("getSchedulerIds, unable to get configDB, error %v", err)
+        log.Infof("isLastSchedulerField, unable to get configDB, error %v", err)
         return false
     }
 
@@ -238,7 +233,7 @@ func isLastSchedulerField(sched_key string, attr string) (bool) {
     }
 
     if len(entry.Field) == 1 {
-        _, ok := entry.Field[attr] 
+        _, ok := entry.Field[attr]
         return ok
     }
 
@@ -250,7 +245,7 @@ func isLastSchedulerFields(sched_key string, attrs []string) (bool) {
     d, err := db.NewDB(getDBOptions(db.ConfigDB))
 
     if err != nil {
-        log.Infof("getSchedulerIds, unable to get configDB, error %v", err)
+        log.Infof("isLastSchedulerFields, unable to get configDB, error %v", err)
         return false
     }
 
@@ -267,7 +262,7 @@ func isLastSchedulerFields(sched_key string, attrs []string) (bool) {
 
     for _, field := range entry.Field {
         log.Info("containing field: ", field)
-        
+
         found := false
         for _, attr := range attrs {
             if field == attr {
@@ -291,19 +286,22 @@ func get_schedulers_by_sp_name(sp_name string) ([]string) {
 
     if err != nil {
         log.Infof("getSchedulerIds, unable to get configDB, error %v", err)
-        return sched_list 
+        return sched_list
     }
 
 
     defer d.DeleteDB()
-
+    var keyPattern string
     ts := &db.TableSpec{Name: "SCHEDULER"}
-    keys, _ := d.GetKeys(ts);
+    if sp_name == "" {
+        keyPattern = "*"
+    } else {
+        keyPattern = sp_name + "@*"
+    }
 
-    log.Info("keys: ", keys)
-
+    keys, _ := d.GetKeysByPattern(ts, keyPattern)
     for _, key := range keys {
-        if sp_name == "" || 
+        if sp_name == "" ||
            key.Comp[0] == sp_name ||
            strings.HasPrefix(key.Comp[0], sp_name+"@") {
             sched_list = append(sched_list, key.Comp[0])
@@ -311,7 +309,7 @@ func get_schedulers_by_sp_name(sp_name string) ([]string) {
     }
 
     log.Info("matching schedulers: ", sched_list)
-    return sched_list 
+    return sched_list
 }
 
 func qos_scheduler_delete_all_sp(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -329,7 +327,7 @@ func qos_scheduler_delete_all_sp(inParams XfmrParams) (map[string]map[string]db.
 
     /* update "scheduler" table */
     sched_entry := make(map[string]db.Value)
-
+    var sched_del bool = false
     for _, sched_key := range sched_keys {
         str := strings.Split(sched_key, "@")
         sp_name := str[0]
@@ -338,13 +336,14 @@ func qos_scheduler_delete_all_sp(inParams XfmrParams) (map[string]map[string]db.
         if isSchedulerPolicyInUse(sp_name) {
              continue
         }
-
+        sched_del = true
         sched_entry[sched_key] = db.Value{Field: make(map[string]string)}
     }
 
     log.Info("qos_scheduler_delete_all_sp ")
-    res_map["SCHEDULER"] = sched_entry
-
+    if sched_del {
+        res_map["SCHEDULER"] = sched_entry
+    }
     // no need to clean Queue DB as only unused scheduler policy is allowed to be deleted
 
     return res_map, err
@@ -488,7 +487,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         }
 
         log.Info("field Meter-type is set for attribute deletion")
-        sched_entry[sched_key].Field["meter-type"] = "0"
+        sched_entry[sched_key].Field["meter_type"] = "0"
     }
 
 
@@ -553,7 +552,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
 
         // one specific scheduler is deleted
 
-        // read interface queues refering to the scheduler in db 
+        // read interface queues refering to the scheduler in db
         var keys []string
         if  seq != SCHEDULER_PORT_SEQUENCE {
             keys = getQueuesBySchedulerName(sched_key)
@@ -570,14 +569,16 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
             }
             rtTblMap[key].Field["scheduler"] = ""
         }
-
-        if  seq != SCHEDULER_PORT_SEQUENCE {
-            res_map["QUEUE"] = rtTblMap
-        } else {
-            res_map["PORT_QOS_MAP"] = rtTblMap
+        if len(keys) != 0 {
+            if  seq != SCHEDULER_PORT_SEQUENCE {
+                res_map["QUEUE"] = rtTblMap
+            } else {
+                res_map["PORT_QOS_MAP"] = rtTblMap
+            }
         }
     }
 
+    log.Infof("qos_scheduler_delete_xfmr --> res_map %v", res_map)
     return res_map, err
 
 }
@@ -659,7 +660,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         var prev_cir uint64 = 0
         var prev_type_exist bool = false
         var prev_weight_exist bool = false
-        var prev_type string 
+        var prev_type string
         var prev_weight uint64 = 0
 
         log.Info("key: ", sched_key)
@@ -668,11 +669,11 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         if entry_err == nil {
            log.Info("current entry: ", prev_entry)
            if val, prev_cir_exist = prev_entry.Field["cir"]; prev_cir_exist {
-              prev_cir, _ = strconv.ParseUint(val, 10, 32)
+              prev_cir, _ = strconv.ParseUint(val, 10, 64)
            }
 
            if val, prev_pir_exist = prev_entry.Field["pir"]; prev_pir_exist {
-              prev_pir, _ = strconv.ParseUint(val, 10, 32)
+              prev_pir, _ = strconv.ParseUint(val, 10, 64)
            }
            if val, prev_type_exist = prev_entry.Field["type"]; prev_type_exist {
                prev_type = val
@@ -688,8 +689,8 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 cbs := (int)(*schedObj.TwoRateThreeColor.Config.Bc)
                 if sp_name != "copp-scheduler-policy" {
                     if cbs < SCHEDULER_MIN_BURST_BYTES || cbs > SCHEDULER_MAX_BURST_BYTES {
-                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
-                        log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
+                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 250 Bytes and less than or equal to 125000000 Bytes"}
+                        log.Info("CBS must be greater than or equal to 250 Bytes and less than or equal to 125000000 Bytes")
                         return res_map, err
                     }
                 } else {
@@ -707,8 +708,8 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 pbs := (int)(*schedObj.TwoRateThreeColor.Config.Be)
                 if sp_name != "copp-scheduler-policy" {
                     if pbs < SCHEDULER_MIN_BURST_BYTES || pbs > SCHEDULER_MAX_BURST_BYTES {
-                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes"}
-                        log.Info("CBS must be greater than or equal to 256 Bytes and less than or equal to 128000000 Bytes")
+                        err = tlerr.InternalError{Format:"CBS must be greater than or equal to 250 Bytes and less than or equal to 125000000 Bytes"}
+                        log.Info("CBS must be greater than or equal to 250 Bytes and less than or equal to 125000000 Bytes")
                         return res_map, err
                     }
                 } else {
@@ -733,7 +734,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 } else {
                     cir = (uint64)(*schedObj.TwoRateThreeColor.Config.Cir)
                     if cir > SCHEDULER_MAX_RATE_PPS {
-                        err = tlerr.InternalError{Format:"CIR must be lesser than 100000pps"}
+                        err = tlerr.InternalError{Format:"CIR must be lesser than 100000 pps"}
                         log.Info("CIR must be lesser than 100000pps")
                         return res_map, err
                     }
@@ -759,7 +760,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 } else {
                     pir = (uint64)(*schedObj.TwoRateThreeColor.Config.Pir)
                     if pir > SCHEDULER_MAX_RATE_PPS {
-                        err = tlerr.InternalError{Format:"PIR must be lesser than 100000pps"}
+                        err = tlerr.InternalError{Format:"PIR must be lesser than 100000 pps"}
                         log.Info("PIR must be lesser than 100000pps")
                         return res_map, err
                     }
@@ -791,7 +792,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                     if !ok {
                         continue
                     }
-                    speed_Mbps, _ := strconv.ParseUint(speed, 10, 32)
+                    speed_Mbps, _ := strconv.ParseUint(speed, 10, 64)
                     speed_Bps := speed_Mbps * 1000 * 1000/8
                     if (cir > speed_Bps ||  pir > speed_Bps) {
                         err = tlerr.InternalError{Format:"PIR/CIR must be less than or equal to port speed"}
@@ -814,7 +815,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
                 sched_entry[sched_key].Field["type"] = "WRR"
                 prev_type = sched_entry[sched_key].Field["type"]
             }
-           
+
             if schedObj.Config.Weight != nil  {
                 sched_entry[sched_key].Field["weight"] = strconv.Itoa((int)(*schedObj.Config.Weight))
                 prev_weight = (uint64)(*schedObj.Config.Weight)
@@ -827,9 +828,9 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
             }
 
             if schedObj.Config.MeterType == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_MeterType_PACKETS {
-                sched_entry[sched_key].Field["meter-type"] = "PACKETS"
+                sched_entry[sched_key].Field["meter_type"] = "packets"
             } else if schedObj.Config.MeterType == ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_MeterType_BYTES {
-                sched_entry[sched_key].Field["meter-type"] = "BYTES"
+                sched_entry[sched_key].Field["meter_type"] = "bytes"
             }
         }
     }
@@ -843,7 +844,7 @@ var YangToDb_qos_scheduler_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
 
     if inParams.oper == CREATE ||
        inParams.oper == UPDATE {
-        // read intfs refering to the scheduler profile 
+        // read intfs refering to the scheduler profile
         intfs := getIntfsBySPName(sp_name)
 
         // Use "if_name:seq" to form DB key for QUEUE or "if_name" as key for PORT, write "if_name@seq" as its scheduler profile
@@ -924,11 +925,19 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     // Scheduler
+    var keyPattern string
     dbSpec := &db.TableSpec{Name: "SCHEDULER"}
+    if sp_name == "" {
+        keyPattern = "*"
+    } else {
+        keyPattern = sp_name + "@*"
+    }
 
-    keys, _ := inParams.dbs[db.ConfigDB].GetKeys(dbSpec)
+    keys, _ := inParams.dbs[db.ConfigDB].GetKeysByPattern(dbSpec, keyPattern)
     for  _, key := range keys {
-        log.Info("current key: ", key)
+        if log.V(3) {
+            log.Info("current key: ", key)
+        }
         if len(key.Comp) < 1 {
             continue
         }
@@ -944,7 +953,6 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
             spseq = "0"
         }
 
-        log.Infof("Check sp_name %v key spname %v ", sp_name, spname)
         if sp_name != "" && strings.Compare(sp_name, spname) != 0 {
             continue
         }
@@ -957,7 +965,9 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
         tmp, _ := strconv.ParseUint(spseq, 10, 32)
         seq = (uint32) (tmp)
 
-        log.Infof("Fill scheduler policy in scheduler: spname %v spseq %v", spname, spseq)
+        if log.V(3) {
+            log.Infof("Fill scheduler policy in scheduler: spname %v spseq %v", spname, spseq)
+        }
         spObj, ok := qosObj.SchedulerPolicies.SchedulerPolicy[spname]
         if !ok {
             spObj, _ = qosObj.SchedulerPolicies.NewSchedulerPolicy(spname)
@@ -997,8 +1007,10 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
         }
 
         schedCfg, _ := inParams.dbs[db.ConfigDB].GetEntry(dbSpec, key)
-        log.Info("current entry: ", schedCfg)
 
+        if log.V(3) {
+            log.Info("current entry: ", schedCfg)
+        }
         if val, exist := schedCfg.Field["cbs"]; exist {
             tmp,_ = strconv.ParseUint(val, 10, 32)
             bc := uint32(tmp)
@@ -1022,7 +1034,7 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
         }
 
         if val, exist := schedCfg.Field["cir"]; exist {
-            cir,_ := strconv.ParseUint(val, 10, 32)
+            cir,_ := strconv.ParseUint(val, 10, 64)
             if spname != "copp-scheduler-policy" {
                 cir = cir * 8
             }
@@ -1035,7 +1047,7 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
          }
 
         if val, exist := schedCfg.Field["pir"]; exist {
-            pir,_ := strconv.ParseUint(val, 10, 32)
+            pir,_ := strconv.ParseUint(val, 10, 64)
             if spname != "copp-scheduler-policy" {
                 pir = pir * 8
             }
@@ -1080,18 +1092,18 @@ var DbToYang_qos_scheduler_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
             }
         }
 
-        if val, exist := schedCfg.Field["meter-type"]; exist {
+        if val, exist := schedCfg.Field["meter_type"]; exist {
             if sched_config {
-                if val == "PACKETS" {
+                if val == "packets" {
                     schedObj.Config.MeterType = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_MeterType_PACKETS
-                } else if val == "BYTES" {
+                } else if val == "bytes" {
                     schedObj.Config.MeterType = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_Config_MeterType_BYTES
                 }
             }
             if sched_state {
-                if val == "PACKETS" {
+                if val == "packets" {
                     schedObj.State.MeterType = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_State_MeterType_PACKETS
-                } else if val == "BYTES" {
+                } else if val == "bytes" {
                     schedObj.State.MeterType = ocbinds.OpenconfigQos_Qos_SchedulerPolicies_SchedulerPolicy_Schedulers_Scheduler_State_MeterType_BYTES
                 }
             }
