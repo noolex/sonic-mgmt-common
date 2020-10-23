@@ -80,10 +80,10 @@ func util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams XfmrParams, vrf st
 func util_fill_bgp_nbr_info_per_af_from_frr_info (inParams XfmrParams, vrf string, nbrAddr string,
                                                   afiSafiType ocbinds.E_OpenconfigBgpTypes_AFI_SAFI_TYPE) {
     afiSafiName := "ipv4"
-    frrJsonCacheQueryType := bgpFrrJsonCacheQueryIpv4Summary_t
+    frrJsonCacheQueryType := BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_SUMMARY
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
         afiSafiName = "ipv6"
-        frrJsonCacheQueryType = bgpFrrJsonCacheQueryIpv6Summary_t
+        frrJsonCacheQueryType = BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_SUMMARY
     }
     cmd := "show ip bgp vrf " + vrf + " " + afiSafiName + " summary json"
     bgpFrrJsonCacheKey := bgp_frr_json_cache_query_key_t{niName : vrf, afiSafiName : afiSafiName}
@@ -1392,7 +1392,7 @@ func get_specific_nbr_state (inParams XfmrParams, get_req_uri_type E_bgp_nbr_sta
 
     vtysh_cmd := "show ip bgp vrf " + nbr_key.niName + " neighbors " + nbrKey + " json"
     bgpFrrJsonCacheKey := bgp_frr_json_cache_query_key_t{niName : nbr_key.niName}
-    nbrMapJson, cmd_err := utl_bgp_exec_vtysh_cmd (vtysh_cmd, inParams, bgpFrrJsonCacheQueryNbrs_t, bgpFrrJsonCacheKey)
+    nbrMapJson, cmd_err := utl_bgp_exec_vtysh_cmd (vtysh_cmd, inParams, BGP_FRR_JSON_CAHCE_QUERY_TYPE_NBRS, bgpFrrJsonCacheKey)
     if cmd_err != nil {
         log.Errorf("Failed to fetch bgp neighbors state info for niName:%s nbrAddr:%s. Err: %s vtysh_cmd %s \n", nbr_key.niName, nbr_key.nbrAddr, cmd_err, vtysh_cmd)
     }
@@ -1621,14 +1621,14 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
        format, convert it. The nbr key in the ygot will be still in user given format */
     util_bgp_get_native_ifname_from_ui_ifname (&nbrKey)
     var afiSafi_cmd string
-    var frrJsonCacheQueryType E_BGP_FRR_JSON_CACHE_QUERY_TYPE
+    var frrJsonCacheQueryType BgpFrrCacheQueryType
     switch (nbr_af_key.afiSafiNameEnum) {
         case ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV4_UNICAST:
             afiSafi_cmd = "ipv4"
-            frrJsonCacheQueryType = bgpFrrJsonCacheQueryIpv4Nbrs_t
+            frrJsonCacheQueryType = BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_NBRS
         case ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST:
             afiSafi_cmd = "ipv6"
-            frrJsonCacheQueryType = bgpFrrJsonCacheQueryIpv6Nbrs_t
+            frrJsonCacheQueryType = BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_NBRS
     }
 
     _enabled := false
