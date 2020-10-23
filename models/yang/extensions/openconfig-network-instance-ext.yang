@@ -265,6 +265,10 @@ module openconfig-network-instance-ext {
       deviate not-supported;
   }
 
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:encapsulation {
+      deviate not-supported;
+  }
+
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:config/oc-netinst:mac-aging-time {
       sonic-codegen:lint-ignore "Deviated to be aligned with other vendors.";
       deviate replace {

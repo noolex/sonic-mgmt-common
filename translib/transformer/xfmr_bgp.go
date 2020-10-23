@@ -107,6 +107,21 @@ func init () {
 	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
+    XlateFuncBind("bgp_validate_gbl_af", bgp_validate_gbl_af)
+}
+
+func bgp_validate_gbl_af (inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/afi-safi/l2vpn-evpn
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    if afiSafiName != "L2VPN_EVPN" {
+        if log.V(3) {
+            log.Info("bgp_validate_gbl_af: ignored - VRF ", pathInfo.Var("name"), " URI ",
+                     inParams.uri)
+        }
+        return false
+    }
+    return true
 }
 
 func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, key string, fieldName string, fieldValue string, 
@@ -339,7 +354,7 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
 }
 
 var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
-    var tblList, nil_tblList []string
+    var tblList []string
 
     log.Info("bgp_gbl_tbl_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
@@ -351,23 +366,23 @@ var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     if len(pathInfo.Vars) <  3 {
         err := errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))
-        return nil_tblList, err
+        return tblList, err
     }
 
     if len(vrf) == 0 {
         err_str := "VRF name is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if !strings.Contains(bgpId,"BGP") {
         err_str := "BGP ID is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if len(protoName) == 0 {
         err_str := "Protocol Name is Missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
 
     tblList = append(tblList, "BGP_GLOBALS")
