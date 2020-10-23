@@ -42,6 +42,7 @@ func init() {
 type IpslaHistoryEntry struct {
     Timestamp   string    `json:"timestamp"`
     Event       string    `json:"event,omitempty"`
+    Index       int
 }
 
 var YangToDb_ip_sla_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -349,6 +350,8 @@ func ipsla_show_history (body []byte, dbs [db.MaxDB]*db.DB, tableName string) (r
         log.Info(ipSlaDataJson)
 
         var ipslahistoryentry IpslaHistoryEntry
+
+        ipslahistoryentry.Index,_ = strconv.Atoi(key) 
 
         if value, ok := ipSlaDataJson["timestamp"].(string) ; ok {
             ipslahistoryentry.Timestamp = value
