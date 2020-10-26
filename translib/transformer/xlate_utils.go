@@ -1200,20 +1200,7 @@ func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error)
 }
 
 func splitUri(uri string) []string {
-<<<<<<< HEAD
 	pathList := SplitPath(uri)
-=======
-	if !strings.HasPrefix(uri, "/") {
-		uri = "/" + uri
-	}
-	pathList := rgpSplitUri.FindAllString(uri, -1)
-	for i, kname := range pathList {
-		//xfmrLogInfoAll("uri path elems: %v", kname)
-		if strings.HasPrefix(kname, "/") {
-			pathList[i] = kname[1:]
-		}
-	}
->>>>>>> origin/broadcom_sonic_3.1.x_share
 	xfmrLogInfoAll("uri: %v ", uri)
 	xfmrLogInfoAll("uri path elems: %v", pathList)
 	return pathList
