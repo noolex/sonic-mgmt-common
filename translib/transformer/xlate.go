@@ -76,7 +76,7 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 		return nil, nil
 	}
 	if len(params) != XlateFuncs[name].Type().NumIn() {
-                log.Warning("Error parameters not adapted") 
+                log.Warning("Error parameters not adapted")
 		return nil, nil
 	}
 	in := make([]reflect.Value, len(params))
@@ -96,7 +96,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 
 	err := traverseDbHelper(dbs, spec, &dataMap, parentKey)
 	if err != nil {
-		log.Warning("Couldn't get data from traverseDbHelper")
+		xfmrLogInfoAll("Didn't get all data from traverseDbHelper")
 		return err
 	}
 	/* db data processing */
@@ -129,7 +129,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		if spec.Ts.Name != XFMR_NONE_STRING { // Do not traverse for NONE table
 			data, err := dbs[spec.DbNum].GetEntry(&spec.Ts, spec.Key)
 			if err != nil {
-				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
+				log.Warningf("Didn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
 			}
 
@@ -149,7 +149,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		if spec.Ts.Name != XFMR_NONE_STRING { //Do not traverse for NONE table
 			keys, err := dbs[spec.DbNum].GetKeys(&spec.Ts)
 			if err != nil {
-				log.Warningf("Couldn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
+				log.Warningf("Didn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
 				return err
 			}
 			xfmrLogInfoAll("keys for table %v in Db %v are %v", spec.Ts.Name, spec.DbNum, keys)
@@ -163,7 +163,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 				spec.Key = keys[i]
                                 err = traverseDbHelper(dbs, spec, result, parentKey)
                                 if err != nil {
-                                        log.Warningf("Traversal didn't fetch for : %v", err)
+                                        xfmrLogInfoAll("Traversal didn't fetch for : %v", err)
                                 }
 			}
 		} else if len(spec.Child) > 0 {
@@ -381,7 +381,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	for _, spec := range *keySpec {
 		err := TraverseDb(dbs, spec, &dbresult, nil)
 		if err != nil {
-			log.Warning("TraverseDb() didn't fetch data.")
+			xfmrLogInfoAll("TraverseDb() didn't fetch data.")
 		}
 	}
 
