@@ -16,6 +16,10 @@ module sonic-spanning-tree {
         prefix svlan;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "BRCM";
 
@@ -298,10 +302,10 @@ module sonic-spanning-tree {
                 }
 
                 leaf loop_guard {
-                    must "../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst'" {
-                        error-message "Configuration allowed in Rapid PVST mode";
-                        error-app-tag stp-invalid;
-                    }
+                    //must "count(../../../STP/STP_LIST[keyleaf='GLOBAL']/mode) = 0 or (../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst')" {
+                     //   error-message "Configuration allowed in Rapid PVST mode";
+                      //  error-app-tag stp-invalid;
+                    //}
                     type enumeration {
                         enum false;
                         enum true;
@@ -315,20 +319,20 @@ module sonic-spanning-tree {
 
                 // For RPVST+
                 leaf edge_port {
-                    must "../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst'" {
-                        error-message "Configuration allowed in Rapid PVST mode";
-                        error-app-tag stp-invalid;
-                    }
+                    //must "count(../../../STP/STP_LIST[keyleaf='GLOBAL']/mode) = 0 or (../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst')" {
+                     //   error-message "Configuration allowed in Rapid PVST mode";
+                      //  error-app-tag stp-invalid;
+                    //}
                     type boolean;
                     description
                         "Enable/Disable Edge-port on interface";
                 }
 
                 leaf link_type {
-                    must "../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst'" {
-                        error-message "Configuration allowed in Rapid PVST mode";
-                        error-app-tag stp-invalid;
-                    }
+                    //must "../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst'" {
+                        //error-message "Configuration allowed in Rapid PVST mode";
+                        //error-app-tag stp-invalid;
+                    //}
                     type enumeration {
                         enum auto;
                         enum shared;
@@ -337,6 +341,283 @@ module sonic-spanning-tree {
                     description
                         "Specifies the interface's link type. Permissible values
                         are 'shared', 'point-to-point' and 'auto'";
+                }
+            }
+        }
+
+        container _STP_PORT_TABLE {
+            config false;
+
+            list _STP_PORT_TABLE_LIST {
+                sonic-ext:db-name "APPL_DB";
+                key "ifname";
+
+                leaf ifname {
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
+                    description
+                        "Reference of local port on which STP is configured.";
+                }
+
+                leaf bpdu_guard_shutdown {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf port_fast {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf bpdu_filter {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf edge_port {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf link_type {
+                    type string;
+                    description
+                        "";
+                }
+            }
+        }
+
+        container _STP_VLAN_TABLE {
+            config false;
+
+            list _STP_VLAN_TABLE_LIST {
+                sonic-ext:db-name "APPL_DB";
+                key "name";
+
+                leaf name {
+                    type string;
+                    description
+                        "Vlan identifier";
+                }
+
+                leaf max_age {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf hello_time {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf forward_delay {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf hold_time {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf root_max_age {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf root_hello_time {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf root_forward_delay {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf stp_instance {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf root_path_cost {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf last_topology_change {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf topology_change_count {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf bridge_id {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf root_bridge_id {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf desig_bridge_id {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf root_port {
+                    type string;
+                    description
+                        "";
+                }
+            }
+        }
+
+        container _STP_VLAN_PORT_TABLE {
+            config false;
+
+            list _STP_VLAN_PORT_TABLE_LIST {
+                sonic-ext:db-name "APPL_DB";
+                key "name ifname";
+
+                leaf name {
+                    type string;
+                    description
+                        "Vlan identifier";
+                }
+
+                leaf ifname {
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
+                    description
+                        "Reference of local port on which STP is configured.";
+                }
+
+                leaf port_num {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf path_cost {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf priority {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf desig_cost {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf desig_port {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf root_guard_timer {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf fwd_transitions {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf desig_root {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf desig_bridge {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf port_state {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf role {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf bpdu_sent {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf bpdu_received {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf tc_sent {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf tc_received {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf config_bpdu_sent {
+                    type string;
+                    description
+                        "";
+                }
+
+                leaf config_bpdu_received {
+                    type string;
+                    description
+                        "";
                 }
             }
         }
