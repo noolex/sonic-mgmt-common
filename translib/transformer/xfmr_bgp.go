@@ -107,6 +107,21 @@ func init () {
 	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
+    XlateFuncBind("bgp_validate_gbl_af", bgp_validate_gbl_af)
+}
+
+func bgp_validate_gbl_af (inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/afi-safi/l2vpn-evpn
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    if afiSafiName != "L2VPN_EVPN" {
+        if log.V(3) {
+            log.Info("bgp_validate_gbl_af: ignored - VRF ", pathInfo.Var("name"), " URI ",
+                     inParams.uri)
+        }
+        return false
+    }
+    return true
 }
 
 func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, key string, fieldName string, fieldValue string, 
@@ -149,13 +164,19 @@ func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr s
                   inParams.requestUri, " ; VRF : ", niName, " ; nbrAddr: ", nbrAddr, " ; Incoming DB-Datamap : ", (*retDbDataMap))
     }
 
-    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR_AF"}, niName+"|"+nbrAddr+"|*")
+    /* The nbrAddr can be in native(Ethernet0) or standard (Eth1/1) format,
+       for DB access it has to be in native format. Convert wherever needed.
+       Also xfmr infra expecting DBDatamap to have this key in user give format
+       So make sure returned key is in that format.  */
+    nativeNbr := nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbr)
+    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR_AF"}, niName+"|"+nativeNbr+"|*")
     for _, bgpTblKey := range bgpTblKeys {
         if _, ok := (*retDbDataMap)["BGP_NEIGHBOR_AF"]; !ok {
             (*retDbDataMap)["BGP_NEIGHBOR_AF"] = make(map[string]db.Value)
         }
 
-        key := bgpTblKey.Get(0) + "|" + bgpTblKey.Get(1) + "|" + bgpTblKey.Get(2)
+        key := bgpTblKey.Get(0) + "|" + nbrAddr + "|" + bgpTblKey.Get(2)
         (*retDbDataMap)["BGP_NEIGHBOR_AF"][key] = db.Value{}
     }
     if log.V(3) {
@@ -165,7 +186,7 @@ func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr s
 
 func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
     var err error
-    xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    xpath,_,_ := XfmrRemoveXPATHPredicates(inParams.requestUri)
     pathInfo := NewPathInfo(inParams.requestUri)
     niName := pathInfo.Var("name")
     if len(niName) == 0 {return err}
@@ -186,7 +207,6 @@ func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
             nbrAddr   := pathInfo.Var("neighbor-address")
             afiSafiName := pathInfo.Var("afi-safi-name")
             if len(nbrAddr) != 0 && len(afiSafiName) == 0 {
-                util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
                 hdl_post_xfmr_bgp_nbr_af_del(inParams, niName, nbrAddr, data)
                 return err
             }
@@ -334,7 +354,7 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
 }
 
 var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
-    var tblList, nil_tblList []string
+    var tblList []string
 
     log.Info("bgp_gbl_tbl_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
@@ -346,23 +366,23 @@ var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     if len(pathInfo.Vars) <  3 {
         err := errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))
-        return nil_tblList, err
+        return tblList, err
     }
 
     if len(vrf) == 0 {
         err_str := "VRF name is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if !strings.Contains(bgpId,"BGP") {
         err_str := "BGP ID is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if len(protoName) == 0 {
         err_str := "Protocol Name is Missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
 
     tblList = append(tblList, "BGP_GLOBALS")
@@ -713,7 +733,7 @@ var YangToDb_bgp_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
     log.V(3).Info("URI VRF ", niName)
 
     if inParams.oper == DELETE && niName == "default" {
-        xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
         switch xpath {
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp": fallthrough
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global": fallthrough
@@ -878,7 +898,7 @@ var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParam
         if log.V(3) {
            log.Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
         }
-        return nil, nil 
+        return nil, nil
     }
 
     afi := ""

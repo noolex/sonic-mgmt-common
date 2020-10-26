@@ -718,6 +718,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         if strings.Contains(ipAddr, ":") { // It's an IPv6 entry; continue
             continue
         }
+
         neighKeyStr := intfName + ":" + ipAddr
         entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
         if dbErr != nil || len(entry.Field) == 0 {
@@ -827,7 +828,10 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighTblTs = &db.TableSpec{Name: "NEIGH_TABLE", CompCt:2}
 
     ipAddrRcvd := pathInfo.Var("ip")
+
     if len(ipAddrRcvd) > 0 {
+        /* IPv6 address in the DB is in lower case */
+        ipAddrRcvd = strings.ToLower(ipAddrRcvd)
         keyPattern = *nativeIntfName + ":" + ipAddrRcvd
     } else {
         keyPattern = *nativeIntfName + ":*"
@@ -854,6 +858,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         if !strings.Contains(ipAddr, ":") { // It's an IPv4 entry; continue
             continue
         }
+
         neighKeyStr := intfName + ":" + ipAddr
 
         entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})

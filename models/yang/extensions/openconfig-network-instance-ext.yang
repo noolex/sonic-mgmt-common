@@ -7,13 +7,12 @@ module openconfig-network-instance-ext {
 
   prefix "oc-netinst-ext";
   
-  import ietf-yang-types {
-        prefix ietf;
-    }  
-
+  import ietf-yang-types { prefix ietf; }
+  import sonic-codegen { prefix sonic-codegen; }
   // import some basic types
   import openconfig-network-instance { prefix "oc-netinst"; }
   import openconfig-extensions { prefix oc-ext; }
+  import openconfig-interfaces { prefix "oc-if"; }
 
   organization
       "SONiC";
@@ -26,6 +25,12 @@ module openconfig-network-instance-ext {
         configuration extensions.";
 
   oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-10-05" {
+    description
+      "Deviating range and default value for mac-aging-time.";
+    reference "0.1.1";
+  }
 
   revision "2020-05-26" {
     description
@@ -100,6 +105,69 @@ module openconfig-network-instance-ext {
       description
         "Static anycast gateway";
 	  }
+  }
+
+  grouping network-instance-ext-mac-dampening-config {
+      description
+        "Global mac dampening config";
+      leaf global {
+          type enumeration {
+              enum "GLOBAL" {
+              }
+          }
+          description
+              "Global mode";
+      }
+      leaf threshold {
+          type uint8;
+          description
+              "The number of MAC movements allowed per second before disabling MAC learning on a port";
+      }
+  }
+
+  grouping network-instance-ext-mac-dampening-state {
+      description
+        "mac dampening state information";
+      leaf-list interfaces {
+          type leafref {
+              path "/oc-if:interfaces/oc-if:interface/oc-if:config/oc-if:name";
+          }
+          description
+              "list of mac learning disabled ports due to mac dampening";
+      }
+  }
+
+  grouping network-instance-ext-mac-dampening-top {
+      description
+        "mac dampening config and state information";
+      container mac-dampening {
+          description
+            "mac dampening config and state information";
+          container config {
+              description
+                "mac dampening config information";
+              uses network-instance-ext-mac-dampening-config;
+          }
+          container state {
+              config false;
+              uses network-instance-ext-mac-dampening-config;
+              uses network-instance-ext-mac-dampening-state;
+              description
+                "mac dampening state information";
+          }
+      }
+  }
+
+  augment "/oc-netinst:network-instances/oc-netinst:network-instance" {
+    description
+        "Augment l2 mac dampening config/state information to network instance";
+    uses network-instance-ext-mac-dampening-top {
+        when "config/type = 'DEFAULT_INSTANCE'" {
+            description
+                "Layer 2 mac dampening config/state information included when 
+                a network instance is Default instance";
+        }
+    }
   }
 
   augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:state" {
@@ -195,5 +263,23 @@ module openconfig-network-instance-ext {
 
   deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp {
       deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:encapsulation {
+      deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:fdb/oc-netinst:config/oc-netinst:mac-aging-time {
+      sonic-codegen:lint-ignore "Deviated to be aligned with other vendors.";
+      deviate replace {
+          type uint32 {
+              range 0..1000000{
+                  error-message "Invalid MAC-aging value 0-1000000";
+              }
+          }
+      }
+      deviate add {
+          default 600;
+      }
   }
 }

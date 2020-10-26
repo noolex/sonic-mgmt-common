@@ -24,7 +24,6 @@ import (
     "os"
     "reflect"
     "strings"
-    "regexp"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -381,7 +380,7 @@ func dbMapDefaultFieldValFill(xlateParams xlateToParams, tblUriList []string) er
 	dbKey := xlateParams.keyName
 	for _, tblUri := range tblUriList {
 		xfmrLogInfoAll("Processing uri %v for default value filling(Table - %v, dbKey - %v)", tblUri, tblName, dbKey)
-		yangXpath, prdErr := XfmrRemoveXPATHPredicates(tblUri)
+		yangXpath, _, prdErr := XfmrRemoveXPATHPredicates(tblUri)
 		if prdErr != nil {
 			continue
 		}
@@ -616,7 +615,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	}
 	if err == nil {
 		if !isSonicYang(uri) {
-			xpath, _ := XfmrRemoveXPATHPredicates(uri)
+			xpath, _, _ := XfmrRemoveXPATHPredicates(uri)
 			yangNode, ok := xYangSpecMap[xpath]
 			defSubOpDataMap := make(map[int]*RedisDbMap)
 			if ok {
@@ -834,8 +833,8 @@ func yangReqToDbMapCreate(xlateParams xlateToParams) error {
 
 				if ok && (typeOfValue == reflect.Map || typeOfValue == reflect.Slice) && xYangSpecMap[xpath].yangDataType != "leaf-list" {
 					// Call subtree only if start processing for the requestUri. Skip for parent uri traversal
-					curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
-					reqXpath, _ := XfmrRemoveXPATHPredicates(xlateParams.requestUri)
+					curXpath, _, _ := XfmrRemoveXPATHPredicates(curUri)
+					reqXpath, _, _ := XfmrRemoveXPATHPredicates(xlateParams.requestUri)
 					xfmrLogInfoAll("CurUri: %v, requestUri: %v\r\n", curUri, xlateParams.requestUri)
 					xfmrLogInfoAll("curxpath: %v, requestxpath: %v\r\n", curXpath, reqXpath)
 					if strings.HasPrefix(curXpath, reqXpath) {
@@ -1066,10 +1065,9 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 	var cdb db.DBNum
         uriList := splitUri(uri)
         parentTblExists := true
-        rgp := regexp.MustCompile(`\[([^\[\]]*)\]`)
         curUri := "/"
         yangType := ""
-	xpath, _ := XfmrRemoveXPATHPredicates(uri)
+	xpath, _, _ := XfmrRemoveXPATHPredicates(uri)
 	xpathInfo, ok := xYangSpecMap[xpath]
         if !ok {
 		errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", uri)
@@ -1093,11 +1091,11 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
 		curUri += uriList[idx]
 
 		/* Check for parent table for oc- yang lists*/
-                keyList := rgp.FindAllString(path, -1)
+                keyList := rgpKeyExtract.FindAllString(path, -1)
 		if len(keyList) > 0 {
 
 			//Check for subtree existence
-			curXpath, _ := XfmrRemoveXPATHPredicates(curUri)
+			curXpath, _, _ := XfmrRemoveXPATHPredicates(curUri)
 			curXpathInfo, ok := xYangSpecMap[curXpath]
 			if !ok {
 				errStr := fmt.Sprintf("No entry found in xYangSpecMap for uri - %v", curUri)
@@ -1187,7 +1185,7 @@ func verifyParentTableOc(d *db.DB, dbs [db.MaxDB]*db.DB, ygRoot *ygot.GoStruct, 
                 // For POST since the target URI is the parent URI, it should exist.
                 // For DELETE we handle the table verification here to avoid any CVL error thrown for delete on non existent table
 		xfmrLogInfoAll("Check last parent table for uri: %v", uri)
-		xpath, xpathErr := XfmrRemoveXPATHPredicates(uri)
+		xpath, _, xpathErr := XfmrRemoveXPATHPredicates(uri)
 		if xpathErr != nil {
 			log.Warningf("Xpath conversion didn't happen for Uri - %v, due to - %v", uri, xpathErr)
 			return false, xpathErr
