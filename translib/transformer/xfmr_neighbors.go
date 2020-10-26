@@ -1204,9 +1204,7 @@ func getIntfVrfMapping(d *db.DB)(map[string]string) {
             if input, ok := entry.Field["vrf_name"]; ok {
                 input_str := fmt.Sprintf("%v", input)
                 nonDefaultVrfIntfs[key.Get(0)] = input_str
-                log.Info("(Interface, VRF): (",  key.Get(0), ", ", input_str, ")")
             } else {
-                log.Info("(Interface, VRF): (",  key.Get(0), ", <DEFAULT>)")
                 nonDefaultVrfIntfs[key.Get(0)] = ""
             }
         }
@@ -1214,10 +1212,8 @@ func getIntfVrfMapping(d *db.DB)(map[string]string) {
 
     entry, _ := d.GetEntry(&db.TableSpec{Name: "MGMT_VRF_CONFIG"}, db.Key{Comp: []string{"vrf_global"}})
     if _, ok := entry.Field["mgmtVrfEnabled"]; ok {
-        log.Info("(Interface, VRF): (eth0, mgmt)")
         nonDefaultVrfIntfs["eth0"] = "mgmt"
     } else {
-        log.Info("(Interface, VRF): (eth0, <DEFAULT>)")
         nonDefaultVrfIntfs["eth0"] = ""
     }
 
