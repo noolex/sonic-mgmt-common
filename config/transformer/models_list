@@ -146,3 +146,5 @@ openconfig-image-management.yang
 openconfig-image-management-annot.yang
 sonic-system-radius-clear.yang
 sonic-system-radius-clear-annot.yang
+openconfig-mac-dampening.yang
+openconfig-mac-dampening-annot.yang
