@@ -193,6 +193,13 @@ func convertInternalStpModeToOc(mode string) []ocbinds.E_OpenconfigSpanningTreeT
     return stpModes
 }
 
+func isVlanMember(d *db.DB, vlanName string, ifName string) (bool) {
+    _, err := d.GetEntry(&db.TableSpec{Name: "VLAN_MEMBER"}, db.Key{[]string{vlanName, ifName}})
+    return err == nil
+}
+
+
+
 func getAllInterfacesFromVlanMemberTable(d *db.DB) ([]string, error) {
     var intfList []string
 
@@ -1465,6 +1472,16 @@ var YangToDb_stp_vlan_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
                     log.Infof("YangToDb_stp_vlan_xfmr: Vlan %s is not configured", vlanName)
                     return nil, tlerr.NotFound("Vlan %s is not configured", vlanName)
                 }
+
+                if stp.RapidPvst.Vlan[uint16(vlanId)] != nil && stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces != nil && stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces.Interface != nil {
+                    ifNameList := stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces.Interface
+                    for ifName := range ifNameList {
+                        if ok := isVlanMember(inParams.d, vlanName, ifName); !ok {
+                            log.Infof("YangToDb_stp_vlan_xfmr: %s is not a member of Vlan %s", ifName, vlanName)
+                            return nil, tlerr.NotFound("%s is not a member of Vlan %s", ifName, vlanName)
+                        }
+                    }
+                }
             }
 
             for vlanId := range stp.RapidPvst.Vlan {
@@ -1494,6 +1511,16 @@ var YangToDb_stp_vlan_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
                 if !isVlanCreated(inParams.d, vlanName) {
                     log.Infof("YangToDb_stp_vlan_xfmr: Vlan %s is not configured", vlanName)
                     return nil, tlerr.NotFound("Vlan %s is not configured", vlanName)
+                }
+
+                if stp.Pvst.Vlan[uint16(vlanId)] != nil && stp.Pvst.Vlan[uint16(vlanId)].Interfaces != nil && stp.Pvst.Vlan[uint16(vlanId)].Interfaces.Interface != nil {
+                    ifNameList := stp.Pvst.Vlan[uint16(vlanId)].Interfaces.Interface
+                    for ifName := range ifNameList {
+                        if ok := isVlanMember(inParams.d, vlanName, ifName); !ok {
+                            log.Infof("YangToDb_stp_vlan_xfmr: %s is not a member of Vlan %s", ifName, vlanName)
+                            return nil, tlerr.NotFound("%s is not a member of Vlan %s", ifName, vlanName)
+                        }
+                    }
                 }
             }
 
