@@ -86,6 +86,94 @@ func util_bgp_get_ui_ifname_from_native_ifname (pIfname *string) {
     }
 }
 
+type BgpFrrCacheType string
+const (
+    BGP_FRR_JSON_CACHE BgpFrrCacheType = "BGP_FRR_JSON"
+    BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_SUMMARY"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_SUMMARY"
+    BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_IPV4_SUMMARY"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_IPV4_SUMMARY"
+    BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_IPV6_SUMMARY"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_IPV6_SUMMARY"
+    BGP_FRR_JSON_CACHE_ALL_VRF_NBRS BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_NBRS"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_NBRS BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_NBRS"
+    BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_IPV4_NBRS"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_NBRS BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_IPV4_NBRS"
+    BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_IPV6_NBRS"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_NBRS BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_IPV6_NBRS"
+)
+
+type BgpFrrCacheQueryType string
+const (
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_SUMMARY BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_SUMMARY"
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_SUMMARY BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_IPV4_SUMMARY"
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_SUMMARY BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_IPV6_SUMMARY"
+    BGP_FRR_JSON_CAHCE_QUERY_TYPE_NBRS BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_NBRS"
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_NBRS BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_IPV4_NBRS"
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_NBRS BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_IPV6_NBRS"
+)
+
+type bgp_frr_json_cache_query_key_t struct {
+    niName string
+    afiSafiName string /* ipv4/ipv6 */
+}
+
+func utl_bgp_exec_vtysh_cmd (vtyshCmd string, inParams XfmrParams, cmdType BgpFrrCacheQueryType, cmdArgs bgp_frr_json_cache_query_key_t) (map[string]interface{}, error) {
+    cache, bgpFrrJsonCachePresent := inParams.txCache.Load(BGP_FRR_JSON_CACHE)
+    if bgpFrrJsonCachePresent {
+        bgpFrrJsonCache, _ := cache.(map[BgpFrrCacheType]map[string]interface{})
+        switch cmdType {
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_SUMMARY:
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_SUMMARY] ; ok {return value, nil}
+                return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_SUMMARY:
+                if cmdArgs.afiSafiName == "ipv4" {
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_SUMMARY] ; ok {return value, nil}
+                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+                }
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_SUMMARY:
+                if cmdArgs.afiSafiName == "ipv6" {
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_SUMMARY] ; ok {return value, nil}
+                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+                }
+            case BGP_FRR_JSON_CAHCE_QUERY_TYPE_NBRS:
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_NBRS] ; ok {return value, nil}
+                return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_NBRS:
+                if cmdArgs.afiSafiName == "ipv4" {
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_NBRS] ; ok {return value, nil}
+                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+                }
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_NBRS:
+                if cmdArgs.afiSafiName == "ipv6" {
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_NBRS] ; ok {return value, nil}
+                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+                }
+        }
+    }
+    return exec_vtysh_cmd (vtyshCmd)
+}
+
+func utl_bgp_fetch_and_cache_frr_json (inParams *XfmrParams, niName string) {
+    bgpFrrJsonCache := make(map[BgpFrrCacheType]map[string]interface{})
+    if niName != "" {
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " ipv4 summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " ipv6 summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " neighbors json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " ipv4 neighbors json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " ipv6 neighbors json")
+    } else {
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf all summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv4 summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv6 summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf all neighbors json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv4 neighbors json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv6 neighbors json")
+    }
+    inParams.txCache.Store(BGP_FRR_JSON_CACHE, bgpFrrJsonCache)
+}
+
 func init () {
     XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_tbl_key_xfmr", YangToDb_bgp_gbl_tbl_key_xfmr)
@@ -136,6 +224,33 @@ func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, ke
         return
     }
     inParams.yangDefValMap[tblName][key].Field[fieldName] = fieldValue
+}
+
+var bgp_frr_json_cache_reqd_map = map[string]bool {
+    "/openconfig-network-instance:network-instances": true,
+    "/openconfig-network-instance:network-instances/network-instance": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor": true,
+}
+
+func bgp_hdl_pre_xfmr (inParams *XfmrParams) {
+    if (inParams.oper != GET) {return}
+
+    _ , bgpFrrJsonCachePresent := inParams.txCache.Load(BGP_FRR_JSON_CACHE)
+    if !bgpFrrJsonCachePresent && inParams.dbDataMap != nil {
+        reqUriXpath,_,_ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        if caching_reqd, found := bgp_frr_json_cache_reqd_map[reqUriXpath]; found && caching_reqd {
+            reqUriPathInfo := NewPathInfo(inParams.requestUri)
+            _niName := reqUriPathInfo.Var("name")
+            _nbrAddr := reqUriPathInfo.Var("neighbor-address")
+            if _nbrAddr == "" { /* Ignoring get specific nbr case */
+                utl_bgp_fetch_and_cache_frr_json (inParams, _niName)
+            }
+        }
+    }
 }
 
 func hdl_post_xfmr_bgp_nbr_del(inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {
@@ -597,7 +712,8 @@ var DbToYang_bgp_gbl_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     vtysh_cmd := "show ip bgp vrf " + niName + " summary json"
-    bgpGblJson, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    bgpFrrJsonCacheKey := bgp_frr_json_cache_query_key_t{niName : niName}
+    bgpGblJson, cmd_err := utl_bgp_exec_vtysh_cmd (vtysh_cmd, inParams, BGP_FRR_JSON_CACHE_QUERY_TYPE_SUMMARY, bgpFrrJsonCacheKey)
     if cmd_err != nil {
         log.Errorf("Failed to fetch BGP global info for niName:%s. Err: %s", niName, cmd_err)
         return oper_err
