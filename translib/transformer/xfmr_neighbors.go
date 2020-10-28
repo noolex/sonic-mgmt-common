@@ -1270,8 +1270,7 @@ func clear_default_vrf(fam_switch string, d *db.DB)  string {
 
 func clear_vrf(fam_switch string, vrf string) string {
     var err error
-    var status string
-    status = "% Error: Internal error"
+    var status := "% Error: Internal error"
 
     log.Info("In clear_vrf()")
     if (len(vrf) <= 0) {
