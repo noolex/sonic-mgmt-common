@@ -148,3 +148,5 @@ sonic-system-radius-clear.yang
 sonic-system-radius-clear-annot.yang
 openconfig-mac-dampening.yang
 openconfig-mac-dampening-annot.yang
+openconfig-loadbalance-mode-ext.yang
+openconfig-loadbalance-mode-ext-annot.yang
