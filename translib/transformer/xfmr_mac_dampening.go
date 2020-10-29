@@ -11,24 +11,15 @@ import (
     "strconv"
     "errors"
     log "github.com/golang/glog"
+	"encoding/json"
+    "fmt"
 )
 
 func init () {
     XlateFuncBind("YangToDb_mac_dampening_config_key_xfmr", YangToDb_mac_dampening_config_key_xfmr)
     XlateFuncBind("DbToYang_mac_dampening_config_key_xfmr", DbToYang_mac_dampening_config_key_xfmr)
-    XlateFuncBind("YangToDb_mac_dampening_config_value_xfmr", YangToDb_mac_dampening_config_value_xfmr)
-    XlateFuncBind("DbToYang_mac_dampening_config_value_xfmr", DbToYang_mac_dampening_config_value_xfmr)
-    //XlateFuncBind("YangToDb_mac_dampening_state_key_xfmr", YangToDb_mac_dampening_state_key_xfmr)
-    //XlateFuncBind("DbToYang_mac_dampening_state_key_xfmr", DbToYang_mac_dampening_state_key_xfmr)
-    //XlateFuncBind("YangToDb_mac_dampening_state_field_xfmr", YangToDb_mac_dampening_state_field_xfmr)
-    //XlateFuncBind("DbToYang_mac_dampening_state_field_xfmr", DbToYang_mac_dampening_state_field_xfmr)
-    //XlateFuncBind("YangToDb_mac_dampening_config_subtree_xfmr", YangToDb_mac_dampening_config_subtree_xfmr)
-    //XlateFuncBind("DbToYang_mac_dampening_config_subtree_xfmr", DbToYang_mac_dampening_config_subtree_xfmr)
-    //XlateFuncBind("YangToDb_mac_dampening_state_subtree_xfmr", YangToDb_mac_dampening_state_subtree_xfmr)
     XlateFuncBind("DbToYang_mac_dampening_state_subtree_xfmr", DbToYang_mac_dampening_state_subtree_xfmr)
-//    XlateFuncBind("YangToDb_mac_dampening_state_value_xfmr", YangToDb_mac_dampening_state_value_xfmr)
-//    XlateFuncBind("DbToYang_mac_dampening_state_value_xfmr", DbToYang_mac_dampening_state_value_xfmr)
-//    XlateFuncBind("Subscribe_mac_dampening_state_subtree_xfmr", Subscribe_mac_dampening_state_subtree_xfmr)
+	XlateFuncBind("rpc_clear_oc_mac_damp_disabled_ports", rpc_clear_oc_mac_damp_disabled_ports)
 }
 
 var YangToDb_mac_dampening_config_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
@@ -54,43 +45,6 @@ func DbToYang_mac_dampening_config_key_xfmr (inParams XfmrParams) (map[string]in
     }
     return result,nil
 }
-
-var YangToDb_mac_dampening_state_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    var key string
-    pathInfo := NewPathInfo(inParams.uri)
-    instance := pathInfo.Var("name")
-    config := pathInfo.Var("config")
-    key = ""
-    if log.V(1) {
-        log.Infof("YangToDb_mac_dampening_state_key_xfmr:pathInfo:%s,instance:%s,config:%s,key:%s",
-                   pathInfo,instance,config,key)
-    }
-    return key,nil
-}
-
-func DbToYang_mac_dampening_state_key_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
-    var key string
-    result := make(map[string]interface{})
-    key = inParams.key
-    if log.V(1) {
-        log.Infof("DbToYang_mac_dampening_state_key_xfmr key:%s",key)
-        log.Info("result:",result)
-    }
-    return result,nil
-}
-
-var YangToDb_mac_dampening_state_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    log.Info("YangToDb_mac_dampening_state_field_xfmr:inParams",inParams)
-    res_map := make(map[string]string)
-    return res_map,nil
-}
-
-func DbToYang_mac_dampening_state_field_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
-    log.Info("DbToYang_mac_dampening_state_field_xfmr:inParams",inParams)
-    res_map := make(map[string]interface{})
-    return res_map,nil
-}
-
 
 func getBridgePortOidIntfMap (inParams XfmrParams) (map[string]string, error) {
     bpOidIntfMap := make(map[string]string)
@@ -137,100 +91,6 @@ func getBridgePortOidIntfMap (inParams XfmrParams) (map[string]string, error) {
     return bpOidIntfMap, nil 
 }
 
-var YangToDb_mac_dampening_config_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    pathInfo := NewPathInfo(inParams.uri)
-    log.Info("YangToDb_mac_dampening_config_subtree_xfmr:pathInfo:",pathInfo)
-    instance := pathInfo.Var("name")
-    log.Info("YangToDb_mac_dampening_config_subtree_xfmr:instance:",instance)
-    targetUriPath, err  := getYangPathFromUri(inParams.uri)
-    if err != nil {
-        log.Error("YangToDb_mac_dampening_config_subtree_xfmr get uri failed.")
-        return nil, err
-    }
-    log.Info("YangToDb_mac_dampening_config_subtree_xfmr:targetUriPath:",targetUriPath)
-
-    if !strings.EqualFold(instance, "default")  {
-        log.Info("YangToDb_mac_dampening_config_subtree_xfmr Ignoring OP:",inParams.oper," for FDB on VRF:", instance)
-        return nil, err
-    }
-
-    log.Info("YangToDb_mac_dampening_config_subtree_xfmr=>", inParams)
-
-    return nil, err
-}
-
-var DbToYang_mac_dampening_config_subtree_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
-    var err error
-    pathInfo := NewPathInfo(inParams.uri)
-    instance := pathInfo.Var("name")
-
-    if !strings.EqualFold(instance, "default")  {
-        log.Info("DbToYang_mac_dampening_config_subtree_xfmr:", instance)
-        return nil
-    }
-    log.Info("DbToYang_mac_dampening_config_subtree_xfmr:instance:",instance)
-
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
-    log.Info("DbToYang_mac_dampening_config_subtree_xfmr:targetUriPath",targetUriPath)
-
-    return err
-}
-
-
-var YangToDb_mac_dampening_config_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    if log.V(1) {
-        log.Info("Entering YangToDb_mac_dampening_config_value_xfmr")
-    }
-    res_map := make(map[string]string)
-    return res_map, nil
-}
-
-func DbToYang_mac_dampening_config_value_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
-    var key string
-    result := make(map[string]interface{})
-    key = inParams.key
-    if log.V(1) {
-        log.Infof("DbToYang_mac_dampening_config_value_xfmr: inParams.key:%s key:%s", inParams.key,key)
-    }
-    result["global"] = "config"
-
-    entry, err := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:"MAC_DAMPENING"}, db.Key{Comp: []string{"config"}})
-    if err == nil {
-        value := entry.Field["threshold"]
-        result["threshold"],_ = strconv.ParseUint(value,10,8)
-    } else {
-        log.Error("Error ", err)
-        return result, tlerr.NotFound("Resource Not Found")
-    }
-    if log.V(1) {
-        log.Info(result)
-    }
-    return result, nil
-}
-
-/*
-var YangToDb_mac_dampening_state_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    pathInfo := NewPathInfo(inParams.uri)
-    log.Info("YangToDb_mac_dampening_state_subtree_xfmr=>", inParams)
-    log.Info("YangToDb_mac_dampening_state_subtree_xfmr:pathInfo:",pathInfo)
-    instance := pathInfo.Var("name")
-    log.Info("YangToDb_mac_dampening_state_subtree_xfmr:instance:",instance)
-    targetUriPath, err  := getYangPathFromUri(inParams.uri)
-    if err != nil {
-        log.Error("get uri failed.")
-        return nil, err
-    }
-    log.Info("YangToDb_mac_dampening_state_subtree_xfmr:targetUriPath:",targetUriPath)
-
-    if !strings.EqualFold(instance, "default")  {
-        log.Info("YangToDb_mac_dampening_state_subtree_xfmr Ignoring OP:",inParams.oper," for FDB on VRF:", instance)
-        return nil, err
-    }
-
-    return nil, err
-}
-*/
-
 var DbToYang_mac_dampening_state_subtree_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
     pathInfo := NewPathInfo(inParams.uri)
@@ -244,19 +104,30 @@ var DbToYang_mac_dampening_state_subtree_xfmr SubTreeXfmrDbToYang = func (inPara
     targetUriPath, err := getYangPathFromUri(inParams.uri)
     log.Info("DbToYang_mac_dampening_state_subtree_xfmr:targetUriPath:",targetUriPath)
 
-    ifNames, _ := getMACDampIntfNames(inParams,inParams.dbs[db.AsicDB])
-    log.Info("ifNames: ",ifNames)
-
     macDampTbl := getMacDampTableRoot(inParams.ygRoot, instance, true)
-
     if macDampTbl == nil {
         log.Info("DbToYang_mac_dampening_state_subtree_xfmr - getMacDampTableRoot returned nil, for URI: ", inParams.uri)
         return errors.New("Not able to get MAC Damp table root.");
     }
 
     ygot.BuildEmptyTree(macDampTbl)
+
+
+    ifNames, _ := getMACDampIntfNames(inParams,inParams.dbs[db.AsicDB])
+    log.Info("ifNames: ",ifNames)
     macDampTbl.Interfaces = ifNames
-    macDampTbl.Global = ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_MacDampening_Config_Global_GLOBAL
+
+    //Fill mac dampening threshold config
+    macDampCfgEntry, cfgEntryErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:"MAC_DAMPENING"}, db.Key{Comp: []string{"config"}})
+    if cfgEntryErr == nil {
+        value := macDampCfgEntry.Field["threshold"]
+               intVal, _ := strconv.Atoi(value)
+        ocThreshold := uint8(intVal)
+        macDampTbl.Threshold = &ocThreshold
+    }
+    pretty.Print(macDampTbl)
+
+
 
     pretty.Print(macDampTbl)
 
@@ -349,38 +220,34 @@ func getMacDampTableRoot (s *ygot.GoStruct, instance string, build bool) *ocbind
     return macDampTableObj 
 }
 
-/*
-var YangToDb_mac_dampening_state_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    if log.V(1) {
-        log.Info("Entering YangToDb_mac_dampening_state_value_xfmr")
-    }
-    res_map := make(map[string]string)
-    return res_map, nil
-}
+var rpc_clear_oc_mac_damp_disabled_ports RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (result []byte, err error) {
+    log.Infof("Enter")
 
-func DbToYang_mac_dampening_state_value_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
-    var key string
-    result := make(map[string]interface{})
-    key = inParams.key
-    if log.V(1) {
-        log.Infof("DbToYang_mac_dampening_state_value_xfmr: inParams.key:%s key:%s", inParams.key,key)
-    }
-    result["global"] = ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_MacDampening_Config_Global_global
+	var mapData map[string]interface{}
+	err = json.Unmarshal(body, &mapData)
+	if err != nil {
+		log.Infof("Error: %v. Input:%s", err, string(body))
+		log.Errorf("Failed to  marshal input data; err=%v", err)
+		return nil, tlerr.InvalidArgs("Invalid input %s", string(body))
+	}
 
-    entry, err := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:"MAC_DAMPENING"}, db.Key{Comp: []string{"config"}})
-    if err == nil {
-        value := entry.Field["threshold"]
-        result["threshold"],_ = strconv.ParseUint(value,10,8)
-    } else {
-        log.Error("Error ", err)
-        return result, tlerr.NotFound("Resource Not Found")
+    input, ok := mapData["openconfig-mac-dampening:input"] ; if !ok {
+		log.Infof("Invalid input ifname should be either all or specific interface name")
+		return nil, tlerr.InvalidArgs("Invalid input ifname should be either all or specific interface name")
     }
-    if log.V(1) {
-        log.Info(result)
+
+	mapData = input.(map[string]interface{})
+	log.Infof("RPC Input data: %v", mapData)
+	ifname, found := mapData["ifname"] ; if !found {
+		log.Infof("Invalid input ifname should be either all or specific interface name")
+		return nil, tlerr.InvalidArgs("Invalid input ifname should be either all or specific interface name")
     }
-    return result, nil
+
+    input_str := fmt.Sprintf("%v", ifname)
+
+    err = util_rpc_clear_mac_damp_disabled_ports(dbs, input_str)
+    return nil, err
 }
-*/
 
 
 /*
@@ -391,7 +258,6 @@ var Subscribe_mac_dampening_state_subtree_xfmr = func (inParams XfmrSubscInParam
     result.dbDataMap = make(RedisDbMap)
     pathInfo := NewPathInfo(inParams.uri)
     threshold := pathInfo.Var("threshold")
-    global := pathInfo.Var("global")
     config := pathInfo.Var("config")
     keyName := "Vlan" + vlan + "|" + macAddr
     tblName := "MAC_DAMP_TABLE"
