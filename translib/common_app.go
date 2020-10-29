@@ -292,7 +292,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		    }
 	    }
 	    if targetObj != nil {
-	    	updateListEntriesOpt := ytypes.AllowUpdateInListMap{}
+		    updateListEntriesOpt := ytypes.AllowUpdateInListMap{}
 		    err = ocbinds.Unmarshal(payload, targetObj, &updateListEntriesOpt)
 		    if err != nil {
 			    log.Warning("ocbinds.Unmarshal()  returned : ", err)

@@ -622,7 +622,7 @@ func replacePrefixWithModuleName(xpath string) (string) {
 
 
 /* Extract key vars, create db key and xpath */
-func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (xpathTblKeyExtractRet, error) {
+func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subOpDataMap map[int]*RedisDbMap, txCache interface{}, xfmrTblKeyCache map[string]tblKeyCache) (xpathTblKeyExtractRet, error) {
 	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)
 	 var retData xpathTblKeyExtractRet
 	 keyStr    := ""
@@ -663,7 +663,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 yangXpath := ""
 	 xfmrLogInfoAll("path elements are : %v", pathList)
 	 for i, k := range pathList {
-		 curPathWithKey += k
+		 curPathWithKey += "/" + k
 		 callKeyXfmr := true
 		 yangXpath += "/" + xpathList[i]
 		 xpathInfo, ok := xYangSpecMap[yangXpath]
@@ -682,9 +682,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr += keySeparator
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
-				 if oper == DELETE {
-					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
-						callKeyXfmr = false
+			     if xfmrTblKeyCache != nil {
+				     if tkCache, _ok := xfmrTblKeyCache[curPathWithKey]; _ok {
+					     if len(tkCache.dbKey) != 0 {
+						     keyStr = tkCache.dbKey
+						     callKeyXfmr = false
+					     }
 					}
 				 }
 				 if callKeyXfmr {
@@ -707,8 +710,13 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 }
 						 keyStr = ret
 					 }
-					 if oper == DELETE {
-						keyXfmrCache[curPathWithKey] = keyStr
+					 if xfmrTblKeyCache != nil {
+						 if _, _ok := xfmrTblKeyCache[curPathWithKey]; !_ok {
+							 xfmrTblKeyCache[curPathWithKey] = tblKeyCache{}
+						 }
+						 tkCache := xfmrTblKeyCache[curPathWithKey]
+						 tkCache.dbKey = keyStr
+						 xfmrTblKeyCache[curPathWithKey] = tkCache
 					 }
 				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
@@ -726,11 +734,14 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
-				 if oper == DELETE {
-					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
-						callKeyXfmr = false
+				 if xfmrTblKeyCache != nil {
+					 if tkCache, _ok := xfmrTblKeyCache[curPathWithKey]; _ok {
+						if len(tkCache.dbKey) != 0 {
+							keyStr = tkCache.dbKey
+							callKeyXfmr = false
+						}
 					}
-				 }
+				}
 			   if callKeyXfmr {
 				 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 				 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
@@ -751,24 +762,34 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 					 keyStr = ret
 				 }
-				 if oper == DELETE {
-					keyXfmrCache[curPathWithKey] = keyStr
+				 if xfmrTblKeyCache != nil {
+					 if _, _ok := xfmrTblKeyCache[curPathWithKey]; !_ok {
+						 xfmrTblKeyCache[curPathWithKey] = tblKeyCache{}
+					 }
+					 tkCache := xfmrTblKeyCache[curPathWithKey]
+					 tkCache.dbKey = keyStr
+					 xfmrTblKeyCache[curPathWithKey] = tkCache
 				 }
 			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {
 				 keyStr += *xYangSpecMap[yangXpath].keyName
 			 }
 		 }
-		 curPathWithKey += "/"
 	 }
 	 curPathWithKey = strings.TrimSuffix(curPathWithKey, "/")
+	 if !strings.HasPrefix(curPathWithKey, "/") {
+		curPathWithKey = "/" + curPathWithKey
+	 }
 	 retData.dbKey = keyStr
 	 tblPtr     := xpathInfo.tableName
 	 if tblPtr != nil && *tblPtr != XFMR_NONE_STRING {
 		 retData.tableName = *tblPtr
 	 } else if xpathInfo.xfmrTbl != nil {
 		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
-		 retData.tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams)
+		 if oper == GET {
+			 inParams.dbDataMap = dbDataMap
+		 }
+		 retData.tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams, xfmrTblKeyCache)
 		 if inParams.isVirtualTbl != nil {
 			retData.isVirtualTbl = *(inParams.isVirtualTbl)
 		 }
@@ -784,7 +805,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	return retData, err
 }
 
-func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, error) {
+func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}, xfmrTblKeyCache map[string]tblKeyCache) (string, error) {
 	tableName := ""
 	var err error
 	cdb := db.ConfigDB
@@ -802,7 +823,7 @@ func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
 		 tableName = *tblPtr
 	 } else if xpathInfo.xfmrTbl != nil {
 		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
-		 tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams)
+		 tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams, xfmrTblKeyCache)
 	 }
 	return tableName, err
 }

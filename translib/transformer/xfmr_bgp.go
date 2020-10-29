@@ -301,7 +301,7 @@ func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr s
 
 func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
     var err error
-    xpath,_,_ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
     pathInfo := NewPathInfo(inParams.requestUri)
     niName := pathInfo.Var("name")
     if len(niName) == 0 {return err}
