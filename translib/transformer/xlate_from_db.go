@@ -494,7 +494,7 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 	}
 	err = TraverseDb(dbs, dbFormat, &dbresult, nil)
 	if err != nil {
-		log.Warningf("TraverseDb() didn't fetch data for tbl(DB num) %v(%v) for xpath %v", tblName, cdb, xpath)
+		xfmrLogInfo("Didn't fetch DB data for tbl(DB num) %v(%v) for xpath %v", tblName, cdb, xpath)
 		return nil, err
 	}
 	if _, ok := dbresult[cdb]; !ok {
@@ -572,7 +572,7 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 			instMap, err := yangListInstanceDataFill(inParamsForGet, isFirstCall)
 			dbDataMap = inParamsForGet.dbDataMap
 			if err != nil {
-				log.Infof("Error(%v) returned for %v", err, uri)
+				xfmrLogInfoAll("Error(%v) returned for %v", err, uri)
 			} else if ((instMap != nil)  && (len(instMap) > 0)) {
 				mapSlice = append(mapSlice, instMap)
 			}
@@ -607,7 +607,7 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 				instMap, err := yangListInstanceDataFill(inParamsForGet, isFirstCall)
 				dbDataMap = inParamsForGet.dbDataMap
 				if err != nil {
-					log.Infof("Error(%v) returned for %v", err, uri)
+					xfmrLogInfoAll("Error(%v) returned for %v", err, uri)
 				} else if ((instMap != nil)  && (len(instMap) > 0)) {
 					mapSlice = append(mapSlice, instMap)
 				}
