@@ -141,8 +141,8 @@ var YangToDb_snmp_tag_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (m
         res_map["tag@"] = ""
         return res_map, nil
     }
-    if inParams.oper != UPDATE {
-        return res_map, errors.New("No UPDATE operation")
+    if inParams.oper != UPDATE && inParams.oper != REPLACE {
+        return res_map, errors.New("No UPDATE/REPLACE operation")
     }
 
     members := inParams.param.([]string)

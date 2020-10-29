@@ -1,0 +1,206 @@
+module openconfig-loadbalance-mode-ext {
+
+  yang-version "1.1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/loadbalance/extension";
+
+  prefix "oc-lb-mode-ext";
+
+  // import some basic types/interfaces
+  import openconfig-extensions { prefix "oc-ext"; }
+  
+  // meta
+  organization
+    "OpenConfig working group";
+
+  contact
+    "SONiC";
+
+  description
+    "Load balance mode config"; 
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-10-08" {
+    description
+      "Initial revision.";
+    reference "0.1.0";
+  }
+  
+    grouping loadbalance-mode-config {
+        description "Load balance mode configuration";
+        container seed-attrs {
+           description "ECMP seed attributes";
+           list seed-attr {
+               key "hash";
+               description "ECMP seed attribute";
+               leaf hash {
+                   type leafref {
+                       path "../config/hash";
+                   }
+                   description
+                       "Reference to the seed attribute list key";
+               }
+
+               container config {
+                    description "ECMP hash seed configuration";
+                    uses oc-lb-mode-ext:hash-mode-seed-attr-config;
+               }
+               container state {
+                    config false;
+                    description "State container for ECMP hash seed";
+                    uses oc-lb-mode-ext:hash-mode-seed-attr-config;
+               }
+           }
+       }
+     
+       container ipv4-attrs {
+           description "ECMP load balance IPV4 attr container";
+           list ipv4-attr {
+               key "ipv4";
+               description
+                   "List of ipv4 entries";
+
+               leaf ipv4 {
+                   type leafref {
+                       path "../config/ipv4";
+                   }
+                   description
+                       "Reference to the load balance ipv4 list key";
+               }
+               container config {
+                   description "ECMP ipv4 load balance config";
+                   uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
+               }
+               container state {
+                   config false;
+                   description "State container for ECMP ipv4 attributes";
+                   uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
+               }
+           }
+       } 
+       container ipv6-attrs {
+            description "ECMP load balance IPV4 attr container";
+           list ipv6-attr {
+               key "ipv6";
+               description "ECMP ipv6 attribute list";
+               leaf ipv6 {
+                   type leafref {
+                       path "../config/ipv6";
+                   }
+                   description
+                       "Reference to the ipv6 list key";
+               }
+
+                container config {
+                    description "ECMP ipv6 load balance attrubute configuration";
+                    uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
+                }
+                container state {
+                    config false;
+                    description "State container for ECMP loadbalance ipv6 attributes";
+                    uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
+                }
+           } 
+       }
+    }
+
+    grouping hash-mode-seed-attr-config {
+        description "ECMP hash mode seed configuration";
+
+        leaf hash {
+            type string;
+            description "Key node identifier";
+        }
+
+
+        leaf ecmp-hash-seed {
+           type uint32 {
+               range "1..16777215";
+           }
+           description
+               "Seed value for IP ECMP hash configuration";
+        }
+    }
+
+    grouping hash-mode-ipv4-attr-config {
+        description "ECMP hash mode IPv4 fields";
+
+        leaf ipv4 {
+            type string;
+            description "Key node identifier";
+        }
+
+        leaf ipv4-l4-src-port {
+          type boolean;
+          description
+              "This leaf indicates whether to include src-port in hashing .";
+        }
+
+        leaf ipv4-l4-dst-port {
+          type boolean;
+          description
+              "This leaf indicates whether to include dst-port in hashing .";
+        }
+
+        leaf ipv4-src-ip {
+          type boolean;
+          description
+              "This leaf indicates whether to include src-ip in hashing .";
+        }
+
+        leaf ipv4-dst-ip {
+          type boolean;
+          description
+              "This leaf indicates whether to include dst-ip in hashing .";
+        }
+
+        leaf ipv4-protocol {
+          type boolean;
+          description
+              "This leaf indicates whether to include protocol in hashing .";
+        }
+    }
+
+    grouping hash-mode-ipv6-attr-config {
+        description "ECMP hash mode IPV6 fields";
+
+        leaf ipv6 {
+            type string;
+            description "Key node identifier";
+        }
+
+
+        leaf ipv6-l4-src-port {
+          type boolean;
+          description
+              "This leaf indicates whether to include src-port in hashing .";
+        }
+
+        leaf ipv6-l4-dst-port {
+          type boolean;
+          description
+              "This leaf indicates whether to include dst-port in hashing .";
+        }
+
+        leaf ipv6-src-ip {
+          type boolean;
+          description
+              "This leaf indicates whether to include src-ip in hashing .";
+        }
+
+        leaf ipv6-dst-ip {
+          type boolean;
+          description
+              "This leaf indicates whether to include dst-ip in hashing .";
+        }
+
+        leaf ipv6-next-hdr {
+          type boolean;
+          description
+              "This leaf indicates whether to include protocol in hashing .";
+        }
+    }
+    uses loadbalance-mode-config;
+}
