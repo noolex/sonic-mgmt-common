@@ -41,7 +41,6 @@ func initRegex() {
 	rgpMac = regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
 	rgpIsMac = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
 	rgpSncKeyExtract = regexp.MustCompile(`\[([^\[\]]*)\]`)
-	rgpSplitUri = regexp.MustCompile(`\/\w*(\-*\:*\w*)*(\[([^\[\]]*)\])*`)
 
 }
 
@@ -584,33 +583,28 @@ func stripAugmentedModuleNames(xpath string) string {
         return path
 }
 
-func XfmrRemoveXPATHPredicates(inPath string) (string, []string, error) {
-	xpath := inPath
+func XfmrRemoveXPATHPredicates(uri string) (string, []string, error) {
 	var uriList []string
-	if !strings.HasPrefix(inPath, "..") {
-		uriList = splitUri(inPath)
-		xpath = "/" + strings.Join(uriList, "/")
-	}
+	var pathList []string
+	uriList = SplitPath(uri)
 
-	// Strip keys from xpath
-	for {
-		si, ei := strings.IndexAny(xpath, "["), strings.Index(xpath, "]")
-		if si != -1 && ei != -1 {
-			if si < ei {
-				newpath := xpath[:si] + xpath[ei+1:]
-				xpath = newpath
-			} else {
-				return "", uriList, fmt.Errorf("Incorrect ordering of [] in %s , [ pos: %d, ] pos: %d", xpath, si, ei)
-			}
-		} else if si != -1 || ei != -1 {
-			return "", uriList, fmt.Errorf("Mismatched brackets within string %s, si:%d ei:%d", xpath, si, ei)
+	// Strip keys for xpath creation
+	for _, path := range uriList {
+		si := strings.Index(path, "[")
+		if si != -1 {
+			pathList = append(pathList, path[:si])
 		} else {
-			// No more keys available
-			break
+			pathList = append(pathList, path)
 		}
 	}
-	path := stripAugmentedModuleNames(xpath)
-	return path, uriList, nil
+
+	inPath := strings.Join(pathList, "/")
+	if !strings.HasPrefix(uri, "..") {
+		inPath = "/" + inPath
+	}
+
+	xpath := stripAugmentedModuleNames(inPath)
+	return xpath, uriList, nil
 }
 
 func replacePrefixWithModuleName(xpath string) (string) {
@@ -1206,16 +1200,7 @@ func xlateUnMarshallUri(ygRoot *ygot.GoStruct, uri string) (*interface{}, error)
 }
 
 func splitUri(uri string) []string {
-	if !strings.HasPrefix(uri, "/") {
-		uri = "/" + uri
-	}
-	pathList := rgpSplitUri.FindAllString(uri, -1)
-	for i, kname := range pathList {
-		//xfmrLogInfoAll("uri path elems: %v", kname)
-		if strings.HasPrefix(kname, "/") {
-			pathList[i] = kname[1:]
-		}
-	}
+	pathList := SplitPath(uri)
 	xfmrLogInfoAll("uri: %v ", uri)
 	xfmrLogInfoAll("uri path elems: %v", pathList)
 	return pathList
