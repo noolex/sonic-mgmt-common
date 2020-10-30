@@ -707,6 +707,7 @@ func populate_fec_modes_to_db() {
         log.Info("Unable to connect to StateDB")
         return
     }
+	defer d.DeleteDB()
 
     serialized_supported_fec_modes, _ := serialize_fec_info_tbl(supported_fec_tbl)
     serialized_default_fec_modes, err := serialize_fec_info_tbl(default_fec_tbl)

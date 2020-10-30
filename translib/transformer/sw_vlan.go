@@ -68,6 +68,7 @@ const (
 
 func getMaxStpInstances() (int, error) {
     var stateDbPtr, _ = db.NewDB(getDBOptions(db.StateDB))
+    defer stateDbPtr.DeleteDB()	
     stpStateDbEntry, err := stateDbPtr.GetEntry(&db.TableSpec{Name:STP_STATE_TABLE}, db.Key{Comp: []string{"GLOBAL"}})
     if err != nil {
         return 0, err
