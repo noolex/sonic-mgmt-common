@@ -114,7 +114,7 @@ func validateHandlerFunc(inParams XfmrParams, validateFuncNm string) (bool) {
 func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams, xfmrTblKeyCache map[string]tblKeyCache) ([]string, error) {
 
 	xfmrLogInfoAll("Received inParams %v, table transformer function name %v", inParams, xfmrTblFunc)
-	if xfmrTblKeyCache != nil {
+	if (inParams.oper == GET && xfmrTblKeyCache != nil) {
 		if tkCache, _ok := xfmrTblKeyCache[inParams.uri]; _ok {
 			if len(tkCache.dbTblList) > 0 {
 				return tkCache.dbTblList, nil
@@ -143,7 +143,7 @@ func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams, xfmrTblKeyCache
 			retTblLst = ret[TBL_XFMR_RET_VAL_INDX].Interface().([]string)
 		}
 	}
-	if xfmrTblKeyCache != nil {
+	if (inParams.oper == GET && xfmrTblKeyCache != nil) {
 		if _, _ok := xfmrTblKeyCache[inParams.uri]; !_ok {
 			xfmrTblKeyCache[inParams.uri] = tblKeyCache{}
 		}
