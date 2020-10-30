@@ -38,6 +38,7 @@ func init() {
     XlateFuncBind("DbToYang_loadbalance_mode_seed_fld_xfmr", DbToYang_loadbalance_mode_seed_fld_xfmr)
     XlateFuncBind("Subscribe_loadbalance_mode_seed_fld_xfmr", Subscribe_loadbalance_mode_seed_fld_xfmr)
     XlateFuncBind("DbToYang_loadbalance_mode_state_xfmr", DbToYang_loadbalance_mode_state_xfmr)
+    XlateFuncBind("loadbalance_seed_table_xfmr", loadbalance_seed_table_xfmr)
 }
 
 type LoadbalanceModeHistoryEntry struct {
@@ -208,26 +209,44 @@ var DbToYang_loadbalance_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         return err
     }
 
-    if len(hashKeyRecvd) > 0 {
-        var lbSeedAttrsObj *ocbinds.OpenconfigLoadbalanceModeExt_SeedAttrs
-        var lbSeedAttrObj *ocbinds.OpenconfigLoadbalanceModeExt_SeedAttrs_SeedAttr
-
-        lbSeedAttrsObj = deviceObj.SeedAttrs
+    if len(v4KeyRecvd) > 0 {
+        var lbIpv4AttrsObj *ocbinds.OpenconfigLoadbalanceModeExt_Ipv4Attrs
+        var lbIpv4AttrObj *ocbinds.OpenconfigLoadbalanceModeExt_Ipv4Attrs_Ipv4Attr
+        lbIpv4AttrsObj = deviceObj.Ipv4Attrs
         log.Info("DbToYang_loadbalance_mode_state_xfmr: ecmp_hash_fields_ipv4 ",entry.Field["ecmp_hash_fields_ipv4"])
 
-        ygot.BuildEmptyTree(lbSeedAttrsObj)
-        if lbSeedAttrsObj != nil && lbSeedAttrsObj.SeedAttr != nil && len(lbSeedAttrsObj.SeedAttr) > 0 {
+        ygot.BuildEmptyTree(lbIpv4AttrsObj)
+        if lbIpv4AttrsObj != nil && lbIpv4AttrsObj.Ipv4Attr != nil && len(lbIpv4AttrsObj.Ipv4Attr) > 0 {
             var ok bool = false
-            if lbSeedAttrObj, ok = lbSeedAttrsObj.SeedAttr["hash"]; !ok {
-                lbSeedAttrObj, _ = lbSeedAttrsObj.NewSeedAttr("hash")
+            if lbIpv4AttrObj, ok = lbIpv4AttrsObj.Ipv4Attr["ipv4"]; !ok {
+                lbIpv4AttrObj, _ = lbIpv4AttrsObj.NewIpv4Attr("ipv4")
             }
-            ygot.BuildEmptyTree(lbSeedAttrObj)
-            ygot.BuildEmptyTree(lbSeedAttrObj.State)
-            ecmpHash := entry.Get("ecmp_hash_seed")
-            _value, _ := strconv.Atoi(ecmpHash)
-            value := uint32(_value)
-            lbSeedAttrObj.State.EcmpHashSeed = &value
-        } 
+
+            ygot.BuildEmptyTree(lbIpv4AttrObj)
+            ygot.BuildEmptyTree(lbIpv4AttrObj.State)
+
+            trueIpv4Val := true
+            keyIpv4Val := "ipv4"
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4") {
+                lbIpv4AttrObj.State.Ipv4 = &keyIpv4Val
+            }
+ 
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_dst_ip") {
+                lbIpv4AttrObj.State.Ipv4DstIp = &trueIpv4Val
+            }
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_src_ip") {
+                lbIpv4AttrObj.State.Ipv4SrcIp = &trueIpv4Val
+            }
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_l4_dst_port") {
+                lbIpv4AttrObj.State.Ipv4L4DstPort = &trueIpv4Val
+            }
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_l4_src_port") {
+                lbIpv4AttrObj.State.Ipv4L4SrcPort = &trueIpv4Val
+            }
+        }
     }
 
     if len(v6KeyRecvd) > 0 {
@@ -270,74 +289,121 @@ var DbToYang_loadbalance_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         }
     }
 
-    if len(v4KeyRecvd) > 0 {
-        var lbIpv4AttrsObj *ocbinds.OpenconfigLoadbalanceModeExt_Ipv4Attrs
-        var lbIpv4AttrObj *ocbinds.OpenconfigLoadbalanceModeExt_Ipv4Attrs_Ipv4Attr
-        lbIpv4AttrsObj = deviceObj.Ipv4Attrs
-        log.Info("DbToYang_loadbalance_mode_state_xfmr: ecmp_hash_fields_ipv4 ",entry.Field["ecmp_hash_fields_ipv4"])
+    if len(hashKeyRecvd) > 0 {
+        var lbSeedAttrsObj *ocbinds.OpenconfigLoadbalanceModeExt_SeedAttrs
+        var lbSeedAttrObj *ocbinds.OpenconfigLoadbalanceModeExt_SeedAttrs_SeedAttr
+        lbSeedAttrsObj = deviceObj.SeedAttrs
+        log.Info("DbToYang_loadbalance_mode_state_xfmr: ecmp_hash_fields_seed ",entry.Field["ecmp_hash_fields_ipv4"])
 
-        ygot.BuildEmptyTree(lbIpv4AttrsObj)
-        if lbIpv4AttrsObj != nil && lbIpv4AttrsObj.Ipv4Attr != nil && len(lbIpv4AttrsObj.Ipv4Attr) > 0 {
+        ygot.BuildEmptyTree(lbSeedAttrsObj)
+        if lbSeedAttrsObj != nil && lbSeedAttrsObj.SeedAttr != nil && len(lbSeedAttrsObj.SeedAttr) > 0 {
             var ok bool = false
-            if lbIpv4AttrObj, ok = lbIpv4AttrsObj.Ipv4Attr["ipv4"]; !ok {
-                lbIpv4AttrObj, _ = lbIpv4AttrsObj.NewIpv4Attr("ipv4")
+            if lbSeedAttrObj, ok = lbSeedAttrsObj.SeedAttr["hash"]; !ok {
+                lbSeedAttrObj, _ = lbSeedAttrsObj.NewSeedAttr("hash")
             }
 
-            ygot.BuildEmptyTree(lbIpv4AttrObj)
-            ygot.BuildEmptyTree(lbIpv4AttrObj.State)
+            ygot.BuildEmptyTree(lbSeedAttrObj)
+            ygot.BuildEmptyTree(lbSeedAttrObj.State)
 
             trueIpv4Val := true
-            keyIpv4Val := "ipv4"
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4") {
-                lbIpv4AttrObj.State.Ipv4 = &keyIpv4Val
-            }
- 
 
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_dst_ip") {
-                lbIpv4AttrObj.State.Ipv4DstIp = &trueIpv4Val
+                lbSeedAttrObj.State.Ipv4DstIp = &trueIpv4Val
             }
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_src_ip") {
-                lbIpv4AttrObj.State.Ipv4SrcIp = &trueIpv4Val
+                lbSeedAttrObj.State.Ipv4SrcIp = &trueIpv4Val
             }
 
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_l4_dst_port") {
-                lbIpv4AttrObj.State.Ipv4L4DstPort = &trueIpv4Val
+                lbSeedAttrObj.State.Ipv4L4DstPort = &trueIpv4Val
             }
 
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_l4_src_port") {
-                lbIpv4AttrObj.State.Ipv4L4SrcPort = &trueIpv4Val
+                lbSeedAttrObj.State.Ipv4L4SrcPort = &trueIpv4Val
             }
 
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_protocol") {
-                lbIpv4AttrObj.State.Ipv4Protocol = &trueIpv4Val
+                lbSeedAttrObj.State.Ipv4Protocol = &trueIpv4Val
             }
 
             ecmpHash := entry.Get("ecmp_hash_seed")
             _value, _ := strconv.Atoi(ecmpHash)
             value := uint32(_value)
-            lbIpv4AttrObj.State.EcmpHashSeed = &value
+            lbSeedAttrObj.State.EcmpHashSeed = &value
             trueIpv6Val := true
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_dst_ip") {
-                lbIpv4AttrObj.State.Ipv6DstIp = &trueIpv6Val
+                lbSeedAttrObj.State.Ipv6DstIp = &trueIpv6Val
             }
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_src_ip") {
-                lbIpv4AttrObj.State.Ipv6SrcIp = &trueIpv6Val
+                lbSeedAttrObj.State.Ipv6SrcIp = &trueIpv6Val
             }
 
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_l4_dst_port") {
-                lbIpv4AttrObj.State.Ipv6L4DstPort = &trueIpv6Val
+                lbSeedAttrObj.State.Ipv6L4DstPort = &trueIpv6Val
             }
 
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_l4_src_port") {
-                lbIpv4AttrObj.State.Ipv6L4SrcPort = &trueIpv6Val
+                lbSeedAttrObj.State.Ipv6L4SrcPort = &trueIpv6Val
             }
 
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_next_hdr") {
-                lbIpv4AttrObj.State.Ipv6NextHdr = &trueIpv6Val
+                lbSeedAttrObj.State.Ipv6NextHdr = &trueIpv6Val
             }
         }
     }
     return err
+}
+
+func get_lb_seed_cfg_tbl_entry (inParams XfmrParams, tableName string) (bool) {
+    var err error
+    pathInfo := NewPathInfo(inParams.uri)
+
+    if len(pathInfo.Vars) <  4 {
+        log.Info("Invalid Key length", len(pathInfo.Vars))
+        return false
+    }
+
+    TableKey := "hash" 
+
+    lbIpv4TblTs := &db.TableSpec{Name:tableName}
+    lbIpv4EntryKey := db.Key{Comp:[]string{TableKey}}
+
+    _, err = configDbPtr.GetEntry(lbIpv4TblTs, lbIpv4EntryKey);
+    if (err != nil) {
+        return false
+    } else {
+        log.Info("get_lb_ipv4_cfg_tbl_entry: entry found")
+        return true
+    }
+}
+
+
+
+var loadbalance_seed_table_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
+    var tblList []string
+    var key string
+
+    log.Info("loadbalance_seed_table_xfmr Enter")
+
+    tblList = append(tblList, "ECMP_LOADBALANCE_TABLE_SEED")
+    key = "hash"
+    if (inParams.dbDataMap != nil) {
+        if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADBALANCE_TABLE_SEED"]; !ok {
+                    (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADBALANCE_TABLE_SEED"] = make(map[string]db.Value)
+        }
+    } else {
+        if found := get_lb_seed_cfg_tbl_entry(inParams, "ECMP_LOADBALANCE_TABLE_SEED") ; !found {
+            if (nil != inParams.isVirtualTbl) {
+                *inParams.isVirtualTbl = true
+            }
+        }
+        return tblList,nil
+    }
+
+    if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADBALANCE_TABLE_SEED"][key]; !ok {
+        (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADBALANCE_TABLE_SEED"][key] = db.Value{Field: make(map[string]string)}
+    }
+    return tblList, nil
 }
 
 
