@@ -76,7 +76,9 @@ module openconfig-loadbalance-mode-ext {
                container state {
                    config false;
                    description "State container for ECMP ipv4 attributes";
+                   uses oc-lb-mode-ext:hash-mode-seed-attr-config;
                    uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
+                   uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
                }
            }
        } 
