@@ -291,6 +291,7 @@ func isMgmtVrfEnabled(inParams XfmrParams) (bool) {
 func init() {
         xfmr_set_default_vrf_configDb()
         XlateFuncBind("network_instance_table_name_xfmr", network_instance_table_name_xfmr)
+        XlateFuncBind("table_conns_validate_ni", table_conns_validate_ni)
         XlateFuncBind("YangToDb_network_instance_table_key_xfmr", YangToDb_network_instance_table_key_xfmr)
         XlateFuncBind("DbToYang_network_instance_table_key_xfmr", DbToYang_network_instance_table_key_xfmr)
         XlateFuncBind("YangToDb_network_instance_enabled_field_xfmr", YangToDb_network_instance_enabled_field_xfmr)
@@ -351,7 +352,9 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
         if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/tables") {
             return tblList, err
         }
-        if (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/afts") && strings.HasPrefix(keyName, "Vlan") {
+        if ((targetUriPath == "/openconfig-network-instance:network-instances/network-instance/openconfig-aft:afts") ||
+            (targetUriPath == "/openconfig-network-instance:network-instances/network-instance/interfaces")) && 
+            (strings.HasPrefix(keyName, "Vlan")) {
             return tblList, err
         }
 
@@ -391,6 +394,11 @@ var network_instance_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams) 
         log.V(3).Info("network_instance_table_name_xfmr, OP ", inParams.oper, " DB table name ", tblList)
 
         return tblList, err
+}
+
+func table_conns_validate_ni(inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    return  !(strings.HasPrefix(pathInfo.Var("name"), "Vlan"))
 }
 
 // YangToDb_network_instance_enabled_field_xfmr is a YangToDB Field transformer for top level network instance config "enabled" 

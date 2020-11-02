@@ -677,16 +677,11 @@ var YangToDb_mac_aging_time_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
         return nil, err
     }
 
-    var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
-    var switchMap map[string]db.Value = make(map[string]db.Value)
-
-    key := "switch"
-    dbV := db.Value{Field: make(map[string]string)}
+    tblName := "SWITCH"
+    tblKey := "switch"
 
     switch inParams.oper {
     case DELETE:
-        tblName := "SWITCH"
-        tblKey := "switch"
         subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
         subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
         subOpMap[db.ConfigDB][tblName] = make(map[string]db.Value)
@@ -699,6 +694,9 @@ var YangToDb_mac_aging_time_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
     case CREATE:
         fallthrough
     case UPDATE:
+        var res_map map[string]map[string]db.Value = make(map[string]map[string]db.Value)
+        var switchMap map[string]db.Value = make(map[string]db.Value)
+        dbV := db.Value{Field: make(map[string]string)}
         if targetUriPath == "/openconfig-network-instance:network-instances/network-instance/fdb/config"{
             fdbTbl := getFdbRoot(inParams.ygRoot, instance, true)
             if fdbTbl == nil {
@@ -709,8 +707,8 @@ var YangToDb_mac_aging_time_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
             macAgingTime := fdbTbl.Config.MacAgingTime
             macAgT := strconv.Itoa(int(*macAgingTime))
             dbV.Field["fdb_aging_time"] = macAgT
-            switchMap[key] = dbV
-            res_map["SWITCH"] = switchMap
+            switchMap[tblKey] = dbV
+            res_map[tblName] = switchMap
             return res_map, nil
         }
     }
