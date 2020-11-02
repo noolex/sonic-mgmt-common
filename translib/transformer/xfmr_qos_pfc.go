@@ -533,7 +533,7 @@ func getPfcStats (inParams XfmrParams, ifName string, cos uint8, d *db.DB, stats
     oidMap, present := inParams.txCache.Load("COUNTERS_PORT_NAME_MAP")
     if !present {
         portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
-        ifCountInfo, err := d.GetMapAll(portOidmapTs)
+        ifCountInfo, err = d.GetMapAll(portOidmapTs)
         if err != nil {
             log.Info("getPfcStats    err: ", err)
             return err

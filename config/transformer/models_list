@@ -102,7 +102,6 @@ openconfig-lldp-annot.yang
 openconfig-spanning-tree.yang
 openconfig-spanning-tree-ext.yang
 openconfig-spanning-tree-annot.yang
-sonic-spanning-tree-annot.yang
 openconfig-kdump.yang
 openconfig-infra.yang
 sonic-system-infra-annot.yang
