@@ -99,11 +99,15 @@ func util_fill_db_datamap_per_bgp_nbr_from_frr_info (inParams XfmrParams, vrf st
 
 func util_fill_bgp_nbr_info_per_af_from_frr_info (inParams XfmrParams, vrf string, nbrAddr string,
                                                   afiSafiType ocbinds.E_OpenconfigBgpTypes_AFI_SAFI_TYPE) {
-    cmd := "show ip bgp vrf" + " " + vrf + " " + "ipv4 summary json"
+    afiSafiName := "ipv4"
+    frrJsonCacheQueryType := BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_SUMMARY
     if afiSafiType == ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST {
-        cmd = "show ip bgp vrf" + " " + vrf + " " + "ipv6 summary json"
+        afiSafiName = "ipv6"
+        frrJsonCacheQueryType = BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_SUMMARY
     }
-    bgpNeighOutputJson, _:= exec_vtysh_cmd (cmd)
+    cmd := "show ip bgp vrf " + vrf + " " + afiSafiName + " summary json"
+    bgpFrrJsonCacheKey := bgp_frr_json_cache_query_key_t{niName : vrf, afiSafiName : afiSafiName}
+    bgpNeighOutputJson, _ := utl_bgp_exec_vtysh_cmd (cmd, inParams, frrJsonCacheQueryType, bgpFrrJsonCacheKey)
 
     if _, ok := bgpNeighOutputJson["warning"] ; ok {return}
 
@@ -216,6 +220,7 @@ var bgp_nbr_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
 
     tblList = append(tblList, "BGP_NEIGHBOR")
     _ , present := inParams.txCache.Load(vrf)
+
     if inParams.dbDataMap != nil {
         if !present {
             inParams.txCache.Store(vrf, vrf)
@@ -1308,7 +1313,7 @@ func fill_nbr_state_info (get_req_uri_type E_bgp_nbr_state_get_req_uri_t, nbr_ke
     return errors.New("Opertational error")
 }
 
-func get_specific_nbr_state (get_req_uri_type E_bgp_nbr_state_get_req_uri_t,
+func get_specific_nbr_state (inParams XfmrParams, get_req_uri_type E_bgp_nbr_state_get_req_uri_t,
                              nbr_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Neighbors_Neighbor,
                              cfgDb *db.DB, nbr_key *_xfmr_bgp_nbr_state_key) error {
     var err error
@@ -1316,7 +1321,8 @@ func get_specific_nbr_state (get_req_uri_type E_bgp_nbr_state_get_req_uri_t,
     util_bgp_get_native_ifname_from_ui_ifname (&nbrKey)
 
     vtysh_cmd := "show ip bgp vrf " + nbr_key.niName + " neighbors " + nbrKey + " json"
-    nbrMapJson, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    bgpFrrJsonCacheKey := bgp_frr_json_cache_query_key_t{niName : nbr_key.niName}
+    nbrMapJson, cmd_err := utl_bgp_exec_vtysh_cmd (vtysh_cmd, inParams, BGP_FRR_JSON_CAHCE_QUERY_TYPE_NBRS, bgpFrrJsonCacheKey)
     if cmd_err != nil {
         log.Errorf("Failed to fetch bgp neighbors state info for niName:%s nbrAddr:%s. Err: %s vtysh_cmd %s \n", nbr_key.niName, nbr_key.nbrAddr, cmd_err, vtysh_cmd)
     }
@@ -1409,9 +1415,8 @@ var DbToYang_bgp_nbrs_nbr_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     cmn_log := "GET: xfmr for BGP-nbrs state"
     get_req_uri_type := E_bgp_nbr_state_get_req_uri_nbr_state
 
-    pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    switch targetUriPath {
+    xpath,_,_ := XfmrRemoveXPATHPredicates(inParams.uri)
+    switch xpath {
         case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/timers/state":
             cmn_log = "GET: xfmr for BGP-nbrs timers state"
             get_req_uri_type = E_bgp_nbr_state_get_req_uri_nbr_timers_state
@@ -1426,7 +1431,7 @@ var DbToYang_bgp_nbrs_nbr_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         return get_err
     }
 
-    err = get_specific_nbr_state (get_req_uri_type, nbr_obj, inParams.dbs[db.ConfigDB], &nbr_key)
+    err = get_specific_nbr_state (inParams, get_req_uri_type, nbr_obj, inParams.dbs[db.ConfigDB], &nbr_key)
     return err;
 }
 
@@ -1546,11 +1551,14 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
        format, convert it. The nbr key in the ygot will be still in user given format */
     util_bgp_get_native_ifname_from_ui_ifname (&nbrKey)
     var afiSafi_cmd string
+    var frrJsonCacheQueryType BgpFrrCacheQueryType
     switch (nbr_af_key.afiSafiNameEnum) {
         case ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV4_UNICAST:
             afiSafi_cmd = "ipv4"
+            frrJsonCacheQueryType = BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_NBRS
         case ocbinds.OpenconfigBgpTypes_AFI_SAFI_TYPE_IPV6_UNICAST:
             afiSafi_cmd = "ipv6"
+            frrJsonCacheQueryType = BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_NBRS
     }
 
     _enabled := false
@@ -1606,7 +1614,8 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
     }
 
     vtysh_cmd := "show ip bgp vrf " + nbr_af_key.niName + " " + afiSafi_cmd + " neighbors " + nbrKey + " json"
-    nbrMapJson, nbr_cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    bgpFrrJsonCacheKey := bgp_frr_json_cache_query_key_t{niName : nbr_af_key.niName, afiSafiName : afiSafi_cmd}
+    nbrMapJson, nbr_cmd_err := utl_bgp_exec_vtysh_cmd (vtysh_cmd, inParams, frrJsonCacheQueryType, bgpFrrJsonCacheKey)
     if nbr_cmd_err != nil {
         log.Errorf("Failed to fetch bgp neighbors state info for niName:%s nbrAddr:%s afi-safi-name:%s. Err: %s, Cmd: %s\n",
                    nbr_af_key.niName, nbr_af_key.nbrAddr, afiSafi_cmd, nbr_cmd_err, vtysh_cmd)

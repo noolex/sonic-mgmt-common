@@ -22,6 +22,7 @@ module openconfig-network-instance-annot {
 
     deviation /oc-netinst:network-instances {
       deviate add {
+        sonic-ext:pre-transformer "network_instance_pre_xfmr";
         sonic-ext:post-transformer "network_instance_post_xfmr";
       }
     }

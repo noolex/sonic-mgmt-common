@@ -26,8 +26,10 @@ import (
 
 var rgpIpv6, rgpMac, rgpIsMac, rgpKeyExtract, rgpSncKeyExtract *regexp.Regexp
 
-//Map of map[uri][dbKey]
-var keyXfmrCache map[string]string
+type tblKeyCache struct {
+	dbKey string
+	dbTblList []string
+}
 
 type KeySpec struct {
         DbNum db.DBNum
@@ -77,6 +79,8 @@ type xlateFromDbParams struct {
 	tblKey string
 	resultMap map[string]interface{}
 	validate bool
+	xfmrDbTblKeyCache map[string]tblKeyCache
+	dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool
 }
 
 type xlateToParams struct {
@@ -100,5 +104,6 @@ type xlateToParams struct {
         tableName string
         yangDefValMap map[string]map[string]db.Value
         yangAuxValMap map[string]map[string]db.Value
+	xfmrDbTblKeyCache map[string]tblKeyCache
+	dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool
 }
-
