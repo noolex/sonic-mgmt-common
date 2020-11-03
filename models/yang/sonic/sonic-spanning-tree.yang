@@ -302,10 +302,10 @@ module sonic-spanning-tree {
                 }
 
                 leaf loop_guard {
-                    must "../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst'" {
-                        error-message "Configuration allowed in Rapid PVST mode";
-                        error-app-tag stp-invalid;
-                    }
+                    //must "count(../../../STP/STP_LIST[keyleaf='GLOBAL']/mode) = 0 or (../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst')" {
+                     //   error-message "Configuration allowed in Rapid PVST mode";
+                      //  error-app-tag stp-invalid;
+                    //}
                     type enumeration {
                         enum false;
                         enum true;
@@ -319,20 +319,20 @@ module sonic-spanning-tree {
 
                 // For RPVST+
                 leaf edge_port {
-                    must "../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst'" {
-                        error-message "Configuration allowed in Rapid PVST mode";
-                        error-app-tag stp-invalid;
-                    }
+                    //must "count(../../../STP/STP_LIST[keyleaf='GLOBAL']/mode) = 0 or (../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst')" {
+                     //   error-message "Configuration allowed in Rapid PVST mode";
+                      //  error-app-tag stp-invalid;
+                    //}
                     type boolean;
                     description
                         "Enable/Disable Edge-port on interface";
                 }
 
                 leaf link_type {
-                    must "../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst'" {
-                        error-message "Configuration allowed in Rapid PVST mode";
-                        error-app-tag stp-invalid;
-                    }
+                    //must "../../../STP/STP_LIST[keyleaf='GLOBAL']/mode='rpvst'" {
+                        //error-message "Configuration allowed in Rapid PVST mode";
+                        //error-app-tag stp-invalid;
+                    //}
                     type enumeration {
                         enum auto;
                         enum shared;
