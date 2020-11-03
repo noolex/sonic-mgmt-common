@@ -347,6 +347,9 @@ module sonic-bgp-global {
                             path "../../../BGP_GLOBALS/BGP_GLOBALS_LIST/vrf_name";
                         }
                     }
+                    must "current() != current()/../vrf_name" {
+                        error-message "Cannot import vrf into itself";
+                    }
                 }
 
                 leaf import_vrf_route_map {
