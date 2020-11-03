@@ -4647,7 +4647,10 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         }
     }
     /* Handle Port FEC config */
-    if (strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-fec")) {
+    if ((intfObj.Ethernet.Config.PortFec == ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_FC) ||
+        (intfObj.Ethernet.Config.PortFec == ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_RS) ||
+        (intfObj.Ethernet.Config.PortFec == ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_AUTO) ||
+        (intfObj.Ethernet.Config.PortFec == ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_DISABLED)) {
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
         intTbl := IntfTypeTblMap[intfType]
