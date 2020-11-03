@@ -1236,7 +1236,7 @@ func isValidVrf(configDb *db.DB, vrfName string)(bool) {
      } else {
         entry, err := configDb.GetEntry(&db.TableSpec{Name: "VRF"}, db.Key{Comp: []string{vrfName}})
         if err == nil && len(entry.Field) > 0 {
-            log.Info("VRF found: ", entry, entry.Field)
+            log.Info("VRF found: ", vrfName)
             status = true
         }
      }
