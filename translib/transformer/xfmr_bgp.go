@@ -194,8 +194,6 @@ func init () {
 	XlateFuncBind("YangToDb_bgp_gbl_afi_safi_addr_field_xfmr", YangToDb_bgp_gbl_afi_safi_addr_field_xfmr)
 	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
-    XlateFuncBind("YangToDb_bgp_import_vrf_field_xfmr", YangToDb_bgp_import_vrf_field_xfmr)
-    XlateFuncBind("DbToYang_bgp_import_vrf_field_xfmr", DbToYang_bgp_import_vrf_field_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
     XlateFuncBind("bgp_validate_gbl_af", bgp_validate_gbl_af)
 }
@@ -1138,52 +1136,6 @@ var DbToYang_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrDbToYang = func(inParams Xfmr
 
 	log.Info("DbToYang_bgp_gbl_afi_safi_addr_key_xfmr: rmap:", rmap)
     return rmap, nil
-}
-
-var YangToDb_bgp_import_vrf_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    log.Info("YangToDb_bgp_import_vrf_field_xfmr: ", inParams.uri)
-    rmap := make(map[string]string)
-    var err error
-    if inParams.param == nil {
-        rmap["import_vrf"] = ""
-        return rmap, err
-    }
-
-    if inParams.oper == DELETE {
-        rmap["import_vrf"] = ""
-        return rmap, nil
-    }
-
-    pathInfo := NewPathInfo(inParams.uri)
-    niName := pathInfo.Var("name")
-    import_vrf_name, _ := inParams.param.(*string)
-    if niName == *import_vrf_name {
-        log.Info("YangToDb_bgp_import_vrf_field_xfmr: Cannot import vrf into itself")
-        return rmap, tlerr.InvalidArgs("Cannot import vrf %s into itself", *import_vrf_name)
-    }
-
-    rmap["import_vrf"] = *import_vrf_name
-    return rmap, err
-}
-
-var DbToYang_bgp_import_vrf_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    rmap := make(map[string]interface{})
-    var err error
-
-    data := (*inParams.dbDataMap)[inParams.curDb]
-    log.Info("DbToYang_bgp_import_vrf_field_xfmr key: ", inParams.key)
-    pTbl := data["BGP_GLOBALS_AF"]
-    pGblKey, ok := pTbl[inParams.key]
-    if !ok {
-        log.Info("DbToYang_bgp_import_vrf_field_xfmr : key not found")
-        return rmap, err
-    }
-    import_vrf, ok :=  pGblKey.Field["import_vrf"]
-    if ok {
-        log.Info("DbToYang_bgp_import_vrf_field_xfmr : ", import_vrf)
-        rmap["name"] = import_vrf
-    }
-    return rmap, err
 }
 
 var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
