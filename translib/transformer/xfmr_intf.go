@@ -4647,10 +4647,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         }
     }
     /* Handle Port FEC config */
-    if ((intfObj.Ethernet.Config.PortFec == ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_FC) ||
-        (intfObj.Ethernet.Config.PortFec == ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_RS) ||
-        (intfObj.Ethernet.Config.PortFec == ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_AUTO) ||
-        (intfObj.Ethernet.Config.PortFec == ocbinds.OpenconfigPlatformTypes_FEC_MODE_TYPE_FEC_DISABLED)) {
+    _, present := yangToDbFecMap[intfObj.Ethernet.Config.PortFec]
+    if present {
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
         intTbl := IntfTypeTblMap[intfType]
