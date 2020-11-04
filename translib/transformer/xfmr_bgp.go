@@ -125,29 +125,29 @@ func utl_bgp_exec_vtysh_cmd (vtyshCmd string, inParams XfmrParams, cmdType BgpFr
         switch cmdType {
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_SUMMARY:
                 if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_SUMMARY] ; ok {return value, nil}
-                return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_SUMMARY:
                 if cmdArgs.afiSafiName == "ipv4" {
                     if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_SUMMARY] ; ok {return value, nil}
-                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
                 }
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_SUMMARY:
                 if cmdArgs.afiSafiName == "ipv6" {
                     if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_SUMMARY] ; ok {return value, nil}
-                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
                 }
             case BGP_FRR_JSON_CAHCE_QUERY_TYPE_NBRS:
                 if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_NBRS] ; ok {return value, nil}
-                return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_NBRS:
                 if cmdArgs.afiSafiName == "ipv4" {
                     if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_NBRS] ; ok {return value, nil}
-                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
                 }
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_NBRS:
                 if cmdArgs.afiSafiName == "ipv6" {
                     if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_NBRS] ; ok {return value, nil}
-                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
                 }
         }
     }
