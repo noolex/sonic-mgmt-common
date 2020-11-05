@@ -332,6 +332,31 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
             log.Info("Returning retDbDataMap:",retDbDataMap)
         }
     }
+
+    if inParams.oper == REPLACE {
+        if log.V(3) {
+            log.Info("In interface Post transformer for REPLACE op ==> URI : ", inParams.requestUri)
+        }
+
+        pathInfo := NewPathInfo(inParams.uri)
+        ifName := pathInfo.Var("name")
+
+        intfType, _, ierr := getIntfTypeByName(ifName)
+        if intfType == IntfTypeUnset || ierr != nil {
+            log.Info("intf_post_xfmr - Invalid interface type IntfTypeUnset");
+            return retDbDataMap, errors.New("Invalid interface type IntfTypeUnset");
+        }
+
+        if intfType == IntfTypeEthernet {        // Physical interfaces
+            // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
+            // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
+            // Hence block the Replace/PUT request for Physical interfaces alone.
+            err_str := "Replace/PUT request not allowed for Physical interfaces"
+            return retDbDataMap, tlerr.NotSupported(err_str)
+
+        }
+    }
+
     return retDbDataMap, nil
 }
 
