@@ -2013,6 +2013,10 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
                             if ok && secVal == "true" {
                                 if isSec {
                                     intfIpMap[k] = v
+                                } else {
+                                    errStr := "No such address (" + k + ") configured on this interface as primary address"
+                                    log.Error(errStr)
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
                                 }
                             } else {
                                 if isSec {

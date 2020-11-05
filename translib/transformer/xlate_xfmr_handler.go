@@ -111,8 +111,17 @@ func validateHandlerFunc(inParams XfmrParams, validateFuncNm string) (bool) {
 	return ret[0].Interface().(bool)
 }
 
-func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams) ([]string, error) {
+func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams, xfmrTblKeyCache map[string]tblKeyCache) ([]string, error) {
+
 	xfmrLogInfoAll("Received inParams %v, table transformer function name %v", inParams, xfmrTblFunc)
+	if (inParams.oper == GET && xfmrTblKeyCache != nil) {
+		if tkCache, _ok := xfmrTblKeyCache[inParams.uri]; _ok {
+			if len(tkCache.dbTblList) > 0 {
+				return tkCache.dbTblList, nil
+			}
+		}
+	}
+
 	var retTblLst []string
 	ret, err := XlateFuncCall(xfmrTblFunc, inParams)
 	if err != nil {
@@ -134,6 +143,15 @@ func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams) ([]string, erro
 			retTblLst = ret[TBL_XFMR_RET_VAL_INDX].Interface().([]string)
 		}
 	}
+	if (inParams.oper == GET && xfmrTblKeyCache != nil) {
+		if _, _ok := xfmrTblKeyCache[inParams.uri]; !_ok {
+			xfmrTblKeyCache[inParams.uri] = tblKeyCache{}
+		}
+		tkCache := xfmrTblKeyCache[inParams.uri]
+		tkCache.dbTblList = retTblLst
+		xfmrTblKeyCache[inParams.uri] = tkCache
+	}
+
 	return retTblLst, err
 }
 

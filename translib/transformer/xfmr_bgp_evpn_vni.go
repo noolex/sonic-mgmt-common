@@ -90,6 +90,8 @@ var bgp_evpn_vni_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string,
     if (inParams.dbDataMap != nil) {
         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BGP_GLOBALS_EVPN_VNI"] = make(map[string]db.Value)
+        } else {
+            return tblList, nil
         }
     } else {
         if found := get_bgp_evpn_vni_cfg_tbl_entry(inParams, "BGP_GLOBALS_EVPN_VNI") ; !found {

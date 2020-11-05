@@ -380,6 +380,8 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
+
     ipAddrRcvd := pathInfo.Var("ip")
     if ipAddrRcvd == "" {
         errStr := "Empty ipAddrRcvd"
@@ -387,9 +389,9 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := *nativeIntfName + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -411,6 +413,8 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
+
     ipAddrRcvd := pathInfo.Var("ip")
     if ipAddrRcvd == "" {
         errStr := "Empty ipAddrRcvd"
@@ -418,9 +422,9 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := *nativeIntfName + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -693,7 +697,6 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         keyPattern = *nativeIntfName + ":*"
     }
 
-    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", *nativeIntfName, "),  keyPattern: ", keyPattern)
     keys, _ := appDb.GetKeysByPattern(neighTblTs, keyPattern)
 
     /* avoid string comparison in the loop and figure the msgType here*/
@@ -707,6 +710,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         msgType = PREFIX
     }
 
+    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", *nativeIntfName, "),  keyPattern: ", keyPattern, "msgType: ", msgType)
     for _, key := range keys {
         /*separate ip and interface*/
         intfName := key.Comp[0]
@@ -715,6 +719,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         if strings.Contains(ipAddr, ":") { // It's an IPv6 entry; continue
             continue
         }
+
         neighKeyStr := intfName + ":" + ipAddr
         entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
         if dbErr != nil || len(entry.Field) == 0 {
@@ -757,7 +762,6 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
-            break
         } else if msgType == PREFIX {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
@@ -825,7 +829,10 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighTblTs = &db.TableSpec{Name: "NEIGH_TABLE", CompCt:2}
 
     ipAddrRcvd := pathInfo.Var("ip")
+
     if len(ipAddrRcvd) > 0 {
+        /* IPv6 address in the DB is in lower case */
+        ipAddrRcvd = strings.ToLower(ipAddrRcvd)
         keyPattern = *nativeIntfName + ":" + ipAddrRcvd
     } else {
         keyPattern = *nativeIntfName + ":*"
@@ -852,6 +859,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         if !strings.Contains(ipAddr, ":") { // It's an IPv4 entry; continue
             continue
         }
+
         neighKeyStr := intfName + ":" + ipAddr
 
         entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
