@@ -102,6 +102,7 @@ openconfig-lldp-annot.yang
 openconfig-spanning-tree.yang
 openconfig-spanning-tree-ext.yang
 openconfig-spanning-tree-annot.yang
+sonic-spanning-tree-annot.yang
 openconfig-kdump.yang
 openconfig-infra.yang
 sonic-system-infra-annot.yang
@@ -145,9 +146,9 @@ openconfig-image-management.yang
 openconfig-image-management-annot.yang
 sonic-system-radius-clear.yang
 sonic-system-radius-clear-annot.yang
-sonic-bgp-neighbor.yang
-sonic-bgp-neighbor-annot.yang
 openconfig-mac-dampening.yang
 openconfig-mac-dampening-annot.yang
 openconfig-loadbalance-mode-ext.yang
 openconfig-loadbalance-mode-ext-annot.yang
+sonic-bgp-neighbor.yang
+sonic-bgp-neighbor-annot.yang
