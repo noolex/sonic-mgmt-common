@@ -3,7 +3,7 @@ module sonic-bfd {
         prefix sbfd;                                                                              
         yang-version 1.1;                                                                         
 
-   	    import sonic-vrf {
+   	import sonic-vrf {
         	prefix svrf;
     	}
     
@@ -15,7 +15,7 @@ module sonic-bfd {
         	prefix spc;
     	}
 
-   	    import sonic-vlan {
+   	import sonic-vlan {
         	prefix svlan;
     	}
 

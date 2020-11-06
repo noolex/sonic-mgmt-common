@@ -620,6 +620,10 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, ses
     ygot.BuildEmptyTree(bfdshop_obj.State)
     bfdshop_obj_state = bfdshop_obj.State;
 
+    if value, ok := session_data["pkt-local-addr"].(string) ; ok {
+        bfdshop_obj_state.PktLocalAddress = &value;
+    }
+
     if value, ok := session_data["status"].(string) ; ok {
         if value == "down" {
             bfdshop_obj_state.SessionState = ocbinds.OpenconfigBfd_BfdSessionState_DOWN
@@ -879,6 +883,10 @@ func fill_bfd_mhop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdMhopSessions, ses
     ygot.BuildEmptyTree(bfdmhop_obj.State)
 
     bfdmhop_obj_state = bfdmhop_obj.State;
+
+    if value, ok := session_data["pkt-local-addr"].(string) ; ok {
+        bfdmhop_obj_state.PktLocalAddress = &value;
+    }
 
     if value, ok := session_data["status"].(string) ; ok {
         if value == "down" {
