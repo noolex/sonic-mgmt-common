@@ -385,6 +385,24 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
         return err
     }
 
+    /* To check same listen range already configured in other peer-group */
+    if gbl_listen_prefix_map, ok := (*data)["BGP_GLOBALS_LISTEN_PREFIX"]; ok {
+        for key := range gbl_listen_prefix_map {
+            peer_grp, ok := gbl_listen_prefix_map[key].Field["peer_group"]
+            if ok {
+                dbSpec := &db.TableSpec{Name: "BGP_GLOBALS_LISTEN_PREFIX"}
+                dbEntry, _ := inParams.d.GetEntry(dbSpec, db.Key{Comp: []string{key}})
+                peerGrp, ok := dbEntry.Field["peer_group"]
+                if ok && peerGrp != peer_grp {
+                    errStr := "Same listen range is attached to peer-group " + peerGrp
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    log.Error(errStr)
+                    return err
+                }
+            }
+        }
+    }
+
     tblName := "BGP_GLOBALS"
     for key := range inParams.yangDefValMap[tblName] {
         entry := (*data)[tblName][key]
