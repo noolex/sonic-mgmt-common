@@ -66,7 +66,29 @@ func init() {
     XlateFuncBind("YangToDb_stp_vlan_port_xfmr", YangToDb_stp_vlan_port_xfmr)
     XlateFuncBind("DbToYang_stp_vlan_port_xfmr", DbToYang_stp_vlan_port_xfmr)
     XlateFuncBind("Subscribe_stp_vlan_port_xfmr", Subscribe_stp_vlan_port_xfmr)
+    XlateFuncBind("stp_pre_xfmr", stp_pre_xfmr)
 }
+
+func is_stp_feature_supported() bool {
+    var applDbPtr, _ = db.NewDB(getDBOptions(db.ApplDB))
+    defer applDbPtr.DeleteDB()	
+
+    switchTableEntry, err := applDbPtr.GetEntry(&db.TableSpec{Name: "SWITCH_TABLE"}, db.Key{[]string{"switch"}})
+    if err != nil {
+        return false
+    }
+
+    return switchTableEntry.Has("stp_supported")
+}
+
+
+var stp_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
+    if !is_stp_feature_supported() {
+        return tlerr.InvalidArgs("Spanning-tree is not supported with this software package")
+    }
+    return nil
+}
+
 
 func getStpRoot (s *ygot.GoStruct) *ocbinds.OpenconfigSpanningTree_Stp {
 	deviceObj := (*s).(*ocbinds.Device)
