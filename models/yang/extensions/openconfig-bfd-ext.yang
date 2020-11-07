@@ -227,6 +227,13 @@ module openconfig-bfd-ext {
         state, expressed as the number of nanoseconds since the 
         Unix epoch.";
     }
+
+    leaf pkt-local-address {
+      type string;
+      description
+        "The address in the BFD packets received, i.e the destination 
+         address in the BFD packet";
+    }
   }
 
   grouping bfd-ext-session-states {
