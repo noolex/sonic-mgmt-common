@@ -369,6 +369,18 @@ module openconfig-system-ext {
         uses oc-tpcm:tpcm-top;
     }
 
+    identity NTP_AUTH_SHA1 {
+        base oc-sys:NTP_AUTH_TYPE;
+        description
+            "SHA1 encryption method";
+    }
+
+    identity NTP_AUTH_SHA2_256 {
+        base oc-sys:NTP_AUTH_TYPE;
+        description
+            "SHA2-256 encryption method";
+    }
+
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:ntp-source-address {
         deviate not-supported;
     }
@@ -378,7 +390,7 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:config" {
-        leaf ntp-source-interface {
+        leaf-list ntp-source-interface {
             type oc-if:base-interface-ref;
             description
                 "NTP source interface name";
@@ -389,7 +401,7 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:state" {
-        leaf ntp-source-interface {
+        leaf-list ntp-source-interface {
             type oc-if:base-interface-ref;
             description
                 "NTP source interface name";

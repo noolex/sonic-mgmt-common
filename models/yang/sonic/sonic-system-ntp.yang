@@ -71,7 +71,7 @@ module sonic-system-ntp {
                         "NTP global key";
                 }
 
-                leaf src_intf {
+                leaf-list src_intf {
                     type union {
                         type leafref {
                             path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
@@ -128,7 +128,12 @@ module sonic-system-ntp {
                 key "key_id";
 
                 leaf key_id {
-                    type uint16;
+                    type uint16 {
+                        range "1..65535"{ 
+                            error-message "key id out of range";
+                            error-app-tag key_id-invalid;
+                        }
+                    }
                     description
                         "Integer identifier used by the client and server to
                          designate a secret key.  The client and server must use
@@ -136,15 +141,27 @@ module sonic-system-ntp {
                 }
 
                 leaf key_type {
+                    mandatory true;
                     type enumeration {
                         enum MD5 {
                             description
                                 "MD5 encryption method";
                         }
+
+                        enum SHA1 {
+                            description
+                                "SHA1 encryption method";
+                        }
+
+                        enum SHA2_256 {
+                            description
+                                "SHA2-256 encryption method";
+                        }
                     }
                 }
 
                 leaf key_value {
+                    mandatory true;
                     type string;
                     description
                         "NTP authentication key value";

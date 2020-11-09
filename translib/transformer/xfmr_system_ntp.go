@@ -10,10 +10,29 @@ import (
         "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
         "github.com/Azure/sonic-mgmt-common/translib/db"
         "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+        //"crypto/aes"
+        //"crypto/cipher"
+        //"crypto/rand"
+        //"encoding/base64"
+        //"crypto/md5"
+        //"io/ioutil"
+        "bytes"
 )
 
 const (
-        NTP_SERVER_TABLE_NAME          = "NTP_SERVER"
+        NTP_SERVER_TABLE_NAME = "NTP_SERVER"
+)
+
+const (
+        NTP_SECRET_PASSWORD = "asdffdsa"
+)
+
+const (
+        NTP_KEY_VALUE_STR = "key_value"
+)
+
+const (
+        NTP_KEY_ENCRYPTED_STR = "key_encrypted"
 )
 
 func init() {
@@ -21,7 +40,90 @@ func init() {
         XlateFuncBind("YangToDb_ntp_server_subtree_xfmr", YangToDb_ntp_server_subtree_xfmr)
         XlateFuncBind("DbToYang_ntp_server_subtree_xfmr", DbToYang_ntp_server_subtree_xfmr)
         XlateFuncBind("Subscribe_ntp_server_subtree_xfmr", Subscribe_ntp_server_subtree_xfmr)
+        XlateFuncBind("YangToDb_ntp_authen_key_value_xfmr",YangToDb_ntp_authen_key_value_xfmr)
+        XlateFuncBind("YangToDb_ntp_auth_encrypted_xfmr", YangToDb_ntp_auth_encrypted_xfmr)
 }
+
+// bingbing test start
+/*
+const saltlen = 8
+const keylen = 32
+const iterations =10002
+
+func base64Encode(src []byte) string {
+        return base64.StdEncoding.EncodeToString(src)
+}
+
+func ntp_encrypt_string(decryptedStr string, password string) (string, error) {
+        log.Info("bingbing ntp_encrypt_string: descriptedStr ", decryptedStr)
+
+        header := make([]byte, saltlen +aes.BlockSize)
+        log.Infof("bingbing ntp_encrypt_string: blocksize %v header %v", aes.BlockSize, header)
+
+        salt := header[:saltlen]
+        log.Infof("bingbing ntp_encrypt_string: salt %v", salt)
+
+        if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+                log.Infof("bingbing ntp_encrypt_string error %v", err)
+        }
+
+        iv := header[saltlen:aes.BlockSize_saltlen]
+        log.Infof("bingbing ntp_encrypt_string: iv %v", iv)
+
+        if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+                log.Infof("bingbing ntp_encrypt_string error %v", err)
+        }
+
+        key := pbkdf2.Key([]byte(password), salt, iterations, keylen, md5.New)
+        log.Infof("bingbing ntp_encrypt_string, key %v", key)
+
+        block, err := aes.NewCipher(key)
+        log.Infof("bingbing ntp_encrypt_string block %v", block)
+        if err != nil {
+                log.Infof("bingbing ntp_encrypt_string error %v", err)
+        }
+
+        ciphertext := make([]byte, len(header) + len(decryptedStr))
+        log.Infof("bingbing ntp_encrypt_string ciphertext %v", ciphertext)
+
+        log.Infof("bingbing ntp_encrypt_string header before copy %v",header)
+        copy(ciphertext, header)
+        log.Infof("bingbing ntp_encrypt_string header after copy %v",header)
+
+        stream := cipher.NewCFBEncrypter(block, iv)
+        log.Infof("bingbing ntp_encrypt_string stream %v", stream)
+
+        stream.XORKeyStream(ciphertext[aes.BlockSize+saltlen:], []byte(plaintext))
+        log.Infof("bingbing ntp_encrypt_string after XOR stream %v", stream)
+
+        return base64Encode(ciphertext)
+}
+*/
+
+func openssl(stdin []byte, args ...string) ([]byte, error) {
+	cmd := exec.Command("openssl", args...)
+
+	in := bytes.NewReader(stdin)
+
+        log.Infof("bingbing openssl in %v", in)
+
+	out := &bytes.Buffer{}
+
+        log.Infof("bingbing openssl out %v", out)
+
+	errs := &bytes.Buffer{}
+
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, out, errs
+
+	if err := cmd.Run(); err != nil {
+		if len(errs.Bytes()) > 0 {
+	            log.Infof("bingbing openssl error running %s (%s):\n %v", cmd.Args, err, errs.String())
+		}
+	}
+
+	return out.Bytes(), nil
+}
+// bingbing test end
 
 func getSystemRootObject(inParams XfmrParams) (*ocbinds.OpenconfigSystem_System) {
     deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
@@ -48,6 +150,58 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                   ", requestUri", inParams.requestUri,
                   ", op: ", inParams.oper)
 
+        //bingbing test start
+        //encrypted_string := ntp_encrypt_string("dell", "pass") 
+        //log.Infof("bingbing encrypted string is %v", encrypted_string)
+
+        // echo foobar | openssl enc -aes-128-cbc -a -salt -pass pass:asdffdsa
+        clearText := "foobar"
+        secretPasswd := "pass:"+"asdffdsa"
+        cmd := exec.Command("echo", clearText, "|", "openssl", "enc", "-aes-128-cbc", "-a", "-salt", "-pass", secretPasswd)
+        output, err := cmd.StdoutPipe()
+        log.Infof("bingbing echo output %v", output)
+
+        if err != nil {
+                log.Info("bingbing : error ", err)
+        }
+
+        if err := cmd.Start(); err != nil {
+            log.Info("bingbing error  ", err)
+        }
+
+        in := bufio.NewScanner(output)
+        log.Infof("bingbing in %v", in)
+
+        num := 0
+        for in.Scan() {
+                line := in.Text()
+                log.Infof("bingbing: line %v", line)
+                list := strings.Fields(line)
+                log.Infof( "bingbing : list %v num %v", list, num)
+
+                num ++;
+        }
+
+
+        newCmd := exec.Command("echo", clearText, "|", "openssl", "enc", "-aes-128-cbc", "-a", "-salt", "-pass", secretPasswd)
+        newOut, _ := newCmd.Output()
+        log.Infof("bingbing newOut %v", newOut)
+        str_newOut := string([]byte(newOut))
+        log.Infof("bingbing str_newOut %v", str_newOut)
+        strOutput  := newCmd.String()
+        log.Infof("bingbing strOutput %v %v", strOutput, string(strOutput))
+
+        tmpCmd := exec.Command("echo", clearText, "|", "openssl", "enc", "-aes-128-cbc", "-a", "-salt", "-pass", secretPasswd)
+        tmpOut, _ := tmpCmd.CombinedOutput()
+        log.Infof("bingbing tmpout %v stroutput %v", tmpOut, string(tmpOut))
+
+        key_value := []byte("foobar")
+        signed, _ := openssl(key_value, "enc", "-aes-128-cbc", "-a", "-salt", "-pass", secretPasswd)
+        log.Infof("bingbing signed %v", signed)
+        s := string([]byte(signed))
+        log.Infof("bingbing str %v", s)
+        //bingbing test end
+
         pathInfo := NewPathInfo(inParams.uri)
 
         targetUriPath, err := getYangPathFromUri(pathInfo.Path)
@@ -55,6 +209,9 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
         log.Infof( " YangToDb_ntp_server_subtree_xfmr, pathInfo %v targetUri %v", pathInfo, targetUriPath)
 
         keyName := pathInfo.Var("address")
+        auth_key_id := pathInfo.Var("key_id")
+
+        log.Infof("bingbing address %v key_id %v", keyName, auth_key_id)
 
         if (inParams.oper == DELETE) {
                 if keyName == "" {
@@ -62,7 +219,7 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                         log.Info("YangToDb_ntp_server_subtree_xfmr: DELETE ", errStr)
                         err = tlerr.InvalidArgsError{Format: errStr}
                         return res_map, err
-            }
+                }
         } else {
                 /* for configure, YangToDb subtree xfmr gets called multiple times, only care about this one */
                 if (targetUriPath != "/openconfig-system:system/ntp/servers/server/config") {
@@ -76,7 +233,13 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
 
         res_map[NTP_SERVER_TABLE_NAME][keyName] = db.Value{Field: map[string]string{}}
         dbVal := res_map[NTP_SERVER_TABLE_NAME][keyName]
-        (&dbVal).Set("NULL", "NULL")
+        if (auth_key_id == "") {
+                (&dbVal).Set("NULL", "NULL")
+                log.Infof("bingbing add null null for value of server %v", keyName)
+        } else {
+                (&dbVal).Set("key_id", auth_key_id)
+                log.Infof("bingbing add key id %v for server %v", auth_key_id, keyName)
+        }
 
         log.Infof ("YangToDb_ntp_server_subtree_xfmr: key %v return res_map %v", keyName, res_map)
 
@@ -157,6 +320,8 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
          * else if address in empty, the get come for all ntp servers, so populate
          * each ntp server config&state
          */
+
+        // bingbing check how to get key id using cvl !!!!
         if (keyName != "") {
                 currNtpServer = ntpServer[keyName]
 
@@ -424,4 +589,42 @@ var Subscribe_ntp_server_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSu
         result.nOpts.pType = OnChange
         log.Info("Returning Subscribe_ntp_server_subtree_xfmr")
         return result, err
+}
+
+var YangToDb_ntp_authen_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+        res_map := make(map[string]string)
+        var err error
+
+        pathInfo := NewPathInfo(inParams.uri)
+
+        key_id := pathInfo.Var("key_id")
+        log.Info("YangToDb_ntp_authen_key_value_xfmr key_id ", key_id)
+
+        key_value := pathInfo.Var("key_value")
+
+        key_value_byte := []byte(key_value)
+        encrypted_key_value, _ := openssl(key_value_byte, "enc", "-aes-128-cbc", "-a", "-salt", "-pass", "pass:"+NTP_SECRET_PASSWORD)
+        log.Infof("bingbing encrypted %v", encrypted_key_value)
+        encrypted_str := string([]byte(encrypted_key_value))
+        log.Infof("bingbing encrypted str %v", encrypted_str)
+
+        res_map[NTP_KEY_VALUE_STR] = encrypted_str
+
+        log.Infof("YangToDb_ntp_authen_key_value_xfmr, %v", res_map)
+
+        return res_map, err
+}
+
+var YangToDb_ntp_auth_encrypted_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+        res_map := make(map[string]string)
+        var err error
+
+        pathInfo := NewPathInfo(inParams.uri)
+
+        key_id := pathInfo.Var("key_id")
+        log.Info("YangToDb_ntp_auth_encrytped_xfmr key_id ", key_id)
+
+        res_map[NTP_KEY_ENCRYPTED_STR] = "true"
+
+        return res_map, err
 }
