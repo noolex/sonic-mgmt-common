@@ -16,6 +16,11 @@ module sonic-switch {
     description
         "This module provides rest apis to fetch SWITCH_TABLE db entries.";
 
+    revision 2020-09-17 {
+        description
+            "Adding switch container to config and get MAC aging time.";
+    }
+
     revision 2020-06-26 {
         description
             "Initial revision.";
@@ -93,5 +98,25 @@ module sonic-switch {
                 }
             }
 	}
+
+        container SWITCH {
+            list SWITCH_LIST {
+                key "switch";
+
+                leaf switch {
+                      type enumeration {
+                           enum switch;
+                      }
+                      description
+                           "switch db key.";
+                }
+
+                leaf fdb_aging_time {
+                    type uint32;
+                        description
+                        "FDB aging time interval.";
+                }
+            }
+        }
     }
 }

@@ -161,24 +161,19 @@ func get_fast_rate(d *db.DB, lagName *string, fastRate *string) error {
     return nil
 }
 
-
-
 /* Validate physical interface configured as member of PortChannel */
 func validateIntfAssociatedWithPortChannel(d *db.DB, ifName *string) error {
     var err error
     if len(*ifName) == 0 {
         return errors.New("Interface name is empty!")
     }
-    lagKeys, err := d.GetKeys(&db.TableSpec{Name:PORTCHANNEL_MEMBER_TN})
-    if err == nil {
-        for i := range lagKeys {
-            if *ifName == lagKeys[i].Get(1) {
-		intfNameAlias := utils.GetUINameFromNativeName(ifName)
-                errStr := *intfNameAlias + " is already part of : " + lagKeys[i].Get(0)
-                log.Error(errStr)
-                return tlerr.InvalidArgsError{Format:errStr}
-            }
-        }
+    lagKeys, err := d.GetKeysByPattern(&db.TableSpec{Name: PORTCHANNEL_MEMBER_TN}, "*" + *ifName)
+
+    if err == nil && len(lagKeys) !=0 {
+	intfNameAlias := utils.GetUINameFromNativeName(ifName)
+        errStr := *intfNameAlias + " is already associated with " + lagKeys[0].Get(0)
+        log.Error(errStr)
+        return tlerr.InvalidArgsError{Format:errStr}
     }
     return err
 }
@@ -481,7 +476,7 @@ func getLagStateAttr(attr *string, ifName *string, lagInfoMap  map[string]db.Val
 
 func getLagState(ifName *string, lagInfoMap  map[string]db.Value,
                           oc_val *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Aggregation_State) (error) {
-    log.Info("getLagState() called")
+    log.V(3).Info("getLagState() called")
     lagEntries, ok := lagInfoMap[*ifName]
     if !ok {
         errStr := "Cannot find info for Interface: " + *ifName
@@ -514,21 +509,19 @@ func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMa
     var lagMemKeys []db.Key
     intTbl := IntfTypeTblMap[IntfTypePortChannel]
     /* Get members list */
-    lagMemKeys, err = d.GetKeys(&db.TableSpec{Name:intTbl.cfgDb.memberTN})
+    ts := db.TableSpec{Name: PORTCHANNEL_MEMBER_TN + d.Opts.KeySeparator + *ifName}
+    lagMemKeys, err = d.GetKeys(&ts)
     if err != nil {
         return err
     }
-    log.Infof("Found %d lag-member-table keys", len(lagMemKeys))
-    log.Infof("lag-member-table keys", lagMemKeys)
+    log.Info("lag-member-table keys", lagMemKeys)
+
     var lagMembers []string
     var memberPortsStr strings.Builder
     for i := range lagMemKeys {
-        if *ifName == lagMemKeys[i].Get(0) {
-            log.Info("Found member")
-            ethName := lagMemKeys[i].Get(1)
-            lagMembers = append(lagMembers, ethName)
-            memberPortsStr.WriteString(ethName + ",")
-        }
+        ethName := lagMemKeys[i].Get(1)
+        lagMembers = append(lagMembers, ethName)
+        memberPortsStr.WriteString(ethName + ",")
     }
     lagInfoMap[*ifName] = db.Value{Field:make(map[string]string)}
     lagInfoMap[*ifName].Field["member@"] = strings.Join(lagMembers, ",")
@@ -547,7 +540,7 @@ func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMa
         }
         links = min_links
     } else {
-        log.Info("Minlinks set to 0 (dafault value)")
+        log.V(3).Info("Minlinks set to 0 (dafault value)")
         links = 0
     }
     lagInfoMap[*ifName].Field["min-links"] = strconv.Itoa(links)
@@ -566,7 +559,7 @@ func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMa
     if val, ok := dbEntry.Field["fallback_operational"]; ok {
         fallbackVal = val
     } else {
-        log.Info("Fallback set to False, default value")
+        log.V(3).Info("Fallback set to False, default value")
         fallbackVal = "false"
     }
     lagInfoMap[*ifName].Field["fallback"] = fallbackVal
@@ -588,7 +581,7 @@ func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMa
     if v, k := curr.Field["static"]; k {
         lagInfoMap[*ifName].Field["static"] = v
     } else {
-        log.Info("Mode set to LACP, default value")
+        log.V(3).Info("Mode set to LACP, default value")
         lagInfoMap[*ifName].Field["static"] = "false"
     }
     log.Infof("Updated the lag-info-map for Interface: %s", *ifName)
@@ -623,7 +616,7 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     if intfType != IntfTypePortChannel || err != nil {
         intfTypeStr := strconv.Itoa(int(intfType))
         errStr := "TableXfmrFunc - Invalid interface type: " + intfTypeStr
-        log.Error(errStr);
+        log.Warning(errStr);
         return errors.New(errStr);
     }
     /*Validate given PortChannel exists */
@@ -740,15 +733,14 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
 
     /* Handle PORTCHANNEL_MEMBER TABLE */
     var flag bool = false
-    lagKeys, err := inParams.d.GetKeys(&db.TableSpec{Name:intTbl.cfgDb.memberTN})
+    ts := db.TableSpec{Name: intTbl.cfgDb.memberTN + inParams.d.Opts.KeySeparator + *lagName}
+    lagKeys, err := inParams.d.GetKeys(&ts)
     if err == nil {
         for key := range lagKeys {
-            if *lagName == lagKeys[key].Get(0) {
                 flag = true
                 log.Info("Member port", lagKeys[key].Get(1))
                 memberKey := *lagName + "|" + lagKeys[key].Get(1)
                 lagMemberMap[memberKey] = db.Value{Field:map[string]string{}}
-            }
         }
         if flag {
             resMap["PORTCHANNEL_MEMBER"] = lagMemberMap
@@ -839,8 +831,8 @@ func updateMemberPortsMtu(inParams *XfmrParams, lagName *string, mtuValStr *stri
     if err != nil {
         return err
     }
-
-    lagKeys, err := inParams.d.GetKeys(&db.TableSpec{Name:intPortChannelTbl.cfgDb.memberTN})
+    ts := db.TableSpec{Name:intPortChannelTbl.cfgDb.memberTN + inParams.d.Opts.KeySeparator + *lagName}
+    lagKeys, err := inParams.d.GetKeys(&ts)
     if err == nil {
         subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
         intfMap := make(map[string]map[string]db.Value)
@@ -849,11 +841,9 @@ func updateMemberPortsMtu(inParams *XfmrParams, lagName *string, mtuValStr *stri
         intfMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
 
         for key := range lagKeys {
-            if *lagName == lagKeys[key].Get(0) {
-                portName := lagKeys[key].Get(1)
-                intfMap[intTbl.cfgDb.portTN][portName] = db.Value{Field:resMap}
-                log.Info("Member port ", portName, "updated with mtu ", *mtuValStr)
-            }
+            portName := lagKeys[key].Get(1)
+            intfMap[intTbl.cfgDb.portTN][portName] = db.Value{Field:resMap}
+            log.Info("Member port ", portName, " updated with mtu ", *mtuValStr)
         }
 
         subOpMap[db.ConfigDB] = intfMap

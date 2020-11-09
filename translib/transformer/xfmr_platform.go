@@ -459,6 +459,8 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     key := NewPathInfo(inParams.uri).Var("name")
     mstr := strings.ToLower(key)
 
+    log.Infof("+++ Subscribe_pfm_components_xfmr (%v) +++", inParams.uri)
+
     if key == "" || mstr == "sensor" {
         /* no need to verify dB data if we are requesting ALL
            components or if request is for sensor */
@@ -479,9 +481,11 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     } else if validTempName(&key) {
         result.dbDataMap = RedisDbMap{db.StateDB: {TEMP_TBL:{key:{}}}}
     } else if validXcvrName(&key) {
-        // Convert the interface name (if needed) for proper DB access
-        key = *(utils.GetNativeNameFromUIName(&key))
-        result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{key:{}}}}
+        ifName := key
+        if utils.IsAliasModeEnabled() {
+            ifName = *(utils.GetNativeNameFromUIName(&key))
+        }
+        result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{ifName:{}}}}
     } else {
         ifName := getIfName(key);
         if len(ifName) > 1 {
@@ -508,43 +512,49 @@ var DbToYang_pfm_components_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     return errors.New("Component not supported")
 }
 
-var YangToDb_pfm_components_transceiver_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+var YangToDb_pfm_components_transceiver_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
 
-  /* var err error */
-  res_map := make(map[string]string)
+    value := db.Value {make(map[string]string)}
+    cfgMap := make(map[string]map[string]db.Value)
 
-  /* pretty.Print(inParams.param) */
+    log.Infof("+++ YangToDb_pfm_components_transceiver_xfmr (requestUri=%v) +++", inParams.requestUri)
 
-  name := inParams.key
-  /* log.Info("---> name: ", name) */
-
-  st, _ := inParams.param.(*ocbinds.OpenconfigPlatform_Components_Component_Transceiver_Config)
-  /* pretty.Print(st) */
-  /* log.Info("st = ", st) */
-
-  stDb, _ := db.NewDB(getDBOptions(db.ApplDB))
-
-  defer stDb.DeleteDB()
-  /* log.Info(" PORT_TBL   ", PORT_TBL) */
-  xcvrDOMEntry, err := stDb.GetEntry(&db.TableSpec{Name: PORT_TBL}, db.Key{Comp: []string{name}})
-  if strings.Contains(inParams.requestUri, "lb-host-side-input-enable") {
-    if strings.Contains(*st.LbHostSideInputEnable, "True") {
-      xcvrDOMEntry.Set("host_side_input_loopback_enable", "True")
-    } else {
-      xcvrDOMEntry.Set("host_side_input_loopback_enable", "False")
+    name := NewPathInfo(inParams.uri).Var("name")
+    if len(name) == 0 {
+        return cfgMap, nil
     }
-  }
-  if strings.Contains(inParams.requestUri, "lb-media-side-input-enable") {
-    if strings.Contains(*st.LbMediaSideInputEnable, "True") {
-      xcvrDOMEntry.Set("media_side_input_loopback_enable", "True")
-    } else {
-      xcvrDOMEntry.Set("media_side_input_loopback_enable", "False")
+
+    tblName := "XCVR"
+    keyName := name
+    if utils.IsAliasModeEnabled() {
+        keyName = *(utils.GetNativeNameFromUIName(&keyName))
     }
-  }
+    inParams.table = tblName
+    inParams.key = keyName
 
-  stDb.SetEntry(&db.TableSpec{Name: PORT_TBL}, db.Key{Comp: []string{name}}, xcvrDOMEntry)
+    if inParams.oper == DELETE {
+        if strings.Contains(inParams.requestUri, "lb-host-side-input-enable") {
+            value.Field["host_side_input_loopback_enable"] = ""
+        } else if strings.Contains(inParams.requestUri, "lb-media-side-input-enable") {
+            value.Field["media_side_input_loopback_enable"] = ""
+        } else {
+            value.Field["host_side_input_loopback_enable"] = ""
+            value.Field["media_side_input_loopback_enable"] = ""
+        }
+    } else {
+        cfg, _ := inParams.param.(*ocbinds.OpenconfigPlatform_Components_Component_Transceiver_Config)
 
-  return res_map, err
+        if cfg.LbHostSideInputEnable != nil {
+            value.Field["host_side_input_loopback_enable"] = *cfg.LbHostSideInputEnable
+        }
+        if cfg.LbMediaSideInputEnable != nil {
+            value.Field["media_side_input_loopback_enable"] = *cfg.LbMediaSideInputEnable
+        }
+    }
+
+    cfgMap[tblName] = make(map[string]db.Value)
+    cfgMap[tblName][keyName] = value
+    return cfgMap, nil
 }
 
 func getSoftwareVersion() string {

@@ -1,0 +1,17 @@
+module sonic-bgp-neighbor-annot {
+
+    yang-version "1.1";
+
+    namespace "http://openconfig.net/yang/annotation/sbgpnbr-annot";
+    prefix "sbgpnbr-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import sonic-bgp-neighbor { prefix sbnbr; }
+
+    deviation /sbnbr:sonic-bgp-neighbor/sbnbr:BGP_NEIGHBOR_AF/sbnbr:BGP_NEIGHBOR_AF_LIST/sbnbr:neighbor {
+        deviate add {
+            sonic-ext:value-transformer "alias_value_xfmr";
+        }
+    }
+}
+

@@ -200,7 +200,7 @@ func (app *AclApp) translateDelete(d *db.DB) ([]db.WatchKeys, error) {
 	var keys []db.WatchKeys
 	log.Info("translateDelete:acl:path =", app.pathInfo.Template)
 
-	err = app.validateAclNameWithType(d, DELETE)
+	err = app.validateAclNameWithTypeFromURI(d, DELETE)
 	if err != nil {
 		log.Error(err)
 	}
@@ -212,7 +212,7 @@ func (app *AclApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	var err error
 	log.Info("translateGet:acl:path =", app.pathInfo.Template)
 
-	err = app.validateAclNameWithType(dbs[db.ConfigDB], GET)
+	err = app.validateAclNameWithTypeFromURI(dbs[db.ConfigDB], GET)
 	if err != nil {
 		log.Error(err)
 	}
@@ -383,7 +383,7 @@ func (app *AclApp) translateCRUCommon(d *db.DB, opcode int) ([]db.WatchKeys, err
 	if strings.Contains(app.pathInfo.Template, "input-interface") {
 		return nil, tlerr.NotSupported("input-interface not supported")
 	}
-	err = app.validateAclNameWithType(d, opcode)
+	err = app.validateAclNameWithTypeFromURI(d, opcode)
 	if err != nil {
 		log.Error(err)
 		return keys, err
@@ -396,8 +396,10 @@ func (app *AclApp) translateCRUCommon(d *db.DB, opcode int) ([]db.WatchKeys, err
 		err = app.convertOCAclInterfaceBindingsToInternal()
 	}
 	if err == nil {
-		app.convertOCAclGlobalBindingsToInternal()
-		app.convertOCAclControlPlaneBindingsToInternal()
+		err = app.convertOCAclGlobalBindingsToInternal()
+	}
+	if err == nil {
+		err = app.convertOCAclControlPlaneBindingsToInternal()
 	}
 	if err == nil {
 		for aclName, ports := range app.aclInterfacesMap {
@@ -899,9 +901,15 @@ func (app *AclApp) convertInternalToOCAclRuleProperties(ruleData db.Value, aclTy
 			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "DO_NOT_NAT" {
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT
 				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT
-			} else {
+			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "DROP" {
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
 				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP
+			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "DISCARD" {
+				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DISCARD
+				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_DISCARD
+			} else if strings.ToUpper(ruleData.Get(ruleKey)) == "TRANSIT" {
+				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_TRANSIT
+				entrySet.Actions.State.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_TRANSIT
 			}
 		} else if ACL_RULE_ICMP_TYPE == ruleKey {
 			data, _ := strconv.ParseUint(ruleData.Get(ruleKey), 10, 8)
@@ -1441,7 +1449,7 @@ func (app *AclApp) getAclBindingInfoForSwitch(dbs [db.MaxDB]*db.DB) error {
 	acl := app.getAppRootObject()
 
 	log.Info("Get binding data for Global ACLs")
-	if nil == acl.Global {
+	if nil == acl.Global || *app.ygotTarget == acl.Global {
 		log.Info("Get All Global ACL")
 		ygot.BuildEmptyTree(acl.Global)
 	}
@@ -1766,7 +1774,17 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 					if len(app.aclTableMap) == 0 {
 						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 					}
+
+					aclStage, stageFound := app.aclTableMap[aclName].Field[ACL_FIELD_STAGE]
+					if stageFound && aclStage != ACL_STAGE_INGRESS {
+						return tlerr.NotSupported("Applying the same ACL %s to both ingress and egress direction is not supported", aclName)
+					}
 					app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_INGRESS
+
+					aclType, typeFound := app.aclTableMap[aclName].Field[ACL_FIELD_TYPE]
+					if typeFound && aclType != convertOCAclTypeToInternal(inAclKey.Type) {
+						return tlerr.NotFound("ACL %v of type %v not found", aclName, inAclKey.Type)
+					}
 					app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(inAclKey.Type)
 				}
 			}
@@ -1778,7 +1796,17 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 					if len(app.aclTableMap) == 0 {
 						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 					}
+
+					aclStage, stageFound := app.aclTableMap[aclName].Field[ACL_FIELD_STAGE]
+					if stageFound && aclStage != ACL_STAGE_EGRESS {
+						return tlerr.NotSupported("Applying the same ACL %s to both ingress and egress direction is not supported", aclName)
+					}
 					app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_EGRESS
+
+					aclType, typeFound := app.aclTableMap[aclName].Field[ACL_FIELD_TYPE]
+					if typeFound && aclType != convertOCAclTypeToInternal(outAclKey.Type) {
+						return tlerr.NotFound("ACL %v of type %v not found", aclName, outAclKey.Type)
+					}
 					app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(outAclKey.Type)
 				}
 			}
@@ -1788,7 +1816,7 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 	return nil
 }
 
-func (app *AclApp) convertOCAclGlobalBindingsToInternal() {
+func (app *AclApp) convertOCAclGlobalBindingsToInternal() error {
 	aclObj := app.getAppRootObject()
 
 	// NOTE:: Below code assumes that an ACL can be either INGRESS or EGRESS but not both.
@@ -1800,7 +1828,17 @@ func (app *AclApp) convertOCAclGlobalBindingsToInternal() {
 				if len(app.aclTableMap) == 0 {
 					app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 				}
+
+				aclStage, stageFound := app.aclTableMap[aclName].Field[ACL_FIELD_STAGE]
+				if stageFound && aclStage != ACL_STAGE_INGRESS {
+					return tlerr.NotSupported("Applying the same ACL %s to both ingress and egress direction is not supported", aclName)
+				}
 				app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_INGRESS
+
+				aclType, typeFound := app.aclTableMap[aclName].Field[ACL_FIELD_TYPE]
+				if typeFound && aclType != convertOCAclTypeToInternal(inAclKey.Type) {
+					return tlerr.NotFound("ACL %v of type %v not found", aclName, inAclKey.Type)
+				}
 				app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(inAclKey.Type)
 				log.Infof("ACL:%v Globally apply at Ingress", aclName)
 			}
@@ -1812,15 +1850,27 @@ func (app *AclApp) convertOCAclGlobalBindingsToInternal() {
 				if len(app.aclTableMap) == 0 {
 					app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 				}
+
+				aclStage, stageFound := app.aclTableMap[aclName].Field[ACL_FIELD_STAGE]
+				if stageFound && aclStage != ACL_STAGE_EGRESS {
+					return tlerr.NotSupported("Applying the same ACL %s to both ingress and egress direction is not supported", aclName)
+				}
 				app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_EGRESS
+
+				aclType, typeFound := app.aclTableMap[aclName].Field[ACL_FIELD_TYPE]
+				if typeFound && aclType != convertOCAclTypeToInternal(outAclKey.Type) {
+					return tlerr.NotFound("ACL %v of type %v not found", aclName, outAclKey.Type)
+				}
 				app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(outAclKey.Type)
 				log.Infof("ACL:%v Globally apply at Egress", aclName)
 			}
 		}
 	}
+
+	return nil
 }
 
-func (app *AclApp) convertOCAclControlPlaneBindingsToInternal() {
+func (app *AclApp) convertOCAclControlPlaneBindingsToInternal() error {
 	aclObj := app.getAppRootObject()
 
 	if aclObj.ControlPlane != nil && aclObj.ControlPlane.IngressAclSets != nil && len(aclObj.ControlPlane.IngressAclSets.IngressAclSet) > 0 {
@@ -1830,11 +1880,23 @@ func (app *AclApp) convertOCAclControlPlaneBindingsToInternal() {
 			if len(app.aclTableMap) == 0 {
 				app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 			}
+
+			aclStage, stageFound := app.aclTableMap[aclName].Field[ACL_FIELD_STAGE]
+			if stageFound && aclStage != ACL_STAGE_INGRESS {
+				return tlerr.NotSupported("Applying the same ACL %s to both ingress and egress direction is not supported", aclName)
+			}
 			app.aclTableMap[aclName].Field[ACL_FIELD_STAGE] = ACL_STAGE_INGRESS
+
+			aclType, typeFound := app.aclTableMap[aclName].Field[ACL_FIELD_TYPE]
+			if typeFound && aclType != convertOCAclTypeToInternal(inAclKey.Type) {
+				return tlerr.NotFound("ACL %v of type %v not found", aclName, inAclKey.Type)
+			}
 			app.aclTableMap[aclName].Field[ACL_FIELD_TYPE] = convertOCAclTypeToInternal(inAclKey.Type)
 			log.Infof("ACL:%v CtrlPlane apply at Ingress", aclName)
 		}
 	}
+
+	return nil
 }
 
 func convertOCAclRuleToInternalAclRule(ruleData db.Value, seqId uint32, aclName string, aclType ocbinds.E_OpenconfigAcl_ACL_TYPE, rule *ocbinds.OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry) error {
@@ -2015,8 +2077,12 @@ func convertOCToInternalInputAction(ruleData db.Value, aclName string, ruleIndex
 			ruleData.Field[ACL_RULE_PACKET_ACTION] = "DROP"
 		case ocbinds.OpenconfigAcl_FORWARDING_ACTION_DO_NOT_NAT:
 			ruleData.Field[ACL_RULE_PACKET_ACTION] = "DO_NOT_NAT"
+		case ocbinds.OpenconfigAcl_FORWARDING_ACTION_DISCARD:
+			ruleData.Field[ACL_RULE_PACKET_ACTION] = "DISCARD"
+		case ocbinds.OpenconfigAcl_FORWARDING_ACTION_TRANSIT:
+			ruleData.Field[ACL_RULE_PACKET_ACTION] = "TRANSIT"
 		default:
-			return tlerr.NotSupported("input-interface not supported")
+			return tlerr.NotSupported("packet-action not supported")
 		}
 	}
 
@@ -2290,8 +2356,11 @@ func (app *AclApp) setAclBindDataInConfigDb(d *db.DB, opcode int) error {
 		// Check if new binding request doesnt change the ACL stage if it has other bindings
 		dbAclIntfs := dbAcl.GetList(ACL_FIELD_PORTS)
 		dbAclDirec := dbAcl.Get(ACL_FIELD_STAGE)
+		dbAclType := dbAcl.Get(ACL_FIELD_TYPE)
 		newIntfs := aclInfo.GetList(ACL_FIELD_PORTS)
 		newDirec := aclInfo.Get(ACL_FIELD_STAGE)
+		newType := aclInfo.Get(ACL_FIELD_TYPE)
+
 		log.Infof("Check for conflicts for ACL:%s Stage:%s Ports:%v", aclKey, newDirec, newIntfs)
 		if len(dbAclIntfs) > 0 {
 			if (len(dbAclDirec) > 0) && (len(newDirec) > 0) && (dbAclDirec != newDirec) {
@@ -2300,6 +2369,10 @@ func (app *AclApp) setAclBindDataInConfigDb(d *db.DB, opcode int) error {
 				return tlerr.InvalidArgs("Acl %s direction of %s not allowed when it is already configured as %s",
 					aclKey, newDirec, dbAclDirec)
 			}
+		}
+
+		if dbAclType != newType {
+			return tlerr.NotFound("ACL %s of the specified type not found", aclKey)
 		}
 
 		// Check if the new binding ends up applying 2 ACLs to the same interface.
@@ -2315,7 +2388,11 @@ func (app *AclApp) setAclBindDataInConfigDb(d *db.DB, opcode int) error {
 				if found {
 					log.Errorf("Intf %s has ACL %s at %s already. Cant create new ACL %s binding", intf,
 						existingAclName, strings.ToLower(dbAclDirec), aclKey)
-					return tlerr.AlreadyExists("ACL binding on %s at %s already exists.", intf, strings.ToLower(dbAclDirec))
+					if existingAclName == aclKey {
+						return tlerr.AlreadyExistsErr("same-config-exists", "", "ACL binding on %s at %s already exists.", intf, strings.ToLower(dbAclDirec))
+					} else {
+						return tlerr.AlreadyExistsErr("different-config-exists", "", "ACL binding on %s at %s already exists.", intf, strings.ToLower(dbAclDirec))
+					}
 				}
 			} else if REPLACE == opcode || UPDATE == opcode {
 				log.Infof("Intf %s ACL binding update requested from %s => %s", intf, existingAclName, aclKey)
@@ -2651,24 +2728,36 @@ func (app *AclApp) deleteAllAclRules(d *db.DB, aclName string) error {
 	return d.DeleteKeys(app.ruleTs, db.Key{Comp: []string{aclName + TABLE_SEPARATOR + "*"}})
 }
 
-func (app *AclApp) validateAclNameWithType(d *db.DB, opcode int) error {
+func (app *AclApp) validateAclNameWithTypeFromURI(d *db.DB, opcode int) error {
 	aclName, found := app.pathInfo.Vars[ACL_KEYWORD_NAME]
 	aclType := app.pathInfo.Vars[ACL_FIELD_TYPE]
-	ocAclType, _ := getAclTypeOCEnumFromName(aclType)
+
 	if found {
-		sonicType := convertOCAclTypeToInternal(ocAclType)
-		data, err := d.GetEntry(app.aclTs, db.Key{Comp: []string{aclName}})
-		if err != nil {
-			if !isNotFoundError(err) {
-				return err
-			}
-			// Return not found error for these operations.
-			if opcode == UPDATE || opcode == DELETE || opcode == GET {
-				return err
-			}
-		} else if data.Field[ACL_FIELD_TYPE] != sonicType {
-			return tlerr.NotFound("ACL %v of type %v not found", aclName, aclType)
+		return app.validateAclNameWithType(d, opcode, aclName, aclType)
+	}
+
+	return nil
+}
+
+func (app *AclApp) validateAclNameWithType(d *db.DB, opcode int, aclName string, aclType string) error {
+	var err error
+
+	ocAclType, _ := getAclTypeOCEnumFromName(aclType)
+	sonicType := convertOCAclTypeToInternal(ocAclType)
+	data, found := app.aclTableMap[aclName]
+	if !found {
+		data, err = d.GetEntry(app.aclTs, db.Key{Comp: []string{aclName}})
+	}
+	if err != nil {
+		if !isNotFoundError(err) {
+			return err
 		}
+		// Return not found error for these operations.
+		if opcode == UPDATE || opcode == DELETE || opcode == GET {
+			return err
+		}
+	} else if data.Field[ACL_FIELD_TYPE] != sonicType {
+		return tlerr.NotFound("ACL %v of type %v not found", aclName, aclType)
 	}
 
 	return nil

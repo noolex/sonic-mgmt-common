@@ -448,6 +448,26 @@ module openconfig-interfaces-ext {
         }
     }
 
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config" {
+        description
+            "VRRP IPv4 config use version 2 checksum";
+        leaf use-v2-checksum {
+            type boolean;
+            description
+                "Use version 2 checksum";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv4 config use version 2 checksum";
+        leaf use-v2-checksum {
+            type boolean;
+            description
+                "Use version 2 checksum";
+        }
+    }
+
     augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
         description
             "VRRP IPv4 MASTER state";
@@ -505,6 +525,26 @@ module openconfig-interfaces-ext {
             }
             description
                 "version";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:config" {
+        description
+            "VRRP IPv4 config use version 2 checksum";
+        leaf use-v2-checksum {
+            type boolean;
+            description
+                "Use version 2 checksum";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group/oc-ip:state" {
+        description
+            "VRRP IPv4 config use version 2 checksum";
+        leaf use-v2-checksum {
+            type boolean;
+            description
+                "Use version 2 checksum";
         }
     }
 

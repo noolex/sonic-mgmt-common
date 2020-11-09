@@ -87,14 +87,14 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 	return result, nil
 }
 
-func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key) error {
+func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool) error {
 	var dataMap = make(RedisDbMap)
 
 	for i := db.ApplDB; i < db.MaxDB; i++ {
 		dataMap[i] = make(map[string]map[string]db.Value)
 	}
 
-	err := traverseDbHelper(dbs, spec, &dataMap, parentKey)
+	err := traverseDbHelper(dbs, spec, &dataMap, parentKey, dbTblKeyGetCache)
 	if err != nil {
 		log.Warning("Couldn't get data from traverseDbHelper")
 		return err
@@ -118,7 +118,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 	return nil
 }
 
-func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key) error {
+func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[string]map[string]db.Value, parentKey *db.Key, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool) error {
 	var err error
 	var dbOpts db.Options = getDBOptions(spec.DbNum)
 
@@ -128,6 +128,14 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		// get an entry with a specific key
 		if spec.Ts.Name != XFMR_NONE_STRING { // Do not traverse for NONE table
 			data, err := dbs[spec.DbNum].GetEntry(&spec.Ts, spec.Key)
+			queriedDbInfo := make(map[string]map[string]bool)
+			queriedDbTblInfo := make(map[string]bool)
+			queriedDbTblInfo[strings.Join(spec.Key.Comp, separator)] = true
+			queriedDbInfo[spec.Ts.Name] = queriedDbTblInfo
+			if dbTblKeyGetCache == nil {
+				dbTblKeyGetCache = make(map[db.DBNum]map[string]map[string]bool)
+			}
+			dbTblKeyGetCache[spec.DbNum] = queriedDbInfo
 			if err != nil {
 				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
@@ -141,7 +149,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		}
 		if len(spec.Child) > 0 {
 			for _, ch := range spec.Child {
-				err = traverseDbHelper(dbs, ch, result, &spec.Key)
+				err = traverseDbHelper(dbs, ch, result, &spec.Key, dbTblKeyGetCache)
 			}
 		}
 	} else {
@@ -161,14 +169,14 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 					}
 				}
 				spec.Key = keys[i]
-                                err = traverseDbHelper(dbs, spec, result, parentKey)
+                                err = traverseDbHelper(dbs, spec, result, parentKey, dbTblKeyGetCache)
                                 if err != nil {
                                         log.Warningf("Traversal didn't fetch for : %v", err)
                                 }
 			}
 		} else if len(spec.Child) > 0 {
                         for _, ch := range spec.Child {
-                                err = traverseDbHelper(dbs, ch, result, &spec.Key)
+                                err = traverseDbHelper(dbs, ch, result, &spec.Key, dbTblKeyGetCache)
                         }
                 }
 	}
@@ -196,7 +204,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 		retdbFormat = fillSonicKeySpec(xpath, tableName, keyStr)
 	} else {
 		/* Extract the xpath and key from input xpath */
-		retData, _ := xpathKeyExtract(nil, ygRoot, GET, uri, requestUri, nil, txCache)
+		retData, _ := xpathKeyExtract(nil, ygRoot, GET, uri, requestUri, nil, nil, txCache, nil)
 		retdbFormat = FillKeySpecs(retData.xpath, retData.dbKey, &retdbFormat)
 	}
 
@@ -356,13 +364,11 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 		}
 
 	case DELETE:
-		keyXfmrCache = make(map[string]string)
 		xfmrLogInfo("DELETE case")
 		err = dbMapDelete(d, yg, opcode, path, requestUri, jsonData, result, txCache, skipOrdTbl)
 		if err != nil {
 			log.Warning("Data translation from yang to db failed for delete request.")
 		}
-		keyXfmrCache = make(map[string]string)
 	}
 	return result, yangDefValMap, yangAuxValMap, err
 }
@@ -370,6 +376,7 @@ func XlateToDb(path string, opcode int, d *db.DB, yg *ygot.GoStruct, yt *interfa
 func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, txCache interface{}) ([]byte, bool, error) {
 	var err error
 	var payload []byte
+	var inParamsForGet xlateFromDbParams
 	xfmrLogInfo("received xpath = " + uri)
 	requestUri := uri
 	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
@@ -378,15 +385,17 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
                 dbresult[i] = make(map[string]map[string]db.Value)
 	}
 
+	inParamsForGet.dbTblKeyGetCache = make(map[db.DBNum]map[string]map[string]bool)
+
 	for _, spec := range *keySpec {
-		err := TraverseDb(dbs, spec, &dbresult, nil)
+		err := TraverseDb(dbs, spec, &dbresult, nil, inParamsForGet.dbTblKeyGetCache)
 		if err != nil {
 			log.Warning("TraverseDb() didn't fetch data.")
 		}
 	}
 
 	isEmptyPayload := false
-	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache)
+	payload, isEmptyPayload, err = XlateFromDb(uri, ygRoot, dbs, dbresult, txCache, inParamsForGet)
 	if err != nil {
 		return payload, true, err
 	}
@@ -394,13 +403,12 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	return payload, isEmptyPayload, err
 }
 
-func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data RedisDbMap, txCache interface{}) ([]byte, bool, error) {
+func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data RedisDbMap, txCache interface{}, inParamsForGet xlateFromDbParams) ([]byte, bool, error) {
 
 	var err error
 	var result []byte
 	var dbData = make(RedisDbMap)
 	var cdb db.DBNum = db.ConfigDB
-	var inParamsForGet xlateFromDbParams
 	var xpath string
 
 	dbData = data
@@ -481,20 +489,24 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 			}
 		}
 	} else {
-	        lxpath, _ := XfmrRemoveXPATHPredicates(uri)
+	        lxpath, _, _ := XfmrRemoveXPATHPredicates(uri)
 		xpath = lxpath
 		if _, ok := xYangSpecMap[xpath]; ok {
 			cdb = xYangSpecMap[xpath].dbIndex
 		}
 	}
+	dbTblKeyGetCache := inParamsForGet.dbTblKeyGetCache
 	inParamsForGet = formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, xpath, GET, "", "", &dbData, txCache, nil, false)
+	inParamsForGet.xfmrDbTblKeyCache = make(map[string]tblKeyCache)
+	inParamsForGet.dbTblKeyGetCache = dbTblKeyGetCache
 	payload, isEmptyPayload, err := dbDataToYangJsonCreate(inParamsForGet)
-	xfmrLogInfo("Payload generated : " + payload)
+	xfmrLogInfoAll("Payload generated : " + payload)
 
 	if err != nil {
 		log.Warning("Couldn't create json response from DB data.")
 		return nil, isEmptyPayload, err
 	}
+	xfmrLogInfo("Created json response from DB data.")
 
 	result = []byte(payload)
 	return result, isEmptyPayload, err
@@ -710,7 +722,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 
        for {
            done := true
-           xpath, predc_err := XfmrRemoveXPATHPredicates(path)
+           xpath, _, predc_err := XfmrRemoveXPATHPredicates(path)
            if predc_err != nil {
                log.Warningf("cannot convert request Uri to yang xpath - %v, %v", path, predc_err)
                err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
@@ -760,7 +772,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 	   }
 
            xpath_dbno := xpathData.dbIndex
-           retData, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, txCache)
+           retData, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, nil, txCache, nil)
            if ((len(xpathData.xfmrFunc) == 0) && ((xPathKeyExtractErr != nil) || ((len(strings.TrimSpace(retData.dbKey)) == 0) || (len(strings.TrimSpace(retData.tableName)) == 0)))) {
                log.Warning("Error while extracting DB table/key for uri", path, "error - ", xPathKeyExtractErr)
                err = xPathKeyExtractErr
@@ -809,7 +821,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 }
 
 func IsTerminalNode(uri string) (bool, error) {
-	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
 	if xpathData, ok := xYangSpecMap[xpath]; ok {
 		if !xpathData.hasNonTerminalNode {
 			return true, nil
@@ -825,7 +837,7 @@ func IsTerminalNode(uri string) (bool, error) {
 
 func IsLeafNode(uri string) bool {
 	result := false
-	xpath, err := XfmrRemoveXPATHPredicates(uri)
+	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
 	if err != nil {
 		log.Warningf("For uri - %v, couldn't convert to xpath - %v", uri, err)
 		return result

@@ -50,10 +50,10 @@ module sonic-scheduler {
                     }
                 }
 
-                leaf meter-type {
+                leaf meter_type {
                     type enumeration {
-                        enum PACKETS;
-                        enum BYTES;
+                        enum packets;
+                        enum bytes;
                     }
                 }
 

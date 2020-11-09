@@ -20,32 +20,34 @@
 package translib
 
 import (
-	//    "bytes"
 	"errors"
-	//    "fmt"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
+	"github.com/openconfig/ygot/ygot"
 	"reflect"
 	"strconv"
 	"strings"
-	//    "github.com/openconfig/ygot/util"
-	"github.com/openconfig/ygot/ygot"
+	"time"
 )
 
 const (
-	CFG_INTF_TRACKING_TABLE            = "INTF_TRACKING"
-	STATE_INTF_TRACKING_TABLE          = "INTF_TRACKING_TABLE"
-	TABLE_AND_KEY_SEPARATOR            = "|"
-	INTF_TRACK_FIELD_NAME              = "name"
-	INTF_TRACK_FIELD_DESCRIPTION       = "description"
-	INTF_TRACK_FIELD_UPSTREAM          = "upstream@"
-	INTF_TRACK_FIELD_DOWNSTREAM        = "downstream@"
-	INTF_TRACK_FIELD_TIMEOUT           = "timeout"
-	INTF_TRACK_FIELD_DOWNSTREAM_STATUS = "downstream_status@"
-	INTF_TRACK_VALUE_ALL_MCLAG         = "all-mclag"
+	CFG_INTF_TRACKING_TABLE             = "INTF_TRACKING"
+	STATE_INTF_TRACKING_TABLE           = "INTF_TRACKING_TABLE"
+	TABLE_AND_KEY_SEPARATOR             = "|"
+	INTF_TRACK_FIELD_NAME               = "name"
+	INTF_TRACK_FIELD_DESCRIPTION        = "description"
+	INTF_TRACK_FIELD_UPSTREAM           = "upstream@"
+	INTF_TRACK_FIELD_DOWNSTREAM         = "downstream@"
+	INTF_TRACK_FIELD_TIMEOUT            = "timeout"
+	INTF_TRACK_FIELD_THRESHOLD_TYPE     = "threshold_type"
+	INTF_TRACK_FIELD_THRESHOLD_UP       = "threshold_up"
+	INTF_TRACK_FIELD_THRESHOLD_DOWN     = "threshold_down"
+	INTF_TRACK_FIELD_DOWNSTREAM_STATUS  = "downstream_status@"
+	INTF_TRACK_VALUE_ALL_MCLAG          = "all-mclag"
+	INTF_TRACK_FIELD_BRINGUP_START_TIME = "bringup_start_time"
 )
 
 type LstApp struct {
@@ -270,6 +272,20 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 
 				if grpPtr.Config.Timeout != nil {
 					data.Set(INTF_TRACK_FIELD_TIMEOUT, strconv.FormatUint(uint64(*grpPtr.Config.Timeout), 10))
+				}
+
+				if grpPtr.Config.ThresholdType != ocbinds.OpenconfigLstExt_THRESHOLD_TYPE_UNSET {
+					if grpPtr.Config.ThresholdType == ocbinds.OpenconfigLstExt_THRESHOLD_TYPE_ONLINE_PERCENTAGE {
+						data.Set(INTF_TRACK_FIELD_THRESHOLD_TYPE, "ONLINE_PERCENTAGE")
+					}
+				}
+
+				if grpPtr.Config.ThresholdUp != nil {
+					data.Set(INTF_TRACK_FIELD_THRESHOLD_UP, strconv.FormatFloat(*grpPtr.Config.ThresholdUp, 'f', 2, 64))
+				}
+
+				if grpPtr.Config.ThresholdDown != nil {
+					data.Set(INTF_TRACK_FIELD_THRESHOLD_DOWN, strconv.FormatFloat(*grpPtr.Config.ThresholdDown, 'f', 2, 64))
 				}
 			} else {
 				data.Set(INTF_TRACK_FIELD_TIMEOUT, "60")
@@ -679,6 +695,17 @@ func (app *LstApp) processDeleteGroupData(d *db.DB) error {
 			grpData.SetList(INTF_TRACK_FIELD_DOWNSTREAM, removeElement(dsList, INTF_TRACK_VALUE_ALL_MCLAG))
 			mod = true
 		}
+	case "/openconfig-lst-ext:lst/lst-groups/lst-group{}/config/threshold-type":
+		grpData.Remove(INTF_TRACK_FIELD_THRESHOLD_TYPE)
+		grpData.Remove(INTF_TRACK_FIELD_THRESHOLD_UP)
+		grpData.Remove(INTF_TRACK_FIELD_THRESHOLD_DOWN)
+		mod = true
+	case "/openconfig-lst-ext:lst/lst-groups/lst-group{}/config/threshold-up":
+		grpData.Remove(INTF_TRACK_FIELD_THRESHOLD_UP)
+		mod = true
+	case "/openconfig-lst-ext:lst/lst-groups/lst-group{}/config/threshold-down":
+		grpData.Remove(INTF_TRACK_FIELD_THRESHOLD_DOWN)
+		mod = true
 	default:
 		return tlerr.NotSupported("")
 	}
@@ -926,11 +953,49 @@ func (app *LstApp) processLstGroupsGet(dbs [db.MaxDB]*db.DB, grpPtr *ocbinds.Ope
 	}
 
 	tmout := grpData.Get(INTF_TRACK_FIELD_TIMEOUT)
+	var tmout_16 uint16 = 0
 	if tmout != "" {
 		tmout_64, _ := strconv.ParseUint(tmout, 10, 16)
-		tmout_16 := uint16(tmout_64)
+		tmout_16 = uint16(tmout_64)
 		grpPtr.Config.Timeout = &tmout_16
 		grpPtr.State.Timeout = &tmout_16
+	}
+
+	thr_type := grpData.Get(INTF_TRACK_FIELD_THRESHOLD_TYPE)
+	if thr_type == "ONLINE_PERCENTAGE" {
+		grpPtr.Config.ThresholdType = ocbinds.OpenconfigLstExt_THRESHOLD_TYPE_ONLINE_PERCENTAGE
+		grpPtr.State.ThresholdType = ocbinds.OpenconfigLstExt_THRESHOLD_TYPE_ONLINE_PERCENTAGE
+	}
+
+	thr_up := grpData.Get(INTF_TRACK_FIELD_THRESHOLD_UP)
+	if thr_up != "" {
+		thr_up_64, _ := strconv.ParseFloat(thr_up, 64)
+		grpPtr.Config.ThresholdUp = &thr_up_64
+		grpPtr.State.ThresholdUp = &thr_up_64
+	}
+
+	thr_down := grpData.Get(INTF_TRACK_FIELD_THRESHOLD_DOWN)
+	if thr_down != "" {
+		thr_down_64, _ := strconv.ParseFloat(thr_down, 64)
+		grpPtr.Config.ThresholdDown = &thr_down_64
+		grpPtr.State.ThresholdDown = &thr_down_64
+	}
+
+	grpStateData, stErr := dbs[db.StateDB].GetEntry(app.intfTrackStTs, db.Key{Comp: []string{*grpPtr.Name}})
+	if stErr == nil {
+		epoch_str := grpStateData.Get(INTF_TRACK_FIELD_BRINGUP_START_TIME)
+		epoch, _ := strconv.ParseInt(epoch_str, 10, 64)
+		if epoch != 0 {
+			now := time.Now()
+			secs := now.Unix()
+			diff := uint16(secs - epoch)
+			if diff < tmout_16 {
+				diff = tmout_16 - diff
+			} else {
+				diff = 0
+			}
+			grpPtr.State.BringupRemainingTime = &diff
+		}
 	}
 
 	return nil

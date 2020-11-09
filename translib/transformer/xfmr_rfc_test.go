@@ -41,7 +41,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  Post(create) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload := "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 10, \"openconfig-system-ext:retransmit-attempts\": 10}"
+        payload := "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 10}"
         expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL", "auth_type":"mschap", "passkey":"secret1","timeout":"10"}}}
         t.Run("RFC - POST on container(create)", processSetRequest(url, payload, "POST", false))
         time.Sleep(1 * time.Second)
@@ -59,7 +59,7 @@ func Test_Rfc_Post_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  Post(update) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload = "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10}"
+        payload = "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 20}"
         expected = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret1","src_ip":"1.1.1.1","timeout":"20"}}}
         t.Run("RFC - POST on container(update)", processSetRequest(url, payload, "POST", false))
         time.Sleep(1 * time.Second)
@@ -80,7 +80,8 @@ func Test_Rfc_Post_Operation(t *testing.T) {
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:as\":100,\"openconfig-network-instance:router-id\":\"1.1.1.1\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}"
 
-       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+	expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"always_compare_med": "false", "external_compare_router_id": "false", "router_id": "1.1.1.1", "local_asn": "100", "disable_ebgp_connected_rt_check": "true", "network_import_check": "true", "log_nbr_state_changes": "true","load_balance_mp_relax": "false","fast_external_failover": "true","keepalive": "60","holdtime": "180","ignore_as_path_length": "false"}}}
+
         t.Run("RFC - POST on container(create default)", processSetRequest(url, payload, "POST", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify POST(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -165,10 +166,10 @@ func Test_Rfc_Post_Operation(t *testing.T) {
         fmt.Println("++++++++++++++  POST(create) on list instance, parent table present, default value creation  +++++++++++++")
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
         payload = "{\"openconfig-network-instance:config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"openconfig-network-instance:bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.1.1\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true,\"openconfig-bgp-ext:network-import-check\":true}}}}"
-       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+	expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"always_compare_med": "false", "external_compare_router_id": "false", "router_id": "1.1.1.1", "local_asn": "100", "disable_ebgp_connected_rt_check": "true", "network_import_check": "true", "log_nbr_state_changes": "true","load_balance_mp_relax": "false","fast_external_failover": "true","keepalive": "60","holdtime": "180","ignore_as_path_length": "false"}}}
         t.Run("RFC - POST on list instance(create default)", processSetRequest(url, payload, "POST", false))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify POST(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        t.Run("RFC - Verify POST(create default) on list instance", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 
@@ -200,7 +201,7 @@ func Test_Rfc_Post_Error_Cases(t *testing.T) {
 
         fmt.Println("++++++++++++++  Post(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload := "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 10, \"openconfig-syster-ext:retransmit-attempts\": 10}"
+        payload := "{ \"openconfig-system-ext:source-address\": \"1.1.1.1\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret1\", \"openconfig-system-ext:timeout\": 10}"
         expected_err :=  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - POST(404 error) on container", processSetRequest(url, payload, "POST", true, expected_err))
 
@@ -239,7 +240,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  PUT(create) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20}}"
         expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","timeout":"20"}}}
         t.Run("RFC - PUT(create) on container", processSetRequest(url, payload, "PUT", false))
         time.Sleep(1 * time.Second)
@@ -257,7 +258,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  PUT(modify) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload = "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+        payload = "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20}}"
         expected = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","timeout":"20"}}}
         t.Run("RFC - PUT(modify) on container", processSetRequest(url, payload, "PUT", false))
         time.Sleep(1 * time.Second)
@@ -277,7 +278,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         fmt.Println("++++++++++++++  Put(create) on container, parent table present, default value creation  +++++++++++++")
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.1.1\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
-       expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+	expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"always_compare_med": "false", "external_compare_router_id": "false", "router_id": "1.1.1.1", "local_asn": "100", "disable_ebgp_connected_rt_check": "true", "network_import_check": "true", "log_nbr_state_changes": "true","load_balance_mp_relax": "false","fast_external_failover": "true","keepalive": "60","holdtime": "180","ignore_as_path_length": "false"}}}
         t.Run("RFC - PUT on container(create default)", processSetRequest(url, payload, "PUT", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PUT(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -296,7 +297,7 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         fmt.Println("++++++++++++++  Put(create) on list parent table present, default value creation  +++++++++++++")
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol"
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
-        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+	expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"always_compare_med": "false", "external_compare_router_id": "false", "router_id": "1.1.2.2", "local_asn": "100", "disable_ebgp_connected_rt_check": "true", "network_import_check": "true", "log_nbr_state_changes": "true","load_balance_mp_relax": "false","fast_external_failover": "true","keepalive": "60","holdtime": "180","ignore_as_path_length": "false"}}}
         t.Run("RFC - PUT on list(create default)", processSetRequest(url, payload, "PUT", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PUT(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -357,10 +358,10 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         fmt.Println("++++++++++++++  Put(create) on list instance parent table present, default value creation  +++++++++++++")
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
-        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+	expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"always_compare_med": "false", "external_compare_router_id": "false", "router_id": "1.1.2.2", "local_asn": "100", "disable_ebgp_connected_rt_check": "true", "network_import_check": "true", "log_nbr_state_changes": "true","load_balance_mp_relax": "false","fast_external_failover": "true","keepalive": "60","holdtime": "180","ignore_as_path_length": "false"}}}
         t.Run("RFC - PUT on list(create default)", processSetRequest(url, payload, "PUT", false))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify PUT(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
+        t.Run("RFC - Verify PUT(create default) on list", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
 
@@ -495,7 +496,7 @@ func Test_Rfc_Put_Error_Cases(t *testing.T) {
 
         fmt.Println("++++++++++++++  PUT(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20}}"
         expected_err :=  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - PUT on container(404 error)", processSetRequest(url, payload, "PUT", true, expected_err))
 
@@ -551,7 +552,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
 
 	fmt.Println("++++++++++++++  PATCH(create) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20}}"
         expected := map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL","auth_type":"mschap", "passkey":"secret4","timeout":"20"}}}
         t.Run("RFC - PATCH(create) on container", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
@@ -569,7 +570,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  PATCH(merge) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url = "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload = "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+        payload = "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20}}"
         expected = map[string]interface{}{"TACPLUS":map[string]interface{}{"global":map[string]interface{}{"auth_type":"mschap", "passkey":"secret4","src_ip":"4.4.4.4","timeout":"20"}}}
         t.Run("RFC - PATCH(merge) on container", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
@@ -591,7 +592,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         fmt.Println("++++++++++++++  Patch(create) on container, parent table present, default value creation  +++++++++++++")
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]/bgp/global/config"
         payload = "{\"openconfig-network-instance:config\": { \"as\": 100, \"router-id\": \"1.1.1.1\", \"disable-ebgp-connected-route-check\":true, \"fast-external-failover\":true}}"
-        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL","local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.1.1"}}}
+	expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL","router_id": "1.1.1.1", "local_asn": "100", "disable_ebgp_connected_rt_check": "true", "fast_external_failover": "true"}}}
         t.Run("RFC - PATCH on container(create default)", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PATCH(create default) on container", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -632,7 +633,8 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         fmt.Println("++++++++++++++  PATCH(create) on list parent table present, default value creation  +++++++++++++")
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol"
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
-        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+        //expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2","holdtime":"180","network_import_check":"true","keepalive":"60"}}}
+	expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"always_compare_med": "false", "external_compare_router_id": "false", "router_id": "1.1.2.2", "local_asn": "100", "disable_ebgp_connected_rt_check": "true", "network_import_check": "true", "log_nbr_state_changes": "true","load_balance_mp_relax": "false","fast_external_failover": "true","keepalive": "60","holdtime": "180","ignore_as_path_length": "false"}}}
         t.Run("RFC - PATCH on list(create default)", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PATCH(create default) on list", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -720,7 +722,7 @@ func Test_Rfc_Patch_Operation(t *testing.T) {
         url = "/openconfig-network-instance:network-instances/network-instance[name=Vrf12]/protocols/protocol[identifier=BGP][name=bgp]"
 
         payload = "{\"openconfig-network-instance:protocol\":[{\"identifier\":\"BGP\",\"name\":\"bgp\",\"config\":{\"identifier\":\"BGP\",\"name\":\"bgp\",\"enabled\":true},\"bgp\":{\"global\":{\"config\":{\"as\":100,\"router-id\":\"1.1.2.2\",\"openconfig-bgp-ext:disable-ebgp-connected-route-check\":true,\"openconfig-bgp-ext:fast-external-failover\":true}}}}]}"
-        expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL":"NULL","local_asn":"100", "disable_ebgp_connected_rt_check":"true","fast_external_failover":"true", "router_id":"1.1.2.2"}}}
+	expected = map[string]interface{}{"BGP_GLOBALS":map[string]interface{}{"Vrf12":map[string]interface{}{"NULL": "NULL", "router_id": "1.1.2.2", "local_asn": "100", "disable_ebgp_connected_rt_check": "true", "fast_external_failover": "true"}}}
         t.Run("RFC - PATCH on list instance(create default)", processSetRequest(url, payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("RFC - Verify PATCH(create default) on list instance", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
@@ -887,7 +889,7 @@ func Test_Rfc_Patch_Error_Cases(t *testing.T) {
 
         fmt.Println("++++++++++++++  PATCH(404 error) uri: container, message-body: container, leaf and leaf-list  +++++++++++++")
         url := "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/config"
-        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20, \"openconfig-system-ext:retransmit-attempts\": 10 }}"
+        payload := "{ \"openconfig-system:config\": { \"name\": \"TACACS\", \"openconfig-system-ext:source-address\": \"4.4.4.4\", \"openconfig-system-ext:auth-type\": \"mschap\", \"openconfig-system-ext:secret-key\": \"secret4\", \"openconfig-system-ext:timeout\": 20}}"
         expected_err :=  tlerr.NotFoundError{Format:"Resource not found"}
         t.Run("RFC - PATCH on container(404 error)", processSetRequest(url, payload, "PATCH", true, expected_err))
 
@@ -958,6 +960,22 @@ func Test_Rfc_Delete_Operation(t *testing.T) {
         t.Run("RFC - Verify Delete on container, data present in DB", verifyDbResult(rclient, "BGP_GLOBALS|Vrf12", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
+
+
+        // Delete on container with no direct leaves
+        prereq1 = map[string]interface{}{"VRF":map[string]interface{}{"default":map[string]interface{}{"NULL": "NULL"}},"BGP_NEIGHBOR":map[string]interface{}{"default|1.1.1.1":map[string]interface{}{"bfd_check_ctrl_plane_failure":"","bfd":"","auth_password":"sonic@dell"}}}
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+
+        fmt.Println("++++++++++++++  DELETE uri container with no direct leaves  +++++++++++++")
+        url = "/openconfig-network-instance:network-instances/network-instance[name=default]/protocols/protocol[identifier=BGP][name=bgp]/bgp/neighbors/neighbor[neighbor-address=1.1.1.1]/openconfig-bfd:enable-bfd"
+        expected = map[string]interface{}{"BGP_NEIGHBOR":map[string]interface{}{"default|1.1.1.1":map[string]interface{}{"auth_password":"sonic@dell"}}}
+        t.Run("RFC - Delete on container with no direct leaves", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify Delete on container with no direct leaves", verifyDbResult(rclient, "BGP_NEIGHBOR|default|1.1.1.1", expected, false))
+        // Teardown
+        unloadConfigDB(rclient, prereq1)
 
 
         // Delete on list, data present in DB
@@ -1333,7 +1351,7 @@ func Test_Rfc_Get_Operation(t *testing.T) {
 
         fmt.Println("++++++++++++++  Get on list instance that does not map to any real table in DB, and yang children have data in DB +++++++++++++")
         url = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/subinterfaces/subinterface[index=0]"
-        expected = "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv6\":{\"config\":{\"enabled\":false},\"state\":{\"enabled\":false}}}]}"
+        expected = "{\"openconfig-interfaces:subinterface\":[{\"index\":0,\"openconfig-if-ip:ipv4\": {\"addresses\": {\"address\": [{\"config\": {\"ip\": \"1.2.3.4\",\"openconfig-interfaces-ext:secondary\": false,\"prefix-length\": 16},\"ip\": \"1.2.3.4\"}]},\"openconfig-ospfv2-ext:ospfv2\": {\"if-addresses\":[{\"address\": \"Ethernet4\"},{\"address\": \"Ethernet4|1.2.3.4/16\"}]}},\"openconfig-if-ip:ipv6\":{\"config\":{\"enabled\":false},\"state\":{\"enabled\":false}}}]}"
         t.Run("Verify Get on list instance that does not map to any real table in DB, and yang children have data in DB", processGetRequest(url, expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
