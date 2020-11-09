@@ -383,6 +383,11 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
     if inParams.oper == DELETE {
         err = hdl_del_post_xfmr(inParams, data)
         return err
+    } else {
+        retval := hdl_validate_values_post_xfmr(inParams)
+        if (retval != nil) {
+           return retval
+        }
     }
 
     /* To check same listen range already configured in other peer-group */
