@@ -607,20 +607,6 @@ func XfmrRemoveXPATHPredicates(uri string) (string, []string, error) {
 	return xpath, uriList, nil
 }
 
-func replacePrefixWithModuleName(xpath string) (string) {
-	//Input xpath is after removing the xpath Predicates
-	var moduleNm string
-	if _, ok := xYangSpecMap[xpath]; ok {
-		moduleNm = xYangSpecMap[xpath].dbEntry.Prefix.Parent.NName()
-		pathList := strings.Split(xpath, ":")
-		if len(moduleNm) > 0 && len(pathList) == 2 {
-			xpath = "/" + moduleNm + ":" + pathList[1]
-		}
-	}
-	return xpath
-}
-
-
 /* Extract key vars, create db key and xpath */
 func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subOpDataMap map[int]*RedisDbMap, txCache interface{}, xfmrTblKeyCache map[string]tblKeyCache) (xpathTblKeyExtractRet, error) {
 	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)

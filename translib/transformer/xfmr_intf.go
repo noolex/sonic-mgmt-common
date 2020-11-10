@@ -502,18 +502,19 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
 	    }
 	    }
 
-        if(ifType == IntfTypeEthernet && inParams.oper == REPLACE) {
+        if(ifType == IntfTypeEthernet) {
             err = validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeEthernet].cfgDb.portTN, *ifName)
             if err != nil {    // Invalid Physical interface
                 errStr := "Interface " + *ifName + " cannot be configured."
                 return tlerr.InvalidArgsError{Format:errStr}
             }
-            // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
-            // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
-            // Hence block the Replace/PUT request for Physical interfaces alone.
-            err_str := "Replace/PUT request not allowed for Physical interfaces"
-            return tlerr.NotSupported(err_str)
-
+            if (inParams.oper == REPLACE) {
+                // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
+                // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
+                // Hence block the Replace/PUT request for Physical interfaces alone.
+                err_str := "Replace/PUT request not allowed for Physical interfaces"
+                return tlerr.NotSupported(err_str)
+           }
         }
     }
     return err
@@ -1162,13 +1163,7 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
     } else if strings.HasPrefix(ifName, LOOPBACK) {
         res_map["NULL"] = "NULL"
     } else if strings.HasPrefix(ifName, ETHERNET) {
-        intTbl := IntfTypeTblMap[IntfTypeEthernet]
-        //Check if physical interface exists, if not return error
-        err = validateIntfExists(inParams.d, intTbl.cfgDb.portTN, ifName)
-        if err != nil {
-            errStr := "Interface " + ifName + " cannot be configured."
-            return res_map, tlerr.InvalidArgsError{Format:errStr}
-        }
+        res_map["NULL"] = "NULL"
     }
     log.Info("YangToDb_intf_name_xfmr: res_map:", res_map)
     return res_map, err
