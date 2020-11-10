@@ -62,17 +62,11 @@ func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) 
 			path = xYangSpecMap[fldXpath].yangEntry.Type.Path
 			entry = xYangSpecMap[fldXpath].yangEntry
 		}
-		path = stripAugmentedModuleNames(path)
-		path = path[1:]
-		xfmrLogInfoAll("Received path %v for FieldXpath %v", path, fldXpath)
-		if strings.Contains(path, "..") {
-			if entry != nil && len(path) > 0 {
-				// Referenced path within same yang file
-				xpath, _, err := XfmrRemoveXPATHPredicates(path)
-				if  err != nil {
-					log.Warningf("error in XfmrRemoveXPATHPredicates %v", path)
-					return yngTerminalNdDtType
-				}
+		xpath, _, _ := XfmrRemoveXPATHPredicates(path)
+		xfmrLogInfoAll("Received path %v for FieldXpath %v", xpath, fldXpath)
+		if strings.HasPrefix(xpath, "/..") {
+			if entry != nil && len(xpath) > 0 {
+				// Referenced path is relative path
 				xpath = xpath[1:]
 				pathList := strings.Split(xpath, "/")
 				for _, x := range pathList {
@@ -94,26 +88,31 @@ func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) 
 					}
 				}
 			}
-		} else if len(path) > 0 {
-			// Referenced path in a different yang file
-			xpath, _, err := XfmrRemoveXPATHPredicates(path)
-			if  err != nil {
-				log.Warningf("error in XfmrRemoveXPATHPredicates %v", xpath)
-				return yngTerminalNdDtType
-			}
+		} else if len(xpath) > 0 {
+			// Referenced path is absolute path
 			// Form xpath based on sonic or non sonic yang path
 			if strings.Contains(xpath, "sonic") {
 				pathList := strings.Split(xpath, "/")
 				xpath = pathList[SONIC_TABLE_INDEX]+ "/" + pathList[SONIC_FIELD_INDEX]
 				if _, ok := xDbSpecMap[xpath]; ok {
-					yngTerminalNdDtType = xDbSpecMap[xpath].dbEntry.Type.Kind
+					entry = xDbSpecMap[xpath].dbEntry
+					yngTerminalNdDtType = entry.Type.Kind
 				}
 
 			} else {
-				xpath = replacePrefixWithModuleName(xpath)
+				xpath = "/" + entry.Prefix.Parent.NName() + ":" + strings.SplitN(xpath, ":",2)[1]
 				if _, ok := xYangSpecMap[xpath]; ok {
-					yngTerminalNdDtType = xYangSpecMap[xpath].dbEntry.Type.Kind
+					entry = xYangSpecMap[xpath].yangEntry
+					yngTerminalNdDtType = entry.Type.Kind
+				} else {
+					xfmrLogInfoAll("Could not resolve xpath for leafref path %v", xpath)
+					return yngTerminalNdDtType
 				}
+			}
+			if yngTerminalNdDtType == yang.Yleafref {
+				leafPath := getXpathFromYangEntry(entry)
+				xfmrLogInfoAll("getLeafrefRefdYangType: xpath for leafref type:%v",leafPath)
+				return getLeafrefRefdYangType(yngTerminalNdDtType, leafPath)
 			}
 
 		}
@@ -132,6 +131,7 @@ func DbToYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string, dbFldVal s
 	if yngTerminalNdDtType == yang.Yleafref {
 		yngTerminalNdDtType = getLeafrefRefdYangType(yngTerminalNdDtType, fldXpath)
 	}
+
 
 	switch yngTerminalNdDtType {
         case yang.Ynone:
