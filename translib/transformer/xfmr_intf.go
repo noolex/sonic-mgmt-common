@@ -906,6 +906,9 @@ func retrievePortChannelReplaceVlan(d *db.DB, ifName *string) (*string, error) {
 }
 func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
     var err error
+    stpPortMap := make(map[string]db.Value)
+    var ifList []string
+    ifList = append(ifList,ifName)
     for _,vlanName := range vlanList{
         //create entry in VLAN_MEMBER_TABLE
        tag_mode := db.Value{Field:make(map[string]string)}
@@ -933,12 +936,22 @@ func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
             log.Error(errStr)
             return errors.New(errStr)
             }
-       }
-    return nil
+	}
+        enableStpOnInterfaceVlanMembership(d, &vlanList[0], ifList, stpPortMap)
+	if len(stpPortMap) != 0 {
+	    err = d.CreateEntry(&db.TableSpec{Name: STP_PORT_TABLE}, db.Key{Comp:[]string {ifName}},stpPortMap[ifName])
+            if err != nil{
+               errStr := "Creating entry in STP_PORT_TABLE failed!"
+               log.Error(errStr)
+               return errors.New(errStr)
+            }
+	}
+       return nil
 }
 
 func rpc_delete_vlan(d *db.DB, vlanList []string, ifName string) error {
     var err error
+
     for _,vlanName := range vlanList{
         //delete entry from VLAN_MEMBER_TABLE
         err = d.DeleteEntry(&db.TableSpec{Name:VLAN_MEMBER_TN},db.Key{Comp: []string{vlanName,ifName}})
@@ -964,11 +977,12 @@ func rpc_delete_vlan(d *db.DB, vlanList []string, ifName string) error {
             return errors.New(errStr)
             }
         }
-    return nil
+
+	return nil
 }
 
 var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-           var err error
+    var err error
     var result struct {
         Output struct {
             Status uint32 `json:"status"`
@@ -994,11 +1008,12 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     }
     vlanList, ok := mapData["vlanlist"]
     if !ok {
-        result.Output.Status_detail = "vlanList field not present in the input for replace_vlan rpc!"
+        result.Output.Status_detail = "vlanlist field not present in the input for replace_vlan rpc!"
         return json.Marshal(&result)
     }
     ifNameStr := inputIfName.(string)
     vlanListStr := vlanList.(string)
+    ifName := utils.GetNativeNameFromUIName(&ifNameStr)
 
     d, err := db.NewDB(getDBOptions(db.ConfigDB))
     if err != nil {
@@ -1007,14 +1022,14 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     }
     defer d.DeleteDB()
 
-    err = validateL3ConfigExists(d,&ifNameStr)
+    err = validateL3ConfigExists(d,ifName)
     if err != nil{
        result.Output.Status_detail = err.Error()
         return json.Marshal(&result)
     }
 
-    lagStr,_ := retrievePortChannelReplaceVlan(d,&ifNameStr)
-    intfType, _, ierr := getIntfTypeByName(ifNameStr)
+    lagStr,_ := retrievePortChannelReplaceVlan(d,ifName)
+    intfType, _, ierr := getIntfTypeByName(*ifName)
 
     if intfType == IntfTypeUnset || ierr != nil {
         log.Error("Invalid interface type IntfTypeUnset")
@@ -1031,7 +1046,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
        }
 
     var cfgredAccessVlan string
-    exists, err := validateUntaggedVlanCfgredForIf(d,&intTbl.cfgDb.memberTN, &ifNameStr, &cfgredAccessVlan)
+    exists, err := validateUntaggedVlanCfgredForIf(d,&intTbl.cfgDb.memberTN, ifName, &cfgredAccessVlan)
     if err != nil{
         result.Output.Status_detail = err.Error()
         return json.Marshal(&result)
@@ -1068,7 +1083,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
        }
     }
 
-    vlanMemberKeys, err := d.GetKeysByPattern(&db.TableSpec{Name:VLAN_MEMBER_TN}, "*"+ifNameStr)
+    vlanMemberKeys, err := d.GetKeysByPattern(&db.TableSpec{Name:VLAN_MEMBER_TN}, "*"+*ifName)
     if err != nil {
         result.Output.Status_detail = err.Error()
         return json.Marshal(&result)
@@ -1079,8 +1094,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
             continue
         }
         vlanId := vlanMember.Get(0)
-       existList = append(existList,vlanId)
-        log.Infof("Received Vlan: %s for Interface: %s", vlanId, ifNameStr)
+        existList = append(existList,vlanId)
     }
 
     delList := vlanDifference(existList,newList)
@@ -1113,22 +1127,25 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         result.Output.Status_detail = err.Error()
         return json.Marshal(&result)
     }
-    if len(createList) != 0 {
-        err = rpc_create_vlan(d,createList,ifNameStr)
-        if err != nil {
-           d.AbortTx()
-            result.Output.Status_detail = err.Error()
-            return json.Marshal(&result)
-        }
-    }
+
     if len(delList) != 0 {
-        err = rpc_delete_vlan(d,delList,ifNameStr)
+        err = rpc_delete_vlan(d,delList,*ifName)
         if err != nil {
            d.AbortTx()
             result.Output.Status_detail = err.Error()
             return json.Marshal(&result)
         }
     }
+
+    if len(createList) != 0 {
+        err = rpc_create_vlan(d,createList,*ifName)
+        if err != nil {
+           d.AbortTx()
+            result.Output.Status_detail = err.Error()
+            return json.Marshal(&result)
+        }
+    }
+
     err = d.CommitTx()
     if err != nil {
         log.Error(err)
