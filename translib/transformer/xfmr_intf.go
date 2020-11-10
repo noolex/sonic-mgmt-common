@@ -480,6 +480,11 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                     return tlerr.InvalidArgsError{Format: err.Error()}
                 }
             case IntfTypeEthernet:
+                err = validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeEthernet].cfgDb.portTN, *ifName)
+                if err != nil {
+                    // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+                    return nil
+                }
                 errStr := "Physical Interface: " + *ifName + " cannot be deleted"
                 err = tlerr.InvalidArgsError{Format:errStr}
                 return err
