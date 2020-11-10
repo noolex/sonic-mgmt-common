@@ -66,7 +66,29 @@ func init() {
     XlateFuncBind("YangToDb_stp_vlan_port_xfmr", YangToDb_stp_vlan_port_xfmr)
     XlateFuncBind("DbToYang_stp_vlan_port_xfmr", DbToYang_stp_vlan_port_xfmr)
     XlateFuncBind("Subscribe_stp_vlan_port_xfmr", Subscribe_stp_vlan_port_xfmr)
+    XlateFuncBind("stp_pre_xfmr", stp_pre_xfmr)
 }
+
+func is_stp_feature_supported() bool {
+    var applDbPtr, _ = db.NewDB(getDBOptions(db.ApplDB))
+    defer applDbPtr.DeleteDB()	
+
+    switchTableEntry, err := applDbPtr.GetEntry(&db.TableSpec{Name: "SWITCH_TABLE"}, db.Key{[]string{"switch"}})
+    if err != nil {
+        return false
+    }
+
+    return switchTableEntry.Has("stp_supported")
+}
+
+
+var stp_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
+    if !is_stp_feature_supported() {
+        return tlerr.InvalidArgs("Spanning-tree is not supported with this software package")
+    }
+    return nil
+}
+
 
 func getStpRoot (s *ygot.GoStruct) *ocbinds.OpenconfigSpanningTree_Stp {
 	deviceObj := (*s).(*ocbinds.Device)
@@ -1476,7 +1498,8 @@ var YangToDb_stp_vlan_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
                 if stp.RapidPvst.Vlan[uint16(vlanId)] != nil && stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces != nil && stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces.Interface != nil {
                     ifNameList := stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces.Interface
                     for ifName := range ifNameList {
-                        if ok := isVlanMember(inParams.d, vlanName, ifName); !ok {
+                        sonicIfName := utils.GetNativeNameFromUIName(&ifName)
+                        if ok := isVlanMember(inParams.d, vlanName, *sonicIfName); !ok {
                             log.Infof("YangToDb_stp_vlan_xfmr: %s is not a member of Vlan %s", ifName, vlanName)
                             return nil, tlerr.NotFound("%s is not a member of Vlan %s", ifName, vlanName)
                         }
@@ -1516,7 +1539,8 @@ var YangToDb_stp_vlan_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
                 if stp.Pvst.Vlan[uint16(vlanId)] != nil && stp.Pvst.Vlan[uint16(vlanId)].Interfaces != nil && stp.Pvst.Vlan[uint16(vlanId)].Interfaces.Interface != nil {
                     ifNameList := stp.Pvst.Vlan[uint16(vlanId)].Interfaces.Interface
                     for ifName := range ifNameList {
-                        if ok := isVlanMember(inParams.d, vlanName, ifName); !ok {
+                        sonicIfName := utils.GetNativeNameFromUIName(&ifName)
+                        if ok := isVlanMember(inParams.d, vlanName, *sonicIfName); !ok {
                             log.Infof("YangToDb_stp_vlan_xfmr: %s is not a member of Vlan %s", ifName, vlanName)
                             return nil, tlerr.NotFound("%s is not a member of Vlan %s", ifName, vlanName)
                         }

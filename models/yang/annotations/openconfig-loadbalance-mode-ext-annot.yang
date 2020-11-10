@@ -14,6 +14,12 @@ module openconfig-loadbalance-mode-ext-annot {
         }
     }
 
+    deviation /oc-lb-mode-ext:seed-attrs/oc-lb-mode-ext:seed-attr {
+        deviate add {
+            sonic-ext:table-transformer "loadbalance_seed_table_xfmr";
+        }
+    }
+
     deviation /oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:ipv4-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4 {
         deviate add {
             sonic-ext:field-name "ipv4";

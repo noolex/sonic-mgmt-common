@@ -332,31 +332,6 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
             log.Info("Returning retDbDataMap:",retDbDataMap)
         }
     }
-
-    if inParams.oper == REPLACE {
-        if log.V(3) {
-            log.Info("In interface Post transformer for REPLACE op ==> URI : ", inParams.requestUri)
-        }
-
-        pathInfo := NewPathInfo(inParams.uri)
-        ifName := pathInfo.Var("name")
-
-        intfType, _, ierr := getIntfTypeByName(ifName)
-        if intfType == IntfTypeUnset || ierr != nil {
-            log.Info("intf_post_xfmr - Invalid interface type IntfTypeUnset");
-            return retDbDataMap, errors.New("Invalid interface type IntfTypeUnset");
-        }
-
-        if intfType == IntfTypeEthernet {        // Physical interfaces
-            // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
-            // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
-            // Hence block the Replace/PUT request for Physical interfaces alone.
-            err_str := "Replace/PUT request not allowed for Physical interfaces"
-            return retDbDataMap, tlerr.NotSupported(err_str)
-
-        }
-    }
-
     return retDbDataMap, nil
 }
 
@@ -525,7 +500,21 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                 return err
             }
 	    }
-	}
+	    }
+
+        if(ifType == IntfTypeEthernet && inParams.oper == REPLACE) {
+            err = validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeEthernet].cfgDb.portTN, *ifName)
+            if err != nil {    // Invalid Physical interface
+                errStr := "Interface " + *ifName + " cannot be configured."
+                return tlerr.InvalidArgsError{Format:errStr}
+            }
+            // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
+            // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
+            // Hence block the Replace/PUT request for Physical interfaces alone.
+            err_str := "Replace/PUT request not allowed for Physical interfaces"
+            return tlerr.NotSupported(err_str)
+
+        }
     }
     return err
 }
@@ -4672,7 +4661,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         }
     }
     /* Handle Port FEC config */
-    if (strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-fec")) {
+    _, present := yangToDbFecMap[intfObj.Ethernet.Config.PortFec]
+    if present {
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
         intTbl := IntfTypeTblMap[intfType]

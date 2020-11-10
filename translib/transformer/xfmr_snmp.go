@@ -6,6 +6,7 @@ import (
  "strconv"
  "errors"
  "path/filepath"
+ "encoding/json"
  "github.com/openconfig/ygot/ygot"
  "github.com/Azure/sonic-mgmt-common/translib/db"
  "github.com/Azure/sonic-mgmt-common/translib/utils"
@@ -42,6 +43,126 @@ func init() {
 
   XlateFuncBind("YangToDb_snmp_tag_name_xfmr",      YangToDb_snmp_tag_name_xfmr)
   XlateFuncBind("DbToYang_snmp_tag_name_xfmr",      DbToYang_snmp_tag_name_xfmr)
+  XlateFuncBind("rpcShowCounters", rpcShowCounters)
+  XlateFuncBind("rpcClearCounters", rpcClearCounters)
+}
+
+var rpcClearCounters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpcClearCounters")
+    var err error
+    dbValues := db.Value{Field: map[string]string{}}
+    (&dbValues).Set("NULL", "NULL")
+    serverTblTs := db.TableSpec{Name: "SNMP"}
+    err = dbs[db.CountersDB].SetEntry(&serverTblTs, db.Key{Comp: []string{"clear"}}, dbValues)
+    return nil, err
+}
+
+var rpcShowCounters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+    log.Info("In rpcShowCounters")
+    var err error
+    var result struct {
+        Counters struct {
+            Output struct {
+                SnmpInPkts              uint32 `json:"snmpInPkts"`
+                SnmpOutPkts             uint32 `json:"snmpOutPkts"`
+                SnmpInBadVersions       uint32 `json:"snmpInBadVersions"`
+                SnmpInBadCommunityNames uint32 `json:"snmpInBadCommunityNames"`
+                SnmpInBadCommunityUses  uint32 `json:"snmpInBadCommunityUses"`
+                SnmpInASNParseErrs      uint32 `json:"snmpInASNParseErrs"`
+                SnmpInTooBigs           uint32 `json:"snmpInTooBigs"`
+                SnmpInNoSuchNames       uint32 `json:"snmpInNoSuchNames"`
+                SnmpInBadValues         uint32 `json:"snmpInBadValues"`
+                SnmpInReadOnlys         uint32 `json:"snmpInReadOnlys"`
+                SnmpInGenErrs           uint32 `json:"snmpInGenErrs"`
+                SnmpInTotalReqVars      uint32 `json:"snmpInTotalReqVars"`
+                SnmpInTotalSetVars      uint32 `json:"snmpInTotalSetVars"`
+                SnmpInGetRequests       uint32 `json:"snmpInGetRequests"`
+                SnmpInGetNexts          uint32 `json:"snmpInGetNexts"`
+                SnmpInSetRequests       uint32 `json:"snmpInSetRequests"`
+                SnmpInGetResponses      uint32 `json:"snmpInGetResponses"`
+                SnmpInTraps             uint32 `json:"snmpInTraps"`
+                SnmpOutTooBigs          uint32 `json:"snmpOutTooBigs"`
+                SnmpOutNoSuchNames      uint32 `json:"snmpOutNoSuchNames"`
+                SnmpOutBadValues        uint32 `json:"snmpOutBadValues"`
+                SnmpOutGenErrs          uint32 `json:"snmpOutGenErrs"`
+                SnmpOutGetRequests      uint32 `json:"snmpOutGetRequests"`
+                SnmpOutGetNexts         uint32 `json:"snmpOutGetNexts"`
+                SnmpOutSetRequests      uint32 `json:"snmpOutSetRequests"`
+                SnmpOutGetResponses     uint32 `json:"snmpOutGetResponses"`
+                SnmpOutTraps            uint32 `json:"snmpOutTraps"`
+            } `json:"counters"`
+        } `json:"sonic-snmp:output"`
+    }
+
+    serverTblTs := db.TableSpec{Name: "SNMP_SERVER_STATS"}
+    stats, err := dbs[db.CountersDB].GetEntry(&serverTblTs, db.Key{Comp: []string{"global"}})
+    if err != nil || !stats.IsPopulated() {
+        log.Errorf("Unable to fetch SNMP_SERVER_STATS from CountersDB. Error=%v", err)
+        return nil, err
+    }
+
+    for statField := range stats.Field {
+        fieldVal, _ := strconv.ParseUint(stats.Field[statField], 10, 32)
+        switch statField {
+        case "snmpInPkts":
+            result.Counters.Output.SnmpInPkts = uint32(fieldVal)
+        case "snmpOutPkts":
+            result.Counters.Output.SnmpOutPkts = uint32(fieldVal)
+        case "snmpInBadVersions":
+            result.Counters.Output.SnmpInBadVersions = uint32(fieldVal)
+        case "snmpInBadCommunityNames":
+            result.Counters.Output.SnmpInBadCommunityNames = uint32(fieldVal)
+        case "snmpInBadCommunityUses":
+            result.Counters.Output.SnmpInBadCommunityUses = uint32(fieldVal)
+        case "snmpInASNParseErrs":
+            result.Counters.Output.SnmpInASNParseErrs = uint32(fieldVal)
+        case "snmpInTooBigs":
+            result.Counters.Output.SnmpInTooBigs = uint32(fieldVal)
+        case "snmpInNoSuchNames":
+            result.Counters.Output.SnmpInNoSuchNames = uint32(fieldVal)
+        case "snmpInBadValues":
+            result.Counters.Output.SnmpInBadValues = uint32(fieldVal)
+        case "snmpInReadOnlys":
+            result.Counters.Output.SnmpInReadOnlys = uint32(fieldVal)
+        case "snmpInGenErrs":
+            result.Counters.Output.SnmpInGenErrs = uint32(fieldVal)
+        case "snmpInTotalReqVars":
+            result.Counters.Output.SnmpInTotalReqVars = uint32(fieldVal)
+        case "snmpInTotalSetVars":
+            result.Counters.Output.SnmpInTotalSetVars = uint32(fieldVal)
+        case "snmpInGetRequests":
+            result.Counters.Output.SnmpInGetRequests = uint32(fieldVal)
+        case "snmpInGetNexts":
+            result.Counters.Output.SnmpInGetNexts = uint32(fieldVal)
+        case "snmpInSetRequests":
+            result.Counters.Output.SnmpInSetRequests = uint32(fieldVal)
+        case "snmpInGetResponses":
+            result.Counters.Output.SnmpInGetResponses = uint32(fieldVal)
+        case "snmpInTraps":
+            result.Counters.Output.SnmpInTraps = uint32(fieldVal)
+        case "snmpOutTooBigs":
+            result.Counters.Output.SnmpOutTooBigs = uint32(fieldVal)
+        case "snmpOutNoSuchNames":
+            result.Counters.Output.SnmpOutNoSuchNames = uint32(fieldVal)
+        case "snmpOutBadValues":
+            result.Counters.Output.SnmpOutBadValues = uint32(fieldVal)
+        case "snmpOutGenErrs":
+            result.Counters.Output.SnmpOutGenErrs = uint32(fieldVal)
+        case "snmpOutGetRequests":
+            result.Counters.Output.SnmpOutGetRequests = uint32(fieldVal)
+        case "snmpOutGetNexts":
+            result.Counters.Output.SnmpOutGetNexts = uint32(fieldVal)
+        case "snmpOutSetRequests":
+            result.Counters.Output.SnmpOutSetRequests = uint32(fieldVal)
+        case "snmpOutGetResponses":
+            result.Counters.Output.SnmpOutGetResponses = uint32(fieldVal)
+        case "snmpOutTraps":
+            result.Counters.Output.SnmpOutTraps = uint32(fieldVal)
+        default:
+            log.Errorf("rpcShowCounters: Encounterted an unknown field %s", statField)
+        }
+    }
+    return json.Marshal(&result)
 }
 
 var YangToDb_snmp_system_key_xfmr = func(inParams XfmrParams) (string, error) {
