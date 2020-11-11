@@ -514,11 +514,14 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                 return tlerr.InvalidArgsError{Format:errStr}
             }
             if (inParams.oper == REPLACE) {
-                // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
-                // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
-                // Hence block the Replace/PUT request for Physical interfaces alone.
-                err_str := "Replace/PUT request not allowed for Physical interfaces"
-                return tlerr.NotSupported(err_str)
+                if *requestUriPath == "/openconfig-interfaces:interfaces/interface" ||
+                    *requestUriPath == "/openconfig-interfaces:interfaces/interface/config" {
+                    // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
+                    // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
+                    // Hence block the Replace/PUT request for Physical interfaces alone.
+                    err_str := "Replace/PUT request not allowed for Physical interfaces"
+                    return tlerr.NotSupported(err_str)
+                }
            }
         }
     }
