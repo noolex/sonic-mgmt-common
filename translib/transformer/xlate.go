@@ -192,7 +192,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 	if isSonicYang(uri) {
 		/* Extract the xpath and key from input xpath */
 		xpath, keyStr, tableName := sonicXpathKeyExtract(uri)
-		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && tblSpecInfo.hasXfmrFn {
+		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && keyStr != "" && hasKeyValueXfmr(tableName) {
 			/* key from uri should be converted into redis-db key, to read data */
 			keyStr, err = dbKeyValueXfmrHandler(CREATE, tblSpecInfo.dbIndex, tableName, keyStr)
 			if err != nil {

@@ -274,15 +274,17 @@ func sonicDbToYangListFill(inParamsForGet xlateFromDbParams) []typeMapOfInterfac
 
 	for keyStr := range dbTblData {
 		curMap := make(map[string]interface{})
-		linParamsForGet := formXlateFromDbParams(inParamsForGet.dbs[dbIdx], inParamsForGet.dbs, dbIdx, inParamsForGet.ygRoot, inParamsForGet.uri, inParamsForGet.requestUri, xpath, inParamsForGet.oper, table, keyStr, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
-		sonicDbToYangDataFill(linParamsForGet)
-		curMap = linParamsForGet.resultMap
-		dbDataMap = linParamsForGet.dbDataMap
-		inParamsForGet.dbDataMap = dbDataMap
 		dbSpecData, ok := xDbSpecMap[table]
 		if ok && dbSpecData.keyName == nil {
 			yangKeys := yangKeyFromEntryGet(xDbSpecMap[xpath].dbEntry)
-			sonicKeyDataAdd(dbIdx, yangKeys, table, keyStr, curMap)
+			sonicKeyDataAdd(dbIdx, yangKeys, table, xDbSpecMap[xpath].dbEntry.Name, keyStr, curMap)
+			if len(curMap) > 0 {
+				linParamsForGet := formXlateFromDbParams(inParamsForGet.dbs[dbIdx], inParamsForGet.dbs, dbIdx, inParamsForGet.ygRoot, inParamsForGet.uri, inParamsForGet.requestUri, xpath, inParamsForGet.oper, table, keyStr, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
+				sonicDbToYangDataFill(linParamsForGet)
+				curMap = linParamsForGet.resultMap
+				dbDataMap = linParamsForGet.dbDataMap
+				inParamsForGet.dbDataMap = dbDataMap
+			}
 		}
 		if len(curMap) > 0 {
 			mapSlice = append(mapSlice, curMap)
