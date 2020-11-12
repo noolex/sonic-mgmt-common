@@ -87,6 +87,14 @@ type XfmrDbParams struct {
 	value          string
 }
 
+// SonicXfmrParams represents input parameters for key-transformer on sonic-yang
+type SonicXfmrParams struct {
+	dbNum          db.DBNum
+        tableName      string
+        key            string
+        xpath          string
+}
+
 
 // KeyXfmrYangToDb type is defined to use for conversion of Yang key to DB Key,
 // Transformer function definition.
@@ -169,6 +177,12 @@ type XfmrInterface interface {
     xfmrInterfaceValiidate()
 }
 
+// SonicKeyXfmrDbToYang type is defined to use for conversion of DB key to Yang key,
+// Transformer function definition.
+// Param: SonicXfmrParams structure having DB number, table, key and xpath
+// Return: multi dimensional map to hold the yang key attributes, error */
+type SonicKeyXfmrDbToYang func (inParams SonicXfmrParams) (map[string]interface{}, error)
+
 func (KeyXfmrYangToDb) xfmrInterfaceValiidate () {
     xfmrLogInfo("xfmrInterfaceValiidate for KeyXfmrYangToDb")
 }
@@ -192,4 +206,7 @@ func (SubTreeXfmrSubscribe) xfmrInterfaceValiidate () {
 }
 func (TableXfmrFunc) xfmrInterfaceValiidate () {
     xfmrLogInfo("xfmrInterfaceValiidate for TableXfmrFunc")
+}
+func (SonicKeyXfmrDbToYang) xfmrInterfaceValiidate () {
+    xfmrLogInfo("xfmrInterfaceValiidate for SonicKeyXfmrDbToYang")
 }

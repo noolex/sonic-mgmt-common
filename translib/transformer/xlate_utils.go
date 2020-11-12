@@ -320,10 +320,31 @@ func getYangTerminalNodeTypeName(xpathPrefix string, keyName string) string {
 }
 
 
-func sonicKeyDataAdd(dbIndex db.DBNum, keyNameList []string, xpathPrefix string, keyStr string, resultMap map[string]interface{}) {
+func sonicKeyDataAdd(dbIndex db.DBNum, keyNameList []string, xpathPrefix string, listNm string, keyStr string, resultMap map[string]interface{}) {
         var dbOpts db.Options
         var keyValList []string
         xfmrLogInfoAll("sonicKeyDataAdd keyNameList:%v, keyStr:%v", keyNameList, keyStr)
+
+	if xDbSpecInfo, ok := xDbSpecMap[xpathPrefix+"/"+listNm]; ok {
+                if xDbSpecInfo.xfmrKey != "" {
+                        inParams := formSonicXfmrInputRequest(dbIndex, xpathPrefix, keyStr, xpathPrefix+"/"+listNm)
+                        ret, err := sonicKeyXfmrHandlerFunc(inParams, xDbSpecInfo.xfmrKey)
+                        if err != nil {
+                                return
+                        }
+                        if len(ret) > 0 {
+                                if resultMap == nil {
+                                        resultMap = make(map[string]interface{})
+                                }
+                                for keyName, keyVal := range(ret) {
+                                        resultMap[keyName] = keyVal
+                                }
+                        }
+                        return
+                }
+        } else {
+                xfmrLogInfoAll("xDbSpecmap doesn't have xpath - %v", xpathPrefix+"/"+listNm)
+        }
 
         dbOpts = getDBOptions(dbIndex)
         keySeparator := dbOpts.KeySeparator
@@ -1051,7 +1072,7 @@ func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey strin
 			keyMap    := make(map[string]interface{})
 
 			if specListInfo, ok := xDbSpecMap[listXpath]; ok && len(specListInfo.keyList) > 0 {
-				sonicKeyDataAdd(dbNum, specListInfo.keyList, tblName, dbKey, keyMap)
+				sonicKeyDataAdd(dbNum, specListInfo.keyList, tblName, lname, dbKey, keyMap)
 
 				if len(keyMap) == len(specListInfo.keyList) {
 					for _, kname := range specListInfo.keyList {
@@ -1388,6 +1409,16 @@ func processKeyValueXfmr(dbDataMap RedisDbMap) (RedisDbMap) {
 	xfmrLogInfoAll("After applying value-transformer - %v", resultMap)
 	return resultMap
 }
+
+func formSonicXfmrInputRequest(dbNum db.DBNum, table string, key string, xpath string) SonicXfmrParams {
+        var inParams SonicXfmrParams
+        inParams.dbNum = dbNum
+        inParams.tableName = table
+        inParams.key = key
+        inParams.xpath = table
+        return inParams
+}
+
 
 /* FUNCTIONS RESERVED FOR FUTURE USE. DO ONT DELETE */
 /***************************************************************************************************
