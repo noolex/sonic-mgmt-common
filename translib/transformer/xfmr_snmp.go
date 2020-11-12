@@ -97,7 +97,7 @@ var rpcShowCounters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]by
     serverTblTs := db.TableSpec{Name: "SNMP_SERVER_STATS"}
     stats, err := dbs[db.CountersDB].GetEntry(&serverTblTs, db.Key{Comp: []string{"global"}})
     if err != nil || !stats.IsPopulated() {
-        log.Errorf("Unable to fetch SNMP_SERVER_STATS from CountersDB. Error=%v", err)
+        log.Infof("Unable to fetch SNMP_SERVER_STATS from CountersDB. Msg=%v", err)
         return nil, err
     }
 
