@@ -170,8 +170,8 @@ var DbToYang_crm_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) err
     val, err := d.GetEntry(&tbl, key)
 
     if err != nil {
-        log.Infof("ERR: unable to get entry from database")
-        return err
+        log.Infof("Unable to get CRM config entry from database")
+        return nil
     }
 
     uri := ""
@@ -537,8 +537,6 @@ var YangToDb_crm_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
 
     value := db.Value {make(map[string]string)}
     cfgMap := make(map[string]map[string]db.Value)
-    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
-    subOpMap_del := make(map[string]map[string]db.Value)
 
     log.Infof("+++ YangToDb: crm_config_xfmr (%v) +++", inParams.uri)
 
@@ -549,20 +547,17 @@ var YangToDb_crm_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
 
     if strings.Contains(inParams.uri, "crm/config") {
         if inParams.oper == DELETE {
+            value.Field["NULL"] = ""
             value.Field["polling_interval"] = ""
-            subOpMap_del[tblName] = make(map[string]db.Value)
-            subOpMap_del[tblName][keyName] = value
-            subOpMap[db.ConfigDB] = subOpMap_del
-            inParams.subOpDataMap[DELETE] = &subOpMap
         } else {
             dev := (*inParams.ygRoot).(*ocbinds.Device)
             cfg := dev.System.Crm.Config
             if cfg.PollingInterval != nil {
                 value.Field["polling_interval"] = getUint32String(*cfg.PollingInterval)
-                cfgMap[tblName] = make(map[string]db.Value)
-                cfgMap[tblName][keyName] = value
             }
         }
+        cfgMap[tblName] = make(map[string]db.Value)
+        cfgMap[tblName][keyName] = value
         return cfgMap, nil
     }
 
@@ -578,6 +573,8 @@ var YangToDb_crm_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
     log.Infof("*** URI: '%v'", uri)
 
     if inParams.oper == DELETE {
+        value.Field["NULL"] = ""
+
         // IPv4
         if uri == "/ipv4/neighbor/config" {
             value.Field["ipv4_neighbor_threshold_type"] = ""
@@ -765,10 +762,6 @@ var YangToDb_crm_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
             log.Infof("skipping unknown uri '%v'...", uri)
         }
 
-        subOpMap_del[tblName] = make(map[string]db.Value)
-        subOpMap_del[tblName][keyName] = value
-        subOpMap[db.ConfigDB] = subOpMap_del
-        inParams.subOpDataMap[DELETE] = &subOpMap
     } else {
 
         dev := (*inParams.ygRoot).(*ocbinds.Device)
@@ -969,10 +962,10 @@ var YangToDb_crm_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (ma
             log.Infof("skipping unknown uri '%v'...", uri)
         }
 
-        cfgMap[tblName] = make(map[string]db.Value)
-        cfgMap[tblName][keyName] = value
     }
 
+    cfgMap[tblName] = make(map[string]db.Value)
+    cfgMap[tblName][keyName] = value
     return cfgMap, nil
 }
 

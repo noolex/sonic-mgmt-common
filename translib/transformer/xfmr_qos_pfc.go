@@ -232,7 +232,9 @@ var YangToDb_qos_intf_pfcwd_st_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
         isEntry := isPfcWdEntryFound(inParams.d, if_name)
 
         requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
-        if (requestUriPath == "/openconfig-qos:qos/interfaces/interface" ||
+        if (requestUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc" ||
+            requestUriPath ==  "/openconfig-qos:qos/interfaces/interface/pfc" ||
+            requestUriPath ==  "/openconfig-qos:qos/interfaces/interface" ||
             requestUriPath ==  "/openconfig-qos:qos/interfaces" ||
             requestUriPath ==  "/openconfig-qos:qos") {
             if !isEntry {
@@ -247,11 +249,12 @@ var YangToDb_qos_intf_pfcwd_st_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
             res_map["PFC_WD"] = pfcwdTblMap
             log.Info("YangToDb_qos_intf_pfcwd_st_xfmr: ", res_map)
             return res_map, err
-        } else if !isEntry {
-           err = tlerr.NotFoundError{Format:"Resource not found"}
-           return res_map, err
-        } else if ((requestUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/watchdog") ||
-                   (requestUriPath == "/openconfig-qos:qos/interfaces/interface/pfc/watchdog")){
+        } else if((requestUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/watchdog") ||
+                  (requestUriPath == "/openconfig-qos:qos/interfaces/interface/pfc/watchdog")){
+            if !isEntry {
+              err = tlerr.NotFoundError{Format:"Resource not found"}
+              return res_map, err
+            }
             dbkey := if_name
             pfcwdTblMap := make(map[string]db.Value)
             entry := db.Value{Field: make(map[string]string)}
@@ -319,8 +322,9 @@ var YangToDb_qos_intf_pfcwd_st_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
 }
 
 func doGetIntfPfcWdAction(d *db.DB, if_name string) (string) {
-    log.Info("doGetIntfPfcWdAction   if_name : ", if_name)
-
+    if log.V(3) { 
+        log.Info("doGetIntfPfcWdAction   if_name : ", if_name)
+    }
     if d == nil {
         log.Infof("unable to get configDB")
         return ""
@@ -334,9 +338,11 @@ func doGetIntfPfcWdAction(d *db.DB, if_name string) (string) {
 
     action, ok := dbEntry.Field["action"]
     if ok {
-        log.Info("doGetIntfPfcWdAction   action : ", action)
+        if log.V(3) { 
+            log.Info("doGetIntfPfcWdAction   action : ", action)
+        }
         return action;
-    } else {
+    } else if log.V(3) {
         log.Info("No PFC WD Action Time")
     }
 
@@ -344,8 +350,9 @@ func doGetIntfPfcWdAction(d *db.DB, if_name string) (string) {
 }
 
 func doGetIntfPfcWdDetect(d *db.DB, if_name string) (int) {
-    log.Info("doGetIntfPfcWdDetect     if_name : ", if_name)
-
+    if log.V(3) { 
+        log.Info("doGetIntfPfcWdDetect     if_name : ", if_name)
+    }
     if d == nil {
         log.Infof("unable to get configDB")
         return 0
@@ -359,21 +366,24 @@ func doGetIntfPfcWdDetect(d *db.DB, if_name string) (int) {
 
     detectTime, ok := dbEntry.Field["detection_time"]
     if ok && (detectTime != "") {
-        log.Info("doGetIntfPfcWdDetect  detectTime : ", detectTime)
+        if log.V(3) { 
+            log.Info("doGetIntfPfcWdDetect  detectTime : ", detectTime)
+        }
         value, err := strconv.Atoi(detectTime)
         if err != nil {
             return 0;
         }
         return value;
-    } else {
+    } else if log.V(3) {
         log.Info("doGetIntfPfcWdDetect  No PFC WD Detection Time")
     }
     return 0;
 }
 
 func doGetIntfPfcWdRestore(d *db.DB, if_name string) (int) {
-    log.Info("doGetIntfPfcWdRestore    if_name : ", if_name)
-
+    if log.V(3) { 
+        log.Info("doGetIntfPfcWdRestore    if_name : ", if_name)
+    }
     if d == nil {
         log.Infof("unable to get configDB")
         return 0
@@ -387,27 +397,28 @@ func doGetIntfPfcWdRestore(d *db.DB, if_name string) (int) {
 
     restoreTime, ok := dbEntry.Field["restoration_time"]
     if ok && (restoreTime != "") {
-        log.Info("doGetIntfPfcWdRestore restoreTime : ", restoreTime)
+        if log.V(3) { 
+            log.Info("doGetIntfPfcWdRestore restoreTime : ", restoreTime)
+        }
         value, err := strconv.Atoi(restoreTime)
         if err != nil {
             return 0;
         }
         return value;
-    } else {
+    } else if log.V(3) {
         log.Info("doGetIntfPfcWdRestore  No PFC WD Restoration Time")
     }
     return 0;
 }
 
 var DbToYang_qos_intf_pfcwd_st_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-    log.Info("DbToYang_qos_intf_pfcwd_st_xfmr       uri : ", inParams.uri)
 
     pathInfo := NewPathInfo(inParams.uri)
 
     ifname := pathInfo.Var("interface-id")
     dbIfName := utils.GetNativeNameFromUIName(&ifname)
     if_name := *dbIfName
-    log.Info("DbToYang_qos_intf_pfcwd_st_xfmr   if_name : ", if_name)
+    log.Info("DbToYang_qos_intf_pfcwd_st_xfmr  uri : ", inParams.uri, " if_name : ", if_name)
     qosIntfsObj := getQosIntfRoot(inParams.ygRoot)
     if qosIntfsObj == nil {
         return nil
@@ -457,14 +468,18 @@ var DbToYang_qos_intf_pfcwd_st_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
 
     if getDetect {
-        log.Info("DbToYang_qos_intf_pfcwd_st_xfmr   detectTime : ", detectTime)
+        if log.V(3) { 
+            log.Info("DbToYang_qos_intf_pfcwd_st_xfmr   detectTime : ", detectTime)
+        }
         if detectTime != 0 {
             wdObj.Config.DetectionTime = &detectTime
             wdObj.State.DetectionTime  = &detectTime
         }
     }
     if getRestore {
-        log.Info("DbToYang_qos_intf_pfcwd_st_xfmr   restoreTime : ", restoreTime)
+        if log.V(3) { 
+            log.Info("DbToYang_qos_intf_pfcwd_st_xfmr   restoreTime : ", restoreTime)
+        }
         if restoreTime != 0 {
             wdObj.Config.RestorationTime = &restoreTime
             wdObj.State.RestorationTime  = &restoreTime
@@ -472,7 +487,9 @@ var DbToYang_qos_intf_pfcwd_st_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
     }
 
     if getAction {
-        log.Info("DbToYang_qos_intf_pfcwd_st_xfmr     actionStr : ", actionStr)
+        if log.V(3) { 
+            log.Info("DbToYang_qos_intf_pfcwd_st_xfmr     actionStr : ", actionStr)
+        }
         if  actionStr != "" {
             action := ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_Watchdog_Config_Action_UNSET
             if  actionStr == "drop" {
@@ -506,22 +523,40 @@ func getTheCounter(entry *db.Value, attr string, counter_val *uint64 ) error {
     return err
 }
 
-func getPfcStats (ifName string, cos uint8, d *db.DB, stats *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_PfcPriorities_PfcPriority_State_Statistics) (error) {
-    log.Infof("getPfcStats      Intf: %s  CoS: %v", ifName, cos)
+func getPfcStats (inParams XfmrParams, ifName string, cos uint8, d *db.DB, stats *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_PfcPriorities_PfcPriority_State_Statistics) (error) {
+    if log.V(3) {
+      log.Infof("getPfcStats      Intf: %s  CoS: %v", ifName, cos)
+    }
+    var ifCountInfo db.Value
+    var present bool
+    var err error
+    oidMap, present := inParams.txCache.Load("COUNTERS_PORT_NAME_MAP")
+    if !present {
+        portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
+        ifCountInfo, err = d.GetMapAll(portOidmapTs)
+        if err != nil {
+            log.Info("getPfcStats    err: ", err)
+            return err
+        }
 
-    portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
-    ifCountInfo, err := d.GetMapAll(portOidmapTs)
-    if err != nil {
-        log.Info("getPfcStats    err: ", err)
-        return err
+        inParams.txCache.Store("COUNTERS_PORT_NAME_MAP", ifCountInfo)
+        if log.V(3) {
+            log.Info("Loading ifCountInfo ")
+        }
+    } else {
+        ifCountInfo = oidMap.(db.Value)
+        if log.V(3) {
+            log.Info("Reuse ifCountInfo ")
+        }
     }
 
     var rxCntr uint64;
     var txCntr uint64;
     counters := &db.TableSpec{Name: "COUNTERS"}
     oid := ifCountInfo.Field[ifName]
-    log.Infof("getPfcStats      oid: '%v'", oid)
-
+    if log.V(3) {
+       log.Infof("getPfcStats      oid: '%v'", oid)
+    }
     entry, err := d.GetEntry(counters, db.Key{Comp: []string{oid}})
     if err != nil {
         log.Info("getPfcStats    err: ", err)
@@ -546,7 +581,9 @@ func getPfcStats (ifName string, cos uint8, d *db.DB, stats *ocbinds.OpenconfigQ
     } else {
         // it is OK that a snapshot does not exist. Just means the counters have not been "cleared"
         err = nil
-        log.Info("getPfcStats      counter snapshot does not exist.")
+        if log.V(3) {
+           log.Info("getPfcStats      counter snapshot does not exist.")
+        }
     }
 
     stats.PauseFramesRx = &rxCntr
@@ -555,22 +592,34 @@ func getPfcStats (ifName string, cos uint8, d *db.DB, stats *ocbinds.OpenconfigQ
     return err
 }
 
-func getPfcQueueStats (ifName string, queue uint8, d *db.DB, stats *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_PfcQueue_PfcQueue_Statistics) (error) {
-    log.Infof("getPfcQueue      Intf: %s  Queue: %v", ifName, queue)
+func getPfcQueueStats (inParams XfmrParams, ifName string, queue uint8, d *db.DB, stats *ocbinds.OpenconfigQos_Qos_Interfaces_Interface_Pfc_PfcQueue_PfcQueue_Statistics) (error) {
 
+    log.V(3).Infof("getPfcQueue      Intf: %s  Queue: %v", ifName, queue)
     qCounterKey := ifName + ":" + strconv.FormatUint(uint64(queue), 10)
-    log.Info("getPfcQueue   qCounterKey:", qCounterKey)
+    log.V(3).Info("getPfcQueue   qCounterKey:", qCounterKey)
+    var queueCountInfo db.Value
+    var present bool
+    var err error
+    oidMap, present := inParams.txCache.Load("COUNTERS_QUEUE_NAME_MAP")
+    if !present {
+        queueOidMapTs := &db.TableSpec{Name: "COUNTERS_QUEUE_NAME_MAP"}
+        queueCountInfo, err = d.GetMapAll(queueOidMapTs)
+        if err != nil {
+            log.Info("getPfcQueue    err: ", err)
+            return err
+        }
 
-    queueOidMapTs := &db.TableSpec{Name: "COUNTERS_QUEUE_NAME_MAP"}
-    queueCountInfo, err := d.GetMapAll(queueOidMapTs)
-    if err != nil {
-        log.Info("getPfcQueue    err: ", err)
-        return err
+        inParams.txCache.Store("COUNTERS_QUEUE_NAME_MAP", queueCountInfo)
+        log.V(3).Info("Loading queueCountInfo")
+    } else {
+        queueCountInfo = oidMap.(db.Value)
+        log.V(3).Info("Reuse queueCountInfo ")
     }
 
-    counters := &db.TableSpec{Name: "COUNTERS"}
     oid := queueCountInfo.Field[qCounterKey]
-    log.Info("getPfcQueue      oid :", oid)
+    log.V(3).Info("getPfcQueue      oid :", oid)
+
+    counters := &db.TableSpec{Name: "COUNTERS"}
     entry, err := d.GetEntry(counters, db.Key{Comp: []string{oid}})
     if err != nil {
         log.Info("getPfcQueue    err: ", err)
@@ -630,7 +679,7 @@ func getPfcQueueStats (ifName string, queue uint8, d *db.DB, stats *ocbinds.Open
     } else {
         // it is OK that a snapshot does not exist. Just means the counters have not been "cleared"
         err = nil
-        log.Info("getPfcQueue      counter snapshot does not exist.")
+        log.V(3).Info("getPfcQueue      counter snapshot does not exist.")
     }
 
     stats.RxDrop = &rxDropsCntr
@@ -648,14 +697,12 @@ func getPfcQueueStats (ifName string, queue uint8, d *db.DB, stats *ocbinds.Open
 }
 
 var DbToYang_qos_intf_pfc_counters_st_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-  log.Info("DbToYang_qos_intf_pfc_counters_st_xfmr       uri: ", inParams.uri)
-
   var err error
   pathInfo := NewPathInfo(inParams.uri)
   ifname := pathInfo.Var("interface-id")
   dbIfName := utils.GetNativeNameFromUIName(&ifname)
   if_name := *dbIfName
-  log.Info("DbToYang_qos_intf_pfc_counters_st_xfmr: ", if_name)
+  log.Info("DbToYang_qos_intf_pfc_counters_st_xfmr: uri: ", inParams.uri, " if_name ", if_name)
   dot1p  := pathInfo.Var("dot1p")
   cos32, _ := strconv.Atoi(dot1p)
   cos := uint8(cos32)
@@ -681,21 +728,19 @@ var DbToYang_qos_intf_pfc_counters_st_xfmr SubTreeXfmrDbToYang = func(inParams X
 
   ygot.BuildEmptyTree(statsObj)
 
-  err = getPfcStats(if_name, cos, inParams.dbs[db.CountersDB], statsObj)
+  err = getPfcStats(inParams,if_name, cos, inParams.dbs[db.CountersDB], statsObj)
 
   return err
 }
 
 var DbToYang_qos_intf_pfc_queue_counters_st_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-  log.Info("DbToYang_qos_intf_pfc_queue_counters_st_xfmr       uri: ", inParams.uri)
-
   var err error
 
   pathInfo := NewPathInfo(inParams.uri)
   ifname := pathInfo.Var("interface-id")
   dbIfName := utils.GetNativeNameFromUIName(&ifname)
   if_name := *dbIfName
-  log.Info("DbToYang_qos_intf_pfc_queue_counters_st_xfmr: ", if_name)
+  log.Info("DbToYang_qos_intf_pfc_queue_counters_st_xfmr: uri: ", inParams.uri," if_name ", if_name)
   queue  := pathInfo.Var("queue")
   queue32, _ := strconv.Atoi(queue)
   que := uint8(queue32)
@@ -722,7 +767,7 @@ var DbToYang_qos_intf_pfc_queue_counters_st_xfmr SubTreeXfmrDbToYang = func(inPa
 
   ygot.BuildEmptyTree(statsObj)
 
-  err = getPfcQueueStats(if_name, que, inParams.dbs[db.CountersDB], statsObj)
+  err = getPfcQueueStats(inParams, if_name, que, inParams.dbs[db.CountersDB], statsObj)
 
   return err
 }

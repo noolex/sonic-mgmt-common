@@ -223,7 +223,11 @@ func fill_pgrp_state_info (pgrp_key *_xfmr_bgp_pgrp_state_key, frrPgrpDataValue 
     }
 
     if peerGroupMembers,  ok := frrPgrpDataJson["peerGroupMembers"].(map[string]interface{}) ; ok {
+        /* For accessing nbr info from FRR json output, nbr has to to be in native
+           format, convert it. The nbr key in the ygot will be still in user given format */
         for pgMem := range peerGroupMembers {
+            nativeNbr := pgMem
+            util_bgp_get_ui_ifname_from_native_ifname (&pgMem)
             member, ok := pMember.Member[pgMem]
             if !ok {
                 member, _ = pMember.NewMember(pgMem)
@@ -234,7 +238,7 @@ func fill_pgrp_state_info (pgrp_key *_xfmr_bgp_pgrp_state_key, frrPgrpDataValue 
             }
             ygot.BuildEmptyTree(pgrp_obj)
             member.State.Neighbor = &pgMem
-            temp, ok := peerGroupMembers[pgMem].(map[string]interface{})
+            temp, ok := peerGroupMembers[nativeNbr].(map[string]interface{})
             if  ok {
                 if value, ok := temp["peerStatus"].(string); ok {
                     member.State.State = &value

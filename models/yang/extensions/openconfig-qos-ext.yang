@@ -768,6 +768,14 @@ module openconfig-qos-ext {
       deviate not-supported;
     }
 
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:config/oc-qos:name {
+        deviate replace {
+            type string {
+                length "1..32";
+            }
+        }
+    }
+
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config/oc-qos:priority{
         deviate replace {
             type enumeration {

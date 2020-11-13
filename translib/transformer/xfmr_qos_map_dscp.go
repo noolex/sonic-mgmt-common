@@ -174,15 +174,15 @@ func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.Openconf
         return nil
     }
 
-    log.Info("current entry: ", mapCfg)
-
+    if log.V(3) {
+        log.Info("current entry: ", mapCfg)
+    }
     mapObj.Config.Name = &name
     mapObj.State.Name = &name
 
 
     pathInfo := NewPathInfo(inParams.uri)
     entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
-    log.Info("pathInfo.Var: ", pathInfo.Var)
     var tmp_cfg ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_Config
     var tmp_sta ocbinds.OpenconfigQos_Qos_DscpMaps_DscpMap_DscpMapEntries_DscpMapEntry_State
     entry_added :=  0
@@ -224,7 +224,9 @@ func fill_dscp_map_info_by_name(inParams XfmrParams, dscpMaps * ocbinds.Openconf
 
         entry_added = entry_added + 1
 
-        log.Info("Added entry: ", entryObj)
+        if log.V(3) {
+            log.Infof("Added entry: %v ", entryObj)
+        }
     }
 
     log.Info("Done fetching dscp-map : ", name)
@@ -261,14 +263,18 @@ var DbToYang_qos_dscp_fwd_group_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
     dbSpec := &db.TableSpec{Name: "DSCP_TO_TC_MAP"}
 
     map_added := 0
-    keys, _ := inParams.d.GetKeys(dbSpec)
+    var keyPattern string
+    if  name != "" {
+        keyPattern = name
+    } else {
+        keyPattern = "*"
+    }
+
+    keys, _ := inParams.d.GetKeysByPattern(dbSpec, keyPattern)
     for _, key := range keys {
         log.Info("key: ", key)
 
         map_name := key.Comp[0]
-        if name != ""  && name != map_name{
-            continue
-        } 
 
         map_added = map_added + 1 
 

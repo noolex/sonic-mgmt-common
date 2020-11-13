@@ -1,7 +1,15 @@
 module sonic-mac-dampening {
     namespace "http://github.com/Azure/sonic-mac-dampening";
-    prefix sfdb;
+    prefix smd;
     yang-version 1.1;
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    import sonic-port {
+        prefix sprt;
+    }
 
     organization
         "SONiC";
@@ -36,6 +44,50 @@ module sonic-mac-dampening {
                         }
                     }
                 }
+            }
+        }
+        container MAC_DAMP_TABLE {
+            sonic-ext:db-name "ASIC_DB";
+            sonic-ext:key-delim ":";
+            config false;
+            description "asic db mac dampening disabled ports";
+            list MAC_DAMP_TABLE_LIST{
+                key "oid_str bridge_port_id";
+                leaf oid_str {
+                    type string;
+                }
+                leaf bridge_port_id {
+                    type string;
+                }
+            }
+        }
+    }
+
+    rpc clear-mac-dampening-disabled-ports {
+        description
+            "Clears mac dampening settings for port(s) disabled due to mac
+            dampening. Possible values can be either 1) ALL - if this value is
+            passed for ifname then it clears mac dampening settings for all mac
+            dampening disabled ports. 2) specific name name - clears mac
+            dampening settings for specific mac dampening disabled ports. ";
+ 
+        input {
+            leaf ifname {
+                type union {
+                    type leafref {
+                        path "/sprt:sonic-port/sprt:PORT/sprt:PORT_LIST/sprt:ifname";
+                    }
+                    type enumeration {
+                        enum ALL;
+                    }
+                }
+
+                description
+                    "Interface name for which mac dampening disabled port
+                    settting needs to be cleard. If specific interface name is
+                    provided then it clears mac dampening settings for that
+                    interface, else if ALL is passed it clears mac dampening
+                    settings for all mac dampening disabled ports. ";
             }
         }
     }

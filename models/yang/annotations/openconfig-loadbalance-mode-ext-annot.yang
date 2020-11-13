@@ -1,0 +1,139 @@
+module openconfig-loadbalance-mode-ext-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/openconfig-loadbalance-mode-ext-annot";
+    prefix "oc-lb-mode-ext-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-loadbalance-mode-ext { prefix oc-lb-mode-ext; }
+
+    deviation /oc-lb-mode-ext:ipv4-attrs {
+        deviate add {
+            sonic-ext:table-name "ECMP_LOADBALANCE_TABLE_IPV4";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:seed-attrs/oc-lb-mode-ext:seed-attr {
+        deviate add {
+            sonic-ext:table-transformer "loadbalance_seed_table_xfmr";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:ipv4-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4 {
+        deviate add {
+            sonic-ext:field-name "ipv4";
+            sonic-ext:field-transformer "loadbalance_mode_ipv4_fld_xfmr";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:ipv6-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv6 {
+        deviate add {
+            sonic-ext:field-name "ipv6";
+            sonic-ext:field-transformer "loadbalance_mode_ipv6_fld_xfmr";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:seed-attrs/oc-lb-mode-ext:seed-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:hash {
+        deviate add {
+            sonic-ext:field-name "hash";
+            sonic-ext:field-transformer "loadbalance_mode_seed_fld_xfmr";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv6-attrs {
+        deviate add {
+            sonic-ext:table-name "ECMP_LOADBALANCE_TABLE_IPV6";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:seed-attrs {
+        deviate add {
+            sonic-ext:table-name "ECMP_LOADBALANCE_TABLE_SEED";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:ipv4-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4-src-ip {
+        deviate add {
+            sonic-ext:field-name "ipv4_src_ip";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:ipv4-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4-dst-ip {
+        deviate add {
+            sonic-ext:field-name "ipv4_dst_ip";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:ipv4-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4-l4-src-port {
+        deviate add {
+            sonic-ext:field-name "ipv4_l4_src_port";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:ipv4-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4-l4-dst-port {
+        deviate add {
+            sonic-ext:field-name "ipv4_l4_dst_port";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:ipv6-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv6-src-ip {
+        deviate add {
+            sonic-ext:field-name "ipv6_src_ip";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:ipv4-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4-protocol {
+        deviate add {
+            sonic-ext:field-name "ipv4_protocol";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:ipv6-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv6-dst-ip {
+        deviate add {
+            sonic-ext:field-name "ipv6_dst_ip";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:ipv6-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv6-l4-src-port {
+        deviate add {
+            sonic-ext:field-name "ipv6_l4_src_port";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:ipv6-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv6-l4-dst-port {
+        deviate add {
+            sonic-ext:field-name "ipv6_l4_dst_port";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:ipv6-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv6-next-hdr {
+        deviate add {
+            sonic-ext:field-name "ipv6_next_hdr";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:seed-attrs/oc-lb-mode-ext:seed-attr/oc-lb-mode-ext:config/oc-lb-mode-ext:ecmp-hash-seed {
+        deviate add {
+            sonic-ext:field-name "ecmp_hash_seed";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:seed-attrs/oc-lb-mode-ext:seed-attr/oc-lb-mode-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "loadbalance_mode_state_xfmr";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:ipv4-attr/oc-lb-mode-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "loadbalance_mode_state_xfmr";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:ipv6-attr/oc-lb-mode-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "loadbalance_mode_state_xfmr";
+        }
+    }
+}

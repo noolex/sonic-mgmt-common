@@ -90,6 +90,36 @@ module sonic-link-state-tracking {
                         }
                     }
                 }
+
+                leaf threshold_type {
+                    type enumeration {
+                        enum ONLINE_PERCENTAGE;
+                    }
+                }
+
+                leaf threshold_up {
+                    type decimal64 {
+                        fraction-digits 3;
+                    }
+                    must "(not(current()/../threshold_down)) or (current() >= current()/../threshold_down)" {
+                        error-message "Threshold up must be greater than threshold down value.";
+                    }
+                    must "(current()/../threshold_type) and ((current()/../threshold_type = 'ONLINE_PERCENTAGE') and (current() >= 0) and (current() <= 100))" {
+                        error-message "Threshold up value must be in range 0-100%";
+                    }
+                }
+
+                leaf threshold_down {
+                    type decimal64 {
+                        fraction-digits 3;
+                    }
+                    must "(not(current()/../threshold_up)) or (current() <= current()/../threshold_up)" {
+                        error-message "Threshold down must be less than threshold up value.";
+                    }
+                    must "(current()/../threshold_type) and ((current()/../threshold_type = 'ONLINE_PERCENTAGE') and (current() >= 0) and (current() <= 100))" {
+                        error-message "Threshold down value must be in range 0-100%";
+                    }
+                }
             }
         }
 
@@ -107,6 +137,9 @@ module sonic-link-state-tracking {
                 }
                 leaf timeout {
                     type uint16;
+                }
+                leaf bringup_start_time {
+                    type uint64;
                 }
                 leaf-list upstream {
                     type union {
@@ -136,6 +169,19 @@ module sonic-link-state-tracking {
                 }
                 leaf-list downstream_status {
                     type string;
+                }
+                leaf threshold_type {
+                    type string;
+                }
+                leaf threshold_up {
+                    type decimal64 {
+                        fraction-digits 3;
+                    }
+                }
+                leaf threshold_down {
+                    type decimal64 {
+                        fraction-digits 3;
+                    }
                 }
             }
         }

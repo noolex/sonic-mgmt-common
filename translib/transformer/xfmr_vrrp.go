@@ -205,6 +205,15 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                                 t["pre_empt"] = "False"
                             }
                         }
+
+                        if vrrp_rtr.Config.UseV2Checksum != nil {
+                            if (bool(*vrrp_rtr.Config.UseV2Checksum)) {
+                                t["use_v2_checksum"] = "True"
+                            } else {
+                                t["use_v2_checksum"] = "False"
+                            }
+                        }
+
                         if vrrp_rtr.Config.Version != nil {
                             t["version"] = strconv.Itoa(int(*vrrp_rtr.Config.Version))
                         }
@@ -580,6 +589,15 @@ var YangToDb_intf_vlan_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
                                 t["pre_empt"] = "False"
                             }
                         }
+
+                        if vrrp_rtr.Config.UseV2Checksum != nil {
+                            if (bool(*vrrp_rtr.Config.UseV2Checksum)) {
+                                t["use_v2_checksum"] = "True"
+                            } else {
+                                t["use_v2_checksum"] = "False"
+                            }
+                        }
+
                         if vrrp_rtr.Config.Version != nil {
                             t["version"] = strconv.Itoa(int(*vrrp_rtr.Config.Version))
                         }
@@ -1329,6 +1347,19 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
               }
               vrrp4.State.Preempt = ppreempt
 
+              UseV2ChecksumStr := "False"
+              if vrrpData.Has("use_v2_checksum") {
+                  UseV2ChecksumStr = vrrpData.Get("use_v2_checksum")
+              }
+
+              UseV2Checksum := new(bool)
+              if UseV2ChecksumStr == "True"{
+                  *UseV2Checksum = true
+              } else {
+                  *UseV2Checksum = false
+              }
+              vrrp4.State.UseV2Checksum = UseV2Checksum
+
               if vrrpData.Has("vip@") {
                   vipstr := vrrpData.Get("vip@")
                   vipmap := strings.Split(vipstr, ",")
@@ -1374,6 +1405,19 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                     *ppreempt = false
                 }
                 vrrp4.Config.Preempt = ppreempt
+
+                UseV2ChecksumStr := "False"
+                if vrrpData.Has("use_v2_checksum") {
+                    UseV2ChecksumStr = vrrpData.Get("use_v2_checksum")
+                }
+
+                UseV2Checksum := new(bool)
+                if UseV2ChecksumStr == "True"{
+                    *UseV2Checksum = true
+                } else {
+                    *UseV2Checksum = false
+                }
+                vrrp4.Config.UseV2Checksum = UseV2Checksum
 
                 if vrrpData.Has("vip@") {
                     vipstr := vrrpData.Get("vip@")
@@ -1714,6 +1758,20 @@ func convertVrrpMapToVlanOC (inParams XfmrParams, targetUriPath string, ifName s
               }
               vrrp4.State.Preempt = ppreempt
 
+              UseV2ChecksumStr := "False"
+              if vrrpData.Has("use_v2_checksum") {
+                  UseV2ChecksumStr = vrrpData.Get("use_v2_checksum")
+              }
+
+              UseV2Checksum := new(bool)
+              if UseV2ChecksumStr == "True"{
+                  *UseV2Checksum = true
+              } else {
+                  *UseV2Checksum = false
+              }
+              vrrp4.State.UseV2Checksum = UseV2Checksum
+
+
               if vrrpData.Has("vip@") {
                   vipstr := vrrpData.Get("vip@")
                   vipmap := strings.Split(vipstr, ",")
@@ -1759,6 +1817,19 @@ func convertVrrpMapToVlanOC (inParams XfmrParams, targetUriPath string, ifName s
                     *ppreempt = false
                 }
                 vrrp4.Config.Preempt = ppreempt
+
+                UseV2ChecksumStr := "False"
+                if vrrpData.Has("use_v2_checksum") {
+                    UseV2ChecksumStr = vrrpData.Get("use_v2_checksum")
+                }
+
+                UseV2Checksum := new(bool)
+                if UseV2ChecksumStr == "True"{
+                    *UseV2Checksum = true
+                } else {
+                    *UseV2Checksum = false
+                }
+                vrrp4.Config.UseV2Checksum = UseV2Checksum                
 
                 if vrrpData.Has("vip@") {
                     vipstr := vrrpData.Get("vip@")
