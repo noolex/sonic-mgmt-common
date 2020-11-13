@@ -17,6 +17,8 @@ import (
         //"crypto/md5"
         //"io/ioutil"
         "bytes"
+	"os"
+	"unicode"
 )
 
 const (
@@ -35,13 +37,31 @@ const (
         NTP_KEY_ENCRYPTED_STR = "key_encrypted"
 )
 
+const ( 
+        NTP_KEY_TYPE = "key_type"
+)
+
+var NTP_AUTH_TYPE_MAP = map[string]string{
+        strconv.FormatInt(int64(ocbinds.OpenconfigSystem_NTP_AUTH_TYPE_NTP_AUTH_MD5), 10):"MD5",
+        strconv.FormatInt(int64(ocbinds.OpenconfigSystem_NTP_AUTH_TYPE_NTP_AUTH_SHA1), 10):"SHA1",
+        strconv.FormatInt(int64(ocbinds.OpenconfigSystem_NTP_AUTH_TYPE_NTP_AUTH_SHA2_256), 10):"SHA2_256",
+}
+
 func init() {
         XlateFuncBind("YangToDb_ntp_global_key_xfmr", YangToDb_ntp_global_key_xfmr)
         XlateFuncBind("YangToDb_ntp_server_subtree_xfmr", YangToDb_ntp_server_subtree_xfmr)
         XlateFuncBind("DbToYang_ntp_server_subtree_xfmr", DbToYang_ntp_server_subtree_xfmr)
         XlateFuncBind("Subscribe_ntp_server_subtree_xfmr", Subscribe_ntp_server_subtree_xfmr)
-        XlateFuncBind("YangToDb_ntp_authen_key_value_xfmr",YangToDb_ntp_authen_key_value_xfmr)
+        XlateFuncBind("YangToDb_ntp_authentication_key_table_key_xfmr", YangToDb_ntp_authentication_key_table_key_xfmr)
+	XlateFuncBind("DbToYang_ntp_authentication_key_table_key_xfmr", DbToYang_ntp_authentication_key_table_key_xfmr)
+        XlateFuncBind("YangToDb_ntp_auth_key_id_xfmr", YangToDb_ntp_auth_key_id_xfmr)
+        XlateFuncBind("DbToYang_ntp_auth_key_id_xfmr", DbToYang_ntp_auth_key_id_xfmr)
+        XlateFuncBind("YangToDb_ntp_auth_key_type_xfmr", YangToDb_ntp_auth_key_type_xfmr)
+        XlateFuncBind("DbToYang_ntp_auth_key_type_xfmr", DbToYang_ntp_auth_key_type_xfmr)
+        XlateFuncBind("YangToDb_ntp_auth_key_value_xfmr", YangToDb_ntp_auth_key_value_xfmr)
+        XlateFuncBind("DbToYang_ntp_auth_key_value_xfmr", DbToYang_ntp_auth_key_value_xfmr)
         XlateFuncBind("YangToDb_ntp_auth_encrypted_xfmr", YangToDb_ntp_auth_encrypted_xfmr)
+        XlateFuncBind("DbToYang_ntp_auth_encrypted_xfmr", DbToYang_ntp_auth_encrypted_xfmr)
 }
 
 // bingbing test start
@@ -209,9 +229,9 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
         log.Infof( " YangToDb_ntp_server_subtree_xfmr, pathInfo %v targetUri %v", pathInfo, targetUriPath)
 
         keyName := pathInfo.Var("address")
-        auth_key_id := pathInfo.Var("key_id")
-
-        log.Infof("bingbing address %v key_id %v", keyName, auth_key_id)
+        //auth_key_id := pathInfo.Var("key-id")
+        
+        log.Infof("bingbing address %v", keyName)
 
         if (inParams.oper == DELETE) {
                 if keyName == "" {
@@ -227,18 +247,34 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                 }
         }
 
-        log.Infof( "YangToDb_ntp_server_subtree_xfmr: targetUriPath %v key %v", targetUriPath, keyName)
+        var auth_key_id_str string
+        
+        //Delete only allowed for NTP server, and not the key id on the server
+        if (inParams.oper != DELETE) {
+                sysObj := getSystemRootObject(inParams)
+                ntpData := sysObj.Ntp
+                ntpServers := ntpData.Servers
+                ntpServer := ntpServers.Server
+                ntpServerConfig := ntpServer[keyName].Config
+                auth_key_id := ntpServerConfig.KeyId
+                auth_key_id_int := int(*auth_key_id)
+                auth_key_id_str = strconv.Itoa(auth_key_id_int)
+        }
 
         res_map[NTP_SERVER_TABLE_NAME] = make(map[string]db.Value)
 
         res_map[NTP_SERVER_TABLE_NAME][keyName] = db.Value{Field: map[string]string{}}
         dbVal := res_map[NTP_SERVER_TABLE_NAME][keyName]
-        if (auth_key_id == "") {
-                (&dbVal).Set("NULL", "NULL")
-                log.Infof("bingbing add null null for value of server %v", keyName)
+        if (auth_key_id_str == "") {
+                if (inParams.oper != DELETE) {
+                        (&dbVal).Set("NULL", "NULL")
+                        log.Infof("bingbing add null null for value of server %v", keyName)
+                }
         } else {
-                (&dbVal).Set("key_id", auth_key_id)
-                log.Infof("bingbing add key id %v for server %v", auth_key_id, keyName)
+                //auth_key_id_int := int(*auth_key_id)
+                //auth_key_id_str := strconv.Itoa(auth_key_id_int)
+                (&dbVal).Set("key_id", auth_key_id_str)
+                log.Infof("bingbing key id %v for server %v", auth_key_id_str, keyName)
         }
 
         log.Infof ("YangToDb_ntp_server_subtree_xfmr: key %v return res_map %v", keyName, res_map)
@@ -591,26 +627,80 @@ var Subscribe_ntp_server_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSu
         return result, err
 }
 
-var YangToDb_ntp_authen_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
 
         pathInfo := NewPathInfo(inParams.uri)
 
-        key_id := pathInfo.Var("key_id")
-        log.Info("YangToDb_ntp_authen_key_value_xfmr key_id ", key_id)
+        key_id := pathInfo.Var("key-id")
 
-        key_value := pathInfo.Var("key_value")
+	log.Infof("bingbing key vlaue xfmr key id %v", key_id)
+	if (key_id == "") {
+	        return res_map, nil
+        }
 
-        key_value_byte := []byte(key_value)
-        encrypted_key_value, _ := openssl(key_value_byte, "enc", "-aes-128-cbc", "-a", "-salt", "-pass", "pass:"+NTP_SECRET_PASSWORD)
-        log.Infof("bingbing encrypted %v", encrypted_key_value)
-        encrypted_str := string([]byte(encrypted_key_value))
-        log.Infof("bingbing encrypted str %v", encrypted_str)
+        sysObj := getSystemRootObject(inParams)
+        ntpData := sysObj.Ntp
+	keyId, _ := strconv.ParseUint(key_id, 10, 16)
+	keyIdUint16 := uint16(keyId)
+	encrypted := ntpData.NtpKeys.NtpKey[keyIdUint16].Config.KeyEncrypted
 
-        res_map[NTP_KEY_VALUE_STR] = encrypted_str
+        log.Infof("YangToDb_ntp_authen_key_value_xfmr key_id %v encrypted %v", key_id, encrypted)
+
+        key_value := inParams.param.(*string)
+
+	log.Infof("YangToDb_ntp_authen_key_value_xfmr key_value %v", key_value)
+
+        var encrypted_str  string
+
+        if (!*encrypted) {
+                key_value_byte := []byte(*key_value)
+                encrypted_key_value, _ := openssl(key_value_byte, "enc", "-aes-128-cbc", "-a", "-salt", "-pass", "pass:"+NTP_SECRET_PASSWORD)
+                log.Infof("bingbing encrypted %v", encrypted_key_value)
+                encrypted_str = string([]byte(encrypted_key_value))
+                log.Infof("bingbing encrypted str %v len %v", encrypted_str, len(encrypted_str))
+                encrypted_str = strings.TrimFunc(encrypted_str, func(r rune) bool {
+				return !unicode.IsGraphic(r)
+					})
+	        log.Infof("after trim %v len %v", encrypted_str, len(encrypted_str))
+        }
+
+        ntpKey_file, err := os.OpenFile("/ntp_etc/ntp/ntp.keys", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+        if err != nil {
+                log.Infof("YangToDb_ntp_auth_key_value_xfmr, create file failed")
+                return res_map, nil
+        }
+
+	defer ntpKey_file.Close()
+
+        //datawriter := bufio.NewWriter(ntpKey_file)
+	//var key_str string
+	var key_str = key_id + " " + "MD5" + " " + (*key_value) + "\n"
+	log.Infof("key_str %v", key_str)
+
+        //n, err := datawriter.WriteString(key_str)
+        n, err := ntpKey_file.WriteString(key_str)
+
+        if err != nil {
+            log.Infof("YangToDb_ntp_auth_key_value_xfmr, append text failed")
+            return res_map, nil
+        }
+
+	log.Infof("bingbing n %v", n)
+
+        if (!*encrypted) {
+                res_map[NTP_KEY_VALUE_STR] = encrypted_str 
+        } else {
+                res_map[NTP_KEY_VALUE_STR] = *key_value 
+        }
 
         log.Infof("YangToDb_ntp_authen_key_value_xfmr, %v", res_map)
+
+	//res_map[NTP_KEY_VALUE_STR] = "U2FsdGVkX18TaiUGZNCqXqNpj8GS4cEeTm+yFIrOpVc="
+
+	//log.Infof("new res_map %v", res_map)
 
         return res_map, err
 }
@@ -628,3 +718,137 @@ var YangToDb_ntp_auth_encrypted_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 
         return res_map, err
 }
+
+var YangToDb_ntp_authentication_key_table_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+        log.Info( "bingbing YangToDb_ntp_authentication_key_table_key_xfmr: root: ", inParams.ygRoot,
+                 ", uri: ", inParams.uri)
+
+        pathInfo := NewPathInfo(inParams.uri)
+
+        log.Infof("bingbing pathInfo %v", pathInfo.Vars)
+
+        auth_key_num := pathInfo.Var("key-id")
+
+        log.Infof("bingbing YangToDb_ntp_authentication_key_table_key_xfmr key id %v", auth_key_num)
+
+        return auth_key_num, nil
+}
+
+var DbToYang_ntp_authentication_key_table_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+        res_map := make(map[string]interface{})
+        var err error
+
+        log.Info("DbToYang_authentication_key_table_key_xfmr: ")
+
+        if (inParams.key != "") {
+                keyIdFloat64, _  := strconv.ParseFloat(inParams.key, 64)
+                res_map["key-id"] = keyIdFloat64 
+        }
+
+        log.Info("DbToYang_authentication_key_table_key_xfmr res_map %v", res_map)
+
+        return res_map, err
+}
+
+var DbToYang_ntp_auth_key_id_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+        res_map := make(map[string]interface{})
+        var err error
+
+        log.Infof("bingbing DbToYang_ntp_auth_key_id_xfmr key %v", inParams.key)
+
+        keyIdFloat64, _ := strconv.ParseFloat(inParams.key, 64)
+
+        res_map["key-id"] = keyIdFloat64
+
+        log.Infof("bingbing DbToYang_ntp_auth_key_id_xfmr res_map %v", res_map) 
+
+        return res_map, err
+}
+
+var YangToDb_ntp_auth_key_id_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+        res_map := make(map[string]string)
+        var err error
+
+        return res_map, err
+}
+
+var YangToDb_ntp_auth_key_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+        res_map := make(map[string]string)
+        var err error
+
+        log.Info("bingbing YangToDb_ntp_auth_key_type_to_db_xfmr key ", inParams.key)
+
+        pathInfo := NewPathInfo(inParams.uri)
+
+        //key_type := pathInfo.Var("key-type")
+
+        key_type, _ := inParams.param.(ocbinds.E_OpenconfigSystem_NTP_AUTH_TYPE)
+
+        log.Infof(" bingbing YangToDb_ntp_auth_key_type_to_db_xfmr path vars %v key type %v", pathInfo.Var, key_type)
+
+        //if (key_type == ocbinds.OpenconfigSystem_NTP_AUTH_TYPE_NTP_AUTH_MD5)
+        //        res_map[NTP_KEY_TYPE] = "MD5"
+        
+        res_map[NTP_KEY_TYPE] = findInMap(NTP_AUTH_TYPE_MAP, strconv.FormatInt(int64(key_type), 10))
+
+        log.Infof("bingbing YangToDb_ntp_auth_key_type_to_db_xfmr res_map %v", res_map)
+
+        return res_map, err
+}
+
+var DbToYang_ntp_auth_key_type_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) { 
+        res_map := make(map[string]interface{})
+        var err error
+
+        log.Infof("bingbing DbToYang_ntp_auth_key_type_xfmr key %v", inParams.key)
+
+        data := (*inParams.dbDataMap)[inParams.curDb]
+        key_tbl := data["NTP_AUTHENTICATION_KEY"]
+        key_entry := key_tbl[inParams.key]
+        key_type := findInMap(NTP_AUTH_TYPE_MAP, key_entry.Field[NTP_KEY_TYPE])
+        var n int64
+        n, err = strconv.ParseInt(key_type, 10, 64)
+        if err == nil {
+                res_map["key-type"] = ocbinds.E_OpenconfigSystem_NTP_AUTH_TYPE(n).ΛMap()["E_OpenconfigSystem_NTP_AUTH_TYPE"][n].Name
+        }
+
+        //if (key_type == "MD5")
+        //        res_map["key-type"] = ocbinds.OpenconfigSystem_NTP_AUTH_TYPE_NTP_AUTH_MD5 
+
+        log.Infof("bingbing DbToYang_ntp_auth_key_type_xfmr res_map %v", res_map) 
+        return res_map, err
+}
+
+var DbToYang_ntp_auth_key_value_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+        res_map := make(map[string]interface{})
+        var err error
+
+        data := (*inParams.dbDataMap)[inParams.curDb]
+        key_tbl := data["NTP_AUTHENTICATION_KEY"]
+        key_entry := key_tbl[inParams.key]
+        key_value := key_entry.Field["key_value"]
+
+        res_map["key-value"] = key_value
+
+        log.Infof("DbToYang_ntp_auth_key_value_xfmr res_map %v", res_map)
+
+        return res_map, err 
+}
+
+var DbToYang_ntp_auth_encrypted_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+        res_map := make(map[string]interface{})
+        var err error
+
+        data := (*inParams.dbDataMap)[inParams.curDb]
+        key_tbl := data["NTP_AUTHENTICATION_KEY"]
+        key_entry := key_tbl[inParams.key]
+        encrypted := key_entry.Field["key_encrypted"]
+
+        encryptedBool,_ := strconv.ParseBool(encrypted)
+
+        res_map["key-encrypted"] = encryptedBool
+
+        log.Infof("DbToYang_ntp_auth_encrypted_xfmr res_map %v", res_map)
+
+        return res_map, err
+} 

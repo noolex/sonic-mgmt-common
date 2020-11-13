@@ -112,7 +112,7 @@ module sonic-system-ntp {
                         "Indicate if NTP authentication is enabled if set to true.";                 
                 }
                
-                leaf-list trustedkeys {
+                leaf-list trustedkey {
                     type leafref {
                         path "/sonic-system-ntp/NTP_AUTHENTICATION_KEY/NTP_AUTHENTICATION_KEY_LIST/key_id";
                     }
@@ -169,6 +169,7 @@ module sonic-system-ntp {
 
                 leaf key_encrypted {
                     type boolean;
+                    default true;
                     description
                         "NTP authentication key value is encrypted";
                 }
