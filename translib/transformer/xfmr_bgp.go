@@ -125,29 +125,29 @@ func utl_bgp_exec_vtysh_cmd (vtyshCmd string, inParams XfmrParams, cmdType BgpFr
         switch cmdType {
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_SUMMARY:
                 if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_SUMMARY] ; ok {return value, nil}
-                return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_SUMMARY:
                 if cmdArgs.afiSafiName == "ipv4" {
                     if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_SUMMARY] ; ok {return value, nil}
-                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
                 }
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_SUMMARY:
                 if cmdArgs.afiSafiName == "ipv6" {
                     if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_SUMMARY] ; ok {return value, nil}
-                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY][cmdArgs.niName].(map[string]interface{}), nil
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
                 }
             case BGP_FRR_JSON_CAHCE_QUERY_TYPE_NBRS:
                 if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_NBRS] ; ok {return value, nil}
-                return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_NBRS:
                 if cmdArgs.afiSafiName == "ipv4" {
                     if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_NBRS] ; ok {return value, nil}
-                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
                 }
             case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_NBRS:
                 if cmdArgs.afiSafiName == "ipv6" {
                     if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_NBRS] ; ok {return value, nil}
-                    return bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS][cmdArgs.niName].(map[string]interface{}), nil
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
                 }
         }
     }
@@ -383,6 +383,29 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
     if inParams.oper == DELETE {
         err = hdl_del_post_xfmr(inParams, data)
         return err
+    } else {
+        retval := hdl_validate_values_post_xfmr(inParams)
+        if (retval != nil) {
+           return retval
+        }
+    }
+
+    /* To check same listen range already configured in other peer-group */
+    if gbl_listen_prefix_map, ok := (*data)["BGP_GLOBALS_LISTEN_PREFIX"]; ok {
+        for key := range gbl_listen_prefix_map {
+            peer_grp, ok := gbl_listen_prefix_map[key].Field["peer_group"]
+            if ok {
+                dbSpec := &db.TableSpec{Name: "BGP_GLOBALS_LISTEN_PREFIX"}
+                dbEntry, _ := inParams.d.GetEntry(dbSpec, db.Key{Comp: []string{key}})
+                peerGrp, ok := dbEntry.Field["peer_group"]
+                if ok && peerGrp != peer_grp {
+                    errStr := "Same listen range is attached to peer-group " + peerGrp
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    log.Error(errStr)
+                    return err
+                }
+            }
+        }
     }
 
     tblName := "BGP_GLOBALS"
@@ -1137,7 +1160,6 @@ var DbToYang_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrDbToYang = func(inParams Xfmr
 	log.Info("DbToYang_bgp_gbl_afi_safi_addr_key_xfmr: rmap:", rmap)
     return rmap, nil
 }
-
 
 var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     log.Info("In rpc_clear_bgp")
