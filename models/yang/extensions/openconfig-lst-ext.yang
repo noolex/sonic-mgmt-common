@@ -10,6 +10,7 @@ module openconfig-lst-ext {
   // imports
   import openconfig-interfaces { prefix oc-if; }
   import openconfig-extensions { prefix oc-ext; }
+  import openconfig-types { prefix "oc-types"; }
 
   // meta
   organization "OpenConfig working group";
@@ -51,6 +52,19 @@ module openconfig-lst-ext {
     base GROUP_TYPE;
     description
       "Groups which track the link state of a layer 3 interface";
+  }
+
+  identity THRESHOLD_TYPE {
+    description
+      "Base identity for threshold types used to bring up or shutdown the 
+      downstream interfaces";
+  }
+
+  identity ONLINE_PERCENTAGE {
+    base THRESHOLD_TYPE;
+    description
+      "Threshold type used is the percentage of upstream ports which are 
+      online";
   }
 
   // typedef statements
@@ -113,11 +127,47 @@ module openconfig-lst-ext {
       description
         "This indicates enable status of the group";
     }
+
+    leaf threshold-type {
+      type identityref {
+          base THRESHOLD_TYPE;
+      }
+      description
+        "Indicates the type of threshold calculation scheme to use.";
+    }
+
+    leaf threshold-up {
+      type decimal64 {
+        fraction-digits 3;
+      }
+      description
+        "The downstream ports will be brought online if the threshold is
+        greater than or equal to this value";
+    }
+
+    leaf threshold-down {
+      type decimal64 {
+        fraction-digits 3;
+      }
+      description
+        "The downstream ports will be shutdown if the threshold falls 
+        below this value.";
+    }
   }
 
   grouping lst-ext-group-state {
     description
       "Link state tracking group operational state";
+
+	leaf bringup-remaining-time {
+	  type uint16 {
+        range "1..1800";
+	  }
+	  units seconds;
+	  description
+	    "This configuration indicates the time remaining to bring up 
+		the downstream ports.";
+	}
   }
 
   grouping lst-ext-group-top {

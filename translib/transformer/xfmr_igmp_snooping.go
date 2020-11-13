@@ -601,7 +601,7 @@ var YangToDb_igmp_snooping_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 }
 
 var DbToYang_igmp_snooping_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-	fmt.Println("DbToYang_igmp_snooping_subtree_xfmr entering => ", inParams)
+    log.Info("DbToYang_igmp_snooping_subtree_xfmr entering => uri:", inParams.uri)
 
 	path, err := getUriPath(inParams.uri)
 
@@ -615,13 +615,13 @@ var DbToYang_igmp_snooping_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 	if err != nil {
 		return err
 	} else if niName != "default" {
-		fmt.Println("DbToYang_igmp_snooping_subtree_xfmr - called with incorrect network-instance - name => ", niName, " and returning error..")
+		//fmt.Println("DbToYang_igmp_snooping_subtree_xfmr - called with incorrect network-instance - name => ", niName, " and returning error..")
 		return tlerr.NotFound("Resource Not Found")
 	}
 
 	reqP := &reqProcessor{&inParams.uri, path, inParams.oper, (*inParams.ygRoot).(*ocbinds.Device), inParams.param, inParams.d, inParams.dbs, nil, nil, nil, nil, nil}
 
-	fmt.Println("DbToYang_igmp_snooping_subtree_xfmr => translateToDb == reqP.uri => ", *reqP.uri)
+	//fmt.Println("DbToYang_igmp_snooping_subtree_xfmr => translateToDb == reqP.uri => ", *reqP.uri)
 
 	if err := reqP.setIGMPSnoopingObjFromReq(); err != nil {
 		return err

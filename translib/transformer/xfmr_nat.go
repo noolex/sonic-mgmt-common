@@ -24,6 +24,7 @@ import (
     "strconv"
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "encoding/json"
@@ -51,6 +52,8 @@ func init() {
     XlateFuncBind("DbToYang_nat_binding_name_field_xfmr", DbToYang_nat_binding_name_field_xfmr)
     XlateFuncBind("YangToDb_nat_ip_field_xfmr", YangToDb_nat_ip_field_xfmr)
     XlateFuncBind("DbToYang_nat_ip_field_xfmr", DbToYang_nat_ip_field_xfmr)
+    XlateFuncBind("YangToDb_nat_port_field_xfmr", YangToDb_nat_port_field_xfmr)
+    XlateFuncBind("DbToYang_nat_port_field_xfmr", DbToYang_nat_port_field_xfmr)
     XlateFuncBind("YangToDb_nat_binding_key_xfmr", YangToDb_nat_binding_key_xfmr)
     XlateFuncBind("DbToYang_nat_binding_key_xfmr", DbToYang_nat_binding_key_xfmr)
     XlateFuncBind("YangToDb_nat_zone_key_xfmr", YangToDb_nat_zone_key_xfmr)
@@ -1323,6 +1326,45 @@ var YangToDb_nat_ip_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     return res_map, nil
 }
 
+var YangToDb_nat_port_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+    var pool_string string
+
+    if inParams.oper == DELETE {
+        pool_string = "";
+    } else {
+        portPtr, _ := inParams.param.(*string)
+        pool_string = *portPtr;
+    }
+
+    res_map["nat_port"] = pool_string
+
+    if pool_string != "" {
+        poolList := strings.Split(pool_string, "-")
+
+        if len(poolList) == 2 {
+                pool1, err := strconv.Atoi(poolList[0])
+                if err != nil {
+                        return res_map, err
+                }
+
+                pool2, err := strconv.Atoi(poolList[1])
+                if err != nil {
+                        return res_map, err
+                }
+
+                if pool1 >= pool2 {
+			errStr := "Invalid nat port range"
+			err = tlerr.InvalidArgsError{Format: errStr}
+			return res_map, err
+                }
+        }
+    }
+
+    return res_map, err
+}
+
 var DbToYang_nat_ip_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     var err error
     result := make(map[string]interface{})
@@ -1342,6 +1384,24 @@ var DbToYang_nat_ip_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
     return result, err
 }
 
+var DbToYang_nat_port_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    tblName := "NAT_POOL"
+    if _, ok := data[tblName]; ok {
+        if _, entOk := data[tblName][inParams.key]; entOk {
+            entry := data[tblName][inParams.key]
+            fldOk := entry.Has("nat_port")
+            if fldOk {
+                portStr := entry.Get("nat_port")
+                result["nat-port"] = portStr
+            }
+        }
+    }
+    return result, err
+}
 
 var YangToDb_nat_binding_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var key string

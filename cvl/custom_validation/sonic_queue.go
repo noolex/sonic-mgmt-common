@@ -26,7 +26,7 @@ import (
 )
 
 const QMIN = 0
-const QMAX = 8
+const QMAX = 7
 const CPU_QMAX = 47
 
 func (t *CustomValidation) ValidateQindexPattern(

@@ -511,7 +511,8 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 
 	if fill_state {
 		var state FlowStateEntry
-		err := fill_policy_class_state_info(policy_name, class_name, intf_name, stage, policy_type, dbs, &state)
+		err := fill_policy_class_state_info(policy_name, class_name, intf_name, stage, policy_type, dbs, &state,
+			policySectionInfo)
 		if err != nil {
 			return err
 		}
@@ -597,7 +598,7 @@ func get_counter_diff(currentVal db.Value, lastVal db.Value, field string) uint6
 }
 
 func fill_policy_class_state_info(policy_name string, class_name string, interface_name string, bind_dir string,
-	policy_type string, dbs [db.MaxDB]*db.DB, state *FlowStateEntry) error {
+	policy_type string, dbs [db.MaxDB]*db.DB, state *FlowStateEntry, policySectionInfo *PolicyFlowEntry) error {
 
 	countersDbPtr := dbs[db.CountersDB]
 
@@ -649,23 +650,44 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 			policer.STATUS = "Inactive"
 		}
 
-		appDbPtr := dbs[db.ApplDB]
-		var POLICER_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICER_TABLE"}
-		var policerTblVal db.Value
-		policerTblVal, err = appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
-		log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
-		if err == nil {
-			policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
-			policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
-			policer.OPERATIONAL_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
-			policer.OPERATIONAL_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
+		if interface_name != "CtrlPlane" {
+			appDbPtr := dbs[db.ApplDB]
+			var POLICER_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICER_TABLE"}
+			var policerTblVal db.Value
+			policerTblVal, err = appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
+			log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
+			if err == nil {
+				policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
+				policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
+				policer.OPERATIONAL_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
+				policer.OPERATIONAL_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
 
-			policer.UNITS = policerTblVal.Field["METER_TYPE"]
-			policer.COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"]
+				policer.UNITS = policerTblVal.Field["METER_TYPE"]
+				policer.COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"]
 
-			policer.CONFORMED_PACKET_ACTION = policerTblVal.Field["GREEN_PACKET_ACTION"]
-			policer.EXCEED_PACKET_ACTION = policerTblVal.Field["YELLOW_PACKET_ACTION"]
-			policer.VIOLATED_PACKET_ACTION = policerTblVal.Field["RED_PACKET_ACTION"]
+				policer.CONFORMED_PACKET_ACTION = policerTblVal.Field["GREEN_PACKET_ACTION"]
+				policer.EXCEED_PACKET_ACTION = policerTblVal.Field["YELLOW_PACKET_ACTION"]
+				policer.VIOLATED_PACKET_ACTION = policerTblVal.Field["RED_PACKET_ACTION"]
+			}
+		} else {
+			// CtrlPlane binding doesnt have info in AppDB
+			if policySectionInfo.SET_POLICER_CIR != nil {
+				policer.OPERATIONAL_CIR = *policySectionInfo.SET_POLICER_CIR
+			}
+			if policySectionInfo.SET_POLICER_CBS != nil {
+				policer.OPERATIONAL_CBS = *policySectionInfo.SET_POLICER_CBS
+			}
+			if policySectionInfo.SET_POLICER_PIR != nil {
+				policer.OPERATIONAL_PIR = *policySectionInfo.SET_POLICER_PIR
+			}
+			if policySectionInfo.SET_POLICER_PBS != nil {
+				policer.OPERATIONAL_PBS = *policySectionInfo.SET_POLICER_PBS
+			}
+			policer.UNITS = "bytes"
+			policer.COLOR_SOURCE = "color-blind"
+			policer.CONFORMED_PACKET_ACTION = "forward"
+			policer.EXCEED_PACKET_ACTION = "forward"
+			policer.VIOLATED_PACKET_ACTION = "drop"
 		}
 		state.POLICER = &policer
 	}
@@ -1121,7 +1143,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 				}
 			}
 
-			log.Infof("Interface:%v Policy:%v Type:%v Stage:%v", interface_name, value, field_splits[1], field_splits[0])
+			log.Infof("Interface:%v Policy:%v Type:%v Stage:%v", key.Comp[0], value, field_splits[1], field_splits[0])
 
 			var POLICY_SECTION_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
 			referingClassKeys, err := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{value, "*"}})

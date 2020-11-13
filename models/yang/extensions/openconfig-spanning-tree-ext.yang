@@ -95,6 +95,7 @@ module openconfig-spanning-tree-ext {
         leaf-list disabled-vlans {
             type union {
                 type oc-vlan-types:vlan-id;
+                type oc-vlan-types:vlan-range;
             }
             description
                 "List of the vlans";
@@ -457,6 +458,14 @@ module openconfig-spanning-tree-ext {
         deviate not-supported;
     }
     deviation /oc-stp:stp/oc-stp:rapid-pvst/oc-stp:vlan/oc-stp:state/oc-stp:hold-count {
+        deviate not-supported;
+    }
+
+    deviation /oc-stp:stp/oc-stp:rapid-pvst/oc-stp:vlan/oc-stp:config/oc-stp-ext:spanning-tree-enable {
+        deviate not-supported;
+    }
+
+    deviation /oc-stp:stp/oc-stp-ext:pvst/oc-stp-ext:vlan/oc-stp-ext:config/oc-stp-ext:spanning-tree-enable {
         deviate not-supported;
     }
 
