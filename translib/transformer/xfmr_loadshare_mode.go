@@ -28,38 +28,38 @@ import (
 )
 
 func init() {
-    XlateFuncBind("YangToDb_loadbalance_mode_ipv4_fld_xfmr", YangToDb_loadbalance_mode_ipv4_fld_xfmr)
-    XlateFuncBind("DbToYang_loadbalance_mode_ipv4_fld_xfmr", DbToYang_loadbalance_mode_ipv4_fld_xfmr)
-    XlateFuncBind("Subscribe_loadbalance_mode_ipv4_fld_xfmr", Subscribe_loadbalance_mode_ipv4_fld_xfmr)
-    XlateFuncBind("YangToDb_loadbalance_mode_ipv6_fld_xfmr", YangToDb_loadbalance_mode_ipv6_fld_xfmr)
-    XlateFuncBind("DbToYang_loadbalance_mode_ipv6_fld_xfmr", DbToYang_loadbalance_mode_ipv6_fld_xfmr)
-    XlateFuncBind("Subscribe_loadbalance_mode_ipv6_fld_xfmr", Subscribe_loadbalance_mode_ipv6_fld_xfmr)
-    XlateFuncBind("YangToDb_loadbalance_mode_seed_fld_xfmr", YangToDb_loadbalance_mode_seed_fld_xfmr)
-    XlateFuncBind("DbToYang_loadbalance_mode_seed_fld_xfmr", DbToYang_loadbalance_mode_seed_fld_xfmr)
-    XlateFuncBind("Subscribe_loadbalance_mode_seed_fld_xfmr", Subscribe_loadbalance_mode_seed_fld_xfmr)
-    XlateFuncBind("DbToYang_loadbalance_mode_state_xfmr", DbToYang_loadbalance_mode_state_xfmr)
-    XlateFuncBind("loadbalance_seed_table_xfmr", loadbalance_seed_table_xfmr)
+    XlateFuncBind("YangToDb_loadshare_mode_ipv4_fld_xfmr", YangToDb_loadshare_mode_ipv4_fld_xfmr)
+    XlateFuncBind("DbToYang_loadshare_mode_ipv4_fld_xfmr", DbToYang_loadshare_mode_ipv4_fld_xfmr)
+    XlateFuncBind("Subscribe_loadshare_mode_ipv4_fld_xfmr", Subscribe_loadshare_mode_ipv4_fld_xfmr)
+    XlateFuncBind("YangToDb_loadshare_mode_ipv6_fld_xfmr", YangToDb_loadshare_mode_ipv6_fld_xfmr)
+    XlateFuncBind("DbToYang_loadshare_mode_ipv6_fld_xfmr", DbToYang_loadshare_mode_ipv6_fld_xfmr)
+    XlateFuncBind("Subscribe_loadshare_mode_ipv6_fld_xfmr", Subscribe_loadshare_mode_ipv6_fld_xfmr)
+    XlateFuncBind("YangToDb_loadshare_mode_seed_fld_xfmr", YangToDb_loadshare_mode_seed_fld_xfmr)
+    XlateFuncBind("DbToYang_loadshare_mode_seed_fld_xfmr", DbToYang_loadshare_mode_seed_fld_xfmr)
+    XlateFuncBind("Subscribe_loadshare_mode_seed_fld_xfmr", Subscribe_loadshare_mode_seed_fld_xfmr)
+    XlateFuncBind("DbToYang_loadshare_mode_state_xfmr", DbToYang_loadshare_mode_state_xfmr)
+    XlateFuncBind("loadshare_seed_table_xfmr", loadshare_seed_table_xfmr)
 }
 
-type LoadbalanceModeHistoryEntry struct {
+type LoadshareModeHistoryEntry struct {
     Timestamp   string    `json:"timestamp"`
     Event       string    `json:"event,omitempty"`
 }
 
-var YangToDb_loadbalance_mode_ipv4_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+var YangToDb_loadshare_mode_ipv4_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
     var err error
-    log.Info("YangToDb_loadbalance_mode_ipv4_fld_xfmr: ", inParams.key)
+    log.Info("YangToDb_loadshare_mode_ipv4_fld_xfmr: ", inParams.key)
 
     return res_map, err
 }
 
-var DbToYang_loadbalance_mode_ipv4_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+var DbToYang_loadshare_mode_ipv4_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     var err error
     result := make(map[string]interface{})
-    log.Info("DbToYang_loadbalance_mode_ipv4_fld_xfmr: ", inParams.key)
+    log.Info("DbToYang_loadshare_mode_ipv4_fld_xfmr: ", inParams.key)
     cdb := inParams.dbs[db.ConfigDB]
-    lbEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "ECMP_LOADBALANCE_TABLE_IPV4"}, db.Key{Comp: []string{inParams.key}})
+    lbEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "ECMP_LOADSHARE_TABLE_IPV4"}, db.Key{Comp: []string{inParams.key}})
     ipv4 := lbEntry.Get("ipv4")
 	
     result["ipv4"] = &ipv4
@@ -67,7 +67,7 @@ var DbToYang_loadbalance_mode_ipv4_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
     return result, err
 }
 
-var Subscribe_loadbalance_mode_ipv4_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+var Subscribe_loadshare_mode_ipv4_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
     var tableName string
@@ -75,13 +75,13 @@ var Subscribe_loadbalance_mode_ipv4_fld_xfmr SubTreeXfmrSubscribe = func (inPara
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
-    tableName = "ECMP_LOADBALANCE_TABLE_IPV4"
+    tableName = "ECMP_LOADSHARE_TABLE_IPV4"
     Id := pathInfo.Var("ipv4")
 
     log.Info("redisKey:", Id)
 
     result.dbDataMap = make(RedisDbMap)
-    log.Infof("Subscribe_loadbalance_mode_ipv4_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+    log.Infof("Subscribe_loadshare_mode_ipv4_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, Id)
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
@@ -93,21 +93,21 @@ var Subscribe_loadbalance_mode_ipv4_fld_xfmr SubTreeXfmrSubscribe = func (inPara
     return result, err
 }
 
-var YangToDb_loadbalance_mode_ipv6_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+var YangToDb_loadshare_mode_ipv6_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
     var err error
-    log.Info("YangToDb_loadbalance_mode_ipv6_fld_xfmr: ", inParams.key)
+    log.Info("YangToDb_loadshare_mode_ipv6_fld_xfmr: ", inParams.key)
 
     return res_map, err
 }
 
-var DbToYang_loadbalance_mode_ipv6_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+var DbToYang_loadshare_mode_ipv6_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     var err error
     result := make(map[string]interface{})
-    log.Info("DbToYang_loadbalance_mode_ipv6_fld_xfmr: ", inParams.key)
+    log.Info("DbToYang_loadshare_mode_ipv6_fld_xfmr: ", inParams.key)
 
     cdb := inParams.dbs[db.ConfigDB]
-    lbEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "ECMP_LOADBALANCE_TABLE_IPV6"}, db.Key{Comp: []string{inParams.key}})
+    lbEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "ECMP_LOADSHARE_TABLE_IPV6"}, db.Key{Comp: []string{inParams.key}})
     ipv6 := lbEntry.Get("ipv6")
 	
     result["ipv6"] = &ipv6
@@ -115,7 +115,7 @@ var DbToYang_loadbalance_mode_ipv6_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
     return result, err
 }
 
-var Subscribe_loadbalance_mode_ipv6_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+var Subscribe_loadshare_mode_ipv6_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
     var tableName string
@@ -123,13 +123,13 @@ var Subscribe_loadbalance_mode_ipv6_fld_xfmr SubTreeXfmrSubscribe = func (inPara
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
-    tableName = "ECMP_LOADBALANCE_TABLE_IPV6"
+    tableName = "ECMP_LOADSHARE_TABLE_IPV6"
     Id := pathInfo.Var("ipv6")
 
     log.Info("redisKey:", Id)
 
     result.dbDataMap = make(RedisDbMap)
-    log.Infof("Subscribe_loadbalance_mode_ipv6_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+    log.Infof("Subscribe_loadshare_mode_ipv6_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, Id)
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
@@ -141,22 +141,22 @@ var Subscribe_loadbalance_mode_ipv6_fld_xfmr SubTreeXfmrSubscribe = func (inPara
     return result, err
 }
 
-var YangToDb_loadbalance_mode_seed_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+var YangToDb_loadshare_mode_seed_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)
     var err error
-    log.Info("YangToDb_loadbalance_mode_seed_fld_xfmr: ", inParams.key)
+    log.Info("YangToDb_loadshare_mode_seed_fld_xfmr: ", inParams.key)
 
 
     return res_map, err
 }
 
-var DbToYang_loadbalance_mode_seed_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+var DbToYang_loadshare_mode_seed_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     var err error
     result := make(map[string]interface{})
-    log.Info("DbToYang_loadbalance_mode_seed_fld_xfmr: ", inParams.key)
+    log.Info("DbToYang_loadshare_mode_seed_fld_xfmr: ", inParams.key)
 
     cdb := inParams.dbs[db.ConfigDB]
-    lbEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "ECMP_LOADBALANCE_TABLE_SEED"}, db.Key{Comp: []string{inParams.key}})
+    lbEntry, _ := cdb.GetEntry(&db.TableSpec{Name: "ECMP_LOADSHARE_TABLE_SEED"}, db.Key{Comp: []string{inParams.key}})
     seed := lbEntry.Get("hash")
 	
     result["hash"] = &seed
@@ -164,7 +164,7 @@ var DbToYang_loadbalance_mode_seed_fld_xfmr FieldXfmrDbtoYang = func(inParams Xf
     return result, err
 }
 
-var Subscribe_loadbalance_mode_seed_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+var Subscribe_loadshare_mode_seed_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
     var tableName string
@@ -172,13 +172,13 @@ var Subscribe_loadbalance_mode_seed_fld_xfmr SubTreeXfmrSubscribe = func (inPara
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
-    tableName = "ECMP_LOADBALANCE_TABLE_SEED"
+    tableName = "ECMP_LOADSHARE_TABLE_SEED"
     Id := pathInfo.Var("hash")
 
     log.Info("redisKey:", Id)
 
     result.dbDataMap = make(RedisDbMap)
-    log.Infof("Subscribe_loadbalance_mode_hash_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
+    log.Infof("Subscribe_loadshare_mode_hash_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, Id)
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
@@ -190,7 +190,7 @@ var Subscribe_loadbalance_mode_seed_fld_xfmr SubTreeXfmrSubscribe = func (inPara
     return result, err
 }
 
-var DbToYang_loadbalance_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+var DbToYang_loadshare_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -205,15 +205,15 @@ var DbToYang_loadbalance_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     switchKeyStr := "switch"
     entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"SWITCH_TABLE"}, db.Key{Comp: []string{switchKeyStr}})
     if dbErr != nil || len(entry.Field) == 0 {
-        log.Error("DbToYang_loadbalance_mode_state_xfmr: App-DB get neighbor entry failed neighKeyStr:", switchKeyStr)
+        log.Error("DbToYang_loadshare_mode_state_xfmr: App-DB get neighbor entry failed neighKeyStr:", switchKeyStr)
         return err
     }
 
     if len(v4KeyRecvd) > 0 {
-        var lbIpv4AttrsObj *ocbinds.OpenconfigLoadbalanceModeExt_Ipv4Attrs
-        var lbIpv4AttrObj *ocbinds.OpenconfigLoadbalanceModeExt_Ipv4Attrs_Ipv4Attr
+        var lbIpv4AttrsObj *ocbinds.OpenconfigLoadshareModeExt_Ipv4Attrs
+        var lbIpv4AttrObj *ocbinds.OpenconfigLoadshareModeExt_Ipv4Attrs_Ipv4Attr
         lbIpv4AttrsObj = deviceObj.Ipv4Attrs
-        log.Info("DbToYang_loadbalance_mode_state_xfmr: ecmp_hash_fields_ipv4 ",entry.Field["ecmp_hash_fields_ipv4"])
+        log.Info("DbToYang_loadshare_mode_state_xfmr: ecmp_hash_fields_ipv4 ",entry.Field["ecmp_hash_fields_ipv4"])
 
         ygot.BuildEmptyTree(lbIpv4AttrsObj)
         if lbIpv4AttrsObj != nil && lbIpv4AttrsObj.Ipv4Attr != nil && len(lbIpv4AttrsObj.Ipv4Attr) > 0 {
@@ -250,10 +250,10 @@ var DbToYang_loadbalance_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     }
 
     if len(v6KeyRecvd) > 0 {
-        var lbIpv6AttrsObj *ocbinds.OpenconfigLoadbalanceModeExt_Ipv6Attrs
-        var lbIpv6AttrObj *ocbinds.OpenconfigLoadbalanceModeExt_Ipv6Attrs_Ipv6Attr
+        var lbIpv6AttrsObj *ocbinds.OpenconfigLoadshareModeExt_Ipv6Attrs
+        var lbIpv6AttrObj *ocbinds.OpenconfigLoadshareModeExt_Ipv6Attrs_Ipv6Attr
         lbIpv6AttrsObj = deviceObj.Ipv6Attrs
-        log.Info("DbToYang_loadbalance_mode_state_xfmr: ecmp_hash_fields_ipv6 ",entry.Field["ecmp_hash_fields_ipv6"])
+        log.Info("DbToYang_loadshare_mode_state_xfmr: ecmp_hash_fields_ipv6 ",entry.Field["ecmp_hash_fields_ipv6"])
 
         ygot.BuildEmptyTree(lbIpv6AttrsObj)
 
@@ -290,10 +290,10 @@ var DbToYang_loadbalance_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     }
 
     if len(hashKeyRecvd) > 0 {
-        var lbSeedAttrsObj *ocbinds.OpenconfigLoadbalanceModeExt_SeedAttrs
-        var lbSeedAttrObj *ocbinds.OpenconfigLoadbalanceModeExt_SeedAttrs_SeedAttr
+        var lbSeedAttrsObj *ocbinds.OpenconfigLoadshareModeExt_SeedAttrs
+        var lbSeedAttrObj *ocbinds.OpenconfigLoadshareModeExt_SeedAttrs_SeedAttr
         lbSeedAttrsObj = deviceObj.SeedAttrs
-        log.Info("DbToYang_loadbalance_mode_state_xfmr: ecmp_hash_fields_seed ",entry.Field["ecmp_hash_fields_ipv4"])
+        log.Info("DbToYang_loadshare_mode_state_xfmr: ecmp_hash_fields_seed ",entry.Field["ecmp_hash_fields_ipv4"])
 
         ygot.BuildEmptyTree(lbSeedAttrsObj)
         if lbSeedAttrsObj != nil && lbSeedAttrsObj.SeedAttr != nil && len(lbSeedAttrsObj.SeedAttr) > 0 {
@@ -379,20 +379,20 @@ func get_lb_seed_cfg_tbl_entry (inParams XfmrParams, tableName string) (bool) {
 
 
 
-var loadbalance_seed_table_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
+var loadshare_seed_table_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList []string
     var key string
 
-    log.Info("loadbalance_seed_table_xfmr Enter")
+    log.Info("loadshare_seed_table_xfmr Enter")
 
-    tblList = append(tblList, "ECMP_LOADBALANCE_TABLE_SEED")
+    tblList = append(tblList, "ECMP_LOADSHARE_TABLE_SEED")
     key = "hash"
     if (inParams.dbDataMap != nil) {
-        if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADBALANCE_TABLE_SEED"]; !ok {
-                    (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADBALANCE_TABLE_SEED"] = make(map[string]db.Value)
+        if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADSHARE_TABLE_SEED"]; !ok {
+                    (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADSHARE_TABLE_SEED"] = make(map[string]db.Value)
         }
     } else {
-        if found := get_lb_seed_cfg_tbl_entry(inParams, "ECMP_LOADBALANCE_TABLE_SEED") ; !found {
+        if found := get_lb_seed_cfg_tbl_entry(inParams, "ECMP_LOADSHARE_TABLE_SEED") ; !found {
             if (nil != inParams.isVirtualTbl) {
                 *inParams.isVirtualTbl = true
             }
@@ -400,8 +400,8 @@ var loadbalance_seed_table_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]s
         return tblList,nil
     }
 
-    if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADBALANCE_TABLE_SEED"][key]; !ok {
-        (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADBALANCE_TABLE_SEED"][key] = db.Value{Field: make(map[string]string)}
+    if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADSHARE_TABLE_SEED"][key]; !ok {
+        (*inParams.dbDataMap)[db.ConfigDB]["ECMP_LOADSHARE_TABLE_SEED"][key] = db.Value{Field: make(map[string]string)}
     }
     return tblList, nil
 }

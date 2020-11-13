@@ -69,6 +69,8 @@ func init() {
     XlateFuncBind("stp_pre_xfmr", stp_pre_xfmr)
 }
 
+var g_stpSupported interface{}
+
 func is_stp_feature_supported() bool {
     var applDbPtr, _ = db.NewDB(getDBOptions(db.ApplDB))
     defer applDbPtr.DeleteDB()	
@@ -83,8 +85,12 @@ func is_stp_feature_supported() bool {
 
 
 var stp_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
-    if !is_stp_feature_supported() {
-        return tlerr.InvalidArgs("Spanning-tree is not supported with this software package")
+    if g_stpSupported == nil {
+        g_stpSupported = is_stp_feature_supported()
+    }
+
+    if g_stpSupported == false {
+        return tlerr.NotSupported("Spanning-tree is not supported with this software package")
     }
     return nil
 }
