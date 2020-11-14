@@ -1,0 +1,309 @@
+submodule openconfig-fbs-next-hop-group-ext {
+  belongs-to openconfig-fbs-ext {
+    prefix oc-fbs-ext;
+  }
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-interfaces { prefix oc-if; }
+
+  include openconfig-fbs-types-ext;
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC
+    https://github.com/Azure/SONiC";
+
+  description
+    "This model defines the configuration and operational data
+    for flow based services next-hop groups.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-11-02" {
+    description
+      "Initial revision";
+
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  // typedef statements
+
+  // grouping statements
+  grouping fbs-ext-next-hop-group-member-config {
+    description
+      "Grouping for next-hop related configuration";
+
+    leaf ip-address {
+      type oc-inet:ip-address;
+
+      description
+        "When an IP next-hop is specified in the next-hop field,
+        packets matching the match criteria for the forwarding rule
+        should be forwarded to the next-hop IP address, bypassing any
+        lookup on the local system.";
+    }
+
+    leaf network-instance {
+      type string;
+
+      description
+        "When this leaf is set, packets matching the match criteria
+        for the forwarding rule should be looked up in the
+        network-instance that is referenced rather than the
+        network-instance with which the interface is associated.
+        Such configuration allows policy-routing into multiple
+        sub-topologies from a single ingress access interface, or
+        different send and receive contexts for a particular
+        interface (sometimes referred to as half-duplex VRF).";
+    }
+
+    leaf entry-id {
+      type uint16;
+
+      description
+        "This leaf indicates the location of this next-hop in the
+        next-hop group.";
+    }
+
+    leaf next-hop-type {
+      type identityref {
+        base NEXT_HOP_TYPE;
+      }
+
+      description
+        "TODO";
+    }
+  }
+
+  grouping fbs-ext-next-hop-group-member-state {
+    description
+      "Grouping for next-hop group related operational state";
+
+    leaf active {
+      type boolean;
+
+      description
+        "Indicates if the next-hop is used for forwarding.";
+    }
+  }
+
+  grouping fbs-ext-next-hop-group-members-top {
+    description
+      "Grouping for next-hop group members config and operational state";
+
+    container next-hops {
+      description
+        "Container for next-hop group members";
+
+      list next-hop {
+        key "entry-id";
+
+        description
+          "List of next-hops configured for forwarding";
+
+        leaf entry-id {
+          type leafref {
+            path "../config/entry-id";
+          }
+
+          description
+            "Reference to the entry id used as key";
+        }
+
+        container config {
+          description
+            "Classifier match acl related configuration";
+
+          uses fbs-ext-next-hop-group-member-config;
+        }
+
+        container state {
+          config false;
+
+          description
+            "Classifier match acl operational state";
+
+          uses fbs-ext-next-hop-group-member-config;
+        }
+      }
+    }
+  }
+
+  grouping fbs-ext-next-hop-group-interfaces-config {
+    description
+      "Configuration data for interface references";
+
+    leaf id {
+      type oc-if:interface-id;
+      description
+        "User-defined identifier for the interface -- a common
+        convention could be '<if name>.<subif index>'";
+    }
+  }
+
+  grouping fbs-ext-next-hop-group-interfaces-state {
+    description
+      "Operational state data for interface references";
+  }
+
+  grouping fbs-ext-next-hop-group-members-state {
+    description
+      "Operational state data for next-hop group members";
+
+    container next-hops {
+      config false;
+
+      description
+        "TODO";
+
+      list next-hop {
+        key "entry-id";
+
+        description
+          "List of next-hops configured for forwarding";
+
+        leaf entry-id {
+          type leafref {
+            path "../state/entry-id";
+          }
+
+          description
+            "Reference to the entry id used as key";
+        }
+
+        container state {
+          config false;
+
+          description
+            "TODO";
+
+          uses fbs-ext-next-hop-group-member-config;
+          uses fbs-ext-next-hop-group-member-state;
+        }
+      }
+    }
+  }
+
+  grouping fbs-ext-next-hop-group-config {
+    description
+      "Classifier config";
+
+    leaf name {
+      type string;
+
+      description
+        "Next hop group name";
+    }
+
+    leaf group-type {
+      type identityref {
+        base NEXT_HOP_GROUP_TYPE;
+      }
+
+      description
+        "Next hop group type";
+    }
+
+    leaf description {
+      type string;
+
+      description
+        "Next hop group description";
+    }
+
+    leaf threshold-type {
+      type identityref {
+        base NEXT_HOP_GROUP_THRESHOLD_TYPE;
+      }
+
+      description
+        "Indicates the threshold type to apply threshold-up and threshold-down 
+         configuration";
+    }
+
+    leaf threshold-up {
+      type uint8;
+      description
+        "Minimum number of next-hop group members to be reachable for this
+        group to be used for forwarding";
+    }
+
+    leaf threshold-down {
+      type uint8;
+      description
+        "Number of next-hop group members to be reachable or below which this
+        group will not be used for forwarding";
+    }
+  }
+
+  grouping fbs-ext-next-hop-group-state {
+    description
+      "Next-hop group operational state";
+  }
+
+  grouping fbs-ext-next-hop-groups-top {
+    description
+      "Next-hop groups top container";
+
+    container next-hop-groups {
+      description
+        "Container enclosing all next-hop groups configuration";
+
+      list next-hop-group {
+        key "group-name";
+
+        description
+          "List of next-hop groups. Each group contains information
+          about the group type, member next-hops etc";
+
+        leaf group-name {
+          type leafref {
+            path ../config/name;
+          }
+
+          description
+            "Name of the next-hop group";
+        }
+
+        container config {
+          description
+            "Classifier config";
+
+          uses fbs-ext-next-hop-group-config;
+        }
+
+        container state {
+          config false;
+
+          description
+            "Classifier operational state";
+
+          uses fbs-ext-next-hop-group-config;
+          uses fbs-ext-next-hop-group-state;
+        }
+
+        uses fbs-ext-next-hop-group-members-top;
+      }
+    }
+  }
+
+  // data definition statements
+
+  // augment statements
+
+  // rpc statements
+
+  // notification statements
+
+}
+

@@ -827,7 +827,7 @@ func getModelChildInfo(l *YParserListInfo, node *C.struct_lys_node,
 
 			//Check for must expression; one must expession only per leaf
 			if (sleaf.must_size > 0) {
-				must := (*[10]C.struct_lys_restr)(unsafe.Pointer(sleaf.must))
+				must := (*[20]C.struct_lys_restr)(unsafe.Pointer(sleaf.must))
 				for  idx := 0; idx < int(sleaf.must_size); idx++ {
 					exp := XpathExpression{Expr: C.GoString(must[idx].expr)}
 

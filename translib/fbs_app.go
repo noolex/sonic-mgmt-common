@@ -27,6 +27,7 @@ import (
 	"math"
 	"net"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -40,26 +41,26 @@ import (
 )
 
 const (
-	SONIC_CLASS_MATCH_TYPE_ACL    = "ACL"
-	SONIC_CLASS_MATCH_TYPE_FIELDS = "FIELDS"
-	SONIC_POLICY_TYPE_QOS         = "QOS"
-	SONIC_POLICY_TYPE_FORWARDING  = "FORWARDING"
-	SONIC_POLICY_TYPE_MONITORING  = "MONITORING"
-	SONIC_PACKET_ACTION_DROP      = "DROP"
-	CFG_CLASSIFIER_TABLE          = "CLASSIFIER_TABLE"
-	CFG_POLICY_TABLE              = "POLICY_TABLE"
-	CFG_POLICY_SECTIONS_TABLE     = "POLICY_SECTIONS_TABLE"
-	CFG_POLICY_BINDING_TABLE      = "POLICY_BINDING_TABLE"
-	APP_POLICER_TABLE             = "POLICER_TABLE"
-	PBF_GROUP_TABLE               = "PBF_GROUP_TABLE"
-	FBS_COUNTERS_TABLE            = "FBS_COUNTERS"
-	LAST_FBS_COUNTERS_TABLE       = "LAST_FBS_COUNTERS"
-	POLICER_COUNTERS_TABLE        = "POLICER_COUNTERS"
-	LAST_POLICER_COUNTERS_TABLE   = "LAST_POLICER_COUNTERS"
-
-//	OPENCONFIG_ACL_TYPE_IPV4      = "ACL_IPV4"
-//	OPENCONFIG_ACL_TYPE_IPV6      = "ACL_IPV6"
-//	OPENCONFIG_ACL_TYPE_L2        = "ACL_L2"
+	SONIC_CLASS_MATCH_TYPE_ACL     = "ACL"
+	SONIC_CLASS_MATCH_TYPE_FIELDS  = "FIELDS"
+	SONIC_POLICY_TYPE_QOS          = "QOS"
+	SONIC_POLICY_TYPE_FORWARDING   = "FORWARDING"
+	SONIC_POLICY_TYPE_MONITORING   = "MONITORING"
+	SONIC_PACKET_ACTION_DROP       = "DROP"
+	SONIC_NH_GROUP_TYPE_IPV4       = "IPV4"
+	SONIC_NH_GROUP_TYPE_IPV6       = "IPV6"
+	CFG_CLASSIFIER_TABLE           = "CLASSIFIER_TABLE"
+	CFG_POLICY_TABLE               = "POLICY_TABLE"
+	CFG_POLICY_SECTIONS_TABLE      = "POLICY_SECTIONS_TABLE"
+	CFG_POLICY_BINDING_TABLE       = "POLICY_BINDING_TABLE"
+	APP_POLICER_TABLE              = "POLICER_TABLE"
+	PBF_GROUP_TABLE                = "PBF_GROUP_TABLE"
+	FBS_COUNTERS_TABLE             = "FBS_COUNTERS"
+	LAST_FBS_COUNTERS_TABLE        = "LAST_FBS_COUNTERS"
+	POLICER_COUNTERS_TABLE         = "POLICER_COUNTERS"
+	LAST_POLICER_COUNTERS_TABLE    = "LAST_POLICER_COUNTERS"
+	CFG_PBF_NEXT_HOP_GROUP_TABLE   = "PBF_NEXTHOP_GROUP_TABLE"
+	STATE_PBF_NEXT_HOP_GROUP_TABLE = "PBF_NEXTHOP_GROUP_TABLE"
 )
 
 type FbsFwdCountersEntry struct {
@@ -74,6 +75,8 @@ type FbsFlowForwardingStateEntry struct {
 	IpAddress       *string `path:"ip-address" module:"openconfig-fbs-ext"`
 	NetworkInstance *string `path:"network-instance" module:"openconfig-fbs-ext"`
 	Discard         *bool   `path:"discard" module:"openconfig-fbs-ext"`
+	GroupName       *string
+	GrpType         *string
 
 	fbsFlowState FbsFwdCountersEntry //MatchedOctets,MatchedPackets, Active
 }
@@ -108,6 +111,11 @@ var fbsCntrTblTs *db.TableSpec = &db.TableSpec{Name: FBS_COUNTERS_TABLE}
 var lastFbsCntrTblTs *db.TableSpec = &db.TableSpec{Name: LAST_FBS_COUNTERS_TABLE}
 var policerCtrTbl *db.TableSpec = &db.TableSpec{Name: POLICER_COUNTERS_TABLE}
 var lastPolicerCtrTbl *db.TableSpec = &db.TableSpec{Name: LAST_POLICER_COUNTERS_TABLE}
+var pbfNextHopGrpTblTs *db.TableSpec = &db.TableSpec{Name: CFG_PBF_NEXT_HOP_GROUP_TABLE}
+var interfaceTblTs *db.TableSpec = &db.TableSpec{Name: "INTERFACE"}
+var vlanInterfaceTblTs *db.TableSpec = &db.TableSpec{Name: "VLAN_INTERFACE"}
+var portChannelInterfaceTblTs *db.TableSpec = &db.TableSpec{Name: "PORTCHANNEL_INTERFACE"}
+var pbfNextHopGrpStTblTs *db.TableSpec = &db.TableSpec{Name: STATE_PBF_NEXT_HOP_GROUP_TABLE}
 
 type FbsApp struct {
 	pathInfo   *PathInfo
@@ -118,11 +126,14 @@ type FbsApp struct {
 	policyMapTable     map[string]*db.Value
 	policySectionTable map[string]*db.Value
 	policyBindingTable map[string]*db.Value
+	pbfNextHopGrpTable map[string]*db.Value
 
-	classMapCache      map[string]db.Value
-	policyMapCache     map[string]db.Value
-	policySectionCache map[string]db.Value
-	policyBindingCache map[string]db.Value
+	classMapCache           map[string]db.Value
+	policyMapCache          map[string]db.Value
+	policySectionCache      map[string]db.Value
+	policyBindingCache      map[string]db.Value
+	pbfNextHopGrpCache      map[string]db.Value
+	pbfNextHopGrpStateCache map[string]db.Value
 }
 
 var fbsAppInfo appInfo = appInfo{appType: reflect.TypeOf(FbsApp{}),
@@ -156,11 +167,14 @@ func (app *FbsApp) initialize(data appData) {
 	app.policyMapTable = make(map[string]*db.Value)
 	app.policySectionTable = make(map[string]*db.Value)
 	app.policyBindingTable = make(map[string]*db.Value)
+	app.pbfNextHopGrpTable = make(map[string]*db.Value)
 
 	app.classMapCache = make(map[string]db.Value)
 	app.policyMapCache = make(map[string]db.Value)
 	app.policySectionCache = make(map[string]db.Value)
 	app.policyBindingCache = make(map[string]db.Value)
+	app.pbfNextHopGrpCache = make(map[string]db.Value)
+	app.pbfNextHopGrpStateCache = make(map[string]db.Value)
 
 	log.Infof("FbsApp:: Path:%v", app.pathInfo.Path)
 	log.Infof("FbsApp:: Template:%v", app.pathInfo.Template)
@@ -319,13 +333,18 @@ func (app *FbsApp) translateCU(d *db.DB, opcode int) error {
 		return app.translateCUPolicy(d, opcode)
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces") {
 		return app.translateCUInterface(d, opcode)
+	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/next-hop-groups") {
+		return app.translateCUNextHopGroups(d, opcode)
 	} else {
-		err := app.translateCUInterface(d, opcode)
+		err := app.translateCUNextHopGroups(d, opcode)
+		if err == nil {
+			err = app.translateCUInterface(d, opcode)
+		}
 		if err == nil {
 			err = app.translateCUPolicy(d, opcode)
 		}
 		if err == nil {
-			app.translateCUClassifier(d, opcode)
+			err = app.translateCUClassifier(d, opcode)
 		}
 		return err
 	}
@@ -359,11 +378,13 @@ func (app *FbsApp) translateRep(d *db.DB) error {
 	app.policyMapTable = delData.policyMapTable
 	app.policySectionTable = delData.policySectionTable
 	app.policyBindingTable = delData.policyBindingTable
+	app.pbfNextHopGrpTable = delData.pbfNextHopGrpTable
 
 	app.classMapCache = delData.classMapCache
 	app.policyMapCache = delData.policyMapCache
 	app.policySectionCache = delData.policySectionCache
 	app.policyBindingCache = delData.policyBindingCache
+	app.pbfNextHopGrpCache = delData.pbfNextHopGrpCache
 
 	err = app.translateCU(d, UPDATE)
 	return err
@@ -379,13 +400,18 @@ func (app *FbsApp) translateDel(d *db.DB) error {
 		err = app.translateDelPolicy(d)
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces") {
 		err = app.translateDelInterface(d)
+	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/next-hop-groups") {
+		err = app.translateDelNextHopGroups(d)
 	} else {
 		err = app.translateDelInterface(d)
 		if err == nil {
 			err = app.translateDelPolicy(d)
 		}
 		if err == nil {
-			app.translateDelClassifier(d)
+			err = app.translateDelClassifier(d)
+		}
+		if err == nil {
+			err = app.translateDelNextHopGroups(d)
 		}
 	}
 
@@ -792,7 +818,7 @@ func (app *FbsApp) translateCUPolicy(d *db.DB, opcode int) error {
 							}
 						}
 						if len(egressIfs) > 0 {
-							sectionDbV.SetList("SET_INTERFACE", pruneEgressWithHighestPriority(egressIfs))
+							sectionDbV.SetList("SET_INTERFACE", pruneForwardingEntries(egressIfs))
 						}
 					} //EgressInterfaces - END
 
@@ -826,12 +852,39 @@ func (app *FbsApp) translateCUPolicy(d *db.DB, opcode int) error {
 							}
 						}
 						if len(v4NextHops) > 0 {
-							sectionDbV.SetList("SET_IP_NEXTHOP", pruneEgressWithHighestPriority(v4NextHops))
+							sectionDbV.SetList("SET_IP_NEXTHOP", pruneForwardingEntries(v4NextHops))
 						}
 						if len(v6NextHops) > 0 {
-							sectionDbV.SetList("SET_IPV6_NEXTHOP", pruneEgressWithHighestPriority(v6NextHops))
+							sectionDbV.SetList("SET_IPV6_NEXTHOP", pruneForwardingEntries(v6NextHops))
 						}
 					} //Nexthops - END
+
+					if policySectionVal.Forwarding.NextHopGroups != nil && len(policySectionVal.Forwarding.NextHopGroups.NextHopGroup) > 0 {
+						log.Infof("Processing Nexthop groups")
+						v4NextHopGrps := sectionDbV.GetList("SET_IP_NEXTHOP_GROUP")
+						v6NextHopGrps := sectionDbV.GetList("SET_IPV6_NEXTHOP_GROUP")
+						for _, nhopGrpPtr := range policySectionVal.Forwarding.NextHopGroups.NextHopGroup {
+							nhopGrpDbStr := *nhopGrpPtr.Config.GroupName
+							if nhopGrpPtr.Config.Priority != nil {
+								nhopGrpDbStr = nhopGrpDbStr + "|" + strconv.FormatInt(int64(*nhopGrpPtr.Config.Priority), 10)
+							} else {
+								nhopGrpDbStr = nhopGrpDbStr + "|"
+							}
+							if nhopGrpPtr.Config.GroupType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV4 {
+								v4NextHopGrps = append(v4NextHopGrps, nhopGrpDbStr)
+							} else if nhopGrpPtr.Config.GroupType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV6 {
+								v6NextHopGrps = append(v6NextHopGrps, nhopGrpDbStr)
+							} else {
+								return tlerr.InvalidArgs("Group type for %v not specified in policy %v and class %v", *nhopGrpPtr.Config.GroupName, policyName, className)
+							}
+						}
+						if len(v4NextHopGrps) > 0 {
+							sectionDbV.SetList("SET_IP_NEXTHOP_GROUP", pruneForwardingEntries(v4NextHopGrps))
+						}
+						if len(v6NextHopGrps) > 0 {
+							sectionDbV.SetList("SET_IPV6_NEXTHOP_GROUP", pruneForwardingEntries(v6NextHopGrps))
+						}
+					} //NextHopGroups - END
 				} else if policySectionVal.Qos != nil { //QOS - START
 					if policySectionVal.Qos.Policer != nil {
 						if policySectionVal.Qos.Policer.Config != nil {
@@ -976,6 +1029,166 @@ func (app *FbsApp) translateCUInterface(d *db.DB, opcode int) error {
 			app.policyBindingTable[nativeName] = &polBindDbV
 		} //Fbs Interfaces forloop - END
 	}
+
+	return nil
+}
+
+func (app *FbsApp) translateCUNextHopGroups(d *db.DB, opcode int) error {
+	fbsObj := app.getAppRootObject()
+
+	if nil == fbsObj.NextHopGroups || len(fbsObj.NextHopGroups.NextHopGroup) == 0 {
+		log.Info("No next hop groups data to translate")
+		return nil
+	}
+
+	// for Create request, if the URI is pointing to level above next-hop-group, validation is needed to make sure
+	// It does not exist. for URI below next-hop-group make sure the next-hop-group exists.
+	groupSpecific := isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/next-hop-groups/next-hop-group{}")
+	nhSpecific := isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/next-hop-groups/next-hop-group{}/next-hops/next-hop{}/")
+	log.Infof("Translating next-hop groups. Group specific %v NH specific %v", groupSpecific, nhSpecific)
+
+	for groupName, groupVal := range fbsObj.NextHopGroups.NextHopGroup {
+		log.Infof("Processing CU for group %v", groupName)
+
+		dbV := db.Value{Field: make(map[string]string)}
+		oldDbV, found := app.pbfNextHopGrpTable[groupName]
+		if !found {
+			log.Infof("NHGroup %v does not exist in the processed data", groupName)
+			oldDbV, err := app.getNextHopGroupEntryFromDB(d, groupName)
+			if err != nil {
+				log.Info(err)
+				if isNotFoundError(err) {
+					if groupSpecific && opcode == CREATE {
+						return tlerr.NotFound("Next hop group %v not found", groupName)
+					} else {
+						log.Info("Not group specific request. Proceed")
+					}
+					// Not group specific request. Ignore the error as we need to create it
+				} else {
+					return err
+				}
+			} else {
+				log.Infof("NHGroup %v exists in processed data", groupName)
+				if !groupSpecific && opcode == CREATE {
+					return tlerr.AlreadyExists("Next hop group %v already exists", groupName)
+				}
+				dbV = oldDbV
+			}
+		} else if oldDbV == nil {
+			log.Infof("Next hop group %v is marked for delete", groupName)
+			dbV = db.Value{Field: make(map[string]string)}
+		} else {
+			log.Infof("Next hop group %v exists in the processed data. Update it", groupName)
+			dbV = *oldDbV
+		}
+
+		var groupType string
+		if groupVal.Config != nil {
+			groupType = getNHGroupTypeDbStrFromOcEnum(groupVal.Config.GroupType)
+			if groupType != "" {
+				dbV.Field["TYPE"] = groupType
+			}
+
+			if groupVal.Config.Description != nil {
+				dbV.Field["DESCRIPTION"] = *groupVal.Config.Description
+			}
+
+			if groupVal.Config.ThresholdType != ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_THRESHOLD_TYPE_UNSET {
+				if groupVal.Config.ThresholdType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_THRESHOLD_TYPE_NEXT_HOP_GROUP_THRESHOLD_COUNT {
+					if dbV.Field["THRESHOLD_TYPE"] != "COUNT" {
+						dbV.Field["THRESHOLD_TYPE"] = "COUNT"
+						delete(dbV.Field, "THRESHOLD_UP")
+						delete(dbV.Field, "THRESHOLD_DOWN")
+					}
+				} else if groupVal.Config.ThresholdType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_THRESHOLD_TYPE_NEXT_HOP_GROUP_THRESHOLD_PERCENTAGE {
+					if dbV.Field["THRESHOLD_TYPE"] != "PERCENTAGE" {
+						dbV.Field["THRESHOLD_TYPE"] = "PERCENTAGE"
+						delete(dbV.Field, "THRESHOLD_UP")
+						delete(dbV.Field, "THRESHOLD_DOWN")
+					}
+				}
+			}
+
+			if groupVal.Config.ThresholdUp != nil {
+				dbV.Field["THRESHOLD_UP"] = strconv.Itoa(int(*groupVal.Config.ThresholdUp))
+			}
+
+			if groupVal.Config.ThresholdDown != nil {
+				dbV.Field["THRESHOLD_DOWN"] = strconv.Itoa(int(*groupVal.Config.ThresholdDown))
+			}
+		} else {
+			groupType = dbV.Field["TYPE"]
+		}
+
+		var nextHops []string
+		nextHopsMap := make(map[uint16][]string)
+		keys := make([]int, len(nextHopsMap))
+
+		if groupVal.NextHops == nil || len(groupVal.NextHops.NextHop) == 0 {
+			goto SkipNextHopMembers
+		}
+
+		if groupType == "" {
+			return tlerr.InvalidArgs("Next hop group %v type unknown", groupName)
+		} else if groupType == SONIC_NH_GROUP_TYPE_IPV4 {
+			nextHops = dbV.GetList("SET_IP_NEXTHOP")
+		} else {
+			nextHops = dbV.GetList("SET_IPV6_NEXTHOP")
+		}
+
+		for _, nhData := range nextHops {
+			parts := strings.SplitN(nhData, "|", 2)
+			entryId, _ := strconv.ParseUint(parts[0], 10, 16)
+			nextHopsMap[uint16(entryId)] = strings.SplitN(parts[1], "|", 3)
+		}
+
+		for entryId, nhopPtr := range groupVal.NextHops.NextHop {
+			nhopsParts, found := nextHopsMap[entryId]
+			if nhSpecific && !found {
+				return tlerr.NotFound("Next hop with entry id %v not found in group %v", entryId, groupName)
+			} else if found && opcode == CREATE {
+				return tlerr.NotFound("Next hop with entry id %v already exists in group %v", entryId, groupName)
+			}
+
+			if len(nhopsParts) != 3 {
+				nhopsParts = make([]string, 3)
+			}
+
+			if nhopPtr.Config.IpAddress != nil {
+				nhopsParts[0] = *nhopPtr.Config.IpAddress
+			} else if nhopsParts[0] == "" {
+				return tlerr.InvalidArgs("IP address missing for entry %v of group %v", entryId, groupName)
+			}
+			if nhopPtr.Config.NetworkInstance != nil {
+				nhopsParts[1] = *nhopPtr.Config.NetworkInstance
+			}
+			if nhopPtr.Config.NextHopType == ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_NON_RECURSIVE {
+				nhopsParts[2] = "non-recursive"
+			} else if nhopPtr.Config.NextHopType == ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE {
+				nhopsParts[2] = "recursive"
+			}
+			nextHopsMap[entryId] = nhopsParts
+		}
+
+		nextHops = nil
+		for k := range nextHopsMap {
+			keys = append(keys, int(k))
+		}
+		sort.Ints(keys)
+		for _, entryId := range keys {
+			nhParts := nextHopsMap[uint16(entryId)]
+			nhStr := strconv.FormatUint(uint64(entryId), 10) + "|" + strings.Join(nhParts, "|")
+			nextHops = append(nextHops, nhStr)
+		}
+		if groupType == SONIC_NH_GROUP_TYPE_IPV4 {
+			dbV.SetList("SET_IP_NEXTHOP", nextHops)
+		} else {
+			dbV.SetList("SET_IPV6_NEXTHOP", nextHops)
+		}
+
+	SkipNextHopMembers:
+		app.pbfNextHopGrpTable[groupName] = &dbV
+	} // Next hop group loop end
 
 	return nil
 }
@@ -1417,11 +1630,62 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 								delete(sectionDbV.Field, "SET_IP_NEXTHOP@")
 								delete(sectionDbV.Field, "SET_IPV6_NEXTHOP@")
 							} // Nexthops END
+						} else if policySectionVal.Forwarding.NextHopGroups != nil {
+							if len(policySectionVal.Forwarding.NextHopGroups.NextHopGroup) > 0 {
+								v4NextHopGrps := sectionDbV.GetList("SET_IP_NEXTHOP_GROUP")
+								v6NextHopGrps := sectionDbV.GetList("SET_IPV6_NEXTHOP_GROUP")
+								for _, nhopGrpPtr := range policySectionVal.Forwarding.NextHopGroups.NextHopGroup {
+									nhopGrpDbStr := *nhopGrpPtr.Config.GroupName
+									exact := false
+									if nhopGrpPtr.Config.Priority != nil {
+										nhopGrpDbStr = nhopGrpDbStr + "|" + strconv.FormatInt(int64(*nhopGrpPtr.Config.Priority), 10)
+										exact = true
+									} else {
+										nhopGrpDbStr = nhopGrpDbStr + "|"
+									}
+									if nhopGrpPtr.Config.GroupType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV4 {
+										for _, entry := range v4NextHopGrps {
+											if exact && entry == nhopGrpDbStr {
+												v4NextHopGrps = removeElement(v4NextHopGrps, nhopGrpDbStr)
+											} else if !exact && strings.HasPrefix(entry, nhopGrpDbStr) {
+												v4NextHopGrps = removeElement(v4NextHopGrps, nhopGrpDbStr)
+											}
+										}
+									} else if nhopGrpPtr.Config.GroupType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV6 {
+										for _, entry := range v6NextHopGrps {
+											if exact && entry == nhopGrpDbStr {
+												v6NextHopGrps = removeElement(v6NextHopGrps, nhopGrpDbStr)
+											} else if !exact && strings.HasPrefix(entry, nhopGrpDbStr) {
+												v6NextHopGrps = removeElement(v6NextHopGrps, nhopGrpDbStr)
+											}
+										}
+									} else {
+										return tlerr.InvalidArgs("Group type for %v not specified in policy %v and class %v", *nhopGrpPtr.Config.GroupName, policyKey, className)
+									}
+								}
+								if len(v4NextHopGrps) > 0 {
+									sectionDbV.SetList("SET_IP_NEXTHOP_GROUP", pruneForwardingEntries(v4NextHopGrps))
+								} else {
+									delete(sectionDbV.Field, "SET_IP_NEXTHOP_GROUP@")
+								}
+								if len(v6NextHopGrps) > 0 {
+									sectionDbV.SetList("SET_IPV6_NEXTHOP_GROUP", pruneForwardingEntries(v6NextHopGrps))
+								} else {
+									delete(sectionDbV.Field, "SET_IPV6_NEXTHOP_GROUP@")
+								}
+							} else {
+								delete(sectionDbV.Field, "SET_IP_NEXTHOP@")
+								delete(sectionDbV.Field, "SET_IPV6_NEXTHOP@")
+								delete(sectionDbV.Field, "SET_IP_NEXTHOP_GROUP@")
+								delete(sectionDbV.Field, "SET_IPV6_NEXTHOP_GROUP@")
+							} // NextHopGroups END
 						} else {
 							delete(sectionDbV.Field, "DEFAULT_PACKET_ACTION")
 							delete(sectionDbV.Field, "SET_INTERFACE@")
 							delete(sectionDbV.Field, "SET_IP_NEXTHOP@")
 							delete(sectionDbV.Field, "SET_IPV6_NEXTHOP@")
+							delete(sectionDbV.Field, "SET_IP_NEXTHOP_GROUP@")
+							delete(sectionDbV.Field, "SET_IPV6_NEXTHOP_GROUP@")
 						}
 						app.policySectionTable[sectionDbKeyStr] = &sectionDbV
 					} else { //Forwarding
@@ -1513,6 +1777,96 @@ func (app *FbsApp) translateDelInterface(d *db.DB) error {
 	return nil
 }
 
+func (app *FbsApp) translateDelNextHopGroups(d *db.DB) error {
+	fbsObj := app.getAppRootObject()
+
+	if fbsObj.NextHopGroups == nil || len(fbsObj.NextHopGroups.NextHopGroup) == 0 {
+		log.Info("Delete all next-hop groups")
+		keys, err := d.GetKeys(pbfNextHopGrpTblTs)
+		if err != nil {
+			return err
+		}
+		for _, key := range keys {
+			app.pbfNextHopGrpTable[key.Get(0)] = nil
+		}
+		return nil
+	}
+
+	targetNode, _ := getTargetNodeYangSchema(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device))
+
+	for groupName, groupPtr := range fbsObj.NextHopGroups.NextHopGroup {
+		groupData, err := app.getNextHopGroupEntryFromDB(d, groupName)
+		if isNotFoundError(err) {
+			log.Infof("Group %v not present", groupName)
+		}
+
+		if groupPtr.Config != nil {
+			if targetNode.Name == "group-type" {
+				log.Infof("Deleting type for group %v", groupName)
+				return tlerr.NotSupported("Delete for this URI is not supported")
+			} else if targetNode.Name == "description" {
+				delete(groupData.Field, "DESCRIPTION")
+			} else if targetNode.Name == "threshold-type" {
+				delete(groupData.Field, "THRESHOLD_TYPE")
+				delete(groupData.Field, "THRESHOLD_UP")
+				delete(groupData.Field, "THRESHOLD_DOWN")
+			} else if targetNode.Name == "threshold-up" {
+				delete(groupData.Field, "THRESHOLD_UP")
+			} else if targetNode.Name == "threshold-down" {
+				delete(groupData.Field, "THRESHOLD_DOWN")
+			} else {
+				return tlerr.NotSupported("Delete for this URI is not supported")
+			}
+			app.pbfNextHopGrpTable[groupName] = &groupData
+		} else if groupPtr.NextHops != nil {
+			if len(groupPtr.NextHops.NextHop) == 0 {
+				log.Infof("Delete all NHs for group %v", groupName)
+				delete(groupData.Field, "SET_IP_NEXTHOP@")
+				delete(groupData.Field, "SET_IPV6_NEXTHOP@")
+				app.pbfNextHopGrpTable[groupName] = &groupData
+			} else {
+				groupType := groupData.Field["TYPE"]
+				nextHops := groupData.GetList("SET_IP_NEXTHOP")
+				if groupType == SONIC_NH_GROUP_TYPE_IPV6 {
+					nextHops = groupData.GetList("SET_IPV6_NEXTHOP")
+				}
+				for entryId, entryPtr := range groupPtr.NextHops.NextHop {
+					if entryPtr.Config != nil {
+						idx, _ := indexOfIfHasPrefix(nextHops, strconv.FormatUint(uint64(entryId), 10)+"|")
+						if idx == -1 {
+							continue
+						}
+						if targetNode.Name == "ip-address" {
+							log.Infof("Deleting IP address of entry %v and group %v not allowed", entryId, groupName)
+							return tlerr.NotSupported("Delete for this URI is not supported")
+						} else if targetNode.Name == "network-instance" {
+							parts := strings.Split(nextHops[idx], "|")
+							parts[2] = ""
+							nextHops[idx] = strings.Join(parts, "|")
+						} else if targetNode.Name == "next-hop-type" {
+							parts := strings.Split(nextHops[idx], "|")
+							parts[3] = ""
+							nextHops[idx] = strings.Join(parts, "|")
+						}
+					} else {
+						nextHops = removeElementIfHasPrefix(nextHops, strconv.FormatUint(uint64(entryId), 10)+"|")
+					}
+				}
+				if groupType == SONIC_NH_GROUP_TYPE_IPV4 {
+					groupData.SetList("SET_IP_NEXTHOP", nextHops)
+				} else {
+					groupData.SetList("SET_IPV6_NEXTHOP", nextHops)
+				}
+			}
+			app.pbfNextHopGrpTable[groupName] = &groupData
+		} else {
+			app.pbfNextHopGrpTable[groupName] = nil
+		}
+	}
+
+	return nil
+}
+
 // processCRUD flushes the in memory contents to the DB
 // It uses the following method
 // If the value is nil it will be deleted.
@@ -1547,6 +1901,8 @@ func (app *FbsApp) processFbsGet(dbs [db.MaxDB]*db.DB) error {
 		return app.processPoliciesGet(dbs)
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces") {
 		return app.processInterfacesGet(dbs)
+	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/next-hop-groups") {
+		return app.processNextHopGroupsGet(dbs)
 	} else {
 		root := app.getAppRootObject()
 		ygot.BuildEmptyTree(root)
@@ -1556,7 +1912,10 @@ func (app *FbsApp) processFbsGet(dbs [db.MaxDB]*db.DB) error {
 			err = app.processPoliciesGet(dbs)
 		}
 		if err == nil {
-			app.processInterfacesGet(dbs)
+			err = app.processInterfacesGet(dbs)
+		}
+		if err == nil {
+			err = app.processNextHopGroupsGet(dbs)
 		}
 		return err
 	}
@@ -1636,9 +1995,9 @@ func (app *FbsApp) processPoliciesGet(dbs [db.MaxDB]*db.DB) error {
 func (app *FbsApp) processInterfacesGet(dbs [db.MaxDB]*db.DB) error {
 	var err error
 	fbsObj := app.getAppRootObject()
-	if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{}") { //inerface level request
+	if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{}") { //interface level request
 		interfaceId := app.pathInfo.Var("id")
-		log.Infof("Interface Get InterfaceId:%v", interfaceId)
+		log.Infof("Interface Get for InterfaceId:%v", interfaceId)
 
 		interfaceObj := fbsObj.Interfaces.Interface[interfaceId]
 		err = app.fillFbsInterfaceDetails(dbs, interfaceId, interfaceObj)
@@ -1646,7 +2005,7 @@ func (app *FbsApp) processInterfacesGet(dbs [db.MaxDB]*db.DB) error {
 			return err
 		}
 	} else { //top level get
-		log.Infof("fbs Interface Get;top level Get")
+		log.Info("Get for all interfaces")
 
 		interfaceKeys, err := dbs[db.ConfigDB].GetKeys(policyBindingTblTs)
 		if err != nil {
@@ -1667,6 +2026,57 @@ func (app *FbsApp) processInterfacesGet(dbs [db.MaxDB]*db.DB) error {
 	}
 
 	return err
+}
+
+func (app *FbsApp) processNextHopGroupsGet(dbs [db.MaxDB]*db.DB) error {
+	fbsObj := app.getAppRootObject()
+
+	if fbsObj.NextHopGroups == nil {
+		log.Infof("Root level get. Get data for all next-hop groups")
+		ygot.BuildEmptyTree(fbsObj.NextHopGroups)
+	}
+
+	if len(fbsObj.NextHopGroups.NextHopGroup) == 0 {
+		log.Infof("All next-hops group level query")
+		grpKeys, err := dbs[db.ConfigDB].GetKeys(pbfNextHopGrpTblTs)
+		if err != nil {
+			log.Errorf("Unable to get all groups. Err %v", err)
+			return err
+		}
+
+		for _, key := range grpKeys {
+			grpName := key.Get(0)
+			grpObj, err := fbsObj.NextHopGroups.NewNextHopGroup(grpName)
+			if err != nil {
+				log.Error(err)
+			}
+			ygot.BuildEmptyTree(grpObj)
+			grpObj.Config.Name = &grpName
+			grpObj.State.Name = &grpName
+		}
+	}
+
+	for grpName, grpObj := range fbsObj.NextHopGroups.NextHopGroup {
+		log.Infof("Processing get for group name %v", grpName)
+		if *app.ygotTarget == grpObj {
+			log.Infof("Specific group query. Build empty tree")
+			ygot.BuildEmptyTree(grpObj)
+		}
+
+		dbData, err := app.getNextHopGroupEntryFromDB(dbs[db.ConfigDB], grpName)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		err = app.fillPbfNextHopGrpData(grpName, dbData, grpObj)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 /*
@@ -1725,6 +2135,16 @@ func getPolicyTypeDbStrFromOcEnum(ocPolicyType ocbinds.E_OpenconfigFbsExt_POLICY
 	return "", nil
 }
 
+func getNHGroupTypeDbStrFromOcEnum(ocMatchType ocbinds.E_OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE) string {
+	if ocMatchType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV4 {
+		return SONIC_NH_GROUP_TYPE_IPV4
+	} else if ocMatchType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV6 {
+		return SONIC_NH_GROUP_TYPE_IPV6
+	}
+
+	return ""
+}
+
 func (app *FbsApp) getClassifierEntryFromDB(d *db.DB, className string) (db.Value, error) {
 	if val, found := app.classMapCache[className]; found {
 		log.Infof("Return from cache %v", val)
@@ -1760,7 +2180,15 @@ func (app *FbsApp) getPolicyEntryFromDB(d *db.DB, policyName string) (db.Value, 
 	return dbVal, err
 }
 
-func (app *FbsApp) getSectionEntryFromDB(d *db.DB, sectionName string) (db.Value, error) {
+func (app *FbsApp) getSectionEntryFromDB(d *db.DB, sectionKey interface{}) (db.Value, error) {
+	var sectionName string
+	if reflect.TypeOf(sectionKey).Kind() == reflect.String {
+		sectionName = sectionKey.(string)
+	} else {
+		secDbKey := sectionKey.(db.Key)
+		sectionName = strings.Join(secDbKey.Comp, "|")
+	}
+
 	if val, found := app.policySectionCache[sectionName]; found {
 		log.Infof("Return from cache %v", val)
 		return val, nil
@@ -1789,6 +2217,49 @@ func (app *FbsApp) getPolicyBindingEntryFromDB(d *db.DB, intfName string) (db.Va
 	}
 
 	app.policyBindingCache[intfName] = dbVal
+	log.Infof("Return from DB %v", dbVal)
+
+	return dbVal, err
+}
+
+func (app *FbsApp) getNextHopGroupEntryFromDB(d *db.DB, groupName string) (db.Value, error) {
+	if val, found := app.pbfNextHopGrpCache[groupName]; found {
+		log.Infof("Return from cache %v", val)
+		return val, nil
+	}
+
+	dbVal, err := d.GetEntry(pbfNextHopGrpTblTs, db.Key{[]string{groupName}})
+	if nil != err {
+		log.Info(err)
+		return dbVal, err
+	}
+
+	app.pbfNextHopGrpCache[groupName] = dbVal
+	log.Infof("Return from DB %v", dbVal)
+
+	return dbVal, err
+}
+
+func (app *FbsApp) getNextHopGroupStateEntryFromDB(d *db.DB, grpKey interface{}) (db.Value, error) {
+	var groupName string
+	if reflect.TypeOf(grpKey).Kind() == reflect.String {
+		groupName = grpKey.(string)
+	} else {
+		grpDbKey := grpKey.(db.Key)
+		groupName = strings.Join(grpDbKey.Comp, ":")
+	}
+
+	if val, found := app.pbfNextHopGrpStateCache[groupName]; found {
+		log.Infof("Return %v from cache %v", groupName, val)
+		return val, nil
+	}
+
+	dbVal, err := d.GetEntry(pbfNextHopGrpStTblTs, db.Key{[]string{groupName}})
+	if nil != err {
+		return dbVal, err
+	}
+
+	app.pbfNextHopGrpStateCache[groupName] = dbVal
 	log.Infof("Return from DB %v", dbVal)
 
 	return dbVal, err
@@ -2216,11 +2687,11 @@ func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName 
 
 func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string, policyBindData *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface) error {
 	nativeIfName := *utils.GetNativeNameFromUIName(&uiIfName)
-	log.Infof("fbs Interface Get;Interface level request; nativeIfName:%v uiIfName:%v ", nativeIfName, uiIfName)
+	log.Infof("Get for interface NativeIfName:%v UIIfName:%v", nativeIfName, uiIfName)
 
 	policyBindTblVal, err := app.getPolicyBindingEntryFromDB(dbs[db.ConfigDB], nativeIfName)
 	if err != nil {
-		return err
+		return tlerr.NotFound("No policy applied to %v", uiIfName)
 	}
 
 	ygot.BuildEmptyTree(policyBindData)
@@ -2234,6 +2705,7 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 	// find out specific type requested if any. This will help optimize DB access and the response times
 	policyTypes := []string{}
 	policyDirs := []string{}
+	getNextHopGroup := false
 	if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{}/ingress-policies") {
 		policyDirs = append(policyDirs, "INGRESS")
 		if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{}/ingress-policies/qos") {
@@ -2245,6 +2717,8 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 		} else {
 			policyTypes = []string{SONIC_POLICY_TYPE_FORWARDING, SONIC_POLICY_TYPE_MONITORING, SONIC_POLICY_TYPE_QOS}
 		}
+	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{}/next-hop-group") {
+		getNextHopGroup = true
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/interfaces/interface{}/egress-policies") {
 		policyDirs = append(policyDirs, "EGRESS")
 		policyTypes = []string{SONIC_POLICY_TYPE_QOS}
@@ -2252,6 +2726,7 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 		policyDirs = append(policyDirs, "INGRESS")
 		policyDirs = append(policyDirs, "EGRESS")
 		policyTypes = []string{SONIC_POLICY_TYPE_FORWARDING, SONIC_POLICY_TYPE_MONITORING, SONIC_POLICY_TYPE_QOS}
+		getNextHopGroup = true
 	}
 
 	log.Infof("Intf:%v Types:%v Dirs:%v", nativeIfName, policyTypes, policyDirs)
@@ -2270,7 +2745,6 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 							log.Infof("fbs interface Get failed err:%v ; uiIfName:%v, dbFieldKey:%v ", err, uiIfName, dbFieldKey)
 							return err
 						}
-
 					} else if policyType == SONIC_POLICY_TYPE_MONITORING {
 						ygot.BuildEmptyTree(policyBindData.IngressPolicies.Monitoring)
 						policyBindData.IngressPolicies.Monitoring.Config.PolicyName = &str_val
@@ -2304,6 +2778,14 @@ func (app *FbsApp) fillFbsInterfaceDetails(dbs [db.MaxDB]*db.DB, uiIfName string
 					}
 				}
 			}
+		}
+	}
+
+	if getNextHopGroup {
+		err = app.fillFbsInterfaceNextHopGroupDetails(dbs, uiIfName, nativeIfName, policyBindData)
+		if err != nil {
+			log.Error(err)
+			return err
 		}
 	}
 
@@ -2347,6 +2829,7 @@ func (app *FbsApp) fillFbsForwardingStateEntry(dbs [db.MaxDB]*db.DB, polPbfKey d
 	val, err := stateDbPtr.GetEntry(pbfGrpTblTs, pbfKey)
 	if err == nil {
 		selected := val.Field["CONFIGURED_SELECTED"]
+		typeStr := val.Field["TYPE"]
 		log.Infof("Key:%v Selected:%v", pbfKey, selected)
 		if selected == "DROP" {
 			discard := true
@@ -2355,19 +2838,27 @@ func (app *FbsApp) fillFbsForwardingStateEntry(dbs [db.MaxDB]*db.DB, polPbfKey d
 			parts := strings.Split(selected, "|")
 			if len(parts) == 3 {
 				fwdState.IpAddress = &parts[0]
-				fwdState.NetworkInstance = &parts[1]
+				if parts[1] != "" {
+					fwdState.NetworkInstance = &parts[1]
+				}
 				if parts[2] != "" {
 					prio, _ := strconv.ParseInt(parts[2], 10, 32)
 					prio_int := uint16(prio)
 					fwdState.Priority = &prio_int
 				}
-			} else {
+			} else if typeStr == "L2" {
 				fwdState.IntfName = &parts[0]
 				if parts[1] != "" {
 					prio, _ := strconv.ParseInt(parts[1], 10, 32)
 					prio_int := uint16(prio)
 					fwdState.Priority = &prio_int
 				}
+			} else {
+				fwdState.GroupName = &parts[0]
+				fwdState.GrpType = &typeStr
+				prio, _ := strconv.ParseInt(parts[1], 10, 32)
+				prio_int := uint16(prio)
+				fwdState.Priority = &prio_int
 			}
 		}
 	}
@@ -2495,6 +2986,16 @@ func (app *FbsApp) fillFbsIngressIfPolicyFwdSections(dbs [db.MaxDB]*db.DB, nativ
 				policySectionData.NextHop.State.NetworkInstance, _ = policySectionData.NextHop.State.To_OpenconfigFbsExt_Fbs_Interfaces_Interface_IngressPolicies_Forwarding_Sections_Section_NextHop_State_NetworkInstance_Union(ocbinds.OpenconfigFbsExt_NEXT_HOP_NETWORK_INSTANCE_INTERFACE_NETWORK_INSTANCE)
 			}
 			policySectionData.NextHop.State.Priority = fwdState.Priority
+		}
+		if fwdState.GroupName != nil {
+			ygot.BuildEmptyTree(policySectionData.NextHopGroup)
+			policySectionData.NextHopGroup.State.GroupName = fwdState.GroupName
+			if *fwdState.GrpType == "IPV4" {
+				policySectionData.NextHopGroup.State.GroupType = ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV4
+			} else {
+				policySectionData.NextHopGroup.State.GroupType = ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV6
+			}
+			policySectionData.NextHopGroup.State.Priority = fwdState.Priority
 		}
 		policySectionData.State.Discard = fwdState.Discard
 		policySectionData.State.Active = &fwdState.fbsFlowState.Active
@@ -2683,6 +3184,162 @@ func (app *FbsApp) fillFbsEgressIfPolicyQosSections(dbs [db.MaxDB]*db.DB, native
 	return nil
 }
 
+func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiIfName string, nativeIfName string, intfObj *ocbinds.OpenconfigFbsExt_Fbs_Interfaces_Interface) error {
+	var policyName string
+	groups := make(map[string]string)
+
+	bindingEntry, err := app.getPolicyBindingEntryFromDB(dbs[db.ConfigDB], nativeIfName)
+	if err == nil {
+		policyName = bindingEntry.Field["INGRESS_FORWARDING_POLICY"]
+		if policyName == "" {
+			return tlerr.NotFound("No forwarding policy applied to %v", uiIfName)
+		}
+	} else {
+		log.Info(err)
+		return tlerr.NotFound("No forwarding policy applied to %v", uiIfName)
+	}
+
+	sectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName+"|*"))
+	if err != nil {
+		log.Info(err)
+		return nil
+	}
+
+	for _, sectionKey := range sectionKeys {
+		sectionEntry, err := app.getSectionEntryFromDB(dbs[db.ConfigDB], sectionKey)
+		if err != nil {
+			log.Info(err)
+			return nil
+		}
+		v4NhGrps := sectionEntry.GetList("SET_IP_NEXTHOP_GROUP")
+		for _, grpEgressCfg := range v4NhGrps {
+			groups[strings.Split(grpEgressCfg, "|")[0]] = "IPV4"
+		}
+
+		v6NhGrps := sectionEntry.GetList("SET_IPV6_NEXTHOP_GROUP")
+		for _, grpEgressCfg := range v6NhGrps {
+			groups[strings.Split(grpEgressCfg, "|")[0]] = "IPV6"
+		}
+	}
+	log.Infof("Interface %v has %v groups applied.", nativeIfName, groups)
+
+	vrfName := "default"
+	if strings.HasPrefix(nativeIfName, "Ethernet") {
+		dbEntry, err := dbs[db.ConfigDB].GetEntry(interfaceTblTs, asKey(nativeIfName))
+		if err == nil {
+			vrfName = dbEntry.Field["vrf_name"]
+		} else {
+			log.Info(err)
+			return nil
+		}
+	} else if strings.HasPrefix(nativeIfName, "Vlan") {
+		dbEntry, err := dbs[db.ConfigDB].GetEntry(vlanInterfaceTblTs, asKey(nativeIfName))
+		if err == nil {
+			vrfName = dbEntry.Field["vrf_name"]
+		} else {
+			log.Info(err)
+			return nil
+		}
+	} else if strings.HasPrefix(nativeIfName, "PortChannel") {
+		dbEntry, err := dbs[db.ConfigDB].GetEntry(portChannelInterfaceTblTs, asKey(nativeIfName))
+		if err == nil {
+			vrfName = dbEntry.Field["vrf_name"]
+		} else {
+			log.Info(err)
+			return nil
+		}
+	}
+	log.Infof("Interface %v belongs to %v VRF", nativeIfName, vrfName)
+
+	if intfObj.NextHopGroups == nil || len(intfObj.NextHopGroups.NextHopGroup) == 0 {
+		log.Info("Request is for all groups for interface")
+		for grpName, grpType := range groups {
+			grpData, err := app.getNextHopGroupEntryFromDB(dbs[db.ConfigDB], grpName)
+			if err != nil {
+				if isNotFoundError(err) {
+					continue
+				} else {
+					log.Info(err)
+					return err
+				}
+			}
+			if grpData.Field["TYPE"] != grpType {
+				log.Infof("Group %v is of type %v but used as %v", grpName, grpData.Field["TYPE"], grpType)
+				continue
+			}
+			grpObj, _ := intfObj.NextHopGroups.NewNextHopGroup(grpName)
+			ygot.BuildEmptyTree(grpObj)
+		}
+	}
+
+	for grpName, grpObj := range intfObj.NextHopGroups.NextHopGroup {
+		grpData, err := app.getNextHopGroupEntryFromDB(dbs[db.ConfigDB], grpName)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		if *app.ygotTarget == grpObj && groups[grpName] == "" {
+			log.Infof("Request is for group %v only but is not used in policy applied to interface %v", grpName, uiIfName)
+			return tlerr.NotFound("Group %v not used in policy applied to interface %v", grpName, uiIfName)
+		}
+		ygot.BuildEmptyTree(grpObj)
+		ygot.BuildEmptyTree(grpObj.NextHops)
+
+		grpObj.State.Name = &grpName
+		grpStateData, err := app.getNextHopGroupStateEntryFromDB(dbs[db.StateDB], grpName+":"+vrfName)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		if grpData.Field["TYPE"] == "IPV4" {
+			grpObj.State.GroupType = ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV4
+		} else if grpData.Field["TYPE"] == "IPV6" {
+			grpObj.State.GroupType = ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV6
+		}
+
+		state := false
+		if grpStateData.Field["STATUS"] == "Online" {
+			state = true
+		}
+		grpObj.State.Active = &state
+
+		cfgEgress := grpStateData.GetList("CONFIGURED_EGRESS")
+		egressState := grpStateData.GetList("EGRESS_STATE")
+		for idx, egr := range cfgEgress {
+			parts := strings.Split(egr, "|")
+			prioInt, _ := strconv.ParseUint(parts[0], 10, 16)
+			prio := uint16(prioInt)
+			nhObj, found := grpObj.NextHops.NextHop[prio]
+			if !found {
+				nhObj, _ = grpObj.NextHops.NewNextHop(prio)
+			}
+			ygot.BuildEmptyTree(nhObj)
+			ygot.BuildEmptyTree(nhObj.State)
+			nhObj.State.EntryId = &prio
+			nhObj.State.IpAddress = &parts[1]
+			if parts[2] != "" {
+				nhObj.State.NetworkInstance = &parts[2]
+			}
+			if parts[3] != "" {
+				if parts[3] == "recursive" {
+					nhObj.State.NextHopType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE
+				} else if parts[3] == "non-recursive" {
+					nhObj.State.NextHopType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_NON_RECURSIVE
+				}
+			}
+
+			active := false
+			if idx < len(egressState) && egressState[idx] == "1" {
+				active = true
+			}
+			nhObj.State.Active = &active
+		}
+	}
+
+	return nil
+}
+
 func (app *FbsApp) processOperation(d *db.DB, filter bool, opcodeBmp int) error {
 	log.Infof("Filter:%v OpcodeBmp:%v", filter, opcodeBmp)
 	var err error
@@ -2698,8 +3355,14 @@ func (app *FbsApp) processOperation(d *db.DB, filter bool, opcodeBmp int) error 
 		if err == nil {
 			err = applyTableData(d, classTblTs, app.classMapTable, app.classMapCache, filter, opcodeBmp)
 		}
+		if err == nil {
+			err = applyTableData(d, pbfNextHopGrpTblTs, app.pbfNextHopGrpTable, app.pbfNextHopGrpCache, filter, opcodeBmp)
+		}
 	} else if opcodeBmp&(1<<CREATE) != 0 || opcodeBmp&(1<<UPDATE) != 0 {
-		err = applyTableData(d, classTblTs, app.classMapTable, app.classMapCache, filter, opcodeBmp)
+		err = applyTableData(d, pbfNextHopGrpTblTs, app.pbfNextHopGrpTable, app.pbfNextHopGrpCache, filter, opcodeBmp)
+		if err == nil {
+			err = applyTableData(d, classTblTs, app.classMapTable, app.classMapCache, filter, opcodeBmp)
+		}
 		if err == nil {
 			err = applyTableData(d, policyTblTs, app.policyMapTable, app.policyMapCache, filter, opcodeBmp)
 		}
@@ -2761,7 +3424,7 @@ func applyTableData(d *db.DB, tableTs *db.TableSpec, tableData map[string]*db.Va
 	return nil
 }
 
-func pruneEgressWithHighestPriority(egress []string) []string {
+func pruneForwardingEntries(egress []string) []string {
 	log.Info(egress)
 
 	egressMap := make(map[string]uint16)
@@ -2787,7 +3450,145 @@ func pruneEgressWithHighestPriority(egress []string) []string {
 		}
 		retVal = append(retVal, key+"|"+valStr)
 	}
-
 	log.Info(retVal)
-	return retVal
+
+	// To preserve the order remove elements in the original list which are not present in the final list
+	for _, elem := range retVal {
+		if !contains(egress, elem) {
+			egress = removeElement(egress, elem)
+		}
+	}
+
+	log.Info(egress)
+	return egress
+}
+
+func (app *FbsApp) fillPbfNextHopGrpData(name string, grpData db.Value, grpObj *ocbinds.OpenconfigFbsExt_Fbs_NextHopGroups_NextHopGroup) error {
+	grpDescr, descrFound := grpData.Field["DESCRIPTION"]
+	thrTypeStr, thrTypeFound := grpData.Field["THRESHOLD_TYPE"]
+	thrUpStr, thrUpFound := grpData.Field["THRESHOLD_UP"]
+	thrDownStr, thrDownFound := grpData.Field["THRESHOLD_DOWN"]
+	grpTypeStr := grpData.Field["TYPE"]
+	grpType := ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV4
+	if grpTypeStr == "IPV6" {
+		grpType = ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV6
+	}
+
+	thrType := ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_THRESHOLD_TYPE_UNSET
+	if thrTypeStr == "PERCENTAGE" {
+		thrType = ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_THRESHOLD_TYPE_NEXT_HOP_GROUP_THRESHOLD_PERCENTAGE
+	} else if thrTypeStr == "COUNT" {
+		thrType = ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_THRESHOLD_TYPE_NEXT_HOP_GROUP_THRESHOLD_COUNT
+	}
+
+	thrUpInt, _ := strconv.Atoi(thrUpStr)
+	thrUp := uint8(thrUpInt)
+
+	thrDownInt, _ := strconv.Atoi(thrDownStr)
+	thrDown := uint8(thrDownInt)
+
+	if grpObj.Config != nil {
+		grpObj.Config.Name = &name
+		grpObj.Config.GroupType = grpType
+		if descrFound {
+			grpObj.Config.Description = &grpDescr
+		}
+		if thrTypeFound {
+			grpObj.Config.ThresholdType = thrType
+		}
+		if thrUpFound {
+			grpObj.Config.ThresholdUp = &thrUp
+		}
+		if thrDownFound {
+			grpObj.Config.ThresholdDown = &thrDown
+		}
+	}
+
+	if grpObj.State != nil {
+		grpObj.State.Name = &name
+		grpObj.State.GroupType = grpType
+		if descrFound {
+			grpObj.State.Description = &grpDescr
+		}
+		if thrTypeFound {
+			grpObj.State.ThresholdType = thrType
+		}
+		if thrUpFound {
+			grpObj.State.ThresholdUp = &thrUp
+		}
+		if thrDownFound {
+			grpObj.State.ThresholdDown = &thrDown
+		}
+	}
+
+	if grpObj.NextHops != nil {
+		return app.fillPbfGroupNextHops(grpData, grpObj.NextHops)
+	}
+
+	return nil
+}
+
+func (app *FbsApp) fillPbfGroupNextHops(grpData db.Value, grpNhops *ocbinds.OpenconfigFbsExt_Fbs_NextHopGroups_NextHopGroup_NextHops) error {
+	nextHopsMap := make(map[uint16]string)
+	nextHops := grpData.GetList("SET_IP_NEXTHOP")
+	if len(nextHops) == 0 {
+		nextHops = grpData.GetList("SET_IPV6_NEXTHOP")
+	}
+
+	for _, nextHop := range nextHops {
+		parts := strings.SplitN(nextHop, "|", 2)
+		entryId, _ := strconv.ParseUint(parts[0], 10, 16)
+		nextHopsMap[uint16(entryId)] = parts[1]
+	}
+
+	if len(grpNhops.NextHop) == 0 {
+		for entryId := range nextHopsMap {
+			nhObj, _ := grpNhops.NewNextHop(entryId)
+			ygot.BuildEmptyTree(nhObj)
+		}
+	}
+
+	for entryId, nhObj := range grpNhops.NextHop {
+		nhData, found := nextHopsMap[entryId]
+		if !found {
+			return tlerr.NotFound("No nexthop found at entry id %v", entryId)
+		}
+
+		if *app.ygotTarget == nhObj {
+			ygot.BuildEmptyTree(nhObj)
+		}
+
+		parts := strings.Split(nhData, "|")
+		ipAddr := parts[0]
+		vrfName := parts[1]
+		nhType := ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_UNSET
+		if parts[2] == "recursive" {
+			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE
+		} else if parts[2] == "non-recursive" {
+			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_NON_RECURSIVE
+		}
+
+		if nhObj.Config != nil {
+			nhObj.Config.EntryId = &entryId
+			nhObj.Config.IpAddress = &ipAddr
+			if vrfName != "" {
+				nhObj.Config.NetworkInstance = &vrfName
+			}
+			if nhType != ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_UNSET {
+				nhObj.Config.NextHopType = nhType
+			}
+		}
+		if nhObj.State != nil {
+			nhObj.State.EntryId = &entryId
+			nhObj.State.IpAddress = &ipAddr
+			if vrfName != "" {
+				nhObj.State.NetworkInstance = &vrfName
+			}
+			if nhType != ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_UNSET {
+				nhObj.State.NextHopType = nhType
+			}
+		}
+	}
+
+	return nil
 }

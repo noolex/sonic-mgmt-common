@@ -22,6 +22,7 @@ package translib
 import (
 	"reflect"
 	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -201,7 +202,6 @@ func contains(sl []string, str string) bool {
 	return false
 }
 
-
 func removeElement(sl []string, str string) []string {
 	for i := 0; i < len(sl); i++ {
 		if sl[i] == str {
@@ -242,27 +242,49 @@ func isSubtreeRequest(targetUriPath string, nodePath string) bool {
 
 /* Unique elements */
 func uniqueElements(elems []string) []string {
-    temp := make(map[string]bool)
-    for _, elem := range(elems) {
-        temp[elem] = true
-    }
+	temp := make(map[string]bool)
+	for _, elem := range elems {
+		temp[elem] = true
+	}
 
-    i := 0
-    ret := make([]string, len(temp))
-    for key := range(temp) {
-        ret[i] = key
-        i++
-    }
+	i := 0
+	ret := make([]string, len(temp))
+	for key := range temp {
+		ret[i] = key
+		i++
+	}
 
-    return ret
+	return ret
 }
 
 func indexOf(elems []string, match string) (int, bool) {
-    for idx, val := range(elems) {
-        if val == match {
-            return idx, true
-        }
-    }
-    
-    return -1, false
+	for idx, val := range elems {
+		if val == match {
+			return idx, true
+		}
+	}
+
+	return -1, false
+}
+
+func indexOfIfHasPrefix(elems []string, match string) (int, bool) {
+	for idx, val := range elems {
+		if strings.HasPrefix(val, match) {
+			return idx, true
+		}
+	}
+
+	return -1, false
+}
+
+func removeElementIfHasPrefix(sl []string, str string) []string {
+	for i := 0; i < len(sl); i++ {
+		if strings.HasPrefix(sl[i], str) {
+			sl = append(sl[:i], sl[i+1:]...)
+			i--
+			break
+		}
+	}
+
+	return sl
 }

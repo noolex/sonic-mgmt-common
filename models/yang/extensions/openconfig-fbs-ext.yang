@@ -11,9 +11,11 @@ module openconfig-fbs-ext {
   import openconfig-extensions { prefix oc-ext; }
 
   // includes
+  include openconfig-fbs-types-ext;
   include openconfig-fbs-classifiers-ext;
   include openconfig-fbs-policies-ext;
   include openconfig-fbs-interfaces-ext;
+  include openconfig-fbs-next-hop-group-ext;
 
   // meta
   organization "SONiC";
@@ -80,7 +82,14 @@ module openconfig-fbs-ext {
 	2 QoS policies for a given interface at a given stage like 
 	ingress.";
 
-  oc-ext:openconfig-version "0.1.0";
+  oc-ext:openconfig-version "0.1.1";
+
+  revision "2020-11-02" {
+    description
+      "Added support for next-hop groups";
+
+    reference "0.1.1";
+  }
 
   revision "2020-05-15" {
     description
@@ -140,6 +149,7 @@ module openconfig-fbs-ext {
       }   
 
       uses fbs-ext-classifiers-top;
+      uses fbs-ext-next-hop-groups-top;
 	  uses fbs-ext-policies-top;
       uses fbs-ext-interfaces-top;
     }
@@ -183,6 +193,5 @@ module openconfig-fbs-ext {
   deviation /oc-fbs-ext:fbs/classifiers/classifier/match-hdr-fields/ip/state/hop-limit {
     deviate not-supported;
   }
-
 }
 

@@ -23,25 +23,17 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
 )
 
 func TestMain(m *testing.M) {
-	if err := clearAclDataFromDb(); err != nil {
-		os.Exit(-1)
-	}
-	fmt.Println("+++++  Removed All Acl Data from Db  +++++")
-
 	if err := clearLagDataFromDb(); err != nil {
 		os.Exit(-1)
 	}
 	fmt.Println("+++++  Removed All PortChannel Data from Db before tests  +++++")
 
 	ret := m.Run()
-
-	if err := clearAclDataFromDb(); err != nil {
-		os.Exit(-1)
-	}
 
 	if err := clearLagDataFromDb(); err != nil {
 		os.Exit(-1)

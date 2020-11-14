@@ -10,6 +10,8 @@ submodule openconfig-fbs-classifiers-ext {
   import openconfig-yang-types { prefix oc-yang; }
   import openconfig-packet-match-types { prefix oc-pkt-match-types; }
 
+  include openconfig-fbs-types-ext;
+
   // meta
   organization "SONiC";
 
@@ -35,23 +37,6 @@ submodule openconfig-fbs-classifiers-ext {
   // feature statements
 
   // identity statements
-  identity MATCH_TYPE {
-    description
-      "Base identity for classifier match types";
-  }
-
-  identity MATCH_ACL {
-    base MATCH_TYPE;
-    description
-      "Classifiers with ACL as match criteria";
-  }
-
-  identity MATCH_FIELDS {
-    base MATCH_TYPE;
-    description
-      "Classifiers with L2-L4 header fields as match. All header
-      fields must match for the flow classification.";
-  }
 
   // typedef statements
 
