@@ -17,7 +17,6 @@ import (
         //"crypto/md5"
         //"io/ioutil"
         "bytes"
-	"os"
 	"unicode"
 )
 
@@ -257,8 +256,10 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                 ntpServer := ntpServers.Server
                 ntpServerConfig := ntpServer[keyName].Config
                 auth_key_id := ntpServerConfig.KeyId
-                auth_key_id_int := int(*auth_key_id)
-                auth_key_id_str = strconv.Itoa(auth_key_id_int)
+                if (auth_key_id != nil) { 
+                        auth_key_id_int := int(*auth_key_id)
+                        auth_key_id_str = strconv.Itoa(auth_key_id_int)
+                }
         }
 
         res_map[NTP_SERVER_TABLE_NAME] = make(map[string]db.Value)
@@ -666,29 +667,28 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 	        log.Infof("after trim %v len %v", encrypted_str, len(encrypted_str))
         }
 
-        ntpKey_file, err := os.OpenFile("/ntp_etc/ntp/ntp.keys", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+        //ntpKey_file, err := os.OpenFile("/ntp_etc/ntp/ntp.keys", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
-        if err != nil {
-                log.Infof("YangToDb_ntp_auth_key_value_xfmr, create file failed")
-                return res_map, nil
-        }
+        //if err != nil {
+        //        log.Infof("YangToDb_ntp_auth_key_value_xfmr, create file failed")
+        //        return res_map, nil
+        //}
 
-	defer ntpKey_file.Close()
+	//defer ntpKey_file.Close()
 
         //datawriter := bufio.NewWriter(ntpKey_file)
 	//var key_str string
-	var key_str = key_id + " " + "MD5" + " " + (*key_value) + "\n"
-	log.Infof("key_str %v", key_str)
+	//var key_str = key_id + " " + "MD5" + " " + (*key_value) + "\n"
+	//log.Infof("key_str %v", key_str)
 
-        //n, err := datawriter.WriteString(key_str)
-        n, err := ntpKey_file.WriteString(key_str)
+        //n, err := ntpKey_file.WriteString(key_str)
 
-        if err != nil {
-            log.Infof("YangToDb_ntp_auth_key_value_xfmr, append text failed")
-            return res_map, nil
-        }
+        //if err != nil {
+        //    log.Infof("YangToDb_ntp_auth_key_value_xfmr, append text failed")
+        //    return res_map, nil
+        //}
 
-	log.Infof("bingbing n %v", n)
+	//log.Infof("bingbing n %v", n)
 
         if (!*encrypted) {
                 res_map[NTP_KEY_VALUE_STR] = encrypted_str 
@@ -697,10 +697,6 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
         }
 
         log.Infof("YangToDb_ntp_authen_key_value_xfmr, %v", res_map)
-
-	//res_map[NTP_KEY_VALUE_STR] = "U2FsdGVkX18TaiUGZNCqXqNpj8GS4cEeTm+yFIrOpVc="
-
-	//log.Infof("new res_map %v", res_map)
 
         return res_map, err
 }
