@@ -478,6 +478,10 @@ func getQueueSpecificCounterAttr(targetUriPath string, entry *db.Value, entry_ba
         e = getQosCounters(entry, "SAI_QUEUE_STAT_BYTES_PER_SECOND", &counters.TransmitOctetsPerSecond)
         return true, e
 
+    case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/transmit-bits-per-second":
+        e = getQosCounters(entry, "SAI_QUEUE_STAT_BITS_PER_SECOND", &counters.TransmitBitsPerSecond)
+        return true, e
+
     default:
         log.Infof(targetUriPath + " - Not an interface state counter attribute or unsupported")
     }
