@@ -93,6 +93,118 @@ func Find(slice []string, val string) (int, bool) {
     return -1, false
 }
 
+// FillNtpServer is a function to populate the NTP peer config/states based on NTP server record from "ntpq" output
+func FillNtpServer (keyName string, ntpqList []string, ntpServers *ocbinds.OpenconfigSystem_System_Ntp_Servers, isGetServConfigOnly bool) error {
+        var err error
+        var errStr string
+        var currNtpServer *ocbinds.OpenconfigSystem_System_Ntp_Servers_Server
+
+        log.Infof("FillNtpServer: keyName %v getServConfigOnly %v", keyName, isGetServConfigOnly)
+        /* There are 10 fields in ntpq server association record */
+        if len(ntpqList) != 10 {
+                errStr = "Failed to analyze NTP server association message"
+                log.Info("FillNtpServer: ", errStr)
+                err = tlerr.InvalidArgsError{Format: errStr}
+                return err
+        }
+
+        /* Check if the 1st char exists for ntp peer selection */
+        remote := ntpqList[0]
+
+        var selMode string
+        if ( (remote[:1] == "*") ||
+             (remote[:1] == "+") ||
+             (remote[:1] == "#") ||
+             (remote[:1] == "-") ||
+             (remote[:1] == "~") ) {
+                selMode = remote[:1]
+                remote = remote[1:]
+        }
+
+        /*
+         * For each NTP peer status, only populate the state if 
+         *  - keyName empty, populate each ntp server state and config
+         *  - keyName not empty, 
+         *      - if remote not match keyName, skip
+         *      - if configOnly true, only populate server/config/address
+         *      - if stateOnly  true, only populate server/config/state
+         */
+
+        if ( (keyName != "") && (keyName != remote) ) {
+            return nil
+        }
+
+        refId := ntpqList[1]
+        stratum := ntpqList[2]
+        peer_type := ntpqList[3]
+        when := ntpqList[4]
+        poll := ntpqList[5]
+        reach := ntpqList[6]
+        delay := ntpqList[7]
+        offset := ntpqList[8]
+        jitter := ntpqList[9]
+
+        if (!isGetServConfigOnly) {
+
+                if (keyName == "") {
+                        /* it's possible in some error condition remote is not in config DB but in the ntpq -pn */
+                        currNtpServer = ntpServers.Server[remote] 
+                        if (currNtpServer == nil)  {
+                                currNtpServer, _ = ntpServers.NewServer(remote)
+                                ygot.BuildEmptyTree(currNtpServer)
+                        }
+
+                        if (currNtpServer.Config == nil) {
+                                ygot.BuildEmptyTree(currNtpServer)
+                        }
+
+                        if (currNtpServer.State == nil) {
+                                ygot.BuildEmptyTree(currNtpServer)
+                        }
+
+                        currNtpServer.State.Address = &remote
+                } else {
+                       currNtpServer = ntpServers.Server[keyName]
+                }
+
+                when_num, _ := strconv.ParseUint(when, 10, 32)
+                when_num32 := uint32(when_num)
+                currNtpServer.State.Now = &when_num32
+
+                offset_sec, _ := strconv.ParseFloat(offset, 64)
+                offset_milli := offset_sec*1000
+                currNtpServer.State.Peeroffset = &offset_milli
+
+                currNtpServer.State.Selmode = &selMode
+
+                poll_num, _ := strconv.ParseUint(poll, 10, 32)
+                poll_num32 := uint32(poll_num)
+                currNtpServer.State.PollInterval = &poll_num32
+
+                stratum_num, _ := strconv.ParseUint(stratum, 10, 8)
+                stratum_num8 := uint8(stratum_num)
+                currNtpServer.State.Stratum = &stratum_num8
+
+                currNtpServer.State.Peertype = &peer_type
+
+                jitter_sec, _ := strconv.ParseFloat(jitter, 64)
+                jitter_milli := jitter_sec*1000
+                currNtpServer.State.Peerjitter = &jitter_milli
+
+                reach_num, _ := strconv.ParseUint(reach, 10, 8)
+                reach_num8 := uint8(reach_num)
+                currNtpServer.State.Reach = &reach_num8
+
+                delay_sec, _ := strconv.ParseFloat(delay, 64)
+                delay_milli := delay_sec*1000
+                currNtpServer.State.Peerdelay = &delay_milli
+
+                currNtpServer.State.Refid = &refId
+        }
+
+        return nil
+}
+
 // ProcessGetNtpServer is a function to run "ntpq -pn" cmd from the mgmt framework docker and populate the NTP peer config/states based on requestUri
 func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled bool)  error {
         var err error
@@ -207,11 +319,11 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 }
         }
 
-        cmd := exec.Command("ntpq", "-pn")
+        cmd := exec.Command("ntpq", "-pnw")
         if ((isMgmtVrfEnabled) &&
             ((vrfName == "mgmt") ||
              (vrfName == ""))) {
-                cmd = exec.Command("cgexec", "-g", "l3mdev:mgmt", "ntpq", "-pn")
+                cmd = exec.Command("cgexec", "-g", "l3mdev:mgmt", "ntpq", "-pnw")
         }
 
         output, err := cmd.StdoutPipe()
@@ -234,12 +346,21 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
          *
          *                remote           refid      st t when poll reach   delay   offset  jitter
          *          ================================================================================
-         *          *10.11.0.1       10.11.8.1        4 u  180  256  377    0.442   -27.516   7.380
-         *          +10.11.0.2       10.11.8.1        4 u  174  256  377    0.443    22.323   3.238
+         line1      *10.11.0.1       10.11.8.1        4 u  180  256  377    0.442   -27.516   7.380
+         line2      +10.11.0.2       10.11.8.1        4 u  174  256  377    0.443    22.323   3.238
+         line3       2405:200:1410:1401::4:db1
+         line4                       .INIT.          16 u    -   64    0    0.000    0.000   0.000
          *
+         *  There are two cases on NTP server association outputs with "ntpq -pnw":
+         *    case1: like the above line1 and line2, all server association information
+         *           is shown in one line.
+         *    case2: like the above line3 and line4, server association information
+         *           is shown in more than one lines due to "remote" or "refid" string is
+         *           too long.
          */
 
         line_num := 0
+        var list0 []string
 
         for in.Scan() {
                 line := in.Text()
@@ -260,102 +381,39 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                         continue
                 }
 
-                /* Check if the 1st char exists for ntp peer selection */
-                remote := list[0]
-
-                var selMode string
-                if ( (remote[:1] == "*") ||
-                     (remote[:1] == "+") ||
-                     (remote[:1] == "#") ||
-                     (remote[:1] == "-") ||
-                     (remote[:1] == "~") ) {
-                        selMode = remote[:1]
-                        remote = remote[1:]
-                }
-
-                /*
-                 * For each NTP peer status, only populate the state if 
-                 *  - keyName empty, populate each ntp server state and config
-                 *  - keyName not empty, 
-                 *      - if remote not match keyName, skip
-                 *      - if configOnly true, only populate server/config/address
-                 *      - if stateOnly  true, only populate server/config/state
-                 */
-
-                if ( (keyName != "") && (keyName != remote) ) {
-                    line_num ++
-                    continue
-                }
-
-                refId := list[1]
-                stratum := list[2]
-                peer_type := list[3]
-                when := list[4]
-                poll := list[5]
-                reach := list[6]
-                delay := list[7]
-                offset := list[8]
-                jitter := list[9]
-
-                if (!getServConfigOnly) {
-
-                        if (keyName == "") {
-                                /* it's possible in some error condition remote is not in config DB but in the ntpq -pn */
-                                currNtpServer = ntpServers.Server[remote] 
-                                if (currNtpServer == nil)  {
-                                        currNtpServer, _ = ntpServers.NewServer(remote)
-                                        ygot.BuildEmptyTree(currNtpServer)
-                                }
-
-                                if (currNtpServer.Config == nil) {
-                                        ygot.BuildEmptyTree(currNtpServer)
-                                }
-
-                                if (currNtpServer.State == nil) {
-                                        ygot.BuildEmptyTree(currNtpServer)
-                                }
-
-                                currNtpServer.State.Address = &remote
+                /* Check if it is the above case2 line4, if so, concatenate line3 and line4 in list */
+                /* There are 10 fields in ntpq server association record */
+                if list0 != nil {
+                        if len(list) < 10 {
+                                list = append(list0, list...)
+                                list0 = nil
                         }
+                }
 
-                        when_num, _ := strconv.ParseUint(when, 10, 32)
-                        when_num32 := uint32(when_num)
-                        currNtpServer.State.Now = &when_num32
+                /* Check if it is the above case2 line3, if so cache it and continue to next line */
+                if len(list) < 10 {
+                        list0 = list
+                        line_num ++
+                        continue
+                }
 
-                        offset_sec, _ := strconv.ParseFloat(offset, 64)
-                        offset_milli := offset_sec*1000
-                        currNtpServer.State.Peeroffset = &offset_milli
+                if list0 != nil {
+                        log.Infof( "ProcessGetNtpServer: list0 %v, len %v, line no. %v", list0, len(list0), line_num)
+                        err = FillNtpServer(keyName, list0, ntpServers, getServConfigOnly)
+                        if err != nil {
+                                return err
+                        }
+                        list0 = nil
+                }
 
-                        currNtpServer.State.Selmode = &selMode
-
-                        poll_num, _ := strconv.ParseUint(poll, 10, 32)
-                        poll_num32 := uint32(poll_num)
-                        currNtpServer.State.PollInterval = &poll_num32
-
-                        stratum_num, _ := strconv.ParseUint(stratum, 10, 8)
-                        stratum_num8 := uint8(stratum_num)
-                        currNtpServer.State.Stratum = &stratum_num8
-
-                        currNtpServer.State.Peertype = &peer_type
-
-                        jitter_sec, _ := strconv.ParseFloat(jitter, 64)
-                        jitter_milli := jitter_sec*1000
-                        currNtpServer.State.Peerjitter = &jitter_milli
-
-                        reach_num, _ := strconv.ParseUint(reach, 10, 8)
-                        reach_num8 := uint8(reach_num)
-                        currNtpServer.State.Reach = &reach_num8
-
-                        delay_sec, _ := strconv.ParseFloat(delay, 64)
-                        delay_milli := delay_sec*1000
-                        currNtpServer.State.Peerdelay = &delay_milli
-
-                        currNtpServer.State.Refid = &refId
+                log.Infof( "ProcessGetNtpServer: list %v, len %v, line no. %v", list, len(list), line_num)
+                err = FillNtpServer(keyName, list, ntpServers, getServConfigOnly)
+                if err != nil {
+                        return err
                 }
 
                 line_num ++
         }
-
 
         return nil
 }
