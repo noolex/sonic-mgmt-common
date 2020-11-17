@@ -867,15 +867,15 @@ func resetCounters(d *db.DB, oid string) (error,error) {
     }
     return verr, cerr
 }
-func vlanDifference(a, b []string) []string {
-    mb := make(map[string]struct{}, len(b))
-    for _, x := range b {
-        mb[x] = struct{}{}
+func vlanDifference(vlanList1, vlanList2 []string) []string {
+    mb := make(map[string]struct{}, len(vlanList2))
+    for _, ifName := range vlanList2 {
+        mb[ifName] = struct{}{}
     }
     var diff []string
-    for _, x := range a {
-        if _, found := mb[x]; !found {
-            diff = append(diff, x)
+    for _, ifName := range vlanList1 {
+        if _, found := mb[ifName]; !found {
+            diff = append(diff, ifName)
         }
     }
     return diff
@@ -1052,8 +1052,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         return json.Marshal(&result)
     }
     if exists {
-        vlanId := cfgredAccessVlan[len("Vlan"):]
-        errStr := "Untagged VLAN: " + vlanId + " configuration exists"
+        errStr := cfgredAccessVlan + " already configured as access for " + *ifName
         err = tlerr.InvalidArgsError{Format: errStr}
         result.Output.Status_detail = err.Error()
         return json.Marshal(&result)
