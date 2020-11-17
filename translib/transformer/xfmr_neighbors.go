@@ -134,7 +134,7 @@ var YangToDb_routed_vlan_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
 
     if len(intfName) <= 0 {
         errStr := "Interface name is missing"
-        log.Error("YangToDb_neigh_tbl_key_xfmr - ", errStr)
+        log.Error("YangToDb_routed_vlan_neigh_tbl_key_xfmr - ", errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return "", err
     }
@@ -259,6 +259,13 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
             delete_neigh_interface_config_all(&inParams, &neighIntfmap)
             return neighIntfmap, nil
         }
+        return neighIntfmap, nil
+    }
+
+    /*If interface type is Vlan, return*/
+    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: InterfaceName: " + ifName)
+    if len(ifName) > 4 && strings.HasPrefix(strings.ToLower(ifName), "vlan") {
+        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: Inside If")
         return neighIntfmap, nil
     }
 
@@ -575,9 +582,9 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     neighTblName = "NEIGH"
 
     log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:", ifName)
-    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:", inParams.uri)
-    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: pathInfo ", pathInfo)
-    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: rcvd uri ", rcvdUri)
+    log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:", inParams.uri)
+    log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: pathInfo ", pathInfo)
+    log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: rcvd uri ", rcvdUri)
 
      if subIntfObj.Ipv6 == nil {
         errStr := "SubInterface IPv6 node is not set"
@@ -614,7 +621,7 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     for k:= range arpObj {
         staticIpStr = *arpObj[k].Ip
     }
- 
+
     if (addOperation) {
         for _,v := range arpObj {
             staticMacStr = *v.Config.LinkLayerAddress
@@ -630,7 +637,7 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         valueMap[neighTblKey].Field["family"] = "IPv6"
         valueMap[neighTblKey].Field["neigh"] = staticMacStr
         neighIntfmap[neighTblName] = valueMap
-        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: valueMap ", valueMap[neighTblKey])
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: valueMap ", valueMap[neighTblKey])
     } else if (deleteOperation) {
         log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: staticIpStr ", staticIpStr)
         neighTblKey = ifName + "|" + staticIpStr
@@ -671,6 +678,13 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
         log.Info("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return nil
+    }
+
+    /*If interface type is Vlan, return*/
+    if !strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
+        errStr := "Invalid interface type"
+        log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
         return nil
     }
 
@@ -809,6 +823,13 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
         return nil
     }
 
+    /*If interface type is Vlan, return*/
+    if !strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
+        errStr := "Invalid interface type"
+        log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr - ", errStr)
+        return nil
+    }
+
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
         errStr := "IntfsObj/interface list is empty for " + intfNameRcvd
@@ -937,13 +958,21 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Neighbors_Neighbor
 
     intfNameRcvd := pathInfo.Var("name")
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
         log.Info("DbToYang_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
         return nil
     }
+
+    /*If interface type is Vlan, return*/
+    if len(intfNameRcvd) > 4 && strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
+        errStr := "Invalid interface type"
+        log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
+        return nil
+    }
+
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
@@ -1075,13 +1104,21 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_Neighbors_Neighbor
 
     intfNameRcvd := pathInfo.Var("name")
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
         log.Error("DbToYang_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
         return errors.New(errStr)
     }
+
+    /*If interface type is Vlan, return*/
+    if len(intfNameRcvd) > 4 && strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
+        errStr := "Invalid interface type"
+        log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
+        return nil
+    }
+
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
@@ -1239,6 +1276,13 @@ var YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func 
             delete_neigh_interface_config_all(&inParams, &neighIntfmap)
             return neighIntfmap, nil
         }
+        return neighIntfmap, nil
+    }
+
+    /*If interface type is Vlan, return*/
+    log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: " + ifName)
+    if !strings.HasPrefix(strings.ToLower(ifName), "vlan") {
+        log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: Inside If")
         return neighIntfmap, nil
     }
 
