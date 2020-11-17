@@ -262,13 +262,6 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, nil
     }
 
-    /*If interface type is Vlan, return*/
-    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: InterfaceName: " + ifName)
-    if len(ifName) > 4 && strings.HasPrefix(strings.ToLower(ifName), "vlan") {
-        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: Inside If")
-        return neighIntfmap, nil
-    }
-
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
         errStr := "IntfsObj/interface list is empty for " + ifName
@@ -681,7 +674,7 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
         return nil
     }
 
-    /*If interface type is Vlan, return*/
+    /*If interface type is not Vlan, return*/
     if !strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
         errStr := "Invalid interface type"
         log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
@@ -823,7 +816,7 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
         return nil
     }
 
-    /*If interface type is Vlan, return*/
+    /*If interface type is not Vlan, return*/
     if !strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
         errStr := "Invalid interface type"
         log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr - ", errStr)
@@ -1114,7 +1107,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     /*If interface type is Vlan, return*/
     if len(intfNameRcvd) > 4 && strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
         errStr := "Invalid interface type"
-        log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
+        log.Error("DbToYang_neigh_tbl_get_all_ipv6_xfmr - ", errStr)
         return nil
     }
 
@@ -1276,13 +1269,6 @@ var YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func 
             delete_neigh_interface_config_all(&inParams, &neighIntfmap)
             return neighIntfmap, nil
         }
-        return neighIntfmap, nil
-    }
-
-    /*If interface type is Vlan, return*/
-    log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: " + ifName)
-    if !strings.HasPrefix(strings.ToLower(ifName), "vlan") {
-        log.Info("YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: Inside If")
         return neighIntfmap, nil
     }
 
