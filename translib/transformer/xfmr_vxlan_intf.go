@@ -1676,7 +1676,7 @@ var DbToYang_vxlan_vni_instance_subtree_xfmr SubTreeXfmrDbToYang = func(inParams
 				fillVniInstanceDetails(niName, vniId, vtepName, vniInst)
 			}
 		} else {
-			log.Errorf("Network instance %s not found", niName)
+		   log.Infof("Network instance %s not found", niName)
 		}
 	}
 

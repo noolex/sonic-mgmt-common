@@ -480,6 +480,11 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                     return tlerr.InvalidArgsError{Format: err.Error()}
                 }
             case IntfTypeEthernet:
+                err = validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeEthernet].cfgDb.portTN, *ifName)
+                if err != nil {
+                    // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+                    return nil
+                }
                 errStr := "Physical Interface: " + *ifName + " cannot be deleted"
                 err = tlerr.InvalidArgsError{Format:errStr}
                 return err
@@ -500,7 +505,25 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                 return err
             }
 	    }
-	}
+	    }
+
+        if(ifType == IntfTypeEthernet) {
+            err = validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeEthernet].cfgDb.portTN, *ifName)
+            if err != nil {    // Invalid Physical interface
+                errStr := "Interface " + *ifName + " cannot be configured."
+                return tlerr.InvalidArgsError{Format:errStr}
+            }
+            if (inParams.oper == REPLACE) {
+                if *requestUriPath == "/openconfig-interfaces:interfaces/interface" ||
+                    *requestUriPath == "/openconfig-interfaces:interfaces/interface/config" {
+                    // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
+                    // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
+                    // Hence block the Replace/PUT request for Physical interfaces alone.
+                    err_str := "Replace/PUT request not allowed for Physical interfaces"
+                    return tlerr.NotSupported(err_str)
+                }
+           }
+        }
     }
     return err
 }
@@ -1148,13 +1171,7 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
     } else if strings.HasPrefix(ifName, LOOPBACK) {
         res_map["NULL"] = "NULL"
     } else if strings.HasPrefix(ifName, ETHERNET) {
-        intTbl := IntfTypeTblMap[IntfTypeEthernet]
-        //Check if physical interface exists, if not return error
-        err = validateIntfExists(inParams.d, intTbl.cfgDb.portTN, ifName)
-        if err != nil {
-            errStr := "Interface " + ifName + " cannot be configured."
-            return res_map, tlerr.InvalidArgsError{Format:errStr}
-        }
+        res_map["NULL"] = "NULL"
     }
     log.Info("YangToDb_intf_name_xfmr: res_map:", res_map)
     return res_map, err
@@ -2013,6 +2030,10 @@ func routed_vlan_ip_addr_del (d *db.DB , ifName string, tblName string, routedVl
                             if ok && secVal == "true" {
                                 if isSec {
                                     intfIpMap[k] = v
+                                } else {
+                                    errStr := "No such address (" + k + ") configured on this interface as primary address"
+                                    log.Error(errStr)
+                                    return nil, tlerr.InvalidArgsError {Format: errStr}
                                 }
                             } else {
                                 if isSec {
@@ -4591,13 +4612,12 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
     }
     /* Handle PortSpeed config */
     if intfObj.Ethernet.Config.PortSpeed != 0 {
-        if isPortGroupMember(ifName) {
-            err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
-        }
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
         intTbl := IntfTypeTblMap[intfType]
-
+        if isPortGroupMember(ifName) {
+            err = tlerr.InvalidArgs("Port group member. Please use port group command to change the speed")
+        }
         portSpeed := intfObj.Ethernet.Config.PortSpeed
         val, ok := intfOCToSpeedMap[portSpeed]
         if ok {
@@ -4605,30 +4625,47 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
             if err == nil {
                 res_map[PORT_SPEED] = val
             }
-        } else if portSpeed == ocbinds.OpenconfigIfEthernet_ETHERNET_SPEED_SPEED_UNKNOWN {
+        } else {
+            err = tlerr.InvalidArgs("Invalid speed %s", val)
+        }
+
+        if err == nil {
+            if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
+                memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+            }
+            memMap[intTbl.cfgDb.portTN][ifName] = value
+        }
+    } else if  (requestUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/port-speed") {
+        if inParams.oper == DELETE {
+            updateMap := make(map[string]map[string]db.Value)
+            intTbl := IntfTypeTblMap[intfType]
+            res_map := make(map[string]string)
+            value := db.Value{Field: res_map}
             defSpeed := getDefaultSpeed(inParams.d, ifName)
-            log.Info(" defSpeed  ", defSpeed)
+            log.Info("Default speed for ", ifName, " is ", defSpeed)
             if defSpeed != 0 {
-                val = strconv.FormatInt(int64(defSpeed), 10)
+                val := strconv.FormatInt(int64(defSpeed), 10)
                 err = validateSpeed(inParams.d, ifName, val)
                 if err == nil {
                     res_map[PORT_SPEED] = val
+                    if _, ok := updateMap[intTbl.cfgDb.portTN]; !ok {
+                        updateMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
+                    }
+                    updateMap[intTbl.cfgDb.portTN][ifName] = value
+                    subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+                    subOpMap[db.ConfigDB] = updateMap
+                    inParams.subOpDataMap[UPDATE] = &subOpMap
                 }
             } else {
                 err = tlerr.NotSupported("Default speed not available")
             }
         } else {
-            err = tlerr.InvalidArgs("Invalid speed %s", val)
+            log.Error("Unexpected oper ", inParams.oper)
         }
-
-        if _, ok := memMap[intTbl.cfgDb.portTN]; !ok {
-            memMap[intTbl.cfgDb.portTN] = make(map[string]db.Value)
-        }
-        memMap[intTbl.cfgDb.portTN][ifName] = value
     }
-
     /* Handle Port FEC config */
-    if (strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-fec")) {
+    _, present := yangToDbFecMap[intfObj.Ethernet.Config.PortFec]
+    if present {
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
         intTbl := IntfTypeTblMap[intfType]

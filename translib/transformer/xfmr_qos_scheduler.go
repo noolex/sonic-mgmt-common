@@ -104,7 +104,7 @@ func getIntfsBySchedulerName(scheduler string) ([]string) {
         log.Infof("getIntfsBySchedulerName, unable to get configDB, error %v", err)
         return s
     }
-
+	defer d.DeleteDB()
 
     dbSpec := &db.TableSpec{Name: "PORT_QOS_MAP"}
 
@@ -142,6 +142,8 @@ func getIntfsBySPName(sp_name string) ([]string) {
         log.Infof("getIntfsBySPName, unable to get configDB, error %v", err)
         return s
     }
+
+	defer d.DeleteDB()
 
 
     // QUEUE & PORT_QOS_MAP

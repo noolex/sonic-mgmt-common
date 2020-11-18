@@ -18,9 +18,11 @@ module openconfig-network-instance-annot {
 	
     import ietf-yang-types { prefix yang; }
     import openconfig-vxlan {prefix oc-vxlan; }
+    import openconfig-mac-dampening { prefix oc-mac-damp; }
 
     deviation /oc-netinst:network-instances {
       deviate add {
+        sonic-ext:pre-transformer "network_instance_pre_xfmr";
         sonic-ext:post-transformer "network_instance_post_xfmr";
       }
     }
@@ -140,20 +142,15 @@ module openconfig-network-instance-annot {
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:mac-dampening {
+    
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-mac-damp:mac-dampening {
         deviate add {
             sonic-ext:table-name "MAC_DAMPENING";
             sonic-ext:key-transformer "mac_dampening_config_key_xfmr";
         }
     }
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:mac-dampening/oc-netinst-ext:config/oc-netinst-ext:global {
-        deviate add {
-            sonic-ext:field-name "config";
-            sonic-ext:field-transformer "mac_dampening_config_value_xfmr";
-        }
-    }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:mac-dampening/oc-netinst-ext:state {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-mac-damp:mac-dampening/oc-mac-damp:state {
         deviate add {
             sonic-ext:table-name "MAC_DAMP_TABLE";
             sonic-ext:db-name "ASIC_DB";

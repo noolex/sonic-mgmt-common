@@ -57,14 +57,14 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	/********************************/
 
-	/* Static case interface state */
-	path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/state"
+	/* Static case interface subinterfaces */
+        path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/subinterfaces"
 	expErr := tlerr.NotSupportedError{Format:"Subscribe not supported", Path : path}
-	t.Run("Static case on change disable(interface state)", translateSubscribeRequest(path, xfmrTrSubInfo, true, expErr))
+	t.Run("Static case on change disable(interface subinterfaces)", translateSubscribeRequest(path, xfmrTrSubInfo, true, expErr))
 	time.Sleep(1 * time.Second)
 	/******************/
 
-	/*Static case interface state oper-status*/
+	/*Static case interface state oper-status, native format key*/
 	path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/state/oper-status"
 	xfmrTrSubInfo.DbDataMap = make(RedisDbMap)
 	xfmrTrSubInfo.DbDataMap[0] = map[string]map[string]db.Value{"PORT_TABLE": map[string]db.Value{"Ethernet4":{}}}
@@ -76,10 +76,30 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	/*****************************/
 
+	/*Static case interface state oper-status, non-native/alias format key*/
+	path = "/openconfig-interfaces:interfaces/interface[name=Eth1/4]/state/oper-status"
+	xfmrTrSubInfo.DbDataMap = make(RedisDbMap)
+	xfmrTrSubInfo.DbDataMap[0] = map[string]map[string]db.Value{"PORT_TABLE": map[string]db.Value{"Ethernet4":{}}}
+	xfmrTrSubInfo.MinInterval = 0
+	xfmrTrSubInfo.NeedCache = true
+	xfmrTrSubInfo.PType = OnChange
+	xfmrTrSubInfo.OnChange = true
+	url := "/sonic-device-metadata:sonic-device-metadata/DEVICE_METADATA/DEVICE_METADATA_LIST[name=localhost]/intf_naming_mode"
+	url_body_json := "{\"sonic-device-metadata:intf_naming_mode\": \"standard\"}"
+	t.Run("Enable Alias mode", processSetRequest(url, url_body_json, "PATCH", false))
+	time.Sleep(2 * time.Second)
+	t.Run("Static case on change enable(non-native key interface state oper-status)", translateSubscribeRequest(path, xfmrTrSubInfo, false, nil))
+	time.Sleep(1 * time.Second)
+	url = "/sonic-device-metadata:sonic-device-metadata/DEVICE_METADATA/DEVICE_METADATA_LIST[name=localhost]/intf_naming_mode"
+	t.Run("Disable Alias mode", processDeleteRequest(url, false))
+	/*****************************/
+
 	/*Static case interface  key-leaf*/
 	path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/name"
-	expErr = tlerr.NotSupportedError{Format:"Subscribe not supported", Path : path}
-	t.Run("Static case on change disable(interface list key-leaf)", translateSubscribeRequest(path, xfmrTrSubInfo, true, expErr))
+	xfmrTrSubInfo.DbDataMap = nil
+	xfmrTrSubInfo.PType = Sample
+	xfmrTrSubInfo.OnChange = false
+	t.Run("Static case on change disable(interface list key-leaf)", translateSubscribeRequest(path, xfmrTrSubInfo, false))
 	time.Sleep(1 * time.Second)
 	/*******************************/
 
@@ -103,6 +123,36 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	t.Run("Static case on change not supported (interface top-level container)", translateSubscribeRequest(path, xfmrTrSubInfo, true, expErr))
 	time.Sleep(1 * time.Second)
 	/********************/
+
+	/*Subtree case onChange disabled bgp/neigbors/neighbor/state/established-transitions*/
+	path = "/openconfig-network-instance:network-instances/network-instance[name=default]/protocols/protocol[identifier=BGP][name=bgp]/bgp/neighbors/neighbor[neighbor-address=Eth1/1]/state/established-transitions"
+	xfmrTrSubInfo.DbDataMap = nil
+	xfmrTrSubInfo.MinInterval = 0
+	xfmrTrSubInfo.OnChange = false
+	t.Run("Subtree case on change disable(bgp/neigbors/neighbor/state/established-transitions)", translateSubscribeRequest(path, xfmrTrSubInfo, false, nil))
+	time.Sleep(1 * time.Second)
+	/*****************************/
+
+	/*Subtree case bgp/neigbors/neighbor/state/session-state, non-native/alias format key*/
+	path = "/openconfig-network-instance:network-instances/network-instance[name=default]/protocols/protocol[identifier=BGP][name=bgp]/bgp/neighbors/neighbor[neighbor-address=Eth1/1]/state/session-state"
+	xfmrTrSubInfo.DbDataMap = make(RedisDbMap)
+	xfmrTrSubInfo.DbDataMap[6] = map[string]map[string]db.Value{"BGP_NEIGHBOR": map[string]db.Value{"default|Ethernet0":{}}}
+	xfmrTrSubInfo.MinInterval = 0
+	xfmrTrSubInfo.NeedCache = true
+	xfmrTrSubInfo.PType = OnChange
+	xfmrTrSubInfo.OnChange = true
+	url = "/sonic-device-metadata:sonic-device-metadata/DEVICE_METADATA/DEVICE_METADATA_LIST[name=localhost]/intf_naming_mode"
+	url_body_json = "{\"sonic-device-metadata:intf_naming_mode\": \"standard\"}"
+        t.Run("Enable Alias mode", processSetRequest(url, url_body_json, "PATCH", false))
+        time.Sleep(2 * time.Second)
+	t.Run("Subtree case on change enable(bgp/neigbors/neighbor/state/session-state)", translateSubscribeRequest(path, xfmrTrSubInfo, false, nil))
+	time.Sleep(1 * time.Second)
+	url = "/sonic-device-metadata:sonic-device-metadata/DEVICE_METADATA/DEVICE_METADATA_LIST[name=localhost]/intf_naming_mode"
+	t.Run("Disable Alias mode", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+
+	/*****************************/
+
 
     fmt.Println("+++++++++++++ Done!!! Performing  Translate Subscribe OC yang ++++++++++++")
 

@@ -1,0 +1,120 @@
+module openconfig-mac-dampening {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/macdamp/extension";
+
+  prefix "oc-mac-damp"; 
+
+  import openconfig-network-instance { prefix oc-ni; }
+  import openconfig-interfaces { prefix oc-if; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  // OpenConfig specific extensions for module metadata.
+  oc-ext:regexp-posix;
+  oc-ext:catalog-organization "openconfig";
+  oc-ext:origin "openconfig";
+
+  // meta
+  organization
+    "OCP SONiC Subproject";
+
+  contact
+    "OCP SONiC Subproject Working Group
+     https://github.com/Azure/SONiC";
+
+  description
+    "This module defines configuration and operational state
+    data for overlay tunnels.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-10-08" {
+    description
+      "Initial revision";
+    reference "0.1.0";
+  }
+
+  grouping mac-dampening-config {
+      description
+          "MAC dampening config";
+     leaf threshold {
+          type uint8;
+          description
+              "The number of MAC movements allowed per second before disabling MAC learning on a port";
+      }
+  }
+
+  grouping mac-dampening-state {
+      description
+          "mac dampening state information";
+      leaf-list interfaces {
+          type leafref {
+              path "/oc-if:interfaces/oc-if:interface/oc-if:config/oc-if:name";
+          }
+          description
+              "list of mac learning disabled ports due to mac dampening";
+      }
+  }
+  grouping mac-dampening-top {
+      description
+          "mac dampening config and state information";
+      container mac-dampening {
+          description
+              "mac dampening config and state information";
+          container config {
+              description
+                  "mac dampening config information";
+              uses mac-dampening-config;
+          }
+          container state {
+              config false;
+              uses mac-dampening-config;
+              uses mac-dampening-state;
+              description
+                  "mac dampening state information";
+          }
+      }
+  }
+
+  //augments
+  augment "/oc-ni:network-instances/oc-ni:network-instance" {
+    description
+        "Augment l2 mac dampening config/state information to network instance";
+    uses mac-dampening-top {
+        when "config/type = 'DEFAULT_INSTANCE'" {
+            description
+                "Layer 2 mac dampening config/state information included when 
+                a network instance is Default instance";
+        }
+    }
+  }
+
+  //rpcs
+  rpc clear-mac-dampening-disabled-ports {
+        description
+            "Clears mac dampening settings for port(s) disabled due to mac
+            dampening. Possible values can be either 1) ALL - if this value is
+            passed for ifname then it clears mac dampening settings for all mac
+            dampening disabled ports. 2) specific name name - clears mac
+            dampening settings for specific mac dampening disabled ports. ";
+ 
+        input {
+            leaf ifname {
+                type union {
+                    type string;
+                    type enumeration {
+                        enum ALL;
+                    }
+                }
+                description
+                    "Interface name for which mac dampening disabled port
+                    settting needs to be cleard. If specific interface name is
+                    provided then it clears mac dampening settings for that
+                    interface, else if ALL is passed it clears mac dampening
+                    settings for all mac dampening disabled ports. ";
+            }
+        }
+  }
+}

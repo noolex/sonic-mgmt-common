@@ -320,10 +320,31 @@ func getYangTerminalNodeTypeName(xpathPrefix string, keyName string) string {
 }
 
 
-func sonicKeyDataAdd(dbIndex db.DBNum, keyNameList []string, xpathPrefix string, keyStr string, resultMap map[string]interface{}) {
+func sonicKeyDataAdd(dbIndex db.DBNum, keyNameList []string, xpathPrefix string, listNm string, keyStr string, resultMap map[string]interface{}) {
         var dbOpts db.Options
         var keyValList []string
         xfmrLogInfoAll("sonicKeyDataAdd keyNameList:%v, keyStr:%v", keyNameList, keyStr)
+
+	if xDbSpecInfo, ok := xDbSpecMap[xpathPrefix+"/"+listNm]; ok {
+                if xDbSpecInfo.xfmrKey != "" {
+                        inParams := formSonicXfmrInputRequest(dbIndex, xpathPrefix, keyStr, xpathPrefix+"/"+listNm)
+                        ret, err := sonicKeyXfmrHandlerFunc(inParams, xDbSpecInfo.xfmrKey)
+                        if err != nil {
+                                return
+                        }
+                        if len(ret) > 0 {
+                                if resultMap == nil {
+                                        resultMap = make(map[string]interface{})
+                                }
+                                for keyName, keyVal := range(ret) {
+                                        resultMap[keyName] = keyVal
+                                }
+                        }
+                        return
+                }
+        } else {
+                xfmrLogInfoAll("xDbSpecmap doesn't have xpath - %v", xpathPrefix+"/"+listNm)
+        }
 
         dbOpts = getDBOptions(dbIndex)
         keySeparator := dbOpts.KeySeparator
@@ -607,22 +628,8 @@ func XfmrRemoveXPATHPredicates(uri string) (string, []string, error) {
 	return xpath, uriList, nil
 }
 
-func replacePrefixWithModuleName(xpath string) (string) {
-	//Input xpath is after removing the xpath Predicates
-	var moduleNm string
-	if _, ok := xYangSpecMap[xpath]; ok {
-		moduleNm = xYangSpecMap[xpath].dbEntry.Prefix.Parent.NName()
-		pathList := strings.Split(xpath, ":")
-		if len(moduleNm) > 0 && len(pathList) == 2 {
-			xpath = "/" + moduleNm + ":" + pathList[1]
-		}
-	}
-	return xpath
-}
-
-
 /* Extract key vars, create db key and xpath */
-func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (xpathTblKeyExtractRet, error) {
+func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, requestUri string, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subOpDataMap map[int]*RedisDbMap, txCache interface{}, xfmrTblKeyCache map[string]tblKeyCache) (xpathTblKeyExtractRet, error) {
 	 xfmrLogInfoAll("In uri(%v), reqUri(%v), oper(%v)", path, requestUri, oper)
 	 var retData xpathTblKeyExtractRet
 	 keyStr    := ""
@@ -663,7 +670,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	 yangXpath := ""
 	 xfmrLogInfoAll("path elements are : %v", pathList)
 	 for i, k := range pathList {
-		 curPathWithKey += k
+		 curPathWithKey += "/" + k
 		 callKeyXfmr := true
 		 yangXpath += "/" + xpathList[i]
 		 xpathInfo, ok := xYangSpecMap[yangXpath]
@@ -682,9 +689,12 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 keyStr += keySeparator
 				 }
 				 if len(xYangSpecMap[yangXpath].xfmrKey) > 0 {
-				 if oper == DELETE {
-					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
-						callKeyXfmr = false
+			     if xfmrTblKeyCache != nil {
+				     if tkCache, _ok := xfmrTblKeyCache[curPathWithKey]; _ok {
+					     if len(tkCache.dbKey) != 0 {
+						     keyStr = tkCache.dbKey
+						     callKeyXfmr = false
+					     }
 					}
 				 }
 				 if callKeyXfmr {
@@ -707,8 +717,13 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 						 }
 						 keyStr = ret
 					 }
-					 if oper == DELETE {
-						keyXfmrCache[curPathWithKey] = keyStr
+					 if xfmrTblKeyCache != nil {
+						 if _, _ok := xfmrTblKeyCache[curPathWithKey]; !_ok {
+							 xfmrTblKeyCache[curPathWithKey] = tblKeyCache{}
+						 }
+						 tkCache := xfmrTblKeyCache[curPathWithKey]
+						 tkCache.dbKey = keyStr
+						 xfmrTblKeyCache[curPathWithKey] = tkCache
 					 }
 				 }
 				 } else if xYangSpecMap[yangXpath].keyName != nil {
@@ -726,11 +741,14 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 				 }
 			 } else if len(xYangSpecMap[yangXpath].xfmrKey) > 0  {
-				 if oper == DELETE {
-					if keyStr, ok = keyXfmrCache[curPathWithKey]; ok {
-						callKeyXfmr = false
+				 if xfmrTblKeyCache != nil {
+					 if tkCache, _ok := xfmrTblKeyCache[curPathWithKey]; _ok {
+						if len(tkCache.dbKey) != 0 {
+							keyStr = tkCache.dbKey
+							callKeyXfmr = false
+						}
 					}
-				 }
+				}
 			   if callKeyXfmr {
 				 xfmrFuncName := yangToDbXfmrFunc(xYangSpecMap[yangXpath].xfmrKey)
 				 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
@@ -751,24 +769,34 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 					 }
 					 keyStr = ret
 				 }
-				 if oper == DELETE {
-					keyXfmrCache[curPathWithKey] = keyStr
+				 if xfmrTblKeyCache != nil {
+					 if _, _ok := xfmrTblKeyCache[curPathWithKey]; !_ok {
+						 xfmrTblKeyCache[curPathWithKey] = tblKeyCache{}
+					 }
+					 tkCache := xfmrTblKeyCache[curPathWithKey]
+					 tkCache.dbKey = keyStr
+					 xfmrTblKeyCache[curPathWithKey] = tkCache
 				 }
 			 }
 			 } else if xYangSpecMap[yangXpath].keyName != nil {
 				 keyStr += *xYangSpecMap[yangXpath].keyName
 			 }
 		 }
-		 curPathWithKey += "/"
 	 }
 	 curPathWithKey = strings.TrimSuffix(curPathWithKey, "/")
+	 if !strings.HasPrefix(curPathWithKey, "/") {
+		curPathWithKey = "/" + curPathWithKey
+	 }
 	 retData.dbKey = keyStr
 	 tblPtr     := xpathInfo.tableName
 	 if tblPtr != nil && *tblPtr != XFMR_NONE_STRING {
 		 retData.tableName = *tblPtr
 	 } else if xpathInfo.xfmrTbl != nil {
 		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, curPathWithKey, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
-		 retData.tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams)
+		 if oper == GET {
+			 inParams.dbDataMap = dbDataMap
+		 }
+		 retData.tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams, xfmrTblKeyCache)
 		 if inParams.isVirtualTbl != nil {
 			retData.isVirtualTbl = *(inParams.isVirtualTbl)
 		 }
@@ -784,7 +812,7 @@ func xpathKeyExtract(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, req
 	return retData, err
 }
 
-func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}) (string, error) {
+func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestUri string, subOpDataMap map[int]*RedisDbMap, txCache interface{}, xfmrTblKeyCache map[string]tblKeyCache) (string, error) {
 	tableName := ""
 	var err error
 	cdb := db.ConfigDB
@@ -802,7 +830,7 @@ func dbTableFromUriGet(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, re
 		 tableName = *tblPtr
 	 } else if xpathInfo.xfmrTbl != nil {
 		 inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
-		 tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams)
+		 tableName, err = tblNameFromTblXfmrGet(*xpathInfo.xfmrTbl, inParams, xfmrTblKeyCache)
 	 }
 	return tableName, err
 }
@@ -1044,7 +1072,7 @@ func dbKeyValueXfmrHandler(oper int, dbNum db.DBNum, tblName string, dbKey strin
 			keyMap    := make(map[string]interface{})
 
 			if specListInfo, ok := xDbSpecMap[listXpath]; ok && len(specListInfo.keyList) > 0 {
-				sonicKeyDataAdd(dbNum, specListInfo.keyList, tblName, dbKey, keyMap)
+				sonicKeyDataAdd(dbNum, specListInfo.keyList, tblName, lname, dbKey, keyMap)
 
 				if len(keyMap) == len(specListInfo.keyList) {
 					for _, kname := range specListInfo.keyList {
@@ -1339,6 +1367,58 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 	}
 	return leafListInstVal, err
 }
+
+func processKeyValueXfmr(dbDataMap RedisDbMap) (RedisDbMap) {
+	/*function to apply value transformer on DbData, used only in subscription context*/
+	xfmrLogInfoAll("apply value-transformer to - %v", dbDataMap)
+
+	resultMap := make(RedisDbMap)
+
+	for dbNo, dbDt := range(dbDataMap) {
+		for tblNm, tblDt := range(dbDt) {
+			for tblKey := range(tblDt) {
+				dbKey := tblKey
+				// "*" means all keys in a table in translib subscription context, so no need to call valueXfmr
+				if dbKey != "*" {
+					if hasKeyValueXfmr(tblNm) {
+						retKey, err := dbKeyValueXfmrHandler(SUBSCRIBE, dbNo, tblNm, dbKey)
+						if err != nil {
+							log.Warningf("dbKeyValueXfmrHandler() couldn't do conversion for - dbNo:%v, Tbl:%v, Key:%v, - %v", dbNo, tblNm, dbKey, err)
+							dbKey = ""
+						} else {
+							dbKey = retKey
+						}
+					}
+				}
+				if dbKey == "" {
+					continue
+				}
+				if resultMap[dbNo] == nil {
+					resultMap[dbNo] = map[string]map[string]db.Value{tblNm: {dbKey:{}}}
+				} else {
+					if resultMap[dbNo][tblNm] == nil {
+						resultMap[dbNo][tblNm] = map[string]db.Value{dbKey:{}}
+					} else {
+						resultMap[dbNo][tblNm][dbKey] = db.Value{}
+					}
+				}
+
+			}
+		}
+	}
+	xfmrLogInfoAll("After applying value-transformer - %v", resultMap)
+	return resultMap
+}
+
+func formSonicXfmrInputRequest(dbNum db.DBNum, table string, key string, xpath string) SonicXfmrParams {
+        var inParams SonicXfmrParams
+        inParams.dbNum = dbNum
+        inParams.tableName = table
+        inParams.key = key
+        inParams.xpath = table
+        return inParams
+}
+
 
 /* FUNCTIONS RESERVED FOR FUTURE USE. DO ONT DELETE */
 /***************************************************************************************************
