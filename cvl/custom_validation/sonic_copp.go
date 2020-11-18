@@ -170,7 +170,7 @@ func (t *CustomValidation) ValidateCoppTrapAction(
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapAction YCur: %v", vc.YCur)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapAction Data: %v", vc.CurCfg.Data)
 
-	if vc.CurCfg.VOp == OP_DELETE {
+	if vc.CurCfg.VOp == OP_DELETE || len(vc.YNodeVal) == 0 {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 

@@ -291,6 +291,10 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
             portValue.Set(k, v)
         }
     }
+    // Set FEC to none if the default mode of fec is not available in the default configuration file
+    if port_entry.Has("fec") && !portValue.Has("fec") {
+        portValue.Set("fec", "none")
+    }
     /* End of values from ConfigDB */
 
     updatePortMap[port_str] = portValue
