@@ -157,36 +157,35 @@ var YangToDb_neighbor_global_key_xfmr = func(inParams XfmrParams) (string, error
 
 func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[string]map[string]db.Value) (error) {
 
-    var err error
     var neighIntfTblMap map[string]db.Value = make(map[string]db.Value)
+    var keyPattern string
 
     log.Info("delete_neigh_interface_config_all: inParams", inParams)
 
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("name")
-
+    intfNameRcvd := pathInfo.Var("name")
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
     neighTblName := "NEIGH"
-    var neighTblSpec *db.TableSpec = &db.TableSpec{Name: neighTblName}
-    neighTblData, err := configDbPtr.GetTable(neighTblSpec)
-    if err != nil {
-        errStr := "Resource Not Found"
-        log.Error("delete_neigh_interface_config_all: Neigh Interface Table data not found ", errStr)
-        return errors.New(errStr)
+
+    var configDb = inParams.dbs[db.ConfigDB]
+    var neighTblTs = &db.TableSpec{Name: "NEIGH", CompCt:2}
+
+    ipAddrRcvd := pathInfo.Var("ip")
+    if len(ipAddrRcvd) > 0 {
+        keyPattern = *nativeIntfName + "|" + ipAddrRcvd
+    } else {
+        keyPattern = *nativeIntfName + "|*"
     }
 
-    intfTblKeys, err := neighTblData.GetKeys()
-    if err != nil {
-        errStr := "Resource Not Found"
-        log.Error("delete_neigh_interface_config_all: get keys failed ", errStr)
-        return errors.New(errStr)
-    }
+    keys, _ := configDb.GetKeysByPattern(neighTblTs, keyPattern)
 
     neighOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     neighOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
     neighOpMap[db.ConfigDB][neighTblName] = make(map[string]db.Value)
 
     entryDeleted := false
-    for _, intfTblKey := range intfTblKeys {
+    for _, intfTblKey := range keys {
         keyIfName := intfTblKey.Get(0)
         if keyIfName != ifName {
             log.Error("delete_neigh_interface_config_all:: key ifname doesnt match ",keyIfName)
