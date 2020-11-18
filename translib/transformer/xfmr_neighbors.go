@@ -675,8 +675,8 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
     }
 
     /*If interface type is not Vlan, return*/
-    if !strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
-        errStr := "Invalid interface type"
+    if !strings.HasPrefix(intfNameRcvd, "Vlan") {
+        errStr := "Invalid interface type: " + intfNameRcvd
         log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
         return nil
     }
@@ -738,7 +738,8 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
         }
 
         neighKeyStr := intfName + ":" + ipAddr
-        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
+        //entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
         if dbErr != nil || len(entry.Field) == 0 {
             log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
             return err
@@ -817,8 +818,8 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
     }
 
     /*If interface type is not Vlan, return*/
-    if !strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
-        errStr := "Invalid interface type"
+    if !strings.HasPrefix(intfNameRcvd, "Vlan") {
+        errStr := "Invalid interface type: " + intfNameRcvd
         log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr - ", errStr)
         return nil
     }
@@ -880,7 +881,8 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
         }
 
         neighKeyStr := intfName + ":" + ipAddr
-        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        //entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
         if dbErr != nil || len(entry.Field) == 0 {
             log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
             return err
@@ -959,8 +961,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     }
 
     /*If interface type is Vlan, return*/
-    if len(intfNameRcvd) > 4 && strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
-        errStr := "Invalid interface type"
+    if len(intfNameRcvd) > 4 && strings.HasPrefix(intfNameRcvd, "Vlan") {
+        errStr := "Invalid interface type: " + intfNameRcvd
         log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
         return nil
     }
@@ -1026,7 +1028,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         }
 
         neighKeyStr := intfName + ":" + ipAddr
-        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        //entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
         if dbErr != nil || len(entry.Field) == 0 {
             log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
             return err
@@ -1105,8 +1108,8 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     }
 
     /*If interface type is Vlan, return*/
-    if len(intfNameRcvd) > 4 && strings.HasPrefix(strings.ToLower(intfNameRcvd), "vlan") {
-        errStr := "Invalid interface type"
+    if len(intfNameRcvd) > 4 && strings.HasPrefix(intfNameRcvd, "Vlan") {
+        errStr := "Invalid interface type: " + intfNameRcvd
         log.Error("DbToYang_neigh_tbl_get_all_ipv6_xfmr - ", errStr)
         return nil
     }
@@ -1175,7 +1178,8 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
         neighKeyStr := intfName + ":" + ipAddr
 
-        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        //entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
         log.Info("DbToYang_neigh_tbl_get_all_ipv6_xfmr - entry: ", entry)
 
         if dbErr != nil || len(entry.Field) == 0 {
