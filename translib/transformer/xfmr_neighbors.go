@@ -739,7 +739,6 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
 
         neighKeyStr := intfName + ":" + ipAddr
         entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
-        //entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
         if dbErr != nil || len(entry.Field) == 0 {
             log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
             return err
@@ -881,7 +880,6 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
         }
 
         neighKeyStr := intfName + ":" + ipAddr
-        //entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
         entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
         if dbErr != nil || len(entry.Field) == 0 {
             log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
@@ -1028,7 +1026,6 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         }
 
         neighKeyStr := intfName + ":" + ipAddr
-        //entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
         entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
         if dbErr != nil || len(entry.Field) == 0 {
             log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
@@ -1178,7 +1175,6 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
         neighKeyStr := intfName + ":" + ipAddr
 
-        //entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
         entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
         log.Info("DbToYang_neigh_tbl_get_all_ipv6_xfmr - entry: ", entry)
 
