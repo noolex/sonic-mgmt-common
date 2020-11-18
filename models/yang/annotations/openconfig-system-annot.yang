@@ -969,6 +969,12 @@ module openconfig-system-annot {
         }
     }
 
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:enable-ntp-auth {
+        deviate add {
+            sonic-ext:field-name "auth_enabled";
+        }
+    }
+
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server {
         deviate add {
             sonic-ext:subtree-transformer "ntp_server_subtree_xfmr";
