@@ -36,7 +36,7 @@ const (
         NTP_KEY_ENCRYPTED_STR = "key_encrypted"
 )
 
-const ( 
+const (
         NTP_KEY_TYPE = "key_type"
 )
 
@@ -359,7 +359,29 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
          */
 
         // bingbing check how to get key id using cvl !!!!
+
+        ntpServTable := &db.TableSpec{Name: NTP_SERVER_TABLE_NAME}
         if (keyName != "") {
+                //ntpServTbl, err := inParams.d.GetTable(ntpServTable)
+                //if err != nil {
+                //        log.Infof("ProcessGetNtpServer, unable to get NTP server table err %v", err)
+                //        return err
+
+                //}
+
+                serverKey := db.Key{Comp: []string{keyName}}
+
+                ntpServEntry, err := inParams.d.GetEntry(ntpServTable, serverKey)
+                if err != nil {
+                        log.Infof("ProcessGetNtpServer, unable to get NTP server entry with key %v err %v", keyName, err)
+                        return err
+
+                }
+
+                keyId_str := (&ntpServEntry).Get("key_id")
+                keyId_int, _ := strconv.ParseUint(keyId_str, 10, 16)
+                keyId_uint16 := uint16(keyId_int)
+
                 currNtpServer = ntpServer[keyName]
 
                 if (!getServStateOnly) {
@@ -368,6 +390,8 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                         }
 
                         currNtpServer.Config.Address = &keyName
+                        currNtpServer.Config.KeyId = &keyId_uint16
+                        log.Infof("ProcessGetNtpServer bingbing config serv key %v keyid %d", keyName, currNtpServer.Config.KeyId) 
                 }
 
                 if (!getServConfigOnly) {
@@ -376,10 +400,12 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                         }
 
                         currNtpServer.State.Address = &keyName
+                        currNtpServer.State.KeyId = &keyId_uint16 
+                        log.Infof("ProcessGetNtpServer bingbing state serv key %v keyid %d", keyName, currNtpServer.Config.KeyId) 
                 }
         } else {
                 /* Get all ntp servers from config DB */
-                ntpServTable := &db.TableSpec{Name: NTP_SERVER_TABLE_NAME}
+                //ntpServTable := &db.TableSpec{Name: NTP_SERVER_TABLE_NAME}
                 ntpServKeys, err := inParams.d.GetKeys(ntpServTable)
 
                 if err != nil {
@@ -390,6 +416,15 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                 for i := range ntpServKeys {
                         currAddress := ntpServKeys[i].Comp
                         currNtpServer = ntpServer[currAddress[0]]
+
+                        serverKey := db.Key{Comp: []string{currAddress[0]}}
+                        ntpServEntry, err := inParams.d.GetEntry(ntpServTable, serverKey)
+
+                        if err != nil {
+                                log.Infof("ProcessGetNtpServer, unable to get NTP server entry for key %v with err %v", currAddress[0], err)
+                                return err
+                        }
+
                         if (currNtpServer == nil) {
                                 currNtpServer, _ = ntpServers.NewServer(currAddress[0])
                                 ygot.BuildEmptyTree(currNtpServer)
@@ -399,13 +434,19 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                                 ygot.BuildEmptyTree(currNtpServer)
                         }
 
+                        keyId_str := (&ntpServEntry).Get("key_id")
+                        keyId_int, _ := strconv.ParseUint(keyId_str, 10, 16)
+                        keyId_uint16 := uint16(keyId_int)
+
                         currNtpServer.Config.Address = &currAddress[0]
+                        currNtpServer.Config.KeyId =  &keyId_uint16 
 
                         if (currNtpServer.State == nil) {
                                 ygot.BuildEmptyTree(currNtpServer)
                         }
 
                         currNtpServer.State.Address = &currAddress[0]
+                        currNtpServer.State.KeyId = &keyId_uint16 
                 }
         }
 
@@ -656,6 +697,31 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
         var encrypted_str  string
 
         if (!*encrypted) {
+                // read the password
+                //d, err :=db.NewDB(getDBOptions(db.ConfigDB))
+                //if err != nil {
+                //        log.Infof("YangToDb_ntp_auth_key_value_xfmr, read password failed error %v", err)
+                //        return res_map, err
+                //}
+
+                //defer d.DeleteDB()
+
+                //var ntpGlTblName = "NTP"
+
+                //ntpGlTbl := &db.TableSpec{Name: ntpGlTblName}
+
+                //ntpGlKey := db.Key{Comp: []string{"global"}}
+
+                //ntpGlEntry , err := d.GetEntry(ntpGlTbl, ntpGlKey)
+                //if err != nil {
+                //        log.Infof("YangToDb_ntp_auth_key_value_xfmr, get Ntp global table failed error %v", err)
+                //        return res_map, err
+                //}
+
+                //NTP_SECRET_PASSWORD := ntpGlEntry.Get("password")
+
+                //log.Infof("bingbing YangToDb_ntp_auth_key_value_xfmr password %v", NTP_SECRET_PASSWORD)
+
                 key_value_byte := []byte(*key_value)
                 encrypted_key_value, _ := openssl(key_value_byte, "enc", "-aes-128-cbc", "-a", "-salt", "-pass", "pass:"+NTP_SECRET_PASSWORD)
                 log.Infof("bingbing encrypted %v", encrypted_key_value)
