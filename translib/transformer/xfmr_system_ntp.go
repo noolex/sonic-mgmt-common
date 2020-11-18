@@ -502,8 +502,10 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                         }
 
                         currNtpServer.Config.Address = &keyName
-                        currNtpServer.Config.KeyId = &keyId_uint16
-                        log.Infof("ProcessGetNtpServer bingbing config serv key %v keyid %d", keyName, currNtpServer.Config.KeyId) 
+
+                        if (keyId_uint16 != 0) {
+                                currNtpServer.Config.KeyId = &keyId_uint16
+                        }
                 }
 
                 if (!getServConfigOnly) {
@@ -512,8 +514,10 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                         }
 
                         currNtpServer.State.Address = &keyName
-                        currNtpServer.State.KeyId = &keyId_uint16 
-                        log.Infof("ProcessGetNtpServer bingbing state serv key %v keyid %d", keyName, currNtpServer.Config.KeyId) 
+
+                        if (keyId_uint16 != 0) {
+                                currNtpServer.State.KeyId = &keyId_uint16
+                        }
                 }
         } else {
                 /* Get all ntp servers from config DB */
@@ -551,14 +555,20 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                         keyId_uint16 := uint16(keyId_int)
 
                         currNtpServer.Config.Address = &currAddress[0]
-                        currNtpServer.Config.KeyId =  &keyId_uint16 
+
+                        if (keyId_uint16 != 0) {
+                                currNtpServer.Config.KeyId =  &keyId_uint16
+                        }
 
                         if (currNtpServer.State == nil) {
                                 ygot.BuildEmptyTree(currNtpServer)
                         }
 
                         currNtpServer.State.Address = &currAddress[0]
-                        currNtpServer.State.KeyId = &keyId_uint16 
+
+                        if (keyId_uint16 != 0) {
+                                currNtpServer.State.KeyId = &keyId_uint16
+                        }
                 }
         }
 
