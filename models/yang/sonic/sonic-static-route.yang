@@ -9,9 +9,16 @@ module sonic-static-route {
     import sonic-vrf {
         prefix svrf;
     }
+    import sonic-mgmt-vrf {
+        prefix mvrf;
+    }
 
     import sonic-extension {
         prefix sonic-ext;
+    }
+
+    import sonic-common {
+        prefix cmn;
     }
 
     organization
@@ -22,6 +29,11 @@ module sonic-static-route {
 
     description
         "SONIC Static Route YANG";
+
+    revision 2020-11-18 {
+        description
+            "Add management static route support.";
+    }
 
     revision 2020-08-03 {
         description
@@ -96,11 +108,17 @@ module sonic-static-route {
                 leaf vrf-name {
                     type union {
                         type string {
-                            pattern "default";
+                            pattern "default|mgmt";
                         }
                         type leafref {
                             path "/svrf:sonic-vrf/svrf:VRF/svrf:VRF_LIST/svrf:vrf_name";
                         }
+                    }
+                    must "(/cmn:operation/cmn:operation = 'DELETE') or " +
+                         "(current() != 'mgmt') or " +
+                         "(/mvrf:sonic-mgmt-vrf/mvrf:MGMT_VRF_CONFIG/mvrf:MGMT_VRF_CONFIG_LIST[mvrf:vrf_global_name='vrf_global']/mvrf:mgmtVrfEnabled = 'true')" {
+                        error-message "Management VRF not configured";
+                        error-app-tag mgmt-vrf-not-enabled;
                     }
                     description
                       "The VRF to which this route entry belongs.";
@@ -183,7 +201,7 @@ module sonic-static-route {
                 leaf nexthop-vrf {
                     sonic-ext:custom-validation ValidateNexthopVrf;
                     type string {
-                        pattern "((default|Vrf[a-zA-Z0-9_-]+|),)*(default|Vrf[a-zA-Z0-9_-]+|)" {
+                        pattern "((default|mgmt|Vrf[a-zA-Z0-9_-]+|),)*(default|mgmt|Vrf[a-zA-Z0-9_-]+|)" {
                             error-message "Invalid nexthop VRF name list";
                             error-app-tag vrf-name-list-invalid;
                         }

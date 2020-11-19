@@ -103,11 +103,28 @@ func checkNexthopGateway(prefix string, gwIP string, args ...interface{}) error 
     return nil
 }
 
-func checkTableKeyExists(db *redis.Client, tableList []string, key string) bool {
+type tableField struct {
+    name string
+    newKey string
+    fields map[string]string
+}
+
+func checkTableKeyExists(db *redis.Client, tableList []tableField, key string) bool {
     for _, table := range tableList {
-        fullKey := fmt.Sprintf("%s|%s", table, key)
+        if len(table.newKey) > 0 {
+            key = table.newKey
+        }
+        fullKey := fmt.Sprintf("%s|%s", table.name, key)
         attrs, err := db.HGetAll(fullKey).Result()
         if err == nil && attrs != nil && len(attrs) > 0 {
+            if table.fields != nil {
+                for fldName, fldVal := range table.fields {
+                    attrVal, ok := attrs[fldName]
+                    if !ok || fldVal != attrVal {
+                        return false
+                    }
+                }
+            }
             return true
         }
     }
@@ -121,8 +138,12 @@ func checkNexthopIntfVrf(_, name string, args ...interface{}) error {
     if len(name) == 0 {
         return nil
     }
-    tableList, ok := args[0].([]string)
-    if !ok {
+    var tableList []tableField
+    if tableNameList, ok := args[0].([]string); ok {
+        for _, tableName := range tableNameList {
+            tableList = append(tableList, tableField{tableName, "", nil})
+        }
+    } else if tableList, ok = args[0].([]tableField); !ok {
         return fmt.Errorf("Invalid argument type of table list for NH interface or VRF check")
     }
     db, ok := args[1].(*redis.Client)
@@ -175,7 +196,7 @@ func (t *CustomValidation) ValidateNexthopGateway(
 // Path /sonic-static-route/STATIC_ROUTE/ifname
 func (t *CustomValidation) ValidateNexthopInterface(
 	vc *CustValidationCtxt) CVLErrorInfo {
-    var tableList = []string{"PORT", "PORTCHANNEL", "VLAN", "LOOPBACK"}
+    var tableList = []string{"PORT", "PORTCHANNEL", "VLAN", "LOOPBACK", "MGMT_PORT"}
     return validateNexthopAttrCmn(vc, checkNexthopIntfVrf, tableList, vc.RClient)
 }
 
@@ -185,6 +206,7 @@ func (t *CustomValidation) ValidateNexthopInterface(
 // Path /sonic-static-route/STATIC_ROUTE/nexthop-vrf
 func (t *CustomValidation) ValidateNexthopVrf(
 	vc *CustValidationCtxt) CVLErrorInfo {
-    var tableList = []string{"VRF"}
+    var tableList = []tableField{{"VRF", "", nil},
+                                 {"MGMT_VRF_CONFIG", "vrf_global", map[string]string{"mgmtVrfEnabled": "true"}}}
     return validateNexthopAttrCmn(vc, checkNexthopIntfVrf, tableList, vc.RClient)
 }
