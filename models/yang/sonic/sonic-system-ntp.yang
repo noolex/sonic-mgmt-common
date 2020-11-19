@@ -40,6 +40,11 @@ module sonic-system-ntp {
     description
         "SONIC NTP";
 
+    revision 2020-10-29 {
+        description
+            "Add NTP authentication.";
+    }
+
     revision 2020-07-26 {
         description
             "Change for sonic-loopback.yang.";
@@ -66,12 +71,7 @@ module sonic-system-ntp {
                         "NTP global key";
                 }
 
-                leaf src_intf {
-                    must "(not(current()/../vrf = 'mgmt'))" {
-                        error-message "Source interface cannot be configured if NTP runs in Management VRF";
-                        error-app-tag source-interface-invalid;
-                    }
-
+                leaf-list src_intf {
                     type union {
                         type leafref {
                             path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
@@ -92,11 +92,6 @@ module sonic-system-ntp {
                 }
 
                 leaf vrf {
-                    must "(not((current() = 'mgmt') and (current()/../src_intf)))" {
-                          error-message "Source interface cannot be configured if NTP runs in Management VRF";
-                         error-app-tag source-interface-invalid;
-                    }
-
                     type union {
                         type string {
                             pattern "mgmt|default";
@@ -110,6 +105,74 @@ module sonic-system-ntp {
                     description
                         "The VRF instance NTP is running in.";
                 }
+
+                leaf auth_enabled {
+                    type boolean;
+                    description
+                        "Indicate if NTP authentication is enabled if set to true.";                 
+                }
+               
+                leaf-list trustedkey {
+                    type leafref {
+                        path "/sonic-system-ntp/NTP_AUTHENTICATION_KEY/NTP_AUTHENTICATION_KEY_LIST/key_id";
+                    }
+
+                    description
+                        "Trusted key list";
+                }       
+            }
+        }
+
+        container NTP_AUTHENTICATION_KEY {
+            list NTP_AUTHENTICATION_KEY_LIST {
+                key "key_id";
+
+                leaf key_id {
+                    type uint16 {
+                        range "1..65535"{ 
+                            error-message "key id out of range";
+                            error-app-tag key_id-invalid;
+                        }
+                    }
+                    description
+                        "Integer identifier used by the client and server to
+                         designate a secret key.  The client and server must use
+                         the same key id.";
+                }
+
+                leaf key_type {
+                    mandatory true;
+                    type enumeration {
+                        enum MD5 {
+                            description
+                                "MD5 encryption method";
+                        }
+
+                        enum SHA1 {
+                            description
+                                "SHA1 encryption method";
+                        }
+
+                        enum SHA2_256 {
+                            description
+                                "SHA2-256 encryption method";
+                        }
+                    }
+                }
+
+                leaf key_value {
+                    mandatory true;
+                    type string;
+                    description
+                        "NTP authentication key value";
+                }
+
+                leaf key_encrypted {
+                    type boolean;
+                    default true;
+                    description
+                        "NTP authentication key value is encrypted";
+                }
             }
         }
 
@@ -120,6 +183,17 @@ module sonic-system-ntp {
 
                 leaf server_address {
                     type inet:host;
+                }
+
+                leaf key_id {
+                    type leafref { 
+                        path "/sonic-system-ntp/NTP_AUTHENTICATION_KEY/NTP_AUTHENTICATION_KEY_LIST/key_id";
+                    }
+
+                    description
+                        "Integer identifier used by the client and server to
+                         designate a secret key.  The client and server must use
+                         the same key id.";
                 }
             }
         }

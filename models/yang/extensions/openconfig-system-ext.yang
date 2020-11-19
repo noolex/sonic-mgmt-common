@@ -30,6 +30,12 @@ module openconfig-system-ext {
     description
         "Model for managing TACACS+ configurations .";
 
+    revision 2020-11-02 {
+        description
+            "Add NTP authentication.";
+        reference "0.11.0";
+    }
+
     revision 2020-09-02 {
         description
             "Added the VRF name for DNS nameserver.";
@@ -363,6 +369,18 @@ module openconfig-system-ext {
         uses oc-tpcm:tpcm-top;
     }
 
+    identity NTP_AUTH_SHA1 {
+        base oc-sys:NTP_AUTH_TYPE;
+        description
+            "SHA1 encryption method";
+    }
+
+    identity NTP_AUTH_SHA2_256 {
+        base oc-sys:NTP_AUTH_TYPE;
+        description
+            "SHA2-256 encryption method";
+    }
+
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:ntp-source-address {
         deviate not-supported;
     }
@@ -372,7 +390,7 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:config" {
-        leaf ntp-source-interface {
+        leaf-list ntp-source-interface {
             type oc-if:base-interface-ref;
             description
                 "NTP source interface name";
@@ -383,7 +401,7 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:state" {
-        leaf ntp-source-interface {
+        leaf-list ntp-source-interface {
             type oc-if:base-interface-ref;
             description
                 "NTP source interface name";
@@ -415,7 +433,76 @@ module openconfig-system-ext {
             "The VRF instance NTP is enabled in.";
     }
 
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:config" {
+        leaf-list trustedkey {
+            type uint16;
+            description
+                "Integer identifier used by the client and server to
+                designate a secret key.  The client and server must use
+                the same key id.";
+        }
+
+        description
+            "NTP key number used for authentication.";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:state" {
+        leaf-list trustedkey {
+            type uint16;
+            description
+                "Integer identifier used by the client and server to
+                designate a secret key.  The client and server must use
+                the same key id.";
+        }
+
+        description
+            "NTP key number used for authentication.";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config" {
+        leaf key-encrypted {
+            type boolean;
+            description
+                "NTP authentication key-value is encrypted";
+        }
+
+        description
+            "NTP authentication key configuration.";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state" {
+        leaf key-encrypted {
+            type boolean;
+            description
+                "NTP authentication key-value is encrypted";
+        }
+
+        description
+            "NTP authentication key state.";
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:config" {
+        leaf key-id {
+            type uint16;
+            description
+                "Integer identifier used by the client and server to
+                 designate a secret key. The client and server must use
+                 the same key id.";
+        }
+
+        description
+            "NTP server configuration.";
+    }
+
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state" {
+        leaf key-id {
+            type uint16;
+            description
+                "Integer identifier used by the client and server to
+                designate a secret key.  The client and server must use
+                the same key id.";
+        }
+
         leaf peerdelay {
             type decimal64 {
                 fraction-digits 3;
