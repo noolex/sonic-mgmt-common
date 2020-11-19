@@ -79,6 +79,12 @@ module openconfig-qos-ext {
             description
                 "Number of octets transmitted per second by the queue";
         }
+
+        leaf transmit-bits-per-second {
+            type oc-yang:counter64;
+            description
+                "Number of bits transmitted per second by the queue";
+        }
     }
 
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues/oc-qos:queue/oc-qos:state {

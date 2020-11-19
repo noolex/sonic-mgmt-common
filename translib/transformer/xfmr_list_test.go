@@ -94,3 +94,19 @@ func Test_List_Sonic_Key_Split_Get(t *testing.T) {
         unloadConfigDB(rclient, prereq)
 }
 
+func Test_List_Sonic_KeyXfmr_Get(t *testing.T) {
+
+	prereq := map[string]interface{}{"MCLAG_FDB_TABLE":map[string]interface{}{"Vlan3195:00:a0:00:00:01:26:remote":map[string]interface{}{"port":"PortChannel10","type":"dynamic"}}}
+        url := "/sonic-mclag:sonic-mclag/MCLAG_FDB_TABLE/MCLAG_FDB_TABLE_LIST" //sonic-yang list having a key transfomer for GET path
+
+        fmt.Println("++++++++++++++  GET Test_List_Sonic_KeyXfmr_Get +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+	get_expected := "{\"sonic-mclag:MCLAG_FDB_TABLE_LIST\":[{\"mac-address\":\"00:a0:00:00:01:26\",\"mac-type-str\":\"remote\",\"port\":\"PortChannel10\",\"type\":\"dynamic\",\"vlan\":\"Vlan3195\"}]}"
+
+        t.Run("GET on Whole List for Sonic Yang having Db to yang key-transformer", processGetRequest(url, get_expected, false))
+
+        unloadConfigDB(rclient, prereq)
+}

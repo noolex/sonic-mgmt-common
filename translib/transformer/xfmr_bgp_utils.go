@@ -52,7 +52,6 @@ func validate_peer_group_post_xfmr (inParams *XfmrParams) (error) {
     return nil
 }
 
-
 func validate_multihop_ttlSecurity_value_post_xfmr (inParams *XfmrParams, tableName string, fieldName1 string, fieldName2 string) (error) {
     var field1 int64
     var field2 int64
