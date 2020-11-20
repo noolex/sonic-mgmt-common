@@ -67,7 +67,6 @@ var YangToDb_udld_global_key_xfmr = func(inParams XfmrParams) (string, error) {
 	return "GLOBAL", nil
 }
 
-
 func DbToYang_udld_port_status_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
     db_status := getUdldIntfStatus(inParams.dbs[db.ApplDB], "_UDLD_PORT_TABLE", inParams.key) 

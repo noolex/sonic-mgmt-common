@@ -1151,3 +1151,26 @@ func Test_Ygot_Merge_Xfmr_Infra_Get(t *testing.T) {
 
 }
 
+/* test leafref datatype resolution for leafref with absoulte path and having leafref to leafref reference */
+// TODO: Enable when ip-helper/interface-ref yang is added to modela/yang
+/*
+func Test_Leafref_Resolve_Get(t *testing.T) {
+
+        cleanuptbl := map[string]interface{}{"UDP_BROADCAST_FORWARDING":map[string]interface{}{"Ports":""}}
+        prereq := map[string]interface{}{"UDP_BROADCAST_FORWARDING":map[string]interface{}{"Ports":map[string]interface{}{"interface":"Ethernet0", "subinterface":"10", "include_ports@", "69,53,37,137,138,49"}}}
+        url := "/openconfig-ip-helper:ip-helper/interface-ref"
+
+        fmt.Println("++++++++++++++  Get Test_Leafref_Resolve  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+        get_expected := "{\"openconfig-ip-helper:interface-ref\":{\"config\":{\"interface\":\"Ethernet0\",\"subinterface\":10}}}"
+
+        t.Run("GET Leafref Resolve", processGetRequest(url, get_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+}
+*/
