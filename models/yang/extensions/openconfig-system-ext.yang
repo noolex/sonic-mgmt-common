@@ -434,7 +434,7 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:config" {
-        leaf-list trustedkey {
+        leaf-list trusted-key {
             type uint16;
             description
                 "Integer identifier used by the client and server to
@@ -447,7 +447,7 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:state" {
-        leaf-list trustedkey {
+        leaf-list trusted-key {
             type uint16;
             description
                 "Integer identifier used by the client and server to
@@ -460,8 +460,9 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config" {
-        leaf key-encrypted {
+        leaf encrypted {
             type boolean;
+            default false;
             description
                 "NTP authentication key-value is encrypted";
         }
@@ -471,7 +472,7 @@ module openconfig-system-ext {
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state" {
-        leaf key-encrypted {
+        leaf encrypted {
             type boolean;
             description
                 "NTP authentication key-value is encrypted";
