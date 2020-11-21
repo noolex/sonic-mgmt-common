@@ -12,6 +12,7 @@ import (
         "github.com/Azure/sonic-mgmt-common/translib/tlerr"
         "bytes"
 	"unicode"
+        "encoding/hex"
 )
 
 const (
@@ -23,16 +24,20 @@ const (
 )
 
 const (
-        NTP_KEY_VALUE_STR = "key_value"
+        NTP_KEY_VALUE_STR = "value"
 )
 
 const (
-        NTP_KEY_ENCRYPTED_STR = "key_encrypted"
+        NTP_KEY_ENCRYPTED_STR = "encrypted"
 )
 
 const (
-        NTP_KEY_TYPE = "key_type"
+        NTP_KEY_TYPE = "type"
 )
+
+const NTP_MAX_PLAIN_TXT_LEN = 20
+
+const NTP_MAX_PWD_LEN = 64
 
 var NTP_AUTH_TYPE_MAP = map[string]string{
         strconv.FormatInt(int64(ocbinds.OpenconfigSystem_NTP_AUTH_TYPE_NTP_AUTH_MD5), 10):"MD5",
@@ -150,7 +155,7 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                         (&dbVal).Set("NULL", "NULL")
                 }
         } else {
-                (&dbVal).Set("key_id", auth_key_id_str)
+                (&dbVal).Set("id", auth_key_id_str)
         }
 
         log.Infof ("YangToDb_ntp_server_subtree_xfmr: key %v return res_map %v", keyName, res_map)
@@ -356,7 +361,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
 
                 }
 
-                keyId_str := (&ntpServEntry).Get("key_id")
+                keyId_str := (&ntpServEntry).Get("id")
                 keyId_int, _ := strconv.ParseUint(keyId_str, 10, 16)
                 keyId_uint16 := uint16(keyId_int)
 
@@ -415,7 +420,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                                 ygot.BuildEmptyTree(currNtpServer)
                         }
 
-                        keyId_str := (&ntpServEntry).Get("key_id")
+                        keyId_str := (&ntpServEntry).Get("id")
                         keyId_int, _ := strconv.ParseUint(keyId_str, 10, 16)
                         keyId_uint16 := uint16(keyId_int)
 
@@ -619,9 +624,7 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
         ntpData := sysObj.Ntp
 	keyId, _ := strconv.ParseUint(key_id, 10, 16)
 	keyIdUint16 := uint16(keyId)
-	encrypted := ntpData.NtpKeys.NtpKey[keyIdUint16].Config.KeyEncrypted
-
-        log.Infof("YangToDb_ntp_authen_key_value_xfmr key_id %v encrypted %v", key_id, encrypted)
+	encrypted := ntpData.NtpKeys.NtpKey[keyIdUint16].Config.Encrypted
 
         key_value := inParams.param.(*string)
 
@@ -629,7 +632,36 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 
         var encrypted_str  string
 
-        if (!*encrypted) {
+        if ((encrypted == nil) || (!*encrypted)) {
+                // if input is plaintext string, validate the string
+                if ((strings.ContainsAny(*key_value, ",#")) ||
+                    (strings.Contains(*key_value, " "))) {
+                        errStr := "Invalid password"
+                        log.Info("YangToDb_ntp_auth_key_value_xfmr, error ", errStr)
+                        err = tlerr.InvalidArgsError{Format: errStr}
+                        return res_map, err
+                }
+
+                // check the plaintext length, if greater than 20 then it has to be in hex
+                plaintxt_len := len(*key_value)
+                if (plaintxt_len > NTP_MAX_PLAIN_TXT_LEN) {
+                        if(plaintxt_len > NTP_MAX_PWD_LEN) {
+                                errStr := "Exceed maximum length"
+                                log.Info("YangToDb_ntp_auth_key_value_xfmr, error ", errStr)
+                                err = tlerr.InvalidArgsError{Format: errStr}
+                                return res_map, err
+                        }
+
+                        // If plaintxt length greater than 20 less than max (64), it has to be hexadecimal
+                        _, err := hex.DecodeString(*key_value)
+                        if (err != nil) {
+                                errStr := "Invalid password"
+                                log.Info("YangToDb_ntp_auth_key_value_xfmr, error ", errStr)
+                                err = tlerr.InvalidArgsError{Format: errStr}
+                                return res_map, err
+                        }
+                }
+
                 key_value_byte := []byte(*key_value)
                 encrypted_key_value, err := openssl(key_value_byte, "enc", "-aes-128-cbc", "-a", "-salt", "-pass", "pass:"+NTP_SECRET_PASSWORD)
                 if (err != nil) {
@@ -643,7 +675,7 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 					})
         }
 
-        if (!*encrypted) {
+        if ((encrypted == nil) || (!*encrypted)) {
                 res_map[NTP_KEY_VALUE_STR] = encrypted_str 
         } else {
                 res_map[NTP_KEY_VALUE_STR] = *key_value 
@@ -748,11 +780,11 @@ var DbToYang_ntp_auth_encrypted_xfmr FieldXfmrDbtoYang = func(inParams XfmrParam
         data := (*inParams.dbDataMap)[inParams.curDb]
         key_tbl := data["NTP_AUTHENTICATION_KEY"]
         key_entry := key_tbl[inParams.key]
-        encrypted := key_entry.Field["key_encrypted"]
+        encrypted := key_entry.Field["encrypted"]
 
         encryptedBool,_ := strconv.ParseBool(encrypted)
 
-        res_map["key-encrypted"] = encryptedBool
+        res_map["encrypted"] = encryptedBool
 
         return res_map, err
-} 
+}

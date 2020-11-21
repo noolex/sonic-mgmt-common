@@ -975,6 +975,18 @@ module openconfig-system-annot {
         }
     }
 
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys-ext:trusted-key {
+        deviate add {
+            sonic-ext:field-name "trusted_key";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys-ext:trusted-key {
+        deviate add {
+            sonic-ext:field-name "trusted_key";
+        }
+    }
+
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server {
         deviate add {
             sonic-ext:subtree-transformer "ntp_server_subtree_xfmr";
@@ -1030,13 +1042,13 @@ module openconfig-system-annot {
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys-ext:key-encrypted {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys-ext:encrypted {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_encrypted_xfmr";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys-ext:key-encrypted {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys-ext:encrypted {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_encrypted_xfmr";
         }
