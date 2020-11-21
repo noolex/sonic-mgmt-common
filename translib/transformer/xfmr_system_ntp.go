@@ -361,7 +361,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
 
                 }
 
-                keyId_str := (&ntpServEntry).Get("id")
+                keyId_str := (&ntpServEntry).Get("key_id")
                 keyId_int, _ := strconv.ParseUint(keyId_str, 10, 16)
                 keyId_uint16 := uint16(keyId_int)
 
@@ -420,7 +420,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                                 ygot.BuildEmptyTree(currNtpServer)
                         }
 
-                        keyId_str := (&ntpServEntry).Get("id")
+                        keyId_str := (&ntpServEntry).Get("key_id")
                         keyId_int, _ := strconv.ParseUint(keyId_str, 10, 16)
                         keyId_uint16 := uint16(keyId_int)
 
