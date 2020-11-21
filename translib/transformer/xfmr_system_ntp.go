@@ -155,7 +155,7 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                         (&dbVal).Set("NULL", "NULL")
                 }
         } else {
-                (&dbVal).Set("id", auth_key_id_str)
+                (&dbVal).Set("key_id", auth_key_id_str)
         }
 
         log.Infof ("YangToDb_ntp_server_subtree_xfmr: key %v return res_map %v", keyName, res_map)
