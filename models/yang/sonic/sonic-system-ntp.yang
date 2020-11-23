@@ -55,6 +55,15 @@ module sonic-system-ntp {
             "Initial revision.";
     }
 
+    typedef ntp-key-type {
+        description "NTP authentication key type";
+        type enumeration {
+            enum MD5; 
+            enum SHA1; 
+            enum SHA2_256;
+        }
+    }
+
     container sonic-system-ntp {
 
         container NTP {
@@ -112,9 +121,9 @@ module sonic-system-ntp {
                         "Indicate if NTP authentication is enabled if set to true.";                 
                 }
                
-                leaf-list trustedkey {
+                leaf-list trusted_key {
                     type leafref {
-                        path "/sonic-system-ntp/NTP_AUTHENTICATION_KEY/NTP_AUTHENTICATION_KEY_LIST/key_id";
+                        path "/sonic-system-ntp/NTP_AUTHENTICATION_KEY/NTP_AUTHENTICATION_KEY_LIST/id";
                     }
 
                     description
@@ -125,9 +134,9 @@ module sonic-system-ntp {
 
         container NTP_AUTHENTICATION_KEY {
             list NTP_AUTHENTICATION_KEY_LIST {
-                key "key_id";
+                key "id";
 
-                leaf key_id {
+                leaf id {
                     type uint16 {
                         range "1..65535"{ 
                             error-message "key id out of range";
@@ -140,34 +149,21 @@ module sonic-system-ntp {
                          the same key id.";
                 }
 
-                leaf key_type {
+                leaf type {
                     mandatory true;
-                    type enumeration {
-                        enum MD5 {
-                            description
-                                "MD5 encryption method";
-                        }
-
-                        enum SHA1 {
-                            description
-                                "SHA1 encryption method";
-                        }
-
-                        enum SHA2_256 {
-                            description
-                                "SHA2-256 encryption method";
-                        }
-                    }
+                    type ntp-key-type;
+                    description
+                        "NTP authentication key type";
                 }
 
-                leaf key_value {
+                leaf value {
                     mandatory true;
                     type string;
                     description
                         "NTP authentication key value";
                 }
 
-                leaf key_encrypted {
+                leaf encrypted {
                     type boolean;
                     default true;
                     description
@@ -187,7 +183,7 @@ module sonic-system-ntp {
 
                 leaf key_id {
                     type leafref { 
-                        path "/sonic-system-ntp/NTP_AUTHENTICATION_KEY/NTP_AUTHENTICATION_KEY_LIST/key_id";
+                        path "/sonic-system-ntp/NTP_AUTHENTICATION_KEY/NTP_AUTHENTICATION_KEY_LIST/id";
                     }
 
                     description
