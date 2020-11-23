@@ -45,25 +45,28 @@ func (t *CustomValidation) ValidateBeforeMgmtVrfDelete(ctx *CustValidationCtxt) 
 
 	if mgmtVrfDelete {
 		if err.ErrCode == CVL_SUCCESS {
-			err = verifyMgmtVrfNotReferred("SYSLOG_SERVER|*", "ipaddress", "vrf_name", ctx)
+			err = verifyMgmtVrfNotReferred("SYSLOG_SERVER|*", "ipaddress", "vrf_name", "-1", ctx)
+		}
+		if err.ErrCode == CVL_SUCCESS {
+			err = verifyMgmtVrfNotReferred("STATIC_ROUTE|*", "vrf_name|prefix", "vrf_name", "1", ctx)
 		}
 	}
 
 	return err
 }
 
-func verifyMgmtVrfNotReferred(keyPattern, keyNames, field string, ctx *CustValidationCtxt) CVLErrorInfo {
+func verifyMgmtVrfNotReferred(keyPattern, keyNames, field, count string, ctx *CustValidationCtxt) CVLErrorInfo {
 	tableName := strings.SplitN(keyPattern, "|", 2)[0]
 	var data map[string]interface{}
 	var predicate interface{}
 	if len(field) != 0 {
-		predicate = fmt.Sprintf("return (h['%s'] == 'mgmt')", field)
+		predicate = fmt.Sprintf("return (k['%[1]s'] == 'mgmt' or h['%[1]s'] == 'mgmt')", field)
 	}
 
 	// Find rows referring to mgmt vrf using lua script. It returns nil or a string
 	// containing data json -- "{ table: { key : { field: value, ... }}}"
 	resp, err := util.FILTER_ENTRIES_LUASCRIPT.Run(
-		ctx.RClient, nil, keyPattern, keyNames, predicate, keyNames).Result()
+		ctx.RClient, nil, keyPattern, keyNames, predicate, keyNames, count).Result()
 	util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "verifyMgmtVrfNotReferred: %s rows = %v", tableName, resp)
 	if err == nil {
 		err = json.Unmarshal([]byte(resp.(string)), &data)
