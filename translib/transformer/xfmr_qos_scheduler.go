@@ -481,7 +481,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
         log.Info("Handling No Meter-type ")
 
         if isLastSchedulerInActivePolicy(sched_key) &&
-           isLastSchedulerField(sched_key, "meter-type") {
+           isLastSchedulerField(sched_key, "meter_type") {
             err = tlerr.InternalError{Format:"Last scheduler used by interface cannot be deleted"}
             log.Info("Not allow the last field to be deleted")
             log.Info("Disallow to delete the last scheduler in an actively used policy: ", sched_key)
@@ -547,7 +547,7 @@ func qos_scheduler_delete_xfmr(inParams XfmrParams) (map[string]map[string]db.Va
     rtTblMap := make(map[string]db.Value)
 
     if targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler" ||
-       (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:meter-type" && isLastSchedulerField(sched_key, "meter-type")) ||
+       (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:meter-type" && isLastSchedulerField(sched_key, "meter_type")) ||
        (targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/priority" && isLastSchedulerField(sched_key, "type")) ||
        ((targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/openconfig-qos-ext:weight" || targetUriPath == "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/config/weight") && isLastSchedulerField(sched_key, "weight")) ||
        (strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/scheduler-policies/scheduler-policy/schedulers/scheduler/two-rate-three-color") && isLastSchedulerFields(sched_key, attrs)) {
