@@ -121,7 +121,7 @@ module openconfig-loadshare-mode-ext {
               "This leaf indicates whether to include dst-ip in hashing .";
         }
 
-        leaf ipv4-protocol {
+        leaf ipv4-ip-proto {
           type boolean;
           description
               "This leaf indicates whether to include protocol in hashing .";
