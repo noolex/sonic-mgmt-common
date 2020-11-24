@@ -33,9 +33,7 @@ CVL_TEST_CONFIG = $(CVL_TEST_DIR)/cvl_cfg.json
 CVL_SCHEMA_DIR = $(BUILD_DIR)/schema
 CVL_SCHEMA_FILES := 
 
-CVL_SCHEMA_FILES += platform/quanta_ix8/sonic-acl-deviation.yin \
-		    sonic-extension.yin \
-		    sonic-common.yin 
+CVL_SCHEMA_FILES += sonic-extension.yin sonic-common.yin 
 
 ifdef DEBUG
 	GOFLAGS += -gcflags="all=-N -l"
