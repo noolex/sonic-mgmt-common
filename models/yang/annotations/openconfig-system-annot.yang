@@ -963,12 +963,97 @@ module openconfig-system-annot {
         }
     }
 
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:enable-ntp-auth {
+        deviate add {
+            sonic-ext:field-name "auth_enabled";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:enable-ntp-auth {
+        deviate add {
+            sonic-ext:field-name "auth_enabled";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys-ext:trusted-key {
+        deviate add {
+            sonic-ext:field-name "trusted_key";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys-ext:trusted-key {
+        deviate add {
+            sonic-ext:field-name "trusted_key";
+        }
+    }
+
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server {
         deviate add {
             sonic-ext:subtree-transformer "ntp_server_subtree_xfmr";
         }
     }
-    
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys {
+        deviate add {
+            sonic-ext:table-name "NONE";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key {
+        deviate add {
+            sonic-ext:table-name "NTP_AUTHENTICATION_KEY";
+            sonic-ext:key-transformer "ntp_authentication_key_table_key_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys:key-id {
+        deviate add {
+            sonic-ext:field-transformer "ntp_auth_key_id_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys:key-id {
+        deviate add {
+            sonic-ext:field-transformer "ntp_auth_key_id_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys:key-type {
+        deviate add {
+            sonic-ext:field-transformer "ntp_auth_key_type_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys:key-type {
+        deviate add {
+            sonic-ext:field-transformer "ntp_auth_key_type_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys:key-value {
+        deviate add {
+            sonic-ext:field-transformer "ntp_auth_key_value_xfmr"; 
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys:key-value {
+        deviate add {
+            sonic-ext:field-transformer "ntp_auth_key_value_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys-ext:encrypted {
+        deviate add {
+            sonic-ext:field-transformer "ntp_auth_encrypted_xfmr";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys-ext:encrypted {
+        deviate add {
+            sonic-ext:field-transformer "ntp_auth_encrypted_xfmr";
+        }
+    }
+
 		/*************** ldap-server-group-attributes-start ***********/		
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:search-time-limit {
       deviate add {
