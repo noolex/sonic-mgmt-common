@@ -882,7 +882,7 @@ func vlanDifference(vlanList1, vlanList2 []string) []string {
     }
     return diff
 }
-//checks if interface is part of any portchannel 
+//Checks if physical interface is part of any Portchannel 
 func retrievePortChannelReplaceVlan(d *db.DB, ifName *string) (*string, error) {
     var err error
 
