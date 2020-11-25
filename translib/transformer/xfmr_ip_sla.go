@@ -321,7 +321,7 @@ func ipsla_show_history (body []byte, dbs [db.MaxDB]*db.DB, tableName string) (r
         return nil, err
     }
 
-    if input, err := inputParams["sonic-ip-sla:input"]; err {
+    if input, err := inputParams["openconfig-ip-sla:input"]; err {
         inputParams = input.(map[string]interface{})
     } else {
         return nil, tlerr.InvalidArgs("INVALID_PAYLOAD")
@@ -329,7 +329,7 @@ func ipsla_show_history (body []byte, dbs [db.MaxDB]*db.DB, tableName string) (r
 
     log.Info("Input=", inputParams)
 
-    ipSlaIdKey, found := inputParams["ip_sla_id"]
+    ipSlaIdKey, found := inputParams["ip-sla-id"]
     if !found {
         return nil, tlerr.InvalidArgs("INVALID_PAYLOAD")
     }

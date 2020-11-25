@@ -2030,6 +2030,7 @@ func convertInternalStpIntfToOc (inParams XfmrParams, ifName string, targetUriPa
                 stpIntf.State.Name = &ifName
                 stpIntf.State.SpanningTreeEnable = &stpEnabled
                 stpIntf.State.BpduGuard = &bpduGuardEnabled
+                stpIntf.State.BpduGuardPortShutdown = &bpduGuardPortShut
                 stpIntf.State.UplinkFast = &uplinkFast
 
                 if rootGuardEnabled {
@@ -2106,6 +2107,7 @@ func convertInternalStpIntfToOc (inParams XfmrParams, ifName string, targetUriPa
                 stpIntf.State.Name = &ifName
                 stpIntf.State.SpanningTreeEnable = &stpEnabled
                 stpIntf.State.BpduGuard = &bpduGuardEnabled
+                stpIntf.State.BpduGuardPortShutdown = &bpduGuardPortShut
                 stpIntf.State.UplinkFast = &uplinkFast
 
                 if rootGuardEnabled {
