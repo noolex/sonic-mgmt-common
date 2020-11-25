@@ -867,6 +867,8 @@ func resetCounters(d *db.DB, oid string) (error,error) {
     }
     return verr, cerr
 }
+
+//returns difference between existing list of Vlans and new list of Vlans. 
 func vlanDifference(vlanList1, vlanList2 []string) []string {
     mb := make(map[string]struct{}, len(vlanList2))
     for _, ifName := range vlanList2 {
@@ -880,6 +882,7 @@ func vlanDifference(vlanList1, vlanList2 []string) []string {
     }
     return diff
 }
+//checks if interface is part of any portchannel 
 func retrievePortChannelReplaceVlan(d *db.DB, ifName *string) (*string, error) {
     var err error
 
@@ -904,6 +907,7 @@ func retrievePortChannelReplaceVlan(d *db.DB, ifName *string) (*string, error) {
     }
     return nil, err
 }
+//Creates new entry in VLAN_MEMBER table and updated VLAN table. 
 func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
     var err error
     stpPortMap := make(map[string]db.Value)
@@ -948,7 +952,7 @@ func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
 	}
        return nil
 }
-
+//Deletes entry from VLAN_MEMBER table and updates VLAN table. 
 func rpc_delete_vlan(d *db.DB, vlanList []string, ifName string) error {
     var err error
 
