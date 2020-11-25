@@ -1485,7 +1485,7 @@ var DbToYang_intf_oper_status_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
         log.Info("DbToYang_intf_oper_status_xfmr - Invalid interface type IntfTypeUnset");
         return result, errors.New("Invalid interface type IntfTypeUnset");
     }
-    if IntfTypeVxlan == intfType || IntfTypeVlan == intfType || IntfTypeLoopback == intfType {
+    if IntfTypeVxlan == intfType || IntfTypeLoopback == intfType {
 	    return result, nil
     }
     intTbl := IntfTypeTblMap[intfType]
@@ -1515,6 +1515,9 @@ var DbToYang_intf_oper_status_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
         result["oper-status"] = ocbinds.E_OpenconfigInterfaces_Interfaces_Interface_State_OperStatus.ΛMap(status)["E_OpenconfigInterfaces_Interfaces_Interface_State_OperStatus"][int64(status)].Name
     } else {
         log.Info("Oper status field not found in DB")
+        // Returning oper down, as all interfaces are oper down by default
+        status = ocbinds.OpenconfigInterfaces_Interfaces_Interface_State_OperStatus_DOWN
+        result["oper-status"] = ocbinds.E_OpenconfigInterfaces_Interfaces_Interface_State_OperStatus.ΛMap(status)["E_OpenconfigInterfaces_Interfaces_Interface_State_OperStatus"][int64(status)].Name
     }
 
     return result, err
