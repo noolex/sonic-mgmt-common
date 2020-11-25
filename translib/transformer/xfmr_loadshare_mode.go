@@ -42,11 +42,22 @@ func init() {
     XlateFuncBind("YangToDb_loadshare_mode_seed_key_xfmr", YangToDb_loadshare_mode_seed_key_xfmr)
     XlateFuncBind("YangToDb_loadshare_mode_ipv4_key_xfmr", YangToDb_loadshare_mode_ipv4_key_xfmr)
     XlateFuncBind("YangToDb_loadshare_mode_ipv6_key_xfmr", YangToDb_loadshare_mode_ipv6_key_xfmr)
+    XlateFuncBind("loadshare_post_xfmr", loadshare_post_xfmr)
 }
 
 type LoadshareModeHistoryEntry struct {
     Timestamp   string    `json:"timestamp"`
     Event       string    `json:"event,omitempty"`
+}
+
+var loadshare_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    if inParams.oper == DELETE {
+        if inParams.skipOrdTblChk != nil {
+            *inParams.skipOrdTblChk  = true
+        }
+    }
+    log.Infof("loadshare_post_xfmr returned : %v, skipOrdTblChk: %v", (*inParams.dbDataMap)[db.ConfigDB], *inParams.skipOrdTblChk)
+    return (*inParams.dbDataMap)[db.ConfigDB], nil
 }
 
 var YangToDb_loadshare_mode_seed_key_xfmr = func(inParams XfmrParams) (string, error) {
@@ -226,15 +237,77 @@ var DbToYang_loadshare_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
     }
 
     log.Info("DbToYang_loadshare_mode_state_xfmr entry ", entry)
-    if strings.HasPrefix(targetUriPath, "/openconfig-loadshare-mode-ext:ipv4-attrs/state/ipv4") {
-        var lbIpv4AttrObj *ocbinds.OpenconfigLoadshareModeExt_Ipv4Attrs = deviceObj.Ipv4Attrs
+    if (targetUriPath == "/openconfig-loadshare-mode-ext:loadshare/state") {
+        var loadshareAttrObj *ocbinds.OpenconfigLoadshareModeExt_Loadshare = deviceObj.Loadshare
+
+        if loadshareAttrObj != nil && loadshareAttrObj.State != nil {
+            ygot.BuildEmptyTree(loadshareAttrObj)
+            ygot.BuildEmptyTree(loadshareAttrObj.State)
+            trueIpv4Val := true
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_dst_ip") {
+                loadshareAttrObj.State.Ipv4DstIp = &trueIpv4Val
+            }
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_src_ip") {
+                loadshareAttrObj.State.Ipv4SrcIp = &trueIpv4Val
+            }
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_l4_dst_port") {
+                loadshareAttrObj.State.Ipv4L4DstPort = &trueIpv4Val
+            }
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_l4_src_port") {
+                loadshareAttrObj.State.Ipv4L4SrcPort = &trueIpv4Val
+            }
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_protocol") {
+                loadshareAttrObj.State.Ipv4Protocol = &trueIpv4Val
+            }
+
+            ecmpHash := entry.Get("ecmp_hash_seed")
+            _value, _ := strconv.Atoi(ecmpHash)
+            value := uint32(_value)
+            loadshareAttrObj.State.EcmpHashSeed = &value
+
+            trueIpv6Val := true
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_dst_ip") {
+                loadshareAttrObj.State.Ipv6DstIp = &trueIpv6Val
+            }
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_src_ip") {
+                loadshareAttrObj.State.Ipv6SrcIp = &trueIpv6Val
+            }
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_l4_dst_port") {
+                loadshareAttrObj.State.Ipv6L4DstPort = &trueIpv6Val
+            }
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_l4_src_port") {
+                loadshareAttrObj.State.Ipv6L4SrcPort = &trueIpv6Val
+            }
+
+            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_next_hdr") {
+                loadshareAttrObj.State.Ipv6NextHdr = &trueIpv6Val
+            }
+        }
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-loadshare-mode-ext:loadshare/seed-attrs") {
+        var lbSeedAttrObj *ocbinds.OpenconfigLoadshareModeExt_Loadshare_SeedAttrs = deviceObj.Loadshare.SeedAttrs
+        log.Info("DbToYang_loadshare_mode_state_xfmr: ecmp_hash_fields_seed ",entry.Field["ecmp_hash_fields_ipv4"])
+
+        if lbSeedAttrObj != nil && lbSeedAttrObj.State != nil {
+            ygot.BuildEmptyTree(lbSeedAttrObj)
+            ygot.BuildEmptyTree(lbSeedAttrObj.State)
+            ecmpHash := entry.Get("ecmp_hash_seed")
+            _value, _ := strconv.Atoi(ecmpHash)
+            value := uint32(_value)
+            lbSeedAttrObj.State.EcmpHashSeed = &value
+        }
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-loadshare-mode-ext:loadshare/ipv4-attrs") {
+        var lbIpv4AttrObj *ocbinds.OpenconfigLoadshareModeExt_Loadshare_Ipv4Attrs = deviceObj.Loadshare.Ipv4Attrs
         log.Info("DbToYang_loadshare_mode_state_xfmr: ecmp_hash_fields_ipv4 ",entry.Field["ecmp_hash_fields_ipv4"])
 
-        ygot.BuildEmptyTree(lbIpv4AttrObj)
         if lbIpv4AttrObj != nil && lbIpv4AttrObj.State != nil {
             ygot.BuildEmptyTree(lbIpv4AttrObj)
             ygot.BuildEmptyTree(lbIpv4AttrObj.State)
-
             trueIpv4Val := true
             keyIpv4Val := "ipv4"
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4") {
@@ -256,16 +329,13 @@ var DbToYang_loadshare_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
                 lbIpv4AttrObj.State.Ipv4L4SrcPort = &trueIpv4Val
             }
         }
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-loadshare-mode-ext:ipv6-attrs/state/ipv6") {
-        var lbIpv6AttrObj *ocbinds.OpenconfigLoadshareModeExt_Ipv6Attrs = deviceObj.Ipv6Attrs
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-loadshare-mode-ext:loadshare/ipv6-attrs") {
+        var lbIpv6AttrObj *ocbinds.OpenconfigLoadshareModeExt_Loadshare_Ipv6Attrs = deviceObj.Loadshare.Ipv6Attrs
         log.Info("DbToYang_loadshare_mode_state_xfmr: ecmp_hash_fields_ipv6 ",entry.Field["ecmp_hash_fields_ipv6"])
-
-        ygot.BuildEmptyTree(lbIpv6AttrObj)
 
         if lbIpv6AttrObj != nil && lbIpv6AttrObj.State != nil {
             ygot.BuildEmptyTree(lbIpv6AttrObj)
             ygot.BuildEmptyTree(lbIpv6AttrObj.State)
-
             trueIpv6Val := true
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_dst_ip") {
                 lbIpv6AttrObj.State.Ipv6DstIp = &trueIpv6Val
@@ -286,74 +356,12 @@ var DbToYang_loadshare_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
                 lbIpv6AttrObj.State.Ipv6NextHdr = &trueIpv6Val
             }
         }
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-loadshare-mode-ext:seed-attrs/state") {
-        var lbSeedAttrObj *ocbinds.OpenconfigLoadshareModeExt_SeedAttrs = deviceObj.SeedAttrs
-        log.Info("DbToYang_loadshare_mode_state_xfmr: ecmp_hash_fields_seed ",entry.Field["ecmp_hash_fields_ipv4"])
-
-        ygot.BuildEmptyTree(lbSeedAttrObj)
-        if lbSeedAttrObj != nil && lbSeedAttrObj.State != nil {
-            ygot.BuildEmptyTree(lbSeedAttrObj)
-            ygot.BuildEmptyTree(lbSeedAttrObj.State)
-
-            trueIpv4Val := true
-
-            log.Info("DbToYang_loadshare_mode_state_xfmr: inside state fields")
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_dst_ip") {
-                lbSeedAttrObj.State.Ipv4DstIp = &trueIpv4Val
-            }
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_src_ip") {
-                lbSeedAttrObj.State.Ipv4SrcIp = &trueIpv4Val
-            }
-
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_l4_dst_port") {
-                lbSeedAttrObj.State.Ipv4L4DstPort = &trueIpv4Val
-            }
-
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_l4_src_port") {
-                lbSeedAttrObj.State.Ipv4L4SrcPort = &trueIpv4Val
-            }
-
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_protocol") {
-                lbSeedAttrObj.State.Ipv4Protocol = &trueIpv4Val
-            }
-
-            ecmpHash := entry.Get("ecmp_hash_seed")
-            _value, _ := strconv.Atoi(ecmpHash)
-            value := uint32(_value)
-            lbSeedAttrObj.State.EcmpHashSeed = &value
-
-            trueIpv6Val := true
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_dst_ip") {
-                lbSeedAttrObj.State.Ipv6DstIp = &trueIpv6Val
-            }
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_src_ip") {
-                lbSeedAttrObj.State.Ipv6SrcIp = &trueIpv6Val
-            }
-
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_l4_dst_port") {
-                lbSeedAttrObj.State.Ipv6L4DstPort = &trueIpv6Val
-            }
-
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_l4_src_port") {
-                lbSeedAttrObj.State.Ipv6L4SrcPort = &trueIpv6Val
-            }
-
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv6"], "ipv6_next_hdr") {
-                lbSeedAttrObj.State.Ipv6NextHdr = &trueIpv6Val
-            }
-        }
-    } 
+    }
     return err
 }
 
 func get_lb_seed_cfg_tbl_entry (inParams XfmrParams, tableName string) (bool) {
     var err error
-    pathInfo := NewPathInfo(inParams.uri)
-
-    if len(pathInfo.Vars) <  4 {
-        log.Info("Invalid Key length", len(pathInfo.Vars))
-        return false
-    }
 
     TableKey := "hash" 
 

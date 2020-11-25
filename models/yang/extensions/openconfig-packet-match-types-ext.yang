@@ -1,0 +1,91 @@
+module openconfig-packet-match-types-ext {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/packet-match-types/extension";
+
+  prefix "oc-pkt-match-types-ext";
+
+  import openconfig-packet-match-types { prefix oc-pkt-match-types; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC
+     https://github.com/Azure/SONiC";
+
+  description
+    "This model describes the acl extensions.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-11-20" {
+    description
+      "Initial augment file.";
+
+    reference "0.1.0";
+  }
+
+  // OpenConfig specific extensions for module metadata.
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  identity TCP_NOT_SYN {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP SYN flag cleared";
+  }
+
+  identity TCP_NOT_FIN {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP FIN flag cleared";
+  }
+
+  identity TCP_NOT_RST {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP RST flag cleared";
+  }
+
+  identity TCP_NOT_PSH {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP push flag cleared";
+  }
+
+  identity TCP_NOT_ACK {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP ACK flag cleared";
+  }
+
+  identity TCP_NOT_URG {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP urgent flag cleared";
+  }
+
+  identity TCP_NOT_ECE {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP ECN-Echo flag cleared. If the SYN flag is set, indicates that
+      the TCP peer is ECN-capable, otherwise indicates that a
+      packet with Congestion Experienced flag in the IP header
+      is set";
+  }
+
+  identity TCP_NOT_CWR {
+    base oc-pkt-match-types:TCP_FLAGS;
+    description
+      "TCP Congestion Window Reduced flag cleared";
+  }
+}
+

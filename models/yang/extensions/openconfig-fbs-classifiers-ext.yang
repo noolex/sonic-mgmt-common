@@ -53,57 +53,6 @@ submodule openconfig-fbs-classifiers-ext {
       fields must match for the flow classification.";
   }
 
-  identity TCP_NOT_SYN {
-    base oc-pkt-match-types:TCP_FLAGS;
-    description
-      "TCP SYN flag cleared";
-  }
-
-  identity TCP_NOT_FIN {
-    base oc-pkt-match-types:TCP_FLAGS;
-    description
-      "TCP FIN flag cleared";
-  }
-
-  identity TCP_NOT_RST {
-    base oc-pkt-match-types:TCP_FLAGS;
-    description
-      "TCP RST flag cleared";
-  }
-
-  identity TCP_NOT_PSH {
-    base oc-pkt-match-types:TCP_FLAGS;
-    description
-      "TCP push flag cleared";
-  }
-
-  identity TCP_NOT_ACK {
-    base oc-pkt-match-types:TCP_FLAGS;
-    description
-      "TCP ACK flag cleared";
-  }
-
-  identity TCP_NOT_URG {
-    base oc-pkt-match-types:TCP_FLAGS;
-    description
-      "TCP urgent flag cleared";
-  }
-
-  identity TCP_NOT_ECE {
-    base oc-pkt-match-types:TCP_FLAGS;
-    description
-      "TCP ECN-Echo flag cleared. If the SYN flag is set, indicates that
-      the TCP peer is ECN-capable, otherwise indicates that a
-      packet with Congestion Experienced flag in the IP header
-      is set";
-  }
-
-  identity TCP_NOT_CWR {
-    base oc-pkt-match-types:TCP_FLAGS;
-    description
-      "TCP Congestion Window Reduced flag cleared";
-  }
-
   // typedef statements
 
   // grouping statements

@@ -43,6 +43,19 @@ module sonic-mac-dampening {
                             error-message "threshold value out of range";
                         }
                     }
+                    default 5;
+                    description
+                        "The number of MAC movements allowed per second before disabling MAC learning on a port";
+                }
+                leaf interval {
+                    type uint8 {
+                        range "5..120" {
+                            error-message "interval value out of range";
+                        }
+                    }
+                    default 5;
+                    description
+                        "The interval for which mac movements are observed before disabling MAC learning on a port";
                 }
             }
         }
