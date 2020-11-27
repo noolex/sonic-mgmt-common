@@ -219,10 +219,10 @@ func (app *FbsApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *FbsApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
+func (app *FbsApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
 	notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 
-	return nil, nil, notSupported
+	return nil, notSupported
 }
 
 func (app *FbsApp) translateAction(dbs [db.MaxDB]*db.DB) error {
@@ -300,6 +300,11 @@ func (app *FbsApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
 	err := errors.New("Not implemented")
 
 	return resp, err
+}
+
+func (app *FbsApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
+	var resp subscribePathResponse
+	return resp, tlerr.New("Not implemented")
 }
 
 /*

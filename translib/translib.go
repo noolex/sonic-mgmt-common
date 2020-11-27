@@ -166,12 +166,6 @@ type ModelData struct {
 	Ver  string
 }
 
-type notificationOpts struct {
-    isOnChangeSupported bool
-	mInterval           int
-	pType               NotificationType // for TARGET_DEFINED
-}
-
 //initializes logging and app modules
 func init() {
 	log.Flush()
@@ -888,22 +882,9 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			continue
 		}
 
-		nOpts, nInfo, errApp := (*app).translateSubscribe(dbs, path)
+		nAppInfo, errApp := (*app).translateSubscribe(dbs, path)
 
-		if nOpts != nil {
-			if nOpts.mInterval != 0 {
-				if ((nOpts.mInterval >= minSubsInterval) && (nOpts.mInterval <= maxSubsInterval)) {
-					resp[i].MinInterval = nOpts.mInterval
-				} else if (nOpts.mInterval < minSubsInterval) {
-					resp[i].MinInterval = minSubsInterval
-				} else {
-					resp[i].MinInterval = maxSubsInterval
-				}
-			}
-
-			resp[i].IsOnChangeSupported = nOpts.isOnChangeSupported
-			resp[i].PreferredType = nOpts.pType
-		}
+		collectNotificationPreferences(nAppInfo, resp[i])
 
 		if errApp != nil {
 			resp[i].Err = errApp
@@ -915,17 +896,26 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			continue
 		} else {
 
-			if nInfo == nil {
+			if len(nAppInfo) == 0 {
 				sErr = tlerr.NotSupportedError{
 					Format: "Subscribe not supported", Path: path}
 				resp[i].Err = sErr
 				continue
 			}
+		}
 
-			nInfo.path = path
-			nInfo.app = app
-			nInfo.appInfo = appInfo
-			nInfo.dbs = dbs
+		// Prepare notificationInfo for notificationAppInfo.
+		for _, nOpts := range nAppInfo {
+			nInfo := &notificationInfo {
+				table:   nOpts.table,
+				key:     nOpts.key,
+				dbno:    nOpts.dbno,
+				path:    path,
+				app:     app,
+				appInfo: appInfo,
+				dbs:     dbs,
+				needCache: true,
+			}
 
 			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
 		}
@@ -985,23 +975,10 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 			continue
 		}
 
-		nOpts, _, errApp := (*app).translateSubscribe(dbs, path)
+		nAppInfos, errApp := (*app).translateSubscribe(dbs, path)
 
-        if nOpts != nil {
-            if nOpts.mInterval != 0 {
-                if ((nOpts.mInterval >= minSubsInterval) && (nOpts.mInterval <= maxSubsInterval)) {
-                    resp[i].MinInterval = nOpts.mInterval
-                } else if (nOpts.mInterval < minSubsInterval) {
-                    resp[i].MinInterval = minSubsInterval
-                } else {
-                    resp[i].MinInterval = maxSubsInterval
-                }
-            }
-
-            resp[i].IsOnChangeSupported = nOpts.isOnChangeSupported
-            resp[i].PreferredType = nOpts.pType
-        }
-
+		collectNotificationPreferences(nAppInfos, resp[i])
+		
 		if errApp != nil {
 			resp[i].Err = errApp
 			err = errApp
@@ -1011,6 +988,36 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 	}
 
 	return resp, err
+}
+
+// collectNotificationPreferences computes overall notification preferences (is on-change
+// supported, min sample interval, preferred mode etc) by combining individual table preferences
+// from the notificationAppInfo array. Writes them to the IsSubscribeResponse object 'resp'.
+func collectNotificationPreferences(nAppInfos []notificationAppInfo, resp *IsSubscribeResponse) {
+	if len(nAppInfos) == 0 {
+		return
+	}
+
+	resp.IsOnChangeSupported = true
+	resp.PreferredType = OnChange
+	resp.MinInterval = minSubsInterval
+
+	for _, nInfo := range nAppInfos {
+		if !nInfo.isOnChangeSupported || nInfo.dbno == db.CountersDB {
+			resp.IsOnChangeSupported = false
+			resp.PreferredType = Sample
+		}
+		if nInfo.pType == Sample {
+			resp.PreferredType = Sample
+		}
+		if nInfo.mInterval > resp.MinInterval {
+			resp.MinInterval = nInfo.mInterval
+		}
+	}
+
+	if resp.MinInterval > maxSubsInterval {
+		resp.MinInterval = maxSubsInterval
+	}
 }
 
 //GetModels - Gets all the models supported by Translib
