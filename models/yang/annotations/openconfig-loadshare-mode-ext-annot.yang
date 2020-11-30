@@ -86,7 +86,7 @@ module openconfig-loadshare-mode-ext-annot {
         }
     }
 
-    deviation /oc-lb-mode-ext:loadshare/oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4-protocol {
+    deviation /oc-lb-mode-ext:loadshare/oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4-ip-proto {
         deviate add {
             sonic-ext:field-name "ipv4_protocol";
         }

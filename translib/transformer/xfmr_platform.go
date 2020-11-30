@@ -1631,6 +1631,23 @@ func float32StrTo4Bytes(s string) ([]byte, error) {
     return data, err
 }
 
+func convertUTF8EndcodedString (s string) (string) {
+     if !utf8.ValidString(s) {
+	v := make([]rune, 0, len(s))
+	for i, r := range s{
+	    if r == utf8.RuneError {
+		_, size := utf8.DecodeRuneInString(s[i:])
+	       if size == 1 {
+		  continue
+	       }
+	    }
+	    v = append(v, r)
+       }
+       return string(v) 
+     }
+     return s
+}
+
 func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     var psuInfo PSU
     var err error
@@ -1660,9 +1677,9 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
         psuInfo.Status = true
     }
 
-    psuInfo.Model_Name = psuEntry.Get("model")
-    psuInfo.Manufacturer = psuEntry.Get("mfr_id")
-    psuInfo.Serial_Number = psuEntry.Get("serial")
+    psuInfo.Model_Name = convertUTF8EndcodedString(psuEntry.Get("model"))
+    psuInfo.Manufacturer = convertUTF8EndcodedString(psuEntry.Get("mfr_id"))
+    psuInfo.Serial_Number = convertUTF8EndcodedString(psuEntry.Get("serial"))
     psuInfo.Fans = psuEntry.Get("num_fans")
     psuInfo.Status_Led = psuEntry.Get("status_led")
     return psuInfo, err
