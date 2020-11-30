@@ -261,7 +261,7 @@ var DbToYang_loadshare_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
             }
 
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_protocol") {
-                loadshareAttrObj.State.Ipv4Protocol = &trueIpv4Val
+                loadshareAttrObj.State.Ipv4IpProto = &trueIpv4Val
             }
 
             ecmpHash := entry.Get("ecmp_hash_seed")

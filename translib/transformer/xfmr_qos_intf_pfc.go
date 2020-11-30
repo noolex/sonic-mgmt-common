@@ -484,7 +484,7 @@ func getPfcQueueIDs(inParams XfmrParams, if_name string, dbs [db.MaxDB]*db.DB) (
     oidMap, present := inParams.txCache.Load("COUNTERS_QUEUE_NAME_MAP")
     if !present {
         queueOidMapTs := &db.TableSpec{Name: "COUNTERS_QUEUE_NAME_MAP"}
-        queueCountInfo, err = inParams.d.GetMapAll(queueOidMapTs)
+        queueCountInfo, err = dbs[db.CountersDB].GetMapAll(queueOidMapTs)
         if err != nil {
             log.Info("getPfcQueueIDs    err: ", err)
             return q_list
@@ -582,7 +582,7 @@ var DbToYang_qos_intf_pfc_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
            intf_pfc_priroity_cfg_attr_get(inParams, targetUriPath, if_name, pfc_prio, prioObj.Config)
            intf_pfc_priroity_state_attr_get(inParams, targetUriPath, if_name, pfc_prio, prioObj.State)
        }
-   }
+    }
 
     if strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc/pfc-queue") ||
        (targetUriPath == "/openconfig-qos:qos/interfaces/interface/openconfig-qos-ext:pfc") {

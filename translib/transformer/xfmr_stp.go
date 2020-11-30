@@ -67,6 +67,7 @@ func init() {
     XlateFuncBind("DbToYang_stp_vlan_port_xfmr", DbToYang_stp_vlan_port_xfmr)
     XlateFuncBind("Subscribe_stp_vlan_port_xfmr", Subscribe_stp_vlan_port_xfmr)
     XlateFuncBind("stp_pre_xfmr", stp_pre_xfmr)
+    XlateFuncBind("stp_post_xfmr", stp_post_xfmr)
 }
 
 var g_stpSupported interface{}
@@ -3037,4 +3038,26 @@ var DbToYang_stp_vlan_port_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
     
     return err 
+}
+
+var stp_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    var err error
+    retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
+
+    log.Info("retDbDataMap: ", retDbDataMap)
+    if _, ok := retDbDataMap["STP_PORT"]; ok {
+        cfgMode, _ := getStpModeFromConfigDb(inParams.d)
+        mode := retDbDataMap["STP"]["GLOBAL"].Field["mode"]
+
+        for _, element := range retDbDataMap["STP_PORT"] {
+            if element.Has("loop_guard") || element.Has("edge_port") || element.Has("link_type") {
+                if (mode != "" && mode != "rpvst") || (cfgMode != "" && cfgMode != "rpvst") {
+                    err_str := "Configuration allowed in Rapid PVST mode"
+                    return retDbDataMap, tlerr.NotSupported(err_str)
+                }
+            }
+        }
+    }
+
+    return retDbDataMap, err
 }
