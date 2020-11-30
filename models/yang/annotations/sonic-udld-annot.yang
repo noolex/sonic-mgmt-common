@@ -9,13 +9,6 @@ module sonic-udld-annot {
     import sonic-udld { prefix udld; }
 
 
-    deviation /udld:sonic-udld/udld:UDLD/udld:UDLD_LIST {
-        deviate add {
-            sonic-ext:table-name "UDLD";
-            sonic-ext:key-transformer "udld_global_key_xfmr";
-        }
-    }
-
     deviation /udld:sonic-udld/udld:_UDLD_GLOBAL_TABLE/udld:_UDLD_GLOBAL_TABLE_LIST {
         deviate add {
             sonic-ext:db-name "APPL_DB";

@@ -27,6 +27,7 @@ module openconfig-spanning-tree-annot {
     deviation /oc-stp:stp {
         deviate add {
             sonic-ext:pre-transformer "stp_pre_xfmr";
+            sonic-ext:post-transformer "stp_post_xfmr";
         }
     }
 

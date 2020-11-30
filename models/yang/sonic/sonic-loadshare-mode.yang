@@ -1,5 +1,5 @@
-module sonic-loadbalance-mode {
-    namespace "http://github.com/Azure/sonic-loadbalance-mode";
+module sonic-loadshare-mode {
+    namespace "http://github.com/Azure/sonic-loadshare-mode";
     prefix slbmode;
     yang-version 1.1;
 
@@ -17,9 +17,9 @@ module sonic-loadbalance-mode {
 	        "Initial revision.";
     }
 
-    container sonic-loadbalance-mode {
-        container ECMP_LOADBALANCE_TABLE_SEED {
-            list ECMP_LOADBALANCE_TABLE_SEED_LIST {
+    container sonic-loadshare-mode {
+        container ECMP_LOADSHARE_TABLE_SEED {
+            list ECMP_LOADSHARE_TABLE_SEED_LIST {
                 key "hash";
 
 		leaf hash {
@@ -35,8 +35,8 @@ module sonic-loadbalance-mode {
                 }
             }
         }
-        container ECMP_LOADBALANCE_TABLE_IPV4 {
-            list ECMP_LOADBALANCE_TABLE_IPV4_LIST {
+        container ECMP_LOADSHARE_TABLE_IPV4 {
+            list ECMP_LOADSHARE_TABLE_IPV4_LIST {
                 key "ipv4";
 
 		leaf ipv4 {
@@ -71,8 +71,8 @@ module sonic-loadbalance-mode {
                 }
             }
         }
-        container ECMP_LOADBALANCE_TABLE_IPV6 {
-            list ECMP_LOADBALANCE_TABLE_IPV6_LIST {
+        container ECMP_LOADSHARE_TABLE_IPV6 {
+            list ECMP_LOADSHARE_TABLE_IPV6_LIST {
                 key "ipv6";
 
 		leaf ipv6 {

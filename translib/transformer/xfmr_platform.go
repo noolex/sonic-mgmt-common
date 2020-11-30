@@ -31,7 +31,6 @@ import (
     "os"
     "strconv"
     "strings"
-    "syscall"
     "regexp"
     "unicode/utf8"
     log "github.com/golang/glog"
@@ -76,6 +75,11 @@ const (
    PSU1             = "PSU 1"
    PSU2             = "PSU 2"
    SYSEEPROM        = "System Eeprom"
+
+   /** Valid Device Metadata Components **/
+   DEVICE_METADATA  = "DEVICE_METADATA"
+   HWSKU            = "hwsku"
+   PLATFORM_TYPE    = "platform"
 
    /** Supported oc-platform component state URIs **/
    COMP_STATE_DESCR           = "/openconfig-platform:components/component/state/description"
@@ -388,6 +392,11 @@ type TempSensor struct {
     Timestamp            string
 }
 
+type DeviceMetadata struct {
+    HWSKU    string
+    PLATFORM string
+}
+
 func init () {
     XlateFuncBind("DbToYang_pfm_components_xfmr", DbToYang_pfm_components_xfmr)
     XlateFuncBind("Subscribe_pfm_components_xfmr", Subscribe_pfm_components_xfmr)
@@ -585,7 +594,10 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
     brandingScanner := bufio.NewScanner(strings.NewReader(""))
     versionScanner := bufio.NewScanner(strings.NewReader(""))
     scanner := bufio.NewScanner(strings.NewReader(""))
+    serialScanner := bufio.NewScanner(strings.NewReader(""))
+    uptimeScanner := bufio.NewScanner(strings.NewReader(""))
     var eepromInfo Eeprom
+    var deviceMetadata DeviceMetadata
     var err error
 
     if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
@@ -614,9 +626,15 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         brandingScanner.Split(bufio.ScanLines)
     }
 
-    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_HWSKU_VER || targetUriPath == SW_HW_VER ||
-       targetUriPath == SW_PLAT_NAME || targetUriPath == COMP_STATE_SERIAL_NO || targetUriPath == SW_MFG_NAME {
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_HW_VER || targetUriPath == SW_MFG_NAME {
         eepromInfo, err = getSysEepromFromDb(d)
+        if err != nil {
+            return err
+        }
+    }
+
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_HWSKU_VER || targetUriPath == SW_PLAT_NAME {
+        deviceMetadata, err = getDeviceMetadataFromDb()
         if err != nil {
             return err
         }
@@ -630,6 +648,26 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         }
         env_op := query_result.Body[1].(string)
         scanner = bufio.NewScanner(strings.NewReader(env_op))
+    }
+
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_SERIAL_NUM {
+        var query_result_ser = HostQuery("serial_number_cmd.action", "")
+        if query_result_ser.Err != nil {
+            log.Infof("Error in Calling dbus Serial Number %v", query_result_ser.Err)
+            return query_result_ser.Err
+        }
+        serial_no_op := query_result_ser.Body[1].(string)
+        serialScanner = bufio.NewScanner(strings.NewReader(serial_no_op))
+    }
+
+    if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_UP_TIME {
+        var query_result_uptime = HostQuery("sys_uptime.action", "")
+        if query_result_uptime.Err != nil {
+            log.Infof("Error in Calling dbus System uptime %v", query_result_uptime.Err)
+            return query_result_uptime.Err
+        }
+        sys_Uptime_no_op := query_result_uptime.Body[1].(string)
+        uptimeScanner = bufio.NewScanner(strings.NewReader(sys_Uptime_no_op))
     }
 
     if allAttr || targetUriPath == SW_COMP {
@@ -685,36 +723,34 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
             }
         }
 
-        if eepromInfo.Platform_Name != "" {
-            swComp.PlatformName = &eepromInfo.Platform_Name
-        }
-        if eepromInfo.Product_Name != "" && eepromInfo.Vendor_Name != ""{
-            HwskuVer := eepromInfo.Product_Name + "-" + eepromInfo.Vendor_Name
-            swComp.HwskuVersion = &HwskuVer
-        }
         if eepromInfo.Label_Revision != "" {
             swComp.HardwareVersion = &eepromInfo.Label_Revision
-        }
-        if eepromInfo.Serial_Number != "" {
-            swComp.SerialNumber = &eepromInfo.Serial_Number
         }
         if eepromInfo.Vendor_Name != "" {
             swComp.MfgName = &eepromInfo.Vendor_Name
         }
 
-        info := syscall.Sysinfo_t{}
-        err = syscall.Sysinfo(&info)
-
-        if err != nil {
-            log.Errorf("Unable to get system uptime")
-            return err
+        if deviceMetadata.HWSKU != "" {
+            swComp.HwskuVersion = &deviceMetadata.HWSKU
         }
-        uptimeSec := info.Uptime
-        days := uptimeSec / (60 * 60 * 24)
-        hours := (uptimeSec - (days * 60 * 60 * 24)) / (60 * 60)
-        minutes := ((uptimeSec - (days * 60 * 60 * 24))  -  (hours * 60 * 60)) / 60
-        uptime := strconv.FormatInt(days,10) +" days "+strconv.FormatInt(hours,10)+ " hours "+strconv.FormatInt(minutes,10)+" minutes"
-        swComp.UpTime = &uptime
+
+        if deviceMetadata.PLATFORM != "" {
+            swComp.PlatformName = &deviceMetadata.PLATFORM
+        }
+
+        for serialScanner.Scan() {
+            s := strings.Fields(serialScanner.Text())
+            swComp.SerialNumber = &s[0]
+        }
+
+        for uptimeScanner.Scan() {
+            s := strings.Fields(uptimeScanner.Text())
+            sysUptime := ""
+            for i:= 0; i<len(s); i++ {
+                sysUptime += s[i] + " "
+            }
+            swComp.UpTime = &sysUptime
+        }
 
         for scanner.Scan() {
             var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_Docker_DockerVersion
@@ -809,40 +845,35 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
                 }
             }
         case SW_PLAT_NAME:
-            if eepromInfo.Platform_Name != "" {
-                swComp.PlatformName = &eepromInfo.Platform_Name
+            if deviceMetadata.PLATFORM != "" {
+                swComp.PlatformName = &deviceMetadata.HWSKU
             }
         case SW_HWSKU_VER:
-            if eepromInfo.Product_Name != "" && eepromInfo.Vendor_Name != ""{
-                HwskuVer := eepromInfo.Product_Name + "-" + eepromInfo.Vendor_Name
-                swComp.HwskuVersion = &HwskuVer
+            if deviceMetadata.HWSKU != "" {
+                swComp.HwskuVersion = &deviceMetadata.HWSKU
             }
         case SW_HW_VER:
             if eepromInfo.Label_Revision != "" {
                 swComp.HardwareVersion = &eepromInfo.Label_Revision
             }
-        case COMP_STATE_SERIAL_NO:
-            if eepromInfo.Serial_Number != "" {
-                swComp.SerialNumber = &eepromInfo.Serial_Number
+        case SW_SERIAL_NUM:
+            for serialScanner.Scan() {
+                s := strings.Fields(serialScanner.Text())
+                swComp.SerialNumber = &s[0]
             }
         case SW_MFG_NAME:
             if eepromInfo.Vendor_Name != "" {
                 swComp.MfgName = &eepromInfo.Vendor_Name
             }
         case SW_UP_TIME:
-            info := syscall.Sysinfo_t{}
-            err = syscall.Sysinfo(&info)
-
-            if err != nil {
-                log.Errorf("Unable to get system uptime")
-                return err
+            for uptimeScanner.Scan() {
+                s := strings.Fields(uptimeScanner.Text())
+                sysUptime := ""
+                for i:= 0; i<len(s); i++ {
+                    sysUptime += s[i] + " "
+                }
+                swComp.UpTime = &sysUptime
             }
-            uptimeSec := info.Uptime
-            days := uptimeSec / (60 * 60 * 24)
-            hours := (uptimeSec - (days * 60 * 60 * 24)) / (60 * 60)
-            minutes := ((uptimeSec - (days * 60 * 60 * 24))  -  (hours * 60 * 60)) / 60
-            uptime := strconv.FormatInt(days,10) +" days "+strconv.FormatInt(hours,10)+ " hours "+strconv.FormatInt(minutes,10)+" minutes"
-            swComp.UpTime = &uptime
         case SW_DOCKER_VER:
             for scanner.Scan() {
                 var pf_docker_ver *ocbinds.OpenconfigPlatform_Components_Component_Software_Docker_DockerVersion
@@ -867,6 +898,47 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
         }
     }
     return nil
+}
+
+func getDeviceMetadataFromDb () (DeviceMetadata, error) {
+    var dmdInfo DeviceMetadata
+    var err error
+    var typeCode string
+    d, err := db.NewDB(getDBOptions(db.ConfigDB))
+    if err != nil {
+        log.Infof("getDeviceMetadataFromDb, unable to get configDB, error %v", err)
+        return dmdInfo, err
+    }
+
+    defer d.DeleteDB()
+
+    dmdTbl, err := d.GetTable(&db.TableSpec{Name: DEVICE_METADATA})
+    if err != nil {
+        log.Info("Can't get table: ", DEVICE_METADATA)
+        return dmdInfo, err
+    }
+
+    keys, err := dmdTbl.GetKeys()
+    if err != nil {
+        log.Info("Can't get keys from table")
+        return dmdInfo, err
+    }
+
+    for _, key := range keys {
+        typeCode = key.Get(0)
+        dmdEntry, err := dmdTbl.GetEntry(db.Key{Comp: []string{typeCode}})
+        if err != nil {
+            log.Info("Can't get entry with key: ", typeCode)
+            return dmdInfo, err
+        }
+        if dmdEntry.Has(HWSKU) {
+            dmdInfo.HWSKU = dmdEntry.Get(HWSKU)
+        }
+        if dmdEntry.Has(PLATFORM_TYPE) {
+            dmdInfo.PLATFORM = dmdEntry.Get(PLATFORM_TYPE)
+        }
+    }
+    return dmdInfo, err
 }
 
 func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
@@ -1559,6 +1631,23 @@ func float32StrTo4Bytes(s string) ([]byte, error) {
     return data, err
 }
 
+func convertUTF8EndcodedString (s string) (string) {
+     if !utf8.ValidString(s) {
+	v := make([]rune, 0, len(s))
+	for i, r := range s{
+	    if r == utf8.RuneError {
+		_, size := utf8.DecodeRuneInString(s[i:])
+	       if size == 1 {
+		  continue
+	       }
+	    }
+	    v = append(v, r)
+       }
+       return string(v) 
+     }
+     return s
+}
+
 func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     var psuInfo PSU
     var err error
@@ -1588,9 +1677,9 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
         psuInfo.Status = true
     }
 
-    psuInfo.Model_Name = psuEntry.Get("model")
-    psuInfo.Manufacturer = psuEntry.Get("mfr_id")
-    psuInfo.Serial_Number = psuEntry.Get("serial")
+    psuInfo.Model_Name = convertUTF8EndcodedString(psuEntry.Get("model"))
+    psuInfo.Manufacturer = convertUTF8EndcodedString(psuEntry.Get("mfr_id"))
+    psuInfo.Serial_Number = convertUTF8EndcodedString(psuEntry.Get("serial"))
     psuInfo.Fans = psuEntry.Get("num_fans")
     psuInfo.Status_Led = psuEntry.Get("status_led")
     return psuInfo, err

@@ -367,4 +367,50 @@ module openconfig-ip-sla {
 
   // data definition statements
   uses ip-sla-top;
+
+  rpc get-ipsla-history {
+      description
+          "RPC to retrieve IP SLA history.";
+
+      input {
+          leaf ip-sla-id {
+              type uint16 {
+                  range "1..4095" {
+                      error-message "IP SLA ID out of range";
+                  }
+              }
+              description
+                  "Parameter for displaying IP SLA history";
+          }
+      }
+
+      output {
+          container history-data {
+              config false;
+              description
+                  "IP SLA history data";
+              list ipsla-history {
+                  key "timestamp";
+                  description 
+                      "IP SLA history";
+
+                  leaf timestamp {
+                      type string;
+                      description
+                          "Timestamp of the event";
+                  }
+
+                  container history-event {
+                      description
+                          "IP SLA history event";
+                      leaf event {
+                          type string;
+                          description
+                              "Event description";
+                      }
+                  }
+              }
+          }
+      }
+  }
 }

@@ -19,4 +19,16 @@ module sonic-snmp-annot {
             sonic-ext:value-transformer "snmp_alias_value_xfmr";
         }
     }
+
+    deviation /ssnmp:show-counters {
+        deviate add {
+            sonic-ext:rpc-callback "rpcShowCounters";
+        }
+    }
+
+    deviation /ssnmp:clear-counters {
+        deviate add {
+            sonic-ext:rpc-callback "rpcClearCounters";
+        }
+    }
 }

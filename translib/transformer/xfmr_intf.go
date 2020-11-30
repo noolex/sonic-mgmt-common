@@ -480,6 +480,11 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                     return tlerr.InvalidArgsError{Format: err.Error()}
                 }
             case IntfTypeEthernet:
+                err = validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeEthernet].cfgDb.portTN, *ifName)
+                if err != nil {
+                    // Not returning error from here since mgmt infra will return "Resource not found" error in case of non existence entries
+                    return nil
+                }
                 errStr := "Physical Interface: " + *ifName + " cannot be deleted"
                 err = tlerr.InvalidArgsError{Format:errStr}
                 return err
@@ -500,7 +505,25 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                 return err
             }
 	    }
-	}
+	    }
+
+        if(ifType == IntfTypeEthernet) {
+            err = validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeEthernet].cfgDb.portTN, *ifName)
+            if err != nil {    // Invalid Physical interface
+                errStr := "Interface " + *ifName + " cannot be configured."
+                return tlerr.InvalidArgsError{Format:errStr}
+            }
+            if (inParams.oper == REPLACE) {
+                if *requestUriPath == "/openconfig-interfaces:interfaces/interface" ||
+                    *requestUriPath == "/openconfig-interfaces:interfaces/interface/config" {
+                    // OC interfaces yang does not have attributes to set Physical interface critical attributes like speed, alias, lanes, index.
+                    // Replace/PUT request without the critical attributes would end up in deletion of the same in PORT table, which cannot be allowed.
+                    // Hence block the Replace/PUT request for Physical interfaces alone.
+                    err_str := "Replace/PUT request not allowed for Physical interfaces"
+                    return tlerr.NotSupported(err_str)
+                }
+           }
+        }
     }
     return err
 }
@@ -1148,13 +1171,7 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
     } else if strings.HasPrefix(ifName, LOOPBACK) {
         res_map["NULL"] = "NULL"
     } else if strings.HasPrefix(ifName, ETHERNET) {
-        intTbl := IntfTypeTblMap[IntfTypeEthernet]
-        //Check if physical interface exists, if not return error
-        err = validateIntfExists(inParams.d, intTbl.cfgDb.portTN, ifName)
-        if err != nil {
-            errStr := "Interface " + ifName + " cannot be configured."
-            return res_map, tlerr.InvalidArgsError{Format:errStr}
-        }
+        res_map["NULL"] = "NULL"
     }
     log.Info("YangToDb_intf_name_xfmr: res_map:", res_map)
     return res_map, err
@@ -4647,7 +4664,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
         }
     }
     /* Handle Port FEC config */
-    if (strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-fec")) {
+    _, present := yangToDbFecMap[intfObj.Ethernet.Config.PortFec]
+    if present {
         res_map := make(map[string]string)
         value := db.Value{Field: res_map}
         intTbl := IntfTypeTblMap[intfType]

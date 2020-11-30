@@ -192,7 +192,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 	if isSonicYang(uri) {
 		/* Extract the xpath and key from input xpath */
 		xpath, keyStr, tableName := sonicXpathKeyExtract(uri)
-		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && tblSpecInfo.hasXfmrFn {
+		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && keyStr != "" && hasKeyValueXfmr(tableName) {
 			/* key from uri should be converted into redis-db key, to read data */
 			keyStr, err = dbKeyValueXfmrHandler(CREATE, tblSpecInfo.dbIndex, tableName, keyStr)
 			if err != nil {
@@ -793,7 +793,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 	       xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
 	       if subscribe_result.OnChange {
 		       if st_result.dbDataMap != nil {
-			       subscribe_result.DbDataMap = st_result.dbDataMap
+			       subscribe_result.DbDataMap = processKeyValueXfmr(st_result.dbDataMap)
 			       xfmrLogInfo("Subtree subcribe dbData %v", subscribe_result.DbDataMap)
 		       }
 		       subscribe_result.NeedCache = st_result.needCache
@@ -809,7 +809,8 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                }
            } else {
 		   subscribe_result.OnChange = true
-		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{retData.tableName: {retData.dbKey: {}}}
+		   inValXfmrMap := RedisDbMap{xpath_dbno:{retData.tableName:{retData.dbKey:{}}}}
+		   subscribe_result.DbDataMap = processKeyValueXfmr(inValXfmrMap)
 	   }
            if done {
                    break
