@@ -603,7 +603,7 @@ func XfmrRemoveXPATHPredicates(inPath string) (string, error) {
 	return path, nil
 }
 
-func replacePrefixWithModuleName(xpath string) (string) {
+/*func replacePrefixWithModuleName(xpath string) (string) {
 	//Input xpath is after removing the xpath Predicates
 	var moduleNm string
 	if _, ok := xYangSpecMap[xpath]; ok {
@@ -614,7 +614,7 @@ func replacePrefixWithModuleName(xpath string) (string) {
 		}
 	}
 	return xpath
-}
+}*/
 
 
 /* Extract key vars, create db key and xpath */
