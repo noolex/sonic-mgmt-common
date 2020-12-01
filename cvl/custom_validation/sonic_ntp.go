@@ -15,30 +15,21 @@ func (t *CustomValidation) ValidateNtpVrf(
         }
 
         entry, err := vc.RClient.HGetAll("MGMT_VRF_CONFIG|vrf_global").Result()
-        if ((len(entry) == 0) || (err != nil)) {
-                return CVLErrorInfo {
-                       ErrCode :         CVL_SEMANTIC_ERROR,
-                       TableName:        "NTP", 
-                       Keys:             []string{"global"},
-                       ConstraintErrMsg: "Management VRF not configured",
-                }
-        }
-
-        enabled, found_field := entry["mgmtVrfEnabled"];
-        if (!found_field) {
+        if ((len(entry) == 0) || (entry["mgmtVrfEnabled"] == "") || (err != nil)) {
                 return CVLErrorInfo {
                        ErrCode :         CVL_SEMANTIC_ERROR,
                        TableName:        "NTP",
                        Keys:             []string{"global"},
                        ConstraintErrMsg: "Management VRF not configured",
                 }
-
         }
+
+        enabled := entry["mgmtVrfEnabled"];
 
         if enabled != "true" {
                 return CVLErrorInfo {
                         ErrCode :         CVL_SEMANTIC_ERROR,
-                        TableName:        "NTP", 
+                        TableName:        "NTP",
                         Keys:             []string{"global"},
                         ConstraintErrMsg: "Management VRF not enabled",
                 }
