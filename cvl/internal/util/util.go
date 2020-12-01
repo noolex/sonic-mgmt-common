@@ -84,6 +84,7 @@ func init() {
 
 var cvlCfgMap map[string]string
 var isLogToFile bool
+var logFileName string = CVL_LOG_FILE
 var logFileSize int
 var pLogFile *os.File
 var logFileMutex *sync.Mutex
@@ -245,9 +246,9 @@ func logToCvlFile(format string, args ...interface{}) {
 		//close the file first
 		pLogFile.Close()
 
-		pFile, err := os.OpenFile(CVL_LOG_FILE,
+		pFile, err := os.OpenFile(logFileName,
 		os.O_RDONLY, 0666)
-		pFileOut, errOut := os.OpenFile(CVL_LOG_FILE + ".tmp",
+		pFileOut, errOut := os.OpenFile(logFileName + ".tmp",
 		os.O_WRONLY | os.O_CREATE, 0666)
 
 
@@ -257,7 +258,7 @@ func logToCvlFile(format string, args ...interface{}) {
 			pFile.Seek(int64(logFileSize * 30/100), io.SeekStart)
 			_, err := io.Copy(pFileOut, pFile)
 			if err == nil {
-				os.Rename(CVL_LOG_FILE + ".tmp", CVL_LOG_FILE)
+				os.Rename(logFileName + ".tmp", logFileName)
 			}
 		}
 
@@ -269,10 +270,10 @@ func logToCvlFile(format string, args ...interface{}) {
 		}
 
 		// Reopen the file 
-		pLogFile, err := os.OpenFile(CVL_LOG_FILE,
+		pLogFile, err := os.OpenFile(logFileName,
 		os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 		if err != nil {
-			fmt.Printf("Error in opening log file %s, %v", CVL_LOG_FILE, err)
+			fmt.Printf("Error in opening log file %s, %v", logFileName, err)
 		} else {
 			fileLog.SetOutput(pLogFile)
 		}
@@ -343,12 +344,18 @@ func applyCvlLogFileConfig() {
 		logFileSize, _ = strconv.Atoi(fileSize)
 	}
 
+	if fileName, exists := cvlCfgMap["LOG_FILE_NAME"]; exists {
+		logFileName = fileName
+	} else {
+		logFileName = CVL_LOG_FILE
+	}
+
 	if (enabled == "true") {
-		pFile, err := os.OpenFile(CVL_LOG_FILE,
+		pFile, err := os.OpenFile(logFileName,
 		os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 
 		if err != nil {
-			fmt.Printf("Error in opening log file %s, %v", CVL_LOG_FILE, err)
+			fmt.Printf("Error in opening log file %s, %v", logFileName, err)
 		} else {
 			pLogFile = pFile
 			fileLog.SetOutput(pLogFile)
