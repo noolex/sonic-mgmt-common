@@ -402,5 +402,64 @@ module sonic-interface {
                 }
              }
         }
+
+        container VLAN_SUB_INTERFACE {
+            list VLAN_SUB_INTERFACE_LIST {
+                key "id";
+
+                leaf id {
+                    type string;
+                }
+
+                leaf subintfidx {
+                    type string;
+                }
+
+                leaf ifName {
+                    type string;
+                }
+
+                leaf vrf_name {
+                    type string;
+                }
+
+                leaf vlan {
+                    type string;
+                }
+
+                leaf admin_status {
+                    type string;
+                }
+
+                leaf description {
+                    type string;
+                }
+
+                leaf enabled {
+                    type string;
+                }
+
+                leaf index {
+                    type string;
+                }
+
+            }
+
+            list VLAN_SUB_INTERFACE_IPADDR_LIST {
+                key "id ipPrefix";
+
+                leaf id {
+                   type string;
+                }
+
+                leaf ipPrefix {
+                    type inet:ip-prefix;
+                }
+
+                leaf status {
+                    type string;
+                }
+             }
+        }
    }
 }
