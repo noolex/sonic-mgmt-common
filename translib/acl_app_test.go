@@ -397,19 +397,25 @@ func Test_AclApp_Subscribe(t *testing.T) {
 // app interafce and check returned notificationInfo matches given values.
 func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*testing.T) {
 	return func(t *testing.T) {
-		_, nt, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		nts, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
 		if err != nil {
 			t.Fatalf("Unexpected error processing '%s'; err=%v", path, err)
 		}
-		if nt == nil || nt.needCache != oCache || nt.table.Name != oTable ||
+
+		var nt *notificationAppInfo
+		if len(nts) == 1 {
+			nt = &nts[0]
+		}
+
+		if nt == nil || nt.table.Name != oTable ||
 			!reflect.DeepEqual(nt.key.Comp, strings.Split(oKey, "|")) {
 			t.Logf("translateSubscribe for path '%s'", path)
 			t.Logf("Expected table '%s', key '%v', cache %v", oTable, oKey, oCache)
 			if nt == nil {
 				t.Fatalf("Found nil")
 			} else {
-				t.Fatalf("Found table '%s', key '%s', cache %v",
-					nt.table.Name, strings.Join(nt.key.Comp, "|"), nt.needCache)
+				t.Fatalf("Found table '%s', key '%s'",
+					nt.table.Name, strings.Join(nt.key.Comp, "|"))
 			}
 		}
 	}
@@ -419,7 +425,7 @@ func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*te
 // an app interafce and expects it to return an error
 func testSubsError(app appInterface, path string) func(*testing.T) {
 	return func(t *testing.T) {
-		_, _, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		_, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
 		if err == nil {
 			t.Fatalf("Expected error for path '%s'", path)
 		}

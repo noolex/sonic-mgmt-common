@@ -227,10 +227,9 @@ func (app *AclApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
+func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
 	pathInfo := NewPathInfo(path)
-	notifInfo := notificationInfo{dbno: db.ConfigDB}
-	notifOpts := notificationOpts{isOnChangeSupported: true}
+	notifInfo := notificationAppInfo{dbno: db.ConfigDB, isOnChangeSupported: true}
 	notSupported := tlerr.NotSupportedError{
 		Format: "Subscribe not supported", Path: path}
 
@@ -241,12 +240,12 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 			pathInfo.HasSuffix("/acl-set") ||
 			pathInfo.HasSuffix("/acl-set{}{}") {
 			log.Errorf("Subscribe not supported for top level ACL %s", pathInfo.Template)
-			return nil, nil, notSupported
+			return nil, notSupported
 		}
 
 		t, err := getAclTypeOCEnumFromName(pathInfo.Var(ACL_FIELD_TYPE))
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		aclkey := convertOCAclnameTypeToInternal(pathInfo.Var(ACL_KEYWORD_NAME), t)
@@ -256,7 +255,6 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 			rulekey := "RULE_" + pathInfo.Var("sequence-id")
 			notifInfo.table = db.TableSpec{Name: RULE_TABLE}
 			notifInfo.key = asKey(aclkey, rulekey)
-			notifInfo.needCache = !pathInfo.HasSuffix("/acl-entry{}")
 
 		} else if pathInfo.HasSuffix("/acl-entries") || pathInfo.HasSuffix("/acl-entry") {
 			// Subscribe for all rules of an ACL
@@ -267,7 +265,6 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 			// Subscibe for ACL fields only
 			notifInfo.table = db.TableSpec{Name: ACL_TABLE}
 			notifInfo.key = asKey(aclkey)
-			notifInfo.needCache = true
 		}
 	} else if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/interfaces") {
 		// Right now interface binding config is maintained within ACL
@@ -277,14 +274,18 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 		// For now subscribe for full ACL table!!
 		notifInfo.table = db.TableSpec{Name: ACL_TABLE}
 		notifInfo.key = asKey("*")
-		notifInfo.needCache = true
 
 	} else {
 		log.Errorf("Unknown path %s", pathInfo.Template)
-		return nil, nil, notSupported
+		return nil, notSupported
 	}
 
-	return &notifOpts, &notifInfo, nil
+	return []notificationAppInfo{ notifInfo }, nil
+}
+
+func (app *AclApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
+	var resp subscribePathResponse
+	return resp, tlerr.New("Not implemented")
 }
 
 func (app *AclApp) processCreate(d *db.DB) (SetResponse, error) {
