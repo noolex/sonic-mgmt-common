@@ -672,7 +672,7 @@ var YangToDb_mac_aging_time_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
 
     if (instance != "default") {
         errStr := "Operation: "+strconv.Itoa(inParams.oper)+" not allowed for MAC aging-time on: "+instance
-        log.Error(errStr)
+        log.Info(errStr)
         if inParams.oper != DELETE {
             return nil, tlerr.InvalidArgsError{Format:errStr}
         }
