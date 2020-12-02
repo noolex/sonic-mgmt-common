@@ -923,7 +923,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					chtbl := xpathKeyExtRet.tableName
 					inParamsForGet.ygRoot = ygRoot
 
-					if _, ok := (*dbDataMap)[cdb][chtbl]; !ok && len(chtbl) > 0 {
+					if _, ok := (*dbDataMap)[cdb][chtbl][tblKey]; !ok && len(chtbl) > 0 {
 						childDBKey := ""
 						terminalNodeGet  := false
 						qdbMapHasTblData := false
