@@ -907,7 +907,7 @@ func retrievePortChannelReplaceVlan(d *db.DB, ifName *string) (*string, error) {
     }
     return nil, err
 }
-//Creates new entry in VLAN_MEMBER table and updated VLAN table. 
+//Creates new entry in VLAN_MEMBER table. 
 func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
     var err error
     stpPortMap := make(map[string]db.Value)
@@ -924,22 +924,6 @@ func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
            return errors.New(errStr)
            }
 
-       //update members@ field in VLAN_TABLE entry
-       vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
-       if err != nil || !vlanEntry.IsPopulated() {
-           errStr := "Invalid Vlan:" + vlanName
-           log.Error(errStr)
-           return errors.New(errStr)
-           }
-       membersList := vlanEntry.GetList("members")
-       membersList = append(membersList, ifName)
-       vlanEntry.SetList("members", membersList)
-       err = d.ModEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}}, vlanEntry)
-        if err != nil {
-            errStr := "Modifying vlan entry in VLAN_TABLE failed!"
-            log.Error(errStr)
-            return errors.New(errStr)
-            }
 	}
         enableStpOnInterfaceVlanMembership(d, &vlanList[0], ifList, stpPortMap)
 	if len(stpPortMap) != 0 {
@@ -952,7 +936,7 @@ func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
 	}
        return nil
 }
-//Deletes entry from VLAN_MEMBER table and updates VLAN table. 
+//Deletes entry from VLAN_MEMBER table. 
 func rpc_delete_vlan(d *db.DB, vlanList []string, ifName string) error {
     var err error
 
@@ -965,24 +949,35 @@ func rpc_delete_vlan(d *db.DB, vlanList []string, ifName string) error {
             return errors.New(errStr)
             }
 
-       //update members@ field in VLAN_TABLE entry
-       vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
-       if err != nil || !vlanEntry.IsPopulated() {
-           errStr := "Invalid Vlan:" + vlanName
-           log.Error(errStr)
-           return errors.New(errStr)
-           }
-       membersList := vlanEntry.GetList("members")
-       updatedList := utils.RemoveElement(membersList, ifName)
-       vlanEntry.SetList("members", updatedList)
-       err = d.SetEntry(&db.TableSpec{Name:VLAN_TN},db.Key{Comp: []string{vlanName}},vlanEntry)
-        if err != nil{
-            errStr := "Setting entry in VLAN_TABLE failed!"
-            return errors.New(errStr)
-            }
         }
 
 	return nil
+}
+//Updates VLAN table.
+func rpc_vlan_tbl_update(d *db.DB, vlanList []string, ifNameList []string, op string) error {
+    for _,vlanName := range vlanList{
+        vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
+        if err != nil || !vlanEntry.IsPopulated() {
+            errStr := "Invalid Vlan:" + vlanName
+            return errors.New(errStr)
+        }
+        membersList := vlanEntry.GetList("members")
+	if op == "DELETE"{
+            for _,ifName := range ifNameList {
+                membersList = utils.RemoveElement(membersList,ifName)
+            }
+	}
+	if op == "CREATE"{
+	    membersList = append(membersList,ifNameList...)
+	}
+        vlanEntry.SetList("members", membersList)
+        err = d.SetEntry(&db.TableSpec{Name:VLAN_TN},db.Key{Comp: []string{vlanName}},vlanEntry)
+        if err != nil{
+            errStr := "Setting entry in VLAN_TABLE failed!"
+	    return errors.New(errStr)
+            }
+        }
+    return nil
 }
 
 var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
@@ -1017,7 +1012,13 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     }
     ifNameStr := inputIfName.(string)
     vlanListStr := vlanList.(string)
-    ifName := utils.GetNativeNameFromUIName(&ifNameStr)
+    ifNameList := strings.Split(ifNameStr,",")
+    if utils.IsAliasModeEnabled(){
+    for idx,ifName := range ifNameList{
+	nativeName := utils.GetNativeNameFromUIName(&ifName)
+        ifNameList[idx] = *nativeName
+    }
+}
 
     d, err := db.NewDB(getDBOptions(db.ConfigDB))
     if err != nil {
@@ -1026,45 +1027,50 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     }
     defer d.DeleteDB()
 
-    err = validateL3ConfigExists(d,ifName)
-    if err != nil{
-       result.Output.Status_detail = err.Error()
-        return json.Marshal(&result)
-    }
-
-    lagStr,_ := retrievePortChannelReplaceVlan(d,ifName)
-    intfType, _, ierr := getIntfTypeByName(*ifName)
-
-    if intfType == IntfTypeUnset || ierr != nil {
-        log.Error("Invalid interface type IntfTypeUnset")
-        return json.Marshal(&result)
-    }
-
-    if intfType == IntfTypeEthernet{
-        if lagStr != nil{
-           errStr := ifNameStr + " already member of " + *lagStr
-           err = tlerr.InvalidArgsError{Format: errStr}
+    for _,ifName := range ifNameList{
+        err = validateL3ConfigExists(d,&ifName)
+        if err != nil{
             result.Output.Status_detail = err.Error()
             return json.Marshal(&result)
-           }
-       }
+        }
 
-    var cfgredAccessVlan string
-    exists, err := validateUntaggedVlanCfgredForIf(d,&intTbl.cfgDb.memberTN, ifName, &cfgredAccessVlan)
-    if err != nil{
-        result.Output.Status_detail = err.Error()
-        return json.Marshal(&result)
-    }
-    if exists {
-        errStr := cfgredAccessVlan + " already configured as access for " + *ifName
-        err = tlerr.InvalidArgsError{Format: errStr}
-        result.Output.Status_detail = err.Error()
-        return json.Marshal(&result)
+        lagStr,_ := retrievePortChannelReplaceVlan(d,&ifName)
+        intfType, _, ierr := getIntfTypeByName(ifName)
+
+        if intfType == IntfTypeUnset || ierr != nil {
+            log.Error("Invalid interface type IntfTypeUnset")
+            return json.Marshal(&result)
+        }
+
+        if intfType == IntfTypeEthernet{
+            if lagStr != nil{
+                errStr := ifName + " already member of " + *lagStr
+                err = tlerr.InvalidArgsError{Format: errStr}
+                result.Output.Status_detail = err.Error()
+                return json.Marshal(&result)
+            }
+        }
+
+        var cfgredAccessVlan string
+        exists, err := validateUntaggedVlanCfgredForIf(d,&intTbl.cfgDb.memberTN, &ifName, &cfgredAccessVlan)
+        if err != nil{
+            result.Output.Status_detail = err.Error()
+            return json.Marshal(&result)
+        }
+        if exists {
+            errStr := cfgredAccessVlan + " already configured as access for " + ifName
+            err = tlerr.InvalidArgsError{Format: errStr}
+            result.Output.Status_detail = err.Error()
+            return json.Marshal(&result)
+        }
     }
 
     newVlanList := strings.Split(vlanListStr,",")
     var newList []string
     var existList []string
+    var delList []string
+    var createList []string
+
     for _,vlan := range newVlanList {
        if strings.Contains(vlan, "..") {
             err = extractVlanIdsfrmRng(d,vlan,&newList)
@@ -1085,30 +1091,6 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
        }
     }
-
-    vlanMemberKeys, err := d.GetKeysByPattern(&db.TableSpec{Name:VLAN_MEMBER_TN}, "*"+*ifName)
-    if err != nil {
-        result.Output.Status_detail = err.Error()
-        return json.Marshal(&result)
-    }
-    log.Infof("Found %d vlan-member-table keys", len(vlanMemberKeys))
-    for _, vlanMember := range vlanMemberKeys {
-        if len(vlanMember.Comp) < 2 {
-            continue
-        }
-        vlanId := vlanMember.Get(0)
-        existList = append(existList,vlanId)
-    }
-
-    delList := vlanDifference(existList,newList)
-    createList := vlanDifference(newList,existList)
-
-    //no changes in vlans
-    if len(delList) == 0 && len(createList) == 0 {
-        result.Output.Status = 0
-        return  json.Marshal(&result)
-    }
-
     moduleNm := "sonic-vlan"
     resultTblList := []string{VLAN_MEMBER_TN,VLAN_TN}
     var tblsToWatch []*db.TableSpec
@@ -1131,19 +1113,57 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         return json.Marshal(&result)
     }
 
-    if len(delList) != 0 {
-        err = rpc_delete_vlan(d,delList,*ifName)
+    for _,ifName := range ifNameList{
+        vlanMemberKeys, err := d.GetKeysByPattern(&db.TableSpec{Name:VLAN_MEMBER_TN}, "*"+ifName)
         if err != nil {
-           d.AbortTx()
+            result.Output.Status_detail = err.Error()
+            return json.Marshal(&result)
+        }
+        log.Infof("Found %d vlan-member-table keys", len(vlanMemberKeys))
+        for _, vlanMember := range vlanMemberKeys {
+            if len(vlanMember.Comp) < 2 {
+                continue
+            }
+        vlanId := vlanMember.Get(0)
+        existList = append(existList,vlanId)
+        }
+
+        delList = vlanDifference(existList,newList)
+        createList = vlanDifference(newList,existList)
+
+
+        if len(delList) != 0 {
+            err = rpc_delete_vlan(d,delList,ifName)
+
+            if err != nil {
+                d.AbortTx()
+                result.Output.Status_detail = err.Error()
+                return json.Marshal(&result)
+            }
+        }
+
+        if len(createList) != 0 {
+            err = rpc_create_vlan(d,createList,ifName)
+            if err != nil {
+                d.AbortTx()
+                result.Output.Status_detail = err.Error()
+                return json.Marshal(&result)
+            }
+        }
+    }
+
+    if len(delList)!=0{
+	err = rpc_vlan_tbl_update(d,delList,ifNameList,"DELETE")
+	if err != nil {
+            d.AbortTx()
             result.Output.Status_detail = err.Error()
             return json.Marshal(&result)
         }
     }
-
-    if len(createList) != 0 {
-        err = rpc_create_vlan(d,createList,*ifName)
+    if len(createList)!=0{
+        err = rpc_vlan_tbl_update(d,createList,ifNameList,"CREATE")
         if err != nil {
-           d.AbortTx()
+            d.AbortTx()
             result.Output.Status_detail = err.Error()
             return json.Marshal(&result)
         }

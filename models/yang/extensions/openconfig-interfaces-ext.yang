@@ -876,7 +876,7 @@ module openconfig-interfaces-ext {
         description
             "Replaces VLAN member list for given interfaces";
         input {
-            leaf ifname {
+            leaf-list ifname {
                 type string;
                 description
                     "Interface with which VLAN needs to be replaced";
