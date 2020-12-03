@@ -1008,6 +1008,13 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         log.Infof("TableXfmrFunc - Sonic Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     }
     ifName = *sonicIfName
+    idx := pathInfo.Var("index")
+    var i32 uint32
+    i32 = 0
+    if idx!="" {
+        i64, _ := strconv.ParseUint(idx, 10, 32)
+        i32 = uint32(i64)
+    }
 
     intfType, _, ierr := getIntfTypeByName(ifName)
     if intfType == IntfTypeUnset || ierr != nil {
@@ -1143,7 +1150,11 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/config") {
-        tblList = append(tblList, intTbl.cfgDb.intfTN)
+        if i32 > 0 {
+            tblList = append(tblList, "VLAN_SUB_INTERFACE")
+        } else {
+            tblList = append(tblList, intTbl.cfgDb.intfTN)
+        }
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/state") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/state") ||
@@ -5020,9 +5031,19 @@ var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     if log.V(3) {
         log.Info("inParams.requestUri: ", requestUriPath)
     }
-
+    log.Info("inParams.requestUri: ", requestUriPath)
+    idx := pathInfo.Var("index")
+    var i32 uint32
+    i32 = 0
+    if idx!="" {
+        i64, _ := strconv.ParseUint(idx, 10, 32)
+        i32 = uint32(i64)
+    }
     inst_key = ifName
-    log.Info("YangToDb_subintf_ipv6_tbl_key_xfmr inst_key : ", inst_key)
+    if i32 > 0 {
+        inst_key = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &idx)
+    }
+    log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr, key %s", inst_key)
     return inst_key, err
 }
 
@@ -5045,6 +5066,13 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     res_map := make(map[string]string)
     pathInfo := NewPathInfo(inParams.uri)
     ifUIName := pathInfo.Var("name");
+    idx := pathInfo.Var("index")
+    var i32 uint32
+    i32 = 0
+    if idx!="" {
+        i64, _ := strconv.ParseUint(idx, 10, 32)
+        i32 = uint32(i64)
+    }
 
     intfType, _, ierr := getIntfTypeByName(ifUIName)
     if ierr != nil || intfType == IntfTypeUnset || intfType == IntfTypeVxlan || intfType == IntfTypeMgmt {
@@ -5075,6 +5103,10 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
 
     intTbl := IntfTypeTblMap[intfType]
     tblName := intTbl.cfgDb.intfTN
+    if i32 > 0 {
+        tblName = "VLAN_SUB_INTERFACE"
+        ifName = utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(ifName, &idx)
+    }
     ipMap, _ := getIntfIpByName(inParams.d, tblName, *ifName, true, true, "")
     var enStr string
     subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)

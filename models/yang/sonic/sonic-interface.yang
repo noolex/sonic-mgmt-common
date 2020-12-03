@@ -443,6 +443,13 @@ module sonic-interface {
                     type string;
                 }
 
+                leaf ipv6_use_link_local_only {
+                    type cmn:mode-enable;
+                    default disable;
+                    description
+                        "Enable IPv6 link local address on interface";
+                }
+
             }
 
             list VLAN_SUB_INTERFACE_IPADDR_LIST {
