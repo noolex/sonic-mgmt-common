@@ -453,13 +453,13 @@ module sonic-interface {
             }
 
             list VLAN_SUB_INTERFACE_IPADDR_LIST {
-                key "id ipPrefix";
+                key "id ip_prefix";
 
                 leaf id {
                    type string;
                 }
 
-                leaf ipPrefix {
+                leaf ip_prefix {
                     type inet:ip-prefix;
                 }
 
