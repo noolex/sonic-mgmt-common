@@ -95,6 +95,7 @@ type PolicyFlowEntry struct {
 	GREEN_ACTION           *string                 `json:",omitempty"`
 	RED_ACTION             *string                 `json:",omitempty"`
 	YELLOW_ACTION          *string                 `json:",omitempty"`
+	SET_TRAP_QUEUE         *uint8                  `json:",omitempty"`
 	SET_INTERFACE          []ForwardingEgressEntry `json:",omitempty"`
 	SET_IP_NEXTHOP         []ForwardingEgressEntry `json:",omitempty"`
 	SET_IPV6_NEXTHOP       []ForwardingEgressEntry `json:",omitempty"`
@@ -556,6 +557,11 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 			policySectionInfo.SET_INTERFACE = append(policySectionInfo.SET_INTERFACE, fwdEntry)
 		}
 	}
+	if str_val, found := policySectionTblVal.Field["SET_TRAP_QUEUE"]; found {
+		val, _ := strconv.ParseUint(str_val, 10, 64)
+		val8 := uint8(val)
+		policySectionInfo.SET_TRAP_QUEUE = &val8
+	}
 
 	if fill_state {
 		var state FlowStateEntry
@@ -676,7 +682,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 		}
 	}
 
-	if strings.EqualFold(policy_type, "QOS") {
+	if strings.EqualFold(policy_type, "QOS") || strings.EqualFold(policy_type, "ACL_COPP") {
 		var policer FlowPolicerStateEntry
 		var polCntTbl_ts *db.TableSpec = &db.TableSpec{Name: "POLICER_COUNTERS"}
 		var lastPolCntTbl_ts *db.TableSpec = &db.TableSpec{Name: "LAST_POLICER_COUNTERS"}
@@ -791,7 +797,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 
 func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
 	policyEntry.POLICY_NAME = policy_name
-	policyEntry.TYPE = policyTblVal.Field["TYPE"]
+	policyEntry.TYPE = strings.Replace(policyTblVal.Field["TYPE"], "_", "-", 1)
 	if str_val, found := policyTblVal.Field["DESCRIPTION"]; found {
 		policyEntry.DESCRIPTION = &str_val
 	}
@@ -953,7 +959,7 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 				if err != nil {
 					return nil, err
 				}
-				if policy_type_found && policyTblVal.Field["TYPE"] != policy_type {
+				if policy_type_found && strings.Replace(policyTblVal.Field["TYPE"], "_", "-", 1) != policy_type {
 					log.Infof("index:%v policy_name:%v match_type:%v expected:%v", index, policy_name, policyTblVal.Field["TYPE"], policy_type)
 					continue
 				}
@@ -1036,7 +1042,7 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 		log.Infof("key:%v policyBindTblVal:%v", policyBindKeys[index], policyBindTblVal)
 
 		for field, value := range policyBindTblVal.Field {
-			field_splits := strings.Split(field, "_")
+			field_splits := strings.SplitN(strings.TrimSuffix(field, "_POLICY"), "_", 2)
 
 			if policy_name_found {
 				if value != policy_name {
@@ -1154,6 +1160,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 	policy_name, policy_name_found := mapData["POLICY_NAME"].(string)
 	interface_name, interface_name_found := mapData["INTERFACE_NAME"].(string)
 	policy_type, policy_type_found := mapData["TYPE"].(string)
+	policy_type = strings.ToUpper(policy_type)
 
 	if !policy_name_found && !interface_name_found {
 		log.Errorf("Policy name and interface name not found")
@@ -1185,7 +1192,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 		log.Infof("key:%v policyBindTblVal:%v", policyBindKeys[index], policyBindTblVal)
 
 		for field, value := range policyBindTblVal.Field {
-			field_splits := strings.Split(field, "_")
+			field_splits := strings.SplitN(strings.TrimSuffix(field, "_POLICY"), "_", 2)
 
 			if policy_name_found {
 				if value != policy_name {
@@ -1195,7 +1202,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 			}
 
 			if policy_type_found {
-				if !strings.EqualFold(field_splits[1], policy_type) {
+				if !strings.EqualFold(field_splits[1], strings.Replace(policy_type, "-", "_", 1)) {
 					log.Infof("Type:%s Needed:%s. Skip", field_splits[1], policy_type)
 					continue
 				}
@@ -1214,7 +1221,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 			for i := 0; i < len(referingClassKeys); i++ {
 				fbsKey := db.Key{Comp: []string{value, referingClassKeys[i].Comp[1], key.Comp[0], field_splits[0]}}
 				clear_fbs_counters(fbsKey, dbs[db.CountersDB])
-				if field_splits[1] == "QOS" {
+				if field_splits[1] == "QOS" || field_splits[1] == "ACL_COPP" {
 					clear_policer_counters(key, dbs[db.CountersDB])
 				}
 			}

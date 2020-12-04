@@ -46,6 +46,7 @@ const (
 	SONIC_POLICY_TYPE_QOS          = "QOS"
 	SONIC_POLICY_TYPE_FORWARDING   = "FORWARDING"
 	SONIC_POLICY_TYPE_MONITORING   = "MONITORING"
+	SONIC_POLICY_TYPE_COPP         = "ACL_COPP"
 	SONIC_PACKET_ACTION_DROP       = "DROP"
 	SONIC_NH_GROUP_TYPE_IPV4       = "IPV4"
 	SONIC_NH_GROUP_TYPE_IPV6       = "IPV6"
@@ -61,6 +62,7 @@ const (
 	LAST_POLICER_COUNTERS_TABLE    = "LAST_POLICER_COUNTERS"
 	CFG_PBF_NEXT_HOP_GROUP_TABLE   = "PBF_NEXTHOP_GROUP_TABLE"
 	STATE_PBF_NEXT_HOP_GROUP_TABLE = "PBF_NEXTHOP_GROUP_TABLE"
+	SONIC_CPU_PORT                 = "CPU"
 )
 
 type FbsFwdCountersEntry struct {
@@ -335,8 +337,13 @@ func (app *FbsApp) translateCU(d *db.DB, opcode int) error {
 		return app.translateCUInterface(d, opcode)
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/next-hop-groups") {
 		return app.translateCUNextHopGroups(d, opcode)
+	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/cpu-port") {
+		return app.translateCUCpuPort(d, opcode)
 	} else {
-		err := app.translateCUNextHopGroups(d, opcode)
+		err := app.translateCUCpuPort(d, opcode)
+		if err == nil {
+			err = app.translateCUNextHopGroups(d, opcode)
+		}
 		if err == nil {
 			err = app.translateCUInterface(d, opcode)
 		}
@@ -402,6 +409,8 @@ func (app *FbsApp) translateDel(d *db.DB) error {
 		err = app.translateDelInterface(d)
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/next-hop-groups") {
 		err = app.translateDelNextHopGroups(d)
+	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/cpu-port") {
+		err = app.translateDelCpuPort(d)
 	} else {
 		err = app.translateDelInterface(d)
 		if err == nil {
@@ -412,6 +421,9 @@ func (app *FbsApp) translateDel(d *db.DB) error {
 		}
 		if err == nil {
 			err = app.translateDelNextHopGroups(d)
+		}
+		if err == nil {
+			err = app.translateDelCpuPort(d)
 		}
 	}
 
@@ -918,8 +930,30 @@ func (app *FbsApp) translateCUPolicy(d *db.DB, opcode int) error {
 								sectionDbV.Field["SET_PCP"] = strconv.Itoa(int(*policySectionVal.Qos.Remark.Config.SetDot1P))
 							}
 						}
+					} //Qos - END
+				} else if policySectionVal.Copp != nil { //ACL-COPP - Start
+					if policySectionVal.Copp.Policer != nil {
+						if policySectionVal.Copp.Policer.Config != nil {
+							if policySectionVal.Copp.Policer.Config.Cir != nil {
+								sectionDbV.Field["SET_POLICER_CIR"] = strconv.FormatInt(int64(*policySectionVal.Copp.Policer.Config.Cir), 10)
+							}
+							if policySectionVal.Copp.Policer.Config.Pir != nil {
+								sectionDbV.Field["SET_POLICER_PIR"] = strconv.FormatInt(int64(*policySectionVal.Copp.Policer.Config.Pir), 10)
+							}
+							if policySectionVal.Copp.Policer.Config.Cbs != nil {
+								sectionDbV.Field["SET_POLICER_CBS"] = strconv.FormatInt(int64(*policySectionVal.Copp.Policer.Config.Cbs), 10)
+							}
+							if policySectionVal.Copp.Policer.Config.Pbs != nil {
+								sectionDbV.Field["SET_POLICER_PBS"] = strconv.FormatInt(int64(*policySectionVal.Copp.Policer.Config.Pbs), 10)
+							}
+						}
 					}
-				} //Qos - END
+					if policySectionVal.Copp.Config != nil {
+						if policySectionVal.Copp.Config.CpuQueueIndex != nil {
+							sectionDbV.Field["SET_TRAP_QUEUE"] = strconv.Itoa(int(*policySectionVal.Copp.Config.CpuQueueIndex))
+						}
+					}
+				} //ACL-COPP - End
 
 				log.Infof("Section %v Data %v", sectionDbKeyStr, sectionDbV.Field)
 				app.policySectionTable[sectionDbKeyStr] = &sectionDbV
@@ -1190,6 +1224,49 @@ func (app *FbsApp) translateCUNextHopGroups(d *db.DB, opcode int) error {
 		app.pbfNextHopGrpTable[groupName] = &dbV
 	} // Next hop group loop end
 
+	return nil
+}
+
+func (app *FbsApp) translateCUCpuPort(d *db.DB, opcode int) error {
+	var err error
+	fbsObj := app.getAppRootObject()
+
+	log.Info("Translating cpu-port")
+	if fbsObj.CpuPort != nil {
+		polBindDbV := db.Value{Field: make(map[string]string)}
+		nativeName := SONIC_CPU_PORT
+		oldPolBindDbV, found := app.policyBindingTable[nativeName]
+		if found {
+			if nil != oldPolBindDbV {
+				polBindDbV = *oldPolBindDbV
+			}
+		} else {
+			polBindDbV, err = app.getPolicyBindingEntryFromDB(d, nativeName)
+			if err != nil {
+				if !isNotFoundError(err) {
+					return err
+				} else {
+					polBindDbV = db.Value{Field: make(map[string]string)}
+				}
+			}
+		}
+		if fbsObj.CpuPort.IngressPolicies != nil {
+			if fbsObj.CpuPort.IngressPolicies.Copp != nil {
+				if fbsObj.CpuPort.IngressPolicies.Copp.Config != nil {
+					if oldPolicy, found := polBindDbV.Field["INGRESS_ACL_COPP_POLICY"]; found && opcode == CREATE {
+						if oldPolicy != *fbsObj.CpuPort.IngressPolicies.Copp.Config.PolicyName {
+							return tlerr.AlreadyExistsErr("different-policy-already-applied", "", "%v policy already applied", oldPolicy)
+						} else {
+							return tlerr.AlreadyExistsErr("same-policy-already-applied", "", "%v policy already applied", oldPolicy)
+						}
+					}
+					polBindDbV.Field["INGRESS_ACL_COPP_POLICY"] = *(fbsObj.CpuPort.IngressPolicies.Copp.Config.PolicyName)
+				}
+			}
+		}
+		log.Infof("CpuPort %v Data %v", nativeName, polBindDbV)
+		app.policyBindingTable[nativeName] = &polBindDbV
+	}
 	return nil
 }
 
@@ -1688,7 +1765,51 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 							delete(sectionDbV.Field, "SET_IPV6_NEXTHOP_GROUP@")
 						}
 						app.policySectionTable[sectionDbKeyStr] = &sectionDbV
-					} else { //Forwarding
+					} else if policySectionVal.Copp != nil { //policy section Copp
+						delCpuPolicer := false
+						delCpuQueue := false
+						if policySectionVal.Copp.Policer != nil { //policer
+							if policySectionVal.Copp.Policer.Config != nil { //policer config
+								if targetNode.Name == "cir" {
+									delete(sectionDbV.Field, "SET_POLICER_CIR")
+								} else if targetNode.Name == "pir" {
+									delete(sectionDbV.Field, "SET_POLICER_PIR")
+								} else if targetNode.Name == "bc" {
+									delete(sectionDbV.Field, "SET_POLICER_CBS")
+								} else if targetNode.Name == "be" {
+									delete(sectionDbV.Field, "SET_POLICER_PBS")
+								} else {
+									delCpuPolicer = true
+								}
+							} else {
+								delCpuPolicer = true
+							}
+						} else if policySectionVal.Copp.Config != nil {
+							if policySectionVal.Copp.Config.CpuQueueIndex != nil { //trap-queue
+								if targetNode.Name == "cpu-queue-index" {
+									delete(sectionDbV.Field, "SET_TRAP_QUEUE")
+								} else {
+									delCpuQueue = true
+								}
+							} else {
+								delCpuQueue = true
+							}
+						} else {
+							delCpuPolicer = true
+							delCpuQueue = true
+						}
+
+						if delCpuPolicer {
+							delete(sectionDbV.Field, "SET_POLICER_CIR")
+							delete(sectionDbV.Field, "SET_POLICER_PIR")
+							delete(sectionDbV.Field, "SET_POLICER_CBS")
+							delete(sectionDbV.Field, "SET_POLICER_PBS")
+						}
+						if delCpuQueue {
+							delete(sectionDbV.Field, "SET_TRAP_QUEUE")
+						}
+						app.policySectionTable[sectionDbKeyStr] = &sectionDbV
+					} else {
 						log.Infof("Delete section %v", sectionDbKeyStr)
 						app.policySectionTable[sectionDbKeyStr] = nil
 					}
@@ -1867,6 +1988,48 @@ func (app *FbsApp) translateDelNextHopGroups(d *db.DB) error {
 	return nil
 }
 
+func (app *FbsApp) translateDelCpuPort(d *db.DB) error {
+	fbsObj := app.getAppRootObject()
+
+	if fbsObj == nil || fbsObj.CpuPort == nil {
+		log.Info("Delete all interface bindings")
+		keys, err := d.GetKeys(policyBindingTblTs)
+		if err != nil {
+			return err
+		}
+		for _, key := range keys {
+			app.policyBindingTable[key.Get(0)] = nil
+		}
+		return nil
+	}
+
+	nativeName := SONIC_CPU_PORT
+	dbV, err := app.getPolicyBindingEntryFromDB(d, nativeName)
+	if err != nil {
+		if isNotFoundError(err) {
+			log.Infof("No bindings present for %v", nativeName)
+			err = nil
+			return nil
+		}
+	}
+	if fbsObj.CpuPort.IngressPolicies != nil {
+		if fbsObj.CpuPort.IngressPolicies.Copp != nil {
+			delete(dbV.Field, "INGRESS_ACL_COPP_POLICY")
+		} else {
+			log.Infof("Delete all bindings for interface %v", nativeName)
+			app.policyBindingTable[nativeName] = nil
+		}
+
+		if len(dbV.Field) > 0 {
+			app.policyBindingTable[nativeName] = &dbV
+		} else {
+			app.policyBindingTable[nativeName] = nil
+		}
+	}
+
+	return nil
+}
+
 // processCRUD flushes the in memory contents to the DB
 // It uses the following method
 // If the value is nil it will be deleted.
@@ -1903,6 +2066,8 @@ func (app *FbsApp) processFbsGet(dbs [db.MaxDB]*db.DB) error {
 		return app.processInterfacesGet(dbs)
 	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/next-hop-groups") {
 		return app.processNextHopGroupsGet(dbs)
+	} else if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/cpu-port") {
+		return app.processCpuPortGet(dbs)
 	} else {
 		root := app.getAppRootObject()
 		ygot.BuildEmptyTree(root)
@@ -1916,6 +2081,9 @@ func (app *FbsApp) processFbsGet(dbs [db.MaxDB]*db.DB) error {
 		}
 		if err == nil {
 			err = app.processNextHopGroupsGet(dbs)
+		}
+		if err == nil {
+			err = app.processCpuPortGet(dbs)
 		}
 		return err
 	}
@@ -2079,6 +2247,58 @@ func (app *FbsApp) processNextHopGroupsGet(dbs [db.MaxDB]*db.DB) error {
 	return nil
 }
 
+func (app *FbsApp) processCpuPortGet(dbs [db.MaxDB]*db.DB) error {
+	fbsObj := app.getAppRootObject()
+	policyBindData := fbsObj.CpuPort
+	log.Infof("fbs CpuPort Get")
+	nativeIfName := SONIC_CPU_PORT
+	policyBindTblVal, err := app.getPolicyBindingEntryFromDB(dbs[db.ConfigDB], nativeIfName)
+	if err != nil {
+		return err
+	}
+
+	ygot.BuildEmptyTree(policyBindData)
+
+	// find out specific type requested if any. This will help optimize DB access and the response times
+	policyTypes := []string{}
+	policyDirs := []string{}
+	if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/cpu-port/ingress-policies") {
+		policyDirs = append(policyDirs, "INGRESS")
+		if isSubtreeRequest(app.pathInfo.Template, "/openconfig-fbs-ext:fbs/cpu-port/ingress-policies/copp") {
+			policyTypes = append(policyTypes, SONIC_POLICY_TYPE_COPP)
+		} else {
+			policyTypes = []string{SONIC_POLICY_TYPE_COPP}
+		}
+	} else {
+		policyDirs = append(policyDirs, "INGRESS")
+		policyTypes = []string{SONIC_POLICY_TYPE_COPP}
+	}
+
+	log.Infof("Intf:%v Types:%v Dirs:%v", nativeIfName, policyTypes, policyDirs)
+	for _, policyType := range policyTypes {
+		for _, bindDir := range policyDirs {
+			dbFieldKey := bindDir + "_" + policyType + "_POLICY"
+			if str_val, found := policyBindTblVal.Field[dbFieldKey]; found {
+				if bindDir == "INGRESS" {
+					ygot.BuildEmptyTree(policyBindData.IngressPolicies)
+					if policyType == SONIC_POLICY_TYPE_COPP {
+						ygot.BuildEmptyTree(policyBindData.IngressPolicies.Copp)
+						policyBindData.IngressPolicies.Copp.Config.PolicyName = &str_val
+						policyBindData.IngressPolicies.Copp.State.PolicyName = &str_val
+						app.fillFbsIngressCpuPortPolicyCoppSections(dbs, nativeIfName, str_val, policyBindData.IngressPolicies.Copp.Sections)
+						if err != nil {
+							log.Infof("fbs cpu-port Get failed err:%v dbFieldKey:%v ", err, dbFieldKey)
+							return err
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 /*
  * Helper Functions
  */
@@ -2117,6 +2337,8 @@ func getPolicyTypeOCEnumFromDbStr(val string) (ocbinds.E_OpenconfigFbsExt_POLICY
 		return ocbinds.OpenconfigFbsExt_POLICY_TYPE_POLICY_FORWARDING, nil
 	case SONIC_POLICY_TYPE_MONITORING, "openconfig-fbs-ext:MONITORING":
 		return ocbinds.OpenconfigFbsExt_POLICY_TYPE_POLICY_MONITORING, nil
+	case SONIC_POLICY_TYPE_COPP, "openconfig-fbs-ext:COPP":
+		return ocbinds.OpenconfigFbsExt_POLICY_TYPE_POLICY_COPP, nil
 	default:
 		return ocbinds.OpenconfigFbsExt_POLICY_TYPE_UNSET,
 			tlerr.NotSupported("FBS Policy Type '%s' not supported", val)
@@ -2130,6 +2352,8 @@ func getPolicyTypeDbStrFromOcEnum(ocPolicyType ocbinds.E_OpenconfigFbsExt_POLICY
 		return SONIC_POLICY_TYPE_MONITORING, nil
 	} else if ocPolicyType == ocbinds.OpenconfigFbsExt_POLICY_TYPE_POLICY_FORWARDING {
 		return SONIC_POLICY_TYPE_FORWARDING, nil
+	} else if ocPolicyType == ocbinds.OpenconfigFbsExt_POLICY_TYPE_POLICY_COPP {
+		return SONIC_POLICY_TYPE_COPP, nil
 	}
 
 	return "", nil
@@ -2681,6 +2905,37 @@ func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName 
 		policySectionData.Qos.Queuing.State.OutputQueueIndex = &val8
 	}
 	//QOS - END
+	//ACL_COPP-START
+	if strVal, found := policySectionTblVal.Field["SET_POLICER_CIR"]; found {
+		ygot.BuildEmptyTree(policySectionData.Copp)
+		ygot.BuildEmptyTree(policySectionData.Copp.Policer)
+		val, _ := strconv.ParseUint(strVal, 10, 64)
+		policySectionData.Copp.Policer.Config.Cir = &val
+		policySectionData.Copp.Policer.State.Cir = &val
+	}
+	if strVal, found := policySectionTblVal.Field["SET_POLICER_CBS"]; found {
+		val, _ := strconv.ParseUint(strVal, 10, 64)
+		policySectionData.Copp.Policer.Config.Cbs = &val
+		policySectionData.Copp.Policer.State.Cbs = &val
+	}
+	if strVal, found := policySectionTblVal.Field["SET_POLICER_PIR"]; found {
+		val, _ := strconv.ParseUint(strVal, 10, 64)
+		policySectionData.Copp.Policer.Config.Pir = &val
+		policySectionData.Copp.Policer.State.Pir = &val
+	}
+	if strVal, found := policySectionTblVal.Field["SET_POLICER_PBS"]; found {
+		val, _ := strconv.ParseUint(strVal, 10, 64)
+		policySectionData.Copp.Policer.Config.Pbs = &val
+		policySectionData.Copp.Policer.State.Pbs = &val
+	}
+	if strVal, found := policySectionTblVal.Field["SET_TRAP_QUEUE"]; found {
+		ygot.BuildEmptyTree(policySectionData.Copp)
+		val, _ := strconv.ParseUint(strVal, 10, 8)
+		val8 := uint8(val)
+		policySectionData.Copp.Config.CpuQueueIndex = &val8
+		policySectionData.Copp.State.CpuQueueIndex = &val8
+	}
+	//ACL_COPP-END
 
 	return nil
 }
@@ -3335,6 +3590,72 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 			}
 			nhObj.State.Active = &active
 		}
+	}
+
+	return nil
+}
+
+func (app *FbsApp) fillFbsIngressCpuPortPolicyCoppSections(dbs [db.MaxDB]*db.DB, nativeIfName string, policyName string, policySectionsData *ocbinds.OpenconfigFbsExt_Fbs_CpuPort_IngressPolicies_Copp_Sections) error {
+	log.Infof("nativeIfName:%v policyName:%v", nativeIfName, policyName)
+	ygot.BuildEmptyTree(policySectionsData)
+
+	if len(policySectionsData.Section) == 0 {
+		policySectionKeys, err := dbs[db.ConfigDB].GetKeysPattern(policySectionTblTs, asKey(policyName, "*"))
+		if err != nil {
+			log.Infof("fillFbsIngressCpuPortPolicyCoppSections failed err:%v ; policyName:%v ", err, policyName)
+			return err
+		}
+		for _, key := range policySectionKeys {
+			policySectionsData.NewSection(key.Get(1))
+		}
+	}
+
+	bindDir := "INGRESS"
+
+	for className, policySectionData := range policySectionsData.Section {
+		log.Infof("CoppPolicysection className:%v", className)
+		//Fill PolicySectionDetails
+		ygot.BuildEmptyTree(policySectionData)
+
+		ygotClassName := className
+		policySectionData.ClassName = &ygotClassName
+		policySectionData.State.ClassName = &ygotClassName
+		log.Infof("Policy Get;policyName:%v className:%v ", policyName, ygotClassName)
+
+		var qosState FbsFlowQosStateEntry
+		polPbfKey := asKey(policyName, className, nativeIfName, bindDir)
+		err := app.fillFbsQosStateEntry(dbs, polPbfKey, &qosState)
+		if err != nil {
+			activeFlag := false
+			log.Infof("policer State not active ; polPbfKey:%v ", polPbfKey)
+			policySectionData.State.Active = &activeFlag
+		} else {
+			policySectionData.State.Active = &qosState.Active
+			policySectionData.State.Cir = &(qosState.policerState.Cir)
+			policySectionData.State.Pir = &(qosState.policerState.Pir)
+			policySectionData.State.Cbs = &(qosState.policerState.Cbs)
+			policySectionData.State.Pbs = &(qosState.policerState.Pbs)
+
+			policySectionData.State.ConformingOctets = &(qosState.ConformingOctets)
+			policySectionData.State.ConformingPkts = &(qosState.ConformingPkts)
+			policySectionData.State.ExceedingOctets = &(qosState.ExceedingOctets)
+			policySectionData.State.ExceedingPkts = &(qosState.ExceedingPkts)
+			policySectionData.State.ViolatingOctets = &(qosState.ViolatingOctets)
+			policySectionData.State.ViolatingPkts = &(qosState.ViolatingPkts)
+		}
+
+		var fbsFlowState FbsFwdCountersEntry
+		err = app.fillPolicySectionCounters(dbs, polPbfKey, &fbsFlowState)
+		if nil != err {
+			log.Infof("fillPolicySectionCounters failed err:%v; polPbfKey:%v ", err, polPbfKey)
+			return err
+		}
+
+		policySectionData.State.Active = &fbsFlowState.Active
+		policySectionData.State.MatchedOctets = &fbsFlowState.MatchedOctets
+		policySectionData.State.MatchedPackets = &fbsFlowState.MatchedPackets
+
+		pretty.Print(policySectionData)
 	}
 
 	return nil
