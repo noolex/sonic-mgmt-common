@@ -517,8 +517,10 @@ func (yp *YParser) ValidateSyntax(data, depData *YParserNode) YParserError {
 }
 
 func (yp *YParser) FreeNode(node *YParserNode) YParserError {
-
-	C.lyd_free_withsiblings((*C.struct_lyd_node)(node))
+	if node != nil {
+		C.lyd_free_withsiblings((*C.struct_lyd_node)(node))
+		node = nil
+	}
 
 	return YParserError {ErrCode : YP_SUCCESS,}
 }
