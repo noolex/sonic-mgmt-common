@@ -1372,7 +1372,30 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
         }
         if len(vlanMap) != 0 {
             res_map[VLAN_TN] = vlanMap
+            if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
+                for vlanName := range vlanMap{
+                    ifStr := (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"]
+                    check := false
+                    strList := generateMemberPortsSliceFromString(&ifStr)
+                    for _,strName := range strList{
+                        if (strName == ifName){
+                            check = true
+                            break
+                        }
+                    }
+
+                    if !check{
+                        ifStr = ifStr + ","+ifName
+                        (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"] = ifStr
+                    }
+		}
+            }else{
+            subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+            subOpMap[db.ConfigDB] = res_map
+            inParams.subOpDataMap[inParams.oper] = &subOpMap
+            }
         }
+
         if len(vlanMemberMap) != 0 {
             res_map[VLAN_MEMBER_TN] = vlanMemberMap
         }

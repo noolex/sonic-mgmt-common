@@ -37,11 +37,77 @@ import (
 	"strconv"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	log "github.com/golang/glog"
+	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/Workiva/go-datastructures/queue"
 )
 
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
 var sMutex = &sync.Mutex{}
+
+//lint:file-ignore U1000 temporarily ignore all "unused var" errors.
+// Fields in the new structs are getting flagged as unused.
+
+// notificationAppInfo contains the details for monitoring db notifications
+// for a given path. App moodules provide these details for each subscribe
+// path. One notificationAppInfo object must inclue details for one db table.
+// One subscribe path can map to multiple notificationAppInfo.
+type notificationAppInfo struct   {
+	// table name
+	table db.TableSpec
+
+	// key string without table name prefix. Can include wildcards.
+	// Like - "ACL1|RULE_101" or "ACL1|*".
+	key db.Key
+
+	// dbFieldYangPathMap is the mapping of db entry field to the yang
+	// field (leaf/leaf-list) for the input path.
+	dbFieldYangPathMap map[string]string
+
+	// database index
+	dbno db.DBNum
+
+	// path indicates the yang path to which the key maps to.
+	// When the input path maps to multiple db tables, the path field
+	// identifies the yang segments for each db table.
+	path gnmi.Path
+
+	// isOnChangeSupported indicates if on-change notification is
+	// supported for the input path. Table and key mappings should
+	// be filled even if on-change is not supported.
+	isOnChangeSupported bool
+
+	// mInterval indicates the minimum sample interval supported for
+	// the input path. Can be set to 0 (default value) to indicate
+	// system default interval.
+	mInterval int
+
+	// pType indicates the preferred notification type for the input
+	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
+	pType NotificationType
+}
+
+// dbKeyInfo represents one db key.
+type dbKeyInfo struct {
+    // table name
+    table db.TableSpec
+
+    // key string without table name prefix.
+    key db.Key
+
+    // database index
+    dbno db.DBNum
+
+    // path template for the db key. Can include wild cards.
+    path gnmi.Path
+}
+
+// subscribePathResponse defines response data structure of processSubscribe
+// function.
+type subscribePathResponse struct {
+    // path indicates the yang path to which the db key maps to.
+    path gnmi.Path
+}
+
 
 type notificationInfo struct{
 	table               db.TableSpec

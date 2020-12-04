@@ -19,7 +19,6 @@ func init () {
     XlateFuncBind("DbToYang_oc_systemd_coredump_config_xfmr", DbToYang_oc_systemd_coredump_config_xfmr)
     XlateFuncBind("YangToDb_oc_systemd_coredump_config_xfmr", YangToDb_oc_systemd_coredump_config_xfmr)
     XlateFuncBind("Subscribe_oc_systemd_coredump_config_xfmr", Subscribe_oc_systemd_coredump_config_xfmr)
-    XlateFuncBind("YangToDb_coredump_config_key_xfmr", YangToDb_coredump_config_key_xfmr)
 }
 
 /*App specific constants */
@@ -436,10 +435,6 @@ var YangToDb_oc_systemd_coredump_config_xfmr SubTreeXfmrYangToDb = func(inParams
         _, err = coredumpAction("configure", args)
     }
     return nil,err;
-}
-
-var YangToDb_coredump_config_key_xfmr = func(inParams XfmrParams) (string, error) {
-        return "config", nil
 }
 
 var Subscribe_oc_systemd_coredump_config_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {

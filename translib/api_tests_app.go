@@ -84,8 +84,13 @@ func (app *apiTests) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return nil
 }
 
-func (app *apiTests) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-	return nil, nil, nil
+func (app *apiTests) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+	return nil, nil
+}
+
+func (app *apiTests) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
+	var resp subscribePathResponse
+	return resp, nil
 }
 
 func (app *apiTests) processCreate(d *db.DB) (SetResponse, error) {

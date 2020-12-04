@@ -32,6 +32,12 @@ module sonic-flow-based-services-annot {
         }
     }
 
+    deviation /sfbs:get-pbf-next-hop-group {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_pbf_next_hop_group";
+        }
+    }
+
 /*
     deviation /sfbs:sonic-flow-based-services/sfbs:CLASSIFIER_TABLE/sfbs:CLASSIFIER_TABLE_LIST/sfbs:CLASSIFIER_NAME {
         deviate add {

@@ -129,30 +129,28 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-    var err error
+func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (nInfos []notificationAppInfo, err error) {
     var subscDt transformer.XfmrTranslateSubscribeInfo
-    var notifInfo notificationInfo
-    var notifOpts notificationOpts
+    var notifInfo notificationAppInfo
+	nInfos = append(nInfos, notifInfo)
     txCache := new(sync.Map)
-    err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 
     log.Info("tranlateSubscribe:path", path)
     subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
     if subscDt.PType == transformer.OnChange {
-        notifOpts.pType = OnChange
+        notifInfo.pType = OnChange
     } else {
-        notifOpts.pType = Sample
+        notifInfo.pType = Sample
     }
-    notifOpts.mInterval = subscDt.MinInterval
-    notifOpts.isOnChangeSupported = subscDt.OnChange
+    notifInfo.mInterval = subscDt.MinInterval
+    notifInfo.isOnChangeSupported = subscDt.OnChange
     if err != nil {
-        log.Infof("returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
-        return &notifOpts, nil, err
+        log.Infof("returning: notificationOpts - %v, nil, error - %v", nInfos, err)
+        return
     }
     if subscDt.DbDataMap == nil {
-        log.Infof("DB data is nil so returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
-        return &notifOpts, nil, err
+        log.Infof("DB data is nil so returning: notificationOpts - %v, nil, error - %v", nInfos, err)
+        return
     } else {
         for dbNo, dbDt := range(subscDt.DbDataMap) {
             if (len(dbDt) == 0) { //ideally all tables for a given uri should be from same DB
@@ -166,7 +164,6 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
                 if (len(tblDt) == 1) {
                     for tblKy := range(tblDt) {
                         notifInfo.key = asKey(tblKy)
-                        notifInfo.needCache = subscDt.NeedCache
                     }
                 } else {
                     if (len(tblDt) >  1) {
@@ -174,14 +171,14 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
                     } else {
                         log.Warningf("No DB key found for subscription path - %v", path)
                     }
-                    return &notifOpts, nil, err
+                    return
                 }
-
             }
         }
     }
-    log.Infof("For path - %v, returning: notifOpts - %v, notifInfo - %v, error - nil", path, notifOpts, notifInfo)
-    return &notifOpts, &notifInfo, nil
+
+    log.Infof("For path - %v, returning: nInfos - %v, error - nil", path, nInfos)
+    return
 }
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
@@ -352,6 +349,11 @@ func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error
 	log.Info("transformer.CallRpcMethod() returned")
 
 	return resp, err
+}
+
+func (app *CommonApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
+	var resp subscribePathResponse
+	return resp, tlerr.New("Not implemented")
 }
 
 func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys, error) {

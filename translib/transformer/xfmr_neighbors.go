@@ -29,7 +29,6 @@ import (
     "encoding/json"
     "fmt"
     "os/exec"
-    "bufio"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
@@ -40,7 +39,9 @@ func init () {
     XlateFuncBind("YangToDb_neigh_tbl_get_all_ipv6_xfmr", YangToDb_neigh_tbl_get_all_ipv6_xfmr)
     XlateFuncBind("DbToYang_neigh_tbl_key_xfmr", DbToYang_neigh_tbl_key_xfmr)
     XlateFuncBind("YangToDb_neigh_tbl_key_xfmr", YangToDb_neigh_tbl_key_xfmr)
+    XlateFuncBind("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr", DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr", YangToDb_routed_vlan_neigh_tbl_get_all_ipv4_xfmr)
+    XlateFuncBind("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr", DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr", YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr)
     XlateFuncBind("DbToYang_routed_vlan_neigh_tbl_key_xfmr", DbToYang_routed_vlan_neigh_tbl_key_xfmr)
     XlateFuncBind("YangToDb_routed_vlan_neigh_tbl_key_xfmr", YangToDb_routed_vlan_neigh_tbl_key_xfmr)
@@ -61,6 +62,17 @@ const (
     NEIGH_IPv6_PREFIX_IP = NEIGH_IPv6_PREFIX+"/neighbor"
     NEIGH_IPv6_PREFIX_STATE_IP = NEIGH_IPv6_PREFIX_IP+"/state/ip"
     NEIGH_IPv6_PREFIX_STATE_LL = NEIGH_IPv6_PREFIX_IP+"/state/link-layer-address"
+)
+
+const (
+    NEIGH_IPv4_ROUTED_VLAN_PREFIX = "/openconfig-interfaces:interfaces/interface/routed-vlan/openconfig-if-ip:ipv4/neighbors"
+    NEIGH_IPv4_ROUTED_VLAN_PREFIX_IP = NEIGH_IPv4_ROUTED_VLAN_PREFIX+"/neighbor"
+    NEIGH_IPv4_ROUTED_VLAN_PREFIX_STATE_IP = NEIGH_IPv4_ROUTED_VLAN_PREFIX_IP+"/state/ip"
+    NEIGH_IPv4_ROUTED_VLAN_PREFIX_STATE_LL = NEIGH_IPv4_ROUTED_VLAN_PREFIX_IP+"/state/link-layer-address"
+    NEIGH_IPv6_ROUTED_VLAN_PREFIX = "/openconfig-interfaces:interfaces/interface/routed-vlan/openconfig-if-ip:ipv6/neighbors"
+    NEIGH_IPv6_ROUTED_VLAN_PREFIX_IP = NEIGH_IPv6_ROUTED_VLAN_PREFIX+"/neighbor"
+    NEIGH_IPv6_ROUTED_VLAN_PREFIX_STATE_IP = NEIGH_IPv6_ROUTED_VLAN_PREFIX_IP+"/state/ip"
+    NEIGH_IPv6_ROUTED_VLAN_PREFIX_STATE_LL = NEIGH_IPv6_ROUTED_VLAN_PREFIX_IP+"/state/link-layer-address"
 )
 
 const (
@@ -122,7 +134,7 @@ var YangToDb_routed_vlan_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
 
     if len(intfName) <= 0 {
         errStr := "Interface name is missing"
-        log.Error("YangToDb_neigh_tbl_key_xfmr - ", errStr)
+        log.Error("YangToDb_routed_vlan_neigh_tbl_key_xfmr - ", errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
         return "", err
     }
@@ -158,36 +170,35 @@ var YangToDb_neighbor_global_key_xfmr = func(inParams XfmrParams) (string, error
 
 func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[string]map[string]db.Value) (error) {
 
-    var err error
     var neighIntfTblMap map[string]db.Value = make(map[string]db.Value)
+    var keyPattern string
 
     log.Info("delete_neigh_interface_config_all: inParams", inParams)
 
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("name")
-
+    intfNameRcvd := pathInfo.Var("name")
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
     neighTblName := "NEIGH"
-    var neighTblSpec *db.TableSpec = &db.TableSpec{Name: neighTblName}
-    neighTblData, err := configDbPtr.GetTable(neighTblSpec)
-    if err != nil {
-        errStr := "Resource Not Found"
-        log.Error("delete_neigh_interface_config_all: Neigh Interface Table data not found ", errStr)
-        return errors.New(errStr)
+
+    var configDb = inParams.dbs[db.ConfigDB]
+    var neighTblTs = &db.TableSpec{Name: "NEIGH", CompCt:2}
+
+    ipAddrRcvd := pathInfo.Var("ip")
+    if len(ipAddrRcvd) > 0 {
+        keyPattern = *nativeIntfName + "|" + ipAddrRcvd
+    } else {
+        keyPattern = *nativeIntfName + "|*"
     }
 
-    intfTblKeys, err := neighTblData.GetKeys()
-    if err != nil {
-        errStr := "Resource Not Found"
-        log.Error("delete_neigh_interface_config_all: get keys failed ", errStr)
-        return errors.New(errStr)
-    }
+    keys, _ := configDb.GetKeysByPattern(neighTblTs, keyPattern)
 
     neighOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     neighOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
     neighOpMap[db.ConfigDB][neighTblName] = make(map[string]db.Value)
 
     entryDeleted := false
-    for _, intfTblKey := range intfTblKeys {
+    for _, intfTblKey := range keys {
         keyIfName := intfTblKey.Get(0)
         if keyIfName != ifName {
             log.Error("delete_neigh_interface_config_all:: key ifname doesnt match ",keyIfName)
@@ -453,9 +464,9 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscI
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -483,9 +494,9 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscI
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -563,9 +574,9 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     neighTblName = "NEIGH"
 
     log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:", ifName)
-    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:", inParams.uri)
-    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: pathInfo ", pathInfo)
-    log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: rcvd uri ", rcvdUri)
+    log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:", inParams.uri)
+    log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: pathInfo ", pathInfo)
+    log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: rcvd uri ", rcvdUri)
 
      if subIntfObj.Ipv6 == nil {
         errStr := "SubInterface IPv6 node is not set"
@@ -602,7 +613,7 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     for k:= range arpObj {
         staticIpStr = *arpObj[k].Ip
     }
- 
+
     if (addOperation) {
         for _,v := range arpObj {
             staticMacStr = *v.Config.LinkLayerAddress
@@ -618,7 +629,7 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         valueMap[neighTblKey].Field["family"] = "IPv6"
         valueMap[neighTblKey].Field["neigh"] = staticMacStr
         neighIntfmap[neighTblName] = valueMap
-        log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: valueMap ", valueMap[neighTblKey])
+        log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: valueMap ", valueMap[neighTblKey])
     } else if (deleteOperation) {
         log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: staticIpStr ", staticIpStr)
         neighTblKey = ifName + "|" + staticIpStr
@@ -640,6 +651,291 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     return neighIntfmap, err
 }
 
+
+var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    var ok bool
+    var keyPattern string
+    var msgType int
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
+    var routedVlanObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan
+    var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Neighbors_Neighbor
+
+    intfNameRcvd := pathInfo.Var("name")
+
+    if intfNameRcvd == "" {
+        errStr := "Interface KEY not present"
+        log.Info("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return nil
+    }
+
+    /*If interface type is not Vlan, return*/
+    if !strings.HasPrefix(intfNameRcvd, "Vlan") {
+        errStr := "Invalid interface type: " + intfNameRcvd
+        log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
+        return nil
+    }
+
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        errStr := "IntfsObj/interface list is empty for " + intfNameRcvd
+        log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
+        return nil
+    }
+
+    if intfObj, ok = intfsObj.Interface[intfNameRcvd]; !ok {
+        intfObj, err = intfsObj.NewInterface(intfNameRcvd)
+        if err != nil {
+            log.Error("Creation of interface subtree failed!")
+            return nil
+        }
+    }
+    ygot.BuildEmptyTree(intfObj)
+
+    routedVlanObj = intfObj.RoutedVlan
+    if routedVlanObj == nil {
+        log.Error("Creation of subinterface subtree failed!")
+        return nil
+    }
+    ygot.BuildEmptyTree(routedVlanObj)
+
+    var appDb = inParams.dbs[db.ApplDB]
+    var neighTblTs = &db.TableSpec{Name: "NEIGH_TABLE", CompCt:2}
+
+    ipAddrRcvd := pathInfo.Var("ip")
+    if len(ipAddrRcvd) > 0 {
+        keyPattern = intfNameRcvd + ":" + ipAddrRcvd
+    } else {
+        keyPattern = intfNameRcvd + ":*"
+    }
+
+    keys, _ := appDb.GetKeysByPattern(neighTblTs, keyPattern)
+
+    /* avoid string comparison in the loop and figure the msgType here*/
+    if strings.HasPrefix(targetUriPath, NEIGH_IPv4_ROUTED_VLAN_PREFIX_STATE_LL) {
+        msgType = PREFIX_STATE_LL
+    } else if strings.HasPrefix(targetUriPath, NEIGH_IPv4_ROUTED_VLAN_PREFIX_STATE_IP) {
+        msgType = PREFIX_STATE_IP
+    } else if strings.HasPrefix(targetUriPath, NEIGH_IPv4_ROUTED_VLAN_PREFIX_IP) {
+        msgType = PREFIX_IP
+    } else if strings.HasPrefix(targetUriPath, NEIGH_IPv4_ROUTED_VLAN_PREFIX) {
+        msgType = PREFIX
+    }
+
+    log.Info("Interface Name: ", intfNameRcvd, ", keyPattern: ", keyPattern, " msgType: ", msgType)
+    for _, key := range keys {
+        /*separate ip and interface*/
+        intfName := key.Comp[0]
+        ipAddr := key.Comp[1]
+
+        if strings.Contains(ipAddr, ":") { // It's an IPv6 entry; continue
+            continue
+        }
+
+        neighKeyStr := intfName + ":" + ipAddr
+        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
+        if dbErr != nil || len(entry.Field) == 0 {
+            log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
+            return err
+        }
+
+        linkAddr := entry.Field["neigh"]
+
+        if msgType == PREFIX_STATE_LL {
+            if neighObj, ok = routedVlanObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
+                neighObj, err = routedVlanObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
+                if err != nil {
+                    log.Error("Creation of neighbor subtree failed!")
+                    return err
+                }
+            }
+            ygot.BuildEmptyTree(neighObj)
+            neighObj.State.LinkLayerAddress = &linkAddr
+            break
+        } else if msgType == PREFIX_STATE_IP {
+            if neighObj, ok = routedVlanObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
+                neighObj, err = routedVlanObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
+                if err != nil {
+                    log.Error("Creation of neighbor subtree failed!")
+                    return err
+                }
+            }
+            ygot.BuildEmptyTree(neighObj)
+            neighObj.State.Ip = &ipAddr
+            break
+        } else if msgType == PREFIX_IP {
+            if neighObj, ok = routedVlanObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
+                neighObj, err = routedVlanObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
+                if err != nil {
+                    log.Error("Creation of neighbor subtree failed!")
+                    return err
+                }
+            }
+            ygot.BuildEmptyTree(neighObj)
+            neighObj.State.Ip = &ipAddr
+            neighObj.State.LinkLayerAddress = &linkAddr
+        } else if msgType == PREFIX {
+            if neighObj, ok = routedVlanObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
+                neighObj, err = routedVlanObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
+                if err != nil {
+                    log.Error("Creation of neighbor subtree failed!")
+                    return err
+                }
+            }
+            ygot.BuildEmptyTree(neighObj)
+            neighObj.State.Ip = &ipAddr
+            neighObj.State.LinkLayerAddress = &linkAddr
+        }
+    }
+    return err
+}
+
+var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    var ok bool
+    var keyPattern string
+    var msgType int
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
+    var routedVlanObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan
+    var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv6_Neighbors_Neighbor
+
+    intfNameRcvd := pathInfo.Var("name")
+
+    if intfNameRcvd == "" {
+        errStr := "Interface KEY not present"
+        log.Info("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        return nil
+    }
+
+    /*If interface type is not Vlan, return*/
+    if !strings.HasPrefix(intfNameRcvd, "Vlan") {
+        errStr := "Invalid interface type: " + intfNameRcvd
+        log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr - ", errStr)
+        return nil
+    }
+
+    intfsObj := getIntfsRoot(inParams.ygRoot)
+    if intfsObj == nil || len(intfsObj.Interface) < 1 {
+        errStr := "IntfsObj/interface list is empty for " + intfNameRcvd
+        log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
+        return nil
+    }
+
+    if intfObj, ok = intfsObj.Interface[intfNameRcvd]; !ok {
+        intfObj, err = intfsObj.NewInterface(intfNameRcvd)
+        if err != nil {
+            log.Error("Creation of interface subtree failed!")
+            return nil
+        }
+    }
+    ygot.BuildEmptyTree(intfObj)
+
+    routedVlanObj = intfObj.RoutedVlan
+    if routedVlanObj == nil {
+        log.Error("Creation of subinterface subtree failed!")
+        return nil
+    }
+    ygot.BuildEmptyTree(routedVlanObj)
+
+    var appDb = inParams.dbs[db.ApplDB]
+    var neighTblTs = &db.TableSpec{Name: "NEIGH_TABLE", CompCt:2}
+
+    ipAddrRcvd := pathInfo.Var("ip")
+    if len(ipAddrRcvd) > 0 {
+        keyPattern = intfNameRcvd + ":" + ipAddrRcvd
+    } else {
+        keyPattern = intfNameRcvd + ":*"
+    }
+
+    keys, _ := appDb.GetKeysByPattern(neighTblTs, keyPattern)
+
+    /* avoid string comparison in the loop and figure the msgType here*/
+    if strings.HasPrefix(targetUriPath, NEIGH_IPv6_ROUTED_VLAN_PREFIX_STATE_LL) {
+        msgType = PREFIX_STATE_LL
+    } else if strings.HasPrefix(targetUriPath, NEIGH_IPv6_ROUTED_VLAN_PREFIX_STATE_IP) {
+        msgType = PREFIX_STATE_IP
+    } else if strings.HasPrefix(targetUriPath, NEIGH_IPv6_ROUTED_VLAN_PREFIX_IP) {
+        msgType = PREFIX_IP
+    } else if strings.HasPrefix(targetUriPath, NEIGH_IPv6_ROUTED_VLAN_PREFIX) {
+        msgType = PREFIX
+    }
+
+    log.Info("Interface Name: ", intfNameRcvd, ", keyPattern: ", keyPattern, " msgType: ", msgType)
+    for _, key := range keys {
+        /*separate ip and interface*/
+        intfName := key.Comp[0]
+        ipAddr := key.Comp[1]
+
+        if !strings.Contains(ipAddr, ":") { // It's an IPv4 entry; continue
+            continue
+        }
+
+        neighKeyStr := intfName + ":" + ipAddr
+        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
+        if dbErr != nil || len(entry.Field) == 0 {
+            log.Error("DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
+            return err
+        }
+
+        linkAddr := entry.Field["neigh"]
+
+        if msgType == PREFIX_STATE_LL {
+            if neighObj, ok = routedVlanObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
+                neighObj, err = routedVlanObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
+                if err != nil {
+                    log.Error("Creation of neighbor subtree failed!")
+                    return err
+                }
+            }
+            ygot.BuildEmptyTree(neighObj)
+            neighObj.State.LinkLayerAddress = &linkAddr
+            break
+        } else if msgType == PREFIX_STATE_IP {
+            if neighObj, ok = routedVlanObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
+                neighObj, err = routedVlanObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
+                if err != nil {
+                    log.Error("Creation of neighbor subtree failed!")
+                    return err
+                }
+            }
+            ygot.BuildEmptyTree(neighObj)
+            neighObj.State.Ip = &ipAddr
+            break
+        } else if msgType == PREFIX_IP {
+            if neighObj, ok = routedVlanObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
+                neighObj, err = routedVlanObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
+                if err != nil {
+                    log.Error("Creation of neighbor subtree failed!")
+                    return err
+                }
+            }
+            ygot.BuildEmptyTree(neighObj)
+            neighObj.State.Ip = &ipAddr
+            neighObj.State.LinkLayerAddress = &linkAddr
+        } else if msgType == PREFIX {
+            if neighObj, ok = routedVlanObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
+                neighObj, err = routedVlanObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
+                if err != nil {
+                    log.Error("Creation of neighbor subtree failed!")
+                    return err
+                }
+            }
+            ygot.BuildEmptyTree(neighObj)
+            neighObj.State.Ip = &ipAddr
+            neighObj.State.LinkLayerAddress = &linkAddr
+        }
+    }
+    return err
+}
+
 var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     var err error
     var ok bool
@@ -654,13 +950,21 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Neighbors_Neighbor
 
     intfNameRcvd := pathInfo.Var("name")
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
         log.Info("DbToYang_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
         return nil
     }
+
+    /*If interface type is Vlan, return*/
+    if len(intfNameRcvd) > 4 && strings.HasPrefix(intfNameRcvd, "Vlan") {
+        errStr := "Invalid interface type: " + intfNameRcvd
+        log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
+        return nil
+    }
+
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
@@ -710,7 +1014,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         msgType = PREFIX
     }
 
-    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", *nativeIntfName, "),  keyPattern: ", keyPattern, "msgType: ", msgType)
+    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", *nativeIntfName, "),  keyPattern: ", keyPattern, " msgType: ", msgType)
     for _, key := range keys {
         /*separate ip and interface*/
         intfName := key.Comp[0]
@@ -721,7 +1025,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         }
 
         neighKeyStr := intfName + ":" + ipAddr
-        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
         if dbErr != nil || len(entry.Field) == 0 {
             log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr: App-DB get neighbor entry failed neighKeyStr:", neighKeyStr)
             return err
@@ -792,13 +1096,21 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_Neighbors_Neighbor
 
     intfNameRcvd := pathInfo.Var("name")
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
         log.Error("DbToYang_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
         return errors.New(errStr)
     }
+
+    /*If interface type is Vlan, return*/
+    if len(intfNameRcvd) > 4 && strings.HasPrefix(intfNameRcvd, "Vlan") {
+        errStr := "Invalid interface type: " + intfNameRcvd
+        log.Error("DbToYang_neigh_tbl_get_all_ipv6_xfmr - ", errStr)
+        return nil
+    }
+
+    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
@@ -862,7 +1174,7 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
         neighKeyStr := intfName + ":" + ipAddr
 
-        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, db.Key{Comp: []string{neighKeyStr}})
+        entry, dbErr := appDb.GetEntry(&db.TableSpec{Name:"NEIGH_TABLE"}, key)
         log.Info("DbToYang_neigh_tbl_get_all_ipv6_xfmr - entry: ", entry)
 
         if dbErr != nil || len(entry.Field) == 0 {
@@ -1186,7 +1498,7 @@ var YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func 
     return neighIntfmap, err
 } 
 
-func getNonDefaultVrfInterfaces(d *db.DB)(map[string]string) {
+func getIntfVrfMapping(d *db.DB)(map[string]string) {
     nonDefaultVrfIntfs := make(map[string]string)
 
     tblList := []string{"INTERFACE", "VLAN_INTERFACE", "PORTCHANNEL_INTERFACE"}
@@ -1207,10 +1519,11 @@ func getNonDefaultVrfInterfaces(d *db.DB)(map[string]string) {
                 continue
             }
 
-            log.Info("Key: ", key.Get(0))
             if input, ok := entry.Field["vrf_name"]; ok {
                 input_str := fmt.Sprintf("%v", input)
                 nonDefaultVrfIntfs[key.Get(0)] = input_str
+            } else {
+                nonDefaultVrfIntfs[key.Get(0)] = ""
             }
         }
     }
@@ -1218,215 +1531,115 @@ func getNonDefaultVrfInterfaces(d *db.DB)(map[string]string) {
     entry, _ := d.GetEntry(&db.TableSpec{Name: "MGMT_VRF_CONFIG"}, db.Key{Comp: []string{"vrf_global"}})
     if _, ok := entry.Field["mgmtVrfEnabled"]; ok {
         nonDefaultVrfIntfs["eth0"] = "mgmt"
+    } else {
+        nonDefaultVrfIntfs["eth0"] = ""
     }
 
     return nonDefaultVrfIntfs
 }
 
-func isValidVrf(d *db.DB, vrfName string)(bool) {
+func isValidVrf(configDb *db.DB, vrfName string)(bool) {
 
-    vrfObj, err := d.GetTable(&db.TableSpec{Name:"VRF"})
-    if err != nil {
-        return false
-    }
-
-    keys, _ := vrfObj.GetKeys()
-    for _, key := range keys {
-        log.Info("isValidVrf - key: ", key.Get(0), " vrfname: ", vrfName)
-        if (key.Get(0) == vrfName) {
-            return true
-        }
-    }
-
-    /*check mgmt vrf*/
-    if vrfName == "mgmt" {
-        entry, _ := d.GetEntry(&db.TableSpec{Name: "MGMT_VRF_CONFIG"}, db.Key{Comp: []string{"vrf_global"}})
+    status := false
+    if vrfName == "mgmt" { /*check for mgmt vrf first*/
+        entry, _ := configDb.GetEntry(&db.TableSpec{Name: "MGMT_VRF_CONFIG"}, db.Key{Comp: []string{"vrf_global"}})
         if _, ok := entry.Field["mgmtVrfEnabled"]; ok {
-            return true
+            status = true
+        }
+     } else {
+        entry, err := configDb.GetEntry(&db.TableSpec{Name: "VRF"}, db.Key{Comp: []string{vrfName}})
+        if err == nil && len(entry.Field) > 0 {
+            log.Info("VRF found: ", vrfName)
+            status = true
         }
      }
-     return false
+     return status
+}
+
+func status(msg string, err error) string {
+    if err != nil {
+        log.Error(msg, ": ", err)
+        return "% Error: Internal error"
+    } else {
+        return "Success"
+    }
 }
 
 func clear_default_vrf(fam_switch string, d *db.DB)  string {
     var err error
-    var cmd *exec.Cmd
-
-    vrfList := getNonDefaultVrfInterfaces(d)
-
-    cmd = exec.Command("ip", fam_switch, "neigh", "show", "all")
-    cmd.Dir = "/bin"
-
-    out, err := cmd.StdoutPipe()
-    if err != nil {
-        log.Info("Can't get stdout pipe: ", err)
-        return "% Error: Internal error"
-    }
-
-    err = cmd.Start()
-    if err != nil {
-        log.Info("cmd.Start() failed with: ", err)
-        return "% Error: Internal error"
-    }
-
-    in := bufio.NewScanner(out)
-    for in.Scan() {
-        line := in.Text()
-
-        if strings.Contains(line, "lladdr") {
-            list := strings.Fields(line)
-            ip := list[0]
-            intf := list[2]
-
-            if (vrfList[intf] != "") {
-                continue
-            }
-
-            if strings.Contains(line, "PERMANENT") {
-                continue
-            }
-
-            _, e := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
-            if e != nil {
-               log.Info("Eror: ", e)
-               return "% Error: Internal error"
-            }
+    log.Info("In clear_default_vrf()")
+    intfVrfMap := getIntfVrfMapping(d)
+    for intfName, vrfName := range intfVrfMap {
+        if len(vrfName) > 0 {
+            continue
+        }
+        log.Info("Executing: ip ", fam_switch, " neigh ", "flush ", "dev ", intfName)
+        _, err = exec.Command("ip", fam_switch, "neigh", "flush", "dev", intfName).Output()
+        if err != nil {
+            log.Error("clear_default_vrf(): ", err)
+            return "% Error: Internal error"
         }
     }
-
     return "Success"
 }
 
-
 func clear_vrf(fam_switch string, vrf string) string {
     var err error
-    var status string
-    var count int
-    status = "% Error: Internal error"
 
+    log.Info("In clear_vrf()")
     if (len(vrf) <= 0) {
-        log.Error("Missing VRF name, returning")
-        return status
+        log.Error("clear_vrf(): Missing VRF name, returning")
+        return "% Error: Internal error"
     }
 
-
-    for count = 1;  count <= 3; count++ {
-        if (vrf == "all") {
-            log.Info("Executing: ip ", fam_switch, " -s ", "-s ", "neigh ", "flush ", "all")
-            _, err = exec.Command("ip", fam_switch, "-s", "-s", "neigh", "flush", "all").Output()
-        } else {
-            log.Info("Executing: ip ", fam_switch, " -s ", "-s ", "neigh ", "flush ", "all ", "vrf ", vrf)
-             _, err = exec.Command("ip", fam_switch, "-s", "-s", "neigh", "flush", "all", "vrf", vrf).Output()
-        }
-        if err != nil {
-            log.Error("clear_vrf - ", err)
-            if (strings.Contains(err.Error(), "255")) {
-                continue
-            } else {
-                break
-            }
-        }
-
-        status = "Success"
-        break
+    if (vrf == "all") {
+        log.Info("Executing: ip ", fam_switch, " neigh", " flush", " all")
+        _, err = exec.Command("ip", fam_switch, "neigh", "flush", "all").Output()
+    } else {
+        log.Info("Executing: ip ", fam_switch, " neigh ", "flush ", "all ", "vrf ", vrf)
+         _, err = exec.Command("ip", fam_switch, "neigh", "flush", "all", "vrf", vrf).Output()
     }
 
-    return status
+    return status("clear_vrf()", err)
 }
 
 func clear_ip(ip string, fam_switch string, vrf string, d *db.DB) string {
-    var cmd *exec.Cmd
-    var isValidIp bool = false
+    var err error
+    log.Info("In clear_ip()")
 
-    vrfList := getNonDefaultVrfInterfaces(d)
-
-    //get interfaces first associated with this ip
-    if (len(vrf) > 0 && vrf != "all") {
-        cmd = exec.Command("ip", fam_switch, "neigh", "show", ip, "vrf", vrf)
-    } else {
-        cmd = exec.Command("ip", fam_switch, "neigh", "show", ip)
-    }
-    cmd.Dir = "/bin"
-
-    out, err := cmd.StdoutPipe()
-    if err != nil {
-        log.Error("Can't get stdout pipe: ", err)
-        return "% Error: Internal error"
+    if (vrf == "all") { /*flush ip from all VRFs*/
+        log.Info("Executing: ip ", fam_switch, " neigh ", "flush ", ip)
+        _, err = exec.Command("ip", fam_switch, "neigh", "flush", ip).Output()
+        return status("clear_ip()", err)
+    } else if len(vrf) > 0 {/*flush ip from the given VRF*/
+        log.Info("Executing: ip ", fam_switch, " neigh ", "flush ", ip, " vrf ", vrf)
+        _, err = exec.Command("ip", fam_switch, "neigh", "flush", ip, "vrf", vrf).Output()
+        return status("clear_ip()", err)
     }
 
-    err = cmd.Start()
-    if err != nil {
-        log.Error("cmd.Start() failed with: ", err)
-        return "% Error: Internal error"
-    }
-
-    in := bufio.NewScanner(out)
-    for in.Scan() {
-        line := in.Text()
-        list := strings.Fields(line)
-        intf := list[2]
-
-        if (vrfList[intf] == vrf || vrf == "all") {
-            log.Info("Executing: ip ", fam_switch, " neigh ", "del ", ip, " dev ", intf)
-            _, err := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
-            if err != nil {
-                log.Error("clear_ip - ", err)
-                return "% Error: Internal error"
-            }
+    /*Clear IP from default VRF*/
+    intfVrfMap := getIntfVrfMapping(d)
+    for intfName, vrfName := range intfVrfMap {
+        if len(vrfName) > 0 {
+            continue
         }
-        isValidIp = true
+        log.Info("Executing: ip ", fam_switch, " neigh ", "flush ", "dev ", intfName, " ", ip)
+        _, err = exec.Command("ip", fam_switch, "neigh", "flush", "dev", intfName, ip).Output()
+        if err != nil {
+            return status("clear_ip()", err)
+        }
     }
-
-    if isValidIp {
-        return "Success"
-    } else {
-        return "Error: IP address " + ip + " not found"
-    }
+    return "Success"
 }
 
 func clear_intf(intf string, fam_switch string) string {
-    var isValidIntf bool = false
+    var err error
+    log.Info("In clear_intf()")
 
-    cmd := exec.Command("ip", fam_switch, "neigh", "show", "dev", intf)
-    cmd.Dir = "/bin"
+    log.Info("ip ", fam_switch, " neigh ", "flush " , "dev ", intf)
+    _, err = exec.Command("ip", fam_switch, "neigh", "flush", "dev", intf).Output()
 
-    out, err := cmd.StdoutPipe()
-    if err != nil {
-        log.Error("Can't get stdout pipe: ", err)
-        return "% Error: Internal error"
-    }
-
-    err = cmd.Start()
-    if err != nil {
-        log.Error("cmd.Start() failed with: ", err)
-        return "% Error: Internal error"
-    }
-
-    in := bufio.NewScanner(out)
-    for in.Scan() {
-        line := in.Text()
-
-        if strings.Contains(line, "Cannot find device") {
-            log.Error("Error: ", line)
-            return line
-        }
-
-        list := strings.Fields(line)
-        ip := list[0]
-        log.Info("Executing: ip ", fam_switch, " neigh ", "del ", ip, " dev ", intf)
-        _, err := exec.Command("ip", fam_switch, "neigh", "del", ip, "dev", intf).Output()
-        if err != nil {
-            log.Error("clear_intf - ", err)
-            return "% Error: Internal error"
-        }
-        isValidIntf = true
-    }
-
-    if isValidIntf {
-        return "Success"
-    } else {
-        return "Error: Interface " + intf + " not found"
-    }
+    return status("clear_intf()", err)
 }
 
 var rpc_clear_neighbors RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {

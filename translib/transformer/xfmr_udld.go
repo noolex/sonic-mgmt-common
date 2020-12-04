@@ -10,11 +10,14 @@ import (
 )
 
 func init() {
+    XlateFuncBind("DbToYang_udld_global_key_xfmr", DbToYang_udld_global_key_xfmr)
 	XlateFuncBind("YangToDb_udld_global_key_xfmr", YangToDb_udld_global_key_xfmr)
 	XlateFuncBind("DbToYang_udld_port_table_ifname_xfmr", DbToYang_udld_port_table_ifname_xfmr)
 	XlateFuncBind("YangToDb_udld_port_table_ifname_xfmr", YangToDb_udld_port_table_ifname_xfmr)
 	XlateFuncBind("DbToYang_udld_port_status_xfmr", DbToYang_udld_port_status_xfmr)
+    XlateFuncBind("YangToDb_udld_port_status_xfmr", YangToDb_udld_port_status_xfmr)
 	XlateFuncBind("DbToYang_udld_port_nbr_status_xfmr", DbToYang_udld_port_nbr_status_xfmr)
+    XlateFuncBind("YangToDb_udld_port_nbr_status_xfmr", YangToDb_udld_port_nbr_status_xfmr)
 	XlateFuncBind("YangToDb_udld_nbr_key_xfmr", YangToDb_udld_nbr_key_xfmr)
 	XlateFuncBind("DbToYang_udld_nbr_key_xfmr", DbToYang_udld_nbr_key_xfmr)
 }
@@ -53,6 +56,10 @@ func isUdldEnabled(dbCl *db.DB, tblName string, key string) (bool) {
     return err == nil
 }
 
+func DbToYang_udld_global_key_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+    return res_map, nil
+}
 
 var YangToDb_udld_global_key_xfmr = func(inParams XfmrParams) (string, error) {
 
@@ -67,6 +74,9 @@ var YangToDb_udld_global_key_xfmr = func(inParams XfmrParams) (string, error) {
 	return "GLOBAL", nil
 }
 
+var YangToDb_udld_port_status_xfmr = func(inParams XfmrParams) (string, error) {
+    return "", nil
+}
 
 func DbToYang_udld_port_status_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
@@ -77,6 +87,10 @@ func DbToYang_udld_port_status_xfmr (inParams XfmrParams) (map[string]interface{
     res_map["status"] = strings.ToUpper(db_status)
     log.Info("res_map :", res_map)
     return res_map, nil
+}
+
+var YangToDb_udld_port_nbr_status_xfmr = func(inParams XfmrParams) (string, error) {
+    return "", nil
 }
 
 func DbToYang_udld_port_nbr_status_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
