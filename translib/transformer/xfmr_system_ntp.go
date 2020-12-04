@@ -272,7 +272,8 @@ func FillNtpServer (keyName string, ntpqList []string, ntpServers *ocbinds.Openc
                 jitter_milli := jitter_sec*1000
                 currNtpServer.State.Peerjitter = &jitter_milli
 
-                reach_num, _ := strconv.ParseUint(reach, 10, 8)
+                /* reach is octal string */
+                reach_num, _ := strconv.ParseUint(reach, 8, 8)
                 reach_num8 := uint8(reach_num)
                 currNtpServer.State.Reach = &reach_num8
 
