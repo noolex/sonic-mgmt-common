@@ -292,9 +292,9 @@ func subinterface_name_value_xfmr(inParams XfmrDbParams) (string, error) {
     var convertedName string
 
     if inParams.oper == GET {
-        convertedName = strings.Replace(ifName, "po", "PortChannel", -1)
+        convertedName = *utils.GetSubInterfaceLongName(&ifName)
     } else {
-        convertedName = strings.Replace(ifName, "PortChannel", "po", -1)
+        convertedName = *utils.GetSubInterfaceShortName(&ifName)
     }
     log.V(3).Info("Returned string from alias_value_xfmr = ", convertedName)
     return convertedName, err

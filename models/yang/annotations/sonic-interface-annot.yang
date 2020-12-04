@@ -25,10 +25,9 @@ module sonic-interface-annot {
         }
     }
 
-    //Use at your own risk
-    /*deviation /sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id {
+    deviation /sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id {
         deviate add {
             sonic-ext:value-transformer "subinterface_name_value_xfmr";
         }
-    }*/
+    }
 }
