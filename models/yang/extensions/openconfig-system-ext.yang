@@ -575,7 +575,7 @@ module openconfig-system-ext {
          leaf reach {
              type string;
              description
-                 "An bitmap in octal string indicates the status of the last eight NTP messages.";
+                 "An bitmap of size 8 bits in octal string indicates the status of the last eight NTP messages.";
          }
 
         description
