@@ -82,7 +82,7 @@ module openconfig-loadshare-mode-ext {
 
         leaf ecmp-hash-seed {
            type uint32 {
-               range "1..16777215";
+               range "0..16777215";
            }
            description
                "Seed value for IP ECMP hash configuration";
