@@ -8,7 +8,9 @@ submodule openconfig-fbs-policies-ext {
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-interfaces { prefix oc-if; }
 
+  include openconfig-fbs-types-ext;
   include openconfig-fbs-classifiers-ext;
+  include openconfig-fbs-next-hop-group-ext;
 
   // meta
   organization "SONiC";
@@ -35,53 +37,8 @@ submodule openconfig-fbs-policies-ext {
   // feature statements
 
   // identity statements
-  identity POLICY_TYPE {
-    description
-      "Base identity for policy types";
-  }
-
-  identity POLICY_QOS {
-    base POLICY_TYPE;
-    description
-      "Policy with QoS actions";
-  }
-
-  identity POLICY_FORWARDING {
-    base POLICY_TYPE;
-    description
-      "Policy with forwarding actions.";
-  }
-
-  identity POLICY_MONITORING {
-    base POLICY_TYPE;
-    description
-      "Policy with monitoring actions like SPAN.";
-  }
-
-  identity NEXT_HOP_NETWORK_INSTANCE {
-    description
-      "Base identify for next-hop nextwork instance";
-  }
-
-  identity INTERFACE_NETWORK_INSTANCE {
-    base NEXT_HOP_NETWORK_INSTANCE;
-    description
-      "Network instance is same as the network instance of the interface
-      on which the policy is applied";
-  }
 
   // typedef statements
-  typedef next-hop-nextwork-instance-type {
-    type union {
-      type string;
-      type identityref {
-        base NEXT_HOP_NETWORK_INSTANCE;
-      }
-    }
-
-    description
-      "Typedef for Network instance string value or identity";
-  }
 
   // grouping statements
   grouping fbs-ext-qos-action-config {
@@ -139,7 +96,7 @@ submodule openconfig-fbs-policies-ext {
             "Configuration for policer action";
 
           uses fbs-ext-qos-policer-params-config;
-          uses fbs-ext-qos-police-action-config;
+          uses fbs-ext-qos-policer-action-config;
         }
 
         container state {
@@ -149,7 +106,7 @@ submodule openconfig-fbs-policies-ext {
             "Operational state for policer action";
 
           uses fbs-ext-qos-policer-params-config;
-          uses fbs-ext-qos-police-action-config;
+          uses fbs-ext-qos-policer-action-config;
         }
       }
 
@@ -241,7 +198,7 @@ submodule openconfig-fbs-policies-ext {
     }
   }
 
-  grouping fbs-ext-qos-police-action-config {
+  grouping fbs-ext-qos-policer-action-config {
     description
       "Grouping for Policer configuration";
   }
@@ -386,6 +343,91 @@ submodule openconfig-fbs-policies-ext {
         }
       }
     }
+
+    container next-hop-groups {
+      description
+        "TODO";
+
+      list next-hop-group {
+        key "group-name";
+
+        description
+          "TODO";
+
+        leaf group-name {
+          type leafref {
+            path "../config/group-name";
+          }
+          description
+            "TODO";
+        }
+
+        container config {
+          description
+            "Configuration of next-hop group for layer3 forwarding";
+
+          leaf group-name {
+            type leafref {
+                path "../../../../../../../../../next-hop-groups/next-hop-group/config/name";
+            }
+            description
+              "TODO";
+          }
+
+          leaf group-type {
+            type identityref {
+              base NEXT_HOP_GROUP_TYPE;
+            }
+
+            description
+              "Next-hop group type";
+          }
+
+          leaf priority {
+            type uint16;
+
+            description
+              "This leaf indicates the priority of the next-hop-group to be
+              selected for forwarding. A Next-hop/next-hop-group with highest value of
+              priority will be selected for forwarding from all the
+              next-hops/next-hop-groups which are reachable.";
+          }
+        }
+
+        container state {
+          config false;
+          description
+            "Operational state of next-hop group for layer3 forwarding";
+
+          leaf group-name {
+            type leafref {
+                path "../../../../../../../../../next-hop-groups/next-hop-group/config/name";
+            }
+            description
+              "TODO";
+          }
+
+          leaf group-type {
+            type identityref {
+              base NEXT_HOP_GROUP_TYPE;
+            }
+
+            description
+              "Next-hop group type";
+          }
+
+          leaf priority {
+            type uint16;
+
+            description
+              "This leaf indicates the priority of the next-hop-group to be
+              selected for forwarding. A Next-hop/next-hop-group with highest value of
+              priority will be selected for forwarding from all the
+              next-hops/next-hop-groups which are reachable.";
+          }
+        }
+      }
+    }
   }
 
   grouping fbs-ext-layer3-fwd-next-hop-config {
@@ -403,7 +445,7 @@ submodule openconfig-fbs-policies-ext {
     }
 
     leaf network-instance {
-      type next-hop-nextwork-instance-type;
+      type next-hop-network-instance-type;
 
       description
         "When this leaf is set, packets matching the match criteria
@@ -421,9 +463,9 @@ submodule openconfig-fbs-policies-ext {
 
       description
         "This leaf indicates the priority of the next-hop to be
-        selected for forwarding. A Next-hop with highest value of
-        priority will be selected for forwarding from all the
-        next-hops which are reachable.";
+        selected for forwarding. A Next-hop/next-hop-group with 
+        highest value of priority will be selected for forwarding 
+        from all the next-hops/next-hop-groups which are reachable.";
     }
   }
 
@@ -522,7 +564,7 @@ submodule openconfig-fbs-policies-ext {
       }
 
       uses fbs-ext-monitoring-span-action-top;
-      // Additional mointoring actions like Sflow can be added here
+      // Additional monitoring actions like Sflow can be added here
     }
   }
 
@@ -581,11 +623,77 @@ submodule openconfig-fbs-policies-ext {
       "Grouping for mirror session name";
 
     leaf session-name {
-      type string; // Change to leafref
+      type string; // TODO Change to leafref
 
       description
         "Name of mirror session containing the SPAN parameters.
         The name can be of span session type ie SPAN/ERSPAN etc";
+    }
+  }
+
+  grouping fbs-ext-section-copp-actions-top {
+    description
+      "Grouping for all control plane policing actions";
+
+    container copp {
+      when "../../../config/type = 'POLICY_COPP'";
+
+      description
+        "Container for control plane policing actions";
+
+      container config {
+        description
+          "Control plane policing action config data";
+
+        uses fbs-ext-copp-action-config;
+      }
+
+      container state {
+        config false;
+
+        description
+          "Control plane policing action operational state data";
+
+        uses fbs-ext-copp-action-config;
+      }
+
+      container policer {
+        description
+          "Policer or rate limiting action to be associated with
+          packets that match the classifier match conditions.";
+
+        container config {
+          description
+            "Configuration for policer action";
+
+          uses fbs-ext-qos-policer-params-config;
+          uses fbs-ext-qos-policer-action-config;
+        }
+
+        container state {
+          config false;
+
+          description
+            "Operational state for policer action";
+
+          uses fbs-ext-qos-policer-params-config;
+          uses fbs-ext-qos-policer-action-config;
+        }
+      }
+    }
+  }
+
+  grouping fbs-ext-copp-action-config {
+    description
+      "Grouping for control plane policing config";
+
+    leaf cpu-queue-index {
+      type uint8 {
+        range "0..47";
+      }
+
+      description
+        "CPU queue index";
     }
   }
 
@@ -597,6 +705,7 @@ submodule openconfig-fbs-policies-ext {
     uses fbs-ext-section-qos-actions-top;
     uses fbs-ext-section-monitoring-actions-top;
     uses fbs-ext-section-forwarding-actions-top;
+    uses fbs-ext-section-copp-actions-top;
   }
 
   grouping fbs-ext-section-config {

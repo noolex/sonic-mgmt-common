@@ -122,6 +122,11 @@ module openconfig-ip-sla-annot {
         }
     }
 
+    deviation /oc-ip-sla:get-ipsla-history {
+       deviate add {
+            sonic-ext:rpc-callback "rpc_show_ipsla_history";
+        }
+    }
 
 
 }

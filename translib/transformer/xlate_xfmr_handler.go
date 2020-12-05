@@ -314,3 +314,29 @@ func preXfmrHandlerFunc(xfmrPre string, inParams XfmrParams) error {
 	return err
 }
 
+func sonicKeyXfmrHandlerFunc(inParams SonicXfmrParams, xfmrKeyNm string) (map[string]interface{}, error) {
+        xfmrLogInfoAll("Received inParams %v key transformer function name %v", inParams, xfmrKeyNm)
+        ret, err := XlateFuncCall(dbToYangXfmrFunc(xfmrKeyNm), inParams)
+        retVal := make(map[string]interface{})
+        if err != nil {
+                return retVal, err
+        }
+
+        if ((ret != nil) && (len(ret)>0)) {
+                if len(ret) == DBTY_KEY_XFMR_RET_ARGS {
+                        // key xfmr returns err as second value in return data list from <xfmr_func>.Call()
+                        if ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface() != nil {
+                                err = ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface().(error)
+                                if err != nil {
+                                        log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrKeyNm, err)
+                                        return retVal, err
+                                }
+                        }
+                }
+                if ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface() != nil {
+                        retVal = ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
+                        return retVal, nil
+                }
+        }
+        return retVal, nil
+}

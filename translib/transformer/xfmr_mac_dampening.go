@@ -121,9 +121,14 @@ var DbToYang_mac_dampening_state_subtree_xfmr SubTreeXfmrDbToYang = func (inPara
     macDampCfgEntry, cfgEntryErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:"MAC_DAMPENING"}, db.Key{Comp: []string{"config"}})
     if cfgEntryErr == nil {
         value := macDampCfgEntry.Field["threshold"]
-               intVal, _ := strconv.Atoi(value)
+        intVal, _ := strconv.Atoi(value)
         ocThreshold := uint8(intVal)
         macDampTbl.Threshold = &ocThreshold
+
+        value = macDampCfgEntry.Field["interval"]
+        intVal, _  = strconv.Atoi(value)
+        ocInterval := uint8(intVal)
+        macDampTbl.Interval = &ocInterval
     }
     pretty.Print(macDampTbl)
 

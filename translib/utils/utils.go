@@ -472,3 +472,40 @@ func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) 
     }
     return false
 }
+
+func GetSubInterfaceShortName(longName *string) *string {
+    var shortName string
+
+    if strings.Contains(*longName, "Ethernet") {
+        shortName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+    } else if strings.Contains(*longName, "PortChannel") {
+        shortName = strings.Replace(*longName, "PortChannel", "po", -1)
+    } else {
+        shortName = *longName
+    }
+
+    log.V(3).Infof("GetSubInterfaceShortName %s => %s", *longName, shortName)
+
+    return &shortName
+}
+
+func GetSubInterfaceLongName(shortName *string) *string {
+    var longName string
+
+    if strings.Contains(*shortName, "Eth") {
+        longName = strings.Replace(*shortName, "Eth", "Ethernet", -1)
+    } else if strings.Contains(*shortName, "po") {
+        longName = strings.Replace(*shortName, "po", "PortChannel", -1)
+    } else {
+        longName = *shortName
+    }
+
+    log.V(3).Infof("GetSubInterfaceLongName %s => %s", *shortName, longName)
+
+    return &longName
+}
+
+func GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID (parentIf *string, subId *string) *string {
+    key := *GetSubInterfaceShortName(parentIf) + "." + *subId
+    return &key
+}

@@ -357,7 +357,7 @@ func getASICStateMaps (inParams XfmrParams, vlanIdArg string) (map[string]map[st
         jsonData := make(map[string]interface{})
         err := json.Unmarshal([]byte(key.Comp[1]), &jsonData)
         if err != nil {
-            log.Error("Failed parsing json for key ", key)
+            log.Infof("Failed parsing json for key ", key)
             continue
         }
         bvid := jsonData["bvid"]. (string)
@@ -369,7 +369,9 @@ func getASICStateMaps (inParams XfmrParams, vlanIdArg string) (map[string]map[st
 
         entry, dbErr := d.GetEntry(&db.TableSpec{Name:tblName}, key)
         if dbErr != nil {
-            log.Error("DB GetEntry failed for key : ", key)
+            if log.V(3) {
+                log.Infof("DB GetEntry failed for key : ", key)
+            }
             continue
         }
         if _, ok := fdbMap[vlanId]; !ok {
