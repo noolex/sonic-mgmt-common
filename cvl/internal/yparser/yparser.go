@@ -390,8 +390,9 @@ func ParseSchemaFile(modelFile string) (*YParserModule, YParserError) {
 
 //AddChildNode Add child node to a parent node
 func(yp *YParser) AddChildNode(module *YParserModule, parent *YParserNode, name string) *YParserNode {
-
-	ret := (*YParserNode)(C.lyd_new((*C.struct_lyd_node)(parent), (*C.struct_lys_module)(module), C.CString(name)))
+	nameCStr :=  C.CString(name)
+	defer C.free(unsafe.Pointer(nameCStr))
+	ret := (*YParserNode)(C.lyd_new((*C.struct_lyd_node)(parent), (*C.struct_lys_module)(module), (*C.char)(nameCStr)))
 	if (ret == nil) {
 		TRACE_LOG(TRACE_YPARSER, "Failed parsing node %s", name)
 	}
@@ -401,14 +402,20 @@ func(yp *YParser) AddChildNode(module *YParserModule, parent *YParserNode, name 
 
 //IsLeafrefMatchedInUnion Check if value matches with leafref node in union
 func (yp *YParser) IsLeafrefMatchedInUnion(module *YParserModule, xpath, value string) bool {
-
-	return C.lyd_node_leafref_match_in_union((*C.struct_lys_module)(module), C.CString(xpath), C.CString(value)) == 0
+	xpathCStr := C.CString(xpath)
+	valCStr := C.CString(value)
+	defer func() {
+		C.free(unsafe.Pointer(xpathCStr))
+		C.free(unsafe.Pointer(valCStr))
+	}()
+	return C.lyd_node_leafref_match_in_union((*C.struct_lys_module)(module), (*C.char)(xpathCStr), (*C.char)(valCStr)) == 0
 }
 
 //AddMultiLeafNodes dd child node to a parent node
 func(yp *YParser) AddMultiLeafNodes(module *YParserModule, parent *YParserNode, multiLeaf []*YParserLeafValue) YParserError {
 
 	leafValArr := make([]C.struct_leaf_value, len(multiLeaf))
+	tmpArr := make([]*C.char, len(multiLeaf) * 2)
 
 	size := C.int(0)
 	for index := 0; index < len(multiLeaf); index++ {
@@ -417,10 +424,21 @@ func(yp *YParser) AddMultiLeafNodes(module *YParserModule, parent *YParserNode, 
 		}
 
 		//Accumulate all name/value in array to be passed in lyd_multi_new_leaf()
-		leafValArr[index].name = C.CString(multiLeaf[index].Name)
-		leafValArr[index].value = C.CString(multiLeaf[index].Value)
+		nameCStr := C.CString(multiLeaf[index].Name)
+		valCStr := C.CString(multiLeaf[index].Value)
+		leafValArr[index].name = (*C.char)(nameCStr)
+		leafValArr[index].value = (*C.char)(valCStr)
 		size++
+
+		tmpArr = append(tmpArr, (*C.char)(nameCStr))
+		tmpArr = append(tmpArr, (*C.char)(valCStr))
 	}
+
+	defer func() {
+		for _, cStr := range tmpArr {
+			C.free(unsafe.Pointer(cStr))
+		}
+	}()
 
 	if C.lyd_multi_new_leaf((*C.struct_lyd_node)(parent), (*C.struct_lys_module)(module), (*C.struct_leaf_value)(unsafe.Pointer(&leafValArr[0])), size) != 0 {
 		if Tracing {
