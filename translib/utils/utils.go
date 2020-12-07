@@ -476,12 +476,19 @@ func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) 
 func GetSubInterfaceShortName(longName *string) *string {
     var shortName string
 
-    if strings.Contains(*longName, "Ethernet") {
-        shortName = strings.Replace(*longName, "Ethernet", "Eth", -1)
-    } else if strings.Contains(*longName, "PortChannel") {
-        shortName = strings.Replace(*longName, "PortChannel", "po", -1)
+    parts := strings.Split(*longName, ".")
+    parentif := parts[0]
+    subif := parts[1]
+
+    parentif = *GetNativeNameFromUIName(&parentif)
+    fullName := parentif+"."+subif
+
+    if strings.Contains(fullName, "Ethernet") {
+        shortName = strings.Replace(fullName, "Ethernet", "Eth", -1)
+    } else if strings.Contains(fullName, "PortChannel") {
+        shortName = strings.Replace(fullName, "PortChannel", "po", -1)
     } else {
-        shortName = *longName
+        shortName = fullName
     }
 
     log.V(3).Infof("GetSubInterfaceShortName %s => %s", *longName, shortName)
@@ -500,12 +507,21 @@ func GetSubInterfaceLongName(shortName *string) *string {
         longName = *shortName
     }
 
+    parts := strings.Split(longName, ".")
+    parentif := parts[0]
+    subif := parts[1]
+
+    parentif = *GetUINameFromNativeName(&parentif)
+    longName = parentif+"."+subif
+
     log.V(3).Infof("GetSubInterfaceLongName %s => %s", *shortName, longName)
 
     return &longName
 }
 
 func GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID (parentIf *string, subId *string) *string {
-    key := *GetSubInterfaceShortName(parentIf) + "." + *subId
+    longkey := *GetNativeNameFromUIName(parentIf) + "." + *subId
+    key := *GetSubInterfaceShortName(&longkey)
+    log.V(3).Infof("GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID %s + %s => %s", *parentIf, *subId, key)
     return &key
 }
