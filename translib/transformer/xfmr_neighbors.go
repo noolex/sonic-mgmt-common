@@ -249,6 +249,9 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
 
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("name")
+    if utils.IsAliasModeEnabled() {
+        ifName = *(utils.GetNativeNameFromUIName(&ifName))
+    }
     rcvdUri, _ := getYangPathFromUri(inParams.uri)
 
     if ifName == "" {
@@ -343,7 +346,6 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
             staticMacStr = *v.Config.LinkLayerAddress
             log.Info("YangToDb_intf_static_arp_subtree_xfmr: staticMacStrd ", staticMacStr)
         }
-
         neighTblKey = ifName + "|" + staticIpStr
         log.Info(" ADD operation ", inParams.oper)
         log.Info(" staticIpStr ", staticIpStr)
@@ -527,6 +529,9 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     }
 
     ifName := pathInfo.Var("name")
+    if utils.IsAliasModeEnabled() {
+        ifName = *(utils.GetNativeNameFromUIName(&ifName))
+    }
     if ifName == "" {
         errStr := "Interface KEY not present"
         log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
