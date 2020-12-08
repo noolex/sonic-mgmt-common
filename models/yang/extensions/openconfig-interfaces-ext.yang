@@ -605,6 +605,21 @@ module openconfig-interfaces-ext {
         uses interfaces-ext-interface-vrrp-track-increment;
     }
 
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-intf:config" {
+        description "MTU";
+        leaf mtu {
+            type uint16;
+            description "MTU";
+        }
+    }
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-intf:state" {
+        description "MTU";
+        leaf mtu {
+            type uint16;
+            description "MTU";
+        }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:hold-time {
         deviate not-supported;
     }
