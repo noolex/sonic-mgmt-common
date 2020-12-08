@@ -172,7 +172,7 @@ module sonic-mirror-session {
                     error-message "destination port cant be same as source port";
                     error-app-tag dst-port-same-as-src-port;
                 }
-                sonic-ext:custom-validation ValidateMaxMirrorSessions;
+                sonic-ext:custom-validation ValidateMirrorSessions;
             }
         }
 
