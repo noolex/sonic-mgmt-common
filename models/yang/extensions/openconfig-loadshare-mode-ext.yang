@@ -1,9 +1,9 @@
-module openconfig-loadbalance-mode-ext {
+module openconfig-loadshare-mode-ext {
 
   yang-version "1.1";
 
   // namespace
-  namespace "http://openconfig.net/yang/loadbalance/extension";
+  namespace "http://openconfig.net/yang/loadshare/extension";
 
   prefix "oc-lb-mode-ext";
 
@@ -18,7 +18,7 @@ module openconfig-loadbalance-mode-ext {
     "SONiC";
 
   description
-    "Load balance mode config"; 
+    "Load share mode config"; 
 
   oc-ext:openconfig-version "0.1.0";
 
@@ -28,49 +28,27 @@ module openconfig-loadbalance-mode-ext {
     reference "0.1.0";
   }
   
-    grouping loadbalance-mode-config {
-        description "Load balance mode configuration";
+    grouping loadshare-mode-config {
+        description "Load share mode configuration";
         container seed-attrs {
            description "ECMP seed attributes";
-           list seed-attr {
-               key "hash";
-               description "ECMP seed attribute";
-               leaf hash {
-                   type leafref {
-                       path "../config/hash";
-                   }
-                   description
-                       "Reference to the seed attribute list key";
-               }
 
-               container config {
-                    description "ECMP hash seed configuration";
-                    uses oc-lb-mode-ext:hash-mode-seed-attr-config;
-               }
-               container state {
-                    config false;
-                    description "State container for ECMP hash seed";
-                    uses oc-lb-mode-ext:hash-mode-seed-attr-config;
-               }
+           container config {
+               description "ECMP hash seed configuration";
+               uses oc-lb-mode-ext:hash-mode-seed-attr-config;
+           }
+
+           container state {
+               config false;
+               description "State container for ECMP hash seed";
+               uses oc-lb-mode-ext:hash-mode-seed-attr-config;
            }
        }
      
        container ipv4-attrs {
-           description "ECMP load balance IPV4 attr container";
-           list ipv4-attr {
-               key "ipv4";
-               description
-                   "List of ipv4 entries";
-
-               leaf ipv4 {
-                   type leafref {
-                       path "../config/ipv4";
-                   }
-                   description
-                       "Reference to the load balance ipv4 list key";
-               }
+           description "ECMP load share IPV4 attr container";
                container config {
-                   description "ECMP ipv4 load balance config";
+                   description "ECMP ipv4 load share config";
                    uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
                }
                container state {
@@ -78,31 +56,18 @@ module openconfig-loadbalance-mode-ext {
                    description "State container for ECMP ipv4 attributes";
                    uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
                }
-           }
        } 
        container ipv6-attrs {
-            description "ECMP load balance IPV4 attr container";
-           list ipv6-attr {
-               key "ipv6";
-               description "ECMP ipv6 attribute list";
-               leaf ipv6 {
-                   type leafref {
-                       path "../config/ipv6";
-                   }
-                   description
-                       "Reference to the ipv6 list key";
-               }
-
-                container config {
-                    description "ECMP ipv6 load balance attrubute configuration";
-                    uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
-                }
-                container state {
-                    config false;
-                    description "State container for ECMP loadbalance ipv6 attributes";
-                    uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
-                }
-           } 
+            description "ECMP load share IPV4 attr container";
+            container config {
+                description "ECMP ipv6 load share attrubute configuration";
+                uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
+            }
+            container state {
+                config false;
+                description "State container for ECMP loadshare ipv6 attributes";
+                uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
+            }
        }
     }
 
@@ -156,7 +121,7 @@ module openconfig-loadbalance-mode-ext {
               "This leaf indicates whether to include dst-ip in hashing .";
         }
 
-        leaf ipv4-protocol {
+        leaf ipv4-ip-proto {
           type boolean;
           description
               "This leaf indicates whether to include protocol in hashing .";
@@ -202,5 +167,20 @@ module openconfig-loadbalance-mode-ext {
               "This leaf indicates whether to include protocol in hashing .";
         }
     }
-    uses loadbalance-mode-config;
+    container loadshare {
+        description "Load share mode IPv4/IPv6/seed configuration";
+
+        container config {
+            description "ECMP hash seed configuration";
+        }
+
+        container state {
+           config false;
+           description "State container for ECMP hash seed";
+           uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
+           uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
+           uses oc-lb-mode-ext:hash-mode-seed-attr-config;
+        }
+        uses loadshare-mode-config;
+    }
 }

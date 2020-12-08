@@ -66,7 +66,36 @@ func init() {
     XlateFuncBind("YangToDb_stp_vlan_port_xfmr", YangToDb_stp_vlan_port_xfmr)
     XlateFuncBind("DbToYang_stp_vlan_port_xfmr", DbToYang_stp_vlan_port_xfmr)
     XlateFuncBind("Subscribe_stp_vlan_port_xfmr", Subscribe_stp_vlan_port_xfmr)
+    XlateFuncBind("stp_pre_xfmr", stp_pre_xfmr)
+    XlateFuncBind("stp_post_xfmr", stp_post_xfmr)
 }
+
+var g_stpSupported interface{}
+
+func is_stp_feature_supported() bool {
+    var applDbPtr, _ = db.NewDB(getDBOptions(db.ApplDB))
+    defer applDbPtr.DeleteDB()	
+
+    switchTableEntry, err := applDbPtr.GetEntry(&db.TableSpec{Name: "SWITCH_TABLE"}, db.Key{[]string{"switch"}})
+    if err != nil {
+        return false
+    }
+
+    return switchTableEntry.Has("stp_supported")
+}
+
+
+var stp_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
+    if g_stpSupported == nil {
+        g_stpSupported = is_stp_feature_supported()
+    }
+
+    if g_stpSupported == false {
+        return tlerr.NotSupported("Spanning-tree is not supported with this software package")
+    }
+    return nil
+}
+
 
 func getStpRoot (s *ygot.GoStruct) *ocbinds.OpenconfigSpanningTree_Stp {
 	deviceObj := (*s).(*ocbinds.Device)
@@ -1476,7 +1505,8 @@ var YangToDb_stp_vlan_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
                 if stp.RapidPvst.Vlan[uint16(vlanId)] != nil && stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces != nil && stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces.Interface != nil {
                     ifNameList := stp.RapidPvst.Vlan[uint16(vlanId)].Interfaces.Interface
                     for ifName := range ifNameList {
-                        if ok := isVlanMember(inParams.d, vlanName, ifName); !ok {
+                        sonicIfName := utils.GetNativeNameFromUIName(&ifName)
+                        if ok := isVlanMember(inParams.d, vlanName, *sonicIfName); !ok {
                             log.Infof("YangToDb_stp_vlan_xfmr: %s is not a member of Vlan %s", ifName, vlanName)
                             return nil, tlerr.NotFound("%s is not a member of Vlan %s", ifName, vlanName)
                         }
@@ -1516,7 +1546,8 @@ var YangToDb_stp_vlan_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
                 if stp.Pvst.Vlan[uint16(vlanId)] != nil && stp.Pvst.Vlan[uint16(vlanId)].Interfaces != nil && stp.Pvst.Vlan[uint16(vlanId)].Interfaces.Interface != nil {
                     ifNameList := stp.Pvst.Vlan[uint16(vlanId)].Interfaces.Interface
                     for ifName := range ifNameList {
-                        if ok := isVlanMember(inParams.d, vlanName, ifName); !ok {
+                        sonicIfName := utils.GetNativeNameFromUIName(&ifName)
+                        if ok := isVlanMember(inParams.d, vlanName, *sonicIfName); !ok {
                             log.Infof("YangToDb_stp_vlan_xfmr: %s is not a member of Vlan %s", ifName, vlanName)
                             return nil, tlerr.NotFound("%s is not a member of Vlan %s", ifName, vlanName)
                         }
@@ -2000,6 +2031,7 @@ func convertInternalStpIntfToOc (inParams XfmrParams, ifName string, targetUriPa
                 stpIntf.State.Name = &ifName
                 stpIntf.State.SpanningTreeEnable = &stpEnabled
                 stpIntf.State.BpduGuard = &bpduGuardEnabled
+                stpIntf.State.BpduGuardPortShutdown = &bpduGuardPortShut
                 stpIntf.State.UplinkFast = &uplinkFast
 
                 if rootGuardEnabled {
@@ -2076,6 +2108,7 @@ func convertInternalStpIntfToOc (inParams XfmrParams, ifName string, targetUriPa
                 stpIntf.State.Name = &ifName
                 stpIntf.State.SpanningTreeEnable = &stpEnabled
                 stpIntf.State.BpduGuard = &bpduGuardEnabled
+                stpIntf.State.BpduGuardPortShutdown = &bpduGuardPortShut
                 stpIntf.State.UplinkFast = &uplinkFast
 
                 if rootGuardEnabled {
@@ -3005,4 +3038,26 @@ var DbToYang_stp_vlan_port_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
     
     return err 
+}
+
+var stp_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
+    var err error
+    retDbDataMap := (*inParams.dbDataMap)[inParams.curDb]
+
+    log.Info("retDbDataMap: ", retDbDataMap)
+    if _, ok := retDbDataMap["STP_PORT"]; ok {
+        cfgMode, _ := getStpModeFromConfigDb(inParams.d)
+        mode := retDbDataMap["STP"]["GLOBAL"].Field["mode"]
+
+        for _, element := range retDbDataMap["STP_PORT"] {
+            if element.Has("loop_guard") || element.Has("edge_port") || element.Has("link_type") {
+                if (mode != "" && mode != "rpvst") || (cfgMode != "" && cfgMode != "rpvst") {
+                    err_str := "Configuration allowed in Rapid PVST mode"
+                    return retDbDataMap, tlerr.NotSupported(err_str)
+                }
+            }
+        }
+    }
+
+    return retDbDataMap, err
 }

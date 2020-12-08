@@ -46,6 +46,7 @@ var reserved_names = []string{
 	"copp-system-nat",
 	"copp-system-mtu",
 	"copp-system-sflow",
+	"copp-system-dhcpl2",
 	"default",
 }
 
@@ -84,6 +85,8 @@ var Copp_trap_id_valid = map[string][]string{
 	"iccp":            {"trap", "drop"},
 	"icmp":            {"trap", "drop"},
 	"icmpv6":          {"trap", "drop"},
+	"dhcp_l2":         {"trap", "drop"},
+	"dhcpv6_l2":       {"trap", "drop"},
 }
 
 func (t *CustomValidation) ValidateCoppName(
@@ -167,7 +170,7 @@ func (t *CustomValidation) ValidateCoppTrapAction(
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapAction YCur: %v", vc.YCur)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateCoppTrapAction Data: %v", vc.CurCfg.Data)
 
-	if vc.CurCfg.VOp == OP_DELETE {
+	if vc.CurCfg.VOp == OP_DELETE || len(vc.YNodeVal) == 0 {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 

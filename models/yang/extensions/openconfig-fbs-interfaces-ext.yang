@@ -8,7 +8,9 @@ submodule openconfig-fbs-interfaces-ext {
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-yang-types { prefix oc-yang; }
 
+  include openconfig-fbs-types-ext;
   include openconfig-fbs-policies-ext;
+  include openconfig-fbs-next-hop-group-ext;
 
   // meta
   organization "SONiC";
@@ -405,6 +407,43 @@ submodule openconfig-fbs-interfaces-ext {
         uses fbs-ext-layer3-fwd-next-hop-config;
       }
     }
+
+    container next-hop-group {
+      description
+        "Next-hop group selected for forwarding";
+
+      container state {
+        config false;
+
+        description
+          "Container for operational state of next-hop group";
+
+        leaf group-name {
+          type string;
+
+          description
+            "Next hop group name";
+        }
+
+        leaf group-type {
+          type identityref {
+            base NEXT_HOP_GROUP_TYPE;
+          }
+
+          description
+            "Next hop group type";
+        }
+
+        leaf priority {
+          type uint16;
+
+          description
+            "Priority of the next-hop group";
+        }
+      }
+
+      // uses fbs-ext-next-hop-group-members-state;
+    }
   }
 
   grouping fbs-ext-forwarding-section-l2-state {
@@ -422,6 +461,89 @@ submodule openconfig-fbs-interfaces-ext {
           "Container for operation state of the selected egress interface";
 
         uses fbs-ext-egress-interface-config;
+      }
+    }
+  }
+
+  grouping fbs-ext-cpu-port-copp-top {
+    description
+      "Grouping for CoPP policy applied to CPU";
+
+    container copp {
+      description
+        "Container for CoPP policy configuration and state per interface";
+
+      container config {
+        description
+          "Configuration for CoPP policy application on CPU";
+
+        uses fbs-ext-cpu-port-copp-config;
+      }
+
+      container state {
+        config false;
+
+        description
+          "Operation state data for CoPP policy configuration and state per interface";
+
+        uses fbs-ext-cpu-port-copp-config;
+      }
+
+      uses fbs-ext-cpu-port-copp-sections-state;
+    }
+  }
+
+  grouping fbs-ext-cpu-port-copp-config {
+    description
+      "Grouping for CoPP policy configuration";
+
+    leaf policy-name {
+      type leafref {
+        path "../../../../../policies/policy/config/name";
+      }
+
+      must "../../../../../policies/policy[policy-name=current()]/config/type = 'POLICY_COPP'";
+
+      description
+        "Name of the CoPP policy applied";
+    }
+  }
+
+  grouping fbs-ext-cpu-port-copp-sections-state {
+    description
+      "Grouping for monitoring Policy operation state";
+
+    container sections {
+      config false;
+
+      description
+        "Container for Operational state of monitoring Policy sections";
+
+      list section {
+        key "class-name";
+
+        description
+          "Operational state for monitoring policy sections";
+
+        leaf class-name {
+          type leafref {
+            path "../state/class-name";
+          }
+
+          description
+            "Reference to the Classifier name used as section key";
+        }
+
+        container state {
+          config false;
+
+          description
+            "Operational state of a monitoring policy section";
+
+          uses fbs-ext-section-common-state;
+          uses fbs-ext-qos-section-state;
+          uses fbs-ext-qos-policer-params-config;
+        }
       }
     }
   }
@@ -496,6 +618,91 @@ submodule openconfig-fbs-interfaces-ext {
     }
   }
 
+  grouping fbs-ext-cpu-ingress-policies-top {
+    description
+      "Grouping for policies applied at ingress direction";
+
+    container ingress-policies {
+      description
+        "Ingress policies configuration and operational state
+        container";
+
+      container config {
+        description
+          "Configuration container for all ingress policies";
+      }
+
+      container state {
+        config false;
+
+        description
+          "Configuration container for all ingress policies";
+      }
+
+      uses fbs-ext-cpu-port-copp-top;
+    }
+  }
+
+  grouping fbs-ext-interface-next-hop-groups-top {
+    description
+      "TODO";
+
+    container next-hop-groups {
+      config false;
+
+      description
+        "TODO";
+
+      list next-hop-group {
+        key "group-name";
+
+        description
+          "TODO";
+
+        leaf group-name {
+          type leafref {
+            path ../state/name;
+          }
+
+          description
+            "Name of the next-hop group";
+        }
+
+        container state {
+          config false;
+
+          description
+            "TODO";
+
+          leaf name {
+            type string;
+
+            description
+              "Next hop group name";
+          }
+
+          leaf group-type {
+            type identityref {
+              base NEXT_HOP_GROUP_TYPE;
+            }
+
+            description
+              "Next hop group type";
+          }
+
+          leaf active {
+            type boolean;
+
+            description
+              "Indicates if the group is active ie forwardable";
+          }
+        }
+
+        uses fbs-ext-next-hop-group-members-state;
+      }
+    }
+  }
+
   grouping fbs-ext-interfaces-top {
     description
       "Top-level grouping for interface-specific policies
@@ -504,7 +711,7 @@ submodule openconfig-fbs-interfaces-ext {
     container interfaces {
       description
         "Enclosing container for the list of interfaces on which
-        Link state tracking groups are set";
+        the flow based services policies are set";
 
       list interface {
         key "id";
@@ -541,7 +748,27 @@ submodule openconfig-fbs-interfaces-ext {
         uses oc-if:interface-ref;
         uses fbs-ext-interface-ingress-policies-top;
         uses fbs-ext-interface-egress-policies-top;
+        uses fbs-ext-interface-next-hop-groups-top;
       }
+    }
+
+    container cpu-port {
+        description 
+        "Container for CPU port related configuration and operational state";
+
+        container config {
+          description
+            "Configuration for CPU port policies";
+        }
+
+        container state {
+          config false;
+
+          description
+            "Operational state for CPU port policies";
+        }
+
+        uses fbs-ext-cpu-ingress-policies-top;
     }
   }
 

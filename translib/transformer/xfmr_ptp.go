@@ -1125,6 +1125,8 @@ var Subscribe_ptp_port_ds_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInP
 		log.Infof("Subscribe_ptp_port_ds_xfm , unable to get StateDB, error %v", err)
 		return result, err
 	}
+	
+	defer d.DeleteDB()
 
 	underlying_interface := "UnknownKey"
 	log.Infof("Subscribe_ptp_port_ds_xfmr calling")
@@ -1152,7 +1154,6 @@ var Subscribe_ptp_port_ds_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInP
 			return result, tlerr.NotFoundError{Format: "Resource not found"}
 		}
 	}
-	defer d.DeleteDB()
 
 	var key string = "GLOBAL" + "|" + underlying_interface
 	result.dbDataMap = make(RedisDbMap)

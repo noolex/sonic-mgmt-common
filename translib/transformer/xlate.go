@@ -76,7 +76,7 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 		return nil, nil
 	}
 	if len(params) != XlateFuncs[name].Type().NumIn() {
-                log.Warning("Error parameters not adapted") 
+                log.Warning("Error parameters not adapted")
 		return nil, nil
 	}
 	in := make([]reflect.Value, len(params))
@@ -96,7 +96,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 
 	err := traverseDbHelper(dbs, spec, &dataMap, parentKey, dbTblKeyGetCache)
 	if err != nil {
-		log.Warning("Couldn't get data from traverseDbHelper")
+		xfmrLogInfoAll("Didn't get all data from traverseDbHelper")
 		return err
 	}
 	/* db data processing */
@@ -137,7 +137,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 			}
 			dbTblKeyGetCache[spec.DbNum] = queriedDbInfo
 			if err != nil {
-				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
+				log.Warningf("Didn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
 			}
 
@@ -157,7 +157,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		if spec.Ts.Name != XFMR_NONE_STRING { //Do not traverse for NONE table
 			keys, err := dbs[spec.DbNum].GetKeys(&spec.Ts)
 			if err != nil {
-				log.Warningf("Couldn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
+				log.Warningf("Didn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
 				return err
 			}
 			xfmrLogInfoAll("keys for table %v in Db %v are %v", spec.Ts.Name, spec.DbNum, keys)
@@ -171,7 +171,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 				spec.Key = keys[i]
                                 err = traverseDbHelper(dbs, spec, result, parentKey, dbTblKeyGetCache)
                                 if err != nil {
-                                        log.Warningf("Traversal didn't fetch for : %v", err)
+                                        xfmrLogInfoAll("Traversal didn't fetch for : %v", err)
                                 }
 			}
 		} else if len(spec.Child) > 0 {
@@ -192,7 +192,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 	if isSonicYang(uri) {
 		/* Extract the xpath and key from input xpath */
 		xpath, keyStr, tableName := sonicXpathKeyExtract(uri)
-		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && tblSpecInfo.hasXfmrFn {
+		if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && keyStr != "" && hasKeyValueXfmr(tableName) {
 			/* key from uri should be converted into redis-db key, to read data */
 			keyStr, err = dbKeyValueXfmrHandler(CREATE, tblSpecInfo.dbIndex, tableName, keyStr)
 			if err != nil {
@@ -390,7 +390,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	for _, spec := range *keySpec {
 		err := TraverseDb(dbs, spec, &dbresult, nil, inParamsForGet.dbTblKeyGetCache)
 		if err != nil {
-			log.Warning("TraverseDb() didn't fetch data.")
+			xfmrLogInfoAll("TraverseDb() didn't fetch data.")
 		}
 	}
 
@@ -793,7 +793,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
 	       xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
 	       if subscribe_result.OnChange {
 		       if st_result.dbDataMap != nil {
-			       subscribe_result.DbDataMap = st_result.dbDataMap
+			       subscribe_result.DbDataMap = processKeyValueXfmr(st_result.dbDataMap)
 			       xfmrLogInfo("Subtree subcribe dbData %v", subscribe_result.DbDataMap)
 		       }
 		       subscribe_result.NeedCache = st_result.needCache
@@ -809,7 +809,8 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                }
            } else {
 		   subscribe_result.OnChange = true
-		   subscribe_result.DbDataMap[xpath_dbno] = map[string]map[string]db.Value{retData.tableName: {retData.dbKey: {}}}
+		   inValXfmrMap := RedisDbMap{xpath_dbno:{retData.tableName:{retData.dbKey:{}}}}
+		   subscribe_result.DbDataMap = processKeyValueXfmr(inValXfmrMap)
 	   }
            if done {
                    break

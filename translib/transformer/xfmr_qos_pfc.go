@@ -533,7 +533,7 @@ func getPfcStats (inParams XfmrParams, ifName string, cos uint8, d *db.DB, stats
     oidMap, present := inParams.txCache.Load("COUNTERS_PORT_NAME_MAP")
     if !present {
         portOidmapTs := &db.TableSpec{Name: "COUNTERS_PORT_NAME_MAP"}
-        ifCountInfo, err := d.GetMapAll(portOidmapTs)
+        ifCountInfo, err = d.GetMapAll(portOidmapTs)
         if err != nil {
             log.Info("getPfcStats    err: ", err)
             return err
@@ -649,38 +649,6 @@ func getPfcQueueStats (inParams XfmrParams, ifName string, queue uint8, d *db.DB
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_DROPPED_PACKETS_LAST", &txDropsLastCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_PACKETS", &txPacketsCntr)
     getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_PACKETS_LAST", &txPacketsLastCntr)
-
-    counters = &db.TableSpec{Name: "COUNTERS_BACKUP"}
-    entry, err = d.GetEntry(counters, db.Key{Comp: []string{oid}})
-    if err == nil {
-        var backupCntr uint64;
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_DEADLOCK_DETECTED", &backupCntr)
-        stormDetectCntr = stormDetectCntr - backupCntr
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_DEADLOCK_RESTORED", &backupCntr)
-        stormRestoreCntr = stormRestoreCntr - backupCntr
-
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_DROPPED_PACKETS", &backupCntr)
-        rxDropsCntr = rxDropsCntr - backupCntr
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_DROPPED_PACKETS_LAST", &backupCntr)
-        rxDropsLastCntr = rxDropsLastCntr - backupCntr
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_PACKETS", &backupCntr)
-        rxPacketsCntr = rxPacketsCntr - backupCntr
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_RX_PACKETS_LAST", &backupCntr)
-        rxPacketsLastCntr = rxPacketsLastCntr - backupCntr
-
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_DROPPED_PACKETS", &backupCntr)
-        txDropsCntr = txDropsCntr - backupCntr
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_DROPPED_PACKETS_LAST", &backupCntr)
-        txDropsLastCntr = txDropsLastCntr - backupCntr
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_PACKETS", &backupCntr)
-        txPacketsCntr = txPacketsCntr - backupCntr
-        getTheCounter(&entry, "PFC_WD_QUEUE_STATS_TX_PACKETS_LAST", &backupCntr)
-        txPacketsLastCntr = txPacketsLastCntr - backupCntr
-    } else {
-        // it is OK that a snapshot does not exist. Just means the counters have not been "cleared"
-        err = nil
-        log.V(3).Info("getPfcQueue      counter snapshot does not exist.")
-    }
 
     stats.RxDrop = &rxDropsCntr
     stats.RxDropLast = &rxDropsLastCntr

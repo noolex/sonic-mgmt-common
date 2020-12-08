@@ -943,10 +943,17 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, prefix string, nhInd
         if routeObj.Config == nil {
             routeObj.Config = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_Config)
         }
+        if routeObj.State == nil {
+            routeObj.State = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_State)
+        }
         if routeObj.Config.Prefix == nil {
             routeObj.Config.Prefix = new(string)
         }
         *routeObj.Config.Prefix = prefix
+        if routeObj.State.Prefix == nil {
+            routeObj.State.Prefix = new(string)
+        }
+        *routeObj.State.Prefix = prefix
         routeObj.NextHops = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops)
         for key, nh := range nhSet.nhList {
             if len(nhIndex) != 0 && nhIndex != key {
@@ -964,44 +971,73 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, prefix string, nhInd
             if nhObj.Config == nil {
                 nhObj.Config = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_Config)
             }
+            if nhObj.State == nil {
+                nhObj.State = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_State)
+            }
 
             if nhObj.Config.Index == nil {
                 nhObj.Config.Index = new(string)
             }
             *nhObj.Config.Index = key
+            if nhObj.State.Index == nil {
+                nhObj.State.Index = new(string)
+            }
+            *nhObj.State.Index = key
             if nh.blackhole {
                 if nhObj.Config.Blackhole == nil {
                     nhObj.Config.Blackhole = new(bool)
                 }
                 *nhObj.Config.Blackhole = nh.blackhole
+                if nhObj.State.Blackhole == nil {
+                    nhObj.State.Blackhole = new(bool)
+                }
+                *nhObj.State.Blackhole = nh.blackhole
             }
             if !nh.gwIp.isZeros() {
-                gwObj, err :=
+                gwCfgObj, err :=
                     nhObj.Config.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_Config_NextHop_Union(nh.gwIp.origIpStr)
                 if err != nil {
-                    log.Infof("Failed to get gateway IP object: %v", err)
+                    log.Infof("Failed to get config gateway IP object: %v", err)
                     return err
                 }
-
-                nhObj.Config.NextHop = gwObj
+                nhObj.Config.NextHop = gwCfgObj
+                gwStateObj, err :=
+                    nhObj.State.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_State_NextHop_Union(nh.gwIp.origIpStr)
+                if err != nil {
+                    log.Infof("Failed to get state gateway IP object: %v", err)
+                    return err
+                }
+                nhObj.State.NextHop = gwStateObj
             }
             if nh.tag != 0 {
                 if nhObj.Config.Tag == nil {
                     nhObj.Config.Tag = new(uint32)
                 }
                 *nhObj.Config.Tag = nh.tag
+                if nhObj.State.Tag == nil {
+                    nhObj.State.Tag = new(uint32)
+                }
+                *nhObj.State.Tag = nh.tag
             }
             if nh.distance != 0 {
                 if nhObj.Config.Metric == nil {
                     nhObj.Config.Metric = new(uint32)
                 }
                 *nhObj.Config.Metric = nh.distance
+                if nhObj.State.Metric == nil {
+                    nhObj.State.Metric = new(uint32)
+                }
+                *nhObj.State.Metric = nh.distance
             }
             if len(nh.vrf) > 0 {
                 if nhObj.Config.NexthopNetworkInstance == nil {
                     nhObj.Config.NexthopNetworkInstance = new(string)
                 }
                 *nhObj.Config.NexthopNetworkInstance = nh.vrf
+                if nhObj.State.NexthopNetworkInstance == nil {
+                    nhObj.State.NexthopNetworkInstance = new(string)
+                }
+                *nhObj.State.NexthopNetworkInstance = nh.vrf
             }
             if len(nh.ifName) > 0 {
                 if nhObj.InterfaceRef == nil {
@@ -1011,17 +1047,29 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, prefix string, nhInd
                     nhObj.InterfaceRef.Config =
                         new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_InterfaceRef_Config)
                 }
+                if nhObj.InterfaceRef.State == nil {
+                    nhObj.InterfaceRef.State =
+                        new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_InterfaceRef_State)
+                }
 
                 if nhObj.InterfaceRef.Config.Interface == nil {
                     nhObj.InterfaceRef.Config.Interface = new(string)
                 }
                 *nhObj.InterfaceRef.Config.Interface = nh.ifName
+                if nhObj.InterfaceRef.State.Interface == nil {
+                    nhObj.InterfaceRef.State.Interface = new(string)
+                }
+                *nhObj.InterfaceRef.State.Interface = nh.ifName
             }
             if nh.track != 0 {
                 if nhObj.Config.Track == nil {
                     nhObj.Config.Track = new(uint16)
                 }
                 *nhObj.Config.Track = nh.track
+                if nhObj.State.Track == nil {
+                    nhObj.State.Track = new(uint16)
+                }
+                *nhObj.State.Track = nh.track
             }
         }
     }

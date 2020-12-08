@@ -737,7 +737,7 @@ func yangNodeForUriGet(uri string, ygRoot *ygot.GoStruct) (interface{}, error) {
 	schRoot := ocbSch.RootSchema()
 	node, nErr := ytypes.GetNode(schRoot, (*ygRoot).(*ocbinds.Device), path)
 	if nErr != nil {
-		log.Warningf("For uri %v - GetNode failure - %v", uri, nErr)
+		xfmrLogInfoAll("For uri %v - Unable to GetNode - %v", uri, nErr)
 		errStr := fmt.Sprintf("%v", nErr)
 		return nil, tlerr.InternalError{Format: errStr}
 	}

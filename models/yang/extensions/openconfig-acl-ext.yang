@@ -48,7 +48,6 @@ module openconfig-acl-ext {
          "Do not do NAT on the incoming packet";
     }
 
-
     grouping acl-ext-ethernet-header-config {
         description
             "Grouping for Layer 2 header extension fields";
@@ -90,6 +89,14 @@ module openconfig-acl-ext {
         leaf icmp-code {
             type uint8;
             description "ICMP or ICMPv6 Code";
+        }
+
+        leaf tcp-session-established {
+            type boolean;
+            description
+                "Match the traffic which is part of TCP session which is established.
+                Match on TCP flags may not be be allowed if this configuration is 
+                used";
         }
     }
 

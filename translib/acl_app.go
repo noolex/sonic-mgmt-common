@@ -23,6 +23,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -30,9 +34,6 @@ import (
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/util"
 	"github.com/openconfig/ygot/ygot"
-	"reflect"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -67,7 +68,7 @@ const (
 	ACL_RULE_FIELD_L4_SRC_PORT_RANGE = "L4_SRC_PORT_RANGE"
 	ACL_RULE_FIELD_L4_DST_PORT       = "L4_DST_PORT"
 	ACL_RULE_FIELD_L4_DST_PORT_RANGE = "L4_DST_PORT_RANGE"
-	ACL_RULE_FIELD_TCP_FLAGS         = "TCP_FLAGS"
+	ACL_RULE_FIELD_TCP_FLAGS         = "TCP_FLAGS@"
 	ACL_RULE_FIELD_SRC_MAC           = "SRC_MAC"
 	ACL_RULE_FIELD_DST_MAC           = "DST_MAC"
 	ACL_RULE_FIELD_ETHER_TYPE        = "ETHER_TYPE"
@@ -81,6 +82,7 @@ const (
 	ACL_CTRL_PLANE_PORT              = "CtrlPlane"
 	ACL_GLOBAL_PORT                  = "Switch"
 	ACL_KEYWORD_NAME                 = "name"
+	ACL_TCP_FLAG_ESTABLISHED_VALUE   = "0x10/0x10,0x4/0x4"
 
 	MIN_PRIORITY = 1
 	MAX_PRIORITY = 65536 // Seq num range is 1-65535. these are converted into prio 65535-1
@@ -225,10 +227,9 @@ func (app *AclApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
+func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
 	pathInfo := NewPathInfo(path)
-	notifInfo := notificationInfo{dbno: db.ConfigDB}
-	notifOpts := notificationOpts{isOnChangeSupported: true}
+	notifInfo := notificationAppInfo{dbno: db.ConfigDB, isOnChangeSupported: true}
 	notSupported := tlerr.NotSupportedError{
 		Format: "Subscribe not supported", Path: path}
 
@@ -239,12 +240,12 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 			pathInfo.HasSuffix("/acl-set") ||
 			pathInfo.HasSuffix("/acl-set{}{}") {
 			log.Errorf("Subscribe not supported for top level ACL %s", pathInfo.Template)
-			return nil, nil, notSupported
+			return nil, notSupported
 		}
 
 		t, err := getAclTypeOCEnumFromName(pathInfo.Var(ACL_FIELD_TYPE))
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		aclkey := convertOCAclnameTypeToInternal(pathInfo.Var(ACL_KEYWORD_NAME), t)
@@ -254,7 +255,6 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 			rulekey := "RULE_" + pathInfo.Var("sequence-id")
 			notifInfo.table = db.TableSpec{Name: RULE_TABLE}
 			notifInfo.key = asKey(aclkey, rulekey)
-			notifInfo.needCache = !pathInfo.HasSuffix("/acl-entry{}")
 
 		} else if pathInfo.HasSuffix("/acl-entries") || pathInfo.HasSuffix("/acl-entry") {
 			// Subscribe for all rules of an ACL
@@ -265,7 +265,6 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 			// Subscibe for ACL fields only
 			notifInfo.table = db.TableSpec{Name: ACL_TABLE}
 			notifInfo.key = asKey(aclkey)
-			notifInfo.needCache = true
 		}
 	} else if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/interfaces") {
 		// Right now interface binding config is maintained within ACL
@@ -275,14 +274,18 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 		// For now subscribe for full ACL table!!
 		notifInfo.table = db.TableSpec{Name: ACL_TABLE}
 		notifInfo.key = asKey("*")
-		notifInfo.needCache = true
 
 	} else {
 		log.Errorf("Unknown path %s", pathInfo.Template)
-		return nil, nil, notSupported
+		return nil, notSupported
 	}
 
-	return &notifOpts, &notifInfo, nil
+	return []notificationAppInfo{ notifInfo }, nil
+}
+
+func (app *AclApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
+	var resp subscribePathResponse
+	return resp, tlerr.New("Not implemented")
 }
 
 func (app *AclApp) processCreate(d *db.DB) (SetResponse, error) {
@@ -529,7 +532,6 @@ func (app *AclApp) processCommon(d *db.DB, opcode int) error {
 								if err != nil {
 									return err
 								}
-								//err = d.SetEntry(app.ruleTs, db.Key{Comp: []string{aclKey, ruleKey}}, app.ruleTableMap[aclKey][ruleKey])
 							} else {
 								log.Errorf("processCommon: Given DELETE path %s not handled", targetUriPath)
 							}
@@ -567,7 +569,6 @@ func (app *AclApp) processCommon(d *db.DB, opcode int) error {
 					case UPDATE:
 						if !isAclEntriesSubtree {
 							err = app.setAclDataInConfigDb(d, app.aclTableMap, false)
-							//err = d.ModEntry(app.aclTs, db.Key{Comp: []string{aclKey}}, app.aclTableMap[aclKey])
 							if err != nil {
 								return err
 							}
@@ -595,7 +596,6 @@ func (app *AclApp) processCommon(d *db.DB, opcode int) error {
 									log.Error(err)
 								}
 							}
-							//err = d.SetEntry(app.aclTs, db.Key{Comp: []string{aclKey}}, app.aclTableMap[aclKey])
 						}
 					}
 				}
@@ -892,8 +892,14 @@ func (app *AclApp) convertInternalToOCAclRuleProperties(ruleData db.Value, aclTy
 			entrySet.Transport.State.DestinationPort, _ = entrySet.Transport.State.To_OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry_Transport_State_DestinationPort_Union(destPort)
 		} else if ACL_RULE_FIELD_TCP_FLAGS == ruleKey {
 			tcpFlags := ruleData.Get(ruleKey)
-			entrySet.Transport.Config.TcpFlags = getTransportConfigTcpFlags(tcpFlags)
-			entrySet.Transport.State.TcpFlags = getTransportConfigTcpFlags(tcpFlags)
+			if tcpFlags == ACL_TCP_FLAG_ESTABLISHED_VALUE {
+				established := true
+				entrySet.Transport.Config.TcpSessionEstablished = &established
+				entrySet.Transport.State.TcpSessionEstablished = &established
+			} else {
+				entrySet.Transport.Config.TcpFlags = getTransportConfigTcpFlags(tcpFlags)
+				entrySet.Transport.State.TcpFlags = getTransportConfigTcpFlags(tcpFlags)
+			}
 		} else if ACL_RULE_PACKET_ACTION == ruleKey {
 			if strings.ToUpper(ruleData.Get(ruleKey)) == "FORWARD" {
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_ACCEPT
@@ -1909,8 +1915,10 @@ func convertOCAclRuleToInternalAclRule(ruleData db.Value, seqId uint32, aclName 
 	convertOCToInternalIPv4(ruleData, aclName, ruleIndex, rule)
 	convertOCToInternalIPv6(ruleData, aclName, ruleIndex, rule)
 	convertOCToInternalL2(ruleData, aclName, ruleIndex, rule)
-	convertOCToInternalTransport(ruleData, aclName, aclType, ruleIndex, rule)
-	err := convertOCToInternalInputAction(ruleData, aclName, ruleIndex, rule)
+	err := convertOCToInternalTransport(ruleData, aclName, aclType, ruleIndex, rule)
+	if err == nil {
+		err = convertOCToInternalInputAction(ruleData, aclName, ruleIndex, rule)
+	}
 
 	return err
 }
@@ -2021,9 +2029,9 @@ func convertOCToInternalIPv6(ruleData db.Value, aclName string, ruleIndex uint32
 	}
 }
 
-func convertOCToInternalTransport(ruleData db.Value, aclName string, aclType ocbinds.E_OpenconfigAcl_ACL_TYPE, ruleIndex uint32, rule *ocbinds.OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry) {
+func convertOCToInternalTransport(ruleData db.Value, aclName string, aclType ocbinds.E_OpenconfigAcl_ACL_TYPE, ruleIndex uint32, rule *ocbinds.OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry) error {
 	if rule.Transport == nil {
-		return
+		return nil
 	}
 
 	if rule.Transport.Config.SourcePort != nil && util.IsTypeStructPtr(reflect.TypeOf(rule.Transport.Config.SourcePort)) {
@@ -2056,8 +2064,17 @@ func convertOCToInternalTransport(ruleData db.Value, aclName string, aclType ocb
 		}
 	}
 
+	if len(rule.Transport.Config.TcpFlags) > 0 && rule.Transport.Config.TcpSessionEstablished != nil {
+		return tlerr.InvalidArgs("TCP Flags and TCP Session established cant be configured at the same time")
+	}
+
 	if len(rule.Transport.Config.TcpFlags) > 0 {
 		ruleData.Field[ACL_RULE_FIELD_TCP_FLAGS] = convertOCTcpFlagsToDbFormat(rule.Transport.Config.TcpFlags)
+	} else if rule.Transport.Config.TcpSessionEstablished != nil {
+		if !(*rule.Transport.Config.TcpSessionEstablished) {
+			return tlerr.InvalidArgs("TCP Session established as false not supported")
+		}
+		ruleData.Field[ACL_RULE_FIELD_TCP_FLAGS] = ACL_TCP_FLAG_ESTABLISHED_VALUE
 	}
 
 	if rule.Transport.Config.IcmpType != nil {
@@ -2066,6 +2083,8 @@ func convertOCToInternalTransport(ruleData db.Value, aclName string, aclType ocb
 	if rule.Transport.Config.IcmpCode != nil {
 		ruleData.Field[ACL_RULE_ICMP_CODE] = strconv.FormatUint(uint64(*rule.Transport.Config.IcmpCode), 10)
 	}
+
+	return nil
 }
 
 func convertOCToInternalInputAction(ruleData db.Value, aclName string, ruleIndex uint32, rule *ocbinds.OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry) error {
@@ -2276,8 +2295,14 @@ func (app *AclApp) setAclRuleDataInConfigDb(d *db.DB, ruleData map[string]map[st
 			// If Create Rule request comes and Rule already exists, throw error
 			if createFlag && existingRuleEntry.IsPopulated() {
 				seqId, _ := strconv.ParseUint(strings.Replace(ruleName, "RULE_", "", 1), 10, 16)
-				return tlerr.AlreadyExists("Rule with sequence number %v already exists", seqId)
+
+				if reflect.DeepEqual(existingRuleEntry, ruleData[aclName][ruleName]) {
+					return tlerr.AlreadyExistsErr("same-config-exists", "", "Rule with sequence number %v already exists", seqId)
+				} else {
+					return tlerr.AlreadyExistsErr("different-config-exists", "", "Rule with sequence number %v already exists", seqId)
+				}
 			}
+
 			if createFlag || (!createFlag && err != nil && !existingRuleEntry.IsPopulated()) {
 				err := d.CreateEntry(app.ruleTs, db.Key{Comp: []string{aclName, ruleName}}, ruleData[aclName][ruleName])
 				if err != nil {
@@ -2389,9 +2414,9 @@ func (app *AclApp) setAclBindDataInConfigDb(d *db.DB, opcode int) error {
 					log.Errorf("Intf %s has ACL %s at %s already. Cant create new ACL %s binding", intf,
 						existingAclName, strings.ToLower(dbAclDirec), aclKey)
 					if existingAclName == aclKey {
-						return tlerr.AlreadyExistsErr("same-config-exists", "ACL binding on %s at %s already exists.", intf, strings.ToLower(dbAclDirec))
+						return tlerr.AlreadyExistsErr("same-config-exists", "", "ACL binding on %s at %s already exists.", intf, strings.ToLower(dbAclDirec))
 					} else {
-						return tlerr.AlreadyExistsErr("different-config-exists", "ACL binding on %s at %s already exists.", intf, strings.ToLower(dbAclDirec))
+						return tlerr.AlreadyExistsErr("different-config-exists", "", "ACL binding on %s at %s already exists.", intf, strings.ToLower(dbAclDirec))
 					}
 				}
 			} else if REPLACE == opcode || UPDATE == opcode {
