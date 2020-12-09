@@ -937,6 +937,7 @@ module sonic-flow-based-services {
                         type enumeration {
                             enum Switch;
                             enum CtrlPlane;
+                            enum CPU;
                         }
                     }
                 }
