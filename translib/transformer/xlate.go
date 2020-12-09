@@ -838,19 +838,18 @@ func IsTerminalNode(uri string) (bool, error) {
 
 func IsLeafNode(uri string) bool {
 	result := false
-	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
-	if err != nil {
-		log.Warningf("For uri - %v, couldn't convert to xpath - %v", uri, err)
-		return result
-	}
-	xfmrLogInfoAll("received xpath - %v", xpath)
-	if xpathData, ok := xYangSpecMap[xpath]; ok {
-		if yangTypeGet(xpathData.yangEntry) == YANG_LEAF {
-			result = true
-		}
-	} else {
-		errStr := "xYangSpecMap data not found for xpath - " + xpath
-		log.Warning(errStr)
+	yngNdType, err := getYangNodeTypeFromUri(uri)
+	if (err == nil) && (yngNdType == YANG_LEAF) {
+		result = true
 	}
 	return result
+}
+
+func IsLeafListNode(uri string) bool {
+        result := false
+        yngNdType, err := getYangNodeTypeFromUri(uri)
+        if (err == nil) && (yngNdType == YANG_LEAF_LIST) {
+                result = true
+        }
+        return result
 }
