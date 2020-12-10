@@ -961,7 +961,7 @@ func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
 
     for _, key := range keys {
         typeCode = key.Get(0)
-        eepromEntry, err := eepromTbl.GetEntry(db.Key{Comp: []string{typeCode}})
+        eepromEntry, err := eepromTbl.GetEntry(key)
         if err != nil {
             log.Info("Can't get entry with key: ", typeCode)
             return eepromInfo, err

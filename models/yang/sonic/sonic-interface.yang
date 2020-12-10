@@ -450,6 +450,15 @@ module sonic-interface {
                         "Enable IPv6 link local address on interface";
                 }
 
+                leaf mtu{
+                    type uint32 {
+                        range "1312..9216" {
+                            error-message "Invalid MTU value";
+                            error-app-tag mtu-invalid;
+                        }
+                    }
+                }
+
             }
 
             list VLAN_SUB_INTERFACE_IPADDR_LIST {

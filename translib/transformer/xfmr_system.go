@@ -109,13 +109,7 @@ func getHostnameFromDb (d *db.DB) (*string, error) {
     var err error
     var hostname string
 
-    hostTbl, err := d.GetTable(&db.TableSpec{Name: HOST_TBL})
-    if err != nil {
-        log.Info("Can't get table: ", HOST_TBL)
-        return &hostname, err
-    }
-
-    nameEntry, err := hostTbl.GetEntry(db.Key{Comp: []string{HOSTNAME_KEY}})
+    nameEntry, err := d.GetEntry(&db.TableSpec{Name: HOST_TBL}, db.Key{Comp: []string{HOSTNAME_KEY}})
     if err != nil {
         log.Info("Can't get entry with key: ", HOSTNAME_KEY)
         return &hostname, err
@@ -155,13 +149,7 @@ func getSysMemFromDb (d *db.DB) (*SysMem, error) {
     var err error
     var memInfo SysMem
 
-    memTbl, err := d.GetTable(&db.TableSpec{Name: MEM_TBL})
-    if err != nil {
-        log.Info("Can't get table: ", MEM_TBL)
-        return &memInfo, err
-    }
-
-    memEntry, err := memTbl.GetEntry(db.Key{Comp: []string{SYSMEM_KEY}})
+    memEntry, err := d.GetEntry(&db.TableSpec{Name: MEM_TBL}, db.Key{Comp: []string{SYSMEM_KEY}})
     if err != nil {
         log.Info("Can't get entry with key: ", SYSMEM_KEY)
         return &memInfo, err
@@ -267,7 +255,7 @@ func getCpusFromDb (d *db.DB) ([]Cpu, error) {
     cpus = make([]Cpu, len(keys))
     for idx := range keys {
         key := "CPU" + strconv.Itoa(idx)
-        cpuEntry, err := cpuTbl.GetEntry(db.Key{Comp: []string{key}})
+        cpuEntry, err := cpuTbl.GetEntry(keys[idx])
         if err != nil {
             log.Info("Can't get entry with key: ", key)
             return cpus, err
@@ -387,7 +375,7 @@ func getProcsFromDb (d *db.DB) (map[string]Proc, error) {
     procs = make(map[string]Proc)
     for _, key := range keys {
         pidstr := key.Get(0)
-        procEntry, err := procTbl.GetEntry(db.Key{Comp: []string{pidstr}})
+        procEntry, err := procTbl.GetEntry(key)
         if err != nil {
             log.Info("Can't get entry with key: ", pidstr)
             return procs, err
