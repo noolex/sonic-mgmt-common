@@ -95,6 +95,9 @@ module sonic-port {
                 leaf override_unreliable_los {
                     type string;
                 }
+		leaf-list vlan_list {
+		    type string;
+		}
             }
         }
         container PORT_TABLE {
