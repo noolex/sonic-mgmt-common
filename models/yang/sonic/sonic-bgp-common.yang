@@ -35,6 +35,10 @@ module sonic-bgp-common {
         prefix cmn;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -44,6 +48,10 @@ module sonic-bgp-common {
     description
         "SONIC BGP common YANG attributes for Neighbors and Peer group";
 
+    revision 2020-12-10 {
+        description
+            "Added CVL check to compare strict_capability_match and override_capability.";
+    }
     revision 2020-07-26 {
         description
             "Change for sonic-loopback.yang.";
@@ -309,6 +317,7 @@ module sonic-bgp-common {
 
         leaf strict_capability_match {
             type boolean;
+            sonic-ext:custom-validation ValidateStrictAndOverRideCapability;
             description "Strict capability negotiation match";
         }
 

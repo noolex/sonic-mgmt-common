@@ -58,3 +58,37 @@ func (t *CustomValidation) ValidateL3vniConfiguration(vc *CustValidationCtxt) CV
 
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
+
+func (t *CustomValidation) ValidateStrictAndOverRideCapability (vc *CustValidationCtxt) CVLErrorInfo {
+
+    if ((vc.CurCfg.Data["strict_capability_match"] == "true") && (vc.CurCfg.Data["override_capability"] == "true")) {
+        return CVLErrorInfo{
+            ErrCode: CVL_SEMANTIC_ERROR,
+            ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time" ,
+        }
+    } else {
+        neighData, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
+        if (err == nil) {
+            strictCap, hasStrict := neighData["strict_capability_match"]
+            if (hasStrict && strictCap == "true") {
+                if (vc.CurCfg.Data["override_capability"] == "true"){
+                    return CVLErrorInfo{
+                        ErrCode: CVL_SEMANTIC_ERROR,
+                        ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time",
+                    }
+                }
+            }
+            overCap, hasOver := neighData["override_capability"]
+            if (hasOver && overCap == "true") {
+                if (vc.CurCfg.Data["strict_capability_match"] == "true"){
+                    return CVLErrorInfo{
+                        ErrCode: CVL_SEMANTIC_ERROR,
+                        ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time" ,
+                    }
+                }
+            }
+        }
+    }
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
