@@ -21,6 +21,7 @@ package custom_validation
 
 import (
         "strings"
+        "strconv"
         "fmt"
         util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
     )
@@ -84,6 +85,55 @@ func (t *CustomValidation) ValidateStrictAndOverRideCapability (vc *CustValidati
                     return CVLErrorInfo{
                         ErrCode: CVL_SEMANTIC_ERROR,
                         ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time" ,
+                    }
+                }
+            }
+        }
+    }
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+func (t *CustomValidation) ValidateMaxDelayAndEstWait (vc *CustValidationCtxt) CVLErrorInfo {
+    var maxDelayValue  int64;
+    var estWaitValue  int64;
+
+    if (vc.CurCfg.VOp == OP_DELETE) {
+         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    maxDelay, hasMaxdelay := vc.CurCfg.Data["max_delay"]
+    estWait, hasEstWait := vc.CurCfg.Data["establish_wait"]
+    if (hasMaxdelay) {
+        maxDelayValue, _ = strconv.ParseInt(maxDelay, 10, 16)
+    }
+    if (hasEstWait) {
+        estWaitValue, _ = strconv.ParseInt(estWait, 10, 16)
+    }
+    if (hasMaxdelay && hasEstWait && (estWaitValue > maxDelayValue)) {
+        return CVLErrorInfo{
+            ErrCode: CVL_SEMANTIC_ERROR,
+            ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates." ,
+        }
+    } else {
+        neighData, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
+        if (err == nil) && (hasEstWait || hasMaxdelay)  {
+            maxDelay, hasMaxdelay = neighData["max_delay"]
+            if (hasMaxdelay && hasEstWait) {
+                maxDelayValue, _ = strconv.ParseInt(maxDelay, 10, 16)
+                if (estWaitValue > maxDelayValue){
+                    return CVLErrorInfo{
+                        ErrCode: CVL_SEMANTIC_ERROR,
+                        ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates." ,
+                    }
+                }
+            }
+            estWait, hasEstWait  = neighData["establish_wait"]
+            if (hasMaxdelay && hasEstWait) {
+                estWaitValue, _ = strconv.ParseInt(estWait, 10, 16)
+                if (estWaitValue > maxDelayValue){
+                    return CVLErrorInfo{
+                        ErrCode: CVL_SEMANTIC_ERROR,
+                        ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates." ,
                     }
                 }
             }

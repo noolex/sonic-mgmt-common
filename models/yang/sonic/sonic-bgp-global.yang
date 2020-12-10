@@ -36,6 +36,11 @@ module sonic-bgp-global {
     description
         "SONIC BGP Global YANG";
 
+    revision 2020-12-10 {
+        description
+            "Added CVL validation condition to compare max_delay and establish_wait values.";
+    }
+
     revision 2019-11-20 {
         description
             "Added BGP fields for extensive features.";
@@ -284,9 +289,7 @@ module sonic-bgp-global {
                     type uint16 {
                         range 0..3600;
                     }
-                    must "(/cmn:operation/cmn:operation = 'DELETE') or (current() <= current()/../max_delay) " {
-                         error-message "Maximum delay for best path calculation should not be less than updates !";
-                    }
+                    sonic-ext:custom-validation ValidateMaxDelayAndEstWait;
                     description
                         "Maximum delay for updates.";
                 }
