@@ -281,46 +281,61 @@ func SetAliasMode(enableMode bool) {
 
 // GetNativeNameFromUIName returns physical interface name for alias-name
 func GetNativeNameFromUIName(uiName *string) *string {
-	if !IsAliasModeEnabled() {
-		return uiName
-	}
+    if !IsAliasModeEnabled() {
+        if !strings.Contains(*uiName, ".") {
+            return uiName
+        }
+    }
 
-	parts := strings.Split(*uiName, ",")
-	converted := make([]string, len(parts))
-	for idx, part := range parts {
-		ifName, ok := aliasIfNameMap.Load(*uiName)
-		if ok {
-			converted[idx] = ifName.(string)
-		} else {
-			converted[idx] = part
-		}
-	}
-	ret := strings.Join(converted, ",")
-	log.V(3).Infof("%s => %s", *uiName, ret)
+    parts := strings.Split(*uiName, ",")
+    converted := make([]string, len(parts))
+    for idx, part := range parts {
+        subIntfParts := strings.Split(part, ".")
+        ifName, ok := aliasIfNameMap.Load(subIntfParts[0])
+        if ok {
+            converted[idx] = ifName.(string)
+            if (len(subIntfParts) == 2) {
+                converted[idx] = *GetSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
+            }
+        } else {
+            converted[idx] = part
+        }
+    }
+    ret := strings.Join(converted, ",")
+    log.V(3).Infof("%s => %s", *uiName, ret)
 
-	return &ret
+    return &ret
 }
 
 // GetUINameFromNativeName returns alias-name for physical interface Name
 func GetUINameFromNativeName(ifName *string) *string {
-	if !IsAliasModeEnabled() {
-		return ifName
-	}
+    if !IsAliasModeEnabled() {
+        if !strings.Contains(*ifName, ".") {
+            return ifName
+        }
+    }
 
-	parts := strings.Split(*ifName, ",")
-	converted := make([]string, len(parts))
-	for idx, part := range parts {
-		aliasName, ok := ifNameAliasMap.Load(part)
-		if ok {
-			converted[idx] = aliasName.(string)
-		} else {
-			converted[idx] = part
-		}
-	}
-	ret := strings.Join(converted, ",")
-	log.V(3).Infof("%s => %s", *ifName, ret)
+    parts := strings.Split(*ifName, ",")
+    converted := make([]string, len(parts))
+    for idx, part := range parts {
+        subIntfParts := strings.Split(part, ".")
+        if (len(subIntfParts) == 2) {
+            subIntfParts[0] = *GetSubInterfaceLongName(&subIntfParts[0])
+        }
+        aliasName, ok := ifNameAliasMap.Load(subIntfParts[0])
+        if ok {
+            converted[idx] = aliasName.(string)
+            if (len(subIntfParts) == 2) {
+                converted[idx] = converted[idx] + "." + subIntfParts[1]
+            }
+        } else {
+            converted[idx] = part
+        }
+    }
+    ret := strings.Join(converted, ",")
+    log.V(3).Infof("%s => %s", *ifName, ret)
 
-	return &ret
+    return &ret
 }
 
 func IsValidAliasName(ifName *string) bool {
