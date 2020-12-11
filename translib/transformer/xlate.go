@@ -569,7 +569,7 @@ func GetOrdTblList(xfmrTbl string, uriModuleNm string) []string {
                 for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
                                 if xfmrTbl == ordTblNm {
                                         xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ordTblList = sonicMdlTblInfo.OrdTbl
+                                        ordTblList = sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblWithinMdl
                                         processedTbl = true
                                         break
                                 }
@@ -616,7 +616,7 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
                         for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
                                 if xfmrTbl == ordTblNm {
                                         xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl]
+                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblAcrossMdl
                                         for _, depTblNm := range(ldepTblList) {
                                                 depTblMap[depTblNm] = true
                                         }
