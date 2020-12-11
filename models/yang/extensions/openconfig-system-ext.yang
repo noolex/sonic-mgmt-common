@@ -302,6 +302,19 @@ module openconfig-system-ext {
        deviate not-supported;
     }
 
+    deviation /oc-sys:system/oc-sys:config/oc-sys:hostname{
+	sonic-codegen:lint-ignore "Deviated to be aligned with klish.";
+	deviate replace {
+	    type string {
+                pattern "^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$" {
+		    error-message "Invalid hostname";
+		} 
+		
+	    }
+        }
+    }
+
+
     deviation /oc-sys:system/oc-sys:config/oc-sys:login-banner {
         deviate not-supported;
     }
