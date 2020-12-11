@@ -251,6 +251,7 @@ module sonic-bgp-common {
         leaf disable_ebgp_connected_route_check {
             type boolean;
             description "Connected checked disabled";
+            sonic-ext:custom-validation ValidateDisableConnectedCheck;
         }
 
         leaf enforce_first_as {
