@@ -102,14 +102,13 @@ module sonic-mirror-session {
                 }
 
                 leaf queue {
-                    type uint8 {
-                        range "0..63" {
-                            error-message "Invalid Queue value";
-                            error-app-tag queue-invalid;
-                        }
+                    type uint8;
+                    must "current() = 0" {
+                        error-message "Invalid queue config. Queue 0 is only supported";
+                        error-app-tag mirror-queue-not-supported;
                     }
                     description
-                        "ERSPAN Queue. Mirrored frames will be sent to configured queue";
+                        "ERSPAN Queue. Mirrored frames will be sent to queue 0 only";
                 }
 
                 leaf dst_port {
