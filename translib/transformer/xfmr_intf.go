@@ -953,7 +953,7 @@ func retrievePortChannelReplaceVlan(d *db.DB, ifName *string) (*string, error) {
     if strings.HasPrefix(*ifName, ETHERNET) {
         var lagStr string
         lagKeys, err := d.GetKeysByPattern(&db.TableSpec{Name: PORTCHANNEL_MEMBER_TN}, "*"+*ifName)
-        /* Find the port-channel the given ifname is part of */
+//         Find the port-channel the given ifname is part of 
         if err != nil {
             return nil, err
         }
@@ -1074,15 +1074,27 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         result.Output.Status_detail = "vlanlist field not present in the input for replace_vlan rpc!"
         return json.Marshal(&result)
     }
-    ifNameStr := inputIfName.(string)
-    vlanListStr := vlanList.(string)
-    ifNameList := strings.Split(ifNameStr,",")
-    if utils.IsAliasModeEnabled(){
-    for idx,ifName := range ifNameList{
-	nativeName := utils.GetNativeNameFromUIName(&ifName)
-        ifNameList[idx] = *nativeName
+
+    var ifNameList []string
+    var newVlanList []string
+
+    ifNameStr := inputIfName.([]interface {})
+    vlanListStr := vlanList.([]interface {})
+    for i := range ifNameStr{
+        ifName := ifNameStr[i].(string)
+        ifNameList = append(ifNameList,ifName)
     }
-}
+    for i := range vlanListStr{
+        vid := vlanListStr[i].(string)
+        newVlanList = append(newVlanList,vid)
+    }
+
+    if utils.IsAliasModeEnabled(){
+      for idx,ifName := range ifNameList{
+	  nativeName := utils.GetNativeNameFromUIName(&ifName)
+          ifNameList[idx] = *nativeName
+      }
+    }
 
     d, err := db.NewDB(getDBOptions(db.ConfigDB))
     if err != nil {
@@ -1129,7 +1141,6 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         }
     }
 
-    newVlanList := strings.Split(vlanListStr,",")
     var newList []string
     var existList []string
     var delList []string
@@ -1241,7 +1252,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     }
 
     result.Output.Status = 0
-    log.Infof("Commit transaction succesful for replace VLAN for interface: %s", ifNameStr)
+    log.Infof("Commit transaction succesful for replace VLAN for interface")
     return  json.Marshal(&result)
 }
 
