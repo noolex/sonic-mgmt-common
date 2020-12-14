@@ -3774,14 +3774,15 @@ func pruneForwardingEntries(egress []string) []string {
 	log.Info(retVal)
 
 	// To preserve the order remove elements in the original list which are not present in the final list
-	for _, elem := range retVal {
-		if !contains(egress, elem) {
-			egress = removeElement(egress, elem)
+	finalEgress := make([]string, 0)
+	for _, elem := range egress {
+		if contains(retVal, elem) {
+			finalEgress = append(finalEgress, elem)
 		}
 	}
 
-	log.Info(egress)
-	return egress
+	log.Info(finalEgress)
+	return finalEgress
 }
 
 func (app *FbsApp) fillPbfNextHopGrpData(name string, grpData db.Value, grpObj *ocbinds.OpenconfigFbsExt_Fbs_NextHopGroups_NextHopGroup) error {

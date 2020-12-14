@@ -677,7 +677,7 @@ module sonic-flow-based-services {
             must "not(current()/../SET_IP_NEXTHOP)" {
                 error-message "IPV6 and IPv4 forwarding actions cant be configured at the same time.";
             }
-            must "not(current()/../SET_IPV6_NEXTHOP)" {
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
                 error-message "IPV6 and IPv4 forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../SET_TRAP_QUEUE)" {
