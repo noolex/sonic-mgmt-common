@@ -95,7 +95,10 @@ module sonic-port {
                 leaf override_unreliable_los {
                     type string;
                 }
-		leaf-list vlan_list {
+		leaf-list tagged_vlan{
+		    type string;
+		}
+		leaf access_vlan{
 		    type string;
 		}
             }
