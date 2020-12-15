@@ -291,14 +291,14 @@ func GetNativeNameFromUIName(uiName *string) *string {
     converted := make([]string, len(parts))
     for idx, part := range parts {
         subIntfParts := strings.Split(part, ".")
-        ifName, ok := aliasIfNameMap.Load(subIntfParts[0])
-        if ok {
-            converted[idx] = ifName.(string)
-            if (len(subIntfParts) == 2) {
-                converted[idx] = *GetSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
+        converted[idx] = subIntfParts[0]
+        if IsAliasModeEnabled() {
+            ifName, ok := aliasIfNameMap.Load(converted[idx]) ; if ok {
+                converted[idx] = ifName.(string)
             }
-        } else {
-            converted[idx] = part
+        }
+        if (len(subIntfParts) == 2) {
+            converted[idx] = *GetSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
         }
     }
     ret := strings.Join(converted, ",")
@@ -319,17 +319,18 @@ func GetUINameFromNativeName(ifName *string) *string {
     converted := make([]string, len(parts))
     for idx, part := range parts {
         subIntfParts := strings.Split(part, ".")
+        converted[idx] = subIntfParts[0]
         if (len(subIntfParts) == 2) {
-            subIntfParts[0] = *GetSubInterfaceLongName(&subIntfParts[0])
+            converted[idx] = *GetSubInterfaceLongName(&subIntfParts[0])
         }
-        aliasName, ok := ifNameAliasMap.Load(subIntfParts[0])
-        if ok {
-            converted[idx] = aliasName.(string)
-            if (len(subIntfParts) == 2) {
-                converted[idx] = converted[idx] + "." + subIntfParts[1]
+        if IsAliasModeEnabled() {
+            aliasName, ok := ifNameAliasMap.Load(converted[idx])
+            if ok {
+                converted[idx] = aliasName.(string)
             }
-        } else {
-            converted[idx] = part
+        }
+        if (len(subIntfParts) == 2) {
+            converted[idx] = converted[idx] + "." + subIntfParts[1]
         }
     }
     ret := strings.Join(converted, ",")
@@ -491,19 +492,12 @@ func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) 
 func GetSubInterfaceShortName(longName *string) *string {
     var shortName string
 
-    parts := strings.Split(*longName, ".")
-    parentif := parts[0]
-    subif := parts[1]
-
-    parentif = *GetNativeNameFromUIName(&parentif)
-    fullName := parentif+"."+subif
-
-    if strings.Contains(fullName, "Ethernet") {
-        shortName = strings.Replace(fullName, "Ethernet", "Eth", -1)
-    } else if strings.Contains(fullName, "PortChannel") {
-        shortName = strings.Replace(fullName, "PortChannel", "po", -1)
+    if strings.Contains(*longName, "Ethernet") {
+        shortName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+    } else if strings.Contains(*longName, "PortChannel") {
+        shortName = strings.Replace(*longName, "PortChannel", "po", -1)
     } else {
-        shortName = fullName
+        shortName = *longName
     }
 
     log.V(3).Infof("GetSubInterfaceShortName %s => %s", *longName, shortName)
@@ -521,13 +515,6 @@ func GetSubInterfaceLongName(shortName *string) *string {
     } else {
         longName = *shortName
     }
-
-    parts := strings.Split(longName, ".")
-    parentif := parts[0]
-    subif := parts[1]
-
-    parentif = *GetUINameFromNativeName(&parentif)
-    longName = parentif+"."+subif
 
     log.V(3).Infof("GetSubInterfaceLongName %s => %s", *shortName, longName)
 
