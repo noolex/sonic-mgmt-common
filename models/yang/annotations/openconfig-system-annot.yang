@@ -963,6 +963,18 @@ module openconfig-system-annot {
         }
     }
 
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:enabled {
+        deviate not-supported;
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:enabled {
+        deviate not-supported;
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:auth-mismatch {
+        deviate not-supported;
+    }
+
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:enable-ntp-auth {
         deviate add {
             sonic-ext:field-name "auth_enabled";
