@@ -522,8 +522,8 @@ func GetSubInterfaceLongName(shortName *string) *string {
 }
 
 func GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID (parentIf *string, subId *string) *string {
-    longkey := *GetNativeNameFromUIName(parentIf) + "." + *subId
-    key := *GetSubInterfaceShortName(&longkey)
+    uiName := *parentIf + "." + *subId
+    key := *GetNativeNameFromUIName(&uiName)
     log.V(3).Infof("GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID %s + %s => %s", *parentIf, *subId, key)
     return &key
 }
