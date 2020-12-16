@@ -132,6 +132,8 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
         }
 
         var auth_key_id_str string
+        var minpoll_int_str string
+        var maxpoll_int_str string
  
         //Delete only allowed for NTP server, and not the key id on the server
         if (inParams.oper != DELETE) {
@@ -145,18 +147,51 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                         auth_key_id_int := int(*auth_key_id)
                         auth_key_id_str = strconv.Itoa(auth_key_id_int)
                 }
+
+                minpoll := ntpServerConfig.Minpoll
+                var minpoll_int int
+                if (minpoll != nil) {
+                        minpoll_int = int(*minpoll)
+                        minpoll_int_str = strconv.Itoa(minpoll_int)
+                }
+
+                maxpoll := ntpServerConfig.Maxpoll
+                var maxpoll_int int
+                if (maxpoll != nil) {
+                        maxpoll_int = int(*maxpoll)
+                        maxpoll_int_str = strconv.Itoa(maxpoll_int)
+                }
+
+                if ((minpoll_int_str != "") && (maxpoll_int_str != "")) {
+                        if (minpoll_int >= maxpoll_int) {
+                                errStr = "NTP server invalid minpoll or maxpoll"
+                                log.Info("YangToDb_ntp_server_subtree_xfmr ", errStr)
+                                err = tlerr.InvalidArgsError{Format: errStr}
+                                return res_map, err
+                        }
+                }
         }
 
         res_map[NTP_SERVER_TABLE_NAME] = make(map[string]db.Value)
 
         res_map[NTP_SERVER_TABLE_NAME][keyName] = db.Value{Field: map[string]string{}}
         dbVal := res_map[NTP_SERVER_TABLE_NAME][keyName]
-        if (auth_key_id_str == "") {
+        if ((auth_key_id_str == "") && (minpoll_int_str == "") && (maxpoll_int_str == "")) {
                 if (inParams.oper != DELETE) {
                         (&dbVal).Set("NULL", "NULL")
                 }
         } else {
-                (&dbVal).Set("key_id", auth_key_id_str)
+                if (auth_key_id_str != "") {
+                        (&dbVal).Set("key_id", auth_key_id_str)
+                }
+
+                if (minpoll_int_str != "") {
+                        (&dbVal).Set("minpoll", minpoll_int_str)
+                }
+
+                if (maxpoll_int_str != "") {
+                        (&dbVal).Set("maxpoll", maxpoll_int_str)
+                }
         }
 
         log.Infof ("YangToDb_ntp_server_subtree_xfmr: key %v return res_map %v", keyName, res_map)
@@ -272,7 +307,8 @@ func FillNtpServer (keyName string, ntpqList []string, ntpServers *ocbinds.Openc
                 jitter_milli := jitter_sec*1000
                 currNtpServer.State.Peerjitter = &jitter_milli
 
-                reach_num, _ := strconv.ParseUint(reach, 10, 8)
+                /* reach is octal string */
+                reach_num, _ := strconv.ParseUint(reach, 8, 8)
                 reach_num8 := uint8(reach_num)
                 currNtpServer.State.Reach = &reach_num8
 
@@ -364,6 +400,10 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
 
                 keyId_str := (&ntpServEntry).Get("key_id")
 
+                minpoll_str := (&ntpServEntry).Get("minpoll")
+
+                maxpoll_str := (&ntpServEntry).Get("maxpoll")
+
                 currNtpServer = ntpServer[keyName]
 
                 if (!getServStateOnly) {
@@ -384,6 +424,32 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
 
                                 keyId_uint16 := uint16(keyId_int)
                                 currNtpServer.Config.KeyId = &keyId_uint16
+                        }
+
+                        if (minpoll_str != "") {
+                                minpoll_int, err := strconv.ParseUint(minpoll_str, 10, 8)
+                                if (err != nil) {
+                                        errStr = "Unable to convert minpoll " + minpoll_str 
+                                        log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
+                                        err = tlerr.InvalidArgsError{Format: errStr}
+                                        return err
+                                }
+
+                                minpoll_uint8 := uint8(minpoll_int)
+                                currNtpServer.Config.Minpoll = &minpoll_uint8
+                        }
+
+                        if (maxpoll_str != "") {
+                                maxpoll_int, err := strconv.ParseUint(maxpoll_str, 10, 8)
+                                if (err != nil) {
+                                        errStr = "Unable to convert maxpoll " + maxpoll_str
+                                        log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
+                                        err = tlerr.InvalidArgsError{Format: errStr}
+                                        return err
+                                }
+
+                                maxpoll_uint8 := uint8(maxpoll_int)
+                                currNtpServer.Config.Maxpoll = &maxpoll_uint8
                         }
                 }
 
@@ -407,6 +473,33 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
 
                                 currNtpServer.State.KeyId = &keyId_uint16
                         }
+
+                        if (minpoll_str != "") {
+                                minpoll_int, err := strconv.ParseUint(minpoll_str, 10, 8)
+                                if (err != nil) {
+                                        errStr = "Unable to convert minpoll " + minpoll_str
+                                        log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
+                                        err = tlerr.InvalidArgsError{Format: errStr}
+                                        return err
+                                }
+
+                                minpoll_uint8 := uint8(minpoll_int)
+                                currNtpServer.Config.Minpoll = &minpoll_uint8
+                        }
+
+                        if (maxpoll_str != "") {
+                                maxpoll_int, err := strconv.ParseUint(maxpoll_str, 10, 8)
+                                if (err != nil) {
+                                        errStr = "Unable to convert maxpoll " + maxpoll_str
+                                        log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
+                                        err = tlerr.InvalidArgsError{Format: errStr}
+                                        return err
+                                }
+
+                                maxpoll_uint8 := uint8(maxpoll_int)
+                                currNtpServer.Config.Maxpoll = &maxpoll_uint8
+                        }
+
                 }
         } else {
                 /* Get all ntp servers from config DB */
@@ -439,6 +532,8 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                         }
 
                         keyId_str := (&ntpServEntry).Get("key_id")
+                        minpoll_str := (&ntpServEntry).Get("minpoll")
+                        maxpoll_str := (&ntpServEntry).Get("maxpoll")
 
                         currNtpServer.Config.Address = &currAddress[0]
 
@@ -461,6 +556,33 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                                 currNtpServer.Config.KeyId =  &keyId_uint16
                                 currNtpServer.State.KeyId = &keyId_uint16
                         }
+
+                        if (minpoll_str != "") {
+                                minpoll_int, err := strconv.ParseUint(minpoll_str, 10, 8)
+                                if (err != nil) {
+                                        errStr = "Unable to convert minpoll " + minpoll_str
+                                        log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
+                                        err = tlerr.InvalidArgsError{Format: errStr}
+                                        return err
+                                }
+
+                                minpoll_uint8 := uint8(minpoll_int)
+                                currNtpServer.Config.Minpoll = &minpoll_uint8
+                        }
+
+                        if (maxpoll_str != "") {
+                                maxpoll_int, err := strconv.ParseUint(maxpoll_str, 10, 8)
+                                if (err != nil) {
+                                        errStr = "Unable to convert maxpoll " + maxpoll_str
+                                        log.Info("DbToYang_ntp_server_subtree_xfmr: ", errStr)
+                                        err = tlerr.InvalidArgsError{Format: errStr}
+                                        return err
+                                }
+
+                                maxpoll_uint8 := uint8(maxpoll_int)
+                                currNtpServer.Config.Maxpoll = &maxpoll_uint8
+                        }
+
                 }
         }
 
@@ -639,6 +761,12 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 
 	if (key_id == "") {
 	        return res_map, nil
+        }
+
+        if(inParams.oper == DELETE) {
+                log.Info("Bingbing YangToDb_ntp_auth_key_value_xfmr, delete")
+                res_map[NTP_KEY_VALUE_STR] = ""
+                return res_map, nil
         }
 
         // Get KeyEncrytped value and use it to determin if need to perform encryt the string
