@@ -59,4 +59,10 @@ module openconfig-platform-annot {
         sonic-ext:subtree-transformer "pfm_components_transceiver_xfmr";
       }
     }
+
+    deviation /oc-platform:components/oc-platform:component/oc-platform:chassis {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_chassis_xfmr";
+      }
+    }
 }
