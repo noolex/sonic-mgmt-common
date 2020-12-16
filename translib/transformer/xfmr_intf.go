@@ -946,31 +946,7 @@ func vlanDifference(vlanList1, vlanList2 []string) []string {
     }
     return diff
 }
-//Checks if physical interface is part of any Portchannel 
-func retrievePortChannelReplaceVlan(d *db.DB, ifName *string) (*string, error) {
-    var err error
 
-    if strings.HasPrefix(*ifName, ETHERNET) {
-        var lagStr string
-        lagKeys, err := d.GetKeysByPattern(&db.TableSpec{Name: PORTCHANNEL_MEMBER_TN}, "*"+*ifName)
-//         Find the port-channel the given ifname is part of 
-        if err != nil {
-            return nil, err
-        }
-        var flag bool = false
-        if len(lagKeys) != 0{
-                flag = true
-                lagStr = lagKeys[0].Get(0)
-                log.Info("Given interface part of PortChannel", lagStr)
-        }
-        if !flag {
-            log.Info("Given Interface not part of any PortChannel")
-            return nil, err
-        }
-        return &lagStr, err
-    }
-    return nil, err
-}
 //Creates new entry in VLAN_MEMBER table. 
 func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
     var err error
@@ -1110,7 +1086,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
             return json.Marshal(&result)
         }
 
-        lagStr,_ := retrievePortChannelReplaceVlan(d,&ifName)
+        err = validateIntfAssociatedWithPortChannel(d,&ifName)
         intfType, _, ierr := getIntfTypeByName(ifName)
 
         if intfType == IntfTypeUnset || ierr != nil {
@@ -1119,9 +1095,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         }
 
         if intfType == IntfTypeEthernet{
-            if lagStr != nil{
-                errStr := ifName + " already member of " + *lagStr
-                err = tlerr.InvalidArgsError{Format: errStr}
+            if err != nil{
                 result.Output.Status_detail = err.Error()
                 return json.Marshal(&result)
             }
