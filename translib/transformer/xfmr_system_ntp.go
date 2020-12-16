@@ -763,12 +763,6 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 	        return res_map, nil
         }
 
-        if(inParams.oper == DELETE) {
-                log.Info("Bingbing YangToDb_ntp_auth_key_value_xfmr, delete")
-                res_map[NTP_KEY_VALUE_STR] = ""
-                return res_map, nil
-        }
-
         // Get KeyEncrytped value and use it to determin if need to perform encryt the string
         sysObj := getSystemRootObject(inParams)
         ntpData := sysObj.Ntp
