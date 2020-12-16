@@ -11,7 +11,7 @@
 //                                                                            //
 //  Unless required by applicable law or agreed to in writing, software       //
 //  distributed under the License is distributed on an "AS IS" BASIS,         //
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
 //  See the License for the specific language governing permissions and       //
 //  limitations under the License.                                            //
 //                                                                            //
@@ -518,8 +518,8 @@ func Get(req GetRequest) (GetResponse, error) {
 	resp, err = (*app).processGet(dbs)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
-		log.Info("Calling FreeOSMemory..")	 
-		debug.FreeOSMemory()	
+		log.Info("Calling FreeOSMemory..")
+		debug.FreeOSMemory()
 	}
 	return resp, err
 }
@@ -578,8 +578,8 @@ func Action(req ActionRequest) (ActionResponse, error) {
 	resp, err = (*app).processAction(dbs)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
-		log.Info("Calling FreeOSMemory..")	 
-		debug.FreeOSMemory()	
+		log.Info("Calling FreeOSMemory..")
+		debug.FreeOSMemory()
 	}
 	return resp, err
 }
@@ -866,6 +866,9 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 		return resp, err
 	}
 
+	// Enable onChange cache support on all DBs
+	enableOnChangeCaching(dbs[:])
+
 	//Do NOT close the DBs here as we need to use them during subscribe notification
 
 	for i, path := range paths {
@@ -918,6 +921,8 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			}
 
 			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
+			// Register table for caching
+			nInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(&nInfo.table)
 		}
 
 	}
@@ -978,7 +983,7 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 		nAppInfos, errApp := (*app).translateSubscribe(dbs, path)
 
 		collectNotificationPreferences(nAppInfos, resp[i])
-		
+
 		if errApp != nil {
 			resp[i].Err = errApp
 			err = errApp
@@ -1071,7 +1076,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 		return dbs, err
 	}
 
-    isWriteDisabled = true 
+    isWriteDisabled = true
 
 	//Create Config DB connection
 	dbs[db.ConfigDB], err = db.NewDB(getDBOptions(db.ConfigDB, isWriteDisabled))
@@ -1082,7 +1087,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
     if isGetCase {
-        isWriteDisabled = true 
+        isWriteDisabled = true
     } else {
         isWriteDisabled = false
     }
@@ -1128,6 +1133,15 @@ func closeAllDbs(dbs []*db.DB) {
 		if d != nil {
 			d.DeleteDB()
 			dbs[dbsi] = nil
+		}
+	}
+}
+
+// Enable onChangeCaching on DB instance
+func enableOnChangeCaching(dbs []*db.DB) {
+	for _, d := range dbs {
+		if d != nil {
+			d.Opts.OnChangeCacheEnabled = true
 		}
 	}
 }

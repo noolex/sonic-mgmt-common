@@ -131,8 +131,8 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 
 func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (nInfos []notificationAppInfo, err error) {
     var subscDt transformer.XfmrTranslateSubscribeInfo
-    var notifInfo notificationAppInfo
-	nInfos = append(nInfos, notifInfo)
+    nInfos = make([]notificationAppInfo, 1)
+    notifInfo := &nInfos[0]
     txCache := new(sync.Map)
 
     log.Info("tranlateSubscribe:path", path)
@@ -250,7 +250,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    origXfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
 
         isEmptyPayload  := false
-		appYgotStruct := (*app.ygotRoot).(ygot.GoStruct)        
+		appYgotStruct := (*app.ygotRoot).(ygot.GoStruct)
 	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &appYgotStruct, dbs, txCache)
 	    if err != nil {
 		    log.Warning("transformer.GetAndXlateFromDB() returned : ", err)
@@ -265,7 +265,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 
 	    targetObj, tgtObjCastOk := (*app.ygotTarget).(ygot.GoStruct)
 	    if !tgtObjCastOk {
-		    /*For ygotTarget populated by tranlib, for query on leaf level and list(without instance) level, 
+		    /*For ygotTarget populated by tranlib, for query on leaf level and list(without instance) level,
 		      casting to GoStruct fails so use the parent node of ygotTarget to Unmarshall the payload into*/
 		    log.Infof("Use GetParentNode() instead of casting ygotTarget to GoStruct, uri - %v", app.pathInfo.Path)
 		    targetUri := app.pathInfo.Path

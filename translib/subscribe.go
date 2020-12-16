@@ -11,14 +11,14 @@
 //                                                                            //
 //  Unless required by applicable law or agreed to in writing, software       //
 //  distributed under the License is distributed on an "AS IS" BASIS,         //
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
 //  See the License for the specific language governing permissions and       //
 //  limitations under the License.                                            //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-Package translib defines the functions to be used by the subscribe 
+Package translib defines the functions to be used by the subscribe
 
 handler to subscribe for a key space notification. It also has
 
@@ -179,9 +179,12 @@ func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) 
 		if sKey != nil {
 			if nInfo, ok := nMap[sKey]; (ok && nInfo != nil) {
 				if sInfo, ok := sMap[nInfo]; (ok && sInfo != nil) {
-					isChanged := isCacheChanged(nInfo)
+					var chgdFields []string
+					isChanged := isDbEntryChanged(d, *key, nInfo, &chgdFields, (event == db.SEventDel))
+					log.Infof("notificationHandler: Changed Fields: %v", chgdFields)
 
 					if isChanged {
+						updateCache(nInfo) // Will be removed later on final integration
 						sendNotification(sInfo, nInfo, false)
 					}
 				} else {
@@ -238,6 +241,21 @@ func isCacheChanged(nInfo *notificationInfo) bool {
 	}
 
 	return false
+}
+
+func isDbEntryChanged(subscrDb *db.DB, key db.Key, nInfo *notificationInfo, chgdFields *[]string, entryDeleted bool) bool {
+	var dbEntry db.Value
+
+	// Retrieve Db entry from redis using DB instance where pubsub is registered
+	// for onChange only if entry is NOT deleted.
+	if !entryDeleted {
+		dbEntry, _ = subscrDb.GetEntry(&nInfo.table, key)
+	}
+	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
+	// and retrieve modified fields. Also merge changes in cache
+	*chgdFields = nInfo.dbs[subscrDb.Opts.DBNo].DiffAndMergeOnChangeCache(dbEntry, &nInfo.table, key, entryDeleted)
+
+	return (entryDeleted || len(*chgdFields) > 0)
 }
 
 func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*notificationInfo) error {
@@ -329,8 +347,8 @@ func stophandler(stop chan struct{}) {
 	for {
 		stopSig := <-stop
 		log.Info("stop channel signalled", stopSig)
-        sMutex.Lock()
-	    defer sMutex.Unlock()
+		sMutex.Lock()
+		defer sMutex.Unlock()
 
 		cleanup (stop)
 
