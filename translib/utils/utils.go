@@ -495,7 +495,7 @@ func GetSubInterfaceShortName(longName *string) *string {
     if strings.Contains(*longName, "Ethernet") {
         shortName = strings.Replace(*longName, "Ethernet", "Eth", -1)
     } else if strings.Contains(*longName, "PortChannel") {
-        shortName = strings.Replace(*longName, "PortChannel", "po", -1)
+        shortName = strings.Replace(*longName, "PortChannel", "Po", -1)
     } else {
         shortName = *longName
     }
@@ -510,8 +510,8 @@ func GetSubInterfaceLongName(shortName *string) *string {
 
     if strings.Contains(*shortName, "Eth") {
         longName = strings.Replace(*shortName, "Eth", "Ethernet", -1)
-    } else if strings.Contains(*shortName, "po") {
-        longName = strings.Replace(*shortName, "po", "PortChannel", -1)
+    } else if strings.Contains(*shortName, "Po") {
+        longName = strings.Replace(*shortName, "Po", "PortChannel", -1)
     } else {
         longName = *shortName
     }
