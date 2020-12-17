@@ -1419,6 +1419,64 @@ func formSonicXfmrInputRequest(dbNum db.DBNum, table string, key string, xpath s
         return inParams
 }
 
+func getYangNodeTypeFromUri(uri string) (string, error) {
+	// function to get yang node type(leaf/leaf-lit/list/container) from uri
+	var yangNodeType string
+	var err error
+	var xpathInSpecMapOk, isSonicUri bool
+	var yangEntry *yang.Entry
+	var dbSpecInfo *dbInfo
+	var xYangSpecInfo *yangXpathInfo
+
+	xpath, _, xpathErr := XfmrRemoveXPATHPredicates(uri)
+        if xpathErr != nil {
+                log.Warningf("For uri - %v, couldn't convert to xpath - %v", uri, xpathErr)
+                return yangNodeType, xpathErr
+        }
+        xfmrLogInfoAll("For uri %v , xpath is - %v", uri, xpath)
+	if isSonicYang(uri) {
+		tokens:= strings.Split(xpath, "/")
+                fieldName := ""
+                tableName := ""
+		listName := ""
+		dbSpecXpath := ""
+		isSonicUri = true
+                if len(tokens) > SONIC_FIELD_INDEX {
+                        fieldName = tokens[SONIC_FIELD_INDEX]
+                        tableName = tokens[SONIC_TABLE_INDEX]
+			dbSpecXpath = tableName + "/" + fieldName
+			dbSpecInfo, xpathInSpecMapOk = xDbSpecMap[dbSpecXpath]
+                } else if len(tokens) > SONIC_LIST_INDEX {
+			tableName = tokens[SONIC_TABLE_INDEX]
+			listName = tokens[SONIC_LIST_INDEX]
+			dbSpecXpath = tableName + "/" + listName
+			dbSpecInfo, xpathInSpecMapOk = xDbSpecMap[dbSpecXpath]
+		} else if len(tokens) > SONIC_TABLE_INDEX {
+			tableName = tokens[SONIC_TABLE_INDEX]
+			dbSpecXpath = tableName
+			dbSpecInfo, xpathInSpecMapOk = xDbSpecMap[dbSpecXpath]
+		} else {
+			//top-most level container
+			return YANG_CONTAINER, nil
+		}
+	} else {
+		xYangSpecInfo, xpathInSpecMapOk = xYangSpecMap[xpath]
+	}
+	if xpathInSpecMapOk {
+		if isSonicUri {
+			yangEntry = dbSpecInfo.dbEntry
+		} else {
+			yangEntry = xYangSpecInfo.yangEntry
+		}
+		yangNodeType = yangTypeGet(yangEntry)
+	} else {
+		msg := fmt.Sprintf("yang spec map doesn't contain xpath - %v", xpath)
+		log.Warning(msg)
+		err = fmt.Errorf("%v", msg)
+	}
+	xfmrLogInfoAll("For uri %v , yangNodeType is %v", uri, yangNodeType)
+	return yangNodeType, err
+}
 
 /* FUNCTIONS RESERVED FOR FUTURE USE. DO ONT DELETE */
 /***************************************************************************************************
