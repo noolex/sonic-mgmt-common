@@ -408,7 +408,12 @@ module sonic-interface {
                 key "id";
 
                 leaf id {
-                    type string;
+                    type string {
+                        pattern '(Eth|Po).*\..*' {
+                            error-message "Invalid sub-interface name";
+                            error-app-tag interface-name-invalid;
+                        }
+                    }
                 }
 
                 leaf subintfidx {
@@ -416,7 +421,15 @@ module sonic-interface {
                 }
 
                 leaf ifName {
-                    type string;
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                    }
+                    //mandatory true;
                 }
 
                 leaf vrf_name {
