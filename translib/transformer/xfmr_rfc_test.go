@@ -467,20 +467,20 @@ func Test_Rfc_Put_Operation(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl1)
 
 
-        // Put(modify) on leaf-list, parent table present, overriding "include@": "1.2.3.5.*,1.3.6.*" with "include@": "1.2.3.5.*,1.3.6.*,1.4.6.*"
+        // Put(swap) on leaf-list, parent table present, overriding "include@": "1.2.3.5.*,1.3.6.*" with "include@": "1.4.6.*"
 
         prereq1 =  map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "1.2.3.5.*,1.3.6.*"}}}
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq1)
 
-        fmt.Println("++++++++++++++  PUT(modify) uri: leaf-list, message-body: leaf-list  +++++++++++++")
+        fmt.Println("++++++++++++++  PUT(swap) uri: leaf-list, message-body: leaf-list  +++++++++++++")
         url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
         payload = "{ \"ietf-snmp:include\": [\"1.4.6.*\"]}"
-        expected = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "1.2.3.5.*,1.3.6.*,1.4.6.*"}}}
-        t.Run("RFC - PUT(modify) on leaf-list", processSetRequest(url, payload, "PUT", false))
+        expected = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{"include@": "1.4.6.*"}}}
+        t.Run("RFC - PUT(swap) on leaf-list", processSetRequest(url, payload, "PUT", false))
         time.Sleep(1 * time.Second)
-        t.Run("RFC - Verify PUT(modify) on leaf-list", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected, false))
+        t.Run("RFC - Verify PUT(swap) on leaf-list", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected, false))
         // Teardown
         unloadConfigDB(rclient, cleanuptbl1)
 

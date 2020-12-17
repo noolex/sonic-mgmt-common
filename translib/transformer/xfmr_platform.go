@@ -66,6 +66,7 @@ const (
    TRANSCEIVER_DOM  = "TRANSCEIVER_DOM_SENSOR"
    PORT_TBL         = "PORT_TABLE"
    BREAKOUT_TBL     = "BREAKOUT_CFG"
+   FIRMWARE_TBL     = "FIRMWARE_INFO"
 
    PORT_IF_NAME_PREFIX   = "Ethernet"
    ALIAS_IN_NAME_PREFIX  = "Eth"
@@ -81,9 +82,14 @@ const (
    HWSKU            = "hwsku"
    PLATFORM_TYPE    = "platform"
 
+   /** Upper-level URIs **/
+   COMPS                      = "/openconfig-platform:components"
+   COMP                       = "/openconfig-platform:components/component"
+
    /** Supported oc-platform component state URIs **/
    COMP_STATE_DESCR           = "/openconfig-platform:components/component/state/description"
    COMP_STATE_EMPTY           = "/openconfig-platform:components/component/state/empty"
+   COMP_STATE_FIRM_VER        = "/openconfig-platform:components/component/state/firmware-version"
    COMP_STATE_HW_VER          = "/openconfig-platform:components/component/state/hardware-version"
    COMP_STATE_ID              = "/openconfig-platform:components/component/state/id"
    COMP_STATE_LOCATION        = "/openconfig-platform:components/component/state/location"
@@ -95,8 +101,8 @@ const (
    COMP_STATE_REMOVABLE       = "/openconfig-platform:components/component/state/removable"
    COMP_STATE_SERIAL_NO       = "/openconfig-platform:components/component/state/serial-no"
    COMP_STATE_SW_VER          = "/openconfig-platform:components/component/state/software-version"
-   COMP_LED_STATUS             = "/openconfig-platform:components/component/state/openconfig-platform-ext:status-led"
-   COMP_FANS                   = "/openconfig-platform:components/component/state/openconfig-platform-ext:fans"
+   COMP_LED_STATUS            = "/openconfig-platform:components/component/state/openconfig-platform-ext:status-led"
+   COMP_FANS                  = "/openconfig-platform:components/component/state/openconfig-platform-ext:fans"
 
    /** Supported Software component URIs **/
    SW_ASIC_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/asic-version"
@@ -132,7 +138,7 @@ const (
    PSU_OUTPUT_CURRENT         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-current"
    PSU_OUTPUT_POWER           = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-power"
    PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
-   PSU_VOLT_TYPE             = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
+   PSU_VOLT_TYPE              = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
 
    /** Supported Fan URIs **/
    FAN_SPEED                  = "/openconfig-platform:components/component/fan/state/openconfig-platform-fan:speed"
@@ -239,6 +245,12 @@ const (
    TEMP_LOW_THRES             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:low-threshold"
    TEMP_TIMESTAMP             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:timestamp"
    TEMP_WARNING_STATUS        = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:warning-status"
+
+   /** Supported Firmware URIs **/
+   FIRMWARE_CHASSIS              = "/openconfig-platform:components/component/chassis"
+   FIRMWARE_CHASSIS_STATE        = "/openconfig-platform:components/component/chassis/state"
+   FIRMWARE_CHASSIS_STATE_MODULE = "/openconfig-platform:components/component/chassis/state/openconfig-platform-ext:module"
+   FIRMWARE_CHASSIS_STATE_NAME   = "/openconfig-platform:components/component/chassis/state/openconfig-platform-ext:name"
 )
 
 /**
@@ -397,11 +409,20 @@ type DeviceMetadata struct {
     PLATFORM string
 }
 
+type Firmware struct {
+    Chassis             string
+    Description         string
+    Module              string
+    Name                string
+    Version             string
+}
+
 func init () {
     XlateFuncBind("DbToYang_pfm_components_xfmr", DbToYang_pfm_components_xfmr)
     XlateFuncBind("Subscribe_pfm_components_xfmr", Subscribe_pfm_components_xfmr)
     XlateFuncBind("DbToYang_pfm_components_psu_xfmr", DbToYang_pfm_components_psu_xfmr)
     XlateFuncBind("DbToYang_pfm_components_fan_xfmr", DbToYang_pfm_components_fan_xfmr)
+    XlateFuncBind("DbToYang_pfm_components_chassis_xfmr", DbToYang_pfm_components_chassis_xfmr)
     XlateFuncBind("DbToYang_pfm_components_transceiver_xfmr", DbToYang_pfm_components_transceiver_xfmr)
     XlateFuncBind("YangToDb_pfm_components_transceiver_xfmr",  YangToDb_pfm_components_transceiver_xfmr)
 }
@@ -462,6 +483,23 @@ var DbToYang_pfm_components_fan_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     return errors.New("Component not supported")
 }
 
+var DbToYang_pfm_components_chassis_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Infof("Received GET for PlatformApp Template: %s ,path: %s, vars: %v",
+    pathInfo.Template, pathInfo.Path, pathInfo.Vars)
+
+    if strings.Contains(inParams.requestUri, "/openconfig-platform:components") ||
+        strings.Contains(inParams.requestUri, "/openconfig-platform:components/component/chassis") {
+
+        log.Info("inParams.Uri:",inParams.requestUri)
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+        err := getSysFirmware(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.StateDB])
+        return err
+    }
+
+    return errors.New("Component not supported")
+}
+
 var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
@@ -471,7 +509,7 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     log.Infof("+++ Subscribe_pfm_components_xfmr (%v) +++", inParams.uri)
 
     if key == "" || mstr == "sensor" {
-        /* no need to verify dB data if we are requesting ALL
+        /* no need to verify DB data if we are requesting ALL
            components or if request is for sensor */
         result.isVirtualTbl = true
         return result, err
@@ -481,7 +519,7 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
         result.dbDataMap = RedisDbMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
     } else if mstr == "software" {
         /* software component reads from XML file but also
-         * gets EEPROM information from dB */
+         * gets EEPROM information from DB */
         result.dbDataMap = RedisDbMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
     } else if validPsuName(&key) {
         result.dbDataMap = RedisDbMap{db.StateDB: {PSU_TBL:{key:{}}}}
@@ -489,6 +527,8 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
         result.dbDataMap = RedisDbMap{db.StateDB: {FAN_TBL:{key:{}}}}
     } else if validTempName(&key) {
         result.dbDataMap = RedisDbMap{db.StateDB: {TEMP_TBL:{key:{}}}}
+    } else if validFirmwareName(&key) {
+        result.dbDataMap = RedisDbMap{db.StateDB: {FIRMWARE_TBL:{key:{}}}}
     } else if validXcvrName(&key) {
         ifName := key
         if utils.IsAliasModeEnabled() {
@@ -1273,7 +1313,7 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
 
 func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    log.Infof("Preparing dB for system components");
+    log.Infof("Preparing DB for system components");
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -1355,6 +1395,27 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return err
                 }
                 err = fillSysFanInfo(pf_comp, fan, true, false, targetUriPath, d)
+                if err != nil {
+                    return err
+                }
+                comp_cnt++
+            }
+
+            comp_cnt = 0
+            for i := 1; true; i++ {
+                firmware := "FIRMWARE " + strconv.Itoa(i)
+                pf_comp, _ = pf_cpts.NewComponent(firmware)
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysFirmwareInfo(pf_comp, firmware, true, true, targetUriPath, d)
+                if err != nil {
+                    if comp_cnt > 0 && strings.Contains(err.Error(), "Entry does not exist") {
+                        delete(pf_cpts.Component, firmware)
+                        err = nil
+                        break
+                    }
+                    return err
+                }
+                err = fillSysFirmwareInfo(pf_comp, firmware, true, false, targetUriPath, d)
                 if err != nil {
                     return err
                 }
@@ -1459,6 +1520,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
+            } else if validFirmwareName(&compName) {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name")
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysFirmwareInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else {
                 log.Info("Invalid Component Name: ", compName)
                 err = errors.New("Invalid component name")
@@ -1528,6 +1597,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             ygot.BuildEmptyTree(pf_comp.State)
             ygot.BuildEmptyTree(pf_comp.State.Temperature)
             err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+        } else if validFirmwareName(&compName) {
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            err = fillSysFirmwareInfo(pf_comp, compName, true, false, targetUriPath, d)
         } else {
             log.Info("Invalid Component Name: ", compName)
             err = errors.New("Invalid component name ")
@@ -1643,7 +1720,7 @@ func convertUTF8EndcodedString (s string) (string) {
 	    }
 	    v = append(v, r)
        }
-       return string(v) 
+       return string(v)
      }
      return s
 }
@@ -1690,7 +1767,7 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     var err error
     psuInfo, err := getSysPsuFromDb(name, d)
     if err != nil {
-        log.Info("Error Getting PSU info from dB")
+        log.Info("Error Getting PSU info from DB")
         return err
     }
 
@@ -1816,7 +1893,7 @@ func validPsuName(name *string) bool {
 
 func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    log.Info("Preparing dB for PSU info");
+    log.Info("Preparing DB for PSU info");
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -1894,7 +1971,7 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
 
     fanInfo, err := getSysFanFromDb(name, d)
     if err != nil {
-        log.Info("Error Getting fan info from dB")
+        log.Info("Error Getting fan info from DB")
         return err
     }
 
@@ -1997,7 +2074,7 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
 
 func getSysFans(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    log.Info("Preparing dB for Fan info");
+    log.Info("Preparing DB for Fan info");
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -2232,7 +2309,7 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
 
     xcvrInfo, err := getSysXcvrFromDb(name, d)
     if err != nil {
-        log.Info("Error Getting transceiver info from dB")
+        log.Info("Error Getting transceiver info from DB")
         return err
     }
 
@@ -2866,9 +2943,6 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
                 xcvrState.TxPowerLane_8 = &xcvrInfo.TxPowerLane_8
             }
 
-
-
-
         /*
             Pending YANG updates
 
@@ -2907,7 +2981,7 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
 
 func getSysXcvr(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    /* log.Info("Preparing dB for XCVR info"); */
+    /* log.Info("Preparing DB for XCVR info"); */
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -2982,7 +3056,7 @@ func getSysTempFromDb(name string, d *db.DB) (TempSensor, error) {
     return tempInfo, err
 }
 
-/* This function converts the timestamp stored in the dB to the pattern accepted
+/* This function converts the timestamp stored in the DB to the pattern accepted
  * by the IETF timestamp pattern specified in the YANG model
  */
 func convertToIetfTime(time string) (string) {
@@ -2996,7 +3070,7 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
     var err error
     tempInfo, err := getSysTempFromDb(name, d)
     if err != nil {
-        log.Info("Error Getting Temp Sensor info from dB")
+        log.Info("Error Getting Temp Sensor info from DB")
         return err
     }
     tempCom := tempState.Temperature
@@ -3112,5 +3186,125 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
         }
     }
 
+    return err
+}
+
+/** Get Firmware **/
+
+func validFirmwareName(name *string) bool {
+    if name == nil || *name == "" {
+        return false
+    }
+    valid, _ := regexp.MatchString("FIRMWARE [1-9][0-9]*$", *name)
+    return valid
+}
+
+func getSysFirmwareFromDb(name string, d *db.DB) (Firmware, error) {
+    var firmwareInfo Firmware
+    var err error
+
+    firmwareEntry, err := d.GetEntry(&db.TableSpec{Name: FIRMWARE_TBL}, db.Key{Comp: []string{name}})
+
+    if err != nil {
+        log.Info("Cant get entry: ", name)
+    }
+
+    firmwareInfo.Chassis = firmwareEntry.Get("chassis")
+    firmwareInfo.Description = firmwareEntry.Get("description")
+    firmwareInfo.Module = firmwareEntry.Get("module")
+    firmwareInfo.Name = firmwareEntry.Get("name")
+    firmwareInfo.Version = firmwareEntry.Get("version")
+
+    return firmwareInfo, err
+}
+
+func fillSysFirmwareInfo (firmwareCom *ocbinds.OpenconfigPlatform_Components_Component,
+                        name string, all bool, getProperty bool, targetUriPath string, d *db.DB) (error) {
+    var err error
+
+    firmwareInfo, err := getSysFirmwareFromDb(name, d)
+    if err != nil {
+        log.Info("Error Getting firmware info from DB")
+        return err
+    }
+
+    firmwareCh := firmwareCom.Chassis.State
+    firmware := firmwareCom.State
+    if all {
+        if getProperty {
+            if firmwareInfo.Chassis != "" {
+                firmwareCh.Name = &firmwareInfo.Chassis
+            }
+
+            if firmwareInfo.Module != "" {
+                firmwareCh.Module = &firmwareInfo.Module
+            }
+            return err
+        }
+        if firmwareInfo.Description != "" {
+            firmware.Description = &firmwareInfo.Description
+        }
+        if firmwareInfo.Name != "" {
+            firmware.Name = &firmwareInfo.Name
+        }
+        if firmwareInfo.Version != "" {
+            firmware.FirmwareVersion = &firmwareInfo.Version
+        }
+        return err
+    }
+
+    switch targetUriPath {
+    case COMP_STATE_DESCR:
+        if firmwareInfo.Description != "" {
+            firmware.Description = &firmwareInfo.Description
+        }
+    case COMP_STATE_FIRM_VER:
+        if firmwareInfo.Version != "" {
+            firmware.FirmwareVersion = &firmwareInfo.Version
+        }
+    case COMP_STATE_NAME:
+        if firmwareInfo.Name != "" {
+            firmware.Name = &firmwareInfo.Name
+        }
+    case FIRMWARE_CHASSIS_STATE_MODULE:
+        if firmwareInfo.Module != "" {
+            firmwareCh.Module = &firmwareInfo.Module
+        }
+    case FIRMWARE_CHASSIS_STATE_NAME:
+        if firmwareInfo.Chassis != "" {
+            firmwareCh.Name = &firmwareInfo.Chassis
+        }
+    }
+
+    return err
+}
+
+func getSysFirmware(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
+
+    log.Info("Preparing DB for Firmware info");
+
+    var err error
+    log.Info("targetUriPath:", targetUriPath)
+    firmwareName := NewPathInfo(uri).Var("name")
+
+    if validFirmwareName(&firmwareName) {
+        firmwareCom := pf_cpts.Component[firmwareName]
+        if firmwareCom  == nil {
+            log.Info("Invalid Component Name")
+            return errors.New("Invalid component name")
+        }
+        ygot.BuildEmptyTree(firmwareCom)
+        ygot.BuildEmptyTree(firmwareCom.Chassis)
+        switch targetUriPath {
+        case COMP:
+            fallthrough
+        case FIRMWARE_CHASSIS:
+            fallthrough
+        case FIRMWARE_CHASSIS_STATE:
+            fillSysFirmwareInfo(firmwareCom, firmwareName, true, true, targetUriPath, d)
+        default:
+            fillSysFirmwareInfo(firmwareCom, firmwareName, false, true, targetUriPath, d)
+        }
+    }
     return err
 }

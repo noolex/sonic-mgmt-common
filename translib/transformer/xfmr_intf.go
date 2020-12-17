@@ -1075,6 +1075,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 	          if intfPathElem[targetIdx].Name == "interfaces" ||
                   intfPathElem[targetIdx].Name == "interface" ||
                       intfPathElem[targetIdx].Name == "config" || intfPathElem[targetIdx].Name == "source-vtep-ip" ||
+                      intfPathElem[targetIdx].Name == "primary-ip" ||
                       intfPathElem[targetIdx].Name == "qos-mode" ||
                       intfPathElem[targetIdx].Name == "dscp" {
                         if log.V(3) {
