@@ -145,7 +145,7 @@ func (t *CustomValidation) ValidateMaxDelayAndEstWait (vc *CustValidationCtxt) C
 func (t *CustomValidation) ValidateDisableConnectedCheck (vc *CustValidationCtxt) CVLErrorInfo {
     disConnectedCheck, hasValue := vc.CurCfg.Data["disable_ebgp_connected_route_check"]
     if (hasValue && (disConnectedCheck == "true")) {
-        if ((strings.Contains(vc.CurCfg.Key,"Ethernet")) || (strings.Contains(vc.CurCfg.Key,"PortChannel")) ||
+        if ((strings.Contains(vc.CurCfg.Key,"Eth")) || (strings.Contains(vc.CurCfg.Key,"Po")) ||
             (strings.Contains(vc.CurCfg.Key,"Vlan"))) {
             return CVLErrorInfo{
                 ErrCode: CVL_SEMANTIC_ERROR,
