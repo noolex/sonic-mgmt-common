@@ -21,6 +21,7 @@ package transformer_test
 import (
         "fmt"
         "testing"
+	"time"
 )
 
 /*func Test_List_Custom_DB_Update_Get(t *testing.T) {
@@ -110,3 +111,51 @@ func Test_List_Sonic_KeyXfmr_Get(t *testing.T) {
 
         unloadConfigDB(rclient, prereq)
 }
+
+func Test_WholeList_Sonic_Delete(t *testing.T) {
+
+	/*sonic whole list/entire table delete, call to cvl GetOrdDepTables */
+	prereq := map[string]interface{}{"THRESHOLD_TABLE":map[string]interface{}{"queue|unicast|Ethernet0|7":map[string]interface{}{"threshold":7}},
+	                                 "THRESHOLD_BUFFERPOOL_TABLE":map[string]interface{}{"bufferpooltest":map[string]interface{}{"threshold":7}}}
+	url := "/sonic-threshold:sonic-threshold/THRESHOLD_TABLE/THRESHOLD_TABLE_LIST"
+
+        fmt.Println("++++++++++++++  DELETE Test_WholeList_Sonic_Delete +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+	expected_THRESHOLD_TABLE := map[string]interface{}{}
+	expected_THRESHOLD_BUFFERPOOL_TABLE := map[string]interface{}{"THRESHOLD_BUFFERPOOL_TABLE":map[string]interface{}{"bufferpooltest":map[string]interface{}{"threshold":7}}}
+
+        t.Run("DELETE on whole list/entire table, call to cvl GetOrdDepTables", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("DELETE on whole list/entire table, call to cvl GetOrdDepTables - verify THRESHOLD_TABLE get deleted", verifyDbResult(rclient, "THRESHOLD_TABLE|queue|unicast|Ethernet0|7", expected_THRESHOLD_TABLE, false))
+        t.Run("DELETE on whole list/entire table, call to cvl GetOrdDepTables - verify THRESHOLD_BUFFERPOOL_TABLE still exists", verifyDbResult(rclient, "THRESHOLD_BUFFERPOOL_TABLE|bufferpooltest", expected_THRESHOLD_BUFFERPOOL_TABLE, false))
+
+        unloadConfigDB(rclient, prereq)
+}
+
+func Test_ListInstance_Sonic_Delete(t *testing.T) {
+
+        /*sonic list-instance delete, call to cvl GetOrdDepTables and deleting child table instances */
+	prereq := map[string]interface{}{"MCLAG_DOMAIN":map[string]interface{}{"4000":map[string]interface{}{"delay_restore":"300"},"3000":map[string]interface{}{"delay_restore":"300"}},
+	                                 "MCLAG_INTERFACE":map[string]interface{}{"4000|PortChannel1":map[string]interface{}{"if_type":"portchannel"},"4000|PortChannel2":map[string]interface{}{"if_type":"portchannel"},"3000|PortChannel4":map[string]interface{}{"if_type":"portchannel"}}}
+        url := "/sonic-mclag:sonic-mclag/MCLAG_DOMAIN/MCLAG_DOMAIN_LIST[domain_id=4000]"
+
+        fmt.Println("++++++++++++++  DELETE Test_ListInstance_Sonic_Delete +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+        expected_empty := map[string]interface{}{}
+	expected_MCLAG_DOMAIN_3000 := map[string]interface{}{"MCLAG_DOMAIN":map[string]interface{}{"3000":map[string]interface{}{"delay_restore":"300"}}}
+	expected_MCLAG_INTERFACE_3000_Portchannel4 := map[string]interface{}{"MCLAG_INTERFACE":map[string]interface{}{"3000|PortChannel4":map[string]interface{}{"if_type":"portchannel"}}}
+	t.Run("DELETE on sonic list-instance, call to cvl GetOrdDepTables and deleting child table instances", processDeleteRequest(url, false))
+        time.Sleep(1 * time.Second)
+        t.Run("DELETE on sonic list-instance - verify MCLAG_DOMAIN 4000 got deleted", verifyDbResult(rclient, "MCLAG_DOMAIN|4000", expected_empty, false))
+        t.Run("DELETE on sonic list-instance - verify MCLAG_INTERFACE 4000|PortChannel1 got deleted", verifyDbResult(rclient, "MCLAG_INTERFACE|4000|PortChannel1", expected_empty, false))
+        t.Run("DELETE on sonic list-instance - verify MCLAG_INTERFACE 4000|PortChannel2 got deleted", verifyDbResult(rclient, "MCLAG_INTERFACE|4000|PortChannel2", expected_empty, false))
+        t.Run("DELETE on sonic list-instance - verify MCLAG_DOMAIN 3000 is retained", verifyDbResult(rclient, "MCLAG_DOMAIN|3000", expected_MCLAG_DOMAIN_3000, false))
+        t.Run("DELETE on sonic list-instance - verify MCLAG_INTERFACE 3000|PortChannel4 is retained", verifyDbResult(rclient, "MCLAG_INTERFACE|3000|PortChannel4", expected_MCLAG_INTERFACE_3000_Portchannel4, false))
+
+        unloadConfigDB(rclient, prereq)
+}
+
