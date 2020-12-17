@@ -235,7 +235,7 @@ func (app *FbsApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *FbsApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+func (app *FbsApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
 	notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 
 	return nil, notSupported

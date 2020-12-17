@@ -11,14 +11,14 @@
 //                                                                            //
 //  Unless required by applicable law or agreed to in writing, software       //
 //  distributed under the License is distributed on an "AS IS" BASIS,         //
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
 //  See the License for the specific language governing permissions and       //
 //  limitations under the License.                                            //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-Package translib defines the functions to be used by the subscribe
+Package translib defines the functions to be used by the subscribe 
 
 handler to subscribe for a key space notification. It also has
 
@@ -53,11 +53,11 @@ var sMutex = &sync.Mutex{}
 // One subscribe path can map to multiple notificationAppInfo.
 type notificationAppInfo struct   {
 	// table name
-	table db.TableSpec
+	table *db.TableSpec
 
 	// key string without table name prefix. Can include wildcards.
 	// Like - "ACL1|RULE_101" or "ACL1|*".
-	key db.Key
+	key *db.Key
 
 	// dbFieldYangPathMap is the mapping of db entry field to the yang
 	// field (leaf/leaf-list) for the input path.
@@ -69,7 +69,7 @@ type notificationAppInfo struct   {
 	// path indicates the yang path to which the key maps to.
 	// When the input path maps to multiple db tables, the path field
 	// identifies the yang segments for each db table.
-	path gnmi.Path
+	path *gnmi.Path
 
 	// isOnChangeSupported indicates if on-change notification is
 	// supported for the input path. Table and key mappings should
@@ -84,6 +84,11 @@ type notificationAppInfo struct   {
 	// pType indicates the preferred notification type for the input
 	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
 	pType NotificationType
+}
+
+type notificationSubAppInfo struct {
+	ntfAppInfoTrgt  []notificationAppInfo
+	ntfAppInfoTrgtChlds []notificationAppInfo
 }
 
 // dbKeyInfo represents one db key.

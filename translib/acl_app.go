@@ -227,7 +227,7 @@ func (app *AclApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
 	pathInfo := NewPathInfo(path)
 	notifInfo := notificationAppInfo{dbno: db.ConfigDB, isOnChangeSupported: true}
 	notSupported := tlerr.NotSupportedError{
@@ -253,18 +253,21 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]noti
 		if strings.Contains(pathInfo.Template, "/acl-entry{}") {
 			// Subscribe for one rule
 			rulekey := "RULE_" + pathInfo.Var("sequence-id")
-			notifInfo.table = db.TableSpec{Name: RULE_TABLE}
-			notifInfo.key = asKey(aclkey, rulekey)
+			notifInfo.table = &db.TableSpec{Name: RULE_TABLE}
+			dbKey := asKey(aclkey, rulekey)
+			notifInfo.key = &dbKey
 
 		} else if pathInfo.HasSuffix("/acl-entries") || pathInfo.HasSuffix("/acl-entry") {
 			// Subscribe for all rules of an ACL
-			notifInfo.table = db.TableSpec{Name: RULE_TABLE}
-			notifInfo.key = asKey(aclkey, "*")
+			notifInfo.table = &db.TableSpec{Name: RULE_TABLE}
+			dbKey := asKey(aclkey, "*")
+			notifInfo.key = &dbKey
 
 		} else {
 			// Subscibe for ACL fields only
-			notifInfo.table = db.TableSpec{Name: ACL_TABLE}
-			notifInfo.key = asKey(aclkey)
+			notifInfo.table = &db.TableSpec{Name: ACL_TABLE}
+			dbKey := asKey(aclkey)
+			notifInfo.key = &dbKey
 		}
 	} else if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/interfaces") {
 		// Right now interface binding config is maintained within ACL
@@ -272,15 +275,17 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]noti
 		// inname can occur in multiple ACL entries. So we cannot map
 		// interface binding xpaths to specific ACL table entry keys.
 		// For now subscribe for full ACL table!!
-		notifInfo.table = db.TableSpec{Name: ACL_TABLE}
-		notifInfo.key = asKey("*")
+		notifInfo.table = &db.TableSpec{Name: ACL_TABLE}
+		dbKey := asKey("*")
+		notifInfo.key = &dbKey
 
 	} else {
 		log.Errorf("Unknown path %s", pathInfo.Template)
 		return nil, notSupported
 	}
-
-	return []notificationAppInfo{ notifInfo }, nil
+	subsAppInfo := notificationSubAppInfo{}
+	subsAppInfo.ntfAppInfoTrgt = append(subsAppInfo.ntfAppInfoTrgt, notifInfo)
+	return &subsAppInfo, nil
 }
 
 func (app *AclApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {

@@ -129,56 +129,40 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (nInfos []notificationAppInfo, err error) {
-    var subscDt transformer.XfmrTranslateSubscribeInfo
-    nInfos = make([]notificationAppInfo, 1)
-    notifInfo := &nInfos[0]
-    txCache := new(sync.Map)
+func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
+	txCache := new(sync.Map)
 
-    log.Info("tranlateSubscribe:path", path)
-    subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
-    if subscDt.PType == transformer.OnChange {
-        notifInfo.pType = OnChange
-    } else {
-        notifInfo.pType = Sample
-    }
-    notifInfo.mInterval = subscDt.MinInterval
-    notifInfo.isOnChangeSupported = subscDt.OnChange
-    if err != nil {
-        log.Infof("returning: notificationOpts - %v, nil, error - %v", nInfos, err)
-        return
-    }
-    if subscDt.DbDataMap == nil {
-        log.Infof("DB data is nil so returning: notificationOpts - %v, nil, error - %v", nInfos, err)
-        return
-    } else {
-        for dbNo, dbDt := range(subscDt.DbDataMap) {
-            if (len(dbDt) == 0) { //ideally all tables for a given uri should be from same DB
-                continue
-            }
-            log.Infof("Adding to notifInfo, Db Data - %v for DB No - %v", dbDt, dbNo)
-            notifInfo.dbno = dbNo
-            // in future there will be, multi-table in a DB, support from translib, for now its just single table
-            for tblNm, tblDt := range(dbDt) {
-                notifInfo.table = db.TableSpec{Name:tblNm}
-                if (len(tblDt) == 1) {
-                    for tblKy := range(tblDt) {
-                        notifInfo.key = asKey(tblKy)
-                    }
-                } else {
-                    if (len(tblDt) >  1) {
-                        log.Warningf("More than one DB key found for subscription path - %v", path)
-                    } else {
-                        log.Warningf("No DB key found for subscription path - %v", path)
-                    }
-                    return
-                }
-            }
-        }
-    }
+	log.Info("tranlateSubscribe:path", path)
 
-    log.Infof("For path - %v, returning: nInfos - %v, error - nil", path, nInfos)
-    return
+	if subReqXlator, err := transformer.GetSubscribeReqXlator (&path, dbs, txCache); err != nil {
+		log.Info("Error in initializing the SubscribeReqXlator for the subscribe path request: ", path)
+		return nil, err
+	} else {
+		if err = subReqXlator.Translate(); err != nil {
+			log.Info("Error in processing the subscribe path request: ", path)
+			return nil, err
+		} else {
+			ntfSubsAppInfo := new (notificationSubAppInfo)
+			subsReqXlateInfo := subReqXlator.GetSubscribeReqXlateInfo()
+			log.Info("subsReqXlateInfo.TrgtPathInfo.path: ", *subsReqXlateInfo.TrgtPathInfo.Path)
+			for _, dbKeyInfo := range subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo {
+				if dbKeyInfo.Table != nil { log.Info("pathXlateInfo.Table: ", *dbKeyInfo.Table) }
+				if dbKeyInfo.Key != nil { log.Info("pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+				ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: subsReqXlateInfo.TrgtPathInfo.Path}
+				ntfSubsAppInfo.ntfAppInfoTrgt = append(ntfSubsAppInfo.ntfAppInfoTrgt, ntfAppInfo)
+			}
+			for _, pathXlateInfo := range subsReqXlateInfo.ChldPathsInfo {
+				log.Info("ChldPathsInfo: pathXlateInfo.Path: ", *pathXlateInfo.Path)
+				for _, dbKeyInfo := range pathXlateInfo.DbKeyXlateInfo {
+					if dbKeyInfo.Table != nil { log.Info("pathXlateInfo.Table: ", *dbKeyInfo.Table) }
+					if dbKeyInfo.Key != nil { log.Info("pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+					ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: pathXlateInfo.Path}
+					ntfSubsAppInfo.ntfAppInfoTrgtChlds = append(ntfSubsAppInfo.ntfAppInfoTrgtChlds, ntfAppInfo)
+				}
+			}
+			return ntfSubsAppInfo, nil
+		}
+	}
 }
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
@@ -250,7 +234,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    origXfmrYgotRoot, _ := ygot.DeepCopy((*app.ygotRoot).(ygot.GoStruct))
 
         isEmptyPayload  := false
-		appYgotStruct := (*app.ygotRoot).(ygot.GoStruct)
+		appYgotStruct := (*app.ygotRoot).(ygot.GoStruct)        
 	    payload, isEmptyPayload, err = transformer.GetAndXlateFromDB(app.pathInfo.Path, &appYgotStruct, dbs, txCache)
 	    if err != nil {
 		    log.Warning("transformer.GetAndXlateFromDB() returned : ", err)
@@ -265,7 +249,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 
 	    targetObj, tgtObjCastOk := (*app.ygotTarget).(ygot.GoStruct)
 	    if !tgtObjCastOk {
-		    /*For ygotTarget populated by tranlib, for query on leaf level and list(without instance) level,
+		    /*For ygotTarget populated by tranlib, for query on leaf level and list(without instance) level, 
 		      casting to GoStruct fails so use the parent node of ygotTarget to Unmarshall the payload into*/
 		    log.Infof("Use GetParentNode() instead of casting ygotTarget to GoStruct, uri - %v", app.pathInfo.Path)
 		    targetUri := app.pathInfo.Path

@@ -107,7 +107,7 @@ func (app *yanglibApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+func (app *yanglibApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
 	return nil, errors.NotSupported("Unsupported")
 }
 

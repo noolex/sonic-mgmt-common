@@ -885,9 +885,10 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			continue
 		}
 
-		nAppInfo, errApp := (*app).translateSubscribe(dbs, path)
+		nAppSubInfo, errApp := (*app).translateSubscribe(dbs, path)
 
-		collectNotificationPreferences(nAppInfo, resp[i])
+		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgt, resp[i])
+		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgtChlds, resp[i])
 
 		if errApp != nil {
 			resp[i].Err = errApp
@@ -898,8 +899,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 			continue
 		} else {
-
-			if len(nAppInfo) == 0 {
+			if len(nAppSubInfo.ntfAppInfoTrgt) == 0 && len(nAppSubInfo.ntfAppInfoTrgtChlds) == 0 {
 				sErr = tlerr.NotSupportedError{
 					Format: "Subscribe not supported", Path: path}
 				resp[i].Err = sErr
@@ -907,11 +907,11 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			}
 		}
 
-		// Prepare notificationInfo for notificationAppInfo.
-		for _, nOpts := range nAppInfo {
+		// Prepare notificationInfo for notificationAppInfo for target.
+		for _, nOpts := range nAppSubInfo.ntfAppInfoTrgt {
 			nInfo := &notificationInfo {
-				table:   nOpts.table,
-				key:     nOpts.key,
+				table:   *nOpts.table,
+				key:     *nOpts.key,
 				dbno:    nOpts.dbno,
 				path:    path,
 				app:     app,
@@ -919,12 +919,27 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 				dbs:     dbs,
 				needCache: true,
 			}
-
 			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
 			// Register table for caching
 			nInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(&nInfo.table)
 		}
 
+		// Prepare notificationInfo for notificationAppInfo for child nodes.
+		for _, nOpts := range nAppSubInfo.ntfAppInfoTrgtChlds {
+			nInfo := &notificationInfo {
+				table:   *nOpts.table,
+				key:     *nOpts.key,
+				dbno:    nOpts.dbno,
+				path:    path,
+				app:     app,
+				appInfo: appInfo,
+				dbs:     dbs,
+				needCache: true,
+			}
+			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
+			// Register table for caching
+			nInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(&nInfo.table)
+		}
 	}
 
 	log.Info("map=", dbNotificationMap)
@@ -982,7 +997,8 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 
 		nAppInfos, errApp := (*app).translateSubscribe(dbs, path)
 
-		collectNotificationPreferences(nAppInfos, resp[i])
+		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, resp[i])
+		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, resp[i])
 
 		if errApp != nil {
 			resp[i].Err = errApp
