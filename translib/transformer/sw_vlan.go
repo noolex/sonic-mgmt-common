@@ -1456,16 +1456,46 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
     case REPLACE:
         log.Info("---------------replace------------------------------")
 	del_res_map := make(map[string]map[string]db.Value)
+	var trunkVlanSlice []string
+	if swVlanConfig.swEthMember.Config.TrunkVlans != nil {
+            vlanUnionList := swVlanConfig.swEthMember.Config.TrunkVlans
+            for _, vlanUnion := range vlanUnionList {
+                vlanUnionType := reflect.TypeOf(vlanUnion).Elem()
+
+                switch vlanUnionType {
+
+                case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Ethernet_SwitchedVlan_Config_TrunkVlans_Union_String{}):
+                    val := (vlanUnion).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Ethernet_SwitchedVlan_Config_TrunkVlans_Union_String)
+                    err = extractVlanIdsfrmRng(inParams.d, val.String, &trunkVlanSlice)
+                    if err != nil {
+                        return nil,err
+                    }
+                case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Ethernet_SwitchedVlan_Config_TrunkVlans_Union_Uint16{}):
+                    val := (vlanUnion).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Ethernet_SwitchedVlan_Config_TrunkVlans_Union_Uint16)
+                    trunkVlanSlice = append(trunkVlanSlice, "Vlan"+strconv.Itoa(int(val.Uint16)))
+                    //------------------------------------------------------------------
+                }
+            }
+        }
+	check := true
 	vlanMemberKeys, err := inParams.d.GetKeysByPattern(&db.TableSpec{Name:VLAN_MEMBER_TN}, "*"+ifName)
+	log.Info("-------Trunk list in replace------",trunkVlanSlice)
 	for _, vlanMember := range vlanMemberKeys {
 	    vlan := vlanMember.Get(0)
-	    removeTaggedVlanAndUpdateVlanMembTbl(inParams.d, &vlan, &ifName, vlanMemberMap, stpVlanPortMap, stpPortMap)
-	    if err != nil {
-                return nil,err
-            }
-	    removeFromMembersListForVlan(inParams.d, &vlan, &ifName, vlanMap)
-            }
-
+	    for _,vlanId := range trunkVlanSlice{
+	        if (vlanId == vlan){
+		    check = false
+		    break
+	        }
+	    }
+	    if check{
+	        removeTaggedVlanAndUpdateVlanMembTbl(inParams.d, &vlan, &ifName, vlanMemberMap, stpVlanPortMap, stpPortMap)
+	        if err != nil {
+                    return nil,err
+                }
+	        removeFromMembersListForVlan(inParams.d, &vlan, &ifName, vlanMap)
+           }
+	}
         if len(vlanMemberMap) != 0 {
             del_res_map[VLAN_MEMBER_TN] = vlanMemberMap
         }
