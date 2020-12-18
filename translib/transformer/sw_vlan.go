@@ -1407,9 +1407,34 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
         }
     }
     switch inParams.oper {
+    case REPLACE:
+	del_res_map := make(map[string]map[string]db.Value)
+	vlanMemberKeys, err := inParams.d.GetKeysByPattern(&db.TableSpec{Name:VLAN_MEMBER_TN}, "*"+ifName)
+	for _, vlanMember := range vlanMemberKeys {
+	    vlan := vlanMember.Get(0)
+	    removeTaggedVlanAndUpdateVlanMembTbl(inParams.d, &vlan, &ifName, vlanMemberMap, stpVlanPortMap, stpPortMap)
+	    if err != nil {
+                return nil,err
+            }
+	    removeFromMembersListForVlan(inParams.d, &vlan, &ifName, vlanMap)
+            }
+
+        if len(vlanMemberMap) != 0 {
+            del_res_map[VLAN_MEMBER_TN] = vlanMemberMap
+        }
+        if len(vlanMap) != 0 {
+            del_res_map[VLAN_TN] = vlanMap
+        }
+
+	del_subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+	del_subOpMap[db.ConfigDB] = del_res_map
+	inParams.subOpDataMap[DELETE] = &del_subOpMap
+	log.Info("vlan replace subopmap:", del_subOpMap)
+	fallthrough
+
     case CREATE:
         fallthrough
-    case UPDATE,REPLACE:
+    case UPDATE:
         log.Info("---------------intfVlanMemberAdd-----------------")
         err = intfVlanMemberAdd(&swVlanConfig, &inParams, &ifName, vlanMap, vlanMemberMap, stpPortMap, portVlanListMap, intfType)
         if err != nil {
