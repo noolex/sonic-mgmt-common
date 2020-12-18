@@ -44,6 +44,8 @@ func init () {
     XlateFuncBind("DbToYang_bgp_nbr_tx_add_paths_fld_xfmr", DbToYang_bgp_nbr_tx_add_paths_fld_xfmr)
     XlateFuncBind("YangToDb_bgp_nbrs_nbr_auth_password_xfmr", YangToDb_bgp_nbrs_nbr_auth_password_xfmr)
     XlateFuncBind("DbToYang_bgp_nbrs_nbr_auth_password_xfmr", DbToYang_bgp_nbrs_nbr_auth_password_xfmr)
+    XlateFuncBind("YangToDb_bgp_nbr_local_addr_fld_xfmr", YangToDb_bgp_nbr_local_addr_fld_xfmr)
+    XlateFuncBind("DbToYang_bgp_nbr_local_addr_fld_xfmr", DbToYang_bgp_nbr_local_addr_fld_xfmr)
     XlateFuncBind("bgp_validate_nbr_af", bgp_validate_nbr_af)
 }
 
@@ -1990,4 +1992,52 @@ var DbToYang_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrDbToYang = func (inParam
     return err
 }
 
+var YangToDb_bgp_nbr_local_addr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
 
+    var err error
+    if inParams.param == nil {
+        err = errors.New("No Params");
+        return res_map, err
+    }
+
+    if inParams.oper == DELETE {
+        res_map["local_addr"] = ""
+        return res_map, nil
+    }
+
+    pLclAddr, _ := inParams.param.(*string)
+    log.Info("YangToDb_bgp_nbr_local_addr_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " lclAddr: ", *pLclAddr)
+
+    if net.ParseIP(*pLclAddr) == nil {
+        util_bgp_get_native_ifname_from_ui_ifname(pLclAddr)
+    }
+    res_map["local_addr"] = *pLclAddr
+
+    return res_map, err
+}
+
+var DbToYang_bgp_nbr_local_addr_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    var err error
+    result := make(map[string]interface{})
+
+    data := (*inParams.dbDataMap)[inParams.curDb]
+    log.V(3).Info("DbToYang_bgp_nbr_local_addr_fld_xfmr: ", data, "inParams : ", inParams)
+
+    pTbl := data["BGP_NEIGHBOR"]
+    if _, ok := pTbl[inParams.key]; !ok {
+        log.Info("DbToYang_bgp_nbr_local_addr_fld_xfmr BGP neighbor not found : ", inParams.key)
+        return result, errors.New("BGP neighbor not found : " + inParams.key)
+    }
+    pNbrKey := pTbl[inParams.key]
+    lclAddr, ok := pNbrKey.Field["local_addr"]
+
+    if ok {
+        if net.ParseIP(lclAddr) == nil {
+            util_bgp_get_ui_ifname_from_native_ifname(&lclAddr)
+        }
+        result["local-address"] = lclAddr
+    }
+    return result, err
+}

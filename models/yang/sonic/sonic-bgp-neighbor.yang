@@ -31,6 +31,10 @@ module sonic-bgp-neighbor {
         prefix pg;
     }
 
+    import sonic-interface {
+        prefix sintf;
+    }
+
     organization
         "SONiC";
 
@@ -65,6 +69,9 @@ module sonic-bgp-neighbor {
                         }
                         type leafref {
                             path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                        type leafref {
+                            path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
                         }
                         type leafref {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";

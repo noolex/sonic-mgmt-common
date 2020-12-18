@@ -249,9 +249,9 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     ifName := inParams.value
     log.V(3).Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
 
-    if !utils.IsAliasModeEnabled() {
-        return ifName, err
-    }
+    //if !utils.IsAliasModeEnabled() {
+    //    return ifName, err
+    //}
     var convertedName *string
 
     if inParams.oper == GET {
