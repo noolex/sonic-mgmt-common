@@ -522,15 +522,15 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
            -
          */
         if (keyName == "mgmt" && inParams.oper == DELETE) {
-            err = ValidateTacplusServerNotUseMgmtVRF(inParams.d)
-            if err != nil {
-                return vrfTbl_key, err
-            }
             requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
             log.V(3).Info("YangToDb_network_instance_table_key_xfmr request URI: ", requestUriPath)
             if ((requestUriPath == "/openconfig-network-instance:network-instances/network-instance") ||
                 (requestUriPath == "/openconfig-network-instance:network-instances")) {
                 // Validate only for mgmt VRF delete
+                err = ValidateTacplusServerNotUseMgmtVRF(inParams.d)
+                if err != nil {
+                    return vrfTbl_key, err
+                }
                 err = ValidateInbandMgmtConfigOnMgmtVRF(inParams.d)
                 if err != nil {
                     return vrfTbl_key, err

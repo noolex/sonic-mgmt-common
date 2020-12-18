@@ -29,7 +29,7 @@ module sonic-loadshare-mode {
                 }
 
                 leaf ecmp_hash_seed {
-                    type int32;
+                    type uint32;
                     description
                         "ecmp hash seed value.";
                 }
