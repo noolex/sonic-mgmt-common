@@ -11,7 +11,7 @@
 //                                                                            //
 //  Unless required by applicable law or agreed to in writing, software       //
 //  distributed under the License is distributed on an "AS IS" BASIS,         //
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
 //  See the License for the specific language governing permissions and       //
 //  limitations under the License.                                            //
 //                                                                            //
@@ -40,6 +40,7 @@ import (
 	log "github.com/golang/glog"
 	"runtime/debug"
 	"sync"
+	"github.com/openconfig/ygot/ygot"
 )
 
 //Write lock for all write operations to be synchronized
@@ -77,6 +78,7 @@ type SetResponse struct {
 
 type GetRequest struct {
 	Path    string
+	FillValueTree bool
 	User    UserRoles
 	AuthEnabled bool
 	ClientVersion Version
@@ -88,6 +90,7 @@ type GetRequest struct {
 
 type GetResponse struct {
 	Payload []byte
+	ValueTree *ygot.ValidatedGoStruct
 	ErrSrc  ErrSource
 }
 
@@ -514,12 +517,11 @@ func Get(req GetRequest) (GetResponse, error) {
 		resp = GetResponse{Payload: payload, ErrSrc: AppErr}
 		return resp, err
 	}
-
-	resp, err = (*app).processGet(dbs)
+	resp, err = (*app).processGet(dbs, req.FillValueTree)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
-		log.Info("Calling FreeOSMemory..")	 
-		debug.FreeOSMemory()	
+		log.Info("Calling FreeOSMemory..")
+		debug.FreeOSMemory()
 	}
 	return resp, err
 }
@@ -578,8 +580,8 @@ func Action(req ActionRequest) (ActionResponse, error) {
 	resp, err = (*app).processAction(dbs)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
-		log.Info("Calling FreeOSMemory..")	 
-		debug.FreeOSMemory()	
+		log.Info("Calling FreeOSMemory..")
+		debug.FreeOSMemory()
 	}
 	return resp, err
 }
@@ -866,6 +868,9 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 		return resp, err
 	}
 
+	// Enable onChange cache support on all DBs
+	enableOnChangeCaching(dbs[:])
+
 	//Do NOT close the DBs here as we need to use them during subscribe notification
 
 	for i, path := range paths {
@@ -882,9 +887,10 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			continue
 		}
 
-		nAppInfo, errApp := (*app).translateSubscribe(dbs, path)
+		nAppSubInfo, errApp := (*app).translateSubscribe(dbs, path)
 
-		collectNotificationPreferences(nAppInfo, resp[i])
+		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgt, resp[i])
+		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgtChlds, resp[i])
 
 		if errApp != nil {
 			resp[i].Err = errApp
@@ -895,8 +901,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 			continue
 		} else {
-
-			if len(nAppInfo) == 0 {
+			if len(nAppSubInfo.ntfAppInfoTrgt) == 0 && len(nAppSubInfo.ntfAppInfoTrgtChlds) == 0 {
 				sErr = tlerr.NotSupportedError{
 					Format: "Subscribe not supported", Path: path}
 				resp[i].Err = sErr
@@ -904,11 +909,11 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			}
 		}
 
-		// Prepare notificationInfo for notificationAppInfo.
-		for _, nOpts := range nAppInfo {
+		// Prepare notificationInfo for notificationAppInfo for target.
+		for _, nOpts := range nAppSubInfo.ntfAppInfoTrgt {
 			nInfo := &notificationInfo {
-				table:   nOpts.table,
-				key:     nOpts.key,
+				table:   *nOpts.table,
+				key:     *nOpts.key,
 				dbno:    nOpts.dbno,
 				path:    path,
 				app:     app,
@@ -916,10 +921,27 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 				dbs:     dbs,
 				needCache: true,
 			}
-
 			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
+			// Register table for caching
+			nInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(&nInfo.table)
 		}
 
+		// Prepare notificationInfo for notificationAppInfo for child nodes.
+		for _, nOpts := range nAppSubInfo.ntfAppInfoTrgtChlds {
+			nInfo := &notificationInfo {
+				table:   *nOpts.table,
+				key:     *nOpts.key,
+				dbno:    nOpts.dbno,
+				path:    path,
+				app:     app,
+				appInfo: appInfo,
+				dbs:     dbs,
+				needCache: true,
+			}
+			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
+			// Register table for caching
+			nInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(&nInfo.table)
+		}
 	}
 
 	log.Info("map=", dbNotificationMap)
@@ -977,8 +999,9 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 
 		nAppInfos, errApp := (*app).translateSubscribe(dbs, path)
 
-		collectNotificationPreferences(nAppInfos, resp[i])
-		
+		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, resp[i])
+		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, resp[i])
+
 		if errApp != nil {
 			resp[i].Err = errApp
 			err = errApp
@@ -1071,7 +1094,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 		return dbs, err
 	}
 
-    isWriteDisabled = true 
+    isWriteDisabled = true
 
 	//Create Config DB connection
 	dbs[db.ConfigDB], err = db.NewDB(getDBOptions(db.ConfigDB, isWriteDisabled))
@@ -1082,7 +1105,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
     if isGetCase {
-        isWriteDisabled = true 
+        isWriteDisabled = true
     } else {
         isWriteDisabled = false
     }
@@ -1128,6 +1151,15 @@ func closeAllDbs(dbs []*db.DB) {
 		if d != nil {
 			d.DeleteDB()
 			dbs[dbsi] = nil
+		}
+	}
+}
+
+// Enable onChangeCaching on DB instance
+func enableOnChangeCaching(dbs []*db.DB) {
+	for _, d := range dbs {
+		if d != nil {
+			d.Opts.OnChangeCacheEnabled = true
 		}
 	}
 }

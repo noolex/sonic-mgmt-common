@@ -43,6 +43,7 @@ type yangXpathInfo  struct {
     xfmrFunc       string
     xfmrField      string
     xfmrPost       string
+    xfmrPath	   *string
     validateFunc   string
     rpcFunc        string
     xfmrKey        string
@@ -60,7 +61,7 @@ type yangXpathInfo  struct {
     cascadeDel     int
     virtualTbl     *bool
     nameWithMod    *string
-	xfmrPre        string
+    xfmrPre        string
 }
 
 type dbInfo  struct {
@@ -758,6 +759,11 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				xpathData.validateFunc  = ext.NName()
 			case "rpc-callback" :
 				xpathData.rpcFunc  = ext.NName()
+			case "path-transformer" :
+				if xpathData.xfmrPath == nil {
+					xpathData.xfmrPath = new(string)
+				}
+				*xpathData.xfmrPath  = ext.NName()
 			case "use-self-key" :
 				xpathData.keyXpath  = nil
 			case "db-name" :

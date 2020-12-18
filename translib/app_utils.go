@@ -70,16 +70,16 @@ func getYangPathFromYgotStruct(s ygot.GoStruct, yangPathPrefix string, appModule
 	return ""
 }
 
-func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygotTarget *interface{}) ([]byte, error) {
+func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygotTarget *interface{}, skipJSON bool) ([]byte, *ygot.ValidatedGoStruct, error) {
 	var err error
 	var payload []byte
 
 	if len(targetUri) == 0 {
-		return payload, tlerr.InvalidArgs("GetResponse failed as target Uri is not valid")
+		return payload, nil, tlerr.InvalidArgs("GetResponse failed as target Uri is not valid")
 	}
 	path, err := ygot.StringToPath(targetUri, ygot.StructuredPath, ygot.StringSlicePath)
 	if err != nil {
-		return payload, tlerr.InvalidArgs("URI to path conversion failed: %v", err)
+		return payload, nil, tlerr.InvalidArgs("URI to path conversion failed: %v", err)
 	}
 
 	// Get current node (corresponds to ygotTarget) and its parent node
@@ -97,10 +97,10 @@ func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygo
 	}
 	parentNodeList, err := ytypes.GetNode(ygSchema.RootSchema(), deviceObj, parentPath)
 	if err != nil {
-		return payload, err
+		return payload, nil,  err
 	}
 	if len(parentNodeList) == 0 {
-		return payload, tlerr.InvalidArgs("Invalid URI: %s", targetUri)
+		return payload, nil, tlerr.InvalidArgs("Invalid URI: %s", targetUri)
 	}
 	parentNode := parentNodeList[0].Data
 
@@ -108,13 +108,13 @@ func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygo
 	if ygerr != nil {
 		log.Errorf("Error from ytypes.GetNode: %v", ygerr)
 		if status.Convert(ygerr).Code() == codes.NotFound {
-			return payload, tlerr.NotFound("Resource not found")
+			return payload, nil, tlerr.NotFound("Resource not found")
 		} else {
-			return payload, ygerr
+			return payload, nil, ygerr
 		}
 	}
 	if len(currentNodeList) == 0 {
-		return payload, tlerr.NotFound("Resource not found")
+		return payload, nil, tlerr.NotFound("Resource not found")
 	}
 	//currentNode := currentNodeList[0].Data
 	currentNodeYangName := currentNodeList[0].Schema.Name
@@ -144,10 +144,15 @@ func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygo
 			log.Infof("Target yang name: %s  OC Field name: %s\n", currentNodeYangName, currentNodeOCFieldName)
 		}
 	}
+	if skipJSON {
+		return payload, &parentCloneObj, nil
+	}
+
+
 
 	payload, err = dumpIetfJson(parentCloneObj, true)
 
-	return payload, err
+	return payload, nil, err
 }
 
 func getTargetNodeYangSchema(targetUri string, deviceObj *ocbinds.Device) (*yang.Entry, error) {
