@@ -123,6 +123,17 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                         log.Info("YangToDb_ntp_server_subtree_xfmr: DELETE ", errStr)
                         err = tlerr.InvalidArgsError{Format: errStr}
                         return res_map, err
+                } else {
+                        // in case the delete is for a specific leaf
+                        if (strings.Contains(targetUriPath, "/openconfig-system:system/ntp/servers/server/config/")) {
+                                field_name := targetUriPath[strings.LastIndex(targetUriPath, "/")+1:]
+                                field_name = field_name[strings.LastIndex(field_name, ":")+1:]
+			        errStr = field_name + " cannot be deleted alone"
+			        log.Info("YangToDb_ntp_server_subtree_xfmr: DELETE ", errStr)
+			        err = tlerr.InvalidArgsError{Format: errStr}
+
+                                return res_map, err
+                        }
                 }
         } else {
                 /* for configure, YangToDb subtree xfmr gets called multiple times, only care about this one */
@@ -763,6 +774,11 @@ var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParam
 	        return res_map, nil
         }
 
+        if(inParams.oper == DELETE) {
+                res_map[NTP_KEY_VALUE_STR] = ""
+                return res_map, nil
+        }
+
         // Get KeyEncrytped value and use it to determin if need to perform encryt the string
         sysObj := getSystemRootObject(inParams)
         ntpData := sysObj.Ntp
@@ -913,6 +929,11 @@ var DbToYang_ntp_auth_key_id_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (m
 var YangToDb_ntp_auth_key_type_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
         res_map := make(map[string]string)
         var err error
+
+	if (inParams.oper == DELETE)  {
+            res_map[NTP_KEY_TYPE] = ""
+	    return res_map, err
+        }
 
         key_type, _ := inParams.param.(ocbinds.E_OpenconfigSystem_NTP_AUTH_TYPE)
 
