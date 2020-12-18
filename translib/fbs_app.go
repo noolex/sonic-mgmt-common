@@ -294,7 +294,7 @@ func (app *FbsApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *FbsApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *FbsApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResponse, error) {
 	var err error
 	var payload []byte
 
@@ -303,12 +303,12 @@ func (app *FbsApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	payload, err = generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget)
+	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fillValueTree)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	return GetResponse{Payload: payload}, err
+	return GetResponse{Payload: payload, ValueTree: valueTree}, err
 }
 
 func (app *FbsApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {

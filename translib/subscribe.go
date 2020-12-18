@@ -326,7 +326,7 @@ func getJson (nInfo *notificationInfo) ([]byte, error) {
         return payload, err
     }
 
-    resp, err := (*app).processGet(dbs)
+    resp, err := (*app).processGet(dbs, false)
 
     if err == nil {
         payload = resp.Payload

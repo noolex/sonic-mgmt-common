@@ -40,6 +40,7 @@ import (
 	log "github.com/golang/glog"
 	"runtime/debug"
 	"sync"
+	"github.com/openconfig/ygot/ygot"
 )
 
 //Write lock for all write operations to be synchronized
@@ -77,6 +78,7 @@ type SetResponse struct {
 
 type GetRequest struct {
 	Path    string
+	FillValueTree bool
 	User    UserRoles
 	AuthEnabled bool
 	ClientVersion Version
@@ -88,6 +90,7 @@ type GetRequest struct {
 
 type GetResponse struct {
 	Payload []byte
+	ValueTree *ygot.ValidatedGoStruct
 	ErrSrc  ErrSource
 }
 
@@ -514,8 +517,7 @@ func Get(req GetRequest) (GetResponse, error) {
 		resp = GetResponse{Payload: payload, ErrSrc: AppErr}
 		return resp, err
 	}
-
-	resp, err = (*app).processGet(dbs)
+	resp, err = (*app).processGet(dbs, req.FillValueTree)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
 		log.Info("Calling FreeOSMemory..")

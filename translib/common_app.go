@@ -223,10 +223,11 @@ func (app *CommonApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResponse, error) {
     var err error
     var payload []byte
     var resPayload []byte
+    var valueTree *ygot.ValidatedGoStruct
     log.Info("processGet:path =", app.pathInfo.Path)
     txCache := new(sync.Map)
 
@@ -305,7 +306,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 			    }
 		    }
 		    if resYgot != nil {
-			    resPayload, err = generateGetResponsePayload(app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget)
+			    resPayload, valueTree, err = generateGetResponsePayload(app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget, fillValueTree)
 			    if err != nil {
 				    log.Warning("generateGetResponsePayload() couldn't generate payload.")
 				    resPayload = payload
@@ -322,7 +323,8 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    }
     }
 
-    return GetResponse{Payload: resPayload}, err
+
+    return GetResponse{Payload: resPayload, ValueTree: valueTree}, err
 }
 
 func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
