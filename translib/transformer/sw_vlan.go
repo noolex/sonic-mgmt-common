@@ -314,7 +314,7 @@ func validateVlanExists(d *db.DB, vlanName *string) error {
     entry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{*vlanName}})
     if err != nil || !entry.IsPopulated() {
         errStr := "Invalid Vlan:" + *vlanName
-    log.Error(errStr)
+        log.Error(errStr)
         return errors.New(errStr)
     }
     return nil
@@ -751,6 +751,7 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
 
         log.Infof("Updated VLAN Map with VLAN: %s and Member-ports: %s", vlanName, memberPortsListStrB.String())
     }
+    log.Info("------vlanMap---------------------", vlanMap)
     return err
 }
 
@@ -994,11 +995,18 @@ func intfVlanMemberRemoval(swVlanConfig *swVlanMemberPort_t,
     }
     return err
 }
-
+/*Input: range 10-100 or 10..100 */
 func extractVlanIdsfrmRng(d *db.DB, rngStr string, vlanLst *[]string) error{
+    log.Info("-----------extractVlanIdsfrmRng------")
     var err error
+    var res []string
     if strings.Contains(rngStr, "..") {
-        res := strings.Split(rngStr, "..")
+        res = strings.Split(rngStr, "..")
+    }
+    if strings.Contains(rngStr, "-") {
+        res = strings.Split(rngStr, "-")
+    }
+    if len(res) != 0 {
         low, _ := strconv.Atoi(res[0])
         high, _ := strconv.Atoi(res[1])
         for id := low; id <= high; id++ {
@@ -1034,10 +1042,12 @@ func vlanIdstoRng(vlanIdsLst []string) ([]string, error) {
         if (i == j) {
             vlanid := strconv.Itoa(idsLst[i])
             vlanRngLst = append(vlanRngLst, ("Vlan"+vlanid))
+            //vlanRngLst = append(vlanRngLst, (vlanid))
         } else {
             vlanidLow := strconv.Itoa(idsLst[i])
             vlanidHigh := strconv.Itoa(idsLst[j])
             vlanRngLst = append(vlanRngLst, ("Vlan"+ vlanidLow + "-" + vlanidHigh))
+            //vlanRngLst = append(vlanRngLst, (vlanidLow + "-" + vlanidHigh))
             i = j + 1;
         }
     }
@@ -1191,6 +1201,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
         for _, vlanId := range trunkVlanSlice {
             err = validateVlanExists(inParams.d, &vlanId) ///move this check in main func-------------------------------
             if err == nil {
+                log.Info("-----------vlan exists-----", vlanId)
                 //id := vlanId[len("Vlan"):]
                 //errStr := "Invalid VLAN: " + id
                 //log.Error(errStr)
@@ -1205,12 +1216,46 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             }
         }
         log.Info("------------trunkVlanSlice----------", trunkVlanSlice)
-        //from trunkVlanSlice compress--------------------------------
-        trunkVlanSlice, err = vlanIdstoRng(trunkVlanSlice)
-        if err != nil {
-            return err
+        if inParams.oper == REPLACE {
+            trunkVlanSlice, _ = vlanIdstoRng(trunkVlanSlice)
+            portVlanListMap[*ifName].Field["tagged_vlan@"] = strings.Join(trunkVlanSlice, ",")
+        } else {
+            //Code to store port/portchannel tagged_vlan list , making sure no duplicate entries 
+            var taggedVlanSlice []string
+            //get existing port's tagged vlan list
+            portEntry, err := inParams.d.GetEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{*ifName}}) //portchannel handle
+            if err == nil { //port entry exists
+                taggedVlanVal, ok := portEntry.Field["tagged_vlan@"]
+                if ok {
+                    vlanRngSlice := generateMemberPortsSliceFromString(&taggedVlanVal)
+                    for _, vlanStr := range vlanRngSlice {
+                        if strings.Contains(vlanStr, "-") {
+                            _ = extractVlanIdsfrmRng(inParams.d, vlanStr, &taggedVlanSlice)
+                        } else {
+                            taggedVlanSlice = append(taggedVlanSlice, vlanStr)
+                        }
+                    }
+                }
+            }
+            //Remove vlans already in DB from the list
+            var portVlanSlice []string
+            for _, newv := range trunkVlanSlice {
+                found := false
+                for _, v  := range taggedVlanSlice {
+                    if newv == v {
+                        found = true
+                        break
+                    }
+                }
+                if !found { //not found
+                    portVlanSlice = append(portVlanSlice, newv)
+                }
+            }
+            log.Info("------------portVlanSlice----------",portVlanSlice)
+            //VlanSlice compress, store in  range format
+            portVlanSlice, _ = vlanIdstoRng(portVlanSlice)
+            portVlanListMap[*ifName].Field["tagged_vlan@"] = strings.Join(portVlanSlice, ",")
         }
-        portVlanListMap[*ifName].Field["tagged_vlan@"] = strings.Join(trunkVlanSlice, ",")
     }
 
     if accessVlanFound || trunkVlanFound { //only for existing vlans ---- 
@@ -1406,8 +1451,10 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
             return nil, err
         }
     }
+    log.Info("-------inParams.oper-----", inParams.oper)
     switch inParams.oper {
     case REPLACE:
+        log.Info("---------------replace------------------------------")
 	del_res_map := make(map[string]map[string]db.Value)
 	vlanMemberKeys, err := inParams.d.GetKeysByPattern(&db.TableSpec{Name:VLAN_MEMBER_TN}, "*"+ifName)
 	for _, vlanMember := range vlanMemberKeys {
@@ -1435,16 +1482,23 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
     case CREATE:
         fallthrough
     case UPDATE:
-        log.Info("---------------intfVlanMemberAdd-----------------")
+        log.Info("---------------update--add-----------------", vlanMemberMap, vlanMap, portVlanListMap, stpPortMap)
+        vlanMap = make(map[string]db.Value)
+        portVlanListMap = make(map[string]db.Value)
+        vlanMemberMap = make(map[string]db.Value)
+        stpPortMap := make(map[string]db.Value)
+
+        log.Info("---------------intfVlanMemberAdd-----------------", vlanMemberMap, vlanMap)
         err = intfVlanMemberAdd(&swVlanConfig, &inParams, &ifName, vlanMap, vlanMemberMap, stpPortMap, portVlanListMap, intfType)
         if err != nil {
             log.Errorf("Interface VLAN member port addition failed for Interface: %s!", ifName)
             return nil, err
         }
+        log.Info("---------------intfVlanMemberAdd-----------------", vlanMemberMap, vlanMap)
         if len(vlanMap) != 0 {
             res_map[VLAN_TN] = vlanMap
             if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
-                for vlanName := range vlanMap{
+                for vlanName := range vlanMap {
                     ifStr := (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"]
                     check := false
                     strList := generateMemberPortsSliceFromString(&ifStr)
@@ -1460,13 +1514,14 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
                         (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"] = ifStr
                     }
 		}
-            }else{
+            } else {
             subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
             subOpMap[db.ConfigDB] = res_map
             inParams.subOpDataMap[inParams.oper] = &subOpMap
             log.Info("----------subOpMap--------------", subOpMap)
             }
         }
+        log.Info("---------------intfVlanMemberAdd-----------------", vlanMemberMap, vlanMap)
 
         if len(vlanMemberMap) != 0 { //make sure this map filled only with vlans existing
             log.Info("----------vlan exists-----------")
