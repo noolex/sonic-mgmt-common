@@ -175,6 +175,28 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) error {
     return nil
 }
 
+func getVlanListTagMode(d *db.DB, ifName string)([]string,[]string, error) {
+    var taggedList []string
+    var untaggedList []string
+    vlanMemberKeys, err := d.GetKeysByPattern(&db.TableSpec{Name:VLAN_MEMBER_TN}, "*"+ifName)
+    if err != nil{
+	return nil,nil,err
+    }
+    for _, vlanMember := range vlanMemberKeys {
+	vlanId := vlanMember.Get(0)
+	entry, err := d.GetEntry(&db.TableSpec{Name: VLAN_MEMBER_TN}, db.Key{Comp: []string{vlanId, ifName}})
+	if err != nil {
+	    return nil,nil,err
+	}
+	tagMode := entry.Field["tagging_mode"]
+	if (tagMode == "tagged"){
+	    taggedList = append(taggedList,vlanId)
+	}else{
+	    untaggedList = append(untaggedList,vlanId)
+	}
+    }
+    return taggedList,untaggedList,nil
+}
 func enableStpOnInterfaceVlanMembership(d *db.DB, vlanName *string, intfList []string,
                                         stpPortMap map[string]db.Value) {
     if len(intfList) == 0 {
