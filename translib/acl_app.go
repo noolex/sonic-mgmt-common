@@ -227,7 +227,7 @@ func (app *AclApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
 	pathInfo := NewPathInfo(path)
 	notifInfo := notificationAppInfo{dbno: db.ConfigDB, isOnChangeSupported: true}
 	notSupported := tlerr.NotSupportedError{
@@ -253,18 +253,21 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]noti
 		if strings.Contains(pathInfo.Template, "/acl-entry{}") {
 			// Subscribe for one rule
 			rulekey := "RULE_" + pathInfo.Var("sequence-id")
-			notifInfo.table = db.TableSpec{Name: RULE_TABLE}
-			notifInfo.key = asKey(aclkey, rulekey)
+			notifInfo.table = &db.TableSpec{Name: RULE_TABLE}
+			dbKey := asKey(aclkey, rulekey)
+			notifInfo.key = &dbKey
 
 		} else if pathInfo.HasSuffix("/acl-entries") || pathInfo.HasSuffix("/acl-entry") {
 			// Subscribe for all rules of an ACL
-			notifInfo.table = db.TableSpec{Name: RULE_TABLE}
-			notifInfo.key = asKey(aclkey, "*")
+			notifInfo.table = &db.TableSpec{Name: RULE_TABLE}
+			dbKey := asKey(aclkey, "*")
+			notifInfo.key = &dbKey
 
 		} else {
 			// Subscibe for ACL fields only
-			notifInfo.table = db.TableSpec{Name: ACL_TABLE}
-			notifInfo.key = asKey(aclkey)
+			notifInfo.table = &db.TableSpec{Name: ACL_TABLE}
+			dbKey := asKey(aclkey)
+			notifInfo.key = &dbKey
 		}
 	} else if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/interfaces") {
 		// Right now interface binding config is maintained within ACL
@@ -272,15 +275,17 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]noti
 		// inname can occur in multiple ACL entries. So we cannot map
 		// interface binding xpaths to specific ACL table entry keys.
 		// For now subscribe for full ACL table!!
-		notifInfo.table = db.TableSpec{Name: ACL_TABLE}
-		notifInfo.key = asKey("*")
+		notifInfo.table = &db.TableSpec{Name: ACL_TABLE}
+		dbKey := asKey("*")
+		notifInfo.key = &dbKey
 
 	} else {
 		log.Errorf("Unknown path %s", pathInfo.Template)
 		return nil, notSupported
 	}
-
-	return []notificationAppInfo{ notifInfo }, nil
+	subsAppInfo := notificationSubAppInfo{}
+	subsAppInfo.ntfAppInfoTrgt = append(subsAppInfo.ntfAppInfoTrgt, notifInfo)
+	return &subsAppInfo, nil
 }
 
 func (app *AclApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
@@ -336,7 +341,7 @@ func (app *AclApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResponse, error) {
 	var err error
 	var payload []byte
 
@@ -345,12 +350,13 @@ func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	payload, err = generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget)
+	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path,
+			(*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fillValueTree)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	return GetResponse{Payload: payload}, err
+	return GetResponse{Payload: payload, ValueTree: valueTree}, err
 }
 
 func (app *AclApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
@@ -1112,6 +1118,10 @@ func (app *AclApp) getOCInterfaceSubtree(dbs [db.MaxDB]*db.DB, intfSt *ocbinds.O
 			if intfId == ACL_GLOBAL_PORT || intfId == ACL_CTRL_PLANE_PORT {
 				continue
 			}
+            if strings.Contains(intfId, ".") {
+                //subintfid
+                intfId = *utils.GetSubInterfaceLongName(&intfId)
+            }
 			ptr, _ := intfSt.NewInterface(*utils.GetUINameFromNativeName(&intfId))
 			ygot.BuildEmptyTree(ptr)
 		}
@@ -1146,6 +1156,10 @@ func (app *AclApp) getOCInterfaceSubtree(dbs [db.MaxDB]*db.DB, intfSt *ocbinds.O
 		}
 
 		nativeName := *utils.GetNativeNameFromUIName(&ifName)
+        if strings.Contains(nativeName, ".") {
+            //subintfid
+            nativeName = *utils.GetSubInterfaceShortName(&nativeName)
+        }
 		inFound, err := app.getOCIntfSubtreeIntfDataForStage(dbs, nativeName, "Ingress", ocIntfPtr)
 		if err != nil {
 			return err
@@ -1490,6 +1504,10 @@ func (app *AclApp) findAndDeleteAclBindings(d *db.DB, intfIn string, stage strin
 	acltype ocbinds.E_OpenconfigAcl_ACL_TYPE) error {
 
 	intf := *utils.GetNativeNameFromUIName(&intfIn)
+    if strings.Contains(intf, ".") {
+        //subintfid
+        intf = *utils.GetSubInterfaceShortName(&intf)
+    }
 	log.Infof("Delete ACL bindings ACL:%s Stage:%s Type:%v Intf:%v", aclname, stage, acltype, intf)
 
 	aclKeys, _ := d.GetKeys(app.aclTs)
@@ -1776,7 +1794,12 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 			if intf.IngressAclSets != nil && len(intf.IngressAclSets.IngressAclSet) > 0 {
 				for inAclKey := range intf.IngressAclSets.IngressAclSet {
 					aclName := convertOCAclnameTypeToInternal(inAclKey.SetName, inAclKey.Type)
-					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
+                    intf.Id = utils.GetNativeNameFromUIName(intf.Id)
+                    if strings.Contains(*intf.Id, ".") {
+                        //subintfid
+                        intf.Id = utils.GetSubInterfaceShortName(intf.Id)
+                    }
+					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.Id)
 					if len(app.aclTableMap) == 0 {
 						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 					}
@@ -1798,7 +1821,12 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 			if intf.EgressAclSets != nil && len(intf.EgressAclSets.EgressAclSet) > 0 {
 				for outAclKey := range intf.EgressAclSets.EgressAclSet {
 					aclName := convertOCAclnameTypeToInternal(outAclKey.SetName, outAclKey.Type)
-					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
+                    intf.Id = utils.GetNativeNameFromUIName(intf.Id)
+                    if strings.Contains(*intf.Id, ".") {
+                        //subintfid
+                        intf.Id = utils.GetSubInterfaceShortName(intf.Id)
+                    }
+					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.Id)
 					if len(app.aclTableMap) == 0 {
 						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 					}

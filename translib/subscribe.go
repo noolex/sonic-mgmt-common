@@ -53,11 +53,11 @@ var sMutex = &sync.Mutex{}
 // One subscribe path can map to multiple notificationAppInfo.
 type notificationAppInfo struct   {
 	// table name
-	table db.TableSpec
+	table *db.TableSpec
 
 	// key string without table name prefix. Can include wildcards.
 	// Like - "ACL1|RULE_101" or "ACL1|*".
-	key db.Key
+	key *db.Key
 
 	// dbFieldYangPathMap is the mapping of db entry field to the yang
 	// field (leaf/leaf-list) for the input path.
@@ -69,7 +69,7 @@ type notificationAppInfo struct   {
 	// path indicates the yang path to which the key maps to.
 	// When the input path maps to multiple db tables, the path field
 	// identifies the yang segments for each db table.
-	path gnmi.Path
+	path *gnmi.Path
 
 	// isOnChangeSupported indicates if on-change notification is
 	// supported for the input path. Table and key mappings should
@@ -84,6 +84,11 @@ type notificationAppInfo struct   {
 	// pType indicates the preferred notification type for the input
 	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
 	pType NotificationType
+}
+
+type notificationSubAppInfo struct {
+	ntfAppInfoTrgt  []notificationAppInfo
+	ntfAppInfoTrgtChlds []notificationAppInfo
 }
 
 // dbKeyInfo represents one db key.
@@ -179,9 +184,12 @@ func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) 
 		if sKey != nil {
 			if nInfo, ok := nMap[sKey]; (ok && nInfo != nil) {
 				if sInfo, ok := sMap[nInfo]; (ok && sInfo != nil) {
-					isChanged := isCacheChanged(nInfo)
+					var chgdFields []string
+					isChanged := isDbEntryChanged(d, *key, nInfo, &chgdFields, (event == db.SEventDel))
+					log.Infof("notificationHandler: Changed Fields: %v", chgdFields)
 
 					if isChanged {
+						updateCache(nInfo) // Will be removed later on final integration
 						sendNotification(sInfo, nInfo, false)
 					}
 				} else {
@@ -238,6 +246,21 @@ func isCacheChanged(nInfo *notificationInfo) bool {
 	}
 
 	return false
+}
+
+func isDbEntryChanged(subscrDb *db.DB, key db.Key, nInfo *notificationInfo, chgdFields *[]string, entryDeleted bool) bool {
+	var dbEntry db.Value
+
+	// Retrieve Db entry from redis using DB instance where pubsub is registered
+	// for onChange only if entry is NOT deleted.
+	if !entryDeleted {
+		dbEntry, _ = subscrDb.GetEntry(&nInfo.table, key)
+	}
+	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
+	// and retrieve modified fields. Also merge changes in cache
+	*chgdFields = nInfo.dbs[subscrDb.Opts.DBNo].DiffAndMergeOnChangeCache(dbEntry, &nInfo.table, key, entryDeleted)
+
+	return (entryDeleted || len(*chgdFields) > 0)
 }
 
 func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*notificationInfo) error {
@@ -303,7 +326,7 @@ func getJson (nInfo *notificationInfo) ([]byte, error) {
         return payload, err
     }
 
-    resp, err := (*app).processGet(dbs)
+    resp, err := (*app).processGet(dbs, false)
 
     if err == nil {
         payload = resp.Payload
@@ -329,8 +352,8 @@ func stophandler(stop chan struct{}) {
 	for {
 		stopSig := <-stop
 		log.Info("stop channel signalled", stopSig)
-        sMutex.Lock()
-	    defer sMutex.Unlock()
+		sMutex.Lock()
+		defer sMutex.Unlock()
 
 		cleanup (stop)
 
