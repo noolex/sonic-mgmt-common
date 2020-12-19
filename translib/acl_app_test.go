@@ -397,14 +397,15 @@ func Test_AclApp_Subscribe(t *testing.T) {
 // app interafce and check returned notificationInfo matches given values.
 func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*testing.T) {
 	return func(t *testing.T) {
-		nts, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		ntfAppInfo, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
 		if err != nil {
 			t.Fatalf("Unexpected error processing '%s'; err=%v", path, err)
 		}
 
 		var nt *notificationAppInfo
-		if len(nts) == 1 {
-			nt = &nts[0]
+
+		if ntfAppInfo != nil && len(ntfAppInfo.ntfAppInfoTrgt) > 0 {
+			nt = &(ntfAppInfo.ntfAppInfoTrgt[0])
 		}
 
 		if nt == nil || nt.table.Name != oTable ||

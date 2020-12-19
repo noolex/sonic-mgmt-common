@@ -160,6 +160,7 @@ type Options struct {
 	IsWriteDisabled    bool //Indicated if write is allowed
 
 	DisableCVLCheck bool
+	OnChangeCacheEnabled bool
 }
 
 func (o Options) String() string {
@@ -330,7 +331,7 @@ func NewDB(opt Options) (*DB, error) {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
-	        dbSepStr := getDbSeparator(dbInstName)
+			dbSepStr := getDbSeparator(dbInstName)
 			if len(dbSepStr) > 0 {
 				if len(opt.TableNameSeparator) > 0 && opt.TableNameSeparator != dbSepStr {
 					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the" +
@@ -347,7 +348,7 @@ func NewDB(opt Options) (*DB, error) {
 	} else {
 		glog.Error(fmt.Errorf("Invalid database number %d", dbId))
 	}
-	
+
 	d := DB{client: redis.NewClient(&redis.Options{
 		Network: "tcp",
 		Addr:    ipAddr,
@@ -1050,7 +1051,7 @@ func (d *DB) ModEntry(ts *TableSpec, key Key, value Value) error {
 		} else {
 			glog.Info("ModEntry: Mapping to DeleteEntry()")
 			e = d.DeleteEntry(ts, key)
-		}		
+		}
 		goto ModEntryExit
 	}
 
@@ -1556,4 +1557,88 @@ AbortTxExit:
 		glog.Info("AbortTx: End: e: ", e)
 	}
 	return e
+}
+
+// RegisterTableForOnChangeCaching Enable OnChange caching for a given table
+func (d *DB) RegisterTableForOnChangeCaching(ts *TableSpec) {
+	if !d.dbCacheConfig.PerConnection {
+		d.dbCacheConfig.PerConnection = true
+	}
+
+	if !d.dbCacheConfig.CacheTables[ts.Name] {
+		d.dbCacheConfig.CacheTables[ts.Name] = true
+	}
+}
+
+// DiffAndMergeOnChangeCache Compare modified entry with cached entry and
+// return modified fields. Also update the cache with changes.
+func (d *DB) DiffAndMergeOnChangeCache(val Value, ts *TableSpec, key Key, entryDeleted bool) []string {
+	var chgdFields []string
+
+	if d.dbCacheConfig.CacheTables[ts.Name] {
+		if table, ok := d.cache.Tables[ts.Name]; ok {
+			cachedEntry, exists := table.entry[d.key2redis(ts, key)]
+			if exists { // Already exists in cache
+				if entryDeleted {
+					// Entry deleted. So remove cachedEntry and send empty chgdFields
+					delete(table.entry, d.key2redis(ts, key))
+					return chgdFields
+				}
+				cachedEntrySize := len(cachedEntry.Field)
+				newEntrySize := len(val.Field)
+				// When no field(s) deleted or added
+				if cachedEntrySize == newEntrySize {
+					for fldName, fldVal := range val.Field {
+						if cachedEntry.Get(fldName) != fldVal {
+							chgdFields = append(chgdFields, fldName)
+							// Merge changes in cache
+							cachedEntry.Set(fldName, fldVal)
+						}
+					}
+				} else {
+					// When field(s) deleted
+					if newEntrySize < cachedEntrySize {
+						for fldName, fldVal := range cachedEntry.Field {
+							if newEntryFldVal, fldok := val.Field[fldName]; fldok {
+								if newEntryFldVal != fldVal {
+									chgdFields = append(chgdFields, fldName)
+									// Merge changes in cache
+									cachedEntry.Set(fldName, newEntryFldVal)
+								}
+							} else { // fldName is deleted
+								chgdFields = append(chgdFields, fldName)
+								// delete field from cache
+								cachedEntry.Remove(fldName)
+							}
+						}
+					} else {
+						// When field(s) added
+						for fldName, fldVal := range val.Field {
+							if cachedFldVal, fldok := cachedEntry.Field[fldName]; fldok {
+								if cachedFldVal != fldVal {
+									chgdFields = append(chgdFields, fldName)
+									// Merge changes in cache
+									cachedEntry.Set(fldName, fldVal)
+								}
+							} else { // fldName is added
+								chgdFields = append(chgdFields, fldName)
+								// Add field in cache
+								cachedEntry.Set(fldName, fldVal)
+							}
+						}
+					}
+				}
+			} else {
+				// Not exists in cache
+				for fldName := range val.Field {
+					chgdFields = append(chgdFields, fldName)
+				}
+				//Add entry in cache
+				table.entry[d.key2redis(ts, key)] = val
+			}
+		}
+	}
+	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Changed Fields: %v", chgdFields)
+
+	return chgdFields
 }
