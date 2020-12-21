@@ -147,11 +147,11 @@ func (c *CVL) fetchTableDataToTmpCache(tableName string, dbKeys map[string]inter
 		}
 
 		_, err := pipe.Exec()
+		defer pipe.Close()
 		if err != nil {
 			CVL_LOG(WARNING, "Failed to fetch details for table %s", tableName)
 			return 0
 		}
-		pipe.Close()
 		bulkKeys = nil
 
 		mapTable := c.tmpDbCache[tableName]

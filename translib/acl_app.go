@@ -1061,7 +1061,9 @@ func (app *AclApp) getAllAclTablesFromDB(cdb *db.DB) error {
 			if err != nil {
 				return err
 			}
-			app.aclTableMap[(aclKeys[i]).Get(0)] = aclEntry
+			if aclEntry.IsPopulated() && (aclEntry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_L2 || aclEntry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_IPV4 || aclEntry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_IPV6) {
+				app.aclTableMap[(aclKeys[i]).Get(0)] = aclEntry
+			}
 		}
 	}
 
