@@ -381,7 +381,7 @@ func (ne *notificationEvent) getValue(path string) ([]byte, error) {
 		return payload, err
 	}
 
-	resp, err := (*app).processGet(dbs, false)
+    	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
 
 	if err == nil {
 		payload = resp.Payload

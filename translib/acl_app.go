@@ -396,7 +396,7 @@ func (app *AclApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResponse, error) {
+func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	var err error
 	var payload []byte
 
@@ -406,7 +406,7 @@ func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResp
 	}
 
 	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path,
-		(*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fillValueTree)
+			(*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}

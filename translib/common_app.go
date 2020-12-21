@@ -223,7 +223,7 @@ func (app *CommonApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResponse, error) {
+func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
     var err error
     var payload []byte
     var resPayload []byte
@@ -306,7 +306,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetR
 			    }
 		    }
 		    if resYgot != nil {
-			    resPayload, valueTree, err = generateGetResponsePayload(app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget, fillValueTree)
+			    resPayload, valueTree, err = generateGetResponsePayload(app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget, fmtType)
 			    if err != nil {
 				    log.Warning("generateGetResponsePayload() couldn't generate payload.")
 				    resPayload = payload

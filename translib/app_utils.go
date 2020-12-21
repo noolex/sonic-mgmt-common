@@ -71,7 +71,7 @@ func getYangPathFromYgotStruct(s ygot.GoStruct, yangPathPrefix string, appModule
 	return ""
 }
 
-func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygotTarget *interface{}, skipJSON bool) ([]byte, *ygot.ValidatedGoStruct, error) {
+func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygotTarget *interface{}, fmtType TranslibFmtType) ([]byte, *ygot.ValidatedGoStruct, error) {
 	var err error
 	var payload []byte
 
@@ -145,7 +145,7 @@ func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygo
 			log.Infof("Target yang name: %s  OC Field name: %s\n", currentNodeYangName, currentNodeOCFieldName)
 		}
 	}
-	if skipJSON {
+	if fmtType == TRANSLIB_FMT_YGOT {
 		return payload, &parentCloneObj, nil
 	}
 

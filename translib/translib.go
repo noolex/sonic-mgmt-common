@@ -44,6 +44,7 @@ import (
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
+
 )
 
 //Write lock for all write operations to be synchronized
@@ -59,6 +60,14 @@ const (
 	ProtoErr ErrSource = iota
 	AppErr
 )
+
+const (
+
+	TRANSLIB_FMT_IETF_JSON = iota
+	TRANSLIB_FMT_YGOT
+)
+
+type TranslibFmtType int
 
 type UserRoles struct {
 	Name  string
@@ -80,10 +89,10 @@ type SetResponse struct {
 }
 
 type GetRequest struct {
-	Path          string
-	FillValueTree bool
-	User          UserRoles
-	AuthEnabled   bool
+	Path    string
+	FmtType TranslibFmtType
+	User    UserRoles
+	AuthEnabled bool
 	ClientVersion Version
 
 	// Depth limits the depth of data subtree in the response
@@ -522,7 +531,7 @@ func Get(req GetRequest) (GetResponse, error) {
 		resp = GetResponse{Payload: payload, ErrSrc: AppErr}
 		return resp, err
 	}
-	resp, err = (*app).processGet(dbs, req.FillValueTree)
+	resp, err = (*app).processGet(dbs, req.FmtType)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
 		log.Info("Calling FreeOSMemory..")
