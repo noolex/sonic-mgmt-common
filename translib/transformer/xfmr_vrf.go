@@ -1275,8 +1275,9 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                                     intfData.Config.Subinterface = &i32
                                     intfData.State.Subinterface = &i32
                                 } else {
-                                    intfData.Config.Interface = uiName
-                                    intfData.State.Interface = uiName
+                                    final := *uiName
+                                    intfData.Config.Interface = &final
+                                    intfData.State.Interface = &final
                                 }
 
 	}
