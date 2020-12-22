@@ -808,7 +808,7 @@ func (c *CVL) GetDepTables(yangModule string, tableName string) ([]string, CVLRe
 
 //Parses the JSON string buffer and returns
 //array of dependent fields to be deleted
-func getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForDelete) {
+func (c *CVL) getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForDelete) {
 	//Parse the JSON map received from lua script
 	var v interface{}
 	b := []byte(jsonBuf)
@@ -835,8 +835,18 @@ func getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForD
 					//leaf-list - specific value to be deleted
 					entryMap[tblKey][field]= hValue
 				} else {
-					//leaf - specific field to be deleted
-					entryMap[tblKey][field]= ""
+					// If mandatory field is getting deleted, then instead of
+					// specific field deletion, entire entry to be deleted.
+					// So need to delete dependent entries also when this entire
+					// entry is deleted. Find all dependent entries and mark 
+					// for deletion
+					if isMandatoryTrueNode(tbl, field) {
+						retDepEntries := c.GetDepDataForDelete(tblKey)
+						depEntries = append(depEntries, retDepEntries...)
+					} else {
+						//leaf - specific field to be deleted
+						entryMap[tblKey][field]= ""
+					}
 				}
 			}
 			depEntries = append(depEntries, CVLDepDataForDelete{
@@ -993,7 +1003,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 
 			if (refEntriesJson != "") {
 				//Add all keys whose fields to be deleted 
-				depEntries = append(depEntries, getDepDeleteField(redisKey,
+				depEntries = append(depEntries, c.getDepDeleteField(redisKey,
 				mFilterScript.field, mFilterScript.value, refEntriesJson)...)
 			}
 		}
