@@ -473,6 +473,8 @@ func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) 
     return false
 }
 
+
+
 func GetSubInterfaceShortName(longName *string) *string {
     var shortName string
 
@@ -494,6 +496,20 @@ func GetSubInterfaceShortName(longName *string) *string {
     log.V(3).Infof("GetSubInterfaceShortName %s => %s", *longName, shortName)
 
     return &shortName
+}
+
+func IsIntfSubInterface(ifName *string) bool {
+    isSubIntf := false
+    if strings.HasPrefix(*ifName, "Eth") {
+        if strings.Contains(*ifName, ".") {
+            isSubIntf = true
+        }
+    } else if strings.HasPrefix(*ifName, "Po") {
+        if strings.Contains(*ifName, ".") {
+            isSubIntf = true
+        }
+    }
+    return isSubIntf
 }
 
 func GetSubInterfaceLongName(shortName *string) *string {
