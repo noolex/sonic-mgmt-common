@@ -142,7 +142,6 @@ const (
 	StateDB                    // 6
 	SnmpDB                     // 7
 	ErrorDB                    // 8
-	UserDB                     // 9
 	// All DBs added above this line, please ----
 	MaxDB //  The Number of DBs
 )
@@ -305,8 +304,6 @@ func getDBInstName (dbNo DBNum) string {
 		return "SNMP_OVERLAY_DB"
 	case ErrorDB:
 		return "ERROR_DB"
-	case UserDB:
-		return "USER_DB"
 	}
 	return ""
 }
