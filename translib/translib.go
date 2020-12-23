@@ -854,9 +854,9 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 	for i := range resp {
 		resp[i] = &IsSubscribeResponse{Path: paths[i],
-			IsOnChangeSupported: false,
+			IsOnChangeSupported: true,
 			MinInterval:         minSubsInterval,
-			PreferredType:       Sample,
+			PreferredType:       OnChange,
 			Err:                 nil}
 	}
 
@@ -881,6 +881,10 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 		q:    q,
 		stop: stop,
 		dbs:  dbs,
+	}
+
+	sCtx := subscribeContext{
+		sInfo: sInfo,
 	}
 
 	for i, path := range paths {
@@ -919,41 +923,9 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			}
 		}
 
-		// Prepare notificationInfo for notificationAppInfo for target.
-		for _, nOpts := range nAppSubInfo.ntfAppInfoTrgt {
-			nInfo := &notificationInfo{
-				table:   nOpts.table,
-				key:     nOpts.key,
-				dbno:    nOpts.dbno,
-				fields:  nOpts.dbFldYgPathInfoList,
-				path:    nOpts.path,
-				app:     app,
-				appInfo: appInfo,
-				sInfo:   sInfo,
-			}
-			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
-
-			// Enable on-change cache.. Hope it handles duplicate registrations
-			sInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(nInfo.table)
-		}
-
-		// Prepare notificationInfo for notificationAppInfo for child nodes.
-		for _, nOpts := range nAppSubInfo.ntfAppInfoTrgtChlds {
-			nInfo := &notificationInfo{
-				table:   nOpts.table,
-				key:     nOpts.key,
-				dbno:    nOpts.dbno,
-				fields:  nOpts.dbFldYgPathInfoList,
-				path:    nOpts.path,
-				app:     app,
-				appInfo: appInfo,
-				sInfo:   sInfo,
-			}
-			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
-
-			// Register table for caching
-			sInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(nInfo.table)
-		}
+		sCtx.appInfo = appInfo
+		sCtx.app = app
+		sCtx.add(nAppSubInfo)
 	}
 
 	// Close the db pointers only on error. Otherwise keep them
@@ -962,7 +934,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 		closeAllDbs(dbs[:])
 	} else {
 		log.V(1).Info("dbNotificationMap =", dbNotificationMap)
-		sErr = startSubscribe(sInfo, dbNotificationMap)
+		sErr = sCtx.startSubscribe()
 	}
 
 	return resp, sErr
@@ -976,9 +948,9 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 
 	for i := range resp {
 		resp[i] = &IsSubscribeResponse{Path: paths[i],
-			IsOnChangeSupported: false,
+			IsOnChangeSupported: true,
 			MinInterval:         minSubsInterval,
-			PreferredType:       Sample,
+			PreferredType:       OnChange,
 			Err:                 nil}
 	}
 
@@ -1035,10 +1007,6 @@ func collectNotificationPreferences(nAppInfos []notificationAppInfo, resp *IsSub
 	if len(nAppInfos) == 0 {
 		return
 	}
-
-	resp.IsOnChangeSupported = true
-	resp.PreferredType = OnChange
-	resp.MinInterval = minSubsInterval
 
 	for _, nInfo := range nAppInfos {
 		if !nInfo.isOnChangeSupported || nInfo.dbno == db.CountersDB {

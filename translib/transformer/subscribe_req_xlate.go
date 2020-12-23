@@ -805,6 +805,7 @@ func (reqXlator *subscribeReqXlator) uriToAbsolutePath(rltvUri string) (*gnmipb.
 }
 
 //TODO: remove the fmt.Print and modify it into formatted string and print using log.
+//lint:ignore U1000 temporarily ignore "unused" errors
 func debugPrintXPathInfo(xpathInfo *yangXpathInfo) {
 	fmt.Printf("    yangDataType: %v\r\n", xpathInfo.yangDataType)
 	fmt.Println("      fieldName: ", xpathInfo.fieldName)

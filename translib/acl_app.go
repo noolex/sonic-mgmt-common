@@ -320,7 +320,7 @@ func (app *AclApp) translateSubAclIntf(nb *notificationInfoBuilder) error {
 
 func (app *AclApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
 	resp := subscribePathResponse{
-		path: path.Clone(param.path),
+		path: param.path,
 	}
 
 	switch param.table.Name {

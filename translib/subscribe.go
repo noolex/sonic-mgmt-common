@@ -47,9 +47,6 @@ import (
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
 var sMutex = &sync.Mutex{}
 
-//lint:file-ignore U1000 temporarily ignore all "unused var" errors.
-// Fields in the new structs are getting flagged as unused.
-
 // notificationAppInfo contains the details for monitoring db notifications
 // for a given path. App modules provide these details for each subscribe
 // path. One notificationAppInfo object must inclue details for one db table.
@@ -90,10 +87,9 @@ type notificationAppInfo struct {
 }
 
 type dbFldYgPathInfo struct {
-	rltvPath string
+	rltvPath       string
 	dbFldYgPathMap map[string]string //db field to leaf / rel. path to leaf
 }
-
 
 type notificationSubAppInfo struct {
 	ntfAppInfoTrgt      []notificationAppInfo
@@ -127,10 +123,9 @@ type notificationInfo struct {
 	key     *db.Key
 	dbno    db.DBNum
 	fields  []*dbFldYgPathInfo // map of db field to yang fields map
-	path    *gnmi.Path        // Path to which the db key maps to
+	path    *gnmi.Path         // Path to which the db key maps to
 	app     *appInterface
 	appInfo *appInfo
-	cache   []byte
 	sInfo   *subscribeInfo
 }
 
@@ -178,6 +173,10 @@ func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subs
 			Opaque: nInfo,
 		}
 		sKeyList = append(sKeyList, sKey)
+
+		//
+		d := sInfo.dbs[nInfo.dbno]
+		d.RegisterTableForOnChangeCaching(nInfo.table)
 	}
 
 	sDB, err := db.SubscribeDB(opt, sKeyList, notificationHandler)
@@ -228,15 +227,66 @@ func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) 
 	return nil
 }
 
-func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*notificationInfo) error {
+type subscribeContext struct {
+	sInfo    *subscribeInfo
+	dbNInfos map[db.DBNum][]*notificationInfo
+	tgtInfos []*notificationInfo
+
+	app     *appInterface
+	appInfo *appInfo
+}
+
+func (sc *subscribeContext) add(nAppSubInfo *notificationSubAppInfo) {
+	if sc.dbNInfos == nil {
+		sc.dbNInfos = make(map[db.DBNum][]*notificationInfo)
+	}
+
+	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
+		nInfo := sc.addNInfo(&nAppInfo)
+		sc.tgtInfos = append(sc.tgtInfos, nInfo)
+	}
+
+	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
+		sc.addNInfo(&nAppInfo)
+	}
+}
+
+func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificationInfo {
+	d := nAppInfo.dbno
+	nInfo := &notificationInfo{
+		dbno:    d,
+		table:   nAppInfo.table,
+		key:     nAppInfo.key,
+		fields:  nAppInfo.dbFldYgPathInfoList,
+		path:    nAppInfo.path,
+		app:     sc.app,
+		appInfo: sc.appInfo,
+		sInfo:   sc.sInfo,
+	}
+
+	// Make sure field prefix path has a leading and trailing "/".
+	// Helps preparing full path later by joining parts
+	for _, pi := range nAppInfo.dbFldYgPathInfoList {
+		if len(pi.rltvPath) != 0 && pi.rltvPath[0] != '/' {
+			pi.rltvPath = "/" + pi.rltvPath
+		}
+	}
+
+	sc.dbNInfos[d] = append(sc.dbNInfos[d], nInfo)
+	return nInfo
+}
+
+func (sc *subscribeContext) startSubscribe() error {
 	var err error
 
 	sMutex.Lock()
 	defer sMutex.Unlock()
 
+	sInfo := sc.sInfo
+
 	stopMap[sInfo.stop] = sInfo
 
-	for dbno, nInfoArr := range dbNotificationMap {
+	for dbno, nInfoArr := range sc.dbNInfos {
 		isWriteDisabled := true
 		opt := getDBOptions(dbno, isWriteDisabled)
 		err = startDBSubscribe(opt, nInfoArr, sInfo)
@@ -250,7 +300,7 @@ func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*noti
 		sInfo.nInfoArr = append(sInfo.nInfoArr, nInfoArr...)
 	}
 
-	for _, nInfo := range sInfo.nInfoArr {
+	for _, nInfo := range sc.tgtInfos {
 		err := sendInitialUpdate(sInfo, nInfo)
 		if err != nil {
 			log.Warningf("[%d] init sync failed -- %v", sInfo.id, err)
@@ -290,21 +340,6 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 	}
 
 	return nil
-}
-
-func isDbEntryChanged(subscrDb *db.DB, key db.Key, nInfo *notificationInfo, chgdFields *[]string, entryDeleted bool) bool {
-	var dbEntry db.Value
-
-	// Retrieve Db entry from redis using DB instance where pubsub is registered
-	// for onChange only if entry is NOT deleted.
-	if !entryDeleted {
-		dbEntry, _ = subscrDb.GetEntry(nInfo.table, key)
-	}
-	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
-	// and retrieve modified fields. Also merge changes in cache
-	*chgdFields = nInfo.sInfo.dbs[subscrDb.Opts.DBNo].DiffAndMergeOnChangeCache(dbEntry, nInfo.table, key, entryDeleted)
-
-	return (entryDeleted || len(*chgdFields) > 0)
 }
 
 func sendSyncNotification(sInfo *subscribeInfo, isTerminated bool) {
@@ -404,7 +439,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) (*gnmi.Pat
 		dbno:  nInfo.dbno,
 		table: nInfo.table,
 		key:   ne.key,
-		path:  nInfo.path, // Should we clone, just to be safe?
+		path:  path.Clone(nInfo.path),
 	}
 
 	log.Infof("[%s] Call processSubscribe with dbno=%d, table=%s, key=%v",
