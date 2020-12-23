@@ -64,7 +64,7 @@ type notificationAppInfo struct {
 
 	// dbFieldYangPathMap is the mapping of db entry field to the yang
 	// field (leaf/leaf-list) for the input path.
-	dbFieldYangPathMap map[string]string
+	dbFldYgPathInfoList []*dbFldYgPathInfo
 
 	// database index
 	dbno db.DBNum
@@ -88,6 +88,12 @@ type notificationAppInfo struct {
 	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
 	pType NotificationType
 }
+
+type dbFldYgPathInfo struct {
+	rltvPath string
+	dbFldYgPathMap map[string]string //db field to leaf / rel. path to leaf
+}
+
 
 type notificationSubAppInfo struct {
 	ntfAppInfoTrgt      []notificationAppInfo
@@ -120,7 +126,7 @@ type notificationInfo struct {
 	table   *db.TableSpec
 	key     *db.Key
 	dbno    db.DBNum
-	fields  map[string]string // map of db field to yang fields map
+	fields  []*dbFldYgPathInfo // map of db field to yang fields map
 	path    *gnmi.Path        // Path to which the db key maps to
 	app     *appInterface
 	appInfo *appInfo
@@ -351,8 +357,11 @@ func (ne *notificationEvent) findModifiedFields() ([]string, error) {
 
 	var modFields []string
 	for _, f := range chgFields {
-		if _, ok := nInfo.fields[f]; ok {
-			modFields = append(modFields, f)
+		for _, nDbFldInfo := range nInfo.fields {
+			if _, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				modFields = append(modFields, f)
+				break
+			}
 		}
 	}
 
@@ -437,8 +446,11 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 	}
 
 	for _, f := range fields {
-		if suffix, ok := nInfo.fields[f]; ok {
-			paths = append(paths, prefixStr+"/"+suffix)
+		for _, nDbFldInfo := range nInfo.fields {
+			if suffix, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				paths = append(paths, prefixStr+nDbFldInfo.rltvPath+"/"+suffix)
+				break
+			}
 		}
 	}
 

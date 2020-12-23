@@ -31,37 +31,38 @@ import (
 
 /* Data needed to construct lookup table from yang */
 type yangXpathInfo  struct {
-    yangDataType   string
-    tableName      *string
-    xfmrTbl        *string
-    childTable      []string
-    dbEntry        *yang.Entry
-    yangEntry      *yang.Entry
-    keyXpath       map[int]*[]string
-    delim          string
-    fieldName      string
-    xfmrFunc       string
-    xfmrField      string
-    xfmrPost       string
-    xfmrPath	   *string
-    validateFunc   string
-    rpcFunc        string
-    xfmrKey        string
-    keyName        *string
-    dbIndex        db.DBNum
-    keyLevel       int
-    isKey          bool
-    defVal         string
-    tblOwner       *bool
-    hasChildSubTree bool
-    hasNonTerminalNode bool
-    subscribePref      *string
-    subscribeOnChg     int
-    subscribeMinIntvl  int
-    cascadeDel     int
-    virtualTbl     *bool
-    nameWithMod    *string
-    xfmrPre        string
+	yangDataType       string
+	tableName          *string
+	xfmrTbl            *string
+	childTable         []string
+	dbEntry            *yang.Entry
+	yangEntry          *yang.Entry
+	keyXpath           map[int]*[]string
+	delim              string
+	fieldName          string
+	compositeFields    []string
+	xfmrFunc           string
+	xfmrField          string
+	xfmrPost           string
+	xfmrPath           *string
+	validateFunc       string
+	rpcFunc            string
+	xfmrKey            string
+	keyName            *string
+	dbIndex            db.DBNum
+	keyLevel           int
+	isKey              bool
+	defVal             string
+	tblOwner           *bool
+	hasChildSubTree    bool
+	hasNonTerminalNode bool
+	subscribePref      *string
+	subscribeOnChg     int
+	subscribeMinIntvl  int
+	cascadeDel         int
+	virtualTbl         *bool
+	nameWithMod        *string
+	xfmrPre            string
 }
 
 type dbInfo  struct {
@@ -729,6 +730,8 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				*xpathData.xfmrTbl  = ext.NName()
 			case "field-name" :
 				xpathData.fieldName = ext.NName()
+			case "composite-field-names" :
+				xpathData.compositeFields = strings.Split(ext.NName(), ",")
 			case "subtree-transformer" :
 				xpathData.xfmrFunc  = ext.NName()
 			case "key-transformer" :
@@ -768,10 +771,10 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				}
 				*xpathData.subscribePref = ext.NName()
 			case "subscribe-on-change" :
-				if ext.NName() == "enable" || ext.NName() == "ENABLE" {
-					xpathData.subscribeOnChg = XFMR_ENABLE
-				} else {
+				if ext.NName() == "disable" || ext.NName() == "DISABLE" {
 					xpathData.subscribeOnChg = XFMR_DISABLE
+				} else {
+					xpathData.subscribeOnChg = XFMR_ENABLE
 				}
 			case "subscribe-min-interval" :
 				if ext.NName() == "NONE" {

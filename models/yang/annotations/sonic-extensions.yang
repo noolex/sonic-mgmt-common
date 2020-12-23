@@ -150,4 +150,11 @@ module sonic-extensions {
 	  description "To mention the name of the path transformer which is to resolve the yang uri by filling the
 	                yang keys in the path using the db table key information";
   }
+
+  extension composite-field-names {
+  	  argument "composite-db-table-field-names";
+  	  description "To mention one or more mapped db field and its table name entry for the same oc yang leaf/leaf-list node;
+  	    Each entry should be separated by character comma(,). The format of the each entry should be in the form table-name:field-name.
+  	    For example, the argument for this composite-db-field-names annotation is 'VLAN:mtu, PORT:mtu' ";
+  }
 }

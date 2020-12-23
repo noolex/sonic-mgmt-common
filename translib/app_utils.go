@@ -378,10 +378,21 @@ func (nb *notificationInfoBuilder) Field(yangAttr, dbField string) *notification
 		return nb
 	}
 
-	if nb.currentInfo.dbFieldYangPathMap == nil {
-		nb.currentInfo.dbFieldYangPathMap = make(map[string]string)
+	isAdded := false
+	for _, dbFldYgPath := range nb.currentInfo.dbFldYgPathInfoList {
+		if dbFldYgPath.rltvPath == nb.fieldPrefix {
+			dbFldYgPath.dbFldYgPathMap[dbField] = yangAttr
+			isAdded = true
+			break
+		}
 	}
-	nb.currentInfo.dbFieldYangPathMap[dbField] = nb.fieldPrefix + yangAttr
+
+	if !isAdded {
+		dbFldInfo := dbFldYgPathInfo{nb.fieldPrefix, make(map[string]string)}
+		dbFldInfo.dbFldYgPathMap[dbField] = yangAttr
+		nb.currentInfo.dbFldYgPathInfoList = append(nb.currentInfo.dbFldYgPathInfoList, &dbFldInfo)
+	}
+
 	return nb
 }
 

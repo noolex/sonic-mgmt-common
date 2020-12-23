@@ -133,8 +133,8 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 	txCache := new(sync.Map)
 
 	log.Info("tranlateSubscribe:path", path)
-
-	if subReqXlator, err := transformer.GetSubscribeReqXlator (&path, dbs, txCache); err != nil {
+	isOnchange := true //TODO: default to true for now, the value need to be passed from the subscribe infra
+	if subReqXlator, err := transformer.GetSubscribeReqXlator (path, isOnchange, dbs, txCache); err != nil {
 		log.Info("Error in initializing the SubscribeReqXlator for the subscribe path request: ", path)
 		return nil, err
 	} else {
@@ -142,24 +142,50 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 			log.Info("Error in processing the subscribe path request: ", path)
 			return nil, err
 		} else {
-			ntfSubsAppInfo := new (notificationSubAppInfo)
 			subsReqXlateInfo := subReqXlator.GetSubscribeReqXlateInfo()
-			log.Info("subsReqXlateInfo.TrgtPathInfo.path: ", *subsReqXlateInfo.TrgtPathInfo.Path)
+
+			if uriPath, err := ygot.PathToString(subsReqXlateInfo.TrgtPathInfo.Path); err == nil {
+				log.Info("subsReqXlateInfo.TrgtPathInfo.path: ", uriPath)
+			} else { log.Error("subsReqXlateInfo.TrgtPathInfo.path: Error in converting the gnmi path: ", *subsReqXlateInfo.TrgtPathInfo.Path) }
+
+			ntfSubsAppInfo := new (notificationSubAppInfo)
+
 			for _, dbKeyInfo := range subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo {
-				if dbKeyInfo.Table != nil { log.Info("pathXlateInfo.Table: ", *dbKeyInfo.Table) }
-				if dbKeyInfo.Key != nil { log.Info("pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+				log.Info("Target node: DbNum: ", dbKeyInfo.DbNum)
+				if dbKeyInfo.Table != nil { log.Info("Target node: pathXlateInfo.Table: ", *dbKeyInfo.Table) }
+				if dbKeyInfo.Key != nil { log.Info("Target node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+
 				ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: subsReqXlateInfo.TrgtPathInfo.Path}
+				for _, dbFldMapInfo := range dbKeyInfo.DbFldYgMapList {
+					log.Info("Target node: RelPath: ", dbFldMapInfo.RltvPath)
+					log.Info("Target node: db field yang map: ", dbFldMapInfo.DbFldYgPathMap)
+					dbFldInfo := dbFldYgPathInfo{dbFldMapInfo.RltvPath, dbFldMapInfo.DbFldYgPathMap}
+					ntfAppInfo.dbFldYgPathInfoList = append(ntfAppInfo.dbFldYgPathInfoList, &dbFldInfo)
+				}
 				ntfSubsAppInfo.ntfAppInfoTrgt = append(ntfSubsAppInfo.ntfAppInfoTrgt, ntfAppInfo)
 			}
+
 			for _, pathXlateInfo := range subsReqXlateInfo.ChldPathsInfo {
-				log.Info("ChldPathsInfo: pathXlateInfo.Path: ", *pathXlateInfo.Path)
+				if uriPath, err := ygot.PathToString(pathXlateInfo.Path); err == nil {
+					log.Info("ChldPathsInfo: path: ", uriPath)
+				} else { log.Error("ChldPathsInfo: Error in converting the gnmi path: ", *pathXlateInfo.Path) }
+
 				for _, dbKeyInfo := range pathXlateInfo.DbKeyXlateInfo {
-					if dbKeyInfo.Table != nil { log.Info("pathXlateInfo.Table: ", *dbKeyInfo.Table) }
-					if dbKeyInfo.Key != nil { log.Info("pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+					log.Info("child node: DbNum: ", dbKeyInfo.DbNum)
+					if dbKeyInfo.Table != nil { log.Info("child node: pathXlateInfo.Table: ", *dbKeyInfo.Table) }
+					if dbKeyInfo.Key != nil { log.Info("child node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+
 					ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: pathXlateInfo.Path}
+					for _, dbFldMapInfo := range dbKeyInfo.DbFldYgMapList {
+						log.Info("child node: RelPath: ", dbFldMapInfo.RltvPath)
+						log.Info("child node: db field yang map: ", dbFldMapInfo.DbFldYgPathMap)
+						dbFldInfo := dbFldYgPathInfo{dbFldMapInfo.RltvPath, dbFldMapInfo.DbFldYgPathMap}
+						ntfAppInfo.dbFldYgPathInfoList = append(ntfAppInfo.dbFldYgPathInfoList, &dbFldInfo)
+					}
 					ntfSubsAppInfo.ntfAppInfoTrgtChlds = append(ntfSubsAppInfo.ntfAppInfoTrgtChlds, ntfAppInfo)
 				}
 			}
+
 			return ntfSubsAppInfo, nil
 		}
 	}
