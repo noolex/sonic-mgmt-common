@@ -84,6 +84,12 @@ type notificationAppInfo struct {
 	// pType indicates the preferred notification type for the input
 	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
 	pType NotificationType
+
+	// opaque data can be used to store context information to assist
+	// future key-to-path translations. This is an optional data item.
+	// Apps can store any context information based on their logic.
+	// Translib passes this back to the processSubscribe function.
+	opaque interface{}
 }
 
 type dbFldYgPathInfo struct {
@@ -109,6 +115,14 @@ type dbKeyInfo struct {
 
 	// path template for the db key. Can include wild cards.
 	path *gnmi.Path
+
+	// List of all DB objects. Apps should only use these DB objects
+	// to query db if they need additional data for translation.
+	dbs [db.MaxDB]*db.DB
+
+	// App specific opaque data -- can be used to pass context data
+	// between translateSubscribe and processSubscribe.
+	opaque interface{}
 }
 
 // subscribePathResponse defines response data structure of processSubscribe
@@ -127,6 +141,7 @@ type notificationInfo struct {
 	app     *appInterface
 	appInfo *appInfo
 	sInfo   *subscribeInfo
+	opaque  interface{} // App specific opaque data
 }
 
 type subscribeInfo struct {
@@ -262,6 +277,7 @@ func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificatio
 		app:     sc.app,
 		appInfo: sc.appInfo,
 		sInfo:   sc.sInfo,
+		opaque:  nAppInfo.opaque,
 	}
 
 	// Make sure field prefix path has a leading and trailing "/".
@@ -425,7 +441,7 @@ func (ne *notificationEvent) getValue(path string) ([]byte, error) {
 		return payload, err
 	}
 
-    	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
+	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
 
 	if err == nil {
 		payload = resp.Payload
@@ -436,10 +452,12 @@ func (ne *notificationEvent) getValue(path string) ([]byte, error) {
 
 func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) (*gnmi.Path, error) {
 	in := dbKeyInfo{
-		dbno:  nInfo.dbno,
-		table: nInfo.table,
-		key:   ne.key,
-		path:  path.Clone(nInfo.path),
+		dbno:   nInfo.dbno,
+		table:  nInfo.table,
+		key:    ne.key,
+		dbs:    nInfo.sInfo.dbs,
+		opaque: nInfo.opaque,
+		path:   path.Clone(nInfo.path),
 	}
 
 	log.Infof("[%s] Call processSubscribe with dbno=%d, table=%s, key=%v",
