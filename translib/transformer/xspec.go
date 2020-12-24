@@ -44,7 +44,7 @@ type yangXpathInfo  struct {
 	xfmrFunc           string
 	xfmrField          string
 	xfmrPost           string
-	xfmrPath           *string
+	xfmrPath           string
 	validateFunc       string
 	rpcFunc            string
 	xfmrKey            string
@@ -749,10 +749,7 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 			case "rpc-callback" :
 				xpathData.rpcFunc  = ext.NName()
 			case "path-transformer" :
-				if xpathData.xfmrPath == nil {
-					xpathData.xfmrPath = new(string)
-				}
-				*xpathData.xfmrPath  = ext.NName()
+				xpathData.xfmrPath = ext.NName()
 			case "use-self-key" :
 				xpathData.keyXpath  = nil
 			case "db-name" :

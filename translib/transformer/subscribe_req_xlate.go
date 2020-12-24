@@ -38,10 +38,6 @@ type subscribeReqXlator struct {
 	pathXlator      *subscribePathXlator
 }
 
-/*
-minInterval - aggregating the min interval
- */
-
 type subscribeReq struct {
 	reqUri               string
 	ygPath               string
@@ -292,7 +288,7 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 	//		return nil, tlerr.InternalError{Format: "Onchange subscription is not supported; onChange flag set to false and dbDataMap is empty from the Subscribe transformer callback", Path: *pathXltr.uriPath}
 	//}
 
-	if pathXltr.subReq.isOnchange || pathXltr.subReq.xlateNodeType == TARGET_NODE {
+	if pathXltr.subReq.isOnchange || pathXltr.subReq.xlateNodeType == TARGET_NODE || !subOutPram.isVirtualTbl {
 		for dbNum, tblKeyInfo := range subOutPram.dbDataMap {
 			log.Info("handleSubtreeNodeXlate: dbNum: ", dbNum)
 			for tblName, tblFieldInfo := range tblKeyInfo {
@@ -306,6 +302,23 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 				}
 			}
 		}
+
+		//TODO: need to work on this to properly handle the leaf/leaf-list mapped to db table
+		// since there is no yang leaf node returned by secDbDataMap
+		for dbNum, tblKeyInfo := range subOutPram.secDbDataMap {
+			log.Info("handleSubtreeNodeXlate: dbNum: ", dbNum)
+			for tblName, tblFieldInfo := range tblKeyInfo {
+				log.Info("handleSubtreeNodeXlate: tblName: ", tblName)
+				tblSpec := &db.TableSpec{Name: tblName}
+				for dBKey, tblField := range tblFieldInfo {
+					log.Info("handleSubtreeNodeXlate: tYgXpathInfo.delim: ", ygXpathInfo.delim)
+					keyComp := strings.Split(dBKey, ygXpathInfo.delim)
+					log.Info("handleSubtreeNodeXlate: tblField: ", tblField)
+					pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
+				}
+			}
+		}
+
 	} else if subOutPram.nOpts != nil && pathXltr.subReq.chldNodeMaxMinIntrvl < subOutPram.nOpts.mInterval {
 		pathXltr.subReq.chldNodeMaxMinIntrvl = subOutPram.nOpts.mInterval
 	}
@@ -620,23 +633,24 @@ func (pathXlateInfo *XfmrSubscribePathXlateInfo) copyDbFldYgPathMap(parentRelUri
 }
 
 func (pathXlateInfo *XfmrSubscribePathXlateInfo) addDbFldYgPathMap(relPath string, ygXpNode *ygXpathNode) (error) {
-	if len(pathXlateInfo.DbKeyXlateInfo) == 1 {
-		log.Info("addDbFldYgPathMap: single table:", ygXpNode.relUriPath)
-		dbKeyInfo := pathXlateInfo.DbKeyXlateInfo[0]
-		dbFldInfo := DbFldYgPathInfo{relPath, make(map[string]string)}
-		dbFldInfo.DbFldYgPathMap = ygXpNode.dbFldYgPathMap
-		dbKeyInfo.DbFldYgMapList = append(dbKeyInfo.DbFldYgMapList, &dbFldInfo)
-	} else {
-		log.Info("addDbFldYgPathMap: multi table:", ygXpNode.relUriPath)
-		for _, dbKeyInfo := range pathXlateInfo.DbKeyXlateInfo {
-			if dbFldYgMap, ok := ygXpNode.dbTblFldYgPathMap[dbKeyInfo.Table.Name]; ok {
-				dbFldInfo := DbFldYgPathInfo{relPath, make(map[string]string)}
-				dbFldInfo.DbFldYgPathMap = dbFldYgMap
-				dbKeyInfo.DbFldYgMapList = append(dbKeyInfo.DbFldYgMapList, &dbFldInfo)
-			} else {
-				log.Error("addDbFldYgPathMap: Not able to find the table for the db field:", ygXpNode.relUriPath)
-				return tlerr.InternalError{Format: "Not able to find the table for the db field", Path: ygXpNode.relUriPath}
-			}
+	log.Info("addDbFldYgPathMap: single table:", ygXpNode.relUriPath)
+
+	// for yang node - one table field mapped
+	dbKeyInfo := pathXlateInfo.DbKeyXlateInfo[0]
+	dbFldInfo := DbFldYgPathInfo{relPath, make(map[string]string)}
+	dbFldInfo.DbFldYgPathMap = ygXpNode.dbFldYgPathMap
+	dbKeyInfo.DbFldYgMapList = append(dbKeyInfo.DbFldYgMapList, &dbFldInfo)
+
+	// for the same yang node - multible table field mapped
+	log.Info("addDbFldYgPathMap: multi table:", ygXpNode.relUriPath)
+	for _, dbKeyInfo := range pathXlateInfo.DbKeyXlateInfo {
+		if dbFldYgMap, ok := ygXpNode.dbTblFldYgPathMap[dbKeyInfo.Table.Name]; ok {
+			dbFldInfo := DbFldYgPathInfo{relPath, make(map[string]string)}
+			dbFldInfo.DbFldYgPathMap = dbFldYgMap
+			dbKeyInfo.DbFldYgMapList = append(dbKeyInfo.DbFldYgMapList, &dbFldInfo)
+		} else {
+			log.Error("addDbFldYgPathMap: Not able to find the table for the db field:", ygXpNode.relUriPath)
+			return tlerr.InternalError{Format: "Not able to find the table for the db field", Path: ygXpNode.relUriPath}
 		}
 	}
 	return nil
@@ -712,9 +726,10 @@ rltvUriPath string, ygXpathInfo *yangXpathInfo, ygXpNode *ygXpathNode) (error) {
 			//}
 
 			tblName := ""
-			if ((chYgXpathInfo.tableName != nil && *chYgXpathInfo.tableName != "NONE") && (ygXpathInfo.tableName == nil ||
-				*ygXpathInfo.tableName != *chYgXpathInfo.tableName)) {
-				tblName = *chYgXpathInfo.tableName
+			if (chYgXpathInfo.tableName != nil && *chYgXpathInfo.tableName != "NONE") && (chYgXpathInfo.virtualTbl == nil || !*chYgXpathInfo.virtualTbl) {
+				if ygXpathInfo.tableName == nil || *ygXpathInfo.tableName != *chYgXpathInfo.tableName {
+					tblName = *chYgXpathInfo.tableName
+				}
 			}
 
 			if childYgEntry.IsLeaf() || childYgEntry.IsLeafList() {
@@ -863,8 +878,8 @@ func debugPrintXPathInfo(xpathInfo *yangXpathInfo) {
 	if len(xpathInfo.xfmrField) > 0 {
 		fmt.Printf("\r\n    xfmrField :%v", xpathInfo.xfmrField)
 	}
-	if xpathInfo.xfmrPath != nil {
-		fmt.Printf("\r\n    xfmrPath :%v", *xpathInfo.xfmrPath)
+	if len(xpathInfo.xfmrPath) > 0 {
+		fmt.Printf("\r\n    xfmrPath :%v", xpathInfo.xfmrPath)
 	}
 	fmt.Printf("\r\n    dbIndex  : %v", xpathInfo.dbIndex)
 

@@ -365,7 +365,18 @@ func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error
 
 func (app *CommonApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
 	var resp subscribePathResponse
-	return resp, tlerr.New("Not implemented")
+
+	if subNotfRespXlator, err := transformer.GetSubscribeNotfRespXlator(param.path, param.dbno, param.table, param.key); err != nil {
+		log.Error("processSubscribe: Error in getting the GetSubscribeNotfRespXlator; error: ", err)
+		return resp, err
+	} else {
+		log.Info("processSubscribe: subNotfRespXlator: ", *subNotfRespXlator)
+		if resp.path, err = subNotfRespXlator.Translate(); err != nil {
+			log.Error("processSubscribe: Error in translating the subscribe notification; error: ", err)
+			return resp, err
+		}
+	}
+	return resp, nil
 }
 
 func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys, error) {

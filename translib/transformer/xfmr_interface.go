@@ -103,8 +103,8 @@ type SonicXfmrParams struct {
 type XfmrDbToYgPathParams struct {
 	yangPath      *gnmi.Path        //current path to be be resolved
 	subscribePath *gnmi.Path        //user input subscribe path
-	ygSchemaPath  *string           //current yg schema path
-	tblName       *string           //table name
+	ygSchemaPath  string           //current yg schema path
+	tblName       string           //table name
 	tblKeyComp    []string          //table key comp
 	dbNum         db.DBNum
 	dbs           [db.MaxDB]*db.DB
