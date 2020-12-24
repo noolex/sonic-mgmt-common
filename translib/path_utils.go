@@ -76,6 +76,16 @@ func (p *PathInfo) IntVar(name string) (int, error) {
 	return strconv.Atoi(val)
 }
 
+// HasWildcard checks if the path contains wildcard variable "*".
+func (p *PathInfo) HasWildcard() bool {
+	for _, v := range p.Vars {
+		if v == "*" {
+			return true
+		}
+	}
+	return false
+}
+
 // HasPrefix checks if this path template starts with given
 // prefix.. Shorthand for strings.HasPrefix(p.Template, s)
 func (p *PathInfo) HasPrefix(s string) bool {
