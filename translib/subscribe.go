@@ -450,7 +450,7 @@ func (ne *notificationEvent) getValue(path string) ([]byte, error) {
 	return payload, err
 }
 
-func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) (*gnmi.Path, error) {
+func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path {
 	in := dbKeyInfo{
 		dbno:   nInfo.dbno,
 		table:  nInfo.table,
@@ -468,24 +468,45 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) (*gnmi.Pat
 
 	out, err := (*nInfo.app).processSubscribe(in)
 	if err != nil {
-		return nil, fmt.Errorf("processSubscribe err=%v", err)
+		log.Warningf("[%s] processSubscribe returned err: %v", ne.id, err)
+		return nil
 	}
+
+	if out.path == nil {
+		log.Warningf("[%s] processSubscribe returned nil path", ne.id)
+		return nil
+	}
+
+	if !path.Matches(out.path, nInfo.path) {
+		log.Warningf("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
+		log.Warningf("[%s] Expected path template   : %s", ne.id, path.String(nInfo.path))
+		return nil
+	}
+
+	// Trim the output path if it is longer than nInfo.path
+	if tLen := path.Len(nInfo.path); path.Len(out.path) > tLen {
+		out.path = path.SubPath(out.path, 0, tLen)
+	}
+
+	if path.HasWildcardKey(out.path) {
+		log.Warningf("[%s] processSubscribe did not resolve all wildcards: \"%s\"",
+			ne.id, path.String(out.path))
+		return nil
+	}
+
 	if log.V(3) {
 		log.Infof("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
 	}
 
-	// TODO check if response path is valid and does not include wildcards
-
-	return out.path, nil
+	return out.path
 }
 
 func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []string) {
 	prefix := nInfo.path
 	if path.HasWildcardKey(prefix) {
-		var err error
-		prefix, err = ne.dbkeyToYangPath(nInfo)
-		if err != nil {
-			log.Warningf("[%s] skip notification -- %v", ne.id, err)
+		prefix = ne.dbkeyToYangPath(nInfo)
+		if prefix == nil {
+			log.Warningf("[%s] skip notification", ne.id)
 			return
 		}
 	}
