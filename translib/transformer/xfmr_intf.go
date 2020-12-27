@@ -539,12 +539,16 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
     case UPDATE,REPLACE:
         if(ifType == IntfTypeVlan){
 	    if(validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeVlan].cfgDb.portTN, *ifName)!=nil){
-            err = enableStpOnVlanCreation(inParams, ifName)
-            if (err != nil) {
-                return err
-            }
+                err = enableStpOnVlanCreation(inParams, ifName)
+                if (err != nil) {
+                    return err
+                }
+                //Add tagged/untagged vlan members
+                tagged_list, untagged_list := utils.GetFromCacheVlanMemberList(*ifName)
+                log.Info("-----tagged list: ", tagged_list)
+                log.Info("-----untagged list: ", untagged_list)
 	    }
-	    }
+	}
 
         if(ifType == IntfTypeEthernet) {
             err = validateIntfExists(inParams.d, IntfTypeTblMap[IntfTypeEthernet].cfgDb.portTN, *ifName)

@@ -174,7 +174,8 @@ func enableStpOnVlanCreation(inParams *XfmrParams, vlanName *string) error {
     }
     return nil
 }
-
+/*
+Input: Port/PortChannel name
 func getVlanListTagMode(d *db.DB, ifName string)([]string,[]string, error) {
     var taggedList []string
     var untaggedList []string
@@ -196,7 +197,8 @@ func getVlanListTagMode(d *db.DB, ifName string)([]string,[]string, error) {
 	}
     }
     return taggedList,untaggedList,nil
-}
+}*/
+
 func enableStpOnInterfaceVlanMembership(d *db.DB, vlanName *string, intfList []string,
                                         stpPortMap map[string]db.Value) {
     if len(intfList) == 0 {
@@ -384,14 +386,6 @@ func generateMemberPortsStringFromSlice(memberPortsList []string) *string {
     return &(memberPorts)
 }
 */
-/* Generate list of member-ports from string */
-func generateMemberPortsSliceFromString(memberPortsStr *string) []string {
-    if len(*memberPortsStr) == 0 {
-        return nil
-    }
-    memberPorts := strings.Split(*memberPortsStr, ",")
-    return memberPorts
-}
 
 /* Check member port exists in the list and get Interface mode */
 func checkMemberPortExistsInListAndGetMode(d *db.DB, memberPortsList []string, memberPort *string, vlanName *string, ifMode *intfModeType) bool {
@@ -497,7 +491,7 @@ func removeFromMembersListForVlan(d *db.DB, vlan *string, ifName *string, vlanMa
     }
     memberPortsInfo, ok := vlanEntry.Field["members@"]
     if ok {
-        memberPortsList := generateMemberPortsSliceFromString(&memberPortsInfo)
+        memberPortsList := utils.GenerateMemberPortsSliceFromString(&memberPortsInfo)
         if memberPortsList == nil {
             return nil
         }
@@ -715,7 +709,7 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
         if ok {
             if len(memberPortsListStr) != 0 {
                 memberPortsListStrB.WriteString(vlanEntry.Field["members@"])
-                memberPortsList = generateMemberPortsSliceFromString(&memberPortsListStr)
+                memberPortsList = utils.GenerateMemberPortsSliceFromString(&memberPortsListStr)
                 memberPortsExists = true
             }
         }
@@ -1249,7 +1243,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             if err == nil { //port entry exists
                 taggedVlanVal, ok := portEntry.Field["tagged_vlan@"]
                 if ok {
-                    vlanRngSlice := generateMemberPortsSliceFromString(&taggedVlanVal)
+                    vlanRngSlice := utils.GenerateMemberPortsSliceFromString(&taggedVlanVal)
                     for _, vlanStr := range vlanRngSlice {
                         if strings.Contains(vlanStr, "-") {
                             _ = extractVlanIdsfrmRng(inParams.d, vlanStr, &taggedVlanSlice)
@@ -1344,7 +1338,7 @@ func deleteVlanIntfAndMembers(inParams *XfmrParams, vlanName *string) error {
 
     memberPortsVal, ok := vlanEntry.Field["members@"]
     if ok {
-        memberPorts := generateMemberPortsSliceFromString(&memberPortsVal)
+        memberPorts := utils.GenerateMemberPortsSliceFromString(&memberPortsVal)
         if memberPorts == nil {
             return nil
         }
@@ -1540,20 +1534,18 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
         vlanMemberMap = make(map[string]db.Value)
         stpPortMap := make(map[string]db.Value)
 
-        log.Info("---------------intfVlanMemberAdd-----------------", vlanMemberMap, vlanMap)
         err = intfVlanMemberAdd(&swVlanConfig, &inParams, &ifName, vlanMap, vlanMemberMap, stpPortMap, portVlanListMap, intfType)
         if err != nil {
             log.Errorf("Interface VLAN member port addition failed for Interface: %s!", ifName)
             return nil, err
         }
-        log.Info("---------------intfVlanMemberAdd-----------------", vlanMemberMap, vlanMap)
         if len(vlanMap) != 0 {
             res_map[VLAN_TN] = vlanMap
             if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
                 for vlanName := range vlanMap {
                     ifStr := (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"]
                     check := false
-                    strList := generateMemberPortsSliceFromString(&ifStr)
+                    strList := utils.GenerateMemberPortsSliceFromString(&ifStr)
                     for _,strName := range strList{
                         if (strName == ifName){
                             check = true

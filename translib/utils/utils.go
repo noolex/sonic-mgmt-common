@@ -48,6 +48,13 @@ const (
 /* Representation of FEC derivation table */
 type fec_info_t map[string]map[string]map[string][]string
 
+type vlan_member_list struct {
+    tagged []string
+    untagged []string //list of eth or portchannel interfaces 
+}
+
+var vlanMemberCache map[string]*vlan_member_list//*sync.Map
+
 /* Cached map of the default FEC modes */
 var default_fec_modes_cache fec_info_t
 /* Cached map of the supported FEC modes */
@@ -65,6 +72,36 @@ func init() {
     portNotifSubscribe();
     populateAliasDS()
     devMetaNotifSubscribe();
+}
+
+// Convert string to slice
+func GenerateMemberPortsSliceFromString(memberPortsStr *string) []string {
+    if len(*memberPortsStr) == 0 {
+        return nil
+    }
+    memberPorts := strings.Split(*memberPortsStr, ",")
+    return memberPorts
+}
+
+// Input: range 10-100 or 10..100
+func extractVlanIdsfrmRng(rngStr string, vlanLst *[]string) error {
+    log.Info("-----------extractVlanIdsfrmRng------")
+    var err error
+    var res []string
+    if strings.Contains(rngStr, "..") {
+        res = strings.Split(rngStr, "..")
+    }
+    if strings.Contains(rngStr, "-") {
+        res = strings.Split(rngStr, "-")
+    }
+    if len(res) != 0 {
+        low, _ := strconv.Atoi(res[0])
+        high, _ := strconv.Atoi(res[1])
+        for id := low; id <= high; id++ {
+            *vlanLst = append(*vlanLst, "Vlan"+strconv.Itoa(id))
+        }
+    }
+    return err
 }
 
 func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
@@ -119,6 +156,58 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
     }
     aliasIfNameMap.Store(aliasName, portName)
     log.V(3).Infof("alias cache updated %s <==> %s", portName, aliasName)
+
+    taggedVlanVal, ok := portEntry.Field["tagged_vlan@"]
+    if ok {
+        var taggedVlanSlice []string
+        vlanRngSlice := GenerateMemberPortsSliceFromString(&taggedVlanVal)
+        for _, vlanStr := range vlanRngSlice {
+            if strings.Contains(vlanStr, "-") {
+                _ = extractVlanIdsfrmRng(vlanStr, &taggedVlanSlice)
+            } else {
+                taggedVlanSlice = append(taggedVlanSlice, vlanStr)
+            }
+        }
+        for _, vlan := range taggedVlanSlice {
+            member_list, ok := vlanMemberCache[vlan]
+            found := false
+            if !ok {
+                member_list = &vlan_member_list{}
+            } else {
+                //Check if portName already in tagged list
+                for _, item := range member_list.tagged {
+                    if item == portName {
+                        found = true
+                        break
+                    }
+                }
+            }
+            if !found { //Add portName to tagged list
+                member_list.tagged = append(member_list.tagged, portName)
+                vlanMemberCache[vlan] = member_list  //TODO:cache store only non-existing vlans
+            }
+        }
+    }
+    vlanVal, ok := portEntry.Field["access_vlan"]
+    if ok {
+        found := false
+        member_list, ok := vlanMemberCache[vlanVal]
+        if !ok {
+            member_list = &vlan_member_list{}
+        } else {
+            //Check if portName already in untagged list
+            for _, item := range member_list.untagged {
+                if item == portName {
+                    found = true
+                    break
+                }
+            }
+        }
+        if !found { //Add portName to untagged list
+            member_list.untagged = append(member_list.untagged, portName)
+            vlanMemberCache[vlanVal] = member_list  //TODO:cache store only non-existing vlans
+        }
+    }
 }
 
 func deleteFromCacheForPort(portKey *db.Key) {
@@ -242,6 +331,7 @@ func populateAliasDS() error {
 
     ifNameAliasMap = new(sync.Map)
     aliasIfNameMap = new(sync.Map)
+    vlanMemberCache = make(map[string]*vlan_member_list)
 
     d, err := db.NewDB(getDBOptions(db.ConfigDB, false))
     if err != nil {
@@ -326,6 +416,12 @@ func GetUINameFromNativeName(ifName *string) *string {
 func IsValidAliasName(ifName *string) bool {
     _, ok := aliasIfNameMap.Load(*ifName)
     return ok
+}
+
+// Get tagged/untagged list for given vlan
+func GetFromCacheVlanMemberList(vlanName string) ([]string, []string) {
+    memberlist, _ := vlanMemberCache[vlanName]
+    return memberlist.tagged, memberlist.untagged
 }
 
 // SortAsPerTblDeps - sort transformer result table list based on dependencies (using CVL API) tables to be used for CRUD operations
