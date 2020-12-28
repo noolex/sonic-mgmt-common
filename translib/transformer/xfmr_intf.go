@@ -89,12 +89,9 @@ func init () {
     XlateFuncBind("DbToYang_routed_vlan_ip_addr_xfmr", DbToYang_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("Subscribe_intf_ip_addr_xfmr", Subscribe_intf_ip_addr_xfmr)
     XlateFuncBind("Subscribe_routed_vlan_ip_addr_xfmr", Subscribe_routed_vlan_ip_addr_xfmr)
-<<<<<<< HEAD
     XlateFuncBind("rpc_oc_vlan_replace", rpc_oc_vlan_replace)
-=======
     XlateFuncBind("YangToDb_subif_index_xfmr", YangToDb_subif_index_xfmr)
     XlateFuncBind("DbToYang_subif_index_xfmr", DbToYang_subif_index_xfmr)
->>>>>>> origin/broadcom_sonic_3.x_share
 }
 
 const (
