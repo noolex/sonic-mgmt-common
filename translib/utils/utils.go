@@ -298,7 +298,7 @@ func GetNativeNameFromUIName(uiName *string) *string {
             }
         }
         if (len(subIntfParts) == 2) {
-            converted[idx] = *GetSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
+            converted[idx] = *getSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
         }
     }
     ret := strings.Join(converted, ",")
@@ -322,7 +322,7 @@ func GetUINameFromNativeName(ifName *string) *string {
         subIntfParts := strings.SplitN(part, ".", 2)
         converted[idx] = subIntfParts[0]
         if (len(subIntfParts) == 2) {
-            converted[idx] = *GetSubInterfaceLongName(&subIntfParts[0])
+            converted[idx] = *getSubInterfaceLongName(&subIntfParts[0])
         }
         if IsAliasModeEnabled() {
             aliasName, ok := ifNameAliasMap.Load(converted[idx])
@@ -492,7 +492,7 @@ func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) 
 
 
 
-func GetSubInterfaceShortName(longName *string) *string {
+func getSubInterfaceShortName(longName *string) *string {
     var shortName string
 
     if strings.Contains(*longName, "Ethernet") {
@@ -503,7 +503,7 @@ func GetSubInterfaceShortName(longName *string) *string {
         shortName = *longName
     }
 
-    log.V(3).Infof("GetSubInterfaceShortName %s => %s", *longName, shortName)
+    log.V(3).Infof("getSubInterfaceShortName %s => %s", *longName, shortName)
 
     return &shortName
 }
@@ -522,7 +522,7 @@ func IsIntfSubInterface(ifName *string) bool {
     return isSubIntf
 }
 
-func GetSubInterfaceLongName(shortName *string) *string {
+func getSubInterfaceLongName(shortName *string) *string {
     var longName string
 
     if strings.Contains(*shortName, "Eth") {
@@ -533,7 +533,7 @@ func GetSubInterfaceLongName(shortName *string) *string {
         longName = *shortName
     }
 
-    log.V(3).Infof("GetSubInterfaceLongName %s => %s", *shortName, longName)
+    log.V(3).Infof("getSubInterfaceLongName %s => %s", *shortName, longName)
 
     return &longName
 }

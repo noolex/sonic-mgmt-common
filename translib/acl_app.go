@@ -1175,10 +1175,6 @@ func (app *AclApp) getOCInterfaceSubtree(dbs [db.MaxDB]*db.DB, intfSt *ocbinds.O
 			if intfId == ACL_GLOBAL_PORT || intfId == ACL_CTRL_PLANE_PORT {
 				continue
 			}
-			if strings.Contains(intfId, ".") {
-				//subintfid
-				intfId = *utils.GetSubInterfaceLongName(&intfId)
-			}
 			ptr, _ := intfSt.NewInterface(*utils.GetUINameFromNativeName(&intfId))
 			ygot.BuildEmptyTree(ptr)
 		}
@@ -1213,10 +1209,6 @@ func (app *AclApp) getOCInterfaceSubtree(dbs [db.MaxDB]*db.DB, intfSt *ocbinds.O
 		}
 
 		nativeName := *utils.GetNativeNameFromUIName(&ifName)
-		if strings.Contains(nativeName, ".") {
-			//subintfid
-			nativeName = *utils.GetSubInterfaceShortName(&nativeName)
-		}
 		inFound, err := app.getOCIntfSubtreeIntfDataForStage(dbs, nativeName, "Ingress", ocIntfPtr)
 		if err != nil {
 			return err
@@ -1561,10 +1553,6 @@ func (app *AclApp) findAndDeleteAclBindings(d *db.DB, intfIn string, stage strin
 	acltype ocbinds.E_OpenconfigAcl_ACL_TYPE) error {
 
 	intf := *utils.GetNativeNameFromUIName(&intfIn)
-	if strings.Contains(intf, ".") {
-		//subintfid
-		intf = *utils.GetSubInterfaceShortName(&intf)
-	}
 	log.Infof("Delete ACL bindings ACL:%s Stage:%s Type:%v Intf:%v", aclname, stage, acltype, intf)
 
 	aclKeys, _ := d.GetKeys(app.aclTs)
@@ -1852,10 +1840,6 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 				for inAclKey := range intf.IngressAclSets.IngressAclSet {
 					aclName := convertOCAclnameTypeToInternal(inAclKey.SetName, inAclKey.Type)
 					intf.Id = utils.GetNativeNameFromUIName(intf.Id)
-					if strings.Contains(*intf.Id, ".") {
-						//subintfid
-						intf.Id = utils.GetSubInterfaceShortName(intf.Id)
-					}
 					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.Id)
 					if len(app.aclTableMap) == 0 {
 						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
@@ -1879,10 +1863,6 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 				for outAclKey := range intf.EgressAclSets.EgressAclSet {
 					aclName := convertOCAclnameTypeToInternal(outAclKey.SetName, outAclKey.Type)
 					intf.Id = utils.GetNativeNameFromUIName(intf.Id)
-					if strings.Contains(*intf.Id, ".") {
-						//subintfid
-						intf.Id = utils.GetSubInterfaceShortName(intf.Id)
-					}
 					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.Id)
 					if len(app.aclTableMap) == 0 {
 						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
