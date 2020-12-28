@@ -136,7 +136,7 @@ func (app *yanglibApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, erro
 	return ActionResponse{}, errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResponse, error) {
+func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	glog.Infof("path = %s", app.pathInfo.Template)
 	glog.Infof("vars = %s", app.pathInfo.Vars)
 
@@ -159,7 +159,7 @@ func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (Get
 
 	if err == nil {
 		resp.Payload, resp.ValueTree, err = generateGetResponsePayload(
-			app.pathInfo.Path, app.ygotRoot, app.ygotTarget, fillValueTree)
+			app.pathInfo.Path, app.ygotRoot, app.ygotTarget, fmtType)
 	}
 
 	return resp, err

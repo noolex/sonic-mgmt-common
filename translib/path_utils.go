@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 
 	log "github.com/golang/glog"
@@ -51,6 +52,16 @@ func (p *PathInfo) HasVar(name string) bool {
 // empty string if no such variable exists.
 func (p *PathInfo) Var(name string) string {
 	return p.Vars[name]
+}
+
+// StringVar returns the string value for a path variable if
+// it exists; otherwise returns the specified default value.
+func (p *PathInfo) StringVar(name, defalt string) string {
+	if v, ok := p.Vars[name]; ok {
+		return v
+	} else {
+		return defalt
+	}
 }
 
 // IntVar returns the value for a path variable as an int.
