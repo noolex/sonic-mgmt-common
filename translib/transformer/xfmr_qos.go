@@ -1786,7 +1786,10 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         if log.V(3) {
             log.Info("qos_intf_table_xfmr - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
         }
-        if strings.HasPrefix(*dbifName, "Eth") {
+
+        if strings.Contains(*dbifName, ".") {
+            tbl_name = "VLAN_SUB_INTERFACE"
+        } else if strings.HasPrefix(*dbifName, "Eth") {
             tbl_name = "PORT"
         } else if strings.HasPrefix(*dbifName, "CPU") {
             tbl_name = "QOS_PORT"
