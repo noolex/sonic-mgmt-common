@@ -43,7 +43,6 @@ func init () {
     XlateFuncBind("intf_table_xfmr", intf_table_xfmr)
     XlateFuncBind("alias_value_xfmr", alias_value_xfmr)
     XlateFuncBind("alternate_name_value_xfmr", alternate_name_value_xfmr)
-    XlateFuncBind("subinterface_name_value_xfmr", subinterface_name_value_xfmr)
     XlateFuncBind("YangToDb_intf_name_xfmr", YangToDb_intf_name_xfmr)
     XlateFuncBind("DbToYang_intf_name_xfmr", DbToYang_intf_name_xfmr)
     XlateFuncBind("YangToDb_intf_enabled_xfmr", YangToDb_intf_enabled_xfmr)
@@ -91,6 +90,8 @@ func init () {
     XlateFuncBind("Subscribe_intf_ip_addr_xfmr", Subscribe_intf_ip_addr_xfmr)
     XlateFuncBind("Subscribe_routed_vlan_ip_addr_xfmr", Subscribe_routed_vlan_ip_addr_xfmr)
     XlateFuncBind("rpc_oc_vlan_replace", rpc_oc_vlan_replace)
+    XlateFuncBind("YangToDb_subif_index_xfmr", YangToDb_subif_index_xfmr)
+    XlateFuncBind("DbToYang_subif_index_xfmr", DbToYang_subif_index_xfmr)
 }
 
 const (
@@ -250,9 +251,6 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     ifName := inParams.value
     log.V(3).Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
 
-    if !utils.IsAliasModeEnabled() {
-        return ifName, err
-    }
     var convertedName *string
 
     if inParams.oper == GET {
@@ -282,23 +280,6 @@ func alternate_name_value_xfmr(inParams XfmrDbParams) (string, error) {
 
     log.Info("Returned string from alternate_name_value_xfmr = ", *ifName)
     return *ifName, nil
-}
-
-func subinterface_name_value_xfmr(inParams XfmrDbParams) (string, error) {
-    var err error
-
-    ifName := inParams.value
-    log.V(3).Infof("subinterface_name_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
-
-    var convertedName string
-
-    if inParams.oper == GET {
-        convertedName = *utils.GetSubInterfaceLongName(&ifName)
-    } else {
-        convertedName = *utils.GetSubInterfaceShortName(&ifName)
-    }
-    log.V(3).Info("Returned string from alias_value_xfmr = ", convertedName)
-    return convertedName, err
 }
 
 var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -713,9 +694,6 @@ var rpc_clear_ip RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte,
         return json.Marshal(&result)
     }
     intTbl := IntfTypeTblMap[intfType]
-    if intfType == IntfTypeSubIntf {
-        ifName = utils.GetSubInterfaceShortName(ifName)
-    }
     log.Info("Interface type = ", intfType)
     log.Infof("Deleting IP address: %s for interface: %s", ipPrefix, *ifName)
 
@@ -5586,3 +5564,28 @@ var DbToYang_igmp_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[
     return nil, err
 } */
 
+var YangToDb_subif_index_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+
+    pathInfo := NewPathInfo(inParams.uri)
+    uriIfName := pathInfo.Var("name")
+
+    ifName := *utils.GetNativeNameFromUIName(&uriIfName)
+
+    res_map["parent"] = ifName
+
+    log.Info("YangToDb_subif_index_xfmr: res_map:", res_map)
+    return res_map, err
+}
+
+var DbToYang_subif_index_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    pathInfo := NewPathInfo(inParams.uri)
+    id:= pathInfo.Var("index")
+    log.Info("DbToYang_subif_index_xfmr: Sub-interface Index = ", id)
+    i64, _ := strconv.ParseUint(id, 10, 32)
+    res_map["index"] = i64
+    return res_map, nil
+}

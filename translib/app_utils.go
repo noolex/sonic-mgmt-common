@@ -25,6 +25,7 @@ import (
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/path"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 
 	log "github.com/golang/glog"
@@ -70,7 +71,7 @@ func getYangPathFromYgotStruct(s ygot.GoStruct, yangPathPrefix string, appModule
 	return ""
 }
 
-func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygotTarget *interface{}, skipJSON bool) ([]byte, *ygot.ValidatedGoStruct, error) {
+func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygotTarget *interface{}, fmtType TranslibFmtType) ([]byte, *ygot.ValidatedGoStruct, error) {
 	var err error
 	var payload []byte
 
@@ -97,7 +98,7 @@ func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygo
 	}
 	parentNodeList, err := ytypes.GetNode(ygSchema.RootSchema(), deviceObj, parentPath)
 	if err != nil {
-		return payload, nil,  err
+		return payload, nil, err
 	}
 	if len(parentNodeList) == 0 {
 		return payload, nil, tlerr.InvalidArgs("Invalid URI: %s", targetUri)
@@ -144,11 +145,9 @@ func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygo
 			log.Infof("Target yang name: %s  OC Field name: %s\n", currentNodeYangName, currentNodeOCFieldName)
 		}
 	}
-	if skipJSON {
+	if fmtType == TRANSLIB_FMT_YGOT {
 		return payload, &parentCloneObj, nil
 	}
-
-
 
 	payload, err = dumpIetfJson(parentCloneObj, true)
 
@@ -292,4 +291,214 @@ func removeElementIfHasPrefix(sl []string, str string) []string {
 	}
 
 	return sl
+}
+
+// notificationInfoBuilder provides utility APIs to build notificationAppInfo
+// data.
+type notificationInfoBuilder struct {
+	pathInfo *PathInfo
+	yangMap  yangMapTree
+
+	primaryInfos []notificationAppInfo
+
+	requestPath *gnmi.Path
+	currentPath *gnmi.Path // Path cone to be used in notificationAppInfo
+	currentIndx int        // Current yangMap node's element in currentPath
+	fieldPrefix string     // Yang prefix to be used in Field()
+	fieldFilter string     // Field name filter
+	currentInfo *notificationAppInfo
+}
+
+type yangMapFunc func(nb *notificationInfoBuilder) error
+
+type yangMapTree struct {
+	mapFunc yangMapFunc
+	subtree map[string]*yangMapTree
+}
+
+func (nb *notificationInfoBuilder) Build() (*notificationSubAppInfo, error) {
+	log.Infof("translateSubscribe( %s )", nb.pathInfo.Path)
+
+	var err error
+	nb.requestPath, err = ygot.StringToStructuredPath(nb.pathInfo.Path)
+	if err != nil {
+		log.Warningf("Invalid subscribe path: \"%s\"; err=%v", nb.pathInfo.Path, err)
+		return nil, tlerr.InvalidArgs("Invalid subscribe path")
+	}
+
+	// Find matching yangMapTree node
+	index, ymap := nb.yangMap.match(nb.requestPath, 1)
+
+	log.Infof("Path match index %d", index)
+
+	nb.currentIndx = index
+	nb.currentPath = nb.requestPath
+	if err := ymap.collect(nb); err != nil {
+		log.Warningf("translateSubscribe failed for path: \"%s\"; err=%s", nb.pathInfo.Path, err)
+		return nil, tlerr.New("Internal error")
+	}
+
+	log.Infof("Found %d notificationAppInfo", len(nb.primaryInfos))
+
+	return &notificationSubAppInfo{ntfAppInfoTrgt: nb.primaryInfos}, nil
+}
+
+func (nb *notificationInfoBuilder) New() *notificationInfoBuilder {
+	nb.primaryInfos = append(nb.primaryInfos,
+		notificationAppInfo{
+			path:                nb.currentPath,
+			dbno:                db.MaxDB,
+			isOnChangeSupported: true,
+			pType:               OnChange,
+		})
+
+	nb.currentInfo = &nb.primaryInfos[len(nb.primaryInfos)-1]
+	return nb
+}
+
+func (nb *notificationInfoBuilder) PathKey(name, value string) *notificationInfoBuilder {
+	path.SetKeyAt(nb.currentPath, nb.currentIndx, name, value)
+	return nb
+}
+
+func (nb *notificationInfoBuilder) Table(dbno db.DBNum, tableName string) *notificationInfoBuilder {
+	nb.currentInfo.dbno = dbno
+	nb.currentInfo.table = &db.TableSpec{Name: tableName}
+	return nb
+}
+
+func (nb *notificationInfoBuilder) Key(keyComp ...string) *notificationInfoBuilder {
+	nb.currentInfo.key = &db.Key{Comp: keyComp}
+	return nb
+}
+
+func (nb *notificationInfoBuilder) Field(yangAttr, dbField string) *notificationInfoBuilder {
+	// Ignore unwanted fields
+	if len(nb.fieldFilter) != 0 && yangAttr != nb.fieldFilter {
+		return nb
+	}
+
+	if nb.currentInfo.dbFieldYangPathMap == nil {
+		nb.currentInfo.dbFieldYangPathMap = make(map[string]string)
+	}
+	nb.currentInfo.dbFieldYangPathMap[dbField] = nb.fieldPrefix + yangAttr
+	return nb
+}
+
+func (nb *notificationInfoBuilder) SetFieldPrefix(prefix string) bool {
+	i := nb.currentIndx + 1
+	n := path.Len(nb.currentPath)
+	if i >= n {
+		// Request does not contain any additional elements beyond
+		// current path. Accept all sub containers & fields
+		nb.fieldPrefix = prefix + "/"
+		nb.fieldFilter = ""
+		return true
+	}
+
+	pparts := strings.Split(prefix, "/")
+	for j, p := range pparts {
+		if p != nb.currentPath.Elem[i].Name {
+			return false
+		}
+
+		i++
+		if i >= n {
+			if j == len(pparts) { // exact match
+				nb.fieldPrefix = ""
+			} else { // partial match
+				nb.fieldPrefix = strings.Join(pparts[j+1:], "/") + "/"
+			}
+			nb.fieldFilter = ""
+			return true
+		}
+	}
+
+	// Current path is still longer than given prefix. Must be
+	// field name filter
+	nb.fieldPrefix = prefix + "/"
+	nb.fieldFilter = nb.currentPath.Elem[i].Name
+	return true
+}
+
+func (nb *notificationInfoBuilder) OnChange(flag bool) *notificationInfoBuilder {
+	nb.currentInfo.isOnChangeSupported = flag
+	return nb
+}
+
+func (nb *notificationInfoBuilder) Interval(secs int) *notificationInfoBuilder {
+	nb.currentInfo.mInterval = secs
+	return nb
+}
+
+func (nb *notificationInfoBuilder) Preferred(mode NotificationType) *notificationInfoBuilder {
+	nb.currentInfo.pType = mode
+	return nb
+}
+
+func (y *yangMapTree) match(reqPath *gnmi.Path, index int) (int, *yangMapTree) {
+	size := path.Len(reqPath)
+	if len(y.subtree) == 0 || index >= size {
+		return index - 1, y
+	}
+
+	next := reqPath.Elem[index].Name
+
+	for segment, submap := range y.subtree {
+		parts := strings.Split(segment, "/")
+		if parts[0] != next {
+			continue
+		}
+
+		// Reuse current handler func if subtree map is nil.
+		if submap == nil {
+			temp := yangMapTree{mapFunc: y.mapFunc}
+			return temp.match(reqPath, index)
+		}
+
+		nparts := len(parts)
+		if path.MergeElemsAt(reqPath, index, parts...) == nparts {
+			return submap.match(reqPath, index+nparts)
+		}
+		break // no match
+	}
+
+	return -1, nil
+}
+
+func (y *yangMapTree) collect(nb *notificationInfoBuilder) error {
+	// Reset previous states
+	nb.fieldPrefix = ""
+	nb.fieldFilter = ""
+	bakupIndx := nb.currentIndx
+	bakupPath := nb.currentPath
+
+	// Invoke yangMapFunc to collect notificationAppInfo
+	if y.mapFunc != nil {
+		if err := y.mapFunc(nb); err != nil {
+			return err
+		}
+	}
+
+	// Recursively collect from subtree
+	for subpath, subnode := range y.subtree {
+		if subnode == nil {
+			continue
+		}
+
+		parts := strings.Split(subpath, "/")
+		nb.currentIndx = bakupIndx + len(parts)
+		nb.currentPath = path.SubPath(bakupPath, 0, bakupIndx+1)
+		path.AppendElems(nb.currentPath, parts...)
+
+		if err := subnode.collect(nb); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func wildcardMatch(v1, v2 string) bool {
+	return v1 == v2 || v1 == "*"
 }

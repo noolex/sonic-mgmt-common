@@ -15,7 +15,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 
-var qCounterTblAttr [] string = []string {"transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets", "transmit-pkts-per-second", "transmit-octets-per-second" }
+var qCounterTblAttr [] string = []string {"transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets", "transmit-pkts-per-second", "transmit-octets-per-second", "transmit-bits-per-second" }
 var pgCounterTblAttr [] string = []string {"headroom-watermark", "headroom-persistent-watermark", "shared-watermark", "shared-persistent-watermark", "headroom-watermark-percent", "headroom-persistent-watermark-percent", "shared-watermark-percent", "shared-persistent-watermark-percent" }
 
 var ECN_MAP = map[string]string{

@@ -11,14 +11,14 @@
 //                                                                            //
 //  Unless required by applicable law or agreed to in writing, software       //
 //  distributed under the License is distributed on an "AS IS" BASIS,         //
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
 //  See the License for the specific language governing permissions and       //
 //  limitations under the License.                                            //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-Package translib defines the functions to be used by the subscribe 
+Package translib defines the functions to be used by the subscribe
 
 handler to subscribe for a key space notification. It also has
 
@@ -31,14 +31,17 @@ call the appropriate app module to handle them.
 package translib
 
 import (
+	"fmt"
 	"sync"
 	"time"
-	"bytes"
-	"strconv"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/path"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
-	"github.com/Workiva/go-datastructures/queue"
+	"github.com/openconfig/ygot/ygot"
 )
 
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
@@ -48,10 +51,10 @@ var sMutex = &sync.Mutex{}
 // Fields in the new structs are getting flagged as unused.
 
 // notificationAppInfo contains the details for monitoring db notifications
-// for a given path. App moodules provide these details for each subscribe
+// for a given path. App modules provide these details for each subscribe
 // path. One notificationAppInfo object must inclue details for one db table.
 // One subscribe path can map to multiple notificationAppInfo.
-type notificationAppInfo struct   {
+type notificationAppInfo struct {
 	// table name
 	table *db.TableSpec
 
@@ -87,75 +90,88 @@ type notificationAppInfo struct   {
 }
 
 type notificationSubAppInfo struct {
-	ntfAppInfoTrgt  []notificationAppInfo
+	ntfAppInfoTrgt      []notificationAppInfo
 	ntfAppInfoTrgtChlds []notificationAppInfo
 }
 
 // dbKeyInfo represents one db key.
 type dbKeyInfo struct {
-    // table name
-    table db.TableSpec
+	// table name
+	table *db.TableSpec
 
-    // key string without table name prefix.
-    key db.Key
+	// key string without table name prefix.
+	key *db.Key
 
-    // database index
-    dbno db.DBNum
+	// database index
+	dbno db.DBNum
 
-    // path template for the db key. Can include wild cards.
-    path gnmi.Path
+	// path template for the db key. Can include wild cards.
+	path *gnmi.Path
 }
 
 // subscribePathResponse defines response data structure of processSubscribe
 // function.
 type subscribePathResponse struct {
-    // path indicates the yang path to which the db key maps to.
-    path gnmi.Path
+	// path indicates the yang path to which the db key maps to.
+	path *gnmi.Path
 }
 
-
-type notificationInfo struct{
-	table               db.TableSpec
-	key					db.Key
-	dbno				db.DBNum
-	needCache			bool
-	path				string
-	app				   *appInterface
-	appInfo			   *appInfo
-	cache			  []byte
-	sKey			   *db.SKey
-	dbs [db.MaxDB]	   *db.DB //used to perform get operations
+type notificationInfo struct {
+	table   *db.TableSpec
+	key     *db.Key
+	dbno    db.DBNum
+	fields  map[string]string // map of db field to yang fields map
+	path    *gnmi.Path        // Path to which the db key maps to
+	app     *appInterface
+	appInfo *appInfo
+	cache   []byte
+	sInfo   *subscribeInfo
 }
 
-type subscribeInfo struct{
-	syncDone			bool
-	q				   *queue.PriorityQueue
-	nInfoArr		 []*notificationInfo
-	stop				chan struct{}
-	sDBs			 []*db.DB //Subscription DB should be used only for keyspace notification unsubscription
+type subscribeInfo struct {
+	id       uint64 // Subscribe request id
+	syncDone bool
+	q        *queue.PriorityQueue
+	nInfoArr []*notificationInfo
+	stop     chan struct{}
+	sDBs     []*db.DB         //Subscription DB should be used only for keyspace notification unsubscription
+	dbs      [db.MaxDB]*db.DB //used to perform get operations
 }
 
-var nMap map[*db.SKey]*notificationInfo
-var sMap map[*notificationInfo]*subscribeInfo
+// notificationEvent holds data about translib notification.
+type notificationEvent struct {
+	id    string            // Unique id for logging
+	event db.SEvent         // DB notification type, if any
+	key   *db.Key           // DB key, if any
+	db    *db.DB            // DB object on which this event was received
+	nInfo *notificationInfo // Registration data
+}
+
+// subscribeCounter counts number of Subscribe calls.
+var subscribeCounter Counter
+
+// dbNotificationCounter counts number of db notification processed.
+// Used to derive notificationID
+var dbNotificationCounter Counter
+
 var stopMap map[chan struct{}]*subscribeInfo
 var cleanupMap map[*db.DB]*subscribeInfo
 
 func init() {
-	nMap = make(map[*db.SKey]*notificationInfo)
-	sMap = make(map[*notificationInfo]*subscribeInfo)
-	stopMap	= make(map[chan struct{}]*subscribeInfo)
-	cleanupMap	= make(map[*db.DB]*subscribeInfo)
+	stopMap = make(map[chan struct{}]*subscribeInfo)
+	cleanupMap = make(map[*db.DB]*subscribeInfo)
 }
 
 func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subscribeInfo) error {
 	var sKeyList []*db.SKey
 
 	for _, nInfo := range nInfoList {
-		sKey := &db.SKey{ Ts: &nInfo.table, Key: &nInfo.key}
+		sKey := &db.SKey{
+			Ts:     nInfo.table,
+			Key:    nInfo.key,
+			Opaque: nInfo,
+		}
 		sKeyList = append(sKeyList, sKey)
-		nInfo.sKey = sKey
-		nMap[sKey] = nInfo
-		sMap[nInfo] = sInfo
 	}
 
 	sDB, err := db.SubscribeDB(opt, sKeyList, notificationHandler)
@@ -163,89 +179,111 @@ func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subs
 	if err == nil {
 		sInfo.sDBs = append(sInfo.sDBs, sDB)
 		cleanupMap[sDB] = sInfo
-	} else {
-		for i, nInfo := range nInfoList {
-			delete(nMap, sKeyList[i])
-			delete(sMap, nInfo)
-		}
 	}
 
 	return err
 }
 
 func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) error {
-    log.Info("notificationHandler: d: ", d, " sKey: ", *sKey, " key: ", *key,
-        " event: ", event)
+	nid := dbNotificationCounter.Next()
+	log.Infof("[%d] notificationHandler: d=%p, sKey=%v, key=%v, event=%v",
+		nid, d, sKey, key, event)
+
 	switch event {
 	case db.SEventHSet, db.SEventHDel, db.SEventDel:
+		// TODO revisit mutex usage
 		sMutex.Lock()
 		defer sMutex.Unlock()
 
 		if sKey != nil {
-			if nInfo, ok := nMap[sKey]; (ok && nInfo != nil) {
-				if sInfo, ok := sMap[nInfo]; (ok && sInfo != nil) {
-					var chgdFields []string
-					isChanged := isDbEntryChanged(d, *key, nInfo, &chgdFields, (event == db.SEventDel))
-					log.Infof("notificationHandler: Changed Fields: %v", chgdFields)
-
-					if isChanged {
-						updateCache(nInfo) // Will be removed later on final integration
-						sendNotification(sInfo, nInfo, false)
-					}
-				} else {
-					log.Info("sInfo not in map", sInfo)
+			if nInfo, ok := sKey.Opaque.(*notificationInfo); ok {
+				n := notificationEvent{
+					id:    fmt.Sprintf("%d:%d", nInfo.sInfo.id, nid),
+					event: event,
+					key:   key,
+					db:    d,
+					nInfo: nInfo,
 				}
+				n.process()
 			} else {
-				log.Info("nInfo not in map", nInfo)
+				log.Warningf("[%d] notificationHandler: SKey corrupted; nil opaque. %v", nid, *sKey)
 			}
 		}
 	case db.SEventClose:
 	case db.SEventErr:
-		if sInfo, ok := cleanupMap[d]; (ok && sInfo != nil) {
+		if sInfo, ok := cleanupMap[d]; ok && sInfo != nil {
 			nInfo := sInfo.nInfoArr[0]
 			if nInfo != nil {
-				sendNotification(sInfo, nInfo, true)
+				sendSyncNotification(sInfo, true)
 			}
 		}
 	}
 
-    return nil
+	return nil
 }
 
-func updateCache(nInfo *notificationInfo) error {
+func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*notificationInfo) error {
 	var err error
 
-	json, err1 := getJson (nInfo)
+	sMutex.Lock()
+	defer sMutex.Unlock()
 
-	if err1 == nil {
-		nInfo.cache = json
-	} else {
-		log.Error("Failed to get the Json for the path = ", nInfo.path)
-		log.Error("Error returned = ", err1)
+	stopMap[sInfo.stop] = sInfo
 
-		nInfo.cache = []byte("{}")
+	for dbno, nInfoArr := range dbNotificationMap {
+		isWriteDisabled := true
+		opt := getDBOptions(dbno, isWriteDisabled)
+		err = startDBSubscribe(opt, nInfoArr, sInfo)
+
+		if err != nil {
+			log.Warningf("[%d] db subscribe failed -- %v", sInfo.id, err)
+			cleanup(sInfo.stop)
+			return err
+		}
+
+		sInfo.nInfoArr = append(sInfo.nInfoArr, nInfoArr...)
 	}
+
+	for _, nInfo := range sInfo.nInfoArr {
+		err := sendInitialUpdate(sInfo, nInfo)
+		if err != nil {
+			log.Warningf("[%d] init sync failed -- %v", sInfo.id, err)
+			cleanup(sInfo.stop)
+			return err
+		}
+	}
+
+	sInfo.syncDone = true
+	sendSyncNotification(sInfo, false)
+
+	go stophandler(sInfo.stop)
 
 	return err
 }
 
-func isCacheChanged(nInfo *notificationInfo) bool {
-	json, err := getJson (nInfo)
-
-    if err != nil {
-		json = []byte("{}")
+// sendInitialUpdate sends the initial sync updates to the caller.
+// Performs following steps:
+//  1) Scan all keys for the table
+//  2) Map each key to yang path
+//  3) Get value for each path and send the notification message
+func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
+	db := sInfo.dbs[int(nInfo.dbno)]
+	ne := notificationEvent{
+		id:    fmt.Sprintf("%d:0", sInfo.id),
+		nInfo: nInfo,
 	}
 
-    if bytes.Equal(nInfo.cache, json) {
-		log.Info("Cache is same as DB")
-		return false
-	} else {
-		log.Info("Cache is NOT same as DB")
-		nInfo.cache = json
-		return true
+	keys, err := db.GetKeysPattern(nInfo.table, *nInfo.key)
+	if err != nil {
+		return err
 	}
 
-	return false
+	for _, k := range keys {
+		ne.key = &k
+		ne.sendNotification(nInfo, nil)
+	}
+
+	return nil
 }
 
 func isDbEntryChanged(subscrDb *db.DB, key db.Key, nInfo *notificationInfo, chgdFields *[]string, entryDeleted bool) bool {
@@ -254,98 +292,184 @@ func isDbEntryChanged(subscrDb *db.DB, key db.Key, nInfo *notificationInfo, chgd
 	// Retrieve Db entry from redis using DB instance where pubsub is registered
 	// for onChange only if entry is NOT deleted.
 	if !entryDeleted {
-		dbEntry, _ = subscrDb.GetEntry(&nInfo.table, key)
+		dbEntry, _ = subscrDb.GetEntry(nInfo.table, key)
 	}
 	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
 	// and retrieve modified fields. Also merge changes in cache
-	*chgdFields = nInfo.dbs[subscrDb.Opts.DBNo].DiffAndMergeOnChangeCache(dbEntry, &nInfo.table, key, entryDeleted)
+	*chgdFields = nInfo.sInfo.dbs[subscrDb.Opts.DBNo].DiffAndMergeOnChangeCache(dbEntry, nInfo.table, key, entryDeleted)
 
 	return (entryDeleted || len(*chgdFields) > 0)
 }
 
-func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*notificationInfo) error {
-	var err error
-
-    sMutex.Lock()
-	defer sMutex.Unlock()
-
-	stopMap[sInfo.stop] = sInfo
-
-    for dbno, nInfoArr := range dbNotificationMap {
-		isWriteDisabled := true
-        opt := getDBOptions(dbno, isWriteDisabled)
-        err = startDBSubscribe(opt, nInfoArr, sInfo)
-
-		if err != nil {
-			cleanup (sInfo.stop)
-			return err
-		}
-
-        sInfo.nInfoArr = append(sInfo.nInfoArr, nInfoArr...)
-    }
-
-    for i, nInfo := range sInfo.nInfoArr {
-        err = updateCache(nInfo)
-
-		if err != nil {
-			cleanup (sInfo.stop)
-            return err
-        }
-
-		if i == len(sInfo.nInfoArr)-1 {
-			sInfo.syncDone = true
-		}
-
-		sendNotification(sInfo, nInfo, false)
-    }
-	//printAllMaps()
-
-	go stophandler(sInfo.stop)
-
-	return err
-}
-
-func getJson (nInfo *notificationInfo) ([]byte, error) {
-    var payload []byte
-
-	app := nInfo.app
-	path := nInfo.path
-	appInfo := nInfo.appInfo
-
-    err := appInitialize(app, appInfo, path, nil, nil, GET)
-
-    if  err != nil {
-        return payload, err
-    }
-
-	dbs := nInfo.dbs
-
-    err = (*app).translateGet (dbs)
-
-    if err != nil {
-        return payload, err
-    }
-
-    resp, err := (*app).processGet(dbs, false)
-
-    if err == nil {
-        payload = resp.Payload
-    }
-
-    return payload, err
-}
-
-func sendNotification(sInfo *subscribeInfo, nInfo *notificationInfo, isTerminated bool){
-	log.Info("Sending notification for sInfo = ", sInfo)
-	log.Info("payload = ", string(nInfo.cache))
-	log.Info("isTerminated", strconv.FormatBool(isTerminated))
+func sendSyncNotification(sInfo *subscribeInfo, isTerminated bool) {
+	log.Infof("[%d] Sending syncDone=%v, isTerminated=%v",
+		sInfo.id, sInfo.syncDone, isTerminated)
 	sInfo.q.Put(&SubscribeResponse{
-			Path:nInfo.path,
-			Payload:nInfo.cache,
-			Timestamp:    time.Now().UnixNano(),
-			SyncComplete: sInfo.syncDone,
-			IsTerminated: isTerminated,
+		Timestamp:    time.Now().UnixNano(),
+		SyncComplete: sInfo.syncDone,
+		IsTerminated: isTerminated,
 	})
+}
+
+// process translates db notification into SubscribeResponse and
+// pushes to the caller.
+func (ne *notificationEvent) process() {
+	modFields, err := ne.findModifiedFields()
+	if err != nil {
+		log.Warningf("[%s] error finding modified fields: %v", ne.id, err)
+		return
+	}
+	if len(modFields) == 0 {
+		log.Infof("[%s] no fields updated", ne.id)
+		return
+	}
+
+	ne.sendNotification(ne.nInfo, modFields)
+}
+
+// findModifiedFields determines db fields changed since last notification
+func (ne *notificationEvent) findModifiedFields() ([]string, error) {
+	nInfo := ne.nInfo
+	entryDeleted := true
+	var dbEntry db.Value
+
+	// Retrieve Db entry from redis using DB instance where pubsub is registered
+	// for onChange only if entry is NOT deleted.
+	// TODO this can fail if db caching is enabled in the system.
+	// TODO move this functionality inside DiffAndMergeOnChangeCache itself
+	if ne.event != db.SEventDel {
+		dbEntry, _ = ne.db.GetEntry(nInfo.table, *ne.key)
+		entryDeleted = false
+	}
+
+	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
+	// and retrieve modified fields. Also merge changes in cache
+	chgFields := nInfo.sInfo.dbs[nInfo.dbno].DiffAndMergeOnChangeCache(dbEntry, nInfo.table, *ne.key, entryDeleted)
+
+	log.V(3).Infof("[%s] findModifiedFields: changed db fields: %v", ne.id, chgFields)
+	log.V(3).Infof("[%s] findModifiedFields: monitored fields: %v", ne.id, nInfo.fields)
+
+	var modFields []string
+	for _, f := range chgFields {
+		if _, ok := nInfo.fields[f]; ok {
+			modFields = append(modFields, f)
+		}
+	}
+
+	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, modFields)
+
+	return modFields, nil
+}
+
+func (ne *notificationEvent) getValue(path string) ([]byte, error) {
+	var payload []byte
+
+	nInfo := ne.nInfo
+	app := nInfo.app
+	appInfo := nInfo.appInfo
+	dbs := nInfo.sInfo.dbs
+
+	err := appInitialize(app, appInfo, path, nil, nil, GET)
+
+	if err != nil {
+		return payload, err
+	}
+
+	err = (*app).translateGet(dbs)
+
+	if err != nil {
+		return payload, err
+	}
+
+    	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
+
+	if err == nil {
+		payload = resp.Payload
+	}
+
+	return payload, err
+}
+
+func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) (*gnmi.Path, error) {
+	in := dbKeyInfo{
+		dbno:  nInfo.dbno,
+		table: nInfo.table,
+		key:   ne.key,
+		path:  nInfo.path, // Should we clone, just to be safe?
+	}
+
+	log.Infof("[%s] Call processSubscribe with dbno=%d, table=%s, key=%v",
+		ne.id, in.dbno, in.table.Name, in.key)
+	if log.V(3) {
+		log.Infof("[%s] Path template: %s", ne.id, path.String(in.path))
+	}
+
+	out, err := (*nInfo.app).processSubscribe(in)
+	if err != nil {
+		return nil, fmt.Errorf("processSubscribe err=%v", err)
+	}
+	if log.V(3) {
+		log.Infof("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
+	}
+
+	// TODO check if response path is valid and does not include wildcards
+
+	return out.path, nil
+}
+
+func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []string) {
+	prefix := nInfo.path
+	if path.HasWildcardKey(prefix) {
+		var err error
+		prefix, err = ne.dbkeyToYangPath(nInfo)
+		if err != nil {
+			log.Warningf("[%s] skip notification -- %v", ne.id, err)
+			return
+		}
+	}
+
+	paths := make([]string, 0, len(fields))
+	sInfo := nInfo.sInfo
+	prefixStr, err := ygot.PathToString(prefix)
+	if err != nil {
+		log.Warningf("[%s] skip notification -- %v", ne.id, err)
+		return
+	}
+
+	for _, f := range fields {
+		if suffix, ok := nInfo.fields[f]; ok {
+			paths = append(paths, prefixStr+"/"+suffix)
+		}
+	}
+
+	// Load whole container/list if fields are not specified.
+	// Used for initial sync messages
+	if len(fields) == 0 {
+		paths = append(paths, prefixStr)
+	}
+
+	for _, p := range paths {
+		data, err := ne.getValue(p)
+		if _, ok := err.(tlerr.NotFoundError); ok && sInfo.syncDone {
+			// Ignore "not found" errors before after sync done
+			err = nil
+		}
+
+		if err == nil {
+			// TODO combine all values into single payload.
+			log.Infof("[%s] Sending SubscribeResponse for path %s", ne.id, p)
+			log.V(1).Infof("[%s] data = %s", ne.id, data)
+
+			sInfo.q.Put(&SubscribeResponse{
+				Path:         p,
+				Payload:      data,
+				Timestamp:    time.Now().UnixNano(), // TODO
+				SyncComplete: sInfo.syncDone,
+			})
+		} else {
+			log.Warningf("[%s] skip notification -- %v", ne.id, err)
+		}
+	}
 }
 
 func stophandler(stop chan struct{}) {
@@ -355,23 +479,21 @@ func stophandler(stop chan struct{}) {
 		sMutex.Lock()
 		defer sMutex.Unlock()
 
-		cleanup (stop)
+		cleanup(stop)
 
 		return
 	}
 }
 
 func cleanup(stop chan struct{}) {
-	if sInfo,ok := stopMap[stop]; ok {
+	if sInfo, ok := stopMap[stop]; ok {
+		log.Infof("[s%d] stopping..", sInfo.id)
 
 		for _, sDB := range sInfo.sDBs {
 			sDB.UnsubscribeDB()
 		}
 
-		for _, nInfo := range sInfo.nInfoArr {
-			delete(nMap, nInfo.sKey)
-			delete(sMap, nInfo)
-		}
+		closeAllDbs(sInfo.dbs[:])
 
 		delete(stopMap, stop)
 	}

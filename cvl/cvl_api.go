@@ -239,6 +239,7 @@ func (c *CVL) ValidateIncrementalConfig(jsonData string) CVLRetCode {
 	var dataMap map[string]interface{} = v.(map[string]interface{})
 
 	root, _ := c.translateToYang(&dataMap)
+	defer c.yp.FreeNode(root)
 	if root == nil {
 		return CVL_SYNTAX_ERROR
 
@@ -261,7 +262,7 @@ func (c *CVL) ValidateIncrementalConfig(jsonData string) CVLRetCode {
 	//Merge existing data for update syntax or checking duplicate entries
 	if (existingData != nil) {
 		if _, errObj = c.yp.MergeSubtree(root, existingData);
-				errObj.ErrCode != yparser.YP_SUCCESS {
+		errObj.ErrCode != yparser.YP_SUCCESS {
 			return CVL_ERROR
 		}
 	}
@@ -286,6 +287,7 @@ func (c *CVL) ValidateConfig(jsonData string) CVLRetCode {
 	if err := json.Unmarshal(b, &v); err == nil {
 		var value map[string]interface{} = v.(map[string]interface{})
 		root, _ := c.translateToYang(&value)
+		defer c.yp.FreeNode(root)
 
 		if root == nil {
 			return CVL_FAILURE
@@ -324,7 +326,7 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 		caller = f.Name()
 	}
 
-        CVL_LOG(INFO_DEBUG, "ValidateEditConfig() called from %s() : %v", caller, cfgData)
+	CVL_LOG(INFO_DEBUG, "ValidateEditConfig() called from %s() : %v", caller, cfgData)
 
 	if SkipValidation() {
 		CVL_LOG(INFO_TRACE, "Skipping CVL validation.")
@@ -455,6 +457,8 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 
 	//Step 2 : Perform syntax validation only
 	yang, errN := c.translateToYang(&requestedData)
+	defer c.yp.FreeNode(yang)
+
 	if (errN.ErrCode == CVL_SUCCESS) {
 		if cvlErrObj, cvlRetCode := c.validateSyntax(yang); cvlRetCode != CVL_SUCCESS {
 			return cvlErrObj, cvlRetCode
@@ -804,7 +808,7 @@ func (c *CVL) GetDepTables(yangModule string, tableName string) ([]string, CVLRe
 
 //Parses the JSON string buffer and returns
 //array of dependent fields to be deleted
-func getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForDelete) {
+func (c *CVL) getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForDelete) {
 	//Parse the JSON map received from lua script
 	var v interface{}
 	b := []byte(jsonBuf)
@@ -831,8 +835,18 @@ func getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForD
 					//leaf-list - specific value to be deleted
 					entryMap[tblKey][field]= hValue
 				} else {
-					//leaf - specific field to be deleted
-					entryMap[tblKey][field]= ""
+					// If mandatory field is getting deleted, then instead of
+					// specific field deletion, entire entry to be deleted.
+					// So need to delete dependent entries also when this entire
+					// entry is deleted. Find all dependent entries and mark 
+					// for deletion
+					if isMandatoryTrueNode(tbl, field) {
+						retDepEntries := c.GetDepDataForDelete(tblKey)
+						depEntries = append(depEntries, retDepEntries...)
+					} else {
+						//leaf - specific field to be deleted
+						entryMap[tblKey][field]= ""
+					}
 				}
 			}
 			depEntries = append(depEntries, CVLDepDataForDelete{
@@ -989,7 +1003,7 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 
 			if (refEntriesJson != "") {
 				//Add all keys whose fields to be deleted 
-				depEntries = append(depEntries, getDepDeleteField(redisKey,
+				depEntries = append(depEntries, c.getDepDeleteField(redisKey,
 				mFilterScript.field, mFilterScript.value, refEntriesJson)...)
 			}
 		}

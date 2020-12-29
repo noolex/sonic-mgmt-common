@@ -216,7 +216,7 @@ func (app *LstApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResponse, error) {
+func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	var err error
 	var payload []byte
 
@@ -225,7 +225,7 @@ func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResp
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fillValueTree)
+	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
@@ -308,10 +308,6 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 				goto SkipIntfCheck
 			}
 
-			if nil != intfPtr.InterfaceRef.Config.Subinterface {
-				return tlerr.NotSupported("SubInterface not supported")
-			}
-
 			if id != *intfPtr.InterfaceRef.Config.Interface {
 				return tlerr.NotSupported("Different ID %s and Interface name %s not supported", id, *intfPtr.InterfaceRef.Config.Interface)
 			}
@@ -326,7 +322,12 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 				}
 				for upstr := range intfPtr.UpstreamGroups.UpstreamGroup {
 					// Check group is part of request
-					ifName := *utils.GetNativeNameFromUIName(&id)
+					var ifName string
+					if utils.IsIntfSubInterface(&id) {
+						ifName = *utils.GetSubInterfaceShortName(&id)
+					} else {
+						ifName = *utils.GetNativeNameFromUIName(&id)
+					}
 					upstreams := app.intfUpstreamCfgTblMap[ifName]
 					upstreams = append(upstreams, upstr)
 					app.intfUpstreamCfgTblMap[ifName] = upstreams
@@ -335,9 +336,13 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 
 			if nil != intfPtr.DownstreamGroup && nil != intfPtr.DownstreamGroup.Config &&
 				nil != intfPtr.DownstreamGroup.Config.GroupName {
+				if nil != intfPtr.InterfaceRef.Config.Subinterface {
+					return tlerr.NotSupported("SubInterface not supported")
+				}
 				if !isInterfaceNameValid(id, true) {
 					return tlerr.InvalidArgs("Interface %s is invalid for downstream", id)
 				}
+
 				ifName := *utils.GetNativeNameFromUIName(&id)
 				app.intfDownstreamCfgTblMap[ifName] = *intfPtr.DownstreamGroup.Config.GroupName
 			}
@@ -855,7 +860,12 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
 			/* Convert to UI names */
 			upPorts := []string{}
 			for _, upIntf := range grpData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
-				uiName := *utils.GetUINameFromNativeName(&upIntf)
+				var uiName string
+				if utils.IsIntfSubInterface(&upIntf) {
+					uiName = *utils.GetSubInterfaceLongName(&upIntf)
+				} else {
+					uiName = *utils.GetUINameFromNativeName(&upIntf)
+				}
 				upPorts = append(upPorts, uiName)
 				app.intfUpstreamCfgTblMap[uiName] = append(app.intfUpstreamCfgTblMap[uiName], k.Comp[0])
 			}
@@ -876,7 +886,12 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
 
 			upPorts = []string{}
 			for _, upIntf := range grpStateData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
-				uiName := *utils.GetUINameFromNativeName(&upIntf)
+				var uiName string
+				if utils.IsIntfSubInterface(&upIntf) {
+					uiName = *utils.GetSubInterfaceLongName(&upIntf)
+				} else {
+					uiName = *utils.GetUINameFromNativeName(&upIntf)
+				}
 				upPorts = append(upPorts, uiName)
 			}
 			grpStateData.SetList(INTF_TRACK_FIELD_UPSTREAM, upPorts)
