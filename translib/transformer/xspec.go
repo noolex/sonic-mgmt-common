@@ -186,6 +186,8 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathData, ok := xYangSpecMap[curXpathFull]
 		if !ok {
 			curXpathData = new(yangXpathInfo)
+			curXpathData.subscribeOnChg    = XFMR_INVALID
+			curXpathData.subscribeMinIntvl = XFMR_INVALID
 			curXpathData.dbIndex = db.ConfigDB // default value
 			xYangSpecMap[curXpathFull] = curXpathData
 		}
@@ -213,6 +215,8 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathFull = xpathFull + "/" + entry.Name
 		if annotNode, ok := xYangSpecMap[curXpathFull]; ok {
 			xpathData := new(yangXpathInfo)
+			xpathData.subscribeOnChg    = XFMR_INVALID
+			xpathData.subscribeMinIntvl = XFMR_INVALID
 			xpathData.dbIndex = db.ConfigDB // default value
 			xYangSpecMap[xpath] = xpathData
 			copyYangXpathSpecData(xYangSpecMap[xpath], annotNode)
@@ -262,7 +266,11 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		xpathData.xfmrFunc = parentXpathData.xfmrFunc
 	}
 
-   if ok && (parentXpathData.subscribeMinIntvl == XFMR_INVALID ||
+	if ok && len(parentXpathData.xfmrPath) > 0 && len(xpathData.xfmrPath) == 0 {
+		xpathData.xfmrPath = parentXpathData.xfmrPath
+	}
+
+	if ok && (parentXpathData.subscribeMinIntvl == XFMR_INVALID ||
       parentXpathData.subscribeOnChg == XFMR_INVALID) {
        log.Warningf("Susbscribe MinInterval/OnChange flag is set to invalid for(%v) \r\n", xpathPrefix)
        return
@@ -352,6 +360,8 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 			keyXpath[id] = xpath + "/" + keyName
 			if _, ok := xYangSpecMap[xpath + "/" + keyName]; !ok {
 				keyXpathData := new(yangXpathInfo)
+				keyXpathData.subscribeOnChg    = XFMR_INVALID
+				keyXpathData.subscribeMinIntvl = XFMR_INVALID
 				keyXpathData.dbIndex = db.ConfigDB // default value
 				xYangSpecMap[xpath + "/" + keyName] = keyXpathData
 			}
@@ -657,6 +667,8 @@ func childToUpdateParent( xpath string, tableName string) {
 	_, ok := xYangSpecMap[parent]
 	if !ok {
 		xpathData = new(yangXpathInfo)
+		// initialize the child's subscribeOnChg with parent subscribeOnChg
+		xpathData.subscribeOnChg = xYangSpecMap[parent].subscribeOnChg
 		xpathData.dbIndex = db.ConfigDB // default value
 		xYangSpecMap[parent] = xpathData
 	}

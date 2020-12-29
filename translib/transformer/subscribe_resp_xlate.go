@@ -41,6 +41,8 @@ type subscribeNotfXlateReq struct {
 	dbNum db.DBNum
 	table *db.TableSpec
 	key   *db.Key
+	dbs [db.MaxDB]*db.DB
+	opaque interface{}
 }
 
 type DbYgXlateInfo struct {
@@ -52,10 +54,13 @@ type DbYgXlateInfo struct {
 	xlateReq    *subscribeNotfXlateReq
 }
 
-func GetSubscribeNotfRespXlator(gPath *gnmi.Path, dbNum db.DBNum, table *db.TableSpec, key *db.Key) (*subscribeNotfRespXlator, error) {
+func GetSubscribeNotfRespXlator(gPath *gnmi.Path, dbNum db.DBNum, table *db.TableSpec, key *db.Key, dbs [db.MaxDB]*db.DB, opaque interface{}) (*subscribeNotfRespXlator, error) {
 	log.Info("GetSubscribeNotfRespXlator: gPath: ", *gPath)
 	log.Info("GetSubscribeNotfRespXlator: table: ", *table)
-	xlateReq := subscribeNotfXlateReq{gPath, dbNum, table, key}
+	if opaque == nil || (reflect.ValueOf(opaque).Kind() == reflect.Ptr && reflect.ValueOf(opaque).IsNil()) {
+		opaque = new(sync.Map)
+	}
+	xlateReq := subscribeNotfXlateReq{gPath, dbNum, table, key, dbs, opaque}
 	return &subscribeNotfRespXlator{ntfXlateReq: &xlateReq}, nil
 }
 
@@ -83,7 +88,6 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 			if err := respXlator.handlePathTransformer(ygXpathListInfo, idx); err != nil {
 				return nil, err
 			} else {
-				// process the left out db to yang key xfrm
 				if err := respXlator.processDbToYangKeyXfmrList(); err != nil {
 					return nil, err
 				} else {
@@ -111,7 +115,6 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 }
 
 func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *yangXpathInfo, pathIdx int) (error) {
-	// get current gnmi path
 	var currPath gnmi.Path
 	pathElems := respXlator.ntfXlateReq.path.Elem
 	ygSchemPath := "/" + pathElems[0].Name
@@ -122,43 +125,37 @@ func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *ya
 		currPath.Elem = append(currPath.Elem, pathElems[idx])
 	}
 
-	// db pointers
-	var dbs [db.MaxDB]*db.DB
-	// current db pointer
-	var db *db.DB
-
 	inParam := XfmrDbToYgPathParams{&currPath, respXlator.ntfXlateReq.path, ygSchemPath, respXlator.ntfXlateReq.table.Name,
-		respXlator.ntfXlateReq.key.Comp, respXlator.ntfXlateReq.dbNum, dbs, db, make(map[string]string)}
+		respXlator.ntfXlateReq.key.Comp, respXlator.ntfXlateReq.dbNum, respXlator.ntfXlateReq.dbs, respXlator.ntfXlateReq.dbs[respXlator.ntfXlateReq.dbNum], make(map[string]string)}
 
-	if err := respXlator.xfmrPathHandlerFunc(ygXpathInfo.xfmrPath, &inParam); err != nil {
-		log.Error("Error in path transformer callback: %v for the gnmi path: %v, and the error: %v", ygXpathInfo.xfmrPath, respXlator.ntfXlateReq.path, err)
+	if err := respXlator.xfmrPathHandlerFunc("DbToYangPath_" + ygXpathInfo.xfmrPath, inParam); err != nil {
+		log.Error("Error in path transformer callback : %v for the gnmi path: %v, and the error: %v", ygXpathInfo.xfmrPath, respXlator.ntfXlateReq.path, err)
 		return err
 	}
 
-	// get the yang keys and fill the gnmi path
 	log.Info("handlePathTransformer: uriPathKeysMap: ", inParam.ygPathKeys)
 	ygpath := "/" + respXlator.ntfXlateReq.path.Elem[0].Name
 
 	for idx := 1; idx <= pathIdx; idx++ {
-		ygNames := strings.Split(respXlator.ntfXlateReq.path.Elem[idx].Name, ":")
+		//ygNames := strings.Split(respXlator.ntfXlateReq.path.Elem[idx].Name, ":")
+		//ygName := ygNames[0]
+		//if len(ygNames) > 1 {
+		//	ygName = ygNames[1]
+		//}
+		//ygpath = ygpath + "/" + ygName
 
-		ygName := ygNames[0]
-		if len(ygNames) > 1 {
-			ygName = ygNames[1]
-		}
-
-		ygpath = ygpath + "/" + ygName
+		ygpath = ygpath + "/" + respXlator.ntfXlateReq.path.Elem[idx].Name
 
 		log.Info("handlePathTransformer: yang map keys: yang path:", ygpath)
 
 		for keyName, keyVal := range respXlator.ntfXlateReq.path.Elem[idx].Key {
 			if keyVal != "*" { continue }
-			ygpath = ygpath + "/" + keyName
-			log.Info("handlePathTransformer: yang map keys: yang key path:", ygpath)
-			if ygKeyVal, ok := inParam.ygPathKeys[ygpath]; ok {
+			log.Info("handlePathTransformer: yang map keys: yang key path:", ygpath + "/" + keyName)
+			if ygKeyVal, ok := inParam.ygPathKeys[ygpath + "/" + keyName]; ok {
 				respXlator.ntfXlateReq.path.Elem[idx].Key[keyName] = ygKeyVal
 			} else {
-				log.Errorf("Error: path transformer callback (%v) response yang key map does not have the yang key value for the yang key: %v ", ygXpathInfo.xfmrPath, ygpath)
+				log.Errorf("Error: path transformer callback (%v) response yang key map does not have " +
+					"the yang key value for the yang key: %v ", ygXpathInfo.xfmrPath, ygpath + "/" + keyName)
 				return tlerr.InternalError{Format: "Error in processsing the transformer callback map keys", Path: inParam.yangPath.String()}
 			}
 		}
@@ -167,19 +164,21 @@ func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *ya
 	return nil
 }
 
-func (respXlator *subscribeNotfRespXlator) xfmrPathHandlerFunc(xfmrPathFunc string, inParam *XfmrDbToYgPathParams) (error) {
+func (respXlator *subscribeNotfRespXlator) xfmrPathHandlerFunc(xfmrPathFunc string, inParam XfmrDbToYgPathParams) (error) {
 
 	xfmrLogInfoAll("Received inParam %v, Path transformer function name %v", inParam, xfmrPathFunc)
 
 	if retVals, err := XlateFuncCall(xfmrPathFunc, inParam); err != nil {
 		return err
 	} else {
-		if retVals == nil || len(retVals) != PATH_XFMR_RET_ARGS || retVals[PATH_XFMR_RET_ERR_INDX].Interface() == nil {
+		if retVals == nil || len(retVals) != PATH_XFMR_RET_ARGS {
 			log.Errorf("Error: incorrect return type in the transformer call back function (\"%v\") for the yang path %v", xfmrPathFunc, inParam.yangPath.String())
 			return tlerr.InternalError{Format: "incorrect return type in the transformer call back function", Path: inParam.yangPath.String()}
-		} else if err = retVals[PATH_XFMR_RET_ERR_INDX].Interface().(error); err != nil {
-			log.Errorf("Path Transformer function(\"%v\") returned error - %v.", xfmrPathFunc, err)
-			return err
+		} else if retVals[PATH_XFMR_RET_ERR_INDX].Interface() != nil {
+			if err = retVals[PATH_XFMR_RET_ERR_INDX].Interface().(error); err != nil {
+				log.Errorf("Path Transformer function(\"%v\") returned error - %v.", xfmrPathFunc, err)
+				return err
+			}
 		}
 	}
 
@@ -246,7 +245,6 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
 		dbYgXlateInfo.tableName = *dbYgXlateInfo.ygXpathInfo.tableName
 	} else if dbYgXlateInfo.ygXpathInfo.xfmrTbl != nil {
 		log.Info("Going to call the table transformer => ", *dbYgXlateInfo.ygXpathInfo.xfmrTbl)
-		//handle table transformer callback
 		tblLst, err := dbYgXlateInfo.handleTableXfmrCallback()
 		if err != nil {
 			log.Error("Error in handling the table transformer callaback:", *dbYgXlateInfo.ygXpathInfo.tableName)
@@ -294,8 +292,6 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
 				dbTableKey = dbTableKey + dbYgListInfo.delim + dbYgXlateInfo.xlateReq.key.Comp[idx]
 			}
 			log.Info("dbTableKey: ", dbTableKey)
-			// now call the db to yang key transformer
-			// get the response and fill the gnmi path using the pathElemIdx
 			dbYgXlateInfo.dbKey = dbTableKey
 			dbYgXlateInfo.handleDbToYangKeyXfmr()
 			break
@@ -306,15 +302,13 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
 }
 
 func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXfmr() (error) {
-
-	var dbs [db.MaxDB]*db.DB
-	txCache := new(sync.Map)
 	dbDataMap := make(RedisDbMap)
 	for i := db.ApplDB; i < db.MaxDB; i++ {
 		dbDataMap[i] = make(map[string]map[string]db.Value)
 	}
+	inParams := formXfmrInputRequest(dbYgXlateInfo.xlateReq.dbs[dbYgXlateInfo.xlateReq.dbNum], dbYgXlateInfo.xlateReq.dbs, dbYgXlateInfo.xlateReq.dbNum,
+		nil, dbYgXlateInfo.uriPath, dbYgXlateInfo.uriPath, GET, dbYgXlateInfo.dbKey, &dbDataMap, nil, nil, dbYgXlateInfo.xlateReq.opaque)
 
-	inParams := formXfmrInputRequest(nil, dbs, db.MaxDB, nil, dbYgXlateInfo.uriPath, dbYgXlateInfo.uriPath, GET, dbYgXlateInfo.dbKey, &dbDataMap, nil, nil, txCache)
 	inParams.table = dbYgXlateInfo.tableName
 	rmap, err := keyXfmrHandlerFunc(inParams, dbYgXlateInfo.ygXpathInfo.xfmrKey)
 	if err != nil {
