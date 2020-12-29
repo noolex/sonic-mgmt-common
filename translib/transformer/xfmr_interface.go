@@ -26,6 +26,7 @@ import (
 )
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
+type RedisDbYgNodeMap = map[db.DBNum]map[string]map[string]string
 
 // XfmrParams represents input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer
 type XfmrParams struct {
@@ -72,7 +73,7 @@ type XfmrSubscInParams struct {
 // XfmrSubscOutParams represents output from subscribe subtree callback - DB data for request uri, Need cache, OnChange, subscription preference and interval.
 type XfmrSubscOutParams struct {
     dbDataMap RedisDbMap
-    secDbDataMap RedisDbMap // for the leaf/leaf-list node if it maps to different table from its parent
+    secDbDataMap RedisDbYgNodeMap // for the leaf/leaf-list node if it maps to different table from its parent
     needCache bool
     onChange bool
     nOpts *notificationOpts  //these can be set regardless of error 
@@ -103,8 +104,8 @@ type SonicXfmrParams struct {
 type XfmrDbToYgPathParams struct {
 	yangPath      *gnmi.Path        //current path to be be resolved
 	subscribePath *gnmi.Path        //user input subscribe path
-	ygSchemaPath  *string           //current yg schema path
-	tblName       *string           //table name
+	ygSchemaPath  string           //current yg schema path
+	tblName       string           //table name
 	tblKeyComp    []string          //table key comp
 	dbNum         db.DBNum
 	dbs           [db.MaxDB]*db.DB
@@ -187,11 +188,11 @@ type ValueXfmrFunc func (inParams XfmrDbParams)  (string, error)
  // Return: error
 type PreXfmrFunc func (inParams XfmrParams) (error)
 
-// PathXfmrFunc type is defined to convert the given db table key into the yang key for all the list node in the given yang URI path.
+// PathXfmrDbToYangFunc type is defined to convert the given db table key into the yang key for all the list node in the given yang URI path.
 // ygPathKeys map will be used to store the yang key as value in the map for each yang key leaf node path of the given yang URI.
 // Param : XfmrDbToYgPathParams structure has current yang uri path, subscribe path, table name, table key, db pointer slice, current db pointer, db number, map to hold path and yang keys
 // Return: error
-type PathXfmrFunc func (params XfmrDbToYgPathParams) error
+type PathXfmrDbToYangFunc func (params XfmrDbToYgPathParams) error
 
 // XfmrInterface is a validation interface for validating the callback registration of app modules 
 // transformer methods.
