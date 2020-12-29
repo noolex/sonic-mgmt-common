@@ -322,12 +322,7 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 				}
 				for upstr := range intfPtr.UpstreamGroups.UpstreamGroup {
 					// Check group is part of request
-					var ifName string
-					if utils.IsIntfSubInterface(&id) {
-						ifName = *utils.GetSubInterfaceShortName(&id)
-					} else {
-						ifName = *utils.GetNativeNameFromUIName(&id)
-					}
+					ifName := *utils.GetNativeNameFromUIName(&id)
 					upstreams := app.intfUpstreamCfgTblMap[ifName]
 					upstreams = append(upstreams, upstr)
 					app.intfUpstreamCfgTblMap[ifName] = upstreams
@@ -860,12 +855,7 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
 			/* Convert to UI names */
 			upPorts := []string{}
 			for _, upIntf := range grpData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
-				var uiName string
-				if utils.IsIntfSubInterface(&upIntf) {
-					uiName = *utils.GetSubInterfaceLongName(&upIntf)
-				} else {
-					uiName = *utils.GetUINameFromNativeName(&upIntf)
-				}
+				uiName := *utils.GetUINameFromNativeName(&upIntf)
 				upPorts = append(upPorts, uiName)
 				app.intfUpstreamCfgTblMap[uiName] = append(app.intfUpstreamCfgTblMap[uiName], k.Comp[0])
 			}
@@ -886,12 +876,7 @@ func (app *LstApp) processLstGet(dbs [db.MaxDB]*db.DB) error {
 
 			upPorts = []string{}
 			for _, upIntf := range grpStateData.GetList(INTF_TRACK_FIELD_UPSTREAM) {
-				var uiName string
-				if utils.IsIntfSubInterface(&upIntf) {
-					uiName = *utils.GetSubInterfaceLongName(&upIntf)
-				} else {
-					uiName = *utils.GetUINameFromNativeName(&upIntf)
-				}
+				uiName := *utils.GetUINameFromNativeName(&upIntf)
 				upPorts = append(upPorts, uiName)
 			}
 			grpStateData.SetList(INTF_TRACK_FIELD_UPSTREAM, upPorts)
