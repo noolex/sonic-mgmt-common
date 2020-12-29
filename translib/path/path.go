@@ -137,3 +137,45 @@ func SetKey(elem *gnmi.PathElem, name, value string) {
 		elem.Key[name] = value
 	}
 }
+
+// Matches checks if the path matches a template. Path must satisfy
+// following conditions for a match:
+// 1) Should be of equal length or longer than template.
+// 2) Element names at each position should match.
+// 3) Keys at each postion should match -- should have same set of key
+// 	  names with same values. Wildcard value in the template matches
+//	  any value of corresponding key in the path. But wildcard value
+// 	  in the path can only match with a wildcard value in template.
+//
+// Examples:
+// "AA/BB/CC" matches "AA/BB"
+// "AA/BB[x=1][y=1]" matches "AA/BB[x=1][y=*]"
+// "AA/BB[x=1][y=*]" matches "AA/BB[x=1][y=*]"
+// "AA/BB[x=1]" does not match "AA/BB[x=1][y=*]"
+// "AA/BB[x=*]" does not match "AA/BB[x=1]"
+func Matches(path *gnmi.Path, template *gnmi.Path) bool {
+	if len(path.Elem) < len(template.Elem) {
+		return false
+	}
+
+	for i, t := range template.Elem {
+		p := path.Elem[i]
+		if t.Name != p.Name {
+			return false
+		}
+		if len(t.Key) != len(p.Key) {
+			return false
+		}
+		for k, tv := range t.Key {
+			if pv, ok := p.Key[k]; ok {
+				if tv != "*" && tv != pv {
+					return false
+				}
+			} else {
+				return false
+			}
+		}
+	}
+
+	return true
+}

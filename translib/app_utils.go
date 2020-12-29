@@ -300,12 +300,14 @@ type notificationInfoBuilder struct {
 	yangMap  yangMapTree
 
 	primaryInfos []notificationAppInfo
+	subtreeInfos []notificationAppInfo
 
 	requestPath *gnmi.Path
 	currentPath *gnmi.Path // Path cone to be used in notificationAppInfo
 	currentIndx int        // Current yangMap node's element in currentPath
 	fieldPrefix string     // Yang prefix to be used in Field()
 	fieldFilter string     // Field name filter
+	treeDepth   int        // depth of current call tree wrt requestPath
 	currentInfo *notificationAppInfo
 }
 
@@ -338,13 +340,22 @@ func (nb *notificationInfoBuilder) Build() (*notificationSubAppInfo, error) {
 		return nil, tlerr.New("Internal error")
 	}
 
-	log.Infof("Found %d notificationAppInfo", len(nb.primaryInfos))
+	log.Infof("Found %d primary and %d subtree notificationAppInfo",
+		len(nb.primaryInfos), len(nb.subtreeInfos))
 
-	return &notificationSubAppInfo{ntfAppInfoTrgt: nb.primaryInfos}, nil
+	return &notificationSubAppInfo{
+		ntfAppInfoTrgt:      nb.primaryInfos,
+		ntfAppInfoTrgtChlds: nb.subtreeInfos,
+	}, nil
 }
 
 func (nb *notificationInfoBuilder) New() *notificationInfoBuilder {
-	nb.primaryInfos = append(nb.primaryInfos,
+	infos := &nb.primaryInfos
+	if nb.treeDepth != 0 {
+		infos = &nb.subtreeInfos
+	}
+
+	*infos = append(*infos,
 		notificationAppInfo{
 			path:                nb.currentPath,
 			dbno:                db.MaxDB,
@@ -352,7 +363,7 @@ func (nb *notificationInfoBuilder) New() *notificationInfoBuilder {
 			pType:               OnChange,
 		})
 
-	nb.currentInfo = &nb.primaryInfos[len(nb.primaryInfos)-1]
+	nb.currentInfo = &(*infos)[len(*infos)-1]
 	return nb
 }
 
@@ -378,10 +389,21 @@ func (nb *notificationInfoBuilder) Field(yangAttr, dbField string) *notification
 		return nb
 	}
 
-	if nb.currentInfo.dbFieldYangPathMap == nil {
-		nb.currentInfo.dbFieldYangPathMap = make(map[string]string)
+	isAdded := false
+	for _, dbFldYgPath := range nb.currentInfo.dbFldYgPathInfoList {
+		if dbFldYgPath.rltvPath == nb.fieldPrefix {
+			dbFldYgPath.dbFldYgPathMap[dbField] = yangAttr
+			isAdded = true
+			break
+		}
 	}
-	nb.currentInfo.dbFieldYangPathMap[dbField] = nb.fieldPrefix + yangAttr
+
+	if !isAdded {
+		dbFldInfo := dbFldYgPathInfo{nb.fieldPrefix, make(map[string]string)}
+		dbFldInfo.dbFldYgPathMap[dbField] = yangAttr
+		nb.currentInfo.dbFldYgPathInfoList = append(nb.currentInfo.dbFldYgPathInfoList, &dbFldInfo)
+	}
+
 	return nb
 }
 
@@ -391,7 +413,7 @@ func (nb *notificationInfoBuilder) SetFieldPrefix(prefix string) bool {
 	if i >= n {
 		// Request does not contain any additional elements beyond
 		// current path. Accept all sub containers & fields
-		nb.fieldPrefix = prefix + "/"
+		nb.fieldPrefix = prefix
 		nb.fieldFilter = ""
 		return true
 	}
@@ -407,7 +429,7 @@ func (nb *notificationInfoBuilder) SetFieldPrefix(prefix string) bool {
 			if j == len(pparts) { // exact match
 				nb.fieldPrefix = ""
 			} else { // partial match
-				nb.fieldPrefix = strings.Join(pparts[j+1:], "/") + "/"
+				nb.fieldPrefix = strings.Join(pparts[j+1:], "/")
 			}
 			nb.fieldFilter = ""
 			return true
@@ -416,7 +438,7 @@ func (nb *notificationInfoBuilder) SetFieldPrefix(prefix string) bool {
 
 	// Current path is still longer than given prefix. Must be
 	// field name filter
-	nb.fieldPrefix = prefix + "/"
+	nb.fieldPrefix = prefix
 	nb.fieldFilter = nb.currentPath.Elem[i].Name
 	return true
 }
@@ -472,12 +494,15 @@ func (y *yangMapTree) collect(nb *notificationInfoBuilder) error {
 	nb.fieldFilter = ""
 	bakupIndx := nb.currentIndx
 	bakupPath := nb.currentPath
+	bakupDepth := nb.treeDepth
 
 	// Invoke yangMapFunc to collect notificationAppInfo
 	if y.mapFunc != nil {
 		if err := y.mapFunc(nb); err != nil {
 			return err
 		}
+
+		nb.treeDepth++
 	}
 
 	// Recursively collect from subtree
@@ -496,6 +521,7 @@ func (y *yangMapTree) collect(nb *notificationInfoBuilder) error {
 		}
 	}
 
+	nb.treeDepth = bakupDepth
 	return nil
 }
 

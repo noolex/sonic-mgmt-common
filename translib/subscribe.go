@@ -47,9 +47,6 @@ import (
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
 var sMutex = &sync.Mutex{}
 
-//lint:file-ignore U1000 temporarily ignore all "unused var" errors.
-// Fields in the new structs are getting flagged as unused.
-
 // notificationAppInfo contains the details for monitoring db notifications
 // for a given path. App modules provide these details for each subscribe
 // path. One notificationAppInfo object must inclue details for one db table.
@@ -64,7 +61,7 @@ type notificationAppInfo struct {
 
 	// dbFieldYangPathMap is the mapping of db entry field to the yang
 	// field (leaf/leaf-list) for the input path.
-	dbFieldYangPathMap map[string]string
+	dbFldYgPathInfoList []*dbFldYgPathInfo
 
 	// database index
 	dbno db.DBNum
@@ -87,6 +84,17 @@ type notificationAppInfo struct {
 	// pType indicates the preferred notification type for the input
 	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
 	pType NotificationType
+
+	// opaque data can be used to store context information to assist
+	// future key-to-path translations. This is an optional data item.
+	// Apps can store any context information based on their logic.
+	// Translib passes this back to the processSubscribe function.
+	opaque interface{}
+}
+
+type dbFldYgPathInfo struct {
+	rltvPath       string
+	dbFldYgPathMap map[string]string //db field to leaf / rel. path to leaf
 }
 
 type notificationSubAppInfo struct {
@@ -107,6 +115,14 @@ type dbKeyInfo struct {
 
 	// path template for the db key. Can include wild cards.
 	path *gnmi.Path
+
+	// List of all DB objects. Apps should only use these DB objects
+	// to query db if they need additional data for translation.
+	dbs [db.MaxDB]*db.DB
+
+	// App specific opaque data -- can be used to pass context data
+	// between translateSubscribe and processSubscribe.
+	opaque interface{}
 }
 
 // subscribePathResponse defines response data structure of processSubscribe
@@ -120,12 +136,12 @@ type notificationInfo struct {
 	table   *db.TableSpec
 	key     *db.Key
 	dbno    db.DBNum
-	fields  map[string]string // map of db field to yang fields map
-	path    *gnmi.Path        // Path to which the db key maps to
+	fields  []*dbFldYgPathInfo // map of db field to yang fields map
+	path    *gnmi.Path         // Path to which the db key maps to
 	app     *appInterface
 	appInfo *appInfo
-	cache   []byte
 	sInfo   *subscribeInfo
+	opaque  interface{} // App specific opaque data
 }
 
 type subscribeInfo struct {
@@ -172,6 +188,10 @@ func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subs
 			Opaque: nInfo,
 		}
 		sKeyList = append(sKeyList, sKey)
+
+		//
+		d := sInfo.dbs[nInfo.dbno]
+		d.RegisterTableForOnChangeCaching(nInfo.table)
 	}
 
 	sDB, err := db.SubscribeDB(opt, sKeyList, notificationHandler)
@@ -222,15 +242,67 @@ func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) 
 	return nil
 }
 
-func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*notificationInfo) error {
+type subscribeContext struct {
+	sInfo    *subscribeInfo
+	dbNInfos map[db.DBNum][]*notificationInfo
+	tgtInfos []*notificationInfo
+
+	app     *appInterface
+	appInfo *appInfo
+}
+
+func (sc *subscribeContext) add(nAppSubInfo *notificationSubAppInfo) {
+	if sc.dbNInfos == nil {
+		sc.dbNInfos = make(map[db.DBNum][]*notificationInfo)
+	}
+
+	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
+		nInfo := sc.addNInfo(&nAppInfo)
+		sc.tgtInfos = append(sc.tgtInfos, nInfo)
+	}
+
+	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
+		sc.addNInfo(&nAppInfo)
+	}
+}
+
+func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificationInfo {
+	d := nAppInfo.dbno
+	nInfo := &notificationInfo{
+		dbno:    d,
+		table:   nAppInfo.table,
+		key:     nAppInfo.key,
+		fields:  nAppInfo.dbFldYgPathInfoList,
+		path:    nAppInfo.path,
+		app:     sc.app,
+		appInfo: sc.appInfo,
+		sInfo:   sc.sInfo,
+		opaque:  nAppInfo.opaque,
+	}
+
+	// Make sure field prefix path has a leading and trailing "/".
+	// Helps preparing full path later by joining parts
+	for _, pi := range nAppInfo.dbFldYgPathInfoList {
+		if len(pi.rltvPath) != 0 && pi.rltvPath[0] != '/' {
+			pi.rltvPath = "/" + pi.rltvPath
+		}
+	}
+
+	sc.dbNInfos[d] = append(sc.dbNInfos[d], nInfo)
+	return nInfo
+}
+
+func (sc *subscribeContext) startSubscribe() error {
 	var err error
 
 	sMutex.Lock()
 	defer sMutex.Unlock()
 
+	sInfo := sc.sInfo
+
 	stopMap[sInfo.stop] = sInfo
 
-	for dbno, nInfoArr := range dbNotificationMap {
+	for dbno, nInfoArr := range sc.dbNInfos {
 		isWriteDisabled := true
 		opt := getDBOptions(dbno, isWriteDisabled)
 		err = startDBSubscribe(opt, nInfoArr, sInfo)
@@ -244,7 +316,7 @@ func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*noti
 		sInfo.nInfoArr = append(sInfo.nInfoArr, nInfoArr...)
 	}
 
-	for _, nInfo := range sInfo.nInfoArr {
+	for _, nInfo := range sc.tgtInfos {
 		err := sendInitialUpdate(sInfo, nInfo)
 		if err != nil {
 			log.Warningf("[%d] init sync failed -- %v", sInfo.id, err)
@@ -284,21 +356,6 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 	}
 
 	return nil
-}
-
-func isDbEntryChanged(subscrDb *db.DB, key db.Key, nInfo *notificationInfo, chgdFields *[]string, entryDeleted bool) bool {
-	var dbEntry db.Value
-
-	// Retrieve Db entry from redis using DB instance where pubsub is registered
-	// for onChange only if entry is NOT deleted.
-	if !entryDeleted {
-		dbEntry, _ = subscrDb.GetEntry(nInfo.table, key)
-	}
-	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
-	// and retrieve modified fields. Also merge changes in cache
-	*chgdFields = nInfo.sInfo.dbs[subscrDb.Opts.DBNo].DiffAndMergeOnChangeCache(dbEntry, nInfo.table, key, entryDeleted)
-
-	return (entryDeleted || len(*chgdFields) > 0)
 }
 
 func sendSyncNotification(sInfo *subscribeInfo, isTerminated bool) {
@@ -351,8 +408,11 @@ func (ne *notificationEvent) findModifiedFields() ([]string, error) {
 
 	var modFields []string
 	for _, f := range chgFields {
-		if _, ok := nInfo.fields[f]; ok {
-			modFields = append(modFields, f)
+		for _, nDbFldInfo := range nInfo.fields {
+			if _, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				modFields = append(modFields, f)
+				break
+			}
 		}
 	}
 
@@ -381,7 +441,7 @@ func (ne *notificationEvent) getValue(path string) ([]byte, error) {
 		return payload, err
 	}
 
-    	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
+	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
 
 	if err == nil {
 		payload = resp.Payload
@@ -390,12 +450,14 @@ func (ne *notificationEvent) getValue(path string) ([]byte, error) {
 	return payload, err
 }
 
-func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) (*gnmi.Path, error) {
+func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path {
 	in := dbKeyInfo{
-		dbno:  nInfo.dbno,
-		table: nInfo.table,
-		key:   ne.key,
-		path:  nInfo.path, // Should we clone, just to be safe?
+		dbno:   nInfo.dbno,
+		table:  nInfo.table,
+		key:    ne.key,
+		dbs:    nInfo.sInfo.dbs,
+		opaque: nInfo.opaque,
+		path:   path.Clone(nInfo.path),
 	}
 
 	log.Infof("[%s] Call processSubscribe with dbno=%d, table=%s, key=%v",
@@ -406,24 +468,45 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) (*gnmi.Pat
 
 	out, err := (*nInfo.app).processSubscribe(in)
 	if err != nil {
-		return nil, fmt.Errorf("processSubscribe err=%v", err)
+		log.Warningf("[%s] processSubscribe returned err: %v", ne.id, err)
+		return nil
 	}
+
+	if out.path == nil {
+		log.Warningf("[%s] processSubscribe returned nil path", ne.id)
+		return nil
+	}
+
+	if !path.Matches(out.path, nInfo.path) {
+		log.Warningf("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
+		log.Warningf("[%s] Expected path template   : %s", ne.id, path.String(nInfo.path))
+		return nil
+	}
+
+	// Trim the output path if it is longer than nInfo.path
+	if tLen := path.Len(nInfo.path); path.Len(out.path) > tLen {
+		out.path = path.SubPath(out.path, 0, tLen)
+	}
+
+	if path.HasWildcardKey(out.path) {
+		log.Warningf("[%s] processSubscribe did not resolve all wildcards: \"%s\"",
+			ne.id, path.String(out.path))
+		return nil
+	}
+
 	if log.V(3) {
 		log.Infof("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
 	}
 
-	// TODO check if response path is valid and does not include wildcards
-
-	return out.path, nil
+	return out.path
 }
 
 func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []string) {
 	prefix := nInfo.path
 	if path.HasWildcardKey(prefix) {
-		var err error
-		prefix, err = ne.dbkeyToYangPath(nInfo)
-		if err != nil {
-			log.Warningf("[%s] skip notification -- %v", ne.id, err)
+		prefix = ne.dbkeyToYangPath(nInfo)
+		if prefix == nil {
+			log.Warningf("[%s] skip notification", ne.id)
 			return
 		}
 	}
@@ -437,8 +520,11 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 	}
 
 	for _, f := range fields {
-		if suffix, ok := nInfo.fields[f]; ok {
-			paths = append(paths, prefixStr+"/"+suffix)
+		for _, nDbFldInfo := range nInfo.fields {
+			if suffix, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				paths = append(paths, prefixStr+nDbFldInfo.rltvPath+"/"+suffix)
+				break
+			}
 		}
 	}
 

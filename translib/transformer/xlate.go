@@ -736,12 +736,12 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
            }
 
            if (xpathData.subscribePref == nil || ((xpathData.subscribePref != nil) &&(len(strings.TrimSpace(*xpathData.subscribePref)) == 0))) {
-               subscribe_result.PType = Sample
+               subscribe_result.PType = OnChange
            } else {
                if *xpathData.subscribePref == "onchange" {
                    subscribe_result.PType = OnChange
                } else {
-                           subscribe_result.PType = Sample
+		   subscribe_result.PType = Sample
                }
            }
            subscribe_result.MinInterval = xpathData.subscribeMinIntvl
