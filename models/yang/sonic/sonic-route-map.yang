@@ -31,6 +31,10 @@ module sonic-route-map {
         prefix svrf;
     }
 
+    import sonic-interface {
+        prefix sintf;
+    }
+
     organization
         "SONiC";
 
@@ -65,6 +69,9 @@ module sonic-route-map {
             }
             type leafref {
                 path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+            }
+            type leafref {
+                path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
             }
         }
     }
@@ -205,6 +212,9 @@ module sonic-route-map {
                         }
                         type leafref {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
                         }
                     }
                     description

@@ -266,7 +266,7 @@ module sonic-bgp-common {
             type uint8 {
                 range 1..254;
             }
-            must "((current() = 1 and (starts-with(current()/../neighbor, 'Eth') or starts-with(current()/../neighbor, 'PortChannel') or starts-with(current()/../neighbor, 'po') or starts-with(current()/../neighbor, 'Vlan'))) or (not(starts-with(current()/../neighbor, 'Eth') or starts-with(current()/../neighbor, 'PortChannel') or starts-with(current()/../neighbor, 'po') or starts-with(current()/../neighbor, 'Vlan'))))" {
+            must "((current() = 1 and (starts-with(current()/../neighbor, 'Eth') or starts-with(current()/../neighbor, 'Po') or starts-with(current()/../neighbor, 'Vlan'))) or (not(starts-with(current()/../neighbor, 'Eth') or starts-with(current()/../neighbor, 'Po') or starts-with(current()/../neighbor, 'Vlan'))))" {
                 error-message "Hops for connected neighbor cannot exceed 1";
             }
             description "TTL";
