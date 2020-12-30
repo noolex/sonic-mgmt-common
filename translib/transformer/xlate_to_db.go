@@ -993,7 +993,7 @@ func verifyParentTblSubtree(dbs [db.MaxDB]*db.DB, uri string, xfmrFuncNm string,
 	inParams.uri = uri
 	inParams.dbDataMap = make(RedisDbMap)
 	inParams.dbs = dbs
-	inParams.subscProc = TRANSLATE_SUBSCRIBE
+	inParams.subscProc = TRANSLATE_EXISTS
 	parentTblExists := true
 	var err error
 

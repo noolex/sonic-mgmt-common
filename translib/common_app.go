@@ -154,19 +154,40 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 			for _, dbKeyInfo := range subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo {
 				log.Info("translateSubscribe: Target node: DbNum: ", dbKeyInfo.DbNum)
 				if dbKeyInfo.Table != nil { log.Info("Target node: pathXlateInfo.Table: ", *dbKeyInfo.Table) }
-				if dbKeyInfo.Key != nil { log.Info("Target node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+				if dbKeyInfo.Key != nil { log.Info("Target  node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
 
-				ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: subsReqXlateInfo.TrgtPathInfo.Path}
+				ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum,
+					path: subsReqXlateInfo.TrgtPathInfo.Path}
+
 				ntfAppInfo.isOnChangeSupported = subsReqXlateInfo.TrgtPathInfo.OnChange
-				ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
-				ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
+
+				if !ntfAppInfo.isOnChangeSupported {
+					ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
+					ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
+				} else {
+					ntfAppInfo.pType = OnChange
+				}
+
 				for _, dbFldMapInfo := range dbKeyInfo.DbFldYgMapList {
 					log.Info("translateSubscribe: Target node: RelPath: ", dbFldMapInfo.RltvPath)
 					log.Info("translateSubscribe: Target node: db field yang map: ", dbFldMapInfo.DbFldYgPathMap)
 					dbFldInfo := dbFldYgPathInfo{dbFldMapInfo.RltvPath, dbFldMapInfo.DbFldYgPathMap}
 					ntfAppInfo.dbFldYgPathInfoList = append(ntfAppInfo.dbFldYgPathInfoList, &dbFldInfo)
 				}
+
+				log.Info("translateSubscribe: target node: ntfAppInfo.path: ", ntfAppInfo.path)
+				log.Info("translateSubscribe: target node: ntfAppInfo.isOnChangeSupported: ", ntfAppInfo.isOnChangeSupported)
+				log.Info("translateSubscribe: target node: ntfAppInfo.table: ", ntfAppInfo.table)
+				log.Info("translateSubscribe: target node: ntfAppInfo.key: ", ntfAppInfo.key)
+				for _, pathInfoList := range ntfAppInfo.dbFldYgPathInfoList {
+					log.Info("translateSubscribe: target node: ntfAppInfo.dbFldYgPathInfoList entry: ", pathInfoList)
+				}
+				log.Info("translateSubscribe: target node: ntfAppInfo.dbno: ", ntfAppInfo.dbno)
+				log.Info("translateSubscribe: target node: ntfAppInfo.mInterval: ", ntfAppInfo.mInterval)
+				log.Info("translateSubscribe: target node: ntfAppInfo.pType: ", ntfAppInfo.pType)
+				log.Info("translateSubscribe: target node: ntfAppInfo.opaque: ", ntfAppInfo.opaque)
 				ntfSubsAppInfo.ntfAppInfoTrgt = append(ntfSubsAppInfo.ntfAppInfoTrgt, ntfAppInfo)
+				log.Info("translateSubscribe: target node =================================================================")
 			}
 
 			for _, pathXlateInfo := range subsReqXlateInfo.ChldPathsInfo {
@@ -181,16 +202,36 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 
 					ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: pathXlateInfo.Path}
 					ntfAppInfo.isOnChangeSupported = subsReqXlateInfo.TrgtPathInfo.OnChange
-					ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
-					ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
-
+					if !ntfAppInfo.isOnChangeSupported {
+						ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
+						ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
+					} else {
+						ntfAppInfo.pType = OnChange
+					}
 					for _, dbFldMapInfo := range dbKeyInfo.DbFldYgMapList {
 						log.Info("translateSubscribe: child node: RelPath: ", dbFldMapInfo.RltvPath)
 						log.Info("translateSubscribe: child node: db field yang map: ", dbFldMapInfo.DbFldYgPathMap)
 						dbFldInfo := dbFldYgPathInfo{dbFldMapInfo.RltvPath, dbFldMapInfo.DbFldYgPathMap}
 						ntfAppInfo.dbFldYgPathInfoList = append(ntfAppInfo.dbFldYgPathInfoList, &dbFldInfo)
 					}
-					ntfSubsAppInfo.ntfAppInfoTrgtChlds = append(ntfSubsAppInfo.ntfAppInfoTrgtChlds, ntfAppInfo)
+					log.Info("translateSubscribe: child node: ntfAppInfo.path: ", ntfAppInfo.path)
+					log.Info("translateSubscribe: child node: ntfAppInfo.isOnChangeSupported: ", ntfAppInfo.isOnChangeSupported)
+					log.Info("translateSubscribe: child node: ntfAppInfo.table: ", ntfAppInfo.table)
+					log.Info("translateSubscribe: child node: ntfAppInfo.key: ", ntfAppInfo.key)
+					for _, pathInfoList := range ntfAppInfo.dbFldYgPathInfoList {
+						log.Info("translateSubscribe: child node: ntfAppInfo.dbFldYgPathInfoList entry: ", pathInfoList)
+					}
+					log.Info("translateSubscribe: child node: ntfAppInfo.dbno: ", ntfAppInfo.dbno)
+					log.Info("translateSubscribe: child node: ntfAppInfo.mInterval: ", ntfAppInfo.mInterval)
+					log.Info("translateSubscribe: child node: ntfAppInfo.pType: ", ntfAppInfo.pType)
+					log.Info("translateSubscribe: child node: ntfAppInfo.opaque: ", ntfAppInfo.opaque)
+					if len(subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo) == 0 && pathXlateInfo.TrgtNodeChld {
+						log.Info("translateSubscribe: Added the child node notification app info into targt app info for the path: ", pathXlateInfo.Path)
+						ntfSubsAppInfo.ntfAppInfoTrgt = append(ntfSubsAppInfo.ntfAppInfoTrgt, ntfAppInfo)
+					} else {
+						ntfSubsAppInfo.ntfAppInfoTrgtChlds = append(ntfSubsAppInfo.ntfAppInfoTrgtChlds, ntfAppInfo)
+					}
+					log.Info("translateSubscribe: child node =================================================================")
 				}
 			}
 			log.Info("translateSubscribe: ntfSubsAppInfo: ", ntfSubsAppInfo)
