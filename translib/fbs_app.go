@@ -2254,6 +2254,9 @@ func (app *FbsApp) processCpuPortGet(dbs [db.MaxDB]*db.DB) error {
 	nativeIfName := SONIC_CPU_PORT
 	policyBindTblVal, err := app.getPolicyBindingEntryFromDB(dbs[db.ConfigDB], nativeIfName)
 	if err != nil {
+		if isNotFoundError(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -3447,7 +3450,7 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 	if err == nil {
 		policyName = bindingEntry.Field["INGRESS_FORWARDING_POLICY"]
 		if policyName == "" {
-			return tlerr.NotFound("No forwarding policy applied to %v", uiIfName)
+			return nil
 		}
 	} else {
 		log.Info(err)
