@@ -1159,7 +1159,7 @@ var Subscribe_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrSubscribe = func (
 
     result.isVirtualTbl = true
     result.needCache = true
-    result.onChange = false
+    result.onChange = OnchangeDisable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -1420,7 +1420,7 @@ var Subscribe_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrSubscribe = func 
 
     result.isVirtualTbl = true
     result.needCache = true
-    result.onChange = false
+    result.onChange = OnchangeDisable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

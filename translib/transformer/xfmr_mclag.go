@@ -441,7 +441,7 @@ var Subscribe_mclag_interface_subtree_xfmr SubTreeXfmrSubscribe = func(inParams 
 
      //result.needCache = true
      //Onchange notification subscription
-     //result.onChange = true
+     //result.onChange = OnchangeEnable
      //result.nOpts = new(notificationOpts)
      //result.nOpts.mInterval = 0
      //result.nOpts.pType = OnChange

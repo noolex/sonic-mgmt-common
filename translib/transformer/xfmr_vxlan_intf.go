@@ -1829,7 +1829,7 @@ var Subscribe_vxlan_vni_instance_subtree_xfmr SubTreeXfmrSubscribe = func (inPar
     }
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

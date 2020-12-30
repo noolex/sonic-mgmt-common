@@ -115,7 +115,7 @@ var Subscribe_loadshare_mode_ipv4_fld_xfmr SubTreeXfmrSubscribe = func (inParams
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -163,7 +163,7 @@ var Subscribe_loadshare_mode_ipv6_fld_xfmr SubTreeXfmrSubscribe = func (inParams
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -212,7 +212,7 @@ var Subscribe_loadshare_mode_seed_fld_xfmr SubTreeXfmrSubscribe = func (inParams
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

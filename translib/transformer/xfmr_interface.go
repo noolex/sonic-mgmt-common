@@ -52,7 +52,8 @@ type XfmrParams struct {
 // SubscProcType represents subcription process type identifying the type of subscription request made from translib.
 type SubscProcType int
 const (
-    TRANSLATE_SUBSCRIBE SubscProcType = iota
+    TRANSLATE_EXISTS SubscProcType = iota
+    TRANSLATE_SUBSCRIBE
     PROCESS_SUBSCRIBE
 )
 
@@ -75,10 +76,17 @@ type XfmrSubscOutParams struct {
     dbDataMap RedisDbMap
     secDbDataMap RedisDbYgNodeMap // for the leaf/leaf-list node if it maps to different table from its parent
     needCache bool
-    onChange bool
-    nOpts *notificationOpts  //these can be set regardless of error 
+    onChange  OnchangeMode
+    nOpts *notificationOpts  //these can be set regardless of error
     isVirtualTbl bool //used for RFC parent table check, set to true when no Redis Mapping
 }
+
+type OnchangeMode int
+const (
+	OnchangeDefault OnchangeMode = iota
+	OnchangeEnable
+	OnchangeDisable
+)
 
 // XfmrDbParams represents input paraDeters for value-transformer
 type XfmrDbParams struct {
