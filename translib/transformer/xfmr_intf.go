@@ -544,10 +544,16 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                 if (err != nil) {
                     return err
                 }
+	    }
                 //Add tagged/untagged vlan members
                 tagged_list, untagged_list := utils.GetFromCacheVlanMemberList(*ifName)
+		if (tagged_list != nil || untagged_list != nil){
                 log.Info("-----tagged list: ", tagged_list)
                 log.Info("-----untagged list: ", untagged_list)
+		err = addIntfMemberOnVlanCreation(inParams, ifName,tagged_list,untagged_list)
+		if err!=nil {
+		    return err
+		}
 	    }
 	}
 
