@@ -84,7 +84,7 @@ func (app *apiTests) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return nil
 }
 
-func (app *apiTests) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+func (app *apiTests) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
 	return nil, nil
 }
 
@@ -109,7 +109,7 @@ func (app *apiTests) processDelete(d *db.DB) (SetResponse, error) {
 	return app.processSet()
 }
 
-func (app *apiTests) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *apiTests) processGet(dbs [db.MaxDB]*db.DB, fillValueTree bool) (GetResponse, error) {
 	var gr GetResponse
 	err := app.getError()
 	if err != nil {

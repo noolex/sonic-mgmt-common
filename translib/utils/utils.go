@@ -74,7 +74,7 @@ func init() {
     devMetaNotifSubscribe();
 }
 
-// Convert string to slice
+// GenerateMemberPortsSliceFromString Convert string to slice
 func GenerateMemberPortsSliceFromString(memberPortsStr *string) []string {
     if len(*memberPortsStr) == 0 {
         return nil
@@ -418,9 +418,12 @@ func IsValidAliasName(ifName *string) bool {
     return ok
 }
 
-// Get tagged/untagged list for given vlan
+// GetFromCacheVlanMemberList Get tagged/untagged list for given vlan
 func GetFromCacheVlanMemberList(vlanName string) ([]string, []string) {
-    memberlist, _ := vlanMemberCache[vlanName]
+    memberlist := vlanMemberCache[vlanName]
+    if memberlist == nil {
+	return nil,nil
+    }
     return memberlist.tagged, memberlist.untagged
 }
 

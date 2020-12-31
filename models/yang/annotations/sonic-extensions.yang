@@ -145,4 +145,9 @@ module sonic-extensions {
 	  description "Transformer name that will perform pre-translation tasks.";
   }
 
+  extension path-transformer {
+	  argument "path-transformer-name";
+	  description "To mention the name of the path transformer which is to resolve the yang uri by filling the
+	                yang keys in the path using the db table key information";
+  }
 }

@@ -200,6 +200,68 @@ func getIntfVlanConfig(d *db.DB, ifName string)([]string, string, error) {
     return taggedVlanList, untaggedVlan, nil
 }
 
+func addIntfMemberOnVlanCreation(inParams *XfmrParams, vlanName *string, taggedList []string, untaggedList []string) error {
+	if len(*vlanName) == 0 {
+        return nil
+    }
+	if len(taggedList) ==0 && len(untaggedList) == 0{
+		log.Info("No interface to be added as members")
+		return nil
+	}
+	ifList := vlanDifference(taggedList,untaggedList)
+	fullIfList := append(ifList,untaggedList...)
+	log.Info("------tagged list during vlan creation---",ifList)
+	log.Info("------untagged list during vlan creation---",untaggedList)
+	log.Info("------complete list during vlan creation---",fullIfList)
+	
+   // d := inParams.d
+	resMap := make(map[string]map[string]db.Value)
+	vlanMemberMap := make(map[string]db.Value)
+	vlanMap := make(map[string]db.Value)
+/*    vlanEntry, _ := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{*vlanName}})
+    if !vlanEntry.IsPopulated() {
+        errStr := "Failed to retrieve memberPorts info of VLAN : " + *vlanName
+        log.Error(errStr)
+        return errors.New(errStr)
+    }*/
+
+	// adding to VLAN_MEMBER table
+	for _,ifName := range ifList{
+		vlanMemberKey := *vlanName + "|" + ifName
+		vlanMemberMap[vlanMemberKey] = db.Value{Field:make(map[string]string)}
+		vlanMemberMap[vlanMemberKey].Field["tagging_mode"] = "tagged"
+	}
+	
+	for _,ifName := range untaggedList{
+		vlanMemberKey := *vlanName + "|" + ifName
+		vlanMemberMap[vlanMemberKey] = db.Value{Field:make(map[string]string)}
+		vlanMemberMap[vlanMemberKey].Field["tagging_mode"] = "untagged"
+	}
+	
+	//adding to VLAN table 
+	ifListStr := strings.Join(fullIfList,",")
+	vlanMap[*vlanName] = db.Value{Field:make(map[string]string)}
+    vlanMap[*vlanName].Field["members@"] = ifListStr
+	
+	if len(vlanMemberMap) != 0 {
+        resMap[VLAN_MEMBER_TN] = vlanMemberMap
+    }
+	if len(vlanMap) != 0 {
+        resMap[VLAN_TN] = vlanMap
+    }
+	log.Info("------resMap during vlanCreation-----",resMap)
+	
+    if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
+        mapCopy((*inParams.subOpDataMap[inParams.oper])[db.ConfigDB], resMap)
+    }else{
+        subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        subOpMap[db.ConfigDB] = resMap
+        inParams.subOpDataMap[inParams.oper] = &subOpMap
+    }
+
+    return nil
+}
+
 func enableStpOnInterfaceVlanMembership(d *db.DB, vlanName *string, intfList []string,
                                         stpPortMap map[string]db.Value) {
     if len(intfList) == 0 {
@@ -594,7 +656,6 @@ func removeUntaggedVlanAndUpdateVlanMembTbl(d *db.DB, ifName *string,
             errStr := "tagging_mode entry is not present for VLAN: " + vlanMember.Get(0) + " Interface: " + *ifName
             return nil, errors.New(errStr)
         }
-
         vlanName := vlanMember.Get(0)
         vlanMemberKey := vlanName + "|" + *ifName
         if tagMode == "untagged" {

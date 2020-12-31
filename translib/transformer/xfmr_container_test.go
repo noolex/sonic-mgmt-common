@@ -1154,23 +1154,54 @@ func Test_Ygot_Merge_Xfmr_Infra_Get(t *testing.T) {
 /* test leafref datatype resolution for leafref with absoulte path and having leafref to leafref reference */
 // TODO: Enable when ip-helper/interface-ref yang is added to modela/yang
 /*
-func Test_Leafref_Resolve_Get(t *testing.T) {
+func Test_OC_Leafref_Resolve_Get(t *testing.T) {
 
         cleanuptbl := map[string]interface{}{"UDP_BROADCAST_FORWARDING":map[string]interface{}{"Ports":""}}
         prereq := map[string]interface{}{"UDP_BROADCAST_FORWARDING":map[string]interface{}{"Ports":map[string]interface{}{"interface":"Ethernet0", "subinterface":"10", "include_ports@", "69,53,37,137,138,49"}}}
         url := "/openconfig-ip-helper:ip-helper/interface-ref"
 
-        fmt.Println("++++++++++++++  Get Test_Leafref_Resolve  +++++++++++++")
+        fmt.Println("++++++++++++++  Get Test_OC_Leafref_Resolve  +++++++++++++")
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
         get_expected := "{\"openconfig-ip-helper:interface-ref\":{\"config\":{\"interface\":\"Ethernet0\",\"subinterface\":10}}}"
 
-        t.Run("GET Leafref Resolve", processGetRequest(url, get_expected, false))
+        t.Run("GET OC Leafref Resolve", processGetRequest(url, get_expected, false))
 
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
+
+}
+
+*/
+/*
+// TODO: Enable when VLAN_SUB_INTERFACE_REF table is added to sonic-interface yang
+func Test_Sonic_Leafref_Resolve_Get(t *testing.T) {
+
+        cleanuptbl1 := map[string]interface{}{"VLAN_SUB_INTERFACE_REF":map[string]interface{}{"Eth0.6":""}}
+        cleanuptbl2 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.6":""}}
+        cleanuptbl3 := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet0":""}}
+        prereq1 := map[string]interface{}{"VLAN_SUB_INTERFACE_REF":map[string]interface{}{"Eth0.6":map[string]interface{}{"subintfidx":"6", "parent":"Ethernet0"}}}
+	prereq2 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.6":map[string]interface{}{"index":"6", "admin_status":"up","vrf_name":"Vrf1","ifName":"Ethernet0"}}}
+	prereq3 := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet0":map[string]interface{}{"admin_status":"up", "index":"1", "alias":"Eth1/1/1", "lanes":"49,50,51,52","speed":"100000"}}}
+        url := "/sonic-interface:sonic-interface/VLAN_SUB_INTERFACE_REF"
+
+        fmt.Println("++++++++++++++  Get Test_Sonic_Leafref_Resolve  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+        loadConfigDB(rclient, prereq3)
+
+        get_expected := "{\"sonic-interface:VLAN_SUB_INTERFACE_REF\":{\"VLAN_SUB_INTERFACE_REF_LIST\":[{\"parent\":\"Ethernet0\",\"subifid\":\"Eth0.6\"}]}}"
+
+        t.Run("GET Sonic Leafref Resolve", processGetRequest(url, get_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+        unloadConfigDB(rclient, cleanuptbl3)
 
 }
 */
