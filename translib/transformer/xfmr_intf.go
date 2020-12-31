@@ -459,7 +459,7 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
     var err error
     switch inParams.oper {
     case DELETE:
-        if *requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface" {
+        if *requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface" && subintfid != 0 {
             subifindex := fmt.Sprint(subintfid)
             subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
             resMap := make(map[string]map[string]db.Value)
