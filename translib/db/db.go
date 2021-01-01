@@ -1627,6 +1627,8 @@ func (d *DB) DiffAndMergeOnChangeCache(ts *TableSpec, key Key, entryDeleted bool
 					return cacheEntryDiff, nil
 				}
 
+				cacheEntryDiff.UpdatedEntry = &val
+
 				for fldName := range cachedEntry.Field {
 					if fldName == "NULL" {
 						continue
@@ -1647,16 +1649,17 @@ func (d *DB) DiffAndMergeOnChangeCache(ts *TableSpec, key Key, entryDeleted bool
 					}
 				}
 
-			} else {
+			} else if !entryDeleted {
 				// Not exists in cache
 				// Add entry in cache
 				table.entry[redisKey] = val
 				cacheEntryDiff.EntryCreated = true
+				cacheEntryDiff.UpdatedEntry = &val
 			}
-			cacheEntryDiff.UpdatedEntry = &val
 		}
 	}
-	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Cache Diff: %v", *cacheEntryDiff)
+
+	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Cache Diff: %v", cacheEntryDiff)
 
 	return cacheEntryDiff, nil
 }
