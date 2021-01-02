@@ -44,7 +44,6 @@ import (
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
-
 )
 
 //Write lock for all write operations to be synchronized
@@ -62,7 +61,6 @@ const (
 )
 
 const (
-
 	TRANSLIB_FMT_IETF_JSON = iota
 	TRANSLIB_FMT_YGOT
 )
@@ -89,10 +87,10 @@ type SetResponse struct {
 }
 
 type GetRequest struct {
-	Path    string
-	FmtType TranslibFmtType
-	User    UserRoles
-	AuthEnabled bool
+	Path          string
+	FmtType       TranslibFmtType
+	User          UserRoles
+	AuthEnabled   bool
 	ClientVersion Version
 
 	// Depth limits the depth of data subtree in the response
@@ -147,7 +145,8 @@ type SubscribeRequest struct {
 
 type SubscribeResponse struct {
 	Path         string
-	Payload      []byte
+	Update       ygot.ValidatedGoStruct // updated values
+	Delete       []string               // deleted paths - relative to Path
 	Timestamp    int64
 	SyncComplete bool
 	IsTerminated bool
@@ -1018,7 +1017,7 @@ func collectNotificationPreferences(nAppInfos []notificationAppInfo, resp *IsSub
 	}
 
 	for _, nInfo := range nAppInfos {
-		if !nInfo.isOnChangeSupported || nInfo.dbno == db.CountersDB {
+		if !nInfo.isOnChangeSupported {
 			resp.IsOnChangeSupported = false
 			resp.PreferredType = Sample
 		}
