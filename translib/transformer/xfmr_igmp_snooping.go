@@ -664,7 +664,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
                 oIfName := *(utils.GetUINameFromNativeName(&staticGrpKeys[k].Comp[3]))
                 log.Infof("unMarshalStaticGrpConfigObj:2 -  comp-oif:%v oIfName:%v", staticGrpKeys[k].Comp[3], oIfName)
                 fmt.Println("unMarshalStaticGrpConfigObj:2 - current OIF ", staticGrpObj.Config.OutgoingInterface)
-                
+
                 if len(staticGrpObj.Config.OutgoingInterface) > 0 {
                    _, found := Find(staticGrpObj.Config.OutgoingInterface, oIfName)
                    if (found) {
@@ -694,6 +694,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 			}
 
 			// StateObj
+			if staticGrpObj.State != nil {
 			intfKeys := reflect.ValueOf(reqP.igmpsObj.Interfaces.Interface).MapKeys()
 			fmt.Println("unMarshalStaticGrpStateObj - TargetNode =>", reqP.targetNode)
 			if reqP.targetNode.Name == "outgoing-interface" && len(staticGrpObj.State.OutgoingInterface) > 0 {
@@ -718,7 +719,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 					if *reqP.intfStateObj.Name != staticGrpKeys[k].Comp[0] || grpKey.SourceAddr != staticGrpKeys[k].Comp[1] || grpKey.Group != staticGrpKeys[k].Comp[2] {
 						continue
 					}
-                    
+
                     grpIfName := *(utils.GetUINameFromNativeName(&staticGrpKeys[k].Comp[3]))
                     log.Infof("unMarshalStaticGrpStateObj:2 -  comp-oif:%v oIfName:%v", staticGrpKeys[k].Comp[3], grpIfName)
                     if len(staticGrpObj.State.OutgoingInterface) > 0 {
@@ -729,7 +730,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
                     }
 					staticGrpObj.State.Group = &grpKey.Group
 					staticGrpObj.State.SourceAddr = &grpKey.SourceAddr
-                    
+
                     if !isOif {
                         fmt.Println("unMarshalStaticGrpStateObj:2.Adding new OIF ", grpIfName)
                         staticGrpObj.State.OutgoingInterface = append(staticGrpObj.State.OutgoingInterface, grpIfName)
@@ -740,6 +741,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 			}
 			break
 		}
+			}
 	} else if reqP.isConfigTargetNode("staticgrps") {
 		var staticGrpDbTbl db.Table
 		var err error
@@ -1190,7 +1192,7 @@ var Subscribe_igmp_snooping_subtree_xfmr SubTreeXfmrSubscribe = func(inParams Xf
 			return result, err
 		}
 
-		result.onChange = true
+		result.onChange = OnchangeEnable
 		result.nOpts = &notificationOpts{}
 		result.nOpts.pType = OnChange
 		result.isVirtualTbl = false

@@ -159,7 +159,9 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 				ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum,
 					path: subsReqXlateInfo.TrgtPathInfo.Path}
 
-				ntfAppInfo.isOnChangeSupported = subsReqXlateInfo.TrgtPathInfo.OnChange
+				if subsReqXlateInfo.TrgtPathInfo.OnChange == transformer.OnchangeEnable {
+					ntfAppInfo.isOnChangeSupported = true
+				}
 
 				if !ntfAppInfo.isOnChangeSupported {
 					ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
@@ -201,7 +203,9 @@ func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*no
 					if dbKeyInfo.Key != nil { log.Info("child node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
 
 					ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: pathXlateInfo.Path}
-					ntfAppInfo.isOnChangeSupported = subsReqXlateInfo.TrgtPathInfo.OnChange
+					if subsReqXlateInfo.TrgtPathInfo.OnChange == transformer.OnchangeEnable {
+						ntfAppInfo.isOnChangeSupported = true
+					}
 					if !ntfAppInfo.isOnChangeSupported {
 						ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
 						ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
