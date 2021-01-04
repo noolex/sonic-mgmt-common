@@ -420,11 +420,10 @@ func IsValidAliasName(ifName *string) bool {
 
 // GetFromCacheVlanMemberList Get tagged/untagged list for given vlan
 func GetFromCacheVlanMemberList(vlanName string) ([]string, []string) {
-    memberlist := vlanMemberCache[vlanName]
-    if memberlist == nil {
-	return nil,nil
+    if memberlist, ok := vlanMemberCache[vlanName]; ok {
+        return memberlist.tagged, memberlist.untagged
     }
-    return memberlist.tagged, memberlist.untagged
+    return nil, nil
 }
 
 // SortAsPerTblDeps - sort transformer result table list based on dependencies (using CVL API) tables to be used for CRUD operations
