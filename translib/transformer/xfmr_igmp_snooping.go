@@ -70,7 +70,8 @@ const (
 func init() {
 	XlateFuncBind("YangToDb_igmp_snooping_subtree_xfmr", YangToDb_igmp_snooping_subtree_xfmr)
 	XlateFuncBind("DbToYang_igmp_snooping_subtree_xfmr", DbToYang_igmp_snooping_subtree_xfmr)
-    XlateFuncBind("Subscribe_igmp_snooping_subtree_xfmr", Subscribe_igmp_snooping_subtree_xfmr)
+        XlateFuncBind("Subscribe_igmp_snooping_subtree_xfmr", Subscribe_igmp_snooping_subtree_xfmr)
+	XlateFuncBind("DbToYangPath_igmp_snooping_path_xfmr", DbToYangPath_igmp_snooping_path_xfmr)
 }
 
 type reqProcessor struct {
@@ -1152,16 +1153,153 @@ func (reqP *reqProcessor) translateToYgotObj() error {
 }
 
 
+//var Subscribe_igmp_snooping_subtree_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+//
+//    var err error
+//    var result XfmrSubscOutParams
+//    pathInfo := NewPathInfo(inParams.uri)
+//    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+//
+//    log.Infof("Subscribe_igmp_snooping_subtree_xfmr:- URI:%s pathinfo:%s ", inParams.uri, pathInfo.Path)
+//    log.Infof("Subscribe_igmp_snooping_subtree_xfmr:- Target URI path:%s", targetUriPath)
+//
+//    result.isVirtualTbl = true
+//    return result, err
+//}
+
 var Subscribe_igmp_snooping_subtree_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	var err error
+	var result XfmrSubscOutParams
 
-    var err error
-    var result XfmrSubscOutParams
-    pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+	log.Info("Subscribe_igmp_snooping_subtree_xfmr: inParams.subscProc: ",inParams.subscProc)
 
-    log.Infof("Subscribe_igmp_snooping_subtree_xfmr:- URI:%s pathinfo:%s ", inParams.uri, pathInfo.Path)
-    log.Infof("Subscribe_igmp_snooping_subtree_xfmr:- Target URI path:%s", targetUriPath)
+	pathInfo := NewPathInfo(inParams.uri)
+	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
-    result.isVirtualTbl = true
-    return result, err
+	log.Infof("Subscribe_igmp_snooping_subtree_xfmr:- URI:%s pathinfo:%s ", inParams.uri, pathInfo.Path)
+	log.Infof("Subscribe_igmp_snooping_subtree_xfmr:- Target URI path:%s", targetUriPath)
+
+	igmpSnoopingIntfPath := "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/openconfig-network-instance-deviation:igmp-snooping/interfaces/interface"
+
+	if targetUriPath == igmpSnoopingIntfPath {
+		result.isVirtualTbl = true
+		log.Info("Subscribe_igmp_snooping_subtree_xfmr:- result.isVirtualTbl: ", result.isVirtualTbl)
+		return result, err
+	}
+
+	// to handle the TRANSLATE_SUBSCRIBE
+	result.onChange = true
+	result.nOpts = &notificationOpts{}
+	result.nOpts.pType = OnChange
+	result.isVirtualTbl = false
+
+	niName := pathInfo.Var("name")
+	if niName == "" {
+		niName = "*"
+	}
+
+	intfName := pathInfo.Var("name#3")
+	mrouterIntf := pathInfo.Var("mrouter-interface") // for leaf-list node value
+	staticGrpName := pathInfo.Var("group")
+	staticSrcAddr := pathInfo.Var("source-addr")
+	outgoingIntf := pathInfo.Var("outgoing-interface") // for leaf-list node value
+
+	igmpSnpItfKey := ""
+	mrouterKey := ""
+
+	if intfName == "" {
+		intfName = "*"
+	}
+
+	if mrouterIntf == "" {
+		mrouterIntf = "*"
+	} else {
+		mrouterIntf = *(utils.GetNativeNameFromUIName(&mrouterIntf))
+	}
+
+	if outgoingIntf == "" {
+		outgoingIntf = "*"
+	} else {
+		outgoingIntf = *(utils.GetNativeNameFromUIName(&outgoingIntf))
+	}
+
+	if staticGrpName == "" {
+		staticGrpName = "*"
+	}
+
+	if staticSrcAddr == "" {
+		staticSrcAddr = "*"
+	}
+
+	igmpSnoopingPath := "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/openconfig-network-instance-deviation:igmp-snooping"
+	igmpIntfConfPath := igmpSnoopingPath + "/interfaces/interface/config"
+	igmpConfMrouterIntfPath := igmpSnoopingPath + "/interfaces/interface/config/mrouter-interface"
+	igmpIntfStatePath := igmpSnoopingPath + "/interfaces/interface/state"
+	igmpStateMrouterIntfPath := igmpSnoopingPath + "/interfaces/interface/state/mrouter-interface"
+	staticGrpConfPath := igmpSnoopingPath + "/interfaces/interface/staticgrps/static-multicast-group/config"
+	staticGrpStatePath := igmpSnoopingPath + "/interfaces/interface/staticgrps/static-multicast-group/state"
+	staticGrpOutgoingIntfConfigPath := igmpSnoopingPath + "/interfaces/interface/staticgrps/static-multicast-group/config/outgoing-interface"
+	staticGrpOutgoingIntfStatePath := igmpSnoopingPath + "/interfaces/interface/staticgrps/static-multicast-group/state/outgoing-interface"
+
+	if niName == "default" || niName == "*" {
+		igmpSnpItfKey = intfName
+		mrouterKey = intfName + "|" + mrouterIntf
+		staticGrpKey := intfName + "|" + staticGrpName + "|" + staticSrcAddr
+		mrouterAppDbKey := intfName + ":" + mrouterIntf
+		staticGrpAppDbKey := intfName + ":" + staticGrpName + ":" + staticSrcAddr
+
+		if targetUriPath == igmpIntfConfPath {
+			result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_TABLE":     {igmpSnpItfKey:{}}}}
+			result.secDbDataMap = RedisDbYgNodeMap{db.ConfigDB:{"CFG_L2MC_MROUTER_TABLE": {mrouterKey:"mrouter-interface"}}}
+		} else if targetUriPath == igmpIntfStatePath {
+			result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_TABLE":     {igmpSnpItfKey:{}}}}
+			result.secDbDataMap = RedisDbYgNodeMap{db.ApplDB:{"APP_L2MC_MROUTER_TABLE":{mrouterAppDbKey :"mrouter-interface"}}}
+		} else if targetUriPath == igmpConfMrouterIntfPath {
+			result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_MROUTER_TABLE":     {mrouterKey:{}}}}
+		} else if targetUriPath == igmpStateMrouterIntfPath {
+			result.dbDataMap = RedisDbMap{db.ApplDB:{"APP_L2MC_MROUTER_TABLE":     {mrouterAppDbKey :{}}}}
+		} else if targetUriPath == staticGrpConfPath {
+			result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_STATIC_GROUP_TABLE":     {staticGrpKey:{}}}}
+		} else if targetUriPath == staticGrpStatePath {
+			result.dbDataMap = RedisDbMap{db.ApplDB:{"APP_L2MC_MEMBER_TABLE_TS":     {staticGrpAppDbKey :{}}}}
+		} else if targetUriPath == staticGrpOutgoingIntfConfigPath {
+			result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_STATIC_GROUP_TABLE":     {staticGrpKey:{}}}}
+		} else if targetUriPath == staticGrpOutgoingIntfStatePath {
+			stateOutgoingIntfKey := intfName + ":" + staticGrpName + ":" + staticSrcAddr + ":" + outgoingIntf
+			result.dbDataMap = RedisDbMap{db.ApplDB:{"APP_L2MC_MEMBER_TABLE_TS":     {stateOutgoingIntfKey:{}}}}
+		}
+	}
+
+	log.Info("Subscribe_igmp_snooping_subtree_xfmr:- result dbDataMap: ", result.dbDataMap)
+	log.Info("Subscribe_igmp_snooping_subtree_xfmr:- result secDbDataMap: ", result.secDbDataMap)
+
+	return result, err
+}
+
+var DbToYangPath_igmp_snooping_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+	niRoot := "/openconfig-network-instance:network-instances/network-instance"
+	igmpsIf := niRoot + "/protocols/protocol/openconfig-network-instance-deviation:igmp-snooping/interfaces/interface"
+	smGroup := igmpsIf + "/staticgrps/static-multicast-group"
+
+	log.Info("DbToYangPath_igmp_snooping_path_xfmr: params: ", params)
+
+	params.ygPathKeys[niRoot + "/name"] = "default"
+	params.ygPathKeys[niRoot + "/protocols/protocol/identifier"] = "IGMP_SNOOPING"
+	params.ygPathKeys[niRoot + "/protocols/protocol/name"] = "IGMP-SNOOPING"
+
+	if params.tblName == "CFG_L2MC_TABLE" || params.tblName == "CFG_L2MC_MROUTER_TABLE" ||
+		params.tblName == "APP_L2MC_MROUTER_TABLE" || params.tblName == "CFG_L2MC_STATIC_GROUP_TABLE" {
+		params.ygPathKeys[igmpsIf + "/name"] = params.tblKeyComp[0]
+	}
+
+	if params.tblName == "CFG_L2MC_STATIC_GROUP_TABLE" || params.tblName == "APP_L2MC_MEMBER_TABLE" {
+		if len(params.tblKeyComp) == 3 {
+			params.ygPathKeys[smGroup + "/group"] = params.tblKeyComp[1]
+			params.ygPathKeys[smGroup + "/source-addr"] = params.tblKeyComp[2]
+		}
+	}
+
+	log.Info("DbToYangPath_igmp_snooping_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+
+	return nil
 }
