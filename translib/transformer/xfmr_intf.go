@@ -460,7 +460,7 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
     var err error
     switch inParams.oper {
     case DELETE:
-        if *requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface" {
+        if *requestUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface" && subintfid != 0 {
             subifindex := fmt.Sprint(subintfid)
             subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
             resMap := make(map[string]map[string]db.Value)
@@ -2067,6 +2067,7 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]strin
                 if len(mapIntfKeys) > 0 {
                     for _, intfKey := range mapIntfKeys {
                         key = intfKey.Get(0)
+                        key = *utils.GetUINameFromNativeName(&key)
                         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["VLAN_SUB_INTERFACE"][key]; !ok {
                             (*inParams.dbDataMap)[db.ConfigDB]["VLAN_SUB_INTERFACE"][key] = db.Value{Field: make(map[string]string)}
                             (*inParams.dbDataMap)[db.ConfigDB]["VLAN_SUB_INTERFACE"][key].Field["NULL"] = "NULL"
@@ -2185,7 +2186,7 @@ var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     idx := pathInfo.Var("index")
 
     if idx != "0"  {
-        subintf_key = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &idx)
+        subintf_key = ifName + "." + idx
         //for subintf fetch
     } else {
         subintf_key = idx
@@ -5323,7 +5324,7 @@ var YangToDb_subintf_ipv6_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     }
     inst_key = ifName
     if i32 > 0 {
-        inst_key = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &idx)
+        inst_key = ifName + "." + idx
     }
     log.Info("Exiting YangToDb_subintf_ipv6_tbl_key_xfmr, key %s", inst_key)
     return inst_key, err

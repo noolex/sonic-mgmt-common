@@ -52,7 +52,8 @@ type XfmrParams struct {
 // SubscProcType represents subcription process type identifying the type of subscription request made from translib.
 type SubscProcType int
 const (
-    TRANSLATE_SUBSCRIBE SubscProcType = iota
+    TRANSLATE_EXISTS SubscProcType = iota
+    TRANSLATE_SUBSCRIBE
     PROCESS_SUBSCRIBE
 )
 

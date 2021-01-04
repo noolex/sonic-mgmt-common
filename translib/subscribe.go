@@ -386,22 +386,14 @@ func (ne *notificationEvent) process() {
 
 // findModifiedFields determines db fields changed since last notification
 func (ne *notificationEvent) findModifiedFields() ([]string, error) {
+	var err error
 	nInfo := ne.nInfo
-	entryDeleted := true
-	var dbEntry db.Value
-
-	// Retrieve Db entry from redis using DB instance where pubsub is registered
-	// for onChange only if entry is NOT deleted.
-	// TODO this can fail if db caching is enabled in the system.
-	// TODO move this functionality inside DiffAndMergeOnChangeCache itself
-	if ne.event != db.SEventDel {
-		dbEntry, _ = ne.db.GetEntry(nInfo.table, *ne.key)
-		entryDeleted = false
-	}
 
 	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
 	// and retrieve modified fields. Also merge changes in cache
-	chgFields := nInfo.sInfo.dbs[nInfo.dbno].DiffAndMergeOnChangeCache(dbEntry, nInfo.table, *ne.key, entryDeleted)
+	entryDiff, e := nInfo.sInfo.dbs[nInfo.dbno].DiffAndMergeOnChangeCache(nInfo.table, *ne.key, (ne.event == db.SEventDel))
+	err = e
+	chgFields := entryDiff.UpdatedFields
 
 	log.V(3).Infof("[%s] findModifiedFields: changed db fields: %v", ne.id, chgFields)
 	log.V(3).Infof("[%s] findModifiedFields: monitored fields: %v", ne.id, nInfo.fields)
@@ -418,7 +410,7 @@ func (ne *notificationEvent) findModifiedFields() ([]string, error) {
 
 	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, modFields)
 
-	return modFields, nil
+	return modFields, err
 }
 
 func (ne *notificationEvent) getValue(path string) ([]byte, error) {
