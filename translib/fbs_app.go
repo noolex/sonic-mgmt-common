@@ -235,7 +235,7 @@ func (app *FbsApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *FbsApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+func (app *FbsApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
 	notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 
 	return nil, notSupported
@@ -294,7 +294,7 @@ func (app *FbsApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *FbsApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *FbsApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	var err error
 	var payload []byte
 
@@ -303,12 +303,12 @@ func (app *FbsApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	payload, err = generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget)
+	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	return GetResponse{Payload: payload}, err
+	return GetResponse{Payload: payload, ValueTree: valueTree}, err
 }
 
 func (app *FbsApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {

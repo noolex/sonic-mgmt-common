@@ -149,7 +149,7 @@ func (app *LstApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *LstApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+func (app *LstApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
 	notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 
 	return nil, notSupported
@@ -216,7 +216,7 @@ func (app *LstApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	var err error
 	var payload []byte
 
@@ -225,12 +225,12 @@ func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	payload, err = generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget)
+	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	return GetResponse{Payload: payload}, err
+	return GetResponse{Payload: payload, ValueTree: valueTree}, err
 }
 
 func (app *LstApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
@@ -308,10 +308,6 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 				goto SkipIntfCheck
 			}
 
-			if nil != intfPtr.InterfaceRef.Config.Subinterface {
-				return tlerr.NotSupported("SubInterface not supported")
-			}
-
 			if id != *intfPtr.InterfaceRef.Config.Interface {
 				return tlerr.NotSupported("Different ID %s and Interface name %s not supported", id, *intfPtr.InterfaceRef.Config.Interface)
 			}
@@ -335,9 +331,13 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 
 			if nil != intfPtr.DownstreamGroup && nil != intfPtr.DownstreamGroup.Config &&
 				nil != intfPtr.DownstreamGroup.Config.GroupName {
+				if nil != intfPtr.InterfaceRef.Config.Subinterface {
+					return tlerr.NotSupported("SubInterface not supported")
+				}
 				if !isInterfaceNameValid(id, true) {
 					return tlerr.InvalidArgs("Interface %s is invalid for downstream", id)
 				}
+
 				ifName := *utils.GetNativeNameFromUIName(&id)
 				app.intfDownstreamCfgTblMap[ifName] = *intfPtr.DownstreamGroup.Config.GroupName
 			}

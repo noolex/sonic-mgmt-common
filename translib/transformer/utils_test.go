@@ -209,12 +209,13 @@ func translateSubscribeRequest(path string, expectedTrSubInfo transformer.XfmrTr
 
 }
 
-func processActionRequest(url string, jsonPayload string, oper string, errorCase bool, expErr ...error) func(*testing.T) {
+func processActionRequest(url string, jsonPayload string, oper string, user string, role string, auth bool, errorCase bool, expErr ...error) func(*testing.T) {
 	return func(t *testing.T) {
 		var err error
 		switch oper {
 		case "POST":
-			_, err = Action(ActionRequest{Path: url, Payload: []byte(jsonPayload)})
+			ur := UserRoles{Name: user, Roles:[]string{role}}
+			_, err = Action(ActionRequest{Path: url, Payload: []byte(jsonPayload), User: ur, AuthEnabled: auth})
 		default:
 			t.Errorf("Operation not supported")
 		}
