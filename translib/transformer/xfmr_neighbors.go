@@ -224,6 +224,42 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
     return nil
 }
 
+func neighGetNativeIntfName(ifName string) (string, error) {
+   var errStr string
+
+   if (ifName == "" ) {
+       errStr = "Empty interface name received"
+       err := tlerr.InvalidArgsError{Format: errStr}
+       log.Infof("neighGetNativeIntfName: %s.", errStr)
+       return ifName, err
+   }
+
+   if (!utils.IsAliasModeEnabled()) {
+       if (strings.Contains(ifName,"/")) {
+           errStr = "Invalid portname " + ifName + ", standard interface naming not enabled"
+           log.Infof("neighGetNativeIntfName: %s.", errStr)
+           return ifName, errors.New(errStr)
+       } else {
+           log.Infof("neighGetNativeIntfName: alias mode disabled return same name %s", ifName)
+           return ifName, nil
+       }
+   }
+
+   nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel",
+                                     "Vlan", "VLAN", "vlan", "VLINK" }
+
+   for _, intfPrefix := range nonPhyIntfPrefixes {
+       if (strings.HasPrefix(ifName, intfPrefix)) {
+           log.V(1).Infof("neighGetNativeIntfName: non physical interface %s.", ifName)
+           return ifName, nil
+       }
+   }
+
+   nativeNamePtr := utils.GetNativeNameFromUIName(&ifName)
+   log.Infof("neighGetNativeIntfName: ifName %s native %s.", ifName, *nativeNamePtr)
+   return *nativeNamePtr, nil
+}
+
 var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams XfmrParams) (map[string]map[string]db.Value, error)  {
     var neighTblKey string
     var neighTblName string
@@ -248,7 +284,9 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     }
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+
+    ifName, _ := neighGetNativeIntfName(uriIfName)
     rcvdUri, _ := getYangPathFromUri(inParams.uri)
 
     if ifName == "" {
@@ -272,7 +310,7 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, nil
     }
 
-    intfObj := intfsObj.Interface[ifName]
+    intfObj := intfsObj.Interface[uriIfName]
     if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
         errStr := "SubInterface node is not set"
         log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
@@ -343,7 +381,6 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
             staticMacStr = *v.Config.LinkLayerAddress
             log.Info("YangToDb_intf_static_arp_subtree_xfmr: staticMacStrd ", staticMacStr)
         }
-
         neighTblKey = ifName + "|" + staticIpStr
         log.Info(" ADD operation ", inParams.oper)
         log.Info(" staticIpStr ", staticIpStr)
@@ -526,7 +563,9 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, err
     }
 
-    ifName := pathInfo.Var("name")
+    uriIfName := pathInfo.Var("name")
+    ifName, _ := neighGetNativeIntfName(uriIfName)
+
     if ifName == "" {
         errStr := "Interface KEY not present"
         log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
@@ -536,6 +575,7 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         }
         return neighIntfmap, nil
     }
+
     rcvdUri, _ := getYangPathFromUri(inParams.uri)
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
@@ -549,7 +589,7 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, nil
     }
 
-    intfObj := intfsObj.Interface[ifName]
+    intfObj := intfsObj.Interface[uriIfName]
     if intfObj.Subinterfaces == nil || len(intfObj.Subinterfaces.Subinterface) < 1 {
         errStr := "SubInterface node is not set"
         log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)

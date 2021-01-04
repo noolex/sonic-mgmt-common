@@ -29,6 +29,7 @@ import (
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/path"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
@@ -227,65 +228,124 @@ func (app *AclApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
-	pathInfo := NewPathInfo(path)
-	notifInfo := notificationAppInfo{dbno: db.ConfigDB, isOnChangeSupported: true}
-	notSupported := tlerr.NotSupportedError{
-		Format: "Subscribe not supported", Path: path}
-
-	if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/acl-sets") {
-		// Subscribing to top level ACL record is not supported. It requires listening
-		// to 2 tables (ACL and ACL_RULE); TransLib does not support it yet
-		if pathInfo.HasSuffix("/acl-sets") ||
-			pathInfo.HasSuffix("/acl-set") ||
-			pathInfo.HasSuffix("/acl-set{}{}") {
-			log.Errorf("Subscribe not supported for top level ACL %s", pathInfo.Template)
-			return nil, notSupported
-		}
-
-		t, err := getAclTypeOCEnumFromName(pathInfo.Var(ACL_FIELD_TYPE))
-		if err != nil {
-			return nil, err
-		}
-
-		aclkey := convertOCAclnameTypeToInternal(pathInfo.Var(ACL_KEYWORD_NAME), t)
-
-		if strings.Contains(pathInfo.Template, "/acl-entry{}") {
-			// Subscribe for one rule
-			rulekey := "RULE_" + pathInfo.Var("sequence-id")
-			notifInfo.table = db.TableSpec{Name: RULE_TABLE}
-			notifInfo.key = asKey(aclkey, rulekey)
-
-		} else if pathInfo.HasSuffix("/acl-entries") || pathInfo.HasSuffix("/acl-entry") {
-			// Subscribe for all rules of an ACL
-			notifInfo.table = db.TableSpec{Name: RULE_TABLE}
-			notifInfo.key = asKey(aclkey, "*")
-
-		} else {
-			// Subscibe for ACL fields only
-			notifInfo.table = db.TableSpec{Name: ACL_TABLE}
-			notifInfo.key = asKey(aclkey)
-		}
-	} else if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/interfaces") {
-		// Right now interface binding config is maintained within ACL
-		// table itself. Multiple ACLs can be bound to one intf; one
-		// inname can occur in multiple ACL entries. So we cannot map
-		// interface binding xpaths to specific ACL table entry keys.
-		// For now subscribe for full ACL table!!
-		notifInfo.table = db.TableSpec{Name: ACL_TABLE}
-		notifInfo.key = asKey("*")
-
-	} else {
-		log.Errorf("Unknown path %s", pathInfo.Template)
-		return nil, notSupported
+func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
+	ymap := yangMapTree{
+		subtree: map[string]*yangMapTree{
+			"config": &yangMapTree{
+				mapFunc: app.translateSubAclConfig,
+			},
+			"state": &yangMapTree{
+				mapFunc: app.translateSubAclConfig,
+			},
+			"acl-sets/acl-set": &yangMapTree{
+				mapFunc: app.translateSubAclSet,
+				subtree: map[string]*yangMapTree{
+					"config": nil,
+					"state":  nil,
+					"acl-entries/acl-entry": &yangMapTree{
+						mapFunc: app.translateSubAclEntry,
+					},
+				},
+			},
+			"interfaces/interface": &yangMapTree{
+				mapFunc: app.translateSubAclIntf,
+			},
+		},
 	}
 
-	return []notificationAppInfo{ notifInfo }, nil
+	nb := notificationInfoBuilder{
+		pathInfo: NewPathInfo(path),
+		yangMap:  ymap,
+	}
+
+	return nb.Build()
+}
+
+func (app *AclApp) translateSubAclConfig(nb *notificationInfoBuilder) error {
+	nb.New().Table(db.ConfigDB, HARDWARE).Key("ACCESS_LIST").
+		Field("counter-capability", "COUNTER_MODE")
+	return nil
+}
+
+func (app *AclApp) translateSubAclSet(nb *notificationInfoBuilder) error {
+	aclName := nb.pathInfo.StringVar("name", "*")
+	aclType := nb.pathInfo.StringVar("type", "*")
+	nb.New().PathKey("name", aclName).PathKey("type", aclType).
+		Table(db.ConfigDB, ACL_TABLE).Key(aclName)
+	if nb.SetFieldPrefix("config") {
+		nb.Field("description", ACL_DESCRIPTION)
+	}
+	if nb.SetFieldPrefix("state") {
+		nb.Field("description", ACL_DESCRIPTION)
+	}
+	return nil
+}
+
+func (app *AclApp) translateSubAclEntry(nb *notificationInfoBuilder) error {
+	aclName := nb.pathInfo.StringVar("name", "*")
+	aclType := nb.pathInfo.StringVar("type", "*")
+	ruleSeq := nb.pathInfo.StringVar("sequence-id", "*")
+	nb.New().PathKey("sequence-id", ruleSeq).
+		Table(db.ConfigDB, RULE_TABLE).Key(aclName, "RULE_"+ruleSeq)
+
+	if nb.SetFieldPrefix("config") {
+		nb.Field("description", ACL_RULE_FIELD_DESCRIPTION)
+	}
+	if nb.SetFieldPrefix("state") {
+		nb.Field("description", ACL_RULE_FIELD_DESCRIPTION)
+	}
+	if wildcardMatch(aclType, "ACL_IPV4") {
+		if nb.SetFieldPrefix("ipv4/config") {
+			nb.Field("source-address", ACL_RULE_FIELD_SRC_IP)
+			nb.Field("destination-address", ACL_RULE_FIELD_DST_IP)
+			nb.Field("dscp", ACL_RULE_FIELD_DSCP)
+			nb.Field("protocol", ACL_RULE_FIELD_IP_PROTOCOL)
+		}
+		if nb.SetFieldPrefix("ipv4/state") {
+			nb.Field("source-address", ACL_RULE_FIELD_SRC_IP)
+			nb.Field("destination-address", ACL_RULE_FIELD_DST_IP)
+			nb.Field("dscp", ACL_RULE_FIELD_DSCP)
+			nb.Field("protocol", ACL_RULE_FIELD_IP_PROTOCOL)
+		}
+	}
+
+	//TODO
+	return nil
+}
+
+func (app *AclApp) translateSubAclIntf(nb *notificationInfoBuilder) error {
+	//TODO
+	return nil
 }
 
 func (app *AclApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
-	var resp subscribePathResponse
-	return resp, tlerr.New("Not implemented")
+	resp := subscribePathResponse{
+		path: param.path,
+	}
+
+	switch param.table.Name {
+	case ACL_TABLE:
+		if path.GetElemAt(resp.path, 2) != "acl-set" {
+			return resp, tlerr.New("Unknown path template: %v", param.path)
+		}
+		path.SetKeyAt(resp.path, 2, "name", param.key.Get(0))
+		path.SetKeyAt(resp.path, 2, "type", "ACL_IPV4") //FIXME hardcoded value
+
+	case RULE_TABLE:
+		if path.GetElemAt(resp.path, 4) != "acl-entry" {
+			return resp, tlerr.New("Unknown path template: %v", param.path)
+		}
+		path.SetKeyAt(resp.path, 2, "name", param.key.Get(0))
+		path.SetKeyAt(resp.path, 2, "type", "ACL_IPV4")                  //FIXME hardcoded value
+		path.SetKeyAt(resp.path, 4, "sequence-id", param.key.Get(1)[5:]) //FIXME hardcoded value
+
+	case HARDWARE:
+		// no keys required here
+	default:
+		return resp, tlerr.New("Unknown table: %s", param.table.Name)
+	}
+
+	return resp, nil
 }
 
 func (app *AclApp) processCreate(d *db.DB) (SetResponse, error) {
@@ -336,7 +396,7 @@ func (app *AclApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	var err error
 	var payload []byte
 
@@ -345,12 +405,13 @@ func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	payload, err = generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget)
+	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path,
+			(*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	return GetResponse{Payload: payload}, err
+	return GetResponse{Payload: payload, ValueTree: valueTree}, err
 }
 
 func (app *AclApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
@@ -1055,7 +1116,9 @@ func (app *AclApp) getAllAclTablesFromDB(cdb *db.DB) error {
 			if err != nil {
 				return err
 			}
-			app.aclTableMap[(aclKeys[i]).Get(0)] = aclEntry
+			if aclEntry.IsPopulated() && (aclEntry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_L2 || aclEntry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_IPV4 || aclEntry.Field[ACL_FIELD_TYPE] == SONIC_ACL_TYPE_IPV6) {
+				app.aclTableMap[(aclKeys[i]).Get(0)] = aclEntry
+			}
 		}
 	}
 
@@ -1776,7 +1839,8 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 			if intf.IngressAclSets != nil && len(intf.IngressAclSets.IngressAclSet) > 0 {
 				for inAclKey := range intf.IngressAclSets.IngressAclSet {
 					aclName := convertOCAclnameTypeToInternal(inAclKey.SetName, inAclKey.Type)
-					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
+					intf.Id = utils.GetNativeNameFromUIName(intf.Id)
+					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.Id)
 					if len(app.aclTableMap) == 0 {
 						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 					}
@@ -1798,7 +1862,8 @@ func (app *AclApp) convertOCAclInterfaceBindingsToInternal() error {
 			if intf.EgressAclSets != nil && len(intf.EgressAclSets.EgressAclSet) > 0 {
 				for outAclKey := range intf.EgressAclSets.EgressAclSet {
 					aclName := convertOCAclnameTypeToInternal(outAclKey.SetName, outAclKey.Type)
-					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *utils.GetNativeNameFromUIName(intf.Id))
+					intf.Id = utils.GetNativeNameFromUIName(intf.Id)
+					app.aclInterfacesMap[aclName] = append(app.aclInterfacesMap[aclName], *intf.Id)
 					if len(app.aclTableMap) == 0 {
 						app.aclTableMap[aclName] = db.Value{Field: map[string]string{}}
 					}

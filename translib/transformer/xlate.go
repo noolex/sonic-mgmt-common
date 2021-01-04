@@ -569,7 +569,7 @@ func GetOrdTblList(xfmrTbl string, uriModuleNm string) []string {
                 for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
                                 if xfmrTbl == ordTblNm {
                                         xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ordTblList = sonicMdlTblInfo.OrdTbl
+                                        ordTblList = sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblWithinMdl
                                         processedTbl = true
                                         break
                                 }
@@ -616,7 +616,7 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
                         for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
                                 if xfmrTbl == ordTblNm {
                                         xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl]
+                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblAcrossMdl
                                         for _, depTblNm := range(ldepTblList) {
                                                 depTblMap[depTblNm] = true
                                         }
@@ -736,12 +736,12 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
            }
 
            if (xpathData.subscribePref == nil || ((xpathData.subscribePref != nil) &&(len(strings.TrimSpace(*xpathData.subscribePref)) == 0))) {
-               subscribe_result.PType = Sample
+               subscribe_result.PType = OnChange
            } else {
                if *xpathData.subscribePref == "onchange" {
                    subscribe_result.PType = OnChange
                } else {
-                           subscribe_result.PType = Sample
+		   subscribe_result.PType = Sample
                }
            }
            subscribe_result.MinInterval = xpathData.subscribeMinIntvl
@@ -838,19 +838,18 @@ func IsTerminalNode(uri string) (bool, error) {
 
 func IsLeafNode(uri string) bool {
 	result := false
-	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
-	if err != nil {
-		log.Warningf("For uri - %v, couldn't convert to xpath - %v", uri, err)
-		return result
-	}
-	xfmrLogInfoAll("received xpath - %v", xpath)
-	if xpathData, ok := xYangSpecMap[xpath]; ok {
-		if yangTypeGet(xpathData.yangEntry) == YANG_LEAF {
-			result = true
-		}
-	} else {
-		errStr := "xYangSpecMap data not found for xpath - " + xpath
-		log.Warning(errStr)
+	yngNdType, err := getYangNodeTypeFromUri(uri)
+	if (err == nil) && (yngNdType == YANG_LEAF) {
+		result = true
 	}
 	return result
+}
+
+func IsLeafListNode(uri string) bool {
+        result := false
+        yngNdType, err := getYangNodeTypeFromUri(uri)
+        if (err == nil) && (yngNdType == YANG_LEAF_LIST) {
+                result = true
+        }
+        return result
 }

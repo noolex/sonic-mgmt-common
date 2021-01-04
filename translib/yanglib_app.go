@@ -107,7 +107,7 @@ func (app *yanglibApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) ([]notificationAppInfo, error) {
+func (app *yanglibApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
 	return nil, errors.NotSupported("Unsupported")
 }
 
@@ -136,7 +136,7 @@ func (app *yanglibApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, erro
 	return ActionResponse{}, errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	glog.Infof("path = %s", app.pathInfo.Template)
 	glog.Infof("vars = %s", app.pathInfo.Vars)
 
@@ -158,8 +158,8 @@ func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	}
 
 	if err == nil {
-		resp.Payload, err = generateGetResponsePayload(
-			app.pathInfo.Path, app.ygotRoot, app.ygotTarget)
+		resp.Payload, resp.ValueTree, err = generateGetResponsePayload(
+			app.pathInfo.Path, app.ygotRoot, app.ygotTarget, fmtType)
 	}
 
 	return resp, err

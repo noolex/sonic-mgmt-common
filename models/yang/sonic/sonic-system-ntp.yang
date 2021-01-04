@@ -30,6 +30,10 @@ module sonic-system-ntp {
     import sonic-mgmt-port {
         prefix smt;
     }
+    
+    import sonic-extension {
+        prefix sonic-ext;
+    }
 
     organization
         "SONiC";
@@ -43,6 +47,11 @@ module sonic-system-ntp {
     revision 2020-12-07 {
         description
             "Add per NTP server minpoll and maxpoll.";
+    }
+
+    revision 2020-11-24 {
+        description
+            "Add maximum NTP server number and validation function for NTP vrf configuration.";
     }
 
     revision 2020-10-29 {
@@ -116,6 +125,8 @@ module sonic-system-ntp {
                         }
                     }
 
+                    sonic-ext:custom-validation ValidateNtpVrf;
+
                     description
                         "The VRF instance NTP is running in.";
                 }
@@ -180,6 +191,7 @@ module sonic-system-ntp {
         container NTP_SERVER {
             
             list NTP_SERVER_LIST {
+                max-elements 10;
                 key "server_address";
 
                 leaf server_address {

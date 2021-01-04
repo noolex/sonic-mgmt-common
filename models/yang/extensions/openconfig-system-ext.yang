@@ -625,9 +625,9 @@ module openconfig-system-ext {
          }
 
          leaf reach {
-             type uint8;
+             type string;
              description
-                 "Indicates the reachability of the configured server or peer.";
+                 "An bitmap of size 8 bits in octal string indicates the status of the last eight NTP messages.";
          }
 
         description

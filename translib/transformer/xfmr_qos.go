@@ -15,7 +15,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/utils"
 )
 
-var qCounterTblAttr [] string = []string {"transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets", "transmit-pkts-per-second", "transmit-octets-per-second" }
+var qCounterTblAttr [] string = []string {"transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets", "transmit-pkts-per-second", "transmit-octets-per-second", "transmit-bits-per-second" }
 var pgCounterTblAttr [] string = []string {"headroom-watermark", "headroom-persistent-watermark", "shared-watermark", "shared-persistent-watermark", "headroom-watermark-percent", "headroom-persistent-watermark-percent", "shared-watermark-percent", "shared-persistent-watermark-percent" }
 
 var ECN_MAP = map[string]string{
@@ -1786,7 +1786,10 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         if log.V(3) {
             log.Info("qos_intf_table_xfmr - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
         }
-        if strings.HasPrefix(*dbifName, "Eth") {
+
+        if strings.Contains(*dbifName, ".") {
+            tbl_name = "VLAN_SUB_INTERFACE"
+        } else if strings.HasPrefix(*dbifName, "Eth") {
             tbl_name = "PORT"
         } else if strings.HasPrefix(*dbifName, "CPU") {
             tbl_name = "QOS_PORT"

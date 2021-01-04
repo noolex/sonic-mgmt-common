@@ -22,9 +22,11 @@ import (
 	"github.com/openconfig/ygot/ygot"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"sync"
+	"github.com/openconfig/gnmi/proto/gnmi"
 )
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
+type RedisDbYgNodeMap = map[db.DBNum]map[string]map[string]string
 
 // XfmrParams represents input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer
 type XfmrParams struct {
@@ -71,6 +73,7 @@ type XfmrSubscInParams struct {
 // XfmrSubscOutParams represents output from subscribe subtree callback - DB data for request uri, Need cache, OnChange, subscription preference and interval.
 type XfmrSubscOutParams struct {
     dbDataMap RedisDbMap
+    secDbDataMap RedisDbYgNodeMap // for the leaf/leaf-list node if it maps to different table from its parent
     needCache bool
     onChange bool
     nOpts *notificationOpts  //these can be set regardless of error 
@@ -95,6 +98,20 @@ type SonicXfmrParams struct {
         xpath          string
 }
 
+// XfmrDbToYgPathParams represents input parameters for path-transformer
+//lint:file-ignore U1000 temporarily ignore all "unused var" errors.
+// Fields in the new structs are getting flagged as unused.
+type XfmrDbToYgPathParams struct {
+	yangPath      *gnmi.Path        //current path to be be resolved
+	subscribePath *gnmi.Path        //user input subscribe path
+	ygSchemaPath  string           //current yg schema path
+	tblName       string           //table name
+	tblKeyComp    []string          //table key comp
+	dbNum         db.DBNum
+	dbs           [db.MaxDB]*db.DB
+	db            *db.DB
+	ygPathKeys    map[string]string //to keep translated yang keys as values for the each yang key leaf node
+}
 
 // KeyXfmrYangToDb type is defined to use for conversion of Yang key to DB Key,
 // Transformer function definition.
@@ -170,6 +187,12 @@ type ValueXfmrFunc func (inParams XfmrDbParams)  (string, error)
  // Param: XfmrParams structure having database pointers, current db, operation, DB data in multidimensional map, YgotRoot, uri
  // Return: error
 type PreXfmrFunc func (inParams XfmrParams) (error)
+
+// PathXfmrDbToYangFunc type is defined to convert the given db table key into the yang key for all the list node in the given yang URI path.
+// ygPathKeys map will be used to store the yang key as value in the map for each yang key leaf node path of the given yang URI.
+// Param : XfmrDbToYgPathParams structure has current yang uri path, subscribe path, table name, table key, db pointer slice, current db pointer, db number, map to hold path and yang keys
+// Return: error
+type PathXfmrDbToYangFunc func (params XfmrDbToYgPathParams) error
 
 // XfmrInterface is a validation interface for validating the callback registration of app modules 
 // transformer methods.

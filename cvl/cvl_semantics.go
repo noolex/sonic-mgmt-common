@@ -1273,7 +1273,18 @@ func (c *CVL) validateLeafRef(node *xmlquery.Node,
 						filter =  refRedisTableName +
 						modelInfo.tableInfo[refListName].redisKeyDelim + "*"
 						//tableKeys, _, err = redisClient.Scan(0, filter, 1).Result()
-						tableKeys, err = redisClient.Keys(filter).Result()
+						keysFromDb, err1 := redisClient.Keys(filter).Result()
+						err = err1
+						// keysFromDb can be of type like "INTERFACE|Ethernet0" or 
+						// "INTERFACE|Ethernet0|1.1.1.1/24". So need to filter out
+						// only those keys which are related to table used in leaf-ref.
+						for _, keyFrmDb := range keysFromDb {
+							keyStrArr := strings.SplitN(keyFrmDb, "|", 2)
+							yangListName := getRedisTblToYangList(keyStrArr[0], keyStrArr[1])
+							if yangListName == refListName {
+								tableKeys = append(tableKeys, keyFrmDb)
+							}
+						}
 					}
 
 					if (err != nil) || (len(tableKeys) == 0) {

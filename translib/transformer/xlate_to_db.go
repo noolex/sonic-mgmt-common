@@ -568,18 +568,24 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		xpathPrefix, keyName, tableName := sonicXpathKeyExtract(uri)
 		xfmrLogInfoAll("xpath - %v, keyName - %v, tableName - %v , for uri - %v", xpathPrefix, keyName, tableName, uri)
 		fldPth := strings.Split(xpathPrefix, "/")
-		if len(fldPth) > SONIC_FIELD_INDEX {
+		if (len(fldPth) > SONIC_FIELD_INDEX) && (oper == REPLACE) {
 			fldNm := fldPth[SONIC_FIELD_INDEX]
 			xfmrLogInfoAll("Field Name : %v", fldNm)
 			if fldNm != "" {
 				_, ok := xDbSpecMap[tableName]
 				if ok {
 					dbSpecField := tableName + "/" + fldNm
-					_, dbFldok := xDbSpecMap[dbSpecField]
+					dbSpecInfo, dbFldok := xDbSpecMap[dbSpecField]
 					if dbFldok {
-						/* RFC compliance - REPLACE on leaf/leaf-list becomes UPDATE/merge */
-						resultMap[UPDATE] = make(RedisDbMap)
-						resultMap[UPDATE][db.ConfigDB] = result
+						if yangTypeGet(dbSpecInfo.dbEntry) == YANG_LEAF {
+							resultMap[UPDATE] = make(RedisDbMap)
+							resultMap[UPDATE][db.ConfigDB] = result
+						} else if yangTypeGet(dbSpecInfo.dbEntry) == YANG_LEAF_LIST {
+							resultMap[REPLACE] = make(RedisDbMap)
+                                                        resultMap[REPLACE][db.ConfigDB] = result
+						} else {
+							log.Warningf("For uri - %v, unrecognized terminal yang node type", uri)
+						}
 					} else {
 						log.Warningf("For uri - %v, no entry found in xDbSpecMap for table(%v)/field(%v)", uri, tableName, fldNm)
 					}
@@ -632,12 +638,6 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			if ok && oper == REPLACE {
 				if yangNode.yangDataType == YANG_LEAF {
 					xfmrLogInfo("Change leaf oper to UPDATE for %v, oper(%v)\r\n", uri, oper)
-					resultMap[UPDATE] = make(RedisDbMap)
-					resultMap[UPDATE][db.ConfigDB] = result
-					result = make(map[string]map[string]db.Value)
-				} else if yangNode.yangDataType == YANG_LEAF_LIST {
-					/* RFC compliance - REPLACE on leaf-list becomes UPDATE/merge */
-					xfmrLogInfo("Change leaflist oper to UPDATE for %v, oper(%v)\r\n", uri, oper)
 					resultMap[UPDATE] = make(RedisDbMap)
 					resultMap[UPDATE][db.ConfigDB] = result
 					result = make(map[string]map[string]db.Value)
