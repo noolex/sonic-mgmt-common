@@ -290,7 +290,7 @@ func GetNativeNameFromUIName(uiName *string) *string {
     parts := strings.Split(*uiName, ",")
     converted := make([]string, len(parts))
     for idx, part := range parts {
-        subIntfParts := strings.Split(part, ".")
+        subIntfParts := strings.SplitN(part, ".", 2)
         converted[idx] = subIntfParts[0]
         if IsAliasModeEnabled() {
             ifName, ok := aliasIfNameMap.Load(converted[idx]) ; if ok {
@@ -298,13 +298,14 @@ func GetNativeNameFromUIName(uiName *string) *string {
             }
         }
         if (len(subIntfParts) == 2) {
-            converted[idx] = *GetSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
+            converted[idx] = *getSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
         }
     }
     ret := strings.Join(converted, ",")
     log.V(3).Infof("%s => %s", *uiName, ret)
 
     return &ret
+
 }
 
 // GetUINameFromNativeName returns alias-name for physical interface Name
@@ -318,10 +319,10 @@ func GetUINameFromNativeName(ifName *string) *string {
     parts := strings.Split(*ifName, ",")
     converted := make([]string, len(parts))
     for idx, part := range parts {
-        subIntfParts := strings.Split(part, ".")
+        subIntfParts := strings.SplitN(part, ".", 2)
         converted[idx] = subIntfParts[0]
         if (len(subIntfParts) == 2) {
-            converted[idx] = *GetSubInterfaceLongName(&subIntfParts[0])
+            converted[idx] = *getSubInterfaceLongName(&subIntfParts[0])
         }
         if IsAliasModeEnabled() {
             aliasName, ok := ifNameAliasMap.Load(converted[idx])
@@ -489,7 +490,9 @@ func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) 
     return false
 }
 
-func GetSubInterfaceShortName(longName *string) *string {
+
+
+func getSubInterfaceShortName(longName *string) *string {
     var shortName string
 
     if strings.Contains(*longName, "Ethernet") {
@@ -500,12 +503,26 @@ func GetSubInterfaceShortName(longName *string) *string {
         shortName = *longName
     }
 
-    log.V(3).Infof("GetSubInterfaceShortName %s => %s", *longName, shortName)
+    log.V(3).Infof("getSubInterfaceShortName %s => %s", *longName, shortName)
 
     return &shortName
 }
 
-func GetSubInterfaceLongName(shortName *string) *string {
+func IsIntfSubInterface(ifName *string) bool {
+    isSubIntf := false
+    if strings.HasPrefix(*ifName, "Eth") {
+        if strings.Contains(*ifName, ".") {
+            isSubIntf = true
+        }
+    } else if strings.HasPrefix(*ifName, "Po") {
+        if strings.Contains(*ifName, ".") {
+            isSubIntf = true
+        }
+    }
+    return isSubIntf
+}
+
+func getSubInterfaceLongName(shortName *string) *string {
     var longName string
 
     if strings.Contains(*shortName, "Eth") {
@@ -516,7 +533,7 @@ func GetSubInterfaceLongName(shortName *string) *string {
         longName = *shortName
     }
 
-    log.V(3).Infof("GetSubInterfaceLongName %s => %s", *shortName, longName)
+    log.V(3).Infof("getSubInterfaceLongName %s => %s", *shortName, longName)
 
     return &longName
 }

@@ -24,6 +24,7 @@ import (
     "strings"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "strconv"
     "fmt"
     log "github.com/golang/glog"
@@ -46,6 +47,17 @@ func init () {
     XlateFuncBind("DbToYang_bgp_evpn_vni_rt_key_xfmr", DbToYang_bgp_evpn_vni_rt_key_xfmr)
     XlateFuncBind("YangToDb_bgp_advertise_fld_xfmr", YangToDb_bgp_advertise_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_advertise_fld_xfmr", DbToYang_bgp_advertise_fld_xfmr)
+
+    XlateFuncBind("YangToDb_bgp_evpn_advertise_all_vni_fld_xfmr", YangToDb_bgp_evpn_advertise_all_vni_fld_xfmr);
+    XlateFuncBind("DbToYang_bgp_evpn_advertise_all_vni_fld_xfmr", DbToYang_bgp_evpn_advertise_all_vni_fld_xfmr);
+    XlateFuncBind("YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr", YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr);
+    XlateFuncBind("DbToYang_bgp_evpn_advertise_pip_enable_fld_xfmr", DbToYang_bgp_evpn_advertise_pip_enable_fld_xfmr);
+    XlateFuncBind("YangToDb_bgp_evpn_advertise_pip_ip_fld_xfmr", YangToDb_bgp_evpn_advertise_pip_ip_fld_xfmr);
+    XlateFuncBind("DbToYang_bgp_evpn_advertise_pip_ip_fld_xfmr", DbToYang_bgp_evpn_advertise_pip_ip_fld_xfmr);
+    XlateFuncBind("YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr", YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr);
+    XlateFuncBind("DbToYang_bgp_evpn_advertise_pip_mac_fld_xfmr", DbToYang_bgp_evpn_advertise_pip_mac_fld_xfmr);
+    XlateFuncBind("YangToDb_bgp_evpn_advertise_pip_peer_ip_fld_xfmr", YangToDb_bgp_evpn_advertise_pip_peer_ip_fld_xfmr);
+    XlateFuncBind("DbToYang_bgp_evpn_advertise_pip_peer_ip_fld_xfmr", DbToYang_bgp_evpn_advertise_pip_peer_ip_fld_xfmr);
 
     XlateFuncBind("DbToYang_bgp_evpn_vni_state_xfmr", DbToYang_bgp_evpn_vni_state_xfmr)
 
@@ -80,6 +92,116 @@ func get_bgp_evpn_vni_cfg_tbl_entry (inParams XfmrParams, tableName string) (boo
         return true
     }
 }
+
+
+func get_bgp_vrf_af_db_entry_field(inParams XfmrParams, fieldName string) (string, bool, error) {
+
+    log.Info("get_bgp_vrf_af_db_entry_field: fieldName ", fieldName)
+
+    objKeyItems := strings.Split(inParams.key, "|")
+    if (len(objKeyItems) < 2) {
+        errStr := "Invalid key param " + inParams.key
+        log.Info("get_bgp_vrf_af_db_entry_field: ", errStr)
+        return "", false, tlerr.New(errStr)
+    }
+
+    vrfName:= objKeyItems[0]
+    afName := objKeyItems[1]
+    tableName := "BGP_GLOBALS_AF"
+    tableKey := vrfName + "|" + afName
+
+    evpnTblTs := &db.TableSpec{Name:tableName}
+    evpnEntryKey := db.Key{Comp:[]string{tableKey}}
+
+    evpnEntry, err := configDbPtr.GetEntry(evpnTblTs, evpnEntryKey);
+    if (err != nil) {
+        errStr := "BGP AF table access failed for " + inParams.key
+        log.Info("get_bgp_vrf_af_db_entry_field: ", errStr)
+        return "", false, err
+    }
+
+    if (len(evpnEntry.Field) == 0) {
+        log.Info("get_bgp_vrf_af_db_entry_field: Empty table entry for af evpn")
+        return "", false, nil
+    }
+
+    fieldValue := (&evpnEntry).Get(fieldName)
+    if (fieldValue == "") {
+        log.Info("get_bgp_vrf_af_db_entry_field: ", fieldName, " field is empty")
+        return "", true, nil
+    }
+    
+    log.Info("get_bgp_vrf_af_db_entry_field: ", fieldName, " value ", fieldValue)
+    return fieldValue, true, nil 
+}
+
+
+func get_bgp_vrf_af_inparam_db_entry_field(inParams XfmrParams, fieldName string) (string, error) {
+
+    log.Info("get_bgp_vrf_af_inparam_db_entry_field: find ", fieldName, " in ", inParams.key)
+
+    dbData := (*inParams.dbDataMap)[inParams.curDb]
+    if log.V(3) {
+        log.Info("get_bgp_vrf_af_inparam_db_entry_field: db data ", dbData)
+    }
+
+    afTable := dbData["BGP_GLOBALS_AF"]
+    if log.V(3) {
+        log.Info("get_bgp_vrf_af_inparam_db_entry_field: afTable: ", afTable)
+    }
+
+    afTableData, err := afTable[inParams.key]
+    if !err {
+        log.Info("get_bgp_vrf_af_inparam_db_entry_field: af entry not found for ", inParams.key)
+        return "", tlerr.New("BGP AF entry not found")
+    }
+
+    if log.V(3) {
+        log.Info("get_bgp_vrf_af_inparam_db_entry_field: afTableData ", afTableData)
+    }
+
+    fieldValueStr, ok := afTableData.Field[fieldName]
+    if !ok {
+        log.Info("get_bgp_vrf_af_inparam_db_entry_field: ", fieldName,  " not found")
+        return "", tlerr.New("Address family field not found")
+    }
+
+    log.Info("get_bgp_vrf_af_inparam_db_entry_field: ", fieldName,  ": ", fieldValueStr)
+    return fieldValueStr, nil
+}
+
+func bgp_vrf_is_evpn(inParams XfmrParams) (bool, error) {
+
+    vniField , _, err := get_bgp_vrf_af_db_entry_field(inParams, "advertise-all-vni")
+    if (err != nil) {
+        log.Info("bgp_vrf_is_evpn: get_bgp_vrf_af_db_entry_field failed")
+        return false, err
+    }
+
+    objKeyItems := strings.Split(inParams.key, "|")
+    vrfName:= objKeyItems[0]
+ 
+    if (vniField == "") {
+        log.Info("bgp_vrf_is_evpn: Vni field not configured")
+
+        if (vrfName != "default") {
+            log.Info("bgp_vrf_is_evpn: non default VRF is non evpn VRF")
+            return false, nil
+        }
+
+        log.Info("bgp_vrf_is_evpn: considering default VRF as EVPN VRF")
+        return true, nil
+    }
+
+    if (vniField != "true") {
+        log.Info("bgp_vrf_is_evpn: Vni field configured to non true")
+        return false, nil
+    }
+
+    log.Info("bgp_vrf_is_evpn: advertise-all-vni configured in vrf ", vrfName)
+    return true, nil
+}
+
 
 var bgp_evpn_vni_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
     var tblList []string
@@ -535,6 +657,279 @@ var DbToYang_bgp_advertise_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
     
     return result, err
 }
+
+var YangToDb_bgp_evpn_advertise_all_vni_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+    log.Info("YangToDb_bgp_evpn_advertise_all_vni_fld_xfmr: ")
+
+    if ((inParams.param == nil) || (inParams.param.(*bool) == nil)) {
+        errStr := "Invalid input params " + inParams.key
+        log.Info("YangToDb_bgp_evpn_advertise_all_vni_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    vniEnable := *(inParams.param.(*bool))
+    if (vniEnable) {
+        pipMacStr, _, err := get_bgp_vrf_af_db_entry_field(inParams, "advertise-pip-mac") 
+        if (err == nil && pipMacStr != "") {
+            errStr := "Advertise PIP MAC address configured, VRF cannot be EVPN VRF"
+            log.Info("YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr: ", errStr)
+            return res_map, tlerr.New(errStr)
+        }       
+
+        res_map["advertise-all-vni"] = "true"
+    } else {
+        res_map["advertise-all-vni"] = "false"
+    }
+
+    log.Info("YangToDb_bgp_evpn_advertise_all_vni_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bgp_evpn_advertise_all_vni_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    res_map := make(map[string]interface{})
+    log.Info("DbToYang_bgp_evpn_advertise_all_vni_fld_xfmr: ")
+
+    objKeyItems := strings.Split(inParams.key, "|")
+    if (len(objKeyItems) < 2) {
+        errStr := "Invalid key param count in " + inParams.key
+        log.Info("DbToYang_bgp_evpn_advertise_all_vni_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    vniStr, err := get_bgp_vrf_af_inparam_db_entry_field(inParams, "advertise-all-vni")
+    if (err == nil) {
+        if (vniStr == "true") {
+            res_map["advertise-all-vni"] = true
+        } else if (vniStr == "false") {
+            res_map["advertise-all-vni"] = false
+        }
+    }
+
+    log.Info("DbToYang_bgp_evpn_advertise_all_vni_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+
+var YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+    log.Info("YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr: ")
+
+    if ((inParams.param == nil) || (inParams.param.(*bool) == nil)) {
+        errStr := "Invalid input params " + inParams.key
+        log.Info("YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    pipEnable := *(inParams.param.(*bool))
+    if (pipEnable) {
+        res_map["advertise-pip"] = "true"
+    } else {
+        if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
+            errStr := "Please use delete operation to disable advertise PIP"
+            log.Info("YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr: ", errStr)
+            return res_map, tlerr.New(errStr)
+        }
+        res_map["advertise-pip"] = "false"
+    }
+
+    if (inParams.oper == DELETE) { 
+        res_map["advertise-pip-ip"] = "NULL"
+        res_map["advertise-pip-mac"] = "NULL"
+        res_map["advertise-pip-peer-ip"] = "NULL"
+    }
+
+    log.Info("YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bgp_evpn_advertise_pip_enable_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    res_map := make(map[string]interface{})
+    log.Info("DbToYang_bgp_evpn_advertise_pip_enable_fld_xfmr: ")
+
+    objKeyItems := strings.Split(inParams.key, "|")
+    if (len(objKeyItems) < 2) {
+        errStr := "Invalid key param count in " + inParams.key
+        log.Info("DbToYang_bgp_evpn_advertise_pip_enable_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    pipStr, err := get_bgp_vrf_af_inparam_db_entry_field(inParams, "advertise-pip")
+    if (err == nil) {
+        if (pipStr == "true") {
+            res_map["advertise-pip"] = true
+        } else if (pipStr == "false") {
+            res_map["advertise-pip"] = false
+        }
+    }
+
+    log.Info("DbToYang_bgp_evpn_advertise_pip_enable_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+
+var YangToDb_bgp_evpn_advertise_pip_ip_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+    log.Info("YangToDb_bgp_evpn_advertise_pip_ip_fld_xfmr: ")
+
+    if ((inParams.param == nil) || (inParams.param.(*string) == nil)) {
+        errStr := "Invalid input params " + inParams.key
+        log.Info("YangToDb_bgp_evpn_advertise_pip_ip_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    ipStr := *(inParams.param.(*string))
+    res_map["advertise-pip-ip"] = ipStr
+
+    if (inParams.oper != DELETE) {
+        res_map["advertise-pip"] = "true"
+    }
+
+    log.Info("YangToDb_bgp_evpn_advertise_pip_ip_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bgp_evpn_advertise_pip_ip_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    res_map := make(map[string]interface{})
+    log.Info("DbToYang_bgp_evpn_advertise_pip_ip_fld_xfmr: ")
+
+    objKeyItems := strings.Split(inParams.key, "|")
+    if (len(objKeyItems) < 2) {
+        errStr := "Invalid key param count in " + inParams.key
+        log.Info("DbToYang_bgp_evpn_advertise_pip_ip_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    ipStr, err :=  get_bgp_vrf_af_inparam_db_entry_field(inParams, "advertise-pip-ip")
+    if (err == nil) {
+        res_map["advertise-pip-ip"] = ipStr
+    }
+
+    log.Info("DbToYang_bgp_evpn_advertise_pip_ip_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+
+var YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+    log.Info("YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr: ")
+
+    if ((inParams.param == nil) || (inParams.param.(*string) == nil)) {
+        errStr := "Invalid input params " + inParams.key
+        log.Info("YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    evpnVrf, err := bgp_vrf_is_evpn(inParams)
+    if (err != nil) {
+        errStr := "Evpn table access failed"
+        log.Info("YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    if (evpnVrf) {
+        errStr := "Advertise PIP MAC address cannot be configured on EVPN VRF"
+        log.Info("YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    macStr := *(inParams.param.(*string))
+    res_map["advertise-pip-mac"] = macStr
+
+    if (inParams.oper != DELETE) {
+        res_map["advertise-pip"] = "true"
+    }
+
+    log.Info("YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+
+var DbToYang_bgp_evpn_advertise_pip_mac_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) { 
+
+    res_map := make(map[string]interface{})
+    log.Info("DbToYang_bgp_evpn_advertise_pip_mac_fld_xfmr: ")
+
+    objKeyItems := strings.Split(inParams.key, "|")
+    if (len(objKeyItems) < 2) {
+        errStr := "Invalid key param count in " + inParams.key
+        log.Info("DbToYang_bgp_evpn_advertise_pip_mac_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }   
+
+    macStr, err :=  get_bgp_vrf_af_inparam_db_entry_field(inParams, "advertise-pip-mac")
+    if (err == nil) {
+        res_map["advertise-pip-mac"] = macStr
+    }
+
+    log.Info("DbToYang_bgp_evpn_advertise_pip_mac_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+var YangToDb_bgp_evpn_advertise_pip_peer_ip_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+    log.Info("YangToDb_bgp_evpn_advertise_pip_peer_ip_fld_xfmr: ")
+
+    if ((inParams.param == nil) || (inParams.param.(*string) == nil)) {
+        errStr := "Invalid input params data nil for " + inParams.key
+        log.Info("YangToDb_bgp_evpn_advertise_pip_peer_ip_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    evpnVrf, err := bgp_vrf_is_evpn(inParams)
+    if (err != nil) {
+        errStr := "Evpn table access failed"
+        log.Info("YangToDb_bgp_evpn_advertise_pip_peer_ip_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    if (!evpnVrf) {
+        errStr := "Advertise PIP Peer IP address cannot be configured on non EVPN VRF"
+        log.Info("YangToDb_bgp_evpn_advertise_pip_peer_ip_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    peerIpStr := *(inParams.param.(*string))
+    res_map["advertise-pip-peer-ip"] = peerIpStr
+
+    if (inParams.oper != DELETE) {
+        res_map["advertise-pip"] = "true"
+    }
+
+    log.Info("YangToDb_bgp_evpn_advertise_pip_peer_ip_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
+
+var DbToYang_bgp_evpn_advertise_pip_peer_ip_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    res_map := make(map[string]interface{})
+    log.Info("DbToYang_bgp_evpn_advertise_pip_peer_ip_fld_xfmr: ")
+
+    objKeyItems := strings.Split(inParams.key, "|")
+    if (len(objKeyItems) < 2) {
+        errStr := "Invalid key param count in " + inParams.key
+        log.Info("DbToYang_bgp_evpn_advertise_pip_peer_ip_fld_xfmr: ", errStr)
+        return res_map, tlerr.New(errStr)
+    }
+
+    peerIpStr, err := get_bgp_vrf_af_inparam_db_entry_field(inParams, "advertise-pip-peer-ip")
+    if (err == nil) {
+        res_map["advertise-pip-peer-ip"] = peerIpStr
+    }
+
+    log.Info("DbToYang_bgp_evpn_advertise_pip_peer_ip_fld_xfmr: respmap ", res_map)
+    return res_map, nil
+}
+
 
 var DbToYang_bgp_evpn_vni_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
     var err error

@@ -11,14 +11,14 @@
 //                                                                            //
 //  Unless required by applicable law or agreed to in writing, software       //
 //  distributed under the License is distributed on an "AS IS" BASIS,         //
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
 //  See the License for the specific language governing permissions and       //
 //  limitations under the License.                                            //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-Package translib defines the functions to be used by the subscribe 
+Package translib defines the functions to be used by the subscribe
 
 handler to subscribe for a key space notification. It also has
 
@@ -31,37 +31,37 @@ call the appropriate app module to handle them.
 package translib
 
 import (
+	"fmt"
 	"sync"
 	"time"
-	"bytes"
-	"strconv"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/path"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
-	"github.com/Workiva/go-datastructures/queue"
+	"github.com/openconfig/ygot/ygot"
 )
 
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
 var sMutex = &sync.Mutex{}
 
-//lint:file-ignore U1000 temporarily ignore all "unused var" errors.
-// Fields in the new structs are getting flagged as unused.
-
 // notificationAppInfo contains the details for monitoring db notifications
-// for a given path. App moodules provide these details for each subscribe
+// for a given path. App modules provide these details for each subscribe
 // path. One notificationAppInfo object must inclue details for one db table.
 // One subscribe path can map to multiple notificationAppInfo.
-type notificationAppInfo struct   {
+type notificationAppInfo struct {
 	// table name
-	table db.TableSpec
+	table *db.TableSpec
 
 	// key string without table name prefix. Can include wildcards.
 	// Like - "ACL1|RULE_101" or "ACL1|*".
-	key db.Key
+	key *db.Key
 
 	// dbFieldYangPathMap is the mapping of db entry field to the yang
 	// field (leaf/leaf-list) for the input path.
-	dbFieldYangPathMap map[string]string
+	dbFldYgPathInfoList []*dbFldYgPathInfo
 
 	// database index
 	dbno db.DBNum
@@ -69,7 +69,7 @@ type notificationAppInfo struct   {
 	// path indicates the yang path to which the key maps to.
 	// When the input path maps to multiple db tables, the path field
 	// identifies the yang segments for each db table.
-	path gnmi.Path
+	path *gnmi.Path
 
 	// isOnChangeSupported indicates if on-change notification is
 	// supported for the input path. Table and key mappings should
@@ -84,73 +84,114 @@ type notificationAppInfo struct   {
 	// pType indicates the preferred notification type for the input
 	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
 	pType NotificationType
+
+	// opaque data can be used to store context information to assist
+	// future key-to-path translations. This is an optional data item.
+	// Apps can store any context information based on their logic.
+	// Translib passes this back to the processSubscribe function.
+	opaque interface{}
+}
+
+type dbFldYgPathInfo struct {
+	rltvPath       string
+	dbFldYgPathMap map[string]string //db field to leaf / rel. path to leaf
+}
+
+type notificationSubAppInfo struct {
+	ntfAppInfoTrgt      []notificationAppInfo
+	ntfAppInfoTrgtChlds []notificationAppInfo
 }
 
 // dbKeyInfo represents one db key.
 type dbKeyInfo struct {
-    // table name
-    table db.TableSpec
+	// table name
+	table *db.TableSpec
 
-    // key string without table name prefix.
-    key db.Key
+	// key string without table name prefix.
+	key *db.Key
 
-    // database index
-    dbno db.DBNum
+	// database index
+	dbno db.DBNum
 
-    // path template for the db key. Can include wild cards.
-    path gnmi.Path
+	// path template for the db key. Can include wild cards.
+	path *gnmi.Path
+
+	// List of all DB objects. Apps should only use these DB objects
+	// to query db if they need additional data for translation.
+	dbs [db.MaxDB]*db.DB
+
+	// App specific opaque data -- can be used to pass context data
+	// between translateSubscribe and processSubscribe.
+	opaque interface{}
 }
 
 // subscribePathResponse defines response data structure of processSubscribe
 // function.
 type subscribePathResponse struct {
-    // path indicates the yang path to which the db key maps to.
-    path gnmi.Path
+	// path indicates the yang path to which the db key maps to.
+	path *gnmi.Path
 }
 
-
-type notificationInfo struct{
-	table               db.TableSpec
-	key					db.Key
-	dbno				db.DBNum
-	needCache			bool
-	path				string
-	app				   *appInterface
-	appInfo			   *appInfo
-	cache			  []byte
-	sKey			   *db.SKey
-	dbs [db.MaxDB]	   *db.DB //used to perform get operations
+type notificationInfo struct {
+	table   *db.TableSpec
+	key     *db.Key
+	dbno    db.DBNum
+	fields  []*dbFldYgPathInfo // map of db field to yang fields map
+	path    *gnmi.Path         // Path to which the db key maps to
+	app     *appInterface
+	appInfo *appInfo
+	sInfo   *subscribeInfo
+	opaque  interface{} // App specific opaque data
 }
 
-type subscribeInfo struct{
-	syncDone			bool
-	q				   *queue.PriorityQueue
-	nInfoArr		 []*notificationInfo
-	stop				chan struct{}
-	sDBs			 []*db.DB //Subscription DB should be used only for keyspace notification unsubscription
+type subscribeInfo struct {
+	id       uint64 // Subscribe request id
+	syncDone bool
+	q        *queue.PriorityQueue
+	nInfoArr []*notificationInfo
+	stop     chan struct{}
+	sDBs     []*db.DB         //Subscription DB should be used only for keyspace notification unsubscription
+	dbs      [db.MaxDB]*db.DB //used to perform get operations
 }
 
-var nMap map[*db.SKey]*notificationInfo
-var sMap map[*notificationInfo]*subscribeInfo
+// notificationEvent holds data about translib notification.
+type notificationEvent struct {
+	id    string            // Unique id for logging
+	event db.SEvent         // DB notification type, if any
+	key   *db.Key           // DB key, if any
+	db    *db.DB            // DB object on which this event was received
+	nInfo *notificationInfo // Registration data
+}
+
+// subscribeCounter counts number of Subscribe calls.
+var subscribeCounter Counter
+
+// dbNotificationCounter counts number of db notification processed.
+// Used to derive notificationID
+var dbNotificationCounter Counter
+
 var stopMap map[chan struct{}]*subscribeInfo
 var cleanupMap map[*db.DB]*subscribeInfo
 
 func init() {
-	nMap = make(map[*db.SKey]*notificationInfo)
-	sMap = make(map[*notificationInfo]*subscribeInfo)
-	stopMap	= make(map[chan struct{}]*subscribeInfo)
-	cleanupMap	= make(map[*db.DB]*subscribeInfo)
+	stopMap = make(map[chan struct{}]*subscribeInfo)
+	cleanupMap = make(map[*db.DB]*subscribeInfo)
 }
 
 func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subscribeInfo) error {
 	var sKeyList []*db.SKey
 
 	for _, nInfo := range nInfoList {
-		sKey := &db.SKey{ Ts: &nInfo.table, Key: &nInfo.key}
+		sKey := &db.SKey{
+			Ts:     nInfo.table,
+			Key:    nInfo.key,
+			Opaque: nInfo,
+		}
 		sKeyList = append(sKeyList, sKey)
-		nInfo.sKey = sKey
-		nMap[sKey] = nInfo
-		sMap[nInfo] = sInfo
+
+		//
+		d := sInfo.dbs[nInfo.dbno]
+		d.RegisterTableForOnChangeCaching(nInfo.table)
 	}
 
 	sDB, err := db.SubscribeDB(opt, sKeyList, notificationHandler)
@@ -158,197 +199,379 @@ func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subs
 	if err == nil {
 		sInfo.sDBs = append(sInfo.sDBs, sDB)
 		cleanupMap[sDB] = sInfo
-	} else {
-		for i, nInfo := range nInfoList {
-			delete(nMap, sKeyList[i])
-			delete(sMap, nInfo)
-		}
 	}
 
 	return err
 }
 
 func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) error {
-    log.Info("notificationHandler: d: ", d, " sKey: ", *sKey, " key: ", *key,
-        " event: ", event)
+	nid := dbNotificationCounter.Next()
+	log.Infof("[%d] notificationHandler: d=%p, sKey=%v, key=%v, event=%v",
+		nid, d, sKey, key, event)
+
 	switch event {
 	case db.SEventHSet, db.SEventHDel, db.SEventDel:
+		// TODO revisit mutex usage
 		sMutex.Lock()
 		defer sMutex.Unlock()
 
 		if sKey != nil {
-			if nInfo, ok := nMap[sKey]; (ok && nInfo != nil) {
-				if sInfo, ok := sMap[nInfo]; (ok && sInfo != nil) {
-					isChanged := isCacheChanged(nInfo)
-
-					if isChanged {
-						sendNotification(sInfo, nInfo, false)
-					}
-				} else {
-					log.Info("sInfo not in map", sInfo)
+			if nInfo, ok := sKey.Opaque.(*notificationInfo); ok {
+				n := notificationEvent{
+					id:    fmt.Sprintf("%d:%d", nInfo.sInfo.id, nid),
+					event: event,
+					key:   key,
+					db:    d,
+					nInfo: nInfo,
 				}
+				n.process()
 			} else {
-				log.Info("nInfo not in map", nInfo)
+				log.Warningf("[%d] notificationHandler: SKey corrupted; nil opaque. %v", nid, *sKey)
 			}
 		}
 	case db.SEventClose:
 	case db.SEventErr:
-		if sInfo, ok := cleanupMap[d]; (ok && sInfo != nil) {
+		if sInfo, ok := cleanupMap[d]; ok && sInfo != nil {
 			nInfo := sInfo.nInfoArr[0]
 			if nInfo != nil {
-				sendNotification(sInfo, nInfo, true)
+				sendSyncNotification(sInfo, true)
 			}
 		}
 	}
 
-    return nil
+	return nil
 }
 
-func updateCache(nInfo *notificationInfo) error {
+type subscribeContext struct {
+	sInfo    *subscribeInfo
+	dbNInfos map[db.DBNum][]*notificationInfo
+	tgtInfos []*notificationInfo
+
+	app     *appInterface
+	appInfo *appInfo
+}
+
+func (sc *subscribeContext) add(nAppSubInfo *notificationSubAppInfo) {
+	if sc.dbNInfos == nil {
+		sc.dbNInfos = make(map[db.DBNum][]*notificationInfo)
+	}
+
+	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
+		nInfo := sc.addNInfo(&nAppInfo)
+		sc.tgtInfos = append(sc.tgtInfos, nInfo)
+	}
+
+	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
+		sc.addNInfo(&nAppInfo)
+	}
+}
+
+func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificationInfo {
+	d := nAppInfo.dbno
+	nInfo := &notificationInfo{
+		dbno:    d,
+		table:   nAppInfo.table,
+		key:     nAppInfo.key,
+		fields:  nAppInfo.dbFldYgPathInfoList,
+		path:    nAppInfo.path,
+		app:     sc.app,
+		appInfo: sc.appInfo,
+		sInfo:   sc.sInfo,
+		opaque:  nAppInfo.opaque,
+	}
+
+	// Make sure field prefix path has a leading and trailing "/".
+	// Helps preparing full path later by joining parts
+	for _, pi := range nAppInfo.dbFldYgPathInfoList {
+		if len(pi.rltvPath) != 0 && pi.rltvPath[0] != '/' {
+			pi.rltvPath = "/" + pi.rltvPath
+		}
+	}
+
+	sc.dbNInfos[d] = append(sc.dbNInfos[d], nInfo)
+	return nInfo
+}
+
+func (sc *subscribeContext) startSubscribe() error {
 	var err error
 
-	json, err1 := getJson (nInfo)
-
-	if err1 == nil {
-		nInfo.cache = json
-	} else {
-		log.Error("Failed to get the Json for the path = ", nInfo.path)
-		log.Error("Error returned = ", err1)
-
-		nInfo.cache = []byte("{}")
-	}
-
-	return err
-}
-
-func isCacheChanged(nInfo *notificationInfo) bool {
-	json, err := getJson (nInfo)
-
-    if err != nil {
-		json = []byte("{}")
-	}
-
-    if bytes.Equal(nInfo.cache, json) {
-		log.Info("Cache is same as DB")
-		return false
-	} else {
-		log.Info("Cache is NOT same as DB")
-		nInfo.cache = json
-		return true
-	}
-
-	return false
-}
-
-func startSubscribe(sInfo *subscribeInfo, dbNotificationMap map[db.DBNum][]*notificationInfo) error {
-	var err error
-
-    sMutex.Lock()
+	sMutex.Lock()
 	defer sMutex.Unlock()
+
+	sInfo := sc.sInfo
 
 	stopMap[sInfo.stop] = sInfo
 
-    for dbno, nInfoArr := range dbNotificationMap {
+	for dbno, nInfoArr := range sc.dbNInfos {
 		isWriteDisabled := true
-        opt := getDBOptions(dbno, isWriteDisabled)
-        err = startDBSubscribe(opt, nInfoArr, sInfo)
+		opt := getDBOptions(dbno, isWriteDisabled)
+		err = startDBSubscribe(opt, nInfoArr, sInfo)
 
 		if err != nil {
-			cleanup (sInfo.stop)
+			log.Warningf("[%d] db subscribe failed -- %v", sInfo.id, err)
+			cleanup(sInfo.stop)
 			return err
 		}
 
-        sInfo.nInfoArr = append(sInfo.nInfoArr, nInfoArr...)
-    }
+		sInfo.nInfoArr = append(sInfo.nInfoArr, nInfoArr...)
+	}
 
-    for i, nInfo := range sInfo.nInfoArr {
-        err = updateCache(nInfo)
-
+	for _, nInfo := range sc.tgtInfos {
+		err := sendInitialUpdate(sInfo, nInfo)
 		if err != nil {
-			cleanup (sInfo.stop)
-            return err
-        }
-
-		if i == len(sInfo.nInfoArr)-1 {
-			sInfo.syncDone = true
+			log.Warningf("[%d] init sync failed -- %v", sInfo.id, err)
+			cleanup(sInfo.stop)
+			return err
 		}
+	}
 
-		sendNotification(sInfo, nInfo, false)
-    }
-	//printAllMaps()
+	sInfo.syncDone = true
+	sendSyncNotification(sInfo, false)
 
 	go stophandler(sInfo.stop)
 
 	return err
 }
 
-func getJson (nInfo *notificationInfo) ([]byte, error) {
-    var payload []byte
+// sendInitialUpdate sends the initial sync updates to the caller.
+// Performs following steps:
+//  1) Scan all keys for the table
+//  2) Map each key to yang path
+//  3) Get value for each path and send the notification message
+func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
+	db := sInfo.dbs[int(nInfo.dbno)]
+	ne := notificationEvent{
+		id:    fmt.Sprintf("%d:0", sInfo.id),
+		nInfo: nInfo,
+	}
 
-	app := nInfo.app
-	path := nInfo.path
-	appInfo := nInfo.appInfo
+	keys, err := db.GetKeysPattern(nInfo.table, *nInfo.key)
+	if err != nil {
+		return err
+	}
 
-    err := appInitialize(app, appInfo, path, nil, nil, GET)
+	for _, k := range keys {
+		ne.key = &k
+		ne.sendNotification(nInfo, nil)
+	}
 
-    if  err != nil {
-        return payload, err
-    }
-
-	dbs := nInfo.dbs
-
-    err = (*app).translateGet (dbs)
-
-    if err != nil {
-        return payload, err
-    }
-
-    resp, err := (*app).processGet(dbs)
-
-    if err == nil {
-        payload = resp.Payload
-    }
-
-    return payload, err
+	return nil
 }
 
-func sendNotification(sInfo *subscribeInfo, nInfo *notificationInfo, isTerminated bool){
-	log.Info("Sending notification for sInfo = ", sInfo)
-	log.Info("payload = ", string(nInfo.cache))
-	log.Info("isTerminated", strconv.FormatBool(isTerminated))
+func sendSyncNotification(sInfo *subscribeInfo, isTerminated bool) {
+	log.Infof("[%d] Sending syncDone=%v, isTerminated=%v",
+		sInfo.id, sInfo.syncDone, isTerminated)
 	sInfo.q.Put(&SubscribeResponse{
-			Path:nInfo.path,
-			Payload:nInfo.cache,
-			Timestamp:    time.Now().UnixNano(),
-			SyncComplete: sInfo.syncDone,
-			IsTerminated: isTerminated,
+		Timestamp:    time.Now().UnixNano(),
+		SyncComplete: sInfo.syncDone,
+		IsTerminated: isTerminated,
 	})
+}
+
+// process translates db notification into SubscribeResponse and
+// pushes to the caller.
+func (ne *notificationEvent) process() {
+	modFields, err := ne.findModifiedFields()
+	if err != nil {
+		log.Warningf("[%s] error finding modified fields: %v", ne.id, err)
+		return
+	}
+	if len(modFields) == 0 {
+		log.Infof("[%s] no fields updated", ne.id)
+		return
+	}
+
+	ne.sendNotification(ne.nInfo, modFields)
+}
+
+// findModifiedFields determines db fields changed since last notification
+func (ne *notificationEvent) findModifiedFields() ([]string, error) {
+	var err error
+	nInfo := ne.nInfo
+
+	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
+	// and retrieve modified fields. Also merge changes in cache
+	entryDiff, e := nInfo.sInfo.dbs[nInfo.dbno].DiffAndMergeOnChangeCache(nInfo.table, *ne.key, (ne.event == db.SEventDel))
+	err = e
+	chgFields := entryDiff.UpdatedFields
+
+	log.V(3).Infof("[%s] findModifiedFields: changed db fields: %v", ne.id, chgFields)
+	log.V(3).Infof("[%s] findModifiedFields: monitored fields: %v", ne.id, nInfo.fields)
+
+	var modFields []string
+	for _, f := range chgFields {
+		for _, nDbFldInfo := range nInfo.fields {
+			if _, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				modFields = append(modFields, f)
+				break
+			}
+		}
+	}
+
+	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, modFields)
+
+	return modFields, err
+}
+
+func (ne *notificationEvent) getValue(path string) ([]byte, error) {
+	var payload []byte
+
+	nInfo := ne.nInfo
+	app := nInfo.app
+	appInfo := nInfo.appInfo
+	dbs := nInfo.sInfo.dbs
+
+	err := appInitialize(app, appInfo, path, nil, nil, GET)
+
+	if err != nil {
+		return payload, err
+	}
+
+	err = (*app).translateGet(dbs)
+
+	if err != nil {
+		return payload, err
+	}
+
+	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
+
+	if err == nil {
+		payload = resp.Payload
+	}
+
+	return payload, err
+}
+
+func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path {
+	in := dbKeyInfo{
+		dbno:   nInfo.dbno,
+		table:  nInfo.table,
+		key:    ne.key,
+		dbs:    nInfo.sInfo.dbs,
+		opaque: nInfo.opaque,
+		path:   path.Clone(nInfo.path),
+	}
+
+	log.Infof("[%s] Call processSubscribe with dbno=%d, table=%s, key=%v",
+		ne.id, in.dbno, in.table.Name, in.key)
+	if log.V(3) {
+		log.Infof("[%s] Path template: %s", ne.id, path.String(in.path))
+	}
+
+	out, err := (*nInfo.app).processSubscribe(in)
+	if err != nil {
+		log.Warningf("[%s] processSubscribe returned err: %v", ne.id, err)
+		return nil
+	}
+
+	if out.path == nil {
+		log.Warningf("[%s] processSubscribe returned nil path", ne.id)
+		return nil
+	}
+
+	if !path.Matches(out.path, nInfo.path) {
+		log.Warningf("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
+		log.Warningf("[%s] Expected path template   : %s", ne.id, path.String(nInfo.path))
+		return nil
+	}
+
+	// Trim the output path if it is longer than nInfo.path
+	if tLen := path.Len(nInfo.path); path.Len(out.path) > tLen {
+		out.path = path.SubPath(out.path, 0, tLen)
+	}
+
+	if path.HasWildcardKey(out.path) {
+		log.Warningf("[%s] processSubscribe did not resolve all wildcards: \"%s\"",
+			ne.id, path.String(out.path))
+		return nil
+	}
+
+	if log.V(3) {
+		log.Infof("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
+	}
+
+	return out.path
+}
+
+func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []string) {
+	prefix := nInfo.path
+	if path.HasWildcardKey(prefix) {
+		prefix = ne.dbkeyToYangPath(nInfo)
+		if prefix == nil {
+			log.Warningf("[%s] skip notification", ne.id)
+			return
+		}
+	}
+
+	paths := make([]string, 0, len(fields))
+	sInfo := nInfo.sInfo
+	prefixStr, err := ygot.PathToString(prefix)
+	if err != nil {
+		log.Warningf("[%s] skip notification -- %v", ne.id, err)
+		return
+	}
+
+	for _, f := range fields {
+		for _, nDbFldInfo := range nInfo.fields {
+			if suffix, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				paths = append(paths, prefixStr+nDbFldInfo.rltvPath+"/"+suffix)
+				break
+			}
+		}
+	}
+
+	// Load whole container/list if fields are not specified.
+	// Used for initial sync messages
+	if len(fields) == 0 {
+		paths = append(paths, prefixStr)
+	}
+
+	for _, p := range paths {
+		data, err := ne.getValue(p)
+		if _, ok := err.(tlerr.NotFoundError); ok && sInfo.syncDone {
+			// Ignore "not found" errors before after sync done
+			err = nil
+		}
+
+		if err == nil {
+			// TODO combine all values into single payload.
+			log.Infof("[%s] Sending SubscribeResponse for path %s", ne.id, p)
+			log.V(1).Infof("[%s] data = %s", ne.id, data)
+
+			sInfo.q.Put(&SubscribeResponse{
+				Path:         p,
+				Payload:      data,
+				Timestamp:    time.Now().UnixNano(), // TODO
+				SyncComplete: sInfo.syncDone,
+			})
+		} else {
+			log.Warningf("[%s] skip notification -- %v", ne.id, err)
+		}
+	}
 }
 
 func stophandler(stop chan struct{}) {
 	for {
 		stopSig := <-stop
 		log.Info("stop channel signalled", stopSig)
-        sMutex.Lock()
-	    defer sMutex.Unlock()
+		sMutex.Lock()
+		defer sMutex.Unlock()
 
-		cleanup (stop)
+		cleanup(stop)
 
 		return
 	}
 }
 
 func cleanup(stop chan struct{}) {
-	if sInfo,ok := stopMap[stop]; ok {
+	if sInfo, ok := stopMap[stop]; ok {
+		log.Infof("[s%d] stopping..", sInfo.id)
 
 		for _, sDB := range sInfo.sDBs {
 			sDB.UnsubscribeDB()
 		}
 
-		for _, nInfo := range sInfo.nInfoArr {
-			delete(nMap, nInfo.sKey)
-			delete(sMap, nInfo)
-		}
+		closeAllDbs(sInfo.dbs[:])
 
 		delete(stopMap, stop)
 	}

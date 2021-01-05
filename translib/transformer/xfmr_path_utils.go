@@ -32,6 +32,16 @@ func (p *PathInfo) Var(name string) string {
 	return p.Vars[name]
 }
 
+// HasWildcard checks if the path contains wildcard variable "*".
+func (p *PathInfo) HasWildcard() bool {
+	for _, v := range p.Vars {
+		if v == "*" {
+			return true
+		}
+	}
+	return false
+}
+
 // NewPathInfo parses given path string into a PathInfo structure.
 func NewPathInfo(path string) *PathInfo {
 	var info PathInfo

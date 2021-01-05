@@ -32,6 +32,7 @@ import (
 	"github.com/openconfig/goyang/pkg/yang"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	//"github.com/Azure/sonic-mgmt-common/translib/db"
 )
 
 const (
@@ -169,6 +170,13 @@ func (binder *requestBinder) validateRequest(deviceObj *ocbinds.Device) error {
 }
 
 func (binder *requestBinder) unMarshall() (*ygot.GoStruct, *interface{}, error) {
+	//translateWildCardSubscribe(*binder.uri)
+	//processSubscribe(*binder.uri)
+
+	//if len(*binder.uri) > 0 {
+	//	return nil, nil, errors.New("Testing..")
+	//}
+
 	var deviceObj ocbinds.Device = ocbinds.Device{}
 
 	workObj, err := binder.unMarshallUri(&deviceObj)
@@ -348,3 +356,88 @@ func (binder *requestBinder) unMarshallUri(deviceObj *ocbinds.Device) (*interfac
 
 	return &ygNode, nil
 }
+
+//func translateWildCardSubscribe (uri string) {
+//	log.Info("testing..")
+//	var paths []string
+//	paths = append(paths, uri)
+//	log.Info("paths ==> ", paths)
+//	version := Version{1, 0, 0}
+//	subReq :=  SubscribeRequest {paths, nil, nil, UserRoles{}, false, version}
+//	MySubscribe(subReq)
+//}
+
+//func processSubscribe (uri string) {
+//	log.Info("processSubscribe: uri: ", uri)
+//	var dbKeyInfo dbKeyInfo
+//	dbKeyInfo.table = &db.TableSpec{Name: "VLAN"}
+//	var keyComp []string
+//	keyComp = append(keyComp, "VLAN10")
+//	keyComp = append(keyComp, "123")
+//	dbKeyInfo.key = &db.Key{keyComp}
+//	dbKeyInfo.dbno = db.ConfigDB
+//	path, err := ygot.StringToPath(uri, ygot.StructuredPath, ygot.StringSlicePath)
+//	if err != nil { log.Info("processSubscribe: error: ", err)}
+//	dbKeyInfo.path = path
+//	log.Info("processSubscribe: dbKeyInfo.path: ", dbKeyInfo.path)
+//	ProcessMySubscribe(uri, &dbKeyInfo)
+//}
+//
+//func ProcessMySubscribe (uri string, param *dbKeyInfo) (error) {
+//	var err error
+//
+//	app, appInfo, err := getAppModule(uri, Version{1, 0, 0})
+//
+//	log.Info("appInfo ==> ", appInfo)
+//
+//	if err != nil {
+//		return err
+//	}
+//	log.Info("processSubscribe: param: ", *param)
+//	subscribeResponse, errApp := (*app).processSubscribe(*param)
+//	log.Info ("errApp ==> ", errApp)
+//	log.Info ("subscribeResponse ==> ", subscribeResponse)
+//
+//	return err
+//}
+
+
+//func MySubscribe (req SubscribeRequest) (error) {
+//	var err error
+//
+//	paths := req.Paths
+//
+//	isGetCase := true
+//	dbs, err := getAllDbs(isGetCase)
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	for _, path := range paths {
+//
+//		app, appInfo, err := getAppModule(path, req.ClientVersion)
+//
+//		log.Info("appInfo ==> ", appInfo)
+//
+//		if err != nil {
+//			return err
+//		}
+//
+//		ntfSubsAppInfo, errApp := (*app).translateSubscribe(dbs, path)
+//		log.Info ("errApp ==> ", errApp)
+//		log.Info ("ntfSubsAppInfo ==> ", ntfSubsAppInfo)
+//		if ntfSubsAppInfo == nil {
+//			return errApp
+//		}
+//
+//		if len (ntfSubsAppInfo.ntfAppInfoTrgt) > 0 {
+//			log.Info ("ntfAppInfoTrgt ==> ", ntfSubsAppInfo.ntfAppInfoTrgt)
+//		}
+//		if len (ntfSubsAppInfo.ntfAppInfoTrgtChlds) > 0 {
+//			log.Info ("ntfAppInfoTrgtChlds ==> ", ntfSubsAppInfo.ntfAppInfoTrgtChlds)
+//		}
+//	}
+//
+//	return err
+//}

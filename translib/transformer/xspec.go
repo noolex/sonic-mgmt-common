@@ -31,36 +31,38 @@ import (
 
 /* Data needed to construct lookup table from yang */
 type yangXpathInfo  struct {
-    yangDataType   string
-    tableName      *string
-    xfmrTbl        *string
-    childTable      []string
-    dbEntry        *yang.Entry
-    yangEntry      *yang.Entry
-    keyXpath       map[int]*[]string
-    delim          string
-    fieldName      string
-    xfmrFunc       string
-    xfmrField      string
-    xfmrPost       string
-    validateFunc   string
-    rpcFunc        string
-    xfmrKey        string
-    keyName        *string
-    dbIndex        db.DBNum
-    keyLevel       int
-    isKey          bool
-    defVal         string
-    tblOwner       *bool
-    hasChildSubTree bool
-    hasNonTerminalNode bool
-    subscribePref      *string
-    subscribeOnChg     int
-    subscribeMinIntvl  int
-    cascadeDel     int
-    virtualTbl     *bool
-    nameWithMod    *string
-	xfmrPre        string
+	yangDataType       string
+	tableName          *string
+	xfmrTbl            *string
+	childTable         []string
+	dbEntry            *yang.Entry
+	yangEntry          *yang.Entry
+	keyXpath           map[int]*[]string
+	delim              string
+	fieldName          string
+	compositeFields    []string
+	xfmrFunc           string
+	xfmrField          string
+	xfmrPost           string
+	xfmrPath           string
+	validateFunc       string
+	rpcFunc            string
+	xfmrKey            string
+	keyName            *string
+	dbIndex            db.DBNum
+	keyLevel           int
+	isKey              bool
+	defVal             string
+	tblOwner           *bool
+	hasChildSubTree    bool
+	hasNonTerminalNode bool
+	subscribePref      *string
+	subscribeOnChg     int
+	subscribeMinIntvl  int
+	cascadeDel         int
+	virtualTbl         *bool
+	nameWithMod        *string
+	xfmrPre            string
 }
 
 type dbInfo  struct {
@@ -193,6 +195,8 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathData, ok := xYangSpecMap[curXpathFull]
 		if !ok {
 			curXpathData = new(yangXpathInfo)
+			curXpathData.subscribeOnChg    = XFMR_INVALID
+			curXpathData.subscribeMinIntvl = XFMR_INVALID
 			curXpathData.dbIndex = db.ConfigDB // default value
 			xYangSpecMap[curXpathFull] = curXpathData
 		}
@@ -220,6 +224,8 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathFull = xpathFull + "/" + entry.Name
 		if annotNode, ok := xYangSpecMap[curXpathFull]; ok {
 			xpathData := new(yangXpathInfo)
+			xpathData.subscribeOnChg    = XFMR_INVALID
+			xpathData.subscribeMinIntvl = XFMR_INVALID
 			xpathData.dbIndex = db.ConfigDB // default value
 			xYangSpecMap[xpath] = xpathData
 			copyYangXpathSpecData(xYangSpecMap[xpath], annotNode)
@@ -269,7 +275,11 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		xpathData.xfmrFunc = parentXpathData.xfmrFunc
 	}
 
-   if ok && (parentXpathData.subscribeMinIntvl == XFMR_INVALID ||
+	if ok && len(parentXpathData.xfmrPath) > 0 && len(xpathData.xfmrPath) == 0 {
+		xpathData.xfmrPath = parentXpathData.xfmrPath
+	}
+
+	if ok && (parentXpathData.subscribeMinIntvl == XFMR_INVALID ||
       parentXpathData.subscribeOnChg == XFMR_INVALID) {
        log.Warningf("Susbscribe MinInterval/OnChange flag is set to invalid for(%v) \r\n", xpathPrefix)
        return
@@ -359,6 +369,8 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 			keyXpath[id] = xpath + "/" + keyName
 			if _, ok := xYangSpecMap[xpath + "/" + keyName]; !ok {
 				keyXpathData := new(yangXpathInfo)
+				keyXpathData.subscribeOnChg    = XFMR_INVALID
+				keyXpathData.subscribeMinIntvl = XFMR_INVALID
 				keyXpathData.dbIndex = db.ConfigDB // default value
 				xYangSpecMap[xpath + "/" + keyName] = keyXpathData
 			}
@@ -669,6 +681,8 @@ func childToUpdateParent( xpath string, tableName string) {
 	_, ok := xYangSpecMap[parent]
 	if !ok {
 		xpathData = new(yangXpathInfo)
+		// initialize the child's subscribeOnChg with parent subscribeOnChg
+		xpathData.subscribeOnChg = xYangSpecMap[parent].subscribeOnChg
 		xpathData.dbIndex = db.ConfigDB // default value
 		xYangSpecMap[parent] = xpathData
 	}
@@ -742,6 +756,8 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				*xpathData.xfmrTbl  = ext.NName()
 			case "field-name" :
 				xpathData.fieldName = ext.NName()
+			case "composite-field-names" :
+				xpathData.compositeFields = strings.Split(ext.NName(), ",")
 			case "subtree-transformer" :
 				xpathData.xfmrFunc  = ext.NName()
 			case "key-transformer" :
@@ -758,6 +774,8 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				xpathData.validateFunc  = ext.NName()
 			case "rpc-callback" :
 				xpathData.rpcFunc  = ext.NName()
+			case "path-transformer" :
+				xpathData.xfmrPath = ext.NName()
 			case "use-self-key" :
 				xpathData.keyXpath  = nil
 			case "db-name" :
@@ -776,10 +794,10 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				}
 				*xpathData.subscribePref = ext.NName()
 			case "subscribe-on-change" :
-				if ext.NName() == "enable" || ext.NName() == "ENABLE" {
-					xpathData.subscribeOnChg = XFMR_ENABLE
-				} else {
+				if ext.NName() == "disable" || ext.NName() == "DISABLE" {
 					xpathData.subscribeOnChg = XFMR_DISABLE
+				} else {
+					xpathData.subscribeOnChg = XFMR_ENABLE
 				}
 			case "subscribe-min-interval" :
 				if ext.NName() == "NONE" {

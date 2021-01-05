@@ -35,6 +35,10 @@ module sonic-bgp-common {
         prefix cmn;
     }
 
+    import ietf-yang-types {
+        prefix ietf-yang;
+    }
+
     import sonic-interface {
         prefix sintf;
     }
@@ -556,6 +560,29 @@ module sonic-bgp-common {
             type string;
         }
 
+        leaf advertise-pip {
+            type boolean;
+            description
+               "Enable advertise PIP";
+        }
+
+        leaf advertise-pip-ip {
+            type inet:ipv4-address;
+            description
+               "PIP IPv4 address";
+        }
+
+        leaf advertise-pip-peer-ip {
+            type inet:ipv4-address;
+            description
+               "PIP peer IPv4 address";
+        }
+
+        leaf advertise-pip-mac {
+            type ietf-yang:mac-address;
+            description
+                "PIP MAC address address to addvertise";
+        }
     }
 
     grouping sonic-bgp-af-evpn-global {

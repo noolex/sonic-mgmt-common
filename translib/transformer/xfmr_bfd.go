@@ -186,29 +186,29 @@ var DbToYang_bfd_shop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[strin
     return res_map, nil
 }
 
-var DbToYang_bfd_shop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
-    res_map := make(map[string]interface{})
-
-    TableKeys := strings.Split(inParams.key, "|")
-
-    if len(TableKeys) >= 4 {
-       res_map["vrf"]     = TableKeys[1]
-    }
-
-    log.Info("DbToYang_bfd_shop_vrf_fld_xfmr: res_map - ", res_map)
-    return res_map, nil
-}
-
 var DbToYang_bfd_shop_interface_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
 
     TableKeys := strings.Split(inParams.key, "|")
 
     if len(TableKeys) >= 4 {
-       res_map["interface"]     = TableKeys[2]
+       res_map["interface"]     = TableKeys[1]
     }
 
     log.Info("DbToYang_bfd_shop_interface_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_shop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["vrf"]     = TableKeys[2]
+    }
+
+    log.Info("DbToYang_bfd_shop_vrf_fld_xfmr: res_map - ", res_map)
     return res_map, nil
 }
 
@@ -274,29 +274,29 @@ var DbToYang_bfd_mhop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[strin
     return res_map, nil
 }
 
-var DbToYang_bfd_mhop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
-    res_map := make(map[string]interface{})
-
-    TableKeys := strings.Split(inParams.key, "|")
-
-    if len(TableKeys) >= 4 {
-       res_map["vrf"]     = TableKeys[1]
-    }
-
-    log.Info("DbToYang_bfd_mhop_vrf_fld_xfmr: res_map - ", res_map)
-    return res_map, nil
-}
-
 var DbToYang_bfd_mhop_interface_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
 
     TableKeys := strings.Split(inParams.key, "|")
 
     if len(TableKeys) >= 4 {
-       res_map["interface"]     = TableKeys[2]
+       res_map["interface"]     = TableKeys[1]
     }
 
     log.Info("DbToYang_bfd_mhop_interface_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_mhop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["vrf"]     = TableKeys[2]
+    }
+
+    log.Info("DbToYang_bfd_mhop_vrf_fld_xfmr: res_map - ", res_map)
     return res_map, nil
 }
 
@@ -620,6 +620,11 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, ses
     ygot.BuildEmptyTree(bfdshop_obj.State)
     bfdshop_obj_state = bfdshop_obj.State;
 
+    bfdshop_obj_state.RemoteAddress = bfdshop_obj.RemoteAddress; 
+    bfdshop_obj_state.Interface = bfdshop_obj.Interface;
+    bfdshop_obj_state.Vrf = bfdshop_obj.Vrf;
+    bfdshop_obj_state.LocalAddress = bfdshop_obj.LocalAddress;
+
     if value, ok := session_data["pkt-local-addr"].(string) ; ok {
         bfdshop_obj_state.PktLocalAddress = &value;
     }
@@ -883,6 +888,11 @@ func fill_bfd_mhop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdMhopSessions, ses
     ygot.BuildEmptyTree(bfdmhop_obj.State)
 
     bfdmhop_obj_state = bfdmhop_obj.State;
+
+    bfdmhop_obj_state.RemoteAddress = bfdmhop_obj.RemoteAddress;
+    bfdmhop_obj_state.Interface     = bfdmhop_obj.Interface;
+    bfdmhop_obj_state.Vrf           = bfdmhop_obj.Vrf;
+    bfdmhop_obj_state.LocalAddress  = bfdmhop_obj.LocalAddress;
 
     if value, ok := session_data["pkt-local-addr"].(string) ; ok {
         bfdmhop_obj_state.PktLocalAddress = &value;
