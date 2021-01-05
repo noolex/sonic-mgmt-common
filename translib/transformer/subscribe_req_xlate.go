@@ -480,7 +480,7 @@ func (pathXltr *subscribePathXlator) handleNonSubtreeNodeXlate() (error) {
 	if dBTblKey, err := pathXltr.handleYangToDbKeyXfmr(); err != nil {
 		return err
 	} else if len(dBTblKey) > 0 {
-		keyComp = strings.Split(dBTblKey, pathXltr.ygListXpathInfo.delim)
+		keyComp = strings.Split(dBTblKey, pathXltr.subReq.dbs[pathXltr.ygListXpathInfo.dbIndex].Opts.KeySeparator)
 	}
 
 	ygXpathInfo := pathXltr.pathXlateInfo.ygXpathInfo
