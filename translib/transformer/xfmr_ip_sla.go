@@ -455,7 +455,7 @@ var Subscribe_ip_sla_id_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubsc
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{slaId:{}}}}
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

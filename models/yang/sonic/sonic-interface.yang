@@ -478,6 +478,27 @@ module sonic-interface {
                     }
                 }
 
+                leaf unnumbered {
+                    must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                         "not(contains(/sonic-interface/VLAN_SUB_INTERFACE/VLAN_SUB_INTERFACE_IPADDR_LIST[id=current()/../id]/ip_prefix, '.'))"
+                    {
+                        error-message "Cannot configure IP address and IP Unnumbered interface configurations on the same interface";
+                        error-app-tag vlanintf-ip-config;
+                    }
+
+                    must "(count(current()/../vrf_name) = 0 and count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name) = 0) or " +
+                         "(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name = current()/../vrf_name)"
+                    {
+                        error-message "Donor and Unnumbered interface should be in same VRF";
+                        error-app-tag donor-unnum-diff-vrf;
+                    }
+
+                    sonic-ext:custom-validation ValidateIpv4UnnumIntf;
+
+                    type leafref {
+                        path "/lo:sonic-loopback/lo:LOOPBACK/lo:LOOPBACK_LIST/lo:name";
+                    }
+                }
             }
 
             list VLAN_SUB_INTERFACE_IPADDR_LIST {

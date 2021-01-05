@@ -718,8 +718,6 @@ func dbNameToIndex(dbName string) db.DBNum {
 		dbIndex  = db.StateDB
 	case "ERROR_DB" :
 		dbIndex  = db.ErrorDB
-	case "USER_DB" :
-		dbIndex  = db.UserDB
 	}
 	return dbIndex
 }
