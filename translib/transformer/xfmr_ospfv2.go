@@ -1045,7 +1045,7 @@ func ospfGetRouterAreaVlinkMdAuthObject(inParams *XfmrParams, vrfName string, ar
     return vlMdObj, objKey, ending, nil
 }
 
-
+/*
 func ospfGetNativeIntfName(ifName string) (string, error) {
    var errStr string
 
@@ -1054,6 +1054,9 @@ func ospfGetNativeIntfName(ifName string) (string, error) {
        log.Infof("ospfGetNativeIntfName: %s.", errStr)
        return ifName, errors.New(errStr)
    }
+
+   subIfName := ""
+   ifName, subIfName = getInterfaceNameSplits(ifName)
 
    if (!utils.IsAliasModeEnabled()) {
        if (strings.Contains(ifName,"/")) {
@@ -1066,8 +1069,9 @@ func ospfGetNativeIntfName(ifName string) (string, error) {
        }
    }
 
-   nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel",
-                                     "Vlan", "VLAN", "vlan", "VLINK" }
+   //nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel",
+   //                                 "Vlan", "VLAN", "vlan", "VLINK" }
+   nonPhyIntfPrefixes := []string { "Vlan", "VLAN", "vlan", "VLINK" }
 
    for _, intfPrefix := range nonPhyIntfPrefixes {
        if (strings.HasPrefix(ifName, intfPrefix)) {
@@ -1077,9 +1081,18 @@ func ospfGetNativeIntfName(ifName string) (string, error) {
    }
 
    nativeNamePtr := utils.GetNativeNameFromUIName(&ifName)
-   log.Infof("ospfGetNativeIntfName: ifName %s native %s.", ifName, *nativeNamePtr)
-   return *nativeNamePtr, nil
+   nativeName := *nativeNamePtr
+
+   if (subIfName != "0" && subIfName != "") { 
+       nativeName = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &subIfName)
+       //nativeName = utils.GetSubInterfaceShortName(nativeNamePtr) + "." + subIfName
+       log.Infof("ospfGetNativeIntfName: SubIfName %s native %s.", ifName, nativeName)
+   } 
+
+   log.Infof("ospfGetNativeIntfName: ifName %s nativeName %s.", ifName, nativeName)
+   return nativeName, nil
 }
+*/
 
 func ospfGetUIIntfName(ifName string) (string, error) {
    var errStr string
@@ -2405,9 +2418,18 @@ var YangToDb_ospfv2_interface_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
     log.Info("URI interface name ", ospfv2InterfaceName)
     log.Info("URI Sub interface Id ", ospfv2InterfaceId)
 
-    ospfv2InterfaceName, err = ospfGetNativeIntfName(ospfv2InterfaceName)
+    uriFullIfName, _, _, _, err := getInParamIfName(&inParams)
     if (err != nil) {
-        return "", tlerr.New("Invalid OSPF interface name.")
+        err = errors.New("OSPF interface name error");
+        log.Info("OSPF uri full name error")
+        return "", err
+    }
+
+    ospfv2InterfaceName, _, _, _, err = getNativeInterfaceName(uriFullIfName)
+    if (err != nil) {
+        err = errors.New("OSPF interface name conversion error");
+        log.Info("OSPF native interface conversion error")
+        return "", err
     }
 
     pInterfaceTableKey := ospfv2InterfaceName
