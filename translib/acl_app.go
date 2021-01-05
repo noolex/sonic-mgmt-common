@@ -228,7 +228,7 @@ func (app *AclApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
+func (app *AclApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
 	ymap := yangMapTree{
 		subtree: map[string]*yangMapTree{
 			"config": &yangMapTree{
@@ -254,7 +254,7 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 	}
 
 	nb := notificationInfoBuilder{
-		pathInfo: NewPathInfo(path),
+		pathInfo: NewPathInfo(req.path),
 		yangMap:  ymap,
 	}
 
@@ -324,8 +324,8 @@ func (app *AclApp) translateSubAclIntf(nb *notificationInfoBuilder) error {
 	return nil
 }
 
-func (app *AclApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
-	resp := subscribePathResponse{
+func (app *AclApp) processSubscribe(param *processSubRequest) (processSubResponse, error) {
+	resp := processSubResponse{
 		path: param.path,
 	}
 

@@ -397,7 +397,12 @@ func Test_AclApp_Subscribe(t *testing.T) {
 // app interafce and check returned notificationInfo matches given values.
 func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*testing.T) {
 	return func(t *testing.T) {
-		ntfAppInfo, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		req := translateSubRequest{
+			ctxID: t.Name(),
+			path: path,
+			dbs: [db.MaxDB]*db.DB{},
+		}
+		ntfAppInfo, err := app.translateSubscribe(&req)
 		if err != nil {
 			t.Fatalf("Unexpected error processing '%s'; err=%v", path, err)
 		}
@@ -405,7 +410,7 @@ func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*te
 		var nt *notificationAppInfo
 
 		if ntfAppInfo != nil && len(ntfAppInfo.ntfAppInfoTrgt) > 0 {
-			nt = &(ntfAppInfo.ntfAppInfoTrgt[0])
+			nt = ntfAppInfo.ntfAppInfoTrgt[0]
 		}
 
 		if nt == nil || nt.table.Name != oTable ||
@@ -426,7 +431,12 @@ func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*te
 // an app interafce and expects it to return an error
 func testSubsError(app appInterface, path string) func(*testing.T) {
 	return func(t *testing.T) {
-		_, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		req := translateSubRequest{
+			ctxID: t.Name(),
+			path: path,
+			dbs: [db.MaxDB]*db.DB{},
+		}
+		_, err := app.translateSubscribe(&req)
 		if err == nil {
 			t.Fatalf("Expected error for path '%s'", path)
 		}
