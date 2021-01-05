@@ -417,11 +417,6 @@ module sonic-interface {
                     }
                 }
 
-                //TBD: To be removed after ACL/FBS fix
-                leaf ifName {
-                    type string;
-                }
-
                 leaf parent {
                     type union {
                         type leafref {
@@ -452,6 +447,7 @@ module sonic-interface {
                             error-app-tag vlanid-invalid;
                         }
                     }
+                    sonic-ext:custom-validation ValidateSubInterfaceVlanID;
                 }
 
                 leaf admin_status {
@@ -484,7 +480,11 @@ module sonic-interface {
                 key "id ip_prefix";
 
                 leaf id {
-                   type string;
+                    type string;
+                    //TBD: Fix needed in XFRM and CVL before enabling leafref
+                    /*type leafref {
+                        path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                    }*/
                 }
 
                 leaf ip_prefix {
