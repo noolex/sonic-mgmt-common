@@ -2289,7 +2289,7 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -2342,7 +2342,7 @@ var Subscribe_intf_vlan_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

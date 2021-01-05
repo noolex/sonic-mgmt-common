@@ -142,7 +142,6 @@ const (
 	StateDB                    // 6
 	SnmpDB                     // 7
 	ErrorDB                    // 8
-	UserDB                     // 9
 	// All DBs added above this line, please ----
 	MaxDB //  The Number of DBs
 )
@@ -305,8 +304,6 @@ func getDBInstName (dbNo DBNum) string {
 		return "SNMP_OVERLAY_DB"
 	case ErrorDB:
 		return "ERROR_DB"
-	case UserDB:
-		return "USER_DB"
 	}
 	return ""
 }
@@ -1627,6 +1624,8 @@ func (d *DB) DiffAndMergeOnChangeCache(ts *TableSpec, key Key, entryDeleted bool
 					return cacheEntryDiff, nil
 				}
 
+				cacheEntryDiff.UpdatedEntry = &val
+
 				for fldName := range cachedEntry.Field {
 					if fldName == "NULL" {
 						continue
@@ -1647,16 +1646,17 @@ func (d *DB) DiffAndMergeOnChangeCache(ts *TableSpec, key Key, entryDeleted bool
 					}
 				}
 
-			} else {
+			} else if !entryDeleted {
 				// Not exists in cache
 				// Add entry in cache
 				table.entry[redisKey] = val
 				cacheEntryDiff.EntryCreated = true
+				cacheEntryDiff.UpdatedEntry = &val
 			}
-			cacheEntryDiff.UpdatedEntry = &val
 		}
 	}
-	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Cache Diff: %v", *cacheEntryDiff)
+
+	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Cache Diff: %v", cacheEntryDiff)
 
 	return cacheEntryDiff, nil
 }

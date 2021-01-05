@@ -1351,7 +1351,7 @@ var Subscribe_crm_config_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInP
     }
     result.isVirtualTbl = false
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -1367,7 +1367,7 @@ var Subscribe_crm_stats_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
     }
     result.isVirtualTbl = false
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -1400,7 +1400,7 @@ var Subscribe_crm_acl_stats_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubsc
     }
     result.isVirtualTbl = false
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

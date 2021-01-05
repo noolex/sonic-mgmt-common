@@ -307,6 +307,12 @@ func (app *AclApp) translateSubAclEntry(nb *notificationInfoBuilder) error {
 			nb.Field("dscp", ACL_RULE_FIELD_DSCP)
 			nb.Field("protocol", ACL_RULE_FIELD_IP_PROTOCOL)
 		}
+		if nb.SetFieldPrefix("actions/config") {
+			nb.Field("forwarding-action", ACL_RULE_PACKET_ACTION)
+		}
+		if nb.SetFieldPrefix("actions/state") {
+			nb.Field("forwarding-action", ACL_RULE_PACKET_ACTION)
+		}
 	}
 
 	//TODO
@@ -406,7 +412,7 @@ func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (Ge
 	}
 
 	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path,
-			(*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
+		(*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}

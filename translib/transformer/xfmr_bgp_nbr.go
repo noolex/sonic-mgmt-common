@@ -1403,7 +1403,7 @@ var Subscribe_bgp_nbrs_nbr_state_xfmr SubTreeXfmrSubscribe = func (inParams Xfmr
 
     result.dbDataMap = RedisDbMap{db.StateDB:{"BGP_NEIGHBOR":{pNbrKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

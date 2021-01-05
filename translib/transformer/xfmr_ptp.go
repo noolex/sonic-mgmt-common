@@ -1162,7 +1162,7 @@ var Subscribe_ptp_port_ds_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInP
 		pathInfo.Path, pathInfo.Template, targetUriPath, key)
 	result.dbDataMap = RedisDbMap{db.StateDB: {"PTP_PORT": {key: {}}}} // tablename & table-idx for the inParams.uri
 	result.needCache = true
-	result.onChange = true
+	result.onChange = OnchangeEnable
 	result.nOpts = new(notificationOpts)
 	result.nOpts.mInterval = 0
 	result.nOpts.pType = OnChange
