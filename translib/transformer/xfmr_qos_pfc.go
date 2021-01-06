@@ -209,7 +209,7 @@ var Subscribe_qos_intf_pfcwd_st_xfmr SubTreeXfmrSubscribe = func (inParams XfmrS
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{"PFC_WD":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

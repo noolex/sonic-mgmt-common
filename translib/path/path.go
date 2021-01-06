@@ -23,6 +23,7 @@ package path
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
@@ -178,4 +179,13 @@ func Matches(path *gnmi.Path, template *gnmi.Path) bool {
 	}
 
 	return true
+}
+
+// RemoveModulePrefix strips out module prefixes from each element of a path.
+func RemoveModulePrefix(path *gnmi.Path) {
+	for _, ele := range path.Elem {
+		if k := strings.IndexByte(ele.Name, ':'); k != -1 {
+			ele.Name = ele.Name[k+1:]
+		}
+	}
 }

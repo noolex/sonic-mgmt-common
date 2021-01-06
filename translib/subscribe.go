@@ -36,12 +36,13 @@ import (
 	"time"
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/path"
-	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
+	"github.com/openconfig/ygot/ytypes"
 )
 
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
@@ -350,9 +351,10 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 		return err
 	}
 
+	topNode := []*yangNodeInfo{new(yangNodeInfo)}
 	for _, k := range keys {
 		ne.key = &k
-		ne.sendNotification(nInfo, nil)
+		ne.sendNotification(nInfo, topNode)
 	}
 
 	return nil
@@ -385,25 +387,58 @@ func (ne *notificationEvent) process() {
 }
 
 // findModifiedFields determines db fields changed since last notification
-func (ne *notificationEvent) findModifiedFields() ([]string, error) {
-	var err error
+func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
 	nInfo := ne.nInfo
 
 	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
 	// and retrieve modified fields. Also merge changes in cache
-	entryDiff, e := nInfo.sInfo.dbs[nInfo.dbno].DiffAndMergeOnChangeCache(nInfo.table, *ne.key, (ne.event == db.SEventDel))
-	err = e
-	chgFields := entryDiff.UpdatedFields
+	d := nInfo.sInfo.dbs[nInfo.dbno]
+	entryDiff, err := d.DiffAndMergeOnChangeCache(nInfo.table, *ne.key, (ne.event == db.SEventDel))
+	if err != nil {
+		return nil, err
+	}
 
-	log.V(3).Infof("[%s] findModifiedFields: changed db fields: %v", ne.id, chgFields)
-	log.V(3).Infof("[%s] findModifiedFields: monitored fields: %v", ne.id, nInfo.fields)
+	var modFields []*yangNodeInfo
 
-	var modFields []string
-	for _, f := range chgFields {
+	// When a new db entry is created, the notification infra can fetch full
+	// content of target path.
+	if entryDiff.EntryCreated {
+		log.Infof("[%s] Entry created;", ne.id)
+		modFields = append(modFields, &yangNodeInfo{})
+		return modFields, nil
+	}
+
+	// When entry is deleted, mark the whole target path as deleted.
+	// FIXME this does not work if a container maps to multiple tables
+	if entryDiff.EntryDeleted {
+		log.Infof("[%s] Entry deleted;", ne.id)
+		modFields = append(modFields, &yangNodeInfo{deleted: true})
+		return modFields, nil
+	}
+
+	// Collect yang leaf info for updated fields
+	for _, f := range entryDiff.UpdatedFields {
 		for _, nDbFldInfo := range nInfo.fields {
-			if _, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				modFields = append(modFields, f)
-				break
+			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				log.Infof("[%s] Field %s modified; path=%s/%s", ne.id, f, nDbFldInfo.rltvPath, leaf)
+				modFields = append(modFields, &yangNodeInfo{
+					parentPrefix: nDbFldInfo.rltvPath,
+					leafName:     leaf,
+				})
+			}
+		}
+	}
+
+	// Collect yang leaf info for deleted fields
+	for _, f := range entryDiff.DeletedFields {
+		for _, nDbFldInfo := range nInfo.fields {
+			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				log.Infof("[%s] Field %s deleted; path=%s/%s", ne.id, f, nDbFldInfo.rltvPath, leaf)
+				modFields = append(modFields, &yangNodeInfo{
+					parentPrefix: nDbFldInfo.rltvPath,
+					leafName:     leaf,
+					deleted:      true,
+				})
 			}
 		}
 	}
@@ -413,8 +448,8 @@ func (ne *notificationEvent) findModifiedFields() ([]string, error) {
 	return modFields, err
 }
 
-func (ne *notificationEvent) getValue(path string) ([]byte, error) {
-	var payload []byte
+func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, error) {
+	var payload ygot.ValidatedGoStruct
 
 	nInfo := ne.nInfo
 	app := nInfo.app
@@ -433,10 +468,10 @@ func (ne *notificationEvent) getValue(path string) ([]byte, error) {
 		return payload, err
 	}
 
-	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
+	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_YGOT)
 
 	if err == nil {
-		payload = resp.Payload
+		payload = *resp.ValueTree
 	}
 
 	return payload, err
@@ -493,7 +528,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 	return out.path
 }
 
-func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []string) {
+func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []*yangNodeInfo) {
 	prefix := nInfo.path
 	if path.HasWildcardKey(prefix) {
 		prefix = ne.dbkeyToYangPath(nInfo)
@@ -503,7 +538,6 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		}
 	}
 
-	paths := make([]string, 0, len(fields))
 	sInfo := nInfo.sInfo
 	prefixStr, err := ygot.PathToString(prefix)
 	if err != nil {
@@ -511,43 +545,117 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		return
 	}
 
-	for _, f := range fields {
-		for _, nDbFldInfo := range nInfo.fields {
-			if suffix, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				paths = append(paths, prefixStr+nDbFldInfo.rltvPath+"/"+suffix)
+	resp := &SubscribeResponse{
+		Path:      prefixStr,
+		Timestamp: time.Now().UnixNano(),
+	}
+
+	log.Infof("[%s] preparing SubscribeResponse for %s", ne.id, prefixStr)
+	var numUpdate uint32
+
+	for _, lv := range fields {
+		leafPath := lv.getPath()
+
+		data, err := ne.getValue(prefixStr + leafPath)
+
+		if sInfo.syncDone && isNotFoundError(err) {
+			log.V(3).Infof("[%s] %s deleted", ne.id, leafPath)
+			resp.Delete = append(resp.Delete, leafPath)
+			continue
+		}
+		if err != nil {
+			log.Warningf("[%s] skip notification -- %v", ne.id, err)
+			continue
+		}
+
+		log.V(3).Infof("[%s] %s = %v", ne.id, leafPath, data)
+		lv.valueTree = data
+		numUpdate++
+	}
+
+	switch {
+	case numUpdate == 0:
+		// No updates; retain resp.Path=prefixStr and resp.Update=nil
+	case numUpdate == 1 && len(resp.Delete) == 0:
+		// There is only one update and no deletes. Overwrite the resp.Path
+		// with the path to parent container of update value.
+		for _, lv := range fields {
+			if lv.valueTree != nil {
+				resp.Path = prefixStr + lv.parentPrefix
+				resp.Update = lv.valueTree
+				log.V(5).Infof("[%s] Single update case. using Path=\"%s\", Update=%T",
+					ne.id, resp.Path, resp.Update)
+				break
+			}
+		}
+	default:
+		// There are > 1 updates or 1 update with few delete paths. Hence retain resp.Path
+		// as prefixStr itself. Coalesce the values by merging them into a new data tree.
+		tmpRoot := new(ocbinds.Device)
+		resp.Update, err = mergeUpdateValue(tmpRoot, prefixStr, nil) // TODO what if prefixStr is a leaf?
+		if err != nil {
+			break
+		}
+
+		log.V(5).Infof("[%s] Coalesce %d updates into Path=\"%s\", Update=%T",
+			ne.id, numUpdate, resp.Path, resp.Update)
+		for _, lv := range fields {
+			if lv.valueTree == nil {
+				continue
+			}
+			_, err = mergeUpdateValue(tmpRoot, prefixStr+lv.parentPrefix, lv.valueTree)
+			if err != nil {
 				break
 			}
 		}
 	}
 
-	// Load whole container/list if fields are not specified.
-	// Used for initial sync messages
-	if len(fields) == 0 {
-		paths = append(paths, prefixStr)
+	if err != nil {
+		log.Warningf("[%s] skip notification -- %v", ne.id, err)
+		return
 	}
 
-	for _, p := range paths {
-		data, err := ne.getValue(p)
-		if _, ok := err.(tlerr.NotFoundError); ok && sInfo.syncDone {
-			// Ignore "not found" errors before after sync done
-			err = nil
-		}
+	log.Infof("[%s] Sending %d updates and %d deletes", ne.id, numUpdate, len(resp.Delete))
+	sInfo.q.Put(resp)
+}
 
-		if err == nil {
-			// TODO combine all values into single payload.
-			log.Infof("[%s] Sending SubscribeResponse for path %s", ne.id, p)
-			log.V(1).Infof("[%s] data = %s", ne.id, data)
+// yangNodeInfo holds path and value for a yang leaf
+type yangNodeInfo struct {
+	parentPrefix string
+	leafName     string
+	deleted      bool
+	valueTree    ygot.ValidatedGoStruct
+}
 
-			sInfo.q.Put(&SubscribeResponse{
-				Path:         p,
-				Payload:      data,
-				Timestamp:    time.Now().UnixNano(), // TODO
-				SyncComplete: sInfo.syncDone,
-			})
-		} else {
-			log.Warningf("[%s] skip notification -- %v", ne.id, err)
-		}
+func (lv *yangNodeInfo) getPath() string {
+	if len(lv.leafName) == 0 {
+		return lv.parentPrefix
 	}
+	return lv.parentPrefix + "/" + lv.leafName
+}
+
+func mergeUpdateValue(ygRoot *ocbinds.Device, pathStr string, value ygot.ValidatedGoStruct) (ygot.ValidatedGoStruct, error) {
+	p, err := ygot.StringToStructuredPath(pathStr)
+	if err != nil {
+		return nil, err
+	}
+
+	path.RemoveModulePrefix(p)
+	var pNode ygot.ValidatedGoStruct
+
+	ygNode, _, err := ytypes.GetOrCreateNode(ygSchema.RootSchema(), ygRoot, p)
+	if err != nil {
+		return nil, err
+	}
+	if n, ok := ygNode.(ygot.ValidatedGoStruct); ok {
+		pNode = n
+	} else {
+		return nil, fmt.Errorf("GetOrCreateNode returned %T; is not a ValidatedGoStruct", ygNode)
+	}
+	if value != nil {
+		err = ygot.MergeStructInto(pNode, value)
+	}
+	return pNode, err
 }
 
 func stophandler(stop chan struct{}) {

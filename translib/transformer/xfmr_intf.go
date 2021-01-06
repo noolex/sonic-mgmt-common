@@ -429,19 +429,18 @@ func ValidateIntfProvisionedForRelay(d *db.DB, ifName string, prefixIp string) (
 func getIntfTypeByName (name string) (E_InterfaceType, E_InterfaceSubType, error) {
 
     var err error
-    if strings.HasPrefix(name, ETHERNET) {
-        if strings.Contains(name, ".") {
+    if strings.Contains(name, ".") {
+        if strings.HasPrefix(name, ETHERNET) || strings.HasPrefix(name, "Po") {
             return IntfTypeSubIntf, IntfSubTypeUnset, err
         }
+    }
+    if strings.HasPrefix(name, ETHERNET) {
         return IntfTypeEthernet, IntfSubTypeUnset, err
     } else if strings.HasPrefix(name, MGMT) {
         return IntfTypeMgmt, IntfSubTypeUnset, err
     } else if strings.HasPrefix(name, VLAN) {
         return IntfTypeVlan, IntfSubTypeUnset, err
     } else if strings.HasPrefix(name, PORTCHANNEL) {
-        if strings.Contains(name, ".") {
-            return IntfTypeSubIntf, IntfSubTypeUnset, err
-        }
         return IntfTypePortChannel, IntfSubTypeUnset, err
     } else if strings.HasPrefix(name, LOOPBACK) {
         return IntfTypeLoopback, IntfSubTypeUnset, err
@@ -3791,6 +3790,12 @@ func handleIntfIPGetByTargetURI (inParams XfmrParams, targetUriPath string, ifNa
     pathInfo := NewPathInfo(inParams.uri)
     ipAddr := pathInfo.Var("ip")
     idx := pathInfo.Var("index")
+    i32 := uint32(0)
+    if idx != "0" {
+        ifName = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &idx)
+        i64, _ := strconv.ParseUint(idx, 10, 32)
+        i32 = uint32(i64)       
+    }
     intfType, _, ierr := getIntfTypeByName(ifName)
     if intfType == IntfTypeUnset || ierr != nil {
         errStr := "Invalid interface type IntfTypeUnset"
@@ -3803,57 +3808,45 @@ func handleIntfIPGetByTargetURI (inParams XfmrParams, targetUriPath string, ifNa
        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/config") {
            ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, true, false, ipAddr)
            log.Info("handleIntfIPGetByTargetURI : ipv4 config ipMap - : ", ipMap)
-           convertIpMapToOC(ipMap, intfObj, false, 0)
+           convertIpMapToOC(ipMap, intfObj, false, i32)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/config") {
            ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, false, true, ipAddr)
            log.Info("handleIntfIPGetByTargetURI : ipv6 config ipMap - : ", ipMap)
-           convertIpMapToOC(ipMap, intfObj, false, 0)
+           convertIpMapToOC(ipMap, intfObj, false, i32)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/state") ||
          strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/state") {
            ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, true, false, ipAddr)
            log.Info("handleIntfIPGetByTargetURI : ipv4 state ipMap - : ", ipMap)
-           convertIpMapToOC(ipMap, intfObj, true, 0)
+           convertIpMapToOC(ipMap, intfObj, true, i32)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses/address/state") ||
          strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/state") {
            ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, false, true, ipAddr)
            log.Info("handleIntfIPGetByTargetURI : ipv6 state ipMap - : ", ipMap)
-           convertIpMapToOC(ipMap, intfObj, true, 0)
+           convertIpMapToOC(ipMap, intfObj, true, i32)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses") {
         ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, true, false, ipAddr)
         if err == nil {
            log.Info("handleIntfIPGetByTargetURI : ipv4 config ipMap - : ", ipMap)
-            convertIpMapToOC(ipMap, intfObj, false, 0)
+            convertIpMapToOC(ipMap, intfObj, false, i32)
         }
         ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, true, false, ipAddr)
         if err == nil {
             log.Info("handleIntfIPGetByTargetURI : ipv4 state ipMap - : ", ipMap)
-            convertIpMapToOC(ipMap, intfObj, true, 0)
-        }
-        if idx!="0" {
-            stbl := "VLAN_SUB_INTERFACE"
-            //for Ip get
-            skey := *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &idx)
-            i64, _ := strconv.ParseUint(idx, 10, 32)
-            i32 := uint32(i64)       
-            ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], stbl, skey, true, false, ipAddr)
-            if err == nil {
-               log.Info("handleIntfIPGetByTargetURI : ipv4 config ipMap - : ", ipMap)
-                convertIpMapToOC(ipMap, intfObj, false, i32)
-            }
+            convertIpMapToOC(ipMap, intfObj, true, i32)
         }
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv6/addresses") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv6/addresses") {
         ipMap, err = getIntfIpByName(inParams.dbs[db.ConfigDB], intTbl.cfgDb.intfTN, ifName, false, true, ipAddr)
         if err == nil {
             log.Info("handleIntfIPGetByTargetURI : ipv6 config ipMap - : ", ipMap)
-            convertIpMapToOC(ipMap, intfObj, false, 0)
+            convertIpMapToOC(ipMap, intfObj, false, i32)
         }
         ipMap, err = getIntfIpByName(inParams.dbs[db.ApplDB], intTbl.appDb.intfTN, ifName, false, true, ipAddr)
         if err == nil {
             log.Info("handleIntfIPGetByTargetURI : ipv6 state ipMap - : ", ipMap)
-            convertIpMapToOC(ipMap, intfObj, true, 0)
+            convertIpMapToOC(ipMap, intfObj, true, i32)
         }
     }
     return err
