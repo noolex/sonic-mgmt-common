@@ -157,7 +157,7 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
     aliasIfNameMap.Store(aliasName, portName)
     log.V(3).Infof("alias cache updated %s <==> %s", portName, aliasName)
 
-    taggedVlanVal, ok := portEntry.Field["tagged_vlan@"]
+    taggedVlanVal, ok := portEntry.Field["tagged_vlans@"]
     if ok {
         var taggedVlanSlice []string
         vlanRngSlice := GenerateMemberPortsSliceFromString(&taggedVlanVal)
