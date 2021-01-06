@@ -398,7 +398,7 @@ func validateVlanExists(d *db.DB, vlanName *string) error {
     }
     entry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{*vlanName}})
     if err != nil || !entry.IsPopulated() {
-        errStr := "Invalid Vlan:" + *vlanName
+        errStr := "Vlan:" + *vlanName + " does not exist!"
         log.Error(errStr)
         return errors.New(errStr)
     }
@@ -599,11 +599,13 @@ func removeTaggedVlanAndUpdateVlanMembTbl(d *db.DB, trunkVlan *string, ifName *s
     memberPortEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_MEMBER_TN}, db.Key{Comp: []string{*trunkVlan, *ifName}})
     if err != nil || !memberPortEntry.IsPopulated() {
         errStr := "Tagged Vlan configuration: " + *trunkVlan + " doesn't exist for Interface: " + *ifUIName
+        log.Info(errStr)
         return tlerr.InvalidArgsError{Format:errStr}
     }
     tagMode, ok := memberPortEntry.Field["tagging_mode"]
     if !ok {
         errStr := "tagging_mode entry is not present for VLAN: " + *trunkVlan + " Interface: " + *ifUIName
+        log.Info(errStr)
         return errors.New(errStr)
     }
     vlanName := *trunkVlan
@@ -613,6 +615,7 @@ func removeTaggedVlanAndUpdateVlanMembTbl(d *db.DB, trunkVlan *string, ifName *s
     } else {
         vlanId := vlanName[len("Vlan"):]
         errStr := "Tagged VLAN: " + vlanId + " configuration doesn't exist for Interface: " + *ifUIName
+        log.Info(errStr)
         return tlerr.InvalidArgsError{Format: errStr}
     }
     return err
@@ -663,6 +666,7 @@ func removeUntaggedVlanAndUpdateVlanMembTbl(d *db.DB, ifName *string,
     }
     ifUIName := utils.GetUINameFromNativeName(ifName)
     errStr := "Untagged VLAN configuration doesn't exist for Interface: " + *ifUIName
+    log.Info(errStr)
     return nil, tlerr.InvalidArgsError{Format: errStr}
 }
 
@@ -733,7 +737,7 @@ func removeFromPorttaggedList(d *db.DB, remTrunkVlans []string, ifName *string, 
     }
     if len(cfgdVlanSlice) != 0 {
         //Generate new tagged_vlan list excluding vlans to be removed 
-        portVlanSlice := vlanDifference(cfgdVlanSlice, remTrunkVlans)
+        portVlanSlice := vlanDifference(cfgdVlanSlice, remTrunkVlans) //slice contains vlans in cfgdVlanSlice but not in remTrunkVlans
         portVlanListMap[*ifName] = db.Value{Field:make(map[string]string)}
         portVlanSlice, _ = vlanIdstoRng(portVlanSlice)
         log.Info("-----------portVlanSlice ---", portVlanSlice)
@@ -892,13 +896,12 @@ func  processIntfVlanMemberRemoval(d *db.DB, ifVlanInfoList []*ifVlan, vlanMap m
             /* Handling Access Vlan delete */
             log.Info("Access VLAN Delete!")
             untagdVlan, err = removeUntaggedVlanAndUpdateVlanMembTbl(d, ifName, vlanMemberMap, stpVlanPortMap, stpPortMap)
-            if err != nil {
-                return err
+            if err == nil  && untagdVlan != nil {
+                if untagdVlan != nil {
+                    removeFromMembersListForVlan(d, untagdVlan, ifName, vlanMap)
+                }
+                removePortAccessVlan(untagdVlan, ifName, portVlanListMap)
             }
-            if untagdVlan != nil {
-                removeFromMembersListForVlan(d, untagdVlan, ifName, vlanMap)
-            }
-            removePortAccessVlan(untagdVlan, ifName, portVlanListMap)
         case TRUNK:
             /* Handling trunk-vlans delete */
             log.Info("Trunk VLAN Delete!")
@@ -910,11 +913,12 @@ func  processIntfVlanMemberRemoval(d *db.DB, ifVlanInfoList []*ifVlan, vlanMap m
                 }
                 err = removeTaggedVlanAndUpdateVlanMembTbl(d, &trunkVlan, ifName, vlanMemberMap, stpVlanPortMap, stpPortMap)
                 if err != nil {
-                    return err
+                    //If trunkVlan config not present for ifname continue to next trunkVlan in list
+                    continue
                 }
                 removeFromMembersListForVlan(d, &trunkVlan, ifName, vlanMap)
             }
-            removeFromPorttaggedList(d, trunkVlans, ifName, portVlanListMap)
+            err = removeFromPorttaggedList(d, trunkVlans, ifName, portVlanListMap)
         // Mode set to ALL, if you want to delete both access and trunk
         case ALL:
             log.Info("Handling Access and Trunk VLAN delete!")
