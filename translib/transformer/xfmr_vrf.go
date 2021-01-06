@@ -999,7 +999,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                     log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr);
                     err = tlerr.InvalidArgsError{Format: errStr}
 				}
-            } else if intf_type != IntfTypeSubIntf {
+            } else {
                 err = validateL3ConfigExists(inParams.d, ifName)
             }
 
