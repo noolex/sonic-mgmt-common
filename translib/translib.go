@@ -136,6 +136,7 @@ type BulkResponse struct {
 
 type SubscribeRequest struct {
 	Paths         []string
+	FmtType       TranslibFmtType
 	Q             *queue.PriorityQueue
 	Stop          chan struct{}
 	User          UserRoles
@@ -909,7 +910,12 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			continue
 		}
 
-		nAppSubInfo, errApp := (*app).translateSubscribe(dbs, path)
+		nAppSubInfo, errApp := (*app).translateSubscribe(
+			&translateSubRequest{
+				ctxID: sInfo.id,
+				path:  path,
+				dbs:   dbs,
+			})
 
 		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgt, resp[i])
 		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgtChlds, resp[i])
@@ -933,7 +939,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 		sCtx.appInfo = appInfo
 		sCtx.app = app
-		sCtx.add(nAppSubInfo)
+		sCtx.add(path, nAppSubInfo)
 	}
 
 	// Close the db pointers only on error. Otherwise keep them
@@ -951,6 +957,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 //IsSubscribeSupported - Check if subscribe is supported on the given paths
 func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error) {
 
+	reqID := subscribeCounter.Next()
 	paths := req.Paths
 	resp := make([]*IsSubscribeResponse, len(paths))
 
@@ -988,7 +995,12 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 			continue
 		}
 
-		nAppInfos, errApp := (*app).translateSubscribe(dbs, path)
+		nAppInfos, errApp := (*app).translateSubscribe(
+			&translateSubRequest{
+				ctxID: reqID,
+				path:  path,
+				dbs:   dbs,
+			})
 
 		r := resp[i]
 		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, r)
@@ -1011,13 +1023,13 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 // collectNotificationPreferences computes overall notification preferences (is on-change
 // supported, min sample interval, preferred mode etc) by combining individual table preferences
 // from the notificationAppInfo array. Writes them to the IsSubscribeResponse object 'resp'.
-func collectNotificationPreferences(nAppInfos []notificationAppInfo, resp *IsSubscribeResponse) {
+func collectNotificationPreferences(nAppInfos []*notificationAppInfo, resp *IsSubscribeResponse) {
 	if len(nAppInfos) == 0 {
 		return
 	}
 
 	for _, nInfo := range nAppInfos {
-		if !nInfo.isOnChangeSupported {
+		if !nInfo.isOnChangeSupported || nInfo.isNonDB() {
 			resp.IsOnChangeSupported = false
 			resp.PreferredType = Sample
 		}
@@ -1162,9 +1174,9 @@ func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
 	var opt db.Options
 
 	switch dbNo {
-	case db.ApplDB, db.CountersDB, db.AsicDB:
+	case db.ApplDB, db.CountersDB, db.AsicDB, db.FlexCounterDB, db.LogLevelDB, db.ErrorDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-	case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB:
+	case db.ConfigDB, db.StateDB, db.SnmpDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
 	}
 
