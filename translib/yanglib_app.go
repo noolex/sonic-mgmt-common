@@ -28,6 +28,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	errors "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -107,12 +108,12 @@ func (app *yanglibApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
+func (app *yanglibApp) translateSubscribe(in *translateSubRequest) (*translateSubResponse, error) {
 	return nil, errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
-	var resp subscribePathResponse
+func (app *yanglibApp) processSubscribe(in *processSubRequest) (processSubResponse, error) {
+	var resp processSubResponse
 	return resp, errors.NotSupported("Unsupported")
 }
 
