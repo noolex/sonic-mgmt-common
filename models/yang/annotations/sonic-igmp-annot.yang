@@ -1,0 +1,16 @@
+module sonic-igmp-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation/sigmp-annot";
+    prefix "sigmp-annot";
+
+    import sonic-igmp { prefix sigmp; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /sigmp:get-igmp-join {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_show_igmp_join";
+        }
+    }
+}
