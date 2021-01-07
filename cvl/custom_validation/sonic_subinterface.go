@@ -44,20 +44,34 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
 
     for _, dbKey := range tableKeys {
         d := strings.Split(dbKey,"|")
-        if key == d[1] || len(d) > 2 {
+        if len(d) > 2 {
             continue
         }
         currentData, _ := vc.RClient.HGetAll(dbKey).Result()
         if vlan, ok := currentData["vlan"] ; ok {
-            if vlan == vc.CurCfg.Data["vlan"] {
-                util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Another subinterface has same vlan id configured")
-                return CVLErrorInfo{
-                    ErrCode:          CVL_SEMANTIC_ERROR,
-                    TableName:        "VLAN_SUB_INTERFACE",
-                    Keys:             strings.Split(vc.CurCfg.Key, "|"),
-                    ConstraintErrMsg: "Cannot configure same vlan-id on multiple sub-interfaces on same parent interface",
-                    CVLErrDetails:    "Config Validation Error",
-                    ErrAppTag:        "no-unique-subif-vlanid",
+            if key == d[1] {
+                if vlan != vc.CurCfg.Data["vlan"] {
+                   util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Another subinterface has same vlan id configured")
+                    return CVLErrorInfo{
+                        ErrCode:          CVL_SEMANTIC_ERROR,
+                        TableName:        "VLAN_SUB_INTERFACE",
+                        Keys:             strings.Split(vc.CurCfg.Key, "|"),
+                        ConstraintErrMsg: "Cannot update vlan-id of a subinterface",
+                        CVLErrDetails:    "Config Validation Error",
+                        ErrAppTag:        "subif-vlanid-update-not-allowed",
+                    } 
+                }
+            } else {
+                if vlan == vc.CurCfg.Data["vlan"] {
+                    util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Another subinterface has same vlan id configured")
+                    return CVLErrorInfo{
+                        ErrCode:          CVL_SEMANTIC_ERROR,
+                        TableName:        "VLAN_SUB_INTERFACE",
+                        Keys:             strings.Split(vc.CurCfg.Key, "|"),
+                        ConstraintErrMsg: "Cannot configure same vlan-id on multiple sub-interfaces on same parent interface",
+                        CVLErrDetails:    "Config Validation Error",
+                        ErrAppTag:        "no-unique-subif-vlanid",
+                    }
                 }
             }
         }

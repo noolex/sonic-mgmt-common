@@ -2537,9 +2537,6 @@ func validateL3ConfigExists(d *db.DB, ifName *string) error {
     if intfType == IntfTypeUnset || ierr != nil {
         return errors.New("Invalid interface type IntfTypeUnset");
     }
-    if intfType == IntfTypeSubIntf {
-        return nil
-    }
     intTbl := IntfTypeTblMap[intfType]
     IntfMapObj, err := d.GetMapAll(&db.TableSpec{Name:intTbl.cfgDb.intfTN+"|"+*ifName})
     if err == nil && IntfMapObj.IsPopulated() {
@@ -2562,6 +2559,23 @@ func validateL3ConfigExists(d *db.DB, ifName *string) error {
                 return tlerr.InvalidArgsError{Format:errStr}
             }
             if len(IntfMap) > 2 {
+                return tlerr.InvalidArgsError{Format:errStr}
+            }
+        } else if intfType == IntfTypeSubIntf {
+            // Checks specific to subinterface
+            // Since several nonL3 specific config are stored in same table, these checks are needed 
+            l3cfgexists := false
+            if _, ok := IntfMap["vrf_name"] ; ok {
+                l3cfgexists = true
+            }
+            if val, ok := IntfMap["ipv6_use_link_local_only"]; ok && val == "enable" {
+                l3cfgexists = true
+            }
+            ipKeys, err := doGetIntfIpKeys(d, intTbl.cfgDb.intfTN, *ifName)
+            if (err == nil && len(ipKeys) > 0) {
+                l3cfgexists = true
+            }
+            if l3cfgexists {
                 return tlerr.InvalidArgsError{Format:errStr}
             }
         } else {
