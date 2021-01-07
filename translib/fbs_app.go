@@ -1200,6 +1200,8 @@ func (app *FbsApp) translateCUNextHopGroups(d *db.DB, opcode int) error {
 				nhopsParts[2] = "non-recursive"
 			} else if nhopPtr.Config.NextHopType == ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE {
 				nhopsParts[2] = "recursive"
+			} else if nhopPtr.Config.NextHopType == ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_OVERLAY {
+				nhopsParts[2] = "overlay"
 			}
 			nextHopsMap[entryId] = nhopsParts
 		}
@@ -3584,6 +3586,8 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 					nhObj.State.NextHopType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE
 				} else if parts[3] == "non-recursive" {
 					nhObj.State.NextHopType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_NON_RECURSIVE
+				} else if parts[3] == "overlay" {
+					nhObj.State.NextHopType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_OVERLAY
 				}
 			}
 
@@ -3891,6 +3895,8 @@ func (app *FbsApp) fillPbfGroupNextHops(grpData db.Value, grpNhops *ocbinds.Open
 			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE
 		} else if parts[2] == "non-recursive" {
 			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_NON_RECURSIVE
+		} else if parts[2] == "overlay" {
+			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_OVERLAY
 		}
 
 		if nhObj.Config != nil {
