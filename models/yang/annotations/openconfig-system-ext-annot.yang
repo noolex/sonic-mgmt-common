@@ -57,4 +57,14 @@ module openconfig-system-ext-annot {
             sonic-ext:rpc-callback "rpc_infra_get_loglevel_severity_cb";
         }
     }
+    deviation /oc-sys-ext:show-sys-in-memory-log{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_show_sys_in_memory_log_cb";
+        }
+    }
+    deviation /oc-sys-ext:sys-in-memory-log-count{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_sys_in_memory_log_count_cb";
+        }
+    }
 }
