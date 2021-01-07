@@ -46,6 +46,7 @@ type CommonApp struct {
 	cmnAppYangDefValMap map[string]map[string]db.Value
 	cmnAppYangAuxMap map[string]map[string]db.Value
 	appOptions
+	cmnAppOpcode   int //NBI request opcode
 }
 
 var cmnAppInfo = appInfo{appType: reflect.TypeOf(CommonApp{}),
@@ -448,6 +449,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 		log.Warning(err)
 		return keys, err
 	}
+	app.cmnAppOpcode = opcode  //NBI request opcode
 	app.cmnAppTableMap = result
 	app.cmnAppYangDefValMap = defValMap
 	app.cmnAppYangAuxMap = auxMap //used for Replace case
@@ -644,6 +646,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						}
 					}
 				case REPLACE:
+					origTblRw := tblRw
 					if tblRwDefaults, defaultOk := app.cmnAppYangDefValMap[tblNm][tblKey]; defaultOk {
 						log.Info("For entry ", tblKey, ", being replaced, fill defaults - ", tblRwDefaults)
 						for fld, val := range tblRwDefaults.Field {
@@ -653,6 +656,26 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 					log.Info("Processing Table row ", tblRw)
 					if existingEntry.IsPopulated() {
 						log.Info("Entry already exists.")
+						if len(origTblRw.Field) == 1 {
+							isLeafListFld := false
+							fldNm := ""
+							fldVal := ""
+							for fldNm, fldVal = range origTblRw.Field {
+								if strings.HasSuffix(fldNm, "@") {
+									isLeafListFld = true
+								}
+							}
+							// if its a leaf-list replace NBI request, swap the contents of leaf-list
+							if isLeafListFld && (app.cmnAppOpcode == REPLACE) && (transformer.IsLeafListNode(app.pathInfo.Path)) {
+								log.Info("For entry ", tblKey, ", field ", fldNm, " will have value ", fldVal)
+								err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, origTblRw)
+								if err != nil {
+									log.Warning("REPLACE case - d.ModEntry() failure")
+									return err
+								}
+								continue // process next table instance - for tblKey, tblRw := range tblVal
+							}
+						}
 						auxRwOk := false
 						auxRw := db.Value{Field: map[string]string{}}
 						auxRw, auxRwOk = app.cmnAppYangAuxMap[tblNm][tblKey]

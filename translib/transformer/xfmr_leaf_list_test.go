@@ -74,7 +74,7 @@ func Test_LeafList_oneToone_mapping_OCYang(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	t.Run("Verify Update leaf-list with empty-string , on an empty-string leaf-list in DB", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
         unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
-        
+
 
 	// Update leaf-list with no element, on an empty-string leaf-list in DB  
         prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
@@ -90,20 +90,20 @@ func Test_LeafList_oneToone_mapping_OCYang(t *testing.T) {
         time.Sleep(1 * time.Second)
         t.Run("Verify Update leaf-list with no element, on an empty-string leaf-list in DB", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
         unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
-        
-	// replace/merge, 1:1, field-name (replace becomes update as per restconf RFC)
+
+	// replace/swap 1:1, field-name
 	prereq_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
 		                                                                                      "exclude@": "1.2.3.4.*",
 												      "include@": "1.2.3.4.*,1.4.6.*"}}}
 	expected_snmp_vacm_view_map = map[string]interface{}{"SNMP_SERVER_VIEW":map[string]interface{}{"TestVacmView1":map[string]interface{}{
 		                                                                            "exclude@": "1.2.3.4.*",
-											    "include@": "1.2.3.4.*,1.4.6.*,1.2.3.5.*,1.3.6.*"}}}
+											    "include@": "1.2.3.5.*,1.3.6.*,1.4.6.*"}}}
 	loadConfigDB(rclient, prereq_snmp_vacm_view_map)
 	url = "/ietf-snmp:snmp/vacm/view[name=TestVacmView1]/include"
 	url_body_json = "{ \"ietf-snmp:include\": [ \"1.2.3.5.*\",\"1.3.6.*\", \"1.4.6.*\"]}"
 	t.Run("1:1 mapping replace,merge.", processSetRequest(url, url_body_json, "PUT", false, nil))
 	time.Sleep(1 * time.Second)
-	t.Run("Verify 1:1 mapping replace,merge", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
+	t.Run("Verify 1:1 mapping replace,swap", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
 	unloadConfigDB(rclient, prereq_snmp_vacm_view_map)
 
 
@@ -286,7 +286,7 @@ func Test_LeafList_FieldXfmr_OCYang(t *testing.T) {
 
 	/** FieldXfmr getting called on leaf-list Replace**/
 	prereq_map = map[string]interface{}{"COMMUNITY_SET":map[string]interface{}{"test1":map[string]interface{}{
-		                                                                                  "community_member@": "1:1,2:2",
+		                                                                                  "community_member@": "1:1,4:4",
 												  "set_type": "STANDARD",
                                                                                                   "match_action": "ANY"}}}
 	expected_map = map[string]interface{}{"COMMUNITY_SET":map[string]interface{}{"test1":map[string]interface{}{
@@ -572,6 +572,7 @@ func Test_LeafList_DataTypeConversion_SonicYang(t *testing.T) {
                                                                                           "ports@": "Ethernet0",
                                                                                           "stage": "INGRESS",
                                                                                           "type": "L3"}}}
+        unloadConfigDB(rclient, prereq_map)
         loadConfigDB(rclient, prereq_map)
         url = "/sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL1_ACL_IPV4]"
         url_body_json = "{\"sonic-acl:stage\":\"INGRESS\",\"sonic-acl:type\":\"L3\",\"sonic-acl:ports\":[\"Ethernet0\"]}"
@@ -591,6 +592,7 @@ func Test_LeafList_DataTypeConversion_SonicYang(t *testing.T) {
                                                                                           "ports@": "Ethernet0,Ethernet8,Ethernet124",
                                                                                           "stage": "INGRESS",
                                                                                           "type": "L3"}}}
+        unloadConfigDB(rclient, prereq_map)
         loadConfigDB(rclient, prereq_map)
 	url = "/sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL1_ACL_IPV4]/ports"
         url_body_json = "{\"sonic-acl:ports\":[\"Ethernet0\",\"Ethernet124\",\"Ethernet8\"]}"
@@ -703,21 +705,21 @@ func Test_LeafList_CRU_SonicYang(t *testing.T) {
         t.Run("verify Update leaf-list with no element , on an empty-string leaf-list in DB.", verifyDbResult(rclient, "SNMP_SERVER_VIEW|TestVacmView1", expected_snmp_vacm_view_map, false))
         unloadConfigDB(rclient, prereq_map)
         
-        //  sonic yang leaf-list Replace/merge
+        //  sonic yang leaf-list Replace/swap
         prereq_map = map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{
-                                                                                          "ports@": "Ethernet0,Ethernet8",
+                                                                                          "ports@": "Ethernet32,Ethernet8",
                                                                                           "stage": "INGRESS",
                                                                                           "type": "L3"}}}
         expected_map = map[string]interface{}{"ACL_TABLE":map[string]interface{}{"MyACL1_ACL_IPV4":map[string]interface{}{
-                                                                                          "ports@": "Ethernet0,Ethernet8,Ethernet124",
+                                                                                          "ports@": "Ethernet0,Ethernet124,Ethernet8",
                                                                                           "stage": "INGRESS",
                                                                                           "type": "L3"}}}
         loadConfigDB(rclient, prereq_map)
         url = "/sonic-acl:sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=MyACL1_ACL_IPV4]/ports"
         url_body_json = "{\"sonic-acl:ports\":[\"Ethernet0\",\"Ethernet124\",\"Ethernet8\"]}"
-        t.Run("leaf-list replace/merge.", processSetRequest(url, url_body_json, "PUT", false, nil))
+        t.Run("leaf-list replace/swap.", processSetRequest(url, url_body_json, "PUT", false, nil))
         time.Sleep(1 * time.Second)
-        t.Run("Verify leaf-list replace/merge.", verifyDbResult(rclient, "ACL_TABLE|MyACL1_ACL_IPV4", expected_map, false))
+        t.Run("Verify leaf-list replace/swap.", verifyDbResult(rclient, "ACL_TABLE|MyACL1_ACL_IPV4", expected_map, false))
         unloadConfigDB(rclient, prereq_map)
 
 

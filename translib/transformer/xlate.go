@@ -76,7 +76,7 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 		return nil, nil
 	}
 	if len(params) != XlateFuncs[name].Type().NumIn() {
-                log.Warning("Error parameters not adapted") 
+                log.Warning("Error parameters not adapted")
 		return nil, nil
 	}
 	in := make([]reflect.Value, len(params))
@@ -96,7 +96,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 
 	err := traverseDbHelper(dbs, spec, &dataMap, parentKey, dbTblKeyGetCache)
 	if err != nil {
-		log.Warning("Couldn't get data from traverseDbHelper")
+		xfmrLogInfoAll("Didn't get all data from traverseDbHelper")
 		return err
 	}
 	/* db data processing */
@@ -137,7 +137,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 			}
 			dbTblKeyGetCache[spec.DbNum] = queriedDbInfo
 			if err != nil {
-				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
+				log.Warningf("Didn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
 			}
 
@@ -157,7 +157,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		if spec.Ts.Name != XFMR_NONE_STRING { //Do not traverse for NONE table
 			keys, err := dbs[spec.DbNum].GetKeys(&spec.Ts)
 			if err != nil {
-				log.Warningf("Couldn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
+				log.Warningf("Didn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
 				return err
 			}
 			xfmrLogInfoAll("keys for table %v in Db %v are %v", spec.Ts.Name, spec.DbNum, keys)
@@ -171,7 +171,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 				spec.Key = keys[i]
                                 err = traverseDbHelper(dbs, spec, result, parentKey, dbTblKeyGetCache)
                                 if err != nil {
-                                        log.Warningf("Traversal didn't fetch for : %v", err)
+                                        xfmrLogInfoAll("Traversal didn't fetch for : %v", err)
                                 }
 			}
 		} else if len(spec.Child) > 0 {
@@ -390,7 +390,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	for _, spec := range *keySpec {
 		err := TraverseDb(dbs, spec, &dbresult, nil, inParamsForGet.dbTblKeyGetCache)
 		if err != nil {
-			log.Warning("TraverseDb() didn't fetch data.")
+			xfmrLogInfoAll("TraverseDb() didn't fetch data.")
 		}
 	}
 
@@ -569,7 +569,7 @@ func GetOrdTblList(xfmrTbl string, uriModuleNm string) []string {
                 for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
                                 if xfmrTbl == ordTblNm {
                                         xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ordTblList = sonicMdlTblInfo.OrdTbl
+                                        ordTblList = sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblWithinMdl
                                         processedTbl = true
                                         break
                                 }
@@ -616,7 +616,7 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
                         for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
                                 if xfmrTbl == ordTblNm {
                                         xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl]
+                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblAcrossMdl
                                         for _, depTblNm := range(ldepTblList) {
                                                 depTblMap[depTblNm] = true
                                         }
@@ -840,19 +840,18 @@ func IsTerminalNode(uri string) (bool, error) {
 
 func IsLeafNode(uri string) bool {
 	result := false
-	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
-	if err != nil {
-		log.Warningf("For uri - %v, couldn't convert to xpath - %v", uri, err)
-		return result
-	}
-	xfmrLogInfoAll("received xpath - %v", xpath)
-	if xpathData, ok := xYangSpecMap[xpath]; ok {
-		if yangTypeGet(xpathData.yangEntry) == YANG_LEAF {
-			result = true
-		}
-	} else {
-		errStr := "xYangSpecMap data not found for xpath - " + xpath
-		log.Warning(errStr)
+	yngNdType, err := getYangNodeTypeFromUri(uri)
+	if (err == nil) && (yngNdType == YANG_LEAF) {
+		result = true
 	}
 	return result
+}
+
+func IsLeafListNode(uri string) bool {
+        result := false
+        yngNdType, err := getYangNodeTypeFromUri(uri)
+        if (err == nil) && (yngNdType == YANG_LEAF_LIST) {
+                result = true
+        }
+        return result
 }
