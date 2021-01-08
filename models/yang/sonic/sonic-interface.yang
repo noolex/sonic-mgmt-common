@@ -495,6 +495,107 @@ module sonic-interface {
                         path "/lo:sonic-loopback/lo:LOOPBACK/lo:LOOPBACK_LIST/lo:name";
                     }
                 }
+
+                leaf-list dhcp_servers {
+                         max-elements 4;
+                         type inet:ip-address;
+                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                 "(count(/sonic-interface/VLAN_SUB_INTERFACE/VLAN_SUB_INTERFACE_IPADDR_LIST[id=current()/../id]) > 1)"
+                                 {
+                                         error-message "DHCP server can be configured on routing interface only";
+                                         error-app-tag dhcp-server-invalid-routing-interface;
+                                 }
+                }
+
+                leaf-list dhcpv6_servers {
+                         max-elements 4;
+                         type inet:ipv6-address;
+                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                 "(count(/sonic-interface/VLAN_SUB_INTERFACE/VLAN_SUB_INTERFACE_IPADDR_LIST[id=current()/../id]) > 1)"
+                                 {
+                                          error-message "DHCP server can be configured on routing interface only";
+                                          error-app-tag dhcp-server-invalid-routing-interface;
+                                 }
+                 }
+
+                 leaf dhcp_relay_link_select {
+                         type cmn:mode-enable;
+                 }
+
+                 leaf dhcp_relay_src_intf {
+                         type string;
+                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                 "(current()/../dhcp_servers)"
+                                 {
+                                           error-message "DHCP relay address not configured or invalid operation";
+                                           error-app-tag dhcp-server-adress-config;
+                                 }
+                  }
+
+                  leaf dhcp_relay_max_hop_count {
+                          type uint32;
+                          must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                  "(current()/../dhcp_servers)"
+                                  {
+                                             error-message "DHCP relay address not configured";
+                                             error-app-tag dhcp-server-adress-config;
+                                  }
+                   }
+
+                   leaf dhcp_server_vrf {
+                           type string;
+                           must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                   "(current()/../dhcp_servers)"
+                                   {
+                                               error-message "DHCP server not configured";
+                                               error-app-tag dhcp-server-invalid-vrf-config;
+                                   }
+                   }
+
+                   leaf dhcp_relay_vrf_select {
+                           type cmn:mode-enable;
+                           default disable;
+                   }
+
+                   leaf dhcp_relay_policy_action {
+                           type cmn:relay-policy-action;
+                           default discard;
+                   }
+
+                   leaf dhcpv6_relay_src_intf {
+                           type string;
+                           must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                   "(current()/../dhcpv6_servers) "
+                                   {
+                                               error-message "DHCP relay address not configured";
+                                               error-app-tag dhcp-server-adress-config;
+                                   }
+                    }
+
+                    leaf dhcpv6_relay_max_hop_count {
+                            type uint32;
+                            must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                    "(current()/../dhcpv6_servers) "
+                                    {
+                                                error-message "DHCP relay address not configured";
+                                                error-app-tag dhcp-server-adress-config;
+                                    }
+                     }
+
+                     leaf dhcpv6_server_vrf {
+                             type string;
+                             must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                      "(current()/../dhcpv6_servers)"
+                                      {
+                                                 error-message "DHCP server or src-intf not configured";
+                                                 error-app-tag dhcp-server-invalid-vrf-config;
+                                      }
+                      }
+
+                      leaf dhcpv6_relay_vrf_select {
+                              type cmn:mode-enable;
+                              default disable;
+                      }
             }
 
             list VLAN_SUB_INTERFACE_IPADDR_LIST {
