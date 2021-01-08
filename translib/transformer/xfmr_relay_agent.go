@@ -147,7 +147,7 @@ var relay_agent_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string,
     log.V(2).Info(intTbl)
 
 
-    if (intfType == IntfTypeEthernet) || intfType == IntfTypePortChannel {
+    if intfType == IntfTypeEthernet || intfType == IntfTypePortChannel || intfType == IntfTypeSubIntf {
             tblList = append(tblList, intTbl.cfgDb.intfTN)
     } else if intfType == IntfTypeVlan {
             tblList = append(tblList, intTbl.cfgDb.portTN)
@@ -183,7 +183,7 @@ var DbToYang_relay_agent_intf_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrP
 
         intTbl := IntfTypeTblMap[intfType]
 
-    if (intfType == IntfTypeEthernet) || intfType == IntfTypePortChannel {
+    if (intfType == IntfTypeEthernet) || intfType == IntfTypePortChannel || intfType == IntfTypeSubIntf {
             tblList = intTbl.cfgDb.intfTN
         } else if intfType == IntfTypeVlan {
             tblList = intTbl.cfgDb.portTN
@@ -216,6 +216,8 @@ var YangToDb_relay_agent_id_field_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
     res_map := make(map[string]string)
     var err error
 
+    log.Info("YangToDb_relay_agent_id_field_xfmr: inParams.uri - ", inParams.uri)
+
     pathInfo := NewPathInfo(inParams.uri)
     ifName := pathInfo.Var("id")
 
@@ -231,7 +233,7 @@ var YangToDb_relay_agent_id_field_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 func getRelayCountersFromFile (fileName string, counterObj interface{}) error {
    
     tmpFileName := PATH_PREFIX + fileName
-    log.Info(tmpFileName) 
+    log.Info("getRelayCountersFromFile : tmpFileName is ", tmpFileName) 
 
     jsonFile, err := os.Open(tmpFileName)
     if err != nil {
@@ -276,8 +278,8 @@ var DbToYang_relay_agent_counters_xfmr SubTreeXfmrDbToYang = func(inParams XfmrP
     var raObj *ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcp_Interfaces_Interface 
     var jsonRelayAgentCounter JSONDhcpCounters
 
-    log.Info("In DbToYang_relay_agent_counters_xfmr")
-    log.V(2).Info(inParams)
+    log.Info("In DbToYang_relay_agent_counters_xfmr : inParams - ", inParams)
+
     relayAgentObj := getRelayAgentRoot(inParams.ygRoot)
     log.V(2).Info(relayAgentObj)
 
@@ -362,8 +364,8 @@ var DbToYang_relay_agent_v6_counters_xfmr SubTreeXfmrDbToYang = func(inParams Xf
     var raObj *ocbinds.OpenconfigRelayAgent_RelayAgent_Dhcpv6_Interfaces_Interface 
     var jsonV6RelayAgentCounter JSONDhcpv6Counters
 
-    log.Info("In DbToYang_relay_agent_v6_counters_xfmr")
-    log.V(2).Info(inParams)
+    log.Info("In DbToYang_relay_agent_v6_counters_xfmr : inParams -", inParams)
+
     relayAgentObj := getRelayAgentRoot(inParams.ygRoot)
     log.V(2).Info(relayAgentObj)
 
@@ -456,7 +458,7 @@ func getRelayAgentIntfTblByType(ifName string) string {
 
     intTbl := IntfTypeTblMap[intfType]
 
-    if (intfType == IntfTypeEthernet) || intfType == IntfTypePortChannel {
+    if (intfType == IntfTypeEthernet) || intfType == IntfTypePortChannel || intfType == IntfTypeSubIntf {
             tblList = intTbl.cfgDb.intfTN
     } else if intfType == IntfTypeVlan {
             tblList = intTbl.cfgDb.portTN
@@ -658,7 +660,7 @@ func getRelayAgentInfoForAllInterfaces (inParams XfmrParams) error {
    var err error
    relayAgentObj := getRelayAgentRoot(inParams.ygRoot)
 
-   tables := [3]string{"INTERFACE", "VLAN", "PORTCHANNEL_INTERFACE"}
+   tables := [4]string{"INTERFACE", "VLAN", "PORTCHANNEL_INTERFACE", "VLAN_SUB_INTERFACE"}
    for _, table := range tables {
        if _, ok := dbIdToTblMap[inParams.curDb]; !ok {
             log.Info("getRelayAgentInfoForAllInterfaces - intf_table_xfmr db id entry not present")
@@ -1259,7 +1261,7 @@ func deleteAllIntfsRelayAgentObjectAttributes(inParams XfmrParams) error {
    deleteMap := make(map[db.DBNum]map[string]map[string]db.Value)
    deleteMap[db.ConfigDB] = make(map[string]map[string]db.Value)
 
-   tables := [3]string{"INTERFACE", "VLAN", "PORTCHANNEL_INTERFACE"}
+   tables := [4]string{"INTERFACE", "VLAN", "PORTCHANNEL_INTERFACE", "VLAN_SUB_INTERFACE"}
    for _, table := range tables {
        intfTble, err := inParams.d.GetTable(&db.TableSpec{Name:table})
        if err != nil {

@@ -117,7 +117,8 @@ submodule openconfig-fbs-types-ext {
     description
       "The next-hop must be resolved non-recursively ie directly connected to 
       be considered part of the next-hop group. If the next-hop is resolved 
-      recursively then it will not be added to the group.";
+      recursively then it will not be added to the group. The next-hop must
+      also be reachable via an underlay interface";
   }
 
   identity NEXT_HOP_TYPE_RECURSIVE {
@@ -125,7 +126,14 @@ submodule openconfig-fbs-types-ext {
     description
       "The next-hop must be resolved recursively ie indirectly connected to 
       be considered part of the next-hop group. If the next-hop is resolved 
-      non recursively then it will not be added to the group.";
+      non recursively then it will not be added to the group. The next-hop
+      must also be reachable via an underlay interface";
+  }
+
+  identity NEXT_HOP_TYPE_OVERLAY {
+    base NEXT_HOP_TYPE;
+    description
+      "The next-hop must be resolved via an overlay interface";
   }
 
   // typedef statements
