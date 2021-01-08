@@ -178,6 +178,8 @@ var IntfTypeTblMap = map[E_InterfaceType]IntfTblData {
    },
    IntfTypeSubIntf: IntfTblData{
         cfgDb:TblData{portTN:"VLAN_SUB_INTERFACE", intfTN: "VLAN_SUB_INTERFACE", keySep:PIPE},
+        appDb:TblData{portTN:"PORT_TABLE", intfTN: "INTF_TABLE", keySep: COLON},
+        stateDb:TblData{portTN: "PORT_TABLE", intfTN: "INTERFACE_TABLE", keySep: PIPE},
     },
 }
 
