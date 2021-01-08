@@ -464,7 +464,7 @@ func getSflowColInfoFromDb (d *db.DB) (map[string]SflowCol, error) {
     sfInfo = make(map[string]SflowCol)
     for _, key := range keys {
         name := key.Get(0)
-        colEntry, err := sflowColTbl.GetEntry(db.Key{Comp: []string{name}})
+        colEntry, err := sflowColTbl.GetEntry(key)
         if err != nil {
             log.Errorf("Can't get entry with key: ", name)
             return sfInfo, err
@@ -585,7 +585,7 @@ func getSflowIntfInfoFromDb (d *db.DB) (map[string]SflowIntf, error) {
     sfInfo = make(map[string]SflowIntf)
     for _, key := range keys {
         name := key.Get(0)
-        intfEntry, err := sflowIntfTbl.GetEntry(db.Key{Comp: []string{name}})
+        intfEntry, err := sflowIntfTbl.GetEntry(key)
         if err != nil {
             log.Errorf("Can't get entry with key: ", name)
             return sfInfo, err

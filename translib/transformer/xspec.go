@@ -83,9 +83,18 @@ type dbInfo  struct {
     cascadeDel   int
 }
 
+type depTblData struct {
+	/* list of dependent tables within same sonic yang for a given table,
+	   as provided by CVL in child first order */
+	DepTblWithinMdl []string
+	/* list of dependent tables across sonic yangs for a given table,
+	   as provided by CVL in child first order */
+	DepTblAcrossMdl []string
+}
+
 type sonicTblSeqnInfo struct {
-       OrdTbl []string
-       DepTbl map[string][]string
+       OrdTbl []string //all tables within sonic yang, as provided by CVL in child first order
+       DepTbl map[string]depTblData
 }
 
 type mdlInfo struct {
@@ -605,7 +614,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 				log.Warningf("Failure in cvlSess.GetOrderedTables(%v) - %v", moduleNm, cvlRetOrdTbl)
 
 			}
-			sncTblInfo.DepTbl = make(map[string][]string)
+			sncTblInfo.DepTbl = make(map[string]depTblData)
 			if sncTblInfo.DepTbl == nil {
 				log.Warningf("sncTblInfo.DepTbl is nill , no space to store dependency table list for sonic module %v", moduleNm)
 				cvl.ValidationSessClose(cvlSess)
@@ -613,12 +622,17 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 			}
 			for _, tbl := range(sncTblInfo.OrdTbl) {
 				var cvlRetDepTbl cvl.CVLRetCode
-				sncTblInfo.DepTbl[tbl], cvlRetDepTbl = cvlSess.GetDepTables(moduleNm, tbl)
+				depTblInfo := depTblData{DepTblWithinMdl:[]string{}, DepTblAcrossMdl:[]string{}}
+				depTblInfo.DepTblWithinMdl, cvlRetDepTbl = cvlSess.GetOrderedDepTables(moduleNm, tbl)
+				if cvlRetDepTbl != cvl.CVL_SUCCESS {
+					log.Warningf("Failure in cvlSess.GetOrderedDepTables(%v, %v) - %v", moduleNm, tbl, cvlRetDepTbl)
+				}
+				depTblInfo.DepTblAcrossMdl, cvlRetDepTbl = cvlSess.GetDepTables(moduleNm, tbl)
+
 				if cvlRetDepTbl != cvl.CVL_SUCCESS {
 					log.Warningf("Failure in cvlSess.GetDepTables(%v, %v) - %v", moduleNm, tbl, cvlRetDepTbl)
 				}
-
-
+				sncTblInfo.DepTbl[tbl] = depTblInfo
 			}
 			xDbSpecTblSeqnMap[moduleNm] = sncTblInfo
 			cvl.ValidationSessClose(cvlSess)
@@ -1102,8 +1116,13 @@ func xDbSpecTblSeqnMapPrint(fname string) {
                         fmt.Fprintf(fp, "}\r\n")
                         continue
                 }
-                for tblNm, DepTblLst := range mdlTblSeqnDt.DepTbl {
-                        fmt.Fprintf(fp, "                                        %v : %v\r\n", tblNm, DepTblLst)
+                for tblNm, DepTblInfo := range mdlTblSeqnDt.DepTbl {
+			fmt.Fprintf(fp, "                                        %v : Within module  : %v\r\n", tblNm, DepTblInfo.DepTblWithinMdl)
+			tblNmSpc := " "
+			for cnt := 0; cnt < len(tblNm)-1; cnt++ {
+				tblNmSpc = tblNmSpc + " "
+			}
+			fmt.Fprintf(fp, "                                        %v : Across modules : %v\r\n", tblNmSpc, DepTblInfo.DepTblAcrossMdl)
                 }
                 fmt.Fprintf(fp, "                                }\r\n")
                 fmt.Fprintf(fp, "}\r\n")

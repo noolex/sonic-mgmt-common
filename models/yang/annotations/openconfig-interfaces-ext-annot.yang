@@ -13,4 +13,9 @@ module openconfig-interfaces-ext-annot {
             sonic-ext:rpc-callback "rpc_oc_clear_counters";
         }
     }
+    deviation /oc-intf-ext:vlan-replace {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_oc_vlan_replace";
+        }
+    }
 }

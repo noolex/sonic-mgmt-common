@@ -22,7 +22,7 @@ module openconfig-interfaces-ext {
     import openconfig-extensions { prefix oc-ext; }
     import ietf-inet-types { prefix "ietf-inet"; }
     import openconfig-if-types-ext { prefix oc-if-types-ext; }
- 
+    import openconfig-vlan-types { prefix oc-vlan-types; } 
 
 
     organization "SONiC";
@@ -867,6 +867,39 @@ module openconfig-interfaces-ext {
                 type string;
                 description
                     "The detailed status of the operation execution request.";
+            }
+        }
+    }
+    rpc vlan-replace {
+
+        description
+            "Replaces VLAN member list for given interfaces";
+        input {
+            leaf-list ifname {
+                type string;
+                description
+                    "Interface with which VLAN needs to be replaced";
+            }
+            leaf-list vlanlist {
+                type union {
+                    type oc-vlan-types:vlan-id;
+                    type oc-vlan-types:vlan-range;
+                }
+                description
+                    "list of VLANs that needs to be replaced with";
+            }
+
+        }
+        output {
+            leaf status {
+                type uint32;
+                description
+                    "Status of operation execution request";
+            }
+            leaf status-detail {
+                type string;
+                description
+                    "Detailed status of operation execution request";
             }
         }
     }
