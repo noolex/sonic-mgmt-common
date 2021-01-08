@@ -23,6 +23,10 @@ module sonic-system-ntp {
         prefix lo;
     }
 
+    import sonic-interface {
+        prefix sintf;
+    }
+
     import sonic-vrf {
         prefix svrf;
     }
@@ -43,6 +47,10 @@ module sonic-system-ntp {
 
     description
         "SONIC NTP";
+
+    revision 2021-01-08 {
+        description "Added support for routed vlan-sub-interface.";
+    }
 
     revision 2020-11-24 {
         description
@@ -105,6 +113,9 @@ module sonic-system-ntp {
                         }
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
                         }
                     }
                 }
