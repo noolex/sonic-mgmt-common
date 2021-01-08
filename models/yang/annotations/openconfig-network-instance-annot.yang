@@ -16,6 +16,7 @@ module openconfig-network-instance-annot {
     import openconfig-pim-ext { prefix "oc-pim-ext"; }
     import openconfig-aft-ipv4-ext { prefix "oc-aft-ipv4-ext"; }
     import openconfig-igmp-ext { prefix "oc-igmp-ext"; }
+    import openconfig-interfaces { prefix "oc-if"; }
 	
     import ietf-yang-types { prefix yang; }
     import openconfig-vxlan {prefix oc-vxlan; }
@@ -3428,6 +3429,24 @@ module openconfig-network-instance-annot {
              "/oc-ospfv2-ext:state/oc-ospfv2-ext:name" {
     deviate add {
       sonic-ext:field-transformer  "ospfv2_router_passive_interface_name_fld_xfmr";
+    }
+  }
+
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+             "/oc-ospfv2-ext:passive-interfaces/oc-ospfv2-ext:passive-interface" +
+             "/oc-ospfv2-ext:config/oc-ospfv2-ext:subinterface" {
+    deviate add {
+      sonic-ext:field-transformer  "ospfv2_router_passive_interface_subinterface_fld_xfmr";
+    }
+  }
+
+  deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
+             "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
+             "/oc-ospfv2-ext:passive-interfaces/oc-ospfv2-ext:passive-interface" +
+             "/oc-ospfv2-ext:state/oc-ospfv2-ext:subinterface" {
+    deviate add {
+      sonic-ext:field-transformer  "ospfv2_router_passive_interface_subinterface_fld_xfmr";
     }
   }
 
