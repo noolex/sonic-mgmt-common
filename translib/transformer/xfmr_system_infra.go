@@ -25,6 +25,8 @@ func init () {
     XlateFuncBind("rpc_infra_sys_log_count_cb",  rpc_infra_sys_log_count_cb)
     XlateFuncBind("rpc_infra_set_loglevel_severity_cb",  rpc_infra_set_loglevel_severity_cb)
     XlateFuncBind("rpc_infra_get_loglevel_severity_cb",  rpc_infra_get_loglevel_severity_cb)
+    XlateFuncBind("rpc_infra_show_sys_in_memory_log_cb",  rpc_infra_show_sys_in_memory_log_cb)
+    XlateFuncBind("rpc_infra_sys_in_memory_log_count_cb",  rpc_infra_sys_in_memory_log_count_cb)
 }
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -456,5 +458,94 @@ func loglevel_severity_operation(ops_cmd string, exec_cmd string) ([]byte, error
         } 
         exec.Output.Result = out_list
         result, err := json.Marshal(&exec)
+        return result, err
+}
+var rpc_infra_show_sys_in_memory_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_show_sys_in_memory_log body:", string(body))
+
+        var err error
+        var out_list []string
+        var output string
+
+        var operand struct {
+                Input struct {
+                        Param int `json:"num-lines"`
+                } `json:"openconfig-system-ext:input"`
+        }
+
+        var exec struct {
+                Output struct {
+                        Result []string `json:"status-detail"`
+                } `json:"openconfig-system-ext:output"`
+        }
+
+        err = json.Unmarshal(body, &operand)
+        if err != nil {
+              out_list = append(out_list, "[FAILED] to umarshal input data")
+              exec.Output.Result = out_list
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+        MAX_NUM_LINES := 65535
+        num_lines := operand.Input.Param
+        if num_lines < 0 || num_lines > MAX_NUM_LINES {
+              msg := fmt.Sprintf("[FAILED] invalid number [1-%d]", MAX_NUM_LINES)
+              out_list = append(out_list, msg)
+              exec.Output.Result = out_list
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        cmd := "show in-memory-logging"
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              msg := fmt.Sprintf("[FAILED] host Query failed: err=%v", host_output.Err) 
+              log.Errorf("rpc_infra_show_sys_log: %s", msg)
+              out_list = append(out_list, msg)
+              exec.Output.Result = out_list
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        output, _ = host_output.Body[1].(string)
+        out_list = strings.Split(output,"\n")
+        total := len(out_list)
+        if num_lines > 0 && num_lines < total {
+              exec.Output.Result = out_list[total-num_lines:]
+        } else {
+              exec.Output.Result = out_list
+        }
+        result, err := json.Marshal(&exec)
+        return result, err
+}
+var rpc_infra_sys_in_memory_log_count_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_show_sys_in_memory_log_count_cb body:", string(body))
+        var err error
+        var output string
+        var out_list []string
+
+        var _exec struct {
+                Output struct {
+                        Result string `json:"result"`
+                } `json:"openconfig-system-ext:output"`
+        }
+
+    	cmd := "show in-memory-logging"
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              msg := fmt.Sprintf("[FAILED] host Query failed: err=%v", host_output.Err) 
+              _exec.Output.Result = msg 
+              result, err := json.Marshal(&_exec)
+              return result, err
+        }
+
+        output, _ = host_output.Body[1].(string)
+        s := strings.TrimSpace(output)
+        out_list = strings.Split(s,"\n")
+        msg := fmt.Sprintf("%d", len(out_list)) 
+        _exec.Output.Result =  msg 
+        result, err := json.Marshal(&_exec)
         return result, err
 }

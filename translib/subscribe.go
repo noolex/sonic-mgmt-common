@@ -48,91 +48,6 @@ import (
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
 var sMutex = &sync.Mutex{}
 
-// notificationAppInfo contains the details for monitoring db notifications
-// for a given path. App modules provide these details for each subscribe
-// path. One notificationAppInfo object must inclue details for one db table.
-// One subscribe path can map to multiple notificationAppInfo.
-type notificationAppInfo struct {
-	// table name
-	table *db.TableSpec
-
-	// key string without table name prefix. Can include wildcards.
-	// Like - "ACL1|RULE_101" or "ACL1|*".
-	key *db.Key
-
-	// dbFieldYangPathMap is the mapping of db entry field to the yang
-	// field (leaf/leaf-list) for the input path.
-	dbFldYgPathInfoList []*dbFldYgPathInfo
-
-	// database index
-	dbno db.DBNum
-
-	// path indicates the yang path to which the key maps to.
-	// When the input path maps to multiple db tables, the path field
-	// identifies the yang segments for each db table.
-	path *gnmi.Path
-
-	// isOnChangeSupported indicates if on-change notification is
-	// supported for the input path. Table and key mappings should
-	// be filled even if on-change is not supported.
-	isOnChangeSupported bool
-
-	// mInterval indicates the minimum sample interval supported for
-	// the input path. Can be set to 0 (default value) to indicate
-	// system default interval.
-	mInterval int
-
-	// pType indicates the preferred notification type for the input
-	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
-	pType NotificationType
-
-	// opaque data can be used to store context information to assist
-	// future key-to-path translations. This is an optional data item.
-	// Apps can store any context information based on their logic.
-	// Translib passes this back to the processSubscribe function.
-	opaque interface{}
-}
-
-type dbFldYgPathInfo struct {
-	rltvPath       string
-	dbFldYgPathMap map[string]string //db field to leaf / rel. path to leaf
-}
-
-type notificationSubAppInfo struct {
-	ntfAppInfoTrgt      []notificationAppInfo
-	ntfAppInfoTrgtChlds []notificationAppInfo
-}
-
-// dbKeyInfo represents one db key.
-type dbKeyInfo struct {
-	// table name
-	table *db.TableSpec
-
-	// key string without table name prefix.
-	key *db.Key
-
-	// database index
-	dbno db.DBNum
-
-	// path template for the db key. Can include wild cards.
-	path *gnmi.Path
-
-	// List of all DB objects. Apps should only use these DB objects
-	// to query db if they need additional data for translation.
-	dbs [db.MaxDB]*db.DB
-
-	// App specific opaque data -- can be used to pass context data
-	// between translateSubscribe and processSubscribe.
-	opaque interface{}
-}
-
-// subscribePathResponse defines response data structure of processSubscribe
-// function.
-type subscribePathResponse struct {
-	// path indicates the yang path to which the db key maps to.
-	path *gnmi.Path
-}
-
 type notificationInfo struct {
 	table   *db.TableSpec
 	key     *db.Key
@@ -252,18 +167,23 @@ type subscribeContext struct {
 	appInfo *appInfo
 }
 
-func (sc *subscribeContext) add(nAppSubInfo *notificationSubAppInfo) {
+func (sc *subscribeContext) add(subscribePath string, nAppSubInfo *translateSubResponse) {
 	if sc.dbNInfos == nil {
 		sc.dbNInfos = make(map[db.DBNum][]*notificationInfo)
 	}
 
-	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
-		nInfo := sc.addNInfo(&nAppInfo)
+	log.Infof("Subscribe path \"%s\" mapped to %d primary and %d subtree notificationAppInfos",
+		subscribePath, len(nAppSubInfo.ntfAppInfoTrgt), len(nAppSubInfo.ntfAppInfoTrgtChlds))
+
+	for i, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
+		log.Infof("pri[%d] = %v", i, nAppInfo)
+		nInfo := sc.addNInfo(nAppInfo)
 		sc.tgtInfos = append(sc.tgtInfos, nInfo)
 	}
 
-	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
-		sc.addNInfo(&nAppInfo)
+	for i, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
+		log.Infof("sub[%d] = %v", i, nAppInfo)
+		sc.addNInfo(nAppInfo)
 	}
 }
 
@@ -478,7 +398,8 @@ func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, erro
 }
 
 func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path {
-	in := dbKeyInfo{
+	in := processSubRequest{
+		ctxID:  ne.id,
 		dbno:   nInfo.dbno,
 		table:  nInfo.table,
 		key:    ne.key,
@@ -493,7 +414,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 		log.Infof("[%s] Path template: %s", ne.id, path.String(in.path))
 	}
 
-	out, err := (*nInfo.app).processSubscribe(in)
+	out, err := (*nInfo.app).processSubscribe(&in)
 	if err != nil {
 		log.Warningf("[%s] processSubscribe returned err: %v", ne.id, err)
 		return nil
@@ -556,10 +477,18 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 	for _, lv := range fields {
 		leafPath := lv.getPath()
 
+		// Blindly treat DB delete as yang delete.. Will it work always??
+		// Probably need an option for apps to customize this behavior.
+		if lv.deleted {
+			log.V(3).Infof("[%s] %s deleted", ne.id, leafPath)
+			resp.Delete = append(resp.Delete, leafPath)
+			continue
+		}
+
 		data, err := ne.getValue(prefixStr + leafPath)
 
 		if sInfo.syncDone && isNotFoundError(err) {
-			log.V(3).Infof("[%s] %s deleted", ne.id, leafPath)
+			log.V(3).Infof("[%s] %s not found", ne.id, leafPath)
 			resp.Delete = append(resp.Delete, leafPath)
 			continue
 		}
@@ -581,9 +510,15 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		// with the path to parent container of update value.
 		for _, lv := range fields {
 			if lv.valueTree != nil {
-				resp.Path = prefixStr + lv.parentPrefix
+				if lv.isTargetNode(nInfo) {
+					// For target path of nInfo, set resp.Path to its parent container
+					pp := path.SubPath(prefix, 0, path.Len(prefix)-1)
+					resp.Path, err = ygot.PathToString(pp)
+				} else {
+					resp.Path = prefixStr + lv.parentPrefix
+				}
 				resp.Update = lv.valueTree
-				log.V(5).Infof("[%s] Single update case. using Path=\"%s\", Update=%T",
+				log.Infof("[%s] Single update case; Path=\"%s\", Update=%T",
 					ne.id, resp.Path, resp.Update)
 				break
 			}
@@ -592,12 +527,12 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		// There are > 1 updates or 1 update with few delete paths. Hence retain resp.Path
 		// as prefixStr itself. Coalesce the values by merging them into a new data tree.
 		tmpRoot := new(ocbinds.Device)
-		resp.Update, err = mergeUpdateValue(tmpRoot, prefixStr, nil) // TODO what if prefixStr is a leaf?
+		resp.Update, err = mergeUpdateValue(tmpRoot, prefixStr, nil)
 		if err != nil {
 			break
 		}
 
-		log.V(5).Infof("[%s] Coalesce %d updates into Path=\"%s\", Update=%T",
+		log.Infof("[%s] Coalesce %d updates; Path=\"%s\", Update=%T",
 			ne.id, numUpdate, resp.Path, resp.Update)
 		for _, lv := range fields {
 			if lv.valueTree == nil {
@@ -632,6 +567,11 @@ func (lv *yangNodeInfo) getPath() string {
 		return lv.parentPrefix
 	}
 	return lv.parentPrefix + "/" + lv.leafName
+}
+
+// isTargetLeaf checks if this yang node is the target path of the notificationInfo.
+func (lv *yangNodeInfo) isTargetNode(nInfo *notificationInfo) bool {
+	return len(lv.parentPrefix) == 0 && len(lv.leafName) == 0
 }
 
 func mergeUpdateValue(ygRoot *ocbinds.Device, pathStr string, value ygot.ValidatedGoStruct) (ygot.ValidatedGoStruct, error) {
