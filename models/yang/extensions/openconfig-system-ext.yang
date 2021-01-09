@@ -502,8 +502,10 @@ module openconfig-system-ext {
 
         leaf minpoll {
             type uint8 {
-                range "4..17";
+                range "3..17";
             }
+            default 6;
+
             description
                 "The minimum poll interval used in this association.
                  Default is 6.";
@@ -514,8 +516,10 @@ module openconfig-system-ext {
 
         leaf maxpoll {
             type uint8 {
-                range "4..17";
+                range "3..17";
             }
+            default 10;
+
             description
                 "The maximum poll interval used in this association.
                  Default is 10.";

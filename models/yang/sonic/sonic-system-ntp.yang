@@ -210,8 +210,9 @@ module sonic-system-ntp {
                 }
 
                 leaf minpoll {
+                    default 6;
                     type uint8 {
-                        range "4..17";
+                        range "3..17";
                     }
                     must "((current()/../maxpoll) and (current()/../maxpoll > current()))" {
                         error-message "minpoll and maxpoll must be both configured, and maxpoll has to be larger than minpoll";
@@ -224,8 +225,9 @@ module sonic-system-ntp {
                     }
 
                 leaf maxpoll {
+                    default 10;
                     type uint8 {
-                        range "4..17";
+                        range "3..17";
                     }
                     must "((current()/../minpoll) and (current()/../minpoll < current()))" {
                         error-message "minpoll and maxpoll must be both configured, and maxpoll has to be larger than minpoll.";
