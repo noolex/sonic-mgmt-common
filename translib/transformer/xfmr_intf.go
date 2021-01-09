@@ -251,6 +251,10 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     ifName := inParams.value
     log.V(3).Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
 
+    if (strings.Count(ifName, ".") > 2) || (strings.Count(ifName, ":") > 0) {
+        // return ip-addrs
+        return ifName, err
+    }
     var convertedName *string
 
     if inParams.oper == GET {
