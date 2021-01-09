@@ -366,7 +366,6 @@ var DbToYang_bgp_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (m
 
 
     nbrName:= nbrKey[1]
-    util_bgp_get_ui_ifname_from_native_ifname (&nbrName)
 
     rmap["neighbor-address"] = nbrName
     return rmap, nil
@@ -594,7 +593,6 @@ var DbToYang_bgp_nbr_address_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
     if len(nbrAddrKey) < 2 {return result, nil}
 
     nbrAddr:= nbrAddrKey[1]
-    util_bgp_get_ui_ifname_from_native_ifname (&nbrAddr)
 
     result["neighbor-address"] = nbrAddr
 
