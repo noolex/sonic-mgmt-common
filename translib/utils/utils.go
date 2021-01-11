@@ -161,13 +161,14 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
     if ok {
         var taggedVlanSlice []string
         vlanRngSlice := GenerateMemberPortsSliceFromString(&taggedVlanVal)
-        for _, vlanStr := range vlanRngSlice {
-            if strings.Contains(vlanStr, "-") {
-                _ = extractVlanIdsfrmRng(vlanStr, &taggedVlanSlice)
+        for _, vlanId := range vlanRngSlice {
+            if strings.Contains(vlanId, "-") { //vlanId e.g. 1-100(Vlan ID range) or 200(single Vlan ID)
+                _ = extractVlanIdsfrmRng(vlanId, &taggedVlanSlice)
             } else {
-                taggedVlanSlice = append(taggedVlanSlice, vlanStr)
+                taggedVlanSlice = append(taggedVlanSlice, "Vlan"+vlanId)
             }
         }
+        log.Info("-----taggedVlanSlice---", taggedVlanSlice)
         for _, vlan := range taggedVlanSlice {
             member_list, ok := vlanMemberCache[vlan]
             found := false
@@ -189,6 +190,7 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
         }
     }
     vlanVal, ok := portEntry.Field["access_vlan"]
+    vlanVal = "Vlan"+vlanVal
     if ok {
         found := false
         member_list, ok := vlanMemberCache[vlanVal]
