@@ -716,7 +716,7 @@ func removeAllVlanMembrsForIfAndGetVlans(d *db.DB, ifName *string, ifMode intfMo
 func removePortAccessVlan(accessVlan *string, ifName *string, portVlanListMap map[string]db.Value) error {
     var err error
     portVlanListMap[*ifName] = db.Value{Field:make(map[string]string)}
-    portVlanListMap[*ifName].Field["access_vlan"] = *accessVlan
+    portVlanListMap[*ifName].Field["access_vlan"] = strings.TrimPrefix(*accessVlan,"Vlan")
     log.Info("-----portVlanListMap---", portVlanListMap)
     return err
 }
@@ -731,7 +731,7 @@ func removeFromPorttaggedList(d *db.DB, remTrunkVlans []string, ifName *string, 
             vlanRngSlice := utils.GenerateMemberPortsSliceFromString(&cfgdVlanVal)
             for _, vlanStr := range vlanRngSlice {
                 if strings.Contains(vlanStr, "-") {
-                    _ = extractVlanIdsfrmRng(d, vlanStr[4:], &cfgdVlanSlice)
+                    _ = extractVlanIdsfrmRng(d, vlanStr, &cfgdVlanSlice)
                 } else {
                     cfgdVlanSlice = append(cfgdVlanSlice, vlanStr)
                 }
@@ -1138,7 +1138,8 @@ func intfVlanMemberRemoval(swVlanConfig *swVlanMemberPort_t,
     }
     return err
 }
-/*Input: range 10-100 or 10..100 */
+/*Param: A Range - 1-3 or 1..3
+  Return: [Vlan1, Vlan2, Vlan3]*/
 func extractVlanIdsfrmRng(d *db.DB, rngStr string, vlanLst *[]string) error{
     var err error
     var res []string
@@ -1167,7 +1168,7 @@ func extractVlanIdsfrmRng(d *db.DB, rngStr string, vlanLst *[]string) error{
 
 /* Function to compress vlan list
 Param: string list of Vlan ids, e.g: ["Vlan1","Vlan2","Vlan30"]
-Return: string list of Vlan range/ids, e.g: ["Vlan1-2","Vlan30"] */
+Return: string list of Vlan range/ids, e.g: ["1-2","30"] */
 func vlanIdstoRng(vlanIdsLst []string) ([]string, error) {
     var err error
     var idsLst []int
@@ -1183,13 +1184,13 @@ func vlanIdstoRng(vlanIdsLst []string) ([]string, error) {
         }
         if (i == j) {
             vlanid := strconv.Itoa(idsLst[i])
-            vlanRngLst = append(vlanRngLst, ("Vlan"+vlanid))
-            //vlanRngLst = append(vlanRngLst, (vlanid))
+            //vlanRngLst = append(vlanRngLst, ("Vlan"+vlanid))
+            vlanRngLst = append(vlanRngLst, (vlanid))
         } else {
             vlanidLow := strconv.Itoa(idsLst[i])
             vlanidHigh := strconv.Itoa(idsLst[j])
-            vlanRngLst = append(vlanRngLst, ("Vlan"+ vlanidLow + "-" + vlanidHigh))
-            //vlanRngLst = append(vlanRngLst, (vlanidLow + "-" + vlanidHigh))
+            //vlanRngLst = append(vlanRngLst, ("Vlan"+ vlanidLow + "-" + vlanidHigh))
+            vlanRngLst = append(vlanRngLst, (vlanidLow + "-" + vlanidHigh))
         }
         i = j + 1;
     }
@@ -1329,8 +1330,8 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             vlanMembersListMap[accessVlan][*ifName] = db.Value{Field:make(map[string]string)}
             vlanMembersListMap[accessVlan][*ifName].Field["tagging_mode"] = "untagged"
         }
-        log.Info("------------accessVlan----------", accessVlan)
-        portVlanListMap[*ifName].Field["access_vlan"] = accessVlan
+        log.Info("------------accessVlan----------", accessVlanId)
+        portVlanListMap[*ifName].Field["access_vlan"] = strings.TrimPrefix(accessVlan,"Vlan")
     }
 
     TRUNKCONFIG:
@@ -1365,8 +1366,8 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             if ok {
                 vlanRngSlice := utils.GenerateMemberPortsSliceFromString(&cfgdVlanVal)
                 for _, vlanStr := range vlanRngSlice {
-                    if strings.Contains(vlanStr, "-") {
-                        _ = extractVlanIdsfrmRng(inParams.d, vlanStr[4:], &cfgdVlanSlice)
+                    if strings.Contains(vlanStr, "-") { //e.g vlanStr - 1-100
+                        _ = extractVlanIdsfrmRng(inParams.d, vlanStr, &cfgdVlanSlice)
                     } else {
                         cfgdVlanSlice = append(cfgdVlanSlice, vlanStr)
                     }
@@ -1376,7 +1377,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
         //Remove vlans already in DB from the list to avoid duplicates
 	portVlanSlice := vlanDifference(trunkVlanSlice,cfgdVlanSlice)
         log.Info("-------portVlanSlice----", portVlanSlice)
-        //VlanSlice compress, range format
+        //VlanSlice compress to range format
         portVlanSlice, _ = vlanIdstoRng(portVlanSlice)
         log.Info("-------portVlanSlice----", portVlanSlice)
         portVlanListMap[*ifName].Field["tagged_vlans@"] = strings.Join(portVlanSlice, ",")
@@ -1562,7 +1563,7 @@ func intfVlanMemberReplace(swVlanConfig *swVlanMemberPort_t,
         }
         log.Info("------------accessVlan----------", accessVlan)
         //Replace existing port's access_vlan field value
-        portVlanListMap[*ifName].Field["access_vlan"] = accessVlan
+        portVlanListMap[*ifName].Field["access_vlan"] = accessVlan[len("Vlan"):]
     }
 
     TRUNKCONFIG:
