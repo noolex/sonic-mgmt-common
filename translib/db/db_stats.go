@@ -461,17 +461,19 @@ func readRedis(key string) (map[string]string, error) {
 
 	ipAddr := DefaultRedisLocalTCPEP
 	dbId := int(ConfigDB)
+	dbPassword :=""
 	if dbInstName := getDBInstName(ConfigDB); dbInstName != "" {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
+			dbPassword = getDbPassword(dbInstName)
 		}
 	}
 
 	client := redis.NewClient(&redis.Options{
 		Network: "tcp",
 		Addr:    ipAddr,
-		Password: "",
+		Password: dbPassword,
 		DB:          dbId,
 		DialTimeout: 0,
 		PoolSize: 1,
