@@ -131,7 +131,8 @@ func fillIgmpGroupsXfmr (igmp_map map[string]interface{}, igmpGroups_obj *ocbind
                     }
                     log.Info("interfaceId : ",interfaceId)
                     log.Info("mcastgrpAddr : ",mcastgrpAddr)
-                    igmpGroupKey.InterfaceId,_ = ospfGetUIIntfName(interfaceId)
+                    _interfaceId := utils.GetUINameFromNativeName(&interfaceId)
+                    igmpGroupKey.InterfaceId = *_interfaceId
                     igmpGroupKey.McastgrpAddr = mcastgrpAddr
                     igmpIgmpGroup_obj = igmpGroups_obj.Group[igmpGroupKey]
                     if (nil == igmpIgmpGroup_obj) {
@@ -203,7 +204,8 @@ func fillIgmpSourcesXfmr (igmp_map map[string]interface{},igmpSources_obj *ocbin
                     log.Info("interfaceId : ",interfaceId)
                     log.Info("grpAddr : ",grpAddr)
                     log.Info("srcAddr : ",srcAddr)
-                    igmpSourceKey.InterfaceId,_ = ospfGetUIIntfName(interfaceId)
+                    _interfaceId := utils.GetUINameFromNativeName(&interfaceId)
+                    igmpSourceKey.InterfaceId = *_interfaceId
                     igmpSourceKey.McastgrpAddr = grpAddr
                     igmpSourceKey.SrcAddr = srcAddr
                     igmpIgmpSource_obj = igmpSources_obj.Source[igmpSourceKey]
@@ -682,6 +684,7 @@ var DbToYang_igmp_groups_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
     return  err;
 }
 
+/*
 func igmpGetNativeIntfName(ifName string) (string, error) {
    var errStr string
 
@@ -716,6 +719,7 @@ func igmpGetNativeIntfName(ifName string) (string, error) {
    log.Infof("igmpGetNativeIntfName: ifName %s native %s.", ifName, *nativeNamePtr)
    return *nativeNamePtr, nil
 }
+*/
 
 var Subscribe_igmp_interface_get_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
@@ -762,10 +766,8 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     interfacename = pathInfo.Var("interface-id")
     log.Info(interfacename)
 
-    ifName, err = igmpGetNativeIntfName(interfacename)
-    if (err != nil) {
-        return errors.New("Invalid IGMP interface name.")
-    }
+    _ifName := utils.GetNativeNameFromUIName(&interfacename)
+    ifName = *_ifName
 
     vtysh_cmd = "show ip igmp vrf "+vrfName+" interface "+ifName+" json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
@@ -779,7 +781,8 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     for key,value := range output_state {
         interface_info := value.(map[string]interface{})
         log.Info(key)
-        ifName, _ := ospfGetUIIntfName(key)
+        _ifName := utils.GetUINameFromNativeName(&key)
+        ifName := *_ifName
         log.Info(interface_info)
         err = fillIgmpInterfaceXfmr (interface_info,ifName,igmp_obj)
     }
@@ -905,7 +908,7 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
 }
 
 var rpc_show_igmp_join RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-    var cmd, vrf_name, interfaceId string
+    var cmd, vrf_name string
     var err error
     var mapData map[string]interface{}
     var output map[string]interface{}
@@ -940,7 +943,8 @@ var rpc_show_igmp_join RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
 
     output = make(map[string]interface{})
     for key, value := range igmpOutput {
-        interfaceId,_ = ospfGetUIIntfName(key)
+        _interfaceId := utils.GetUINameFromNativeName(&key)
+        interfaceId := *_interfaceId
         output[interfaceId] = value.(map[string]interface{})
     }
 
