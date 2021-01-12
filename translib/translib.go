@@ -44,7 +44,6 @@ import (
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
-
 )
 
 //Write lock for all write operations to be synchronized
@@ -62,7 +61,6 @@ const (
 )
 
 const (
-
 	TRANSLIB_FMT_IETF_JSON = iota
 	TRANSLIB_FMT_YGOT
 )
@@ -89,10 +87,10 @@ type SetResponse struct {
 }
 
 type GetRequest struct {
-	Path    string
-	FmtType TranslibFmtType
-	User    UserRoles
-	AuthEnabled bool
+	Path          string
+	FmtType       TranslibFmtType
+	User          UserRoles
+	AuthEnabled   bool
 	ClientVersion Version
 
 	// Depth limits the depth of data subtree in the response
@@ -138,6 +136,7 @@ type BulkResponse struct {
 
 type SubscribeRequest struct {
 	Paths         []string
+	FmtType       TranslibFmtType
 	Q             *queue.PriorityQueue
 	Stop          chan struct{}
 	User          UserRoles
@@ -147,7 +146,8 @@ type SubscribeRequest struct {
 
 type SubscribeResponse struct {
 	Path         string
-	Payload      []byte
+	Update       ygot.ValidatedGoStruct // updated values
+	Delete       []string               // deleted paths - relative to Path
 	Timestamp    int64
 	SyncComplete bool
 	IsTerminated bool
@@ -910,7 +910,12 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			continue
 		}
 
-		nAppSubInfo, errApp := (*app).translateSubscribe(dbs, path)
+		nAppSubInfo, errApp := (*app).translateSubscribe(
+			&translateSubRequest{
+				ctxID: sInfo.id,
+				path:  path,
+				dbs:   dbs,
+			})
 
 		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgt, resp[i])
 		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgtChlds, resp[i])
@@ -934,7 +939,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 		sCtx.appInfo = appInfo
 		sCtx.app = app
-		sCtx.add(nAppSubInfo)
+		sCtx.add(path, nAppSubInfo)
 	}
 
 	// Close the db pointers only on error. Otherwise keep them
@@ -952,6 +957,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 //IsSubscribeSupported - Check if subscribe is supported on the given paths
 func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error) {
 
+	reqID := subscribeCounter.Next()
 	paths := req.Paths
 	resp := make([]*IsSubscribeResponse, len(paths))
 
@@ -989,7 +995,12 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 			continue
 		}
 
-		nAppInfos, errApp := (*app).translateSubscribe(dbs, path)
+		nAppInfos, errApp := (*app).translateSubscribe(
+			&translateSubRequest{
+				ctxID: reqID,
+				path:  path,
+				dbs:   dbs,
+			})
 
 		r := resp[i]
 		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, r)
@@ -1012,13 +1023,13 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 // collectNotificationPreferences computes overall notification preferences (is on-change
 // supported, min sample interval, preferred mode etc) by combining individual table preferences
 // from the notificationAppInfo array. Writes them to the IsSubscribeResponse object 'resp'.
-func collectNotificationPreferences(nAppInfos []notificationAppInfo, resp *IsSubscribeResponse) {
+func collectNotificationPreferences(nAppInfos []*notificationAppInfo, resp *IsSubscribeResponse) {
 	if len(nAppInfos) == 0 {
 		return
 	}
 
 	for _, nInfo := range nAppInfos {
-		if !nInfo.isOnChangeSupported || nInfo.dbno == db.CountersDB {
+		if !nInfo.isOnChangeSupported || nInfo.isNonDB() {
 			resp.IsOnChangeSupported = false
 			resp.PreferredType = Sample
 		}
@@ -1126,14 +1137,6 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 		return dbs, err
 	}
 
-	//Create User DB connection
-	dbs[db.UserDB], err = db.NewDB(getDBOptions(db.UserDB, isWriteDisabled))
-
-	if err != nil {
-		closeAllDbs(dbs[:])
-		return dbs, err
-	}
-
 	return dbs, err
 }
 
@@ -1171,9 +1174,9 @@ func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
 	var opt db.Options
 
 	switch dbNo {
-	case db.ApplDB, db.CountersDB, db.AsicDB:
+	case db.ApplDB, db.CountersDB, db.AsicDB, db.FlexCounterDB, db.LogLevelDB, db.ErrorDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-	case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB, db.UserDB:
+	case db.ConfigDB, db.StateDB, db.SnmpDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
 	}
 

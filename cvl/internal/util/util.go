@@ -567,6 +567,22 @@ func GetDbSock(dbName string)(string) {
 	return unix_socket_path.(string)
 }
 
+func GetDbPassword(dbName string)(string) {
+	inst := getDbInst(dbName)
+	password :=""
+	password_path, ok := inst["password_path"]
+	if !ok {
+		return password
+	}
+    data,er := ioutil.ReadFile(password_path.(string))
+	if er != nil {
+		//
+	} else {
+		  password =(string(data))
+	}
+	return password
+}
+
 //GetDbTcpAddr Get DB TCP endpoint
 func GetDbTcpAddr(dbName string)(string) {
 	inst := getDbInst(dbName)
@@ -594,7 +610,7 @@ func NewDbClient(dbName string) *redis.Client {
 		redisClient = redis.NewClient(&redis.Options{
 			Network:  "unix",
 			Addr:     dbSock,
-			Password: "",
+			Password: GetDbPassword(dbName),
 			DB:       GetDbId(dbName),
 		})
 	} else {
@@ -602,7 +618,7 @@ func NewDbClient(dbName string) *redis.Client {
 		redisClient = redis.NewClient(&redis.Options{
 			Network:  "tcp",
 			Addr:     GetDbTcpAddr(dbName),
-			Password: "",
+			Password: GetDbPassword(dbName),
 			DB:       GetDbId(dbName),
 		})
 	}

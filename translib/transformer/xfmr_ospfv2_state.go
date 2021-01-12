@@ -3384,7 +3384,8 @@ var rpc_clear_ospfv2 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]b
 
     if value, ok := mapData["interface"].(string) ; ok {
         if value != "" {
-            value, err = ospfGetNativeIntfName(value) 
+            //value, err = ospfGetNativeIntfName(value) 
+            value, _, _, _, err = getNativeInterfaceName(value)
             if (err != nil) {
                 return nil, tlerr.New("Invalid OSPF interface name.")
             }

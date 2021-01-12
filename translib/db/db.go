@@ -142,7 +142,6 @@ const (
 	StateDB                    // 6
 	SnmpDB                     // 7
 	ErrorDB                    // 8
-	UserDB                     // 9
 	// All DBs added above this line, please ----
 	MaxDB //  The Number of DBs
 )
@@ -305,8 +304,6 @@ func getDBInstName (dbNo DBNum) string {
 		return "SNMP_OVERLAY_DB"
 	case ErrorDB:
 		return "ERROR_DB"
-	case UserDB:
-		return "USER_DB"
 	}
 	return ""
 }
@@ -327,11 +324,13 @@ func NewDB(opt Options) (*DB, error) {
 
 	ipAddr := DefaultRedisLocalTCPEP
 	dbId := int(opt.DBNo)
+	dbPassword :=""
 	if dbInstName := getDBInstName(opt.DBNo); dbInstName != "" {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
 			dbSepStr := getDbSeparator(dbInstName)
+			dbPassword = getDbPassword(dbInstName)
 			if len(dbSepStr) > 0 {
 				if len(opt.TableNameSeparator) > 0 && opt.TableNameSeparator != dbSepStr {
 					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the" +
@@ -353,7 +352,7 @@ func NewDB(opt Options) (*DB, error) {
 		Network: "tcp",
 		Addr:    ipAddr,
 		//Addr:     DefaultRedisRemoteTCPEP,
-		Password: "", /* TBD */
+		Password: dbPassword, /* TBD */
 		// DB:       int(4), /* CONFIG_DB DB No. */
 		DB:          dbId,
 		DialTimeout: 0,
@@ -1570,75 +1569,96 @@ func (d *DB) RegisterTableForOnChangeCaching(ts *TableSpec) {
 	}
 }
 
+type OnChangeCacheDiff struct {
+	UpdatedEntry	*Value
+	EntryCreated	bool
+	EntryDeleted	bool
+	UpdatedFields	[]string
+	DeletedFields	[]string
+}
+
+func (c *OnChangeCacheDiff) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s[%t], ", "EntryCreated", c.EntryCreated)
+	fmt.Fprintf(&b, "%s[%t], ", "EntryDeleted", c.EntryDeleted)
+	fmt.Fprintf(&b, "%s->%v, ", "UpdatedFields", c.UpdatedFields)
+	fmt.Fprintf(&b, "%s->%v, ", "DeletedFields", c.DeletedFields)
+	if c.UpdatedEntry != nil {
+		fmt.Fprintf(&b, "Entry->")
+		for k, v := range c.UpdatedEntry.Field {
+			fmt.Fprintf(&b, "%s[%s]  ", k, v)
+		}
+	}
+
+	return b.String()
+}
+
 // DiffAndMergeOnChangeCache Compare modified entry with cached entry and
 // return modified fields. Also update the cache with changes.
-func (d *DB) DiffAndMergeOnChangeCache(val Value, ts *TableSpec, key Key, entryDeleted bool) []string {
-	var chgdFields []string
+func (d *DB) DiffAndMergeOnChangeCache(ts *TableSpec, key Key, entryDeleted bool) (*OnChangeCacheDiff, error) {
+	var val Value
+
+	cacheEntryDiff := &OnChangeCacheDiff{}
+	redisKey := d.key2redis(ts, key)
+
+	if !entryDeleted {
+		// Fetch fresh entry from redis DB and compare with cache entry
+		v, e := d.client.HGetAll(redisKey).Result()
+		if len(v) == 0 || e != nil {
+			e = tlerr.TranslibRedisClientEntryNotExist{Entry: redisKey}
+			return cacheEntryDiff, e
+		}
+		val.Field = v
+	}
 
 	if d.dbCacheConfig.CacheTables[ts.Name] {
 		if table, ok := d.cache.Tables[ts.Name]; ok {
-			cachedEntry, exists := table.entry[d.key2redis(ts, key)]
+			cachedEntry, exists := table.entry[redisKey]
 			if exists { // Already exists in cache
+
 				if entryDeleted {
-					// Entry deleted. So remove cachedEntry and send empty chgdFields
-					delete(table.entry, d.key2redis(ts, key))
-					return chgdFields
-				}
-				cachedEntrySize := len(cachedEntry.Field)
-				newEntrySize := len(val.Field)
-				// When no field(s) deleted or added
-				if cachedEntrySize == newEntrySize {
-					for fldName, fldVal := range val.Field {
-						if cachedEntry.Get(fldName) != fldVal {
-							chgdFields = append(chgdFields, fldName)
-							// Merge changes in cache
-							cachedEntry.Set(fldName, fldVal)
-						}
+					// Entry deleted. So remove cached entry
+					delete(table.entry, redisKey)
+					cacheEntryDiff.EntryDeleted = true
+					for fldName := range cachedEntry.Field {
+						cacheEntryDiff.DeletedFields = append(cacheEntryDiff.DeletedFields, fldName)
 					}
-				} else {
-					// When field(s) deleted
-					if newEntrySize < cachedEntrySize {
-						for fldName, fldVal := range cachedEntry.Field {
-							if newEntryFldVal, fldok := val.Field[fldName]; fldok {
-								if newEntryFldVal != fldVal {
-									chgdFields = append(chgdFields, fldName)
-									// Merge changes in cache
-									cachedEntry.Set(fldName, newEntryFldVal)
-								}
-							} else { // fldName is deleted
-								chgdFields = append(chgdFields, fldName)
-								// delete field from cache
-								cachedEntry.Remove(fldName)
-							}
-						}
-					} else {
-						// When field(s) added
-						for fldName, fldVal := range val.Field {
-							if cachedFldVal, fldok := cachedEntry.Field[fldName]; fldok {
-								if cachedFldVal != fldVal {
-									chgdFields = append(chgdFields, fldName)
-									// Merge changes in cache
-									cachedEntry.Set(fldName, fldVal)
-								}
-							} else { // fldName is added
-								chgdFields = append(chgdFields, fldName)
-								// Add field in cache
-								cachedEntry.Set(fldName, fldVal)
-							}
-						}
+					return cacheEntryDiff, nil
+				}
+
+				cacheEntryDiff.UpdatedEntry = &val
+
+				for fldName := range cachedEntry.Field {
+					if fldName == "NULL" {
+						continue
+					}
+					if _, fldOk := val.Field[fldName]; !fldOk {
+						cacheEntryDiff.DeletedFields = append(cacheEntryDiff.DeletedFields, fldName)
+						cachedEntry.Remove(fldName)
 					}
 				}
-			} else {
+
+				for nf, nv := range val.Field {
+					if nf == "NULL" {
+						continue
+					}
+					if cachedEntry.Field[nf] != nv {
+						cacheEntryDiff.UpdatedFields = append(cacheEntryDiff.UpdatedFields, nf)
+						cachedEntry.Set(nf, nv)
+					}
+				}
+
+			} else if !entryDeleted {
 				// Not exists in cache
-				for fldName := range val.Field {
-					chgdFields = append(chgdFields, fldName)
-				}
-				//Add entry in cache
-				table.entry[d.key2redis(ts, key)] = val
+				// Add entry in cache
+				table.entry[redisKey] = val
+				cacheEntryDiff.EntryCreated = true
+				cacheEntryDiff.UpdatedEntry = &val
 			}
 		}
 	}
-	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Changed Fields: %v", chgdFields)
 
-	return chgdFields
+	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Cache Diff: %v", cacheEntryDiff)
+
+	return cacheEntryDiff, nil
 }

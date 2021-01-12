@@ -74,7 +74,7 @@ var Subscribe_unnumbered_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubsc
 /* Validates whether Donor interface has multiple IPv4 Address configured on it */
 func validateMultiIPForDonorIntf(d *db.DB, ifName *string) bool {
 
-	tables := []string{"INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_INTERFACE"}
+	tables := []string{"INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_INTERFACE", "VLAN_SUB_INTERFACE"}
 	donor_intf := false
 	log.Info("validateMultiIPForDonorIntf : intfName", ifName)
 	for _, table := range tables {
@@ -145,7 +145,7 @@ func intf_unnumbered_del(tblName *string, inParams *XfmrParams, ifdb map[string]
 
 func validateUnnumIntfExistsForDonorIntf(d *db.DB, donorIfName *string) bool {
 
-	tables := []string{"INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_INTERFACE"}
+	tables := []string{"INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_INTERFACE", "VLAN_SUB_INTERFACE"}
 
 	for _, table := range tables {
 		intfTable, err := d.GetTable(&db.TableSpec{Name:table})
@@ -185,34 +185,34 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     var err error
     subIntfmap := make(map[string]map[string]db.Value)
 
+    log.Infof("YangToDb_unnumbered_intf_xfmr: ----- unnumbered xfmr -----")
+
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
         log.Info("YangToDb_unnumbered_intf_xfmr: IntfsObj/interface list is empty.")
         return subIntfmap, errors.New("IntfsObj/Interface is not specified")
     }
 
-    pathInfo := NewPathInfo(inParams.uri)
-    uriIfName := pathInfo.Var("name")
-    ifName := uriIfName
+    uriFullIfName, uriIfName, _, _, err := getInParamIfName(&inParams)
+    if (err != nil) {
+        log.Info("YangToDb_unnumbered_intf_xfmr: getInParamIfName failed")
+        return subIntfmap, err
+    }
 
-    sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
-    log.Infof("YangToDb_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
-    ifName = *sonicIfName
-
-    if ifName == "" {
-        errStr := "Interface KEY not present"
-        log.Info("YangToDb_unnumbered_intf_xfmr: " + errStr)
-        return subIntfmap, errors.New(errStr)
+    nativeIfName, _, _, subIfIndex, err := getNativeInterfaceName(uriFullIfName)
+    if (err != nil) {
+        log.Info("YangToDb_unnumbered_intf_xfmr: getNativeInterfaceName failed")
+        return subIntfmap, err
     }
 
     if _, ok := intfsObj.Interface[uriIfName]; !ok {
-        errStr := "Interface entry not found in Ygot tree, ifname: " + ifName
+        errStr := "Interface entry not found in Ygot tree, ifname: " + uriIfName
         log.Info("YangToDb_unnumbered_intf_xfmr : " + errStr)
         return subIntfmap, errors.New(errStr)
     }
 
     intfObj := intfsObj.Interface[uriIfName]
-    intfType, _, ierr := getIntfTypeByName(ifName)
+    intfType, _, ierr := getIntfTypeByName(nativeIfName)
     if intfType == IntfTypeUnset || ierr != nil {
         errStr := "Invalid interface type IntfTypeUnset"
         log.Info("YangToDb_unnumbered_intf_xfmr : " + errStr)
@@ -231,11 +231,11 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
         return subIntfmap, errors.New(errStr)
     }
 
-    if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+    if _, ok := intfObj.Subinterfaces.Subinterface[subIfIndex]; !ok {
         log.Info("YangToDb_unnumbered_intf_xfmr : No Unnumbered IP interface handling required")
         return subIntfmap, err
     }
-    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+    subIntfObj := intfObj.Subinterfaces.Subinterface[subIfIndex]
 
     ifdb := make(map[string]string)
     if _, ok := subIntfmap[tblName]; !ok {
@@ -245,13 +245,13 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     if subIntfObj.Ipv4 == nil || subIntfObj.Ipv4.Unnumbered == nil || subIntfObj.Ipv4.Unnumbered.InterfaceRef == nil {
         //Delete is for IPv4 container
         if inParams.oper == DELETE {
-            if validateUnnumEntryExists(inParams.d, &tblName, &ifName) {
-                err = intf_unnumbered_del(&tblName, &inParams, ifdb, &ifName)
+            if validateUnnumEntryExists(inParams.d, &tblName, &nativeIfName) {
+                err = intf_unnumbered_del(&tblName, &inParams, ifdb, &nativeIfName)
                 if err != nil {
                     return subIntfmap, err
                 }
                 value := db.Value{Field: ifdb}
-                subIntfmap[tblName][ifName] = value
+                subIntfmap[tblName][nativeIfName] = value
                 log.Info("subIntfmap", subIntfmap)
                 return subIntfmap, err
             } else {
@@ -266,12 +266,12 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
     log.Info("subIntfObj:=", subIntfObj)
     if subIntfObj.Ipv4 != nil && subIntfObj.Ipv4.Unnumbered != nil && subIntfObj.Ipv4.Unnumbered.InterfaceRef != nil {
         if inParams.oper == DELETE {
-            err = intf_unnumbered_del(&tblName, &inParams, ifdb, &ifName)
+            err = intf_unnumbered_del(&tblName, &inParams, ifdb, &nativeIfName)
             if err != nil {
                 return subIntfmap, err
             }
             value := db.Value{Field: ifdb}
-            subIntfmap[tblName][ifName] = value
+            subIntfmap[tblName][nativeIfName] = value
             return subIntfmap, err
         }
         unnumberedObj := subIntfObj.Ipv4.Unnumbered.InterfaceRef
@@ -285,12 +285,12 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
 			subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
 			resMap := make(map[string]map[string]db.Value)
 			resMap[tblName] = make(map[string]db.Value)
-			resMap[tblName][ifName] = value
+			resMap[tblName][nativeIfName] = value
 			subOpMap[db.ConfigDB] = resMap
 			log.Info("subOpMap: ", subOpMap)
 			inParams.subOpDataMap[UPDATE] = &subOpMap
 		} else {
-        	subIntfmap[tblName][ifName] = value
+        	subIntfmap[tblName][nativeIfName] = value
 		}
     }
 
@@ -301,27 +301,36 @@ var YangToDb_unnumbered_intf_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
 var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (error) {
     var err error
     intfsObj := getIntfsRoot(inParams.ygRoot)
-    pathInfo := NewPathInfo(inParams.uri)
-    uriIfName := pathInfo.Var("name")
-    ifName := uriIfName
-
-    log.Info("db to yang - unnumbered sub tree and ifname: ", ifName)
-    sonicIfName := utils.GetNativeNameFromUIName(&ifName)
-    log.Infof("DbToYang_unnumbered_intf_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
-    ifName = *sonicIfName
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
-
-    log.Info("targetUriPath is ", targetUriPath)
-
     var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
-    intfType, _, ierr := getIntfTypeByName(ifName)
-    if intfType == IntfTypeUnset || ierr != nil {
+
+    log.Infof("DbToYang_unnumbered_intf_xfmr: ----- unnumbered xfmr -----")
+
+    uriFullIfName, uriIfName, _, _, err := getInParamIfName(&inParams)
+    if (err != nil) {
+        log.Info("DbToYang_unnumbered_intf_xfmr: getInParamIfName failed")
+        return err
+    }
+
+    nativeIfName, _, _, subIfIndex, err := getNativeInterfaceName(uriFullIfName)
+    if (err != nil) {
+        log.Info("DbToYang_unnumbered_intf_xfmr: getNativeInterfaceName failed")
+        return err
+    }
+
+    intfType, _, err := getIntfTypeByName(uriFullIfName)
+    if (intfType == IntfTypeUnset || err != nil) {
         errStr := "Invalid interface type IntfTypeUnset"
         log.Info("DbToYang_unnumbered_intf_xfmr: " + errStr)
         return errors.New(errStr)
     }
 
     intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
+    log.Info("DbToYang_unnumbered_intf_xfmr: intfType ", intfType)
+    log.Info("DbToYang_unnumbered_intf_xfmr: tblName ", tblName)
+
+    targetUriPath, err := getYangPathFromUri(inParams.uri)
+    log.Info("targetUriPath is ", targetUriPath)
 
     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces") {
         if intfsObj != nil && intfsObj.Interface != nil && len(intfsObj.Interface) > 0 {
@@ -340,15 +349,15 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
         }
 
         var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
-        if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
-            _, err = intfObj.Subinterfaces.NewSubinterface(0)
+        if _, ok := intfObj.Subinterfaces.Subinterface[subIfIndex]; !ok {
+            _, err = intfObj.Subinterfaces.NewSubinterface(subIfIndex)
             if err != nil {
                 log.Error("Creation of subinterface subtree failed!")
                 return err
             }
         }
 
-        subIntf = intfObj.Subinterfaces.Subinterface[0]
+        subIntf = intfObj.Subinterfaces.Subinterface[subIfIndex]
         ygot.BuildEmptyTree(subIntf)
         ygot.BuildEmptyTree(subIntf.Ipv4)
         ygot.BuildEmptyTree(subIntf.Ipv4.Unnumbered)
@@ -356,10 +365,10 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 
         if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref/state") ||
             strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref/state") {
-            entry, dbErr := inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
+            entry, dbErr := inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{nativeIfName}})
 
             if dbErr != nil {
-                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + ifName)
+                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + nativeIfName)
                 return nil
             }
 
@@ -370,10 +379,10 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
             }
         } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref/config") ||
                 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/unnumbered/interface-ref/config") {
-            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{nativeIfName}})
 
             if dbErr != nil {
-                log.Info("Failed to read DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
+                log.Info("Failed to read DB entry, " + tblName + " " + nativeIfName)
                 return nil
             }
 
@@ -384,10 +393,10 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
             }
         } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/unnumbered/interface-ref") ||
                 strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/openconfig-interfaces:unnumbered/interface-ref") {
-            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
+            entry, dbErr := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{nativeIfName}})
 
             if dbErr != nil {
-                log.Info("Failed to read Config DB entry, " + intTbl.cfgDb.intfTN + " " + ifName)
+                log.Info("Failed to read DB entry, " + tblName + " " + nativeIfName)
                 return nil
             }
 
@@ -397,10 +406,10 @@ var DbToYang_unnumbered_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
                 log.Info("Config Unnum Intf: " + value)
             }
 
-            entry, dbErr = inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{ifName}})
+            entry, dbErr = inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name:intTbl.appDb.intfTN}, db.Key{Comp: []string{nativeIfName}})
 
             if dbErr != nil {
-                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + ifName)
+                log.Info("Failed to read app DB entry, " + intTbl.appDb.intfTN + " " + nativeIfName)
                 return nil
             }
 

@@ -36,101 +36,17 @@ import (
 	"time"
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/path"
-	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
+	"github.com/openconfig/ygot/ytypes"
 )
 
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
 var sMutex = &sync.Mutex{}
-
-// notificationAppInfo contains the details for monitoring db notifications
-// for a given path. App modules provide these details for each subscribe
-// path. One notificationAppInfo object must inclue details for one db table.
-// One subscribe path can map to multiple notificationAppInfo.
-type notificationAppInfo struct {
-	// table name
-	table *db.TableSpec
-
-	// key string without table name prefix. Can include wildcards.
-	// Like - "ACL1|RULE_101" or "ACL1|*".
-	key *db.Key
-
-	// dbFieldYangPathMap is the mapping of db entry field to the yang
-	// field (leaf/leaf-list) for the input path.
-	dbFldYgPathInfoList []*dbFldYgPathInfo
-
-	// database index
-	dbno db.DBNum
-
-	// path indicates the yang path to which the key maps to.
-	// When the input path maps to multiple db tables, the path field
-	// identifies the yang segments for each db table.
-	path *gnmi.Path
-
-	// isOnChangeSupported indicates if on-change notification is
-	// supported for the input path. Table and key mappings should
-	// be filled even if on-change is not supported.
-	isOnChangeSupported bool
-
-	// mInterval indicates the minimum sample interval supported for
-	// the input path. Can be set to 0 (default value) to indicate
-	// system default interval.
-	mInterval int
-
-	// pType indicates the preferred notification type for the input
-	// path. Used when gNMI client subscribes with "TARGET_DEFINED" mode.
-	pType NotificationType
-
-	// opaque data can be used to store context information to assist
-	// future key-to-path translations. This is an optional data item.
-	// Apps can store any context information based on their logic.
-	// Translib passes this back to the processSubscribe function.
-	opaque interface{}
-}
-
-type dbFldYgPathInfo struct {
-	rltvPath       string
-	dbFldYgPathMap map[string]string //db field to leaf / rel. path to leaf
-}
-
-type notificationSubAppInfo struct {
-	ntfAppInfoTrgt      []notificationAppInfo
-	ntfAppInfoTrgtChlds []notificationAppInfo
-}
-
-// dbKeyInfo represents one db key.
-type dbKeyInfo struct {
-	// table name
-	table *db.TableSpec
-
-	// key string without table name prefix.
-	key *db.Key
-
-	// database index
-	dbno db.DBNum
-
-	// path template for the db key. Can include wild cards.
-	path *gnmi.Path
-
-	// List of all DB objects. Apps should only use these DB objects
-	// to query db if they need additional data for translation.
-	dbs [db.MaxDB]*db.DB
-
-	// App specific opaque data -- can be used to pass context data
-	// between translateSubscribe and processSubscribe.
-	opaque interface{}
-}
-
-// subscribePathResponse defines response data structure of processSubscribe
-// function.
-type subscribePathResponse struct {
-	// path indicates the yang path to which the db key maps to.
-	path *gnmi.Path
-}
 
 type notificationInfo struct {
 	table   *db.TableSpec
@@ -251,18 +167,23 @@ type subscribeContext struct {
 	appInfo *appInfo
 }
 
-func (sc *subscribeContext) add(nAppSubInfo *notificationSubAppInfo) {
+func (sc *subscribeContext) add(subscribePath string, nAppSubInfo *translateSubResponse) {
 	if sc.dbNInfos == nil {
 		sc.dbNInfos = make(map[db.DBNum][]*notificationInfo)
 	}
 
-	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
-		nInfo := sc.addNInfo(&nAppInfo)
+	log.Infof("Subscribe path \"%s\" mapped to %d primary and %d subtree notificationAppInfos",
+		subscribePath, len(nAppSubInfo.ntfAppInfoTrgt), len(nAppSubInfo.ntfAppInfoTrgtChlds))
+
+	for i, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
+		log.Infof("pri[%d] = %v", i, nAppInfo)
+		nInfo := sc.addNInfo(nAppInfo)
 		sc.tgtInfos = append(sc.tgtInfos, nInfo)
 	}
 
-	for _, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
-		sc.addNInfo(&nAppInfo)
+	for i, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
+		log.Infof("sub[%d] = %v", i, nAppInfo)
+		sc.addNInfo(nAppInfo)
 	}
 }
 
@@ -350,9 +271,10 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 		return err
 	}
 
+	topNode := []*yangNodeInfo{new(yangNodeInfo)}
 	for _, k := range keys {
 		ne.key = &k
-		ne.sendNotification(nInfo, nil)
+		ne.sendNotification(nInfo, topNode)
 	}
 
 	return nil
@@ -385,44 +307,69 @@ func (ne *notificationEvent) process() {
 }
 
 // findModifiedFields determines db fields changed since last notification
-func (ne *notificationEvent) findModifiedFields() ([]string, error) {
+func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
 	nInfo := ne.nInfo
-	entryDeleted := true
-	var dbEntry db.Value
-
-	// Retrieve Db entry from redis using DB instance where pubsub is registered
-	// for onChange only if entry is NOT deleted.
-	// TODO this can fail if db caching is enabled in the system.
-	// TODO move this functionality inside DiffAndMergeOnChangeCache itself
-	if ne.event != db.SEventDel {
-		dbEntry, _ = ne.db.GetEntry(nInfo.table, *ne.key)
-		entryDeleted = false
-	}
 
 	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
 	// and retrieve modified fields. Also merge changes in cache
-	chgFields := nInfo.sInfo.dbs[nInfo.dbno].DiffAndMergeOnChangeCache(dbEntry, nInfo.table, *ne.key, entryDeleted)
+	d := nInfo.sInfo.dbs[nInfo.dbno]
+	entryDiff, err := d.DiffAndMergeOnChangeCache(nInfo.table, *ne.key, (ne.event == db.SEventDel))
+	if err != nil {
+		return nil, err
+	}
 
-	log.V(3).Infof("[%s] findModifiedFields: changed db fields: %v", ne.id, chgFields)
-	log.V(3).Infof("[%s] findModifiedFields: monitored fields: %v", ne.id, nInfo.fields)
+	var modFields []*yangNodeInfo
 
-	var modFields []string
-	for _, f := range chgFields {
+	// When a new db entry is created, the notification infra can fetch full
+	// content of target path.
+	if entryDiff.EntryCreated {
+		log.Infof("[%s] Entry created;", ne.id)
+		modFields = append(modFields, &yangNodeInfo{})
+		return modFields, nil
+	}
+
+	// When entry is deleted, mark the whole target path as deleted.
+	// FIXME this does not work if a container maps to multiple tables
+	if entryDiff.EntryDeleted {
+		log.Infof("[%s] Entry deleted;", ne.id)
+		modFields = append(modFields, &yangNodeInfo{deleted: true})
+		return modFields, nil
+	}
+
+	// Collect yang leaf info for updated fields
+	for _, f := range entryDiff.UpdatedFields {
 		for _, nDbFldInfo := range nInfo.fields {
-			if _, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				modFields = append(modFields, f)
-				break
+			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				log.Infof("[%s] Field %s modified; path=%s/%s", ne.id, f, nDbFldInfo.rltvPath, leaf)
+				modFields = append(modFields, &yangNodeInfo{
+					parentPrefix: nDbFldInfo.rltvPath,
+					leafName:     leaf,
+				})
+			}
+		}
+	}
+
+	// Collect yang leaf info for deleted fields
+	for _, f := range entryDiff.DeletedFields {
+		for _, nDbFldInfo := range nInfo.fields {
+			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				log.Infof("[%s] Field %s deleted; path=%s/%s", ne.id, f, nDbFldInfo.rltvPath, leaf)
+				modFields = append(modFields, &yangNodeInfo{
+					parentPrefix: nDbFldInfo.rltvPath,
+					leafName:     leaf,
+					deleted:      true,
+				})
 			}
 		}
 	}
 
 	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, modFields)
 
-	return modFields, nil
+	return modFields, err
 }
 
-func (ne *notificationEvent) getValue(path string) ([]byte, error) {
-	var payload []byte
+func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, error) {
+	var payload ygot.ValidatedGoStruct
 
 	nInfo := ne.nInfo
 	app := nInfo.app
@@ -441,17 +388,18 @@ func (ne *notificationEvent) getValue(path string) ([]byte, error) {
 		return payload, err
 	}
 
-	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_IETF_JSON)
+	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_YGOT)
 
 	if err == nil {
-		payload = resp.Payload
+		payload = *resp.ValueTree
 	}
 
 	return payload, err
 }
 
 func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path {
-	in := dbKeyInfo{
+	in := processSubRequest{
+		ctxID:  ne.id,
 		dbno:   nInfo.dbno,
 		table:  nInfo.table,
 		key:    ne.key,
@@ -466,7 +414,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 		log.Infof("[%s] Path template: %s", ne.id, path.String(in.path))
 	}
 
-	out, err := (*nInfo.app).processSubscribe(in)
+	out, err := (*nInfo.app).processSubscribe(&in)
 	if err != nil {
 		log.Warningf("[%s] processSubscribe returned err: %v", ne.id, err)
 		return nil
@@ -501,7 +449,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 	return out.path
 }
 
-func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []string) {
+func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []*yangNodeInfo) {
 	prefix := nInfo.path
 	if path.HasWildcardKey(prefix) {
 		prefix = ne.dbkeyToYangPath(nInfo)
@@ -511,7 +459,6 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		}
 	}
 
-	paths := make([]string, 0, len(fields))
 	sInfo := nInfo.sInfo
 	prefixStr, err := ygot.PathToString(prefix)
 	if err != nil {
@@ -519,43 +466,136 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		return
 	}
 
-	for _, f := range fields {
-		for _, nDbFldInfo := range nInfo.fields {
-			if suffix, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				paths = append(paths, prefixStr+nDbFldInfo.rltvPath+"/"+suffix)
+	resp := &SubscribeResponse{
+		Path:      prefixStr,
+		Timestamp: time.Now().UnixNano(),
+	}
+
+	log.Infof("[%s] preparing SubscribeResponse for %s", ne.id, prefixStr)
+	var numUpdate uint32
+
+	for _, lv := range fields {
+		leafPath := lv.getPath()
+
+		// Blindly treat DB delete as yang delete.. Will it work always??
+		// Probably need an option for apps to customize this behavior.
+		if lv.deleted {
+			log.V(3).Infof("[%s] %s deleted", ne.id, leafPath)
+			resp.Delete = append(resp.Delete, leafPath)
+			continue
+		}
+
+		data, err := ne.getValue(prefixStr + leafPath)
+
+		if sInfo.syncDone && isNotFoundError(err) {
+			log.V(3).Infof("[%s] %s not found", ne.id, leafPath)
+			resp.Delete = append(resp.Delete, leafPath)
+			continue
+		}
+		if err != nil {
+			log.Warningf("[%s] skip notification -- %v", ne.id, err)
+			continue
+		}
+
+		log.V(3).Infof("[%s] %s = %v", ne.id, leafPath, data)
+		lv.valueTree = data
+		numUpdate++
+	}
+
+	switch {
+	case numUpdate == 0:
+		// No updates; retain resp.Path=prefixStr and resp.Update=nil
+	case numUpdate == 1 && len(resp.Delete) == 0:
+		// There is only one update and no deletes. Overwrite the resp.Path
+		// with the path to parent container of update value.
+		for _, lv := range fields {
+			if lv.valueTree != nil {
+				if lv.isTargetNode(nInfo) {
+					// For target path of nInfo, set resp.Path to its parent container
+					pp := path.SubPath(prefix, 0, path.Len(prefix)-1)
+					resp.Path, err = ygot.PathToString(pp)
+				} else {
+					resp.Path = prefixStr + lv.parentPrefix
+				}
+				resp.Update = lv.valueTree
+				log.Infof("[%s] Single update case; Path=\"%s\", Update=%T",
+					ne.id, resp.Path, resp.Update)
+				break
+			}
+		}
+	default:
+		// There are > 1 updates or 1 update with few delete paths. Hence retain resp.Path
+		// as prefixStr itself. Coalesce the values by merging them into a new data tree.
+		tmpRoot := new(ocbinds.Device)
+		resp.Update, err = mergeUpdateValue(tmpRoot, prefixStr, nil)
+		if err != nil {
+			break
+		}
+
+		log.Infof("[%s] Coalesce %d updates; Path=\"%s\", Update=%T",
+			ne.id, numUpdate, resp.Path, resp.Update)
+		for _, lv := range fields {
+			if lv.valueTree == nil {
+				continue
+			}
+			_, err = mergeUpdateValue(tmpRoot, prefixStr+lv.parentPrefix, lv.valueTree)
+			if err != nil {
 				break
 			}
 		}
 	}
 
-	// Load whole container/list if fields are not specified.
-	// Used for initial sync messages
-	if len(fields) == 0 {
-		paths = append(paths, prefixStr)
+	if err != nil {
+		log.Warningf("[%s] skip notification -- %v", ne.id, err)
+		return
 	}
 
-	for _, p := range paths {
-		data, err := ne.getValue(p)
-		if _, ok := err.(tlerr.NotFoundError); ok && sInfo.syncDone {
-			// Ignore "not found" errors before after sync done
-			err = nil
-		}
+	log.Infof("[%s] Sending %d updates and %d deletes", ne.id, numUpdate, len(resp.Delete))
+	sInfo.q.Put(resp)
+}
 
-		if err == nil {
-			// TODO combine all values into single payload.
-			log.Infof("[%s] Sending SubscribeResponse for path %s", ne.id, p)
-			log.V(1).Infof("[%s] data = %s", ne.id, data)
+// yangNodeInfo holds path and value for a yang leaf
+type yangNodeInfo struct {
+	parentPrefix string
+	leafName     string
+	deleted      bool
+	valueTree    ygot.ValidatedGoStruct
+}
 
-			sInfo.q.Put(&SubscribeResponse{
-				Path:         p,
-				Payload:      data,
-				Timestamp:    time.Now().UnixNano(), // TODO
-				SyncComplete: sInfo.syncDone,
-			})
-		} else {
-			log.Warningf("[%s] skip notification -- %v", ne.id, err)
-		}
+func (lv *yangNodeInfo) getPath() string {
+	if len(lv.leafName) == 0 {
+		return lv.parentPrefix
 	}
+	return lv.parentPrefix + "/" + lv.leafName
+}
+
+// isTargetLeaf checks if this yang node is the target path of the notificationInfo.
+func (lv *yangNodeInfo) isTargetNode(nInfo *notificationInfo) bool {
+	return len(lv.parentPrefix) == 0 && len(lv.leafName) == 0
+}
+
+func mergeUpdateValue(ygRoot *ocbinds.Device, pathStr string, value ygot.ValidatedGoStruct) (ygot.ValidatedGoStruct, error) {
+	p, err := ygot.StringToStructuredPath(pathStr)
+	if err != nil {
+		return nil, err
+	}
+
+	path.RemoveModulePrefix(p)
+	var pNode ygot.ValidatedGoStruct
+
+	ygNode, _, err := ytypes.GetOrCreateNode(ygSchema.RootSchema(), ygRoot, p)
+	if err != nil {
+		return nil, err
+	}
+	if n, ok := ygNode.(ygot.ValidatedGoStruct); ok {
+		pNode = n
+	} else {
+		return nil, fmt.Errorf("GetOrCreateNode returned %T; is not a ValidatedGoStruct", ygNode)
+	}
+	if value != nil {
+		err = ygot.MergeStructInto(pNode, value)
+	}
+	return pNode, err
 }
 
 func stophandler(stop chan struct{}) {

@@ -293,14 +293,16 @@ func removeElementIfHasPrefix(sl []string, str string) []string {
 	return sl
 }
 
+/*************************************************/
+
 // notificationInfoBuilder provides utility APIs to build notificationAppInfo
 // data.
 type notificationInfoBuilder struct {
 	pathInfo *PathInfo
 	yangMap  yangMapTree
 
-	primaryInfos []notificationAppInfo
-	subtreeInfos []notificationAppInfo
+	primaryInfos []*notificationAppInfo
+	subtreeInfos []*notificationAppInfo
 
 	requestPath *gnmi.Path
 	currentPath *gnmi.Path // Path cone to be used in notificationAppInfo
@@ -318,7 +320,7 @@ type yangMapTree struct {
 	subtree map[string]*yangMapTree
 }
 
-func (nb *notificationInfoBuilder) Build() (*notificationSubAppInfo, error) {
+func (nb *notificationInfoBuilder) Build() (*translateSubResponse, error) {
 	log.Infof("translateSubscribe( %s )", nb.pathInfo.Path)
 
 	var err error
@@ -343,27 +345,24 @@ func (nb *notificationInfoBuilder) Build() (*notificationSubAppInfo, error) {
 	log.Infof("Found %d primary and %d subtree notificationAppInfo",
 		len(nb.primaryInfos), len(nb.subtreeInfos))
 
-	return &notificationSubAppInfo{
+	return &translateSubResponse{
 		ntfAppInfoTrgt:      nb.primaryInfos,
 		ntfAppInfoTrgtChlds: nb.subtreeInfos,
 	}, nil
 }
 
 func (nb *notificationInfoBuilder) New() *notificationInfoBuilder {
-	infos := &nb.primaryInfos
-	if nb.treeDepth != 0 {
-		infos = &nb.subtreeInfos
+	nb.currentInfo = &notificationAppInfo{
+		path:                nb.currentPath,
+		dbno:                db.MaxDB,
+		isOnChangeSupported: true,
+		pType:               OnChange,
 	}
-
-	*infos = append(*infos,
-		notificationAppInfo{
-			path:                nb.currentPath,
-			dbno:                db.MaxDB,
-			isOnChangeSupported: true,
-			pType:               OnChange,
-		})
-
-	nb.currentInfo = &(*infos)[len(*infos)-1]
+	if nb.treeDepth == 0 {
+		nb.primaryInfos = append(nb.primaryInfos, nb.currentInfo)
+	} else {
+		nb.subtreeInfos = append(nb.subtreeInfos, nb.currentInfo)
+	}
 	return nb
 }
 
@@ -385,8 +384,14 @@ func (nb *notificationInfoBuilder) Key(keyComp ...string) *notificationInfoBuild
 
 func (nb *notificationInfoBuilder) Field(yangAttr, dbField string) *notificationInfoBuilder {
 	// Ignore unwanted fields
-	if len(nb.fieldFilter) != 0 && yangAttr != nb.fieldFilter {
-		return nb
+	if len(nb.fieldFilter) != 0 {
+		if yangAttr != nb.fieldFilter {
+			return nb
+		}
+
+		// When request path points to a leaf, we do not want the
+		// yang leaf name in the fields map!!
+		yangAttr = ""
 	}
 
 	isAdded := false
@@ -438,7 +443,7 @@ func (nb *notificationInfoBuilder) SetFieldPrefix(prefix string) bool {
 
 	// Current path is still longer than given prefix. Must be
 	// field name filter
-	nb.fieldPrefix = prefix
+	nb.fieldPrefix = ""
 	nb.fieldFilter = nb.currentPath.Elem[i].Name
 	return true
 }

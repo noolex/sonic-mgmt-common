@@ -235,8 +235,8 @@ func (app *FbsApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *FbsApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
-	notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+func (app *FbsApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+	notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: req.path}
 
 	return nil, notSupported
 }
@@ -318,8 +318,8 @@ func (app *FbsApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
 	return resp, err
 }
 
-func (app *FbsApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
-	var resp subscribePathResponse
+func (app *FbsApp) processSubscribe(param *processSubRequest) (processSubResponse, error) {
+	var resp processSubResponse
 	return resp, tlerr.New("Not implemented")
 }
 
@@ -1200,6 +1200,8 @@ func (app *FbsApp) translateCUNextHopGroups(d *db.DB, opcode int) error {
 				nhopsParts[2] = "non-recursive"
 			} else if nhopPtr.Config.NextHopType == ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE {
 				nhopsParts[2] = "recursive"
+			} else if nhopPtr.Config.NextHopType == ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_OVERLAY {
+				nhopsParts[2] = "overlay"
 			}
 			nextHopsMap[entryId] = nhopsParts
 		}
@@ -2254,6 +2256,9 @@ func (app *FbsApp) processCpuPortGet(dbs [db.MaxDB]*db.DB) error {
 	nativeIfName := SONIC_CPU_PORT
 	policyBindTblVal, err := app.getPolicyBindingEntryFromDB(dbs[db.ConfigDB], nativeIfName)
 	if err != nil {
+		if isNotFoundError(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -3447,7 +3452,7 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 	if err == nil {
 		policyName = bindingEntry.Field["INGRESS_FORWARDING_POLICY"]
 		if policyName == "" {
-			return tlerr.NotFound("No forwarding policy applied to %v", uiIfName)
+			return nil
 		}
 	} else {
 		log.Info(err)
@@ -3581,6 +3586,8 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 					nhObj.State.NextHopType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE
 				} else if parts[3] == "non-recursive" {
 					nhObj.State.NextHopType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_NON_RECURSIVE
+				} else if parts[3] == "overlay" {
+					nhObj.State.NextHopType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_OVERLAY
 				}
 			}
 
@@ -3888,6 +3895,8 @@ func (app *FbsApp) fillPbfGroupNextHops(grpData db.Value, grpNhops *ocbinds.Open
 			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_RECURSIVE
 		} else if parts[2] == "non-recursive" {
 			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_NON_RECURSIVE
+		} else if parts[2] == "overlay" {
+			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_OVERLAY
 		}
 
 		if nhObj.Config != nil {

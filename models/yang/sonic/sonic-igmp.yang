@@ -1,0 +1,256 @@
+module sonic-igmp {
+    namespace "http://github.com/Azure/sonic-igmp";
+    prefix sigmp;
+    yang-version 1.1;
+
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    import sonic-common {
+        prefix cmn;
+    }
+
+    import sonic-port {
+        prefix prt;
+    }
+
+    import sonic-portchannel {
+        prefix spc;
+    }
+
+    import sonic-vrf {
+        prefix vrf;
+    }
+
+    import sonic-vlan {
+        prefix svlan;
+    }
+
+    import sonic-mgmt-port {
+        prefix smt;
+    }
+
+    import sonic-interface {
+        prefix sint;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC IGMP";
+
+    revision 2020-05-21 {
+        description
+	        "Initial revision.";
+    }
+
+    container sonic-igmp {
+        container IGMP_INTERFACE {
+            list IGMP_INTERFACE_LIST {
+                must "(/cmn:operation/cmn:operation = 'DELETE') or (../../IGMP_INTERFACE_QUERY/IGMP_INTERFACE_QUERY_LIST[interface-id = igmpintfname]/enabled='true')" {
+                    error-message "IGMP not enabled on this interface";
+                }
+
+                key "igmpintfname mcastgrpaddr srcaddr";
+                leaf igmpintfname{
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                        type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                        }
+                    }
+                } 
+
+                leaf mcastgrpaddr {
+                    description "Multicast Group Address";
+                    type inet:ipv4-address;
+                }
+
+                leaf srcaddr {
+                    description "Source Address";
+                    type inet:ipv4-address;
+                }
+                leaf enable {
+                    type boolean;
+                    description
+                        "Flag to enable or disable igmp feature.";
+                }
+            }
+        }
+        container IGMP_INTERFACE_QUERY {
+            list IGMP_INTERFACE_QUERY_LIST {
+                key "interface-id";
+
+                leaf interface-id{
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                        type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                        }
+                    }
+                }
+
+                leaf enabled {
+                    type boolean;
+                    description
+                        "Flag to enable or disable igmp feature.";
+                }
+
+                leaf version {
+                    must "(../enabled='true')" {
+                         error-message "Conflicting IGMP configuration";
+                    }
+                    type uint8 {
+                        range "2..3"{
+                            error-message "Invalid IGMP version.";
+                        }
+                    }
+                }
+
+                leaf query-interval {
+                    must "(../enabled='true')" {
+                         error-message "Conflicting IGMP configuration";
+                    }
+                    type uint32 {
+                        range "1..1024" {
+                            error-message "Invalid IGMP Query Interval.";
+                        }
+                    }
+                }
+				
+                leaf last-member-query-count {
+                    must "(../enabled='true')" {
+                         error-message "Conflicting IGMP configuration";
+                    }
+                    type uint32 {
+                        range "1..7"{
+                            error-message "Invalid IGMP Last Member Query Interval.";
+                        }
+                    }
+                }
+
+                leaf last-member-query-interval {
+                    must "(../enabled='true')" {
+                         error-message "Conflicting IGMP configuration";
+                    }
+                    type uint32 {
+                        range "1..255"{
+                            error-message "Invalid IGMP Last Member Query Interval.";
+                        }
+                    }
+                }
+				
+                leaf query-max-response-time {
+                    must "(../enabled='true')" {
+                         error-message "Conflicting IGMP configuration";
+                    }
+                    type uint16 {
+                         range "10..250"{
+                              error-message "Invalid IGMP Query Max Response Time.";
+                         }
+                    }
+                }				
+            }
+        }
+   }
+
+   rpc get-igmp-join {
+        description "RPC to fetch the IGMP join";
+
+        input {
+            leaf vrf-name {
+                type string;
+                default "default";
+                description
+                    "Fetches igmp join for  given VRF name. if VRF name is not present, the default VRF is used";
+            }
+        }
+
+        output {
+            leaf status {
+                type string;
+                description
+                    "On success, returns vtysh JSON string format output of all IGMP join.";
+            }
+        }
+    }
+
+   rpc clear-igmp {
+
+    description "RPC for clearing IGMP sessions. Input can be :
+        1. All IGMP sessions in an Interface in default VRF
+        2. All IGMP sessions in an Interface within a VRF  ";
+
+    input {
+        leaf vrf-name {
+            type union {
+                type string {
+                    pattern "default";
+                }
+                type leafref {
+                    path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                }
+            }
+            description
+                "IGMP VRF name.";
+        }
+
+        leaf interface {
+            type union {
+                type leafref {
+                    path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                }
+                type leafref {
+                    path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                }
+                type leafref {
+                    path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                }
+            }
+            description
+                "Interface name on which the Igmp sessions have to be cleared";
+        }
+
+        leaf interface-all {
+            type boolean; 
+            description
+                "Igmp have to be cleared for all interfaces";
+        }
+    }
+
+    output {
+        leaf status {
+            type string;
+            description
+                "Success / failure in clearing IGMP operation execution request.";
+        }
+    }
+  }
+}

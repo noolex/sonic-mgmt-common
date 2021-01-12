@@ -228,7 +228,7 @@ func (app *AclApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationSubAppInfo, error) {
+func (app *AclApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
 	ymap := yangMapTree{
 		subtree: map[string]*yangMapTree{
 			"config": &yangMapTree{
@@ -254,7 +254,7 @@ func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notif
 	}
 
 	nb := notificationInfoBuilder{
-		pathInfo: NewPathInfo(path),
+		pathInfo: NewPathInfo(req.path),
 		yangMap:  ymap,
 	}
 
@@ -307,6 +307,12 @@ func (app *AclApp) translateSubAclEntry(nb *notificationInfoBuilder) error {
 			nb.Field("dscp", ACL_RULE_FIELD_DSCP)
 			nb.Field("protocol", ACL_RULE_FIELD_IP_PROTOCOL)
 		}
+		if nb.SetFieldPrefix("actions/config") {
+			nb.Field("forwarding-action", ACL_RULE_PACKET_ACTION)
+		}
+		if nb.SetFieldPrefix("actions/state") {
+			nb.Field("forwarding-action", ACL_RULE_PACKET_ACTION)
+		}
 	}
 
 	//TODO
@@ -318,8 +324,8 @@ func (app *AclApp) translateSubAclIntf(nb *notificationInfoBuilder) error {
 	return nil
 }
 
-func (app *AclApp) processSubscribe(param dbKeyInfo) (subscribePathResponse, error) {
-	resp := subscribePathResponse{
+func (app *AclApp) processSubscribe(param *processSubRequest) (processSubResponse, error) {
+	resp := processSubResponse{
 		path: param.path,
 	}
 
@@ -406,7 +412,7 @@ func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (Ge
 	}
 
 	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path,
-			(*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
+		(*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
