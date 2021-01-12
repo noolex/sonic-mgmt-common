@@ -7,6 +7,10 @@ module sonic-igmp {
         prefix inet;
     }
 
+    import sonic-common {
+        prefix cmn;
+    }
+
     import sonic-port {
         prefix prt;
     }
@@ -18,7 +22,7 @@ module sonic-igmp {
     import sonic-vrf {
         prefix vrf;
     }
-    
+
     import sonic-vlan {
         prefix svlan;
     }
@@ -26,7 +30,11 @@ module sonic-igmp {
     import sonic-mgmt-port {
         prefix smt;
     }
-  
+
+    import sonic-interface {
+        prefix sint;
+    }
+
     organization
         "SONiC";
 
@@ -44,7 +52,7 @@ module sonic-igmp {
     container sonic-igmp {
         container IGMP_INTERFACE {
             list IGMP_INTERFACE_LIST {
-                must "(../../IGMP_INTERFACE_QUERY/IGMP_INTERFACE_QUERY_LIST/enabled='true')" {
+                must "(/cmn:operation/cmn:operation = 'DELETE') or (../../IGMP_INTERFACE_QUERY/IGMP_INTERFACE_QUERY_LIST[interface-id = igmpintfname]/enabled='true')" {
                     error-message "IGMP not enabled on this interface";
                 }
 
@@ -62,6 +70,9 @@ module sonic-igmp {
                         }
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
                         }
                     }
                 } 
@@ -100,6 +111,9 @@ module sonic-igmp {
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
                         }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                        }
                     }
                 }
 
@@ -119,7 +133,7 @@ module sonic-igmp {
                         }
                     }
                 }
-	
+
                 leaf query-interval {
                     must "(../enabled='true')" {
                          error-message "Conflicting IGMP configuration";
