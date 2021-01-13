@@ -1843,22 +1843,29 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
         if len(vlanMap) != 0 {
             res_map[VLAN_TN] = vlanMap
             if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
+	        map_val := (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN]
                 for vlanName := range vlanMap {
-                    ifStr := (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"]
-                    check := false
-                    strList := utils.GenerateMemberPortsSliceFromString(&ifStr)
-                    for _,strName := range strList{
-                        if (strName == ifName){
-                            check = true
-                            break
+		    if _,ok := map_val[vlanName];ok{
+                        ifStr := (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"]
+                        check := false
+                        strList := utils.GenerateMemberPortsSliceFromString(&ifStr)
+                        for _,strName := range strList{
+                            if (strName == ifName){
+                                check = true
+                                break
+                            }
                         }
-                    }
+                        if !check{
+                            ifStr = ifStr + ","+ifName
+                            (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"] = ifStr
+                        }
 
-                    if !check{
-                        ifStr = ifStr + ","+ifName
-                        (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB][VLAN_TN][vlanName].Field["members@"] = ifStr
-                    }
-		}
+		    }else{
+			map_val[vlanName] = db.Value{Field:make(map[string]string)}
+			map_val[vlanName].Field["members@"] = ifName
+		    }
+
+	        }
             } else {
             subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
             subOpMap[db.ConfigDB] = res_map
