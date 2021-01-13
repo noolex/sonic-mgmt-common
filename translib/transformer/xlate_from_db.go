@@ -101,7 +101,12 @@ func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) 
 			if strings.Contains(xpath, "sonic") {
 				pathList := strings.Split(xpath, "/")
 				xpath = pathList[SONIC_TABLE_INDEX]+ "/" + pathList[SONIC_FIELD_INDEX]
-				if _, ok := xDbSpecMap[xpath]; ok {
+				if xpath == fldXpath {
+					if sonicListInfo, ok := xDbSpecMap[pathList[SONIC_TABLE_INDEX]+ "/" + pathList[SONIC_LIST_INDEX]]; ok {
+						entry = sonicListInfo.dbEntry.Dir[pathList[SONIC_FIELD_INDEX]]
+						yngTerminalNdDtType = sonicListInfo.dbEntry.Dir[pathList[SONIC_FIELD_INDEX]].Type.Kind
+					}
+				} else if _, ok := xDbSpecMap[xpath]; ok {
 					entry = xDbSpecMap[xpath].dbEntry
 					yngTerminalNdDtType = entry.Type.Kind
 				}
