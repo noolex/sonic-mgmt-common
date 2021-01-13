@@ -55,7 +55,7 @@ type subscribeReq struct {
 type subscribePathXlator struct {
 	gPath           *gnmipb.Path
 	pathXlateInfo   *XfmrSubscribePathXlateInfo
-	ygListXpathInfo *yangXpathInfo
+	ygTrgtXpathInfo *yangXpathInfo
 	uriPath         string
 	subReq          *subscribeReq
 }
@@ -101,9 +101,9 @@ func (reqXlator *subscribeReqXlator) getSubscribePathXlator(gPath *gnmipb.Path, 
 	reqXlator.pathXlator.gPath = gPath
 	reqXlator.pathXlator.pathXlateInfo = &(XfmrSubscribePathXlateInfo{Path: gPath, ygXpathInfo: ygXpathInfo})
 	reqXlator.pathXlator.uriPath = uriPath
-	reqXlator.pathXlator.ygListXpathInfo = nil
+	reqXlator.pathXlator.ygTrgtXpathInfo = ygXpathInfo
 	if reqXlator.subReq.xlateNodeType == TARGET_NODE {
-		if err = reqXlator.pathXlator.setTrgtListYgXpathInfo(); err != nil {
+		if err = reqXlator.pathXlator.setTrgtYgXpathInfo(); err != nil {
 			log.Error("Error in setting the YgXpathInfo of the last LIST node in the path and the error is :", err)
 			return nil, err
 		}
@@ -111,13 +111,13 @@ func (reqXlator *subscribeReqXlator) getSubscribePathXlator(gPath *gnmipb.Path, 
 	return reqXlator.pathXlator, err
 }
 
-func (pathXltr *subscribePathXlator) setTrgtListYgXpathInfo() (error) {
+func (pathXltr *subscribePathXlator) setTrgtYgXpathInfo() (error) {
 	log.Info("Entering into the setTrgtListYgXpathInfo: ygPath: ", pathXltr.subReq.ygPath)
 
 	ygXpathInfo := pathXltr.pathXlateInfo.ygXpathInfo
 	ygPathTmp := pathXltr.subReq.ygPath
 
-	for ygXpathInfo != nil && !ygXpathInfo.yangEntry.IsList() {
+	for ygXpathInfo != nil && len(ygXpathInfo.xfmrKey) == 0 {
 		tIdx := strings.LastIndex(ygPathTmp, "/")
 		// -1: not found, and 0: first character in the path
 		if tIdx > 0 {
@@ -136,8 +136,8 @@ func (pathXltr *subscribePathXlator) setTrgtListYgXpathInfo() (error) {
 			ygXpathInfo = ygXpathInfoTmp
 		}
 	}
-	if ygXpathInfo != nil && ygXpathInfo.yangEntry.IsList() {
-		pathXltr.ygListXpathInfo = ygXpathInfo
+	if ygXpathInfo != nil {
+		pathXltr.ygTrgtXpathInfo = ygXpathInfo
 	}
 	return nil
 }
@@ -474,15 +474,15 @@ func (pathXltr *subscribePathXlator) handleYangToDbKeyXfmr() (string, error) {
 
 	log.Info("handleYangToDbKeyXfmr: isTrgtPathWldcrd: ", pathXltr.subReq.isTrgtPathWldcrd)
 
-	if pathXltr.ygListXpathInfo == nil || pathXltr.subReq.isTrgtPathWldcrd {
-		if pathXltr.ygListXpathInfo == nil {
-			log.Info("handleYangToDbKeyXfmr: subscribe path does not have list node: ", pathXltr.uriPath)
+	if pathXltr.ygTrgtXpathInfo == nil || pathXltr.subReq.isTrgtPathWldcrd {
+		if pathXltr.ygTrgtXpathInfo == nil {
+			log.Info("handleYangToDbKeyXfmr: subscribe path does not have yang to db key transformer: ", pathXltr.uriPath)
 		}
 		return "*", nil
 	}
 
-	if len(pathXltr.ygListXpathInfo.xfmrKey) > 0 {
-		ygXpathInfo := pathXltr.ygListXpathInfo
+	if len(pathXltr.ygTrgtXpathInfo.xfmrKey) > 0 {
+		ygXpathInfo := pathXltr.ygTrgtXpathInfo
 		log.Info("handleYangToDbKeyXfmr: key transformer name:", ygXpathInfo.xfmrKey)
 		currDbNum := db.DBNum(ygXpathInfo.dbIndex)
 		ygotRoot, err := pathXltr.unMarshallYgotObj(pathXltr.pathXlateInfo.Path)
@@ -498,21 +498,39 @@ func (pathXltr *subscribePathXlator) handleYangToDbKeyXfmr() (string, error) {
 			return dBTblKey, errKey
 		}
 	} else {
-		log.Info("handleYangToDbKeyXfmr: pathXltr.ygListXpathInfo.dbIndex: ", pathXltr.ygListXpathInfo.dbIndex)
-		keyDelm := pathXltr.subReq.dbs[pathXltr.ygListXpathInfo.dbIndex].Opts.KeySeparator
+		log.Info("handleYangToDbKeyXfmr: default db key translation..: ", pathXltr.uriPath)
+		log.Info("handleYangToDbKeyXfmr: pathXltr.ygListXpathInfo.dbIndex: ", pathXltr.ygTrgtXpathInfo.dbIndex)
+		keyDelm := pathXltr.subReq.dbs[pathXltr.ygTrgtXpathInfo.dbIndex].Opts.KeySeparator
 		log.Info("handleYangToDbKeyXfmr: keyDelm: ", keyDelm)
 
-		dbKey := ""
+		dbKey := "*"
 		isKeyEmpty := true
 
-		for _, pathElem := range pathXltr.gPath.Elem {
-			for _, kv := range pathElem.Key {
-				if isKeyEmpty { dbKey = kv; isKeyEmpty = false; continue }
-				dbKey = dbKey + keyDelm + kv
+		pathElems := pathXltr.gPath.Elem
+		ygPath := "/"+pathElems[0].Name
+
+		for idx := 1; idx <= len(pathElems); idx++ {
+			ygNames := strings.Split(pathElems[idx].Name, ":")
+			if len(ygNames) == 1 {
+				ygPath = ygPath + "/" + ygNames[0]
+			} else {
+				ygPath = ygPath + "/" + ygNames[1]
+			}
+			log.Info("handleYangToDbKeyXfmr: ygPath: ", ygPath)
+			if len(pathElems[idx].Key) > 0 {
+				if ygXpathInfo, ok := xYangSpecMap[ygPath]; ok {
+					if ygXpathInfo.virtualTbl == nil || !(*ygXpathInfo.virtualTbl) {
+						for _, kv := range pathElems[idx].Key {
+							if isKeyEmpty { dbKey = kv; isKeyEmpty = false; continue }
+							dbKey = dbKey + keyDelm + kv
+						}
+					}
+				} else {
+					log.Warning("handleYangToDbKeyXfmr: xpathinfo not found for the ygpath: ", ygPath)
+				}
 			}
 		}
-
-		log.Info("handleYangToDbKeyXfmr: dbKey: ", dbKey)
+		log.Info("handleYangToDbKeyXfmr: default translation: dbKey: ", dbKey)
 		return dbKey, nil
 	}
 }
@@ -526,7 +544,7 @@ func (pathXltr *subscribePathXlator) handleNonSubtreeNodeXlate() (error) {
 	if dBTblKey, err := pathXltr.handleYangToDbKeyXfmr(); err != nil {
 		return err
 	} else if len(dBTblKey) > 0 {
-		keyComp = strings.Split(dBTblKey, pathXltr.subReq.dbs[pathXltr.ygListXpathInfo.dbIndex].Opts.KeySeparator)
+		keyComp = strings.Split(dBTblKey, pathXltr.subReq.dbs[pathXltr.ygTrgtXpathInfo.dbIndex].Opts.KeySeparator)
 	}
 
 	ygXpathInfo := pathXltr.pathXlateInfo.ygXpathInfo
@@ -684,7 +702,11 @@ func (reqXlator *subscribeReqXlator) traverseYgXpathAndTranslate(ygXpNode *ygXpa
 		if chldNode.isParentTbl {
 			pathXlateInfo = parentPathXlateInfo
 			log.Info("traverseYgXpathAndTranslate: isParentTbl: true")
-			pathXlateInfo.copyDbFldYgPathMap(relUri, chldNode)
+			if len(chldNode.dbFldYgPathMap) > 0 || len(chldNode.dbTblFldYgPathMap) > 0 {
+				pathXlateInfo.copyDbFldYgPathMap(relUri, chldNode)
+			} else {
+				log.Info("traverseYgXpathAndTranslate: isParentTbl: no db field yang map found for the path: ", reqXlator.subReq.reqUri + chldNode.relUriPath)
+			}
 		} else {
 			var gPathCurr *gnmipb.Path
 			if gPathCurr, err = reqXlator.uriToAbsolutePath(chldNode.relUriPath); err != nil {
@@ -929,10 +951,11 @@ func (reqXlator *subscribeReqXlator) collectChldYgXPathInfo(ygEntry *yang.Entry,
 					log.Warning("collectChldYgXPathInfo: No db field name mapping for the yang leaf-name: ", childYgPath)
 					if len(chYgXpathInfo.xfmrField) > 0 {
 						log.Error("collectChldYgXPathInfo: Please add the field-name annotation, since the yang node has the field transformer: ", chYgXpathInfo.xfmrField)
+						return tlerr.InternalError{Format: "No Db field name mapping for the yang node", Path: childYgPath}
 					} else {
 						fldName := getDbFieldName(chYgXpathInfo)
 						if len(fldName) == 0 {
-							log.Error("collectChldYgXPathInfo: No db field name mapping for the yang node: ", childYgPath)
+							log.Error("Error: collectChldYgXPathInfo: No db field name mapping for the yang node: ", childYgPath)
 							return tlerr.InternalError{Format: "No Db field name mapping for the yang node", Path: childYgPath}
 						}
 						ygXpNode.addDbFldName(childYgEntry.Name, fldName)
@@ -940,21 +963,22 @@ func (reqXlator *subscribeReqXlator) collectChldYgXPathInfo(ygEntry *yang.Entry,
 				}
 			} else if (childYgEntry.IsList() || childYgEntry.IsContainer()) {
 				chldNode := ygXpNode
+				isVirtualTbl := (chYgXpathInfo.virtualTbl != nil && *chYgXpathInfo.virtualTbl)
 				if len(chYgXpathInfo.xfmrFunc) > 0 {
 					log.Infof("adding subtree xfmr func %v for the path %v ", chYgXpathInfo.xfmrFunc, childYgPath)
 					chldNode = ygXpNode.addChildNode(rltvChldUriPath, chYgXpathInfo)
 				} else if tblName != "" {
 					log.Infof("adding table name %v for the path %v ", tblName, childYgPath)
 					chldNode = ygXpNode.addChildNode(rltvChldUriPath, chYgXpathInfo)
-				} else if (chYgXpathInfo.xfmrTbl != nil) {
+				} else if (chYgXpathInfo.xfmrTbl != nil && !isVirtualTbl) {
 					log.Infof("adding table transformer %v for the path %v ", *chYgXpathInfo.xfmrTbl, childYgPath)
 					chldNode = ygXpNode.addChildNode(rltvChldUriPath, chYgXpathInfo)
 				} else {
-					if childYgEntry.IsList() {
+					if childYgEntry.IsList() && !isVirtualTbl {
 						log.Error("No table related information for the LIST yang node path: ", childYgPath)
 						return tlerr.InternalError{Format: "No yangXpathInfo found for the LIST / Container yang node path", Path: childYgPath}
 					}
-					log.Infof("Adding ygXpNode for the container with no tables mapped and the path %v", childYgPath)
+					log.Infof("Adding ygXpNode for the list node(with virtual table) / container with no tables mapped and the path %v", childYgPath)
 					chldNode = ygXpNode.addChildNode(rltvChldUriPath, chYgXpathInfo)
 					chldNode.isParentTbl = true
 				}
