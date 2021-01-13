@@ -729,18 +729,20 @@ func removeFromPorttaggedList(d *db.DB, remTrunkVlans []string, ifName *string, 
         cfgdVlanVal, ok := portEntry.Field["tagged_vlans@"]
         if ok {
             vlanRngSlice := utils.GenerateMemberPortsSliceFromString(&cfgdVlanVal)
-            for _, vlanStr := range vlanRngSlice {
-                if strings.Contains(vlanStr, "-") {
-                    _ = extractVlanIdsfrmRng(d, vlanStr, &cfgdVlanSlice)
+            for _, vlanId := range vlanRngSlice {
+                if strings.Contains(vlanId, "-") {
+                    _ = extractVlanIdsfrmRng(d, vlanId, &cfgdVlanSlice)
                 } else {
-                    cfgdVlanSlice = append(cfgdVlanSlice, vlanStr)
+                    cfgdVlanSlice = append(cfgdVlanSlice, "Vlan"+vlanId)
                 }
             }
         }
     }
     if len(cfgdVlanSlice) != 0 {
         //Generate new tagged_vlan list excluding vlans to be removed 
-        portVlanSlice := vlanDifference(cfgdVlanSlice, remTrunkVlans) //slice contains vlans in cfgdVlanSlice but not in remTrunkVlans
+        log.Info("----cfgdVlanSlice---", cfgdVlanSlice)
+        log.Info("-----remTrunkVlans---", remTrunkVlans)
+        portVlanSlice := vlanDifference(cfgdVlanSlice, remTrunkVlans) //replace tagged_vlans with slice containing vlans in cfgdVlanSlice but not in remTrunkVlans
         portVlanListMap[*ifName] = db.Value{Field:make(map[string]string)}
         portVlanSlice, _ = vlanIdstoRng(portVlanSlice)
         log.Info("-----------portVlanSlice ---", portVlanSlice)
@@ -832,16 +834,16 @@ func processIntfVlanMemberAdd(d *db.DB, vlanMembersMap map[string]map[string]db.
                     if cfgReqIfMode == existingIfMode {
                         continue
                     } else {
-                        var errStr string
-			intfNameUi := utils.GetUINameFromNativeName(&ifName)
                         switch existingIfMode {
                         case ACCESS:
-                            errStr = vlanName + " already configured as access for " + *intfNameUi
+			    continue
                         case TRUNK:
-                            errStr = vlanName + " already configured as trunk for " + *intfNameUi
+			    log.Info("Updating tagging mode")
+			    vlanMemberKey := vlanName + "|" + ifName
+			    vlanMemberMap[vlanMemberKey] = db.Value{Field:make(map[string]string)}
+			    vlanMemberMap[vlanMemberKey].Field["tagging_mode"] = ifEntry.Field["tagging_mode"]
+			    continue
                         }
-                        log.Error(errStr)
-                        return tlerr.InvalidArgsError{Format: errStr}
                     }
                 }
             }
@@ -926,6 +928,7 @@ func  processIntfVlanMemberRemoval(inParams *XfmrParams, ifVlanInfoList []*ifVla
         case TRUNK:
             /* Handling trunk-vlans delete */
             log.Info("Trunk VLAN Delete!")
+            log.Info("----------------trunkVlans---", trunkVlans)
             for _, trunkVlan := range trunkVlans {
                 err = validateVlanExists(d, &trunkVlan)
                 if err != nil {
@@ -1054,6 +1057,7 @@ func intfVlanMemberRemoval(swVlanConfig *swVlanMemberPort_t,
                     ifVlanInfo.trunkVlans = append(ifVlanInfo.trunkVlans, "Vlan"+strconv.Itoa(int(val.Uint16)))
                 }
             }
+            log.Info("-----------ifVlanInfo.trunkVlans---", ifVlanInfo.trunkVlans)
         }
     case IntfTypePortChannel:
         if swVlanConfig.swEthMember != nil {
@@ -1358,24 +1362,24 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
         }
 
         //Code to store port/portchannel tagged_vlan list, making sure no duplicate entries 
-        var cfgdVlanSlice []string
+        var cfgdTagdVlanSlice []string
         //get existing port's tagged vlan list
         portEntry, err := inParams.d.GetEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{*ifName}}) //portchannel handle
         if err == nil { //port entry exists
-            cfgdVlanVal, ok := portEntry.Field["tagged_vlans@"]
+            cfgdTagdVlanVal, ok := portEntry.Field["tagged_vlans@"] //e.g. cfgdTagdVlanVal = "1,2-200"
             if ok {
-                vlanRngSlice := utils.GenerateMemberPortsSliceFromString(&cfgdVlanVal)
-                for _, vlanStr := range vlanRngSlice {
-                    if strings.Contains(vlanStr, "-") { //e.g vlanStr - 1-100
-                        _ = extractVlanIdsfrmRng(inParams.d, vlanStr, &cfgdVlanSlice)
+                vlanRngSlice := utils.GenerateMemberPortsSliceFromString(&cfgdTagdVlanVal)
+                for _, vlanId := range vlanRngSlice {
+                    if strings.Contains(vlanId, "-") { //e.g vlanStr - 1-100
+                        _ = extractVlanIdsfrmRng(inParams.d, vlanId, &cfgdTagdVlanSlice)
                     } else {
-                        cfgdVlanSlice = append(cfgdVlanSlice, vlanStr)
+                        cfgdTagdVlanSlice = append(cfgdTagdVlanSlice, "Vlan"+vlanId)
                     }
                 }
             }
         }
-        //Remove vlans already in DB from the list to avoid duplicates
-	portVlanSlice := vlanDifference(trunkVlanSlice,cfgdVlanSlice)
+        //Remove vlans already in DB from the list new trunkVlanSlice to avoid duplicates
+	portVlanSlice := vlanDifference(trunkVlanSlice,cfgdTagdVlanSlice)
         log.Info("-------portVlanSlice----", portVlanSlice)
         //VlanSlice compress to range format
         portVlanSlice, _ = vlanIdstoRng(portVlanSlice)
