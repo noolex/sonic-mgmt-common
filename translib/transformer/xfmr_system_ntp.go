@@ -40,6 +40,14 @@ const NTP_MAX_PLAIN_TXT_LEN = 20
 
 const NTP_MAX_PWD_LEN = 64
 
+const (
+        NTP_DEFAULT_MINPOLL = 6
+)
+
+const (
+        NTP_DEFAULT_MAXPOLL = 10
+)
+
 var NTP_AUTH_TYPE_MAP = map[string]string{
         strconv.FormatInt(int64(ocbinds.OpenconfigSystem_NTP_AUTH_TYPE_NTP_AUTH_MD5), 10):"MD5",
         strconv.FormatInt(int64(ocbinds.OpenconfigSystem_NTP_AUTH_TYPE_NTP_AUTH_SHA1), 10):"SHA1",
@@ -163,15 +171,27 @@ var YangToDb_ntp_server_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPar
                 var minpoll_int int
                 if (minpoll != nil) {
                         minpoll_int = int(*minpoll)
-                        minpoll_int_str = strconv.Itoa(minpoll_int)
+                } else {
+                        // If not configured, ntpd has internal default minpoll/maxpoll,
+                        // subtree needs to enter the default value for configDB, so clish GET
+                        // can retrieve the default values
+                        minpoll_int = NTP_DEFAULT_MINPOLL
                 }
+
+                minpoll_int_str = strconv.Itoa(minpoll_int)
 
                 maxpoll := ntpServerConfig.Maxpoll
                 var maxpoll_int int
                 if (maxpoll != nil) {
                         maxpoll_int = int(*maxpoll)
-                        maxpoll_int_str = strconv.Itoa(maxpoll_int)
+                } else {
+                        // If not configured, ntpd has internal default minpoll/maxpoll,
+                        // subtree needs to enter the default value for configDB, so clish GET
+                        // can retrieve the default values
+                        maxpoll_int = NTP_DEFAULT_MAXPOLL
                 }
+
+                maxpoll_int_str = strconv.Itoa(maxpoll_int)
 
                 if ((minpoll_int_str != "") && (maxpoll_int_str != "")) {
                         if (minpoll_int >= maxpoll_int) {
