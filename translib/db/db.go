@@ -324,11 +324,13 @@ func NewDB(opt Options) (*DB, error) {
 
 	ipAddr := DefaultRedisLocalTCPEP
 	dbId := int(opt.DBNo)
+	dbPassword :=""
 	if dbInstName := getDBInstName(opt.DBNo); dbInstName != "" {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
 			dbSepStr := getDbSeparator(dbInstName)
+			dbPassword = getDbPassword(dbInstName)
 			if len(dbSepStr) > 0 {
 				if len(opt.TableNameSeparator) > 0 && opt.TableNameSeparator != dbSepStr {
 					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the" +
@@ -350,7 +352,7 @@ func NewDB(opt Options) (*DB, error) {
 		Network: "tcp",
 		Addr:    ipAddr,
 		//Addr:     DefaultRedisRemoteTCPEP,
-		Password: "", /* TBD */
+		Password: dbPassword, /* TBD */
 		// DB:       int(4), /* CONFIG_DB DB No. */
 		DB:          dbId,
 		DialTimeout: 0,
