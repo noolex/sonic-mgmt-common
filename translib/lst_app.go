@@ -303,16 +303,21 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 	// Next process Interfaces
 	if nil != root.Interfaces && len(root.Interfaces.Interface) > 0 {
 		for id, intfPtr := range root.Interfaces.Interface {
+			var ifName string
 			if nil == intfPtr.InterfaceRef || nil == intfPtr.InterfaceRef.Config ||
 				nil == intfPtr.InterfaceRef.Config.Interface {
 				goto SkipIntfCheck
 			}
-
-			if id != *intfPtr.InterfaceRef.Config.Interface {
-				return tlerr.NotSupported("Different ID %s and Interface name %s not supported", id, *intfPtr.InterfaceRef.Config.Interface)
+			ifName = *intfPtr.InterfaceRef.Config.Interface
+			if nil != intfPtr.InterfaceRef.Config.Subinterface {
+				ifName = ifName + "." + strconv.FormatUint(uint64(*intfPtr.InterfaceRef.Config.Subinterface), 10)
+			}
+			if id != ifName {
+				return tlerr.NotSupported("Different ID %s and Interface name %s not supported", id, ifName)
 			}
 
 		SkipIntfCheck:
+
 			if nil != intfPtr.UpstreamGroups && nil != intfPtr.DownstreamGroup {
 				return tlerr.InvalidArgs("Interface %s has both upstream and downstream groups", id)
 			}
@@ -331,9 +336,11 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 
 			if nil != intfPtr.DownstreamGroup && nil != intfPtr.DownstreamGroup.Config &&
 				nil != intfPtr.DownstreamGroup.Config.GroupName {
-				if nil != intfPtr.InterfaceRef.Config.Subinterface {
+
+				if nil != intfPtr.InterfaceRef && nil != intfPtr.InterfaceRef.Config && nil != intfPtr.InterfaceRef.Config.Subinterface {
 					return tlerr.NotSupported("SubInterface not supported")
 				}
+
 				if !isInterfaceNameValid(id, true) {
 					return tlerr.InvalidArgs("Interface %s is invalid for downstream", id)
 				}
