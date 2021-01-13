@@ -32,6 +32,11 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
          return CVLErrorInfo{ErrCode: CVL_SUCCESS}
     }
 
+    if _, ok := vc.CurCfg.Data["vlan"] ; !ok {
+        //vlan not in data
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
     key := strings.Split(vc.CurCfg.Key, "|")[1]
 
     keys := "VLAN_SUB_INTERFACE|"+strings.Split(key,".")[0]+"*"

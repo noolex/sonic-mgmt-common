@@ -52,6 +52,11 @@ module sonic-bgp-common {
     description
         "SONIC BGP common YANG attributes for Neighbors and Peer group";
 
+    revision 2021-01-08 {
+        description
+            "Added support for routed vlan-sub-interface.";
+    }
+
     revision 2020-07-26 {
         description
             "Change for sonic-loopback.yang.";
