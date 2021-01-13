@@ -546,13 +546,13 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                 }
 	    }
             log.Info("----done enable stp----")
-            //Add tagged/untagged vlan members
-            tagged_list, untagged_list := utils.GetFromCacheVlanMemberList(*ifName)
-            if (tagged_list != nil || untagged_list != nil){
-                log.Info("-----tagged list: ", tagged_list)
-                log.Info("-----untagged list: ", untagged_list)
-                err = addIntfMemberOnVlanCreation(inParams, ifName, tagged_list, untagged_list)
-                if err!=nil {
+            //Add tagged/untagged vlan members during vlan creation
+            tagged_set, untagged_set := utils.GetFromCacheVlanMemberList(*ifName)
+            log.Info("-----tagged list: ", tagged_set)
+            log.Info("-----untagged list: ", untagged_set)
+            if (tagged_set.PortSetSize() != 0 || untagged_set.PortSetSize() != 0) {
+                err = addIntfMemberOnVlanCreation(inParams, ifName, tagged_set.PortSetItems(), untagged_set.PortSetItems())
+                if err != nil {
                     return err
                 }
 	    }

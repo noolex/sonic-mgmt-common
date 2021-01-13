@@ -48,12 +48,53 @@ const (
 /* Representation of FEC derivation table */
 type fec_info_t map[string]map[string]map[string][]string
 
+/* Representation of VLAN tagged & untagged member list cache */
+var vlanMemberCache map[string]*vlan_member_list
+
 type vlan_member_list struct {
-    tagged []string
-    untagged []string //list of eth or portchannel interfaces 
+    tagged PortSet
+    untagged PortSet //set of eth or portchannel interfaces 
 }
 
-var vlanMemberCache map[string]*vlan_member_list//*sync.Map
+// PortSet a set representation of ports list. 
+type PortSet struct {
+    items map[string]struct{}
+}
+// PortSetAddItem adds port to the PortSet.
+func (s *PortSet) PortSetAddItem(item string) error {
+    if s.items == nil {
+        s.items = make(map[string]struct{})
+    }
+    if _, ok := s.items[item]; !ok {
+        s.items[item] = struct{}{}
+    }
+    return nil
+}
+// PortSetDelItem removes the item from the PortSet.
+func (s *PortSet) PortSetDelItem(key string) bool {
+    _, ok := s.items[key]
+    if ok {
+        delete(s.items, key)
+    }
+    return ok
+}
+// PortSetContains return true if Set contains the item
+func (s *PortSet) PortSetContains(item string) bool {
+    _, ok := s.items[item]
+    return ok
+}
+// PortSetSize returns the size of the set
+func (s *PortSet) PortSetSize() int {
+    return len(s.items)
+}
+// PortSetItems returns the ports stored
+func (s *PortSet) PortSetItems() []string {
+    PortsSlice := []string{}
+    for i := range s.items {
+        PortsSlice = append(PortsSlice, i)
+    }
+    return PortsSlice
+}
 
 /* Cached map of the default FEC modes */
 var default_fec_modes_cache fec_info_t
@@ -200,65 +241,62 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
         //Code to add port to list of tagged_vlans
         for _, vlan := range taggedVlanSlice {
             member_list, ok := vlanMemberCache[vlan]
-            found := false
             if !ok {
                 member_list = &vlan_member_list{}
-            } else {
-                //Check if portName already in tagged list
-                for _, item := range member_list.tagged {
-                    if item == portName {
-                        found = true
-                        break
-                    }
-                }
             }
-            if !found { //Add portName to Vlan's tagged list
-                member_list.tagged = append(member_list.tagged, portName)
+            //Check if portName already in tagged list
+            if !member_list.tagged.PortSetContains(portName) {
+                //Add portName to Vlan's tagged list
+                member_list.tagged.PortSetAddItem(portName)
                 vlanMemberCache[vlan] = member_list  //TODO:cache store only non-existing vlans
             }
             log.Info("-----vlanMemberCache[vlan]---", vlanMemberCache[vlan])
         }
     }
 
-    //Code to remove tagged ports from cache
+    //Code to remove tagged ports from vlan member cache
     keys := make([]string, 0, len(vlanMemberCache))
     for k := range vlanMemberCache {
         keys = append(keys, k)
     }
     log.Info("---port's----taggedVlanSlice---", taggedVlanSlice)
     log.Info("-----keys----", keys)
-    delPortFromVlanList := vlanDifference(keys,taggedVlanSlice)//vlans present in keys but not in taggedVlanSlice
+    delPortFromVlanList := vlanDifference(keys,taggedVlanSlice)//list of vlans present in keys but not in taggedVlanSlice
     log.Info("----------delPortFromVlanList----", delPortFromVlanList)
-        //Code to add port to list of tagged_vlans
-        for _, vlan := range delPortFromVlanList {
-            member_list := vlanMemberCache[vlan]
-            RemPortfromSlice(portName, &member_list.tagged)
-            log.Info("vlanMemberCache[vlan]: ",vlan, member_list)
+    for _, vlan := range delPortFromVlanList {
+        member_list := vlanMemberCache[vlan]
+        if member_list.tagged.PortSetContains(portName) {
+            member_list.tagged.PortSetDelItem(portName)
         }
-
-    //Handle field "access_vlan" update
-    vlanVal, ok := portEntry.Field["access_vlan"]
-    vlanVal = "Vlan"+vlanVal
-    if ok {
-        found := false
-        member_list, ok := vlanMemberCache[vlanVal]
-        if !ok {
-            member_list = &vlan_member_list{}
-        } else {
-            //Check if portName already in untagged list
-            for _, item := range member_list.untagged {
-                if item == portName {
-                    found = true
-                    break
-                }
-            }
-        }
-        if !found { //Add portName to untagged list
-            member_list.untagged = append(member_list.untagged, portName)
-            vlanMemberCache[vlanVal] = member_list  //TODO:cache store only non-existing vlans
-        }
+        log.Info("vlanMemberCache[vlan]: ",vlan, member_list)
     }
 
+    //Handle field "access_vlan" update
+    accessVlanVal, ok := portEntry.Field["access_vlan"]
+    accessVlanVal = "Vlan"+accessVlanVal
+    if ok {
+        member_list, ok := vlanMemberCache[accessVlanVal]
+        if !ok {
+            member_list = &vlan_member_list{}
+        }
+        //Check if portName already in untagged list
+        if !member_list.untagged.PortSetContains(portName) {
+            //Add portName to untagged list
+            member_list.untagged.PortSetAddItem(portName)
+            vlanMemberCache[accessVlanVal] = member_list  //TODO:cache store only non-existing vlans
+        }
+    }
+    //Handle port removal from untagged list
+    for _, vlan := range keys {
+        if vlan == accessVlanVal {
+            continue
+        }
+        member_list := vlanMemberCache[vlan]
+        if member_list.untagged.PortSetContains(portName) {
+            member_list.untagged.PortSetDelItem(portName)
+        }
+        log.Info("untagged--rem--vlanMemberCache[vlan]: ", vlan, member_list)
+    }
 }
 
 func deleteFromCacheForPort(portKey *db.Key) {
@@ -471,12 +509,12 @@ func IsValidAliasName(ifName *string) bool {
     return ok
 }
 
-// GetFromCacheVlanMemberList Get tagged/untagged list for given vlan
-func GetFromCacheVlanMemberList(vlanName string) ([]string, []string) {
+// GetFromCacheVlanMemberList Get tagged/untagged PortSet for given vlan
+func GetFromCacheVlanMemberList(vlanName string) (PortSet, PortSet) {
     if memberlist, ok := vlanMemberCache[vlanName]; ok {
         return memberlist.tagged, memberlist.untagged
     }
-    return nil, nil
+    return PortSet{},PortSet{}
 }
 
 // SortAsPerTblDeps - sort transformer result table list based on dependencies (using CVL API) tables to be used for CRUD operations

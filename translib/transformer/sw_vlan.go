@@ -655,13 +655,10 @@ func removeUntaggedVlanAndUpdateVlanMembTbl(d *db.DB, ifName *string,
         }
         vlanName := vlanMember.Get(0)
         vlanMemberKey := vlanName + "|" + *ifName
-	tagged_list,_ := utils.GetFromCacheVlanMemberList(vlanName)
+	taggedSet, _ := utils.GetFromCacheVlanMemberList(vlanName)
         if tagMode == "untagged" {
-	    for _,intfName := range tagged_list{
-		if intfName == *ifName{
-		    tagged_exist = true
-		    break
-		}
+            if taggedSet.PortSetContains(*ifName) {
+		tagged_exist = true
 	    }
             vlanMemberMap[vlanMemberKey] = db.Value{Field:map[string]string{}}
             return tagged_exist,&vlanName, nil
