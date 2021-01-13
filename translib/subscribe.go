@@ -391,7 +391,11 @@ func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, erro
 	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_YGOT)
 
 	if err == nil {
-		payload = *resp.ValueTree
+		if resp.ValueTree != nil {
+			payload = *resp.ValueTree
+		} else {
+			err = fmt.Errorf("nil value")
+		}
 	}
 
 	return payload, err
