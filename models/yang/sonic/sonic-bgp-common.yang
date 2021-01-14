@@ -39,6 +39,10 @@ module sonic-bgp-common {
         prefix ietf-yang;
     }
 
+    import sonic-interface {
+        prefix sintf;
+    }
+
     organization
         "SONiC";
 
@@ -47,6 +51,11 @@ module sonic-bgp-common {
 
     description
         "SONIC BGP common YANG attributes for Neighbors and Peer group";
+
+    revision 2021-01-08 {
+        description
+            "Added support for routed vlan-sub-interface.";
+    }
 
     revision 2020-07-26 {
         description
@@ -225,6 +234,9 @@ module sonic-bgp-common {
                     path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
                 }
                 type leafref {
+                    path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
+                }
+                type leafref {
                     path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                 }
                 type leafref {
@@ -263,7 +275,7 @@ module sonic-bgp-common {
             type uint8 {
                 range 1..254;
             }
-            must "((current() = 1 and (starts-with(current()/../neighbor, 'Ethernet') or starts-with(current()/../neighbor, 'PortChannel') or starts-with(current()/../neighbor, 'Vlan'))) or (not(starts-with(current()/../neighbor, 'Ethernet') or starts-with(current()/../neighbor, 'PortChannel') or starts-with(current()/../neighbor, 'Vlan'))))" {
+            must "((current() = 1 and (starts-with(current()/../neighbor, 'Eth') or starts-with(current()/../neighbor, 'Po') or starts-with(current()/../neighbor, 'Vlan'))) or (not(starts-with(current()/../neighbor, 'Eth') or starts-with(current()/../neighbor, 'Po') or starts-with(current()/../neighbor, 'Vlan'))))" {
                 error-message "Hops for connected neighbor cannot exceed 1";
             }
             description "TTL";
