@@ -23,10 +23,18 @@ module sonic-system-dns {
         prefix lo;
     }
 
+    import sonic-interface {
+        prefix sintf;
+    }
+
     import sonic-mgmt-port {
         prefix smt;
     }
  
+    revision 2021-01-08 {
+        description "Added support for routed vlan-sub-interface.";
+    }
+
     revision 2020-08-20 {
         description
             "Add vrf-name for DNS server.";
@@ -86,6 +94,9 @@ module sonic-system-dns {
                         }
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
                         }
                     }
                 }
