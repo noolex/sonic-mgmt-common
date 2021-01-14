@@ -721,7 +721,11 @@ func removePortAccessVlan(accessVlan *string, ifName *string, portVlanListMap ma
 func removeFromPorttaggedList(d *db.DB, remTrunkVlans []string, ifName *string, portVlanListMap map[string]db.Value) error {
     var err error
     var cfgdVlanSlice []string
-    portEntry, err := d.GetEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{*ifName}})
+    intfType, _, _ := getIntfTypeByName(*ifName)
+    intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getPortTableNameByDBId(intTbl, 4)
+    log.Info("----tblName---", tblName)
+    portEntry, err := d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{*ifName}})
     if err == nil {
         cfgdVlanVal, ok := portEntry.Field["tagged_vlans@"]
         if ok {
@@ -948,6 +952,7 @@ func  processIntfVlanMemberRemoval(inParams *XfmrParams, ifVlanInfoList []*ifVla
             if untagdVlan != nil {
                 removeFromMembersListForVlan(d, untagdVlan, ifName, vlanMap)
             }
+            removePortAccessVlan(untagdVlan, ifName, portVlanListMap)
             //Trunk Vlan Delete
             for _, trunkVlan := range trunkVlans {
                 err = removeTaggedVlanAndUpdateVlanMembTbl(d, &trunkVlan, ifName, vlanMemberMap, stpVlanPortMap, stpPortMap)
@@ -956,6 +961,7 @@ func  processIntfVlanMemberRemoval(inParams *XfmrParams, ifVlanInfoList []*ifVla
                 }
                 removeFromMembersListForVlan(d, &trunkVlan, ifName, vlanMap)
             }
+            err = removeFromPorttaggedList(d, trunkVlans, ifName, portVlanListMap)
         }
 
         removeStpOnInterfaceSwitchportDeletion(d, ifName, untagdVlan, trunkVlans, stpVlanPortMap, stpPortMap)
@@ -1215,6 +1221,11 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
     trunkVlanFound := false
 
     intTbl := IntfTypeTblMap[IntfTypeVlan]
+
+    ifTbl := IntfTypeTblMap[intfType] //port or portchannel
+    tblName, _ := getPortTableNameByDBId(ifTbl, inParams.curDb)
+    log.Info("----tblName---", tblName)
+
     vlanMembersListMap := make(map[string]map[string]db.Value)
 
     switch intfType {
@@ -1361,7 +1372,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
         //Code to store port/portchannel tagged_vlan list, making sure no duplicate entries 
         var cfgdTagdVlanSlice []string
         //get existing port's tagged vlan list
-        portEntry, err := inParams.d.GetEntry(&db.TableSpec{Name:"PORT"}, db.Key{Comp: []string{*ifName}}) //portchannel handle
+        portEntry, err := inParams.d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{*ifName}})
         if err == nil { //port entry exists
             cfgdTagdVlanVal, ok := portEntry.Field["tagged_vlans@"] //e.g. cfgdTagdVlanVal = "1,2-200"
             if ok {
