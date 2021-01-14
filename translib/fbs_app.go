@@ -60,7 +60,7 @@ const (
 	LAST_FBS_COUNTERS_TABLE        = "LAST_FBS_COUNTERS"
 	POLICER_COUNTERS_TABLE         = "POLICER_COUNTERS"
 	LAST_POLICER_COUNTERS_TABLE    = "LAST_POLICER_COUNTERS"
-	CFG_PBF_NEXT_HOP_GROUP_TABLE   = "PBF_NEXTHOP_GROUP_TABLE"
+	CFG_PBF_NEXT_HOP_GROUP_TABLE   = "PBF_NEXTHOP_GROUP"
 	STATE_PBF_NEXT_HOP_GROUP_TABLE = "PBF_NEXTHOP_GROUP_TABLE"
 	SONIC_CPU_PORT                 = "CPU"
 )
@@ -3783,7 +3783,7 @@ func pruneForwardingEntries(egress []string) []string {
 	// To preserve the order remove elements in the original list which are not present in the final list
 	finalEgress := make([]string, 0)
 	for _, elem := range egress {
-		if contains(retVal, elem) {
+		if contains(retVal, elem) && (!contains(finalEgress, elem)) {
 			finalEgress = append(finalEgress, elem)
 		}
 	}
