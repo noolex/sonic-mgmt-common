@@ -513,7 +513,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                                 }
 
                                 minpoll_uint8 := uint8(minpoll_int)
-                                currNtpServer.Config.Minpoll = &minpoll_uint8
+                                currNtpServer.State.Minpoll = &minpoll_uint8
                         }
 
                         if (maxpoll_str != "") {
@@ -526,7 +526,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
                                 }
 
                                 maxpoll_uint8 := uint8(maxpoll_int)
-                                currNtpServer.Config.Maxpoll = &maxpoll_uint8
+                                currNtpServer.State.Maxpoll = &maxpoll_uint8
                         }
 
                 }
@@ -597,6 +597,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
 
                                 minpoll_uint8 := uint8(minpoll_int)
                                 currNtpServer.Config.Minpoll = &minpoll_uint8
+                                currNtpServer.State.Minpoll = &minpoll_uint8
                         }
 
                         if (maxpoll_str != "") {
@@ -610,6 +611,7 @@ func ProcessGetNtpServer (inParams XfmrParams, vrfName string, isMgmtVrfEnabled 
 
                                 maxpoll_uint8 := uint8(maxpoll_int)
                                 currNtpServer.Config.Maxpoll = &maxpoll_uint8
+                                currNtpServer.State.Maxpoll = &maxpoll_uint8
                         }
 
                 }
