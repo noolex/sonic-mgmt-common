@@ -31,6 +31,10 @@ module sonic-system-radius {
         prefix smt;
     }
 
+    import sonic-interface {
+        prefix subif;
+    }
+
     import sonic-vrf {
         prefix vrf;
     }
@@ -250,6 +254,9 @@ module sonic-system-radius {
                         }
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/subif:sonic-interface/subif:VLAN_SUB_INTERFACE/subif:VLAN_SUB_INTERFACE_LIST/subif:id";
                         }
                     }
                 }

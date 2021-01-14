@@ -30,6 +30,12 @@ module openconfig-system-ext {
     description
         "Model for managing TACACS+ configurations .";
 
+    revision 2020-12-07 {
+        description
+            "Add per NTP server minpoll and maxpoll.";
+        reference "0.12.0";
+    }
+
     revision 2020-11-02 {
         description
             "Add NTP authentication.";
@@ -482,7 +488,10 @@ module openconfig-system-ext {
             "NTP authentication key state.";
     }
 
-    augment "/oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:config" {
+    grouping system-ext-ntp-server-config {
+        description
+            "Grouping for NTP server configuration.";
+
         leaf key-id {
             type uint16;
             description
@@ -491,18 +500,43 @@ module openconfig-system-ext {
                  the same key id.";
         }
 
+        leaf minpoll {
+            type uint8 {
+                range "3..17";
+            }
+            default 6;
+
+            description
+                "The minimum poll interval used in this association.
+                 Default is 6.";
+            reference
+                "RFC 5905: Network Time Protocol Version 4: Protocol and
+                 Algorithms Specification";
+        }
+
+        leaf maxpoll {
+            type uint8 {
+                range "3..17";
+            }
+            default 10;
+
+            description
+                "The maximum poll interval used in this association.
+                 Default is 10.";
+            reference
+                "RFC 5905: Network Time Protocol Version 4: Protocol and
+                Algorithms Specification";
+        }
+    }
+
+    augment "/oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:config" {
         description
-            "NTP server configuration.";
+            "Additional NTP server configuration.";
+        uses system-ext-ntp-server-config; 
     }
 
     augment "/oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state" {
-        leaf key-id {
-            type uint16;
-            description
-                "Integer identifier used by the client and server to
-                designate a secret key.  The client and server must use
-                the same key id.";
-        }
+        uses system-ext-ntp-server-config;
 
         leaf peerdelay {
             type decimal64 {
