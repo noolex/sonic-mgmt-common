@@ -394,7 +394,6 @@ func validateVlanExists(d *db.DB, vlanName *string) error {
     entry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{*vlanName}})
     if err != nil || !entry.IsPopulated() {
         errStr := "Vlan:" + *vlanName + " does not exist!"
-        log.Error(errStr)
         return errors.New(errStr)
     }
     return nil
@@ -506,7 +505,7 @@ func validateUntaggedVlanCfgredForIf(d *db.DB, vlanMemberTs *string, ifName *str
     return false, nil
 }
 
-/* Fills all the trunk-vlans part of physical or port-channel interface */
+/* Fills all the trunk-vlans part of physical or port-channel interface *//*
 func fillTrunkVlansForInterface(d *db.DB, ifName *string, ifVlanInfo *ifVlan) (error) {
     var err error
     var vlanKeys []db.Key
@@ -535,7 +534,7 @@ func fillTrunkVlansForInterface(d *db.DB, ifName *string, ifVlanInfo *ifVlan) (e
         }
     }
     return err
-}
+}*/
 
 /* Removes the Interface name from Members list of VLAN table and updates it */
 func removeFromMembersListForVlan(d *db.DB, vlan *string, ifName *string, vlanMap map[string]db.Value) error {
@@ -713,7 +712,11 @@ func removeAllVlanMembrsForIfAndGetVlans(d *db.DB, ifName *string, ifMode intfMo
 func removePortAccessVlan(accessVlan *string, ifName *string, portVlanListMap map[string]db.Value) error {
     var err error
     portVlanListMap[*ifName] = db.Value{Field:make(map[string]string)}
-    portVlanListMap[*ifName].Field["access_vlan"] = strings.TrimPrefix(*accessVlan,"Vlan")
+    if accessVlan != nil {
+        portVlanListMap[*ifName].Field["access_vlan"] = strings.TrimPrefix(*accessVlan,"Vlan")
+        return err
+    }
+    portVlanListMap[*ifName].Field["access_vlan"] = ""
     log.Info("-----portVlanListMap---", portVlanListMap)
     return err
 }
@@ -743,7 +746,10 @@ func removeFromPorttaggedList(d *db.DB, remTrunkVlans []string, ifName *string, 
         //Generate new tagged_vlan list excluding vlans to be removed 
         log.Info("----cfgdVlanSlice---", cfgdVlanSlice)
         log.Info("-----remTrunkVlans---", remTrunkVlans)
-        portVlanSlice := vlanDifference(cfgdVlanSlice, remTrunkVlans) //replace tagged_vlans with slice containing vlans in cfgdVlanSlice but not in remTrunkVlans
+        //cfgdVlanSlice is port's tagged_vlan field value in configdb
+        //remTrunkVlans is the VLANs list given as input for removal
+        portVlanSlice := vlanDifference(cfgdVlanSlice, remTrunkVlans)
+        //portVlanSlice contains vlans in cfgdVlanSlice but not in remTrunkVlans (to be used for replacing tagged_vlans field in DB)
         portVlanListMap[*ifName] = db.Value{Field:make(map[string]string)}
         portVlanSlice, _ = vlanIdstoRng(portVlanSlice)
         log.Info("-----------portVlanSlice ---", portVlanSlice)
@@ -900,6 +906,7 @@ func  processIntfVlanMemberRemoval(inParams *XfmrParams, ifVlanInfoList []*ifVla
         ifName := ifVlanInfo.ifName
         ifMode := ifVlanInfo.mode
         trunkVlans := ifVlanInfo.trunkVlans
+        log.Info("----------------trunkVlans---", trunkVlans)
         switch ifMode {
         case ACCESS:
             /* Handling Access Vlan delete */
@@ -957,7 +964,8 @@ func  processIntfVlanMemberRemoval(inParams *XfmrParams, ifVlanInfoList []*ifVla
             for _, trunkVlan := range trunkVlans {
                 err = removeTaggedVlanAndUpdateVlanMembTbl(d, &trunkVlan, ifName, vlanMemberMap, stpVlanPortMap, stpPortMap)
                 if err != nil {
-                    return err
+                    //If trunkVlan config not present for ifname continue to next trunkVlan in list
+                    continue
                 }
                 removeFromMembersListForVlan(d, &trunkVlan, ifName, vlanMap)
             }
@@ -1005,7 +1013,8 @@ func intfVlanMemberRemoval(swVlanConfig *swVlanMemberPort_t,
             if targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans" {
                 ifVlanInfo.mode = TRUNK
             }
-            err = fillTrunkVlansForInterface(inParams.d, ifName, &ifVlanInfo)
+            err = extractVlanIdsfrmRng(inParams.d, "1..4094", &ifVlanInfo.trunkVlans)
+            //err = fillTrunkVlansForInterface(inParams.d, ifName, &ifVlanInfo)
             if err != nil {
                 return err
             }
@@ -1037,9 +1046,10 @@ func intfVlanMemberRemoval(swVlanConfig *swVlanMemberPort_t,
                 case reflect.TypeOf(ocbinds.OpenconfigInterfaces_Interfaces_Interface_Ethernet_SwitchedVlan_Config_TrunkVlans_Union_String{}):
                     val := (trunkVlanUnion).(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Ethernet_SwitchedVlan_Config_TrunkVlans_Union_String)
                     vlansList := strings.Split(val.String, ",")
+                    log.Info("------------vlansList----", vlansList)
                     for _, vlan := range vlansList {
                         /* Handle case if multiple/range of VLANs given */
-                        if strings.Contains(vlan, "..") {
+                        if strings.Contains(vlan, "..") { //e.g vlan - 1..100
                             err = extractVlanIdsfrmRng(inParams.d, vlan, &ifVlanInfo.trunkVlans)
                             if err != nil {
                                 return err
@@ -1078,7 +1088,9 @@ func intfVlanMemberRemoval(swVlanConfig *swVlanMemberPort_t,
             if targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/config/trunk-vlans" {
                 ifVlanInfo.mode = TRUNK
             }
-            err = fillTrunkVlansForInterface(inParams.d, ifName, &ifVlanInfo)
+
+            err = extractVlanIdsfrmRng(inParams.d, "1..4094", &ifVlanInfo.trunkVlans)
+            //err = fillTrunkVlansForInterface(inParams.d, ifName, &ifVlanInfo)
             if err != nil {
                 return err
             }

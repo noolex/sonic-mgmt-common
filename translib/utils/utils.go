@@ -299,7 +299,6 @@ func vlanCacheRemAccessPort(accessVlanVal string, portName string, vlanCacheKeys
         if member_list.untagged.PortSetContains(portName) {
             member_list.untagged.PortSetDelItem(portName)
         }
-        log.Info("untagged--rem--vlanMemberCache[vlan]: ", vlan, member_list)
     }
 }
 func vlanCacheAddAccessPort(accessVlanVal string, portName string) {
@@ -327,7 +326,6 @@ func vlanCacheAddTagdPort(taggedVlanSlice []string, portName string) {
             member_list.tagged.PortSetAddItem(portName)
             vlanMemberCache[vlan] = member_list  //TODO:cache store only non-existing vlans
         }
-        log.Info("-----vlanMemberCache[vlan]---", vlanMemberCache[vlan])
     }
 }
 func vlanCacheRemTagdPort(taggedVlanSlice []string, portName string, vlanCacheKeys []string) {
@@ -338,7 +336,6 @@ func vlanCacheRemTagdPort(taggedVlanSlice []string, portName string, vlanCacheKe
         if member_list.tagged.PortSetContains(portName) {
             member_list.tagged.PortSetDelItem(portName)
         }
-        log.Info("vlanMemberCache[vlan]: ",vlan, member_list)
     }
 }
 
