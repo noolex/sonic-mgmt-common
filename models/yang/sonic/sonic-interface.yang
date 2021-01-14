@@ -415,6 +415,7 @@ module sonic-interface {
                             error-app-tag interface-name-invalid;
                         }
                     }
+                    sonic-ext:custom-validation ValidateSubInterfaceIntf;
                 }
 
                 leaf parent {
