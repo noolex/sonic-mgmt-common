@@ -1286,7 +1286,7 @@ func fillFbsNextHopGroupEntry(grpName string, grpData db.Value) (fbsNextHopGroup
 var rpc_show_pbf_next_hop_group RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 	log.Infof("Enter")
 
-	var pbfNextHopGrpTs *db.TableSpec = &db.TableSpec{Name: "PBF_NEXTHOP_GROUP_TABLE"}
+	var pbfNextHopGrpTs *db.TableSpec = &db.TableSpec{Name: "PBF_NEXTHOP_GROUP"}
 	var mapData map[string]interface{}
 	err := json.Unmarshal(body, &mapData)
 	if err != nil {
