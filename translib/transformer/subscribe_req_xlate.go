@@ -341,7 +341,7 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 				for dBKey, yangNodeName := range tblFieldInfo {
 					if ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList() {
 						if yangNodeName != ygXpathInfo.yangEntry.Name { continue }
-						isLeafTblFound = true
+						isLeafTblFound = true // only if the subscribe path target is leaf/leaf-list
 					}
 					log.Info("handleSubtreeNodeXlate: secDbDataMap: pathXltr.subReq.dbs[dbNum].Opts.KeySeparator: ", pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
 					keyComp := strings.Split(dBKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
@@ -351,18 +351,21 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 						log.Error("handleSubtreeNodeXlate: error in StringToPath: err: ", err)
 						return err
 					} else {
-						leafPathXlateInfo := &XfmrSubscribePathXlateInfo {Path: leafPath, PType: ntfType, OnChange: pathXltr.pathXlateInfo.OnChange}
-						if pathXltr.subReq.isTrgtDfnd {
-							leafPathXlateInfo.PType = ntfType
-						}
-						dbTblInfo := leafPathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
-						if isLeafTblFound {
-							log.Infof("handleSubtreeNodeXlate:dbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
+						if isLeafTblFound { // target node
+							if pathXltr.subReq.isTrgtDfnd {
+								pathXltr.pathXlateInfo.PType = ntfType
+							}
+							dbTblInfo := pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
+							log.Info("handleSubtreeNodeXlate:dbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
 							dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}
 							dbYgPath.DbFldYgPathMap[getDbFieldName(ygXpathInfo)] = ""
 							dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
+							log.Info("handleSubtreeNodeXlate: secDbDataMap: Target node: Adding special entry for leaf node mapped to table for the uri path: ", pathXltr.uriPath + "/" + yangNodeName)
 							break
 						}
+						leafPathXlateInfo := &XfmrSubscribePathXlateInfo {Path: leafPath, PType: ntfType, OnChange: pathXltr.pathXlateInfo.OnChange}
+						pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
+						if pathXltr.subReq.isTrgtDfnd { leafPathXlateInfo.PType = ntfType }
 						log.Info("handleSubtreeNodeXlate: secDbDataMap: Adding special entry for leaf node mapped to table for the uri path: ", pathXltr.uriPath + "/" + yangNodeName)
 						pathXltr.subReq.subReqXlateInfo.ChldPathsInfo = append(pathXltr.subReq.subReqXlateInfo.ChldPathsInfo, leafPathXlateInfo)
 					}
@@ -370,40 +373,41 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 			}
 		}
 
-		for dbNum, tblKeyInfo := range subOutPram.dbDataMap {
-			log.Info("handleSubtreeNodeXlate:  dbNum: ", dbNum)
-			for tblName, tblFieldInfo := range tblKeyInfo {
-				log.Info("handleSubtreeNodeXlate: tblName: ", tblName)
-				tblSpec := &db.TableSpec{Name: tblName}
-				for dBKey, tblFld := range tblFieldInfo {
-					log.Info("handleSubtreeNodeXlate: pathXltr.subReq.dbs[dbNum].Opts.KeySeparator: ", pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
-					keyComp := strings.Split(dBKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
-					log.Infof("handleSubtreeNodeXlate: keyComp: %v ; tblFld %v", keyComp, tblFld)
-					dbTblInfo := pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
-					if !isLeafTblFound && (ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList()) {
-						log.Infof("handleSubtreeNodeXlate:dbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
-						dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}
-						if len(tblKeyInfo) < 2 {
-							dbYgPath.DbFldYgPathMap[getDbFieldName(ygXpathInfo)] = ""
-							dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
-						} else if len(ygXpathInfo.compositeFields) > 0 {
-							for _, dbTblFldName := range ygXpathInfo.compositeFields {
-								tblFields := strings.Split(dbTblFldName, ":")
-								if len(tblFields) > 1 {
-									if tblName == strings.TrimSpace(tblFields[0]) {
-										dbYgPath.DbFldYgPathMap[strings.TrimSpace(tblFields[1])] = ""
-										log.Infof("handleSubtreeNodeXlate:dbDataMap: adding composite db leaf node: ", strings.TrimSpace(tblFields[1]))
-										dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
-										break
+		if !isLeafTblFound {
+			for dbNum, tblKeyInfo := range subOutPram.dbDataMap {
+				log.Info("handleSubtreeNodeXlate:  dbNum: ", dbNum)
+				for tblName, tblFieldInfo := range tblKeyInfo {
+					log.Info("handleSubtreeNodeXlate: tblName: ", tblName)
+					tblSpec := &db.TableSpec{Name: tblName}
+					for dBKey, tblFld := range tblFieldInfo {
+						log.Info("handleSubtreeNodeXlate: pathXltr.subReq.dbs[dbNum].Opts.KeySeparator: ", pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
+						keyComp := strings.Split(dBKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
+						log.Infof("handleSubtreeNodeXlate: keyComp: %v ; tblFld %v", keyComp, tblFld)
+						dbTblInfo := pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
+						if ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList() {
+							log.Infof("handleSubtreeNodeXlate:dbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
+							dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}
+							if len(ygXpathInfo.compositeFields) > 0 {
+								for _, dbTblFldName := range ygXpathInfo.compositeFields {
+									tblFields := strings.Split(dbTblFldName, ":")
+									if len(tblFields) > 1 {
+										if tblName == strings.TrimSpace(tblFields[0]) {
+											dbYgPath.DbFldYgPathMap[strings.TrimSpace(tblFields[1])] = ""
+											log.Infof("handleSubtreeNodeXlate:dbDataMap: adding composite db leaf node: ", strings.TrimSpace(tblFields[1]))
+											dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
+											break
+										}
 									}
 								}
+							} else {
+								dbYgPath.DbFldYgPathMap[getDbFieldName(ygXpathInfo)] = ""
+								dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
 							}
 						}
 					}
 				}
 			}
 		}
-
 	} else if pathXltr.pathXlateInfo.OnChange == OnchangeDisable && (subOutPram.nOpts != nil && pathXltr.subReq.chldNodeMaxMinIntrvl < subOutPram.nOpts.mInterval) {
 		pathXltr.subReq.chldNodeMaxMinIntrvl = subOutPram.nOpts.mInterval
 	}
