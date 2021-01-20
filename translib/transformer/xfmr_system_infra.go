@@ -137,6 +137,13 @@ var rpc_infra_reboot_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
                 } `json:"openconfig-system-ext:output"`
         }
 
+        //allow only reboot, warm-reboot, or fast-reboot
+        if(!strings.Contains(operand.Input.Param, "warm-reboot") && 
+           !strings.Contains(operand.Input.Param, "reboot") && 
+           !strings.Contains(operand.Input.Param, "fast-reboot")) {
+            return nil,tlerr.InvalidArgs("Invalid command")
+        }
+
         //Don't allow warm-reboot when spanning-tree is enabled
         if(strings.Contains(operand.Input.Param, "warm-reboot")){
             configDbPtr := dbs[db.ConfigDB]
