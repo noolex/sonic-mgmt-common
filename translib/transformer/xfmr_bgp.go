@@ -86,6 +86,94 @@ func util_bgp_get_ui_ifname_from_native_ifname (pIfname *string) {
     }
 }
 
+type BgpFrrCacheType string
+const (
+    BGP_FRR_JSON_CACHE BgpFrrCacheType = "BGP_FRR_JSON"
+    BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_SUMMARY"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_SUMMARY"
+    BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_IPV4_SUMMARY"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_IPV4_SUMMARY"
+    BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_IPV6_SUMMARY"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_SUMMARY BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_IPV6_SUMMARY"
+    BGP_FRR_JSON_CACHE_ALL_VRF_NBRS BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_NBRS"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_NBRS BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_NBRS"
+    BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_IPV4_NBRS"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_NBRS BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_IPV4_NBRS"
+    BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS BgpFrrCacheType = "BGP_FRR_JSON_ALL_VRF_IPV6_NBRS"
+    BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_NBRS BgpFrrCacheType = "BGP_FRR_JSON_SPECIFIC_VRF_IPV6_NBRS"
+)
+
+type BgpFrrCacheQueryType string
+const (
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_SUMMARY BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_SUMMARY"
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_SUMMARY BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_IPV4_SUMMARY"
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_SUMMARY BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_IPV6_SUMMARY"
+    BGP_FRR_JSON_CAHCE_QUERY_TYPE_NBRS BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_NBRS"
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_NBRS BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_IPV4_NBRS"
+    BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_NBRS BgpFrrCacheQueryType = "BGP_FRR_JSON_CACHE_QUERY_IPV6_NBRS"
+)
+
+type bgp_frr_json_cache_query_key_t struct {
+    niName string
+    afiSafiName string /* ipv4/ipv6 */
+}
+
+func utl_bgp_exec_vtysh_cmd (vtyshCmd string, inParams XfmrParams, cmdType BgpFrrCacheQueryType, cmdArgs bgp_frr_json_cache_query_key_t) (map[string]interface{}, error) {
+    cache, bgpFrrJsonCachePresent := inParams.txCache.Load(BGP_FRR_JSON_CACHE)
+    if bgpFrrJsonCachePresent {
+        bgpFrrJsonCache, _ := cache.(map[BgpFrrCacheType]map[string]interface{})
+        switch cmdType {
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_SUMMARY:
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_SUMMARY] ; ok {return value, nil}
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_SUMMARY:
+                if cmdArgs.afiSafiName == "ipv4" {
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_SUMMARY] ; ok {return value, nil}
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
+                }
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_SUMMARY:
+                if cmdArgs.afiSafiName == "ipv6" {
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_SUMMARY] ; ok {return value, nil}
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
+                }
+            case BGP_FRR_JSON_CAHCE_QUERY_TYPE_NBRS:
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_NBRS] ; ok {return value, nil}
+                if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV4_NBRS:
+                if cmdArgs.afiSafiName == "ipv4" {
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_NBRS] ; ok {return value, nil}
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
+                }
+            case BGP_FRR_JSON_CACHE_QUERY_TYPE_IPV6_NBRS:
+                if cmdArgs.afiSafiName == "ipv6" {
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_NBRS] ; ok {return value, nil}
+                    if value, ok := bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS][cmdArgs.niName].(map[string]interface{}) ; ok {return value, nil}
+                }
+        }
+    }
+    return exec_vtysh_cmd (vtyshCmd)
+}
+
+func utl_bgp_fetch_and_cache_frr_json (inParams *XfmrParams, niName string) {
+    bgpFrrJsonCache := make(map[BgpFrrCacheType]map[string]interface{})
+    if niName != "" {
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " ipv4 summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " ipv6 summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " neighbors json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV4_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " ipv4 neighbors json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_SPECIFIC_VRF_IPV6_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf " + niName + " ipv6 neighbors json")
+    } else {
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf all summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv4 summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_SUMMARY], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv6 summary json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf all neighbors json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV4_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv4 neighbors json")
+        bgpFrrJsonCache[BGP_FRR_JSON_CACHE_ALL_VRF_IPV6_NBRS], _ = exec_vtysh_cmd ("show ip bgp vrf all ipv6 neighbors json")
+    }
+    inParams.txCache.Store(BGP_FRR_JSON_CACHE, bgpFrrJsonCache)
+}
+
 func init () {
     XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_tbl_key_xfmr", YangToDb_bgp_gbl_tbl_key_xfmr)
@@ -107,6 +195,21 @@ func init () {
 	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
+    XlateFuncBind("bgp_validate_gbl_af", bgp_validate_gbl_af)
+}
+
+func bgp_validate_gbl_af (inParams XfmrParams) bool {
+    pathInfo := NewPathInfo(inParams.uri)
+    // /openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global/afi-safis/afi-safi/l2vpn-evpn
+    afiSafiName := pathInfo.Var("afi-safi-name")
+    if afiSafiName != "L2VPN_EVPN" {
+        if log.V(3) {
+            log.Info("bgp_validate_gbl_af: ignored - VRF ", pathInfo.Var("name"), " URI ",
+                     inParams.uri)
+        }
+        return false
+    }
+    return true
 }
 
 func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, key string, fieldName string, fieldValue string, 
@@ -121,6 +224,33 @@ func bgp_validate_and_set_default_value(inParams *XfmrParams, tblName string, ke
         return
     }
     inParams.yangDefValMap[tblName][key].Field[fieldName] = fieldValue
+}
+
+var bgp_frr_json_cache_reqd_map = map[string]bool {
+    "/openconfig-network-instance:network-instances": true,
+    "/openconfig-network-instance:network-instances/network-instance": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors": true,
+    "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor": true,
+}
+
+func bgp_hdl_pre_xfmr (inParams *XfmrParams) {
+    if (inParams.oper != GET) {return}
+
+    _ , bgpFrrJsonCachePresent := inParams.txCache.Load(BGP_FRR_JSON_CACHE)
+    if !bgpFrrJsonCachePresent && inParams.dbDataMap != nil {
+        reqUriXpath,_,_ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        if caching_reqd, found := bgp_frr_json_cache_reqd_map[reqUriXpath]; found && caching_reqd {
+            reqUriPathInfo := NewPathInfo(inParams.requestUri)
+            _niName := reqUriPathInfo.Var("name")
+            _nbrAddr := reqUriPathInfo.Var("neighbor-address")
+            if _nbrAddr == "" { /* Ignoring get specific nbr case */
+                utl_bgp_fetch_and_cache_frr_json (inParams, _niName)
+            }
+        }
+    }
 }
 
 func hdl_post_xfmr_bgp_nbr_del(inParams *XfmrParams, niName string, retDbDataMap *map[string]map[string]db.Value) {
@@ -149,13 +279,19 @@ func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr s
                   inParams.requestUri, " ; VRF : ", niName, " ; nbrAddr: ", nbrAddr, " ; Incoming DB-Datamap : ", (*retDbDataMap))
     }
 
-    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR_AF"}, niName+"|"+nbrAddr+"|*")
+    /* The nbrAddr can be in native(Ethernet0) or standard (Eth1/1) format,
+       for DB access it has to be in native format. Convert wherever needed.
+       Also xfmr infra expecting DBDatamap to have this key in user give format
+       So make sure returned key is in that format.  */
+    nativeNbr := nbrAddr
+    util_bgp_get_native_ifname_from_ui_ifname (&nativeNbr)
+    bgpTblKeys, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "BGP_NEIGHBOR_AF"}, niName+"|"+nativeNbr+"|*")
     for _, bgpTblKey := range bgpTblKeys {
         if _, ok := (*retDbDataMap)["BGP_NEIGHBOR_AF"]; !ok {
             (*retDbDataMap)["BGP_NEIGHBOR_AF"] = make(map[string]db.Value)
         }
 
-        key := bgpTblKey.Get(0) + "|" + bgpTblKey.Get(1) + "|" + bgpTblKey.Get(2)
+        key := bgpTblKey.Get(0) + "|" + nbrAddr + "|" + bgpTblKey.Get(2)
         (*retDbDataMap)["BGP_NEIGHBOR_AF"][key] = db.Value{}
     }
     if log.V(3) {
@@ -165,7 +301,7 @@ func hdl_post_xfmr_bgp_nbr_af_del(inParams *XfmrParams, niName string, nbrAddr s
 
 func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Value) (error) {
     var err error
-    xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+    xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
     pathInfo := NewPathInfo(inParams.requestUri)
     niName := pathInfo.Var("name")
     if len(niName) == 0 {return err}
@@ -186,7 +322,6 @@ func hdl_del_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
             nbrAddr   := pathInfo.Var("neighbor-address")
             afiSafiName := pathInfo.Var("afi-safi-name")
             if len(nbrAddr) != 0 && len(afiSafiName) == 0 {
-                util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
                 hdl_post_xfmr_bgp_nbr_af_del(inParams, niName, nbrAddr, data)
                 return err
             }
@@ -248,6 +383,29 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
     if inParams.oper == DELETE {
         err = hdl_del_post_xfmr(inParams, data)
         return err
+    } else {
+        retval := hdl_validate_values_post_xfmr(inParams)
+        if (retval != nil) {
+           return retval
+        }
+    }
+
+    /* To check same listen range already configured in other peer-group */
+    if gbl_listen_prefix_map, ok := (*data)["BGP_GLOBALS_LISTEN_PREFIX"]; ok {
+        for key := range gbl_listen_prefix_map {
+            peer_grp, ok := gbl_listen_prefix_map[key].Field["peer_group"]
+            if ok {
+                dbSpec := &db.TableSpec{Name: "BGP_GLOBALS_LISTEN_PREFIX"}
+                dbEntry, _ := inParams.d.GetEntry(dbSpec, db.Key{Comp: []string{key}})
+                peerGrp, ok := dbEntry.Field["peer_group"]
+                if ok && peerGrp != peer_grp {
+                    errStr := "Same listen range is attached to peer-group " + peerGrp
+                    err = tlerr.InvalidArgsError{Format: errStr}
+                    log.Error(errStr)
+                    return err
+                }
+            }
+        }
     }
 
     tblName := "BGP_GLOBALS"
@@ -334,7 +492,7 @@ func bgp_hdl_post_xfmr(inParams *XfmrParams, data *map[string]map[string]db.Valu
 }
 
 var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
-    var tblList, nil_tblList []string
+    var tblList []string
 
     log.Info("bgp_gbl_tbl_xfmr: ", inParams.uri)
     pathInfo := NewPathInfo(inParams.uri)
@@ -346,23 +504,23 @@ var bgp_gbl_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, erro
     if len(pathInfo.Vars) <  3 {
         err := errors.New("Invalid Key length");
         log.Info("Invalid Key length", len(pathInfo.Vars))
-        return nil_tblList, err
+        return tblList, err
     }
 
     if len(vrf) == 0 {
         err_str := "VRF name is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if !strings.Contains(bgpId,"BGP") {
         err_str := "BGP ID is missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
     if len(protoName) == 0 {
         err_str := "Protocol Name is Missing"
         err := errors.New(err_str); log.Info(err_str)
-        return nil_tblList, err
+        return tblList, err
     }
 
     tblList = append(tblList, "BGP_GLOBALS")
@@ -577,7 +735,8 @@ var DbToYang_bgp_gbl_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
     }
 
     vtysh_cmd := "show ip bgp vrf " + niName + " summary json"
-    bgpGblJson, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    bgpFrrJsonCacheKey := bgp_frr_json_cache_query_key_t{niName : niName}
+    bgpGblJson, cmd_err := utl_bgp_exec_vtysh_cmd (vtysh_cmd, inParams, BGP_FRR_JSON_CACHE_QUERY_TYPE_SUMMARY, bgpFrrJsonCacheKey)
     if cmd_err != nil {
         log.Errorf("Failed to fetch BGP global info for niName:%s. Err: %s", niName, cmd_err)
         return oper_err
@@ -603,7 +762,7 @@ var YangToDb_bgp_gbl_afi_safi_field_xfmr FieldXfmrYangToDb = func(inParams XfmrP
 
     log.Info("YangToDb_bgp_gbl_afi_safi_field_xfmr")
     rmap["NULL"] = "NULL"
-    
+
     return rmap, err
 }
 
@@ -640,7 +799,7 @@ var YangToDb_bgp_dyn_neigh_listen_field_xfmr FieldXfmrYangToDb = func(inParams X
 
     log.Info("YangToDb_bgp_dyn_neigh_listen_field_xfmr")
     rmap["NULL"] = "NULL"
-    
+
     return rmap, err
 }
 
@@ -650,7 +809,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_field_xfmr FieldXfmrYangToDb = func(inParams 
 
     log.Info("YangToDb_bgp_gbl_afi_safi_addr_field_xfmr")
     rmap["NULL"] = "NULL"
-    
+
     return rmap, err
 }
 
@@ -673,7 +832,7 @@ var DbToYang_bgp_dyn_neigh_listen_field_xfmr FieldXfmrDbtoYang = func(inParams X
 var DbToYang_bgp_gbl_afi_safi_addr_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     rmap := make(map[string]interface{})
     var err error
-    
+
     entry_key := inParams.key
     log.Info("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr: ", entry_key)
 
@@ -710,10 +869,10 @@ var YangToDb_bgp_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (s
         return "", errors.New("Protocol Name is missing")
     }
 
-    log.Info("URI VRF ", niName)
+    log.V(3).Info("URI VRF ", niName)
 
     if inParams.oper == DELETE && niName == "default" {
-        xpath, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
+        xpath, _, _ := XfmrRemoveXPATHPredicates(inParams.requestUri)
         switch xpath {
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp": fallthrough
             case "/openconfig-network-instance:network-instances/network-instance/protocols/protocol/bgp/global": fallthrough
@@ -767,13 +926,13 @@ var YangToDb_bgp_dyn_neigh_listen_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
     if !strings.Contains(bgpId,"BGP") {
         return "", errors.New("BGP ID is missing")
     }
-    
+
     if len(protoName) == 0 {
         return "", errors.New("Protocol Name is missing")
     }
 
 	key := niName + "|" + prefix
-	
+
 	log.Info("YangToDb_bgp_dyn_neigh_listen_key_xfmr key: ", key)
 
     return key, nil
@@ -815,7 +974,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
     if !strings.Contains(bgpId,"BGP") {
         return afi, errors.New("BGP ID is missing")
     }
-    
+
     if len(protoName) == 0 {
         return afi, errors.New("Protocol Name is missing")
     }
@@ -835,25 +994,25 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
         afName = "IPV4_UNICAST"
         if strings.Contains(inParams.uri, "ipv6-unicast") ||
            strings.Contains(inParams.uri, "l2vpn-evpn") {
-		    err = errors.New("IPV4_UNICAST supported only on ipv4-config container")
-		    log.Info("IPV4_UNICAST supported only on ipv4-config container: ", afName);
-		    return afName, err
+           err = errors.New("IPV4_UNICAST supported only on ipv4-config container")
+           log.Info("IPV4_UNICAST supported only on ipv4-config container: ", afName);
+           return afName, err
         }
     } else if strings.Contains(afName, "IPV6_UNICAST") {
         afName = "IPV6_UNICAST"
         if strings.Contains(inParams.uri, "ipv4-unicast") ||
            strings.Contains(inParams.uri, "l2vpn-evpn") {
-		    err = errors.New("IPV6_UNICAST supported only on ipv6-config container")
-		    log.Info("IPV6_UNICAST supported only on ipv6-config container: ", afName);
-		    return afName, err
+           err = errors.New("IPV6_UNICAST supported only on ipv6-config container")
+           log.Info("IPV6_UNICAST supported only on ipv6-config container: ", afName);
+           return afName, err
         }
     } else if strings.Contains(afName, "L2VPN_EVPN") {
         afName = "L2VPN_EVPN"
         if strings.Contains(inParams.uri, "ipv6-unicast") ||
            strings.Contains(inParams.uri, "ipv4-unicast") {
-		    err = errors.New("L2VPN_EVPN supported only on l2vpn-evpn container")
-		    log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName);
-		    return afName, err
+           err = errors.New("L2VPN_EVPN supported only on l2vpn-evpn container")
+           log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName);
+           return afName, err
         }
     } else  {
 	    err = errors.New("Unsupported AFI SAFI")
@@ -861,43 +1020,51 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 	    return afName, err
     }
 
-	key := niName + "|" + afi
-	
-	log.Info("AFI key: ", key)
+    key := niName + "|" + afi
+
+    log.Info("YangToDb_bgp_gbl_afi_safi_key_xfmr: AFI key: ", key)
 
     return key, nil
 }
 
 var DbToYang_bgp_gbl_afi_safi_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
-    log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: ", entry_key)
+    pathInfo := NewPathInfo(inParams.uri)
+    niName := pathInfo.Var("name")
 
-    mpathKey := strings.Split(entry_key, "|")
-    if len(mpathKey) < 2 {return rmap, nil}
+    mpathKey := strings.Split(inParams.key, "|")
+    if len(mpathKey) < 2 {return nil, nil}
+    if (mpathKey[0] != niName) {
+        if log.V(3) {
+           log.Info("Vrf name mismatch: " +  niName + " " + mpathKey[0]);
+        }
+        return nil, nil
+    }
 
-	afi := ""
+    afi := ""
 
-	switch mpathKey[1] {
-	case "ipv4_unicast":
-		afi = "IPV4_UNICAST"
+    switch mpathKey[1] {
+        case "ipv4_unicast":
+            afi = "IPV4_UNICAST"
 	case "ipv6_unicast":
-		afi = "IPV6_UNICAST"
+            afi = "IPV6_UNICAST"
 	case "l2vpn_evpn":
-		afi = "L2VPN_EVPN"
-    default:
-        return rmap, nil
-	}
+            afi = "L2VPN_EVPN"
+        default:
+            return nil, nil
+    }
 
+    rmap := make(map[string]interface{})
     rmap["afi-safi-name"] = afi
 
-	log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: rmap:", rmap)
+    if log.V(3) {
+        log.Info("DbToYang_bgp_gbl_afi_safi_key_xfmr: key: ", inParams.key, "rmap: ", rmap)
+    }
     return rmap, nil
 }
 
 var YangToDb_bgp_global_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
-	log.Info("YangToDb_bgp_global_subtree_xfmr:", inParams.oper)
+    log.Info("YangToDb_bgp_global_subtree_xfmr:", inParams.oper)
     if inParams.oper == DELETE {
         return nil, errors.New("Invalid request")
     }
@@ -911,9 +1078,9 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
     niName := pathInfo.Var("name")
     bgpId := pathInfo.Var("identifier")
     protoName := pathInfo.Var("name#2")
-	afName := pathInfo.Var("afi-safi-name")
-	prefix := pathInfo.Var("prefix")
-	afi := ""
+    afName := pathInfo.Var("afi-safi-name")
+    prefix := pathInfo.Var("prefix")
+    afi := ""
     var err error
 
     if len(pathInfo.Vars) < 5 {
@@ -927,7 +1094,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
     if !strings.Contains(bgpId,"BGP") {
         return afi, errors.New("BGP ID is missing")
     }
-    
+
     if len(protoName) == 0 {
         return afi, errors.New("Protocol Name is missing")
     }
@@ -974,7 +1141,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
     }
 
 	key := niName + "|" + afi + "|" + prefix
-	
+
 	log.Info("YangToDb_bgp_gbl_afi_safi_addr_key_xfmr AFI key: ", key)
 
     return key, nil
@@ -993,7 +1160,6 @@ var DbToYang_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrDbToYang = func(inParams Xfmr
 	log.Info("DbToYang_bgp_gbl_afi_safi_addr_key_xfmr: rmap:", rmap)
     return rmap, nil
 }
-
 
 var rpc_clear_bgp RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     log.Info("In rpc_clear_bgp")

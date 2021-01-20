@@ -5,7 +5,13 @@ import (
 )
 
 func init() {
+    XlateFuncBind("network_instance_pre_xfmr", network_instance_pre_xfmr)
     XlateFuncBind("network_instance_post_xfmr", network_instance_post_xfmr)
+}
+
+var network_instance_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
+    bgp_hdl_pre_xfmr (&inParams)
+    return nil
 }
 
 var network_instance_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {

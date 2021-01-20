@@ -239,6 +239,7 @@ func (c *CVL) ValidateIncrementalConfig(jsonData string) CVLRetCode {
 	var dataMap map[string]interface{} = v.(map[string]interface{})
 
 	root, _ := c.translateToYang(&dataMap)
+	defer c.yp.FreeNode(root)
 	if root == nil {
 		return CVL_SYNTAX_ERROR
 
@@ -261,7 +262,7 @@ func (c *CVL) ValidateIncrementalConfig(jsonData string) CVLRetCode {
 	//Merge existing data for update syntax or checking duplicate entries
 	if (existingData != nil) {
 		if _, errObj = c.yp.MergeSubtree(root, existingData);
-				errObj.ErrCode != yparser.YP_SUCCESS {
+		errObj.ErrCode != yparser.YP_SUCCESS {
 			return CVL_ERROR
 		}
 	}
@@ -286,6 +287,7 @@ func (c *CVL) ValidateConfig(jsonData string) CVLRetCode {
 	if err := json.Unmarshal(b, &v); err == nil {
 		var value map[string]interface{} = v.(map[string]interface{})
 		root, _ := c.translateToYang(&value)
+		defer c.yp.FreeNode(root)
 
 		if root == nil {
 			return CVL_FAILURE
@@ -324,7 +326,7 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 		caller = f.Name()
 	}
 
-        CVL_LOG(INFO_DEBUG, "ValidateEditConfig() called from %s() : %v", caller, cfgData)
+	CVL_LOG(INFO_DEBUG, "ValidateEditConfig() called from %s() : %v", caller, cfgData)
 
 	if SkipValidation() {
 		CVL_LOG(INFO_TRACE, "Skipping CVL validation.")
@@ -455,6 +457,8 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 
 	//Step 2 : Perform syntax validation only
 	yang, errN := c.translateToYang(&requestedData)
+	defer c.yp.FreeNode(yang)
+
 	if (errN.ErrCode == CVL_SUCCESS) {
 		if cvlErrObj, cvlRetCode := c.validateSyntax(yang); cvlRetCode != CVL_SUCCESS {
 			return cvlErrObj, cvlRetCode

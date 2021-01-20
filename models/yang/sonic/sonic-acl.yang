@@ -105,6 +105,7 @@ module sonic-acl {
                 }
 
                 leaf type {
+                    mandatory true;
                     sonic-ext:custom-validation ValidateLeafConstant;
                     type enumeration {
                         enum MIRROR;
@@ -161,6 +162,8 @@ module sonic-acl {
                     type enumeration {
                         enum FORWARD;
                         enum DROP;
+                        enum TRANSIT;
+                        enum DISCARD;
                         enum REDIRECT;
                         enum INT_INSERT;
                         enum INT_DELETE;
@@ -202,9 +205,6 @@ module sonic-acl {
                     when "(/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'TAM') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3V6')";
                     type uint8;
                 }
-
-
-
 
                 leaf ETHER_TYPE {
                     must "(((/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'L3') or (/sonic-acl/ACL_TABLE/ACL_TABLE_LIST[aclname=current()/../aclname]/type = 'TAM')) and (current() = '0x800')) or " +
@@ -286,7 +286,7 @@ module sonic-acl {
                     }
                 }
 
-                leaf TCP_FLAGS {
+                leaf-list TCP_FLAGS {
                     when "current()/../IP_PROTOCOL = '6'";
                     type string {
                         pattern "0[xX][0-9a-fA-F]{1,2}[/]0[xX][0-9a-fA-F]{1,2}";

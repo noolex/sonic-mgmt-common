@@ -413,6 +413,7 @@ var Subscribe_mclag_interface_subtree_xfmr SubTreeXfmrSubscribe = func(inParams 
              log.Infof("Subscribe_mclag_interface_subtree_xfmr, unable to get configDB, error %v", err)
              return result, err
          }
+		 defer cdb.DeleteDB()
          mclagIntfKeys, _ := cdb.GetKeysPattern(&db.TableSpec{Name: "MCLAG_INTERFACE"}, db.Key{[]string{"*", ifName}})
          log.Infof("keys %v ", mclagIntfKeys)
 	     if len(mclagIntfKeys) > 0 {

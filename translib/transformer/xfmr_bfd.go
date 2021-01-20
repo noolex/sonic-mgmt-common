@@ -186,29 +186,29 @@ var DbToYang_bfd_shop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[strin
     return res_map, nil
 }
 
-var DbToYang_bfd_shop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
-    res_map := make(map[string]interface{})
-
-    TableKeys := strings.Split(inParams.key, "|")
-
-    if len(TableKeys) >= 4 {
-       res_map["vrf"]     = TableKeys[1]
-    }
-
-    log.Info("DbToYang_bfd_shop_vrf_fld_xfmr: res_map - ", res_map)
-    return res_map, nil
-}
-
 var DbToYang_bfd_shop_interface_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
 
     TableKeys := strings.Split(inParams.key, "|")
 
     if len(TableKeys) >= 4 {
-       res_map["interface"]     = TableKeys[2]
+       res_map["interface"]     = TableKeys[1]
     }
 
     log.Info("DbToYang_bfd_shop_interface_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_shop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["vrf"]     = TableKeys[2]
+    }
+
+    log.Info("DbToYang_bfd_shop_vrf_fld_xfmr: res_map - ", res_map)
     return res_map, nil
 }
 
@@ -274,29 +274,29 @@ var DbToYang_bfd_mhop_remoteaddr_fld_xfmr = func(inParams XfmrParams) (map[strin
     return res_map, nil
 }
 
-var DbToYang_bfd_mhop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
-    res_map := make(map[string]interface{})
-
-    TableKeys := strings.Split(inParams.key, "|")
-
-    if len(TableKeys) >= 4 {
-       res_map["vrf"]     = TableKeys[1]
-    }
-
-    log.Info("DbToYang_bfd_mhop_vrf_fld_xfmr: res_map - ", res_map)
-    return res_map, nil
-}
-
 var DbToYang_bfd_mhop_interface_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
 
     TableKeys := strings.Split(inParams.key, "|")
 
     if len(TableKeys) >= 4 {
-       res_map["interface"]     = TableKeys[2]
+       res_map["interface"]     = TableKeys[1]
     }
 
     log.Info("DbToYang_bfd_mhop_interface_fld_xfmr: res_map - ", res_map)
+    return res_map, nil
+}
+
+var DbToYang_bfd_mhop_vrf_fld_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+
+    TableKeys := strings.Split(inParams.key, "|")
+
+    if len(TableKeys) >= 4 {
+       res_map["vrf"]     = TableKeys[2]
+    }
+
+    log.Info("DbToYang_bfd_mhop_vrf_fld_xfmr: res_map - ", res_map)
     return res_map, nil
 }
 
@@ -439,7 +439,7 @@ var DbToYang_bfd_shop_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
 
     cmn_log := "GET: xfmr for BFD peers state"
     pathInfo := NewPathInfo(inParams.uri)
-    log.Errorf("pathInfo", pathInfo)
+    log.Infof("pathInfo: %v", pathInfo)
 
     bfd_obj, get_err := bfd_get_shop_root (inParams, cmn_log);
     if get_err != nil {
@@ -619,6 +619,15 @@ func fill_bfd_shop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdShopSessions, ses
     ygot.BuildEmptyTree(bfdshop_obj)
     ygot.BuildEmptyTree(bfdshop_obj.State)
     bfdshop_obj_state = bfdshop_obj.State;
+
+    bfdshop_obj_state.RemoteAddress = bfdshop_obj.RemoteAddress; 
+    bfdshop_obj_state.Interface = bfdshop_obj.Interface;
+    bfdshop_obj_state.Vrf = bfdshop_obj.Vrf;
+    bfdshop_obj_state.LocalAddress = bfdshop_obj.LocalAddress;
+
+    if value, ok := session_data["pkt-local-addr"].(string) ; ok {
+        bfdshop_obj_state.PktLocalAddress = &value;
+    }
 
     if value, ok := session_data["status"].(string) ; ok {
         if value == "down" {
@@ -880,6 +889,15 @@ func fill_bfd_mhop_data (bfd_obj *ocbinds.OpenconfigBfd_Bfd_BfdMhopSessions, ses
 
     bfdmhop_obj_state = bfdmhop_obj.State;
 
+    bfdmhop_obj_state.RemoteAddress = bfdmhop_obj.RemoteAddress;
+    bfdmhop_obj_state.Interface     = bfdmhop_obj.Interface;
+    bfdmhop_obj_state.Vrf           = bfdmhop_obj.Vrf;
+    bfdmhop_obj_state.LocalAddress  = bfdmhop_obj.LocalAddress;
+
+    if value, ok := session_data["pkt-local-addr"].(string) ; ok {
+        bfdmhop_obj_state.PktLocalAddress = &value;
+    }
+
     if value, ok := session_data["status"].(string) ; ok {
         if value == "down" {
             bfdmhop_obj_state.SessionState = ocbinds.OpenconfigBfd_BfdSessionState_DOWN
@@ -1107,6 +1125,8 @@ var bfd_mhop_session_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
     if (inParams.dbDataMap != nil) {
         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_MULTI_HOP"]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_MULTI_HOP"] = make(map[string]db.Value)
+        } else {
+            return tblList,nil
         }
     } else {
         if found := get_bfd_cfg_tbl_entry(inParams, "BFD_PEER_MULTI_HOP") ; !found {
@@ -1184,6 +1204,8 @@ var bfd_shop_session_tbl_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]str
     if (inParams.dbDataMap != nil) {
         if _, ok := (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_SINGLE_HOP"]; !ok {
                     (*inParams.dbDataMap)[db.ConfigDB]["BFD_PEER_SINGLE_HOP"] = make(map[string]db.Value)
+        } else {
+            return tblList,nil
         }
     } else {
         if found := get_bfd_cfg_tbl_entry(inParams, "BFD_PEER_SINGLE_HOP") ; !found {

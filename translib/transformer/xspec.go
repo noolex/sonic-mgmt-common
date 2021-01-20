@@ -75,6 +75,7 @@ type dbInfo  struct {
 	leafRefPath  []string
     listName     []string
     keyList      []string
+    xfmrKey      string
     xfmrValue    *string
     hasXfmrFn    bool
     cascadeDel   int
@@ -447,7 +448,7 @@ func dbSpecXpathGet(inPath string) (string, error){
 	var err error
 	specPath   := ""
 
-	xpath, err := XfmrRemoveXPATHPredicates(inPath)
+	xpath, _, err := XfmrRemoveXPATHPredicates(inPath)
 	if err != nil {
 		log.Warningf("xpath conversion failed for(%v) \r\n", inPath)
 		return specPath, err
@@ -468,7 +469,7 @@ func dbSpecXpathGet(inPath string) (string, error){
 /* Convert a relative path to an absolute path */
 func relativeToActualPathGet(relPath string, entry *yang.Entry) string {
         actDbSpecPath := ""
-        xpath, err := XfmrRemoveXPATHPredicates(relPath)
+        xpath, _, err := XfmrRemoveXPATHPredicates(relPath)
         if err != nil {
                 return actDbSpecPath
         }
@@ -916,6 +917,13 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 				} else {
 					dbXpathData.cascadeDel = XFMR_DISABLE
 				}
+			case "key-transformer" :
+                               listName := pname[SONIC_LIST_INDEX]
+                               listXpath := tableName+"/"+listName
+                               if listXpathData, ok := xDbSpecMap[listXpath]; ok {
+                                       listXpathData.xfmrKey = ext.NName()
+                               }
+
 			default :
 			}
 		}
@@ -1037,6 +1045,7 @@ func dbMapPrint( fname string) {
         fmt.Fprintf(fp, "     module   :%v \r\n", v.module)
         fmt.Fprintf(fp, "     listName :%v \r\n", v.listName)
         fmt.Fprintf(fp, "     keyList  :%v \r\n", v.keyList)
+        fmt.Fprintf(fp, "     xfmrKey  :%v \r\n", v.xfmrKey)
         fmt.Fprintf(fp, "     cascadeDel :%v \r\n", v.cascadeDel)
         if v.xfmrValue != nil {
 			fmt.Fprintf(fp, "     xfmrValue:%v \r\n", *v.xfmrValue)

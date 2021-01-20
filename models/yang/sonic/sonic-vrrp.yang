@@ -97,6 +97,12 @@ module sonic-vrrp {
                     sonic-ext:custom-validation ValidatePreempt;
                 }
 
+                leaf use_v2_checksum {
+                    type string {
+                        pattern 'True|False';
+                    }
+                }
+
                 leaf priority {
                     type uint8 {
                         range "1..254";
@@ -202,6 +208,12 @@ module sonic-vrrp {
                         pattern 'True|False';
                     }
                     sonic-ext:custom-validation ValidatePreempt;
+                }
+
+                leaf use_v2_checksum {
+                    type string {
+                        pattern 'True|False';
+                    }
                 }
 
                 leaf priority {

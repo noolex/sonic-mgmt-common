@@ -1,0 +1,186 @@
+module openconfig-loadshare-mode-ext {
+
+  yang-version "1.1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/loadshare/extension";
+
+  prefix "oc-lb-mode-ext";
+
+  // import some basic types/interfaces
+  import openconfig-extensions { prefix "oc-ext"; }
+  
+  // meta
+  organization
+    "OpenConfig working group";
+
+  contact
+    "SONiC";
+
+  description
+    "Load share mode config"; 
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-10-08" {
+    description
+      "Initial revision.";
+    reference "0.1.0";
+  }
+  
+    grouping loadshare-mode-config {
+        description "Load share mode configuration";
+        container seed-attrs {
+           description "ECMP seed attributes";
+
+           container config {
+               description "ECMP hash seed configuration";
+               uses oc-lb-mode-ext:hash-mode-seed-attr-config;
+           }
+
+           container state {
+               config false;
+               description "State container for ECMP hash seed";
+               uses oc-lb-mode-ext:hash-mode-seed-attr-config;
+           }
+       }
+     
+       container ipv4-attrs {
+           description "ECMP load share IPV4 attr container";
+               container config {
+                   description "ECMP ipv4 load share config";
+                   uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
+               }
+               container state {
+                   config false;
+                   description "State container for ECMP ipv4 attributes";
+                   uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
+               }
+       } 
+       container ipv6-attrs {
+            description "ECMP load share IPV4 attr container";
+            container config {
+                description "ECMP ipv6 load share attrubute configuration";
+                uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
+            }
+            container state {
+                config false;
+                description "State container for ECMP loadshare ipv6 attributes";
+                uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
+            }
+       }
+    }
+
+    grouping hash-mode-seed-attr-config {
+        description "ECMP hash mode seed configuration";
+
+        leaf hash {
+            type string;
+            description "Key node identifier";
+        }
+
+
+        leaf ecmp-hash-seed {
+           type uint32 {
+               range "0..16777215";
+           }
+           description
+               "Seed value for IP ECMP hash configuration";
+        }
+    }
+
+    grouping hash-mode-ipv4-attr-config {
+        description "ECMP hash mode IPv4 fields";
+
+        leaf ipv4 {
+            type string;
+            description "Key node identifier";
+        }
+
+        leaf ipv4-l4-src-port {
+          type boolean;
+          description
+              "This leaf indicates whether to include src-port in hashing .";
+        }
+
+        leaf ipv4-l4-dst-port {
+          type boolean;
+          description
+              "This leaf indicates whether to include dst-port in hashing .";
+        }
+
+        leaf ipv4-src-ip {
+          type boolean;
+          description
+              "This leaf indicates whether to include src-ip in hashing .";
+        }
+
+        leaf ipv4-dst-ip {
+          type boolean;
+          description
+              "This leaf indicates whether to include dst-ip in hashing .";
+        }
+
+        leaf ipv4-ip-proto {
+          type boolean;
+          description
+              "This leaf indicates whether to include protocol in hashing .";
+        }
+    }
+
+    grouping hash-mode-ipv6-attr-config {
+        description "ECMP hash mode IPV6 fields";
+
+        leaf ipv6 {
+            type string;
+            description "Key node identifier";
+        }
+
+
+        leaf ipv6-l4-src-port {
+          type boolean;
+          description
+              "This leaf indicates whether to include src-port in hashing .";
+        }
+
+        leaf ipv6-l4-dst-port {
+          type boolean;
+          description
+              "This leaf indicates whether to include dst-port in hashing .";
+        }
+
+        leaf ipv6-src-ip {
+          type boolean;
+          description
+              "This leaf indicates whether to include src-ip in hashing .";
+        }
+
+        leaf ipv6-dst-ip {
+          type boolean;
+          description
+              "This leaf indicates whether to include dst-ip in hashing .";
+        }
+
+        leaf ipv6-next-hdr {
+          type boolean;
+          description
+              "This leaf indicates whether to include protocol in hashing .";
+        }
+    }
+    container loadshare {
+        description "Load share mode IPv4/IPv6/seed configuration";
+
+        container config {
+            description "ECMP hash seed configuration";
+        }
+
+        container state {
+           config false;
+           description "State container for ECMP hash seed";
+           uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
+           uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
+           uses oc-lb-mode-ext:hash-mode-seed-attr-config;
+        }
+        uses loadshare-mode-config;
+    }
+}

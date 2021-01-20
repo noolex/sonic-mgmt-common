@@ -79,6 +79,12 @@ module openconfig-qos-ext {
             description
                 "Number of octets transmitted per second by the queue";
         }
+
+        leaf transmit-bits-per-second {
+            type oc-yang:counter64;
+            description
+                "Number of bits transmitted per second by the queue";
+        }
     }
 
     augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues/oc-qos:queue/oc-qos:state {
@@ -766,6 +772,14 @@ module openconfig-qos-ext {
 
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:state/oc-qos:type{
       deviate not-supported;
+    }
+
+    deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:config/oc-qos:name {
+        deviate replace {
+            type string {
+                length "1..32";
+            }
+        }
     }
 
     deviation /oc-qos:qos/oc-qos:scheduler-policies/oc-qos:scheduler-policy/oc-qos:schedulers/oc-qos:scheduler/oc-qos:config/oc-qos:priority{

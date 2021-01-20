@@ -1,0 +1,16 @@
+module openconfig-mac-dampening-annot {
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/mac-dampening-annot";
+    prefix "oc-mac-dampening-annot";
+
+    import sonic-extensions { prefix sonic-ext; }
+    import openconfig-mac-dampening { prefix oc-mac-damp; }
+
+
+    deviation /oc-mac-damp:clear-mac-dampening-disabled-ports {
+        deviate add {
+	        sonic-ext:rpc-callback "rpc_clear_oc_mac_damp_disabled_ports";
+        }
+    }
+}

@@ -3,9 +3,10 @@ module github.com/Azure/sonic-mgmt-common
 require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/Workiva/go-datastructures v1.0.52
-	github.com/antchfx/jsonquery v1.0.0
-	github.com/antchfx/xmlquery v1.1.1-0.20191015122529-fe009d4cc63c
-	github.com/antchfx/xpath v1.1.2
+	github.com/antchfx/jsonquery v1.1.4
+	github.com/antchfx/xmlquery v1.3.1
+	github.com/antchfx/xpath v1.1.10
+	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
 	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-redis/redis/v7 v7.0.0-beta.3.0.20190824101152-d19aba07b476

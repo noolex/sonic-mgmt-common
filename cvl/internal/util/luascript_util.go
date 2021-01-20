@@ -53,6 +53,7 @@ var FILTER_ENTRIES_LUASCRIPT *redis.Script = redis.NewScript(`
 
     local predicate = loadPredicateScript(ARGV[3])
 
+    local entryCount = 0
     for _, key in ipairs(keys) do
         local hash = redis.call('HGETALL', key)
         local row = {}; local keySet = {}; local keyVal = {}
@@ -71,9 +72,10 @@ var FILTER_ENTRIES_LUASCRIPT *redis.Script = redis.NewScript(`
 
         if (predicate == nil) or (predicate(keySet, row) == true) then
             tbl[keyOnly] = row
+            entryCount = entryCount + 1
         end
 
-        if (count ~= -1 and #tbl == count) then break end
+        if (count ~= -1 and entryCount >= count) then break end
 
     end
 

@@ -24,6 +24,11 @@ module sonic-snmp {
   description
     "SONIC SNMP";
 
+  revision 2020-11-03 {
+    description
+      "Added RPC for statistics.";
+  }
+
   revision 2019-11-12 {
     description
       "Initial revision.";
@@ -530,5 +535,248 @@ module sonic-snmp {
       }
     }
 
+  }
+
+  // RPC statements
+  rpc clear-counters {
+      description
+        "RPC to clear SNMP server statistics";
+  }
+
+  rpc show-counters {
+      description
+        "RPC to retrieve SNMP server statistics";
+      output {
+          container counters {
+            description
+              "SNMP server statistics";
+
+              leaf snmpInPkts {
+                  type yang:counter32;
+                  description
+                    "The total number of Messages delivered to the
+                      SNMP entity from the transport service";
+              }
+
+              leaf snmpOutPkts {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP Messages which were
+                      passed from the SNMP protocol entity to the
+                        transport service.";
+              }
+
+              leaf snmpInBadVersions {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP Messages which were
+                        delivered to the SNMP protocol entity and were for
+                            an unsupported SNMP version.";
+              }   
+
+              leaf snmpInBadCommunityNames {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP Messages delivered to
+                      the SNMP protocol entity which used a SNMP
+                        community name not known to said entity.";
+              }                            
+
+              leaf snmpInBadCommunityUses {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP Messages delivered to
+                      the SNMP protocol entity which represented an SNMP
+                        operation which was not allowed by the SNMP
+                            community named in the Message.";
+              }
+
+              leaf snmpInASNParseErrs {
+                  type yang:counter32;
+                  description
+                      "The total number of ASN.1 or BER errors
+                        encountered by the SNMP protocol entity when
+                            decoding received SNMP Messages.";
+              }             
+
+              leaf snmpInTooBigs {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP PDUs which were
+                        delivered to the SNMP protocol entity and for
+                            which the value of the error-status field is
+                                `tooBig'.";
+              }     
+
+              leaf snmpInNoSuchNames {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP PDUs which were
+                      delivered to the SNMP protocol entity and for
+                      which the value of the error-status field is
+                      `noSuchName'.";
+              }     
+
+              leaf snmpInBadValues {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP PDUs which were
+                      delivered to the SNMP protocol entity and for
+                      which the value of the error-status field is
+                      `badValue'.";
+              }     
+
+              leaf snmpInReadOnlys {
+                  type yang:counter32;
+                  description
+                    "The total number valid SNMP PDUs which were
+                      delivered to the SNMP protocol entity and for
+                      which the value of the error-status field is
+                      `readOnly'.  It should be noted that it is a
+                      protocol error to generate an SNMP PDU which
+                      contains the value `readOnly' in the error-status
+                      field, as such this object is provided as a means
+                      of detecting incorrect implementations of the snmp";
+              }     
+
+              leaf snmpInGenErrs {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP PDUs which were
+                      delivered to the SNMP protocol entity and for
+                      which the value of the error-status field is
+                      `genErr'.";
+              }     
+
+              leaf snmpInTotalReqVars {
+                  type yang:counter32;
+                  description
+                    "The total number of MIB objects which have been
+                      retrieved successfully by the SNMP protocol entity
+                      as the result of receiving valid SNMP Get-Request
+                      and Get-Next PDUs.";
+              }     
+
+              leaf snmpInTotalSetVars {
+                  type yang:counter32;
+                  description
+                    "The total number of MIB objects which have been
+                      altered successfully by the SNMP protocol entity
+                      as the result of receiving valid SNMP Set-Request
+                      PDUs.";
+              }     
+
+              leaf snmpInGetRequests {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP Get-Request PDUs which
+                      have been accepted and processed by the SNMP
+                      protocol entity.";
+              }     
+
+              leaf snmpInGetNexts {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP Get-Next PDUs which have
+                      been accepted and processed by the SNMP protocol
+                      entity.";
+              }     
+
+              leaf snmpInSetRequests {
+                  type yang:counter32;
+                  description
+                    "The total number of SNMP Set-Request PDUs which
+                      have been accepted and processed by the SNMP
+                      protocol entity.";
+              }     
+
+              leaf snmpInGetResponses {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP Get-Response PDUs which
+                      have been accepted and processed by the SNMP
+                      protocol entity.";
+              }     
+
+              leaf snmpInTraps {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP Trap PDUs which have
+                      been accepted and processed by the SNMP protocol
+                      entity.";
+              }     
+
+              leaf snmpOutTooBigs {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP PDUs which were
+                      generated by the SNMP protocol entity and for
+                      which the value of the error-status field is
+                      `tooBig.'";
+              }         
+
+              leaf snmpOutNoSuchNames {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP PDUs which were
+                      generated by the SNMP protocol entity and for
+                      which the value of the error-status is
+                      `noSuchName'.";
+              }    
+
+              leaf snmpOutBadValues {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP PDUs which were
+                      generated by the SNMP protocol entity and for
+                      which the value of the error-status field is
+                      `badValue'.";
+              }    
+
+              leaf snmpOutGenErrs {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP PDUs which were
+                      generated by the SNMP protocol entity and for
+                      which the value of the error-status field is
+                      `genErr'.";
+              }    
+
+              leaf snmpOutGetRequests {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP Get-Request PDUs which
+                      have been generated by the SNMP protocol entity.";
+              } 
+
+              leaf snmpOutGetNexts {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP Get-Next PDUs which have
+                      been generated by the SNMP protocol entity.";
+              }
+
+              leaf snmpOutSetRequests {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP Set-Request PDUs which
+                      have been generated by the SNMP protocol entity.";
+              }   
+
+              leaf snmpOutGetResponses {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP Get-Response PDUs which
+                      have been generated by the SNMP protocol entity.";
+              }   
+
+              leaf snmpOutTraps {
+                  type yang:counter32;
+                  description
+                      "The total number of SNMP Trap PDUs which have
+                      been generated by the SNMP protocol entity.";
+              }   
+          }
+      }
   }
 }

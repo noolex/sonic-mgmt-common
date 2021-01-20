@@ -253,14 +253,18 @@ var DbToYang_qos_fwd_group_dot1p_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPa
     dbSpec := &db.TableSpec{Name: "TC_TO_DOT1P_MAP"}
 
     map_added := 0
-    keys, _ := inParams.d.GetKeys(dbSpec)
+    var keyPattern string
+    if  name != "" {
+        keyPattern = name
+    } else {
+        keyPattern = "*"
+    }
+
+    keys, _ := inParams.d.GetKeysByPattern(dbSpec, keyPattern)
     for _, key := range keys {
         log.Info("key: ", key)
 
         map_name := key.Comp[0]
-        if name != ""  && name != map_name{
-            continue
-        } 
 
         map_added = map_added + 1 
 

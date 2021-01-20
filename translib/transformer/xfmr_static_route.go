@@ -290,7 +290,11 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
         }
         var intf string
         if fieldValues[2] != nil {
-            intf = fieldValues[2][idx]
+            if utils.IsAliasModeEnabled() {
+                intf = *(utils.GetUINameFromNativeName(&fieldValues[2][idx]))
+            } else {
+                intf = fieldValues[2][idx]
+            }
         }
         var distance uint32
         if fieldValues[3] != nil {
@@ -340,23 +344,26 @@ func (scope uriScopeType) String() string {
     return "Unknown Scope Type"
 }
 
-func getYgotStaticRoutesObj(s *ygot.GoStruct, vrf string) (
+func getYgotStaticRoutesObj(s *ygot.GoStruct, vrf string, is_validate bool) (
         *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes, error) {
     deviceObj, ok := (*s).(*ocbinds.Device)
     if !ok {
         return nil, errors.New("Invalid root object type")
     }
     if deviceObj.NetworkInstances == nil {
+        if is_validate { return nil, errors.New("Network Instances object not found") }
         deviceObj.NetworkInstances = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances)
     }
     var err error
     vrfInstObj, ok := deviceObj.NetworkInstances.NetworkInstance[vrf]
     if !ok {
+        if is_validate { return nil, errors.New("Network Instance object not found") }
         if vrfInstObj, err = deviceObj.NetworkInstances.NewNetworkInstance(vrf); err != nil {
             return nil, errors.New("Failed to allocate new network instance object")
         }
     }
     if vrfInstObj.Protocols == nil {
+        if is_validate { return nil, errors.New("Protocols object not found") }
         vrfInstObj.Protocols = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols)
     }
     protoKey := ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Key{
@@ -365,11 +372,13 @@ func getYgotStaticRoutesObj(s *ygot.GoStruct, vrf string) (
               }
     protoInstObj, ok := vrfInstObj.Protocols.Protocol[protoKey]
     if !ok {
+        if is_validate { return nil, errors.New("STATIC Protocol not found") }
         if protoInstObj, err = vrfInstObj.Protocols.NewProtocol(ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_STATIC, "static"); err != nil {
             return nil, errors.New("Failed to allocate new static protocol object")
         }
     }
     if protoInstObj.StaticRoutes == nil {
+        if is_validate { return nil, errors.New("Static routes object not found") }
         protoInstObj.StaticRoutes = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes)
     }
 
@@ -389,7 +398,10 @@ func verifyIpPrefix(pfx string) error {
 
 // compose nexthop set based on data of ygot structure
 func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]*ipNexthopSet, error) {
-    staticRoutes, err := getYgotStaticRoutesObj(s, vrf)
+    /* Dont construct (by passing is_validate=false in the below function) the YGOT structure 
+     * as it can leave the stale STATIC routes entry 
+     * in the protocol list for VLAN key (which is invalid for static routes) */
+    staticRoutes, err := getYgotStaticRoutesObj(s, vrf, false)
     if err != nil {
         log.Infof("Failed to get ygot nexthop object: %v", err)
         return nil, err
@@ -640,24 +652,7 @@ type routeNexthopInfo struct {
 // Store nexthop list read from ygot data and config DB for route of VRF
 type vrfRouteInfo map[string]map[string]*routeNexthopInfo
 
-func getRouteData(inParams XfmrParams, scope uriScopeType) (*vrfRouteInfo, error) {
-    pathInfo := NewPathInfo(inParams.uri)
-    vrf := pathInfo.Var("name")
-    routeData := &vrfRouteInfo{}
-    proto := pathInfo.Var("name#2")
-    protoId := pathInfo.Var("identifier")
-    ipPrefix := pathInfo.Var("prefix")
-
-    if len(vrf) == 0 {
-        log.Info("VRF name is missing")
-        return nil, tlerr.NotFound("VRF name in URI")
-    }
-    if protoId != "STATIC" || proto != "static" {
-        log.Info("Invalid protocol name or identifier")
-        return nil, tlerr.InvalidArgs("Invalid protocol name %v or identifier %v", proto, protoId)
-    }
-
-    searchPrefix := ipPrefix
+func getRouteData(inParams XfmrParams, scope uriScopeType, vrf string, searchPrefix string) (*vrfRouteInfo, error) {
     if inParams.oper == REPLACE && scope == STATIC_ROUTES {
         searchPrefix = ""
     }
@@ -674,6 +669,7 @@ func getRouteData(inParams XfmrParams, scope uriScopeType) (*vrfRouteInfo, error
             }
         }
     }
+    routeData := &vrfRouteInfo{}
     (*routeData)[vrf] = make(map[string]*routeNexthopInfo)
     for prefix, nhs := range srouteObjMap {
         nhList, vrfInKey, err := getNexthopListFromDB(inParams.d, vrf, prefix)
@@ -772,42 +768,26 @@ func addRouteUpdToMap(inParams XfmrParams, vrf string, prefix string, nexthops *
     return nil
 }
 
-var YangToDb_static_routes_prefix_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-
-    res_map := make(map[string]string)
-    return res_map, nil
-}
-
-var DbToYang_static_routes_prefix_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-
-    log.Infof("DbToYang_static_routes_prefix_xfmr : URI %s, requestURI %s, inparams.key %s", inParams.uri, inParams.requestUri, inParams.key)
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
-    key := strings.Split(entry_key, "|")
-    if len(key) >= 2 {
-        rmap["prefix"] =  key[1] 
-        return rmap,nil 
-    } else {
-        log.Infof("DbToYang_static_routes_prefix_xfmr: prefix missing in key")
-        return rmap, errors.New("Route prefix not found in key")
-   }
-}
-
-var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
-    uriScope := getUriScope(inParams.requestUri)
-    log.Infof("YangToDb_static_routes_nexthop_xfmr: URI %s, requestURI %s, Scope %s", inParams.uri, inParams.requestUri, uriScope)
+var YangToDb_static_routes_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     resMap := make(map[string]map[string]db.Value)
-
     pathInfo := NewPathInfo(inParams.uri)
-    if inParams.oper != DELETE && pathInfo.HasVar("index") {
-        // bypass calling from leaf node
+    vrf := pathInfo.Var("name")
+    if len(vrf) == 0 || (strings.HasPrefix(vrf, "Vlan")) {
+        return resMap, nil
+    }
+    proto := pathInfo.Var("name#2")
+    protoId := pathInfo.Var("identifier")
+    if !(protoId == "STATIC" && proto == "static") {
         return resMap, nil
     }
 
-    vrf := pathInfo.Var("name")
-    ipPrefix := pathInfo.Var("prefix")
+    uriScope := getUriScope(inParams.requestUri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    log.Infof("YangToDb_static_routes_subtree_xfmr: URI %s, requestURI %s, target URI %s Scope %s", 
+              inParams.uri, inParams.requestUri, targetUriPath, uriScope)
 
-    routeData, err := getRouteData(inParams, uriScope)
+    ipPrefix := pathInfo.Var("prefix")
+    routeData, err := getRouteData(inParams, uriScope, vrf, ipPrefix)
     if err != nil {
         log.Info("Failed to get ygot and DB data")
         return resMap, err
@@ -917,25 +897,34 @@ var YangToDb_static_routes_nexthop_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
     return resMap, nil
 }
 
-func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhIndex string) error {
-    sroutesObj, err := getYgotStaticRoutesObj(inParams.ygRoot, vrf)
+func setRouteObjWithDbData(inParams XfmrParams, vrf string, prefix string, nhIndex string) error {
+    sroutesObj, err := getYgotStaticRoutesObj(inParams.ygRoot, vrf, true)
     if err != nil {
         return err
     }
-    routeData := (*inParams.dbDataMap)[db.ConfigDB]["STATIC_ROUTE"]
-    for prefixKey, route := range routeData {
-        tokens := strings.Split(prefixKey, "|")
-        prefix := tokens[len(tokens) - 1]
-        dbVrf := DEFAULT_VRF
-        if len(tokens) > 1 {
-            dbVrf = tokens[0]
-        }
-        if dbVrf != vrf {
+    ygot.BuildEmptyTree(sroutesObj)
+
+    tblName := "STATIC_ROUTE"
+    var cfgDb = inParams.dbs[db.ConfigDB]
+    var staticTbl = &db.TableSpec{Name: tblName, CompCt:2}
+    var keyPattern = ""
+    if len(prefix) > 0 {
+        keyPattern = vrf + "|" + prefix
+    } else {
+        keyPattern = vrf + "|*"
+    }
+    keys, _ := cfgDb.GetKeysByPattern(staticTbl, keyPattern)
+    for _, key := range keys {
+        route, dbErr := cfgDb.GetEntry(&db.TableSpec{Name:tblName}, key)
+        if dbErr != nil {
+            log.Error("DB GetEntry failed for key : ", key)
             continue
         }
-        if len(ipPrefix) != 0 && ipPrefix != prefix {
-            continue
+        if log.V(3) {
+            log.Infof("setRouteObjWithDbData key %v entry %v", key, route)
         }
+
+        prefix = key.Comp[1]
         var nhSet ipNexthopSet
         err := nhSet.fromDbData(vrf, prefix, &route)
         if err != nil {
@@ -951,6 +940,20 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhI
                 return err
             }
         }
+        if routeObj.Config == nil {
+            routeObj.Config = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_Config)
+        }
+        if routeObj.State == nil {
+            routeObj.State = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_State)
+        }
+        if routeObj.Config.Prefix == nil {
+            routeObj.Config.Prefix = new(string)
+        }
+        *routeObj.Config.Prefix = prefix
+        if routeObj.State.Prefix == nil {
+            routeObj.State.Prefix = new(string)
+        }
+        *routeObj.State.Prefix = prefix
         routeObj.NextHops = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops)
         for key, nh := range nhSet.nhList {
             if len(nhIndex) != 0 && nhIndex != key {
@@ -968,42 +971,73 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhI
             if nhObj.Config == nil {
                 nhObj.Config = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_Config)
             }
+            if nhObj.State == nil {
+                nhObj.State = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_State)
+            }
+
             if nhObj.Config.Index == nil {
                 nhObj.Config.Index = new(string)
             }
             *nhObj.Config.Index = key
+            if nhObj.State.Index == nil {
+                nhObj.State.Index = new(string)
+            }
+            *nhObj.State.Index = key
             if nh.blackhole {
                 if nhObj.Config.Blackhole == nil {
                     nhObj.Config.Blackhole = new(bool)
                 }
                 *nhObj.Config.Blackhole = nh.blackhole
+                if nhObj.State.Blackhole == nil {
+                    nhObj.State.Blackhole = new(bool)
+                }
+                *nhObj.State.Blackhole = nh.blackhole
             }
             if !nh.gwIp.isZeros() {
-                gwObj, err :=
+                gwCfgObj, err :=
                     nhObj.Config.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_Config_NextHop_Union(nh.gwIp.origIpStr)
                 if err != nil {
-                    log.Infof("Failed to get gateway IP object: %v", err)
+                    log.Infof("Failed to get config gateway IP object: %v", err)
                     return err
                 }
-                nhObj.Config.NextHop = gwObj
+                nhObj.Config.NextHop = gwCfgObj
+                gwStateObj, err :=
+                    nhObj.State.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_State_NextHop_Union(nh.gwIp.origIpStr)
+                if err != nil {
+                    log.Infof("Failed to get state gateway IP object: %v", err)
+                    return err
+                }
+                nhObj.State.NextHop = gwStateObj
             }
             if nh.tag != 0 {
                 if nhObj.Config.Tag == nil {
                     nhObj.Config.Tag = new(uint32)
                 }
                 *nhObj.Config.Tag = nh.tag
+                if nhObj.State.Tag == nil {
+                    nhObj.State.Tag = new(uint32)
+                }
+                *nhObj.State.Tag = nh.tag
             }
             if nh.distance != 0 {
                 if nhObj.Config.Metric == nil {
                     nhObj.Config.Metric = new(uint32)
                 }
                 *nhObj.Config.Metric = nh.distance
+                if nhObj.State.Metric == nil {
+                    nhObj.State.Metric = new(uint32)
+                }
+                *nhObj.State.Metric = nh.distance
             }
             if len(nh.vrf) > 0 {
                 if nhObj.Config.NexthopNetworkInstance == nil {
                     nhObj.Config.NexthopNetworkInstance = new(string)
                 }
                 *nhObj.Config.NexthopNetworkInstance = nh.vrf
+                if nhObj.State.NexthopNetworkInstance == nil {
+                    nhObj.State.NexthopNetworkInstance = new(string)
+                }
+                *nhObj.State.NexthopNetworkInstance = nh.vrf
             }
             if len(nh.ifName) > 0 {
                 if nhObj.InterfaceRef == nil {
@@ -1013,16 +1047,29 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, ipPrefix string, nhI
                     nhObj.InterfaceRef.Config =
                         new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_InterfaceRef_Config)
                 }
+                if nhObj.InterfaceRef.State == nil {
+                    nhObj.InterfaceRef.State =
+                        new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop_InterfaceRef_State)
+                }
+
                 if nhObj.InterfaceRef.Config.Interface == nil {
                     nhObj.InterfaceRef.Config.Interface = new(string)
                 }
                 *nhObj.InterfaceRef.Config.Interface = nh.ifName
+                if nhObj.InterfaceRef.State.Interface == nil {
+                    nhObj.InterfaceRef.State.Interface = new(string)
+                }
+                *nhObj.InterfaceRef.State.Interface = nh.ifName
             }
             if nh.track != 0 {
                 if nhObj.Config.Track == nil {
                     nhObj.Config.Track = new(uint16)
                 }
                 *nhObj.Config.Track = nh.track
+                if nhObj.State.Track == nil {
+                    nhObj.State.Track = new(uint16)
+                }
+                *nhObj.State.Track = nh.track
             }
         }
     }
@@ -1038,35 +1085,6 @@ var DbToYang_static_routes_nexthop_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
     err := setRouteObjWithDbData(inParams, vrf, prefix, nhIndex)
 
     return err
-}
-
-var YangToDb_static_routes_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    log.Infof("YangToDb_static_routes_key_xfmr: URI %s", inParams.uri)
-    pathInfo := NewPathInfo(inParams.uri)
-    vrf := pathInfo.Var("name")
-    if !pathInfo.HasVar("prefix") {
-        return "", nil
-    }
-    prefix := pathInfo.Var("prefix")
-    return vrf + "|" + prefix, nil
-}
-
-var DbToYang_static_routes_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    log.Infof("DbToYang_static_routes_key_xfmr: URI %s, key %s", inParams.uri, inParams.key)
-    rmap := make(map[string]interface{})
-    dbKeys := strings.Split(inParams.key, "|")
-    if len(dbKeys) >= 2 {
-        rmap["prefix"] = dbKeys[1]
-    }
-
-    return rmap, nil
-}
-
-func validate_static_protocol(inParams XfmrParams) bool {
-    pathInfo := NewPathInfo(inParams.uri)
-    proto := pathInfo.Var("name#2")
-    protoId := pathInfo.Var("identifier")
-    return protoId == "STATIC" && proto == "static"
 }
 
 func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
@@ -1089,7 +1107,7 @@ func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
     return strings.Join(aliasList, ","), nil
 }
 
-func Subscribe_static_routes_nexthop_xfmr(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+func Subscribe_static_routes_subtree_xfmr(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var result XfmrSubscOutParams
 
     pathInfo := NewPathInfo(inParams.uri)
@@ -1107,8 +1125,9 @@ func Subscribe_static_routes_nexthop_xfmr(inParams XfmrSubscInParams) (XfmrSubsc
         routeKey = "*"
     }
 
-    log.Infof("Subscribe_static_routes_nexthop_xfmr: URI %s", inParams.uri)
+    log.Infof("Subscribe_static_routes_subtree_xfmr: URI %s", inParams.uri)
     result.dbDataMap = RedisDbMap{db.ConfigDB: {STATIC_ROUTE_TABLE: {routeKey: {}}}}
+    /* The below lines will be used only for subscription on a terminal node */
     result.needCache = true
     result.onChange = true
     result.nOpts = new(notificationOpts)
@@ -1117,14 +1136,19 @@ func Subscribe_static_routes_nexthop_xfmr(inParams XfmrSubscInParams) (XfmrSubsc
     return result, nil
 }
 
+var DbToYang_static_routes_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+    log.Infof("DbToYang_static_routes_subtree_xfmr: URI %s, requestURI %s", inParams.uri, inParams.requestUri)
+    pathInfo := NewPathInfo(inParams.uri)
+    vrf := pathInfo.Var("name")
+    prefix := pathInfo.Var("prefix")
+    nhIndex := pathInfo.Var("index")
+    err := setRouteObjWithDbData(inParams, vrf, prefix, nhIndex)
+    return err
+}
+
 func init() {
-    XlateFuncBind("YangToDb_static_routes_nexthop_xfmr", YangToDb_static_routes_nexthop_xfmr)
-    XlateFuncBind("DbToYang_static_routes_nexthop_xfmr", DbToYang_static_routes_nexthop_xfmr)
-    XlateFuncBind("YangToDb_static_routes_prefix_xfmr", YangToDb_static_routes_prefix_xfmr)
-    XlateFuncBind("DbToYang_static_routes_prefix_xfmr", DbToYang_static_routes_prefix_xfmr)
-    XlateFuncBind("Subscribe_static_routes_nexthop_xfmr", Subscribe_static_routes_nexthop_xfmr)
-    XlateFuncBind("YangToDb_static_routes_key_xfmr", YangToDb_static_routes_key_xfmr)
-    XlateFuncBind("DbToYang_static_routes_key_xfmr", DbToYang_static_routes_key_xfmr)
-    XlateFuncBind("static_routes_validate_proto", validate_static_protocol)
     XlateFuncBind("static_routes_alias_xfmr", alias_list_value_xfmr)
+    XlateFuncBind("YangToDb_static_routes_subtree_xfmr", YangToDb_static_routes_subtree_xfmr)
+    XlateFuncBind("DbToYang_static_routes_subtree_xfmr", DbToYang_static_routes_subtree_xfmr)
+    XlateFuncBind("Subscribe_static_routes_subtree_xfmr", Subscribe_static_routes_subtree_xfmr)
 }

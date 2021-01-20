@@ -1,0 +1,111 @@
+module sonic-loadshare-mode {
+    namespace "http://github.com/Azure/sonic-loadshare-mode";
+    prefix slbmode;
+    yang-version 1.1;
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONIC Load Balance Mode";
+
+    revision 2020-10-08 {
+        description
+	        "Initial revision.";
+    }
+
+    container sonic-loadshare-mode {
+        container ECMP_LOADSHARE_TABLE_SEED {
+            list ECMP_LOADSHARE_TABLE_SEED_LIST {
+                key "hash";
+
+		leaf hash {
+                      type string;
+                      description
+                          "switch_table db key.";
+                }
+
+                leaf ecmp_hash_seed {
+                    type uint32;
+                    description
+                        "ecmp hash seed value.";
+                }
+            }
+        }
+        container ECMP_LOADSHARE_TABLE_IPV4 {
+            list ECMP_LOADSHARE_TABLE_IPV4_LIST {
+                key "ipv4";
+
+		leaf ipv4 {
+                      type string;
+                      description
+                           "switch_table ipv4 db key.";
+                }
+                leaf ipv4_l4_src_port {
+                    type boolean;
+                    description
+                        "Flag to enable or disable ipv4_l4_src_port attribute";
+                }
+                leaf ipv4_l4_dst_port {
+                    type boolean;
+                    description
+                        "Flag to enable or disable ipv4_l4_dst_port attribute";
+                }
+                leaf ipv4_src_ip {
+                    type boolean;
+                    description
+                        "Flag to enable or disable ipv4_src_ip attribute";
+                }
+                leaf ipv4_dst_ip {
+                    type boolean;
+                    description
+                        "Flag to enable or disable ipv4_dst_ip attribute";
+                }
+                leaf ipv4_protocol {
+                    type boolean;
+                    description
+                        "Flag to enable or disable ipv4_protocol attribute";
+                }
+            }
+        }
+        container ECMP_LOADSHARE_TABLE_IPV6 {
+            list ECMP_LOADSHARE_TABLE_IPV6_LIST {
+                key "ipv6";
+
+		leaf ipv6 {
+                      type string;
+                      description
+                           "switch_table ipv4 db key.";
+                }
+                leaf ipv6_l4_src_port {
+                    type boolean;
+                    description
+                        "Flag to enable or disable igmp feature.";
+                }
+                leaf ipv6_l4_dst_port {
+                    type boolean;
+                    description
+                        "Flag to enable or disable igmp feature.";
+                }
+                leaf ipv6_src_ip {
+                    type boolean;
+                    description
+                        "Flag to enable or disable igmp feature.";
+                }
+                leaf ipv6_dst_ip {
+                    type boolean;
+                    description
+                        "Flag to enable or disable igmp feature.";
+                }
+                leaf ipv6_next_hdr {
+                    type boolean;
+                    description
+                        "Flag to enable or disable igmp feature.";
+                }
+            }
+        }
+   }
+}

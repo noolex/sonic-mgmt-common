@@ -287,7 +287,9 @@ var tam_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[strin
     updateMap := make(map[db.DBNum]map[string]map[string]db.Value)
     updateMap[db.ConfigDB] = make(map[string]map[string]db.Value)
     var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
+	defer configDbPtr.DeleteDB()
     var stateDbPtr, _ = db.NewDB(getDBOptions(db.StateDB))
+	defer stateDbPtr.DeleteDB()
 
     // check if we need to create TAM table
     if (method != DELETE) {
@@ -570,10 +572,12 @@ func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule,
     var ruleEntries = make(map[string]AclRule)
     var err error
     var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
+	defer configDbPtr.DeleteDB()
     var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
     aclRuleTable, _ := configDbPtr.GetTable(ACL_RULE_TABLE_TS)
 
     var countersDbPtr, _ = db.NewDB(getDBOptions(db.CountersDB))
+	defer countersDbPtr.DeleteDB()
     var ACL_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COUNTERS"}
     
     var ACL_LAST_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "LAST_COUNTERS"}
@@ -781,6 +785,7 @@ var YangToDb_tam_flowgroups_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
     updateMap[db.ConfigDB] = make(map[string]map[string]db.Value)
 
     var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
+	defer configDbPtr.DeleteDB()
     var TAM_FLOWGROUP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "TAM_FLOWGROUP_TABLE"}
     var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
     flowGroupTable, _ := configDbPtr.GetTable(TAM_FLOWGROUP_TABLE_TS)
