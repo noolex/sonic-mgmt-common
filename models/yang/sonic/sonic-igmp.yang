@@ -52,7 +52,13 @@ module sonic-igmp {
     container sonic-igmp {
         container IGMP_INTERFACE {
             list IGMP_INTERFACE_LIST {
+            /*
                 must "(/cmn:operation/cmn:operation = 'DELETE') or (../../IGMP_INTERFACE_QUERY/IGMP_INTERFACE_QUERY_LIST[interface-id = igmpintfname]/enabled='true')" {
+                    error-message "IGMP not enabled on this interface";
+                }
+            */
+
+                must "(../../IGMP_INTERFACE_QUERY/IGMP_INTERFACE_QUERY_LIST/enabled='true')" {
                     error-message "IGMP not enabled on this interface";
                 }
 
