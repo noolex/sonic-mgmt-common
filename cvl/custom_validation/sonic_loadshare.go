@@ -52,11 +52,23 @@ func (t *CustomValidation) ValidateSymmHashCfg(vc *CustValidationCtxt) CVLErrorI
             ConstraintErrMsg: "Failed to read ECMP Table",
         }
     }
+    ip := keys[1]   // ipv4,ipv6
+    /* Check if symmetric hashing is enabled*/
+    var symmHashFldName string
+    var isSymmHashEnabled bool
+    if ip == "ipv4" {
+        symmHashFldName = "ipv4_symmetric"
+    } else {
+        symmHashFldName = "ipv6_symmetric"
+    }
     fvs := make(map[string]string)
     /* Fetch the existing config */
     if err != redis.Nil && len(attrs) != 0 {
         for dfn, dfv := range attrs {
             fvs[dfn] = dfv
+            if dfn == symmHashFldName && dfv == "true" {
+                isSymmHashEnabled = true
+            }
         }
     }
     /* Update the config map with requested config*/
@@ -80,7 +92,6 @@ func (t *CustomValidation) ValidateSymmHashCfg(vc *CustValidationCtxt) CVLErrorI
     }
     var sip, dip, srcp, dstp, symm string
     var ok bool
-    ip := keys[1]   // ipv4,ipv6
     if ip == "ipv4" {
         srcp, ok = fvs["ipv4_l4_src_port"]
         if !ok {srcp = "false"}
@@ -110,9 +121,17 @@ func (t *CustomValidation) ValidateSymmHashCfg(vc *CustValidationCtxt) CVLErrorI
         if (sip == "false" && dip == "false" && srcp == "false" && dstp == "false") {
             err_str = "Configure required ECMP parameters before enabling symmetric hashing"
         } else if (sip != dip) {
-            err_str = "Symmetric hash requires both Src-IP and Dst-ip to be enabled or disabled"
+            if isSymmHashEnabled {
+                err_str = "Cannot modify this parameter as symmetric hashing is enabled"
+            } else {
+                err_str = "Symmetric hash requires both Src-IP and Dst-ip to be enabled or disabled"
+            }
         } else if (srcp != dstp) {
-            err_str = "Symmetric hash requires both L4-Src-Port and L4-Dst-Port to be enabled or disabled"
+            if isSymmHashEnabled {
+                err_str = "Cannot modify this parameter as symmetric hashing is enabled"
+            } else {
+                err_str = "Symmetric hash requires both L4-Src-Port and L4-Dst-Port to be enabled or disabled"
+            }
         } else {
             return CVLErrorInfo{ErrCode: CVL_SUCCESS}
         }

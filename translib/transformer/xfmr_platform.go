@@ -1758,7 +1758,7 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     psuInfo.Manufacturer = convertUTF8EndcodedString(psuEntry.Get("mfr_id"))
     psuInfo.Serial_Number = convertUTF8EndcodedString(psuEntry.Get("serial"))
     psuInfo.Fans = psuEntry.Get("num_fans")
-    psuInfo.Status_Led = psuEntry.Get("status_led")
+    psuInfo.Status_Led = psuEntry.Get("led_status")
     return psuInfo, err
 }
 
@@ -1959,7 +1959,7 @@ func getSysFanFromDb(name string, d *db.DB) (Fan, error) {
 
     fanInfo.Model_Name = fanEntry.Get("model")
     fanInfo.Serial_Number = fanEntry.Get("serial")
-    fanInfo.Status_Led = fanEntry.Get("status_led")
+    fanInfo.Status_Led = fanEntry.Get("led_status")
 
     return fanInfo, err
 }

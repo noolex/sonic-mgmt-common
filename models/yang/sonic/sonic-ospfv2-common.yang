@@ -24,7 +24,7 @@ module sonic-ospfv2-common {
   }
 
   import sonic-interface {
-      prefix sonic-subif;
+      prefix sonic-if;
   }
 
   import sonic-acl {
@@ -245,7 +245,7 @@ module sonic-ospfv2-common {
         path "/sonic-lbk:sonic-loopback/sonic-lbk:LOOPBACK/sonic-lbk:LOOPBACK_LIST/sonic-lbk:name";
       }
       type leafref {
-        path "/sonic-subif:sonic-interface/sonic-subif:VLAN_SUB_INTERFACE/sonic-subif:VLAN_SUB_INTERFACE_LIST/sonic-subif:id";
+        path "/sonic-if:sonic-interface/sonic-if:VLAN_SUB_INTERFACE/sonic-if:VLAN_SUB_INTERFACE_LIST/sonic-if:id";
       }
     }
     description 

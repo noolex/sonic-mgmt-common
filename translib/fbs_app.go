@@ -3509,6 +3509,9 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 			return nil
 		}
 	}
+	if vrfName == "" {
+		vrfName = "default"
+	}
 	log.Infof("Interface %v belongs to %v VRF", nativeIfName, vrfName)
 
 	if intfObj.NextHopGroups == nil || len(intfObj.NextHopGroups.NextHopGroup) == 0 {
@@ -3564,8 +3567,8 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 		}
 		grpObj.State.Active = &state
 
-		cfgEgress := grpStateData.GetList("CONFIGURED_EGRESS")
-		egressState := grpStateData.GetList("EGRESS_STATE")
+		cfgEgress := grpStateData.GetList("CONFIGURED_MEMBERS")
+		memState := grpStateData.GetList("MEMBERS_STATE")
 		for idx, egr := range cfgEgress {
 			parts := strings.Split(egr, "|")
 			prioInt, _ := strconv.ParseUint(parts[0], 10, 16)
@@ -3592,7 +3595,7 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 			}
 
 			active := false
-			if idx < len(egressState) && egressState[idx] == "1" {
+			if idx < len(memState) && memState[idx] == "1" {
 				active = true
 			}
 			nhObj.State.Active = &active
