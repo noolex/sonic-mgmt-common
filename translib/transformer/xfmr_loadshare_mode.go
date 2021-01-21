@@ -257,11 +257,6 @@ var DbToYang_loadshare_mode_state_xfmr SubTreeXfmrDbToYang = func (inParams Xfmr
             ygot.BuildEmptyTree(lbIpv4AttrObj)
             ygot.BuildEmptyTree(lbIpv4AttrObj.State)
             trueIpv4Val := true
-            keyIpv4Val := "ipv4"
-            if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4") {
-                lbIpv4AttrObj.State.Ipv4 = &keyIpv4Val
-            }
-
             if strings.Contains(entry.Field["ecmp_hash_fields_ipv4"], "ipv4_dst_ip") {
                 lbIpv4AttrObj.State.Ipv4DstIp = &trueIpv4Val
             }
