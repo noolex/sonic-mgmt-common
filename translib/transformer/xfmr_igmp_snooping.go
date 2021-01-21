@@ -313,7 +313,7 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 					res_map[CFG_L2MC_STATIC_MEMBER_TABLE] = igmpsMcastGroupMemTblMap
 				} else if len(igmpsVal.Staticgrps.StaticMulticastGroup) == 1 {
 					for grpKey, grpObj := range igmpsVal.Staticgrps.StaticMulticastGroup {
-						if len(grpObj.Config.OutgoingInterface) == 0 {
+						if grpObj.Config == nil || len(grpObj.Config.OutgoingInterface) == 0 {
 							var err error
 							var staticGrpDbTbl db.Table
 							if staticGrpDbTbl, err = reqP.db.GetTable(CFG_L2MC_STATIC_GROUP_TABLE_TS); err != nil {
