@@ -1886,7 +1886,7 @@ var YangToDb_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams
 
     nbrs_obj := bgp_obj.Neighbors
     if nbrs_obj == nil || (nbrs_obj.Neighbor == nil) {
-        log.Errorf("Error: Neighbors container missing")
+        log.Infof("Error: Neighbors container missing")
         return res_map, err
     }
 
