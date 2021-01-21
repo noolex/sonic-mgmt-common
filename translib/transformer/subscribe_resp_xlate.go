@@ -20,6 +20,7 @@
 package transformer
 
 import (
+	"github.com/openconfig/goyang/pkg/yang"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
@@ -29,6 +30,7 @@ import (
 	"github.com/openconfig/ygot/ygot"
 	"reflect"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"fmt"
 )
 
 type subscribeNotfRespXlator struct {
@@ -291,6 +293,10 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
 		return err
 	}
 
+	dbIdx := ygDbInfo.dbIndex
+	delim := ygDbInfo.delim
+	if len(delim) == 0 && dbIdx < db.MaxDB { delim = dbYgXlateInfo.xlateReq.dbs[dbIdx].Opts.KeySeparator }
+
 	for _, listName := range ygDbInfo.listName {
 		if listName != dbYgXlateInfo.tableName + "_LIST" {
 			log.Warning("sonic yang model list name does not match with the table name, list name: ", listName)
@@ -310,7 +316,18 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
 			}
 			dbTableKey := dbYgXlateInfo.xlateReq.key.Comp[0]
 			for idx := 1; idx < len(keyList); idx++ {
-				dbTableKey = dbTableKey + dbYgListInfo.delim + dbYgXlateInfo.xlateReq.key.Comp[idx]
+				if len(dbYgListInfo.delim) > 0 {
+					delim = dbYgListInfo.delim
+				} else if dbYgListInfo.dbIndex < db.MaxDB {
+					delim = dbYgXlateInfo.xlateReq.dbs[dbYgListInfo.dbIndex].Opts.KeySeparator
+				} else if len(delim) == 0 && ygDbInfo.dbEntry.Config != yang.TSFalse {
+					delim = "|"
+				}
+				if len(delim) == 0 {
+					log.Error("handleDbToYangKeyXlate: Key-delim or db-name annotation is missing from the sonic yang model container: ", ygDbInfo.dbEntry.Name)
+					return tlerr.NotSupportedError{Format: "Could not form db key, since key-delim or db-name annotation is missing from the sonic yang model container", Path: ygDbInfo.dbEntry.Name}
+				}
+				dbTableKey = dbTableKey + delim + dbYgXlateInfo.xlateReq.key.Comp[idx]
 			}
 			log.Info("dbTableKey: ", dbTableKey)
 			dbYgXlateInfo.dbKey = dbTableKey
@@ -338,7 +355,7 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXfmr() (error) {
 	log.Info("handleDbToYangKeyXfmr: res map: ", rmap)
 	for k, v := range rmap {
 		//Assuming that always the string to be passed as the value in the DbtoYang key transformer response map
-		dbYgXlateInfo.xlateReq.path.Elem[dbYgXlateInfo.pathIdx].Key[k] = v.(string)
+		dbYgXlateInfo.xlateReq.path.Elem[dbYgXlateInfo.pathIdx].Key[k] = fmt.Sprintf("%v",v)
 	}
 
 	return nil
