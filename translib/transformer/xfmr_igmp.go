@@ -39,6 +39,7 @@ func init () {
     XlateFuncBind("Subscribe_igmp_stats_get_xfmr", Subscribe_igmp_stats_get_xfmr)
     XlateFuncBind("DbToYang_igmp_interface_get_xfmr", DbToYang_igmp_interface_get_xfmr)
     XlateFuncBind("Subscribe_igmp_interface_get_xfmr", Subscribe_igmp_interface_get_xfmr)
+    XlateFuncBind("DbToYang_igmp_intf_stats_get_xfmr", DbToYang_igmp_intf_stats_get_xfmr)
     XlateFuncBind("rpc_show_igmp_join", rpc_show_igmp_join)
     XlateFuncBind("rpc_clear_igmp", rpc_clear_igmp)
 }
@@ -418,6 +419,198 @@ func fillIgmpStatsXfmr (output_state map[string]interface{}, igmp_obj *ocbinds.O
     return err
 }
 
+func fillIgmpIntfStatsXfmr (output_state map[string]interface{}, interfaceId string, igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp) error {
+    var err error
+    var igmpCounters_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters
+    var igmpQueries_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries
+    var igmpQueriesSent_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries_Sent
+    var igmpQueriesSentState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries_Sent_State
+    var igmpQueriesRcvd_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries_Received
+    var igmpQueriesRcvdState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries_Received_State
+    var igmpReports_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Reports
+    var igmpReportsState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Reports_State
+    //var igmpMtraceCounters_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_MtraceCounters
+    //var igmpMtraceCountersState_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interfaces_MtraceCounters_State
+    var oper_err error
+    var cmn_log string
+
+    oper_err = errors.New("Operational error")
+    cmn_log = "GET: xfmr for IGMP IGMP Groups"
+    log.Info("fillIgmpIntfStatsXfmr output_state %s",output_state)
+
+    igmpInterfaces_obj := igmp_obj.Interfaces
+    if igmpInterfaces_obj == nil {
+        log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
+        igmpInterfaces_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces)
+        if igmpInterfaces_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create Igmp Interfaces container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpInterfaces_obj)
+        igmp_obj.Interfaces = igmpInterfaces_obj
+    }
+    igmpInterfacesInterface_obj := igmp_obj.Interfaces.Interface[interfaceId]
+    if igmp_obj.Interfaces.Interface == nil {
+        log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
+        igmpInterfacesInterface_obj, err = igmpInterfaces_obj.NewInterface(interfaceId)
+        if err  != nil {
+            log.Errorf("%s failed !! Error: Failed to create Igmp Interface  under Interfaces", cmn_log)
+            return  oper_err
+        }
+        ygot.BuildEmptyTree (igmpInterfacesInterface_obj)
+        igmp_obj.Interfaces.Interface[interfaceId] = igmpInterfacesInterface_obj
+    }
+
+    if igmpInterfacesInterface_obj.Counters == nil {
+       igmpCounters_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters)
+               if igmpCounters_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create Igmp Counters container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpCounters_obj)
+        igmpInterfacesInterface_obj.Counters = igmpCounters_obj
+    }
+
+    igmpCounters_obj = igmpInterfacesInterface_obj.Counters
+
+    if igmpCounters_obj.Queries == nil {
+       igmpQueries_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries)
+               if igmpQueries_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create IgmpQueries container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpQueries_obj)
+        igmpCounters_obj.Queries = igmpQueries_obj
+
+    }
+    if igmpCounters_obj.Queries.Sent == nil {
+      igmpQueriesSent_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries_Sent)
+               if igmpQueriesSent_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create IgmpQueries Sent container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpQueriesSent_obj)
+        igmpCounters_obj.Queries.Sent = igmpQueriesSent_obj
+
+    }
+    if igmpCounters_obj.Queries.Received == nil {
+      igmpQueriesRcvd_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries_Received)
+               if igmpQueriesRcvd_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create IgmpQueries received container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpQueriesRcvd_obj)
+        igmpCounters_obj.Queries.Received = igmpQueriesRcvd_obj
+
+    }
+    if igmpCounters_obj.Queries.Received.State == nil {
+      igmpQueriesRcvdState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries_Received_State)
+               if igmpQueriesRcvdState_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create IgmpQueries received state container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpQueriesRcvdState_obj)
+        igmpCounters_obj.Queries.Received.State = igmpQueriesRcvdState_obj
+
+    }
+    if igmpCounters_obj.Queries.Sent.State == nil {
+          igmpQueriesSentState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Queries_Sent_State)
+               if igmpQueriesSentState_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create IgmpQueries Sent State container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpQueriesSentState_obj)
+        igmpCounters_obj.Queries.Sent.State = igmpQueriesSentState_obj
+
+    }
+    if igmpCounters_obj.Reports == nil {
+      igmpReports_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Reports)
+               if igmpReports_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create IgmpReports received container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpReports_obj)
+        igmpCounters_obj.Reports = igmpReports_obj
+
+    }
+    if igmpCounters_obj.Reports.State == nil {
+      igmpReportsState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_Counters_Reports_State)
+               if igmpReportsState_obj == nil {
+            log.Errorf("%s failed !! Error:Failed to create IgmpReports state received container", cmn_log)
+            return oper_err
+        }
+        ygot.BuildEmptyTree (igmpReportsState_obj)
+        igmpCounters_obj.Reports.State = igmpReportsState_obj
+
+    }
+    /*
+    if igmpStats_obj.MtraceCounters == nil {
+       igmpMtraceCounters_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_MtraceCounters)
+       if igmpMtraceCounters_obj == nil {
+           log.Errorf("%s failed !! Error:Failed to create Igmp Mtrace container", cmn_log)
+           return oper_err
+       }
+        ygot.BuildEmptyTree (igmpMtraceCounters_obj)
+        igmpStats_obj.MtraceCounters = igmpMtraceCounters_obj
+    }
+    if igmpStats_obj.MtraceCounters.State == nil {
+       igmpMtraceCountersState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_MtraceCounters_State)
+       if igmpMtraceCountersState_obj == nil {
+           log.Errorf("%s failed !! Error:Failed to create Igmp Mtrace state container", cmn_log)
+           return oper_err
+       }
+        ygot.BuildEmptyTree (igmpMtraceCountersState_obj)
+        igmpStats_obj.MtraceCounters.State = igmpMtraceCountersState_obj
+    }
+    */
+
+    if value,ok := output_state["queryV1"] ; ok {
+        _v1query := uint32(value.(float64))
+        igmpCounters_obj.Queries.Sent.State.V1 = &_v1query
+        log.Info("v1query %d",_v1query)
+    }
+    if value,ok := output_state["queryV2"] ; ok {
+        _v2query := uint32(value.(float64))
+        log.Info("v2query %d",_v2query)
+        igmpCounters_obj.Queries.Sent.State.V2 = &_v2query
+    }
+    if value,ok := output_state["queryV3"] ; ok {
+        _v3query := uint32(value.(float64))
+        igmpCounters_obj.Queries.Sent.State.V3 = &_v3query
+    }
+    if value,ok := output_state["leaveV3"] ; ok {
+        _v3recv := uint32(value.(float64))
+        igmpCounters_obj.Queries.Received.State.V3 = &_v3recv
+    }
+    if value,ok := output_state["reportV1"] ; ok {
+        _v1report := uint32(value.(float64))
+        igmpCounters_obj.Reports.State.V1 = &_v1report
+    }
+    if value,ok := output_state["reportV2"] ; ok {
+        _v2report := uint32(value.(float64))
+        igmpCounters_obj.Reports.State.V2 = &_v2report
+    }
+    if value,ok := output_state["reportV3"] ; ok {
+        _v3report := uint32(value.(float64))
+        igmpCounters_obj.Reports.State.V3 = &_v3report
+    }
+    /*
+    if value,ok := output_state["mtraceResponse"] ; ok {
+        _mtraceresp := uint32(value.(float64))
+        igmpStats_obj.MtraceCounters.State.MtraceResponse = &_mtraceresp
+    }
+    if value,ok := output_state["mtraceRequest"] ; ok {
+        _mtracereq := uint32(value.(float64))
+        igmpStats_obj.MtraceCounters.State.MtraceRequest = &_mtracereq
+    }
+    if value,ok := output_state["unsupported"] ; ok {
+        _unsupported := uint32(value.(float64))
+        igmpStats_obj.MtraceCounters.State.Unsupported = &_unsupported
+    }
+    */
+    return err
+}
+
 func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId string, igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp) error {
     var err error
     var igmpInterfaces_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces
@@ -781,10 +974,10 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     for key,value := range output_state {
         interface_info := value.(map[string]interface{})
         log.Info(key)
-        _ifName := utils.GetUINameFromNativeName(&key)
-        ifName := *_ifName
+        // _ifName := utils.GetUINameFromNativeName(&key)
+        // ifName := *_ifName
         log.Info(interface_info)
-        err = fillIgmpInterfaceXfmr (interface_info,ifName,igmp_obj)
+        err = fillIgmpInterfaceXfmr (interface_info,interfacename,igmp_obj)
     }
     return err;
 }
@@ -838,6 +1031,60 @@ var DbToYang_igmp_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
         log.Info(key)
         log.Info(stats_info)
         err = fillIgmpStatsXfmr (stats_info, igmp_obj)
+    }
+    return  err;
+}
+
+var DbToYang_igmp_intf_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    var err error
+    var cmd_err error
+    oper_err := errors.New("Operational error")
+    cmn_log := "GET: xfmr for Igmp intf "
+    var vtysh_cmd string
+
+    log.Info("DbToYang_igmp_intf_stats_get_xfmr ***", inParams.uri)
+    var igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp
+    igmp_obj, vrfName, err := getIgmpRoot (inParams)
+    if err != nil {
+        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        return  oper_err
+    }
+    log.Info(vrfName)
+    // get the values from the backend
+    pathInfo := NewPathInfo(inParams.uri)
+
+    interfacename := pathInfo.Var("interface-id")
+    log.Info(interfacename)
+
+    _ifName := utils.GetNativeNameFromUIName(&interfacename)
+    ifName := *_ifName
+
+    targetUriPath, err := getYangPathFromUri(pathInfo.Path)
+    log.Info(targetUriPath)
+
+    if strings.Contains(ifName, ".") {
+        if strings.HasPrefix(ifName, "Ethernet") {
+            ifName = strings.Replace(ifName, "Ethernet", "Eth", -1)
+        } else if strings.HasPrefix(ifName, "PortChannel") {
+            ifName = strings.Replace(ifName, "PortChannel", "po", -1)
+        }
+    }
+
+    vtysh_cmd = "show ip igmp vrf "+vrfName+ " statistics interface " + ifName + " json"
+
+    output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
+    if cmd_err != nil {
+      log.Errorf("Failed to fetch igmp statistics:, err=%s", cmd_err)
+      return  cmd_err
+    }
+    log.Info(output_state)
+    log.Info(vrfName)
+
+    for key,value := range output_state {
+        stats_info := value.(map[string]interface{})
+        log.Info(key)
+        log.Info(stats_info)
+        err = fillIgmpIntfStatsXfmr (stats_info, interfacename, igmp_obj)
     }
     return  err;
 }

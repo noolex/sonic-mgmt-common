@@ -978,17 +978,17 @@ rltvUriPath string, ygXpathInfo *yangXpathInfo, ygXpNode *ygXpathNode) (error) {
 					ygXpNode.addDbFldName(childYgEntry.Name, chYgXpathInfo.fieldName)
 				} else {
 					log.Warning("collectChldYgXPathInfo: No db field name mapping for the yang leaf-name: ", childYgPath)
-					if len(chYgXpathInfo.xfmrField) > 0 {
-						log.Error("collectChldYgXPathInfo: Please add the field-name annotation, since the yang node has the field transformer: ", chYgXpathInfo.xfmrField)
-						return tlerr.InternalError{Format: "No Db field name mapping for the yang node", Path: childYgPath}
-					} else {
-						fldName := getDbFieldName(chYgXpathInfo)
-						if len(fldName) == 0 {
-							log.Error("Error: collectChldYgXPathInfo: No db field name mapping for the yang node: ", childYgPath)
-							return tlerr.InternalError{Format: "No Db field name mapping for the yang node", Path: childYgPath}
-						}
-						ygXpNode.addDbFldName(childYgEntry.Name, fldName)
-					}
+					//if len(chYgXpathInfo.xfmrField) > 0 {
+					//	log.Error("collectChldYgXPathInfo: Please add the field-name annotation, since the yang node has the field transformer: ", chYgXpathInfo.xfmrField)
+					//	return tlerr.InternalError{Format: "No Db field name mapping for the yang node", Path: childYgPath}
+					//} else {
+					//	fldName := getDbFieldName(chYgXpathInfo)
+					//	if len(fldName) == 0 {
+					//		log.Error("Error: collectChldYgXPathInfo: No db field name mapping for the yang node: ", childYgPath)
+					//		return tlerr.InternalError{Format: "No Db field name mapping for the yang node", Path: childYgPath}
+					//	}
+					//	ygXpNode.addDbFldName(childYgEntry.Name, fldName)
+					//}
 				}
 			} else if (childYgEntry.IsList() || childYgEntry.IsContainer()) {
 				chldNode := ygXpNode
