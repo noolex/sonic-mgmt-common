@@ -2393,11 +2393,11 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
 
     log.Info("redisKey:", tableName, *ifName, vrId, redisKey, trackStr)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_intf_vrrp_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, redisKey)
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
@@ -2446,11 +2446,11 @@ var Subscribe_intf_vlan_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
 
     log.Info("redisKey:", tableName, *ifName, vrId, redisKey, trackStr)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_intf_vlan_vrrp_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, redisKey)
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)

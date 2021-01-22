@@ -111,15 +111,15 @@ var YangToDb_port_group_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPara
 var Subscribe_port_group_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     key := pathInfo.Var("id")
     log.Info("Subscribe_port_group_xfmr path %v key %v ", targetUriPath, key)
     if (key != "") {
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{PORT_GROUP_TABLE:{key:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{PORT_GROUP_TABLE:{key:{}}}}
     } else {
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{PORT_GROUP_TABLE:{"*":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{PORT_GROUP_TABLE:{"*":{}}}}
     }
     return result, err
 }

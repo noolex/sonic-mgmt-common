@@ -418,7 +418,7 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: pathInfo ", pathInfo)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
     intfNameRcvd := pathInfo.Var("name")
@@ -439,7 +439,7 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
 
     neighIntfTbl := "NEIGH_TABLE"
     neighIntfTblKey := *nativeIntfName + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -451,7 +451,7 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: pathInfo ", pathInfo)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
     intfNameRcvd := pathInfo.Var("name")
@@ -472,7 +472,7 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
 
     neighIntfTbl := "NEIGH_TABLE"
     neighIntfTblKey := *nativeIntfName + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -484,7 +484,7 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscI
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: pathInfo ", pathInfo)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
     intfNameRcvd := pathInfo.Var("name")
@@ -503,7 +503,7 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscI
 
     neighIntfTbl := "NEIGH_TABLE"
     neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -514,7 +514,7 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscI
 
     pathInfo := NewPathInfo(inParams.uri)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
     intfNameRcvd := pathInfo.Var("name")
@@ -533,7 +533,7 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscI
 
     neighIntfTbl := "NEIGH_TABLE"
     neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil

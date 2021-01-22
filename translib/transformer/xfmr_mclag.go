@@ -429,7 +429,7 @@ var Subscribe_mclag_interface_subtree_xfmr SubTreeXfmrSubscribe = func(inParams 
       }
 
      
-     result.dbDataMap = make(RedisDbMap)
+     result.dbDataMap = make(RedisDbSubscribeMap)
      if (domainId == "") { 
          log.Infof("Subscribe_mclag_interface_subtree_xfmr resouce not found for ifName:%s ", ifName)
          return result, tlerr.NotFound("Resource not found")
@@ -437,7 +437,7 @@ var Subscribe_mclag_interface_subtree_xfmr SubTreeXfmrSubscribe = func(inParams 
 
      mclagIntfKey := domainId + "|" + ifName
      log.Infof("Subscribe_mclag_interface_subtree_xfmr path:%s; template:%s targetUriPath:%s key:%s", pathInfo.Path, pathInfo.Template, targetUriPath, mclagIntfKey)
-     result.dbDataMap = RedisDbMap{db.ConfigDB:{"MCLAG_INTERFACE":{mclagIntfKey:{}}}} // tablename & table-idx for the inParams.uri
+     result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"MCLAG_INTERFACE":{mclagIntfKey:{}}}} // tablename & table-idx for the inParams.uri
 
      //result.needCache = true
      //Onchange notification subscription

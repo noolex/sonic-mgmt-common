@@ -1822,13 +1822,13 @@ var Subscribe_vxlan_vni_instance_subtree_xfmr SubTreeXfmrSubscribe = func (inPar
 
 	var redisKey string = srcNveKeyStr + "|" + "map_" + vniIdKeyStr + "_" + niName
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     if log.V(3) {
         log.Infof("Subscribe_vxlan_vni_instance_subtree_xfmr path:%s; template:%s targetUriPath:%s",
                   pathInfo.Path, pathInfo.Template, targetUriPath)
     }
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0

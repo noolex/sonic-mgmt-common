@@ -109,11 +109,11 @@ var Subscribe_loadshare_mode_ipv4_fld_xfmr SubTreeXfmrSubscribe = func (inParams
 
     log.Info("redisKey:", Id)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_loadshare_mode_ipv4_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, Id)
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tableName:{Id:{}}}}
     result.needCache = true
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
@@ -157,11 +157,11 @@ var Subscribe_loadshare_mode_ipv6_fld_xfmr SubTreeXfmrSubscribe = func (inParams
 
     log.Info("redisKey:", Id)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_loadshare_mode_ipv6_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, Id)
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tableName:{Id:{}}}}
     result.needCache = true
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
@@ -206,11 +206,11 @@ var Subscribe_loadshare_mode_seed_fld_xfmr SubTreeXfmrSubscribe = func (inParams
 
     log.Info("redisKey:", Id)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_loadshare_mode_hash_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, Id)
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{Id:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tableName:{Id:{}}}}
     result.needCache = true
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)

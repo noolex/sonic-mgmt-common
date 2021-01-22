@@ -449,11 +449,11 @@ var Subscribe_ip_sla_id_fld_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubsc
 
     log.Info("redisKey:", slaId)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_ip_sla_id_fld_xfmr path:%s; template:%s targetUriPath:%s key:%s",
                pathInfo.Path, pathInfo.Template, targetUriPath, slaId)
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{slaId:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tableName:{slaId:{}}}}
     result.needCache = true
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)

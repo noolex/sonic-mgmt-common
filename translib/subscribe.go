@@ -51,6 +51,7 @@ var sMutex = &sync.Mutex{}
 const (
 	niLeafPath Bits = 1 << iota
 	niWildcardPath
+	niPartial
 )
 
 type notificationInfo struct {
@@ -218,7 +219,9 @@ func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificatio
 	if nAppInfo.isLeafPath() {
 		nInfo.flags.Set(niLeafPath)
 	}
-
+	if nAppInfo.isPartial {
+		nInfo.flags.Set(niPartial)
+	}
 	if path.HasWildcardKey(nAppInfo.path) {
 		nInfo.flags.Set(niWildcardPath)
 	}
@@ -342,8 +345,18 @@ func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
 		return modFields, nil
 	}
 
-	// When entry is deleted, mark the whole target path as deleted.
-	// FIXME this does not work if a container maps to multiple tables
+	// Treat entry delete as update when 'partial' flag is set
+	if entryDiff.EntryDeleted && nInfo.flags.Has(niPartial) {
+		log.Infof("[%s] Entry deleted; but treating it as update", ne.id)
+		modFields = ne.createYangPathInfos(nInfo, entryDiff.DeletedFields, false)
+		if len(modFields) == 0 {
+			log.Infof("[%s] empty entry; use target path", ne.id)
+			modFields = append(modFields, &yangNodeInfo{})
+		}
+		return modFields, nil
+	}
+
+	// When entry is deleted, mark the whole target path as deleted if the
 	if entryDiff.EntryDeleted {
 		log.Infof("[%s] Entry deleted;", ne.id)
 		modFields = append(modFields, &yangNodeInfo{deleted: true})
@@ -380,6 +393,29 @@ func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
 	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, modFields)
 
 	return modFields, err
+}
+
+func (ne *notificationEvent) createYangPathInfos(nInfo *notificationInfo, fields []string, isDelete bool) []*yangNodeInfo {
+	var yInfos []*yangNodeInfo
+	var opStr string
+	if isDelete {
+		opStr = "delete "
+	}
+
+	for _, f := range fields {
+		for _, nDbFldInfo := range nInfo.fields {
+			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
+				log.Infof("[%s] %sfield=%s, path=%s/%s", ne.id, opStr, f, nDbFldInfo.rltvPath, leaf)
+				yInfos = append(yInfos, &yangNodeInfo{
+					parentPrefix: nDbFldInfo.rltvPath,
+					leafName:     leaf,
+					deleted:      isDelete,
+				})
+			}
+		}
+	}
+
+	return yInfos
 }
 
 func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, error) {
