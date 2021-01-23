@@ -870,4 +870,38 @@ module openconfig-system-ext {
            }
         }
     }
+
+    rpc locator-led-chassis-on {
+        description
+            "Enable Locator Chassis LED";
+        output {
+            leaf result {
+               type string;
+               description
+                    "The detailed status of the operation execution request.";
+           }
+        }
+    }
+    rpc locator-led-chassis-off {
+        description
+            "Disable Locator Chassis LED";
+        output {
+            leaf status{
+               type string;
+               description
+                    "The detailed status of the operation execution request.";
+           }
+        }
+    }
+    rpc show-locator-led-chassis {
+        description
+            "Show Locator Chassis LED State";
+        output {
+            leaf-list status-detail{
+               type string;
+               description
+                    "The detailed status of the operation execution request.";
+           }
+        }
+    }
 }
