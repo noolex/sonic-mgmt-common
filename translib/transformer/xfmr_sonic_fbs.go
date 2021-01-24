@@ -710,15 +710,19 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 			var policerTblVal db.Value
 			policerTblVal, err = appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
 			log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
+			policer.UNITS = "NA"
+			policer.COLOR_SOURCE = "NA"
+			policer.CONFORMED_PACKET_ACTION = "NA"
+			policer.EXCEED_PACKET_ACTION = "NA"
+			policer.VIOLATED_PACKET_ACTION = "NA"
+
 			if err == nil {
 				policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
 				policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
 				policer.OPERATIONAL_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
 				policer.OPERATIONAL_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
-
 				policer.UNITS = policerTblVal.Field["METER_TYPE"]
 				policer.COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"]
-
 				policer.CONFORMED_PACKET_ACTION = policerTblVal.Field["GREEN_PACKET_ACTION"]
 				policer.EXCEED_PACKET_ACTION = policerTblVal.Field["YELLOW_PACKET_ACTION"]
 				policer.VIOLATED_PACKET_ACTION = policerTblVal.Field["RED_PACKET_ACTION"]
@@ -738,7 +742,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 				policer.OPERATIONAL_PBS = *policySectionInfo.SET_POLICER_PBS
 			}
 			policer.UNITS = "bytes"
-			policer.COLOR_SOURCE = "color-blind"
+			policer.COLOR_SOURCE = "blind"
 			policer.CONFORMED_PACKET_ACTION = "forward"
 			policer.EXCEED_PACKET_ACTION = "forward"
 			policer.VIOLATED_PACKET_ACTION = "drop"
@@ -1286,7 +1290,7 @@ func fillFbsNextHopGroupEntry(grpName string, grpData db.Value) (fbsNextHopGroup
 var rpc_show_pbf_next_hop_group RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
 	log.Infof("Enter")
 
-	var pbfNextHopGrpTs *db.TableSpec = &db.TableSpec{Name: "PBF_NEXTHOP_GROUP_TABLE"}
+	var pbfNextHopGrpTs *db.TableSpec = &db.TableSpec{Name: "PBF_NEXTHOP_GROUP"}
 	var mapData map[string]interface{}
 	err := json.Unmarshal(body, &mapData)
 	if err != nil {

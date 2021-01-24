@@ -415,6 +415,7 @@ module sonic-interface {
                             error-app-tag interface-name-invalid;
                         }
                     }
+                    sonic-ext:custom-validation ValidateSubInterfaceIntf;
                 }
 
                 leaf parent {
@@ -602,11 +603,9 @@ module sonic-interface {
                 key "id ip_prefix";
 
                 leaf id {
-                    type string;
-                    //TBD: Fix needed in XFRM and CVL before enabling leafref
-                    /*type leafref {
+                    type leafref {
                         path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
-                    }*/
+                    }
                 }
 
                 leaf ip_prefix {

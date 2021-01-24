@@ -313,7 +313,7 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 					res_map[CFG_L2MC_STATIC_MEMBER_TABLE] = igmpsMcastGroupMemTblMap
 				} else if len(igmpsVal.Staticgrps.StaticMulticastGroup) == 1 {
 					for grpKey, grpObj := range igmpsVal.Staticgrps.StaticMulticastGroup {
-						if len(grpObj.Config.OutgoingInterface) == 0 {
+						if grpObj.Config == nil || len(grpObj.Config.OutgoingInterface) == 0 {
 							var err error
 							var staticGrpDbTbl db.Table
 							if staticGrpDbTbl, err = reqP.db.GetTable(CFG_L2MC_STATIC_GROUP_TABLE_TS); err != nil {
@@ -663,6 +663,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 				}
                 oIfName := *(utils.GetUINameFromNativeName(&staticGrpKeys[k].Comp[3]))
                 log.Infof("unMarshalStaticGrpConfigObj:2 -  comp-oif:%v oIfName:%v", staticGrpKeys[k].Comp[3], oIfName)
+				if staticGrpObj.Config != nil {
                 fmt.Println("unMarshalStaticGrpConfigObj:2 - current OIF ", staticGrpObj.Config.OutgoingInterface)
 
                 if len(staticGrpObj.Config.OutgoingInterface) > 0 {
@@ -692,6 +693,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
                     }
 				}
 			}
+			}
 
 			// StateObj
 			if staticGrpObj.State != nil {
@@ -716,7 +718,7 @@ func (reqP *reqProcessor) unMarshalStaticGrpObj() error {
 						return err
 					}
 
-					if *reqP.intfStateObj.Name != staticGrpKeys[k].Comp[0] || grpKey.SourceAddr != staticGrpKeys[k].Comp[1] || grpKey.Group != staticGrpKeys[k].Comp[2] {
+					if intfKeys[0].Interface().(string) != staticGrpKeys[k].Comp[0] || grpKey.SourceAddr != staticGrpKeys[k].Comp[1] || grpKey.Group != staticGrpKeys[k].Comp[2] {
 						continue
 					}
 
@@ -1109,7 +1111,6 @@ func (reqP *reqProcessor) translateToYgotObj() error {
 		if objType == 1 || objType == 3 {
 			intfObj.Config.Name = intfObj.Name
 			reqP.intfConfigObj = intfObj.Config
-
 			dbV, err := reqP.db.GetEntry(CFG_L2MC_TABLE_TS, db.Key{[]string{intfKeys[0].Interface().(string)}})
 			if err != nil {
 				fmt.Println("db.GetEntry - CFG_L2MC_TABLE_TS - fails ==> ", err)
@@ -1236,20 +1237,15 @@ var Subscribe_igmp_snooping_subtree_xfmr SubTreeXfmrSubscribe = func(inParams Xf
 		}
 
 		igmpIntfConfPath := igmpSnoopingPath + "/interfaces/interface/config"
-		igmpConfMrouterIntfPath := igmpSnoopingPath + "/interfaces/interface/config/mrouter-interface"
 		igmpIntfStatePath := igmpSnoopingPath + "/interfaces/interface/state"
-		igmpStateMrouterIntfPath := igmpSnoopingPath + "/interfaces/interface/state/mrouter-interface"
 		staticGrpConfPath := igmpSnoopingPath + "/interfaces/interface/staticgrps/static-multicast-group/config"
 		staticGrpStatePath := igmpSnoopingPath + "/interfaces/interface/staticgrps/static-multicast-group/state"
-		staticGrpOutgoingIntfConfigPath := igmpSnoopingPath + "/interfaces/interface/staticgrps/static-multicast-group/config/outgoing-interface"
-		staticGrpOutgoingIntfStatePath := igmpSnoopingPath + "/interfaces/interface/staticgrps/static-multicast-group/state/outgoing-interface"
 
 		if niName == "default" || niName == "*" {
 			igmpSnpItfKey = intfName
 			mrouterKey = intfName + "|" + mrouterIntf
 			staticGrpKey := intfName + "|" + staticGrpName + "|" + staticSrcAddr
 			mrouterAppDbKey := intfName + ":" + mrouterIntf
-			staticGrpAppDbKey := intfName + ":" + staticGrpName + ":" + staticSrcAddr
 
 			if targetUriPath == igmpIntfConfPath {
 				result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_TABLE":     {igmpSnpItfKey:{}}}}
@@ -1257,24 +1253,21 @@ var Subscribe_igmp_snooping_subtree_xfmr SubTreeXfmrSubscribe = func(inParams Xf
 			} else if targetUriPath == igmpIntfStatePath {
 				result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_TABLE":     {igmpSnpItfKey:{}}}}
 				result.secDbDataMap = RedisDbYgNodeMap{db.ApplDB:{"APP_L2MC_MROUTER_TABLE":{mrouterAppDbKey :"mrouter-interface"}}}
-			} else if targetUriPath == igmpConfMrouterIntfPath {
-				result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_MROUTER_TABLE":     {mrouterKey:{}}}}
-			} else if targetUriPath == igmpStateMrouterIntfPath {
-				result.dbDataMap = RedisDbMap{db.ApplDB:{"APP_L2MC_MROUTER_TABLE":     {mrouterAppDbKey :{}}}}
 			} else if targetUriPath == staticGrpConfPath {
-				result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_STATIC_GROUP_TABLE":     {staticGrpKey:{}}}}
+				if outgoingIntf == "*" {
+					result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_STATIC_GROUP_TABLE": {staticGrpKey:{}}}}
+				} else {
+					configOutgoingIntfKey := intfName + "|" + staticGrpName + "|" + staticSrcAddr + "|" + outgoingIntf
+					result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_STATIC_MEMBER_TABLE": {configOutgoingIntfKey:{}}}}
+				}
 			} else if targetUriPath == staticGrpStatePath {
+				staticGrpAppDbKey := intfName + ":" + staticSrcAddr + ":" + staticGrpName + ":" + outgoingIntf
 				result.dbDataMap = RedisDbMap{db.ApplDB:{"APP_L2MC_MEMBER_TABLE":     {staticGrpAppDbKey :{}}}}
-			} else if targetUriPath == staticGrpOutgoingIntfConfigPath {
-				result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_STATIC_GROUP_TABLE":     {staticGrpKey:{}}}}
-			} else if targetUriPath == staticGrpOutgoingIntfStatePath {
-				stateOutgoingIntfKey := intfName + ":" + staticGrpName + ":" + staticSrcAddr + ":" + outgoingIntf
-				result.dbDataMap = RedisDbMap{db.ApplDB:{"APP_L2MC_MEMBER_TABLE":     {stateOutgoingIntfKey:{}}}}
 			}
 		}
 
-		log.Info("Subscribe_igmp_snooping_subtree_xfmr:- result dbDataMap: ", result.dbDataMap)
-		log.Info("Subscribe_igmp_snooping_subtree_xfmr:- result secDbDataMap: ", result.secDbDataMap)
+		log.Info("Subscribe_igmp_snooping_subtree_xfmr: result dbDataMap: ", result.dbDataMap)
+		log.Info("Subscribe_igmp_snooping_subtree_xfmr: result secDbDataMap: ", result.secDbDataMap)
 
 		return result, err
 	} else {
@@ -1296,14 +1289,25 @@ var DbToYangPath_igmp_snooping_path_xfmr PathXfmrDbToYangFunc = func(params Xfmr
 	params.ygPathKeys[niRoot + "/protocols/protocol/name"] = "IGMP-SNOOPING"
 
 	if params.tblName == "CFG_L2MC_TABLE" || params.tblName == "CFG_L2MC_MROUTER_TABLE" ||
-		params.tblName == "APP_L2MC_MROUTER_TABLE" || params.tblName == "CFG_L2MC_STATIC_GROUP_TABLE" {
+		params.tblName == "APP_L2MC_MROUTER_TABLE" || params.tblName == "CFG_L2MC_STATIC_GROUP_TABLE" ||
+		params.tblName == "APP_L2MC_MEMBER_TABLE" || params.tblName == "CFG_L2MC_STATIC_MEMBER_TABLE" {
 		params.ygPathKeys[igmpsIf + "/name"] = params.tblKeyComp[0]
 	}
 
-	if params.tblName == "CFG_L2MC_STATIC_GROUP_TABLE" || params.tblName == "APP_L2MC_MEMBER_TABLE" {
+	if params.tblName == "CFG_L2MC_STATIC_GROUP_TABLE" {
 		if len(params.tblKeyComp) == 3 {
 			params.ygPathKeys[smGroup + "/group"] = params.tblKeyComp[1]
 			params.ygPathKeys[smGroup + "/source-addr"] = params.tblKeyComp[2]
+		}
+	} else if params.tblName == "CFG_L2MC_STATIC_MEMBER_TABLE" {
+		if len(params.tblKeyComp) == 4 {
+			params.ygPathKeys[smGroup + "/group"] = params.tblKeyComp[1]
+			params.ygPathKeys[smGroup + "/source-addr"] = params.tblKeyComp[2]
+		}
+	} else if params.tblName == "APP_L2MC_MEMBER_TABLE" {
+		if len(params.tblKeyComp) == 4 {
+			params.ygPathKeys[smGroup + "/source-addr"] = params.tblKeyComp[1]
+			params.ygPathKeys[smGroup + "/group"] = params.tblKeyComp[2]
 		}
 	}
 

@@ -92,6 +92,12 @@ module openconfig-loadshare-mode-ext-annot {
         }
     }
 
+    deviation /oc-lb-mode-ext:loadshare/oc-lb-mode-ext:ipv4-attrs/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv4-symmetric {
+        deviate add {
+            sonic-ext:field-name "ipv4_symmetric";
+        }
+    }
+
     deviation /oc-lb-mode-ext:loadshare/oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv6-dst-ip {
         deviate add {
             sonic-ext:field-name "ipv6_dst_ip";
@@ -116,6 +122,12 @@ module openconfig-loadshare-mode-ext-annot {
         }
     }
 
+    deviation /oc-lb-mode-ext:loadshare/oc-lb-mode-ext:ipv6-attrs/oc-lb-mode-ext:config/oc-lb-mode-ext:ipv6-symmetric {
+        deviate add {
+            sonic-ext:field-name "ipv6_symmetric";
+        }
+    }
+
     deviation /oc-lb-mode-ext:loadshare/oc-lb-mode-ext:seed-attrs/oc-lb-mode-ext:config/oc-lb-mode-ext:ecmp-hash-seed {
         deviate add {
             sonic-ext:field-name "ecmp_hash_seed";
@@ -123,6 +135,12 @@ module openconfig-loadshare-mode-ext-annot {
     }
 
     deviation /oc-lb-mode-ext:loadshare/oc-lb-mode-ext:state {
+        deviate add {
+            sonic-ext:subtree-transformer "loadshare_mode_state_xfmr";
+        }
+    }
+
+    deviation /oc-lb-mode-ext:loadshare/oc-lb-mode-ext:seed-attrs/oc-lb-mode-ext:state {
         deviate add {
             sonic-ext:subtree-transformer "loadshare_mode_state_xfmr";
         }

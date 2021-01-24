@@ -253,10 +253,6 @@ func alias_value_xfmr(inParams XfmrDbParams) (string, error) {
     ifName := inParams.value
     log.V(3).Infof("alias_value_xfmr:- Operation Type - %d Interface name - %s", inParams.oper, ifName)
 
-    if (strings.Count(ifName, ".") > 2) || (strings.Count(ifName, ":") > 0) {
-        // return ip-addrs
-        return ifName, err
-    }
     var convertedName *string
 
     if inParams.oper == GET {
@@ -5500,7 +5496,12 @@ var DbToYang_ipv6_enabled_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (ma
 var YangToDb_igmp_mcastgrpaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	log.Info("YangToDb_igmp_mcastgrpaddr_xfmr: ", inParams.key)
-        res_map["enable"] = "true"
+
+  if inParams.oper != DELETE {
+      res_map["enable"] = "true"
+  }
+
+  log.Info("res_map: ", res_map)
 	return res_map, nil
 }
 
@@ -5522,7 +5523,10 @@ var YangToDb_igmp_srcaddr_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
 	res_map := make(map[string]string)
 	log.Info("YangToDb_igmp_srcaddr_xfmr: ", inParams.key)
 
-        res_map["enable"] = "true"
+  if inParams.oper != DELETE {
+      res_map["enable"] = "true"
+  }
+  log.Info("res_map", res_map)
 	return res_map, nil
 }
 
@@ -5545,13 +5549,23 @@ var YangToDb_igmp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     var err error
     requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
+
+    uriIfName := pathInfo.Var("name")
+    _ifName := utils.GetNativeNameFromUIName(&uriIfName)
+    ifName := *_ifName
 
     if ifName == "" {
        errStr := "Interface KEY not present"
        log.Info("YangToDb_igmp_tbl_key_xfmr: " + errStr)
        return "", errors.New(errStr)
     }
+
+    index := pathInfo.Var("index")
+    if index != "" && index != "0" {
+        ifName = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &index)
+    }
+
+    log.Info("ifName:", ifName)
 
     log.Info("YangToDb_igmp_tbl_key_xfmr - requestUriPath:", requestUriPath)
 
@@ -5576,7 +5590,7 @@ var DbToYang_igmp_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[
     var err error
 
     return nil, err
-} 
+}
 
 var YangToDb_subif_index_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
     res_map := make(map[string]string)

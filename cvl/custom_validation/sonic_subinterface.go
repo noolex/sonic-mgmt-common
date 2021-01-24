@@ -22,6 +22,7 @@ package custom_validation
 import (
         "strings"
         util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+        "fmt"
     )
 
 func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CVLErrorInfo {
@@ -84,3 +85,41 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
 
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
+
+func getSubInterfaceFullName(shortName *string) *string {
+    var fullName string
+
+    if strings.Contains(*shortName, "Eth") {
+        fullName = strings.Replace(*shortName, "Eth", "Ethernet", -1)
+    } else if strings.Contains(*shortName, "Po") {
+        fullName = strings.Replace(*shortName, "Po", "PortChannel", -1)
+    } else {
+        fullName = *shortName
+    }
+
+    return &fullName
+}
+
+func (t *CustomValidation) ValidateSubInterfaceIntf(vc *CustValidationCtxt) CVLErrorInfo {
+
+                   key := strings.Split(vc.CurCfg.Key, "|")[1]
+                   if_name :=strings.Split(key,".")[0]
+                   parentIfName := *getSubInterfaceFullName(&if_name)
+
+                   poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + "*" + "|" + parentIfName).Result()
+                   if err != nil {
+                           return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+                   }
+
+                   if len(poMembersKeys) > 0 {
+                           return CVLErrorInfo{
+                               ErrCode:          CVL_SEMANTIC_ERROR,
+                               TableName:        "VLAN_SUB_INTERFACE",
+                               Keys:             strings.Split(vc.CurCfg.Key, "|"),
+                               ConstraintErrMsg: fmt.Sprintf("Cannot configure sub-interface as %s is a member of portchannel.", parentIfName),
+                               CVLErrDetails:    "Config Validation Error",
+                           }
+                   }
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+

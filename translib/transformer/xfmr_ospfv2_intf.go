@@ -42,7 +42,7 @@ func getInterfaceNameSplits(inputIfName string) (string, string) {
        if (len(ifNameParts) >= 2) {
            subIfStr = ifNameParts[1]
        }
-   }
+   } 
 
    log.Infof("getInterfaceNameSplits: inputIfName %s ifName %s subIfStr %s", 
                                         inputIfName, ifName, subIfStr)
@@ -119,7 +119,7 @@ func getNativeInterfaceName(inputIfName string) (string, string, string, uint32,
     } 
 
     nativeIfName := *nativeIfNamePtr
- 
+
     ifName, subIfStr := getInterfaceNameSplits(nativeIfName)
  
     subIfIndex := uint32(0)
@@ -129,8 +129,8 @@ func getNativeInterfaceName(inputIfName string) (string, string, string, uint32,
     } else {
         subIfStr = ""
     }
- 
-    backVerify := true
+
+    backVerify := false
     if (backVerify) {
         uriFullIfName, uriIfName, _, _, err := getUserInterfaceName(nativeIfName)
         if (err != nil) {
@@ -142,7 +142,7 @@ func getNativeInterfaceName(inputIfName string) (string, string, string, uint32,
                     uriFullIfName, uriIfName)
 
         if (uriFullIfName != inputIfName) {
-            errStr = "Name name conversion back verify  mismatch"
+            errStr = "Name conversion back verify mismatch, " + uriFullIfName + " vs " + "inputIfName"
             log.Error("getNativeInterfaceName: ", errStr)
             return inputIfName, inputIfName, "", 0, errors.New(errStr)
         }
@@ -180,6 +180,10 @@ func getUserInterfaceName(inputIfName string) (string, string, string, uint32, e
     }
 
     uiIfName := *userIfNamePtr
+
+    //hack for bug in utils.GetUINameFromNativeName when UI name passed
+    uiIfName = strings.ReplaceAll(uiIfName, "Etherneternet", "Ethernet")
+    uiIfName = strings.ReplaceAll(uiIfName, "PortChannelrtChannel", "PortChannel")
  
     ifName, subIfStr := getInterfaceNameSplits(uiIfName)
  
