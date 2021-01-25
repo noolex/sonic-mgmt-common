@@ -1300,32 +1300,32 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
     /* Update the DS based on access-vlan/trunk-vlans config */
     if accessVlanFound {
         accessVlan := "Vlan" + strconv.Itoa(int(accessVlanId))
-
+        var cfgredAccessVlan string
+        exists, err := validateUntaggedVlanCfgredForIf(inParams.d, &intTbl.cfgDb.memberTN, ifName, &cfgredAccessVlan)
+        if err != nil {
+            return err
+        }
+        if exists {
+            if cfgredAccessVlan == accessVlan {
+                log.Infof("Untagged VLAN: %s already configured, not updating the cache!", accessVlan)
+                goto TRUNKCONFIG
+            }
+            vlanId := cfgredAccessVlan[len("Vlan"):]
+            errStr := "Untagged VLAN: " + vlanId + " configuration exists"
+            log.Error(errStr)
+            err = tlerr.InvalidArgsError{Format: errStr}
+            return err
+        }
         err = validateVlanExists(inParams.d, &accessVlan)
         if err == nil {
             //If VLAN exists add to vlanMembersListMap
-            var cfgredAccessVlan string
-            exists, err := validateUntaggedVlanCfgredForIf(inParams.d, &intTbl.cfgDb.memberTN, ifName, &cfgredAccessVlan)
-            if err != nil {
-                return err
-            }
-            if exists {
-                if cfgredAccessVlan == accessVlan {
-                    log.Infof("Untagged VLAN: %s already configured, not updating the cache!", accessVlan)
-                    goto TRUNKCONFIG
-                }
-                vlanId := cfgredAccessVlan[len("Vlan"):]
-                errStr := "Untagged VLAN: " + vlanId + " configuration exists"
-                log.Error(errStr)
-                err = tlerr.InvalidArgsError{Format: errStr}
-                return err
-            }
             if vlanMembersListMap[accessVlan] == nil {
                 vlanMembersListMap[accessVlan] = make(map[string]db.Value)
             }
             vlanMembersListMap[accessVlan][*ifName] = db.Value{Field:make(map[string]string)}
             vlanMembersListMap[accessVlan][*ifName].Field["tagging_mode"] = "untagged"
         }
+        //Update port's or portchannel's access_vlan field
         portVlanListMap[*ifName].Field["access_vlan"] = strings.TrimPrefix(accessVlan,"Vlan")
     }
 
