@@ -154,3 +154,24 @@ func (ni *notificationAppInfo) String() string {
 func (ni *notificationAppInfo) isNonDB() bool {
 	return ni.dbno == db.MaxDB || ni.table == nil || ni.key == nil
 }
+
+// isLeafPath returns true if the notificationAppInfo has a leaf path.
+func (ni *notificationAppInfo) isLeafPath() bool {
+	// when notificationAppInfo.path is a leaf path, following conditions
+	// MUST be true.
+	//  - ni.dbFldYgPathInfoList) has only 1 entry
+	//	- ni.dbFldYgPathInfoList[0].rltvPath == ""
+	//	- ni.dbFldYgPathInfoList[0].dbFldYgPathMap has only 1 entry
+	//		with empty yang field (map value)
+	if len(ni.dbFldYgPathInfoList) != 1 {
+		return false
+	}
+	pmap := ni.dbFldYgPathInfoList[0]
+	if len(pmap.rltvPath) != 0 || len(pmap.dbFldYgPathMap) != 1 {
+		return false
+	}
+	for _, yfield := range pmap.dbFldYgPathMap {
+		return len(yfield) == 0
+	}
+	return false
+}
