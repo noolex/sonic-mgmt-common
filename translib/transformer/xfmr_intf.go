@@ -359,12 +359,12 @@ var intf_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[stri
 
 var intf_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
     var err error
-    if inParams.oper == DELETE {
+    if inParams.oper == DELETE || inParams.oper == REPLACE {
         requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
         if log.V(3) {
             log.Info("intf_pre_xfmr:- Request URI path = ", requestUriPath)
         }
-        errStr := "Delete operation not supported for this path - "
+        errStr := "Operation: "+strconv.Itoa(inParams.oper)+" not supported for this path - "
 
         switch requestUriPath {
             case "/openconfig-interfaces:interfaces":
@@ -545,13 +545,10 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
                     return err
                 }
 	    }
-            log.Info("----done enable stp----")
             //Add tagged/untagged vlan members during vlan creation
             tagged_set, untagged_set := utils.GetFromCacheVlanMemberList(*ifName)
-            log.Info("-----tagged list: ", tagged_set)
-            log.Info("-----untagged list: ", untagged_set)
-            if (tagged_set.PortSetSize() != 0 || untagged_set.PortSetSize() != 0) {
-                err = addIntfMemberOnVlanCreation(inParams, ifName, tagged_set.PortSetItems(), untagged_set.PortSetItems())
+            if (tagged_set.SetSize() != 0 || untagged_set.SetSize() != 0) {
+                err = addIntfMemberOnVlanCreation(inParams, ifName, tagged_set.SetItems(), untagged_set.SetItems())
                 if err != nil {
                     return err
                 }
@@ -943,21 +940,6 @@ func resetCounters(d *db.DB, oid string) (error,error) {
     return verr, cerr
 }
 
-//returns difference between existing list of Vlans and new list of Vlans. 
-func vlanDifference(vlanList1, vlanList2 []string) []string {
-    mb := make(map[string]struct{}, len(vlanList2))
-    for _, ifName := range vlanList2 {
-        mb[ifName] = struct{}{}
-    }
-    var diff []string
-    for _, ifName := range vlanList1 {
-        if _, found := mb[ifName]; !found {
-            diff = append(diff, ifName)
-        }
-    }
-    return diff
-}
-
 //Creates new entry in VLAN_MEMBER table. 
 func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
 
@@ -1181,7 +1163,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
     for _,vlan := range newVlanList {
        if strings.Contains(vlan, "..") {
-            err = extractVlanIdsfrmRng(d,vlan,&newList)
+            err = utils.ExtractVlanIdsfrmRng(vlan,&newList)
            if err != nil{
                 result.Output.Status_detail = err.Error()
                 return json.Marshal(&result)
@@ -1223,8 +1205,8 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
             return json.Marshal(&result)
         }
         existList = append(existList,taggedList...)
-        delList = vlanDifference(existList,newList)
-        createList = vlanDifference(newList,existList)
+        delList = utils.VlanDifference(existList,newList)
+        createList = utils.VlanDifference(newList,existList)
 
 
         if len(delList) != 0 {
