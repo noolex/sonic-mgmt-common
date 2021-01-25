@@ -1,0 +1,85 @@
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//  Copyright 2021 Broadcom. The term Broadcom refers to Broadcom Inc. and/or //
+//  its subsidiaries.                                                         //
+//                                                                            //
+//  Licensed under the Apache License, Version 2.0 (the "License");           //
+//  you may not use this file except in compliance with the License.          //
+//  You may obtain a copy of the License at                                   //
+//                                                                            //
+//     http://www.apache.org/licenses/LICENSE-2.0                             //
+//                                                                            //
+//  Unless required by applicable law or agreed to in writing, software       //
+//  distributed under the License is distributed on an "AS IS" BASIS,         //
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
+//  See the License for the specific language governing permissions and       //
+//  limitations under the License.                                            //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+package translib
+
+import (
+	"fmt"
+
+	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/path"
+	"github.com/openconfig/gnmi/proto/gnmi"
+	"github.com/openconfig/ygot/ygot"
+	"github.com/openconfig/ygot/ytypes"
+)
+
+// mergeYgotAtPathStr merges a ygot.ValidatedGoStruct at a given path in ygot tree ygRoot.
+// Returns the target node from the ygot tree.
+func mergeYgotAtPathStr(ygRoot *ocbinds.Device, pathStr string, value ygot.ValidatedGoStruct) (ygot.ValidatedGoStruct, error) {
+	p, err := ygot.StringToStructuredPath(pathStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeYgotAtPath(ygRoot, p, value)
+}
+
+// mergeYgotAtPathStr merges a ygot.ValidatedGoStruct at a given path in ygot tree ygRoot.
+// Returns the target node from the ygot tree.
+// This function may update the input path!
+func mergeYgotAtPath(ygRoot *ocbinds.Device, p *gnmi.Path, value ygot.ValidatedGoStruct) (ygot.ValidatedGoStruct, error) {
+	var pNode ygot.ValidatedGoStruct
+	path.RemoveModulePrefix(p)
+
+	ygNode, _, err := ytypes.GetOrCreateNode(ygSchema.RootSchema(), ygRoot, p)
+	if err != nil {
+		return nil, err
+	}
+	if n, ok := ygNode.(ygot.ValidatedGoStruct); ok {
+		pNode = n
+	} else {
+		return nil, fmt.Errorf("GetOrCreateNode returned %T; is not a ValidatedGoStruct", ygNode)
+	}
+	if value != nil {
+		err = ygot.MergeStructInto(pNode, value)
+	}
+	return pNode, err
+}
+
+// getYgotAtPath looks up the child ygot struct at a childPath in a parent struct.
+// Absolute path to the parent struct from root should also be passed.
+// Returns error if parentPath is unknown or childPath does not point to a struct.
+func getYgotAtPath(parent ygot.ValidatedGoStruct, parentPath, childPath *gnmi.Path) (ygot.ValidatedGoStruct, error) {
+	ypath, _ := ygot.PathToSchemaPath(parentPath)
+	if len(ypath) != 0 && ypath[0] == '/' {
+		ypath = ypath[1:]
+	}
+	schema := ygSchema.RootSchema().Find(ypath)
+
+	nodes, err := ytypes.GetNode(schema, parent, childPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if yv, ok := nodes[0].Data.(ygot.ValidatedGoStruct); ok {
+		return yv, nil
+	}
+
+	return nil, fmt.Errorf("Not a ValidatedGoStruct")
+}

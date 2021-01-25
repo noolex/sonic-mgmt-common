@@ -301,7 +301,6 @@ module openconfig-interfaces-annot {
         }
     }
 
-/*
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-intf-ext:sag-ipv4 {
         deviate add {
 		        sonic-ext:subtree-transformer "intf_sag_subif_ip_xfmr";
@@ -313,7 +312,7 @@ module openconfig-interfaces-annot {
 		        sonic-ext:subtree-transformer "intf_sag_subif_ip_xfmr";
         }
     }
-*/
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:addresses {
         deviate add {
             sonic-ext:table-name "NONE";
