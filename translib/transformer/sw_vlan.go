@@ -1150,7 +1150,7 @@ func vlanIdstoRng(vlanIdsLst []string) ([]string, error) {
     }
     sort.Ints(idsLst)
     for i, j := 0, 0; j<len(idsLst); j= j + 1 {
-        if (j + 1 < len(idsLst) && idsLst[j + 1] == idsLst[j] + 1) {
+        if (j + 1 < len(idsLst) && idsLst[j + 1] == idsLst[j] + 1) || (j+ 1 < len(idsLst) && idsLst[j] == idsLst[j + 1]) {
             continue;
         }
         if (i == j) {

@@ -1041,15 +1041,11 @@ func rpc_vlan_tbl_update(d *db.DB, vlanList []string, ifNameList []string, op st
 func rpc_port_tbl_update(d *db.DB,vlanList []string,ifNameList []string,table_name string) error{
     var err error
     var newVlanList []string
-    for _,vlan := range vlanList{
-       var replaceStr string
-       if strings.Contains(vlan,".."){
-           replaceStr = strings.Replace(vlan,"..","-",1)
-	   replaceStr = strings.TrimPrefix(replaceStr,"Vlan")
-           newVlanList = append(newVlanList,replaceStr)
-       } else{
-	   replaceStr = strings.TrimPrefix(vlan,"Vlan")
-           newVlanList = append(newVlanList,replaceStr)
+    for _,vlan := range vlanList {
+        if strings.Contains(vlan,"..") {
+           _ = utils.ExtractVlanIdsfrmRng(strings.TrimPrefix(vlan,"Vlan"), &newVlanList)
+       } else {
+           newVlanList = append(newVlanList,"Vlan"+vlan)
        }
     }
 
@@ -1059,6 +1055,8 @@ func rpc_port_tbl_update(d *db.DB,vlanList []string,ifNameList []string,table_na
             errStr := "Could not retrieve port" + ifName
             return errors.New(errStr)
         }
+
+       newVlanList, _ = vlanIdstoRng(newVlanList)
        portEntry.SetList("tagged_vlans", newVlanList)
        err = d.SetEntry(&db.TableSpec{Name:table_name},db.Key{Comp: []string{ifName}},portEntry)
         if err != nil{
