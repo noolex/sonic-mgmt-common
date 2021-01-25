@@ -48,29 +48,29 @@ const (
 /* Representation of FEC derivation table */
 type fec_info_t map[string]map[string]map[string][]string
 
-/* Cached map of VLAN tagged & untagged member list cache */
-var vlanMemberCache map[string]*vlan_member_list
+/* VLAN to tagged & untagged member sets map */
+var vlanMemberCache *sync.Map
 
 type vlan_member_list struct {
     tagged PortSet
     untagged PortSet //set of ethernet or portchannel interfaces 
 }
 
-// PortSet a set representation of ports list. 
+// PortSet a sets representation of ports list. 
 type PortSet struct {
     items map[string]struct{}
 }
-// PortSetAddItem adds port to the PortSet.
-func (s *PortSet) PortSetAddItem(item string) error {
+// PortSetAddItem adds port to the PortSet. 
+func (s *PortSet) PortSetAddItem(port string) error {
     if s.items == nil {
         s.items = make(map[string]struct{})
     }
-    if _, ok := s.items[item]; !ok {
-        s.items[item] = struct{}{}
+    if _, ok := s.items[port]; !ok {
+        s.items[port] = struct{}{}
     }
     return nil
 }
-// PortSetDelItem removes the item from the PortSet.
+// PortSetDelItem removes the item from the PortSet. 
 func (s *PortSet) PortSetDelItem(key string) bool {
     _, ok := s.items[key]
     if ok {
@@ -78,16 +78,16 @@ func (s *PortSet) PortSetDelItem(key string) bool {
     }
     return ok
 }
-// PortSetContains return true if Set contains the item
+// PortSetContains return true if Set contains the item.
 func (s *PortSet) PortSetContains(item string) bool {
     _, ok := s.items[item]
     return ok
 }
-// PortSetSize returns the size of the set
+// PortSetSize returns the size of the set 
 func (s *PortSet) PortSetSize() int {
     return len(s.items)
 }
-// PortSetItems returns the ports stored
+// PortSetItems returns the stored ports list 
 func (s *PortSet) PortSetItems() []string {
     PortsSlice := []string{}
     for i := range s.items {
@@ -112,7 +112,7 @@ var aliasIfNameMap *sync.Map
 func init() {
     portNotifSubscribe();
     portchannelNotifSubscribe();
-    populateAliasDS()
+    populatePortDS()
     devMetaNotifSubscribe();
 }
 
@@ -125,9 +125,9 @@ func GenerateMemberPortsSliceFromString(memberPortsStr *string) []string {
     return memberPorts
 }
 
-// Input: range 10-100 or 10..100
+/* Param: A Range e.g. 1-3 or 1..3
+   Return: Expanded list e.g. [Vlan1, Vlan2, Vlan3] */
 func extractVlanIdsfrmRng(rngStr string, vlanLst *[]string) error {
-    log.Info("-----------extractVlanIdsfrmRng------")
     var err error
     var res []string
     if strings.Contains(rngStr, "..") {
@@ -146,7 +146,7 @@ func extractVlanIdsfrmRng(rngStr string, vlanLst *[]string) error {
     return err
 }
 
-//returns difference between existing list of Vlans and new list of Vlans. 
+// vlanDifference returns difference between existing list of Vlans and new list of Vlans. 
 func vlanDifference(vlanList1, vlanList2 []string) []string {
     mb := make(map[string]struct{}, len(vlanList2))
     for _, ifName := range vlanList2 {
@@ -184,10 +184,8 @@ func getDBOptionsWithSeparator(dbNo db.DBNum, initIndicator string, tableSeparat
     })
 }
 
-
 func updateCacheForPort(portKey *db.Key, d *db.DB) {
     portName := portKey.Get(0)
-    log.Info("---update cache port called--for port---", *portKey, portName)
     portEntry, err := d.GetEntry(&db.TableSpec{Name:"PORT"}, *portKey)
     if err != nil {
         log.Errorf("Retrieval of entry for port: %s failed from port table", portName)
@@ -216,6 +214,24 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
     aliasIfNameMap.Store(aliasName, portName)
     log.V(3).Infof("alias cache updated %s <==> %s", portName, aliasName)
 
+    updateVlanCache(portEntry, portName)
+}
+
+func updateCacheForPortchannel(portKey *db.Key, d *db.DB) {
+    portName := portKey.Get(0)
+    portEntry, err := d.GetEntry(&db.TableSpec{Name:"PORTCHANNEL"}, *portKey)
+    if err != nil {
+        log.Errorf("Retrieval of entry for portchannel: %s failed from portchannel table", portName)
+        return
+    }
+    if !portEntry.IsPopulated() {
+        log.Errorf("Portchannel Entry populated for port: %s failed", portName)
+        return
+    }
+    updateVlanCache(portEntry, portName)
+}
+
+func updateVlanCache(portEntry db.Value, portName string) {
     var taggedVlanSlice []string
     taggedVlanVal, ok := portEntry.Field["tagged_vlans@"]
     if ok {
@@ -227,13 +243,16 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
                 taggedVlanSlice = append(taggedVlanSlice, "Vlan"+vlanId)
             }
         }
+        //Add tagged port to tagged ports list of all VLANs in taggedVlanSlice
         vlanCacheAddTagdPort(taggedVlanSlice, portName)
     }
 
-    vlanCacheKeys := make([]string, 0, len(vlanMemberCache))
-    for k := range vlanMemberCache {
-        vlanCacheKeys = append(vlanCacheKeys, k)
-    }
+    var vlanCacheKeys []string
+    vlanMemberCache.Range(func(k interface{}, v interface{}) bool {
+        vlanCacheKeys = append(vlanCacheKeys, k.(string))
+        return true
+    })
+
     //Code to remove tagged ports from vlan member cache
     vlanCacheRemTagdPort(taggedVlanSlice, portName, vlanCacheKeys)
 
@@ -241,90 +260,48 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
     accessVlanVal, ok := portEntry.Field["access_vlan"]
     accessVlanVal = "Vlan"+accessVlanVal
     if ok {
+        //Add untagged port to untagged ports list of access VLAN
         vlanCacheAddAccessPort(accessVlanVal, portName)
     }
     //Handle port removal from untagged list
     vlanCacheRemAccessPort(accessVlanVal, portName, vlanCacheKeys)
 }
-
-func updateCacheForPortchannel(portKey *db.Key, d *db.DB) {
-    portName := portKey.Get(0)
-    log.Info("---update cache port called--for port---", *portKey, portName)
-    portEntry, err := d.GetEntry(&db.TableSpec{Name:"PORTCHANNEL"}, *portKey)
-    if err != nil {
-        log.Errorf("Retrieval of entry for port: %s failed from port table", portName)
-        return
-    }
-    if !portEntry.IsPopulated() {
-        log.Errorf("PortEntry populated for port: %s failed", portName)
-        return
-    }
-    var taggedVlanSlice []string
-    taggedVlanVal, ok := portEntry.Field["tagged_vlans@"]
-    if ok {
-        vlanRngSlice := GenerateMemberPortsSliceFromString(&taggedVlanVal)
-        for _, vlanId := range vlanRngSlice {
-            if strings.Contains(vlanId, "-") { //vlanId e.g. 1-100(Vlan ID range) or 200(single Vlan ID)
-                _ = extractVlanIdsfrmRng(vlanId, &taggedVlanSlice)
-            } else {
-                taggedVlanSlice = append(taggedVlanSlice, "Vlan"+vlanId)
-            }
-        }
-        vlanCacheAddTagdPort(taggedVlanSlice, portName)
-    }
-
-    vlanCacheKeys := make([]string, 0, len(vlanMemberCache))
-    for k := range vlanMemberCache {
-        vlanCacheKeys = append(vlanCacheKeys, k)
-    }
-    //Code to remove tagged ports from vlan member cache
-    vlanCacheRemTagdPort(taggedVlanSlice, portName, vlanCacheKeys)
-
-    //Handle field "access_vlan" update
-    accessVlanVal, ok := portEntry.Field["access_vlan"]
-    accessVlanVal = "Vlan"+accessVlanVal
-    if ok {
-        vlanCacheAddAccessPort(accessVlanVal, portName)
-    }
-    //Handle port removal from untagged list
-    vlanCacheRemAccessPort(accessVlanVal, portName, vlanCacheKeys)
-}
-
 func vlanCacheRemAccessPort(accessVlanVal string, portName string, vlanCacheKeys []string) {
     for _, vlan := range vlanCacheKeys {
-        if vlan == accessVlanVal {//accessVlanVal is the access vlan configured
+        if vlan == accessVlanVal {//accessVlanVal is the configured access vlan
             continue
         }
-        member_list := vlanMemberCache[vlan]
-        if member_list.untagged.PortSetContains(portName) {
-            member_list.untagged.PortSetDelItem(portName)
+        //Remove port from all the VLANs untagged list except accessVlanVal
+        member_list, ok := vlanMemberCache.Load(vlan)
+        if ok && member_list.(*vlan_member_list).untagged.PortSetContains(portName) {
+            member_list.(*vlan_member_list).untagged.PortSetDelItem(portName)
         }
     }
 }
 func vlanCacheAddAccessPort(accessVlanVal string, portName string) {
-    member_list, ok := vlanMemberCache[accessVlanVal]
+    member_list, ok := vlanMemberCache.Load(accessVlanVal)
     if !ok {
         member_list = &vlan_member_list{}
     }
     //Check if portName already in untagged list
-    if !member_list.untagged.PortSetContains(portName) {
+    if !member_list.(*vlan_member_list).untagged.PortSetContains(portName) {
         //Add portName to untagged list
-        member_list.untagged.PortSetAddItem(portName)
-        vlanMemberCache[accessVlanVal] = member_list  //TODO:cache store only non-existing vlans
+        member_list.(*vlan_member_list).untagged.PortSetAddItem(portName)
+        vlanMemberCache.Store(accessVlanVal, member_list)
     }
 }
 func vlanCacheAddTagdPort(taggedVlanSlice []string, portName string) {
     //Code to add port to list of tagged_vlans
     for _, vlan := range taggedVlanSlice {
-        member_list, ok := vlanMemberCache[vlan]
+        member_list, ok := vlanMemberCache.Load(vlan)
         if !ok {
             member_list = &vlan_member_list{}
         }
         //Check if portName already in tagged list
-        if !member_list.tagged.PortSetContains(portName) {
+        if !member_list.(*vlan_member_list).tagged.PortSetContains(portName) {
             //Add portName to Vlan's tagged list
-            member_list.tagged.PortSetAddItem(portName)
-            vlanMemberCache[vlan] = member_list  //TODO:cache store only non-existing vlans
+            member_list.(*vlan_member_list).tagged.PortSetAddItem(portName)
+            vlanMemberCache.Store(vlan, member_list)
         }
     }
 }
@@ -332,15 +309,14 @@ func vlanCacheRemTagdPort(taggedVlanSlice []string, portName string, vlanCacheKe
     //Code to remove tagged ports from vlan member cache
     delPortFromVlanList := vlanDifference(vlanCacheKeys,taggedVlanSlice)//list of vlans present in vlanCacheKeys but not in taggedVlanSlice
     for _, vlan := range delPortFromVlanList {
-        member_list := vlanMemberCache[vlan]
-        if member_list.tagged.PortSetContains(portName) {
-            member_list.tagged.PortSetDelItem(portName)
+        member_list, ok := vlanMemberCache.Load(vlan)
+        if ok && member_list.(*vlan_member_list).tagged.PortSetContains(portName) {
+            member_list.(*vlan_member_list).tagged.PortSetDelItem(portName)
         }
     }
 }
 
 func deleteFromCacheForPort(portKey *db.Key) {
-    log.Info("---delete port from cache----")
     portName := portKey.Get(0)
 
     aliasName, ok := ifNameAliasMap.Load(portName)
@@ -360,9 +336,8 @@ func deleteFromCacheForPort(portKey *db.Key) {
 
 }
 
-
 func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
-    log.Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
+    log.V(3).Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
            " event: ", event)
     switch event {
     case db.SEventHSet, db.SEventHDel:
@@ -374,7 +349,7 @@ func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) err
 }
 
 func portchannelNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
-    log.Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
+    log.V(3).Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
            " event: ", event)
     switch event {
     case db.SEventHSet, db.SEventHDel:
@@ -421,6 +396,7 @@ func portNotifSubscribe() {
 
     log.Info("PORT table subscribe done....");
 }
+
 func portchannelNotifSubscribe() {
     var akey db.Key
     tsa := db.TableSpec { Name: "PORTCHANNEL" }
@@ -482,12 +458,12 @@ func devMetaNotifSubscribe() {
     log.Info("DEVICE_METADATA table subscribe done....");
 }
 
-func populateAliasDS() error {
+func populatePortDS() error {
     var err error
 
     ifNameAliasMap = new(sync.Map)
     aliasIfNameMap = new(sync.Map)
-    vlanMemberCache = make(map[string]*vlan_member_list)
+    vlanMemberCache = new(sync.Map)
 
     d, err := db.NewDB(getDBOptions(db.ConfigDB, false))
     if err != nil {
@@ -507,10 +483,23 @@ func populateAliasDS() error {
     for _, portKey := range portKeys {
         updateCacheForPort(&portKey, d)
     }
+    populatePortchannel(d)
 
     updateAliasFromDB(&db.Key{Comp: []string{"localhost"}}, d)
 
     return err
+}
+
+func populatePortchannel(d *db.DB) {
+    poTbl, err := d.GetTable(&db.TableSpec{Name: "PORTCHANNEL"})
+    if err == nil {
+        poKeys, err := poTbl.GetKeys()
+        if err == nil {
+            for _, poKey := range poKeys {
+                updateCacheForPortchannel(&poKey, d)
+            }
+        }
+    }
 }
 
 func IsAliasModeEnabled() bool {
@@ -576,8 +565,8 @@ func IsValidAliasName(ifName *string) bool {
 
 // GetFromCacheVlanMemberList Get tagged/untagged PortSet for given vlan
 func GetFromCacheVlanMemberList(vlanName string) (PortSet, PortSet) {
-    if memberlist, ok := vlanMemberCache[vlanName]; ok {
-        return memberlist.tagged, memberlist.untagged
+    if memberlist, ok := vlanMemberCache.Load(vlanName); ok {
+        return memberlist.(*vlan_member_list).tagged, memberlist.(*vlan_member_list).untagged
     }
     return PortSet{},PortSet{}
 }
