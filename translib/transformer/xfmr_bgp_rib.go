@@ -107,6 +107,13 @@ func fill_ipv4_spec_pfx_path_loc_rib_data (ipv4LocRibRoutes_obj *ocbinds.Opencon
     ipv4LocRibRouteState.Origin = _route_origin
     ipv4LocRibRouteState.PathId = &pathId
 
+    bestPath, ok := pathData["bestpath"].(map[string]interface{})
+    if ok {
+        if value, ok := bestPath["overall"].(bool) ; ok {
+            ipv4LocRibRouteState.BestPath = &value
+        }
+    }
+
     if value, ok := pathData["valid"].(bool) ; ok {
         ipv4LocRibRouteState.ValidRoute = &value
     }
@@ -285,6 +292,12 @@ func fill_ipv6_spec_pfx_path_loc_rib_data (ipv6LocRibRoutes_obj *ocbinds.Opencon
     ipv6LocRibRouteState.Origin = _route_origin
     ipv6LocRibRouteState.PathId = &pathId
 
+    bestPath, ok := pathData["bestpath"].(map[string]interface{})
+    if ok {
+        if value, ok := bestPath["overall"].(bool) ; ok {
+            ipv6LocRibRouteState.BestPath = &value
+        }
+    }
     if value, ok := pathData["valid"].(bool) ; ok {
         ipv6LocRibRouteState.ValidRoute = &value
     }
@@ -981,6 +994,12 @@ func fill_ipv4_spec_pfx_nbr_in_pre_rib_data (ipv4InPreRoute_obj *ocbinds.
     nbrRouteState.PathId = &pathId
 
     /* State Attributes */
+    bestPath, ok := pathData["bestpath"].(map[string]interface{})
+    if ok {
+        if value, ok := bestPath["overall"].(bool) ; ok {
+            nbrRouteState.BestPath = &value
+        }
+    }
     if value, ok := pathData["valid"].(bool) ; ok {
         nbrRouteState.ValidRoute = &value
     }
@@ -1137,6 +1156,12 @@ func fill_ipv6_spec_pfx_nbr_in_pre_rib_data (ipv6InPreRoute_obj *ocbinds.
     nbrRouteState.PathId = &pathId
 
     /* State Attributes */
+    bestPath, ok := pathData["bestpath"].(map[string]interface{})
+    if ok {
+        if value, ok := bestPath["overall"].(bool) ; ok {
+            nbrRouteState.BestPath = &value
+        }
+    }
     if value, ok := pathData["valid"].(bool) ; ok {
         nbrRouteState.ValidRoute = &value
     }
@@ -1637,6 +1662,19 @@ func fill_ipv4_spec_pfx_nbr_out_post_rib_data (ipv4OutPostRoute_obj *ocbinds.
     ipv4NbrOutPostRouteState := ipv4OutPostRoute_obj.State
     ipv4NbrOutPostRouteState.Prefix = &prefix
     ipv4NbrOutPostRouteState.PathId = &pathId
+
+    symbol, ok := prefixData["appliedStatusSymbols"].(map[string]interface{})
+    if ok {
+        if value, ok := symbol["*"] ; ok {
+            _value := value.(bool)
+            ipv4NbrOutPostRouteState.ValidRoute = &_value
+        }
+
+        if value, ok := symbol[">"] ; ok {
+            _value := value.(bool)
+            ipv4NbrOutPostRouteState.BestPath = &_value
+        }
+    }
 
     lastUpdate, ok := prefixData["lastUpdate"].(map[string]interface{})
     if ok {
