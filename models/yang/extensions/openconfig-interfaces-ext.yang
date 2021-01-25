@@ -414,7 +414,27 @@ module openconfig-interfaces-ext {
 		}
 	}
 
+  augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
+        description
+            "SAG config and state data.";
+        uses interfaces-ext-interface-sag-ipv4-top {
+      when "oc-intf:config/oc-intf:type = 'oc-if-types-ext:IF_NVE'";
+			description
+			  "SAG interface config/state";
+		}
+	}
+
 	augment "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6" {
+        description
+            "SAG config and state data.";
+        uses interfaces-ext-interface-sag-ipv6-top {
+      when "oc-intf:config/oc-intf:type = 'oc-if-types-ext:IF_NVE'";
+			description
+			  "SAG interface config/state";
+		}
+	}
+
+  augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6" {
         description
             "SAG config and state data.";
         uses interfaces-ext-interface-sag-ipv6-top {

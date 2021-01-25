@@ -42,13 +42,19 @@ import (
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
-	"github.com/openconfig/ygot/ytypes"
 )
 
 //Subscribe mutex for all the subscribe operations on the maps to be thread safe
 var sMutex = &sync.Mutex{}
 
+// notificationInfo flags
+const (
+	niLeafPath Bits = 1 << iota
+	niWildcardPath
+)
+
 type notificationInfo struct {
+	flags   Bits
 	table   *db.TableSpec
 	key     *db.Key
 	dbno    db.DBNum
@@ -207,6 +213,14 @@ func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificatio
 		if len(pi.rltvPath) != 0 && pi.rltvPath[0] != '/' {
 			pi.rltvPath = "/" + pi.rltvPath
 		}
+	}
+
+	if nAppInfo.isLeafPath() {
+		nInfo.flags.Set(niLeafPath)
+	}
+
+	if path.HasWildcardKey(nAppInfo.path) {
+		nInfo.flags.Set(niWildcardPath)
 	}
 
 	sc.dbNInfos[d] = append(sc.dbNInfos[d], nInfo)
@@ -455,7 +469,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 
 func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []*yangNodeInfo) {
 	prefix := nInfo.path
-	if path.HasWildcardKey(prefix) {
+	if nInfo.flags.Has(niWildcardPath) {
 		prefix = ne.dbkeyToYangPath(nInfo)
 		if prefix == nil {
 			log.Warningf("[%s] skip notification", ne.id)
@@ -511,41 +525,42 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		// No updates; retain resp.Path=prefixStr and resp.Update=nil
 	case numUpdate == 1 && len(resp.Delete) == 0:
 		// There is only one update and no deletes. Overwrite the resp.Path
-		// with the path to parent container of update value.
-		for _, lv := range fields {
-			if lv.valueTree != nil {
-				if lv.isTargetNode(nInfo) {
-					// For target path of nInfo, set resp.Path to its parent container
-					pp := path.SubPath(prefix, 0, path.Len(prefix)-1)
-					resp.Path, err = ygot.PathToString(pp)
-				} else {
-					resp.Path = prefixStr + lv.parentPrefix
-				}
-				resp.Update = lv.valueTree
-				log.Infof("[%s] Single update case; Path=\"%s\", Update=%T",
-					ne.id, resp.Path, resp.Update)
-				break
-			}
+		// to the parent node (because processGet returns GoStruct for the parent)
+		lv, _ := nextYangNodeForUpdate(fields, 0)
+		n := path.Len(prefix)
+		if nInfo.flags.Has(niLeafPath) {
+			pp := path.SubPath(prefix, 0, n-1)
+			resp.Path, err = ygot.PathToString(pp)
+		} else if !lv.isTargetNode(nInfo) {
+			resp.Path = prefixStr + lv.parentPrefix
+		} else {
+			// Optimization for init sync/entry create of non-leaf target -- use the
+			// GoStruct of the target node and retain full target path in resp.Path.
+			// This longer prefix will produce more compact notification message.
+			pp := path.SubPath(prefix, 0, n-1)
+			cp := path.SubPath(prefix, n-1, n)
+			lv.valueTree, err = getYgotAtPath(lv.valueTree, pp, cp)
 		}
+
+		resp.Update = lv.valueTree
+		log.Infof("[%s] Single update case; Path=\"%s\", Update=%T",
+			ne.id, resp.Path, resp.Update)
+
 	default:
 		// There are > 1 updates or 1 update with few delete paths. Hence retain resp.Path
 		// as prefixStr itself. Coalesce the values by merging them into a new data tree.
 		tmpRoot := new(ocbinds.Device)
-		resp.Update, err = mergeUpdateValue(tmpRoot, prefixStr, nil)
+		resp.Update, err = mergeYgotAtPath(tmpRoot, prefix, nil)
 		if err != nil {
 			break
 		}
 
 		log.Infof("[%s] Coalesce %d updates; Path=\"%s\", Update=%T",
 			ne.id, numUpdate, resp.Path, resp.Update)
-		for _, lv := range fields {
-			if lv.valueTree == nil {
-				continue
-			}
-			_, err = mergeUpdateValue(tmpRoot, prefixStr+lv.parentPrefix, lv.valueTree)
-			if err != nil {
-				break
-			}
+		lv, i := nextYangNodeForUpdate(fields, 0)
+		for lv != nil && err == nil {
+			_, err = mergeYgotAtPathStr(tmpRoot, prefixStr+lv.parentPrefix, lv.valueTree)
+			lv, i = nextYangNodeForUpdate(fields, i+1)
 		}
 	}
 
@@ -556,6 +571,15 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 
 	log.Infof("[%s] Sending %d updates and %d deletes", ne.id, numUpdate, len(resp.Delete))
 	sInfo.q.Put(resp)
+}
+
+func nextYangNodeForUpdate(nodes []*yangNodeInfo, indx int) (*yangNodeInfo, int) {
+	for n := len(nodes); indx < n; indx++ {
+		if nodes[indx].valueTree != nil {
+			return nodes[indx], indx
+		}
+	}
+	return nil, -1
 }
 
 // yangNodeInfo holds path and value for a yang leaf
@@ -576,30 +600,6 @@ func (lv *yangNodeInfo) getPath() string {
 // isTargetLeaf checks if this yang node is the target path of the notificationInfo.
 func (lv *yangNodeInfo) isTargetNode(nInfo *notificationInfo) bool {
 	return len(lv.parentPrefix) == 0 && len(lv.leafName) == 0
-}
-
-func mergeUpdateValue(ygRoot *ocbinds.Device, pathStr string, value ygot.ValidatedGoStruct) (ygot.ValidatedGoStruct, error) {
-	p, err := ygot.StringToStructuredPath(pathStr)
-	if err != nil {
-		return nil, err
-	}
-
-	path.RemoveModulePrefix(p)
-	var pNode ygot.ValidatedGoStruct
-
-	ygNode, _, err := ytypes.GetOrCreateNode(ygSchema.RootSchema(), ygRoot, p)
-	if err != nil {
-		return nil, err
-	}
-	if n, ok := ygNode.(ygot.ValidatedGoStruct); ok {
-		pNode = n
-	} else {
-		return nil, fmt.Errorf("GetOrCreateNode returned %T; is not a ValidatedGoStruct", ygNode)
-	}
-	if value != nil {
-		err = ygot.MergeStructInto(pNode, value)
-	}
-	return pNode, err
 }
 
 func stophandler(stop chan struct{}) {
