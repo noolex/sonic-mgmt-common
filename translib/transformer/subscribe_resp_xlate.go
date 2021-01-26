@@ -77,22 +77,21 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 
 	for idx := len(pathElem) - 1; idx >= 0; idx-- {
 
-		if len(pathElem[idx].Key) == 0 { continue }
-
 		ygPath := respXlator.getYangListPath(idx)
 		log.Info("subscribeNotfRespXlator:Translate: ygPath: ", ygPath)
 
-		ygXpathListInfo, err := respXlator.getYangListXpathInfo(ygPath)
+		ygXpathInfo, err := respXlator.getYangXpathInfo(ygPath)
 		if err != nil { return nil, err }
 
-		log.Info("subscribeNotfRespXlator:Translate: ygXpathListInfo: ", ygXpathListInfo)
+		log.Info("subscribeNotfRespXlator:Translate: ygXpathInfo: ", ygXpathInfo)
 
-		if len(ygXpathListInfo.xfmrPath) == 0 && !respXlator.hasPathWildCard(idx) {
+		// for subtree, path transformr can be present at any node level
+		if (len(pathElem[idx].Key) == 0 || !respXlator.hasPathWildCard(idx)) && len(ygXpathInfo.xfmrPath) == 0 {
 			continue
 		}
 
-		if len(ygXpathListInfo.xfmrPath) > 0 {
-			if err := respXlator.handlePathTransformer(ygXpathListInfo, idx); err != nil {
+		if len(ygXpathInfo.xfmrPath) > 0 {
+			if err := respXlator.handlePathTransformer(ygXpathInfo, idx); err != nil {
 				return nil, err
 			} else {
 				if err := respXlator.processDbToYangKeyXfmrList(); err != nil {
@@ -102,11 +101,11 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 					return respXlator.ntfXlateReq.path, nil
 				}
 			}
-		} else if ygXpathListInfo.virtualTbl != nil && (*ygXpathListInfo.virtualTbl) {
+		} else if ygXpathInfo.virtualTbl != nil && (*ygXpathInfo.virtualTbl) {
 			log.Error("Translate: virtual table is set to true and path transformer not found list node path: ", *respXlator.ntfXlateReq.path)
 			return nil, tlerr.InternalError{Format: "virtual table is set to true and path transformer not found list node path", Path: ygPath}
-		} else if len(ygXpathListInfo.xfmrKey) > 0 {
-			dbYgXlateInfo := &DbYgXlateInfo{pathIdx: idx, ygXpathInfo: ygXpathListInfo, xlateReq: respXlator.ntfXlateReq}
+		} else if len(ygXpathInfo.xfmrKey) > 0 {
+			dbYgXlateInfo := &DbYgXlateInfo{pathIdx: idx, ygXpathInfo: ygXpathInfo, xlateReq: respXlator.ntfXlateReq}
 			dbYgXlateInfo.setUriPath()
 			respXlator.dbYgXlateList = append(respXlator.dbYgXlateList, dbYgXlateInfo)
 			// since there is no path transformer defined in the path, processing the collected db to yang key xfmrs
@@ -250,7 +249,7 @@ func (dbYgXlateInfo *DbYgXlateInfo) setUriPath() {
 	}
 }
 
-func (respXlator *subscribeNotfRespXlator) getYangListXpathInfo(ygPath string) (*yangXpathInfo, error) {
+func (respXlator *subscribeNotfRespXlator) getYangXpathInfo(ygPath string) (*yangXpathInfo, error) {
 	ygXpathListInfo, ok := xYangSpecMap[ygPath]
 
 	if !ok || ygXpathListInfo == nil {
