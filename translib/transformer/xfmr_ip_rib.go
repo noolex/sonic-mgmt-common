@@ -449,11 +449,13 @@ func fill_ipv4_mroute_state_info (inParams XfmrParams, ipv4MrouteStateKey _xfmr_
                                   srcEntryStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State) bool {
     srcEntryStateObj.SourceAddress = &ipv4MrouteStateKey.srcAddr
 
-    if value, ok := srcAddrData["iil"] ; ok {
+   if value, ok := srcAddrData["iil"] ; ok {
         _nativeIncomingIntfId := value.(string)
-        var _uiIncomingIntfId string
-        util_iprib_get_ui_ifname_from_native_ifname (&_nativeIncomingIntfId, &_uiIncomingIntfId)
-        srcEntryStateObj.IncomingInterface = &_uiIncomingIntfId
+        if _nativeIncomingIntfId != "<none>" {
+            var _uiIncomingIntfId string
+            util_iprib_get_ui_ifname_from_native_ifname (&_nativeIncomingIntfId, &_uiIncomingIntfId)
+            srcEntryStateObj.IncomingInterface = &_uiIncomingIntfId
+        }
     }
 
     if value, ok := srcAddrData["installed"] ; ok {
