@@ -34,12 +34,15 @@ This package can also talk to non-DB clients.
 package translib
 
 import (
+	"fmt"
+	"runtime/debug"
+	"sync"
+	"sync/atomic"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
-	"runtime/debug"
-	"sync"
 	"github.com/openconfig/ygot/ygot"
 )
 
@@ -57,17 +60,24 @@ const (
 	AppErr
 )
 
+const (
+	TRANSLIB_FMT_IETF_JSON = iota
+	TRANSLIB_FMT_YGOT
+)
+
+type TranslibFmtType int
+
 type UserRoles struct {
-	Name    string
-	Roles	[]string
+	Name  string
+	Roles []string
 }
 
 type SetRequest struct {
-	Path    string
-	Payload []byte
-	User    UserRoles
-	AuthEnabled bool
-	ClientVersion Version
+	Path             string
+	Payload          []byte
+	User             UserRoles
+	AuthEnabled      bool
+	ClientVersion    Version
 	DeleteEmptyEntry bool
 }
 
@@ -77,28 +87,28 @@ type SetResponse struct {
 }
 
 type GetRequest struct {
-	Path    string
-	FillValueTree bool
-	User    UserRoles
-	AuthEnabled bool
+	Path          string
+	FmtType       TranslibFmtType
+	User          UserRoles
+	AuthEnabled   bool
 	ClientVersion Version
 
 	// Depth limits the depth of data subtree in the response
 	// payload. Default value 0 indicates there is no limit.
-	Depth   uint
+	Depth uint
 }
 
 type GetResponse struct {
-	Payload []byte
+	Payload   []byte
 	ValueTree *ygot.ValidatedGoStruct
-	ErrSrc  ErrSource
+	ErrSrc    ErrSource
 }
 
 type ActionRequest struct {
-	Path    string
-	Payload []byte
-	User    UserRoles
-	AuthEnabled bool
+	Path          string
+	Payload       []byte
+	User          UserRoles
+	AuthEnabled   bool
 	ClientVersion Version
 }
 
@@ -125,17 +135,19 @@ type BulkResponse struct {
 }
 
 type SubscribeRequest struct {
-	Paths			[]string
-	Q				*queue.PriorityQueue
-	Stop			chan struct{}
-	User            UserRoles
-	AuthEnabled     bool
-	ClientVersion   Version
+	Paths         []string
+	FmtType       TranslibFmtType
+	Q             *queue.PriorityQueue
+	Stop          chan struct{}
+	User          UserRoles
+	AuthEnabled   bool
+	ClientVersion Version
 }
 
 type SubscribeResponse struct {
 	Path         string
-	Payload      []byte
+	Update       ygot.ValidatedGoStruct // updated values
+	Delete       []string               // deleted paths - relative to Path
 	Timestamp    int64
 	SyncComplete bool
 	IsTerminated bool
@@ -149,10 +161,10 @@ const (
 )
 
 type IsSubscribeRequest struct {
-	Paths				[]string
-	User                UserRoles
-	AuthEnabled         bool
-	ClientVersion       Version
+	Paths         []string
+	User          UserRoles
+	AuthEnabled   bool
+	ClientVersion Version
 }
 
 type IsSubscribeResponse struct {
@@ -169,6 +181,9 @@ type ModelData struct {
 	Ver  string
 }
 
+// Counter is a monotonically increasing unsigned integer.
+type Counter uint64
+
 //initializes logging and app modules
 func init() {
 	log.Flush()
@@ -183,7 +198,7 @@ func Create(req SetRequest) (SetResponse, error) {
 	if !isAuthorizedForSet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Create Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -257,10 +272,9 @@ func Update(req SetRequest) (SetResponse, error) {
 	if !isAuthorizedForSet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Update Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
-
 
 	log.Info("Update request received with path =", path)
 	log.Info("Update request received with payload =", string(payload))
@@ -333,7 +347,7 @@ func Replace(req SetRequest) (SetResponse, error) {
 	if !isAuthorizedForSet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Replace Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -407,7 +421,7 @@ func Delete(req SetRequest) (SetResponse, error) {
 	if !isAuthorizedForSet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Delete Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -480,7 +494,7 @@ func Get(req GetRequest) (GetResponse, error) {
 	if !isAuthorizedForGet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Get Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -493,7 +507,7 @@ func Get(req GetRequest) (GetResponse, error) {
 		return resp, err
 	}
 
-	opts := appOptions{ depth: req.Depth }
+	opts := appOptions{depth: req.Depth}
 	err = appInitialize(app, appInfo, path, nil, &opts, GET)
 
 	if err != nil {
@@ -517,7 +531,7 @@ func Get(req GetRequest) (GetResponse, error) {
 		resp = GetResponse{Payload: payload, ErrSrc: AppErr}
 		return resp, err
 	}
-	resp, err = (*app).processGet(dbs, req.FillValueTree)
+	resp, err = (*app).processGet(dbs, req.FmtType)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
 		log.Info("Calling FreeOSMemory..")
@@ -533,7 +547,7 @@ func Action(req ActionRequest) (ActionResponse, error) {
 	if !isAuthorizedForAction(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -557,8 +571,8 @@ func Action(req ActionRequest) (ActionResponse, error) {
 		return resp, err
 	}
 
-    writeMutex.Lock()
-    defer writeMutex.Unlock()
+	writeMutex.Lock()
+	defer writeMutex.Unlock()
 
 	isGetCase := false
 	dbs, err := getAllDbs(isGetCase)
@@ -598,14 +612,14 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 
 	resp := BulkResponse{DeleteResponse: delResp,
 		ReplaceResponse: replaceResp,
-		UpdateResponse: updateResp,
-		CreateResponse: createResp}
+		UpdateResponse:  updateResp,
+		CreateResponse:  createResp}
 
-    if (!isAuthorizedForBulk(req)) {
+	if !isAuthorizedForBulk(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
 		}
-    }
+	}
 
 	writeMutex.Lock()
 	defer writeMutex.Unlock()
@@ -623,8 +637,8 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 	err = d.StartTx(nil, nil)
 
 	if err != nil {
-        return resp, err
-    }
+		return resp, err
+	}
 
 	for i := range req.DeleteRequest {
 		path := req.DeleteRequest[i].Path
@@ -676,58 +690,58 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 		}
 	}
 
-    for i := range req.ReplaceRequest {
-        path := req.ReplaceRequest[i].Path
+	for i := range req.ReplaceRequest {
+		path := req.ReplaceRequest[i].Path
 		payload := req.ReplaceRequest[i].Payload
 
-        log.Info("Replace request received with path =", path)
+		log.Info("Replace request received with path =", path)
 
-        app, appInfo, err := getAppModule(path, req.ReplaceRequest[i].ClientVersion)
+		app, appInfo, err := getAppModule(path, req.ReplaceRequest[i].ClientVersion)
 
-        if err != nil {
-            errSrc = ProtoErr
-            goto BulkReplaceError
-        }
+		if err != nil {
+			errSrc = ProtoErr
+			goto BulkReplaceError
+		}
 
 		log.Info("Bulk replace request received with path =", path)
 		log.Info("Bulk replace request received with payload =", string(payload))
 
 		err = appInitialize(app, appInfo, path, &payload, nil, REPLACE)
 
-        if err != nil {
-            errSrc = AppErr
-            goto BulkReplaceError
-        }
+		if err != nil {
+			errSrc = AppErr
+			goto BulkReplaceError
+		}
 
-        keys, err = (*app).translateReplace(d)
+		keys, err = (*app).translateReplace(d)
 
-        if err != nil {
-            errSrc = AppErr
-            goto BulkReplaceError
-        }
+		if err != nil {
+			errSrc = AppErr
+			goto BulkReplaceError
+		}
 
-        err = d.AppendWatchTx(keys, appInfo.tablesToWatch)
+		err = d.AppendWatchTx(keys, appInfo.tablesToWatch)
 
-        if err != nil {
-            errSrc = AppErr
-            goto BulkReplaceError
-        }
+		if err != nil {
+			errSrc = AppErr
+			goto BulkReplaceError
+		}
 
-        resp.ReplaceResponse[i], err = (*app).processReplace(d)
+		resp.ReplaceResponse[i], err = (*app).processReplace(d)
 
-        if err != nil {
-            errSrc = AppErr
-        }
+		if err != nil {
+			errSrc = AppErr
+		}
 
-    BulkReplaceError:
+	BulkReplaceError:
 
-        if err != nil {
-            d.AbortTx()
-            resp.ReplaceResponse[i].ErrSrc = errSrc
-            resp.ReplaceResponse[i].Err = err
-            return resp, err
-        }
-    }
+		if err != nil {
+			d.AbortTx()
+			resp.ReplaceResponse[i].ErrSrc = errSrc
+			resp.ReplaceResponse[i].Err = err
+			return resp, err
+		}
+	}
 
 	for i := range req.UpdateRequest {
 		path := req.UpdateRequest[i].Path
@@ -840,8 +854,8 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	var sErr error
 
 	paths := req.Paths
-	q     := req.Q
-	stop  := req.Stop
+	q := req.Q
+	stop := req.Stop
 
 	dbNotificationMap := make(map[db.DBNum][]*notificationInfo)
 
@@ -849,17 +863,17 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 	for i := range resp {
 		resp[i] = &IsSubscribeResponse{Path: paths[i],
-			IsOnChangeSupported: false,
+			IsOnChangeSupported: true,
 			MinInterval:         minSubsInterval,
-			PreferredType:       Sample,
+			PreferredType:       OnChange,
 			Err:                 nil}
 	}
 
-    if (!isAuthorizedForSubscribe(req)) {
+	if !isAuthorizedForSubscribe(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
 		}
-    }
+	}
 
 	isGetCase := true
 	dbs, err := getAllDbs(isGetCase)
@@ -871,7 +885,16 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	// Enable onChange cache support on all DBs
 	enableOnChangeCaching(dbs[:])
 
-	//Do NOT close the DBs here as we need to use them during subscribe notification
+	sInfo := &subscribeInfo{syncDone: false,
+		id:   subscribeCounter.Next(),
+		q:    q,
+		stop: stop,
+		dbs:  dbs,
+	}
+
+	sCtx := subscribeContext{
+		sInfo: sInfo,
+	}
 
 	for i, path := range paths {
 
@@ -887,7 +910,12 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			continue
 		}
 
-		nAppSubInfo, errApp := (*app).translateSubscribe(dbs, path)
+		nAppSubInfo, errApp := (*app).translateSubscribe(
+			&translateSubRequest{
+				ctxID: sInfo.id,
+				path:  path,
+				dbs:   dbs,
+			})
 
 		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgt, resp[i])
 		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgtChlds, resp[i])
@@ -909,52 +937,19 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 			}
 		}
 
-		// Prepare notificationInfo for notificationAppInfo for target.
-		for _, nOpts := range nAppSubInfo.ntfAppInfoTrgt {
-			nInfo := &notificationInfo {
-				table:   *nOpts.table,
-				key:     *nOpts.key,
-				dbno:    nOpts.dbno,
-				path:    path,
-				app:     app,
-				appInfo: appInfo,
-				dbs:     dbs,
-				needCache: true,
-			}
-			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
-			// Register table for caching
-			nInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(&nInfo.table)
-		}
-
-		// Prepare notificationInfo for notificationAppInfo for child nodes.
-		for _, nOpts := range nAppSubInfo.ntfAppInfoTrgtChlds {
-			nInfo := &notificationInfo {
-				table:   *nOpts.table,
-				key:     *nOpts.key,
-				dbno:    nOpts.dbno,
-				path:    path,
-				app:     app,
-				appInfo: appInfo,
-				dbs:     dbs,
-				needCache: true,
-			}
-			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
-			// Register table for caching
-			nInfo.dbs[nInfo.dbno].RegisterTableForOnChangeCaching(&nInfo.table)
-		}
+		sCtx.appInfo = appInfo
+		sCtx.app = app
+		sCtx.add(path, nAppSubInfo)
 	}
 
-	log.Info("map=", dbNotificationMap)
-
+	// Close the db pointers only on error. Otherwise keep them
+	// open till subscription is active.
 	if sErr != nil {
-		return resp, sErr
+		closeAllDbs(dbs[:])
+	} else {
+		log.V(1).Info("dbNotificationMap =", dbNotificationMap)
+		sErr = sCtx.startSubscribe()
 	}
-
-	sInfo := &subscribeInfo{syncDone: false,
-		q:    q,
-		stop: stop}
-
-	sErr = startSubscribe(sInfo, dbNotificationMap)
 
 	return resp, sErr
 }
@@ -962,22 +957,25 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 //IsSubscribeSupported - Check if subscribe is supported on the given paths
 func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error) {
 
+	reqID := subscribeCounter.Next()
 	paths := req.Paths
 	resp := make([]*IsSubscribeResponse, len(paths))
 
 	for i := range resp {
 		resp[i] = &IsSubscribeResponse{Path: paths[i],
-			IsOnChangeSupported: false,
+			IsOnChangeSupported: true,
 			MinInterval:         minSubsInterval,
-			PreferredType:       Sample,
+			PreferredType:       OnChange,
 			Err:                 nil}
 	}
 
-    if (!isAuthorizedForIsSubscribe(req)) {
+	if !isAuthorizedForIsSubscribe(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
 		}
-    }
+	}
+
+	log.Info("IsSubscribeSupported:", paths)
 
 	isGetCase := true
 	dbs, err := getAllDbs(isGetCase)
@@ -997,10 +995,19 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 			continue
 		}
 
-		nAppInfos, errApp := (*app).translateSubscribe(dbs, path)
+		nAppInfos, errApp := (*app).translateSubscribe(
+			&translateSubRequest{
+				ctxID: reqID,
+				path:  path,
+				dbs:   dbs,
+			})
 
-		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, resp[i])
-		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, resp[i])
+		r := resp[i]
+		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, r)
+		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, r)
+
+		log.Infof("IsSubscribeResponse[%d]: onChg=%v, pref=%v, minInt=%d, err=%v",
+			i, r.IsOnChangeSupported, r.PreferredType, r.MinInterval, errApp)
 
 		if errApp != nil {
 			resp[i].Err = errApp
@@ -1016,17 +1023,13 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 // collectNotificationPreferences computes overall notification preferences (is on-change
 // supported, min sample interval, preferred mode etc) by combining individual table preferences
 // from the notificationAppInfo array. Writes them to the IsSubscribeResponse object 'resp'.
-func collectNotificationPreferences(nAppInfos []notificationAppInfo, resp *IsSubscribeResponse) {
+func collectNotificationPreferences(nAppInfos []*notificationAppInfo, resp *IsSubscribeResponse) {
 	if len(nAppInfos) == 0 {
 		return
 	}
 
-	resp.IsOnChangeSupported = true
-	resp.PreferredType = OnChange
-	resp.MinInterval = minSubsInterval
-
 	for _, nInfo := range nAppInfos {
-		if !nInfo.isOnChangeSupported || nInfo.dbno == db.CountersDB {
+		if !nInfo.isOnChangeSupported || nInfo.isNonDB() {
 			resp.IsOnChangeSupported = false
 			resp.PreferredType = Sample
 		}
@@ -1094,7 +1097,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 		return dbs, err
 	}
 
-    isWriteDisabled = true
+	isWriteDisabled = true
 
 	//Create Config DB connection
 	dbs[db.ConfigDB], err = db.NewDB(getDBOptions(db.ConfigDB, isWriteDisabled))
@@ -1104,11 +1107,11 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 		return dbs, err
 	}
 
-    if isGetCase {
-        isWriteDisabled = true
-    } else {
-        isWriteDisabled = false
-    }
+	if isGetCase {
+		isWriteDisabled = true
+	} else {
+		isWriteDisabled = false
+	}
 
 	//Create Flex Counter DB connection
 	dbs[db.FlexCounterDB], err = db.NewDB(getDBOptions(db.FlexCounterDB, isWriteDisabled))
@@ -1126,16 +1129,8 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 		return dbs, err
 	}
 
-    //Create Error DB connection
-    dbs[db.ErrorDB], err = db.NewDB(getDBOptions(db.ErrorDB, isWriteDisabled))
-
-	if err != nil {
-		closeAllDbs(dbs[:])
-		return dbs, err
-	}
-
-    //Create User DB connection
-    dbs[db.UserDB], err = db.NewDB(getDBOptions(db.UserDB, isWriteDisabled))
+	//Create Error DB connection
+	dbs[db.ErrorDB], err = db.NewDB(getDBOptions(db.ErrorDB, isWriteDisabled))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1179,9 +1174,9 @@ func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
 	var opt db.Options
 
 	switch dbNo {
-	case db.ApplDB, db.CountersDB, db.AsicDB:
+	case db.ApplDB, db.CountersDB, db.AsicDB, db.FlexCounterDB, db.LogLevelDB, db.ErrorDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-	case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB, db.UserDB:
+	case db.ConfigDB, db.StateDB, db.SnmpDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
 	}
 
@@ -1252,4 +1247,20 @@ func (data *appData) setOptions(opts *appOptions) {
 	if opts != nil {
 		data.appOptions = *opts
 	}
+}
+
+func (nt NotificationType) String() string {
+	switch nt {
+	case Sample:
+		return "Sample"
+	case OnChange:
+		return "OnChange"
+	default:
+		return fmt.Sprintf("NotificationType(%d)", nt)
+	}
+}
+
+// Next increments the counter and returns the new value
+func (c *Counter) Next() uint64 {
+	return atomic.AddUint64((*uint64)(c), 1)
 }

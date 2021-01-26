@@ -16,10 +16,10 @@ require (
 	github.com/openconfig/gnmi v0.0.0-20200307010808-e7106f7f5493
 	github.com/openconfig/goyang v0.0.0-20200309174518-a00bece872fc
 	github.com/openconfig/ygot v0.7.1
-	github.com/pborman/getopt v0.0.0-20190409184431-ee0cd42419d3 // indirect
 	github.com/philopon/go-toposort v0.0.0-20170620085441-9be86dbd762f
 	github.com/pkg/profile v1.4.0
 	github.com/shirou/gopsutil v2.20.5+incompatible
+	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/tredoe/osutil v1.0.5
 	golang.org/x/text v0.3.2
 	google.golang.org/grpc v1.28.0

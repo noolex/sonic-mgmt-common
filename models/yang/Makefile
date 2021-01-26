@@ -30,6 +30,8 @@ YANG_MOD_EXTENSION_FILES    := $(shell find $(YANGDIR_EXTENSIONS_DIR) -maxdepth 
 YANG_IETF_MOD_EXT_FILES     := $(shell find $(YANGDIR_EXTENSIONS_DIR) -maxdepth 1 -name 'ietf-*.yang' | sort)
 YANG_ANNOTATIONS_FILES      := $(shell find $(YANGDIR_ANNOTATIONS) -name '*.yang' | sort)
 YANG_COMMON_FILES           := $(shell find $(YANGDIR_COMMON) -name '*.yang' | sort)
+OC_COMMUNITY_LINTER         := $(TOPDIR)/build/oc-community-linter
+OC_COMMUNITY_LINTER_PATCH   := $(OC_COMMUNITY_LINTER)/.done
 
 YANG_BUILD_DIR    := $(TOPDIR)/build/yang
 YANG_API_IGNORES  := $(YANG_BUILD_DIR)/api_ignore
@@ -97,7 +99,16 @@ clean:
 
 validate: $(YANG_VALIDATE_CHK)
 
-$(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES)
+$(OC_COMMUNITY_LINTER):
+	git clone https://github.com/openconfig/oc-pyang.git $(OC_COMMUNITY_LINTER)
+
+$(OC_COMMUNITY_LINTER_PATCH): $(OC_COMMUNITY_LINTER)
+	cd $(OC_COMMUNITY_LINTER); \
+	git reset --hard c4f450d93905cdd95deba000a3551293bcf79710 && \
+	git apply $(TOOLS_DIR)/pyang/patches/openconfig_validator.patch
+	touch $@
+
+$(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES) $(OC_COMMUNITY_LINTER_PATCH)
 	$(LINTER) 
 	touch $@
 

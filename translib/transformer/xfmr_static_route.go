@@ -1088,7 +1088,7 @@ var DbToYang_static_routes_nexthop_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 }
 
 func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
-    if len(inParams.value) == 0 || !utils.IsAliasModeEnabled() {
+    if len(inParams.value) == 0 {
         return inParams.value, nil
     }
 
@@ -1129,7 +1129,7 @@ func Subscribe_static_routes_subtree_xfmr(inParams XfmrSubscInParams) (XfmrSubsc
     result.dbDataMap = RedisDbMap{db.ConfigDB: {STATIC_ROUTE_TABLE: {routeKey: {}}}}
     /* The below lines will be used only for subscription on a terminal node */
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

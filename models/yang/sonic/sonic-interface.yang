@@ -408,38 +408,54 @@ module sonic-interface {
                 key "id";
 
                 leaf id {
-                    type string;
+                    type string {
+                        pattern '(Eth([1-3][0-9]{3}|[1-9][0-9]{2}|[1-9][0-9]|[0-9])|Po([1-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-6]))\.' +
+                        '(6553[0-5]|655[0-2][0-9]|654[0-9]{2}|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{1,3}|[0-9])' {
+                            error-message "Invalid sub-interface name";
+                            error-app-tag interface-name-invalid;
+                        }
+                    }
+                    sonic-ext:custom-validation ValidateSubInterfaceIntf;
                 }
 
-                leaf subintfidx {
-                    type string;
-                }
-
-                leaf ifName {
-                    type string;
+                leaf parent {
+                    type union {
+                        type leafref {
+                            path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                        }
+                        type leafref {
+                            path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
+                        }
+                    }
+                    mandatory true;
                 }
 
                 leaf vrf_name {
-                    type string;
+                    type union {
+                        type string {
+                            pattern "default";
+                        }
+                        type leafref {
+                            path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
+                        }
+                    }
                 }
 
                 leaf vlan {
-                    type string;
+                    type uint16 {
+                        range "1..4095" {
+                            error-message "Vlan ID out of range";
+                            error-app-tag vlanid-invalid;
+                        }
+                    }
+                    sonic-ext:custom-validation ValidateSubInterfaceVlanID;
                 }
 
                 leaf admin_status {
-                    type string;
+                    type cmn:admin-status;
                 }
 
                 leaf description {
-                    type string;
-                }
-
-                leaf enabled {
-                    type string;
-                }
-
-                leaf index {
                     type string;
                 }
 
@@ -459,23 +475,144 @@ module sonic-interface {
                     }
                 }
 
+                leaf unnumbered {
+                    must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                         "not(contains(/sonic-interface/VLAN_SUB_INTERFACE/VLAN_SUB_INTERFACE_IPADDR_LIST[id=current()/../id]/ip_prefix, '.'))"
+                    {
+                        error-message "Cannot configure IP address and IP Unnumbered interface configurations on the same interface";
+                        error-app-tag vlanintf-ip-config;
+                    }
+
+                    must "(count(current()/../vrf_name) = 0 and count(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name) = 0) or " +
+                         "(/lointf:sonic-loopback-interface/lointf:LOOPBACK_INTERFACE/lointf:LOOPBACK_INTERFACE_LIST[lointf:loIfName=current()]/lointf:vrf_name = current()/../vrf_name)"
+                    {
+                        error-message "Donor and Unnumbered interface should be in same VRF";
+                        error-app-tag donor-unnum-diff-vrf;
+                    }
+
+                    sonic-ext:custom-validation ValidateIpv4UnnumIntf;
+
+                    type leafref {
+                        path "/lo:sonic-loopback/lo:LOOPBACK/lo:LOOPBACK_LIST/lo:name";
+                    }
+                }
+
+                leaf-list dhcp_servers {
+                         max-elements 4;
+                         type inet:ip-address;
+                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                 "(count(/sonic-interface/VLAN_SUB_INTERFACE/VLAN_SUB_INTERFACE_IPADDR_LIST[id=current()/../id]) > 1)"
+                                 {
+                                         error-message "DHCP server can be configured on routing interface only";
+                                         error-app-tag dhcp-server-invalid-routing-interface;
+                                 }
+                }
+
+                leaf-list dhcpv6_servers {
+                         max-elements 4;
+                         type inet:ipv6-address;
+                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                 "(count(/sonic-interface/VLAN_SUB_INTERFACE/VLAN_SUB_INTERFACE_IPADDR_LIST[id=current()/../id]) > 1)"
+                                 {
+                                          error-message "DHCP server can be configured on routing interface only";
+                                          error-app-tag dhcp-server-invalid-routing-interface;
+                                 }
+                 }
+
+                 leaf dhcp_relay_link_select {
+                         type cmn:mode-enable;
+                 }
+
+                 leaf dhcp_relay_src_intf {
+                         type string;
+                         must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                 "(current()/../dhcp_servers)"
+                                 {
+                                           error-message "DHCP relay address not configured or invalid operation";
+                                           error-app-tag dhcp-server-adress-config;
+                                 }
+                  }
+
+                  leaf dhcp_relay_max_hop_count {
+                          type uint32;
+                          must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                  "(current()/../dhcp_servers)"
+                                  {
+                                             error-message "DHCP relay address not configured";
+                                             error-app-tag dhcp-server-adress-config;
+                                  }
+                   }
+
+                   leaf dhcp_server_vrf {
+                           type string;
+                           must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                   "(current()/../dhcp_servers)"
+                                   {
+                                               error-message "DHCP server not configured";
+                                               error-app-tag dhcp-server-invalid-vrf-config;
+                                   }
+                   }
+
+                   leaf dhcp_relay_vrf_select {
+                           type cmn:mode-enable;
+                           default disable;
+                   }
+
+                   leaf dhcp_relay_policy_action {
+                           type cmn:relay-policy-action;
+                           default discard;
+                   }
+
+                   leaf dhcpv6_relay_src_intf {
+                           type string;
+                           must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                   "(current()/../dhcpv6_servers) "
+                                   {
+                                               error-message "DHCP relay address not configured";
+                                               error-app-tag dhcp-server-adress-config;
+                                   }
+                    }
+
+                    leaf dhcpv6_relay_max_hop_count {
+                            type uint32;
+                            must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                    "(current()/../dhcpv6_servers) "
+                                    {
+                                                error-message "DHCP relay address not configured";
+                                                error-app-tag dhcp-server-adress-config;
+                                    }
+                     }
+
+                     leaf dhcpv6_server_vrf {
+                             type string;
+                             must "((/cmn:operation/cmn:operation != 'CREATE') and (/cmn:operation/cmn:operation != 'UPDATE')) or " +
+                                      "(current()/../dhcpv6_servers)"
+                                      {
+                                                 error-message "DHCP server or src-intf not configured";
+                                                 error-app-tag dhcp-server-invalid-vrf-config;
+                                      }
+                      }
+
+                      leaf dhcpv6_relay_vrf_select {
+                              type cmn:mode-enable;
+                              default disable;
+                      }
             }
 
             list VLAN_SUB_INTERFACE_IPADDR_LIST {
                 key "id ip_prefix";
 
                 leaf id {
-                   type string;
+                    type leafref {
+                        path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                    }
                 }
 
                 leaf ip_prefix {
                     type inet:ip-prefix;
                 }
 
-                leaf status {
-                    type string;
-                }
-             }
+            }
         }
    }
 }

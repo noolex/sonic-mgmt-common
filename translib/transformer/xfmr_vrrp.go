@@ -63,6 +63,15 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
     pathInfo := NewPathInfo(inParams.uri)
     uriIfName := pathInfo.Var("name")
+
+    idx := pathInfo.Var("index")
+    var i32 uint32
+    i32 = 0
+    if idx != "" {
+        i64, _ := strconv.ParseUint(idx, 10, 32)
+        i32 = uint32(i64)
+    }
+
     _ifName := utils.GetNativeNameFromUIName(&uriIfName)
     ifName := *_ifName
 	  intfType, _, ierr := getIntfTypeByName(ifName)
@@ -118,7 +127,8 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
         log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
         return subIntfmap, errors.New(errStr)
     }
-    if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+
+    if _, ok := intfObj.Subinterfaces.Subinterface[i32]; !ok {
         log.Info("YangToDb_intf_vrrp_xfmr : No IP address handling required")
         return subIntfmap, err
     }
@@ -128,7 +138,16 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
     intTbl := IntfTypeTblMap[intfType]
     tblName, _ := getIntfTableNameByDBId(intTbl, inParams.curDb)
 
-    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+    subIntfObj := intfObj.Subinterfaces.Subinterface[i32]
+
+    if i32 > 0 {
+        tblName = "VLAN_SUB_INTERFACE"
+        if strings.HasPrefix(ifName, "Ethernet") {
+            ifName = strings.Replace(ifName, "Ethernet", "Eth", -1) + "." + idx
+        } else if strings.HasPrefix(ifName, "PortChannel") {
+            ifName = strings.Replace(ifName, "PortChannel", "Po", -1) + "." + idx
+        }
+    }
 
     entry, dbErr := inParams.d.GetEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{ifName}})
     if dbErr != nil || !entry.IsPopulated() {
@@ -237,6 +256,18 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                             log.Info("track if name:", track_if)
 
+                            /*
+
+                            if strings.Contains(track_if, ".") {
+                                if strings.HasPrefix(track_if, "Ethernet") {
+                                    track_if = strings.Replace(track_if, "Ethernet", "Eth", -1) + "." + idx
+                                } else if strings.HasPrefix(track_if, "PortChannel") {
+                                    track_if = strings.Replace(track_if, "PortChannel", "po", -1) + "." + idx
+                                }
+                            }
+
+                            */
+
                             _trackifNativeName := utils.GetNativeNameFromUIName(&track_if)
                             trackifNativeName := *_trackifNativeName
 
@@ -248,7 +279,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
                             if vrrp_track_data.Config != nil {
 
                                 if vrrp_track_data.Config.PriorityIncrement != nil {
-                                    if ifName == trackifNativeName {
+                                    if ifName == trackifNativeName || ifName == track_if {
                                         errStr := "VRRP track interface cannot be same as VRRP instance interface"
                                         log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
                                         return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
@@ -379,6 +410,16 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                             log.Info("track if name:", track_if)
 
+                            /*
+                            if strings.Contains(track_if, ".") {
+                                if strings.HasPrefix(track_if, "Ethernet") {
+                                    track_if = strings.Replace(track_if, "Ethernet", "Eth", -1) + "." + idx
+                                } else if strings.HasPrefix(track_if, "PortChannel") {
+                                    track_if = strings.Replace(track_if, "PortChannel", "po", -1) + "." + idx
+                                }
+                            }
+                            */
+
                             _trackifNativeName := utils.GetNativeNameFromUIName(&track_if)
                             trackifNativeName := *_trackifNativeName
 
@@ -391,7 +432,7 @@ var YangToDb_intf_vrrp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map
 
                                 if vrrp_track_data.Config.PriorityIncrement != nil {
 
-                                    if ifName == trackifNativeName {
+                                    if ifName == trackifNativeName || ifName == track_if {
                                         errStr := "VRRP track interface cannot be same as VRRP instance interface"
                                         log.Info("YangToDb_intf_vrrp_xfmr : " + errStr)
                                         return subIntfmap, tlerr.InvalidArgsError{Format: errStr}
@@ -945,20 +986,35 @@ func isIntfUp(dbCl *db.DB, ifName string) (bool) {
 
     tblName := intTbl.appDb.portTN
 
+    if strings.Contains(ifName, ".") {
+        tblName = "PORT_TABLE"
+    }
+
     _, err := dbCl.GetTable(&db.TableSpec{Name:tblName})
 
     if err != nil {
         return false
     }
 
-    prtInst, _ := dbCl.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
 
+
+    prtInst, _ := dbCl.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{ifName}})
     log.Info("Portstatus:", prtInst)
 
-    adminStatus := prtInst.Field[PORT_ADMIN_STATUS]
+    if strings.Contains(ifName, ".") {
+        intfInst, _ := dbCl.GetEntry(&db.TableSpec{Name:"INTF_TABLE"}, db.Key{Comp: []string{ifName}})
 
-    if adminStatus != "up" {
-        return false
+        adminStatus := intfInst.Field[PORT_ADMIN_STATUS]
+
+        if adminStatus != "up" {
+            return false
+        }
+    } else {
+        adminStatus := prtInst.Field[PORT_ADMIN_STATUS]
+
+        if adminStatus != "up" {
+            return false
+        }
     }
 
     operStatus := prtInst.Field[PORT_OPER_STATUS]
@@ -1075,6 +1131,9 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
     log.Info("handleVrrpGetByTargetURI:", vrrpMap)
     pathInfo := NewPathInfo(inParams.uri)
+    _idx := pathInfo.Var("index")
+    temp_idx, _ := strconv.Atoi(_idx)
+    idx := uint32(temp_idx)
 
     vrid := pathInfo.Var("virtual-router-id")
     if len(vrid) == 0 {
@@ -1084,6 +1143,14 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
     }
 
     intfType, _, ierr := getIntfTypeByName(ifName)
+
+    if _idx != "0" {
+        if strings.HasPrefix(ifName, "Ethernet") {
+            ifName = strings.Replace(ifName, "Ethernet", "Eth", -1) + "." + _idx
+        } else if strings.HasPrefix(ifName, "PortChannel") {
+            ifName = strings.Replace(ifName, "PortChannel", "Po", -1) + "." + _idx
+        }
+    }
 
     if intfType == IntfTypeUnset || ierr != nil {
         errStr := "Invalid interface type IntfTypeUnset"
@@ -1096,7 +1163,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
          vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
          log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
-         convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, true, false)
+         convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, false, false, true, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/config") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/config") {
@@ -1110,7 +1177,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, false, true)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, false, false, false, true)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/state") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/interface-tracking/state") {
@@ -1131,14 +1198,14 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, false, false, false)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, true, false, false, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group/state") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/state") {
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, true, false, false)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, false, true, false, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group/state") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group/state") {
@@ -1152,7 +1219,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv4 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, true, true, true)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, true, true, true, true)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv4/addresses/address/vrrp/vrrp-group") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group") {
@@ -1167,7 +1234,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, true, false)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, false, false, true, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/config") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/config") {
@@ -1181,7 +1248,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, false, false, true)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, false, false, false, true)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/state") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/interface-tracking/state") {
@@ -1195,7 +1262,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, false, false, false)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, true, false, false, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/config") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/config") {
@@ -1209,7 +1276,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, false, true, false, false)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, false, true, false, false)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group/state") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group/state") {
@@ -1223,7 +1290,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 
         vrrpMap, err = getVrrpByName(inParams.dbs[db.ConfigDB], "VRRP6", ifName, isvrid, vrid)
         log.Info("handleVrrpGetByTargetURI : ipv6 config vrrpMap - : ", vrrpMap)
-        convertVrrpMapToOC(inParams, targetUriPath, ifName, vrrpMap, intfObj, true, true, true, true)
+        convertVrrpMapToOC(inParams, targetUriPath, ifName, idx, vrrpMap, intfObj, true, true, true, true)
 
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/routed-vlan/ipv6/addresses/address/vrrp/vrrp-group") ||
               strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv6/addresses/address/vrrp/vrrp-group") {
@@ -1239,7 +1306,7 @@ func handleVrrpGetByTargetURI (inParams XfmrParams, targetUriPath string, ifName
 }
 
 
-func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName string, vrrpMap map[string]db.Value, ifInfo *ocbinds.OpenconfigInterfaces_Interfaces_Interface, isConfig bool, isState bool, isTrackConfig bool, isTrackState bool) error {
+func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName string, subintfid uint32, vrrpMap map[string]db.Value, ifInfo *ocbinds.OpenconfigInterfaces_Interfaces_Interface, isConfig bool, isState bool, isTrackConfig bool, isTrackState bool) error {
     var subIntf *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
     var err error
     var v4Flag bool
@@ -1251,15 +1318,15 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
     log.Info("convertVrrpMapToOC:", vrrpTrackMap)
 
-    if _, ok := ifInfo.Subinterfaces.Subinterface[0]; !ok {
-        _, err = ifInfo.Subinterfaces.NewSubinterface(0)
+    if _, ok := ifInfo.Subinterfaces.Subinterface[subintfid]; !ok {
+        _, err = ifInfo.Subinterfaces.NewSubinterface(subintfid)
         if err != nil {
             log.Error("Creation of subinterface subtree failed!")
             return err
         }
     }
 
-    subIntf = ifInfo.Subinterfaces.Subinterface[0]
+    subIntf = ifInfo.Subinterfaces.Subinterface[subintfid]
     ygot.BuildEmptyTree(subIntf)
 
     pathInfo := NewPathInfo(inParams.uri)
@@ -1459,6 +1526,16 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
                     log.Info("trackIfname: ", trackIfname)
                     log.Info("trackIfUIname: ", trackIfUIName)
 
+                    /*
+                    if strings.Contains(trackIfUIName, ".") {
+                        if strings.HasPrefix(trackIfUIName, "Eth") {
+                            trackIfUIName = strings.Replace(trackIfUIName, "Eth", "Ethernet", -1)
+                        } else if strings.HasPrefix(trackIfUIName, "po") {
+                            trackIfUIName = strings.Replace(trackIfUIName, "po", "PortChannel", -1)
+                        }
+                    }
+                    */
+
                     if _, ok := vrrp4.VrrpTrack.VrrpTrackInterface[trackIfUIName]; !ok {
                         vrrp4.VrrpTrack.NewVrrpTrackInterface(trackIfUIName)
                     }
@@ -1617,6 +1694,16 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
 
                     log.Info("trackIfname: ", trackIfname)
                     log.Info("trackIfUIName: ", trackIfUIName)
+
+                    /*
+                    if strings.Contains(trackIfUIName, ".") {
+                        if strings.HasPrefix(trackIfUIName, "Eth") {
+                            trackIfUIName = strings.Replace(trackIfUIName, "Eth", "Ethernet", -1)
+                        } else if strings.HasPrefix(trackIfUIName, "po") {
+                            trackIfUIName = strings.Replace(trackIfUIName, "po", "PortChannel", -1)
+                        }
+                    }
+                    */
 
                     if _, ok := vrrp6.VrrpTrack.VrrpTrackInterface[trackIfUIName]; !ok {
                         vrrp6.VrrpTrack.NewVrrpTrackInterface(trackIfUIName)
@@ -1829,7 +1916,7 @@ func convertVrrpMapToVlanOC (inParams XfmrParams, targetUriPath string, ifName s
                 } else {
                     *UseV2Checksum = false
                 }
-                vrrp4.Config.UseV2Checksum = UseV2Checksum                
+                vrrp4.Config.UseV2Checksum = UseV2Checksum
 
                 if vrrpData.Has("vip@") {
                     vipstr := vrrpData.Get("vip@")
@@ -2196,6 +2283,17 @@ func vrrp_show_summary (body []byte, dbs [db.MaxDB]*db.DB, tableName string, tra
         ifName :=  key.Get(0)
         ifUIName := utils.GetUINameFromNativeName(&ifName)
 
+        /*
+        if strings.Contains(*ifUIName, ".") {
+
+            if strings.HasPrefix(*ifUIName, "Eth") {
+                *ifUIName = strings.Replace(*ifUIName, "Eth", "Ethernet", -1)
+            } else if strings.HasPrefix(*ifUIName, "po") {
+                *ifUIName = strings.Replace(*ifUIName, "po", "PortChannel", -1)
+            }
+        }
+        */
+
         vrrpsummaryentry.Ifname = *ifUIName
         vrrpsummaryentry.Vrid, _ = strconv.Atoi(key.Get(1))
 
@@ -2251,6 +2349,7 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    idx := pathInfo.Var("index")
 
     if targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/vrrp/vrrp-group" ||
        targetUriPath == "/openconfig-interfaces:interfaces/interface/subinterfaces/subinterface/openconfig-if-ip:ipv4/addresses/address/vrrp/vrrp-group" {
@@ -2279,6 +2378,17 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
     vrId       := pathInfo.Var("virtual-router-id")
 
     ifName := utils.GetNativeNameFromUIName(&_ifName)
+
+    if idx != "0" {
+        // tblName = "VLAN_SUB_INTERFACE"
+
+        if strings.HasPrefix(*ifName, "Ethernet") {
+            *ifName = strings.Replace(*ifName, "Ethernet", "Eth", -1) + "." + idx
+        } else if strings.HasPrefix(*ifName, "PortChannel") {
+            *ifName = strings.Replace(*ifName, "PortChannel", "Po", -1) + "." + idx
+        }
+    }
+
     var redisKey string = *ifName + "|" + vrId + trackStr
 
     log.Info("redisKey:", tableName, *ifName, vrId, redisKey, trackStr)
@@ -2289,7 +2399,7 @@ var Subscribe_intf_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -2342,7 +2452,7 @@ var Subscribe_intf_vlan_vrrp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
 
     result.dbDataMap = RedisDbMap{db.ConfigDB:{tableName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

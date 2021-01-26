@@ -23,6 +23,10 @@ module sonic-bfd {
                 prefix slo;
         }
 
+	import sonic-interface {
+		prefix sint;
+	}
+
         organization
                 "SONiC";
 
@@ -70,6 +74,9 @@ module sonic-bfd {
                                 type leafref {
                                         path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                                 }
+				type leafref {
+					path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+				}
                                 type leafref {
                                         path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
                                 }

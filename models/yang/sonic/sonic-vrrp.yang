@@ -68,6 +68,9 @@ module sonic-vrrp {
                         type leafref {
                             path "/svlanint:sonic-vlan-interface/svlanint:VLAN_INTERFACE/svlanint:VLAN_INTERFACE_LIST/svlanint:vlanName";
                         }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                        }
                     }
                 }
 
@@ -75,6 +78,7 @@ module sonic-vrrp {
                     type uint8 {
                     range "1..255";
                     }
+                    sonic-ext:custom-validation ValidateVrrp;
                 }
 
                 leaf vrid {
@@ -144,6 +148,7 @@ module sonic-vrrp {
                     type leafref {
                         path "../../../VRRP/VRRP_LIST/idkey";
                     }
+                    sonic-ext:custom-validation ValidateVrrp;
                 }
 
                 leaf trackifname {
@@ -156,6 +161,9 @@ module sonic-vrrp {
                         }
                         type leafref {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
                         }
                     }
                 }
@@ -187,6 +195,9 @@ module sonic-vrrp {
                         }
                         type leafref {
                             path "/svlanint:sonic-vlan-interface/svlanint:VLAN_INTERFACE/svlanint:VLAN_INTERFACE_LIST/svlanint:vlanName";
+                        }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
                         }
                     }
                 }
@@ -270,6 +281,9 @@ module sonic-vrrp {
                         type leafref {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                         }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                        }
                     }
                 }
 
@@ -303,6 +317,9 @@ module sonic-vrrp {
                         }
                         type leafref {
                             path "/svlanint:sonic-vlan-interface/svlanint:VLAN_INTERFACE/svlanint:VLAN_INTERFACE_LIST/svlanint:vlanName";
+                        }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
                         }
                     }
                 }
@@ -358,6 +375,9 @@ module sonic-vrrp {
                         }
                         type leafref {
                             path "/svlanint:sonic-vlan-interface/svlanint:VLAN_INTERFACE/svlanint:VLAN_INTERFACE_LIST/svlanint:vlanName";
+                        }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
                         }
                     }
                 }

@@ -366,7 +366,6 @@ var DbToYang_bgp_nbr_tbl_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (m
 
 
     nbrName:= nbrKey[1]
-    util_bgp_get_ui_ifname_from_native_ifname (&nbrName)
 
     rmap["neighbor-address"] = nbrName
     return rmap, nil
@@ -594,7 +593,6 @@ var DbToYang_bgp_nbr_address_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrPara
     if len(nbrAddrKey) < 2 {return result, nil}
 
     nbrAddr:= nbrAddrKey[1]
-    util_bgp_get_ui_ifname_from_native_ifname (&nbrAddr)
 
     result["neighbor-address"] = nbrAddr
 
@@ -1403,7 +1401,7 @@ var Subscribe_bgp_nbrs_nbr_state_xfmr SubTreeXfmrSubscribe = func (inParams Xfmr
 
     result.dbDataMap = RedisDbMap{db.StateDB:{"BGP_NEIGHBOR":{pNbrKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -1888,7 +1886,7 @@ var YangToDb_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams
 
     nbrs_obj := bgp_obj.Neighbors
     if nbrs_obj == nil || (nbrs_obj.Neighbor == nil) {
-        log.Errorf("Error: Neighbors container missing")
+        log.Infof("Neighbors container missing")
         return res_map, err
     }
 

@@ -26,6 +26,7 @@ import (
     "sync"
     "strings"
     "fmt"
+    "net"
     "strconv"
     log "github.com/golang/glog"
 )
@@ -168,7 +169,7 @@ func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
     switch dbNo {
     case db.ApplDB, db.CountersDB, db.AsicDB:
         opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-    case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB, db.UserDB:
+    case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB:
         opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
     }
 
@@ -517,46 +518,73 @@ func SetAliasMode(enableMode bool) {
 
 // GetNativeNameFromUIName returns physical interface name for alias-name
 func GetNativeNameFromUIName(uiName *string) *string {
-	if !IsAliasModeEnabled() {
-		return uiName
-	}
+    if !IsAliasModeEnabled() {
+        if !strings.Contains(*uiName, ".") {
+            return uiName
+        }
+    }
 
-	parts := strings.Split(*uiName, ",")
-	converted := make([]string, len(parts))
-	for idx, part := range parts {
-		ifName, ok := aliasIfNameMap.Load(*uiName)
-		if ok {
-			converted[idx] = ifName.(string)
-		} else {
-			converted[idx] = part
-		}
-	}
-	ret := strings.Join(converted, ",")
-	log.V(3).Infof("%s => %s", *uiName, ret)
+    parts := strings.Split(*uiName, ",")
+    converted := make([]string, len(parts))
+    for idx, part := range parts {
+        if net.ParseIP(part) != nil {
+            /* Skipping IP's from conversion logic. Adding to return list immediately */
+            converted[idx] = part
+            continue
+        }
+        subIntfParts := strings.SplitN(part, ".", 2)
+        converted[idx] = subIntfParts[0]
+        if IsAliasModeEnabled() {
+            ifName, ok := aliasIfNameMap.Load(converted[idx]) ; if ok {
+                converted[idx] = ifName.(string)
+            }
+        }
+        if (len(subIntfParts) == 2) {
+            converted[idx] = *getSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
+        }
+    }
+    ret := strings.Join(converted, ",")
+    log.V(3).Infof("%s => %s", *uiName, ret)
 
-	return &ret
+    return &ret
+
 }
 
 // GetUINameFromNativeName returns alias-name for physical interface Name
 func GetUINameFromNativeName(ifName *string) *string {
-	if !IsAliasModeEnabled() {
-		return ifName
-	}
+    if !IsAliasModeEnabled() {
+        if !strings.Contains(*ifName, ".") {
+            return ifName
+        }
+    }
 
-	parts := strings.Split(*ifName, ",")
-	converted := make([]string, len(parts))
-	for idx, part := range parts {
-		aliasName, ok := ifNameAliasMap.Load(part)
-		if ok {
-			converted[idx] = aliasName.(string)
-		} else {
-			converted[idx] = part
-		}
-	}
-	ret := strings.Join(converted, ",")
-	log.V(3).Infof("%s => %s", *ifName, ret)
+    parts := strings.Split(*ifName, ",")
+    converted := make([]string, len(parts))
+    for idx, part := range parts {
+        if net.ParseIP(part) != nil {
+            /* Skipping IP's from conversion logic. Adding to return list immediately */
+            converted[idx] = part
+            continue
+        }
+        subIntfParts := strings.SplitN(part, ".", 2)
+        converted[idx] = subIntfParts[0]
+        if (len(subIntfParts) == 2) {
+            converted[idx] = *getSubInterfaceLongName(&subIntfParts[0])
+        }
+        if IsAliasModeEnabled() {
+            aliasName, ok := ifNameAliasMap.Load(converted[idx])
+            if ok {
+                converted[idx] = aliasName.(string)
+            }
+        }
+        if (len(subIntfParts) == 2) {
+            converted[idx] = converted[idx] + "." + subIntfParts[1]
+        }
+    }
+    ret := strings.Join(converted, ",")
+    log.V(3).Infof("%s => %s", *ifName, ret)
 
-	return &ret
+    return &ret
 }
 
 func IsValidAliasName(ifName *string) bool {
@@ -717,55 +745,57 @@ func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) 
     return false
 }
 
-func GetSubInterfaceShortName(longName *string) *string {
+
+
+func getSubInterfaceShortName(longName *string) *string {
     var shortName string
 
-    parts := strings.Split(*longName, ".")
-    parentif := parts[0]
-    subif := parts[1]
-
-    parentif = *GetNativeNameFromUIName(&parentif)
-    fullName := parentif+"."+subif
-
-    if strings.Contains(fullName, "Ethernet") {
-        shortName = strings.Replace(fullName, "Ethernet", "Eth", -1)
-    } else if strings.Contains(fullName, "PortChannel") {
-        shortName = strings.Replace(fullName, "PortChannel", "po", -1)
+    if strings.Contains(*longName, "Ethernet") {
+        shortName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+    } else if strings.Contains(*longName, "PortChannel") {
+        shortName = strings.Replace(*longName, "PortChannel", "Po", -1)
     } else {
-        shortName = fullName
+        shortName = *longName
     }
 
-    log.V(3).Infof("GetSubInterfaceShortName %s => %s", *longName, shortName)
+    log.V(3).Infof("getSubInterfaceShortName %s => %s", *longName, shortName)
 
     return &shortName
 }
 
-func GetSubInterfaceLongName(shortName *string) *string {
+func IsIntfSubInterface(ifName *string) bool {
+    isSubIntf := false
+    if strings.HasPrefix(*ifName, "Eth") {
+        if strings.Contains(*ifName, ".") {
+            isSubIntf = true
+        }
+    } else if strings.HasPrefix(*ifName, "Po") {
+        if strings.Contains(*ifName, ".") {
+            isSubIntf = true
+        }
+    }
+    return isSubIntf
+}
+
+func getSubInterfaceLongName(shortName *string) *string {
     var longName string
 
     if strings.Contains(*shortName, "Eth") {
         longName = strings.Replace(*shortName, "Eth", "Ethernet", -1)
-    } else if strings.Contains(*shortName, "po") {
-        longName = strings.Replace(*shortName, "po", "PortChannel", -1)
+    } else if strings.Contains(*shortName, "Po") {
+        longName = strings.Replace(*shortName, "Po", "PortChannel", -1)
     } else {
         longName = *shortName
     }
 
-    parts := strings.Split(longName, ".")
-    parentif := parts[0]
-    subif := parts[1]
-
-    parentif = *GetUINameFromNativeName(&parentif)
-    longName = parentif+"."+subif
-
-    log.V(3).Infof("GetSubInterfaceLongName %s => %s", *shortName, longName)
+    log.V(3).Infof("getSubInterfaceLongName %s => %s", *shortName, longName)
 
     return &longName
 }
 
 func GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID (parentIf *string, subId *string) *string {
-    longkey := *GetNativeNameFromUIName(parentIf) + "." + *subId
-    key := *GetSubInterfaceShortName(&longkey)
+    uiName := *parentIf + "." + *subId
+    key := *GetNativeNameFromUIName(&uiName)
     log.V(3).Infof("GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID %s + %s => %s", *parentIf, *subId, key)
     return &key
 }

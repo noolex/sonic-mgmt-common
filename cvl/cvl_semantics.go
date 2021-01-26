@@ -1273,7 +1273,18 @@ func (c *CVL) validateLeafRef(node *xmlquery.Node,
 						filter =  refRedisTableName +
 						modelInfo.tableInfo[refListName].redisKeyDelim + "*"
 						//tableKeys, _, err = redisClient.Scan(0, filter, 1).Result()
-						tableKeys, err = redisClient.Keys(filter).Result()
+						keysFromDb, err1 := redisClient.Keys(filter).Result()
+						err = err1
+						// keysFromDb can be of type like "INTERFACE|Ethernet0" or 
+						// "INTERFACE|Ethernet0|1.1.1.1/24". So need to filter out
+						// only those keys which are related to table used in leaf-ref.
+						for _, keyFrmDb := range keysFromDb {
+							keyStrArr := strings.SplitN(keyFrmDb, "|", 2)
+							yangListName := getRedisTblToYangList(keyStrArr[0], keyStrArr[1])
+							if yangListName == refListName {
+								tableKeys = append(tableKeys, keyFrmDb)
+							}
+						}
 					}
 
 					if (err != nil) || (len(tableKeys) == 0) {
@@ -1501,9 +1512,10 @@ func (c *CVL) checkDepDataCompatible(tblName, key, reftblName, refTblKey, leafRe
 func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 			tableName, keyVal, field string) CVLRetCode {
 
+	yangTblName := getRedisTblToYangList(tableName, keyVal)
 	// Creating a map of leaf-ref referred tableName and associated fields array
 	refTableFieldsMap := map[string][]string{}
-	for _, leafRef := range modelInfo.tableInfo[tableName].refFromTables {
+	for _, leafRef := range modelInfo.tableInfo[yangTblName].refFromTables {
 		// If field is getting deleted, then collect only those leaf-refs that
 		// refers that field
 		if (field != "") && ((field != leafRef.field) || (field != leafRef.field + "@")) {
@@ -1538,18 +1550,19 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 				depEntkeyList := strings.SplitN(depEntkey, "|", 2)
 				refTblName := depEntkeyList[0]
 				refTblKey := depEntkeyList[1]
+				refYangTblName := getRedisTblToYangList(refTblName, refTblKey)
 
 				var isRefTblKeyNotCompatible bool
 				var isEntryInRequestCache bool
-				leafRefFieldsArr := refTableFieldsMap[refTblName]
+				leafRefFieldsArr := refTableFieldsMap[refYangTblName]
 				// Verify each dependent data with help of its associated leaf-ref
 				for _, leafRefField := range leafRefFieldsArr {
-					TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> Checking delete constraint for leafRef %s/%s", refTblName, leafRefField)
+					TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> Checking delete constraint for leafRef %s/%s", refYangTblName, leafRefField)
 					// Key compatibility to be checked only if no. of keys are more than 1
 					// because dep data for key like "BGP_PEER_GROUP|Vrf1|PG1" can be returned as 
 					// BGP_NEIGHBOR|Vrf1|11.1.1.1 or BGP_NEIGHBOR|default|11.1.1.1 or BGP_NEIGHBOR|Vrf2|11.1.1.1
 					// So we have to discard imcompatible dep data
-					if !c.checkDepDataCompatible(tableName, keyVal, refTblName, refTblKey, leafRefField, depData.Entry[depEntkey]) {
+					if !c.checkDepDataCompatible(yangTblName, keyVal, refYangTblName, refTblKey, leafRefField, depData.Entry[depEntkey]) {
 						isRefTblKeyNotCompatible = true
 						TRACE_LOG(TRACE_SEMANTIC, "checkDeleteConstraint--> %s is NOT compatible with %s", redisKeyForDepData, depEntkey)
 						break

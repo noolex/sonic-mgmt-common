@@ -346,7 +346,8 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
             for _, value = range nexthops {
                 nexthop := value.(map[string]interface{})
                 if _intf_name, ok := nexthop["via"].(string); ok {
-                    nexthop_ifname = fmt.Sprintf("%v",_intf_name)
+                    _ui_if_name, _, _, _, _ := getUserInterfaceName(_intf_name)
+                    nexthop_ifname = fmt.Sprintf("%v", _ui_if_name)
                 }
                 if _ip, ok := nexthop["ip"].(string); ok {
                     nexthop_ip = fmt.Sprintf("%v",_ip)
@@ -359,7 +360,8 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
                     nexthop_area_id = "0.0.0.0"
                 }
                 if _direct_intf, ok := nexthop["directly attached to"].(string); ok {
-                    nexthop_ifname = fmt.Sprintf("%v",_direct_intf)
+                    _ui_direct_intf, _, _, _, _ := getUserInterfaceName(_direct_intf)
+                    nexthop_ifname = fmt.Sprintf("%v",_ui_direct_intf)
                     nexthop_ip = "0.0.0.0"
                 }
                 ospfv2RouteState.NextHopsList.NewNextHops(nexthop_ip, nexthop_ifname, nexthop_area_id)
@@ -868,7 +870,7 @@ func ospfv2_fill_neighbors_state (output_state map[string]interface{},
                     }
                 }
                 if _ntv_intf_name,ok := nbr_info["ifaceName"].(string); ok {
-                    _intf_name, _ := ospfGetUIIntfName(_ntv_intf_name)
+                    _intf_name, _, _, _, _ := getUserInterfaceName(_ntv_intf_name)
                     if _intf_name != intf_name {
                         log.Infof("Neighbor interface Name %s does not match %s ,skipping this neighbor", _intf_name, intf_name)
                         continue;
@@ -1478,7 +1480,7 @@ func ospfv2_fill_interface_message_stats (output_state map[string]interface{},
     for _,value := range output_state {
         interfaces_info := value.(map[string]interface{})
         for ntv_key, value := range interfaces_info {
-            key, _ := ospfGetUIIntfName(ntv_key)
+            key, _, _, _, _ := getUserInterfaceName(ntv_key)
             if(key != intf_name) {
                 log.Infof("skipping interface %s as stats needed for interface %s ", key, intf_name)
                 continue
@@ -1584,7 +1586,7 @@ func ospfv2_fill_interface_vlink_state_traffic (intf_info map[string]interface{}
     for _,value := range output_state {
         interfaces_info := value.(map[string]interface{})
         for ntv_key, value := range interfaces_info {
-            key, _ := ospfGetUIIntfName(ntv_key)
+            key, _, _, _, _ := getUserInterfaceName(ntv_key)
             if(key != intf_name) {
                 log.Infof("skipping interface %s as stats needed for interface %s ", key, intf_name)
                 continue
@@ -2112,7 +2114,7 @@ var DbToYang_ospfv2_vlink_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
         interfaces_info := value.(map[string]interface{})
         interface_map := interfaces_info["interfaces"].(map[string]interface{})
         for ntv_intf_name, temp = range interface_map {
-            intf_name, _ = ospfGetUIIntfName(ntv_intf_name)
+            intf_name, _, _, _, _ = getUserInterfaceName(ntv_intf_name)
             if !strings.Contains(intf_name, "VLINK") {
                 log.Info("Skip non vlink interface ", intf_name)
                 continue
@@ -2203,7 +2205,7 @@ func  ospfv2_fill_vlink_neighbors_state (output_state map[string]interface{},  o
                     continue
                 }
                 if _ntv_intf_name,ok := nbr_info["ifaceName"].(string); ok {
-                    _intf_name, _ := ospfGetUIIntfName(_ntv_intf_name) 
+                    _intf_name, _, _, _, _ := getUserInterfaceName(_ntv_intf_name)
                     if _intf_name != intf_name {
                         log.Infof("Neighbor interface Name %s does not match %s ,skipping this neighbor", _intf_name, intf_name)
                         continue;
@@ -3168,7 +3170,7 @@ var DbToYang_ospfv2_neighbors_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfm
         interface_map := interfaces_info["interfaces"].(map[string]interface{})
         for ntv_intf_name, temp = range interface_map {
             log.Info("interface is ", ntv_intf_name)
-            intf_name, _ = ospfGetUIIntfName(ntv_intf_name)
+            intf_name, _, _, _, _ = getUserInterfaceName(ntv_intf_name)
             
             intf_info := temp.(map[string]interface{})
             if intf_area_str,ok := intf_info["area"].(string); ok {
@@ -3384,7 +3386,8 @@ var rpc_clear_ospfv2 RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]b
 
     if value, ok := mapData["interface"].(string) ; ok {
         if value != "" {
-            value, err = ospfGetNativeIntfName(value) 
+            //value, err = ospfGetNativeIntfName(value) 
+            value, _, _, _, err = getNativeInterfaceName(value)
             if (err != nil) {
                 return nil, tlerr.New("Invalid OSPF interface name.")
             }

@@ -682,7 +682,7 @@ func xfmrSubscSubtreeHandler(inParams XfmrSubscInParams, xfmrFuncNm string) (Xfm
     var retVal XfmrSubscOutParams
     retVal.dbDataMap = nil
     retVal.needCache = false
-    retVal.onChange = false
+    retVal.onChange = OnchangeDisable
     retVal.nOpts = nil
     retVal.isVirtualTbl = false
 
@@ -736,12 +736,12 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
            }
 
            if (xpathData.subscribePref == nil || ((xpathData.subscribePref != nil) &&(len(strings.TrimSpace(*xpathData.subscribePref)) == 0))) {
-               subscribe_result.PType = Sample
+               subscribe_result.PType = OnChange
            } else {
                if *xpathData.subscribePref == "onchange" {
                    subscribe_result.PType = OnChange
                } else {
-                           subscribe_result.PType = Sample
+		   subscribe_result.PType = Sample
                }
            }
            subscribe_result.MinInterval = xpathData.subscribeMinIntvl
@@ -789,7 +789,9 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                    err = st_err
                    break
                }
-	       subscribe_result.OnChange = st_result.onChange
+               if st_result.onChange == OnchangeEnable {
+		       subscribe_result.OnChange = true
+	       }
 	       xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
 	       if subscribe_result.OnChange {
 		       if st_result.dbDataMap != nil {

@@ -50,6 +50,10 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 		tblName = "VLAN_INTERFACE"
 	} else if strings.HasPrefix(ifName, "PortChannel") {
 		tblName = "PORTCHANNEL_INTERFACE"
+	} else if strings.HasPrefix(ifName, "Eth") {
+		tblName = "VLAN_SUB_INTERFACE"
+	} else if strings.HasPrefix(ifName, "Po") {
+		tblName = "VLAN_SUB_INTERFACE"
 	} else {
 		util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "VIP not allowed on this type of interface")
 		errStr := "VIP not allowed on this type of interface"
@@ -161,6 +165,10 @@ func vrrp_is_vip_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name s
 		if_tbl = "VLAN_INTERFACE"
 	} else if strings.HasPrefix(vrrp_if_name, "PortChannel") {
 		if_tbl = "PORTCHANNEL_INTERFACE"
+	} else if strings.HasPrefix(vrrp_if_name, "Eth") {
+		if_tbl = "VLAN_SUB_INTERFACE"
+	} else if strings.HasPrefix(vrrp_if_name, "Po") {
+		if_tbl = "VLAN_SUB_INTERFACE"
 	} else {
 		return false
 	}
@@ -369,4 +377,71 @@ func (t *CustomValidation) ValidatePriority(vc *CustValidationCtxt) CVLErrorInfo
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 
+}
+
+func (t *CustomValidation) ValidateVrrp(vc *CustValidationCtxt) CVLErrorInfo {
+	key := vc.CurCfg.Key
+	key_split := strings.Split(key, "|")
+
+	log.Info("ValidateVrrp op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
+
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	if strings.Contains(key_split[1], ".") {
+
+		vlan_subif_table := "VLAN_SUB_INTERFACE"
+		vlan_subif_ip_key := vlan_subif_table + "|" + key_split[1] + "|*"
+
+		vlan_subif_ips, err := vc.RClient.Keys(vlan_subif_ip_key).Result()
+		if (err != nil) || (vc.SessCache == nil) {
+			errStr := "Configure interface IP before configuring VRRP"
+			return CVLErrorInfo{
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: "VRRP",
+				CVLErrDetails: errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+
+		if len(vlan_subif_ips) <= 0 {
+			errStr := "Configure interface IP before configuring VRRP"
+			return CVLErrorInfo{
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: "VRRP",
+				CVLErrDetails: errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+
+		vlan_subif_key := vlan_subif_table + "|" + key_split[1]
+
+		vlan_subif_data, err := vc.RClient.HGetAll(vlan_subif_key).Result()
+		if (err != nil) || (vc.SessCache == nil) {
+			errStr := "Configure subinterface and vlan id before configuring VRRP"
+			return CVLErrorInfo{
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: "VRRP",
+				CVLErrDetails: errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+
+		_, has_vlanid := vlan_subif_data["vlan"]
+
+		if has_vlanid {
+			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+		} else {
+			errStr := "Configure  vlan id on interface before configuring VRRP"
+			return CVLErrorInfo{
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: "VRRP",
+				CVLErrDetails: errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+	}else {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
 }

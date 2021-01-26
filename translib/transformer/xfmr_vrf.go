@@ -522,15 +522,15 @@ var YangToDb_network_instance_table_key_xfmr KeyXfmrYangToDb = func(inParams Xfm
            -
          */
         if (keyName == "mgmt" && inParams.oper == DELETE) {
-            err = ValidateTacplusServerNotUseMgmtVRF(inParams.d)
-            if err != nil {
-                return vrfTbl_key, err
-            }
             requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
             log.V(3).Info("YangToDb_network_instance_table_key_xfmr request URI: ", requestUriPath)
             if ((requestUriPath == "/openconfig-network-instance:network-instances/network-instance") ||
                 (requestUriPath == "/openconfig-network-instance:network-instances")) {
                 // Validate only for mgmt VRF delete
+                err = ValidateTacplusServerNotUseMgmtVRF(inParams.d)
+                if err != nil {
+                    return vrfTbl_key, err
+                }
                 err = ValidateInbandMgmtConfigOnMgmtVRF(inParams.d)
                 if err != nil {
                     return vrfTbl_key, err
@@ -811,12 +811,8 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
         /* get the name at the top network-instance table level, this is the key */
         keyName := pathInfo.Var("name")
-        intfId := pathInfo.Var("id")
-        uiintfId := intfId
-        if strings.Contains(intfId, ".") {
-            //subintf
-            intfId = *utils.GetSubInterfaceShortName(&intfId)
-        }
+        uiintfId := pathInfo.Var("id")
+        intfId := *utils.GetNativeNameFromUIName(&uiintfId)
 
         if (keyName == "") {
                 log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: no intf binding for VRF ", keyName)
@@ -1003,7 +999,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                     log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: ", errStr);
                     err = tlerr.InvalidArgsError{Format: errStr}
 				}
-            } else if intf_type != IntfTypeSubIntf {
+            } else {
                 err = validateL3ConfigExists(inParams.d, ifName)
             }
 
@@ -1176,12 +1172,6 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
     niName := pathInfo.Var("name")
     ifUIName := pathInfo.Var("id")
 
-        /*var dbIntfId string
-        if strings.Contains(ifUIName, ".") {
-            //Subinterface Id
-            dbIntfId = *utils.GetSubInterfaceShortName(&ifUIName)
-        }*/
-
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
     log.V(3).Infof("DbToYang_network_instance_interface_binding_subtree_xfmr, key(:%v) id(:%v) targeturiPath %v",
@@ -1194,10 +1184,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
     if ((niName != "") && (ifUIName != "")) {
 
 	ifNativeName := utils.GetNativeNameFromUIName(&ifUIName)
-        if strings.Contains(*ifNativeName, ".") {
-            //Subinterface Id
-            ifNativeName = utils.GetSubInterfaceShortName(ifNativeName)
-        }
+
 	var present = false
 	/* Check if the given interface is member of the input network instance */
 	for _, intfName := range vrfIntfMap.(map[string][]string)[niName] {
@@ -1244,9 +1231,6 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 	    }
 
 	    uiName := utils.GetUINameFromNativeName(&intfName)
-                                if strings.Contains(*uiName, ".") {
-                                    uiName = utils.GetSubInterfaceLongName(uiName)
-                                }
 
 	    var intfData *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Interfaces_Interface
 
@@ -1275,8 +1259,9 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
                                     intfData.Config.Subinterface = &i32
                                     intfData.State.Subinterface = &i32
                                 } else {
-                                    intfData.Config.Interface = uiName
-                                    intfData.State.Interface = uiName
+                                    final := *uiName
+                                    intfData.Config.Interface = &final
+                                    intfData.State.Interface = &final
                                 }
 
 	}
@@ -1296,17 +1281,13 @@ var Subscribe_network_instance_interface_binding_subtree_xfmr = func(inParams Xf
 
         /* get the name at the top network-instance table level, this is the key */
         keyName := pathInfo.Var("name")
-        intfId := pathInfo.Var("id")
-        uiintfif := intfId
-        if strings.Contains(intfId, ".") {
-            //subintfid
-            intfId = *utils.GetSubInterfaceShortName(&intfId)
-        }
+        uiIntfId := pathInfo.Var("id")
+        intfId := *utils.GetNativeNameFromUIName(&uiIntfId)
 
         log.Infof("Subscribe_network_instance_interface_binding_subtree_xfmr: targetUri %v key %v intfId %v", targetUriPath, keyName, intfId)
 
         if (intfId != "") {
-                intf_type, _, err := getIntfTypeByName(uiintfif)
+                intf_type, _, err := getIntfTypeByName(uiIntfId)
                 if err != nil {
                         log.Info("Subscribe_network_instance_interface_binding_subtree_xfmr: unknown intf type for  ", intfId)
                 }

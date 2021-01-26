@@ -220,6 +220,20 @@ func testPathInfo(t *testing.T, path, expTemplate string, expVars map[string]str
 	}
 }
 
+func TestHasWildcard(t *testing.T) {
+	p := NewPathInfo("/test/xx[one=1][two=*]/new")
+	if !p.HasWildcard() {
+		t.Fatalf("%s failed; p=%s", t.Name(), p.Path)
+	}
+}
+
+func TestHasWildcard_neg(t *testing.T) {
+	p := NewPathInfo("/test/xx[one=1][two=2]/new")
+	if p.HasWildcard() {
+		t.Fatalf("%s failed; p=%s", t.Name(), p.Path)
+	}
+}
+
 func mkmap(args ...string) map[string]string {
 	m := make(map[string]string)
 	for i := 0; i < len(args); i += 2 {
