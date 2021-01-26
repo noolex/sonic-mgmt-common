@@ -1190,6 +1190,10 @@ func (app *FbsApp) translateCUNextHopGroups(d *db.DB, opcode int) error {
 
 			if nhopPtr.Config.IpAddress != nil {
 				nhopsParts[0] = *nhopPtr.Config.IpAddress
+				if (groupType == SONIC_NH_GROUP_TYPE_IPV4 && strings.Contains(nhopsParts[0], ":")) ||
+					(groupType == SONIC_NH_GROUP_TYPE_IPV6 && strings.Contains(nhopsParts[0], ".")) {
+					return tlerr.InvalidArgs("Next-hop IP address %v is not valid for group type %v", nhopsParts[0], groupType)
+				}
 			} else if nhopsParts[0] == "" {
 				return tlerr.InvalidArgs("IP address missing for entry %v of group %v", entryId, groupName)
 			}
@@ -1713,33 +1717,31 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 							if len(policySectionVal.Forwarding.NextHopGroups.NextHopGroup) > 0 {
 								v4NextHopGrps := sectionDbV.GetList("SET_IP_NEXTHOP_GROUP")
 								v6NextHopGrps := sectionDbV.GetList("SET_IPV6_NEXTHOP_GROUP")
-								for _, nhopGrpPtr := range policySectionVal.Forwarding.NextHopGroups.NextHopGroup {
-									nhopGrpDbStr := *nhopGrpPtr.Config.GroupName
+								log.Infof("V4 Groups: %v", v4NextHopGrps)
+								log.Infof("V6 Groups: %v", v6NextHopGrps)
+								for nhopGrpDbStr, nhopGrpPtr := range policySectionVal.Forwarding.NextHopGroups.NextHopGroup {
 									exact := false
-									if nhopGrpPtr.Config.Priority != nil {
+									if nhopGrpPtr.Config != nil && nhopGrpPtr.Config.Priority != nil {
 										nhopGrpDbStr = nhopGrpDbStr + "|" + strconv.FormatInt(int64(*nhopGrpPtr.Config.Priority), 10)
 										exact = true
 									} else {
 										nhopGrpDbStr = nhopGrpDbStr + "|"
 									}
-									if nhopGrpPtr.Config.GroupType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV4 {
-										for _, entry := range v4NextHopGrps {
-											if exact && entry == nhopGrpDbStr {
-												v4NextHopGrps = removeElement(v4NextHopGrps, nhopGrpDbStr)
-											} else if !exact && strings.HasPrefix(entry, nhopGrpDbStr) {
-												v4NextHopGrps = removeElement(v4NextHopGrps, nhopGrpDbStr)
-											}
+									log.Infof("To delete %v %v", exact, nhopGrpDbStr)
+									// As of now no check for ip type as delete doesnt have payload in rest. Check GNMI
+									for _, entry := range v4NextHopGrps {
+										if exact && entry == nhopGrpDbStr {
+											v4NextHopGrps = removeElement(v4NextHopGrps, nhopGrpDbStr)
+										} else if !exact && strings.HasPrefix(entry, nhopGrpDbStr) {
+											v4NextHopGrps = removeElementIfHasPrefix(v4NextHopGrps, nhopGrpDbStr)
 										}
-									} else if nhopGrpPtr.Config.GroupType == ocbinds.OpenconfigFbsExt_NEXT_HOP_GROUP_TYPE_NEXT_HOP_GROUP_TYPE_IPV6 {
-										for _, entry := range v6NextHopGrps {
-											if exact && entry == nhopGrpDbStr {
-												v6NextHopGrps = removeElement(v6NextHopGrps, nhopGrpDbStr)
-											} else if !exact && strings.HasPrefix(entry, nhopGrpDbStr) {
-												v6NextHopGrps = removeElement(v6NextHopGrps, nhopGrpDbStr)
-											}
+									}
+									for _, entry := range v6NextHopGrps {
+										if exact && entry == nhopGrpDbStr {
+											v6NextHopGrps = removeElement(v6NextHopGrps, nhopGrpDbStr)
+										} else if !exact && strings.HasPrefix(entry, nhopGrpDbStr) {
+											v6NextHopGrps = removeElementIfHasPrefix(v6NextHopGrps, nhopGrpDbStr)
 										}
-									} else {
-										return tlerr.InvalidArgs("Group type for %v not specified in policy %v and class %v", *nhopGrpPtr.Config.GroupName, policyKey, className)
 									}
 								}
 								if len(v4NextHopGrps) > 0 {
@@ -1921,6 +1923,7 @@ func (app *FbsApp) translateDelNextHopGroups(d *db.DB) error {
 		groupData, err := app.getNextHopGroupEntryFromDB(d, groupName)
 		if isNotFoundError(err) {
 			log.Infof("Group %v not present", groupName)
+			continue
 		}
 
 		if groupPtr.Config != nil {
