@@ -1017,31 +1017,31 @@ func rpc_vlan_tbl_update(d *db.DB, vlanList []string, ifNameList []string, op st
 }
 
 //updates PORT or PORTCHANNEL table accordingly.
-func rpc_port_tbl_update(d *db.DB,vlanList []string,ifNameList []string,table_name string) error{
+func rpc_port_tbl_update(d *db.DB,vlanList []string,ifNameList []string,table_name string) error {
     var err error
     var newVlanList []string
     for _,vlan := range vlanList {
         if strings.Contains(vlan,"..") {
-           _ = utils.ExtractVlanIdsfrmRng(strings.TrimPrefix(vlan,"Vlan"), &newVlanList)
+           _ = utils.ExtractVlanIdsFromRange(strings.TrimPrefix(vlan,"Vlan"), &newVlanList)
        } else {
            newVlanList = append(newVlanList,"Vlan"+vlan)
        }
     }
+    newVlanList, _ = vlanIdstoRng(newVlanList)
 
-    for _,ifName := range ifNameList{
+    for _,ifName := range ifNameList {
         portEntry, err := d.GetEntry(&db.TableSpec{Name:table_name}, db.Key{Comp: []string{ifName}})
         if err != nil || !portEntry.IsPopulated() {
             errStr := "Could not retrieve port" + ifName
             return errors.New(errStr)
         }
 
-       newVlanList, _ = vlanIdstoRng(newVlanList)
        portEntry.SetList("tagged_vlans", newVlanList)
        err = d.SetEntry(&db.TableSpec{Name:table_name},db.Key{Comp: []string{ifName}},portEntry)
-        if err != nil{
+       if err != nil {
             errStr := "Setting entry in PORT table failed!"
             return errors.New(errStr)
-            }
+        }
 
     }
     return err
@@ -1140,7 +1140,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 
     for _,vlan := range newVlanList {
        if strings.Contains(vlan, "..") {
-            err = utils.ExtractVlanIdsfrmRng(vlan,&newList)
+            err = utils.ExtractVlanIdsFromRange(vlan,&newList)
            if err != nil{
                 result.Output.Status_detail = err.Error()
                 return json.Marshal(&result)

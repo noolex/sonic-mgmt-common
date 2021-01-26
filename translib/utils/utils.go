@@ -126,10 +126,10 @@ func GenerateMemberPortsSliceFromString(memberPortsStr *string) []string {
     return memberPorts
 }
 
-// ExtractVlanIdsfrmRng expands given range into list of individual VLANs
+// ExtractVlanIdsFromRange expands given range into list of individual VLANs
 // Param: A Range e.g. 1-3 or 1..3
 // Return: Expanded list e.g. [Vlan1, Vlan2, Vlan3] */
-func ExtractVlanIdsfrmRng(rngStr string, vlanLst *[]string) error {
+func ExtractVlanIdsFromRange(rngStr string, vlanLst *[]string) error {
     var err error
     var res []string
     if strings.Contains(rngStr, "..") {
@@ -240,7 +240,7 @@ func updateVlanCache(portEntry db.Value, portName string) {
         vlanRngSlice := GenerateMemberPortsSliceFromString(&taggedVlanVal)
         for _, vlanId := range vlanRngSlice {
             if strings.Contains(vlanId, "-") { //vlanId e.g. 1-100(Vlan ID range) or 200(single Vlan ID)
-                _ = ExtractVlanIdsfrmRng(vlanId, &taggedVlanSlice)
+                _ = ExtractVlanIdsFromRange(vlanId, &taggedVlanSlice)
             } else {
                 taggedVlanSlice = append(taggedVlanSlice, "Vlan"+vlanId)
             }
