@@ -184,6 +184,9 @@ func Initialize() CVLRetCode {
 	//Build reverse leafref info i.e. which table/field uses one table through leafref
 	buildRefTableInfo()
 
+	//Build table dependencies based on 'dependent-on' extension 
+	buildTableDependencies()
+
 	cvlInitialized = true
 
 	return CVL_SUCCESS
@@ -638,6 +641,14 @@ func (c *CVL) addDepEdges(graph *toposort.Graph, tableList []string) {
 					}
 				}
 			}
+
+			for _, depTblName := range modelInfo.tableInfo[tableList[ti]].dependentTables {
+				if tableList[tj] == depTblName {
+					graph.AddEdge(depTblName, redisTblTo)
+					dupEdgeCheck[depTblName] = redisTblTo
+					CVL_LOG(INFO_DEBUG, "addDepEdges() with sonic-ext: Adding edge %s -> %s", tableList[tj], redisTblTo)
+				}
+			}
 		}
 	}
 }
@@ -673,6 +684,7 @@ func (c *CVL) SortDepTables(inTableList []string) ([]string, CVLRetCode) {
 	//Now perform topological sort
 	result, ret := graph.Toposort()
 	if !ret {
+		CVL_LOG(ERROR, "SortDepTables: Toposort failed: %v", result)
 		return nil, CVL_ERROR
 	}
 
@@ -761,6 +773,14 @@ func (c *CVL) GetOrderedDepTables(yangModule, tableName string) ([]string, CVLRe
 				}
 			}
 		}
+
+		for _, depTblName := range modelInfo.tableInfo[tableName].dependentTables {
+			if tbl == depTblName {
+				graph.AddNodes(depTblName)
+				graph.AddEdge(depTblName, redisTblTo)
+				dupEdgeCheck[depTblName] = redisTblTo
+			}
+		}
 	}
 
 	//Now perform topological sort
@@ -784,6 +804,11 @@ func (c *CVL) addDepTables(tableMap map[string]bool, tableName string) {
 				c.addDepTables(tableMap, getYangListToRedisTbl(refTbl)) //call recursively
 			}
 		}
+	}
+
+	//Now add table on which this table is dependent through 'dependent-on' extenstion
+	if len(modelInfo.tableInfo[tableName].dependentOnTable) > 0 {
+		c.addDepTables(tableMap, getYangListToRedisTbl(modelInfo.tableInfo[tableName].dependentOnTable))
 	}
 }
 
