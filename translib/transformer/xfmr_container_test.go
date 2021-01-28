@@ -1046,8 +1046,6 @@ func Test_Container_Default_Value_Fill_NoMappingToRedis_Replace2(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl)
 }
 
-
-
 func Test_Container_Default_Value_Fill_NoMappingToRedis_Update(t *testing.T) {
 
 	cleanuptbl := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":""}}
@@ -1065,6 +1063,48 @@ func Test_Container_Default_Value_Fill_NoMappingToRedis_Update(t *testing.T) {
         t.Run("UPDATE on with Default_Value_Fill_NoMappingToRedis", processSetRequest(url, patch_payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("Verify update on container with Default_Value_Fill_NoMappingToRedis", verifyDbResult(rclient, "PORT|Ethernet32", patch_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+
+func Test_Default_Value_Fill_ValueXfmr_Update(t *testing.T) {
+	cleanuptbl := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":""}}
+        prereq := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet0":map[string]interface{}{"mtu":"9100", "admin_status":"down","description":"desc-1"}}}
+        url := "/openconfig-interfaces:interfaces/interface[name=Ethernet0]/subinterfaces"
+
+        fmt.Println("++++++++++++++  UPDATE/CREATE Test_Default_Value_Fill_ValueXfmr  +++++++++++++")
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+	patch_payload := "{\"openconfig-interfaces:subinterfaces\":{\"subinterface\":[{\"index\":23,\"config\":{\"index\":23}}]}}"
+	patch_expected := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":map[string]interface{}{"admin_status":"up","parent":"Ethernet0"}}}
+
+        t.Run("UPDATE on with Default_Value_Fill_ValueXfmr", processSetRequest(url, patch_payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify update on container with Default_Value_Fill_ValueXfmr", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.23", patch_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+func Test_Default_And_Aux_Value_Fill_ValueXfmr_Replace(t *testing.T) {
+	cleanuptbl := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":""}}
+        prereq := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet0":map[string]interface{}{"mtu":"9100", "admin_status":"down","description":"desc-1"}},
+	"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":map[string]interface{}{"mtu":"9100", "admin_status":"down","parent":"Ethernet0","description":"subintf-desc"}}}
+        url := "/openconfig-interfaces:interfaces/interface[name=Ethernet0]/subinterfaces/subinterface[index=23]/config"
+
+        fmt.Println("++++++++++++++  REPLACE Test_Default_And_Aux_Value_Fill_ValueXfmr  +++++++++++++")
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+	replace_payload := "{\"config\":{\"index\":23,\"mtu\":9200}}"
+	replace_expected := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":map[string]interface{}{"admin_status":"up","parent":"Ethernet0","mtu":9200}}}
+
+        t.Run("REPLACE on with Default_And_Aux_Value_Fill_ValueXfmr", processSetRequest(url, replace_payload, "PUT", false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify replace on container with Default_iand_Aux_Value_Fill_ValueXfmr", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.23", replace_expected, false))
 
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)

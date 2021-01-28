@@ -542,6 +542,7 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 	tblXpathMap  := make(map[string]map[string]map[string]bool)
 	subOpDataMap := make(map[int]*RedisDbMap)
 	root         := xpathRootNameGet(uri)
+	yangAuxValOper := oper
 
 	/* Check if the parent table exists for RFC compliance */
 	var exists bool
@@ -691,6 +692,26 @@ func dbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		err = dbDataXfmrHandler(resultMap)
 		if err != nil {
 			log.Warningf("Failed in dbdata-xfmr for %v", resultMap)
+			return err
+		}
+		yangDefValDbDataXfmrMap := make(map[int]RedisDbMap)
+		yangDefValDbDataXfmrMap[oper] = RedisDbMap{db.ConfigDB : yangDefValMap}
+		err = dbDataXfmrHandler(yangDefValDbDataXfmrMap)
+		if err != nil {
+			log.Warningf("Failed in dbdata-xfmr for %v", yangDefValDbDataXfmrMap)
+			return err
+		}
+		if yangAuxValOper == REPLACE {
+			/* yangAuxValMap is used only for terminal-container REPLACE case
+			   and has fields to be deleted, so send DELETE to valueXfmr
+			 */
+			yangAuxValOper = DELETE
+		}
+		yangAuxValDbDataXfmrMap := make(map[int]RedisDbMap)
+		yangAuxValDbDataXfmrMap[yangAuxValOper] = RedisDbMap{db.ConfigDB : yangAuxValMap}
+		err = dbDataXfmrHandler(yangAuxValDbDataXfmrMap)
+		if err != nil {
+			log.Warningf("Failed in dbdata-xfmr for %v", yangAuxValDbDataXfmrMap)
 			return err
 		}
 
