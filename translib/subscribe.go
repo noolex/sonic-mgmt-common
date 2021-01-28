@@ -54,6 +54,7 @@ const (
 	niLeafPath Bits = 1 << iota
 	niWildcardPath
 	niPartial
+	niOnChangeSupported
 )
 
 type notificationInfo struct {
@@ -92,7 +93,7 @@ type notificationEvent struct {
 	key   *db.Key            // DB key, if any
 	db    *db.DB             // DB object on which this event was received
 	nGrup *notificationGroup // Target notificationGroup for the event
-	nInfo *notificationInfo  // Current notificationInfo
+	sInfo *subscribeInfo
 
 	// Meta info for processSubscribe calls
 	forceProcessSub bool
@@ -183,40 +184,29 @@ func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) 
 	return nil
 }
 
+// translatedSubData holds translated subscription data for a path.
+type translatedSubData struct {
+	targetInfos []*notificationInfo
+	childInfos  []*notificationInfo
+}
+
 type subscribeContext struct {
-	sInfo    *subscribeInfo
+	id      uint64 // context id
+	dbs     [db.MaxDB]*db.DB
+	version Version
+	mode    NotificationType
+
 	dbNInfos map[db.DBNum]map[db.TableSpec]*notificationGroup
 	tgtInfos []*notificationInfo
 
+	sInfo   *subscribeInfo
 	app     *appInterface
 	appInfo *appInfo
 }
 
-func (sc *subscribeContext) add(subscribePath string, nAppSubInfo *translateSubResponse) {
-	sid := sc.sInfo.id
-	if sc.dbNInfos == nil {
-		sc.dbNInfos = make(map[db.DBNum]map[db.TableSpec]*notificationGroup)
-	}
-
-	log.Infof("[%v] Subscribe path \"%s\" mapped to %d primary and %d subtree notificationAppInfos",
-		sid, subscribePath, len(nAppSubInfo.ntfAppInfoTrgt), len(nAppSubInfo.ntfAppInfoTrgtChlds))
-
-	for i, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
-		log.Infof("[%v] pri[%d] = %v", sid, i, nAppInfo)
-		nInfo := sc.addNInfo(nAppInfo)
-		sc.tgtInfos = append(sc.tgtInfos, nInfo)
-	}
-
-	for i, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
-		log.Infof("[%v] sub[%d] = %v", sid, i, nAppInfo)
-		sc.addNInfo(nAppInfo)
-	}
-}
-
-func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificationInfo {
-	d := nAppInfo.dbno
+func (sc *subscribeContext) newNInfo(nAppInfo *notificationAppInfo) *notificationInfo {
 	nInfo := &notificationInfo{
-		dbno:    d,
+		dbno:    nAppInfo.dbno,
 		table:   nAppInfo.table,
 		key:     nAppInfo.key,
 		fields:  nAppInfo.dbFldYgPathInfoList,
@@ -229,7 +219,7 @@ func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificatio
 
 	// Make sure field prefix path has a leading and trailing "/".
 	// Helps preparing full path later by joining parts
-	for _, pi := range nAppInfo.dbFldYgPathInfoList {
+	for _, pi := range nInfo.fields {
 		if len(pi.rltvPath) != 0 && pi.rltvPath[0] != '/' {
 			pi.rltvPath = "/" + pi.rltvPath
 		}
@@ -244,9 +234,16 @@ func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificatio
 	if path.HasWildcardKey(nAppInfo.path) {
 		nInfo.flags.Set(niWildcardPath)
 	}
+	if nAppInfo.isOnChangeSupported {
+		nInfo.flags.Set(niOnChangeSupported)
+	}
 
-	// Group nInfo by table and key pattern
-	tKey := *nAppInfo.table
+	return nInfo
+}
+
+func (sc *subscribeContext) addToNGroup(nInfo *notificationInfo) {
+	d := nInfo.dbno
+	tKey := *nInfo.table
 	nGrp := sc.dbNInfos[d][tKey]
 	if nGrp == nil {
 		nGrp = new(notificationGroup)
@@ -258,7 +255,81 @@ func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificatio
 	}
 
 	nGrp.add(nInfo)
-	return nInfo
+}
+
+func (sc *subscribeContext) translateAndAddPath(path string) error {
+	_, trData, err := sc.translatePath(path)
+	if err != nil {
+		return err
+	}
+
+	sc.tgtInfos = append(sc.tgtInfos, trData.targetInfos...)
+
+	// Group nInfo by table and key pattern for OnChange.
+	// Required for registering db subscriptions.
+	if sc.mode == OnChange {
+		if sc.dbNInfos == nil {
+			sc.dbNInfos = make(map[db.DBNum]map[db.TableSpec]*notificationGroup)
+		}
+		for _, nInfo := range trData.targetInfos {
+			sc.addToNGroup(nInfo)
+		}
+		for _, nInfo := range trData.childInfos {
+			sc.addToNGroup(nInfo)
+		}
+	}
+
+	return nil
+}
+
+func (sc *subscribeContext) translatePath(path string) (*translateSubResponse, *translatedSubData, error) {
+	sid := sc.id
+	app, appInfo, err := getAppModule(path, sc.version)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nAppInfos, err := (*app).translateSubscribe(
+		&translateSubRequest{
+			ctxID: sid,
+			path:  path,
+			dbs:   sc.dbs,
+		})
+
+	if err != nil {
+		log.Warningf("[%v] translateSubscribe failed for \"%s\"; err=%v", sid, path, err)
+		return nAppInfos, nil, err
+	}
+	if nAppInfos == nil {
+		log.Warningf("%T.translateSubscribe returned nil for path: %s", *app, path)
+		return nAppInfos, nil, fmt.Errorf("Error processing path: %s", path)
+	}
+
+	// Save the app module info in the context for subsequent newNInfo()
+	sc.app = app
+	sc.appInfo = appInfo
+
+	targetLen := len(nAppInfos.ntfAppInfoTrgt)
+	childLen := len(nAppInfos.ntfAppInfoTrgtChlds)
+	subData := &translatedSubData{
+		targetInfos: make([]*notificationInfo, targetLen),
+		childInfos:  make([]*notificationInfo, childLen),
+	}
+
+	log.Infof("[%v] Path \"%s\" mapped to %d target and %d child notificationAppInfos",
+		sid, path, targetLen, childLen)
+
+	for i, nAppInfo := range nAppInfos.ntfAppInfoTrgt {
+		log.Infof("[%v] targetInfo[%d] = %v", sid, i, nAppInfo)
+		subData.targetInfos[i] = sc.newNInfo(nAppInfo)
+	}
+
+	for i, nAppInfo := range nAppInfos.ntfAppInfoTrgtChlds {
+		log.Infof("[%v] childInfo[%d] = %v", sid, i, nAppInfo)
+		subData.childInfos[i] = sc.newNInfo(nAppInfo)
+	}
+
+	return nAppInfos, subData, err
 }
 
 func (sc *subscribeContext) startSubscribe() error {
@@ -346,7 +417,21 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 	db := sInfo.dbs[int(nInfo.dbno)]
 	ne := notificationEvent{
 		id:    fmt.Sprintf("%d:0", sInfo.id),
-		nInfo: nInfo,
+		sInfo: sInfo,
+	}
+
+	var ddup map[string]bool
+	topNode := []*yangNodeInfo{new(yangNodeInfo)}
+
+	if nInfo.table == nil { // non-db case
+		if nInfo.flags.Has(niWildcardPath) {
+			p := path.String(nInfo.path)
+			log.Warningf("[%s] Wildcard not supported for non-db path \"%s\"", ne.id, p)
+			return tlerr.NotSupportedErr("", p, "Unsupported wildcard path")
+		}
+
+		ne.sendNotification(nInfo, topNode)
+		return nil
 	}
 
 	keys, err := db.GetKeysPattern(nInfo.table, *nInfo.key)
@@ -358,9 +443,6 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 		log.Infof("[%s] db key is a glob pattern. Forcing processSubscribe..", ne.id)
 		ne.forceProcessSub = true
 	}
-
-	var ddup map[string]bool
-	topNode := []*yangNodeInfo{new(yangNodeInfo)}
 
 	for _, k := range keys {
 		ne.key = &k
@@ -433,7 +515,7 @@ func (ne *notificationEvent) process() {
 			ne.id, ne.key, keyPattern, len(nInfos))
 
 		for _, nInfo := range nInfos {
-			ne.nInfo = nInfo
+			ne.sInfo = nInfo.sInfo
 			log.Infof("[%s] processing path: %s", ne.id, path.String(nInfo.path))
 
 			modFields := ne.findModifiedFields(nInfo, dbDiff)
@@ -609,13 +691,11 @@ func (ne *notificationEvent) createYangPathInfos(nInfo *notificationInfo, fields
 	return yInfos
 }
 
-func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, error) {
+func (ne *notificationEvent) getValue(nInfo *notificationInfo, path string) (ygot.ValidatedGoStruct, error) {
 	var payload ygot.ValidatedGoStruct
-
-	nInfo := ne.nInfo
 	app := nInfo.app
 	appInfo := nInfo.appInfo
-	dbs := nInfo.sInfo.dbs
+	dbs := ne.sInfo.dbs
 
 	err := appInitialize(app, appInfo, path, nil, nil, GET)
 
@@ -650,7 +730,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 		dbno:   nInfo.dbno,
 		table:  nInfo.table,
 		key:    ne.key,
-		dbs:    nInfo.sInfo.dbs,
+		dbs:    ne.sInfo.dbs,
 		opaque: nInfo.opaque,
 		path:   path.Clone(nInfo.path),
 	}
@@ -706,7 +786,7 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		prefix = path.Clone(nInfo.path)
 	}
 
-	sInfo := nInfo.sInfo
+	sInfo := ne.sInfo
 	prefixStr, err := ygot.PathToString(prefix)
 	if err != nil {
 		log.Warningf("[%s] skip notification -- %v", ne.id, err)
@@ -730,7 +810,7 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 			continue
 		}
 
-		data, err := ne.getValue(prefixStr + leafPath)
+		data, err := ne.getValue(nInfo, prefixStr+leafPath)
 
 		if sInfo.syncDone && isNotFoundError(err) {
 			log.V(3).Infof("[%s] %s not found (%v)", ne.id, leafPath, err)
