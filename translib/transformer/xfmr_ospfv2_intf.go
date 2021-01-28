@@ -480,7 +480,7 @@ var Subscribe_ospfv2_interface_subtree_xfmr = func(inParams XfmrSubscInParams) (
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_ospfv2_interface_subtree_xfmr: pathInfo ", pathInfo)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
     uriFullIfName, uriIfName, _, _, _ := getUriIfName(inParams.uri)
@@ -506,7 +506,7 @@ var Subscribe_ospfv2_interface_subtree_xfmr = func(inParams XfmrSubscInParams) (
 
     ospfIntfTbl := "OSPFV2_INTERFACE"
     ospfIntfTblKey := nativeIfName + "|" + ifAddress
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {ospfIntfTbl:{ospfIntfTblKey:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {ospfIntfTbl:{ospfIntfTblKey:{}}}}
 
     log.Info("Subscribe_ospfv2_interface_subtree_xfmr: ospfIntfTblKey " + ospfIntfTblKey)
     return result, nil
@@ -1645,7 +1645,7 @@ var Subscribe_ospfv2_interface_md_auth_subtree_xfmr = func(inParams XfmrSubscInP
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_ospfv2_interface_md_auth_subtree_xfmr: pathInfo ", pathInfo)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
     uriFullIfName, uriIfName, _, _, _ := getUriIfName(inParams.uri)
@@ -1678,7 +1678,7 @@ var Subscribe_ospfv2_interface_md_auth_subtree_xfmr = func(inParams XfmrSubscInP
 
     ospfIntfAuthTbl := "OSPFV2_INTERFACE_MD_AUTHENTICATION"
     ospfIntfAuthTblKey := nativeIfName + "|" + ifAddress + "|" + authKeyId
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {ospfIntfAuthTbl:{ospfIntfAuthTblKey:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {ospfIntfAuthTbl:{ospfIntfAuthTblKey:{}}}}
 
     log.Info("Subscribe_ospfv2_interface_md_auth_subtree_xfmr: ospfIntfAuthTblKey ", ospfIntfAuthTblKey)
     return result, nil

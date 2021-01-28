@@ -20,7 +20,7 @@ func init() {
 var Subscribe_ip_helper_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
 
     pathInfo := NewPathInfo(inParams.uri)
 
@@ -44,7 +44,7 @@ var Subscribe_ip_helper_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscO
     log.Infof("Subscribe_ip_helper_intf_xfmr path %v key %v ", targetUriPath, keyName)
 
     if (keyName != "") {
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{keyName:{}}}}
         log.Infof("Subscribe_ip_helper_intf_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
     } else {
         errStr := "Interface name not present in request"

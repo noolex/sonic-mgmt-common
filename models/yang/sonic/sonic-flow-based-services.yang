@@ -1050,9 +1050,9 @@ module sonic-flow-based-services {
                         error-app-tag invalid-value-threshold-up;
                         error-message "Threshold up count value not in range 1-128";
                     }
-                    must "(not(current()/../THRESHOLD_DOWN) or (current() >= current()/../THRESHOLD_DOWN))" {
+                    must "(not(current()/../THRESHOLD_DOWN) or (current() > current()/../THRESHOLD_DOWN))" {
                         error-app-tag threshold-up-less-than-threshold-down;
-                        error-message "Threshold up must be greater than or equal to threshold down";
+                        error-message "Threshold up value must be greater than threshold down value";
                     }
                 }
 
@@ -1066,9 +1066,9 @@ module sonic-flow-based-services {
                         error-app-tag invalid-value-threshold-down;
                         error-message "Threshold down count value not in range 1-127";
                     }
-                    must "(not(current()/../THRESHOLD_UP) or (current() <= current()/../THRESHOLD_UP))" {
+                    must "(not(current()/../THRESHOLD_UP) or (current() < current()/../THRESHOLD_UP))" {
                         error-app-tag threshold-down-greater-than-threshold-up;
-                        error-message "Threshold down must be lesser than or equal to threshold up";
+                        error-message "Threshold down value must be lesser than threshold up value";
                     }
                 }
 

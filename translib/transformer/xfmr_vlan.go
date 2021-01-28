@@ -206,10 +206,10 @@ var Subscribe_netinst_vlans_subtree_xfmr = func (inParams XfmrSubscInParams) (Xf
 
     if len(vlanIdStr) > 0 {
         keyName = "Vlan" + vlanIdStr
-        result.dbDataMap = make(RedisDbMap)
+        result.dbDataMap = make(RedisDbSubscribeMap)
         result.isVirtualTbl = false
         tblName := "VLAN"
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{keyName:{}}}}
         log.Infof("Subscribe_netinst_vlans_subtree_xfmr niName:%s key:%s",
               niName, keyName)
     } else  {

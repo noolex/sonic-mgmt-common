@@ -731,7 +731,7 @@ func (c *CVL) GetOrderedDepTables(yangModule, tableName string) ([]string, CVLRe
 
 				// if target node of leaf-ref is not key, then skip
 				var isLeafrefTargetIsKey bool
-				for _, key := range modelInfo.tableInfo[tbl].keys {
+				for _, key := range modelInfo.tableInfo[tableName].keys {
 					if key == leafRef.targetNodeName {
 						isLeafrefTargetIsKey = true
 					}

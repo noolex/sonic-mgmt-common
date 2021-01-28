@@ -591,13 +591,13 @@ var Subscribe_fdb_mac_table_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscO
     log.Info("Entering Subscribe_fdb_mac_table_xfmr")
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     pathInfo := NewPathInfo(inParams.uri)
     macAddr := pathInfo.Var("mac-address")
     vlan := pathInfo.Var("vlan")
     keyName := "Vlan" + vlan + "|" + macAddr
     tblName := "FDB"
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{keyName:{}}}}
 
     result.needCache = true
     result.nOpts = new(notificationOpts)
