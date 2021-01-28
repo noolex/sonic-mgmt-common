@@ -6,7 +6,6 @@ import (
     log "github.com/golang/glog"
     "github.com/shirou/gopsutil/host"
     "encoding/json"
-    "time"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "io/ioutil"
@@ -31,14 +30,25 @@ func init () {
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         log.Info("DbToYang_sys_infra_state_clock_xfmr uri: ", inParams.uri)
+        var output string
 
         rmap := make(map[string]interface{})
 
-        entry_key := inParams.key
-        log.Info("DbToYang_sys_infra_time_test_xfmr: ", entry_key)
+        cmd := "show clock"
 
-        crtime := time.Now().Format(time.RFC1123)
-        rmap["clock"]=&crtime
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              log.Errorf("rpc_infra_clear_sys_log: host Query failed: err=%v", host_output.Err)
+              rmap["clock"]="[FAILED] host query"
+              return rmap, nil 
+        }
+
+        output, _ = host_output.Body[1].(string)
+
+
+        rmap["clock"]=&output
+        log.Info("DbToYang_sys_infra_state_clock_xfmr clock: ", output)
+        log.Info("DbToYang_sys_infra_state_clock_xfmr ramp: ", rmap)
 
         return rmap, nil 
 }
