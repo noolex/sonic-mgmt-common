@@ -459,7 +459,6 @@ var rpc_show_ip_route RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]
                 nextHopMap := nextHopEntry.(map[string]interface{})
                 ifNameVal, ok := nextHopMap["interfaceName"]
                 if !ok {
-                    log.Errorf("interfaceName entry not present in nextHops for IP: %s", ipAddr)
                     continue
                 }
                 ifName := ifNameVal.(string)
