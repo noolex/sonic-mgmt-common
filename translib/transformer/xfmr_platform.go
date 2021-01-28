@@ -514,31 +514,31 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
         result.isVirtualTbl = true
         return result, err
     }
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     if mstr == "system eeprom" {
-        result.dbDataMap = RedisDbMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
     } else if mstr == "software" {
         /* software component reads from XML file but also
          * gets EEPROM information from DB */
-        result.dbDataMap = RedisDbMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
     } else if validPsuName(&key) {
-        result.dbDataMap = RedisDbMap{db.StateDB: {PSU_TBL:{key:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {PSU_TBL:{key:{}}}}
     } else if validFanName(&key) {
-        result.dbDataMap = RedisDbMap{db.StateDB: {FAN_TBL:{key:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {FAN_TBL:{key:{}}}}
     } else if validTempName(&key) {
-        result.dbDataMap = RedisDbMap{db.StateDB: {TEMP_TBL:{key:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {TEMP_TBL:{key:{}}}}
     } else if validFirmwareName(&key) {
-        result.dbDataMap = RedisDbMap{db.StateDB: {FIRMWARE_TBL:{key:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {FIRMWARE_TBL:{key:{}}}}
     } else if validXcvrName(&key) {
         ifName := key
         if utils.IsAliasModeEnabled() {
             ifName = *(utils.GetNativeNameFromUIName(&key))
         }
-        result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{ifName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {TRANSCEIVER_TBL:{ifName:{}}}}
     } else {
         ifName := getIfName(key);
         if len(ifName) > 1 {
-            result.dbDataMap = RedisDbMap{db.ConfigDB:{BREAKOUT_TBL:{ifName:{}}}}
+            result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{BREAKOUT_TBL:{ifName:{}}}}
         } else {
             log.Info("Invalid component name ", key)
             return result, errors.New("Invalid component name")

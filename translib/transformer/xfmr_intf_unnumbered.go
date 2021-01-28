@@ -41,7 +41,7 @@ func init () {
 var Subscribe_unnumbered_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -60,7 +60,7 @@ var Subscribe_unnumbered_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubsc
     log.Info("Subscribe_unnumbered_intf_xfmr: Table: ", tblName, " TargetURI: ", targetUriPath, " Key: ", keyName)
 
     if (keyName != "") {
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{keyName:{}}}}
     } else {
         errStr := "Interface name not present in request"
         log.Info("Subscribe_unnumbered_intf_xfmr: " + errStr)

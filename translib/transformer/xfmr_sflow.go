@@ -257,11 +257,11 @@ var YangToDb_sflow_collector_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
 var Subscribe_sflow_collector_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     key := makeColKey(inParams.uri)
 
     log.Infof("XfmrSubscribe_sflow_collector_xfmr")
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{SFLOW_COL_TBL:{key:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{SFLOW_COL_TBL:{key:{}}}}
     log.Infof("Returning XfmrSubscribe_sflow_collector_xfmr")
     return result, err
 }
@@ -286,8 +286,8 @@ var Subscribe_sflow_interface_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSub
 
     log.Infof("XfmrSubscribe_sflow_interface_xfmr")
     key = *utils.GetNativeNameFromUIName(&key)
-    result.dbDataMap = make(RedisDbMap)
-    result.dbDataMap = RedisDbMap{db.ApplDB:{SFLOW_SESS_TBL:{key:{}}}}
+    result.dbDataMap = make(RedisDbSubscribeMap)
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB:{SFLOW_SESS_TBL:{key:{}}}}
 
     log.Infof("Returning XfmrSubscribe_sflow_interface_xfmr")
     return result, err

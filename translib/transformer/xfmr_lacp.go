@@ -393,10 +393,10 @@ var Subscribe_lacp_get_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInPara
 
      ifName := pathInfo.Var("name")
      log.Infof("ifName %v ", ifName)
-     result.dbDataMap = make(RedisDbMap)
+     result.dbDataMap = make(RedisDbSubscribeMap)
 
      log.Infof("Subscribe_lacp_get_xfmr path:%s; template:%s targetUriPath:%s key:%s tbl:LAG_TABLE", pathInfo.Path, pathInfo.Template, targetUriPath, ifName)
-     result.dbDataMap = RedisDbMap{db.ApplDB:{"LAG_TABLE":{ifName:{}}}}
+     result.dbDataMap = RedisDbSubscribeMap{db.ApplDB:{"LAG_TABLE":{ifName:{}}}}
 
      return result, err
 }

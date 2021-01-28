@@ -260,13 +260,13 @@ var Subscribe_mac_dampening_state_subtree_xfmr = func (inParams XfmrSubscInParam
     log.Info("Entering Subscribe_mac_dampening_state_subtree_xfmr")
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     pathInfo := NewPathInfo(inParams.uri)
     threshold := pathInfo.Var("threshold")
     config := pathInfo.Var("config")
     keyName := "Vlan" + vlan + "|" + macAddr
     tblName := "MAC_DAMP_TABLE"
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{keyName:{}}}}
 
     result.needCache = true
     result.nOpts = new(notificationOpts)

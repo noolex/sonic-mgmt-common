@@ -2113,7 +2113,7 @@ var Subscribe_intf_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOu
     }
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -2133,7 +2133,7 @@ var Subscribe_intf_ip_addr_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOu
             keyName = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&keyName,&idx)
             //for fetch at subint level ???
         }
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{keyName:{}}}}
     }
     result.needCache = true
     result.nOpts = new(notificationOpts)
@@ -2158,12 +2158,12 @@ var Subscribe_routed_vlan_ip_addr_xfmr = func (inParams XfmrSubscInParams) (Xfmr
     log.Infof("Subscribe_routed_vlan_ip_addr_xfmr path:%s; template:%s targetUriPath:%s key:%s",pathInfo.Path, pathInfo.Template, targetUriPath, keyName)
 
     if (keyName != "") {
-        result.dbDataMap = make(RedisDbMap)
+        result.dbDataMap = make(RedisDbSubscribeMap)
         result.isVirtualTbl = false
         intfType, _, _ := getIntfTypeByName(keyName)
         intTbl := IntfTypeTblMap[intfType]
         tblName := intTbl.cfgDb.intfTN
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{keyName:{}}}}
     } else  {
         err = errors.New("Invalid or Null Key")
     }

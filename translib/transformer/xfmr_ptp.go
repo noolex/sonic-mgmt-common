@@ -1156,11 +1156,11 @@ var Subscribe_ptp_port_ds_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInP
 	}
 
 	var key string = "GLOBAL" + "|" + underlying_interface
-	result.dbDataMap = make(RedisDbMap)
+	result.dbDataMap = make(RedisDbSubscribeMap)
 
 	log.Infof("Subscribe_ptp_port_ds_xfmr path:%s; template:%s targetUriPath:%s key:%s",
 		pathInfo.Path, pathInfo.Template, targetUriPath, key)
-	result.dbDataMap = RedisDbMap{db.StateDB: {"PTP_PORT": {key: {}}}} // tablename & table-idx for the inParams.uri
+	result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {"PTP_PORT": {key: {}}}} // tablename & table-idx for the inParams.uri
 	result.needCache = true
 	result.onChange = OnchangeEnable
 	result.nOpts = new(notificationOpts)
