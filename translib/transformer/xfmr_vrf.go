@@ -1273,7 +1273,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 var Subscribe_network_instance_interface_binding_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
         var err error
         var result XfmrSubscOutParams
-        result.dbDataMap = make(RedisDbMap)
+        result.dbDataMap = make(RedisDbSubscribeMap)
 
         pathInfo := NewPathInfo(inParams.uri)
 
@@ -1296,10 +1296,10 @@ var Subscribe_network_instance_interface_binding_subtree_xfmr = func(inParams Xf
 
                 port_tbl_name, _ := getPortTableNameByDBId(intTbl, 4)
 
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{port_tbl_name:{intfId:{}}}}   // tablename & table-idx for the inParams.uri
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{port_tbl_name:{intfId:{}}}}   // tablename & table-idx for the inParams.uri
         } else {
                 /* for GET at VRF level, interface name is not given */
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{"VRF":{keyName:{}}}}
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"VRF":{keyName:{}}}}
         }
 
         result.needCache = true

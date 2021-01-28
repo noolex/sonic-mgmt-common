@@ -158,7 +158,7 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 				if dbKeyInfo.Key != nil { log.Info("Target  node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
 
 				ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum,
-					path: subsReqXlateInfo.TrgtPathInfo.Path}
+					path: subsReqXlateInfo.TrgtPathInfo.Path, isPartial: dbKeyInfo.IsPartial}
 
 				if subsReqXlateInfo.TrgtPathInfo.OnChange == transformer.OnchangeEnable {
 					ntfAppInfo.isOnChangeSupported = true
@@ -203,7 +203,7 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 					if dbKeyInfo.Table != nil { log.Info("child node: pathXlateInfo.Table: ", *dbKeyInfo.Table) }
 					if dbKeyInfo.Key != nil { log.Info("child node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
 
-					ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: pathXlateInfo.Path}
+					ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: pathXlateInfo.Path, isPartial: dbKeyInfo.IsPartial}
 					if subsReqXlateInfo.TrgtPathInfo.OnChange == transformer.OnchangeEnable {
 						ntfAppInfo.isOnChangeSupported = true
 					}

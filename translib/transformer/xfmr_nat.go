@@ -359,7 +359,7 @@ var YangToDb_nat_mapping_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrPa
 var Subscribe_nat_mapping_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
         var err error
         var result XfmrSubscOutParams
-        result.dbDataMap = make(RedisDbMap)
+        result.dbDataMap = make(RedisDbSubscribeMap)
 
         pathInfo := NewPathInfo(inParams.uri)
         targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -368,9 +368,9 @@ var Subscribe_nat_mapping_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrS
 
         log.Infof("Subscribe_nat_mapping_subtree_xfmr path %v key %v ", targetUriPath, keyName)
         if (keyName != "") {
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAT:{keyName:{}}}}
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{STATIC_NAT:{keyName:{}}}}
         } else {
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAT:{"*":{}}}}
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{STATIC_NAT:{"*":{}}}}
         }
         return result, err
 }
@@ -784,7 +784,7 @@ var YangToDb_napt_mapping_subtree_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 var Subscribe_napt_mapping_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
         var err error
         var result XfmrSubscOutParams
-        result.dbDataMap = make(RedisDbMap)
+        result.dbDataMap = make(RedisDbSubscribeMap)
 
         pathInfo := NewPathInfo(inParams.uri)
         targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -800,9 +800,9 @@ var Subscribe_napt_mapping_subtree_xfmr = func(inParams XfmrSubscInParams) (Xfmr
 
         log.Infof("Subscribe_napt_mapping_subtree_xfmr path %v key %v ", targetUriPath, dbkey)
         if (externalAddress == "" && protocol == "" && externalPort == "") {
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAPT:{"*":{}}}}
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{STATIC_NAPT:{"*":{}}}}
         } else {
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{STATIC_NAPT:{dbkey:{}}}}
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{STATIC_NAPT:{dbkey:{}}}}
         }
         return result, err
 }

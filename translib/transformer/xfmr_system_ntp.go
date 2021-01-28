@@ -757,7 +757,7 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
 var Subscribe_ntp_server_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
         var err error
         var result XfmrSubscOutParams
-        result.dbDataMap = make(RedisDbMap)
+        result.dbDataMap = make(RedisDbSubscribeMap)
 
         pathInfo := NewPathInfo(inParams.uri)
 
@@ -768,10 +768,10 @@ var Subscribe_ntp_server_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSu
         log.Infof("Subscribe_ntp_server_subtree_xfmr path %v key %v ", targetUriPath, keyName)
 
         if (keyName != "") {
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{NTP_SERVER_TABLE_NAME:{keyName:{}}}}
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{NTP_SERVER_TABLE_NAME:{keyName:{}}}}
                 log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
         } else {
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{NTP_SERVER_TABLE_NAME:{"*":{}}}}
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{NTP_SERVER_TABLE_NAME:{"*":{}}}}
                 log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
         }
         result.needCache = true

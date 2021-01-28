@@ -23,6 +23,10 @@ module sonic-ip-neighbor {
         prefix svlan;
     }
 
+    import sonic-interface{
+        prefix sonic-if;
+    }
+
     import sonic-mgmt-port {
         prefix smt;
     }
@@ -58,6 +62,9 @@ module sonic-ip-neighbor {
                         }
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/sonic-if:sonic-interface/sonic-if:VLAN_SUB_INTERFACE/sonic-if:VLAN_SUB_INTERFACE_LIST/sonic-if:id";
                         }
                     }
                 }

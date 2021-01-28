@@ -79,6 +79,11 @@ type notificationAppInfo struct {
 	// field (leaf/leaf-list) for the input path.
 	dbFldYgPathInfoList []*dbFldYgPathInfo
 
+	// isPartial indicates whether the db entry represents only partial
+	// data for the path. When true, db entry deletes should not be treated
+	// as path delete; instead it should be treated as an update.
+	isPartial bool
+
 	// isOnChangeSupported indicates if on-change notification is
 	// supported for the input path. Table and key mappings should
 	// be filled even if on-change is not supported.
@@ -146,7 +151,9 @@ func (ni *notificationAppInfo) String() string {
 		}
 		fmt.Fprintf(&b, "%s=%v", fi.rltvPath, fi.dbFldYgPathMap)
 	}
-	fmt.Fprintf(&b, "}}")
+	fmt.Fprintf(&b, "}, partial=%v", ni.isPartial)
+	fmt.Fprintf(&b, ", onchange=%v, preferred=%s, m_int=%d", ni.isOnChangeSupported, ni.pType, ni.mInterval)
+	fmt.Fprintf(&b, "}")
 	return b.String()
 }
 

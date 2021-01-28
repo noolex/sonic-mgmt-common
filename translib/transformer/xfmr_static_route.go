@@ -1126,7 +1126,7 @@ func Subscribe_static_routes_subtree_xfmr(inParams XfmrSubscInParams) (XfmrSubsc
     }
 
     log.Infof("Subscribe_static_routes_subtree_xfmr: URI %s", inParams.uri)
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {STATIC_ROUTE_TABLE: {routeKey: {}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {STATIC_ROUTE_TABLE: {routeKey: {}}}}
     /* The below lines will be used only for subscription on a terminal node */
     result.needCache = true
     result.onChange = OnchangeEnable

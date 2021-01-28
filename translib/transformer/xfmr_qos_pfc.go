@@ -203,11 +203,11 @@ var Subscribe_qos_intf_pfcwd_st_xfmr SubTreeXfmrSubscribe = func (inParams XfmrS
     if_name := *dbIfName
     log.Info("Subscribe_qos_intf_pfc_xfmr: ", if_name)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_qos_intf_pfcwd_st_xfmr path:%s; template:%s targetUriPath:%s key:%s",
               pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{"PFC_WD":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"PFC_WD":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
