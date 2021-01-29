@@ -1153,7 +1153,7 @@ var Subscribe_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrSubscribe = func (
     if_name := *dbIfName
     log.Info("Subscribe_qos_get_one_intf_all_q_counters_xfmr: ", if_name)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_qos_get_one_intf_all_q_counters_xfmr path:%s; template:%s targetUriPath:%s key:%s",
               pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
 
@@ -1414,7 +1414,7 @@ var Subscribe_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrSubscribe = func 
     if_name := *dbIfName
     log.Info("Subscribe_qos_get_one_intf_all_pg_counters_xfmr: ", if_name)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_qos_get_one_intf_all_pg_counters_xfmr path:%s; template:%s targetUriPath:%s key:%s",
               pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
 

@@ -1395,11 +1395,11 @@ var Subscribe_bgp_nbrs_nbr_state_xfmr SubTreeXfmrSubscribe = func (inParams Xfmr
     util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
     var pNbrKey string = vrfName + "|" + nbrAddr
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_bgp_nbrs_nbr_state_xfmr path:%s; template:%s targetUriPath:%s key:%s",
               pathInfo.Path, pathInfo.Template, targetUriPath, pNbrKey)
 
-    result.dbDataMap = RedisDbMap{db.StateDB:{"BGP_NEIGHBOR":{pNbrKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.dbDataMap = RedisDbSubscribeMap{db.StateDB:{"BGP_NEIGHBOR":{pNbrKey:{}}}}   // tablename & table-idx for the inParams.uri
     result.needCache = true
     result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
@@ -1886,7 +1886,7 @@ var YangToDb_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams
 
     nbrs_obj := bgp_obj.Neighbors
     if nbrs_obj == nil || (nbrs_obj.Neighbor == nil) {
-        log.Errorf("Error: Neighbors container missing")
+        log.Infof("Neighbors container missing")
         return res_map, err
     }
 

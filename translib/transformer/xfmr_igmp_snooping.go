@@ -313,7 +313,7 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 					res_map[CFG_L2MC_STATIC_MEMBER_TABLE] = igmpsMcastGroupMemTblMap
 				} else if len(igmpsVal.Staticgrps.StaticMulticastGroup) == 1 {
 					for grpKey, grpObj := range igmpsVal.Staticgrps.StaticMulticastGroup {
-						if len(grpObj.Config.OutgoingInterface) == 0 {
+						if grpObj.Config == nil || len(grpObj.Config.OutgoingInterface) == 0 {
 							var err error
 							var staticGrpDbTbl db.Table
 							if staticGrpDbTbl, err = reqP.db.GetTable(CFG_L2MC_STATIC_GROUP_TABLE_TS); err != nil {
@@ -1248,21 +1248,21 @@ var Subscribe_igmp_snooping_subtree_xfmr SubTreeXfmrSubscribe = func(inParams Xf
 			mrouterAppDbKey := intfName + ":" + mrouterIntf
 
 			if targetUriPath == igmpIntfConfPath {
-				result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_TABLE":     {igmpSnpItfKey:{}}}}
+				result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"CFG_L2MC_TABLE":     {igmpSnpItfKey:{}}}}
 				result.secDbDataMap = RedisDbYgNodeMap{db.ConfigDB:{"CFG_L2MC_MROUTER_TABLE": {mrouterKey:"mrouter-interface"}}}
 			} else if targetUriPath == igmpIntfStatePath {
-				result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_TABLE":     {igmpSnpItfKey:{}}}}
+				result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"CFG_L2MC_TABLE":     {igmpSnpItfKey:{}}}}
 				result.secDbDataMap = RedisDbYgNodeMap{db.ApplDB:{"APP_L2MC_MROUTER_TABLE":{mrouterAppDbKey :"mrouter-interface"}}}
 			} else if targetUriPath == staticGrpConfPath {
 				if outgoingIntf == "*" {
-					result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_STATIC_GROUP_TABLE": {staticGrpKey:{}}}}
+					result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"CFG_L2MC_STATIC_GROUP_TABLE": {staticGrpKey:{"out-intf":"outgoing-interface"}}}}
 				} else {
 					configOutgoingIntfKey := intfName + "|" + staticGrpName + "|" + staticSrcAddr + "|" + outgoingIntf
-					result.dbDataMap = RedisDbMap{db.ConfigDB:{"CFG_L2MC_STATIC_MEMBER_TABLE": {configOutgoingIntfKey:{}}}}
+					result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"CFG_L2MC_STATIC_MEMBER_TABLE": {configOutgoingIntfKey:{}}}}
 				}
 			} else if targetUriPath == staticGrpStatePath {
 				staticGrpAppDbKey := intfName + ":" + staticSrcAddr + ":" + staticGrpName + ":" + outgoingIntf
-				result.dbDataMap = RedisDbMap{db.ApplDB:{"APP_L2MC_MEMBER_TABLE":     {staticGrpAppDbKey :{}}}}
+				result.dbDataMap = RedisDbSubscribeMap{db.ApplDB:{"APP_L2MC_MEMBER_TABLE":     {staticGrpAppDbKey :{}}}}
 			}
 		}
 

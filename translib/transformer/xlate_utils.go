@@ -1368,7 +1368,7 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 	return leafListInstVal, err
 }
 
-func processKeyValueXfmr(dbDataMap RedisDbMap) (RedisDbMap) {
+func processKeyValueXfmr(dbDataMap RedisDbSubscribeMap) (RedisDbMap) {
 	/*function to apply value transformer on DbData, used only in subscription context*/
 	xfmrLogInfoAll("apply value-transformer to - %v", dbDataMap)
 

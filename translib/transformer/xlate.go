@@ -811,7 +811,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                }
            } else {
 		   subscribe_result.OnChange = true
-		   inValXfmrMap := RedisDbMap{xpath_dbno:{retData.tableName:{retData.dbKey:{}}}}
+		   inValXfmrMap := RedisDbSubscribeMap{xpath_dbno:{retData.tableName:{retData.dbKey:{}}}}
 		   subscribe_result.DbDataMap = processKeyValueXfmr(inValXfmrMap)
 	   }
            if done {

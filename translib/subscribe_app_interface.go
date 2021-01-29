@@ -79,6 +79,11 @@ type notificationAppInfo struct {
 	// field (leaf/leaf-list) for the input path.
 	dbFldYgPathInfoList []*dbFldYgPathInfo
 
+	// isPartial indicates whether the db entry represents only partial
+	// data for the path. When true, db entry deletes should not be treated
+	// as path delete; instead it should be treated as an update.
+	isPartial bool
+
 	// isOnChangeSupported indicates if on-change notification is
 	// supported for the input path. Table and key mappings should
 	// be filled even if on-change is not supported.
@@ -146,11 +151,34 @@ func (ni *notificationAppInfo) String() string {
 		}
 		fmt.Fprintf(&b, "%s=%v", fi.rltvPath, fi.dbFldYgPathMap)
 	}
-	fmt.Fprintf(&b, "}}")
+	fmt.Fprintf(&b, "}, partial=%v", ni.isPartial)
+	fmt.Fprintf(&b, ", onchange=%v, preferred=%s, m_int=%d", ni.isOnChangeSupported, ni.pType, ni.mInterval)
+	fmt.Fprintf(&b, "}")
 	return b.String()
 }
 
 // isNonDB returns true if the notificationAppInfo ni is a non-DB mapping.
 func (ni *notificationAppInfo) isNonDB() bool {
 	return ni.dbno == db.MaxDB || ni.table == nil || ni.key == nil
+}
+
+// isLeafPath returns true if the notificationAppInfo has a leaf path.
+func (ni *notificationAppInfo) isLeafPath() bool {
+	// when notificationAppInfo.path is a leaf path, following conditions
+	// MUST be true.
+	//  - ni.dbFldYgPathInfoList) has only 1 entry
+	//	- ni.dbFldYgPathInfoList[0].rltvPath == ""
+	//	- ni.dbFldYgPathInfoList[0].dbFldYgPathMap has only 1 entry
+	//		with empty yang field (map value)
+	if len(ni.dbFldYgPathInfoList) != 1 {
+		return false
+	}
+	pmap := ni.dbFldYgPathInfoList[0]
+	if len(pmap.rltvPath) != 0 || len(pmap.dbFldYgPathMap) != 1 {
+		return false
+	}
+	for _, yfield := range pmap.dbFldYgPathMap {
+		return len(yfield) == 0
+	}
+	return false
 }

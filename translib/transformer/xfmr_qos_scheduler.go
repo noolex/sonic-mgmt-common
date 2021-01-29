@@ -41,9 +41,9 @@ var Subscribe_qos_scheduler_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubsc
 
     name   :=  pathInfo.Var("name")
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Info("XfmrSubscribe_qos_scheduler_xfmr")
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{"SCHEDULER":{name+"@"+seq:{}}}}  // tablename & table-idx for the inParams.uri
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"SCHEDULER":{name+"@"+seq:{}}}}  // tablename & table-idx for the inParams.uri
     result.needCache = true
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0

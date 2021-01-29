@@ -26,6 +26,7 @@ import (
 )
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
+type RedisDbSubscribeMap = map[db.DBNum]map[string]map[string]map[string]string
 type RedisDbYgNodeMap = map[db.DBNum]map[string]map[string]string
 
 // XfmrParams represents input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer
@@ -73,7 +74,7 @@ type XfmrSubscInParams struct {
 
 // XfmrSubscOutParams represents output from subscribe subtree callback - DB data for request uri, Need cache, OnChange, subscription preference and interval.
 type XfmrSubscOutParams struct {
-    dbDataMap RedisDbMap
+    dbDataMap RedisDbSubscribeMap
     secDbDataMap RedisDbYgNodeMap // for the leaf/leaf-list node if it maps to different table from its parent
     needCache bool
     onChange  OnchangeMode

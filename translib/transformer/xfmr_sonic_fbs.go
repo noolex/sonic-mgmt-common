@@ -1311,6 +1311,7 @@ var rpc_show_pbf_next_hop_group RpcCallpoint = func(body []byte, dbs [db.MaxDB]*
 
 	grpTable := make(map[string]db.Value)
 	grpReferences := make(map[string][]fbsNextHopGroupReferenceEntry)
+	showOutput.Output.GROUPS = make([]fbsNextHopGroupEntry, 0)
 	grp_name, grp_name_found := mapData["GROUP_NAME"].(string)
 	grp_type, grp_type_found := mapData["TYPE"].(string)
 
