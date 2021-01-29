@@ -23,13 +23,21 @@ module sonic-system-tacacs {
         prefix lo;
     }
 
+    import sonic-interface {
+        prefix sintf;
+    }
+
     import sonic-mgmt-port {
         prefix smt;
     }
 
-        revision 2020-07-26 {
-                description "Change for sonic-loopback.yang.";
-        }
+    revision 2021-01-08 {
+        description "Added support for routed vlan-sub-interface.";
+    }
+
+    revision 2020-07-26 {
+        description "Change for sonic-loopback.yang.";
+    }
  
 	revision 2020-05-02 {    
 		description "Allowed domain name as well for server configuration.";     
@@ -165,6 +173,9 @@ module sonic-system-tacacs {
                         }
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
                         }
                     }
                 }

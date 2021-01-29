@@ -1088,7 +1088,7 @@ var DbToYang_static_routes_nexthop_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 }
 
 func alias_list_value_xfmr(inParams XfmrDbParams) (string, error) {
-    if len(inParams.value) == 0 || !utils.IsAliasModeEnabled() {
+    if len(inParams.value) == 0 {
         return inParams.value, nil
     }
 

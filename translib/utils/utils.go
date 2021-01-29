@@ -26,6 +26,7 @@ import (
     "sync"
     "strings"
     "fmt"
+    "net"
     "strconv"
     log "github.com/golang/glog"
 )
@@ -290,6 +291,11 @@ func GetNativeNameFromUIName(uiName *string) *string {
     parts := strings.Split(*uiName, ",")
     converted := make([]string, len(parts))
     for idx, part := range parts {
+        if net.ParseIP(part) != nil {
+            /* Skipping IP's from conversion logic. Adding to return list immediately */
+            converted[idx] = part
+            continue
+        }
         subIntfParts := strings.SplitN(part, ".", 2)
         converted[idx] = subIntfParts[0]
         if IsAliasModeEnabled() {
@@ -319,6 +325,11 @@ func GetUINameFromNativeName(ifName *string) *string {
     parts := strings.Split(*ifName, ",")
     converted := make([]string, len(parts))
     for idx, part := range parts {
+        if net.ParseIP(part) != nil {
+            /* Skipping IP's from conversion logic. Adding to return list immediately */
+            converted[idx] = part
+            continue
+        }
         subIntfParts := strings.SplitN(part, ".", 2)
         converted[idx] = subIntfParts[0]
         if (len(subIntfParts) == 2) {
