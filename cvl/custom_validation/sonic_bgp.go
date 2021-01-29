@@ -62,6 +62,10 @@ func (t *CustomValidation) ValidateL3vniConfiguration(vc *CustValidationCtxt) CV
 
 func (t *CustomValidation) ValidateStrictAndOverRideCapability (vc *CustValidationCtxt) CVLErrorInfo {
 
+    if (vc.CurCfg.VOp == OP_DELETE) {
+         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
     if ((vc.CurCfg.Data["strict_capability_match"] == "true") && (vc.CurCfg.Data["override_capability"] == "true")) {
         return CVLErrorInfo{
             ErrCode: CVL_SEMANTIC_ERROR,
@@ -117,9 +121,9 @@ func (t *CustomValidation) ValidateMaxDelayAndEstWait (vc *CustValidationCtxt) C
     } else {
         neighData, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
         if (err == nil) && (hasEstWait || hasMaxdelay)  {
-            maxDelay, hasMaxdelay = neighData["max_delay"]
-            if (hasMaxdelay && hasEstWait) {
-                maxDelayValue, _ = strconv.ParseInt(maxDelay, 10, 16)
+            dbMaxDelay, hasDBMaxdelay := neighData["max_delay"]
+            if (hasDBMaxdelay && hasEstWait) {
+                maxDelayValue, _ = strconv.ParseInt(dbMaxDelay, 10, 16)
                 if (estWaitValue > maxDelayValue){
                     return CVLErrorInfo{
                         ErrCode: CVL_SEMANTIC_ERROR,
@@ -127,9 +131,9 @@ func (t *CustomValidation) ValidateMaxDelayAndEstWait (vc *CustValidationCtxt) C
                     }
                 }
             }
-            estWait, hasEstWait  = neighData["establish_wait"]
-            if (hasMaxdelay && hasEstWait) {
-                estWaitValue, _ = strconv.ParseInt(estWait, 10, 16)
+            dbEstWait, hasDBEstWait  := neighData["establish_wait"]
+            if (hasMaxdelay && hasDBEstWait) {
+                estWaitValue, _ = strconv.ParseInt(dbEstWait, 10, 16)
                 if (estWaitValue > maxDelayValue){
                     return CVLErrorInfo{
                         ErrCode: CVL_SEMANTIC_ERROR,
@@ -143,6 +147,10 @@ func (t *CustomValidation) ValidateMaxDelayAndEstWait (vc *CustValidationCtxt) C
 }
 
 func (t *CustomValidation) ValidateDisableConnectedCheck (vc *CustValidationCtxt) CVLErrorInfo {
+
+    if (vc.CurCfg.VOp == OP_DELETE) {
+         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }    
     disConnectedCheck, hasValue := vc.CurCfg.Data["disable_ebgp_connected_route_check"]
     if (hasValue && (disConnectedCheck == "true")) {
         if ((strings.Contains(vc.CurCfg.Key,"Eth")) || (strings.Contains(vc.CurCfg.Key,"Po")) ||
