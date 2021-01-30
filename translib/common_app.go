@@ -429,7 +429,10 @@ func (app *CommonApp) processSubscribe(param *processSubRequest) (processSubResp
 			log.Error("processSubscribe: Error in translating the subscribe notification; error: ", err)
 			return resp, err
 		}
+
+		resp.keyGroupComps = subNotfRespXlator.KeyGroupComps
 	}
+
 	return resp, nil
 }
 

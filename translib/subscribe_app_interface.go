@@ -138,6 +138,11 @@ type processSubRequest struct {
 type processSubResponse struct {
 	// path with wildcards resolved
 	path *gnmi.Path
+
+	// keyGroupComps indicates input key's component indices that uniquely
+	// identify the path. This is an optional data. Apps should fill this
+	// only when the table entry respresents the leaf-list instance.
+	keyGroupComps []int
 }
 
 func (ni *notificationAppInfo) String() string {
@@ -181,4 +186,8 @@ func (ni *notificationAppInfo) isLeafPath() bool {
 		return len(yfield) == 0
 	}
 	return false
+}
+
+func (r processSubResponse) String() string {
+	return fmt.Sprintf("{path=\"%s\", keyGrp=%v}", path.String(r.path), r.keyGroupComps)
 }

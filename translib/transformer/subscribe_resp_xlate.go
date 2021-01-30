@@ -36,6 +36,7 @@ import (
 type subscribeNotfRespXlator struct {
 	ntfXlateReq   *subscribeNotfXlateReq
 	dbYgXlateList []*DbYgXlateInfo
+	KeyGroupComps []int // set by path transformer
 }
 
 type subscribeNotfXlateReq struct {
@@ -151,8 +152,18 @@ func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *ya
 		currPath.Elem = append(currPath.Elem, pathElems[idx])
 	}
 
-	inParam := XfmrDbToYgPathParams{&currPath, respXlator.ntfXlateReq.path, ygSchemPath, respXlator.ntfXlateReq.table.Name,
-		respXlator.ntfXlateReq.key.Comp, respXlator.ntfXlateReq.dbNum, respXlator.ntfXlateReq.dbs, respXlator.ntfXlateReq.dbs[respXlator.ntfXlateReq.dbNum], make(map[string]string)}
+	inParam := XfmrDbToYgPathParams{
+		yangPath:      &currPath,
+		subscribePath: respXlator.ntfXlateReq.path,
+		ygSchemaPath:  ygSchemPath,
+		tblName:       respXlator.ntfXlateReq.table.Name,
+		tblKeyComp:    respXlator.ntfXlateReq.key.Comp,
+		dbNum:         respXlator.ntfXlateReq.dbNum,
+		dbs:           respXlator.ntfXlateReq.dbs,
+		db:            respXlator.ntfXlateReq.dbs[respXlator.ntfXlateReq.dbNum],
+		ygPathKeys:    make(map[string]string),
+		keyGroup:      &respXlator.KeyGroupComps,
+	}
 
 	if err := respXlator.xfmrPathHandlerFunc("DbToYangPath_" + ygXpathInfo.xfmrPath, inParam); err != nil {
 		log.Error("Error in path transformer callback : %v for the gnmi path: %v, and the error: %v", ygXpathInfo.xfmrPath, respXlator.ntfXlateReq.path, err)

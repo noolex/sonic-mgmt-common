@@ -218,16 +218,6 @@ type TableSpec struct {
 	NoDelete bool
 }
 
-// Key gives the key components.
-// (Eg: { Comp : [] string { "acl1", "rule1" } } ).
-type Key struct {
-	Comp []string
-}
-
-func (k Key) String() string {
-	return fmt.Sprintf("{ Comp: %v }", k.Comp)
-}
-
 func (v Value) String() string {
 	var str string
 	for k, v1 := range v.Field {
@@ -1122,18 +1112,6 @@ DeleteTableExit:
 		glog.Info("DeleteTable: End: ")
 	}
 	return e
-}
-
-//===== Functions for db.Key =====
-
-// Len returns number of components in the Key
-func (k *Key) Len() int {
-	return len(k.Comp)
-}
-
-// Get returns the key component at given index
-func (k *Key) Get(index int) string {
-	return k.Comp[index]
 }
 
 //===== Functions for db.Value =====

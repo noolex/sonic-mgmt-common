@@ -32,6 +32,7 @@ package translib
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -84,6 +85,10 @@ type notificationEvent struct {
 	key   *db.Key           // DB key, if any
 	db    *db.DB            // DB object on which this event was received
 	nInfo *notificationInfo // Registration data
+
+	// Meta info for processSubscribe calls
+	forceProcessSub bool
+	keyGroupComps   []int
 }
 
 // subscribeCounter counts number of Subscribe calls.
@@ -288,10 +293,30 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 		return err
 	}
 
+	if nInfo.key.IsPattern() && !nInfo.flags.Has(niWildcardPath) {
+		log.Infof("[%s] db key is a glob pattern. Forcing processSubscribe..", ne.id)
+		ne.forceProcessSub = true
+	}
+
+	var ddup map[string]bool
 	topNode := []*yangNodeInfo{new(yangNodeInfo)}
+
 	for _, k := range keys {
 		ne.key = &k
+		if ddk := ne.getDdupKey(); len(ddk) != 0 && ddup[ddk] {
+			log.Infof("[%s] skip init sync for key %v; another key with matching comps %v has been processed",
+				ne.id, k, ne.keyGroupComps)
+			continue
+		}
+
 		ne.sendNotification(nInfo, topNode)
+
+		if ddk := ne.getDdupKey(); len(ddk) != 0 {
+			if ddup == nil {
+				ddup = make(map[string]bool)
+			}
+			ddup[ddk] = true
+		}
 	}
 
 	return nil
@@ -305,6 +330,25 @@ func sendSyncNotification(sInfo *subscribeInfo, isTerminated bool) {
 		SyncComplete: sInfo.syncDone,
 		IsTerminated: isTerminated,
 	})
+}
+
+func (ne *notificationEvent) getDdupKey() string {
+	if len(ne.keyGroupComps) == 0 {
+		return ""
+	}
+
+	kLen := ne.key.Len()
+	uniq := make([]string, len(ne.keyGroupComps))
+	for i, v := range ne.keyGroupComps {
+		if v < 0 || v >= kLen {
+			log.Warningf("[%s] app returned invalid component index %d; key=%v",
+				ne.id, i, ne.key)
+			return ""
+		}
+		uniq[i] = ne.key.Get(v)
+	}
+
+	return strings.Join(uniq, "|")
 }
 
 // process translates db notification into SubscribeResponse and
@@ -364,30 +408,14 @@ func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
 	}
 
 	// Collect yang leaf info for updated fields
-	for _, f := range entryDiff.UpdatedFields {
-		for _, nDbFldInfo := range nInfo.fields {
-			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				log.Infof("[%s] Field %s modified; path=%s/%s", ne.id, f, nDbFldInfo.rltvPath, leaf)
-				modFields = append(modFields, &yangNodeInfo{
-					parentPrefix: nDbFldInfo.rltvPath,
-					leafName:     leaf,
-				})
-			}
-		}
+	if len(entryDiff.UpdatedFields) != 0 {
+		modFields = ne.createYangPathInfos(nInfo, entryDiff.UpdatedFields, false)
 	}
 
 	// Collect yang leaf info for deleted fields
-	for _, f := range entryDiff.DeletedFields {
-		for _, nDbFldInfo := range nInfo.fields {
-			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				log.Infof("[%s] Field %s deleted; path=%s/%s", ne.id, f, nDbFldInfo.rltvPath, leaf)
-				modFields = append(modFields, &yangNodeInfo{
-					parentPrefix: nDbFldInfo.rltvPath,
-					leafName:     leaf,
-					deleted:      true,
-				})
-			}
-		}
+	if len(entryDiff.DeletedFields) != 0 {
+		modFields = append(modFields,
+			ne.createYangPathInfos(nInfo, entryDiff.DeletedFields, true)...)
 	}
 
 	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, modFields)
@@ -496,16 +524,17 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 		return nil
 	}
 
-	if log.V(3) {
-		log.Infof("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
+	if log.V(1) {
+		log.Infof("[%s] processSubscribe returned: %v", ne.id, out)
 	}
 
+	ne.keyGroupComps = out.keyGroupComps
 	return out.path
 }
 
 func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []*yangNodeInfo) {
 	prefix := nInfo.path
-	if nInfo.flags.Has(niWildcardPath) {
+	if nInfo.flags.Has(niWildcardPath) || ne.forceProcessSub {
 		prefix = ne.dbkeyToYangPath(nInfo)
 		if prefix == nil {
 			log.Warningf("[%s] skip notification", ne.id)
