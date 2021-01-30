@@ -174,10 +174,75 @@ func utl_bgp_fetch_and_cache_frr_json (inParams *XfmrParams, niName string) {
     inParams.txCache.Store(BGP_FRR_JSON_CACHE, bgpFrrJsonCache)
 }
 
+func bgp_afi_convert_to_yang (afi string) string {
+
+    afi_type := ""
+
+    switch afi {
+    case "ipv4_unicast":
+        afi_type = "IPV4_UNICAST"
+    case "ipv6_unicast":
+        afi_type = "IPV6_UNICAST"
+    case "l2vpn_evpn":
+        afi_type = "L2VPN_EVPN"
+    default:
+        log.Errorf ("Unknown AF key %s", afi)
+    }
+    return afi_type
+}
+
+var DbToYangPath_DbToYangPath_bgp_glb_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+
+    oper_err := errors.New("wrong config DB table sent")
+
+    niRoot := "/openconfig-network-instance:network-instances/network-instance"
+    bgp_glb_afi_safi := niRoot + "/protocols/protocol/bgp/global/afi-safis/afi-safi"
+    bgp_glb_aggr_addr := bgp_glb_afi_safi + "/openconfig-bgp-ext:aggregate-address-config/aggregate-address"
+    bgp_glb_af_network :=  bgp_glb_afi_safi + "/openconfig-bgp-ext:network-config/network"
+
+
+    log.Info("DbToYangPath_bgp_glb_Xfmr: params: ", params)
+
+    if (params.tblName == "BGP_GLOBALS" || params.tblName ==  "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||  
+        params.tblName == "BGP_GLOBALS_AF_NETWORK" ||  params.tblName == "BGP_GLOBALS_AF") {
+        params.ygPathKeys[niRoot + "/name"]  = params.tblKeyComp[0]
+    } else {
+        log.Errorf ("BGP global Path-xfmr: table name %s not in BGP global view", params.tblKeyComp );
+        return oper_err
+    }
+    params.ygPathKeys[niRoot + "/protocols/protocol/identifier"] = "BGP"
+    params.ygPathKeys[niRoot + "/protocols/protocol/name"] = "bgp"
+
+    if (params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_AF_NETWORK" || 
+        params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR") {
+
+        log.Errorf ("address family key %s", params.tblKeyComp[1])
+        afi :=  bgp_afi_convert_to_yang(params.tblKeyComp[1]) 
+        if (afi == "") {
+            log.Errorf ("Unknown address family key %s", params.tblKeyComp[1])
+            return oper_err
+        } else {
+            log.Errorf ("passed  address family key %s", afi)
+        } 
+        params.ygPathKeys[bgp_glb_afi_safi + "/afi-safi-name"]  = afi
+    }
+
+    if (params.tblName == "BGP_GLOBALS_AF_NETWORK") {
+        log.Errorf ("BGP_GLOBALS_AF_NETWORK key %s", params.tblKeyComp[1])
+         params.ygPathKeys[bgp_glb_af_network + "/prefix"] = params.tblKeyComp[2]
+    } else if (params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR") {
+         params.ygPathKeys[bgp_glb_aggr_addr + "/prefix"] = params.tblKeyComp[2]
+    }
+
+    log.Info("DbToYangPath_bgp_glb_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+    return nil
+}
+
 func init () {
     XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_tbl_key_xfmr", YangToDb_bgp_gbl_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_tbl_key_xfmr", DbToYang_bgp_gbl_tbl_key_xfmr)
+    XlateFuncBind("DbToYangPath_DbToYangPath_bgp_glb_Xfmr", DbToYangPath_DbToYangPath_bgp_glb_Xfmr)
     XlateFuncBind("YangToDb_bgp_local_asn_fld_xfmr", YangToDb_bgp_local_asn_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_local_asn_fld_xfmr", DbToYang_bgp_local_asn_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_state_xfmr", DbToYang_bgp_gbl_state_xfmr)
@@ -979,16 +1044,19 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
         return afi, errors.New("Protocol Name is missing")
     }
 
-	if strings.Contains(afName, "IPV4_UNICAST") {
-		afi = "ipv4_unicast"
-	} else if strings.Contains(afName, "IPV6_UNICAST") {
-		afi = "ipv6_unicast"
-	} else if strings.Contains(afName, "L2VPN_EVPN") {
-		afi = "l2vpn_evpn"
-	} else {
-		log.Info("Unsupported AFI type " + afName)
+    if strings.Contains(afName, "IPV4_UNICAST") {
+        afi = "ipv4_unicast"
+    } else if strings.Contains(afName, "IPV6_UNICAST") {
+        afi = "ipv6_unicast"
+    } else if strings.Contains(afName, "L2VPN_EVPN") {
+        afi = "l2vpn_evpn"
+    } else if strings.Contains(afName, "*") {
+        afi = "*"
+        log.Info("Wildcard set  AFI type " + afName)
+    } else {
+        log.Info("Unsupported AFI type " + afName)
         return afi, errors.New("Unsupported AFI type " + afName)
-	}
+    }
 
     if strings.Contains(afName, "IPV4_UNICAST") {
         afName = "IPV4_UNICAST"
@@ -1014,10 +1082,6 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
            log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName);
            return afName, err
         }
-    } else  {
-	    err = errors.New("Unsupported AFI SAFI")
-	    log.Info("Unsupported AFI SAFI ", afName);
-	    return afName, err
     }
 
     key := niName + "|" + afi
@@ -1099,16 +1163,18 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
         return afi, errors.New("Protocol Name is missing")
     }
 
-	if strings.Contains(afName, "IPV4_UNICAST") {
-		afi = "ipv4_unicast"
-	} else if strings.Contains(afName, "IPV6_UNICAST") {
-		afi = "ipv6_unicast"
-	} else if strings.Contains(afName, "L2VPN_EVPN") {
-		afi = "l2vpn_evpn"
-	} else {
-		log.Info("Unsupported AFI type " + afName)
-        return afi, errors.New("Unsupported AFI type " + afName)
-	}
+    if strings.Contains(afName, "IPV4_UNICAST") {
+        afi = "ipv4_unicast"
+    } else if strings.Contains(afName, "IPV6_UNICAST") {
+       afi = "ipv6_unicast"
+    } else if strings.Contains(afName, "L2VPN_EVPN") {
+       afi = "l2vpn_evpn"
+    } else if strings.Contains(afName, "*") {
+       afi = "*"
+    } else {
+       log.Info("Unsupported AFI type " + afName)
+       return afi, errors.New("Unsupported AFI type " + afName)
+    }
 
     if strings.Contains(afName, "IPV4_UNICAST") {
         afName = "IPV4_UNICAST"
@@ -1134,15 +1200,11 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
 		    log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName);
 		    return afName, err
         }
-    } else  {
-	    err = errors.New("Unsupported AFI SAFI")
-	    log.Info("Unsupported AFI SAFI ", afName);
-	    return afName, err
     }
 
-	key := niName + "|" + afi + "|" + prefix
+    key := niName + "|" + afi + "|" + prefix
 
-	log.Info("YangToDb_bgp_gbl_afi_safi_addr_key_xfmr AFI key: ", key)
+    log.Info("YangToDb_bgp_gbl_afi_safi_addr_key_xfmr AFI key: ", key)
 
     return key, nil
 }
