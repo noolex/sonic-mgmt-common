@@ -275,6 +275,7 @@ type YParserListInfo struct {
 	CustValidation map[string]string
 	WhenExpr map[string][]*WhenExpression //multiple when expression for choice/case etc
 	MandatoryNodes map[string]bool
+	DependentOnTable string //for table on which it is dependent
 }
 
 type YParserLeafValue struct {
@@ -988,6 +989,8 @@ func GetModelListInfo(module *YParserModule) []*YParserListInfo {
 						l.RedisKeyPattern = argVal
 					case "map-leaf":
 						l.MapLeaf = strings.Split(argVal, " ")
+					case "dependent-on":
+						l.DependentOnTable = argVal
 					}
 				}
 
