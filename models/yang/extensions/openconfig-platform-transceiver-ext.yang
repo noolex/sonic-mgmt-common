@@ -1,0 +1,304 @@
+module openconfig-platform-transceiver-ext {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/platform/transceiver/extension";
+
+  prefix "oc-transceiver-ext";
+
+  // import some basic types
+  import openconfig-platform { prefix oc-platform; }
+  import openconfig-platform-transceiver { prefix oc-transceiver; }
+
+  organization
+    "Broadcom Inc.";
+  contact
+    "SONiC";
+  description
+    "This module defines configuration and operational state data
+    for transceivers (i.e., pluggable optics).  The module should be
+    used in conjunction with the platform model where other
+    physical entity data are represented.
+    In the platform model, a component of type=TRANSCEIVER is
+    expected to be a subcomponent of a PORT component.  This
+    module defines a concrete schema for the associated data for
+    components with type=TRANSCEIVER.";
+
+  revision 2020-11-20 {
+    description
+      "Initial revision.";
+    reference
+      "0.1";
+  }
+
+  grouping oc-plat-xcvr-diag-loopbacks-top {
+    description
+      "Diagnostic loopback controls";
+    container config
+    {
+      description
+        "Configuration parameters for QSFPDD CMIS diagnostics";
+      leaf lb-host-input-enabled {
+        type boolean;
+        default false;
+        description "Loopback by forwarding data from input to output of the host side";
+      }
+      leaf lb-host-output-enabled {
+        type boolean;
+        default false;
+        description "Loopback by forwarding data from output to input of the host side";
+      }
+      leaf lb-media-input-enabled {
+        type boolean;
+        default false;
+        description "Loopback by forwarding data from input to output of the media side";
+      }
+      leaf lb-media-output-enabled {
+        type boolean;
+        default false;
+        description "Loopback by forwarding data from output to input of the media side";
+      }
+    }
+    container state
+    {
+      config false;
+      description
+        "State parameters for QSFPDD CMIS diagnostics";
+      leaf lb-host-input-enabled {
+        type boolean;
+        default false;
+        description "Loopback by forwarding data from input to output of the host side";
+      }
+      leaf lb-host-output-enabled {
+        type boolean;
+        default false;
+        description "Loopback by forwarding data from output to input of the host side";
+      }
+      leaf lb-media-input-enabled {
+        type boolean;
+        default false;
+        description "Loopback by forwarding data from input to output of the media side";
+      }
+      leaf lb-media-output-enabled {
+        type boolean;
+        default false;
+        description "Loopback by forwarding data from output to input of the media side";
+      }
+    }
+  }
+
+  grouping oc-plat-xcvr-diag-capabilities-top {
+    description
+      "Diagnostic capabilities";
+    container state {
+      config false;
+      description
+        "State information for diagnostic capabilities";
+      leaf loopback {
+        type string;
+        description "Loopback capabilities";
+      }
+      leaf pattern {
+        type string;
+        description "General pattern capabilities";
+      }
+      leaf report {
+        type string;
+        description "Diagnostic reporting capabilities";
+      }
+      leaf pattern-gen-host {
+        type string;
+        description "Supported pattern list in Host side generator mode, separated by commas.";
+      }
+      leaf pattern-gen-media {
+        type string;
+        description "Supported pattern list in Media side generator mode, separated by commas.";
+      }
+      leaf pattern-chk-host {
+        type string;
+        description "Supported pattern list in Host side checker mode, separated by commas.";
+      }
+      leaf pattern-chk-media {
+        type string;
+        description "Supported pattern list in Media side checker mode, separated by commas.";
+      }
+    }
+  }
+
+  grouping oc-plat-xcvr-diag-reports-top {
+    description
+      "Diagnostic reports";
+    container state {
+      config false;
+      description
+        "State information for diagnostic reports";
+      leaf ber1 {
+        type string;
+        description "Bit error rate of lane-1";
+      }
+      leaf ber2 {
+        type string;
+        description "Bit error rate of lane-2";
+      }
+      leaf ber3 {
+        type string;
+        description "Bit error rate of lane-3";
+      }
+      leaf ber4 {
+        type string;
+        description "Bit error rate of lane-4";
+      }
+      leaf ber5 {
+        type string;
+        description "Bit error rate of lane-5";
+      }
+      leaf ber6 {
+        type string;
+        description "Bit error rate of lane-6";
+      }
+      leaf ber7 {
+        type string;
+        description "Bit error rate of lane-7";
+      }
+      leaf ber8 {
+        type string;
+        description "Bit error rate of lane-8";
+      }
+      leaf snr1 {
+        type string;
+        description "Signal noise ratio of lane-1";
+      }
+      leaf snr2 {
+        type string;
+        description "Signal noise ratio of lane-2";
+      }
+      leaf snr3 {
+        type string;
+        description "Signal noise ratio of lane-3";
+      }
+      leaf snr4 {
+        type string;
+        description "Signal noise ratio of lane-4";
+      }
+      leaf snr5 {
+        type string;
+        description "Signal noise ratio of lane-5";
+      }
+      leaf snr6 {
+        type string;
+        description "Signal noise ratio of lane-6";
+      }
+      leaf snr7 {
+        type string;
+        description "Signal noise ratio of lane-7";
+      }
+      leaf snr8 {
+        type string;
+        description "Signal noise ratio of lane-8";
+      }
+    }
+  }
+
+  grouping oc-plat-xcvr-diag-patterns-top {
+    description
+      "Pseudorandom binary sequence pattern generation and checking";
+    container config
+    {
+      description
+        "Configuration parameters for QSFPDD CMIS diagnostics PRBS";
+      leaf pattern-gen-host-enabled {
+        type boolean;
+        default false;
+        description "Enable PRBS pattern generation at the host side";
+      }
+      leaf pattern-gen-media-enabled {
+        type boolean;
+        default false;
+        description "Enable PRBS pattern generation at the media side";
+      }
+      leaf pattern-chk-host-enabled {
+        type boolean;
+        default false;
+        description "Enable PRBS pattern checking at the host side";
+      }
+      leaf pattern-chk-media-enabled {
+        type boolean;
+        default false;
+        description "Enable PRBS pattern checking at the media side";
+      }
+    }
+    container state
+    {
+      config false;
+      description
+        "State parameters for QSFPDD CMIS diagnostics PRBS";
+      leaf pattern-gen-host-enabled {
+        type boolean;
+        default false;
+        description "Enable PRBS pattern generation at the host side";
+      }
+      leaf pattern-gen-media-enabled {
+        type boolean;
+        default false;
+        description "Enable PRBS pattern generation at the media side";
+      }
+      leaf pattern-chk-host-enabled {
+        type boolean;
+        default false;
+        description "Enable PRBS pattern checking at the host side";
+      }
+      leaf pattern-chk-media-enabled {
+        type boolean;
+        default false;
+        description "Enable PRBS pattern checking at the media side";
+      }
+    }
+  }
+
+  grouping oc-plat-xcvr-diag-top
+  {
+    description
+      "Top level grouping for QSFPDD CMIS diagnostics";
+    container diagnostics
+    {
+      description
+        "QSFPDD CMIS diagnostics";
+      container capabilities {
+        description
+          "QSFPDD CMIS diagnostic capabilities";
+        uses oc-plat-xcvr-diag-capabilities-top;
+      }
+      container loopbacks {
+        description
+          "QSFPDD CMIS diagnostic loopback controls";
+        uses oc-plat-xcvr-diag-loopbacks-top;
+      }
+      container patterns {
+        description
+          "QSFPDD CMIS diagnostic PRBS pattern controls";
+        uses oc-plat-xcvr-diag-patterns-top;
+      }
+      container reports {
+        description
+          "QSFPDD CMIS diagnostic reports";
+        container host {
+          description
+            "QSFPDD CMIS diagnostic reports for the host/system side";
+          uses oc-plat-xcvr-diag-reports-top;
+        }
+        container media {
+          description
+            "QSFPDD CMIS diagnostic reports for the media/line side";
+          uses oc-plat-xcvr-diag-reports-top;
+        }
+      }
+    }
+  }
+
+  augment /oc-platform:components/oc-platform:component/oc-transceiver:transceiver {
+    description
+      "QSFPDD CMIS diagnostics";
+    uses oc-plat-xcvr-diag-top;
+  }
+}

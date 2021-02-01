@@ -104,7 +104,7 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 		} else if ygXpathInfo.virtualTbl != nil && (*ygXpathInfo.virtualTbl) {
 			log.Error("Translate: virtual table is set to true and path transformer not found list node path: ", *respXlator.ntfXlateReq.path)
 			return nil, tlerr.InternalError{Format: "virtual table is set to true and path transformer not found list node path", Path: ygPath}
-		} else if len(ygXpathInfo.xfmrKey) > 0 {
+		} else if len(ygXpathInfo.xfmrFunc) == 0 && len(ygXpathInfo.xfmrKey) > 0 {
 			dbYgXlateInfo := &DbYgXlateInfo{pathIdx: idx, ygXpathInfo: ygXpathInfo, xlateReq: respXlator.ntfXlateReq}
 			dbYgXlateInfo.setUriPath()
 			respXlator.dbYgXlateList = append(respXlator.dbYgXlateList, dbYgXlateInfo)
@@ -114,7 +114,11 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 				return nil, err
 			}
 		} else {
-			log.Warning("Translate: Could not find the path transformer or DbToYangKey transformer for the xpath: ", ygPath)
+			if len(ygXpathInfo.xfmrFunc) > 0 {
+				log.Warning("Translate: Could not find the path transformer for the xpath: ", ygPath)
+			} else {
+				log.Warning("Translate: Could not find the DbToYangKey transformer for the xpath: ", ygPath)
+			}
 			log.Warning("Translate: Attempting direct conversion - to convert the db key to yang key directly for the path: ", ygPath)
 			log.Info("Translate: respXlator.ntfXlateReq.key.Comp: ", respXlator.ntfXlateReq.key.Comp)
 			log.Info("Translate: pathElem[idx].Key: ", pathElem[idx].Key)
