@@ -9,6 +9,7 @@ module openconfig-platform-annot {
     import openconfig-port-breakout-ext { prefix oc-brk-ext; }
     import sonic-extensions { prefix sonic-ext; }
     import openconfig-platform-transceiver { prefix oc-transceiver; }
+    import openconfig-platform-transceiver-ext { prefix oc-transceiver-ext; }
 
     deviation /oc-platform:components/oc-platform:component {
       deviate add {
@@ -57,6 +58,11 @@ module openconfig-platform-annot {
       deviate add {
         sonic-ext:db-name "CONFIG_DB";
         sonic-ext:subtree-transformer "pfm_components_transceiver_xfmr";
+      }
+    }
+    deviation /oc-platform:components/oc-platform:component/oc-transceiver:transceiver/oc-transceiver-ext:diagnostics {
+      deviate add {
+        sonic-ext:subtree-transformer "pfm_components_transceiver_diag_xfmr";
       }
     }
 
