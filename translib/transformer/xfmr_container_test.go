@@ -1299,3 +1299,44 @@ func Test_Leafref_WithinSonicTable_Resolve_Patch(t *testing.T) {
 }
 
 */
+/*
+//Enable when new leafref relation has been introduced to VLAN_SUB_INTERFACE/VLAN_SUB_INTERFACE_LIST/id in sonic-interface.yang 
+func Test_Delete_WithinSonicDBKey_Ordering_Patch(t *testing.T) {
+
+	cleanuptbl1 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.10|1010::1/64":"", "Eth0.10|10.10.1.1/24":"", "Eth0.10|10.10.2.1/24":"", "Eth0.10":""}}
+	cleanuptbl2 := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet0|10.0.0.1/24":"", "Ethernet0|10::1/64":"", "Ethernet0":""}}
+
+        prereq1 := map[string]interface{}{"VLAN_SUB_INTERFACE_REF":map[string]interface{}{"Eth0.10":map[string]interface{}{"parent":"Ethernet0"},"Eth0.10|1010::1/64":map[string]interface{}{"NULL":"NULL"},"Eth0.10|10.10.1.1/24":map[string]interface{}{"NULL":"NULL"},"Eth0.10|10.10.2.1/24":map[string]interface{}{"NULL":"NULL"}}}
+	prereq2 := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet0":map[string]interface{}{"NULL":"NULL"},"Ethernet0|10::1/64":map[string]interface{}{"NULL":"NULL"},"Ethernet0|10.0.0.1/24":map[string]interface{}{"NULL":"NULL"}}}
+
+
+        url := "/openconfig-platform:components"
+
+	delete_expected := make(map[string]interface{})
+
+        fmt.Println("++++++++++++++  Patch Verify SubOpMap Delete ordering for sonic DbKeys  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+
+        payload := "{\"openconfig-platform:components\": {\"component\": [{\"name\": \"1/1\", \"port\": {\"openconfig-platform-port:breakout-mode\": {\"config\": {\"num-channels\": 4, \"channel-speed\": \"SPEED_25GB\"}}}}]}}"
+
+        t.Run("Patch Verify SubOpMap Delete ordering for sonic DbKeys", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.10|1010::1/64", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.10|10.10.1.1/24", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.10|10.10.2.1/24", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.10", delete_expected, false))
+
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "INTERFACE|Ethernet0|10.0.0.1/24", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "INTERFACE|Ethernet0|10::1/64", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "INTERFACE|Ethernet0", delete_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+
+}
+*/
