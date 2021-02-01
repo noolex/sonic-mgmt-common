@@ -797,8 +797,12 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 				continue
 
 			}
+			// Sort keys to make a list in order multiple keys first, single key last
+			ordDbKeyLst := transformer.SortSncTableDbKeys(tblNm, tblVal)
+			log.Infof("DELETE case - ordered list of DB keys for tbl %v = %v", tblNm, ordDbKeyLst)
 
-			for tblKey, tblRw := range tblVal {
+			for _, tblKey := range ordDbKeyLst {
+				tblRw := tblVal[tblKey]
 				if len(tblRw.Field) == 0 {
 					log.Info("DELETE case - no fields/cols to delete hence delete the entire row.")
 					log.Info("First, delete child table instances that correspond to parent table instance to be deleted = ", tblKey)
