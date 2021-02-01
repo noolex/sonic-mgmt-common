@@ -27,6 +27,10 @@ module sonic-acl {
         prefix svlan;
     }
 
+    import sonic-interface {
+        prefix sint;
+    }
+
     import sonic-mirror-session {
         prefix sms;
     }
@@ -69,6 +73,9 @@ module sonic-acl {
             }
             type leafref {
                 path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+            }
+            type leafref {
+                path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
             }
             type enumeration {
                 enum Switch;

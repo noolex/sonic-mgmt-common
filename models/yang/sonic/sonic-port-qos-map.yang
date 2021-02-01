@@ -51,6 +51,10 @@ module sonic-port-qos-map {
 		prefix sch;
 	}
 
+    import sonic-interface {
+        prefix sint;
+    }
+
     organization
         "SONiC";
 
@@ -83,6 +87,9 @@ module sonic-port-qos-map {
                         }
                         type leafref {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
                         }
                         type string {
                            pattern "CPU";

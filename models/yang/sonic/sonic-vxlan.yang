@@ -64,6 +64,14 @@ module sonic-vxlan {
                     }
                     type inet:ipv4-address;
                 }
+                leaf primary_ip {
+                    must "count(../../../VXLAN_TUNNEL_MAP/VXLAN_TUNNEL_MAP_LIST) = 0"
+                    {
+                        error-message "Error: Please delete all VLAN VNI mappings.";
+                        error-app-tag vlan-vni-map-present;
+                    }
+                    type inet:ipv4-address;
+                }
                 leaf qos-mode {
                     type enumeration {
                         enum uniform;

@@ -591,13 +591,13 @@ var Subscribe_fdb_mac_table_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscO
     log.Info("Entering Subscribe_fdb_mac_table_xfmr")
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     pathInfo := NewPathInfo(inParams.uri)
     macAddr := pathInfo.Var("mac-address")
     vlan := pathInfo.Var("vlan")
     keyName := "Vlan" + vlan + "|" + macAddr
     tblName := "FDB"
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{keyName:{}}}}
 
     result.needCache = true
     result.nOpts = new(notificationOpts)
@@ -672,7 +672,7 @@ var YangToDb_mac_aging_time_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams)
 
     if (instance != "default") {
         errStr := "Operation: "+strconv.Itoa(inParams.oper)+" not allowed for MAC aging-time on: "+instance
-        log.Error(errStr)
+        log.Info(errStr)
         if inParams.oper != DELETE {
             return nil, tlerr.InvalidArgsError{Format:errStr}
         }

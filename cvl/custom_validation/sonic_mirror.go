@@ -3,6 +3,7 @@ package custom_validation
 import (
     log "github.com/golang/glog"
     "reflect"
+    "strings"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
  )
 
@@ -71,8 +72,8 @@ func (t *CustomValidation) ValidateDstPort(vc *CustValidationCtxt) CVLErrorInfo 
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-//ValidateMaxMirrorSessions validates whether mirror sessions are available.
-func (t *CustomValidation) ValidateMaxMirrorSessions(vc *CustValidationCtxt) CVLErrorInfo {
+//ValidateMirrorSessions validates whether mirror sessions are available and session is not active.
+func (t *CustomValidation) ValidateMirrorSessions(vc *CustValidationCtxt) CVLErrorInfo {
 
     if (vc.CurCfg.VOp == OP_DELETE) {
         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
@@ -91,7 +92,7 @@ func (t *CustomValidation) ValidateMaxMirrorSessions(vc *CustValidationCtxt) CVL
 
         if (err == nil) {
             if (available_count == "0") {
-                log.Error("ValidateMaxMirrorSessions: Exceed max active sessions.", available_count)
+                log.Error("ValidateMirrorSessions: Exceed max active sessions.", available_count)
                 errStr := "Maximum sessions already configured"
                 return CVLErrorInfo{
                     ErrCode: CVL_SEMANTIC_ERROR,
@@ -101,7 +102,22 @@ func (t *CustomValidation) ValidateMaxMirrorSessions(vc *CustValidationCtxt) CVL
                 }
             }
         }
-        log.Info("ValidateMaxMirrorSessions: available_sessions ", available_count)
+        log.Info("ValidateMirrorSessions: available_sessions ", available_count)
+        keys := strings.Split(vc.CurCfg.Key, "|")
+        session_status, err := stateDBClient.HGet("MIRROR_SESSION_TABLE|" + keys[1], "status").Result()
+        if (err == nil) {
+            if (session_status == "active") {
+                log.Error("ValidateMirrorSessions: Session ", keys[1] ," already active. Update not supported ", session_status)
+                errStr := "Mirror session is already active. Update not supported"
+                return CVLErrorInfo{
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: "MIRROR_SESSION_TABLE",
+                    CVLErrDetails : errStr,
+                    ConstraintErrMsg : errStr,
+                }
+            }
+        }
+        log.Error("ValidateMirrorSessions: Session ", keys[1] ," is not active. ")
     }
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

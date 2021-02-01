@@ -531,6 +531,11 @@ module openconfig-vxlan {
       description
         "The source address of the NVE interface.";        
     }
+    leaf primary-ip {
+      type oc-inet:ipv4-address;
+      description
+        "The primary IP address of the NVE interface.";        
+    }
     leaf qos-mode {
       type enumeration {
         enum UNIFORM {

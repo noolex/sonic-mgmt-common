@@ -79,10 +79,9 @@ module openconfig-loadshare-mode-ext {
             description "Key node identifier";
         }
 
-
         leaf ecmp-hash-seed {
            type uint32 {
-               range "1..16777215";
+               range "0..16777215";
            }
            description
                "Seed value for IP ECMP hash configuration";
@@ -126,6 +125,12 @@ module openconfig-loadshare-mode-ext {
           description
               "This leaf indicates whether to include protocol in hashing .";
         }
+
+        leaf ipv4-symmetric {
+          type boolean;
+          description
+              "This leaf indicates whether to enable symmetric hashing for IPv4 flows .";
+        }
     }
 
     grouping hash-mode-ipv6-attr-config {
@@ -166,6 +171,12 @@ module openconfig-loadshare-mode-ext {
           description
               "This leaf indicates whether to include protocol in hashing .";
         }
+
+        leaf ipv6-symmetric {
+          type boolean;
+          description
+              "This leaf indicates whether to enable symmetric hashing for IPv6 flows .";
+        }
     }
     container loadshare {
         description "Load share mode IPv4/IPv6/seed configuration";
@@ -177,9 +188,6 @@ module openconfig-loadshare-mode-ext {
         container state {
            config false;
            description "State container for ECMP hash seed";
-           uses oc-lb-mode-ext:hash-mode-ipv4-attr-config;
-           uses oc-lb-mode-ext:hash-mode-ipv6-attr-config;
-           uses oc-lb-mode-ext:hash-mode-seed-attr-config;
         }
         uses loadshare-mode-config;
     }

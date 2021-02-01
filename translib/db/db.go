@@ -142,7 +142,6 @@ const (
 	StateDB                    // 6
 	SnmpDB                     // 7
 	ErrorDB                    // 8
-	UserDB                     // 9
 	// All DBs added above this line, please ----
 	MaxDB //  The Number of DBs
 )
@@ -160,6 +159,7 @@ type Options struct {
 	IsWriteDisabled    bool //Indicated if write is allowed
 
 	DisableCVLCheck bool
+	OnChangeCacheEnabled bool
 }
 
 func (o Options) String() string {
@@ -304,8 +304,6 @@ func getDBInstName (dbNo DBNum) string {
 		return "SNMP_OVERLAY_DB"
 	case ErrorDB:
 		return "ERROR_DB"
-	case UserDB:
-		return "USER_DB"
 	}
 	return ""
 }
@@ -326,11 +324,13 @@ func NewDB(opt Options) (*DB, error) {
 
 	ipAddr := DefaultRedisLocalTCPEP
 	dbId := int(opt.DBNo)
+	dbPassword :=""
 	if dbInstName := getDBInstName(opt.DBNo); dbInstName != "" {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
-	        dbSepStr := getDbSeparator(dbInstName)
+			dbSepStr := getDbSeparator(dbInstName)
+			dbPassword = getDbPassword(dbInstName)
 			if len(dbSepStr) > 0 {
 				if len(opt.TableNameSeparator) > 0 && opt.TableNameSeparator != dbSepStr {
 					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the" +
@@ -347,12 +347,12 @@ func NewDB(opt Options) (*DB, error) {
 	} else {
 		glog.Error(fmt.Errorf("Invalid database number %d", dbId))
 	}
-	
+
 	d := DB{client: redis.NewClient(&redis.Options{
 		Network: "tcp",
 		Addr:    ipAddr,
 		//Addr:     DefaultRedisRemoteTCPEP,
-		Password: "", /* TBD */
+		Password: dbPassword, /* TBD */
 		// DB:       int(4), /* CONFIG_DB DB No. */
 		DB:          dbId,
 		DialTimeout: 0,
@@ -1050,7 +1050,7 @@ func (d *DB) ModEntry(ts *TableSpec, key Key, value Value) error {
 		} else {
 			glog.Info("ModEntry: Mapping to DeleteEntry()")
 			e = d.DeleteEntry(ts, key)
-		}		
+		}
 		goto ModEntryExit
 	}
 
@@ -1556,4 +1556,109 @@ AbortTxExit:
 		glog.Info("AbortTx: End: e: ", e)
 	}
 	return e
+}
+
+// RegisterTableForOnChangeCaching Enable OnChange caching for a given table
+func (d *DB) RegisterTableForOnChangeCaching(ts *TableSpec) {
+	if !d.dbCacheConfig.PerConnection {
+		d.dbCacheConfig.PerConnection = true
+	}
+
+	if !d.dbCacheConfig.CacheTables[ts.Name] {
+		d.dbCacheConfig.CacheTables[ts.Name] = true
+	}
+}
+
+type OnChangeCacheDiff struct {
+	UpdatedEntry	*Value
+	EntryCreated	bool
+	EntryDeleted	bool
+	UpdatedFields	[]string
+	DeletedFields	[]string
+}
+
+func (c *OnChangeCacheDiff) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s[%t], ", "EntryCreated", c.EntryCreated)
+	fmt.Fprintf(&b, "%s[%t], ", "EntryDeleted", c.EntryDeleted)
+	fmt.Fprintf(&b, "%s->%v, ", "UpdatedFields", c.UpdatedFields)
+	fmt.Fprintf(&b, "%s->%v, ", "DeletedFields", c.DeletedFields)
+	if c.UpdatedEntry != nil {
+		fmt.Fprintf(&b, "Entry->")
+		for k, v := range c.UpdatedEntry.Field {
+			fmt.Fprintf(&b, "%s[%s]  ", k, v)
+		}
+	}
+
+	return b.String()
+}
+
+// DiffAndMergeOnChangeCache Compare modified entry with cached entry and
+// return modified fields. Also update the cache with changes.
+func (d *DB) DiffAndMergeOnChangeCache(ts *TableSpec, key Key, entryDeleted bool) (*OnChangeCacheDiff, error) {
+	var val Value
+
+	cacheEntryDiff := &OnChangeCacheDiff{}
+	redisKey := d.key2redis(ts, key)
+
+	if !entryDeleted {
+		// Fetch fresh entry from redis DB and compare with cache entry
+		v, e := d.client.HGetAll(redisKey).Result()
+		if len(v) == 0 || e != nil {
+			e = tlerr.TranslibRedisClientEntryNotExist{Entry: redisKey}
+			return cacheEntryDiff, e
+		}
+		val.Field = v
+	}
+
+	if d.dbCacheConfig.CacheTables[ts.Name] {
+		if table, ok := d.cache.Tables[ts.Name]; ok {
+			cachedEntry, exists := table.entry[redisKey]
+			if exists { // Already exists in cache
+
+				if entryDeleted {
+					// Entry deleted. So remove cached entry
+					delete(table.entry, redisKey)
+					cacheEntryDiff.EntryDeleted = true
+					for fldName := range cachedEntry.Field {
+						cacheEntryDiff.DeletedFields = append(cacheEntryDiff.DeletedFields, fldName)
+					}
+					return cacheEntryDiff, nil
+				}
+
+				cacheEntryDiff.UpdatedEntry = &val
+
+				for fldName := range cachedEntry.Field {
+					if fldName == "NULL" {
+						continue
+					}
+					if _, fldOk := val.Field[fldName]; !fldOk {
+						cacheEntryDiff.DeletedFields = append(cacheEntryDiff.DeletedFields, fldName)
+						cachedEntry.Remove(fldName)
+					}
+				}
+
+				for nf, nv := range val.Field {
+					if nf == "NULL" {
+						continue
+					}
+					if cachedEntry.Field[nf] != nv {
+						cacheEntryDiff.UpdatedFields = append(cacheEntryDiff.UpdatedFields, nf)
+						cachedEntry.Set(nf, nv)
+					}
+				}
+
+			} else if !entryDeleted {
+				// Not exists in cache
+				// Add entry in cache
+				table.entry[redisKey] = val
+				cacheEntryDiff.EntryCreated = true
+				cacheEntryDiff.UpdatedEntry = &val
+			}
+		}
+	}
+
+	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Cache Diff: %v", cacheEntryDiff)
+
+	return cacheEntryDiff, nil
 }

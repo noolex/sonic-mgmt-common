@@ -495,6 +495,7 @@ module sonic-bgp-global {
 
                 leaf backdoor {
                     type boolean;
+                    sonic-ext:custom-validation ValidateAfisafiForBackdoor;
                 }
             }
         }

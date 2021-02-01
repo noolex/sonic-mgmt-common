@@ -10,7 +10,6 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/openconfig/ygot/ygot"
-    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "crypto/aes"
     "crypto/cipher"
     "crypto/rand"
@@ -81,6 +80,8 @@ func init () {
     XlateFuncBind("DbToYang_ospfv2_router_passive_interface_name_fld_xfmr", DbToYang_ospfv2_router_passive_interface_name_fld_xfmr)
     XlateFuncBind("YangToDb_ospfv2_router_passive_interface_address_fld_xfmr", YangToDb_ospfv2_router_passive_interface_address_fld_xfmr)
     XlateFuncBind("DbToYang_ospfv2_router_passive_interface_address_fld_xfmr", DbToYang_ospfv2_router_passive_interface_address_fld_xfmr)
+    XlateFuncBind("YangToDb_ospfv2_router_passive_interface_subinterface_fld_xfmr", YangToDb_ospfv2_router_passive_interface_subinterface_fld_xfmr)
+    XlateFuncBind("DbToYang_ospfv2_router_passive_interface_subinterface_fld_xfmr", DbToYang_ospfv2_router_passive_interface_subinterface_fld_xfmr)
 
     XlateFuncBind("YangToDb_ospfv2_interface_tbl_key_xfmr", YangToDb_ospfv2_interface_tbl_key_xfmr)
     XlateFuncBind("DbToYang_ospfv2_interface_tbl_key_xfmr", DbToYang_ospfv2_interface_tbl_key_xfmr)
@@ -637,15 +638,21 @@ func ospfGetRouterPassiveIntfObject(inParams *XfmrParams, vrfName string, ifName
     ending = false
     var passIntfObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Ospfv2_Global_PassiveInterfaces_PassiveInterface
     for passIfKey, passIntfObjElt := range *passIntfListObj {
+        passiveIfName := passIfKey.Name
+        if (passIfKey.Subinterface != 0) {
+           passiveIfName = passIfKey.Name + "." + fmt.Sprintf("%d", passIfKey.Subinterface)
+        }
+
+        passiveIfName, _, _, _, _ = getNativeInterfaceName(passiveIfName)
         if (ifName != "") {
-            if (passIfKey.Name == ifName && passIfKey.Address == ifAddr) {
+            if (passiveIfName == ifName && passIfKey.Address == ifAddr) {
                 passIntfObj = passIntfObjElt
-                objKey += "|" + passIfKey.Name + "|" + passIfKey.Address
+                objKey += "|" + passiveIfName + "|" + passIfKey.Address
                 break
             }
         } else if (passIntfObjElt != nil) {
             passIntfObj = passIntfObjElt
-            objKey += "|" + passIfKey.Name + "|" + passIfKey.Address
+            objKey += "|" + passiveIfName + "|" + passIfKey.Address
             break
         }
     }
@@ -1044,72 +1051,6 @@ func ospfGetRouterAreaVlinkMdAuthObject(inParams *XfmrParams, vrfName string, ar
     log.Infof("ospfGetRouterAreaVlinkMdAuthObject: found entry %s ending %t", objKey, ending)
     return vlMdObj, objKey, ending, nil
 }
-
-
-func ospfGetNativeIntfName(ifName string) (string, error) {
-   var errStr string
-
-   if (ifName == "" ) {
-       errStr = "Empty interface name received"
-       log.Infof("ospfGetNativeIntfName: %s.", errStr)
-       return ifName, errors.New(errStr)
-   }
-
-   if (!utils.IsAliasModeEnabled()) {
-       if (strings.Contains(ifName,"/")) {
-           errStr = "Invalid portname " + ifName + ", standard interface naming not enabled"
-           log.Infof("ospfGetNativeIntfName: %s.", errStr)
-           return ifName, errors.New(errStr)
-       } else {
-           log.Infof("ospfGetNativeIntfName: alias mode disabled return same name %s", ifName)
-           return ifName, nil
-       }
-   }
-
-   nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel",
-                                     "Vlan", "VLAN", "vlan", "VLINK" }
-
-   for _, intfPrefix := range nonPhyIntfPrefixes {
-       if (strings.HasPrefix(ifName, intfPrefix)) {
-           log.Infof("ospfGetNativeIntfName: non physical interface %s.", ifName)
-           return ifName, nil
-       }
-   }
-
-   nativeNamePtr := utils.GetNativeNameFromUIName(&ifName)
-   log.Infof("ospfGetNativeIntfName: ifName %s native %s.", ifName, *nativeNamePtr)
-   return *nativeNamePtr, nil
-}
-
-func ospfGetUIIntfName(ifName string) (string, error) {
-   var errStr string
-
-   if (ifName == "" ) {
-       errStr = "Empty interface name received"
-       log.Infof("ospfGetUIIntfName: %s.", errStr)
-       return ifName, errors.New(errStr)
-   }
-
-   if (!utils.IsAliasModeEnabled()) {
-       log.Infof("ospfGetUIIntfName: alias mode disabled return same name %s", ifName)
-       return ifName, nil
-   }
-
-   nonPhyIntfPrefixes := []string { "PortChannel", "Portchannel", "portchannel",
-                                     "Vlan", "VLAN", "vlan", "VLINK" }
-
-   for _, intfPrefix := range nonPhyIntfPrefixes {
-       if (strings.HasPrefix(ifName, intfPrefix)) {
-           log.Infof("ospfGetUIIntfName: non physical interface %s, return same name.", ifName)
-           return ifName, nil
-       }
-   }
-
-   uiNamePtr := utils.GetUINameFromNativeName(&ifName)
-   log.V(3).Infof("ospfGetUIIntfName: ifName %s uiName %s.", ifName, *uiNamePtr)
-   return *uiNamePtr, nil
-}
-
 
 var YangToDb_ospfv2_router_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
     var err error
@@ -2249,6 +2190,7 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
     ospfv2Identifier      := pathInfo.Var("identifier")
     ospfv2InstanceNumber  := pathInfo.Var("name#2")
     passiveIfName  := pathInfo.Var("name#3")
+    passiveIfSubIf := pathInfo.Var("subinterface")
     passiveIfAddress := pathInfo.Var("address")
 
     if len(pathInfo.Vars) < 5 {
@@ -2294,12 +2236,27 @@ var YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrYangToDb = func
         passiveIfName = tempkey1[1]
     }
 
+    nativePassiveIfName := passiveIfName
+
+    if (passiveIfSubIf != "0" && passiveIfSubIf != "") {
+        passiveIfName = passiveIfName + "." + passiveIfSubIf
+        nativePassiveIfName = passiveIfName 
+
+        /* Note: It is not required to convert the keys into native form
+         * in table key transformers. This YangToDb call gets called with
+         * Key in UI name format. We need to return the table key in
+         * UI name format itself. Mgmt infra, at the time of creating
+         * table entry, will automatically conver UI name to native name
+         * and create table entry with native name key.
+         */
+    }
+
     tempkey1 = strings.Split(passiveIfAddress, ":")
     if len(tempkey1) > 1 {
         passiveIfAddress = tempkey1[1]
     }
 
-    passiveIfTableKey := ospfv2VrfName + "|" + passiveIfName  + "|" + passiveIfAddress
+    passiveIfTableKey := ospfv2VrfName + "|" + nativePassiveIfName  + "|" + passiveIfAddress
 
     log.Info("YangToDb_ospfv2_router_passive_interface_tbl_key_xfmr: passiveIfTableKey - ", passiveIfTableKey)
     return passiveIfTableKey, nil
@@ -2313,7 +2270,9 @@ var DbToYang_ospfv2_router_passive_interface_tbl_key_xfmr KeyXfmrDbToYang = func
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
     if len(passiveIfTableKeys) >= 3 {
-        res_map["name"] = passiveIfTableKeys[1]
+        _, ifName, _, subIfIdx, _ := getUserInterfaceName(passiveIfTableKeys[1])
+        res_map["name"] = ifName
+        res_map["subinterface"] = subIfIdx
         res_map["address"] = passiveIfTableKeys[2]
     }
 
@@ -2338,7 +2297,31 @@ var DbToYang_ospfv2_router_passive_interface_name_fld_xfmr FieldXfmrDbtoYang = f
     passiveIfTableKeys := strings.Split(entry_key, "|")
 
     if len(passiveIfTableKeys) >= 3 {
-        res_map["name"] = passiveIfTableKeys[1]
+        _, ifName, _, _, _ := getUserInterfaceName(passiveIfTableKeys[1])
+        res_map["name"] = ifName
+    }
+    return res_map, err
+}
+
+var YangToDb_ospfv2_router_passive_interface_subinterface_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+
+    res_map := make(map[string]string)
+
+    res_map["NULL"] = "NULL"
+    return res_map, nil
+}
+
+var DbToYang_ospfv2_router_passive_interface_subinterface_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+
+    var err error
+    res_map := make(map[string]interface{})
+
+    entry_key := inParams.key
+    passiveIfTableKeys := strings.Split(entry_key, "|")
+
+    if len(passiveIfTableKeys) >= 3 {
+        _, _, _, subIfIdx, _ := getUserInterfaceName(passiveIfTableKeys[1])
+        res_map["subinterface"] = subIfIdx
     }
     return res_map, err
 }
@@ -2405,9 +2388,18 @@ var YangToDb_ospfv2_interface_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
     log.Info("URI interface name ", ospfv2InterfaceName)
     log.Info("URI Sub interface Id ", ospfv2InterfaceId)
 
-    ospfv2InterfaceName, err = ospfGetNativeIntfName(ospfv2InterfaceName)
+    uriFullIfName, _, _, _, err := getInParamIfName(&inParams)
     if (err != nil) {
-        return "", tlerr.New("Invalid OSPF interface name.")
+        err = errors.New("OSPF interface name error");
+        log.Info("OSPF uri full name error")
+        return "", err
+    }
+
+    ospfv2InterfaceName, _, _, _, err = getNativeInterfaceName(uriFullIfName)
+    if (err != nil) {
+        err = errors.New("OSPF interface name conversion error");
+        log.Info("OSPF native interface conversion error")
+        return "", err
     }
 
     pInterfaceTableKey := ospfv2InterfaceName
@@ -3775,7 +3767,7 @@ func ospf_add_del_passive_interface_config(inParams *XfmrParams, ospfRespMap *ma
             if (npCfgPresent && fieldValue == "true") {
                 currNonPassive = true
             }
-            log.Info("ospf_add_del_passive_interface_config: npCfgPresent %t currNonPassive %t",npCfgPresent, currNonPassive)
+            log.Infof("ospf_add_del_passive_interface_config: npCfgPresent %t currNonPassive %t",npCfgPresent, currNonPassive)
 
             newNonPassive := false
             if (passIntfObj.Config.NonPassive != nil) {

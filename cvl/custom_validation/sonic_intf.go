@@ -94,6 +94,20 @@ func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErro
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
+func getSubInterfaceTruncatedName(longName *string) *string {
+    var truncatedName string
+
+    if strings.Contains(*longName, "Ethernet") {
+        truncatedName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+    } else if strings.Contains(*longName, "PortChannel") {
+        truncatedName = strings.Replace(*longName, "PortChannel", "Po", -1)
+    } else {
+        truncatedName = *longName
+    }
+
+    return &truncatedName
+}
+
 //ValidateMtuForPOMemberCount Custom validation for MTU configuration on PortChannel
 func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) CVLErrorInfo {
 	if vc.CurCfg.VOp == OP_DELETE {
@@ -114,6 +128,21 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 				if err1 != nil {
 					return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
 				}
+
+                                portChannelMemberName := *getSubInterfaceTruncatedName(&intfName)
+                                subIntfKeys, err2 := vc.RClient.Keys("VLAN_SUB_INTERFACE|" + portChannelMemberName + ".*").Result()
+                                if err2 != nil {
+                                   return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+                                }
+
+                                if len(subIntfKeys) > 0 {
+                                        return CVLErrorInfo{
+                                                ErrCode:          CVL_SEMANTIC_ERROR,
+                                                TableName:        "VLAN_SUB_INTERFACE",
+                                                Keys:             strings.Split(vc.CurCfg.Key, "|"),
+                                                ConstraintErrMsg: fmt.Sprintf("Cannot configure %s as member of %s as sub-interface is created on %s.", intfName, poName, intfName),
+                                        }
+                                }
 
 				poMtu, hasPoMtu := poData["mtu"]
 				intfMtu := intfData["mtu"]

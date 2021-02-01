@@ -1436,7 +1436,7 @@ var DbToYang_stp_vlan_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[
 var Subscribe_stp_vlan_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -1445,7 +1445,7 @@ var Subscribe_stp_vlan_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutPara
     log.Info("Subscribe_stp_vlan_xfmr: TargetURI: ", targetUriPath, " Key: ", keyName)
 
     if (keyName != "") {
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{STP_VLAN_TABLE:{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{STP_VLAN_TABLE:{keyName:{}}}}
     } else {
         errStr := "STP VLAN not present in request"
         log.Info("Subscribe_stp_vlan_xfmr: " + errStr)
@@ -2153,7 +2153,7 @@ func convertInternalStpIntfToOc (inParams XfmrParams, ifName string, targetUriPa
 var Subscribe_stp_port_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -2167,7 +2167,7 @@ var Subscribe_stp_port_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutPara
     log.Info("Subscribe_stp_port_xfmr: TargetURI: ", targetUriPath, " Key: ", keyName)
 
     if (keyName != "") {
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{STP_PORT_TABLE:{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{STP_PORT_TABLE:{keyName:{}}}}
     } else {
         errStr := "STP PORT not present in request"
         log.Info("Subscribe_stp_port_xfmr: " + errStr)
@@ -2771,7 +2771,7 @@ func convertInternalPvstVlanIntfToOc(inParams XfmrParams, vlanName string, ifNam
 var Subscribe_stp_vlan_port_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -2781,7 +2781,7 @@ var Subscribe_stp_vlan_port_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOu
     log.Info("Subscribe_stp_vlan_port_xfmr: TargetURI: ", targetUriPath, " Key: ", keyName)
 
     if (keyName != "") {
-        result.dbDataMap = RedisDbMap{db.ApplDB:{STP_APP_DB_VLAN_PORT_TABLE:{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ApplDB:{STP_APP_DB_VLAN_PORT_TABLE:{keyName:{}}}}
     } else {
         errStr := "STP PORT not present in request"
         log.Info("Subscribe_stp_vlan_port_xfmr: " + errStr)

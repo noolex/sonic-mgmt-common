@@ -32,6 +32,7 @@ import (
 	"github.com/openconfig/goyang/pkg/yang"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	//"github.com/Azure/sonic-mgmt-common/translib/db"
 )
 
 const (

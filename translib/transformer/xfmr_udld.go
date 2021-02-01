@@ -130,9 +130,9 @@ var YangToDb_udld_nbr_key_xfmr = func(inParams XfmrParams) (string, error) {
     index      := pathInfo.Var("index")
     if len(name) == 0 || len(index) == 0 {
         udld_nbr_tbl_key = ""
-        // set appropriate err
-        log.Error(" YangToDb_udld_nbr_key_xfmr Invalid name : ", name)
-        log.Error(" YangToDb_udld_nbr_key_xfmr Invalid index : ", index)
+        // SONIC-35015: change the log level from Error to Info, 
+        // since transformer ignores this error and proceeds with dumping the table.
+        log.Infof(" YangToDb_udld_nbr_key_xfmr Invalid name : %s, index : %s", name, index)
         err = errors.New("YangToDb_udld_nbr_key_xfmr Invalid ifname/index")
     } else {
             udld_nbr_tbl_key = name + ":" + index

@@ -48,7 +48,7 @@ const (
 type CVLOperation uint
 const (
 	OP_NONE   CVLOperation = 0 //Used to just validate the config without any operation
-	OP_CREATE = 1 << 0//For Create operation 
+	OP_CREATE = 1 << 0//For Create operation
 	OP_UPDATE = 1 << 1//For Update operation
 	OP_DELETE = 1 << 2//For Delete operation
 )
@@ -57,13 +57,13 @@ var cvlErrorMap = map[CVLRetCode]string {
 	CVL_SUCCESS					: "Config Validation Success",
 	CVL_SYNTAX_ERROR				: "Config Validation Syntax Error",
 	CVL_SEMANTIC_ERROR				: "Config Validation Semantic Error",
-	CVL_SYNTAX_MISSING_FIELD			: "Required Field is Missing", 
+	CVL_SYNTAX_MISSING_FIELD			: "Required Field is Missing",
 	CVL_SYNTAX_INVALID_FIELD			: "Invalid Field Received",
-	CVL_SYNTAX_INVALID_INPUT_DATA			: "Invalid Input Data Received", 
-	CVL_SYNTAX_MULTIPLE_INSTANCE			: "Multiple Field Instances Received", 
-	CVL_SYNTAX_DUPLICATE				: "Duplicate Instances Received", 
-	CVL_SYNTAX_ENUM_INVALID			        : "Invalid Enum Value Received",  
-	CVL_SYNTAX_ENUM_INVALID_NAME 			: "Invalid Enum Value Received", 
+	CVL_SYNTAX_INVALID_INPUT_DATA			: "Invalid Input Data Received",
+	CVL_SYNTAX_MULTIPLE_INSTANCE			: "Multiple Field Instances Received",
+	CVL_SYNTAX_DUPLICATE				: "Duplicate Instances Received",
+	CVL_SYNTAX_ENUM_INVALID			        : "Invalid Enum Value Received",
+	CVL_SYNTAX_ENUM_INVALID_NAME 			: "Invalid Enum Value Received",
 	CVL_SYNTAX_ENUM_WHITESPACE		        : "Enum name with leading/trailing whitespaces Received",
 	CVL_SYNTAX_OUT_OF_RANGE                         : "Value out of range/length/pattern (data)",
 	CVL_SYNTAX_MINIMUM_INVALID        		: "min-elements constraint not honored",
@@ -117,7 +117,7 @@ type CVLEditConfigData struct {
 	Data map[string]string //Value :  {"alias": "40GE0/28", "mtu" : 9100,  "admin_status":  down}
 }
 
-// ValidationTimeStats CVL validations stats 
+// ValidationTimeStats CVL validations stats
 //Maintain time stats for call to ValidateEditConfig().
 //Hits : Total number of times ValidateEditConfig() called
 //Time : Total time spent in ValidateEditConfig()
@@ -144,7 +144,7 @@ func Initialize() CVLRetCode {
 		return CVL_SUCCESS
 	}
 
-	//Initialize redis Client 
+	//Initialize redis Client
 	redisClient = NewDbClient("CONFIG_DB")
 
 	if (redisClient == nil) {
@@ -239,6 +239,7 @@ func (c *CVL) ValidateIncrementalConfig(jsonData string) CVLRetCode {
 	var dataMap map[string]interface{} = v.(map[string]interface{})
 
 	root, _ := c.translateToYang(&dataMap)
+	defer c.yp.FreeNode(root)
 	if root == nil {
 		return CVL_SYNTAX_ERROR
 
@@ -261,7 +262,7 @@ func (c *CVL) ValidateIncrementalConfig(jsonData string) CVLRetCode {
 	//Merge existing data for update syntax or checking duplicate entries
 	if (existingData != nil) {
 		if _, errObj = c.yp.MergeSubtree(root, existingData);
-				errObj.ErrCode != yparser.YP_SUCCESS {
+		errObj.ErrCode != yparser.YP_SUCCESS {
 			return CVL_ERROR
 		}
 	}
@@ -286,6 +287,7 @@ func (c *CVL) ValidateConfig(jsonData string) CVLRetCode {
 	if err := json.Unmarshal(b, &v); err == nil {
 		var value map[string]interface{} = v.(map[string]interface{})
 		root, _ := c.translateToYang(&value)
+		defer c.yp.FreeNode(root)
 
 		if root == nil {
 			return CVL_FAILURE
@@ -324,7 +326,7 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 		caller = f.Name()
 	}
 
-        CVL_LOG(INFO_DEBUG, "ValidateEditConfig() called from %s() : %v", caller, cfgData)
+	CVL_LOG(INFO_DEBUG, "ValidateEditConfig() called from %s() : %v", caller, cfgData)
 
 	if SkipValidation() {
 		CVL_LOG(INFO_TRACE, "Skipping CVL validation.")
@@ -455,6 +457,8 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 
 	//Step 2 : Perform syntax validation only
 	yang, errN := c.translateToYang(&requestedData)
+	defer c.yp.FreeNode(yang)
+
 	if (errN.ErrCode == CVL_SUCCESS) {
 		if cvlErrObj, cvlRetCode := c.validateSyntax(yang); cvlRetCode != CVL_SUCCESS {
 			return cvlErrObj, cvlRetCode
@@ -620,11 +624,18 @@ func (c *CVL) addDepEdges(graph *toposort.Graph, tableList []string) {
 					}
 
 					//Add and store the edge in map
-					graph.AddEdge(redisTblFrom, redisTblTo)
-					dupEdgeCheck[redisTblFrom] = redisTblTo
-
-					CVL_LOG(INFO_DEBUG,
-					"addDepEdges(): Adding edge %s -> %s", redisTblFrom, redisTblTo)
+					// Yang tables like VLAN_SUB_INTERFACE and VLAN_SUB_INTERFACE_IPADDR both are
+					// represented as VLAN_SUB_INTERFACE in redis. So redisTblFrom and redisTblTo
+					// will be same and dependency added to itself causes issues in Toposort
+					if redisTblFrom == redisTblTo && tableList[tj] != tableList[ti] {
+						graph.AddEdge(tableList[tj], redisTblTo)
+						dupEdgeCheck[tableList[tj]] = redisTblTo
+						CVL_LOG(INFO_DEBUG, "addDepEdges(): Adding edge %s -> %s", tableList[tj], redisTblTo)
+					} else {
+						graph.AddEdge(redisTblFrom, redisTblTo)
+						dupEdgeCheck[redisTblFrom] = redisTblTo
+						CVL_LOG(INFO_DEBUG, "addDepEdges(): Adding edge %s -> %s", redisTblFrom, redisTblTo)
+					}
 				}
 			}
 		}
@@ -720,7 +731,7 @@ func (c *CVL) GetOrderedDepTables(yangModule, tableName string) ([]string, CVLRe
 
 				// if target node of leaf-ref is not key, then skip
 				var isLeafrefTargetIsKey bool
-				for _, key := range modelInfo.tableInfo[tbl].keys {
+				for _, key := range modelInfo.tableInfo[tableName].keys {
 					if key == leafRef.targetNodeName {
 						isLeafrefTargetIsKey = true
 					}
@@ -736,9 +747,18 @@ func (c *CVL) GetOrderedDepTables(yangModule, tableName string) ([]string, CVLRe
 				}
 
 				//Add and store the edge in map
-				graph.AddNodes(redisTblFrom)
-				graph.AddEdge(redisTblFrom, redisTblTo)
-				dupEdgeCheck[redisTblFrom] = redisTblTo
+				// Yang tables like VLAN_SUB_INTERFACE and VLAN_SUB_INTERFACE_IPADDR both are
+				// represented as VLAN_SUB_INTERFACE in redis. So redisTblFrom and redisTblTo
+				// will be same and dependency added to itself causes issues in Toposort
+				if redisTblFrom == redisTblTo && tbl != tableName {
+					graph.AddNodes(tbl)
+					graph.AddEdge(tbl, redisTblTo)
+					dupEdgeCheck[tbl] = redisTblTo
+				} else {
+					graph.AddNodes(redisTblFrom)
+					graph.AddEdge(redisTblFrom, redisTblTo)
+					dupEdgeCheck[redisTblFrom] = redisTblTo
+				}
 			}
 		}
 	}
@@ -804,7 +824,7 @@ func (c *CVL) GetDepTables(yangModule string, tableName string) ([]string, CVLRe
 
 //Parses the JSON string buffer and returns
 //array of dependent fields to be deleted
-func getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForDelete) {
+func (c *CVL) getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForDelete) {
 	//Parse the JSON map received from lua script
 	var v interface{}
 	b := []byte(jsonBuf)
@@ -831,8 +851,18 @@ func getDepDeleteField(refKey, hField, hValue, jsonBuf string) ([]CVLDepDataForD
 					//leaf-list - specific value to be deleted
 					entryMap[tblKey][field]= hValue
 				} else {
-					//leaf - specific field to be deleted
-					entryMap[tblKey][field]= ""
+					// If mandatory field is getting deleted, then instead of
+					// specific field deletion, entire entry to be deleted.
+					// So need to delete dependent entries also when this entire
+					// entry is deleted. Find all dependent entries and mark
+					// for deletion
+					if isMandatoryTrueNode(tbl, field) {
+						retDepEntries := c.GetDepDataForDelete(tblKey)
+						depEntries = append(depEntries, retDepEntries...)
+					} else {
+						//leaf - specific field to be deleted
+						entryMap[tblKey][field]= ""
+					}
 				}
 			}
 			depEntries = append(depEntries, CVLDepDataForDelete{
@@ -988,8 +1018,8 @@ func (c *CVL) GetDepDataForDelete(redisKey string) ([]CVLDepDataForDelete) {
 			refEntriesJson := string(refEntries.(string))
 
 			if (refEntriesJson != "") {
-				//Add all keys whose fields to be deleted 
-				depEntries = append(depEntries, getDepDeleteField(redisKey,
+				//Add all keys whose fields to be deleted
+				depEntries = append(depEntries, c.getDepDeleteField(redisKey,
 				mFilterScript.field, mFilterScript.value, refEntriesJson)...)
 			}
 		}

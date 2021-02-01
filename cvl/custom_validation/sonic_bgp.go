@@ -150,7 +150,7 @@ func (t *CustomValidation) ValidateDisableConnectedCheck (vc *CustValidationCtxt
 
     if (vc.CurCfg.VOp == OP_DELETE) {
          return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }    
+    }
     disConnectedCheck, hasValue := vc.CurCfg.Data["disable_ebgp_connected_route_check"]
     if (hasValue && (disConnectedCheck == "true")) {
         if ((strings.Contains(vc.CurCfg.Key,"Eth")) || (strings.Contains(vc.CurCfg.Key,"Po")) ||
@@ -163,3 +163,19 @@ func (t *CustomValidation) ValidateDisableConnectedCheck (vc *CustValidationCtxt
     }
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
+
+func (t *CustomValidation) ValidateAfisafiForBackdoor (vc *CustValidationCtxt) CVLErrorInfo {
+
+    if (vc.CurCfg.VOp == OP_DELETE) {
+         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+    _, hasBackdoor := vc.CurCfg.Data["backdoor"]
+    if(hasBackdoor && (!strings.Contains(vc.CurCfg.Key,"ipv4_unicast"))) {
+        return CVLErrorInfo{
+            ErrCode: CVL_SEMANTIC_ERROR,
+            ConstraintErrMsg: "Backdoor is not supported for this family network",
+        }
+    }
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+

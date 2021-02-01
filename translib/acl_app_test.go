@@ -397,14 +397,20 @@ func Test_AclApp_Subscribe(t *testing.T) {
 // app interafce and check returned notificationInfo matches given values.
 func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*testing.T) {
 	return func(t *testing.T) {
-		nts, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		req := translateSubRequest{
+			ctxID: t.Name(),
+			path: path,
+			dbs: [db.MaxDB]*db.DB{},
+		}
+		ntfAppInfo, err := app.translateSubscribe(&req)
 		if err != nil {
 			t.Fatalf("Unexpected error processing '%s'; err=%v", path, err)
 		}
 
 		var nt *notificationAppInfo
-		if len(nts) == 1 {
-			nt = &nts[0]
+
+		if ntfAppInfo != nil && len(ntfAppInfo.ntfAppInfoTrgt) > 0 {
+			nt = ntfAppInfo.ntfAppInfoTrgt[0]
 		}
 
 		if nt == nil || nt.table.Name != oTable ||
@@ -425,11 +431,136 @@ func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*te
 // an app interafce and expects it to return an error
 func testSubsError(app appInterface, path string) func(*testing.T) {
 	return func(t *testing.T) {
-		_, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		req := translateSubRequest{
+			ctxID: t.Name(),
+			path: path,
+			dbs: [db.MaxDB]*db.DB{},
+		}
+		_, err := app.translateSubscribe(&req)
 		if err == nil {
 			t.Fatalf("Expected error for path '%s'", path)
 		}
 	}
+}
+
+func Test_AclApp_OnChange_Cache_Diff(t *testing.T) {
+	aclUrl := "/openconfig-acl:acl/acl-sets/acl-set[name=MyACL5][type=ACL_IPV4]"
+	t.Run("Create_Acl", processSetRequest(aclUrl, oneAclCreateJsonRequest, "POST", false))
+
+	aclTs := &db.TableSpec{Name: ACL_TABLE}
+
+	d := getConfigDb()
+	d.RegisterTableForOnChangeCaching(aclTs)
+
+	// Perform GetEntry to get ACL in db Cache
+	_, e := d.GetEntry(aclTs, asKey("MyACL5"))
+	if e != nil {
+		t.Fatalf("Unexpected error for GetEntry(ACL_TABLE, MyACL5) err=%v", e)
+	}
+
+	// Create new instance of config DB for modifying ACL
+	newDb := getConfigDb()
+	aclCopy, e := newDb.GetEntry(aclTs, asKey("MyACL5"))
+	if e != nil {
+		t.Fatalf("Unexpected error for GetEntry(ACL_TABLE, MyACL5) err=%v", e)
+	}
+
+	// test field addition
+	t.Run("On_Change_Cache_Field_Addition", func(t *testing.T) {
+		aclCopy.Set("stage", "INGRESS")
+		newDb.ModEntry(aclTs, asKey("MyACL5"), aclCopy)
+		cacheDiff, _ := d.DiffAndMergeOnChangeCache(aclTs, asKey("MyACL5"), false)
+		t.Logf("CacheDiff on field addition: %v\n", cacheDiff)
+		if cacheDiff.UpdatedFields[0] != "stage" {
+			t.Fatalf("Field Addition in OnChangeCaching NOT working. UpdatedFields=%v", cacheDiff.UpdatedFields)
+		}
+	})
+
+	// test field updation
+	t.Run("On_Change_Cache_Field_Updation", func(t *testing.T) {
+		aclCopy.Set("policy_desc", "DescriptionChanged")
+		newDb.ModEntry(aclTs, asKey("MyACL5"), aclCopy)
+		cacheDiff, _ := d.DiffAndMergeOnChangeCache(aclTs, asKey("MyACL5"), false)
+		t.Logf("CacheDiff on field Updation: %v\n", cacheDiff)
+		if cacheDiff.UpdatedFields[0] != "policy_desc" {
+			t.Fatalf("Field Updation in OnChangeCaching NOT working. UpdatedFields=%v", cacheDiff.UpdatedFields)
+		}
+	})
+
+	// test field deletion
+	t.Run("On_Change_Cache_Field_Deletion", func(t *testing.T) {
+		aclCopy.Remove("stage")
+		newDb.SetEntry(aclTs, asKey("MyACL5"), aclCopy)
+		cacheDiff, _ := d.DiffAndMergeOnChangeCache(aclTs, asKey("MyACL5"), false)
+		t.Logf("CacheDiff on field deletion: %v\n", cacheDiff)
+		if cacheDiff.DeletedFields[0] != "stage" && len(cacheDiff.UpdatedFields) != 0 {
+			t.Fatalf("Field Deletion in OnChangeCaching NOT working. DeletedFields=%v", cacheDiff.DeletedFields)
+		}
+	})
+
+	// test field update and field add
+	t.Run("On_Change_Cache_Field_Update_Add", func(t *testing.T) {
+		aclCopy.Set("stage", "EGRESS")
+		aclCopy.Set("policy_desc", "New ACL Description")
+		newDb.ModEntry(aclTs, asKey("MyACL5"), aclCopy)
+		cacheDiff, _ := d.DiffAndMergeOnChangeCache(aclTs, asKey("MyACL5"), false)
+		t.Logf("CacheDiff on field update and add: %v\n", cacheDiff)
+		if len(cacheDiff.UpdatedFields) < 2 {
+			t.Fatalf("Field Update and Add in OnChangeCaching NOT working. UpdatedFields=%v", cacheDiff.UpdatedFields)
+		}
+	})
+
+	// test field update and field delete
+	t.Run("On_Change_Cache_Field_Update_Delete", func(t *testing.T) {
+		aclCopy.Remove("policy_desc")
+		aclCopy.Set("stage", "INGRESS")
+		newDb.SetEntry(aclTs, asKey("MyACL5"), aclCopy)
+		cacheDiff, _ := d.DiffAndMergeOnChangeCache(aclTs, asKey("MyACL5"), false)
+		t.Logf("CacheDiff on field update and delete: %v\n", cacheDiff)
+		if cacheDiff.DeletedFields[0] != "policy_desc" && cacheDiff.UpdatedFields[0]!= "stage" {
+			t.Fatalf("Field Update and Delete in OnChangeCaching NOT working. DeletedFields=%v, UpdatedFields=%v", cacheDiff.DeletedFields, cacheDiff.UpdatedFields)
+		}
+	})
+
+	// test field add and field delete
+	t.Run("On_Change_Cache_Field_Add_Delete", func(t *testing.T) {
+		aclCopy.Remove("stage")
+		aclCopy.Set("ports@", "Ethernet0")
+		newDb.SetEntry(aclTs, asKey("MyACL5"), aclCopy)
+		cacheDiff, _ := d.DiffAndMergeOnChangeCache(aclTs, asKey("MyACL5"), false)
+		t.Logf("CacheDiff on field add and delete: %v\n", cacheDiff)
+		if cacheDiff.DeletedFields[0] != "stage" && cacheDiff.UpdatedFields[0] != "ports@" {
+			t.Fatalf("Field Add and Delete in OnChangeCaching NOT working. DeletedFields=%v, UpdatedFields=%v", cacheDiff.DeletedFields, cacheDiff.UpdatedFields)
+		}
+	})
+
+	// test entry Delete
+	t.Run("On_Change_Cache_Entry_Delete", func(t *testing.T) {
+		newDb.DeleteEntry(aclTs, asKey("MyACL5"))
+		cacheDiff, _ := d.DiffAndMergeOnChangeCache(aclTs, asKey("MyACL5"), true)
+		t.Logf("CacheDiff on entry delete: %v\n", cacheDiff)
+		if !cacheDiff.EntryDeleted && cacheDiff.UpdatedEntry != nil {
+			t.Fatal("Entry Deletion in OnChangeCaching NOT working")
+		}
+	})
+
+	// test entry Create
+	t.Run("On_Change_Cache_Entry_Create", func(t *testing.T) {
+		newAcl := db.Value{Field: make(map[string]string)}
+		newAcl.Set("type", "L3")
+		newAcl.Set("policy_desc", "Policy Description")
+		newAcl.Set("ports@", "Ethernet4")
+		newAcl.Set("stage", "EGRESS")
+		newDb.SetEntry(aclTs, asKey("MyACL5"), newAcl)
+		cacheDiff, _ := d.DiffAndMergeOnChangeCache(aclTs, asKey("MyACL5"), false)
+		t.Logf("CacheDiff on entry add: %v\n", cacheDiff)
+		if !cacheDiff.EntryCreated && cacheDiff.UpdatedEntry == nil {
+			t.Fatal("Entry Addition in OnChangeCaching NOT working")
+		}
+	})
+
+	// Cleanup
+	t.Run("Delete_Acl", processDeleteRequest(aclUrl))
 }
 
 /***************************************************************************/

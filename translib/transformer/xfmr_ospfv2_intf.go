@@ -17,6 +17,7 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "unsafe"
     "fmt"
 )
@@ -31,33 +32,175 @@ func init () {
 }
 
 
-func ospfGetIntfUriAndNativeName(inParams *XfmrParams) (string, string, error) {
+func getInterfaceNameSplits(inputIfName string) (string, string) {
+   ifName := inputIfName
+   subIfStr := ""
 
-    pathInfo := NewPathInfo(inParams.uri)
+   if (strings.Contains(inputIfName, ".")) {
+       ifNameParts := strings.Split(inputIfName, ".")
+       ifName = ifNameParts[0]
+       if (len(ifNameParts) >= 2) {
+           subIfStr = ifNameParts[1]
+       }
+   } 
 
-    uriIfName := pathInfo.Var("name")
-    if (uriIfName == "") {
+   log.Infof("getInterfaceNameSplits: inputIfName %s ifName %s subIfStr %s", 
+                                        inputIfName, ifName, subIfStr)
+
+   return ifName, subIfStr
+}
+
+func getUriIfName(inputUri string) (string, string, string, uint32, error) {
+
+    pathInfo := NewPathInfo(inputUri)
+    ifName := pathInfo.Var("name")
+    subIfStr :=  pathInfo.Var("index")
+
+    if (ifName == "") {
         errStr := "URI does not have interface name"
-        log.Info("ospfGetIntfUriAndNativeName: " + errStr)
-        return "", "", tlerr.New(errStr)
+        log.Info("getUriIfName: " + errStr)
+        return "", "", "", 0, tlerr.New(errStr)
     }
 
-    ifName, err := ospfGetNativeIntfName(uriIfName)
-    if (err != nil) {
-        errStr := "Invalid URI interface name " + uriIfName
-        log.Info("ospfGetIntfUriAndNativeName: " + errStr)
-        return  "", "", tlerr.New(errStr)
+    uriIfName := ifName
+    subIfIndex := uint32(0)
+
+    if (subIfStr != "0" && subIfStr != "") {
+        subIfIndex1, _ := strconv.Atoi(subIfStr)
+        subIfIndex = uint32(subIfIndex1)
+        uriIfName = ifName + "." + subIfStr
+    } else {
+        subIfStr = ""
     }
 
-    intfType, _, ierr := getIntfTypeByName(ifName)
-    if intfType == IntfTypeUnset || ierr != nil {
-        errStr := "Invalid native interface type " + ifName
-        log.Info("ospfGetIntfUriAndNativeName: " + errStr)
-        return  "", "", tlerr.New(errStr)
+    log.Infof("getUriIfName: uriIfName %s ifName %s subIfStr %s subIfIndex %d.",
+                             uriIfName, ifName, subIfStr, subIfIndex)
+
+    return uriIfName, ifName, subIfStr, subIfIndex, nil
+}
+
+func getInParamIfName(inParams *XfmrParams) (string, string, string, uint32, error) {
+    //for now uru, later try to get it from ygot object too
+    return getUriIfName(inParams.uri)
+}
+
+
+func getNativeInterfaceName(inputIfName string) (string, string, string, uint32, error) {
+    var errStr string
+
+    if (inputIfName == "" ) {
+        errStr = "Empty interface name received"
+        log.Infof("getNativeInterfaceName: %s.", errStr)
+        return "", "", "", 0, errors.New(errStr)
+    }
+ 
+    nonPhyIntfPrefixes := []string { "Vlan", "VLAN", "vlan", "VLINK" }
+ 
+    for _, intfPrefix := range nonPhyIntfPrefixes {
+        if (strings.HasPrefix(inputIfName, intfPrefix)) {
+            log.Infof("getNativeInterfaceName: non physical interface %s.", inputIfName)
+            return inputIfName, inputIfName, "", 0, nil
+        }
+    }
+ 
+    if (!utils.IsAliasModeEnabled()) {
+        if (strings.Contains(inputIfName,"/")) {
+            errStr = "Invalid portname " + inputIfName + ", standard interface naming not enabled"
+            log.Infof("getNativeInterfaceName: %s.", errStr)
+            return inputIfName, inputIfName, "", 0, errors.New(errStr)
+        }
     }
 
-    log.Infof("ospfGetIntfUriAndNativeName: uriIntf %s nativeIntf %s", uriIfName, ifName)
-    return uriIfName, ifName, nil
+    nativeIfNamePtr := utils.GetNativeNameFromUIName(&inputIfName)
+    if (nativeIfNamePtr == nil) {
+        errStr = "Interface native name conversion failed"
+        log.Infof("getNativeInterfaceName: %s.", errStr)
+        return inputIfName, inputIfName, "", 0, errors.New(errStr)
+    } 
+
+    nativeIfName := *nativeIfNamePtr
+
+    ifName, subIfStr := getInterfaceNameSplits(nativeIfName)
+ 
+    subIfIndex := uint32(0)
+    if (subIfStr != "0" && subIfStr != "") {
+        subIfIndex1, _ := strconv.Atoi(subIfStr)
+        subIfIndex = uint32(subIfIndex1)
+    } else {
+        subIfStr = ""
+    }
+
+    backVerify := false
+    if (backVerify) {
+        uriFullIfName, uriIfName, _, _, err := getUserInterfaceName(nativeIfName)
+        if (err != nil) {
+            log.Error("getNativeInterfaceName: Interface name back conversion error ", err)
+            return inputIfName, inputIfName, "", 0, err
+        }
+
+        log.Infof("getNativeInterfaceName: back verify uriFullIfName %s uriIfName %s ", 
+                    uriFullIfName, uriIfName)
+
+        if (uriFullIfName != inputIfName) {
+            errStr = "Name conversion back verify mismatch, " + uriFullIfName + " vs " + "inputIfName"
+            log.Error("getNativeInterfaceName: ", errStr)
+            return inputIfName, inputIfName, "", 0, errors.New(errStr)
+        }
+    }
+
+    log.Infof("getNativeInterfaceName: inputIfName %s nativeIfName %s ifName %s subIfStr %s subIfIndex %d.", 
+                                       inputIfName, nativeIfName, ifName, subIfStr, subIfIndex)
+
+    return nativeIfName, ifName, subIfStr, subIfIndex, nil
+}
+
+
+func getUserInterfaceName(inputIfName string) (string, string, string, uint32, error) {
+    var errStr string
+
+    if (inputIfName == "" ) {
+        errStr = "Empty interface name received"
+        log.Infof("getUserInterfaceName: %s.", errStr)
+        return inputIfName, "", "", 0, errors.New(errStr)
+    }
+
+    nonPhyIntfPrefixes := []string { "Vlan", "VLAN", "vlan", "VLINK" }
+    for _, intfPrefix := range nonPhyIntfPrefixes {
+        if (strings.HasPrefix(inputIfName, intfPrefix)) {
+            log.Infof("getUserInterfaceName: non physical interface %s, return same name.", inputIfName)
+            return inputIfName, inputIfName, "", 0,  nil
+        }
+    }
+
+    userIfNamePtr := utils.GetUINameFromNativeName(&inputIfName)
+    if (userIfNamePtr == nil) {
+        errStr = "Interface user interface name conversion failed"
+        log.Infof("getUserInterfaceName: %s.", errStr)
+        return inputIfName, inputIfName, "", 0, errors.New(errStr)
+    }
+
+    uiIfName := *userIfNamePtr
+
+    //hack for bug in utils.GetUINameFromNativeName when UI name passed
+    uiIfName = strings.ReplaceAll(uiIfName, "Etherneternet", "Ethernet")
+    uiIfName = strings.ReplaceAll(uiIfName, "PortChannelrtChannel", "PortChannel")
+ 
+    ifName, subIfStr := getInterfaceNameSplits(uiIfName)
+ 
+    subIfIndex := uint32(0)
+    if (subIfStr != "0" && subIfStr != "") {
+        subIfIndex1, _ := strconv.Atoi(subIfStr)
+        subIfIndex = uint32(subIfIndex1)
+    } else {
+        subIfStr = ""
+    }
+
+    //log.V(3).Infof
+    log.Infof("getUserInterfaceName: inputIfName %s uiIfName %s ifName %s subIfStr %s subIfIndex %d", 
+                                           inputIfName, uiIfName, ifName, subIfStr, subIfIndex)
+ 
+    //returns name like Ethernet28.10
+    return uiIfName, ifName, subIfStr, subIfIndex, nil
 }
 
 func ospfGetIntfOspfObject(inParams *XfmrParams, inIfName string)(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2, string, bool, error) {
@@ -66,22 +209,25 @@ func ospfGetIntfOspfObject(inParams *XfmrParams, inIfName string)(*ocbinds.Openc
     log.Infof("ospfGetIntfOspfObject: get ospf interface %s.", inIfName)
     objKey := ""
 
-    uriIfName, ifName, err := ospfGetIntfUriAndNativeName(inParams)
+    _, uriIfName, subIfStr, subIfIndex, err := getInParamIfName(inParams)
     if (err != nil) {
         log.Info("ospfGetIntfOspfObject: uri and native if get failed")
         return nil, objKey, false, err
     }
 
-    objKey = ifName
+    objKey = uriIfName 
+    if (subIfStr != "") {
+        objKey = uriIfName + "." + subIfStr
+    }
 
-    if (inIfName != "" && ifName != inIfName) {
+    if (inIfName != "" && uriIfName != inIfName) {
         errStr := "Uri interface is " + uriIfName + "and not " + inIfName
         log.Info("ospfGetIntfOspfObject: " + errStr)
         return nil, objKey, false, tlerr.New(errStr)
     }
 
     routedVlan := false
-    if (strings.HasPrefix(ifName, "Vlan")) {
+    if (strings.HasPrefix(uriIfName, "Vlan")) {
         routedVlan = true
     }
 
@@ -106,12 +252,12 @@ func ospfGetIntfOspfObject(inParams *XfmrParams, inIfName string)(*ocbinds.Openc
             return nil, objKey, true, nil
         }
 
-        if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+        if _, ok := intfObj.Subinterfaces.Subinterface[subIfIndex]; !ok {
             log.Info("ospfGetIntfOspfObject: SubInterface node is not set")
             return nil, objKey, true, nil
         }
 
-        subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+        subIntfObj := intfObj.Subinterfaces.Subinterface[subIfIndex]
         ipv4Obj := subIntfObj.Ipv4
 
         if (ipv4Obj == nil) {
@@ -147,7 +293,7 @@ func ospfGetIntfOspfObject(inParams *XfmrParams, inIfName string)(*ocbinds.Openc
         ending = true
     }
 
-    log.Infof("ospfGetIntfOspfObject: found intf %s ending %t", ifName, ending)
+    log.Infof("ospfGetIntfOspfObject: found intf %s ending %t", uriIfName, ending)
     return intfOspfObj, objKey, ending, nil
 }
 
@@ -223,7 +369,7 @@ func ospfGetIntfOspfAddresssObject(inParams *XfmrParams, ifName string, ifAddres
     return intfAddrObj, objKey, ending, nil
 }
 
-func ospfFillIntfOspfObject(inParams *XfmrParams, uriIfName string)(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2, string, error) {
+func ospfFillIntfOspfObject(inParams *XfmrParams, uriIfName string, subIfStr string)(*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2, string, error) {
     var err error
     var ok bool
 
@@ -288,8 +434,15 @@ func ospfFillIntfOspfObject(inParams *XfmrParams, uriIfName string)(*ocbinds.Ope
         ospfObj = (*ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Ospfv2)(unsafe.Pointer(ipv4Obj.Ospfv2))
 
     } else {
-        if subIntfObj, ok = intfObj.Subinterfaces.Subinterface[0]; !ok {
-            subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(0)
+
+        subIfIndex := uint32(0)
+        if (subIfStr != "0" && subIfStr != "") {
+            subIfIndex1, _ := strconv.Atoi(subIfStr)
+            subIfIndex = uint32(subIfIndex1)
+        }
+
+        if subIntfObj, ok = intfObj.Subinterfaces.Subinterface[subIfIndex]; !ok {
+            subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(subIfIndex)
             if err != nil {
                 log.Error("ospfFillIntfOspfObject: Creation of subinterface subtree failed!")
                 return nil, "", err
@@ -323,22 +476,21 @@ var Subscribe_ospfv2_interface_subtree_xfmr = func(inParams XfmrSubscInParams) (
 
     var err error
     var result XfmrSubscOutParams
-    var ifName string
 
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_ospfv2_interface_subtree_xfmr: pathInfo ", pathInfo)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
-    uriIfName := pathInfo.Var("name")
+    uriFullIfName, uriIfName, _, _, _ := getUriIfName(inParams.uri)
     if uriIfName == "" {
         errStr := "Empty OSPFv2 interface name"
         log.Info("Subscribe_ospfv2_interface_subtree_xfmr: " + errStr)
         return result, tlerr.New(errStr)
     }
 
-    ifName, err = ospfGetNativeIntfName(uriIfName)
+    nativeIfName, _, _, _, err := getNativeInterfaceName(uriFullIfName)
     if (err != nil) {
         errStr := "Invalid OSPFv2 interface name"
         log.Info("Subscribe_ospfv2_interface_subtree_xfmr: " + errStr + " " + uriIfName)
@@ -353,8 +505,8 @@ var Subscribe_ospfv2_interface_subtree_xfmr = func(inParams XfmrSubscInParams) (
     }
 
     ospfIntfTbl := "OSPFV2_INTERFACE"
-    ospfIntfTblKey := ifName + "|" + ifAddress
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {ospfIntfTbl:{ospfIntfTblKey:{}}}}
+    ospfIntfTblKey := nativeIfName + "|" + ifAddress
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {ospfIntfTbl:{ospfIntfTblKey:{}}}}
 
     log.Info("Subscribe_ospfv2_interface_subtree_xfmr: ospfIntfTblKey " + ospfIntfTblKey)
     return result, nil
@@ -373,17 +525,23 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
         return ospfRespMap, err
     }
 
-    uriIfName, ifName, err := ospfGetIntfUriAndNativeName(&inParams)
+    uriFullIfName, uriIfName, _, _, err := getInParamIfName(&inParams)
     if (err != nil) {
-        log.Info("YangToDb_ospfv2_interface_subtree_xfmr: uri and native if get failed")
+        log.Info("YangToDb_ospfv2_interface_subtree_xfmr: getInParamIfName failed")
         return ospfRespMap, err
     }
 
-    log.Infof("YangToDb_ospfv2_interface_subtree_xfmr: uriIfName %s ifNAme %s", uriIfName, ifName)
+    nativeIfName, _, _, _, err := getNativeInterfaceName(uriFullIfName)
+    if (err != nil) {
+        log.Info("YangToDb_ospfv2_interface_subtree_xfmr: getNativeInterfaceName failed")
+        return ospfRespMap, err
+    }
+
+    log.Infof("YangToDb_ospfv2_interface_subtree_xfmr: uriIfName %s nativeIfName %s", uriIfName, nativeIfName)
     rcvdUri, _ := getOspfUriPath(&inParams)
 
     routedVlan := false
-    if (strings.HasPrefix(ifName, "Vlan")) {
+    if (strings.HasPrefix(nativeIfName, "Vlan")) {
         routedVlan = true
     }
 
@@ -395,7 +553,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
     if (ospfObj == nil || ending) {
         if (deleteOperation) {
-            err = ospf_delete_all_interface_config(&inParams, ifName, "*", &ospfRespMap)
+            err = ospf_delete_all_interface_config(&inParams, nativeIfName, "*", &ospfRespMap)
             return ospfRespMap, err
         }
         return ospfRespMap, nil
@@ -403,20 +561,20 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
     tempWord := false
     if (tempWord) {
-        ospfGetIntfOspfAddresssObject(&inParams, ifName, "")
+        ospfGetIntfOspfAddresssObject(&inParams, uriIfName, "")
     }
 
     if (ospfObj.IfAddresses == nil || len(ospfObj.IfAddresses) < 1) {
         errStr := "Ospfv2 IfAddresses is not set"
         log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
         if (deleteOperation) {
-            err = ospf_delete_all_interface_config(&inParams, ifName, "*", &ospfRespMap)
+            err = ospf_delete_all_interface_config(&inParams, nativeIfName, "*", &ospfRespMap)
             return ospfRespMap, err
         }
         return ospfRespMap, errors.New(errStr)
     }
 
-    intfVrfName, _ := get_interface_vrf(&inParams, ifName)
+    intfVrfName, _ := get_interface_vrf(&inParams, nativeIfName)
 
     intfTblName := "OSPFV2_INTERFACE"
     areaTblName := "OSPFV2_ROUTER_AREA"
@@ -430,7 +588,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
     for intfAddrKey, intfAddrObj := range ospfObj.IfAddresses {
 
-        intfTblKey := ifName + "|" + intfAddrKey
+        intfTblKey := nativeIfName + "|" + intfAddrKey
         ospfCfgObj := intfAddrObj.Config
         ospfRVlanCfgObj := (*ocbinds.OpenconfigInterfaces_Interfaces_Interface_RoutedVlan_Ipv4_Ospfv2_IfAddresses_Config)(unsafe.Pointer(ospfCfgObj))
 
@@ -495,7 +653,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
                      if (dbVlaueStr != "NULL") {
 
-                         rtrPresent, _ := ospf_router_present_for_interface(&inParams, ifName)
+                         rtrPresent, _ := ospf_router_present_for_interface(&inParams, nativeIfName)
                          if (!rtrPresent) {
                              errStr := "Area configuration not allowed without OSPF router config"
                              log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
@@ -511,7 +669,7 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
                              }
                          }
 
-                         areaNwCfgPresent, err := ospf_area_network_present_for_interface_vrf(&inParams, ifName)
+                         areaNwCfgPresent, err := ospf_area_network_present_for_interface_vrf(&inParams, nativeIfName)
                          if (err != nil) {
                              errStr := "Internal Error: Network area table access failed"
                              log.Info("YangToDb_ospfv2_interface_subtree_xfmr: " + errStr)
@@ -813,15 +971,25 @@ var YangToDb_ospfv2_interface_subtree_xfmr SubTreeXfmrYangToDb = func(inParams X
 
 var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (error) {
     var err error
-    var ifName string
 
     pathInfo := NewPathInfo(inParams.uri)
-    uriIfName := pathInfo.Var("name")
+    subIfStr := pathInfo.Var("index")
 
     log.Info("DbToYang_ospfv2_interface_subtree_xfmr: --------Start------")
-    log.Info("DbToYang_ospfv2_interface_subtree_xfmr: uriIfName ", uriIfName)
     log.Info("DbToYang_ospfv2_interface_subtree_xfmr: param uri ", inParams.uri)
     log.Info("DbToYang_ospfv2_interface_subtree_xfmr: pathInfo ", pathInfo)
+
+    uriFullIfName, uriIfName, _, _, err := getInParamIfName(&inParams)
+    if (err != nil) {
+        log.Info("DbToYang_ospfv2_interface_subtree_xfmr: getInParamIfName failed")
+        return err
+    }
+
+    nativeIfName, _, _, _, err := getNativeInterfaceName(uriFullIfName)
+    if (err != nil) {
+        log.Info("DbToYang_ospfv2_interface_subtree_xfmr: getNativeInterfaceName failed")
+        return err
+    }
 
     rcvdUri, _ := getOspfUriPath(&inParams)
 
@@ -830,7 +998,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
         routedVlan = true
     }
 
-    ospfObj, _, err := ospfFillIntfOspfObject(&inParams, uriIfName)
+    ospfObj, _, err := ospfFillIntfOspfObject(&inParams, uriIfName, subIfStr)
     if (ospfObj == nil || err != nil){
         log.Info("DbToYang_ospfv2_interface_subtree_xfmr: Failed to fill ospf object")
         return err
@@ -885,15 +1053,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
         return err
     }
 
-
-    ifName, err = ospfGetNativeIntfName(uriIfName)
-    if (err != nil) {
-        errStr := "Invalid OSPF interface name"
-        log.Info("DbToYang_ospfv2_interface_subtree_xfmr: " + errStr + " " + uriIfName)
-        return tlerr.New(errStr)
-    }
-
-    log.Info("DbToYang_ospfv2_interface_subtree_xfmr: Native ifName ", ifName)
+    log.Info("DbToYang_ospfv2_interface_subtree_xfmr: nativeIfName ", nativeIfName)
 
     fieldNameList := []string { "area-id", "authentication-type", "authentication-key", "bfd-enable",
                                 "dead-interval", "dead-interval-minimal", "hello-interval", "hello-multiplier",
@@ -908,7 +1068,7 @@ var DbToYang_ospfv2_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams X
         keyIfName := intfTblKey.Get(0)
         keyIfAddress := intfTblKey.Get(1)
 
-        if len(ifName) != 0 && ifName != keyIfName {
+        if len(nativeIfName) != 0 && nativeIfName != keyIfName {
            continue
         }
 
@@ -1481,22 +1641,21 @@ var Subscribe_ospfv2_interface_md_auth_subtree_xfmr = func(inParams XfmrSubscInP
 
     var err error
     var result XfmrSubscOutParams
-    var ifName string
 
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_ospfv2_interface_md_auth_subtree_xfmr: pathInfo ", pathInfo)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
-    uriIfName := pathInfo.Var("name")
+    uriFullIfName, uriIfName, _, _, _ := getUriIfName(inParams.uri)
     if uriIfName == "" {
         errStr := "Empty OSPFv2 interface name"
         log.Info("Subscribe_ospfv2_interface_md_auth_subtree_xfmr: " + errStr)
         return result, tlerr.New(errStr)
     }
 
-    ifName, err = ospfGetNativeIntfName(uriIfName)
+    nativeIfName, _, _, _, err := getNativeInterfaceName(uriFullIfName)
     if (err != nil) {
         errStr := "Invalid OSPFv2 interface name"
         log.Info("Subscribe_ospfv2_interface_md_auth_subtree_xfmr: " + errStr + " " + uriIfName)
@@ -1518,8 +1677,8 @@ var Subscribe_ospfv2_interface_md_auth_subtree_xfmr = func(inParams XfmrSubscInP
     }
 
     ospfIntfAuthTbl := "OSPFV2_INTERFACE_MD_AUTHENTICATION"
-    ospfIntfAuthTblKey := ifName + "|" + ifAddress + "|" + authKeyId
-    result.dbDataMap = RedisDbMap{db.ConfigDB: {ospfIntfAuthTbl:{ospfIntfAuthTblKey:{}}}}
+    ospfIntfAuthTblKey := nativeIfName + "|" + ifAddress + "|" + authKeyId
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {ospfIntfAuthTbl:{ospfIntfAuthTblKey:{}}}}
 
     log.Info("Subscribe_ospfv2_interface_md_auth_subtree_xfmr: ospfIntfAuthTblKey ", ospfIntfAuthTblKey)
     return result, nil
@@ -1540,13 +1699,19 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
         return ospfRespMap, err
     }
 
-    uriIfName, ifName, err := ospfGetIntfUriAndNativeName(&inParams)
+    uriFullIfName, uriIfName, _, _, err := getInParamIfName(&inParams)
     if (err != nil) {
-        log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: uri and native if get failed")
+        log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: getInParamIfName failed")
         return ospfRespMap, err
     }
 
-    log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: uriIfName %s ifNAme %s", uriIfName, ifName)
+    nativeIfName, _, _, _, err := getNativeInterfaceName(uriFullIfName)
+    if (err != nil) {
+        log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: getNativeInterfaceName failed")
+        return ospfRespMap, err
+    }
+
+    log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: uriIfName %s nativeIfName %s", uriIfName, nativeIfName)
     rcvdUri, _ := getOspfUriPath(&inParams)
 
     ospfObj, _, ending, err := ospfGetIntfOspfObject(&inParams, "")
@@ -1557,7 +1722,7 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
 
     if (ospfObj == nil || ending) {
         if (deleteOperation) {
-            err = ospf_delete_all_interface_md_auth_config(&inParams, ifName, "*", &ospfRespMap)
+            err = ospf_delete_all_interface_md_auth_config(&inParams, nativeIfName, "*", &ospfRespMap)
             return ospfRespMap, err
         }
         return ospfRespMap, nil
@@ -1567,7 +1732,7 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
         errStr := "Ospfv2 IfAddresses is not set"
         log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: " + errStr)
         if (deleteOperation) {
-            err = ospf_delete_all_interface_md_auth_config(&inParams, ifName, "*", &ospfRespMap)
+            err = ospf_delete_all_interface_md_auth_config(&inParams, nativeIfName, "*", &ospfRespMap)
             return ospfRespMap, err
         }
         return ospfRespMap, errors.New(errStr)
@@ -1584,7 +1749,7 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
 
         if (intfAddrObj.MdAuthentications == nil || len(intfAddrObj.MdAuthentications.MdAuthentication) < 1) {
             if (deleteOperation) {
-                err := ospf_delete_all_interface_md_auth_config(&inParams, ifName, intfAddrKey, &ospfRespMap)
+                err := ospf_delete_all_interface_md_auth_config(&inParams, nativeIfName, intfAddrKey, &ospfRespMap)
                 if (err != nil) {
                     log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: all auth del failed")
                     return ospfRespMap, err
@@ -1593,7 +1758,7 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
             continue
         }
 
-        intfTblKey := ifName + "|" + intfAddrKey
+        intfTblKey := nativeIfName + "|" + intfAddrKey
 
         intfEntryPresent := true
         _, err := ospf_get_table_entry(&inParams, intfTblName, intfTblKey) //intfTblEntry
@@ -1614,7 +1779,7 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
         for intfAuthKeyId, intfAuthObj := range intfAuthObjList {
 
             intfAuthKeyIdStr := strconv.Itoa(int(intfAuthKeyId))
-            intfAuthTblKey := ifName + "|" + intfAddrKey + "|" + intfAuthKeyIdStr
+            intfAuthTblKey := nativeIfName + "|" + intfAddrKey + "|" + intfAuthKeyIdStr
             ospfAuthCfgObj := intfAuthObj.Config
 
             log.Info("YangToDb_ospfv2_interface_md_auth_subtree_xfmr: intfAuthTblKey is ",intfAuthTblKey)
@@ -1775,15 +1940,25 @@ var YangToDb_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrYangToDb = func(in
 
 var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (error) {
     var err error
-    var ifName string
+    var nativeIfName string
 
     pathInfo := NewPathInfo(inParams.uri)
-    uriIfName := pathInfo.Var("name")
 
     log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: --------db if md auth------")
-    log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: uriIfName ", uriIfName)
     log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: param uri ", inParams.uri)
     log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: pathInfo ", pathInfo)
+
+    uriFullIfName, uriIfName, _, _, err := getInParamIfName(&inParams)
+    if (err != nil) {
+        log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: getInParamIfName failed")
+        return err
+    }
+
+    nativeIfName, _, subIfStr, _, err := getNativeInterfaceName(uriFullIfName)
+    if (err != nil) {
+        log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: getNativeInterfaceName failed")
+        return err
+    }
 
     routedVlan := false
     if (strings.HasPrefix(uriIfName, "Vlan")) {
@@ -1791,7 +1966,7 @@ var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(in
     }
     log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: routedVlan ", routedVlan)
 
-    ospfObj, _, err := ospfFillIntfOspfObject(&inParams, uriIfName)
+    ospfObj, _, err := ospfFillIntfOspfObject(&inParams, uriIfName, subIfStr)
     if (ospfObj == nil || err != nil){
         log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: Failed to fill ospf object")
         return err
@@ -1834,14 +2009,7 @@ var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(in
         return err
     }
 
-    ifName, err = ospfGetNativeIntfName(uriIfName)
-    if (err != nil) {
-        errStr := "Invalid OSPF interface name"
-        log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: " + errStr + " " + uriIfName)
-        return tlerr.New(errStr)
-    }
-
-    log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: Native ifName ", ifName)
+    log.Info("DbToYang_ospfv2_interface_md_auth_subtree_xfmr: Native nativeIfName ", nativeIfName)
 
     readFieldNameList := []string { "authentication-md5-key" } //, "authentication-key-encrypted" }
 
@@ -1853,7 +2021,7 @@ var DbToYang_ospfv2_interface_md_auth_subtree_xfmr SubTreeXfmrDbToYang = func(in
         keyIfAddress := intfTblKey.Get(1)
         keyIfKeyId := intfTblKey.Get(2)
 
-        if (ifName != "" && ifName != keyIfName) {
+        if (nativeIfName != "" && nativeIfName != keyIfName) {
             continue
         }
 
@@ -1977,14 +2145,14 @@ func ospf_interface_config_present(inParams *XfmrParams, ifName string) (bool) {
         return false
     }
 
-    ifName, err = ospfGetNativeIntfName(ifName)
+    nativeIfName, _, _, _, err := getNativeInterfaceName(ifName)
     if (err != nil) {
         log.Error("ospf_interface_config_present: get native interface name failed")
         return false
     }
 
     intfTblName := "OSPFV2_INTERFACE"
-    intfTblKey := ifName + "|" + "*"
+    intfTblKey := nativeIfName + "|" + "*"
 
     ignoreFieldMap := []string { "enable", "authentication-key-encrypted", "dead-interval-minimal" }
 
@@ -1995,7 +2163,7 @@ func ospf_interface_config_present(inParams *XfmrParams, ifName string) (bool) {
     }
 
     intfAuthTblName := "OSPFV2_INTERFACE_MD_AUTHENTICATION"
-    intfAuthTblKey := ifName + "|" + "*" + "|" + "*"
+    intfAuthTblKey := nativeIfName + "|" + "*" + "|" + "*"
 
     ignoreFieldMap = []string { "enable", "authentication-key-encrypted" }
 
