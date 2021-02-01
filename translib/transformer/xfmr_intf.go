@@ -347,8 +347,10 @@ var intf_pre_xfmr PreXfmrFunc = func(inParams XfmrParams) (error) {
         if log.V(3) {
             log.Info("intf_pre_xfmr:- Request URI path = ", requestUriPath)
         }
-        errStr := "Operation: "+strconv.Itoa(inParams.oper)+" not supported for this path - "
-
+        errStr := "Delete operation not supported for this path - "
+        if inParams.oper == REPLACE {
+            errStr = "Replace operation not supported for this path - "
+        }
         switch requestUriPath {
             case "/openconfig-interfaces:interfaces":
                 errStr += requestUriPath
