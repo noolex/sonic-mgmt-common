@@ -430,7 +430,8 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 						// to add the db field which are same as yang leaf/leaf-list nodes
 						if (ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList()) && !(yangNodes[ygXpathInfo.yangEntry.Name]) {
 							log.Info("handleSubtreeNodeXlate: target: LEAF: adding default leaf node: ", ygXpathInfo.yangEntry.Name)
-							dbYgPath.DbFldYgPathMap[ygXpathInfo.yangEntry.Name] = ygXpathInfo.yangEntry.Name
+							dbYgPath.DbFldYgPathMap[ygXpathInfo.yangEntry.Name] = ""
+							dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
 						} else {
 							for ygNodeName, ygLeafEntry := range ygXpathInfo.yangEntry.Dir {
 								log.Info("handleSubtreeNodeXlate: traversing yang node: ", ygNodeName)
