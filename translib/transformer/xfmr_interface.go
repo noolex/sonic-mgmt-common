@@ -120,6 +120,7 @@ type XfmrDbToYgPathParams struct {
 	dbs           [db.MaxDB]*db.DB
 	db            *db.DB
 	ygPathKeys    map[string]string //to keep translated yang keys as values for the each yang key leaf node
+	keyGroup      *[]int // key group comps -- required when db entry is a leaf-list instance
 }
 
 // KeyXfmrYangToDb type is defined to use for conversion of Yang key to DB Key,

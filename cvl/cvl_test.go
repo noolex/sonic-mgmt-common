@@ -258,7 +258,7 @@ func prepareDb() {
 //Clear all db entries which are used in the test cases.
 //The list of such db should be updated here if new
 //table is referred in any test case.
-//The test case running may fail if tables are not cleared 
+//The test case running may fail if tables are not cleared
 //prior to starting execution of test cases.
 //"DEVICE_METADATA" should not be cleaned as it is used
 //during cvl package init() phase.
@@ -529,7 +529,7 @@ func TestValidateConfig_CfgStrBuffer(t *testing.T) {
 	tests := []testStruct{}
 
 	for index, _ := range json_validate_config_data {
-		// Fetch the modelName. 
+		// Fetch the modelName.
 		result := strings.Split(json_validate_config_data[index], "{")
 		modelName := strings.Trim(strings.Replace(strings.TrimSpace(result[1]), "\"", "", -1), ":")
 
@@ -2660,7 +2660,7 @@ func TestValidateEditConfig_Delete_Entry_Then_Dep_Leafref_Positive(t *testing.T)
 
 	WriteToFile(fmt.Sprintf("\nCVL Error Info is  %v\n", cvlErrInfo))
 
-	if err != cvl.CVL_SUCCESS { //should be success 
+	if err != cvl.CVL_SUCCESS { //should be success
 		t.Errorf("Config Validation failed.")
 	}
 
@@ -2673,7 +2673,7 @@ func TestBadSchema(t *testing.T) {
 	env[0] = env[0] + " "
 
 	if _, err := os.Stat("/usr/sbin/schema"); os.IsNotExist(err) {
-		//Corrupt some schema file 
+		//Corrupt some schema file
 		exec.Command("/bin/sh", "-c", "/bin/cp testdata/schema/sonic-port.yin testdata/schema/sonic-port.yin.bad" + 
 		" && /bin/sed -i '1 a <junk>' testdata/schema/sonic-port.yin.bad").Output()
 
@@ -3380,6 +3380,51 @@ func TestGetDepTables(t *testing.T) {
 	cvl.ValidationSessClose(cvSess)
 }
 
+func TestDependentOnExtension(t *testing.T) {
+	cvSess, _ := cvl.ValidationSessOpen()
+	defer cvl.ValidationSessClose(cvSess)
+
+	// Test GetDepTables API
+	result, _ := cvSess.GetDepTables("sonic-spanning-tree", "STP_VLAN")
+	expectedResult := []string{"STP_VLAN", "VLAN", "STP", "PORT", "PORTCHANNEL"}
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
+		t.Errorf("TestDependentOnExtension: Validation of GetDepTables failed, returned value = %v", result)
+		return
+	}
+
+	// Test GetOrderedDepTables API
+	result, _ = cvSess.GetOrderedDepTables("sonic-spanning-tree", "STP")
+	expectedResult = []string{"STP_PORT", "STP_VLAN", "STP"}
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
+		t.Errorf("TestDependentOnExtension: Validation of GetOrderedDepTables failed, returned value = %v", result)
+		return
+	}
+
+	// Test GetOrderedTables API
+	result, _ = cvSess.GetOrderedTables("sonic-spanning-tree")
+	expectedResult = []string{"STP", "STP_PORT", "STP_VLAN", "STP_VLAN_PORT"}
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
+		t.Errorf("TestDependentOnExtension: Validation of GetOrderedTables failed, returned value = %v", result)
+		return
+	}
+
+	// Test SortDepTables API
+	result, _ = cvSess.SortDepTables([]string{"STP_VLAN", "STP", "STP_PORT"})
+	expectedResult = []string{"STP_VLAN", "STP_PORT", "STP"}
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
+		t.Errorf("TestDependentOnExtension: Validation of SortDepTables failed, returned value = %v", result)
+		return
+	}
+}
+
 
 func TestGetDepDataForDelete(t *testing.T) {
 	depDataMap := map[string]interface{} {
@@ -3554,7 +3599,7 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 		},
 	}
 
-	//Delete the existing entry, should succeed 
+	//Delete the existing entry, should succeed
 	cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgData1)
         if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
                 t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
