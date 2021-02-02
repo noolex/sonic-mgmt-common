@@ -1420,7 +1420,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
                 }
 	      }
 		}
-    } else if intfType != IntfTypeEthernet &&
+    } else if intfType != IntfTypeEthernet && intfType != IntfTypeMgmt &&
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
         //Checking interface type at container level, if not Ethernet type return nil
         return nil, nil
