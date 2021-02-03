@@ -367,14 +367,100 @@ func (ne *notificationEvent) process() {
 	ne.sendNotification(ne.nInfo, modFields)
 }
 
+type OnChangeCacheDiff struct {
+	UpdatedEntry	*db.Value
+	EntryCreated	bool
+	EntryDeleted	bool
+	UpdatedFields	[]string
+	DeletedFields	[]string
+}
+
+func (c *OnChangeCacheDiff) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s[%t], ", "EntryCreated", c.EntryCreated)
+	fmt.Fprintf(&b, "%s[%t], ", "EntryDeleted", c.EntryDeleted)
+	fmt.Fprintf(&b, "%s->%v, ", "UpdatedFields", c.UpdatedFields)
+	fmt.Fprintf(&b, "%s->%v, ", "DeletedFields", c.DeletedFields)
+	if c.UpdatedEntry != nil {
+		fmt.Fprintf(&b, "Entry->")
+		for k, v := range c.UpdatedEntry.Field {
+			fmt.Fprintf(&b, "%s[%s]  ", k, v)
+		}
+	}
+
+	return b.String()
+}
+
+// DiffAndMergeOnChangeCache Compare modified entry with cached entry and
+// return modified fields. Also update the cache with changes.
+func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*OnChangeCacheDiff, error) {
+	nInfo := ne.nInfo
+	ts := nInfo.table
+	d := nInfo.sInfo.dbs[nInfo.dbno]
+	key := ne.key
+	entryDeleted :=  (ne.event == db.SEventDel)
+
+	cacheEntryDiff := &OnChangeCacheDiff{}
+
+
+	cachedEntry, val, e := d.OnChangeCacheUpdate(ts, *key)
+
+	exists := !((e != nil) || (len(cachedEntry.Field) == 0))
+	if exists { // Already exists in cache
+
+		if entryDeleted {
+			// Entry deleted.
+			cacheEntryDiff.EntryDeleted = true
+			for fldName := range cachedEntry.Field {
+				cacheEntryDiff.DeletedFields = append(
+					cacheEntryDiff.DeletedFields, fldName)
+			}
+			return cacheEntryDiff, nil
+		}
+
+		cacheEntryDiff.UpdatedEntry = &val
+
+		for fldName := range cachedEntry.Field {
+			if fldName == "NULL" {
+				continue
+			}
+			if _, fldOk := val.Field[fldName]; !fldOk {
+				cacheEntryDiff.DeletedFields = append(
+					cacheEntryDiff.DeletedFields, fldName)
+				cachedEntry.Remove(fldName)
+			}
+		}
+
+		for nf, nv := range val.Field {
+			if nf == "NULL" {
+				continue
+			}
+			if cachedEntry.Field[nf] != nv {
+				cacheEntryDiff.UpdatedFields = append(
+					cacheEntryDiff.UpdatedFields, nf)
+				cachedEntry.Set(nf, nv)
+			}
+		}
+
+	} else if !entryDeleted {
+		// Not exists in cache
+		cacheEntryDiff.EntryCreated = true
+		cacheEntryDiff.UpdatedEntry = &val
+	}
+
+	log.Infof("[%s]::DiffAndMergeOnChangeCache ==> Cache Diff: %v",
+		ne.id, cacheEntryDiff)
+
+	return cacheEntryDiff, nil
+}
+
 // findModifiedFields determines db fields changed since last notification
 func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
 	nInfo := ne.nInfo
 
 	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
 	// and retrieve modified fields. Also merge changes in cache
-	d := nInfo.sInfo.dbs[nInfo.dbno]
-	entryDiff, err := d.DiffAndMergeOnChangeCache(nInfo.table, *ne.key, (ne.event == db.SEventDel))
+	entryDiff, err := ne.DiffAndMergeOnChangeCache()
 	if err != nil {
 		return nil, err
 	}

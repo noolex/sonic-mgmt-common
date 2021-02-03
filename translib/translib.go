@@ -516,7 +516,9 @@ func Get(req GetRequest) (GetResponse, error) {
 	}
 
 	isGetCase := true
-	dbs, err := getAllDbs(isGetCase)
+	isEnableCache := true
+	isSubscribeCase := false
+	dbs, err := getAllDbsC(isGetCase, isEnableCache, isSubscribeCase)
 
 	if err != nil {
 		resp = GetResponse{Payload: payload, ErrSrc: ProtoErr}
@@ -876,14 +878,13 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	}
 
 	isGetCase := true
-	dbs, err := getAllDbs(isGetCase)
+	isEnableCache := false
+	isSubscribeCase := true
+	dbs, err := getAllDbsC(isGetCase, isEnableCache, isSubscribeCase)
 
 	if err != nil {
 		return resp, err
 	}
-
-	// Enable onChange cache support on all DBs
-	enableOnChangeCaching(dbs[:])
 
 	sInfo := &subscribeInfo{syncDone: false,
 		id:   subscribeCounter.Next(),
@@ -1053,8 +1054,16 @@ func GetModels() ([]ModelData, error) {
 	return getModels(), err
 }
 
-//Creates connection will all the redis DBs. To be used for get request
+//Creates DB connection with all the redis DBs. Cache Disabled
 func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
+	return getAllDbsC(isGetCase, false, false)
+}
+
+//Creates DB connection with all the redis DBs.
+//Allow Per Connection cache enabling, if configured to do so.
+//Allow OnChange cache enabling.
+//Per Connection cache and OnChange cache are mutually exclusive.
+func getAllDbsC(isGetCase bool, isEnableCache bool, isEnableOnChange bool) ([db.MaxDB]*db.DB, error) {
 	var dbs [db.MaxDB]*db.DB
 	var err error
 	var isWriteDisabled bool
@@ -1066,7 +1075,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create Application DB connection
-	dbs[db.ApplDB], err = db.NewDB(getDBOptions(db.ApplDB, isWriteDisabled))
+	dbs[db.ApplDB], err = db.NewDB(getDBOptionsC(db.ApplDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1074,7 +1083,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create ASIC DB connection
-	dbs[db.AsicDB], err = db.NewDB(getDBOptions(db.AsicDB, isWriteDisabled))
+	dbs[db.AsicDB], err = db.NewDB(getDBOptionsC(db.AsicDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1082,7 +1091,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create Counter DB connection
-	dbs[db.CountersDB], err = db.NewDB(getDBOptions(db.CountersDB, isWriteDisabled))
+	dbs[db.CountersDB], err = db.NewDB(getDBOptionsC(db.CountersDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1090,7 +1099,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create Log Level DB connection
-	dbs[db.LogLevelDB], err = db.NewDB(getDBOptions(db.LogLevelDB, isWriteDisabled))
+	dbs[db.LogLevelDB], err = db.NewDB(getDBOptionsC(db.LogLevelDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1100,7 +1109,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	isWriteDisabled = true
 
 	//Create Config DB connection
-	dbs[db.ConfigDB], err = db.NewDB(getDBOptions(db.ConfigDB, isWriteDisabled))
+	dbs[db.ConfigDB], err = db.NewDB(getDBOptionsC(db.ConfigDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1114,7 +1123,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create Flex Counter DB connection
-	dbs[db.FlexCounterDB], err = db.NewDB(getDBOptions(db.FlexCounterDB, isWriteDisabled))
+	dbs[db.FlexCounterDB], err = db.NewDB(getDBOptionsC(db.FlexCounterDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1122,7 +1131,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create State DB connection
-	dbs[db.StateDB], err = db.NewDB(getDBOptions(db.StateDB, isWriteDisabled))
+	dbs[db.StateDB], err = db.NewDB(getDBOptionsC(db.StateDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1130,7 +1139,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create Error DB connection
-	dbs[db.ErrorDB], err = db.NewDB(getDBOptions(db.ErrorDB, isWriteDisabled))
+	dbs[db.ErrorDB], err = db.NewDB(getDBOptionsC(db.ErrorDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1150,15 +1159,6 @@ func closeAllDbs(dbs []*db.DB) {
 	}
 }
 
-// Enable onChangeCaching on DB instance
-func enableOnChangeCaching(dbs []*db.DB) {
-	for _, d := range dbs {
-		if d != nil {
-			d.Opts.OnChangeCacheEnabled = true
-		}
-	}
-}
-
 // Compare - Implement Compare method for priority queue for SubscribeResponse struct
 func (val SubscribeResponse) Compare(other queue.Item) int {
 	o := other.(*SubscribeResponse)
@@ -1171,6 +1171,10 @@ func (val SubscribeResponse) Compare(other queue.Item) int {
 }
 
 func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
+	return getDBOptionsC(dbNo, isWriteDisabled, false, false)
+}
+
+func getDBOptionsC(dbNo db.DBNum, isWriteDisabled bool, isEnableCache bool, isEnableOnChange bool) db.Options {
 	var opt db.Options
 
 	switch dbNo {
@@ -1179,6 +1183,8 @@ func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
 	case db.ConfigDB, db.StateDB, db.SnmpDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
 	}
+	opt.IsCacheEnabled = isEnableCache
+	opt.IsEnableOnChange = isEnableOnChange
 
 	return opt
 }
