@@ -92,6 +92,62 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
+func validateSubInterfaceSupport(vc *CustValidationCtxt) CVLErrorInfo {
+    if (vc.CurCfg.VOp == OP_DELETE || vc.CurCfg.VOp == OP_UPDATE) {
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    val, err := vc.RClient.HGet("DEVICE_METADATA|localhost", "platform").Result()
+    if err == nil && val == "VDI" {
+        //This platform is VDI, hence return success
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    appDBClient := util.NewDbClient("APPL_DB")
+    defer func() {
+        if (appDBClient != nil) {
+            appDBClient.Close()
+        }
+    }()
+
+    if (appDBClient != nil) {
+        key := "SWITCH_TABLE:switch"
+        subif_support, err := appDBClient.HGet(key, "subinterface_supported").Result()
+
+        if (err == nil) {
+            //subinterface_supported field is present, and it should be true
+            if (subif_support != "true") {
+                errStr := "SubInterfaces are not supported"
+                return CVLErrorInfo{
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: "SWITCH_TABLE",
+                    CVLErrDetails : errStr,
+                    ConstraintErrMsg : errStr,
+                }
+            }
+        } else {
+            //subinterface_supported field is not present, hence not supported
+            errStr := "SubInterfaces are not supported"
+            return CVLErrorInfo{
+                ErrCode: CVL_SEMANTIC_ERROR,
+                TableName: "SWITCH_TABLE",
+                CVLErrDetails : errStr,
+                ConstraintErrMsg : errStr,
+            }
+        }
+    } else {
+        //Generic error. Connection to APPL_DB failed
+        errStr := "Could not connect to appDB"
+        return CVLErrorInfo{
+            ErrCode: CVL_SEMANTIC_ERROR,
+            TableName: "SWITCH_TABLE",
+            CVLErrDetails : errStr,
+            ConstraintErrMsg : errStr,
+        }
+    }
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
 func validateSubInterfaceScaleLimits(vc *CustValidationCtxt) CVLErrorInfo {
     
     //log.Info("validateSubInterfaceCreationDeletion op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
@@ -158,7 +214,12 @@ func (t *CustomValidation) ValidateSubInterfaceIntf(vc *CustValidationCtxt) CVLE
 
     //log.Info("ValidateSubInterfaceIntf op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
     
-    res := validateSubInterfaceScaleLimits(vc)
+    res := validateSubInterfaceSupport(vc)
+    if res.ErrCode != CVL_SUCCESS {
+        return res
+    }
+
+    res = validateSubInterfaceScaleLimits(vc)
     if res.ErrCode != CVL_SUCCESS {
         return res
     }
