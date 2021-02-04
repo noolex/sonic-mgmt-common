@@ -87,6 +87,9 @@ const (
    COMPS                      = "/openconfig-platform:components"
    COMP                       = "/openconfig-platform:components/component"
 
+   /** Config container name **/
+   COMP_CONFIG_NAME           = "/openconfig-platform:components/component/config/name"
+
    /** Supported oc-platform component state URIs **/
    COMP_STATE_DESCR           = "/openconfig-platform:components/component/state/description"
    COMP_STATE_EMPTY           = "/openconfig-platform:components/component/state/empty"
@@ -807,8 +810,10 @@ func getSoftwareVersion() string {
     return versionString
 }
 
-func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_Component_Software, targetUriPath string, allAttr bool, d *db.DB) (error) {
+func getSoftwareVersionComponent (pfComp *ocbinds.OpenconfigPlatform_Components_Component, targetUriPath string, allAttr bool, d *db.DB) (error) {
 
+    swCompName := "Software"
+    swComp := pfComp.Software
     brandingScanner := bufio.NewScanner(strings.NewReader(""))
     versionScanner := bufio.NewScanner(strings.NewReader(""))
     scanner := bufio.NewScanner(strings.NewReader(""))
@@ -817,6 +822,14 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
     var eepromInfo Eeprom
     var deviceMetadata DeviceMetadata
     var err error
+
+    if allAttr || targetUriPath == COMP_CONFIG_NAME {
+        pfComp.Config.Name = &swCompName
+    }
+
+    if allAttr || targetUriPath == COMP_STATE_NAME {
+        pfComp.State.Name = &swCompName
+    }
 
     if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
        targetUriPath == SW_BUILD_COMMIT || targetUriPath == SW_ASIC_VER || targetUriPath == SW_BUILD_DATE ||
@@ -1241,7 +1254,7 @@ func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
     return eepromInfo, err
 }
 
-func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_State,
+func fillSysEepromInfo (eepromComp *ocbinds.OpenconfigPlatform_Components_Component,
                                  all bool, targetUriPath string, d *db.DB) (error) {
 
     log.Infof("fillSysEepromInfo Enter")
@@ -1254,6 +1267,7 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
     removable := false
     name := "System Eeprom"
     location  :=  "Slot 1"
+    eeprom := eepromComp.State
 
     if all {
         eeprom.Empty = &empty
@@ -1261,6 +1275,8 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
         eeprom.Name = &name
         eeprom.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
         eeprom.Location = &location
+        eepromComp.Config.Name = &name
+        eeprom.Name = &name
 
         if eepromInfo.Product_Name != "" {
             eeprom.Id = &eepromInfo.Product_Name
@@ -1320,6 +1336,8 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
         }
     } else {
         switch targetUriPath {
+        case COMP_CONFIG_NAME:
+            eepromComp.Config.Name = &name
         case COMP_STATE_NAME:
             eeprom.Name = &name
         case COMP_STATE_LOCATION:
@@ -1485,6 +1503,9 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
             scanner.Scan()
         }
     }
+    comp_name := "Sensor"
+    pf_comp.State.Name = &comp_name
+    pf_comp.Config.Name = &comp_name
 
     return  err
 }
@@ -1525,14 +1546,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
 
             pf_comp,_ := pf_cpts.NewComponent("System Eeprom")
             ygot.BuildEmptyTree(pf_comp)
-            err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
+            err = fillSysEepromInfo(pf_comp, true, targetUriPath, d)
             if err != nil {
                 return err
             }
 
             swversion_comp,_ := pf_cpts.NewComponent("Software")
             ygot.BuildEmptyTree(swversion_comp)
-            err = getSoftwareVersionComponent(swversion_comp.Software, targetUriPath, true, d)
+            err = getSoftwareVersionComponent(swversion_comp, targetUriPath, true, d)
             if err != nil {
                 return err
             }
@@ -1605,7 +1626,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 temp := "TEMP " + strconv.Itoa(i)
                 pf_comp, _ = pf_cpts.NewComponent(temp)
                 ygot.BuildEmptyTree(pf_comp)
-                err = fillSysTempInfo(pf_comp.State, temp, true, targetUriPath, d)
+                err = fillSysTempInfo(pf_comp, temp, true, targetUriPath, d)
                 if err != nil {
                     if comp_cnt > 0 && strings.Contains(err.Error(), "Entry does not exist") {
                         delete(pf_cpts.Component, temp)
@@ -1630,7 +1651,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
+                    err = fillSysEepromInfo(pf_comp, true, targetUriPath, d)
                     if err != nil {
                         return err
                     }
@@ -1652,7 +1673,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = getSoftwareVersionComponent(pf_comp.Software, targetUriPath, true, d)
+                    err = getSoftwareVersionComponent(pf_comp, targetUriPath, true, d)
                     if err != nil {
                         return err
                     }
@@ -1690,7 +1711,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+                err = fillSysTempInfo(pf_comp, compName, true, targetUriPath, d)
             } else if len(getIfName(compName)) > 1 {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1723,7 +1744,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             pf_comp := pf_cpts.Component[compName]
             if pf_comp != nil {
                 ygot.BuildEmptyTree(pf_comp)
-                err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
+                err = fillSysEepromInfo(pf_comp, true, targetUriPath, d)
                 if err != nil {
                     return err
                 }
@@ -1772,9 +1793,10 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 return errors.New("Invalid component name")
             }
             ygot.BuildEmptyTree(pf_comp)
+            ygot.BuildEmptyTree(pf_comp.Config)
             ygot.BuildEmptyTree(pf_comp.State)
             ygot.BuildEmptyTree(pf_comp.State.Temperature)
-            err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+            err = fillSysTempInfo(pf_comp, compName, true, targetUriPath, d)
         } else if validFirmwareName(&compName) {
             pf_comp := pf_cpts.Component[compName]
             if pf_comp  == nil {
@@ -1801,7 +1823,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = fillSysEepromInfo(pf_comp.State, false, targetUriPath, d)
+                    err = fillSysEepromInfo(pf_comp, false, targetUriPath, d)
                     if err != nil {
                         return err
                     }
@@ -1812,7 +1834,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = getSoftwareVersionComponent(pf_comp.Software, targetUriPath, false, d)
+                    err = getSoftwareVersionComponent(pf_comp, targetUriPath, false, d)
                     if err != nil {
                         return err
                     }
@@ -1851,7 +1873,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                   return errors.New("Invalid component name")
               }
               ygot.BuildEmptyTree(pf_comp)
-              err = fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
+              err = fillSysTempInfo(pf_comp, compName, false, targetUriPath, d)
             } else if len(getIfName(compName)) > 1 {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1976,6 +1998,8 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             }
             return err
         }
+        psuCom.Config.Name = &name
+        psuEepromState.Name = &name
         psuEepromState.Empty = &empty
         psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
         if psuInfo.Presence {
@@ -2056,6 +2080,10 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
         if psuInfo.Manufacturer != "" {
             psuEepromState.MfgName = &psuInfo.Manufacturer
         }
+    case COMP_STATE_NAME:
+        psuEepromState.Name = &name
+    case COMP_CONFIG_NAME:
+        psuCom.Config.Name = &name
     }
 
     return err
@@ -2180,6 +2208,8 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
             return err
         }
 
+        fanCom.Config.Name = &name
+        fanEepromState.Name = &name
         fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
         if fanInfo.Presence {
             if fanInfo.Status {
@@ -2242,9 +2272,12 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
             fanEepromState.Description = &fanInfo.Model_Name
         }
     case COMP_STATE_NAME:
+        fanEepromState.Name = &name
         if fanInfo.Name != "" {
             fanEepromState.Name = &fanInfo.Name
         }
+    case COMP_CONFIG_NAME:
+        fanCom.Config.Name = &name
     }
 
     return err
@@ -2481,6 +2514,7 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         /* Top level */
         nm := name
         xcvrEEPROMState.Name = &nm
+        xcvrCom.Config.Name = &nm
 
         /* Present state */
         p := !xcvrInfo.Presence
@@ -2605,6 +2639,9 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         case COMP_STATE_NAME:
             nm := name
             xcvrEEPROMState.Name = &nm
+        case COMP_CONFIG_NAME:
+            nm := name
+            xcvrCom.Config.Name = &nm
         case COMP_STATE_DESCR:
             if test_if_available(xcvrInfo.Display_Name) {
                 xcvrEEPROMState.Description = &xcvrInfo.Display_Name
@@ -2818,7 +2855,7 @@ func convertToIetfTime(time string) (string) {
     return time
 }
 
-func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component_State,
+func fillSysTempInfo (temp *ocbinds.OpenconfigPlatform_Components_Component,
                         name string, all bool, targetUriPath string, d *db.DB) (error) {
     var err error
     tempInfo, err := getSysTempFromDb(name, d)
@@ -2826,9 +2863,13 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
         log.Info("Error Getting Temp Sensor info from DB")
         return err
     }
-    tempCom := tempState.Temperature
+
+    tempCom := temp.State.Temperature
+    tempState := temp.State
 
     if all || targetUriPath == TEMP_COMP {
+        tempState.Name = &name
+        temp.Config.Name = &name
         if tempInfo.Name != "" {
             tempState.Name = &tempInfo.Name
         }
@@ -2882,7 +2923,10 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
     }
 
     switch targetUriPath {
+    case COMP_CONFIG_NAME:
+        temp.Config.Name = &name
     case COMP_STATE_NAME:
+        tempState.Name = &name
         if tempInfo.Name != "" {
             tempState.Name = &tempInfo.Name
         }
@@ -2983,6 +3027,7 @@ func fillSysFirmwareInfo (firmwareCom *ocbinds.OpenconfigPlatform_Components_Com
 
     firmwareCh := firmwareCom.Chassis.State
     firmware := firmwareCom.State
+
     if all {
         if getProperty {
             if firmwareInfo.Chassis != "" {
@@ -2994,6 +3039,9 @@ func fillSysFirmwareInfo (firmwareCom *ocbinds.OpenconfigPlatform_Components_Com
             }
             return err
         }
+
+        firmwareCom.Config.Name = &name
+        firmware.Name = &name
         if firmwareInfo.Description != "" {
             firmware.Description = &firmwareInfo.Description
         }
@@ -3016,9 +3064,12 @@ func fillSysFirmwareInfo (firmwareCom *ocbinds.OpenconfigPlatform_Components_Com
             firmware.FirmwareVersion = &firmwareInfo.Version
         }
     case COMP_STATE_NAME:
+        firmware.Name = &name
         if firmwareInfo.Name != "" {
             firmware.Name = &firmwareInfo.Name
         }
+    case COMP_CONFIG_NAME:
+        firmwareCom.Config.Name = &name
     case FIRMWARE_CHASSIS_STATE_MODULE:
         if firmwareInfo.Module != "" {
             firmwareCh.Module = &firmwareInfo.Module

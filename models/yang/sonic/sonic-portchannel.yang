@@ -131,6 +131,16 @@ module sonic-portchannel {
                     description
                         "Decription of the portchannel";
                 }
+		leaf-list tagged_vlans{
+		    type string;
+		    description
+			"List of tagged VLANs to be associated with portchannel";
+		}
+		leaf access_vlan{
+		    type string;
+		    description
+			"Access VLAN to be associated with portchannel";
+		}
             }
         }
 

@@ -34,6 +34,7 @@ func Test_Leaf_Field_Name_UINT8_Update(t *testing.T) {
         fmt.Println("++++++++++++++  UPDATE Test_Leaf_Field_Name_UINT8  +++++++++++++")
 
         // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
         loadConfigDB(rclient, prereq)
 
 	patch_payload := "{\"openconfig-aaa-radius-ext:retransmit-attempts\":5}"
