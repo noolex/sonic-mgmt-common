@@ -319,16 +319,61 @@ func loadDB(dbNum int, mpi map[string]interface{}) {
         }
 }
 
+func getRedisPassword(dbName string) string {
+	var dbConfigMap map[string]interface{}
+	var password string
+        dbConfigFile := "/run/redis/sonic-db/database_config.json"
+        dbConfigJson, err := ioutil.ReadFile(dbConfigFile)
+        if err != nil {
+                fmt.Errorf("read file %v err: %v", dbConfigFile, err)
+        }
+        err = json.Unmarshal(dbConfigJson, &dbConfigMap)
+        if err != nil {
+                fmt.Errorf("failed to unmarshal %v err: %v", dbConfigJson, err)
+        }
+        db, ok := dbConfigMap["DATABASES"].(map[string]interface{})[dbName]
+        if !ok {
+                fmt.Errorf("database name '%v' is not found", dbName)
+        }
+        instName, ok := db.(map[string]interface{})["instance"]
+        if !ok {
+                fmt.Errorf("'instance' is not a valid field")
+        }
+        inst, ok := dbConfigMap["INSTANCES"].(map[string]interface{})[instName.(string)]
+        if !ok {
+                fmt.Errorf("instance name '%v' is not found", instName)
+        }
+	pwdpath, ok := inst.(map[string]interface{})["password_path"]
+	if !ok {
+		fmt.Errorf("password_path '%v' is not found", pwdpath)
+	} else {
+		redisPwdFileName := pwdpath.(string)
+		fmt.Printf("redisPwdFileName: %v \n", redisPwdFileName)
+
+		pwd, err := ioutil.ReadFile(redisPwdFileName)
+		if err != nil {
+			fmt.Printf("read file %v err: %v", redisPwdFileName, err)
+			return ""
+		}
+		password = string(pwd)
+	}
+	return password
+}
 
 func getConfigDbClient() *redis.Client {
+
+	pwd := getRedisPassword("CONFIG_DB")
+	if pwd == "" {
+		return nil
+	}
         rclient := redis.NewClient(&redis.Options{
                 Network:     "tcp",
                 Addr:        "localhost:6379",
-                Password:    "", // no password set
+                Password:    pwd,
                 DB:          4,
                 DialTimeout: 0,
         })
-        _, err := rclient.Ping().Result()
+	_, err := rclient.Ping().Result()
         if err != nil {
                 fmt.Printf("failed to connect to redis server %v", err)
         }
@@ -354,6 +399,10 @@ func getDbClient(dbNum int) *redis.Client {
 /* Prepares the database in Redis Server. */
 func prepareDb() {
         rclient = getConfigDbClient()
+	if (rclient == nil) {
+                fmt.Printf("error in getConfigDbClient")
+		return
+	}
 
         fileName := "testdata/port_table.json"
         PortsMapByte, err := ioutil.ReadFile(fileName)

@@ -26,6 +26,7 @@ import (
 	"github.com/openconfig/ygot/ygot"
 	"reflect"
 	"strings"
+	"sort"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -854,4 +855,65 @@ func IsLeafListNode(uri string) bool {
                 result = true
         }
         return result
+}
+
+
+func  tableKeysToBeSorted(tblNm string) bool {
+	/* function to decide whether to sort table keys.
+	Required when a sonic table has more than 1 lists
+	with keys having leaf-refs to each other, i.e table has primary and secondary keys
+	*/
+	areTblKeysToBeSorted := false
+	TBL_LST_CNT_NO_SEC_KEY := 1 //Tables having primary and secondary keys have more than one lists defined in sonic yang
+	if dbSpecInfo, ok := xDbSpecMap[tblNm]; ok {
+		if len(dbSpecInfo.listName) > TBL_LST_CNT_NO_SEC_KEY {
+			areTblKeysToBeSorted = true
+		}
+	} else {
+		log.Warning("xDbSpecMap data not found for " + tblNm)
+	}
+	xfmrLogInfo("Table %v keys should be sorted - %v", tblNm, areTblKeysToBeSorted)
+	return areTblKeysToBeSorted
+}
+
+func SortSncTableDbKeys (tableName string, dbKeyMap map[string]db.Value) []string {
+	var ordDbKey []string
+
+	if tableKeysToBeSorted(tableName ) {
+
+		m := make(map[string]int)
+		for tblKey := range dbKeyMap {
+			keyList := strings.Split(tblKey, "|")
+			m[tblKey] = len(keyList)
+		}
+
+		type kv struct {
+			Key   string
+			Value int
+		}
+
+		var ss []kv
+		for k, v := range m {
+			ss = append(ss, kv{k, v})
+		}
+
+		sort.Slice(ss, func(i, j int) bool {
+			return ss[i].Value > ss[j].Value
+		})
+
+		for _, kv := range ss {
+			ordDbKey = append(ordDbKey, kv.Key)
+		}
+
+	} else {
+
+		// Restore the order as in the original map in case of single list in table case and error case
+		if len(ordDbKey) == 0 {
+			for tblKey := range dbKeyMap {
+				ordDbKey = append(ordDbKey, tblKey)
+			}
+		}
+	}
+
+	return ordDbKey
 }
