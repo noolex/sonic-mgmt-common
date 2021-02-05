@@ -136,4 +136,22 @@ func validate_prefix_limit_post_xfmr(inParams *XfmrParams, tableName string) (er
     return nil
 }
 
+func bgp_afi_convert_to_yang (afi string) string {
+
+    afi_type := ""
+
+    switch afi {
+    case "ipv4_unicast":
+        afi_type = "IPV4_UNICAST"
+    case "ipv6_unicast":
+        afi_type = "IPV6_UNICAST"
+    case "l2vpn_evpn":
+        afi_type = "L2VPN_EVPN"
+    default:
+        log.Errorf ("Unknown AF key %s", afi)
+    }
+    return afi_type
+}
+
+
 

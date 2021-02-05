@@ -20,6 +20,45 @@ func init () {
     XlateFuncBind("DbToYang_bgp_peer_group_mbrs_state_xfmr", DbToYang_bgp_peer_group_mbrs_state_xfmr)
     XlateFuncBind("YangToDb_bgp_pgrp_auth_password_xfmr", YangToDb_bgp_pgrp_auth_password_xfmr)
     XlateFuncBind("DbToYang_bgp_pgrp_auth_password_xfmr", DbToYang_bgp_pgrp_auth_password_xfmr)
+    XlateFuncBind("DbToYangPath_bgp_peer_group_path_xfmr", DbToYangPath_bgp_peer_group_path_xfmr)
+}
+
+var DbToYangPath_bgp_peer_group_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+
+    oper_err := errors.New("wrong config DB table sent")
+
+    niRoot := "/openconfig-network-instance:network-instances/network-instance"
+    bgp_peer_grp := niRoot + "/protocols/protocol/bgp/peer-groups/peer-group"
+    bgp_peer_grp_af := bgp_peer_grp + "/afi-safis/afi-safi"
+
+
+    log.Info("DbToYangPath_bgp_peer_group_path_Xfmr: params: ", params)
+
+    if (params.tblName == "BGP_PEER_GROUP" || params.tblName ==  "BGP_PEER_GROUP_AF") {
+        params.ygPathKeys[niRoot + "/name"]  = params.tblKeyComp[0]
+    } else {
+        log.Errorf ("BGP peer group  Path-xfmr: table name %s not in view", params.tblKeyComp );
+        return oper_err
+    }
+    params.ygPathKeys[niRoot + "/protocols/protocol/identifier"] = "BGP"
+    params.ygPathKeys[niRoot + "/protocols/protocol/name"] = "bgp"
+    params.ygPathKeys[bgp_peer_grp + "/peer-group-name"] = params.tblKeyComp[1]
+
+    if (params.tblName ==  "BGP_PEER_GROUP_AF") {
+        log.Errorf ("address family key %s", params.tblKeyComp[2])
+        afi :=  bgp_afi_convert_to_yang(params.tblKeyComp[2])
+        if (afi == "") {
+            log.Errorf ("Unknown address family key %s", params.tblKeyComp[2])
+            return oper_err
+        } else {
+            log.Errorf ("passed  address family key %s", afi)
+        }
+        params.ygPathKeys[bgp_peer_grp_af + "/afi-safi-name"]  = afi
+
+    }
+
+    log.Info("DbToYangPath_bgp_peer_group_path_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+    return nil
 }
 
 var YangToDb_bgp_pgrp_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {

@@ -174,24 +174,7 @@ func utl_bgp_fetch_and_cache_frr_json (inParams *XfmrParams, niName string) {
     inParams.txCache.Store(BGP_FRR_JSON_CACHE, bgpFrrJsonCache)
 }
 
-func bgp_afi_convert_to_yang (afi string) string {
-
-    afi_type := ""
-
-    switch afi {
-    case "ipv4_unicast":
-        afi_type = "IPV4_UNICAST"
-    case "ipv6_unicast":
-        afi_type = "IPV6_UNICAST"
-    case "l2vpn_evpn":
-        afi_type = "L2VPN_EVPN"
-    default:
-        log.Errorf ("Unknown AF key %s", afi)
-    }
-    return afi_type
-}
-
-var DbToYangPath_DbToYangPath_bgp_glb_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
 
     oper_err := errors.New("wrong config DB table sent")
 
@@ -201,7 +184,7 @@ var DbToYangPath_DbToYangPath_bgp_glb_Xfmr PathXfmrDbToYangFunc = func(params Xf
     bgp_glb_af_network :=  bgp_glb_afi_safi + "/openconfig-bgp-ext:network-config/network"
 
 
-    log.Info("DbToYangPath_bgp_glb_Xfmr: params: ", params)
+    log.Info("DbToYangPath_bgp_glb_path_Xfmr: params: ", params)
 
     if (params.tblName == "BGP_GLOBALS" || params.tblName ==  "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||  
         params.tblName == "BGP_GLOBALS_AF_NETWORK" ||  params.tblName == "BGP_GLOBALS_AF") {
@@ -234,7 +217,7 @@ var DbToYangPath_DbToYangPath_bgp_glb_Xfmr PathXfmrDbToYangFunc = func(params Xf
          params.ygPathKeys[bgp_glb_aggr_addr + "/prefix"] = params.tblKeyComp[2]
     }
 
-    log.Info("DbToYangPath_bgp_glb_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+    log.Info("DbToYangPath_bgp_glb_path_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
     return nil
 }
 
@@ -242,22 +225,22 @@ func init () {
     XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_tbl_key_xfmr", YangToDb_bgp_gbl_tbl_key_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_tbl_key_xfmr", DbToYang_bgp_gbl_tbl_key_xfmr)
-    XlateFuncBind("DbToYangPath_DbToYangPath_bgp_glb_Xfmr", DbToYangPath_DbToYangPath_bgp_glb_Xfmr)
+    XlateFuncBind("DbToYangPath_bgp_glb_path_Xfmr", DbToYangPath_bgp_glb_path_Xfmr)
     XlateFuncBind("YangToDb_bgp_local_asn_fld_xfmr", YangToDb_bgp_local_asn_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_local_asn_fld_xfmr", DbToYang_bgp_local_asn_fld_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_state_xfmr", DbToYang_bgp_gbl_state_xfmr)
     XlateFuncBind("YangToDb_bgp_gbl_afi_safi_field_xfmr", YangToDb_bgp_gbl_afi_safi_field_xfmr)
     XlateFuncBind("DbToYang_bgp_gbl_afi_safi_field_xfmr", DbToYang_bgp_gbl_afi_safi_field_xfmr)
-	XlateFuncBind("YangToDb_bgp_dyn_neigh_listen_key_xfmr", YangToDb_bgp_dyn_neigh_listen_key_xfmr)
-	XlateFuncBind("DbToYang_bgp_dyn_neigh_listen_key_xfmr", DbToYang_bgp_dyn_neigh_listen_key_xfmr) 
-	XlateFuncBind("YangToDb_bgp_gbl_afi_safi_key_xfmr", YangToDb_bgp_gbl_afi_safi_key_xfmr)
-	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_key_xfmr", DbToYang_bgp_gbl_afi_safi_key_xfmr) 
-	XlateFuncBind("YangToDb_bgp_gbl_afi_safi_addr_key_xfmr", YangToDb_bgp_gbl_afi_safi_addr_key_xfmr)
-	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_key_xfmr", DbToYang_bgp_gbl_afi_safi_addr_key_xfmr) 
-	XlateFuncBind("YangToDb_bgp_dyn_neigh_listen_field_xfmr", YangToDb_bgp_dyn_neigh_listen_field_xfmr)
-	XlateFuncBind("DbToYang_bgp_dyn_neigh_listen_field_xfmr", DbToYang_bgp_dyn_neigh_listen_field_xfmr) 
-	XlateFuncBind("YangToDb_bgp_gbl_afi_safi_addr_field_xfmr", YangToDb_bgp_gbl_afi_safi_addr_field_xfmr)
-	XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
+    XlateFuncBind("YangToDb_bgp_dyn_neigh_listen_key_xfmr", YangToDb_bgp_dyn_neigh_listen_key_xfmr)
+    XlateFuncBind("DbToYang_bgp_dyn_neigh_listen_key_xfmr", DbToYang_bgp_dyn_neigh_listen_key_xfmr) 
+    XlateFuncBind("YangToDb_bgp_gbl_afi_safi_key_xfmr", YangToDb_bgp_gbl_afi_safi_key_xfmr)
+    XlateFuncBind("DbToYang_bgp_gbl_afi_safi_key_xfmr", DbToYang_bgp_gbl_afi_safi_key_xfmr) 
+    XlateFuncBind("YangToDb_bgp_gbl_afi_safi_addr_key_xfmr", YangToDb_bgp_gbl_afi_safi_addr_key_xfmr)
+    XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_key_xfmr", DbToYang_bgp_gbl_afi_safi_addr_key_xfmr) 
+    XlateFuncBind("YangToDb_bgp_dyn_neigh_listen_field_xfmr", YangToDb_bgp_dyn_neigh_listen_field_xfmr)
+    XlateFuncBind("DbToYang_bgp_dyn_neigh_listen_field_xfmr", DbToYang_bgp_dyn_neigh_listen_field_xfmr) 
+    XlateFuncBind("YangToDb_bgp_gbl_afi_safi_addr_field_xfmr", YangToDb_bgp_gbl_afi_safi_addr_field_xfmr)
+    XlateFuncBind("DbToYang_bgp_gbl_afi_safi_addr_field_xfmr", DbToYang_bgp_gbl_afi_safi_addr_field_xfmr) 
     XlateFuncBind("YangToDb_bgp_global_subtree_xfmr", YangToDb_bgp_global_subtree_xfmr)
     XlateFuncBind("rpc_clear_bgp", rpc_clear_bgp)
     XlateFuncBind("bgp_validate_gbl_af", bgp_validate_gbl_af)
