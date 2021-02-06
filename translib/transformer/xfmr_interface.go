@@ -27,7 +27,7 @@ import (
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
 type RedisDbSubscribeMap = map[db.DBNum]map[string]map[string]map[string]string
-type RedisDbYgNodeMap = map[db.DBNum]map[string]map[string]string
+type RedisDbYgNodeMap = map[db.DBNum]map[string]map[string]interface{}
 
 // XfmrParams represents input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer
 type XfmrParams struct {
