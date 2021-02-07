@@ -652,7 +652,7 @@ func (reqP *vxlanReqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string
 
 				if len(tblVxlanMapKeys) > 0 {
 					log.Error("handleDeleteReq ==> returning ERROR")
-					return &res_map, tlerr.New("source-vtep-ip cannot be deleted since tunnel map (VLAN-VNI) has reference to the vxlan interface \"%s\" of the source-vtep-ip %s", vxlanIntfName, tblValList.Field["src_ip"])
+					return &res_map, tlerr.New("Please delete all VLAN VNI mappings.")
 				}
                 log.Info("handleDeleteReq ==> targetname",reqP.targetNode.Name);
 
@@ -866,6 +866,14 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
                     log.Errorf("source-vtep-ip:%s already configured",src_ip_in)
                     return &res_map, tlerr.New("source_vtep-ip:%s already configured",src_ip_in)
                 }
+            }
+
+            if ((pip_in != "") && (pip_in != pip_db)) {
+		            var VXLAN_TUNNEL_MAP_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_MAP"}
+					tunnelMapKeys, err := reqP.db.GetKeys(VXLAN_TUNNEL_MAP_TS)
+					if err == nil && len(tunnelMapKeys) > 0 {
+                        return &res_map, tlerr.New("Please delete all VLAN VNI mappings")
+					}
             }
 		}
 	}
