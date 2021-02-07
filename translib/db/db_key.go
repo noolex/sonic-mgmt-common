@@ -19,7 +19,10 @@
 
 package db
 
-import "fmt"
+import (
+	"fmt"
+	"path"
+)
 
 // Key is the db key components without table name prefix.
 // (Eg: { Comp : [] string { "acl1", "rule1" } } ).
@@ -61,4 +64,30 @@ func (k *Key) IsPattern() bool {
 		}
 	}
 	return false
+}
+
+// Equals checks if db key k equals to the other key.
+func (k *Key) Equals(other *Key) bool {
+	if k.Len() != other.Len() {
+		return false
+	}
+	for i, c := range k.Comp {
+		if c != other.Comp[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// Matches checks if db key k matches a key pattern.
+func (k *Key) Matches(pattern *Key) bool {
+	if k.Len() != pattern.Len() {
+		return false
+	}
+	for i, c := range k.Comp {
+		if matched, _ := path.Match(pattern.Comp[i], c); !matched {
+			return false
+		}
+	}
+	return true
 }
