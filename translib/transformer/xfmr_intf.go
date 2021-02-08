@@ -1008,7 +1008,8 @@ func rpc_vlan_tbl_update(d *db.DB, vlanList []string, ifNameList []string, op st
 	if op == "CREATE"{
 	    membersList = append(membersList,ifNameList...)
 	}
-        vlanEntry.SetList("members", membersList)
+        membersSet := utils.NewSet(membersList) //To remove duplicates from membersList
+        vlanEntry.SetList("members", membersSet.SetItems())
         err = d.SetEntry(&db.TableSpec{Name:VLAN_TN},db.Key{Comp: []string{vlanName}},vlanEntry)
         if err != nil{
             errStr := "Setting entry in VLAN_TABLE failed!"
