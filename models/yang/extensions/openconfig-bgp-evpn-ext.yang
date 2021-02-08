@@ -67,29 +67,6 @@ module openconfig-bgp-evpn-ext {
         "Route-targets to be exported";
     }
 
-    leaf advertise-pip {
-      type boolean;
-      description
-        "If set to true, advertise PIP";
-    }
-
-    leaf advertise-pip-ip {
-      type oc-inet:ip-address;
-      description
-        "PIP IPv4 address";
-    }
-
-    leaf advertise-pip-peer-ip {
-      type oc-inet:ip-address;
-      description
-        "PIP peer IPv4 address";
-    }
-
-    leaf advertise-pip-mac {
-      type oc-yang:mac-address;
-      description
-        "PIP MAC address address to addvertise";
-    }
   }
 
   grouping bgp-evpn-ext-l2vpn-evpn-vni-config {
@@ -148,6 +125,30 @@ module openconfig-bgp-evpn-ext {
       type string;
       description
         "Router MAC associated with the VNI";
+    }
+
+    leaf advertise-pip {
+      type boolean;
+      description
+        "If set to true, advertise PIP";
+    }
+
+    leaf advertise-pip-ip {
+      type oc-inet:ip-address;
+      description
+        "PIP IPv4 address";
+    }
+
+    leaf advertise-pip-peer-ip {
+      type oc-inet:ip-address;
+      description
+        "PIP peer IPv4 address";
+    }
+
+    leaf advertise-pip-mac {
+      type oc-yang:mac-address;
+      description
+        "PIP MAC address address to addvertise";
     }
     
   }
@@ -346,6 +347,30 @@ module openconfig-bgp-evpn-ext {
       }
       description 
         "Enable automatic derivation of route-target";
+    }
+
+    leaf advertise-pip {
+      type boolean;
+      description
+        "If set to true, advertise PIP";
+    }
+
+    leaf advertise-pip-ip {
+      type oc-inet:ip-address;
+      description
+        "PIP IPv4 address";
+    }
+
+    leaf advertise-pip-peer-ip {
+      type oc-inet:ip-address;
+      description
+        "PIP peer IPv4 address";
+    }
+
+    leaf advertise-pip-mac {
+      type oc-yang:mac-address;
+      description
+        "PIP MAC address address to addvertise";
     }
 
     uses bgp-evpn-ext-l2vpn-evpn-vni-common-config;
