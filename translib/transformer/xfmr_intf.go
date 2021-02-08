@@ -1136,7 +1136,6 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
     }
 
     var newList []string
-    var existList []string
     var delList []string
     var createList []string
 
@@ -1183,6 +1182,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
             result.Output.Status_detail = err.Error()
             return json.Marshal(&result)
         }
+	var existList []string
         existList = append(existList,taggedList...)
         delList = utils.VlanDifference(existList,newList)
         createList = utils.VlanDifference(newList,existList)
