@@ -39,6 +39,7 @@ import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/path"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
@@ -431,6 +432,7 @@ func (ne *notificationEvent) createYangPathInfos(nInfo *notificationInfo, fields
 	}
 
 	for _, f := range fields {
+		f = strings.TrimSuffix(f, "@") // Apps do not fill @ suffix for array fields
 		for _, nDbFldInfo := range nInfo.fields {
 			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
 				log.Infof("[%s] %sfield=%s, path=%s/%s", ne.id, opStr, f, nDbFldInfo.rltvPath, leaf)
@@ -469,10 +471,12 @@ func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, erro
 	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_YGOT)
 
 	if err == nil {
-		if resp.ValueTree != nil {
-			payload = *resp.ValueTree
-		} else {
+		if resp.ValueTree == nil {
 			err = fmt.Errorf("nil value")
+		} else if isEmptyYgotStruct(*resp.ValueTree) {
+			err = tlerr.NotFound("app returned empty %T", *resp.ValueTree)
+		} else {
+			payload = *resp.ValueTree
 		}
 	}
 
@@ -560,8 +564,6 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 	for _, lv := range fields {
 		leafPath := lv.getPath()
 
-		// Blindly treat DB delete as yang delete.. Will it work always??
-		// Probably need an option for apps to customize this behavior.
 		if lv.deleted {
 			log.V(3).Infof("[%s] %s deleted", ne.id, leafPath)
 			resp.Delete = append(resp.Delete, leafPath)
@@ -571,7 +573,7 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		data, err := ne.getValue(prefixStr + leafPath)
 
 		if sInfo.syncDone && isNotFoundError(err) {
-			log.V(3).Infof("[%s] %s not found", ne.id, leafPath)
+			log.V(3).Infof("[%s] %s not found (%v)", ne.id, leafPath, err)
 			resp.Delete = append(resp.Delete, leafPath)
 			continue
 		}
@@ -580,7 +582,7 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 			continue
 		}
 
-		log.V(3).Infof("[%s] %s = %v", ne.id, leafPath, data)
+		log.V(3).Infof("[%s] %s = %T", ne.id, leafPath, data)
 		lv.valueTree = data
 		numUpdate++
 	}
@@ -602,9 +604,8 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 			// Optimization for init sync/entry create of non-leaf target -- use the
 			// GoStruct of the target node and retain full target path in resp.Path.
 			// This longer prefix will produce more compact notification message.
-			pp := path.SubPath(prefix, 0, n-1)
 			cp := path.SubPath(prefix, n-1, n)
-			lv.valueTree, err = getYgotAtPath(lv.valueTree, pp, cp)
+			lv.valueTree, err = getYgotAtPath(lv.valueTree, cp)
 		}
 
 		resp.Update = lv.valueTree

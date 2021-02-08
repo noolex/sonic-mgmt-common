@@ -21,6 +21,7 @@ package translib
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/path"
@@ -64,13 +65,13 @@ func mergeYgotAtPath(ygRoot *ocbinds.Device, p *gnmi.Path, value ygot.ValidatedG
 
 // getYgotAtPath looks up the child ygot struct at a childPath in a parent struct.
 // Absolute path to the parent struct from root should also be passed.
-// Returns error if parentPath is unknown or childPath does not point to a struct.
-func getYgotAtPath(parent ygot.ValidatedGoStruct, parentPath, childPath *gnmi.Path) (ygot.ValidatedGoStruct, error) {
-	ypath, _ := ygot.PathToSchemaPath(parentPath)
-	if len(ypath) != 0 && ypath[0] == '/' {
-		ypath = ypath[1:]
+// Returns error if childPath does not point to a struct.
+func getYgotAtPath(parent ygot.ValidatedGoStruct, childPath *gnmi.Path) (ygot.ValidatedGoStruct, error) {
+	structName := reflect.TypeOf(parent).Elem().Name()
+	schema, ok := ocbinds.SchemaTree[structName]
+	if !ok {
+		return nil, fmt.Errorf("Could not find schema for %T", parent)
 	}
-	schema := ygSchema.RootSchema().Find(ypath)
 
 	nodes, err := ytypes.GetNode(schema, parent, childPath)
 	if err != nil {
@@ -82,4 +83,18 @@ func getYgotAtPath(parent ygot.ValidatedGoStruct, parentPath, childPath *gnmi.Pa
 	}
 
 	return nil, fmt.Errorf("Not a ValidatedGoStruct")
+}
+
+// isEmptyYgotStruct returns true if none of the fields of ygot struct y are set.
+func isEmptyYgotStruct(y ygot.ValidatedGoStruct) bool {
+	yv := reflect.ValueOf(y).Elem()
+	for i := yv.NumField() - 1; i >= 0; i-- {
+		fv := yv.Field(i)
+		// ygot struct's fields will always be one of ptr, map, slice or an int (for enum & identity).
+		// Value.IsZero() should handle all cases.
+		if fv.IsValid() && !fv.IsZero() {
+			return false
+		}
+	}
+	return true
 }

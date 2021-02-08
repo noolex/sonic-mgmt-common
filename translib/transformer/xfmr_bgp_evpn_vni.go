@@ -1037,6 +1037,36 @@ func fill_vni_state_info (vni_key *_xfmr_bgp_vni_state_key, vniDataValue interfa
         }
     }
 
+    if value, ok := vniDataJson["advertiseSviMacip"] ; ok {
+        switch value {
+            case "Yes":
+                b := true
+                vniState.AdvertiseSviIp = &b
+            case "No":
+                b := false
+                vniState.AdvertiseSviIp = &b
+        }
+    }
+
+    if value, ok := vniDataJson["advertisePip"] ; ok {
+        switch value {
+            case "Enabled":
+                b := true
+                vniState.AdvertisePip = &b
+            case "Disabled":
+                b := false
+                vniState.AdvertisePip = &b
+        }
+    }
+
+    if value, ok := vniDataJson["sysIP"].(string) ; ok {
+        vniState.AdvertisePipIp = &value
+    }
+
+    if value, ok := vniDataJson["sysMac"].(string) ; ok {
+        vniState.AdvertisePipMac = &value
+    }
+
     if value, ok := vniDataJson["type"].(string) ; ok {
         vniState.Type = &value
     }

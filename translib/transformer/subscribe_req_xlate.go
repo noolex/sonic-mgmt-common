@@ -336,67 +336,95 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 	if pathXltr.subReq.isOnchange || pathXltr.subReq.xlateNodeType == TARGET_NODE || !subOutPram.isVirtualTbl {
 
 		isLeafTblFound := false
+		ygLeafNodeSecDbMap := make (map[string]bool) // yang leaf/leaf-list node name as key
 		for dbNum, tblKeyInfo := range subOutPram.secDbDataMap {
+			if isLeafTblFound { break } // do not process any more entry if the target node is leaf and it is processed
 			log.Info("handleSubtreeNodeXlate: secDbDataMap: dbNum: ", dbNum)
 			for tblName, tblFieldInfo := range tblKeyInfo {
+				if isLeafTblFound { break } // do not process any more entry if the target node is leaf and it is processed
 				log.Info("handleSubtreeNodeXlate: secDbDataMap: tblName: ", tblName)
 				tblSpec := &db.TableSpec{Name: tblName}
-				for dBKey, yangNodeName := range tblFieldInfo {
+				for dBKey, nodeIntf := range tblFieldInfo {
+					if isLeafTblFound { break } // do not process any more entry if the target node is leaf and it is processed
+					dbFldYgNameMap := make(map[string]string) // map of yang leaf/leaf-list name as key and db table field name as value
+					switch intfVal := nodeIntf.(type) {
+						case string:
+							// yang leaf/leaf-list node mapped to db table key, not db table field
+							// because of this, the db field is empty, and keeping yang name as db field name in this map.
+							dbFldYgNameMap[intfVal] = intfVal
+						case map[string]string:
+							dbFldYgNameMap = intfVal
+						default:
+							log.Error("Error: Onchange subscription: handleSubtreeNodeXlate: Incorrect type recieved from the Subscribe " +
+								"transformer callback: %v and the type is %v ", ygXpathInfo.xfmrFunc, intfVal)
+							return tlerr.InternalError{Format: "Onchange subscription: Incorrect type recieved from the Subscribe transformer callback", Path: pathXltr.uriPath}
+					}
 					ygLeafNodePath := pathXltr.subReq.ygPath // default target node path
-					if ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList() {
-						if yangNodeName != ygXpathInfo.yangEntry.Name { continue }
-						isLeafTblFound = true // only if the subscribe path target is leaf/leaf-list
-					} else {
-						if pathXltr.xpathYgNode != nil { ygLeafNodePath = pathXltr.xpathYgNode.ygPath }
-						ygLeafNodePath = ygLeafNodePath + "/" + yangNodeName
-					}
-					log.Info("handleSubtreeNodeXlate: ygLeafNodePath: ", ygLeafNodePath)
-					yangNodeNameWithMod := yangNodeName
-					var ygLeafXpathInfo *yangXpathInfo
-					var okLeaf bool
-					if ygLeafXpathInfo, okLeaf = xYangSpecMap[ygLeafNodePath]; okLeaf && ygLeafXpathInfo.nameWithMod != nil {
-						yangNodeNameWithMod = *(ygLeafXpathInfo.nameWithMod)
-					} else if ygLeafXpathInfo == nil {
-						log.Error("handleSubtreeNodeXlate: XpathInfo not found for the leaf path: ", ygLeafNodePath)
-						return tlerr.InternalError{Format: "XpathInfo not found for the leaf path", Path: ygLeafNodePath}
-					}
-					log.Info("handleSubtreeNodeXlate: secDbDataMap: uripath: ", pathXltr.uriPath + "/" + yangNodeNameWithMod)
-					log.Info("handleSubtreeNodeXlate: secDbDataMap: pathXltr.subReq.dbs[dbNum].Opts.KeySeparator: ", pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
+					if pathXltr.xpathYgNode != nil { ygLeafNodePath = pathXltr.xpathYgNode.ygPath }
+
 					keyComp := strings.Split(dBKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
 					log.Info("handleSubtreeNodeXlate: secDbDataMap: keyComp: ", keyComp)
-					if leafPath, err := ygot.StringToPath(pathXltr.uriPath + "/" + yangNodeNameWithMod, ygot.StructuredPath, ygot.StringSlicePath); err != nil {
-						log.Error("handleSubtreeNodeXlate: error in StringToPath: err: ", err)
-						return err
-					} else {
-						log.Info("handleSubtreeNodeXlate:secDbDataMap: leafPath", leafPath)
-						if isLeafTblFound { // target node
-							if pathXltr.subReq.isTrgtDfnd {
-								pathXltr.pathXlateInfo.PType = ntfType
-							}
-							dbTblInfo := pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
-							log.Info("handleSubtreeNodeXlate:secDbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
-							dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}
-							dbYgPath.DbFldYgPathMap[yangNodeNameWithMod] = ""
-							dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
-							if ygXpathInfo.yangEntry.IsLeafList() {
-								dbTblInfo.IsPartial = true
-							}
-							log.Info("handleSubtreeNodeXlate: secDbDataMap: target node: leaf: Adding special entry for leaf node mapped to table for the uri path: ", pathXltr.uriPath + "/" + yangNodeNameWithMod)
-							break
+
+					for dbField, yangNodeName := range dbFldYgNameMap {
+						if isLeafTblFound { break } // do not process any more entry if the target node is leaf and it is processed
+						if ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList() {
+							if yangNodeName != ygXpathInfo.yangEntry.Name { continue }
+							isLeafTblFound = true // only if the subscribe path target is leaf/leaf-list
+						} else {
+							ygLeafNodePath = ygLeafNodePath + "/" + yangNodeName
 						}
-						leafPathXlateInfo := &XfmrSubscribePathXlateInfo {Path: leafPath, PType: ntfType, OnChange: pathXltr.pathXlateInfo.OnChange}
-						dbTblInfo := leafPathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
-						if ygLeafXpathInfo.yangEntry != nil && ygLeafXpathInfo.yangEntry.IsLeafList() {
-							dbTblInfo.IsPartial = true
+
+						log.Info("handleSubtreeNodeXlate: ygLeafNodePath: ", ygLeafNodePath)
+						yangNodeNameWithMod := yangNodeName
+
+						var ygLeafXpathInfo *yangXpathInfo
+						var okLeaf bool
+
+						if ygLeafXpathInfo, okLeaf = xYangSpecMap[ygLeafNodePath]; okLeaf && ygLeafXpathInfo.nameWithMod != nil {
+							yangNodeNameWithMod = *(ygLeafXpathInfo.nameWithMod)
+						} else if ygLeafXpathInfo == nil {
+							log.Error("handleSubtreeNodeXlate: XpathInfo not found for the leaf path: ", ygLeafNodePath)
+							return tlerr.InternalError{Format: "XpathInfo not found for the leaf path", Path: ygLeafNodePath}
 						}
-						log.Info("handleSubtreeNodeXlate:secDbDataMap: mapped to leaf / leaf-list", pathXltr.uriPath)
-						dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}
-						dbYgPath.DbFldYgPathMap[yangNodeNameWithMod] = ""
-						dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
-						log.Info("handleSubtreeNodeXlate: secDbDataMap: Target node: Adding special entry for leaf node mapped to table for the uri path: ", pathXltr.uriPath + "/" + yangNodeNameWithMod)
-						if pathXltr.subReq.isTrgtDfnd { leafPathXlateInfo.PType = ntfType }
-						log.Info("handleSubtreeNodeXlate: secDbDataMap: target node: container: Adding special entry for leaf node mapped to table for the uri path: ", pathXltr.uriPath + "/" + yangNodeNameWithMod)
-						pathXltr.subReq.subReqXlateInfo.ChldPathsInfo = append(pathXltr.subReq.subReqXlateInfo.ChldPathsInfo, leafPathXlateInfo)
+
+						log.Info("handleSubtreeNodeXlate: secDbDataMap: uripath: ", pathXltr.uriPath + "/" + yangNodeNameWithMod)
+						log.Info("handleSubtreeNodeXlate: secDbDataMap: pathXltr.subReq.dbs[dbNum].Opts.KeySeparator: ", pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
+
+						if leafPath, err := ygot.StringToPath(pathXltr.uriPath + "/" + yangNodeNameWithMod, ygot.StructuredPath, ygot.StringSlicePath); err != nil {
+							log.Error("handleSubtreeNodeXlate: error in StringToPath: err: ", err)
+							return err
+						} else {
+							log.Info("handleSubtreeNodeXlate:secDbDataMap: leafPath", leafPath)
+							ygLeafNodeSecDbMap[yangNodeName] = true
+							if isLeafTblFound { // target node
+								if pathXltr.subReq.isTrgtDfnd {
+									pathXltr.pathXlateInfo.PType = ntfType
+								}
+								dbTblInfo := pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
+								log.Info("handleSubtreeNodeXlate:secDbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
+								dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}
+								dbYgPath.DbFldYgPathMap[dbField] = ""
+								dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
+								if ygXpathInfo.yangEntry.IsLeafList() {
+									dbTblInfo.IsPartial = true
+								}
+								log.Info("handleSubtreeNodeXlate: secDbDataMap: target node: leaf: Adding special entry for leaf node mapped to table for the uri path: ", pathXltr.uriPath + "/" + yangNodeNameWithMod)
+							} else {
+								leafPathXlateInfo := &XfmrSubscribePathXlateInfo {Path: leafPath, PType: ntfType, OnChange: pathXltr.pathXlateInfo.OnChange}
+								dbTblInfo := leafPathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
+								if ygLeafXpathInfo.yangEntry != nil && ygLeafXpathInfo.yangEntry.IsLeafList() {
+									dbTblInfo.IsPartial = true
+								}
+								log.Info("handleSubtreeNodeXlate:secDbDataMap: mapped to leaf / leaf-list", pathXltr.uriPath)
+								dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}
+								dbYgPath.DbFldYgPathMap[dbField] = ""
+								dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
+								log.Info("handleSubtreeNodeXlate: secDbDataMap: Target node: Adding special entry for leaf node mapped to table for the uri path: ", pathXltr.uriPath + "/" + yangNodeNameWithMod)
+								if pathXltr.subReq.isTrgtDfnd { leafPathXlateInfo.PType = ntfType }
+								log.Info("handleSubtreeNodeXlate: secDbDataMap: target node: container: Adding special entry for leaf node mapped to table for the uri path: ", pathXltr.uriPath + "/" + yangNodeNameWithMod)
+								pathXltr.subReq.subReqXlateInfo.ChldPathsInfo = append(pathXltr.subReq.subReqXlateInfo.ChldPathsInfo, leafPathXlateInfo)
+							}
+						}
 					}
 				}
 			}
@@ -415,6 +443,8 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 						dbTblInfo := pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
 						dbYgPath := DbFldYgPathInfo {"", make(map[string]string)}
 						yangNodes := make(map[string]bool)
+						// copy the leaf nodes form the secDbMap to skip those.
+						for ygNameSecDbMap := range ygLeafNodeSecDbMap { yangNodes[ygNameSecDbMap] =  true }
 						for dbFld, ygNodeName := range tblFld {
 							if (ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList()) && ygNodeName == ygXpathInfo.yangEntry.Name {
 								log.Infof("handleSubtreeNodeXlate:dbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
