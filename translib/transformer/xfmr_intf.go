@@ -987,36 +987,67 @@ func rpc_delete_vlan(d *db.DB, vlanList []string, ifName string) error {
 
 	return nil
 }
-//Updates VLAN table.
-func rpc_vlan_tbl_update(d *db.DB, vlanList []string, ifNameList []string, op string) error {
-    for _,vlanName := range vlanList{
-	ierr := validateVlanExists(d,&vlanName)
-	if ierr != nil{
-	    continue
-	}
+
+func rpc_vlan_tbl_update(d *db.DB, op_map (map[string][]string),op string) error{
+    updated_map := make(map[string][]string)
+    for ifName,vlanList := range op_map{
+        for _,vlanName := range vlanList{
+            ierr := validateVlanExists(d,&vlanName)
+            if ierr != nil{
+                continue
+            }
+	    if op == "CREATE"{
+                if _, ok := updated_map[vlanName]; !ok{
+                    vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
+                    if err != nil || !vlanEntry.IsPopulated() {
+                        errStr := "Invalid Vlan:" + vlanName
+                        return errors.New(errStr)
+                    }
+                    membersList := vlanEntry.GetList("members")
+                    membersList = append(membersList,ifName)
+                    updated_map[vlanName] = membersList
+                }else{
+                    ifList := updated_map[vlanName]
+                    ifList = append(ifList,ifName)
+                    updated_map[vlanName] = ifList
+                }
+            }
+	    if op == "DELETE"{
+                if _, ok := updated_map[vlanName]; !ok{
+                    vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
+                    if err != nil || !vlanEntry.IsPopulated() {
+                        errStr := "Invalid Vlan:" + vlanName
+                        return errors.New(errStr)
+                    }
+                    membersList := vlanEntry.GetList("members")
+                    membersList = utils.RemoveElement(membersList,ifName)
+                    updated_map[vlanName] = membersList
+                }else{
+                    ifList := updated_map[vlanName]
+                    ifList = utils.RemoveElement(ifList,ifName)
+                    updated_map[vlanName] = ifList
+                }
+	    }
+        }
+    }
+    for vlanName,ifList := range updated_map{
         vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
         if err != nil || !vlanEntry.IsPopulated() {
             errStr := "Invalid Vlan:" + vlanName
             return errors.New(errStr)
         }
-        membersList := vlanEntry.GetList("members")
-	if op == "DELETE"{
-            for _,ifName := range ifNameList {
-                membersList = utils.RemoveElement(membersList,ifName)
-            }
-	}
-	if op == "CREATE"{
-	    membersList = append(membersList,ifNameList...)
-	}
-        vlanEntry.SetList("members", membersList)
+        membersSet := utils.NewSet(ifList)
+	vlanEntry.SetList("members", membersSet.SetItems())
         err = d.SetEntry(&db.TableSpec{Name:VLAN_TN},db.Key{Comp: []string{vlanName}},vlanEntry)
         if err != nil{
             errStr := "Setting entry in VLAN_TABLE failed!"
-	    return errors.New(errStr)
+            return errors.New(errStr)
             }
-        }
+
+    }
     return nil
 }
+
 
 //updates PORT or PORTCHANNEL table accordingly.
 func rpc_port_tbl_update(d *db.DB,vlanList []string,ifNameList []string,table_name string) error {
@@ -1106,7 +1137,8 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         return json.Marshal(&result)
     }
     defer d.DeleteDB()
-
+    del_map := make(map[string][]string)
+    create_map := make(map[string][]string)
     for _,ifName := range ifNameList{
         err = validateL3ConfigExists(d,&ifName)
         if err != nil{
@@ -1185,8 +1217,9 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
 	var existList []string
         existList = append(existList,taggedList...)
         delList = utils.VlanDifference(existList,newList)
+	del_map[ifName] = delList
         createList = utils.VlanDifference(newList,existList)
-
+	create_map[ifName] = createList
 
         if len(delList) != 0 {
             err = rpc_delete_vlan(d,delList,ifName)
@@ -1208,7 +1241,7 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         }
     }
 
-    if len(delList)!= 0 || len(createList)!=0{
+    if len(del_map)!= 0 || len(create_map)!=0{
         if tbl_name == "PORT"{
             err = rpc_port_tbl_update(d,newVlanList,ifNameList,tbl_name)
 	}
@@ -1222,16 +1255,16 @@ var rpc_oc_vlan_replace RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
         }
     }
 
-    if len(delList)!=0{
-	err = rpc_vlan_tbl_update(d,delList,ifNameList,"DELETE")
+    if len(del_map)!=0{
+	err = rpc_vlan_tbl_update(d,del_map,"DELETE")
 	if err != nil {
             d.AbortTx()
             result.Output.Status_detail = err.Error()
             return json.Marshal(&result)
         }
     }
-    if len(createList)!=0{
-        err = rpc_vlan_tbl_update(d,createList,ifNameList,"CREATE")
+    if len(create_map)!=0{
+        err = rpc_vlan_tbl_update(d,create_map,"CREATE")
         if err != nil {
             d.AbortTx()
             result.Output.Status_detail = err.Error()
