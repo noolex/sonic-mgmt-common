@@ -435,6 +435,9 @@ module sonic-interface {
                         type string {
                             pattern "default";
                         }
+                        type string {
+                            pattern "mgmt";
+                        }
                         type leafref {
                             path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
                         }
