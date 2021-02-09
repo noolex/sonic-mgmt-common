@@ -918,8 +918,13 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 				dbs:   dbs,
 			})
 
-		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgt, resp[i])
-		collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgtChlds, resp[i])
+		if nAppSubInfo != nil {
+			collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgt, resp[i])
+			collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgtChlds, resp[i])
+		} else if errApp == nil {
+			log.Warningf("%T.translateSubscribe returned nil for path: %s", *app, path)
+			errApp = fmt.Errorf("Error processing path: %s", path)
+		}
 
 		if errApp != nil {
 			resp[i].Err = errApp
@@ -1004,8 +1009,13 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 			})
 
 		r := resp[i]
-		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, r)
-		collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, r)
+		if nAppInfos != nil {
+			collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, r)
+			collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, r)
+		} else if errApp == nil {
+			log.Warningf("%T.translateSubscribe returned nil for path: %s", *app, path)
+			errApp = fmt.Errorf("Error processing path: %s", path)
+		}
 
 		log.Infof("IsSubscribeResponse[%d]: onChg=%v, pref=%v, minInt=%d, err=%v",
 			i, r.IsOnChangeSupported, r.PreferredType, r.MinInterval, errApp)
