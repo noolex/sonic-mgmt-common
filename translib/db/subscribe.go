@@ -125,6 +125,8 @@ func SubscribeDB(opt Options, skeys []*SKey, handler HFunc) (*DB, error) {
 		goto SubscribeDBExit
 	}
 
+	d.sOnCCacheDB = d.Opts.SDB
+
 	// Wait for confirmation, of channel creation
 	_, e = d.sPubSub.Receive()
 

@@ -2986,7 +2986,11 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
     sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
     log.Infof("YangToDb_intf_ip_addr_xfmr: Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
     ifName = *sonicIfName
-	intfType, _, ierr := getIntfTypeByName(ifName)
+    intfType, _, ierr := getIntfTypeByName(ifName)
+    if (i32 > 0) {
+        intfType = IntfTypeSubIntf
+        ifName = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &idx)
+    }
 
     if IntfTypeVxlan == intfType || IntfTypeVlan == intfType {
 	    return subIntfmap, nil
@@ -3063,12 +3067,6 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         err = tlerr.InvalidArgsError{Format:errStr}
         return subIntfmap, err
     }
-
-    if i32 > 0 {
-        tblName = "VLAN_SUB_INTERFACE"
-        //for IP delete
-        ifName = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifName, &idx)
-    } 
 
     if _, ok := intfObj.Subinterfaces.Subinterface[i32]; !ok {
         log.Info("YangToDb_intf_subintf_ip_xfmr : No IP address handling required")
