@@ -359,19 +359,20 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 								"transformer callback: %v and the type is %v ", ygXpathInfo.xfmrFunc, intfVal)
 							return tlerr.InternalError{Format: "Onchange subscription: Incorrect type recieved from the Subscribe transformer callback", Path: pathXltr.uriPath}
 					}
-					ygLeafNodePath := pathXltr.subReq.ygPath // default target node path
-					if pathXltr.xpathYgNode != nil { ygLeafNodePath = pathXltr.xpathYgNode.ygPath }
+					ygLeafNodePathPrefix := pathXltr.subReq.ygPath // default target node path
+					if pathXltr.xpathYgNode != nil { ygLeafNodePathPrefix = pathXltr.xpathYgNode.ygPath }
 
 					keyComp := strings.Split(dBKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
 					log.Info("handleSubtreeNodeXlate: secDbDataMap: keyComp: ", keyComp)
 
 					for dbField, yangNodeName := range dbFldYgNameMap {
 						if isLeafTblFound { break } // do not process any more entry if the target node is leaf and it is processed
+						ygLeafNodePath := ygLeafNodePathPrefix
 						if ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList() {
 							if yangNodeName != ygXpathInfo.yangEntry.Name { continue }
 							isLeafTblFound = true // only if the subscribe path target is leaf/leaf-list
 						} else {
-							ygLeafNodePath = ygLeafNodePath + "/" + yangNodeName
+							ygLeafNodePath = ygLeafNodePathPrefix + "/" + yangNodeName
 						}
 
 						log.Info("handleSubtreeNodeXlate: ygLeafNodePath: ", ygLeafNodePath)
