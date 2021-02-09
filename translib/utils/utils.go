@@ -97,6 +97,14 @@ func (s *Set) SetItems() []string {
     return PortsSlice
 }
 
+func NewSet(list []string) Set {
+    var s Set
+    for _, item := range list {
+        s.SetAddItem(item)
+    }
+    return s
+}
+
 /* Cached map of the default FEC modes */
 var default_fec_modes_cache fec_info_t
 /* Cached map of the supported FEC modes */
