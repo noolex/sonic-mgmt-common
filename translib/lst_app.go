@@ -616,6 +616,8 @@ func (app *LstApp) processCRUCommonRoot(d *db.DB, opcode int) error {
 func (app *LstApp) removeGroupInterface(d *db.DB, group string, field string, intf string) error {
 	log.Infof("Grp:%s Intf:%s Field:%s", group, intf, field)
 
+	intf = *utils.GetNativeNameFromUIName(&intf)
+
 	var groups []string
 	if group == "" {
 		keys, err := d.GetKeys(app.intfTrackCfgTs)
