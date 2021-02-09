@@ -987,7 +987,7 @@ func rpc_delete_vlan(d *db.DB, vlanList []string, ifName string) error {
 
 	return nil
 }
-
+//Updates VLAN table members@ field.
 func rpc_vlan_tbl_update(d *db.DB, op_map (map[string][]string),op string) error{
     updated_map := make(map[string][]string)
     for ifName,vlanList := range op_map{
@@ -996,40 +996,25 @@ func rpc_vlan_tbl_update(d *db.DB, op_map (map[string][]string),op string) error
             if ierr != nil{
                 continue
             }
-	    if op == "CREATE"{
-                if _, ok := updated_map[vlanName]; !ok{
-                    vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
-                    if err != nil || !vlanEntry.IsPopulated() {
-                        errStr := "Invalid Vlan:" + vlanName
-                        return errors.New(errStr)
-                    }
-                    membersList := vlanEntry.GetList("members")
+            if _, ok := updated_map[vlanName]; !ok{
+                vlanEntry,_ := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
+	        membersList := vlanEntry.GetList("members")
+		if op == "CREATE"{
                     membersList = append(membersList,ifName)
                     updated_map[vlanName] = membersList
-                }else{
-                    ifList := updated_map[vlanName]
-                    ifList = append(ifList,ifName)
-                    updated_map[vlanName] = ifList
-                }
-            }
-	    if op == "DELETE"{
-                if _, ok := updated_map[vlanName]; !ok{
-                    vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
-                    if err != nil || !vlanEntry.IsPopulated() {
-                        errStr := "Invalid Vlan:" + vlanName
-                        return errors.New(errStr)
-                    }
-                    membersList := vlanEntry.GetList("members")
+		}
+		if op == "DELETE"{
                     membersList = utils.RemoveElement(membersList,ifName)
                     updated_map[vlanName] = membersList
-                }else{
-                    ifList := updated_map[vlanName]
-                    ifList = utils.RemoveElement(ifList,ifName)
-                    updated_map[vlanName] = ifList
-                }
-	    }
+		}
+            }else{
+                ifList := updated_map[vlanName]
+                ifList = append(ifList,ifName)
+                updated_map[vlanName] = ifList
+            }
         }
     }
+
     for vlanName,ifList := range updated_map{
         vlanEntry, err := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
         if err != nil || !vlanEntry.IsPopulated() {
@@ -1042,7 +1027,7 @@ func rpc_vlan_tbl_update(d *db.DB, op_map (map[string][]string),op string) error
         if err != nil{
             errStr := "Setting entry in VLAN_TABLE failed!"
             return errors.New(errStr)
-            }
+        }
 
     }
     return nil
