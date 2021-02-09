@@ -599,7 +599,9 @@ func fill_pim_tib_mroute_state_info (inParams XfmrParams, tibKey _xfmr_pim_tib_s
 
             var _uiIncomingIntfId string
             util_pim_get_ui_ifname_from_native_ifname (&iif, &_uiIncomingIntfId)
-            srcEntryStateObj.IncomingInterface = &_uiIncomingIntfId
+            if  _uiIncomingIntfId != "<none>" {
+                srcEntryStateObj.IncomingInterface = &_uiIncomingIntfId
+            }
 
             rpfInfoObj := srcEntryStateObj.RpfInfo ; if rpfInfoObj == nil {
                 var _rpfInfoObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_RpfInfo
