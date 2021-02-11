@@ -43,6 +43,10 @@ module sonic-bgp-common {
         prefix sintf;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -51,6 +55,11 @@ module sonic-bgp-common {
 
     description
         "SONIC BGP common YANG attributes for Neighbors and Peer group";
+
+    revision 2021-02-01 {
+        description
+            "Added CVL check to compare strict_capability_match and override_capability.";
+    }
 
     revision 2021-01-08 {
         description
@@ -259,6 +268,7 @@ module sonic-bgp-common {
         leaf disable_ebgp_connected_route_check {
             type boolean;
             description "Connected checked disabled";
+            sonic-ext:custom-validation ValidateDisableConnectedCheck;
         }
 
         leaf enforce_first_as {
@@ -325,6 +335,7 @@ module sonic-bgp-common {
 
         leaf strict_capability_match {
             type boolean;
+            sonic-ext:custom-validation ValidateStrictAndOverRideCapability;
             description "Strict capability negotiation match";
         }
 
