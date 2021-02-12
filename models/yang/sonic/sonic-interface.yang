@@ -615,6 +615,11 @@ module sonic-interface {
                     type inet:ip-prefix;
                 }
 
+                leaf secondary {
+                    type boolean;
+                    description "Indicates whether IP adddress configured is secondary or not";
+                }
+
             }
         }
    }

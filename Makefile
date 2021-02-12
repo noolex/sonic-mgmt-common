@@ -20,8 +20,11 @@
 TOPDIR := $(abspath .)
 BUILD_DIR := build
 
-GOPATH ?= /tmp/go
-GO     ?= /usr/local/go/bin/go
+export GOPATH ?= /tmp/go
+export GO     ?= /usr/local/go/bin/go
+
+# GOPATH is overriten by Version Cache framework
+export GOPATH := $(shell GOPATH=$(GOPATH) ${GO} env GOPATH)
 
 INSTALL := /usr/bin/install
 
