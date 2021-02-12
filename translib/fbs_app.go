@@ -3561,7 +3561,8 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 		ygot.BuildEmptyTree(grpObj)
 		ygot.BuildEmptyTree(grpObj.NextHops)
 
-		grpObj.State.Name = &grpName
+		tmpGrpName := grpName
+		grpObj.State.Name = &tmpGrpName
 		grpStateData, err := app.getNextHopGroupStateEntryFromDB(dbs[db.StateDB], grpName+":"+vrfName)
 		if err != nil {
 			log.Error(err)
@@ -3914,8 +3915,9 @@ func (app *FbsApp) fillPbfGroupNextHops(grpData db.Value, grpNhops *ocbinds.Open
 			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_OVERLAY
 		}
 
+		tmpEntryId := entryId
 		if nhObj.Config != nil {
-			nhObj.Config.EntryId = &entryId
+			nhObj.Config.EntryId = &tmpEntryId
 			nhObj.Config.IpAddress = &ipAddr
 			if vrfName != "" {
 				nhObj.Config.NetworkInstance = &vrfName
@@ -3925,7 +3927,7 @@ func (app *FbsApp) fillPbfGroupNextHops(grpData db.Value, grpNhops *ocbinds.Open
 			}
 		}
 		if nhObj.State != nil {
-			nhObj.State.EntryId = &entryId
+			nhObj.State.EntryId = &tmpEntryId
 			nhObj.State.IpAddress = &ipAddr
 			if vrfName != "" {
 				nhObj.State.NetworkInstance = &vrfName
