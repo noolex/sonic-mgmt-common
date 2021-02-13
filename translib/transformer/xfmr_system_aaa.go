@@ -59,6 +59,10 @@ func init () {
     XlateFuncBind("YangToDb_ldap_server_map_key_xfmr", YangToDb_ldap_server_map_key_xfmr)
     XlateFuncBind("DbToYang_ldap_server_map_key_xfmr", DbToYang_ldap_server_map_key_xfmr)
     XlateFuncBind("system_post_xfmr", system_post_xfmr)
+    XlateFuncBind("DbToYangPath_sys_server_group_path_xfmr", DbToYangPath_sys_server_group_path_xfmr)
+    XlateFuncBind("DbToYangPath_sys_server_path_xfmr", DbToYangPath_sys_server_path_xfmr)
+    XlateFuncBind("DbToYangPath_ldap_map_path_xfmr", DbToYangPath_ldap_map_path_xfmr)
+
 }
 
 // authMethodFind takes a slice and looks for an element in it. If found it will
@@ -319,7 +323,7 @@ var server_table_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, error
         tables = append(tables, "TACPLUS_SERVER")
 	} else if servergroupname == "LDAP" {
 		tables = append(tables, "LDAP_SERVER")        
-    } else if inParams.oper == GET {
+    } else if inParams.oper == GET || servergroupname == "*" {
         tables = append(tables, "RADIUS_SERVER")
         tables = append(tables, "TACPLUS_SERVER")
         tables = append(tables, "LDAP_SERVER")
@@ -473,7 +477,7 @@ var global_sg_tbl_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, erro
         }
     } else if servergroupname == "LDAP" || servergroupname == "LDAP_NSS" || servergroupname == "LDAP_PAM" || servergroupname == "LDAP_SUDO" {
         tables = append(tables, "LDAP")
-    } else if inParams.oper == GET {
+    } else if inParams.oper == GET || servergroupname == "*" {
         tables = append(tables, "RADIUS")
         tables = append(tables, "RADIUS_SERVER")
         tables = append(tables, "TACPLUS")
@@ -674,3 +678,68 @@ var system_post_xfmr PostXfmrFunc = func(inParams XfmrParams) (map[string]map[st
     log.Infof("system_post_xfmr returned : %v, skipOrdTblChk: %v", retDbDataMap, *inParams.skipOrdTblChk)
     return retDbDataMap, nil
 }
+
+var DbToYangPath_sys_server_group_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+    sgRoot := "/openconfig-system:system/aaa/server-groups/server-group"
+
+    log.Info("DbToYangPath_sys_server_group_path_xfmr: params: ", params)
+
+    if params.tblName == "LDAP" {
+        if len(params.tblKeyComp) > 0 {
+            ygKeyVal := ""
+            switch params.tblKeyComp[0] {
+            case "global":
+                ygKeyVal = "LDAP"
+            case "nss":
+                ygKeyVal = "LDAP_NSS"
+            case "pam":
+                ygKeyVal = "LDAP_PAM"
+            case "sudo":
+                ygKeyVal = "LDAP_SUDO"
+            }
+            params.ygPathKeys[sgRoot + "/name"] = ygKeyVal
+        }
+    }
+
+    log.Info("DbToYangPath_sys_server_group_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+
+    return nil
+}
+
+var DbToYangPath_sys_server_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+    sgRoot := "/openconfig-system:system/aaa/server-groups/server-group"
+    sysServer := sgRoot + "/servers/server"
+
+    log.Info("DbToYangPath_sys_server_path_xfmr: params: ", params)
+
+    if params.tblName == "LDAP_SERVER" {
+        params.ygPathKeys[sgRoot + "/name"] = "LDAP"
+        if len(params.tblKeyComp) > 0 {
+            params.ygPathKeys[sysServer + "/address"] = params.tblKeyComp[0]
+        }
+    }
+
+    log.Info("DbToYangPath_sys_server_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+
+    return nil
+}
+
+var DbToYangPath_ldap_map_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+    sgRoot := "/openconfig-system:system/aaa/server-groups/server-group"
+    ldapMap := sgRoot + "/openconfig-aaa-ldap-ext:ldap/maps/map"
+
+    log.Info("DbToYangPath_ldap_map_path_xfmr: params: ", params)
+
+    if params.tblName == "LDAP_MAP" {
+        params.ygPathKeys[sgRoot + "/name"] = "LDAP"
+        if len(params.tblKeyComp) == 2 {
+            params.ygPathKeys[ldapMap + "/name"] = params.tblKeyComp[0]
+            params.ygPathKeys[ldapMap + "/from"] = params.tblKeyComp[1]
+        }
+    }
+
+    log.Info("DbToYangPath_ldap_map_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+
+    return nil
+}
+
