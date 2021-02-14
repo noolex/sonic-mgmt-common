@@ -5591,9 +5591,7 @@ var YangToDb_igmp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     pathInfo := NewPathInfo(inParams.uri)
 
-    uriIfName := pathInfo.Var("name")
-    _ifName := utils.GetNativeNameFromUIName(&uriIfName)
-    ifName := *_ifName
+    ifName := pathInfo.Var("name")
 
     if ifName == "" {
        errStr := "Interface KEY not present"
