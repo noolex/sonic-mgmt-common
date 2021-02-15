@@ -124,6 +124,8 @@ func startDBSubscribe(opt db.Options, nGroups map[db.TableSpec]*notificationGrou
 			continue // should not happen
 		}
 
+		log.Infof("[%v] nGroup=%p:%v", sInfo.id, nGroup, nGroup.toString())
+
 		sKeyList = append(sKeyList, skeys...)
 
 		d.RegisterTableForOnChangeCaching(&tSpec)
@@ -323,6 +325,16 @@ func (ng *notificationGroup) toSKeys() []*db.SKey {
 		})
 	}
 	return skeys
+}
+
+func (ng *notificationGroup) toString() string {
+	var nInfo *notificationInfo
+	comps := make([][]string, 0, len(ng.nInfos))
+	for _, nInfoList := range ng.nInfos {
+		nInfo = nInfoList[0]
+		comps = append(comps, nInfo.key.Comp)
+	}
+	return fmt.Sprintf("{dbno=%d, table=%s, patterns=%v}", nInfo.dbno, nInfo.table.Name, comps)
 }
 
 // sendInitialUpdate sends the initial sync updates to the caller.
@@ -621,7 +633,7 @@ func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, erro
 
 	if err == nil {
 		if resp.ValueTree == nil {
-			err = fmt.Errorf("nil value")
+			err = tlerr.NotFound("app returned nil")
 		} else if isEmptyYgotStruct(*resp.ValueTree) {
 			err = tlerr.NotFound("app returned empty %T", *resp.ValueTree)
 		} else {
@@ -683,13 +695,15 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 }
 
 func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []*yangNodeInfo) {
-	prefix := nInfo.path
+	var prefix *gnmi.Path
 	if nInfo.flags.Has(niWildcardPath) || ne.forceProcessSub {
 		prefix = ne.dbkeyToYangPath(nInfo)
 		if prefix == nil {
 			log.Warningf("[%s] skip notification", ne.id)
 			return
 		}
+	} else {
+		prefix = path.Clone(nInfo.path)
 	}
 
 	sInfo := nInfo.sInfo
@@ -734,10 +748,16 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 	}
 
 	numUpdate := len(updatePaths)
+	numDelete := len(resp.Delete)
+	log.Infof("[%v][%v] Found %d updates and %d deletes", ne.id, sInfo.id, numUpdate, numDelete)
+	if numUpdate == 0 && numDelete == 0 {
+		return
+	}
+
 	switch {
 	case numUpdate == 0:
 		// No updates; retain resp.Path=prefixStr and resp.Update=nil
-	case numUpdate == 1 && len(resp.Delete) == 0:
+	case numUpdate == 1 && numDelete == 0:
 		// There is only one update and no deletes. Overwrite the resp.Path
 		// to the parent node (because processGet returns GoStruct for the parent)
 		lv, _ := nextYangNodeForUpdate(fields, 0)
@@ -780,7 +800,6 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		return
 	}
 
-	log.Infof("[%v][%v] Found %d updates and %d deletes", ne.id, sInfo.id, numUpdate, len(resp.Delete))
 	log.Infof("[%v][%v] Sending SubscribeResponse{Path=\"%s\", Update=%v, Delete=%v}",
 		ne.id, sInfo.id, resp.Path, sliceValue(updatePaths), sliceValue(resp.Delete))
 	sInfo.q.Put(resp)
