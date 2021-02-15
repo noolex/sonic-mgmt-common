@@ -871,7 +871,7 @@ func (reqXlator *subscribeReqXlator) traverseYgXpathAndTranslate(ygXpNode *ygXpa
 					//debugPrintXPathInfo(chldNode.ygXpathInfo)
 				}
 				if len(reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo) == 0 &&
-					(!ygXpNode.pathXlateInfo.TrgtNodeChld && len(chldNode.pathXlateInfo.DbKeyXlateInfo) > 0) {
+					(!parentPathXlateInfo.TrgtNodeChld && len(chldNode.pathXlateInfo.DbKeyXlateInfo) > 0) {
 					log.Info("traverseYgXpathAndTranslate: target info path is empty; setting TrgtNodeChld flag to true for the path: ", chldNode.pathXlateInfo.Path)
 					chldNode.pathXlateInfo.TrgtNodeChld = true
 				}
