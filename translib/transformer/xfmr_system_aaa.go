@@ -701,6 +701,28 @@ var DbToYangPath_sys_server_group_path_xfmr PathXfmrDbToYangFunc = func(params X
         }
     }
 
+    if params.tblName == "RADIUS" {
+        if len(params.tblKeyComp) > 0 {
+            ygKeyVal := ""
+            switch params.tblKeyComp[0] {
+            case "global":
+                ygKeyVal = "RADIUS"
+            }
+            params.ygPathKeys[sgRoot + "/name"] = ygKeyVal
+        }
+    }
+
+    if params.tblName == "TACPLUS" {
+        if len(params.tblKeyComp) > 0 {
+            ygKeyVal := ""
+            switch params.tblKeyComp[0] {
+            case "global":
+                ygKeyVal = "TACACS"
+            }
+            params.ygPathKeys[sgRoot + "/name"] = ygKeyVal
+        }
+    }
+
     log.Info("DbToYangPath_sys_server_group_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
 
     return nil
@@ -714,6 +736,20 @@ var DbToYangPath_sys_server_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbT
 
     if params.tblName == "LDAP_SERVER" {
         params.ygPathKeys[sgRoot + "/name"] = "LDAP"
+        if len(params.tblKeyComp) > 0 {
+            params.ygPathKeys[sysServer + "/address"] = params.tblKeyComp[0]
+        }
+    }
+
+    if params.tblName == "RADIUS_SERVER" {
+        params.ygPathKeys[sgRoot + "/name"] = "RADIUS"
+        if len(params.tblKeyComp) > 0 {
+            params.ygPathKeys[sysServer + "/address"] = params.tblKeyComp[0]
+        }
+    }
+
+    if params.tblName == "TACPLUS_SERVER" {
+        params.ygPathKeys[sgRoot + "/name"] = "TACACS"
         if len(params.tblKeyComp) > 0 {
             params.ygPathKeys[sysServer + "/address"] = params.tblKeyComp[0]
         }
