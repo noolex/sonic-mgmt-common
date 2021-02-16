@@ -1541,7 +1541,7 @@ var YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func 
 func getIntfVrfMapping(d *db.DB)(map[string]string) {
     nonDefaultVrfIntfs := make(map[string]string)
 
-    tblList := []string{"INTERFACE", "VLAN_INTERFACE", "PORTCHANNEL_INTERFACE"}
+    tblList := []string{"INTERFACE", "VLAN_INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_SUB_INTERFACE"}
     for _, tbl := range tblList {
         tblObj, err := d.GetTable(&db.TableSpec{Name:tbl})
         if err != nil {
