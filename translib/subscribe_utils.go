@@ -66,6 +66,7 @@ func mergeYgotAtPath(ygRoot *ocbinds.Device, p *gnmi.Path, value ygot.ValidatedG
 // getYgotAtPath looks up the child ygot struct at a childPath in a parent struct.
 // Absolute path to the parent struct from root should also be passed.
 // Returns error if childPath does not point to a struct.
+// Warning: this function may update the childPath by removing module prefixes.
 func getYgotAtPath(parent ygot.ValidatedGoStruct, childPath *gnmi.Path) (ygot.ValidatedGoStruct, error) {
 	structName := reflect.TypeOf(parent).Elem().Name()
 	schema, ok := ocbinds.SchemaTree[structName]
@@ -73,6 +74,7 @@ func getYgotAtPath(parent ygot.ValidatedGoStruct, childPath *gnmi.Path) (ygot.Va
 		return nil, fmt.Errorf("Could not find schema for %T", parent)
 	}
 
+	path.RemoveModulePrefix(childPath)
 	nodes, err := ytypes.GetNode(schema, parent, childPath)
 	if err != nil {
 		return nil, err

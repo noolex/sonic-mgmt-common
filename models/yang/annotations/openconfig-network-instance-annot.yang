@@ -17,7 +17,7 @@ module openconfig-network-instance-annot {
     import openconfig-aft-ipv4-ext { prefix "oc-aft-ipv4-ext"; }
     import openconfig-igmp-ext { prefix "oc-igmp-ext"; }
     import openconfig-interfaces { prefix "oc-if"; }
-	
+
     import ietf-yang-types { prefix yang; }
     import openconfig-vxlan {prefix oc-vxlan; }
     import openconfig-mac-dampening { prefix oc-mac-damp; }
@@ -144,7 +144,7 @@ module openconfig-network-instance-annot {
       }
     }
 
-    
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-mac-damp:mac-dampening {
         deviate add {
             sonic-ext:table-name "MAC_DAMPENING";
@@ -389,9 +389,9 @@ module openconfig-network-instance-annot {
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors {
-      deviate add {	        
+      deviate add {
           sonic-ext:table-name "NONE";
-      }	  
+      }
     }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state {
@@ -980,7 +980,7 @@ module openconfig-network-instance-annot {
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections {
       deviate add {
         sonic-ext:table-name "NONE";
-        sonic-ext:get-validate "table_conns_validate_ni";  
+        sonic-ext:get-validate "table_conns_validate_ni";
       }
     }
 
@@ -1002,13 +1002,13 @@ module openconfig-network-instance-annot {
         sonic-ext:field-transformer "route_table_dst_protocol_xfmr";
       }
     }
- 
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config/oc-netinst-ext:metric {
       deviate add {
         sonic-ext:field-name "metric";
       }
     }
-   
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config/oc-netinst:address-family {
       deviate add {
         sonic-ext:field-transformer "route_table_addr_family_xfmr";
@@ -1032,13 +1032,13 @@ module openconfig-network-instance-annot {
         sonic-ext:field-transformer "route_table_dst_protocol_xfmr";
       }
     }
- 
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst-ext:metric {
       deviate add {
         sonic-ext:field-name "metric";
       }
     }
-   
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst:address-family {
       deviate add {
         sonic-ext:field-transformer "route_table_addr_family_xfmr";
@@ -1461,25 +1461,25 @@ module openconfig-network-instance-annot {
             sonic-ext:field-name "max_med_val";
       }
     }
-    
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:config/oc-bgp-ext:hold-time {
       deviate add {
             sonic-ext:field-name "holdtime";
       }
     }
-    
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:config/oc-bgp-ext:keepalive-interval {
       deviate add {
             sonic-ext:field-name "keepalive";
       }
     }
- 
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:state/oc-bgp-ext:hold-time {
       deviate add {
             sonic-ext:field-name "holdtime";
       }
     }
-    
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:state/oc-bgp-ext:keepalive-interval {
       deviate add {
             sonic-ext:field-name "keepalive";
@@ -2959,7 +2959,7 @@ module openconfig-network-instance-annot {
         sonic-ext:key-transformer "bgp_evpn_vni_key_xfmr";
         sonic-ext:table-transformer "bgp_evpn_vni_tbl_xfmr";
       }
-    } 
+    }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-evpn/oc-bgp-evpn-ext:vnis/oc-bgp-evpn-ext:vni/oc-bgp-evpn-ext:config/oc-bgp-evpn-ext:vni-number {
       deviate add {
@@ -3044,12 +3044,12 @@ module openconfig-network-instance-annot {
             sonic-ext:subtree-transformer "bgp_evpn_vni_state_xfmr";
       }
     }
-	
+
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:global-sag {
       deviate add {
         sonic-ext:table-name "SAG_GLOBAL";
-        sonic-ext:key-transformer "sag_global_key_xfmr";		
+        sonic-ext:key-transformer "sag_global_key_xfmr";
       }
     }
 
@@ -3075,7 +3075,7 @@ module openconfig-network-instance-annot {
         sonic-ext:field-transformer "sag_ipv6_enable_xfmr";
       }
     }
-	
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst-ext:global-sag/oc-netinst-ext:state {
       deviate add {
       }
@@ -3097,7 +3097,7 @@ module openconfig-network-instance-annot {
       deviate add {
         sonic-ext:field-transformer "sag_ipv6_enable_xfmr";
       }
-    }	
+    }
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-vxlan:neighbour-suppress {
         deviate add {
@@ -3117,19 +3117,19 @@ module openconfig-network-instance-annot {
             sonic-ext:field-transformer "vlan_nd_suppress_fld_xfmr";
         }
     }
-    
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-vxlan:vxlan-vni-instances {
         deviate add {
             sonic-ext:subtree-transformer "vxlan_vni_instance_subtree_xfmr";
         }
-    }    
+    }
 
   /*-------- OSPFV2_ROUTER --------*/
 
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:ospfv2" {
     deviate add {
-      sonic-ext:get-validate "ospfv2_validate_proto";  
+      sonic-ext:get-validate "ospfv2_validate_proto";
     }
   }
 
@@ -3660,7 +3660,7 @@ module openconfig-network-instance-annot {
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
              "/oc-netinst:inter-area-propagation-policies" +
-             "/oc-ospfv2-ext:inter-area-policy"  + 
+             "/oc-ospfv2-ext:inter-area-policy"  +
              "/oc-ospfv2-ext:config/oc-ospfv2-ext:src-area" {
     deviate add {
       sonic-ext:field-transformer  "ospfv2_router_area_policy_src_area_fld_xfmr";
@@ -3670,7 +3670,7 @@ module openconfig-network-instance-annot {
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:ospfv2/oc-netinst:global" +
              "/oc-netinst:inter-area-propagation-policies" +
-             "/oc-ospfv2-ext:inter-area-policy"  + 
+             "/oc-ospfv2-ext:inter-area-policy"  +
              "/oc-ospfv2-ext:state/oc-ospfv2-ext:src-area" {
     deviate add {
       sonic-ext:field-transformer  "ospfv2_router_area_policy_src_area_fld_xfmr";
@@ -3768,6 +3768,12 @@ module openconfig-network-instance-annot {
     }
   }
 
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp" {
+     deviate add {
+       sonic-ext:table-name "NONE";
+     }
+  }
+  
   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/oc-igmp-ext:groups" {
      deviate add {
        sonic-ext:subtree-transformer "igmp_groups_get_xfmr";
@@ -3786,7 +3792,7 @@ module openconfig-network-instance-annot {
      }
   }
 
-  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/oc-igmp-ext:interfaces/oc-igmp-ext:interface" {
+  deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/oc-igmp-ext:interfaces" {
      deviate add {
        sonic-ext:subtree-transformer "igmp_interface_get_xfmr";
      }
@@ -3801,7 +3807,7 @@ module openconfig-network-instance-annot {
   deviation  "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols" +
              "/oc-netinst:protocol/oc-netinst:pim" {
     deviate add {
-      sonic-ext:get-validate "pim_validate_proto";  
+      sonic-ext:get-validate "pim_validate_proto";
     }
   }
 

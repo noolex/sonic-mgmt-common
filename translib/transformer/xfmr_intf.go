@@ -2696,7 +2696,7 @@ func validateIpPrefixForIntfType(ifType E_InterfaceType, ip *string, prfxLen *ui
                 return err
             }
         }
-    case IntfTypeEthernet, IntfTypeVlan, IntfTypePortChannel, IntfTypeMgmt:
+    case IntfTypeEthernet, IntfTypeVlan, IntfTypePortChannel, IntfTypeMgmt, IntfTypeSubIntf:
         if !isValidPrefixLength(prfxLen, isIpv4) {
             log.Errorf("Invalid Mask configuration!")
             errStr := "Prefix length " + strconv.Itoa(int(*prfxLen)) + " not supported"
@@ -5608,9 +5608,7 @@ var YangToDb_igmp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
     requestUriPath, err := getYangPathFromUri(inParams.requestUri)
     pathInfo := NewPathInfo(inParams.uri)
 
-    uriIfName := pathInfo.Var("name")
-    _ifName := utils.GetNativeNameFromUIName(&uriIfName)
-    ifName := *_ifName
+    ifName := pathInfo.Var("name")
 
     if ifName == "" {
        errStr := "Interface KEY not present"

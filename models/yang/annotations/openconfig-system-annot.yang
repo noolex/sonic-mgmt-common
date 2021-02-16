@@ -95,6 +95,7 @@ module openconfig-system-annot {
           sonic-ext:virtual-table "true";
           sonic-ext:key-transformer "global_sg_key_xfmr";
           sonic-ext:table-transformer "global_sg_tbl_xfmr";
+          sonic-ext:path-transformer "sys_server_group_path_xfmr";
       }
     }
 
@@ -468,6 +469,7 @@ module openconfig-system-annot {
       deviate add {
           sonic-ext:table-transformer "server_table_xfmr";
           sonic-ext:key-transformer "server_key_xfmr";
+          sonic-ext:path-transformer "sys_server_path_xfmr";
       }
     }
 
@@ -862,12 +864,14 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:use-type {
       deviate add {
           sonic-ext:field-transformer "ldap_use_type_field_xfmr";
+          sonic-ext:field-name "use_type";
       }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:ssl {
       deviate add {
           sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+          sonic-ext:field-name "ssl";
       }
     }
 
@@ -888,12 +892,14 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:use-type {
       deviate add {
           sonic-ext:field-transformer "ldap_use_type_field_xfmr";
+          sonic-ext:field-name "use_type";
       }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:ssl {
       deviate add {
           sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+          sonic-ext:field-name "ssl";
       }
     }
 
@@ -928,10 +934,17 @@ module openconfig-system-annot {
 
 	/*************** ldap-servers-map-attributes-start ***********/    
 
+    /*deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps {
+        deviate add {
+            sonic-ext:table-name "NONE";
+        }
+    }*/
+
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:maps/oc-aaa-ldap-ext:map {
       deviate add {
         sonic-ext:table-name "LDAP_MAP";
         sonic-ext:key-transformer "ldap_server_map_key_xfmr";
+        sonic-ext:path-transformer "ldap_map_path_xfmr";
       }
     }
 
@@ -1094,12 +1107,14 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:ssl {
       deviate add {
           sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+          sonic-ext:field-name "ssl";
       }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:config/oc-aaa-ldap-ext:scope {
       deviate add {
           sonic-ext:field-transformer "ldap_scope_field_xfmr";
+          sonic-ext:field-name "scope";
       }
     }
 
@@ -1204,12 +1219,14 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:ssl {
       deviate add {
           sonic-ext:field-transformer "ldap_ssl_field_xfmr";
+          sonic-ext:field-name "ssl";
       }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-aaa-ldap-ext:ldap/oc-aaa-ldap-ext:state/oc-aaa-ldap-ext:scope {
       deviate add {
           sonic-ext:field-transformer "ldap_scope_field_xfmr";
+          sonic-ext:field-name "scope";
       }
     }
 
