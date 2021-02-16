@@ -773,7 +773,7 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
 
 
     if value,ok := interface_info["timerGroupMembershipIntervalMsec"] ; ok {
-        _gmi := uint16(value.(float64))
+        _gmi := uint16(value.(float64)/1000)
         igmpInterfaceTimer_obj.GroupMembershipInterval  = &_gmi
     }
     if value,ok := interface_info["lastMemberQueryCount"] ; ok {
@@ -781,23 +781,23 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
         igmpInterfacesInterface_obj.State.Timers.LastMemberQueryCount  = &_lmq
     }
     if value,ok := interface_info["timerLastMemberQueryMsec"] ; ok {
-        _lmqt := uint32(value.(float64))
+        _lmqt := uint32(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.LastMemberQueryTime  = &_lmqt
     }
     if value,ok := interface_info["timerOlderHostPresentIntervalMsec"] ; ok {
-        _old := uint16(value.(float64))
+        _old := uint16(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.OlderHostPresentInterval  = &_old
     }
     if value,ok := interface_info["timerOtherQuerierPresentIntervalMsec"] ; ok {
-        _qpi := uint16(value.(float64))
+        _qpi := uint16(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.QuerierPresentInterval  = &_qpi
     }
     if value,ok := interface_info["timerQueryInterval"] ; ok {
-        _qi := uint16(value.(float64))
+        _qi := uint16(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.QueryInterval  = &_qi
     }
     if value,ok := interface_info["timerQueryResponseIntervalMsec"] ; ok {
-        _qri := uint16(value.(float64))
+        _qri := uint16(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.QueryResponseInterval  = &_qri
     }
     if value,ok := interface_info["timerRobustnessVariable"] ; ok {
