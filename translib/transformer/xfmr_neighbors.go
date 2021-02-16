@@ -21,6 +21,7 @@ package transformer
 import (
     "errors"
     "strings"
+    "strconv"
     "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     log "github.com/golang/glog"
@@ -92,9 +93,14 @@ var YangToDb_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
 
     log.Info("YangToDb_neigh_tbl_key_xfmr - inParams: ", inParams)
     pathInfo := NewPathInfo(inParams.uri)
-    intfName := pathInfo.Var("name")
 
-    if len(intfName) <= 0 {
+    rcvdIfName, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
+    log.Infof("YangToDb_neigh_tbl_key_xfmr : RcvdName: %s, NativeName: %s, subIdxStr: %s, subIdx: %d, ifNameInDb: %s, err1: %s",  rcvdIfName,  ifName,  subIdxStr, subIdx, ifNameInDb, err1)
+
+    log.Info("YangToDb_neigh_tbl_key_xfmr : pathInfo ", pathInfo)
+    log.Info("YangToDb_neigh_tbl_key_xfmr : inParams.uri ", inParams.uri )
+
+    if len(rcvdIfName) <= 0 {
         errStr := "Interface name is missing"
         log.Error("YangToDb_neigh_tbl_key_xfmr - ", errStr)
         err := tlerr.InvalidArgsError{Format: errStr}
@@ -107,7 +113,7 @@ var YangToDb_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
         return "", err
     }
 
-    neightbl_key = intfName + ":" +  ipAddr
+    neightbl_key = ifNameInDb + ":" +  ipAddr
     log.Info("YangToDb_neigh_tbl_key_xfmr - key returned: ", neightbl_key)
 
     return neightbl_key, err
@@ -260,6 +266,49 @@ func neighGetNativeIntfName(ifName string) (string, error) {
    return *nativeNamePtr, nil
 }
 
+func neighGetSubInterfaceShortName(longName *string) *string {
+
+    //Got error while using utils "getSubInterfaceShortName not declared by package utils (compile)"
+    //shortName := utils.getSubInterfaceShortName(longName)
+    var shortName string
+
+    if strings.Contains(*longName, "Ethernet") {
+        shortName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+    } else if strings.Contains(*longName, "PortChannel") {
+        shortName = strings.Replace(*longName, "PortChannel", "Po", -1)
+    } else {
+        shortName = *longName
+    }
+
+    log.V(3).Infof("neighGetSubInterfaceShortName %s => %s", *longName, shortName)
+
+    return &shortName
+}
+
+//Get ifName formats from inParams
+func neighGetifNameFrmPathInfo (pathInfo PathInfo) (string, string, string, uint32, string, error) {
+    var subIdx uint32
+
+    rcvdIfName  := pathInfo.Var("name")
+    subIdxStr := pathInfo.Var("index")
+
+    nativeIfName, _ := neighGetNativeIntfName(rcvdIfName)
+    ifNameInDb := nativeIfName
+
+    if subIdxStr != "0" && subIdxStr != "" {
+        tmpIdx, _ := strconv.Atoi(subIdxStr)
+        subIdx = uint32(tmpIdx)
+
+        nativeIfName = nativeIfName + "." + subIdxStr
+        ifNameInDb = *neighGetSubInterfaceShortName(&nativeIfName)
+    }
+
+    log.Info("neighGetIfNameFrmPathInfo: RcvdIfName: " + rcvdIfName + " nativeIfName: " + nativeIfName + " ifNameInDb: " + ifNameInDb)
+
+    return rcvdIfName, nativeIfName, subIdxStr, subIdx, ifNameInDb,  nil
+}
+
+
 var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams XfmrParams) (map[string]map[string]db.Value, error)  {
     var neighTblKey string
     var neighTblName string
@@ -267,6 +316,7 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     var staticMacStr string
     var staticIpStr string
     var err error
+
     valueMap := make(map[string]db.Value)
     neighIntfmap := make(map[string]map[string]db.Value)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: --------Start------")
@@ -283,11 +333,9 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, err
     }
 
-    pathInfo := NewPathInfo(inParams.uri)
-    uriIfName := pathInfo.Var("name")
-
-    ifName, _ := neighGetNativeIntfName(uriIfName)
-    rcvdUri, _ := getYangPathFromUri(inParams.uri)
+    pathInfo  := NewPathInfo(inParams.uri)
+    uriIfName, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
+    log.Infof("YangToDb_neigh_tbl_key_all_ipv4_xfmr : uriIfName/RcvdName: %s, NativeName: %s, subIdxStr: %s, subIdx: %d, ifNameInDb: %s, err1: %s",  uriIfName,  ifName,  subIdxStr, subIdx, ifNameInDb, err1)
 
     if ifName == "" {
         errStr := "Interface KEY not present"
@@ -321,7 +369,7 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, nil
     }
 
-    if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+    if _, ok := intfObj.Subinterfaces.Subinterface[subIdx]; !ok {
         errStr := "SubInterface node is not set"
         log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
         if (deleteOperation) {
@@ -331,7 +379,7 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, nil
     }
 
-    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+    subIntfObj := intfObj.Subinterfaces.Subinterface[subIdx]
 
     if subIntfObj.Ipv4 == nil {
         errStr := "SubInterface IPv4 node is not set"
@@ -344,6 +392,8 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     }
 
     neighTblName = "NEIGH"
+
+    rcvdUri, _ := getYangPathFromUri(inParams.uri)
 
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:", ifName)
     log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:", inParams.uri)
@@ -379,9 +429,10 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     if (addOperation) {
         for _,v := range arpObj {
             staticMacStr = *v.Config.LinkLayerAddress
-            log.Info("YangToDb_intf_static_arp_subtree_xfmr: staticMacStrd ", staticMacStr)
+            log.Info("YangToDb_neigh_tbl_get_all)ipv4_xfmr:: staticMacStrd ", staticMacStr)
         }
-        neighTblKey = ifName + "|" + staticIpStr
+        //neighTblKey = ifName + "|" + staticIpStr
+        neighTblKey = ifNameInDb + "|" + staticIpStr
         log.Info(" ADD operation ", inParams.oper)
         log.Info(" staticIpStr ", staticIpStr)
         log.Info(" neighTblKey ", neighTblKey)
@@ -393,7 +444,8 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: valueMap ", valueMap[neighTblKey])
     } else if (deleteOperation) {
         log.Info("YangToDb_neigh_tbl_get_all_ipv4_xfmr:: staticIpStr ", staticIpStr)
-        neighTblKey = ifName + "|" + staticIpStr
+        //neighTblKey = ifName + "|" + staticIpStr
+        neighTblKey = ifNameInDb + "|" + staticIpStr
         var neighTblSpec *db.TableSpec = &db.TableSpec{Name: neighTblName}
         neighTblData, _ := configDbPtr.GetTable(neighTblSpec)
         neighEntry, err := neighTblData.GetEntry(db.Key{[]string{neighTblKey}})
@@ -421,14 +473,14 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
     result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
-    intfNameRcvd := pathInfo.Var("name")
-    if intfNameRcvd == "" {
+    rcvdIfName, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
+    log.Infof("Subscribe_neigh_tbl_get_all_ipv4_xfmr : RcvdName: %s, NativeName: %s, subIdxStr: %s, subIdx: %d, ifNameInDb: %s, err1: %s",  rcvdIfName,  ifName,  subIdxStr, subIdx, ifNameInDb, err1)
+
+    if rcvdIfName == "" {
         errStr := "Empty intfNameRcvd"
         log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: " + errStr)
         return result, tlerr.New(errStr)
     }
-
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     ipAddrRcvd := pathInfo.Var("ip")
     if ipAddrRcvd == "" {
@@ -437,9 +489,9 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH_TABLE"
-    neighIntfTblKey := *nativeIntfName + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH"
+    neighIntfTblKey := ifNameInDb + "|" + ipAddrRcvd
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -454,14 +506,14 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
     result.dbDataMap = make(RedisDbSubscribeMap)
     result.isVirtualTbl = false
 
-    intfNameRcvd := pathInfo.Var("name")
-    if intfNameRcvd == "" {
+    rcvdIfName, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
+    log.Infof("Subscribe_neigh_tbl_get_all_ipv6_xfmr : RcvdName: %s, NativeName: %s, subIdxStr: %s, subIdx: %d, ifNameInDb: %s, err1: %s",  rcvdIfName,  ifName,  subIdxStr, subIdx, ifNameInDb, err1)
+
+    if rcvdIfName == "" {
         errStr := "Empty intfNameRcvd"
         log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
         return result, tlerr.New(errStr)
     }
-
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     ipAddrRcvd := pathInfo.Var("ip")
     if ipAddrRcvd == "" {
@@ -470,9 +522,9 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH_TABLE"
-    neighIntfTblKey := *nativeIntfName + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH"
+    neighIntfTblKey := ifNameInDb + "|" + ipAddrRcvd
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -501,9 +553,9 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscI
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH_TABLE"
-    neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH"
+    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -531,9 +583,9 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscI
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH_TABLE"
-    neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH"
+    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -563,8 +615,8 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, err
     }
 
-    uriIfName := pathInfo.Var("name")
-    ifName, _ := neighGetNativeIntfName(uriIfName)
+    uriIfName, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
+    log.Infof("YangToDb_neigh_tbl_key_all_ipv4_xfmr : uriIfName/RcvdName: %s, NativeName: %s, subIdxStr: %s, subIdx: %d, ifNameInDb: %s, err1: %s",  uriIfName,  ifName,  subIdxStr, subIdx, ifNameInDb, err1)
 
     if ifName == "" {
         errStr := "Interface KEY not present"
@@ -575,8 +627,6 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         }
         return neighIntfmap, nil
     }
-
-    rcvdUri, _ := getYangPathFromUri(inParams.uri)
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
@@ -600,7 +650,7 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, nil
     }
 
-    if _, ok := intfObj.Subinterfaces.Subinterface[0]; !ok {
+    if _, ok := intfObj.Subinterfaces.Subinterface[subIdx]; !ok {
         errStr := "SubInterface node is not set"
         log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
         if (deleteOperation) {
@@ -610,8 +660,10 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         return neighIntfmap, nil
     }
 
-    subIntfObj := intfObj.Subinterfaces.Subinterface[0]
+    subIntfObj := intfObj.Subinterfaces.Subinterface[subIdx]
     neighTblName = "NEIGH"
+
+    rcvdUri, _ := getYangPathFromUri(inParams.uri)
 
     log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:", ifName)
     log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:", inParams.uri)
@@ -659,7 +711,8 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
             staticMacStr = *v.Config.LinkLayerAddress
             log.Info("YangToDb_intf_static_arp_subtree_xfmr: staticMacStrd ", staticMacStr)
         }
-        neighTblKey = ifName + "|" + staticIpStr
+        //neighTblKey = ifName + "|" + staticIpStr
+        neighTblKey = ifNameInDb + "|" + staticIpStr
 
         log.Info(" ADD operation ", inParams.oper)
         log.Info(" staticIpStr ", staticIpStr)
@@ -672,7 +725,8 @@ var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams Xf
         log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: valueMap ", valueMap[neighTblKey])
     } else if (deleteOperation) {
         log.Info("YangToDb_neigh_tbl_get_all_ipv6_xfmr:: staticIpStr ", staticIpStr)
-        neighTblKey = ifName + "|" + staticIpStr
+        //neighTblKey = ifName + "|" + staticIpStr
+        neighTblKey = ifNameInDb + "|" + staticIpStr
         var neighTblSpec *db.TableSpec = &db.TableSpec{Name: neighTblName}
         neighTblData, _ := configDbPtr.GetTable(neighTblSpec)
         neighEntry, err := neighTblData.GetEntry(db.Key{[]string{neighTblKey}})
