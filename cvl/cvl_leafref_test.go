@@ -68,6 +68,7 @@ func TestValidateEditConfig_Create_Chained_Leafref_DepData_Positive(t *testing.T
 			map[string]string {
 				"tagging_mode" : "tagged",
 			},
+			false,
 		},
 	}
 
@@ -92,6 +93,7 @@ func TestValidateEditConfig_Create_Chained_Leafref_DepData_Positive(t *testing.T
 				"DST_IP": "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -129,6 +131,7 @@ func TestValidateEditConfig_Create_Leafref_To_NonKey_Positive(t *testing.T) {
 				"vrf_name": "default",
 				"bgp_asn": "12338",
 			},
+			false,
 		},
 	}
 	cvSess, _ := cvl.ValidationSessOpen()
@@ -166,6 +169,7 @@ func TestValidateEditConfig_Update_Leafref_To_NonKey_Negative(t *testing.T) {
 				"vrf_name": "default",
 				"bgp_asn": "17698",
 			},
+			false,
 		},
 	}
 	cvSess, _ := cvl.ValidationSessOpen()
@@ -221,6 +225,7 @@ func TestValidateEditConfig_Create_Leafref_Multi_Key_Positive(t *testing.T) {
 				"acl-table-name": "TestACL901",
 				"acl-rule-name": "Rule1",
 			},
+			false,
 		},
 	}
 	cvSess, _ := cvl.ValidationSessOpen()
@@ -270,6 +275,7 @@ func TestValidateEditConfig_Create_Leafref_Multi_Key_Negative(t *testing.T) {
 				"acl-table-name": "TestACL901",
 				"acl-rule-name": "Rule1", //This is not there in above depDataMap
 			},
+			false,
 		},
 	}
 	cvSess, _ := cvl.ValidationSessOpen()
@@ -309,6 +315,7 @@ func TestValidateEditConfig_Create_Leafref_With_Other_DataType_In_Union_Positive
 				"edge_port": "true",
 				"link_type": "shared",
 			},
+			false,
 		},
 	}
 
@@ -348,6 +355,7 @@ func TestValidateEditConfig_Create_Leafref_With_Other_DataType_In_Union_Negative
 				"edge_port": "true",
 				"link_type": "shared",
 			},
+			false,
 		},
 	}
 
@@ -387,6 +395,7 @@ func TestValidateEditConfig_Create_Leafref_With_Other_DataType_In_Union_Non_Exis
 				"edge_port": "true",
 				"link_type": "shared",
 			},
+			false,
 		},
 	}
 
@@ -463,6 +472,7 @@ func deleteACLAndPO(aclName, ports string, poId int, bulk, expSuccess bool) func
 			cvl.OP_DELETE,
 			fmt.Sprintf("ACL_TABLE|%s", aclName),
 			map[string]string{ },
+			false,
 		})
 
 		if ports != "nil" {
@@ -492,6 +502,7 @@ func validateDeletePO(t *testing.T, session *cvl.CVL, cfgData []cvl.CVLEditConfi
 		cvl.OP_DELETE,
 		fmt.Sprintf("PORTCHANNEL|PortChannel%d", poId),
 		map[string]string{ },
+		false,
 	})
 
 	errInfo, status := session.ValidateEditConfig(cfgData)

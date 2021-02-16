@@ -1655,3 +1655,21 @@ func (c *CVL) validateCfgSemantics(root *xmlquery.Node) (r CVLErrorInfo) {
 	return ret
 }
 
+// For Replace operation DB layer sends update request and delete fields request
+// For semantic validation, remove fields provided in delete request from 
+// update request.
+func (c *CVL) updateYangTreeForReplaceOp(node *xmlquery.Node, cfgData []CVLEditConfigData) {
+	for _, cfgDataItem := range cfgData {
+		if !cfgDataItem.ReplaceOp {
+			return
+		}
+
+		if (VALIDATE_ALL != cfgDataItem.VType) {
+			continue
+		}
+
+		if OP_DELETE == cfgDataItem.VOp && len(cfgDataItem.Data) > 0 {
+			c.deleteLeafNodes(node, cfgDataItem.Data)
+		}
+	}
+}

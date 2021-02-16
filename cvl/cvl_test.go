@@ -440,7 +440,7 @@ func TestValidateEditConfig_CfgFile(t *testing.T) {
 			jsonEditCfg_Create_ConfigMap := convertJsonFileToMap(t, tc.cfgDataFile)
 
 			cfgData := []cvl.CVLEditConfigData{
-				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_TABLE|TestACL1", jsonEditCfg_Create_DependentMap},
+				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_TABLE|TestACL1", jsonEditCfg_Create_DependentMap, false},
 			}
 
 
@@ -451,7 +451,7 @@ func TestValidateEditConfig_CfgFile(t *testing.T) {
 			}
 
 			cfgData = []cvl.CVLEditConfigData{
-				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_RULE|TestACL1|Rule1", jsonEditCfg_Create_ConfigMap},
+				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_RULE|TestACL1|Rule1", jsonEditCfg_Create_ConfigMap, false},
 			}
 
 
@@ -493,7 +493,7 @@ func TestValidateEditConfig_CfgStrBuffer(t *testing.T) {
 			jsonEditCfg_Create_ConfigMap := convertDataStringToMap(t, tc.cfgData)
 
 			cfgData := []cvl.CVLEditConfigData{
-				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_TABLE|TestACL1", jsonEditCfg_Create_DependentMap},
+				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_TABLE|TestACL1", jsonEditCfg_Create_DependentMap, false},
 			}
 
 
@@ -504,7 +504,7 @@ func TestValidateEditConfig_CfgStrBuffer(t *testing.T) {
 			}
 
 			cfgData = []cvl.CVLEditConfigData{
-				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_RULE|TestACL1|Rule1", jsonEditCfg_Create_ConfigMap},
+				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_RULE|TestACL1|Rule1", jsonEditCfg_Create_ConfigMap, false},
 			}
 
 
@@ -645,6 +645,7 @@ func TestValidateEditConfig_Delete_Semantic_ACLTableReference_Positive(t *testin
 			cvl.OP_DELETE,
 			"ACL_RULE|TestACL1005|Rule1",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -690,6 +691,7 @@ func TestValidateEditConfig_Create_Syntax_Valid_FieldValue(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -720,6 +722,7 @@ func TestValidateEditConfig_Create_Syntax_CableLength(t *testing.T) {
 			  "Ethernet12": "5m",
 			  "PortChannel16": "5m",
 			},
+			false,
 		},
 	 }
 
@@ -743,6 +746,7 @@ func TestValidateEditConfig_Create_Syntax_Invalid_FieldValue(t *testing.T) {
 			"stage": "INGRESS",
 			"type":  "junk",
 		},
+		false,
 		},
 	}
 
@@ -785,6 +789,7 @@ func TestValidateEditConfig_Create_Syntax_Invalid_PacketAction_Negative(t *testi
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -830,6 +835,7 @@ func TestValidateEditConfig_Create_Syntax_Invalid_SrcPrefix_Negative(t *testing.
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -875,6 +881,7 @@ func TestValidateEditConfig_Create_Syntax_InvalidIPAddress_Negative(t *testing.T
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -920,6 +927,7 @@ func TestValidateEditConfig_Create_Syntax_OutofBound_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -966,6 +974,7 @@ func TestValidateEditConfig_Create_Syntax_InvalidProtocol_Negative(t *testing.T)
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1013,6 +1022,7 @@ func TestValidateEditConfig_Create_Syntax_InvalidRange_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "777779000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1049,6 +1059,7 @@ func TestValidateEditConfig_Create_Syntax_InvalidCharNEw_Negative(t *testing.T) 
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1093,6 +1104,7 @@ func TestValidateEditConfig_Create_Syntax_SpecialChar_Positive(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1126,6 +1138,7 @@ func TestValidateEditConfig_Create_Syntax_InvalidKeyName_Negative(t *testing.T) 
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1170,6 +1183,7 @@ func TestValidateEditConfig_Create_Semantic_AdditionalInvalidNode_Negative(t *te
 				"L4_DST_PORT_RANGE": "9000-12000",
 				"extra":             "shhs",
 			},
+			false,
 		},
 	}
 
@@ -1198,6 +1212,7 @@ func TestValidateEditConfig_Create_Semantic_MissingMandatoryNode_Negative(t *tes
 			map[string]string{
 				"NULL": "NULL",
 			},
+			false,
 		},
 	}
 
@@ -1230,6 +1245,7 @@ func TestValidateEditConfig_Create_Syntax_Invalid_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1263,6 +1279,7 @@ func TestValidateEditConfig_Create_Syntax_IncompleteKey_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1296,6 +1313,7 @@ func TestValidateEditConfig_Create_Syntax_InvalidKey_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1325,6 +1343,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Negative(t *testing.T) {
 				"src_ip": "10.1.0.32",
 				"dst_ip": "2.2.2.2",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -1333,6 +1352,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Negative(t *testing.T) {
 			map[string]string{
 				"MIRROR_ACTION": "everflow",
 			},
+			false,
 		},
 	}
 
@@ -1361,6 +1381,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Negative(t *testing.T) {
 				"admin_status": "up",
 				"mtu":          "9100",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
@@ -1370,36 +1391,42 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Negative(t *testing.T) {
 				"admin_status": "up",
 				"mtu":          "9100",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch1|Ethernet4",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch1|Ethernet8",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch2|Ethernet12",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch2|Ethernet16",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch2|Ethernet20",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -1409,6 +1436,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Negative(t *testing.T) {
 				"vlanid":   "102",
 				"members@": "Ethernet24,ch1,Ethernet8",
 			},
+			false,
 		},
 	}
 
@@ -1443,6 +1471,7 @@ func TestValidateEditConfig_Delete_Syntax_InvalidKey_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1476,6 +1505,7 @@ func TestValidateEditConfig_Update_Syntax_InvalidKey_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1509,6 +1539,7 @@ func TestValidateEditConfig_Delete_InvalidKey_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1542,6 +1573,7 @@ func TestValidateEditConfig_Update_Semantic_Invalid_Key_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1576,6 +1608,7 @@ func TestValidateEditConfig_Delete_Semantic_Positive(t *testing.T) {
 			cvl.OP_DELETE,
 			"MIRROR_SESSION|everflow",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -1601,6 +1634,7 @@ func TestValidateEditConfig_Delete_Semantic_KeyNotExisting_Negative(t *testing.T
 			cvl.OP_DELETE,
 			"MIRROR_SESSION|everflow0",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -1628,6 +1662,7 @@ func TestValidateEditConfig_Update_Semantic_MissingKey_Negative(t *testing.T) {
 			map[string]string{
 				"MIRROR_ACTION": "everflow",
 			},
+			false,
 		},
 	}
 
@@ -1667,6 +1702,7 @@ func TestValidateEditConfig_Create_Duplicate_Key_Negative(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "L3",
 			},
+			false,
 		},
 	}
 
@@ -1706,6 +1742,7 @@ func TestValidateEditConfig_Update_Semantic_Positive(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -1791,6 +1828,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Redis_Positive(t *testin
 			map[string]string{
 				"MIRROR_ACTION": "everflow2",
 			},
+			false,
 		},
 	}
 
@@ -1822,6 +1860,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Invalid_Op_Seq(t *testin
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
@@ -1836,6 +1875,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Invalid_Op_Seq(t *testin
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -1845,6 +1885,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Invalid_Op_Seq(t *testin
 				"PACKET_ACTION": "DROP",
 				"L4_SRC_PORT":   "781",
 			},
+			false,
 		},
 	}
 
@@ -1871,6 +1912,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Redis_Negative(t *testin
 			map[string]string{
 				"MIRROR_ACTION": "everflow0",
 			},
+			false,
 		},
 	}
 
@@ -1901,6 +1943,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Redis_Positive(t *testin
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -1926,6 +1969,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Redis_Positive(t *testin
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1947,6 +1991,7 @@ func TestValidateEditConfig_Delete_Semantic_ACLTableReference_Negative(t *testin
 			cvl.OP_DELETE,
 			"ACL_RULE|MyACLTest_ACL_IPV4|Test_1",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -1978,6 +2023,7 @@ func TestValidateEditConfig_Create_Dependent_CacheData(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -1998,6 +2044,7 @@ func TestValidateEditConfig_Create_Dependent_CacheData(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2022,6 +2069,7 @@ func TestValidateEditConfig_Create_DepData_In_MultiSess(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -2045,6 +2093,7 @@ func TestValidateEditConfig_Create_DepData_In_MultiSess(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2088,6 +2137,7 @@ func TestValidateEditConfig_Create_DepData_From_Redis_Negative11(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2135,6 +2185,7 @@ func TestValidateEditConfig_Create_DepData_From_Redis(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2160,6 +2211,7 @@ func TestValidateEditConfig_Create_Syntax_ErrAppTag_In_Range_Negative(t *testing
 			map[string]string{
 				"vlanid":   "7001",
 			},
+			false,
 		},
 	}
 
@@ -2190,6 +2242,7 @@ func TestValidateEditConfig_Create_Syntax_ErrAppTag_In_Length_Negative(t *testin
 				"type":  "MIRROR",
 				"policy_desc": "A12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
 			},
+			false,
 		},
 	}
 
@@ -2218,6 +2271,7 @@ func TestValidateEditConfig_Create_Syntax_ErrAppTag_In_Pattern_Negative(t *testi
 			map[string]string{
 				"vlanid":   "102",
 			},
+			false,
 		},
 	}
 
@@ -2248,6 +2302,7 @@ func TestValidateEditConfig_Create_Syntax_InValid_FieldValue(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
@@ -2262,12 +2317,14 @@ func TestValidateEditConfig_Create_Syntax_InValid_FieldValue(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"ACL_RULE|TestACL1",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -2313,6 +2370,7 @@ func TestValidateEditConfig_Create_DepData_From_Redis_Negative(t *testing.T) {
 				"DST_IP": "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2364,6 +2422,7 @@ func TestValidateEditConfig_Delete_Dep_Leafref_Negative(t *testing.T) {
 			"ACL_TABLE|TestACL1",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -2392,6 +2451,7 @@ func TestValidateEditConfig_Create_Syntax_InvalidVlanRange_Negative(t *testing.T
                         map[string]string{
                                 "vlanid":   "6002",
                         },
+						false,
                 },
         }
 
@@ -2473,6 +2533,7 @@ func TestValidateEditConfig_DepData_Through_Cache(t *testing.T) {
 				"type": "L3",
 				"ports@":"Ethernet3,Ethernet5",
 			},
+			false,
 		},
 	}
 
@@ -2514,6 +2575,7 @@ func TestValidateEditConfig_Delete_Single_Field_Positive(t *testing.T) {
 			map[string]string{
 				"policy_desc":"Test ACL desc",
 			},
+			false,
 		},
 	}
 
@@ -2541,6 +2603,7 @@ func TestValidateEditConfig_Create_Dscp_To_Tc_Map(t *testing.T) {
 				"2": "8",
 				"3": "9",
 			},
+			false,
 		},
 	}
 
@@ -2632,6 +2695,7 @@ func TestValidateEditConfig_Delete_Entry_Then_Dep_Leafref_Positive(t *testing.T)
 			"VLAN_MEMBER|Vlan20|Ethernet4",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -2644,6 +2708,7 @@ func TestValidateEditConfig_Delete_Entry_Then_Dep_Leafref_Positive(t *testing.T)
 			"VLAN_MEMBER|Vlan20|Ethernet4",
 			map[string]string {
 			},
+			false,
 		},
 		cvl.CVLEditConfigData {
 			cvl.VALIDATE_ALL,
@@ -2651,6 +2716,7 @@ func TestValidateEditConfig_Delete_Entry_Then_Dep_Leafref_Positive(t *testing.T)
 			"VLAN|Vlan20",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -2741,6 +2807,7 @@ func TestServicability_Debug_Trace(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2795,6 +2862,7 @@ func TestValidateEditConfig_Delete_Create_Same_Entry_Positive(t *testing.T) {
 			"VLAN|Vlan100",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -2809,6 +2877,7 @@ func TestValidateEditConfig_Delete_Create_Same_Entry_Positive(t *testing.T) {
 			map[string]string {
 				"vlanid": "100",
 			},
+			false,
 		},
 	}
 
@@ -2951,6 +3020,7 @@ func TestValidateEditConfig_Two_Updates_Positive(t *testing.T) {
 			map[string]string {
 				"policy_desc": "Test ACL",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData {
 			cvl.VALIDATE_ALL,
@@ -2959,6 +3029,7 @@ func TestValidateEditConfig_Two_Updates_Positive(t *testing.T) {
 			map[string]string {
 				"type": "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -2986,6 +3057,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_PositivePortChannel(t *t
 				"vlanid":   "1001",
 				"members@": "Ethernet28,PortChannel002",
 			},
+			false,
 		},
 	}
 
@@ -3015,6 +3087,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_PositivePortChannelIfNam
 				"vlanid":   "1001",
 				"members@": "Ethernet24,PortChannel001",
 			},
+			false,
 		},
 	}
 
@@ -3042,6 +3115,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_NegativePortChannelEther
 				"vlanid":   "1001",
 				"members@": "PortChannel001,Ethernet4",
 			},
+			false,
 		},
 	}
 
@@ -3069,6 +3143,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_NegativePortChannelNew(t
 				"vlanid":   "1001",
 				"members@": "Ethernet12,PortChannel001",
 			},
+			false,
 		},
 	}
 
@@ -3111,6 +3186,7 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Positive(t 
 				"mtu": "1900",
 				"members@": "Ethernet8,Ethernet12",
 			},
+			false,
 		},
 	}
 
@@ -3129,6 +3205,7 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Positive(t 
 			map[string]string{
 				"tagging_mode": "tagged",
 			},
+			false,
 		},
 	}
 
@@ -3171,6 +3248,7 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Single_Call
 				"mtu": "1900",
 				"members@": "Ethernet8,Ethernet12",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -3179,6 +3257,7 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Single_Call
 			map[string]string{
 				"tagging_mode": "tagged",
 			},
+			false,
 		},
 	}
 
@@ -3204,6 +3283,7 @@ func TestValidateEditConfig_Create_Syntax_Interface_AllKeys_Positive(t *testing.
 			"INTERFACE|Ethernet24|10.0.0.0/31",
 			map[string]string{
 			},
+			false,
 		},
 	}
 
@@ -3229,6 +3309,7 @@ func TestValidateEditConfig_Create_Syntax_Interface_OptionalKey_Positive(t *test
 			"INTERFACE|Ethernet24",
 			map[string]string{
 			},
+			false,
 		},
 	}
 
@@ -3254,6 +3335,7 @@ func TestValidateEditConfig_Create_Syntax_Interface_IncorrectKey_Negative(t *tes
 			"INTERFACE|10.0.0.0/31",
 			map[string]string{
 			},
+			false,
 		},
 	}
 
@@ -3283,6 +3365,7 @@ func TestValidateEditConfig_EmptyNode_Positive(t *testing.T) {
                                 "description": "",
                                 "index": "3",
                         },
+						false,
                 },
         }
 
@@ -3523,6 +3606,7 @@ func TestMaxElements_All_Entries_In_Request(t *testing.T) {
 			map[string]string{
 				"src_ip": "20.1.1.1",
 			},
+			false,
                 },
         }
 
@@ -3537,6 +3621,7 @@ func TestMaxElements_All_Entries_In_Request(t *testing.T) {
 			map[string]string{
 				"src_ip": "30.1.1.1",
 			},
+			false,
                 },
         }
 
@@ -3573,6 +3658,7 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 			map[string]string{
 				"src_ip": "30.1.1.1",
 			},
+			false,
 		},
 	}
 
@@ -3596,6 +3682,7 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 			"VXLAN_TUNNEL|tun1",
 			map[string]string{
 			},
+			false,
 		},
 	}
 
@@ -3615,6 +3702,7 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 			map[string]string{
 				"src_ip": "20.1.1.1",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -3623,6 +3711,7 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 			map[string]string{
 				"src_ip": "30.1.1.1",
 			},
+			false,
 		},
 	}
 
@@ -3646,6 +3735,7 @@ func TestValidateEditConfig_Two_Create_Requests_Positive(t *testing.T) {
 			map[string]string {
 				"vlanid": "21",
 			},
+			false,
 		},
 	}
 
@@ -3665,6 +3755,7 @@ func TestValidateEditConfig_Two_Create_Requests_Positive(t *testing.T) {
 			map[string]string {
 				"vlanid": "21",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData {
 			cvl.VALIDATE_ALL,
@@ -3678,6 +3769,7 @@ func TestValidateEditConfig_Two_Create_Requests_Positive(t *testing.T) {
 				"priority": "327",
 				"vlanid": "21",
 			},
+			false,
 		},
 	}
 
@@ -3721,6 +3813,7 @@ func TestValidateEditConfig_Two_Delete_Requests_Positive(t *testing.T) {
 			"STP_VLAN|Vlan51",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -3739,6 +3832,7 @@ func TestValidateEditConfig_Two_Delete_Requests_Positive(t *testing.T) {
 			"STP_VLAN|Vlan51",
 			map[string]string {
 			},
+			false,
 		},
 		cvl.CVLEditConfigData {
 			cvl.VALIDATE_ALL,
@@ -3746,6 +3840,7 @@ func TestValidateEditConfig_Two_Delete_Requests_Positive(t *testing.T) {
 			"VLAN|Vlan51",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -3792,6 +3887,7 @@ func TestVailidateStaticPlatformLimits_YANG_Deviation_Ngeative(t *testing.T) {
 			map[string]string {
 				"type": "L3",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData {
 			cvl.VALIDATE_ALL,
@@ -3800,6 +3896,7 @@ func TestVailidateStaticPlatformLimits_YANG_Deviation_Ngeative(t *testing.T) {
 			map[string]string {
 				"type": "L3",
 			},
+			false,
 		},
 	}
 
@@ -3853,6 +3950,7 @@ func TestValidateEditConfig_Multi_Delete_MultiKey_Same_Session_Positive(t *testi
 			"STP_VLAN_PORT|Vlan511|Ethernet16",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -3871,6 +3969,7 @@ func TestValidateEditConfig_Multi_Delete_MultiKey_Same_Session_Positive(t *testi
 			map[string]string {
 				"tagging_mode": "untagged",
 			},
+			false,
 		},
 	}
 
@@ -3888,6 +3987,7 @@ func TestValidateEditConfig_Multi_Delete_MultiKey_Same_Session_Positive(t *testi
 			"STP_VLAN_PORT|Vlan511|Ethernet16",
 			map[string]string {
 			},
+			false,
 		},
 		cvl.CVLEditConfigData {
 			cvl.VALIDATE_NONE,
@@ -3896,6 +3996,7 @@ func TestValidateEditConfig_Multi_Delete_MultiKey_Same_Session_Positive(t *testi
 			map[string]string {
 				"tagging_mode": "untagged",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData {
 			cvl.VALIDATE_ALL,
@@ -3903,6 +4004,7 @@ func TestValidateEditConfig_Multi_Delete_MultiKey_Same_Session_Positive(t *testi
 			"STP_PORT|Ethernet16",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -3944,6 +4046,7 @@ func TestValidateEditConfig_Update_Leaf_List_Max_Elements_Negative(t *testing.T)
 			map[string]string {
 				"out-intf@": "Ethernet4,Ethernet8,Ethernet16,Ethernet20",
 			},
+			false,
 		},
 	}
 
@@ -3979,6 +4082,7 @@ func TestValidationTimeStats(t *testing.T) {
 			map[string]string {
 				"fallback": "true",
 			},
+			false,
 		},
 	}
 
