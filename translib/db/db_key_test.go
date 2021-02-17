@@ -65,3 +65,50 @@ func testNotPattern(comp ...string) func(*testing.T) {
 		}
 	}
 }
+
+func TestKeyEquals(t *testing.T) {
+	t.Run("empty", keyEq(NewKey(), NewKey(), true))
+	t.Run("1comp", keyEq(NewKey("aa"), NewKey("aa"), true))
+	t.Run("2comps", keyEq(NewKey("aa", "bb"), NewKey("aa", "bb"), true))
+	t.Run("diff", keyEq(NewKey("aa", "bb"), NewKey("aa", "b"), false))
+	t.Run("bigger", keyEq(NewKey("AA", "BB"), NewKey("AA", "BB", "CC"), false))
+	t.Run("smallr", keyEq(NewKey("AA", "BB"), NewKey("AA"), false))
+}
+
+func keyEq(k1, k2 *Key, exp bool) func(*testing.T) {
+	return func(t *testing.T) {
+		if k1.Equals(k2) != exp {
+			t.Fatalf("Equals() failed for k1=%v, k2=%v", k1, k2)
+		}
+	}
+}
+
+func TestKeyMatches(t *testing.T) {
+	t.Run("empty", keyMatch(NewKey(), NewKey(), true))
+	t.Run("bigger", keyMatch(NewKey("AA"), NewKey("AA", "BB"), false))
+	t.Run("smallr", keyMatch(NewKey("AA", "BB"), NewKey("AA"), false))
+	t.Run("equals", keyMatch(NewKey("AA", "BB"), NewKey("AA", "BB"), true))
+	t.Run("nequal", keyMatch(NewKey("AA", "BB"), NewKey("AA", "BBc"), false))
+	t.Run("AA|*", keyMatch(NewKey("AA", "BB"), NewKey("AA", "*"), true))
+	t.Run("*|*", keyMatch(NewKey("AA", "BB"), NewKey("*", "*"), true))
+	t.Run("*A|B*", keyMatch(NewKey("xyzA", "Bcd"), NewKey("*A", "B*"), true))
+	t.Run("neg1:*A|B*", keyMatch(NewKey("xyzABC", "Bcd"), NewKey("*A", "B*"), false))
+	t.Run("neg2:*A|B*", keyMatch(NewKey("xyzA", "bcd"), NewKey("*A", "B*"), false))
+	t.Run("AA|B*C", keyMatch(NewKey("AA", "BxyzC"), NewKey("A*A", "B*C"), true))
+	t.Run("AA|B\\*C", keyMatch(NewKey("AA", "B*C"), NewKey("AA", "B\\*C"), true))
+	t.Run("neg1:AA|B\\*C", keyMatch(NewKey("AA", "BxyzC"), NewKey("AA", "B\\*C"), false))
+	t.Run("AA|B?", keyMatch(NewKey("AA", "BB"), NewKey("AA", "B?"), true))
+	t.Run("??|?B", keyMatch(NewKey("AA", "BB"), NewKey("??", "?B"), true))
+	t.Run("?\\?|?B", keyMatch(NewKey("A?", "bB"), NewKey("?\\?", "?B"), true))
+}
+
+func keyMatch(k, p *Key, exp bool) func(*testing.T) {
+	return func(t *testing.T) {
+		if k.Matches(p) == exp {
+		} else if exp {
+			t.Fatalf("Key %v did not match pattern %v", k, p)
+		} else {
+			t.Fatalf("Key %v should not have matched pattern %v", k, p)
+		}
+	}
+}
