@@ -17,6 +17,7 @@ import (
 const (
         STATIC_ROUTE_TABLE = "STATIC_ROUTE"
         DEFAULT_VRF = "default"
+        NH_KEY_SEPARATOR = "|"
       )
 
 var tableFieldNames [7]string = [7]string{"blackhole", "nexthop", "ifname", "distance", "nexthop-vrf", "track", "tag" }
@@ -84,30 +85,31 @@ func isPrefixIpv4(prefix string) bool {
     return ip.isIpv4
 }
 
-func getNexthopIndex(blackhole bool, ip string, intf string, vrf string) string {
-    var nhIndex string
+func getNexthopIndex(srcVrf string, blackhole bool, ip string, intf string, vrf string) []string {
     if blackhole {
-        return "DROP"
-    } else {
-        if len(intf) > 0 {
-            nhIndex = intf
+        return []string{"DROP"}
+    }
+    var nhIndex string
+    if len(intf) > 0 {
+        nhIndex = intf
+    }
+    nhIp := parseIPExt(ip)
+    if nhIp != nil && !nhIp.isZeros() {
+        if len(nhIndex) > 0 {
+            nhIndex += "_"
         }
-        nhIp := parseIPExt(ip)
-        if nhIp != nil && !nhIp.isZeros() {
-            if len(nhIndex) > 0 {
-                nhIndex += "_"
-            }
-            nhIndex += ip
-        }
+        nhIndex += ip
     }
     if len(nhIndex) == 0 {
         log.Info("Nexthop is not blackhole and without IP and interface")
-        return nhIndex
+        return []string{}
     }
-    if len(vrf) > 0 {
-        nhIndex += (fmt.Sprintf("_%s", vrf))
+    if len(vrf) > 0 && vrf != srcVrf {
+        return []string{nhIndex + fmt.Sprintf("_%s", vrf)}
+    } else {
+        vrf = srcVrf
+        return []string{nhIndex, nhIndex + fmt.Sprintf("_%s", vrf)}
     }
-    return nhIndex
 }
 
 type ipNexthop struct {
@@ -119,7 +121,7 @@ type ipNexthop struct {
     vrf string
     track uint16
 
-    index string
+    index []string
     empty bool
 }
 
@@ -150,9 +152,25 @@ func (nh ipNexthop) String() string {
     return str
 }
 
+func (nh *ipNexthop) getKey() string {
+    if len(nh.index) == 0 {
+        return ""
+    }
+    return strings.Join(nh.index, NH_KEY_SEPARATOR)
+}
+
+func (nh *ipNexthop) isMatchedIndex(nhIndex string) bool {
+    for _, idx := range nh.index {
+        if idx == nhIndex {
+            return true
+        }
+    }
+    return false
+}
+
 func newNexthop(srcVrf string, bkh bool, gw string, intf string, tag uint32, dist uint32, vrf string, track uint16) (*ipNexthop, error) {
     nh := new(ipNexthop)
-    nh.index = getNexthopIndex(bkh, gw, intf, vrf)
+    nh.index = getNexthopIndex(srcVrf, bkh, gw, intf, vrf)
     if len(nh.index) == 0 {
         nh.empty = true
         return nh, nil
@@ -177,6 +195,20 @@ type ipNexthopSet struct {
     nhList map[string]ipNexthop
 }
 
+func (nhs *ipNexthopSet)getNexthopByKey(key string) (*ipNexthop, string) {
+    if nh, ok := nhs.nhList[key]; ok {
+        return &nh, key
+    }
+    for _, tk := range strings.Split(key, NH_KEY_SEPARATOR) {
+        for nhKey, nh := range nhs.nhList {
+            if nh.isMatchedIndex(tk) {
+                return &nh, nhKey
+            }
+        }
+    }
+    return nil, ""
+}
+
 func (nhs *ipNexthopSet)updateNH(nh ipNexthop, oper int) (bool, error) {
     if !nh.empty {
         if nhs.isIpv4 != nh.gwIp.isIpv4 {
@@ -185,17 +217,18 @@ func (nhs *ipNexthopSet)updateNH(nh ipNexthop, oper int) (bool, error) {
         }
     }
     var changed bool
-    if _, ok := nhs.nhList[nh.index]; !ok {
+    key := nh.getKey()
+    if mnh, newKey := nhs.getNexthopByKey(key); mnh == nil {
         if oper == CREATE || oper == UPDATE || oper == REPLACE {
-            nhs.nhList[nh.index] = nh
+            nhs.nhList[key] = nh
             changed = true
         }
     } else {
         if oper == DELETE {
-            delete(nhs.nhList, nh.index)
+            delete(nhs.nhList, newKey)
             changed = true
         } else if oper == REPLACE || oper == UPDATE {
-            nhs.nhList[nh.index] = nh
+            nhs.nhList[newKey] = nh
             changed = true
         }
     }
@@ -317,7 +350,7 @@ func (nhs *ipNexthopSet)fromDbData(srcVrf string, prefix string, data *db.Value)
             tag = uint32(tagNum)
         }
         if nh, err := newNexthop(srcVrf, blackhole, gateway, intf, tag, distance, vrf, track); err == nil {
-            nhs.nhList[nh.index] = *nh
+            nhs.nhList[nh.getKey()] = *nh
         }
     }
 
@@ -475,11 +508,11 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
                 log.Infof("Failed to create nexthop object: %v", err)
                 return nil, err
             }
-            if len(nhObj.index) > 0 && nhObj.index != nhIndex {
-                log.Infof("Generated NH index %s not equal to given index %s", nhObj.index, nhIndex)
-                return nil, tlerr.InvalidArgs("Generated NH index %s not equal to given index %s", nhObj.index, nhIndex)
-            } else if len(nhObj.index) == 0 {
-                nhObj.index = nhIndex
+            if len(nhObj.index) == 0 {
+                nhObj.index = []string{nhIndex}
+            } else if !nhObj.isMatchedIndex(nhIndex) {
+                log.Infof("Generated NH index %s does not match given index %s", nhObj.index, nhIndex)
+                return nil, tlerr.InvalidArgs("Generated NH index %s does not match given index %s", nhObj.index, nhIndex)
             }
 
             _, err = resMap[ipPrefix].updateNH(*nhObj, CREATE)
@@ -713,7 +746,7 @@ func (data *vrfRouteInfo)isDataValid(scope uriScopeType, oper int, vrf string) b
                 continue
             }
             for key := range route.ygotNhList.nhList {
-                if _, ok := route.dbNh.nhList.nhList[key]; !ok {
+                if nh, _ := route.dbNh.nhList.getNexthopByKey(key); nh == nil {
                     log.Infof("prefix %s nexthop %s not found in DB", pfx, key)
                     return false
                 }
@@ -783,7 +816,7 @@ var YangToDb_static_routes_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 
     uriScope := getUriScope(inParams.requestUri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-    log.Infof("YangToDb_static_routes_subtree_xfmr: URI %s, requestURI %s, target URI %s Scope %s", 
+    log.Infof("YangToDb_static_routes_subtree_xfmr: URI %s, requestURI %s, target URI %s Scope %s",
               inParams.uri, inParams.requestUri, targetUriPath, uriScope)
 
     ipPrefix := pathInfo.Var("prefix")
@@ -807,11 +840,11 @@ var YangToDb_static_routes_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
             nhIndex := pathInfo.Var("index")
             log.Infof("Handling static route nexthop delete for VRF %s prefix %s index %s", vrf, ipPrefix, nhIndex)
             route := (*routeData)[vrf][ipPrefix]
-            nh, ok := route.ygotNhList.nhList[nhIndex]
-            if !ok {
+            nh, _ := route.ygotNhList.getNexthopByKey(nhIndex)
+            if nh == nil {
                 return resMap, tlerr.InvalidArgs("NH %s not found in ygot data", nhIndex)
             }
-            changed, err := route.dbNh.nhList.updateNH(nh, DELETE)
+            changed, err := route.dbNh.nhList.updateNH(*nh, DELETE)
             if err != nil {
                 log.Infof("Failed to delete nexthop from existing route: %s", ipPrefix)
                 return resMap, err
@@ -955,14 +988,15 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, prefix string, nhInd
         }
         *routeObj.State.Prefix = prefix
         routeObj.NextHops = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops)
-        for key, nh := range nhSet.nhList {
-            if len(nhIndex) != 0 && nhIndex != key {
+        for _, nh := range nhSet.nhList {
+            if len(nhIndex) != 0 && !nh.isMatchedIndex(nhIndex) {
                 continue
             }
+            outIndex := nh.index[0]
             var nhObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_StaticRoutes_Static_NextHops_NextHop
-            nhObj, ok := routeObj.NextHops.NextHop[key]
+            nhObj, ok := routeObj.NextHops.NextHop[outIndex]
             if !ok {
-                nhObj, err = routeObj.NextHops.NewNextHop(key)
+                nhObj, err = routeObj.NextHops.NewNextHop(outIndex)
                 if err != nil {
                     log.Infof("Failed to get new nexthop object: %v", err)
                     return err
@@ -978,11 +1012,11 @@ func setRouteObjWithDbData(inParams XfmrParams, vrf string, prefix string, nhInd
             if nhObj.Config.Index == nil {
                 nhObj.Config.Index = new(string)
             }
-            *nhObj.Config.Index = key
+            *nhObj.Config.Index = outIndex
             if nhObj.State.Index == nil {
                 nhObj.State.Index = new(string)
             }
-            *nhObj.State.Index = key
+            *nhObj.State.Index = outIndex
             if nh.blackhole {
                 if nhObj.Config.Blackhole == nil {
                     nhObj.Config.Blackhole = new(bool)
