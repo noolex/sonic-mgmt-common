@@ -489,9 +489,9 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := ifNameInDb + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := ifNameInDb + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -522,9 +522,9 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := ifNameInDb + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := ifNameInDb + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -553,9 +553,9 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscI
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
@@ -583,9 +583,9 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscI
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH"
-    neighIntfTblKey := intfNameRcvd + "|" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    neighIntfTbl := "NEIGH_TABLE"
+    neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
+    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
 
     log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
