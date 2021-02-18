@@ -127,7 +127,14 @@ module sonic-sag {
             key "ifname";
 
             leaf ifname {
-                type string;
+                type union {
+                    type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                    }
+                    type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                    }
+                }
             }
 
             leaf vrf {
