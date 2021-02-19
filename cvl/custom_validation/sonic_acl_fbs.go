@@ -215,7 +215,7 @@ func (t *CustomValidation) ValidateZeroACLCounters(vc *CustValidationCtxt) CVLEr
 // Returns -  CVL Error object
 func (t *CustomValidation) ValidateEgressConfig(vc *CustValidationCtxt) CVLErrorInfo {
 
-	log.Infof("ValidateEgressConfig operation %d on %s:%s:%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
+	log.Infof("ValidateEgressConfig operation %d on %s %s=%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
 	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
@@ -225,6 +225,7 @@ func (t *CustomValidation) ValidateEgressConfig(vc *CustValidationCtxt) CVLError
 	if !found {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
+	log.Infof("ValidateEgressConfig value is %v", data)
 
 	egresses := strings.Split(data, ",")
 	for _, egress := range egresses {
@@ -234,6 +235,65 @@ func (t *CustomValidation) ValidateEgressConfig(vc *CustValidationCtxt) CVLError
 				Msg: "Adding duplicate entries or updating entries not allowed"}
 		}
 		egressMap[key] = true
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+// ValidateGroupTypeMatches validates if the group type matches the context in which its used
+// Returns -  CVL Error object
+func (t *CustomValidation) ValidateGroupTypeMatches(vc *CustValidationCtxt) CVLErrorInfo {
+	log.Infof("ValidateGroupTypeMatches operation %d on %s %s=%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
+
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	err := t.ValidateEgressConfig(vc)
+	if err.ErrCode != CVL_SUCCESS {
+		return err
+	}
+	data, found := vc.CurCfg.Data[vc.YNodeName+"@"]
+	if !found {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+	log.Infof("ValidateGroupTypeMatches value is %v", data)
+
+	grp_type := "IPV4"
+	if vc.YNodeName == "SET_IPV6_NEXTHOP_GROUP" {
+		grp_type = "IPV6"
+	}
+
+	set_groups := strings.Split(data, ",")
+	for _, set_group := range set_groups {
+		group_name := set_group[:strings.LastIndex(set_group, "|")]
+		val, err := vc.RClient.HGet("PBF_NEXTHOP_GROUP|"+group_name, "TYPE").Result()
+		if err != nil && err != redis.Nil {
+			log.Info("ValidateGroupTypeMatches error getting old value:", err)
+			return CVLErrorInfo{ErrCode: CVL_ERROR}
+		}
+		if err == redis.Nil {
+			log.Infof("ValidateGroupTypeMatches group %v doesnt exist", group_name)
+			continue
+		}
+		log.Infof("ValidateGroupTypeMatches group %v type:%v/%v", group_name, grp_type, val)
+		if val != grp_type {
+			if grp_type == "IPV4" {
+				return CVLErrorInfo{
+					ErrCode:          CVL_FAILURE,
+					ConstraintErrMsg: "Using IPv6 group as IPv4 group is not allowed",
+					CVLErrDetails:    "Config Validation Error",
+					ErrAppTag:        "invalid-request",
+				}
+			} else {
+				return CVLErrorInfo{
+					ErrCode:          CVL_FAILURE,
+					ConstraintErrMsg: "Using IPv4 group as IPv6 group is not allowed",
+					CVLErrDetails:    "Config Validation Error",
+					ErrAppTag:        "invalid-request",
+				}
+			}
+		}
 	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}

@@ -639,10 +639,10 @@ module sonic-flow-based-services {
                 error-message "L2 and IPv4 forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../SET_IPV6_NEXTHOP)" {
-                error-message "L2 and IPv6 forwarding actions cant be configured at the same time.";
+                error-message "IPv4 and IPv6 forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
-                error-message "L2 and IPv6 forwarding actions cant be configured at the same time.";
+                error-message "IPv4 and IPv6 forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../SET_TRAP_QUEUE)" {
                 error-message "Forwarding and CoPP actions cant be configured at the same time.";
@@ -723,7 +723,7 @@ module sonic-flow-based-services {
                 pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,71})\|'
                     + '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?';
             }
-            sonic-ext:custom-validation ValidateEgressConfig;
+            sonic-ext:custom-validation ValidateGroupTypeMatches;
             must "not(current()/../SET_PCP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
@@ -762,7 +762,7 @@ module sonic-flow-based-services {
                 pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,71})\|'
                     + '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?';
             }
-            sonic-ext:custom-validation ValidateEgressConfig;
+            sonic-ext:custom-validation ValidateGroupTypeMatches;
             must "not(current()/../SET_PCP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
@@ -1651,35 +1651,6 @@ module sonic-flow-based-services {
                                 leaf SET_IPV6_NEXTHOP_GROUP {
                                     type string;
                                 }
-/*
-                                leaf-list NEXTHOP_GROUP_MEMBERS {
-                                    leaf IP_ADDRESS {
-                                        type string;
-                                    }
-
-                                    leaf VRF {
-                                        type string;
-                                    }
-
-                                    leaf ENTRY_ID {
-                                        type uint16;
-                                    }
-
-                                    leaf NEXT_HOP_TYPE {
-                                        type enumeration {
-                                            enum non-recursive;
-                                            enum recursive;
-                                        }
-                                    }
-
-                                    leaf STATUS {
-                                        type enumeration {
-                                            enum Inactive;
-                                            enum Active;
-                                        }
-                                    }
-                                }
-*/
                             }
                         }
                     }
