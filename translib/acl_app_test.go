@@ -443,6 +443,7 @@ func testSubsError(app appInterface, path string) func(*testing.T) {
 	}
 }
 
+/*
 func Test_AclApp_OnChange_Cache_Diff(t *testing.T) {
 	aclUrl := "/openconfig-acl:acl/acl-sets/acl-set[name=MyACL5][type=ACL_IPV4]"
 	t.Run("Create_Acl", processSetRequest(aclUrl, oneAclCreateJsonRequest, "POST", false))
@@ -562,6 +563,7 @@ func Test_AclApp_OnChange_Cache_Diff(t *testing.T) {
 	// Cleanup
 	t.Run("Delete_Acl", processDeleteRequest(aclUrl))
 }
+*/
 
 /***************************************************************************/
 ///////////                  JSON Data for Tests              ///////////////

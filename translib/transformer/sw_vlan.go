@@ -1697,7 +1697,6 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
     if ((inParams.oper == DELETE) && ((intf.Ethernet == nil || intf.Ethernet.SwitchedVlan == nil ||
        intf.Ethernet.SwitchedVlan.Config == nil) && (intf.Aggregation == nil || intf.Aggregation.SwitchedVlan == nil ||
        intf.Aggregation.SwitchedVlan.Config == nil))) {
-        //e.g case: portchannel deletion request
         err = intfVlanMemberRemoval(&swVlanConfig, &inParams, &ifName, vlanMap, vlanMemberMap, portVlanListMap, stpVlanPortMap, stpPortMap, intfType)
         if err != nil {
             log.Errorf("Interface VLAN member port removal failed for Interface: %s!", ifName)
@@ -1715,6 +1714,12 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
         /* only delete STP_PORT if stpPortMap is not empty */
         if (len(stpPortMap) != 0) {
             res_map[STP_PORT_TABLE] = stpPortMap
+        }
+        if intf.Aggregation != nil || intf.Ethernet != nil {
+            //if request is not for interface deletion, update tagged_vlans/access_vlan fields in PORT/PORTCHANNEL table 
+            if len(portVlanListMap) != 0 {
+                res_map[tblName]= portVlanListMap
+            }
         }
         return res_map, err
     }

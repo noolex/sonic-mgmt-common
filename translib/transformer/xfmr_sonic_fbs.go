@@ -1046,6 +1046,9 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 		log.Infof("key:%v policyBindTblVal:%v", policyBindKeys[index], policyBindTblVal)
 
 		for field, value := range policyBindTblVal.Field {
+			if field == "NULL" {
+				continue
+			}
 			field_splits := strings.SplitN(strings.TrimSuffix(field, "_POLICY"), "_", 2)
 
 			if policy_name_found {
@@ -1126,6 +1129,7 @@ func clear_policer_counters(key db.Key, countersDbPtr *db.DB) error {
 	value, err := countersDbPtr.GetEntry(polCntTbl_ts, key)
 	if err == nil {
 		err = countersDbPtr.CreateEntry(lastPolCntTbl_ts, key, value)
+		log.Infof("Updated Last counter values. Error:%v", err)
 	}
 
 	return err
@@ -1196,6 +1200,9 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 		log.Infof("key:%v policyBindTblVal:%v", policyBindKeys[index], policyBindTblVal)
 
 		for field, value := range policyBindTblVal.Field {
+			if field == "NULL" {
+				continue
+			}
 			field_splits := strings.SplitN(strings.TrimSuffix(field, "_POLICY"), "_", 2)
 
 			if policy_name_found {
@@ -1226,7 +1233,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 				fbsKey := db.Key{Comp: []string{value, referingClassKeys[i].Comp[1], key.Comp[0], field_splits[0]}}
 				clear_fbs_counters(fbsKey, dbs[db.CountersDB])
 				if field_splits[1] == "QOS" || field_splits[1] == "ACL_COPP" {
-					clear_policer_counters(key, dbs[db.CountersDB])
+					clear_policer_counters(fbsKey, dbs[db.CountersDB])
 				}
 			}
 		}

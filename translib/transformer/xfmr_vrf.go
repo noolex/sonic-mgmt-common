@@ -55,6 +55,7 @@ var NwInstTblNameMapWithName = map[string]string {
 
 var intf_tbl_name_list = [5]string{"INTERFACE", "LOOPBACK_INTERFACE", "VLAN_INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_SUB_INTERFACE"}
 
+var subintf_tbl_non_L3_keys = [5]string{"vlan", "parent", "admin_status", "description", "mtu"}
 /*
  * Get internal network instance name based on the incoming network instance name
  * and use it for top level table map lookup
@@ -192,11 +193,6 @@ func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName st
             log.Infof("ValidateIntfNotL3ConfigedOtherThanVrf: table %v, intf %v", tblName, *ifUIName)
         }
 
-        if strings.Contains(intfName, ".") {
-            *otherValueExist = true
-        return nil
-    }
-
         ipKeys, err := doGetIntfIpKeys(d, tblName, intfName)
         if (err == nil && len(ipKeys) > 0) {
             errStr :=  "IP address configuration exists for " + *ifUIName
@@ -215,6 +211,22 @@ func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName st
                 *otherValueExist = true
             }
 
+            /* Specific case for sub-interfaces */
+            if strings.Contains(intfName, ".") {
+                //Following keys are not to be treated as L3 config
+                is_non_l3_key := false
+                for _, item := range subintf_tbl_non_L3_keys {
+                    if item == key {
+                        is_non_l3_key = true
+                        break
+                    }
+                } 
+                if is_non_l3_key {
+                    continue
+                }
+            }
+
+            /* common case for all types of interface */
             if (key == "NULL" || key == "vrf_name") {
                 continue
             } else {

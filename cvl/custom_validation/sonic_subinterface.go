@@ -92,6 +92,62 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
+func validateSubInterfaceSupport(vc *CustValidationCtxt) CVLErrorInfo {
+    if (vc.CurCfg.VOp == OP_DELETE || vc.CurCfg.VOp == OP_UPDATE) {
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    val, err := vc.RClient.HGet("DEVICE_METADATA|localhost", "platform").Result()
+    if err == nil && val == "VDI" {
+        //This platform is VDI, hence return success
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    appDBClient := util.NewDbClient("APPL_DB")
+    defer func() {
+        if (appDBClient != nil) {
+            appDBClient.Close()
+        }
+    }()
+
+    if (appDBClient != nil) {
+        key := "SWITCH_TABLE:switch"
+        subif_support, err := appDBClient.HGet(key, "subinterface_supported").Result()
+
+        if (err == nil) {
+            //subinterface_supported field is present, and it should be true
+            if (subif_support != "true") {
+                errStr := "SubInterfaces are not supported"
+                return CVLErrorInfo{
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: "SWITCH_TABLE",
+                    CVLErrDetails : errStr,
+                    ConstraintErrMsg : errStr,
+                }
+            }
+        } else {
+            //subinterface_supported field is not present, hence not supported
+            errStr := "SubInterfaces are not supported"
+            return CVLErrorInfo{
+                ErrCode: CVL_SEMANTIC_ERROR,
+                TableName: "SWITCH_TABLE",
+                CVLErrDetails : errStr,
+                ConstraintErrMsg : errStr,
+            }
+        }
+    } else {
+        //Generic error. Connection to APPL_DB failed
+        errStr := "Could not connect to appDB"
+        return CVLErrorInfo{
+            ErrCode: CVL_SEMANTIC_ERROR,
+            TableName: "SWITCH_TABLE",
+            CVLErrDetails : errStr,
+            ConstraintErrMsg : errStr,
+        }
+    }
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
 func validateSubInterfaceScaleLimits(vc *CustValidationCtxt) CVLErrorInfo {
     
     //log.Info("validateSubInterfaceCreationDeletion op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
@@ -158,7 +214,12 @@ func (t *CustomValidation) ValidateSubInterfaceIntf(vc *CustValidationCtxt) CVLE
 
     //log.Info("ValidateSubInterfaceIntf op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
     
-    res := validateSubInterfaceScaleLimits(vc)
+    res := validateSubInterfaceSupport(vc)
+    if res.ErrCode != CVL_SUCCESS {
+        return res
+    }
+
+    res = validateSubInterfaceScaleLimits(vc)
     if res.ErrCode != CVL_SUCCESS {
         return res
     }
@@ -181,6 +242,83 @@ func (t *CustomValidation) ValidateSubInterfaceIntf(vc *CustValidationCtxt) CVLE
             CVLErrDetails:    "Config Validation Error",
         }
     }
+
+    if (vc.CurCfg.VOp != OP_DELETE) {
+        hasSwitchPortConfig := false
+        //Check switchport
+        if strings.HasPrefix(parentIfName, "Eth") {
+            //Ethernet
+            _, err := vc.RClient.HGet("PORT|" + parentIfName, "access_vlan").Result()
+            if err == nil {
+                hasSwitchPortConfig = true
+            }
+            _, err = vc.RClient.HGet("PORT|" + parentIfName, "tagged_vlans@").Result()
+            if err == nil {
+                hasSwitchPortConfig = true
+            }
+        } else if strings.HasPrefix(parentIfName, "Po") {
+            //PortChannel
+            _, err := vc.RClient.HGet("PORTCHANNEL|" + parentIfName, "access_vlan").Result()
+            if err == nil {
+                hasSwitchPortConfig = true
+            }
+            _, err = vc.RClient.HGet("PORTCHANNEL|" + parentIfName, "tagged_vlans@").Result()
+            if err == nil {
+                hasSwitchPortConfig = true
+            }
+        }
+        if hasSwitchPortConfig {
+            return CVLErrorInfo{
+                ErrCode:          CVL_SEMANTIC_ERROR,
+                TableName:        "VLAN_SUB_INTERFACE",
+                Keys:             strings.Split(vc.CurCfg.Key, "|"),
+                ConstraintErrMsg: fmt.Sprintf("Cannot configure sub-interface as %s has switchport config.", parentIfName),
+                CVLErrDetails:    "Config Validation Error",
+            }
+        }
+    }
+
+
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
+//ValidateSwitchPortConfig Custom validation for switchport config on interfaces having subintf config
+func (t *CustomValidation) ValidateSwitchPortConfig(vc *CustValidationCtxt) CVLErrorInfo {
+    
+    //log.Info("ValidateSwitchPortConfig op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
+    
+    if vc.CurCfg.VOp == OP_DELETE {
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    if _, ok := vc.CurCfg.Data["access_vlan"] ; !ok {
+        //access_vlan not in data
+        if _, ok1 := vc.CurCfg.Data["tagged_vlans@"] ; !ok1 {
+            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+        }
+    }
+    current_if := strings.Split(vc.CurCfg.Key,"|")[1]
+    shortname := strings.Replace(current_if, "Ethernet", "Eth", -1)
+    shortname = strings.Replace(shortname, "PortChannel", "Po", -1)
+    subintfexists := false
+
+    subIntfList, err := vc.RClient.Keys("VLAN_SUB_INTERFACE|"+shortname+".*").Result()
+    if err != nil {
+        return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+    }
+    if len(subIntfList) > 0 {
+        subintfexists = true
+    }
+
+    if subintfexists {
+        return CVLErrorInfo{
+                ErrCode:          CVL_SEMANTIC_ERROR,
+                TableName:        "VLAN_SUB_INTERFACE",
+                Keys:             strings.Split(vc.CurCfg.Key, "|"),
+                ConstraintErrMsg: fmt.Sprintf("Cannot configure switchport as %s has subinterface config.", current_if),
+                CVLErrDetails:    "Config Validation Error",
+            }
+    }
+
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
