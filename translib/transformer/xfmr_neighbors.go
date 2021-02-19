@@ -182,9 +182,9 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
     log.Info("delete_neigh_interface_config_all: inParams", inParams)
 
     pathInfo := NewPathInfo(inParams.uri)
-    ifName := pathInfo.Var("name")
-    intfNameRcvd := pathInfo.Var("name")
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
+    ifNameRcvd, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
+    log.Infof("delete_neigh_interface_config_all: RcvdName: %s, NativeName: %s, subIdxStr: %s, subIdx: %d, ifNameInDb: %s, err1: %s",  ifNameRcvd,  ifName,  subIdxStr, subIdx, ifNameInDb, err1)
+
     neighTblName := "NEIGH"
 
     var configDb = inParams.dbs[db.ConfigDB]
@@ -192,12 +192,13 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
 
     ipAddrRcvd := pathInfo.Var("ip")
     if len(ipAddrRcvd) > 0 {
-        keyPattern = *nativeIntfName + "|" + ipAddrRcvd
+        keyPattern = ifNameInDb + "|" + ipAddrRcvd
     } else {
-        keyPattern = *nativeIntfName + "|*"
+        keyPattern = ifNameInDb + "|*"
     }
 
     keys, _ := configDb.GetKeysByPattern(neighTblTs, keyPattern)
+    log.Info("delete_neigh_interface_config_all::: neighTbl keys ", keys)
 
     neighOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     neighOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
@@ -206,7 +207,7 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
     entryDeleted := false
     for _, intfTblKey := range keys {
         keyIfName := intfTblKey.Get(0)
-        if keyIfName != ifName {
+        if keyIfName != ifNameInDb {
             log.Error("delete_neigh_interface_config_all:: key ifname doesnt match ",keyIfName)
             continue
         }
@@ -226,7 +227,7 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
         return nil
     }
 
-    log.Info("delete_neigh_interface_config_all: no intries to delete for ", ifName)
+    log.Info("delete_neigh_interface_config_all: no Entries to delete for ", ifNameInDb)
     return nil
 }
 
