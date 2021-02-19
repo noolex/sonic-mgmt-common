@@ -20,6 +20,7 @@ module openconfig-routing-policy-annot {
     deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition {
         deviate add {
             sonic-ext:table-name "ROUTE_MAP_SET";
+            sonic-ext:path-transformer "route_map_path_xfmr";
         }
     }
 

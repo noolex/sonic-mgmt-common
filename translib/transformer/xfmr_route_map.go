@@ -39,6 +39,7 @@ func init () {
     XlateFuncBind("DbToYang_route_map_set_ipv6_next_hop_xfmr", DbToYang_route_map_set_ipv6_next_hop_xfmr)
     XlateFuncBind("YangToDb_route_map_set_med_xfmr", YangToDb_route_map_set_med_xfmr)
     XlateFuncBind("DbToYang_route_map_set_med_xfmr", DbToYang_route_map_set_med_xfmr)
+    XlateFuncBind("DbToYangPath_route_map_path_xfmr", DbToYangPath_route_map_path_xfmr)
 }
 
 var DbToYang_route_map_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -998,4 +999,15 @@ var YangToDb_route_map_set_med_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
     return res_map, nil
 }
 
+var DbToYangPath_route_map_path_xfmr PathXfmrDbToYang = func(params XfmrDbToYgPathParams) (map[sting]string, error) {
+    //params.tableName - ROUTE_MAP_SET
+    //params.tableKey - "name"
+
+    rpRoot = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition"
+
+    pathKeys := make(map[string]string)
+    pathKeys[rpRoot + "/name"] = params.tableKeyComp[0]
+
+    return pathKeys, nil
+}
 
