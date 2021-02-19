@@ -1309,6 +1309,8 @@ var DbToYangPath_igmp_snooping_path_xfmr PathXfmrDbToYangFunc = func(params Xfmr
 			params.ygPathKeys[smGroup + "/source-addr"] = params.tblKeyComp[1]
 			params.ygPathKeys[smGroup + "/group"] = params.tblKeyComp[2]
 		}
+	} else if params.tblName == "CFG_L2MC_MROUTER_TABLE" || params.tblName == "APP_L2MC_MROUTER_TABLE" {
+		*params.keyGroup = append(*params.keyGroup, 0)
 	}
 
 	log.Info("DbToYangPath_igmp_snooping_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)

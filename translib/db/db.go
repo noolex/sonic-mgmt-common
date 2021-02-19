@@ -156,16 +156,23 @@ type Options struct {
 	InitIndicator      string
 	TableNameSeparator string //Overriden by the DB config file's separator.
 	KeySeparator       string //Overriden by the DB config file's separator.
-	IsWriteDisabled    bool //Indicated if write is allowed
+	IsWriteDisabled    bool //Is write/set mode disabled ?
+	IsCacheEnabled     bool //Is cache (Per Connection) allowed?
+
+	// OnChange caching for the DBs passed from Translib's Subscribe Infra
+	// to the Apps. SDB is the SubscribeDB() returned handle on which
+	// notifications of change are received.
+	IsEnableOnChange   bool //SubscribeDB *SDB notifs update OnChange cache
+	SDB                *DB  //The subscribeDB handle (Future Use)
 
 	DisableCVLCheck bool
-	OnChangeCacheEnabled bool
 }
 
 func (o Options) String() string {
 	return fmt.Sprintf(
-		"{ DBNo: %v, InitIndicator: %v, TableNameSeparator: %v, KeySeparator: %v , DisableCVLCheck: %v }",
+		"{ DBNo: %v, InitIndicator: %v, TableNameSeparator: %v, KeySeparator: %v, IsWriteDisabled: %v, IsCacheEnabled: %v, IsEnableOnChange: %v, SDB: %v, DisableCVLCheck: %v }",
 		o.DBNo, o.InitIndicator, o.TableNameSeparator, o.KeySeparator,
+		o.IsWriteDisabled, o.IsCacheEnabled, o.IsEnableOnChange, o.SDB,
 		o.DisableCVLCheck)
 }
 
@@ -218,16 +225,6 @@ type TableSpec struct {
 	NoDelete bool
 }
 
-// Key gives the key components.
-// (Eg: { Comp : [] string { "acl1", "rule1" } } ).
-type Key struct {
-	Comp []string
-}
-
-func (k Key) String() string {
-	return fmt.Sprintf("{ Comp: %v }", k.Comp)
-}
-
 func (v Value) String() string {
 	var str string
 	for k, v1 := range v.Field {
@@ -271,12 +268,18 @@ type DB struct {
 
 	sPubSub *redis.PubSub // PubSub. non-Nil implies SubscribeDB
 	sCIP    bool          // Close in Progress
+	sOnCCacheDB *DB       // Update this DB for PubSub notifications
 
 	dbStatsConfig DBStatsConfig
 	dbCacheConfig DBCacheConfig
 
+	// DBStats is used by both PerConnection cache, and OnChange cache
+	// On a DB handle, the two are mutually exclusive.
 	stats   DBStats
 	cache	DBCache
+
+	onCReg	dbOnChangeReg
+
 }
 
 func (d DB) String() string {
@@ -348,6 +351,12 @@ func NewDB(opt Options) (*DB, error) {
 		glog.Error(fmt.Errorf("Invalid database number %d", dbId))
 	}
 
+	if opt.IsCacheEnabled && opt.IsEnableOnChange {
+		glog.Error("Per Connection caching cannot be enabled with OnChange cache")
+		glog.Error("Disabling Per Connectiontion caching")
+		opt.IsCacheEnabled = false
+	}
+
 	d := DB{client: redis.NewClient(&redis.Options{
 		Network: "tcp",
 		Addr:    ipAddr,
@@ -375,6 +384,17 @@ func NewDB(opt Options) (*DB, error) {
 			glog.Info("NewDB: IsWriteDisabled false. Disable Cache")
 		}
 		d.dbCacheConfig.PerConnection = false
+	}
+
+	if !d.Opts.IsCacheEnabled {
+		if glog.V(1) {
+			glog.Info("NewDB: IsCacheEnabled false. Disable Cache")
+		}
+		d.dbCacheConfig.PerConnection = false
+	}
+
+	if opt.IsEnableOnChange {
+		d.onCReg = dbOnChangeReg{CacheTables:make(map[string]bool, InitialTablesCount)}
 	}
 
 	if d.client == nil {
@@ -478,6 +498,9 @@ func (d *DB) ts2redisUpdated(ts *TableSpec) string {
 
 // GetEntry retrieves an entry(row) from the table.
 func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
+	return d.getEntry(ts,key,false)
+}
+func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 
 	if glog.V(3) {
 		glog.Info("GetEntry: Begin: ", "ts: ", ts, " key: ", key)
@@ -499,7 +522,10 @@ func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
 	var v map[string]string
 
 	// If cache GetFromCache (CacheHit?)
-	if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheTable(ts.Name) {
+	if (d.dbCacheConfig.PerConnection &&
+			d.dbCacheConfig.isCacheTable(ts.Name)) ||
+		(d.Opts.IsEnableOnChange && d.onCReg.isCacheTable(ts.Name) &&
+			!forceReadDB) {
 		var ok bool
 		if table, ok = d.cache.Tables[ts.Name]; ok {
 			if value, ok = table.entry[d.key2redis(ts, key)]; ok {
@@ -516,7 +542,10 @@ func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
 			value = Value{Field: v}
 
 			// If cache SetCache (i.e. a cache miss)
-			if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheTable(ts.Name) {
+			if (d.dbCacheConfig.PerConnection &&
+					d.dbCacheConfig.isCacheTable(ts.Name)) ||
+				(d.Opts.IsEnableOnChange &&
+					d.onCReg.isCacheTable(ts.Name)) {
 				if _, ok := d.cache.Tables[ts.Name] ; !ok {
 					d.cache.Tables[ts.Name] = Table {
 						ts:       ts,
@@ -606,7 +635,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 	if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheTable(ts.Name) {
 		var ok bool
 		if table, ok = d.cache.Tables[ts.Name]; ok {
-			if keys, ok = table.patterns[pat.Comp[0]]; ok {
+			if keys, ok = table.patterns[d.key2redis(ts,pat)]; ok {
 				cacheHit = true;
 			}
 		}
@@ -634,7 +663,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 					db:       d,
 				}
 			}
-			d.cache.Tables[ts.Name].patterns[pat.Comp[0]] = keys
+			d.cache.Tables[ts.Name].patterns[d.key2redis(ts,pat)] = keys
 		}
 	}
 
@@ -650,7 +679,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 	if cacheHit {
 		stats.GetKeysPatternCacheHits++
 	}
-	if pat.Comp[0] == "*" {
+	if (len(pat.Comp) == 1) && (pat.Comp[0] == "*") {
 		stats.GetKeysHits++
 		if cacheHit {
 			stats.GetKeysCacheHits++
@@ -670,7 +699,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 		}
 		stats.GetKeysPatternTime += dur
 
-		if pat.Comp[0] == "*" {
+		if (len(pat.Comp) == 1) && (pat.Comp[0] == "*") {
 
 			if dur > stats.GetKeysPeak {
 				stats.GetKeysPeak = dur
@@ -1124,18 +1153,6 @@ DeleteTableExit:
 	return e
 }
 
-//===== Functions for db.Key =====
-
-// Len returns number of components in the Key
-func (k *Key) Len() int {
-	return len(k.Comp)
-}
-
-// Get returns the key component at given index
-func (k *Key) Get(index int) string {
-	return k.Comp[index]
-}
-
 //===== Functions for db.Value =====
 
 func (v *Value) IsPopulated() bool {
@@ -1558,107 +1575,3 @@ AbortTxExit:
 	return e
 }
 
-// RegisterTableForOnChangeCaching Enable OnChange caching for a given table
-func (d *DB) RegisterTableForOnChangeCaching(ts *TableSpec) {
-	if !d.dbCacheConfig.PerConnection {
-		d.dbCacheConfig.PerConnection = true
-	}
-
-	if !d.dbCacheConfig.CacheTables[ts.Name] {
-		d.dbCacheConfig.CacheTables[ts.Name] = true
-	}
-}
-
-type OnChangeCacheDiff struct {
-	UpdatedEntry	*Value
-	EntryCreated	bool
-	EntryDeleted	bool
-	UpdatedFields	[]string
-	DeletedFields	[]string
-}
-
-func (c *OnChangeCacheDiff) String() string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s[%t], ", "EntryCreated", c.EntryCreated)
-	fmt.Fprintf(&b, "%s[%t], ", "EntryDeleted", c.EntryDeleted)
-	fmt.Fprintf(&b, "%s->%v, ", "UpdatedFields", c.UpdatedFields)
-	fmt.Fprintf(&b, "%s->%v, ", "DeletedFields", c.DeletedFields)
-	if c.UpdatedEntry != nil {
-		fmt.Fprintf(&b, "Entry->")
-		for k, v := range c.UpdatedEntry.Field {
-			fmt.Fprintf(&b, "%s[%s]  ", k, v)
-		}
-	}
-
-	return b.String()
-}
-
-// DiffAndMergeOnChangeCache Compare modified entry with cached entry and
-// return modified fields. Also update the cache with changes.
-func (d *DB) DiffAndMergeOnChangeCache(ts *TableSpec, key Key, entryDeleted bool) (*OnChangeCacheDiff, error) {
-	var val Value
-
-	cacheEntryDiff := &OnChangeCacheDiff{}
-	redisKey := d.key2redis(ts, key)
-
-	if !entryDeleted {
-		// Fetch fresh entry from redis DB and compare with cache entry
-		v, e := d.client.HGetAll(redisKey).Result()
-		if len(v) == 0 || e != nil {
-			e = tlerr.TranslibRedisClientEntryNotExist{Entry: redisKey}
-			return cacheEntryDiff, e
-		}
-		val.Field = v
-	}
-
-	if d.dbCacheConfig.CacheTables[ts.Name] {
-		if table, ok := d.cache.Tables[ts.Name]; ok {
-			cachedEntry, exists := table.entry[redisKey]
-			if exists { // Already exists in cache
-
-				if entryDeleted {
-					// Entry deleted. So remove cached entry
-					delete(table.entry, redisKey)
-					cacheEntryDiff.EntryDeleted = true
-					for fldName := range cachedEntry.Field {
-						cacheEntryDiff.DeletedFields = append(cacheEntryDiff.DeletedFields, fldName)
-					}
-					return cacheEntryDiff, nil
-				}
-
-				cacheEntryDiff.UpdatedEntry = &val
-
-				for fldName := range cachedEntry.Field {
-					if fldName == "NULL" {
-						continue
-					}
-					if _, fldOk := val.Field[fldName]; !fldOk {
-						cacheEntryDiff.DeletedFields = append(cacheEntryDiff.DeletedFields, fldName)
-						cachedEntry.Remove(fldName)
-					}
-				}
-
-				for nf, nv := range val.Field {
-					if nf == "NULL" {
-						continue
-					}
-					if cachedEntry.Field[nf] != nv {
-						cacheEntryDiff.UpdatedFields = append(cacheEntryDiff.UpdatedFields, nf)
-						cachedEntry.Set(nf, nv)
-					}
-				}
-
-			} else if !entryDeleted {
-				// Not exists in cache
-				// Add entry in cache
-				table.entry[redisKey] = val
-				cacheEntryDiff.EntryCreated = true
-				cacheEntryDiff.UpdatedEntry = &val
-			}
-		}
-	}
-
-	glog.Infof("DB::DiffAndMergeOnChangeCache ==> Cache Diff: %v", cacheEntryDiff)
-
-	return cacheEntryDiff, nil
-}

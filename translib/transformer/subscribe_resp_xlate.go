@@ -36,6 +36,7 @@ import (
 type subscribeNotfRespXlator struct {
 	ntfXlateReq   *subscribeNotfXlateReq
 	dbYgXlateList []*DbYgXlateInfo
+	KeyGroupComps []int // set by path transformer
 }
 
 type subscribeNotfXlateReq struct {
@@ -104,7 +105,7 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 		} else if ygXpathInfo.virtualTbl != nil && (*ygXpathInfo.virtualTbl) {
 			log.Error("Translate: virtual table is set to true and path transformer not found list node path: ", *respXlator.ntfXlateReq.path)
 			return nil, tlerr.InternalError{Format: "virtual table is set to true and path transformer not found list node path", Path: ygPath}
-		} else if len(ygXpathInfo.xfmrKey) > 0 {
+		} else if len(ygXpathInfo.xfmrFunc) == 0 && len(ygXpathInfo.xfmrKey) > 0 {
 			dbYgXlateInfo := &DbYgXlateInfo{pathIdx: idx, ygXpathInfo: ygXpathInfo, xlateReq: respXlator.ntfXlateReq}
 			dbYgXlateInfo.setUriPath()
 			respXlator.dbYgXlateList = append(respXlator.dbYgXlateList, dbYgXlateInfo)
@@ -114,7 +115,11 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 				return nil, err
 			}
 		} else {
-			log.Warning("Translate: Could not find the path transformer or DbToYangKey transformer for the xpath: ", ygPath)
+			if len(ygXpathInfo.xfmrFunc) > 0 {
+				log.Warning("Translate: Could not find the path transformer for the xpath: ", ygPath)
+			} else {
+				log.Warning("Translate: Could not find the DbToYangKey transformer for the xpath: ", ygPath)
+			}
 			log.Warning("Translate: Attempting direct conversion - to convert the db key to yang key directly for the path: ", ygPath)
 			log.Info("Translate: respXlator.ntfXlateReq.key.Comp: ", respXlator.ntfXlateReq.key.Comp)
 			log.Info("Translate: pathElem[idx].Key: ", pathElem[idx].Key)
@@ -147,8 +152,18 @@ func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *ya
 		currPath.Elem = append(currPath.Elem, pathElems[idx])
 	}
 
-	inParam := XfmrDbToYgPathParams{&currPath, respXlator.ntfXlateReq.path, ygSchemPath, respXlator.ntfXlateReq.table.Name,
-		respXlator.ntfXlateReq.key.Comp, respXlator.ntfXlateReq.dbNum, respXlator.ntfXlateReq.dbs, respXlator.ntfXlateReq.dbs[respXlator.ntfXlateReq.dbNum], make(map[string]string)}
+	inParam := XfmrDbToYgPathParams{
+		yangPath:      &currPath,
+		subscribePath: respXlator.ntfXlateReq.path,
+		ygSchemaPath:  ygSchemPath,
+		tblName:       respXlator.ntfXlateReq.table.Name,
+		tblKeyComp:    respXlator.ntfXlateReq.key.Comp,
+		dbNum:         respXlator.ntfXlateReq.dbNum,
+		dbs:           respXlator.ntfXlateReq.dbs,
+		db:            respXlator.ntfXlateReq.dbs[respXlator.ntfXlateReq.dbNum],
+		ygPathKeys:    make(map[string]string),
+		keyGroup:      &respXlator.KeyGroupComps,
+	}
 
 	if err := respXlator.xfmrPathHandlerFunc("DbToYangPath_" + ygXpathInfo.xfmrPath, inParam); err != nil {
 		log.Error("Error in path transformer callback : %v for the gnmi path: %v, and the error: %v", ygXpathInfo.xfmrPath, respXlator.ntfXlateReq.path, err)

@@ -32,12 +32,14 @@ package translib
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/path"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
@@ -70,20 +72,31 @@ type notificationInfo struct {
 type subscribeInfo struct {
 	id       uint64 // Subscribe request id
 	syncDone bool
+	termDone bool // Terminate message has been sent
 	q        *queue.PriorityQueue
-	nInfoArr []*notificationInfo
 	stop     chan struct{}
 	sDBs     []*db.DB         //Subscription DB should be used only for keyspace notification unsubscription
 	dbs      [db.MaxDB]*db.DB //used to perform get operations
 }
 
+// notificationGroup is the grouping of notificationInfo by the key pattern.
+type notificationGroup struct {
+	nInfos map[string][]*notificationInfo
+	//TODO move dbno, TS, key from notificationInfo to here
+}
+
 // notificationEvent holds data about translib notification.
 type notificationEvent struct {
-	id    string            // Unique id for logging
-	event db.SEvent         // DB notification type, if any
-	key   *db.Key           // DB key, if any
-	db    *db.DB            // DB object on which this event was received
-	nInfo *notificationInfo // Registration data
+	id    string             // Unique id for logging
+	event db.SEvent          // DB notification type, if any
+	key   *db.Key            // DB key, if any
+	db    *db.DB             // DB object on which this event was received
+	nGrup *notificationGroup // Target notificationGroup for the event
+	nInfo *notificationInfo  // Current notificationInfo
+
+	// Meta info for processSubscribe calls
+	forceProcessSub bool
+	keyGroupComps   []int
 }
 
 // subscribeCounter counts number of Subscribe calls.
@@ -101,20 +114,21 @@ func init() {
 	cleanupMap = make(map[*db.DB]*subscribeInfo)
 }
 
-func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subscribeInfo) error {
+func startDBSubscribe(opt db.Options, nGroups map[db.TableSpec]*notificationGroup, sInfo *subscribeInfo) error {
 	var sKeyList []*db.SKey
+	d := sInfo.dbs[int(opt.DBNo)]
 
-	for _, nInfo := range nInfoList {
-		sKey := &db.SKey{
-			Ts:     nInfo.table,
-			Key:    nInfo.key,
-			Opaque: nInfo,
+	for tSpec, nGroup := range nGroups {
+		skeys := nGroup.toSKeys()
+		if len(skeys) == 0 {
+			continue // should not happen
 		}
-		sKeyList = append(sKeyList, sKey)
 
-		//
-		d := sInfo.dbs[nInfo.dbno]
-		d.RegisterTableForOnChangeCaching(nInfo.table)
+		log.Infof("[%v] nGroup=%p:%v", sInfo.id, nGroup, nGroup.toString())
+
+		sKeyList = append(sKeyList, skeys...)
+
+		d.RegisterTableForOnChangeCaching(&tSpec)
 	}
 
 	sDB, err := db.SubscribeDB(opt, sKeyList, notificationHandler)
@@ -128,38 +142,42 @@ func startDBSubscribe(opt db.Options, nInfoList []*notificationInfo, sInfo *subs
 }
 
 func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) error {
-	nid := dbNotificationCounter.Next()
-	log.Infof("[%d] notificationHandler: d=%p, sKey=%v, key=%v, event=%v",
+	nid := fmt.Sprintf("ne%d", dbNotificationCounter.Next())
+	log.Infof("[%v] notificationHandler: d=%p, sKey=%v, key=%v, event=%v",
 		nid, d, sKey, key, event)
+
+	sMutex.Lock()
+	defer sMutex.Unlock()
 
 	switch event {
 	case db.SEventHSet, db.SEventHDel, db.SEventDel:
-		// TODO revisit mutex usage
-		sMutex.Lock()
-		defer sMutex.Unlock()
 
 		if sKey != nil {
-			if nInfo, ok := sKey.Opaque.(*notificationInfo); ok {
+			if nGrup, ok := sKey.Opaque.(*notificationGroup); ok {
 				n := notificationEvent{
-					id:    fmt.Sprintf("%d:%d", nInfo.sInfo.id, nid),
+					id:    nid,
 					event: event,
 					key:   key,
 					db:    d,
-					nInfo: nInfo,
+					nGrup: nGrup,
 				}
 				n.process()
 			} else {
-				log.Warningf("[%d] notificationHandler: SKey corrupted; nil opaque. %v", nid, *sKey)
+				log.Warningf("[%v] notificationHandler: SKey corrupted; nil opaque. %v", nid, *sKey)
 			}
 		}
+
 	case db.SEventClose:
+		// Close event would have been triggered due to unsubscribe on stop request
+		delete(cleanupMap, d)
+
 	case db.SEventErr:
-		if sInfo, ok := cleanupMap[d]; ok && sInfo != nil {
-			nInfo := sInfo.nInfoArr[0]
-			if nInfo != nil {
-				sendSyncNotification(sInfo, true)
-			}
+		// Unexpected error in db layer.. Terminate the subscribe request.
+		if sInfo, ok := cleanupMap[d]; ok && sInfo != nil && !sInfo.termDone {
+			sendSyncNotification(sInfo, true)
+			sInfo.termDone = true
 		}
+		delete(cleanupMap, d)
 	}
 
 	return nil
@@ -167,7 +185,7 @@ func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) 
 
 type subscribeContext struct {
 	sInfo    *subscribeInfo
-	dbNInfos map[db.DBNum][]*notificationInfo
+	dbNInfos map[db.DBNum]map[db.TableSpec]*notificationGroup
 	tgtInfos []*notificationInfo
 
 	app     *appInterface
@@ -175,21 +193,22 @@ type subscribeContext struct {
 }
 
 func (sc *subscribeContext) add(subscribePath string, nAppSubInfo *translateSubResponse) {
+	sid := sc.sInfo.id
 	if sc.dbNInfos == nil {
-		sc.dbNInfos = make(map[db.DBNum][]*notificationInfo)
+		sc.dbNInfos = make(map[db.DBNum]map[db.TableSpec]*notificationGroup)
 	}
 
-	log.Infof("Subscribe path \"%s\" mapped to %d primary and %d subtree notificationAppInfos",
-		subscribePath, len(nAppSubInfo.ntfAppInfoTrgt), len(nAppSubInfo.ntfAppInfoTrgtChlds))
+	log.Infof("[%v] Subscribe path \"%s\" mapped to %d primary and %d subtree notificationAppInfos",
+		sid, subscribePath, len(nAppSubInfo.ntfAppInfoTrgt), len(nAppSubInfo.ntfAppInfoTrgtChlds))
 
 	for i, nAppInfo := range nAppSubInfo.ntfAppInfoTrgt {
-		log.Infof("pri[%d] = %v", i, nAppInfo)
+		log.Infof("[%v] pri[%d] = %v", sid, i, nAppInfo)
 		nInfo := sc.addNInfo(nAppInfo)
 		sc.tgtInfos = append(sc.tgtInfos, nInfo)
 	}
 
 	for i, nAppInfo := range nAppSubInfo.ntfAppInfoTrgtChlds {
-		log.Infof("sub[%d] = %v", i, nAppInfo)
+		log.Infof("[%v] sub[%d] = %v", sid, i, nAppInfo)
 		sc.addNInfo(nAppInfo)
 	}
 }
@@ -226,7 +245,19 @@ func (sc *subscribeContext) addNInfo(nAppInfo *notificationAppInfo) *notificatio
 		nInfo.flags.Set(niWildcardPath)
 	}
 
-	sc.dbNInfos[d] = append(sc.dbNInfos[d], nInfo)
+	// Group nInfo by table and key pattern
+	tKey := *nAppInfo.table
+	nGrp := sc.dbNInfos[d][tKey]
+	if nGrp == nil {
+		nGrp = new(notificationGroup)
+		if tMap := sc.dbNInfos[d]; tMap != nil {
+			tMap[tKey] = nGrp
+		} else {
+			sc.dbNInfos[d] = map[db.TableSpec]*notificationGroup{tKey: nGrp}
+		}
+	}
+
+	nGrp.add(nInfo)
 	return nInfo
 }
 
@@ -240,18 +271,16 @@ func (sc *subscribeContext) startSubscribe() error {
 
 	stopMap[sInfo.stop] = sInfo
 
-	for dbno, nInfoArr := range sc.dbNInfos {
+	for dbno, nGroups := range sc.dbNInfos {
 		isWriteDisabled := true
 		opt := getDBOptions(dbno, isWriteDisabled)
-		err = startDBSubscribe(opt, nInfoArr, sInfo)
+		err = startDBSubscribe(opt, nGroups, sInfo)
 
 		if err != nil {
 			log.Warningf("[%d] db subscribe failed -- %v", sInfo.id, err)
 			cleanup(sInfo.stop)
 			return err
 		}
-
-		sInfo.nInfoArr = append(sInfo.nInfoArr, nInfoArr...)
 	}
 
 	for _, nInfo := range sc.tgtInfos {
@@ -271,6 +300,43 @@ func (sc *subscribeContext) startSubscribe() error {
 	return err
 }
 
+// add a notificationInfo to the notificationGroup
+func (ng *notificationGroup) add(nInfo *notificationInfo) {
+	keyStr := strings.Join(nInfo.key.Comp, "/")
+	if ng.nInfos == nil {
+		ng.nInfos = map[string][]*notificationInfo{keyStr: []*notificationInfo{nInfo}}
+	} else {
+		ng.nInfos[keyStr] = append(ng.nInfos[keyStr], nInfo)
+	}
+}
+
+// toSKeys prepares DB subscribe keys for the notificationGroup
+func (ng *notificationGroup) toSKeys() []*db.SKey {
+	skeys := make([]*db.SKey, 0, len(ng.nInfos))
+	for _, nInfoList := range ng.nInfos {
+		// notificationInfo are already segregated by key patterns. So we can
+		// just use 1st entry from this sub-group for getting table and key patterns.
+		// TODO avoid redundant registrations of matching patterns (like "PORT|Eth1" and "PORT|*")
+		nInfo := nInfoList[0]
+		skeys = append(skeys, &db.SKey{
+			Ts:     nInfo.table,
+			Key:    nInfo.key,
+			Opaque: ng,
+		})
+	}
+	return skeys
+}
+
+func (ng *notificationGroup) toString() string {
+	var nInfo *notificationInfo
+	comps := make([][]string, 0, len(ng.nInfos))
+	for _, nInfoList := range ng.nInfos {
+		nInfo = nInfoList[0]
+		comps = append(comps, nInfo.key.Comp)
+	}
+	return fmt.Sprintf("{dbno=%d, table=%s, patterns=%v}", nInfo.dbno, nInfo.table.Name, comps)
+}
+
 // sendInitialUpdate sends the initial sync updates to the caller.
 // Performs following steps:
 //  1) Scan all keys for the table
@@ -288,17 +354,37 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 		return err
 	}
 
+	if nInfo.key.IsPattern() && !nInfo.flags.Has(niWildcardPath) {
+		log.Infof("[%s] db key is a glob pattern. Forcing processSubscribe..", ne.id)
+		ne.forceProcessSub = true
+	}
+
+	var ddup map[string]bool
 	topNode := []*yangNodeInfo{new(yangNodeInfo)}
+
 	for _, k := range keys {
 		ne.key = &k
+		if ddk := ne.getDdupKey(); len(ddk) != 0 && ddup[ddk] {
+			log.Infof("[%s] skip init sync for key %v; another key with matching comps %v has been processed",
+				ne.id, k, ne.keyGroupComps)
+			continue
+		}
+
 		ne.sendNotification(nInfo, topNode)
+
+		if ddk := ne.getDdupKey(); len(ddk) != 0 {
+			if ddup == nil {
+				ddup = make(map[string]bool)
+			}
+			ddup[ddk] = true
+		}
 	}
 
 	return nil
 }
 
 func sendSyncNotification(sInfo *subscribeInfo, isTerminated bool) {
-	log.Infof("[%d] Sending syncDone=%v, isTerminated=%v",
+	log.Infof("[%v] Sending SubscribeResponse{syncDone=%v, isTerminated=%v}",
 		sInfo.id, sInfo.syncDone, isTerminated)
 	sInfo.q.Put(&SubscribeResponse{
 		Timestamp:    time.Now().UnixNano(),
@@ -307,34 +393,154 @@ func sendSyncNotification(sInfo *subscribeInfo, isTerminated bool) {
 	})
 }
 
+func (ne *notificationEvent) getDdupKey() string {
+	if len(ne.keyGroupComps) == 0 {
+		return ""
+	}
+
+	kLen := ne.key.Len()
+	uniq := make([]string, len(ne.keyGroupComps))
+	for i, v := range ne.keyGroupComps {
+		if v < 0 || v >= kLen {
+			log.Warningf("[%s] app returned invalid component index %d; key=%v",
+				ne.id, i, ne.key)
+			return ""
+		}
+		uniq[i] = ne.key.Get(v)
+	}
+
+	return strings.Join(uniq, "|")
+}
+
 // process translates db notification into SubscribeResponse and
 // pushes to the caller.
 func (ne *notificationEvent) process() {
-	modFields, err := ne.findModifiedFields()
+	dbDiff, err := ne.DiffAndMergeOnChangeCache()
 	if err != nil {
-		log.Warningf("[%s] error finding modified fields: %v", ne.id, err)
-		return
-	}
-	if len(modFields) == 0 {
-		log.Infof("[%s] no fields updated", ne.id)
+		log.Warningf("[%s] error finding modified db fields: %v", ne.id, err)
 		return
 	}
 
-	ne.sendNotification(ne.nInfo, modFields)
+	// Find all key patterns that match current key
+	for _, nInfos := range ne.nGrup.nInfos {
+		keyPattern := nInfos[0].key
+		if !ne.key.Matches(keyPattern) {
+			log.V(3).Infof("[%s] Key %v does not match pattern %v", ne.id, ne.key, keyPattern)
+			continue
+		}
+
+		log.Infof("[%s] Key %v matches registered pattern %v; has %d nInfos",
+			ne.id, ne.key, keyPattern, len(nInfos))
+
+		for _, nInfo := range nInfos {
+			ne.nInfo = nInfo
+			log.Infof("[%s] processing path: %s", ne.id, path.String(nInfo.path))
+
+			modFields := ne.findModifiedFields(nInfo, dbDiff)
+			if len(modFields) == 0 {
+				log.Infof("[%s] no fields updated", ne.id)
+				continue
+			}
+
+			ne.sendNotification(nInfo, modFields)
+		}
+	}
+}
+
+type onchangeCacheDiff struct {
+	UpdatedEntry  *db.Value
+	EntryCreated  bool
+	EntryDeleted  bool
+	UpdatedFields []string
+	DeletedFields []string
+}
+
+func (c *onchangeCacheDiff) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s[%t], ", "EntryCreated", c.EntryCreated)
+	fmt.Fprintf(&b, "%s[%t], ", "EntryDeleted", c.EntryDeleted)
+	fmt.Fprintf(&b, "%s->%v, ", "UpdatedFields", c.UpdatedFields)
+	fmt.Fprintf(&b, "%s->%v, ", "DeletedFields", c.DeletedFields)
+	if c.UpdatedEntry != nil {
+		fmt.Fprintf(&b, "Entry->")
+		for k, v := range c.UpdatedEntry.Field {
+			fmt.Fprintf(&b, "%s[%s]  ", k, v)
+		}
+	}
+
+	return b.String()
+}
+
+// DiffAndMergeOnChangeCache Compare modified entry with cached entry and
+// return modified fields. Also update the cache with changes.
+func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*onchangeCacheDiff, error) {
+	// Randomly pick one nInfo from the notificationGroup for db diff. Should
+	// not access key, path or path related data here.
+	var nInfo *notificationInfo
+	for _, n := range ne.nGrup.nInfos {
+		nInfo = n[0]
+		break
+	}
+
+	ts := nInfo.table
+	d := nInfo.sInfo.dbs[nInfo.dbno]
+	key := ne.key
+	entryDeleted := (ne.event == db.SEventDel)
+
+	cacheEntryDiff := &onchangeCacheDiff{}
+
+	cachedEntry, val, e := d.OnChangeCacheUpdate(ts, *key)
+
+	exists := !((e != nil) || (len(cachedEntry.Field) == 0))
+	if exists { // Already exists in cache
+
+		if entryDeleted {
+			// Entry deleted.
+			cacheEntryDiff.EntryDeleted = true
+			for fldName := range cachedEntry.Field {
+				cacheEntryDiff.DeletedFields = append(
+					cacheEntryDiff.DeletedFields, fldName)
+			}
+			return cacheEntryDiff, nil
+		}
+
+		cacheEntryDiff.UpdatedEntry = &val
+
+		for fldName := range cachedEntry.Field {
+			if fldName == "NULL" {
+				continue
+			}
+			if _, fldOk := val.Field[fldName]; !fldOk {
+				cacheEntryDiff.DeletedFields = append(
+					cacheEntryDiff.DeletedFields, fldName)
+				cachedEntry.Remove(fldName)
+			}
+		}
+
+		for nf, nv := range val.Field {
+			if nf == "NULL" {
+				continue
+			}
+			if cachedEntry.Field[nf] != nv {
+				cacheEntryDiff.UpdatedFields = append(
+					cacheEntryDiff.UpdatedFields, nf)
+				cachedEntry.Set(nf, nv)
+			}
+		}
+
+	} else if !entryDeleted {
+		// Not exists in cache
+		cacheEntryDiff.EntryCreated = true
+		cacheEntryDiff.UpdatedEntry = &val
+	}
+
+	log.Infof("[%s] DiffAndMergeOnChangeCache: %v", ne.id, cacheEntryDiff)
+
+	return cacheEntryDiff, nil
 }
 
 // findModifiedFields determines db fields changed since last notification
-func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
-	nInfo := ne.nInfo
-
-	// Db instance in nInfo maintains cache. Compare modified dbEntry with cache
-	// and retrieve modified fields. Also merge changes in cache
-	d := nInfo.sInfo.dbs[nInfo.dbno]
-	entryDiff, err := d.DiffAndMergeOnChangeCache(nInfo.table, *ne.key, (ne.event == db.SEventDel))
-	if err != nil {
-		return nil, err
-	}
-
+func (ne *notificationEvent) findModifiedFields(nInfo *notificationInfo, entryDiff *onchangeCacheDiff) []*yangNodeInfo {
 	var modFields []*yangNodeInfo
 
 	// When a new db entry is created, the notification infra can fetch full
@@ -342,7 +548,7 @@ func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
 	if entryDiff.EntryCreated {
 		log.Infof("[%s] Entry created;", ne.id)
 		modFields = append(modFields, &yangNodeInfo{})
-		return modFields, nil
+		return modFields
 	}
 
 	// Treat entry delete as update when 'partial' flag is set
@@ -353,46 +559,30 @@ func (ne *notificationEvent) findModifiedFields() ([]*yangNodeInfo, error) {
 			log.Infof("[%s] empty entry; use target path", ne.id)
 			modFields = append(modFields, &yangNodeInfo{})
 		}
-		return modFields, nil
+		return modFields
 	}
 
 	// When entry is deleted, mark the whole target path as deleted if the
 	if entryDiff.EntryDeleted {
 		log.Infof("[%s] Entry deleted;", ne.id)
 		modFields = append(modFields, &yangNodeInfo{deleted: true})
-		return modFields, nil
+		return modFields
 	}
 
 	// Collect yang leaf info for updated fields
-	for _, f := range entryDiff.UpdatedFields {
-		for _, nDbFldInfo := range nInfo.fields {
-			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				log.Infof("[%s] Field %s modified; path=%s/%s", ne.id, f, nDbFldInfo.rltvPath, leaf)
-				modFields = append(modFields, &yangNodeInfo{
-					parentPrefix: nDbFldInfo.rltvPath,
-					leafName:     leaf,
-				})
-			}
-		}
+	if len(entryDiff.UpdatedFields) != 0 {
+		modFields = ne.createYangPathInfos(nInfo, entryDiff.UpdatedFields, false)
 	}
 
 	// Collect yang leaf info for deleted fields
-	for _, f := range entryDiff.DeletedFields {
-		for _, nDbFldInfo := range nInfo.fields {
-			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				log.Infof("[%s] Field %s deleted; path=%s/%s", ne.id, f, nDbFldInfo.rltvPath, leaf)
-				modFields = append(modFields, &yangNodeInfo{
-					parentPrefix: nDbFldInfo.rltvPath,
-					leafName:     leaf,
-					deleted:      true,
-				})
-			}
-		}
+	if len(entryDiff.DeletedFields) != 0 {
+		modFields = append(modFields,
+			ne.createYangPathInfos(nInfo, entryDiff.DeletedFields, true)...)
 	}
 
 	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, modFields)
 
-	return modFields, err
+	return modFields
 }
 
 func (ne *notificationEvent) createYangPathInfos(nInfo *notificationInfo, fields []string, isDelete bool) []*yangNodeInfo {
@@ -403,6 +593,7 @@ func (ne *notificationEvent) createYangPathInfos(nInfo *notificationInfo, fields
 	}
 
 	for _, f := range fields {
+		f = strings.TrimSuffix(f, "@") // Apps do not fill @ suffix for array fields
 		for _, nDbFldInfo := range nInfo.fields {
 			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
 				log.Infof("[%s] %sfield=%s, path=%s/%s", ne.id, opStr, f, nDbFldInfo.rltvPath, leaf)
@@ -441,10 +632,12 @@ func (ne *notificationEvent) getValue(path string) (ygot.ValidatedGoStruct, erro
 	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_YGOT)
 
 	if err == nil {
-		if resp.ValueTree != nil {
-			payload = *resp.ValueTree
+		if resp.ValueTree == nil {
+			err = tlerr.NotFound("app returned nil")
+		} else if isEmptyYgotStruct(*resp.ValueTree) {
+			err = tlerr.NotFound("app returned empty %T", *resp.ValueTree)
 		} else {
-			err = fmt.Errorf("nil value")
+			payload = *resp.ValueTree
 		}
 	}
 
@@ -464,9 +657,6 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 
 	log.Infof("[%s] Call processSubscribe with dbno=%d, table=%s, key=%v",
 		ne.id, in.dbno, in.table.Name, in.key)
-	if log.V(3) {
-		log.Infof("[%s] Path template: %s", ne.id, path.String(in.path))
-	}
 
 	out, err := (*nInfo.app).processSubscribe(&in)
 	if err != nil {
@@ -496,21 +686,24 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 		return nil
 	}
 
-	if log.V(3) {
-		log.Infof("[%s] processSubscribe returned: %s", ne.id, path.String(out.path))
+	if log.V(1) {
+		log.Infof("[%s] processSubscribe returned: %v", ne.id, out)
 	}
 
+	ne.keyGroupComps = out.keyGroupComps
 	return out.path
 }
 
 func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []*yangNodeInfo) {
-	prefix := nInfo.path
-	if nInfo.flags.Has(niWildcardPath) {
+	var prefix *gnmi.Path
+	if nInfo.flags.Has(niWildcardPath) || ne.forceProcessSub {
 		prefix = ne.dbkeyToYangPath(nInfo)
 		if prefix == nil {
 			log.Warningf("[%s] skip notification", ne.id)
 			return
 		}
+	} else {
+		prefix = path.Clone(nInfo.path)
 	}
 
 	sInfo := nInfo.sInfo
@@ -526,13 +719,11 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 	}
 
 	log.Infof("[%s] preparing SubscribeResponse for %s", ne.id, prefixStr)
-	var numUpdate uint32
+	var updatePaths []string
 
 	for _, lv := range fields {
 		leafPath := lv.getPath()
 
-		// Blindly treat DB delete as yang delete.. Will it work always??
-		// Probably need an option for apps to customize this behavior.
 		if lv.deleted {
 			log.V(3).Infof("[%s] %s deleted", ne.id, leafPath)
 			resp.Delete = append(resp.Delete, leafPath)
@@ -542,7 +733,7 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		data, err := ne.getValue(prefixStr + leafPath)
 
 		if sInfo.syncDone && isNotFoundError(err) {
-			log.V(3).Infof("[%s] %s not found", ne.id, leafPath)
+			log.V(3).Infof("[%s] %s not found (%v)", ne.id, leafPath, err)
 			resp.Delete = append(resp.Delete, leafPath)
 			continue
 		}
@@ -551,15 +742,22 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 			continue
 		}
 
-		log.V(3).Infof("[%s] %s = %v", ne.id, leafPath, data)
+		log.V(3).Infof("[%s] %s = %T", ne.id, leafPath, data)
 		lv.valueTree = data
-		numUpdate++
+		updatePaths = append(updatePaths, leafPath)
+	}
+
+	numUpdate := len(updatePaths)
+	numDelete := len(resp.Delete)
+	log.Infof("[%v][%v] Found %d updates and %d deletes", ne.id, sInfo.id, numUpdate, numDelete)
+	if numUpdate == 0 && numDelete == 0 {
+		return
 	}
 
 	switch {
 	case numUpdate == 0:
 		// No updates; retain resp.Path=prefixStr and resp.Update=nil
-	case numUpdate == 1 && len(resp.Delete) == 0:
+	case numUpdate == 1 && numDelete == 0:
 		// There is only one update and no deletes. Overwrite the resp.Path
 		// to the parent node (because processGet returns GoStruct for the parent)
 		lv, _ := nextYangNodeForUpdate(fields, 0)
@@ -573,14 +771,12 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 			// Optimization for init sync/entry create of non-leaf target -- use the
 			// GoStruct of the target node and retain full target path in resp.Path.
 			// This longer prefix will produce more compact notification message.
-			pp := path.SubPath(prefix, 0, n-1)
 			cp := path.SubPath(prefix, n-1, n)
-			lv.valueTree, err = getYgotAtPath(lv.valueTree, pp, cp)
+			lv.valueTree, err = getYgotAtPath(lv.valueTree, cp)
 		}
 
 		resp.Update = lv.valueTree
-		log.Infof("[%s] Single update case; Path=\"%s\", Update=%T",
-			ne.id, resp.Path, resp.Update)
+		log.Infof("[%s] Single update case; %T", ne.id, resp.Update)
 
 	default:
 		// There are > 1 updates or 1 update with few delete paths. Hence retain resp.Path
@@ -591,8 +787,7 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 			break
 		}
 
-		log.Infof("[%s] Coalesce %d updates; Path=\"%s\", Update=%T",
-			ne.id, numUpdate, resp.Path, resp.Update)
+		log.Infof("[%s] Coalesce %d updates into %T", ne.id, numUpdate, resp.Update)
 		lv, i := nextYangNodeForUpdate(fields, 0)
 		for lv != nil && err == nil {
 			_, err = mergeYgotAtPathStr(tmpRoot, prefixStr+lv.parentPrefix, lv.valueTree)
@@ -605,8 +800,16 @@ func (ne *notificationEvent) sendNotification(nInfo *notificationInfo, fields []
 		return
 	}
 
-	log.Infof("[%s] Sending %d updates and %d deletes", ne.id, numUpdate, len(resp.Delete))
+	log.Infof("[%v][%v] Sending SubscribeResponse{Path=\"%s\", Update=%v, Delete=%v}",
+		ne.id, sInfo.id, resp.Path, sliceValue(updatePaths), sliceValue(resp.Delete))
 	sInfo.q.Put(resp)
+}
+
+func sliceValue(s []string) interface{} {
+	if len(s) == 0 {
+		return nil
+	}
+	return s
 }
 
 func nextYangNodeForUpdate(nodes []*yangNodeInfo, indx int) (*yangNodeInfo, int) {
@@ -659,6 +862,7 @@ func cleanup(stop chan struct{}) {
 			sDB.UnsubscribeDB()
 		}
 
+		sInfo.sDBs = nil
 		closeAllDbs(sInfo.dbs[:])
 
 		delete(stopMap, stop)

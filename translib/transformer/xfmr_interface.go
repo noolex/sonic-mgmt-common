@@ -27,7 +27,7 @@ import (
 
 type RedisDbMap = map[db.DBNum]map[string]map[string]db.Value
 type RedisDbSubscribeMap = map[db.DBNum]map[string]map[string]map[string]string
-type RedisDbYgNodeMap = map[db.DBNum]map[string]map[string]string
+type RedisDbYgNodeMap = map[db.DBNum]map[string]map[string]interface{}
 
 // XfmrParams represents input parameters for table-transformer, key-transformer, field-transformer & subtree-transformer
 type XfmrParams struct {
@@ -120,6 +120,7 @@ type XfmrDbToYgPathParams struct {
 	dbs           [db.MaxDB]*db.DB
 	db            *db.DB
 	ygPathKeys    map[string]string //to keep translated yang keys as values for the each yang key leaf node
+	keyGroup      *[]int // key group comps -- required when db entry is a leaf-list instance
 }
 
 // KeyXfmrYangToDb type is defined to use for conversion of Yang key to DB Key,

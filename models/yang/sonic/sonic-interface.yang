@@ -435,6 +435,9 @@ module sonic-interface {
                         type string {
                             pattern "default";
                         }
+                        type string {
+                            pattern "mgmt";
+                        }
                         type leafref {
                             path "/vrf:sonic-vrf/vrf:VRF/vrf:VRF_LIST/vrf:vrf_name";
                         }
@@ -610,6 +613,11 @@ module sonic-interface {
 
                 leaf ip_prefix {
                     type inet:ip-prefix;
+                }
+
+                leaf secondary {
+                    type boolean;
+                    description "Indicates whether IP adddress configured is secondary or not";
                 }
 
             }

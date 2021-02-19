@@ -630,6 +630,17 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
     cmn_log = "GET: xfmr for IGMP Interface"
     log.Info("fillIgmpInterfaceXfmr interface_info %s ",interface_info)
 
+
+    if igmp_obj == nil {
+      igmp_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp)
+      if igmp_obj == nil {
+          log.Errorf("%s failed !! Error:Failed to create Igmp container", cmn_log)
+          return oper_err
+      }
+      ygot.BuildEmptyTree (igmp_obj)
+    }
+
+    log.Info("igmp_obj.Interfaces", igmp_obj.Interfaces)
     igmpInterfaces_obj = igmp_obj.Interfaces
     if igmpInterfaces_obj == nil {
         log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
@@ -641,8 +652,11 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
         ygot.BuildEmptyTree (igmpInterfaces_obj)
         igmp_obj.Interfaces = igmpInterfaces_obj
     }
+
     igmpInterfacesInterface_obj = igmp_obj.Interfaces.Interface[interfaceId]
-    if igmp_obj.Interfaces.Interface == nil {
+
+    /* igmp_obj.Interfaces.Interface */
+    if  igmpInterfacesInterface_obj == nil {
         log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
         igmpInterfacesInterface_obj, err = igmpInterfaces_obj.NewInterface(interfaceId)
         if err  != nil {
@@ -652,6 +666,7 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
         ygot.BuildEmptyTree (igmpInterfacesInterface_obj)
         igmp_obj.Interfaces.Interface[interfaceId] = igmpInterfacesInterface_obj
     }
+
     igmpInterfaceState_obj = igmpInterfacesInterface_obj.State
     if igmpInterfaceState_obj == nil {
         log.Errorf("%s failed !! State container missing create now", cmn_log)
@@ -773,7 +788,7 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
 
 
     if value,ok := interface_info["timerGroupMembershipIntervalMsec"] ; ok {
-        _gmi := uint16(value.(float64))
+        _gmi := uint16(value.(float64)/1000)
         igmpInterfaceTimer_obj.GroupMembershipInterval  = &_gmi
     }
     if value,ok := interface_info["lastMemberQueryCount"] ; ok {
@@ -781,29 +796,29 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
         igmpInterfacesInterface_obj.State.Timers.LastMemberQueryCount  = &_lmq
     }
     if value,ok := interface_info["timerLastMemberQueryMsec"] ; ok {
-        _lmqt := uint32(value.(float64))
+        _lmqt := uint32(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.LastMemberQueryTime  = &_lmqt
     }
     if value,ok := interface_info["timerOlderHostPresentIntervalMsec"] ; ok {
-        _old := uint16(value.(float64))
+        _old := uint16(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.OlderHostPresentInterval  = &_old
     }
     if value,ok := interface_info["timerOtherQuerierPresentIntervalMsec"] ; ok {
-        _qpi := uint16(value.(float64))
+        _qpi := uint16(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.QuerierPresentInterval  = &_qpi
     }
-    if value,ok := interface_info["timerQueryInterval"] ; ok {
-        _qi := uint16(value.(float64))
-        igmpInterfacesInterface_obj.State.Timers.QueryInterval  = &_qi
-    }
     if value,ok := interface_info["timerQueryResponseIntervalMsec"] ; ok {
-        _qri := uint16(value.(float64))
+        _qri := uint16(value.(float64)/1000)
         igmpInterfacesInterface_obj.State.Timers.QueryResponseInterval  = &_qri
     }
     if value,ok := interface_info["timerRobustnessVariable"] ; ok {
         _trv := uint8(value.(float64))
         igmpInterfacesInterface_obj.State.Timers.RobustnessVariable  = &_trv
     }
+    if value,ok := interface_info["timerQueryInterval"] ; ok {
+        _qi := uint16(value.(float64))
+        igmpInterfacesInterface_obj.State.Timers.QueryInterval  = &_qi
+    }    
     if value,ok := interface_info["timerStartupQueryInterval"] ; ok {
         _sqi := uint16(value.(float64))
         igmpInterfacesInterface_obj.State.Timers.StartupQueryInterval  = &_sqi
@@ -937,7 +952,7 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     var interfacename string
     var ifName string
 
-    log.Info("DbToYang_igmp_interface_get_xfmr ***", inParams.uri)
+    log.Info("DbToYang_igmp_interface_get_xfmr ***", inParams.uri) // target
     var igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp
     igmp_obj, vrfName, err := getIgmpRoot (inParams)
     if err != nil {
@@ -962,7 +977,11 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     _ifName := utils.GetNativeNameFromUIName(&interfacename)
     ifName = *_ifName
 
-    vtysh_cmd = "show ip igmp vrf "+vrfName+" interface "+ifName+" json"
+    ifNameorDetail := ifName
+    if ifNameorDetail == "" {
+      ifNameorDetail = " detail "
+    }
+    vtysh_cmd = "show ip igmp vrf "+vrfName+" interface "+ifNameorDetail+" json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
       log.Errorf("Failed to fetch igmp interface details:, err=%s", cmd_err)
@@ -974,10 +993,12 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     for key,value := range output_state {
         interface_info := value.(map[string]interface{})
         log.Info(key)
-        // _ifName := utils.GetUINameFromNativeName(&key)
-        // ifName := *_ifName
+        _ifName := utils.GetUINameFromNativeName(&key)
+        ifName := *_ifName
+
         log.Info(interface_info)
-        err = fillIgmpInterfaceXfmr (interface_info,interfacename,igmp_obj)
+        log.Info(ifName)
+        err = fillIgmpInterfaceXfmr (interface_info, ifName, /*interfacename, */igmp_obj)
     }
     return err;
 }

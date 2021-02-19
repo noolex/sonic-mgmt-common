@@ -97,6 +97,14 @@ func (s *Set) SetItems() []string {
     return PortsSlice
 }
 
+func NewSet(list []string) Set {
+    var s Set
+    for _, item := range list {
+        s.SetAddItem(item)
+    }
+    return s
+}
+
 /* Cached map of the default FEC modes */
 var default_fec_modes_cache fec_info_t
 /* Cached map of the supported FEC modes */
@@ -233,6 +241,30 @@ func updateCacheForPortchannel(portKey *db.Key, d *db.DB) {
     updateVlanCache(portEntry, portName)
 }
 
+func deleteFromCacheForPortchannel(portKey *db.Key) {
+    portName := portKey.Get(0)
+    vlanCacheKeys := getVlanCachekeys()
+    //Remove portchannel from all the VLAN's tagged/untagged list
+    for _, vlan := range vlanCacheKeys {
+        member_list, ok := vlanMemberCache.Load(vlan)
+        if ok && member_list.(*vlan_member_list).untagged.SetContains(portName) {
+            member_list.(*vlan_member_list).untagged.SetDelItem(portName)
+        }
+        if ok && member_list.(*vlan_member_list).tagged.SetContains(portName) {
+            member_list.(*vlan_member_list).tagged.SetDelItem(portName)
+        }
+    }
+}
+
+func getVlanCachekeys() []string {
+    var vlanCacheKeys []string
+    vlanMemberCache.Range(func(k interface{}, v interface{}) bool {
+        vlanCacheKeys = append(vlanCacheKeys, k.(string))
+        return true
+    })
+    return vlanCacheKeys
+}
+
 func updateVlanCache(portEntry db.Value, portName string) {
     var taggedVlanSlice []string
     taggedVlanVal, ok := portEntry.Field["tagged_vlans@"]
@@ -249,11 +281,7 @@ func updateVlanCache(portEntry db.Value, portName string) {
         vlanCacheAddTagdPort(taggedVlanSlice, portName)
     }
 
-    var vlanCacheKeys []string
-    vlanMemberCache.Range(func(k interface{}, v interface{}) bool {
-        vlanCacheKeys = append(vlanCacheKeys, k.(string))
-        return true
-    })
+    vlanCacheKeys := getVlanCachekeys()
 
     //Code to remove tagged ports from vlan member cache
     vlanCacheRemTagdPort(taggedVlanSlice, portName, vlanCacheKeys)
@@ -356,6 +384,8 @@ func portchannelNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEve
     switch event {
     case db.SEventHSet, db.SEventHDel:
         updateCacheForPortchannel(key, d)
+    case db.SEventDel:
+        deleteFromCacheForPortchannel(key)
     }
     return nil
 }

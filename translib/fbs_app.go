@@ -118,6 +118,7 @@ var interfaceTblTs *db.TableSpec = &db.TableSpec{Name: "INTERFACE"}
 var vlanInterfaceTblTs *db.TableSpec = &db.TableSpec{Name: "VLAN_INTERFACE"}
 var portChannelInterfaceTblTs *db.TableSpec = &db.TableSpec{Name: "PORTCHANNEL_INTERFACE"}
 var pbfNextHopGrpStTblTs *db.TableSpec = &db.TableSpec{Name: STATE_PBF_NEXT_HOP_GROUP_TABLE}
+var vlanSubInterfaceTblTs *db.TableSpec = &db.TableSpec{Name: "VLAN_SUB_INTERFACE"}
 
 type FbsApp struct {
 	pathInfo   *PathInfo
@@ -3487,7 +3488,15 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 	log.Infof("Interface %v has %v groups applied.", nativeIfName, groups)
 
 	vrfName := "default"
-	if strings.HasPrefix(nativeIfName, "Ethernet") {
+	if strings.Contains(nativeIfName, ".") {
+		dbEntry, err := dbs[db.ConfigDB].GetEntry(vlanSubInterfaceTblTs, asKey(nativeIfName))
+		if err == nil {
+			vrfName = dbEntry.Field["vrf_name"]
+		} else {
+			log.Info(err)
+			return nil
+		}
+	} else if strings.HasPrefix(nativeIfName, "Ethernet") {
 		dbEntry, err := dbs[db.ConfigDB].GetEntry(interfaceTblTs, asKey(nativeIfName))
 		if err == nil {
 			vrfName = dbEntry.Field["vrf_name"]
@@ -3552,7 +3561,8 @@ func (app *FbsApp) fillFbsInterfaceNextHopGroupDetails(dbs [db.MaxDB]*db.DB, uiI
 		ygot.BuildEmptyTree(grpObj)
 		ygot.BuildEmptyTree(grpObj.NextHops)
 
-		grpObj.State.Name = &grpName
+		tmpGrpName := grpName
+		grpObj.State.Name = &tmpGrpName
 		grpStateData, err := app.getNextHopGroupStateEntryFromDB(dbs[db.StateDB], grpName+":"+vrfName)
 		if err != nil {
 			log.Error(err)
@@ -3905,8 +3915,9 @@ func (app *FbsApp) fillPbfGroupNextHops(grpData db.Value, grpNhops *ocbinds.Open
 			nhType = ocbinds.OpenconfigFbsExt_NEXT_HOP_TYPE_NEXT_HOP_TYPE_OVERLAY
 		}
 
+		tmpEntryId := entryId
 		if nhObj.Config != nil {
-			nhObj.Config.EntryId = &entryId
+			nhObj.Config.EntryId = &tmpEntryId
 			nhObj.Config.IpAddress = &ipAddr
 			if vrfName != "" {
 				nhObj.Config.NetworkInstance = &vrfName
@@ -3916,7 +3927,7 @@ func (app *FbsApp) fillPbfGroupNextHops(grpData db.Value, grpNhops *ocbinds.Open
 			}
 		}
 		if nhObj.State != nil {
-			nhObj.State.EntryId = &entryId
+			nhObj.State.EntryId = &tmpEntryId
 			nhObj.State.IpAddress = &ipAddr
 			if vrfName != "" {
 				nhObj.State.NetworkInstance = &vrfName

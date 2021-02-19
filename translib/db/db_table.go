@@ -113,7 +113,7 @@ func (d *DB) GetTable(ts *TableSpec) (Table, error) {
 		goto GetTableExit
 	}
 
-	table.patterns["*"] = keys
+	table.patterns[d.key2redis(ts, Key{Comp: []string{"*"}})] = keys
 
 	// For each key in Keys
 	// 	Add Value into table.entry[key)]
@@ -136,7 +136,6 @@ GetTableExit:
 }
 
 // GetKeys method retrieves all entry/row keys from a previously read table.
-// If the keys were not fetched earlier, fetch them now.
 func (t *Table) GetKeys() ([]Key, error) {
 	if glog.V(3) {
 		glog.Info("Table.GetKeys: Begin: t: ", t)
@@ -154,7 +153,6 @@ func (t *Table) GetKeys() ([]Key, error) {
 }
 
 // GetEntry method retrieves an entry/row from a previously read table.
-// If the entry was not fetched earlier, fetch it now.
 func (t *Table) GetEntry(key Key) (Value, error) {
 	/*
 		return Value{map[string]string{
