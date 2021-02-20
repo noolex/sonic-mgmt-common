@@ -91,9 +91,9 @@ func TestValidateRequest(t *testing.T) {
 		path, err := binder.getUriPath()
 		if err != nil {
 			tmpPath := gnmi.Path{}
-			binder.pathTmp = &tmpPath
+			binder.pathParent = &tmpPath
 		} else {
-			binder.pathTmp = path
+			binder.pathParent = path
 		}
 
 		err = binder.validateRequest(&deviceObj)
