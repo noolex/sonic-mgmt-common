@@ -269,9 +269,9 @@ var DbToYang_mclag_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xf
 	mclagObj := getMclagRoot(inParams.ygRoot)
 	pathInfo := NewPathInfo(inParams.uri)
 
-	log.Info("DbToYang_mclag_interface_subtree_xfmr: ", data, inParams.ygRoot)
+	log.Infof("DbToYang_mclag_interface_subtree_xfmr:%s template:%s", data, pathInfo.Template)
 
-	if isSubtreeRequest(pathInfo.Template, "/openconfig-mclag:mclag/interfaces/interface{name}") {
+	if isSubtreeRequest(pathInfo.Template, "/openconfig-mclag:mclag/interfaces/interface{}") {
 		mclagIntfKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name: "MCLAG_INTERFACE"})
 		if len(mclagIntfKeys) > 0 {
 			for _, intfKey := range mclagIntfKeys {
