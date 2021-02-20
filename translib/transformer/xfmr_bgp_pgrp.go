@@ -20,6 +20,7 @@ func init () {
     XlateFuncBind("DbToYang_bgp_peer_group_mbrs_state_xfmr", DbToYang_bgp_peer_group_mbrs_state_xfmr)
     XlateFuncBind("YangToDb_bgp_pgrp_auth_password_xfmr", YangToDb_bgp_pgrp_auth_password_xfmr)
     XlateFuncBind("DbToYang_bgp_pgrp_auth_password_xfmr", DbToYang_bgp_pgrp_auth_password_xfmr)
+    XlateFuncBind("Subscribe_bgp_pgrp_auth_password_xfmr", Subscribe_bgp_pgrp_auth_password_xfmr)
     XlateFuncBind("DbToYangPath_bgp_peer_group_path_xfmr", DbToYangPath_bgp_peer_group_path_xfmr)
 }
 
@@ -329,6 +330,41 @@ var DbToYang_bgp_peer_group_mbrs_state_xfmr SubTreeXfmrDbToYang = func(inParams 
     err = get_specific_pgrp_state (pgrp_obj, &pgrp_key)
     return err;
 }
+
+var Subscribe_bgp_pgrp_auth_password_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+
+    var result XfmrSubscOutParams
+    
+    log.Info("Subscribe_bgp_pgrp_auth_password_xfmr: inParams.subscProc: ",inParams.subscProc)
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+    var vrf_name = "*"
+    var pgrp_name = "*"
+
+    log.Infof("Subscribe_bgp_pgrp_auth_password_xfmr:- URI: %s ;; pathinfo: %s ", inParams.uri, pathInfo.Path)
+    log.Infof("Subscribe_bgp_pgrp_auth_password_xfmr:- Target URI path: %s", targetUriPath)
+    if inParams.subscProc == TRANSLATE_SUBSCRIBE {
+
+        if  pathInfo.HasVar("name") {
+            vrf_name = pathInfo.Var("name")
+        }
+        if pathInfo.HasVar("peer-group-name") {
+            pgrp_name = pathInfo.Var("peer-group-name")
+        }
+        pgrp_key := vrf_name + "|" + pgrp_name
+        log.Infof("Subscribe_bgp_pgrp_auth_password_xfmr: key %s", pgrp_key)
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"BGP_PEER_GROUP": {pgrp_key:{"auth_password":"password"}}}}
+
+        result.onChange = OnchangeEnable
+        result.nOpts = &notificationOpts{}
+        result.nOpts.pType = OnChange
+    } else {
+        result.isVirtualTbl = true
+        log.Info("Subscribe_bgp_pgrp_auth_password_xfmr NON-Subscribe- result.isVirtualTbl: ", result.isVirtualTbl)
+    }
+    return result, nil
+}
+
 
 var YangToDb_bgp_pgrp_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
     var err error
