@@ -43,8 +43,8 @@ var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrPa
               return rmap, nil 
         }
 
-        output, _ = host_output.Body[1].(string)
-
+        s, _ := host_output.Body[1].(string)
+        output = strings.TrimSpace(s)
 
         rmap["clock"]=&output
         log.Info("DbToYang_sys_infra_state_clock_xfmr clock: ", output)

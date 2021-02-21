@@ -166,6 +166,8 @@ const (
 
    XCVR_VENDOR_OUI              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:vendor-oui"
 
+   XCVR_REVISION_COMPLIANCE              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:revision-compliance"
+
    XCVR_LPMODE                  = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lpmode"
    XCVR_MODULE_LANE_COUNT       = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:module-lane-count"
    XCVR_PRESENCE                = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:present"
@@ -270,6 +272,7 @@ type Xcvr struct {
     Vendor_Revision         string
     Vendor_Date_Code        string
     Vendor_OUI              string
+    Revision_Compliance     string
     LolLane_1                string
     LolLane_2                string
     LolLane_3                string
@@ -2382,6 +2385,7 @@ func getSysXcvrFromDb(name string, d *db.DB) (Xcvr, error) {
     xcvrInfo.Vendor_Revision = xcvrEntry.Get("vendor_revision")
     xcvrInfo.Vendor_Date_Code = xcvrEntry.Get("vendor_date_code")
     xcvrInfo.Vendor_OUI = xcvrEntry.Get("vendor_oui")
+    xcvrInfo.Revision_Compliance = xcvrEntry.Get("revision_compliance")
 
     xcvrDOMEntry, err := d.GetEntry(&db.TableSpec{Name: TRANSCEIVER_DOM}, db.Key{Comp: []string{name}})
     if err != nil {
@@ -2593,6 +2597,9 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         if (test_if_available(xcvrInfo.Vendor_OUI)){
             xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
         }
+        if (test_if_available(xcvrInfo.Revision_Compliance)){
+            xcvrState.RevisionCompliance = &xcvrInfo.Revision_Compliance
+        }
 
         if (test_if_available(xcvrInfo.Connector_Type)){
             xcvrState.ConnectorType = convert_connector_type(xcvrInfo.Connector_Type)
@@ -2732,6 +2739,10 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         case XCVR_VENDOR_OUI:
             if (test_if_available(xcvrInfo.Vendor_OUI)){
                 xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
+            }
+        case XCVR_REVISION_COMPLIANCE:
+            if (test_if_available(xcvrInfo.Revision_Compliance)){
+                xcvrState.RevisionCompliance = &xcvrInfo.Revision_Compliance
             }
         /*
             Pending YANG updates

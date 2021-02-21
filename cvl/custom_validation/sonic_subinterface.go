@@ -23,20 +23,79 @@ import (
         "strings"
         util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
         "fmt"
-        //log "github.com/golang/glog"
+        log "github.com/golang/glog"
     )
 
 const (
-    MAX_SUBINTF   uint32 = 750 
+    MAX_SUBINTF   uint32 = 750
     MAX_SUBINTF_PER_INTF uint32 = 250
 )
 
 func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CVLErrorInfo {
-    
-    //log.Info("ValidateSubInterfaceVlanID op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
+
+    log.Info("ValidateSubInterfaceVlanID op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
 
     if (vc.CurCfg.VOp == OP_DELETE) {
-         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+
+        if_name := strings.Split(vc.CurCfg.Key, "|")[1]
+
+        sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
+
+        sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()
+        if (err != nil) || (vc.SessCache == nil) {
+            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+        }
+
+        if len(sag_keys) >= 1 {
+            errStr := "Delete SAG IP on the interface before deleting VLAN ID"
+            return CVLErrorInfo {
+                ErrCode: CVL_SEMANTIC_ERROR,
+                TableName: vc.CurCfg.Key,
+                CVLErrDetails: errStr,
+                ConstraintErrMsg: errStr,
+            }
+        }
+
+
+
+        if _, ok := vc.CurCfg.Data["vlan"]; ok {
+
+            vrrp_tbl_name := "VRRP" + "|" + if_name + "|" + "*"
+
+            vrrp_keys, err:= vc.RClient.Keys(vrrp_tbl_name).Result()
+            if (err != nil) || (vc.SessCache == nil) {
+                return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+            }
+
+            if len(vrrp_keys) >= 1 {
+                errStr := "Delete VRRP on the interface before deleting VLAN ID"
+                return CVLErrorInfo {
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: vc.CurCfg.Key,
+                    CVLErrDetails: errStr,
+                    ConstraintErrMsg: errStr,
+                }
+            }
+
+            vrrp6_tbl_name := "VRRP6" + "|" + if_name + "|" + "*"
+
+            vrrp6_keys, err:= vc.RClient.Keys(vrrp6_tbl_name).Result()
+            if (err != nil) || (vc.SessCache == nil) {
+                return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+            }
+
+            if len(vrrp6_keys) >= 1 {
+                errStr := "Delete VRRP IPv6 on the interface before deleting VLAN ID"
+                return CVLErrorInfo {
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: vc.CurCfg.Key,
+                    CVLErrDetails: errStr,
+                    ConstraintErrMsg: errStr,
+                }
+            }
+        }
+
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
     }
 
     if _, ok := vc.CurCfg.Data["vlan"] ; !ok {
@@ -71,7 +130,7 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
                         ConstraintErrMsg: "Cannot update vlan-id of a subinterface",
                         CVLErrDetails:    "Config Validation Error",
                         ErrAppTag:        "subif-vlanid-update-not-allowed",
-                    } 
+                    }
                 }
             } else {
                 if vlan == vc.CurCfg.Data["vlan"] {
@@ -149,9 +208,9 @@ func validateSubInterfaceSupport(vc *CustValidationCtxt) CVLErrorInfo {
 }
 
 func validateSubInterfaceScaleLimits(vc *CustValidationCtxt) CVLErrorInfo {
-    
+
     //log.Info("validateSubInterfaceCreationDeletion op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
-    
+
     if (vc.CurCfg.VOp == OP_DELETE) {
          return CVLErrorInfo{ErrCode: CVL_SUCCESS}
     }
@@ -213,7 +272,7 @@ func getSubInterfaceFullName(shortName *string) *string {
 func (t *CustomValidation) ValidateSubInterfaceIntf(vc *CustValidationCtxt) CVLErrorInfo {
 
     //log.Info("ValidateSubInterfaceIntf op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
-    
+
     res := validateSubInterfaceSupport(vc)
     if res.ErrCode != CVL_SUCCESS {
         return res

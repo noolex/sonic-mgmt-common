@@ -718,8 +718,10 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 
 			if err == nil {
 				policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
+				policer.OPERATIONAL_CIR = policer.OPERATIONAL_CIR * 8 // Convert to bits
 				policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
 				policer.OPERATIONAL_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
+				policer.OPERATIONAL_PIR = policer.OPERATIONAL_PIR * 8 // Convert to bits
 				policer.OPERATIONAL_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
 				policer.UNITS = policerTblVal.Field["METER_TYPE"]
 				policer.COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"]

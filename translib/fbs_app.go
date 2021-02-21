@@ -2531,11 +2531,10 @@ func (app *FbsApp) fillFbsClassDetails(dbs [db.MaxDB]*db.DB, className string, c
 			} else if aclTypeInDb == "L3" {
 				aclType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4
 			} else if aclTypeInDb == "L3V6" {
-				aclType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4
+				aclType = ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV6
 			}
 			classData.MatchAcl.Config.AclName = &aclNameInDb
 			classData.MatchAcl.Config.AclType = aclType
-
 			classData.MatchAcl.State.AclName = classData.MatchAcl.Config.AclName
 			classData.MatchAcl.State.AclType = classData.MatchAcl.Config.AclType
 		}
@@ -3139,11 +3138,13 @@ func (app *FbsApp) fillFbsPolicerStateEntry(dbs [db.MaxDB]*db.DB, polPbfKey db.K
 	if err == nil {
 		if str_val, found := policerTblVal.Field["CIR"]; found {
 			val, _ := strconv.ParseUint(str_val, 10, 64)
+			val = val * 8
 			qosState.Cir = val
 		}
 
 		if str_val, found := policerTblVal.Field["PIR"]; found {
 			val, _ := strconv.ParseUint(str_val, 10, 64)
+			val = val * 8
 			qosState.Pir = val
 		}
 
