@@ -148,5 +148,35 @@ func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
 		}
 	}
 
+	if strings.Contains(ifName, ".") {
+
+		vlan_subif_table := "VLAN_SUB_INTERFACE"
+
+		vlan_subif_key := vlan_subif_table + "|" + ifName
+
+		vlan_subif_data, err := vc.RClient.HGetAll(vlan_subif_key).Result()
+		if (err != nil) || (vc.SessCache == nil) {
+			errStr := "Configure subinterface and vlan id before configuring VRRP"
+			return CVLErrorInfo{
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: keyNameSplit[0],
+				CVLErrDetails: errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+
+		_, has_vlanid := vlan_subif_data["vlan"]
+
+		if !has_vlanid {
+			errStr := "Configure  vlan id on interface before configuring SAG IP"
+			return CVLErrorInfo{
+				ErrCode: CVL_SEMANTIC_ERROR,
+				TableName: keyNameSplit[0],
+				CVLErrDetails: errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+	}
+
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
