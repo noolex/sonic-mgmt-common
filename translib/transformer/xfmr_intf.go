@@ -469,6 +469,10 @@ func performIfNameKeyXfmrOp(inParams *XfmrParams, requestUriPath *string, ifName
             resMap := make(map[string]map[string]db.Value)
             subIntfMap := make(map[string]db.Value)
             key := *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(ifName, &subifindex)
+            err = validateIntfExists(inParams.d, "VLAN_SUB_INTERFACE", key)
+            if err != nil {
+                return nil
+            }
             subIntfMap[key] = db.Value{Field:map[string]string{}}
             resMap["VLAN_SUB_INTERFACE"] = subIntfMap
             subOpMap[db.ConfigDB] = resMap
