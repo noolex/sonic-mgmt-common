@@ -578,6 +578,7 @@ module sonic-bgp-common {
 
         leaf advertise-pip {
             type boolean;
+            default true;
             description
                "Enable advertise PIP";
         }
@@ -589,12 +590,18 @@ module sonic-bgp-common {
         }
 
         leaf advertise-pip-peer-ip {
+            must "current()/../vrf_name = 'default'" {
+                error-message "Advertise peer ip is supported only on default VRF!";
+            }
             type inet:ipv4-address;
             description
                "PIP peer IPv4 address";
         }
 
         leaf advertise-pip-mac {
+            must "current()/../vrf_name != 'default'" {
+                error-message "Advertise peer MAC is supported only on user VRF!";
+            }
             type ietf-yang:mac-address;
             description
                 "PIP MAC address address to addvertise";
