@@ -52,6 +52,7 @@ func TestValidateEditConfig_When_Exp_In_Choice_Negative(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32", //Invalid field
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -91,6 +92,7 @@ func TestValidateEditConfig_When_Exp_In_Leaf_Positive(t *testing.T) {
 				"edge_port": "true",
 				"link_type": "shared",
 			},
+			false,
 		},
 	}
 
@@ -130,6 +132,7 @@ func TestValidateEditConfig_When_Exp_In_Leaf_Negative(t *testing.T) {
 				"edge_port": "true",
 				"link_type": "shared",
 			},
+			false,
 		},
 	}
 

@@ -80,6 +80,7 @@ func TestValidateEditConfig_Delete_Must_Check_Positive(t *testing.T) {
 			"ACL_RULE|TestACL2|Rule2",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -140,6 +141,7 @@ func TestValidateEditConfig_Delete_Must_Check_Negative(t *testing.T) {
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string {
 			},
+			false,
 		},
 	}
 
@@ -167,6 +169,7 @@ func TestValidateEditConfig_Create_ErrAppTag_In_Must_Negative(t *testing.T) {
 				"vlanid":   "102",
 				"members@": "Ethernet24,Ethernet8",
 			},
+			false,
 		},
 	}
 
@@ -204,6 +207,7 @@ func TestValidateEditConfig_MustExp_With_Default_Value_Positive(t *testing.T) {
 				"enabled":   "true",
 				"query-max-response-time": "25", //default query-interval = 125
 			},
+			false,
                 },
         }
 
@@ -245,6 +249,7 @@ func TestValidateEditConfig_MustExp_With_Default_Value_Negative(t *testing.T) {
 				"enabled":   "true",
 				"query-interval": "9", //default query-max-response-time = 10
 			},
+			false,
                 },
         }
 
@@ -342,6 +347,7 @@ func TestValidateEditConfig_MustExp_Chained_Predicate_Positive(t *testing.T) {
 			map[string]string{
 				"NULL": "NULL",
 			},
+			false,
                 },
         }
 
@@ -374,6 +380,7 @@ func TestValidateEditConfig_MustExp_Within_Same_Table_Negative(t *testing.T) {
 				"ipaddress-type": "ipv6", //Invalid ip address type
 				"ipaddress":   "10.101.1.2",
 			},
+			false,
                 },
         }
 
@@ -413,6 +420,7 @@ func TestValidateEditConfig_MustExp_Without_Predicate_Positive(t *testing.T) {
 			map[string]string{
 				"NULL": "NULL",
 			},
+			false,
                 },
         }
 
@@ -465,6 +473,7 @@ func TestValidateEditConfig_MustExp_Non_Key_As_Predicate_Negative(t *testing.T) 
 				"vlan": "Vlan202",
 				"vni": "300", //same VNI is not valid
 			},
+			false,
                 },
         }
 
@@ -528,6 +537,7 @@ func TestValidateEditConfig_MustExp_Non_Key_As_Predicate_In_External_Table_Posit
 			map[string]string{
 				"vni": "302",
 			},
+			false,
                 },
         }
 
@@ -565,6 +575,7 @@ func TestValidateEditConfig_MustExp_Update_Leaf_List_Positive(t *testing.T) {
 			map[string]string{
 				"members@": "Ethernet4,Ethernet8",
 			},
+			false,
 		},
 	}
 
@@ -606,6 +617,7 @@ func TestValidateEditConfig_MustExp_Add_NULL(t *testing.T) {
 		VOp:   cvl.OP_DELETE,
 		Key:   "INTERFACE|Ethernet20",
 		Data:  map[string]string{ "unnumbered": "" },
+		ReplaceOp: false,
 	}
 
 	addNull := cvl.CVLEditConfigData{
@@ -613,6 +625,7 @@ func TestValidateEditConfig_MustExp_Add_NULL(t *testing.T) {
 		VOp:   cvl.OP_UPDATE,
 		Key:   "INTERFACE|Ethernet20",
 		Data:  map[string]string{ "NULL": "NULL" },
+		ReplaceOp: false,
 	}
 
 	t.Run("before", testNullAdd(addNull, delUnnumber))

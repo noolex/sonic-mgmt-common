@@ -804,6 +804,7 @@ module sonic-flow-based-services {
                     error-message "Invalid Trap queue value.";
                 }
             }
+            sonic-ext:custom-validation ValidateCpuQueueId;
             must "not(current()/../SET_PCP)" {
                 error-message "CoPP and QoS actions cant be configured at the same time.";
             }
