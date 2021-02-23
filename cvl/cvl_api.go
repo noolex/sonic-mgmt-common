@@ -115,6 +115,7 @@ type CVLEditConfigData struct {
 	VOp CVLOperation      //Operation type
 	Key string      //Key format : "PORT|Ethernet4"
 	Data map[string]string //Value :  {"alias": "40GE0/28", "mtu" : 9100,  "admin_status":  down}
+	ReplaceOp bool
 }
 
 // ValidationTimeStats CVL validations stats
@@ -561,6 +562,16 @@ func (c *CVL) ValidateEditConfig(cfgData []CVLEditConfigData) (cvlErr CVLErrorIn
 		tbl, key)
 		if cvlErrObj.ErrCode != CVL_SUCCESS {
 			return cvlErrObj,cvlErrObj.ErrCode
+		}
+
+		if cfgData[i].ReplaceOp {
+			// Fields requested with OP_DELETE are already removed from
+			// OP_UPDATE request and validated. Skip further semantic validation.
+			if OP_DELETE == cfgData[i].VOp {
+				continue
+			}
+			c.updateYangTreeForReplaceOp(node, cfgData)
+			TRACE_LOG(TRACE_UPDATE, "After Replace, YANG data tree: %s", c.yv.root.OutputXML(false))
 		}
 
 		//Step 3.3 : Perform semantic validation

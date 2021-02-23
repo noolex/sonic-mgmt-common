@@ -21,10 +21,12 @@ package custom_validation
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"github.com/go-redis/redis/v7"
 	log "github.com/golang/glog"
-	"strings"
 )
 
 const MAX_ACL_RULE_INSTANCES = 65536
@@ -296,5 +298,49 @@ func (t *CustomValidation) ValidateGroupTypeMatches(vc *CustValidationCtxt) CVLE
 		}
 	}
 
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+// ValidateCpuQueueId validates the trap queue range
+// Returns -  CVL Error object
+func (t *CustomValidation) ValidateCpuQueueId(vc *CustValidationCtxt) CVLErrorInfo {
+
+	log.Infof("ValidateCpuQueueId operation %d on %s:%s:%s", vc.CurCfg.VOp, vc.CurCfg.Key, vc.YNodeName, vc.YNodeVal)
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	stateDBClient := util.NewDbClient("STATE_DB")
+	defer func() {
+		if stateDBClient != nil {
+			stateDBClient.Close()
+		}
+	}()
+
+	if stateDBClient != nil {
+		key := "SWITCH_CAPABILITY|switch"
+		numCpuQueues, err := stateDBClient.HGet(key, "num_cpu_queues").Result()
+		if err == nil {
+			maxCount, _ := strconv.Atoi(numCpuQueues)
+			if maxCount != 0 {
+				availableCount := maxCount
+				if maxCount == 48 {
+					availableCount = 32 // Remaining 16 Queues are reserved
+				} else if maxCount == 32 {
+					availableCount = 24 // TD2: Remaining 8 Queues are reserved
+				}
+				currentQueueId := vc.YNodeVal
+				id, _ := strconv.Atoi(currentQueueId)
+				if id > (availableCount - 1) {
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						ConstraintErrMsg: fmt.Sprintf("Invalid queue id(%s), allowed value is less than %d on this platform.", currentQueueId, availableCount),
+						CVLErrDetails:    "Invalid queue id.",
+						ErrAppTag:        "invalid-queue-id",
+					}
+				}
+			}
+		}
+	}
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

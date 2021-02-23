@@ -756,7 +756,7 @@ func (d *DB) DeleteKeys(ts *TableSpec, key Key) error {
 	return e
 }
 
-func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Value) error {
+func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Value, isReplaceOp bool) error {
 	var e error = nil
 
 	var cvlRetCode cvl.CVLRetCode
@@ -784,6 +784,7 @@ func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Val
 			VType: cvl.VALIDATE_ALL,
 			VOp:   cvlOps[i],
 			Key:   d.key2redis(ts, key),
+			ReplaceOp: isReplaceOp,
 		}
 
 		switch cvlOps[i] {
@@ -994,16 +995,18 @@ func (d *DB) setEntry(ts *TableSpec, key Key, value Value, isCreate bool) error 
 		}
 		if len(valueComplement.Field) == 0 {
 			e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE},
-				key, []Value{value})
+				key, []Value{value}, false)
 		} else {
+			// For Replace(SET) op, both UPDATE and DELETE operations to be sent to CVL
+			// For CVL to identify Replace Op, setting the flag as true
 			e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE, cvl.OP_DELETE},
-				key, []Value{value, valueComplement})
+				key, []Value{value, valueComplement}, true)
 		}
 	} else {
 		if glog.V(3) {
 			glog.Info("setEntry: DoCVL for CREATE")
 		}
-		e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_CREATE}, key, []Value{value})
+		e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_CREATE}, key, []Value{value}, false)
 	}
 
 	if e != nil {
@@ -1054,7 +1057,7 @@ func (d *DB) DeleteEntry(ts *TableSpec, key Key) error {
 	if glog.V(3) {
 		glog.Info("DeleteEntry: DoCVL for DELETE")
 	}
-	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{Value{}})
+	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{Value{}}, false)
 
 	if e == nil {
 		e = d.doWrite(ts, txOpDel, key, nil)
@@ -1086,7 +1089,7 @@ func (d *DB) ModEntry(ts *TableSpec, key Key, value Value) error {
 	if glog.V(3) {
 		glog.Info("ModEntry: DoCVL for UPDATE")
 	}
-	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE}, key, []Value{value})
+	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE}, key, []Value{value}, false)
 
 	if e == nil {
 		e = d.doWrite(ts, txOpHMSet, key, value)
@@ -1113,7 +1116,7 @@ func (d *DB) DeleteEntryFields(ts *TableSpec, key Key, value Value) error {
 		glog.Info("DeleteEntryFields: DoCVL for HDEL")
 	}
 
-	e := d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{value})
+	e := d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{value}, false)
 
 	if e == nil {
 		d.doWrite(ts, txOpHDel, key, value)
