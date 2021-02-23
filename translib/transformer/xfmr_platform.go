@@ -142,6 +142,7 @@ const (
    PSU_OUTPUT_CURRENT         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-current"
    PSU_OUTPUT_POWER           = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-power"
    PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
+   PSU_TEMPERATURE            = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:temperature"
    PSU_VOLT_TYPE              = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
 
    /** Supported Fan URIs **/
@@ -234,6 +235,7 @@ type PSU struct {
     Status              bool
     Status_Led          string
     Volt_Type           string
+    Temperature         string
 }
 
 type Fan struct {
@@ -1962,6 +1964,7 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     psuInfo.Serial_Number = convertUTF8EndcodedString(psuEntry.Get("serial"))
     psuInfo.Fans = psuEntry.Get("num_fans")
     psuInfo.Status_Led = psuEntry.Get("led_status")
+    psuInfo.Temperature = psuEntry.Get("temperature")
     return psuInfo, err
 }
 
@@ -1987,6 +1990,9 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             }
             if psuInfo.Output_Power != "" {
                 psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+            }
+            if psuInfo.Temperature!= "" {
+                psuState.Temperature, err = float32StrTo4Bytes(psuInfo.Temperature)
             }
 
             if psuInfo.Volt_Type == "AC" {
@@ -2046,6 +2052,10 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     case PSU_OUTPUT_POWER:
         if psuInfo.Output_Power != "" {
             psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+        }
+    case PSU_TEMPERATURE:
+        if psuInfo.Temperature != "" {
+            psuState.Temperature, err = float32StrTo4Bytes(psuInfo.Temperature)
         }
     case PSU_VOLT_TYPE:
         psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_UNSET
