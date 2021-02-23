@@ -1319,7 +1319,7 @@ diff -ruN ygot-dir-orig/ygot/ytypes/list.go ygot-dir/ygot/ytypes/list.go
  		return nil, fmt.Errorf("failed to create map value for insert, root %T, keys %v: %v", root, keys, err)
 diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
 --- ygot-dir-orig/ygot/ytypes/node.go	2021-02-18 16:00:45.145295000 -0800
-+++ ygot-dir/ygot/ytypes/node.go	2021-02-18 15:49:57.699898000 -0800
++++ ygot-dir/ygot/ytypes/node.go	2021-02-19 15:13:43.879774000 -0800
 @@ -12,6 +12,9 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -1330,7 +1330,15 @@ diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
  package ytypes
  
  import (
-@@ -140,6 +143,16 @@
+@@ -25,6 +28,7 @@
+ 	"google.golang.org/grpc/status"
+ 
+ 	gpb "github.com/openconfig/gnmi/proto/gnmi"
++	"strings"
+ )
+ 
+ // Type retrieveNodeArgs contains the set of parameters that changes
+@@ -140,6 +144,16 @@
  				if err := util.InitializeStructField(root, ft.Name); err != nil {
  					return nil, status.Errorf(codes.Unknown, "failed to initialize struct field %s in %T, child schema %v, path %v", ft.Name, root, cschema, path)
  				}
@@ -1347,7 +1355,33 @@ diff -ruN ygot-dir-orig/ygot/ytypes/node.go ygot-dir/ygot/ytypes/node.go
  			}
  
  			// If delete is specified, and the path is exhausted, then we set the
-@@ -319,6 +332,11 @@
+@@ -243,6 +257,13 @@
+ 			if err != nil {
+ 				return nil, status.Errorf(codes.InvalidArgument, "failed to convert %v to a string, path %v: %v", kv, path, err)
+ 			}
++
++			if strings.Contains(keyAsString, "\\") {
++				keyPath, err := ygot.StringToStructuredPath(schema.Name+"["+schema.Key+"="+keyAsString+"]")
++				if err != nil { return nil, status.Errorf(codes.InvalidArgument, "failed to convert %v to a string, path %v: %v", kv, path, err) }
++				if len(keyPath.Elem) == 1 { keyAsString = keyPath.Elem[0].Key[schema.Key] }
++			}
++
+ 			if keyAsString == pathKey {
+ 				remainingPath := util.PopGNMIPath(path)
+ 				if args.delete && len(remainingPath.GetElem()) == 0 {
+@@ -287,6 +308,11 @@
+ 			if err != nil {
+ 				return nil, status.Errorf(codes.Unknown, "failed to convert the field value to string, field %v: %v", fieldName, err)
+ 			}
++			if strings.Contains(keyAsString, "\\") {
++				keyPath, err := ygot.StringToStructuredPath(schema.Name+"["+schemaKey+"="+keyAsString+"]")
++				if err != nil { return nil, status.Errorf(codes.Unknown, "failed to convert the field value to string, field %v: %v", fieldName, err) }
++				if len(keyPath.Elem) == 1 { keyAsString = keyPath.Elem[0].Key[schemaKey] }
++			}
+ 			if !(args.handleWildcards && pathKey == "*") && pathKey != keyAsString {
+ 				match = false
+ 				break
+@@ -319,6 +345,11 @@
  		if err != nil {
  			return nil, err
  		}
