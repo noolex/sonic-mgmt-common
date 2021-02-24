@@ -999,15 +999,14 @@ var YangToDb_route_map_set_med_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
     return res_map, nil
 }
 
-var DbToYangPath_route_map_path_xfmr PathXfmrDbToYang = func(params XfmrDbToYgPathParams) (map[sting]string, error) {
+var DbToYangPath_route_map_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
     //params.tableName - ROUTE_MAP_SET
     //params.tableKey - "name"
 
-    rpRoot = "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition"
+    rpRoot := "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition"
 
-    pathKeys := make(map[string]string)
-    pathKeys[rpRoot + "/name"] = params.tableKeyComp[0]
+    params.ygPathKeys[rpRoot + "/name"] = params.tblKeyComp[0]
 
-    return pathKeys, nil
+    return nil
 }
 
