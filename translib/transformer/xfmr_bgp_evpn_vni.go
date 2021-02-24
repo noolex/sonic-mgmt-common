@@ -674,7 +674,7 @@ var YangToDb_bgp_evpn_advertise_all_vni_fld_xfmr FieldXfmrYangToDb = func(inPara
         pipMacStr, _, err := get_bgp_vrf_af_db_entry_field(inParams, "advertise-pip-mac") 
         if (err == nil && pipMacStr != "") {
             errStr := "Advertise PIP MAC address configured, VRF cannot be EVPN VRF"
-            log.Info("YangToDb_bgp_evpn_advertise_pip_mac_fld_xfmr: ", errStr)
+            log.Info("YangToDb_bgp_evpn_advertise_all_vni_fld_xfmr: ", errStr)
             return res_map, tlerr.New(errStr)
         }       
 
@@ -728,11 +728,11 @@ var YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr FieldXfmrYangToDb = func(inP
     if (pipEnable) {
         res_map["advertise-pip"] = "true"
     } else {
-        if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
+        /*if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
             errStr := "Please use delete operation to disable advertise PIP"
             log.Info("YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr: ", errStr)
             return res_map, tlerr.New(errStr)
-        }
+        } */
         res_map["advertise-pip"] = "false"
     }
 
