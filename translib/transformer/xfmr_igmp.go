@@ -266,7 +266,6 @@ func fillIgmpStatsXfmr (output_state map[string]interface{}, igmp_obj *ocbinds.O
 
     igmpStats_obj = igmp_obj.Statistics
     if igmpStats_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Statistics  container missing", cmn_log)
         igmpStats_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Statistics)
         if igmpStats_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Statistics container", cmn_log)
@@ -440,7 +439,6 @@ func fillIgmpIntfStatsXfmr (output_state map[string]interface{}, interfaceId str
 
     igmpInterfaces_obj := igmp_obj.Interfaces
     if igmpInterfaces_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
         igmpInterfaces_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces)
         if igmpInterfaces_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Interfaces container", cmn_log)
@@ -451,7 +449,6 @@ func fillIgmpIntfStatsXfmr (output_state map[string]interface{}, interfaceId str
     }
     igmpInterfacesInterface_obj := igmp_obj.Interfaces.Interface[interfaceId]
     if igmp_obj.Interfaces.Interface == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
         igmpInterfacesInterface_obj, err = igmpInterfaces_obj.NewInterface(interfaceId)
         if err  != nil {
             log.Errorf("%s failed !! Error: Failed to create Igmp Interface  under Interfaces", cmn_log)
@@ -643,7 +640,6 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
     log.Info("igmp_obj.Interfaces", igmp_obj.Interfaces)
     igmpInterfaces_obj = igmp_obj.Interfaces
     if igmpInterfaces_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
         igmpInterfaces_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces)
         if igmpInterfaces_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Interfaces container", cmn_log)
@@ -657,7 +653,6 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
 
     /* igmp_obj.Interfaces.Interface */
     if  igmpInterfacesInterface_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Interfaces  container missing", cmn_log)
         igmpInterfacesInterface_obj, err = igmpInterfaces_obj.NewInterface(interfaceId)
         if err  != nil {
             log.Errorf("%s failed !! Error: Failed to create Igmp Interface  under Interfaces", cmn_log)
@@ -669,7 +664,6 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
 
     igmpInterfaceState_obj = igmpInterfacesInterface_obj.State
     if igmpInterfaceState_obj == nil {
-        log.Errorf("%s failed !! State container missing create now", cmn_log)
         igmpInterfaceState_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_State)
         if igmpInterfaceState_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Interfaces State container", cmn_log)
@@ -680,7 +674,6 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
     }
     igmpInterfaceQuerier_obj =igmpInterfaceState_obj.Querier
     if igmpInterfaceQuerier_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Interface State Querier container missing", cmn_log)
         igmpInterfaceQuerier_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_State_Querier)
         if igmpInterfaceQuerier_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Interfaces State Querier container", cmn_log)
@@ -691,7 +684,6 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
     }
     igmpInterfaceFlags_obj = igmpInterfaceState_obj.Flags
     if igmpInterfaceFlags_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Interface State Flags container missing", cmn_log)
         igmpInterfaceFlags_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_State_Flags)
         if igmpInterfaceFlags_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Interfaces State Flags container", cmn_log)
@@ -702,7 +694,6 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
     }
     igmpInterfaceTimer_obj = igmpInterfaceState_obj.Timers
     if igmpInterfaceTimer_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Interface State Timer container missing", cmn_log)
         igmpInterfaceTimer_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Interfaces_Interface_State_Timers)
         if igmpInterfaceTimer_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Interfaces State Timer container", cmn_log)
@@ -818,7 +809,7 @@ func fillIgmpInterfaceXfmr (interface_info map[string]interface{}, interfaceId s
     if value,ok := interface_info["timerQueryInterval"] ; ok {
         _qi := uint16(value.(float64))
         igmpInterfacesInterface_obj.State.Timers.QueryInterval  = &_qi
-    }    
+    }
     if value,ok := interface_info["timerStartupQueryInterval"] ; ok {
         _sqi := uint16(value.(float64))
         igmpInterfacesInterface_obj.State.Timers.StartupQueryInterval  = &_sqi
@@ -878,7 +869,6 @@ var DbToYang_igmp_groups_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
 
     igmpGroups_obj = igmp_obj.Groups
     if igmpGroups_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Groups  container missing", cmn_log)
         igmpGroups_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Groups)
         if igmpGroups_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Groups container", cmn_log)
@@ -1161,7 +1151,6 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
 
     igmpSources_obj = igmp_obj.Sources
     if igmpSources_obj == nil {
-        log.Errorf("%s failed !! Error: IGMP Igmp Sources  container missing", cmn_log)
         igmpSources_obj = new(ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Sources)
         if igmpSources_obj == nil {
             log.Errorf("%s failed !! Error:Failed to create Igmp Sources container", cmn_log)
