@@ -135,7 +135,7 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 
 	log.Info("tranlateSubscribe:path", req.path)
 	isOnchange := true //TODO: default to true for now, the value need to be passed from the subscribe infra
-	if subReqXlator, err := transformer.GetSubscribeReqXlator (req.path, isOnchange, req.dbs, txCache); err != nil {
+	if subReqXlator, err := transformer.GetSubscribeReqXlator (req.ctxID, req.path, isOnchange, req.dbs, txCache); err != nil {
 		log.Info("tranlateSubscribe:Error in initializing the SubscribeReqXlator for the subscribe path request: ", req.path)
 		return nil, err
 	} else {
@@ -420,7 +420,7 @@ func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error
 func (app *CommonApp) processSubscribe(param *processSubRequest) (processSubResponse, error) {
 	var resp processSubResponse
 
-	if subNotfRespXlator, err := transformer.GetSubscribeNotfRespXlator(param.path, param.dbno, param.table, param.key, param.dbs, param.opaque); err != nil {
+	if subNotfRespXlator, err := transformer.GetSubscribeNotfRespXlator(param.ctxID, param.path, param.dbno, param.table, param.key, param.dbs, param.opaque); err != nil {
 		log.Error("processSubscribe: Error in getting the GetSubscribeNotfRespXlator; error: ", err)
 		return resp, err
 	} else {
