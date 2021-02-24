@@ -142,6 +142,7 @@ const (
    PSU_OUTPUT_CURRENT         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-current"
    PSU_OUTPUT_POWER           = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-power"
    PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
+   PSU_TEMPERATURE            = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:temperature"
    PSU_VOLT_TYPE              = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
 
    /** Supported Fan URIs **/
@@ -165,6 +166,8 @@ const (
    XCVR_VENDOR_DATE_CODE        = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-transceiver:vendor-date-code"
 
    XCVR_VENDOR_OUI              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:vendor-oui"
+
+   XCVR_REVISION_COMPLIANCE              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:revision-compliance"
 
    XCVR_LPMODE                  = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lpmode"
    XCVR_MODULE_LANE_COUNT       = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:module-lane-count"
@@ -232,6 +235,7 @@ type PSU struct {
     Status              bool
     Status_Led          string
     Volt_Type           string
+    Temperature         string
 }
 
 type Fan struct {
@@ -270,6 +274,7 @@ type Xcvr struct {
     Vendor_Revision         string
     Vendor_Date_Code        string
     Vendor_OUI              string
+    Revision_Compliance     string
     LolLane_1                string
     LolLane_2                string
     LolLane_3                string
@@ -1959,6 +1964,7 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     psuInfo.Serial_Number = convertUTF8EndcodedString(psuEntry.Get("serial"))
     psuInfo.Fans = psuEntry.Get("num_fans")
     psuInfo.Status_Led = psuEntry.Get("led_status")
+    psuInfo.Temperature = psuEntry.Get("temperature")
     return psuInfo, err
 }
 
@@ -1984,6 +1990,9 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             }
             if psuInfo.Output_Power != "" {
                 psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+            }
+            if psuInfo.Temperature!= "" {
+                psuState.Temperature, err = float32StrTo4Bytes(psuInfo.Temperature)
             }
 
             if psuInfo.Volt_Type == "AC" {
@@ -2043,6 +2052,10 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     case PSU_OUTPUT_POWER:
         if psuInfo.Output_Power != "" {
             psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+        }
+    case PSU_TEMPERATURE:
+        if psuInfo.Temperature != "" {
+            psuState.Temperature, err = float32StrTo4Bytes(psuInfo.Temperature)
         }
     case PSU_VOLT_TYPE:
         psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_UNSET
@@ -2382,6 +2395,7 @@ func getSysXcvrFromDb(name string, d *db.DB) (Xcvr, error) {
     xcvrInfo.Vendor_Revision = xcvrEntry.Get("vendor_revision")
     xcvrInfo.Vendor_Date_Code = xcvrEntry.Get("vendor_date_code")
     xcvrInfo.Vendor_OUI = xcvrEntry.Get("vendor_oui")
+    xcvrInfo.Revision_Compliance = xcvrEntry.Get("revision_compliance")
 
     xcvrDOMEntry, err := d.GetEntry(&db.TableSpec{Name: TRANSCEIVER_DOM}, db.Key{Comp: []string{name}})
     if err != nil {
@@ -2593,6 +2607,9 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         if (test_if_available(xcvrInfo.Vendor_OUI)){
             xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
         }
+        if (test_if_available(xcvrInfo.Revision_Compliance)){
+            xcvrState.RevisionCompliance = &xcvrInfo.Revision_Compliance
+        }
 
         if (test_if_available(xcvrInfo.Connector_Type)){
             xcvrState.ConnectorType = convert_connector_type(xcvrInfo.Connector_Type)
@@ -2732,6 +2749,10 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         case XCVR_VENDOR_OUI:
             if (test_if_available(xcvrInfo.Vendor_OUI)){
                 xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
+            }
+        case XCVR_REVISION_COMPLIANCE:
+            if (test_if_available(xcvrInfo.Revision_Compliance)){
+                xcvrState.RevisionCompliance = &xcvrInfo.Revision_Compliance
             }
         /*
             Pending YANG updates

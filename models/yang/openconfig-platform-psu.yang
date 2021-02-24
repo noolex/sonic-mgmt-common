@@ -116,6 +116,12 @@ module openconfig-platform-psu {
       description
         "Output power supplied by the power supply.";
     }
+    leaf temperature {
+      type oc-types:ieeefloat32;
+      units celsius;
+      description
+        "Temperature of the power supply.";
+    }
   }
 
   // data definition statements
