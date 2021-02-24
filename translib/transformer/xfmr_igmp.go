@@ -844,7 +844,7 @@ var DbToYang_igmp_groups_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
     var igmpGroups_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Groups
     igmp_obj, vrfName, err := getIgmpRoot (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Info ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
     log.Info(vrfName)
@@ -859,7 +859,7 @@ var DbToYang_igmp_groups_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParam
     vtysh_cmd = "show ip igmp vrf "+vrfName+" groups json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch igmp groups:, err=%s", cmd_err)
+      log.Info("Failed to fetch igmp groups:, err=%s", cmd_err)
       return  cmd_err
     }
 
@@ -946,7 +946,7 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     var igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp
     igmp_obj, vrfName, err := getIgmpRoot (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Info ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
     log.Info(vrfName)
@@ -974,7 +974,7 @@ var DbToYang_igmp_interface_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     vtysh_cmd = "show ip igmp vrf "+vrfName+" interface "+ifNameorDetail+" json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch igmp interface details:, err=%s", cmd_err)
+      log.Info("Failed to fetch igmp interface details:, err=%s", cmd_err)
       return  cmd_err
     }
     log.Info(output_state)
@@ -1018,7 +1018,7 @@ var DbToYang_igmp_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     var igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp
     igmp_obj, vrfName, err := getIgmpRoot (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Info ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
     log.Info(vrfName)
@@ -1031,7 +1031,7 @@ var DbToYang_igmp_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     vtysh_cmd = "show ip igmp vrf "+vrfName+" statistics json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch igmp statistics:, err=%s", cmd_err)
+      log.Info("Failed to fetch igmp statistics:, err=%s", cmd_err)
       return  cmd_err
     }
     log.Info(output_state)
@@ -1057,7 +1057,7 @@ var DbToYang_igmp_intf_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
     var igmp_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp
     igmp_obj, vrfName, err := getIgmpRoot (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Info ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
     log.Info(vrfName)
@@ -1085,7 +1085,7 @@ var DbToYang_igmp_intf_stats_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
 
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch igmp statistics:, err=%s", cmd_err)
+      log.Info("Failed to fetch igmp statistics:, err=%s", cmd_err)
       return  cmd_err
     }
     log.Info(output_state)
@@ -1126,7 +1126,7 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
     var igmpSources_obj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Igmp_Sources
     igmp_obj, vrfName, err := getIgmpRoot (inParams)
     if err != nil {
-        log.Errorf ("%s failed !! Error:%s", cmn_log , err);
+        log.Info ("%s failed !! Error:%s", cmn_log , err);
         return  oper_err
     }
     log.Info(vrfName)
@@ -1141,7 +1141,7 @@ var DbToYang_igmp_sources_get_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPara
     vtysh_cmd = "show ip igmp vrf "+vrfName+" sources json"
     output_state, cmd_err := exec_vtysh_cmd (vtysh_cmd)
     if cmd_err != nil {
-      log.Errorf("Failed to fetch igmp sources:, err=%s", cmd_err)
+      log.Info("Failed to fetch igmp sources:, err=%s", cmd_err)
       return  cmd_err
     }
 
@@ -1194,7 +1194,7 @@ var rpc_show_igmp_join RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([
 
     igmpOutput, err := exec_vtysh_cmd(cmd)
     if err != nil {
-        log.Errorf("FRR execution failed err %s",err)
+        log.Info("FRR execution failed err %s",err)
         return nil, errors.New("Internal error!")
     }
 
