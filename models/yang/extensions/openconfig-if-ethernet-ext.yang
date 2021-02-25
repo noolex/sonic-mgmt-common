@@ -109,7 +109,7 @@ module openconfig-if-ethernet-ext {
           "Configurable items at the storm-control level";
       leaf ifname {
           type leafref {
-              path "/oc-if:interfaces/oc-if:interface/oc-if:config/oc-if:name";
+              path "/oc-if:interfaces/oc-if:interface/oc-if:name";
           }
           description
               "name of interface on which storm-control is enabled";
