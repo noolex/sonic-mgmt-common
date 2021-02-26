@@ -541,7 +541,7 @@ module openconfig-interfaces-annot {
         }
     }
 
-    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list" {
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:config" {
         deviate add {
             sonic-ext:table-name "PORT_STORM_CONTROL";
             sonic-ext:key-transformer "storm_type_key_xfmr";

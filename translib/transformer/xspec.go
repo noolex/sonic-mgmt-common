@@ -195,7 +195,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathData, ok := xYangSpecMap[curXpathFull]
 		if !ok {
 			curXpathData = new(yangXpathInfo)
-			curXpathData.subscribeOnChg    = XFMR_INVALID
+			curXpathData.subscribeOnChg    = XFMR_DEFAULT_ENABLE
 			curXpathData.subscribeMinIntvl = XFMR_INVALID
 			curXpathData.dbIndex = db.ConfigDB // default value
 			xYangSpecMap[curXpathFull] = curXpathData
@@ -224,7 +224,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		curXpathFull = xpathFull + "/" + entry.Name
 		if annotNode, ok := xYangSpecMap[curXpathFull]; ok {
 			xpathData := new(yangXpathInfo)
-			xpathData.subscribeOnChg    = XFMR_INVALID
+			xpathData.subscribeOnChg    = XFMR_DEFAULT_ENABLE
 			xpathData.subscribeMinIntvl = XFMR_INVALID
 			xpathData.dbIndex = db.ConfigDB // default value
 			xYangSpecMap[xpath] = xpathData
@@ -238,7 +238,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		xpathData = new(yangXpathInfo)
 		xYangSpecMap[xpath] = xpathData
 		xpathData.dbIndex = db.ConfigDB // default value
-		xpathData.subscribeOnChg    = XFMR_INVALID
+		xpathData.subscribeOnChg    = XFMR_DEFAULT_ENABLE
 		xpathData.subscribeMinIntvl = XFMR_INVALID
 		xpathData.cascadeDel = XFMR_INVALID
 	} else {
@@ -286,7 +286,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
    }
 
    if ok {
-	   if xpathData.subscribeOnChg == XFMR_INVALID {
+	   if xpathData.subscribeOnChg == XFMR_INVALID || xpathData.subscribeOnChg == XFMR_DEFAULT_ENABLE {
 		   xpathData.subscribeOnChg = parentXpathData.subscribeOnChg
 	   }
 
@@ -369,7 +369,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 			keyXpath[id] = xpath + "/" + keyName
 			if _, ok := xYangSpecMap[xpath + "/" + keyName]; !ok {
 				keyXpathData := new(yangXpathInfo)
-				keyXpathData.subscribeOnChg    = XFMR_INVALID
+				keyXpathData.subscribeOnChg    = XFMR_DEFAULT_ENABLE
 				keyXpathData.subscribeMinIntvl = XFMR_INVALID
 				keyXpathData.dbIndex = db.ConfigDB // default value
 				xYangSpecMap[xpath + "/" + keyName] = keyXpathData
@@ -396,7 +396,7 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 	}
 
 	if xpathData.subscribeOnChg == XFMR_INVALID {
-		xpathData.subscribeOnChg = XFMR_ENABLE
+		xpathData.subscribeOnChg = XFMR_DEFAULT_ENABLE
 	}
 	if ((xpathData.subscribePref != nil) && (*xpathData.subscribePref == "onchange") && (xpathData.subscribeOnChg == XFMR_DISABLE)) {
 		log.Infof("subscribe OnChange is disabled so setting subscribe preference to default/sample from onchange for xpath - %v", xpath)
@@ -727,7 +727,7 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 	xpathData := new(yangXpathInfo)
 
 	xpathData.dbIndex = db.ConfigDB // default value
-	xpathData.subscribeOnChg    = XFMR_INVALID
+	xpathData.subscribeOnChg    = XFMR_DEFAULT_ENABLE
 	xpathData.subscribeMinIntvl = XFMR_INVALID
 	xpathData.cascadeDel = XFMR_INVALID
 	/* fill table with yang extension data. */
@@ -794,8 +794,10 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 			case "subscribe-on-change" :
 				if ext.NName() == "disable" || ext.NName() == "DISABLE" {
 					xpathData.subscribeOnChg = XFMR_DISABLE
-				} else {
+				} else if ext.NName() == "enable" || ext.NName() == "ENABLE" {
 					xpathData.subscribeOnChg = XFMR_ENABLE
+				} else {
+					xpathData.subscribeOnChg = XFMR_DEFAULT_ENABLE
 				}
 			case "subscribe-min-interval" :
 				if ext.NName() == "NONE" {
