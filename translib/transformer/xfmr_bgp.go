@@ -559,7 +559,7 @@ var YangToDb_bgp_local_asn_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
 
     if inParams.oper == DELETE {
         rmap["local_asn"] = ""
-        return rmap, nil
+        return rmap, tlerr.InvalidArgs("Deleting local AS is not allowed, delete at the bgp container level to remove the BGP instance")
     }
 
     log.Info("YangToDb_bgp_local_asn_fld_xfmr")

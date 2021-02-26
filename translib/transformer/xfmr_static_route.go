@@ -151,6 +151,9 @@ func (nh ipNexthop) String() string {
 }
 
 func newNexthop(srcVrf string, bkh bool, gw string, intf string, tag uint32, dist uint32, vrf string, track uint16) (*ipNexthop, error) {
+    if vrf == srcVrf {
+        vrf = ""
+    }
     nh := new(ipNexthop)
     nh.index = getNexthopIndex(bkh, gw, intf, vrf)
     if len(nh.index) == 0 {
@@ -165,9 +168,7 @@ func newNexthop(srcVrf string, bkh bool, gw string, intf string, tag uint32, dis
     nh.ifName = intf
     nh.tag = tag
     nh.distance = dist
-    if vrf != srcVrf {
-        nh.vrf = vrf
-    }
+    nh.vrf = vrf
     nh.track = track
     return nh, nil
 }
@@ -396,6 +397,17 @@ func verifyIpPrefix(pfx string) error {
     return nil
 }
 
+// convert nexthop index to "standard" format that doesn't contain nexthop VRF if nexthop VRF is the same as
+// source VRF
+func getStdNHIndex(vrf string, index string) string {
+    suffix := "_" + vrf
+    if strings.HasSuffix(index, suffix) {
+        return index[:len(index) - len(suffix)]
+    } else {
+        return index
+    }
+}
+
 // compose nexthop set based on data of ygot structure
 func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]*ipNexthopSet, error) {
     /* Dont construct (by passing is_validate=false in the below function) the YGOT structure 
@@ -435,6 +447,7 @@ func getYgotNexthopObj(s *ygot.GoStruct, vrf string, prefix string) (map[string]
             var distance uint32
             var gwIp string
             var track uint16
+            nhIndex = getStdNHIndex(vrf, nhIndex)
             if nexthopObj.Config != nil {
                 if nexthopObj.Config.Blackhole != nil {
                     blackhole = *nexthopObj.Config.Blackhole
@@ -804,7 +817,7 @@ var YangToDb_static_routes_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
                 return resMap, err
             }
         } else {
-            nhIndex := pathInfo.Var("index")
+            nhIndex := getStdNHIndex(vrf, pathInfo.Var("index"))
             log.Infof("Handling static route nexthop delete for VRF %s prefix %s index %s", vrf, ipPrefix, nhIndex)
             route := (*routeData)[vrf][ipPrefix]
             nh, ok := route.ygotNhList.nhList[nhIndex]
@@ -898,6 +911,9 @@ var YangToDb_static_routes_subtree_xfmr SubTreeXfmrYangToDb = func(inParams Xfmr
 }
 
 func setRouteObjWithDbData(inParams XfmrParams, vrf string, prefix string, nhIndex string) error {
+    if len(nhIndex) != 0 {
+        nhIndex = getStdNHIndex(vrf, nhIndex)
+    }
     sroutesObj, err := getYgotStaticRoutesObj(inParams.ygRoot, vrf, true)
     if err != nil {
         return err
