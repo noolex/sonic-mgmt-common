@@ -246,7 +246,7 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
     var nexthop_ip, nexthop_ifname, nexthop_area_id string
     var ospfv2Zero bool = false
     var ospfv2One bool = true
-    oper_err := errors.New("Operational error")
+    oper_err := errors.New("Operational error for ospfv2_fill_route_table")
     cmn_log := "GET: xfmr for OSPF Route Table"
 
     log.Infof("ospfv2_fill_route_table - start")
@@ -285,14 +285,14 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
         prefixStr = fmt.Sprintf("%v", key)
         log.Infof("Prefix string %s", prefixStr)
         switch(route_info["routeType"]) {
-            case "R " : 
+            case "R " :
                 ospfv2RouteTable_obj = ospfv2RouteTables_obj.RouteTable[ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_ROUTER_ROUTE_TABLE]
-            case "N" :
+            case "N", "N IA" :
                 ospfv2RouteTable_obj = ospfv2RouteTables_obj.RouteTable[ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_NETWORK_ROUTE_TABLE]
             case "N E2" :
-                ospfv2RouteTable_obj = ospfv2RouteTables_obj.RouteTable[ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_EXTERNAL_ROUTE_TABLE] 
+                ospfv2RouteTable_obj = ospfv2RouteTables_obj.RouteTable[ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_EXTERNAL_ROUTE_TABLE]
             case "N E1" :
-                ospfv2RouteTable_obj = ospfv2RouteTables_obj.RouteTable[ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_EXTERNAL_ROUTE_TABLE] 
+                ospfv2RouteTable_obj = ospfv2RouteTables_obj.RouteTable[ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TABLE_EXTERNAL_ROUTE_TABLE]
             default:
                 ospfv2RouteTable_obj = nil
         }
@@ -390,6 +390,9 @@ func ospfv2_fill_route_table (ospf_info map[string]interface{},
                 ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_ROUTER_ROUTE 
             case "N" : 
                 ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_NETWORK_ROUTE 
+            case "N IA" :
+                ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_NETWORK_ROUTE 
+                ospfv2RouteState.InterArea = &ospfv2One
             case "N E2" :
                 ospfv2RouteState.Type = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_TYPE_EXTERNAL_ROUTE 
                 ospfv2RouteState.SubType = ocbinds.OpenconfigOspfv2Ext_OSPF_ROUTE_PATH_TYPE_EXTERNAL_ROUTE_TYPE_2

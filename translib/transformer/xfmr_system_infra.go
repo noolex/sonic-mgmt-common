@@ -235,9 +235,9 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
         log.Info("rpc_infra_show_sys_log body:", string(body))
 
         var err error
-        var MGM_DIR="/host/cli-ca/"
-        var MGM_SYSLOG="/host/cli-ca/syslog"
-        var MGM_SYSLOG1="/host/cli-ca/syslog.1"
+        var HOST_MGM_DIR="/tmp/"
+        var MGM_SYSLOG="/mnt/tmp/syslog"
+        var MGM_SYSLOG1="/mnt/tmp/syslog.1"
         var HOST_SYSLOG="/var/log/syslog"
         var HOST_SYSLOG1="/var/log/syslog.1"
         var out_list []string
@@ -273,11 +273,11 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
         }
 
         if _, err := os.Stat(MGM_SYSLOG1); err == nil {
-            os.Remove(MGM_SYSLOG1)
-            os.Remove(MGM_SYSLOG)
+            os.Remove("/tmp/syslog")
+            os.Remove("/tmp/syslog.1")
         }
 
-        cmd := "cp -f " + HOST_SYSLOG + " " + HOST_SYSLOG1 +" " + MGM_DIR
+        cmd := "cp -f " + HOST_SYSLOG + " " + HOST_SYSLOG1 +" " + HOST_MGM_DIR
 
         host_output := HostQuery("infra_host.exec_cmd", cmd)
         if host_output.Err != nil {

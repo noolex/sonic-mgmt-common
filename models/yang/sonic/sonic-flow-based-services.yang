@@ -1055,6 +1055,10 @@ module sonic-flow-based-services {
                         error-app-tag threshold-up-less-than-threshold-down;
                         error-message "Threshold up value must be greater than threshold down value";
                     }
+                    must "(current()/../THRESHOLD_TYPE = 'COUNT') or (current()/../THRESHOLD_TYPE = 'PERCENTAGE')" {
+                        error-app-tag "threshold-type-not-configured";
+                        error-message "Threshold type mandatory to configure threshold up or down values.";
+                    }
                 }
 
                 leaf THRESHOLD_DOWN {
@@ -1070,6 +1074,10 @@ module sonic-flow-based-services {
                     must "(not(current()/../THRESHOLD_UP) or (current() < current()/../THRESHOLD_UP))" {
                         error-app-tag threshold-down-greater-than-threshold-up;
                         error-message "Threshold down value must be lesser than threshold up value";
+                    }
+                    must "(current()/../THRESHOLD_TYPE = 'COUNT') or (current()/../THRESHOLD_TYPE = 'PERCENTAGE')" {
+                        error-app-tag "threshold-type-not-configured";
+                        error-message "Threshold type mandatory to configure threshold up or down values.";
                     }
                 }
 
