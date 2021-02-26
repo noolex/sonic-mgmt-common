@@ -3075,14 +3075,14 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         log.Info("YangToDb_intf_subintf_ip_xfmr : " + errStr)
         return subIntfmap, errors.New(errStr)
     }
-
     /* Validate whether the Interface is configured as member-port associated with any vlan */
-    if intfType == IntfTypeEthernet || intfType == IntfTypePortChannel {
+    if (intfType == IntfTypeEthernet || intfType == IntfTypePortChannel) && (inParams.oper != DELETE) {
         err = validateIntfAssociatedWithVlan(inParams.d, &ifName)
-        if err != nil {
+        if err != nil { //Interface associated with VLAN
             return subIntfmap, err
         }
     }
+
     /* Validate whether the Interface is configured as member-port associated with any portchannel */
     if intfType == IntfTypeEthernet {
         err = validateIntfAssociatedWithPortChannel(inParams.d, &ifName)

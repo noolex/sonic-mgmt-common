@@ -404,16 +404,27 @@ func validateIntfAssociatedWithVlan(d *db.DB, ifName *string) error {
     if len(*ifName) == 0 {
         return errors.New("Interface name is empty!")
     }
-    var vlanKeys []db.Key
-    vlanKeys, err = d.GetKeysByPattern(&db.TableSpec{Name: VLAN_MEMBER_TN}, "*"+*ifName)
-    if err != nil {
-        return errors.New("Failed to get keys from table: " + VLAN_MEMBER_TN)
-    }
-    log.Infof("Interface member of %d Vlan(s)", len(vlanKeys))
-    if len(vlanKeys) > 0 {
-        errStr := "Vlan configuration exists on interface: " + *ifUIName
-        log.Error(errStr)
-        return tlerr.InvalidArgsError{Format:errStr}
+    intfType, _, _ := getIntfTypeByName(*ifName)
+    intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getPortTableNameByDBId(intTbl, 4)
+
+    var errStr strings.Builder
+    portEntry, err := d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{*ifName}})
+    if err == nil {
+        cfgdTaggedVlanVal, taggedOk := portEntry.Field["tagged_vlans@"]
+        cfgdAccessVlanVal, accessOk := portEntry.Field["access_vlan"]
+
+        if taggedOk && len(cfgdTaggedVlanVal) !=0 {
+            errStr.WriteString("Tagged VLANs:" + cfgdTaggedVlanVal +" ")
+        }
+        if accessOk && len(cfgdAccessVlanVal) !=0 {
+            errStr.WriteString("Access VLANs:" + cfgdAccessVlanVal +" ")
+        }
+        if errStr.Len() != 0 {
+            errStr.WriteString("configuration exists on interface: " + *ifUIName)
+            log.Error(errStr.String())
+            return tlerr.InvalidArgsError{Format:errStr.String()}
+        }
     }
     return err
 }
