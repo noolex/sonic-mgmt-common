@@ -728,11 +728,15 @@ var YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr FieldXfmrYangToDb = func(inP
     if (pipEnable) {
         res_map["advertise-pip"] = "true"
     } else {
-        /*if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
-            errStr := "Please use delete operation to disable advertise PIP"
-            log.Info("YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr: ", errStr)
-            return res_map, tlerr.New(errStr)
-        } */
+        if (inParams.oper == UPDATE || inParams.oper == CREATE || inParams.oper == REPLACE) {
+            pathInfo := NewPathInfo(inParams.uri)
+            vrfName := pathInfo.Var("name")
+            if (vrfName != "default") {
+                errStr := "Disabling advertise pip on a user VRF is not allowed!"
+                log.Info("YangToDb_bgp_evpn_advertise_pip_enable_fld_xfmr: ", errStr)
+                return res_map, tlerr.New(errStr)
+            }
+        }
         res_map["advertise-pip"] = "false"
     }
 
