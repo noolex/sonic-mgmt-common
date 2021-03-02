@@ -100,6 +100,11 @@ func TestKeyMatches(t *testing.T) {
 	t.Run("AA|B?", keyMatch(NewKey("AA", "BB"), NewKey("AA", "B?"), true))
 	t.Run("??|?B", keyMatch(NewKey("AA", "BB"), NewKey("??", "?B"), true))
 	t.Run("?\\?|?B", keyMatch(NewKey("A?", "bB"), NewKey("?\\?", "?B"), true))
+	t.Run("*:aa/bb", keyMatch(NewKey("aa/bb"), NewKey("*"), true))
+	t.Run("*/*:aa/bb", keyMatch(NewKey("aa/bb"), NewKey("*/*"), true))
+	t.Run("*ab*:aabb", keyMatch(NewKey("aabb"), NewKey("*ab*"), true))
+	t.Run("*ab*:aab", keyMatch(NewKey("aab"), NewKey("*ab*"), true))
+	t.Run("*ab*:abb", keyMatch(NewKey("abb"), NewKey("*ab*"), true))
 }
 
 func keyMatch(k, p *Key, exp bool) func(*testing.T) {
