@@ -111,7 +111,7 @@ type modelTableInfo struct {
 	whenExpr map[string][]*whenInfo
 	tablesForMustExp map[string]CVLOperation
 	refFromTables []tblFieldPair //list of table or table/field referring to this table
-	custValidation map[string]string // Map for custom validation node and function name
+	custValidation map[string][]string // Map for custom validation node and function name
 	dfltLeafVal map[string]string //map of leaf names and default value
 	mandatoryNodes map[string]bool  //map of leaf names and mandatory flag
 	dependentOnTable string // Name of table on which it is dependent
@@ -1029,7 +1029,7 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 
 	// yangListName provides the correct table name defined in sonic-yang
 	// For ex. VLAN_INTERFACE_LIST and VLAN_INTERFACE_IPADDR_LIST are in same container
-	for nodeName, custFunc := range modelInfo.tableInfo[yangListName].custValidation {
+	for nodeName, custFuncs := range modelInfo.tableInfo[yangListName].custValidation {
 		//find the node value
 		//node value is empty for custom validation function at list level
 		nodeVal := ""
@@ -1051,24 +1051,25 @@ func (c *CVL) doCustomValidation(node *xmlquery.Node,
 		}
 
 		//Call custom validation functions
-		CVL_LOG(INFO_TRACE, "Calling custom validation function %s", custFunc)
-		pCustv := &custv.CustValidationCtxt{
-			ReqData: custvCfg,
-			CurCfg: curCustvCfg,
-			YNodeName: nodeName,
-			YNodeVal: nodeVal,
-			YCur: node,
-			SessCache: &(c.custvCache),
-			RClient: redisClient}
+		for _, custFunction := range custFuncs {
+			CVL_LOG(INFO_TRACE, "Calling custom validation function %s", custFunction)
+			pCustv := &custv.CustValidationCtxt{
+				ReqData: custvCfg,
+				CurCfg: curCustvCfg,
+				YNodeName: nodeName,
+				YNodeVal: nodeVal,
+				YCur: node,
+				SessCache: &(c.custvCache),
+				RClient: redisClient}
 
-		errObj := custv.InvokeCustomValidation(&custv.CustomValidation{},
-		custFunc, pCustv)
+			errObj := custv.InvokeCustomValidation(&custv.CustomValidation{}, custFunction, pCustv)
 
-		cvlErrObj = *(*CVLErrorInfo)(unsafe.Pointer(&errObj))
+			cvlErrObj = *(*CVLErrorInfo)(unsafe.Pointer(&errObj))
 
-		if (cvlErrObj.ErrCode != CVL_SUCCESS) {
-			CVL_LOG(WARNING, "Custom validation failed, Error = %v", cvlErrObj)
-			return cvlErrObj
+			if (cvlErrObj.ErrCode != CVL_SUCCESS) {
+				CVL_LOG(WARNING, "Custom validation failed, Error = %v", cvlErrObj)
+				return cvlErrObj
+			}
 		}
 	}
 
