@@ -1044,19 +1044,17 @@ func rpc_vlan_tbl_update(d *db.DB, op_map (map[string][]string),op string) error
             if _, ok := updated_map[vlanName]; !ok{
                 vlanEntry,_ := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
 	        membersList := vlanEntry.GetList("members")
-		if op == "CREATE"{
-                    membersList = append(membersList,ifName)
-                    updated_map[vlanName] = membersList
-		}
-		if op == "DELETE"{
-                    membersList = utils.RemoveElement(membersList,ifName)
-                    updated_map[vlanName] = membersList
-		}
-            }else{
-                ifList := updated_map[vlanName]
+		updated_map[vlanName] = membersList
+	    }
+	    ifList := updated_map[vlanName]
+	    if op == "CREATE"{
                 ifList = append(ifList,ifName)
                 updated_map[vlanName] = ifList
-            }
+	    }
+	    if op == "DELETE"{
+                ifList = utils.RemoveElement(ifList,ifName)
+                updated_map[vlanName] = ifList
+	    }
         }
     }
 
