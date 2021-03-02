@@ -37,28 +37,26 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
 
     if (vc.CurCfg.VOp == OP_DELETE) {
 
-        if_name := strings.Split(vc.CurCfg.Key, "|")[1]
-
-        sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
-
-        sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()
-        if (err != nil) || (vc.SessCache == nil) {
-            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-        }
-
-        if len(sag_keys) >= 1 {
-            errStr := "Delete SAG IP on the interface before deleting VLAN ID"
-            return CVLErrorInfo {
-                ErrCode: CVL_SEMANTIC_ERROR,
-                TableName: vc.CurCfg.Key,
-                CVLErrDetails: errStr,
-                ConstraintErrMsg: errStr,
-            }
-        }
-
-
-
         if _, ok := vc.CurCfg.Data["vlan"]; ok {
+
+            if_name := strings.Split(vc.CurCfg.Key, "|")[1]
+
+            sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
+
+            sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()
+            if (err != nil) || (vc.SessCache == nil) {
+                return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+            }
+
+            if len(sag_keys) >= 1 {
+                errStr := "Delete SAG IP on the interface before deleting VLAN ID"
+                return CVLErrorInfo {
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: vc.CurCfg.Key,
+                    CVLErrDetails: errStr,
+                    ConstraintErrMsg: errStr,
+                }
+            }
 
             vrrp_tbl_name := "VRRP" + "|" + if_name + "|" + "*"
 
@@ -343,9 +341,9 @@ func (t *CustomValidation) ValidateSubInterfaceIntf(vc *CustValidationCtxt) CVLE
 
 //ValidateSwitchPortConfig Custom validation for switchport config on interfaces having subintf config
 func (t *CustomValidation) ValidateSwitchPortConfig(vc *CustValidationCtxt) CVLErrorInfo {
-    
+
     //log.Info("ValidateSwitchPortConfig op:", vc.CurCfg.VOp, "\nkey:", vc.CurCfg.Key, "\ndata:", vc.CurCfg.Data, "\nvc.ReqData: ", vc.ReqData, "\nvc.SessCache", vc.SessCache)
-    
+
     if vc.CurCfg.VOp == OP_DELETE {
         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
     }
