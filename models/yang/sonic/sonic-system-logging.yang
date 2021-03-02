@@ -34,6 +34,10 @@ module sonic-system-logging {
         prefix m-vrf;
     }
 
+    import sonic-interface {
+      prefix subif;
+    }
+
     organization
         "SONiC";
 
@@ -110,6 +114,9 @@ module sonic-system-logging {
                         }
                         type leafref {
                             path "/smgmt:sonic-mgmt-port/smgmt:MGMT_PORT/smgmt:MGMT_PORT_LIST/smgmt:ifname";
+                        }
+                        type leafref {
+                            path "/subif:sonic-interface/subif:VLAN_SUB_INTERFACE/subif:VLAN_SUB_INTERFACE_LIST/subif:id";
                         }
                     }
                 }
