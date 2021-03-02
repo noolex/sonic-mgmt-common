@@ -2115,6 +2115,12 @@ func getSwitchedVlanConfig(inParams XfmrParams, targetUriPath *string, ifKey *st
         return errors.New(errStr)
     }
 
+    if strings.Contains(*targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/state")  || strings.Contains(*targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/state") {
+        log.Info("GET for a state path")
+        return nil
+    }
+
+
     TblTs := &db.TableSpec{Name: "PORT"}
 
     if intfType == IntfTypePortChannel {
@@ -2143,7 +2149,6 @@ func getSwitchedVlanConfig(inParams XfmrParams, targetUriPath *string, ifKey *st
 
     switch intfType {
     case IntfTypeEthernet:
-
 
         if (swVlan.swEthMember.Config == nil) {
             ygot.BuildEmptyTree(swVlan.swEthMember)
@@ -2206,10 +2211,9 @@ func getSwitchedVlanConfig(inParams XfmrParams, targetUriPath *string, ifKey *st
 
     case IntfTypePortChannel:
 
-
         if (swVlan.swPortChannelMember.Config == nil) {
                 ygot.BuildEmptyTree(swVlan.swPortChannelMember)
-            }
+        }
 
         if accessVlanId != "" {
 

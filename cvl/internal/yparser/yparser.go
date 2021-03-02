@@ -272,7 +272,7 @@ type YParserListInfo struct {
 				//multiple leafref possible for union 
 	DfltLeafVal map[string]string //Default value for leaf/leaf-list
 	XpathExpr map[string][]*XpathExpression
-	CustValidation map[string]string
+	CustValidation map[string][]string
 	WhenExpr map[string][]*WhenExpression //multiple when expression for choice/case etc
 	MandatoryNodes map[string]bool
 	DependentOnTable string //for table on which it is dependent
@@ -880,7 +880,7 @@ func getModelChildInfo(l *YParserListInfo, node *C.struct_lys_node,
 					if (C.GoString(exts[idx].def.name) == "custom-validation") {
 						argVal := C.GoString(exts[idx].arg_value)
 						if (argVal != "") {
-							l.CustValidation[leafName] = argVal
+							l.CustValidation[leafName] = append(l.CustValidation[leafName], argVal)
 						}
 					}
 				}
@@ -939,7 +939,7 @@ func GetModelListInfo(module *YParserModule) []*YParserListInfo {
 
 			l.LeafRef = make(map[string][]string)
 			l.XpathExpr = make(map[string][]*XpathExpression)
-			l.CustValidation = make(map[string]string)
+			l.CustValidation = make(map[string][]string)
 			l.WhenExpr = make(map[string][]*WhenExpression)
 			l.DfltLeafVal = make(map[string]string)
 			l.MandatoryNodes = make(map[string]bool)
@@ -979,7 +979,7 @@ func GetModelListInfo(module *YParserModule) []*YParserListInfo {
 					switch extName {
 					case "custom-validation":
 						if (argVal != "") {
-							l.CustValidation[listName] = argVal
+							l.CustValidation[listName] = append(l.CustValidation[listName], argVal)
 						}
 					case "db-name":
 						l.DbName = argVal
