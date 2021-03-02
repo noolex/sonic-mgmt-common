@@ -53,6 +53,8 @@ var (
 var L2MC_TABLE_DEFAULT_FIELDS_MAP = map[string]string{
 	"enabled":                    "true",
 	"version":                    "2",
+    "querier":                    "false",
+    "fast-leave":                 "false",
 	"query-interval":             "125",
 	"last-member-query-interval": "1000",
 	"query-max-response-time":    "10",
@@ -268,27 +270,27 @@ func (reqP *reqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string]map[
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					fmt.Println("handleDeleteReq version res_map ==> ", res_map)
 				} else if reqP.targetNode.Name == "fast-leave" {
-					dbV.Field["fast-leave"] = "false"
+					dbV.Field["fast-leave"] = L2MC_TABLE_DEFAULT_FIELDS_MAP["fast-leave"]
 					igmpsTblMap[igmpsKey] = dbV
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					fmt.Println("handleDeleteReq fast-leave res_map ==> ", res_map)
 				} else if reqP.targetNode.Name == "querier" {
-					dbV.Field["querier"] = ""
+					dbV.Field["querier"] = L2MC_TABLE_DEFAULT_FIELDS_MAP["querier"]
 					igmpsTblMap[igmpsKey] = dbV
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					fmt.Println("handleDeleteReq querier res_map ==> ", res_map)
 				} else if reqP.targetNode.Name == "query-interval" {
-					dbV.Field["query-interval"] = ""
+					dbV.Field["query-interval"] = L2MC_TABLE_DEFAULT_FIELDS_MAP["query-interval"]
 					igmpsTblMap[igmpsKey] = dbV
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					fmt.Println("handleDeleteReq query-interval res_map ==> ", res_map)
 				} else if reqP.targetNode.Name == "query-max-response-time" {
-					dbV.Field["query-max-response-time"] = ""
+					dbV.Field["query-max-response-time"] = L2MC_TABLE_DEFAULT_FIELDS_MAP["query-max-response-time"]
 					igmpsTblMap[igmpsKey] = dbV
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					fmt.Println("handleDeleteReq query-max-response-time res_map ==> ", res_map)
 				} else if reqP.targetNode.Name == "last-member-query-interval" {
-					dbV.Field["last-member-query-interval"] = ""
+					dbV.Field["last-member-query-interval"] = L2MC_TABLE_DEFAULT_FIELDS_MAP["last-member-query-interval"]
 					igmpsTblMap[igmpsKey] = dbV
 					res_map[CFG_L2MC_TABLE] = igmpsTblMap
 					fmt.Println("handleDeleteReq last-member-query-interval res_map ==> ", res_map)
