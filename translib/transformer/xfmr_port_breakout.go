@@ -194,7 +194,7 @@ func breakout_action (ifName string, from_mode string, to_mode string, inParams 
                     isEqual := reflect.DeepEqual(curr_ports,ports)
                     if isEqual {
                          log.Info("No change in port breakout mode")
-                         return nil
+                         return tlerr.InvalidArgs("No change in port breakout mode")
                     }
                     //2. Remove ports
                     delMap := removePorts(curr_ports)
