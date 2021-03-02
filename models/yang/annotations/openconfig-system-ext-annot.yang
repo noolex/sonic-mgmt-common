@@ -82,5 +82,9 @@ module openconfig-system-ext-annot {
             sonic-ext:rpc-callback "rpc_show_locator_led_chassis_cb";
         }
     }
-
+    deviation /oc-sys-ext:logger{
+        deviate add {
+            sonic-ext:rpc-callback "rpc_infra_logger_cb";
+        }
+    }
 }
