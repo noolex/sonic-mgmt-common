@@ -105,6 +105,7 @@ func main() {
 						"type": "L3",
 						//"ports@": "Ethernet0",
 					},
+					false,
 				},
 			}
 
@@ -132,6 +133,7 @@ func main() {
 						"DST_IP":            "20.2.2.2/32",
 						"L4_DST_PORT":       fmt.Sprintf("%d", 701 + i),
 					},
+					false,
 				})
 						//"DST_IPV6": "2001:db8:3c4d::/48",
 
@@ -172,6 +174,7 @@ func main() {
 					fmt.Sprintf("ACL_RULE|TestACL%s|Rule%d", aclNo, i+1),
 					map[string]string {
 					},
+					false,
 				})
 
 				_, ret := cvSess.ValidateEditConfig(cfgDataAclRule)
@@ -189,6 +192,7 @@ func main() {
 				fmt.Sprintf("ACL_TABLE|TestACL%s", aclNo),
 				map[string]string {
 				},
+				false,
 			})
 
 			_, ret := cvSess.ValidateEditConfig(cfgDataAclRule)
