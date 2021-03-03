@@ -951,4 +951,23 @@ module openconfig-system-ext {
            }
         }
     }
+   rpc logger {
+        description
+            "enter messages into the system log";
+        input {
+            leaf messages {
+               type string; 
+               description
+                    "messages into the system log";
+            }
+        }
+
+        output {
+            leaf result{
+               type string;
+               description
+                    "The detailed status of the operation execution request.";
+           }
+        }
+    }
 }

@@ -1292,11 +1292,8 @@ func (app *FbsApp) translateDelClassifier(d *db.DB) error {
 		return nil
 	}
 
-	targetNode, err := getTargetNodeYangSchema(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device))
-	if err != nil {
-		log.Info(err)
-		return err
-	}
+	targetNode, _ := getTargetNodeYangSchema(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device))
+	reqClassName := app.pathInfo.Var("class-name")
 
 	for classKey, classVal := range fbsObj.Classifiers.Classifier {
 		log.Infof("Classifier %v DELETE operation; classVal ", classKey)
@@ -1305,8 +1302,13 @@ func (app *FbsApp) translateDelClassifier(d *db.DB) error {
 		existingVal, err := app.getClassifierEntryFromDB(d, classKey)
 		if nil != err {
 			if isNotFoundError(err) {
-				log.Infof("Classifier %v not present", classKey)
-				continue
+				if reqClassName != classKey {
+					log.Infof("Classifier %v not present", classKey)
+					err = nil
+					continue
+				} else {
+					return err
+				}
 			}
 			return err
 		}
@@ -1495,20 +1497,26 @@ func (app *FbsApp) translateDelPolicy(d *db.DB) error {
 	}
 
 	targetNode, _ := getTargetNodeYangSchema(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device))
+	reqPolicyName := app.pathInfo.Var("policy-name")
 
 	for policyKey, policyVal := range fbsObj.Policies.Policy {
 		log.Infof("DELETE Policy:%v related", policyKey)
 
-		if policyVal.Config != nil { //policy config level delete
-			existingEntry, err := app.getPolicyEntryFromDB(d, policyKey)
-			if err != nil {
-				if isNotFoundError(err) {
+		existingEntry, err := app.getPolicyEntryFromDB(d, policyKey)
+		if err != nil {
+			if isNotFoundError(err) {
+				if reqPolicyName != policyKey {
 					log.Infof("Policy %v not present", policyKey)
+					err = nil
 					continue
+				} else {
+					return err
 				}
-				return err
 			}
+			return err
+		}
 
+		if policyVal.Config != nil { //policy config level delete
 			if targetNode.Name == "type" {
 				return tlerr.NotSupported("Type delete not allowed")
 			} else if targetNode.Name == "description" {
@@ -1919,12 +1927,16 @@ func (app *FbsApp) translateDelNextHopGroups(d *db.DB) error {
 	}
 
 	targetNode, _ := getTargetNodeYangSchema(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device))
+	reqNhGrpName := app.pathInfo.Var("class-name")
 
 	for groupName, groupPtr := range fbsObj.NextHopGroups.NextHopGroup {
 		groupData, err := app.getNextHopGroupEntryFromDB(d, groupName)
-		if isNotFoundError(err) {
-			log.Infof("Group %v not present", groupName)
-			continue
+		if err != nil {
+			if isNotFoundError(err) && (groupName != reqNhGrpName) {
+				log.Infof("Group %v not present", groupName)
+				continue
+			}
+			return err
 		}
 
 		if groupPtr.Config != nil {
