@@ -2862,7 +2862,6 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
 			intfName := key.Get(0)
 			intfNameUi := *utils.GetUINameFromNativeName(&intfName)
                         errStr := "IP " + ipPref + " overlaps with IP or IP Anycast " + key.Get(1) + " of Interface " + intfNameUi
-                        log.Error(errStr)
                         return "", errors.New(errStr)
                     }
                 } else if isIntfIp {
