@@ -777,7 +777,8 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 						fwdEntry.PRIORITY = &prio_int
 					}
 				} else if grpType == "L2" {
-					fwdEntry.INTERFACE_NAME = &parts[0]
+					convertedIfName := *(utils.GetUINameFromNativeName(&parts[0]))
+					fwdEntry.INTERFACE_NAME = &convertedIfName
 					if parts[1] != "" {
 						prio, _ := strconv.ParseInt(parts[1], 10, 32)
 						prio_int := int(prio)
