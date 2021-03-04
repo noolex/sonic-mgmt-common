@@ -200,9 +200,15 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
     keys, _ := configDb.GetKeysByPattern(neighTblTs, keyPattern)
     log.Info("delete_neigh_interface_config_all::: neighTbl keys ", keys)
 
+    subOpMap := inParams.subOpDataMap[inParams.oper]
+
+/*
     neighOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     neighOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
-    neighOpMap[db.ConfigDB][neighTblName] = make(map[string]db.Value)
+
+*/
+    log.Info("subOpMap ", *subOpMap)
+    (*subOpMap)[db.ConfigDB][neighTblName] = make(map[string]db.Value)
 
     entryDeleted := false
     for _, intfTblKey := range keys {
@@ -214,16 +220,22 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
 
         intfTblKey2 := intfTblKey.Get(0) + "|" + intfTblKey.Get(1)
         neighIntfDbValue := db.Value{Field: make(map[string]string)}
+/*
         neighOpMap[db.ConfigDB][neighTblName][intfTblKey2] = db.Value{Field: make(map[string]string)}
+*/
+        (*subOpMap)[db.ConfigDB][neighTblName][intfTblKey2] = db.Value{Field: make(map[string]string)}
+
         neighIntfTblMap[intfTblKey2] = neighIntfDbValue
         entryDeleted = true
     }
 
     if entryDeleted {
+/*
         inParams.subOpDataMap[inParams.oper] = &neighOpMap
+*/
         (*neighRespMap)[neighTblName] = neighIntfTblMap
 
-        log.Info("delete_neigh_interface_config_all::: neighRespMap ", neighRespMap)
+        log.Info("delete_neigh_interface_config_all::: neighRespMap, subOpMap", neighRespMap, *subOpMap)
         return nil
     }
 
@@ -1555,7 +1567,7 @@ var YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func 
     for k:= range arpObj {
         staticIpStr = *arpObj[k].Ip
     }
- 
+
     if (addOperation) {
         for _,v := range arpObj {
             staticMacStr = *v.Config.LinkLayerAddress
@@ -1591,7 +1603,7 @@ var YangToDb_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func 
         inParams.subOpDataMap[DELETE] = &subOpMap
     }
     return neighIntfmap, err
-} 
+}
 
 func getIntfVrfMapping(d *db.DB)(map[string]string) {
     nonDefaultVrfIntfs := make(map[string]string)
