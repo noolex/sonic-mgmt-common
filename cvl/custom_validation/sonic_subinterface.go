@@ -103,7 +103,7 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
 
     key := strings.Split(vc.CurCfg.Key, "|")[1]
 
-    keys := "VLAN_SUB_INTERFACE|"+strings.Split(key,".")[0]+"*"
+    keys := "VLAN_SUB_INTERFACE|"+strings.Split(key,".")[0]+".*"
     tableKeys, err := vc.RClient.Keys(keys).Result()
 
     if err != nil {
@@ -120,7 +120,7 @@ func (t *CustomValidation) ValidateSubInterfaceVlanID(vc *CustValidationCtxt) CV
         if vlan, ok := currentData["vlan"] ; ok {
             if key == d[1] {
                 if vlan != vc.CurCfg.Data["vlan"] {
-                   util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Another subinterface has same vlan id configured")
+                   util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Different vlan id already configured on subinterface")
                     return CVLErrorInfo{
                         ErrCode:          CVL_SEMANTIC_ERROR,
                         TableName:        "VLAN_SUB_INTERFACE",

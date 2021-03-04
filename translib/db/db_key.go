@@ -85,6 +85,9 @@ func (k *Key) Matches(pattern *Key) bool {
 		return false
 	}
 	for i, c := range k.Comp {
+		if pattern.Comp[i] == "*" {
+			continue
+		}
 		if matched, _ := path.Match(pattern.Comp[i], c); !matched {
 			return false
 		}
