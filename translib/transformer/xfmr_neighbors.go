@@ -477,13 +477,32 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
     return neighIntfmap, err
 }
 
+
+func isNbrExist(dbCl *db.DB, tblName string, key string) (bool) {
+
+    log.Info("isNbrExist:", tblName, key)
+
+    _, err := dbCl.GetTable(&db.TableSpec{Name:tblName})
+
+    if err != nil {
+        return false
+    }
+
+    _, err = dbCl.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{key}})
+
+    return err == nil
+}
+
+
 var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var result XfmrSubscOutParams
 
     pathInfo := NewPathInfo(inParams.uri)
     log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: pathInfo ", pathInfo)
+    log.Info("inParams ", inParams)
 
     result.dbDataMap = make(RedisDbSubscribeMap)
+
     result.isVirtualTbl = false
 
     rcvdIfName, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
@@ -502,12 +521,23 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH_TABLE"
-    neighIntfTblKey := ifNameInDb + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    cfgTbl := "NEIGH"
+    appTbl := "NEIGH_TABLE"
+    cfgKey := ifNameInDb + "|" + ipAddrRcvd
+    appKey := ifNameInDb + ":" + ipAddrRcvd
+    cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
+    appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
-    log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
+    if isNbrExist(cfgDb, cfgTbl, cfgKey) {
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
+        log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: key " + cfgKey)
+    } else if isNbrExist(appDb, appTbl, appKey) {
+        result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {appTbl:{appKey:{}}}}
+        log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: key " + appKey)
+    }
+
     return result, nil
+
 }
 
 var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
@@ -534,13 +564,23 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
         log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: " + errStr)
         return result, tlerr.New(errStr)
     }
+    cfgTbl := "NEIGH"
+    appTbl := "NEIGH_TABLE"
+    cfgKey := ifNameInDb + "|" + ipAddrRcvd
+    appKey := ifNameInDb + ":" + ipAddrRcvd
+    cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
+    appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
-    neighIntfTbl := "NEIGH_TABLE"
-    neighIntfTblKey := ifNameInDb + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    if isNbrExist(cfgDb, cfgTbl, cfgKey) {
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
+        log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: key " + cfgKey)
+    } else if isNbrExist(appDb, appTbl, appKey) {
+        result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {appTbl:{appKey:{}}}}
+        log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: key " + appKey)
+    }
 
-    log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
     return result, nil
+
 }
 
 var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
@@ -566,12 +606,23 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscI
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH_TABLE"
-    neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    cfgTbl := "NEIGH"
+    appTbl := "NEIGH_TABLE"
+    cfgKey := intfNameRcvd + "|" + ipAddrRcvd
+    appKey := intfNameRcvd + ":" + ipAddrRcvd
+    cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
+    appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
-    log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: neighIntfTblKey " + neighIntfTblKey)
+    if isNbrExist(cfgDb, cfgTbl, cfgKey) {
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
+        log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: key " + cfgKey)
+    } else if isNbrExist(appDb, appTbl, appKey) {
+        result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {appTbl:{appKey:{}}}}
+        log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: key " + appKey)
+    }
+
     return result, nil
+
 }
 
 var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
@@ -596,12 +647,23 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscI
         return result, tlerr.New(errStr)
     }
 
-    neighIntfTbl := "NEIGH_TABLE"
-    neighIntfTblKey := intfNameRcvd + ":" + ipAddrRcvd
-    result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {neighIntfTbl:{neighIntfTblKey:{}}}}
+    cfgTbl := "NEIGH"
+    appTbl := "NEIGH_TABLE"
+    cfgKey := intfNameRcvd + "|" + ipAddrRcvd
+    appKey := intfNameRcvd + ":" + ipAddrRcvd
+    cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
+    appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
-    log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: neighIntfTblKey " + neighIntfTblKey)
+    if isNbrExist(cfgDb, cfgTbl, cfgKey) {
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
+        log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: key " + cfgKey)
+    } else if isNbrExist(appDb, appTbl, appKey) {
+        result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {appTbl:{appKey:{}}}}
+        log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr: key " + appKey)
+    }
+
     return result, nil
+
 }
 
 var YangToDb_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrYangToDb = func (inParams XfmrParams) (map[string]map[string]db.Value, error)  {
