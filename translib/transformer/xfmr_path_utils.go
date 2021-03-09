@@ -112,7 +112,7 @@ func SplitPath(path string) []string {
 		switch {
 		case inEscape:
 			inEscape = false
-		case c == '\'':
+		case c == '\\':
 			inEscape = true
 		case c == '[':
 			inKey = true
