@@ -179,6 +179,7 @@ var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
     oper_err := errors.New("wrong config DB table sent")
 
     niRoot := "/openconfig-network-instance:network-instances/network-instance"
+    bgp_glb_dyn_neig :=  niRoot + "/protocols/protocol/bgp/global/dynamic-neighbor-prefixes/dynamic-neighbor-prefix" 
     bgp_glb_afi_safi := niRoot + "/protocols/protocol/bgp/global/afi-safis/afi-safi"
     bgp_glb_aggr_addr := bgp_glb_afi_safi + "/openconfig-bgp-ext:aggregate-address-config/aggregate-address"
     bgp_glb_af_network :=  bgp_glb_afi_safi + "/openconfig-bgp-ext:network-config/network"
@@ -187,7 +188,7 @@ var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
     log.Info("DbToYangPath_bgp_glb_path_Xfmr: params: ", params)
 
     if (params.tblName == "BGP_GLOBALS" || params.tblName ==  "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||  
-        params.tblName == "BGP_GLOBALS_AF_NETWORK" ||  params.tblName == "BGP_GLOBALS_AF") {
+        params.tblName == "BGP_GLOBALS_AF_NETWORK" ||  params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_LISTEN_PREFIX") {
         params.ygPathKeys[niRoot + "/name"]  = params.tblKeyComp[0]
     } else {
         log.Errorf ("BGP global Path-xfmr: table name %s not in BGP global view", params.tblKeyComp );
@@ -215,6 +216,8 @@ var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
          params.ygPathKeys[bgp_glb_af_network + "/prefix"] = params.tblKeyComp[2]
     } else if (params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR") {
          params.ygPathKeys[bgp_glb_aggr_addr + "/prefix"] = params.tblKeyComp[2]
+    } else if (params.tblName == "BGP_GLOBALS_LISTEN_PREFIX") {
+         params.ygPathKeys[bgp_glb_dyn_neig + "/prefix"] = params.tblKeyComp[1]
     }
 
     log.Info("DbToYangPath_bgp_glb_path_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
@@ -961,7 +964,7 @@ var YangToDb_bgp_dyn_neigh_listen_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
     niName := pathInfo.Var("name")
     bgpId := pathInfo.Var("identifier")
     protoName := pathInfo.Var("name#2")
-	prefix := pathInfo.Var("prefix")
+    prefix := pathInfo.Var("prefix")
 
     if len(pathInfo.Vars) < 4 {
         return "", errors.New("Invalid Key length")
@@ -979,9 +982,9 @@ var YangToDb_bgp_dyn_neigh_listen_key_xfmr KeyXfmrYangToDb = func(inParams XfmrP
         return "", errors.New("Protocol Name is missing")
     }
 
-	key := niName + "|" + prefix
+    key := niName + "|" + prefix
 
-	log.Info("YangToDb_bgp_dyn_neigh_listen_key_xfmr key: ", key)
+    log.Info("YangToDb_bgp_dyn_neigh_listen_key_xfmr key: ", key)
 
     return key, nil
 }
