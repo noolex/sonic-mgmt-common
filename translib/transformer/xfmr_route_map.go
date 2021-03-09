@@ -40,6 +40,8 @@ func init () {
     XlateFuncBind("YangToDb_route_map_set_med_xfmr", YangToDb_route_map_set_med_xfmr)
     XlateFuncBind("DbToYang_route_map_set_med_xfmr", DbToYang_route_map_set_med_xfmr)
     XlateFuncBind("DbToYangPath_route_map_path_xfmr", DbToYangPath_route_map_path_xfmr)
+    XlateFuncBind("Subscribe_route_map_bgp_action_set_community", Subscribe_route_map_bgp_action_set_community)
+    XlateFuncBind("Subscribe_route_map_bgp_action_set_ext_community", Subscribe_route_map_bgp_action_set_ext_community)
 }
 
 var DbToYang_route_map_field_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
@@ -101,6 +103,12 @@ var YangToDb_route_map_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     if len(stmtName) == 0 {
         return entry_key, err
     }
+
+    if stmtName == "*" {
+        entry_key = rtMapName + "|*"
+        return entry_key, nil
+    }
+
     /* @@TODO For now, due to infra. ordering issue, always assuming statement name is uint16 value. */
     _, err = strconv.ParseUint(stmtName, 10, 16)
     if err != nil {
@@ -670,6 +678,7 @@ var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inPa
                 }
            }
        }
+
        rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
        rtStmtActionCommObj.Inline.State.Communities = StateCommunities
     } else {
@@ -1000,13 +1009,87 @@ var YangToDb_route_map_set_med_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
 }
 
 var DbToYangPath_route_map_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+    log.Info("DbToYangPath_route_map_path_xfmr params: ", params)
+
     //params.tableName - ROUTE_MAP_SET
     //params.tableKey - "name"
 
     rpRoot := "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition"
+    spRoot := rpRoot + "/statements/statement"
 
     params.ygPathKeys[rpRoot + "/name"] = params.tblKeyComp[0]
+    if params.tblName == "ROUTE_MAP" {
+        log.Info("DbToYangPath_route_map_path_xfmr second key is provided: ", params.tblKeyComp[1])
+        params.ygPathKeys[spRoot + "/name"] = params.tblKeyComp[1]
+    }
+
+	log.Info("DbToYangPath_route_map_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
 
     return nil
 }
 
+var Subscribe_route_map_bgp_action_set_community SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+
+    var err error
+    var result XfmrSubscOutParams
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    rtPolicyName   :=  pathInfo.Var("name")
+    rtStmtName := pathInfo.Var("name#2")
+
+
+    rm_key := rtPolicyName + "|" + rtStmtName
+    log.Info("Subscribe_route_map_bgp_action_set_community (DB name): ", "ROUTE_MAP", " name (key): ", rm_key)
+    log.Info("Target URI: ", targetUriPath)
+    
+
+    if targetUriPath == "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition/statements/statement/actions/openconfig-bgp-policy:bgp-actions/set-community" {
+        log.Info("Subscriber successfully installed notifications on fields")
+
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"ROUTE_MAP_SET": {rtPolicyName:{}}}} 
+
+        // FIXME: any modification of "set community" cli will crash the telemetry docker when subscriber of statement {*, 1} is running, check /var/log/telemetry/std_err.log
+        result.secDbDataMap = RedisDbYgNodeMap{db.ConfigDB:{"ROUTE_MAP":{ rm_key: map[string]string{"set_community_ref":"reference/config/community-set-ref", "set_community_inline": "inline/config/communities"}}}} 
+
+    }
+
+    result.needCache = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0 
+    result.nOpts.pType = OnChange
+    return result, err
+} 
+
+var Subscribe_route_map_bgp_action_set_ext_community SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+    var err error
+    var result XfmrSubscOutParams
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    rtPolicyName   :=  pathInfo.Var("name")
+    rtStmtName := pathInfo.Var("name#2")
+
+
+    rm_key := rtPolicyName + "|" + rtStmtName
+    log.Info("Subscribe_route_map_bgp_action_set_ext_community (DB name): ", "ROUTE_MAP", " name (key): ", rm_key)
+    log.Info("Target URI: ", targetUriPath)
+    
+
+    if targetUriPath == "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition/statements/statement/actions/openconfig-bgp-policy:bgp-actions/set-ext-community" {
+        log.Info("Subscriber successfully installed notifications on fields")
+
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"ROUTE_MAP_SET": {rtPolicyName:{}}}} 
+
+        // FIXME: any modification of "set ext community" cli will crash the telemetry docker when subscriber of statement {*, 1} is running, check /var/log/telemetry/std_err.log
+        result.secDbDataMap = RedisDbYgNodeMap{db.ConfigDB:{"ROUTE_MAP":{ rm_key: map[string]string{"set_ext_community_ref":"reference/config/ext-community-set-ref", "set_ext_community_inline": "inline/config/communities"}}}} 
+
+    }
+
+    result.needCache = true
+    result.nOpts = new(notificationOpts)
+    result.nOpts.mInterval = 0 
+    result.nOpts.pType = OnChange
+    return result, err
+
+}
