@@ -396,7 +396,7 @@ func validateVlanExists(d *db.DB, vlanName *string) error {
     return nil
 }
 
-/* Validates whether physical interface or port-channel interface configured as member of any VLAN */
+/* Validates whether physical interface or port-channel interface configured as member of any existing or non-existing VLAN */
 func validateIntfAssociatedWithVlan(d *db.DB, ifName *string) error {
     var err error
     ifUIName := utils.GetUINameFromNativeName(ifName)
@@ -425,6 +425,28 @@ func validateIntfAssociatedWithVlan(d *db.DB, ifName *string) error {
             log.Error(errStr.String())
             return tlerr.InvalidArgsError{Format:errStr.String()}
         }
+    }
+    return err
+}
+
+/* Validates whether physical interface or port-channel interface configured as member of any existing VLAN */
+func validateIntfAssociatedWithExistingVlan(d *db.DB, ifName *string) error {
+    var err error
+    ifUIName := utils.GetUINameFromNativeName(ifName)
+
+    if len(*ifName) == 0 {
+        return errors.New("Interface name is empty!")
+    }
+    var vlanKeys []db.Key
+    vlanKeys, err = d.GetKeysByPattern(&db.TableSpec{Name: VLAN_MEMBER_TN}, "*"+*ifName)
+    if err != nil {
+        return errors.New("Failed to get keys from table: " + VLAN_MEMBER_TN)
+    }
+    log.Infof("Interface member of %d Vlan(s)", len(vlanKeys))
+    if len(vlanKeys) > 0 {
+        errStr := "Vlan configuration exists on interface: " + *ifUIName
+        log.Error(errStr)
+        return tlerr.InvalidArgsError{Format:errStr}
     }
     return err
 }
